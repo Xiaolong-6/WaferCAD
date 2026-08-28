@@ -191,8 +191,11 @@ function substrateThicknessRange(){
   const outline=waferOutline(),samples=polygonInteriorSamples(outline);for(const cut of state.cuts)samples.push(...polygonInteriorSamples(cut.footprint));const values=samples.filter(p=>pointInPoly(p,outline)).map(substrateRemainingAt);return values.length?[Math.min(...values),Math.max(...values)]:[state.wafer.thickness,state.wafer.thickness];
 }
 let _thicknessRefreshSeq=0;
+let _thicknessRefreshPending=false;
 async function refreshExactThickness(){
   if(!state.wafer) {state._exactThickness=null; return;}
+  if(_thicknessRefreshPending) return;
+  _thicknessRefreshPending=true;
   const seq=++_thicknessRefreshSeq;
   try{
     const payload={outline:waferOutline(),thickness:state.wafer.thickness,cuts:state.cuts.map(c=>({footprint:c.footprint,zMin:c.zMin,zMax:c.zMax}))};
@@ -201,31 +204,39 @@ async function refreshExactThickness(){
     const data=await res.json();
     if(seq!==_thicknessRefreshSeq) return;
     state._exactThickness={min:Number(data.min),max:Number(data.max),atoms:data.atoms};
-    renderFigureLegend();
-  }catch(e){ /* keep heuristic */ }
+    updateFigureLegendThickness();
+  }catch(e){ /* keep heuristic */ } finally { _thicknessRefreshPending=false; }
+}
+function updateFigureLegendThickness(){
+  const box=$('figureLegend'); if(!box || box.classList.contains('hidden')) return;
+  const entries=layerLegendEntries();
+  const rows=box.querySelectorAll('.figure-legend-row');
+  for(let i=0;i<entries.length && i<rows.length;i++){
+    const entry=entries[i];
+    const row=rows[i];
+    const thickEl=row.querySelector('.figure-legend-thickness');
+    if(!thickEl) continue;
+    const exact=entry.id==='substrate'&&state._exactThickness;
+    thickEl.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;
+  }
+  // If counts differ (e.g., after wafer change), fallback to full re-render
+  if(entries.length !== rows.length) renderFigureLegend();
 }
 function formatThickness(value){const v=Math.max(0,value);if(v>=1000)return `${formatDisplayNumber(v/1000)} mm`;if(v<1)return `${formatDisplayNumber(v*1000)} nm`;return `${formatDisplayNumber(v)} µm`;}
 function formatThicknessRange(range){const [min,max]=range;return Math.abs(max-min)<1e-7?formatThickness(max):`${formatThickness(min)}–${formatThickness(max)}`;}
 function renderFigureLegend(){
-  const box=$('figureLegend');if(!box)return;box.innerHTML='';const entries=layerLegendEntries();box.classList.toggle('hidden',!entries.length);if(!entries.length)return;
+  const box=$('figureLegend');if(!box)return;
+  // Preserve delegated handler — only clear rows, keep container listeners
+  const existingHandler=box._legendDelegated;
+  box.innerHTML='';const entries=layerLegendEntries();box.classList.toggle('hidden',!entries.length);if(!entries.length)return;
   const title=document.createElement('div');title.className='figure-legend-title';title.textContent='Figure legend';box.appendChild(title);
   for(const entry of entries){
     const row=document.createElement('button');row.type='button';row.className='figure-legend-row';
     row.dataset.layerId=entry.id;
     row.title='Click to change material name, color and display scale';
-    row.style.pointerEvents='auto';
-    const handler=(e)=>{ e.preventDefault(); e.stopPropagation(); console.log('legend click',entry.id); status('Opening '+entry.name+'…'); openLayerVisualDialog(entry.id); };
-    row.addEventListener('click',handler);
-    row.addEventListener('mousedown',(e)=>{ e.stopPropagation(); });
+    row.addEventListener('click',(e)=>{ e.preventDefault(); e.stopPropagation(); openLayerVisualDialog(entry.id); });
     const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(name,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;row.append(sw,label,scale);box.appendChild(row);
   }
-  // Delegated fallback — handles cases where per-row listeners are lost after async re-render
-  box.onclick=(e)=>{
-    const btn=e.target.closest('.figure-legend-row');
-    if(!btn || !btn.dataset.layerId) return;
-    e.preventDefault(); e.stopPropagation();
-    openLayerVisualDialog(btn.dataset.layerId);
-  };
   if(state.wafer) refreshExactThickness();
 }
 function editableLayerMaterial(id){if(id==='substrate')return state.wafer?.material||'Substrate';const solid=state.solids.find(s=>s.layerId===id);if(solid)return solid.material||layerVisual(id).name;const doping=state.dopings.find(d=>d.layerId===id);return doping?.dopant||layerVisual(id).name.replace(/^Doping\s*·\s*/,'');}
@@ -1136,6 +1147,17 @@ function bindUi(){
   });
   $('undoOperationBtn').addEventListener('click',undoOperation);
   $('applyLayerVisualBtn').addEventListener('click',()=>{const scale=Number($('layerVisualScale').value),name=$('layerVisualName').value.trim(),error=$('layerVisualError');if(!name){error.textContent='Material name cannot be empty.';error.classList.remove('hidden');return;}if(!Number.isFinite(scale)||scale<=0||scale>100){error.textContent='Display scale must be greater than 0 and no more than 100.';error.classList.remove('hidden');return;}if(!editingLayerVisualId||!state.layerVisuals[editingLayerVisualId])return;renameLayerMaterial(editingLayerVisualId,name);state.layerVisuals[editingLayerVisualId].color=validColor($('layerVisualColor').value);state.layerVisuals[editingLayerVisualId].scale=scale;$('layerVisualDialog').close('default');renderAll();status(`Updated ${state.layerVisuals[editingLayerVisualId].name}: display ×${formatDisplayNumber(scale)}.`);});
+  // Delegated figure legend — stable across async re-renders, fixes intermittent click loss
+  const legendBox=$('figureLegend');
+  if(legendBox && !legendBox._delegated){
+    legendBox.addEventListener('click',(e)=>{
+      const btn=e.target.closest('.figure-legend-row');
+      if(!btn || !btn.dataset.layerId) return;
+      e.preventDefault(); e.stopPropagation();
+      openLayerVisualDialog(btn.dataset.layerId);
+    });
+    legendBox._delegated=true;
+  }
 }
 
 bindUi();bindTopNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
