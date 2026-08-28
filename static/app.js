@@ -845,11 +845,60 @@ async function importGds(file,topCell=null,preserveTransform=false){
   status(`Loaded ${data.filename}: ${data.active_top_cell}, ${data.layers.length} layer/datatype pairs${data.truncated?' (polygon limit reached)':''}.`);
 }
 function renderSnapshots(){
-  const box=$('snapshotList');box.innerHTML='';
-  if(!state.snapshots.length){const n=document.createElement('div');n.className='empty-note';n.textContent='No snapshots yet.';box.appendChild(n);return;}
-  for(const s of state.snapshots){const item=document.createElement('div');item.className='snapshot-item'+(s.id===state.activeSnapshotId?' active':'');item.addEventListener('click',()=>{state.activeSnapshotId=s.id;restoreDeviceSnapshot(s.device);renderSnapshots();status(`Restored snapshot: ${s.name}`)});const name=document.createElement('div');name.className='snapshot-name';name.textContent=s.name;const meta=document.createElement('div');meta.className='snapshot-meta';meta.textContent=`${s.device.solids.length} solid additions · ${s.device.cuts.length} cuts`;item.append(name,meta);box.appendChild(item);}
+  const track=$('snapshotTrack'); const strip=$('snapshotStrip');
+  if(!track) return;
+  track.innerHTML='';
+  if(!state.snapshots.length){
+    const n=document.createElement('div');n.className='snapshot-empty';n.textContent='No snapshots yet — click + Snapshot in the top bar to capture the current 3D perspective.';
+    track.appendChild(n);
+    return;
+  }
+  for(const s of state.snapshots){
+    const card=document.createElement('div');card.className='snapshot-card'+(s.id===state.activeSnapshotId?' active':'');
+    card.title=`${s.name} — click to restore`;
+    const thumb=document.createElement('img');thumb.className='snapshot-thumb';
+    thumb.src=s.thumb||''; thumb.alt=s.name;
+    if(!s.thumb) thumb.style.background='#e2e8f0';
+    thumb.onerror=()=>{ thumb.style.background='#e2e8f0'; thumb.removeAttribute('src'); };
+    const info=document.createElement('div');info.className='snapshot-info';
+    const name=document.createElement('div');name.className='snapshot-name';name.textContent=s.name;
+    const meta=document.createElement('div');meta.className='snapshot-meta';meta.textContent=`${s.device.solids.length} solids · ${s.device.cuts.length} cuts`;
+    info.append(name,meta);
+    const del=document.createElement('button');del.type='button';del.className='snapshot-delete';del.title='Delete snapshot';del.textContent='×';
+    del.addEventListener('click',(e)=>{ e.stopPropagation(); deleteSnapshot(s.id); });
+    card.addEventListener('click',()=>{ state.activeSnapshotId=s.id; restoreDeviceSnapshot(s.device); renderSnapshots(); status(`Restored snapshot: ${s.name}`); });
+    card.append(thumb,info,del);
+    track.appendChild(card);
+  }
+  // keep newest visible on the right
+  requestAnimationFrame(()=>{ if(strip) strip.scrollLeft = strip.scrollWidth; });
 }
-function createSnapshot(){if(!state.wafer){status('Create or open a wafer before saving a snapshot.');return;}const name=prompt('Snapshot name',`State ${state.snapshots.length+1}`);if(!name)return;const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot()};state.snapshots.push(s);state.activeSnapshotId=s.id;renderSnapshots();status(`Snapshot saved: ${name}`);}
+function captureSnapshotThumb(){
+  try{
+    if(!renderer || !renderer.domElement) return null;
+    // ensure current frame is rendered
+    if(typeof renderer.render === 'function' && scene && camera) renderer.render(scene,camera);
+    const dataUrl=renderer.domElement.toDataURL('image/png');
+    return dataUrl;
+  }catch(e){ console.warn('snapshot thumb failed',e); return null; }
+}
+function deleteSnapshot(id){
+  const idx=state.snapshots.findIndex(s=>s.id===id);
+  if(idx===-1) return;
+  const name=state.snapshots[idx].name;
+  state.snapshots.splice(idx,1);
+  if(state.activeSnapshotId===id) state.activeSnapshotId=state.snapshots.length? state.snapshots[state.snapshots.length-1].id : null;
+  renderSnapshots();
+  status(`Deleted snapshot: ${name}`);
+}
+function createSnapshot(){
+  if(!state.wafer){status('Create or open a wafer before saving a snapshot.');return;}
+  const name=prompt('Snapshot name',`State ${state.snapshots.length+1}`);
+  if(!name) return;
+  const thumb=captureSnapshotThumb();
+  const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot(),thumb};
+  state.snapshots.push(s);state.activeSnapshotId=s.id;renderSnapshots();status(`Snapshot saved: ${name}`);
+}
 
 function modelStats(){$('modelStats').textContent=state.wafer?`${state.solids.length} solids · ${state.cuts.length} cuts · ${state.dopings.length} doped regions · ${state.imprintedFaces.length} faces`:'';}
 function renderAll(){ensureLayerVisuals();renderTop();renderSection();render3D();renderFigureLegend();renderDopingControls();updateUndoUi();modelStats();}
@@ -859,7 +908,7 @@ async function initThree(){
     THREE=await import('three');
     ({OrbitControls}=await import('three/addons/controls/OrbitControls.js'));
   }catch(e){$('threeError').classList.remove('hidden');$('threeError').textContent='The local 3D library could not be loaded. Run npm install and restart WaferCAD. '+e.message;return;}
-  const host=$('threeContainer');renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xf1f3f5);host.appendChild(renderer.domElement);
+  const host=$('threeContainer');renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xf1f3f5);host.appendChild(renderer.domElement);
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(35,1,.01,5000);camera.up.set(0,0,1);camera.position.set(state.activeFace==='back'?-7:7,-9,state.activeFace==='back'?-6:6);controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,-.1);controls.enableDamping=true;
   scene.add(new THREE.HemisphereLight(0xffffff,0x66717c,2.0));const dl=new THREE.DirectionalLight(0xffffff,2.4);dl.position.set(5,-4,9);scene.add(dl);
   deviceGroup=new THREE.Group();scene.add(deviceGroup);axesGroup=createInfiniteAxes();axesGroup.visible=state.showAxes;scene.add(axesGroup);

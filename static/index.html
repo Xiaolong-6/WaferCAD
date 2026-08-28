@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=legend-fix-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=snapshot-strip-v1" />
 </head>
 <body>
   <div id="app">
@@ -12,6 +12,7 @@
       <div class="brand">WaferCAD <span>MVP</span></div>
       <button id="newWaferBtn">New wafer</button>
        <label class="file-btn">Import layout<input id="gdsInput" type="file" accept=".gds,.gdsii,.oas,.oasis" hidden /></label>
+      <button id="snapshotBtn" class="small">+ Snapshot</button>
       <button id="flipFaceBtn" disabled>Face: Front</button>
       <div class="spacer"></div>
       <button id="saveProjectBtn">Save project</button>
@@ -20,10 +21,6 @@
 
     <main class="workspace">
       <aside class="left-panel">
-        <section>
-          <div class="section-title"><span>Snapshots</span><button id="snapshotBtn" class="small">+ Snapshot</button></div>
-          <div id="snapshotList" class="snapshot-list"></div>
-        </section>
 
         <section class="operation-panel">
           <div class="section-title">Geometry operation</div>
@@ -69,6 +66,7 @@
       <section class="view-3d">
         <div class="view-title"><span>3D model</span><span class="view-title-actions"><label class="axes-toggle"><input id="showAxes" type="checkbox" /> Show axes</label><span class="muted">rotate · zoom · pan</span></span></div>
         <div id="threeContainer"></div>
+        <div id="snapshotStrip" class="snapshot-strip" aria-label="Snapshots"><div id="snapshotTrack" class="snapshot-track"></div></div>
         <div id="figureLegend" class="figure-legend hidden" aria-label="3D figure legend"></div>
         <div id="threeError" class="three-error hidden"></div>
       </section>
@@ -166,6 +164,6 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=legend-fix-v1"></script>
+  <script type="module" src="/static/app.js?v=snapshot-strip-v1"></script>
 </body>
 </html>
