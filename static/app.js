@@ -373,6 +373,19 @@ function patternHasBlockedBorder(){
 }
 function setDefaultSlice(){if(!state.wafer){state.slice=null;return;}const [x0,y0,x1,y1]=waferBounds(),cy=(y0+y1)/2;state.slice={a:{x:x0+(x1-x0)*.175,y:cy},b:{x:x1-(x1-x0)*.175,y:cy}};}
 function currentDeviceSnapshot(){ensureLayerVisuals();return clone({wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,imprintedFaces:state.imprintedFaces});}
+function captureCameraState(){
+  if(!camera || !controls) return null;
+  return { position: camera.position.toArray(), target: controls.target.toArray(), up: camera.up.toArray() };
+}
+function restoreCameraState(cam){
+  if(!cam || !camera || !controls) return;
+  try{
+    if(Array.isArray(cam.position)) camera.position.fromArray(cam.position);
+    if(Array.isArray(cam.target)) controls.target.fromArray(cam.target);
+    if(Array.isArray(cam.up)) camera.up.fromArray(cam.up);
+    controls.update();
+  }catch(e){ console.warn('restore camera failed',e); }
+}
 function restoreDeviceSnapshot(s){state.wafer=s.wafer?normalizeWafer(clone(s.wafer)):null;state.activeFace=s.activeFace||'front';state.solids=clone(s.solids||[]);state.cuts=clone(s.cuts||[]);state.dopings=clone(s.dopings||[]);state.layerVisuals=clone(s.layerVisuals||{});state.imprintedFaces=clone(s.imprintedFaces||[]);state.operationUndo=[];ensureLayerVisuals();state.selectedFaceIds.clear();clearPatternSelection();clearTopSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderAll();}
 
 function makeSvg(tag, attrs={}){ const e=document.createElementNS(NS,tag); for(const [k,v] of Object.entries(attrs)) e.setAttribute(k,v); return e; }
@@ -868,18 +881,22 @@ function renderSnapshots(){
     del.addEventListener('click',(e)=>{ e.stopPropagation(); deleteSnapshot(s.id); });
     card.addEventListener('click',()=>{
       if(s.id===state.activeSnapshotId) return;
-      // Auto-save current active snapshot before switching — re-shoot covering current archive
+      // Auto-save current active snapshot before switching — re-shoot covering current archive + camera
       const active=state.snapshots.find(x=>x.id===state.activeSnapshotId);
       if(active){
         try{
           active.device=currentDeviceSnapshot();
           const newThumb=captureSnapshotThumb();
           if(newThumb) active.thumb=newThumb;
+          const newCam=captureCameraState();
+          if(newCam) active.camera=newCam;
           active.updated=new Date().toISOString();
         }catch(e){ console.warn('auto-save snapshot failed',e); }
       }
       state.activeSnapshotId=s.id;
       restoreDeviceSnapshot(s.device);
+      if(s.camera) restoreCameraState(s.camera);
+      else renderAll();
       renderSnapshots();
       status(active?`Auto-saved previous state, switched to ${s.name}`:`Restored snapshot: ${s.name}`);
     });
@@ -912,7 +929,8 @@ function createSnapshot(){
   const name=prompt('Snapshot name',`State ${state.snapshots.length+1}`);
   if(!name) return;
   const thumb=captureSnapshotThumb();
-  const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot(),thumb};
+  const cam=captureCameraState();
+  const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot(),thumb,camera:cam};
   state.snapshots.push(s);state.activeSnapshotId=s.id;renderSnapshots();status(`Snapshot saved: ${name}`);
 }
 
@@ -1045,7 +1063,35 @@ function loadWaferForm(){
 }
 
 function bindUi(){
-  $('newWaferBtn').addEventListener('click',()=>{loadWaferForm();$('waferDialog').showModal();});
+  $('newWaferBtn').addEventListener('click',()=>{
+    if(state.wafer){
+      const dlg=$('newWaferConfirmDialog');
+      if(dlg.open) dlg.close();
+      dlg.showModal();
+    } else {
+      loadWaferForm();$('waferDialog').showModal();
+    }
+  });
+  $('newWaferConfirmSave')?.addEventListener('click',()=>{
+    const dlg=$('newWaferConfirmDialog'); dlg.close();
+    // Save current state as snapshot before discarding
+    if(state.wafer){
+      const defaultName=`State ${state.snapshots.length+1}`;
+      const name=prompt('Snapshot name', defaultName);
+      if(name){
+        const thumb=captureSnapshotThumb();
+        const cam=captureCameraState();
+        const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot(),thumb,camera:cam};
+        state.snapshots.push(s); state.activeSnapshotId=s.id; renderSnapshots();
+        status(`Snapshot saved: ${name} — creating new wafer`);
+      }
+    }
+    loadWaferForm();$('waferDialog').showModal();
+  });
+  $('newWaferConfirmDiscard')?.addEventListener('click',()=>{
+    $('newWaferConfirmDialog').close();
+    loadWaferForm();$('waferDialog').showModal();
+  });
   $('flipFaceBtn').addEventListener('click',flipActiveFace);
   $('waferShape').addEventListener('change',updateWaferShapeFields);
   for(const select of waferLateralUnitSelects())select.addEventListener('change',()=>{const next=select.value;convertFields(['waferDiameter','waferWidth','waferHeight'],waferDialogLateralUnit,next);$('waferCoordinates').value=convertCoordinateTextUnits($('waferCoordinates').value,waferDialogLateralUnit,next);waferDialogLateralUnit=next;setWaferLateralUnit(next);updateWaferEdgeInfo();});

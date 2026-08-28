@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=auto-save-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=camera-confirm-v1" />
 </head>
 <body>
   <div id="app">
@@ -161,9 +161,21 @@
     </form>
   </dialog>
 
+  <dialog id="newWaferConfirmDialog">
+    <form method="dialog" id="newWaferConfirmForm">
+      <h3>New wafer</h3>
+      <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.5">Current wafer has geometry. Save a snapshot before creating a new wafer?</p>
+      <div class="dialog-actions" style="margin-top:12px">
+        <button value="cancel">Cancel</button>
+        <button id="newWaferConfirmDiscard" value="discard" type="button">Don't save</button>
+        <button id="newWaferConfirmSave" value="save" type="button" class="primary">Save snapshot</button>
+      </div>
+    </form>
+  </dialog>
+
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=auto-save-v1"></script>
+  <script type="module" src="/static/app.js?v=camera-confirm-v1"></script>
 </body>
 </html>
