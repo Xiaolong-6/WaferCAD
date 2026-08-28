@@ -596,7 +596,14 @@ function renderLayerList(){
     // Only show pattern checkbox in Patterns mode; keep visibility always
     if(!patternsMode) pat.style.display='none';
     const sw=document.createElement('span');sw.className='layer-swatch';sw.style.background=layer.color;
-    const strong=document.createElement('strong');strong.textContent=layer.alias||`Layer ${layer.layer}/${layer.datatype}`;strong.title=`Layer ${layer.layer}/${layer.datatype}`;
+    const strong=document.createElement('strong');
+    strong.textContent=layer.alias||`Layer ${layer.layer}/${layer.datatype}`;
+    strong.title=`Click to edit alias — Layer ${layer.layer}/${layer.datatype}`;
+    strong.style.cursor='pointer'; strong.style.textDecoration='underline'; strong.style.textDecorationStyle='dotted'; strong.style.textUnderlineOffset='2px';
+    strong.addEventListener('click',()=>{
+      const value=prompt(`Alias for layer ${layer.layer}/${layer.datatype}`,layer.alias||'');
+      if(value===null) return; layer.alias=value.trim(); renderLayerList(); renderTop();
+    });
     const count=document.createElement('span');count.className='muted';count.textContent=`${layer.count||layer.polygons.length}`;
     head.append(pat,vis,sw,strong,count);item.appendChild(head);
     const options=document.createElement('div');options.className='layer-options';
@@ -611,9 +618,7 @@ function renderLayerList(){
     const mirrorLabel=document.createElement('label');mirrorLabel.className='layer-tone';const mirror=document.createElement('input');mirror.type='checkbox';mirror.checked=layer.mirrored===true;
     mirror.addEventListener('change',()=>{layer.mirrored=mirror.checked;state.topBounds=null;renderTop();status(`Layer ${layer.layer}/${layer.datatype}: ${layer.mirrored?'mirrored left/right about the layout origin':'original orientation'}.`);});
     mirrorLabel.append(mirror,document.createTextNode('Mirror'));options.appendChild(mirrorLabel);item.appendChild(options);
-    const acts=document.createElement('div');acts.className='layer-actions';
-    const alias=document.createElement('button');alias.textContent='Alias';alias.addEventListener('click',()=>{const value=prompt(`Alias for layer ${layer.layer}/${layer.datatype}`,layer.alias||'');if(value===null)return;layer.alias=value.trim();renderLayerList();});
-    acts.append(alias);item.appendChild(acts);box.appendChild(item);
+    box.appendChild(item);
   }
   renderImprintDebug();
 }
