@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WaferCAD MVP</title>
+  <link rel="stylesheet" href="/static/style.css?v=axes-fill-mirror-v1" />
+</head>
+<body>
+  <div id="app">
+    <header class="toolbar">
+      <div class="brand">WaferCAD <span>MVP</span></div>
+      <button id="newWaferBtn">New wafer</button>
+       <label class="file-btn">Import layout<input id="gdsInput" type="file" accept=".gds,.gdsii,.oas,.oasis" hidden /></label>
+      <button id="flipFaceBtn" disabled>Face: Front</button>
+      <div class="spacer"></div>
+      <button id="saveProjectBtn">Save project</button>
+      <label class="file-btn">Open project<input id="openProjectInput" type="file" accept=".json" hidden /></label>
+    </header>
+
+    <main class="workspace">
+      <aside class="left-panel">
+        <section>
+          <div class="section-title"><span>Snapshots</span><button id="snapshotBtn" class="small">+ Snapshot</button></div>
+          <div id="snapshotList" class="snapshot-list"></div>
+        </section>
+
+        <section class="grow">
+          <div class="section-title"><span>Layout layers</span><span id="gdsStatus" class="muted">none</span></div>
+          <div id="gdsControls" class="gds-controls hidden">
+            <label>Top cell<select id="gdsTopCell"></select></label>
+            <div class="gds-align-title"><span>Layout alignment</span><span class="muted">about layout origin</span></div>
+            <div class="gds-align-grid">
+              <label>X<input id="gdsOffsetX" type="number" value="0" step="any" /></label>
+              <label>Y<input id="gdsOffsetY" type="number" value="0" step="any" /></label>
+              <label>Rotation<input id="gdsRotation" type="number" value="0" step="any" /></label>
+              <label>Unit<select id="gdsAlignmentUnit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></label>
+            </div>
+            <button id="applyGdsAlignmentBtn" class="small">Apply alignment</button>
+            <div id="gdsLockHint" class="hint hidden">Alignment is locked after imprinting. Create a new wafer or reopen the project to change it.</div>
+          </div>
+          <div id="layerList" class="layer-list empty-note">Import a GDSII or OASIS file to view its layers.</div>
+        </section>
+
+        <section class="operation-panel">
+          <div class="section-title">Geometry operation</div>
+          <div class="field-row"><label>Distance</label><input id="distanceInput" type="number" value="100" step="10" /><select id="distanceUnit"><option value="1">µm</option><option value="0.001">nm</option><option value="1000">mm</option></select></div>
+          <div class="field-row"><label>Mode</label><select id="pushMode"><option value="up">Pull up</option><option value="down">Push down</option><option value="conformal-grow">Conformal grow</option><option value="isotropic-etch">Isotropic etch</option><option value="doping">Doping</option></select></div>
+          <div class="field-row"><label id="materialFieldLabel">Material</label><input id="materialInput" value="Generic film" /></div>
+          <div id="dopingControls" class="doping-controls hidden">
+            <label>Target layer<select id="dopingTargetLayer"></select></label>
+            <label>Region<select id="dopingPosition"><option value="upper">Upper side (+Z)</option><option value="lower">Lower side (−Z)</option></select></label>
+          </div>
+          <div class="operation-actions"><button id="applyPushPullBtn" class="primary">Apply operation</button><button id="undoOperationBtn" disabled title="Undo last geometry operation">Undo</button></div>
+          <div id="operationModeHint" class="hint hidden">2.5D isotropic approximation: the same radius is applied laterally and along Z.</div>
+          <div id="selectionInfo" class="hint">No pattern selected — the whole active face will be used.</div>
+        </section>
+      </aside>
+
+      <section class="view-3d">
+        <div class="view-title"><span>3D model</span><span class="view-title-actions"><label class="axes-toggle"><input id="showAxes" type="checkbox" /> Show axes</label><span class="muted">rotate · zoom · pan</span></span></div>
+        <div id="threeContainer"></div>
+        <div id="figureLegend" class="figure-legend hidden" aria-label="3D figure legend"></div>
+        <div id="threeError" class="three-error hidden"></div>
+      </section>
+
+      <aside class="right-panel">
+        <section class="top-section">
+          <div class="view-title">
+            <span>Top view · <span id="activeFaceLabel">Front face</span></span>
+            <span><button id="fitWaferBtn" class="small">Fit wafer</button><button id="fitLayoutBtn" class="small">Fit layout</button></span>
+          </div>
+          <svg id="topSvg" viewBox="0 0 600 420" aria-label="Top view"></svg>
+          <div class="top-view-controls">
+            <div class="slice-editor">
+              <strong>A</strong><label>X<input id="sliceAx" type="number" step="any" /></label><label>Y<input id="sliceAy" type="number" step="any" /></label>
+              <strong>B</strong><label>X<input id="sliceBx" type="number" step="any" /></label><label>Y<input id="sliceBy" type="number" step="any" /></label>
+              <select id="sliceCoordinateUnit" aria-label="Slice coordinate unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select>
+              <button id="applySliceCoordinatesBtn" class="small">Apply A–B</button>
+            </div>
+            <div class="hint">Drag A/B · wheel to zoom · drag empty space to pan · click an imprinted face to select.</div>
+          </div>
+        </section>
+        <section class="cross-section-panel">
+          <div class="view-title"><span>Cross section A–B</span><span id="sectionMeta" class="muted"></span></div>
+          <div class="cross-section-body">
+            <label class="z-display-control" title="Scale the displayed height of the substrate and every layer">
+              <span>Z display</span>
+              <input id="zExag" type="range" min="1" max="40" value="8" orient="vertical" aria-label="Global Z display scale" />
+              <output id="zExagValue">×8</output>
+            </label>
+            <svg id="sectionSvg" viewBox="0 0 600 320" aria-label="Cross section"></svg>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="statusbar"><span id="statusText">Ready.</span><span id="modelStats"></span></footer>
+  </div>
+
+  <dialog id="waferDialog">
+    <form method="dialog" id="waferForm">
+      <h3>Create wafer</h3>
+      <label>Shape
+        <select id="waferShape">
+          <option value="circle">Circle</option>
+          <option value="rect">Rectangle</option>
+          <option value="custom">Custom polygon</option>
+        </select>
+      </label>
+      <div id="waferCircleFields" class="wafer-shape-fields">
+        <label>Diameter<span class="number-unit"><input id="waferDiameter" type="number" value="100" min="0.0001" step="any" /><select class="wafer-lateral-unit" aria-label="Diameter unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></span></label>
+      </div>
+      <div id="waferRectFields" class="wafer-shape-fields hidden">
+        <label>Width<span class="number-unit"><input id="waferWidth" type="number" value="100" min="0.0001" step="any" /><select class="wafer-lateral-unit" aria-label="Width unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></span></label>
+        <label>Height<span class="number-unit"><input id="waferHeight" type="number" value="100" min="0.0001" step="any" /><select class="wafer-lateral-unit" aria-label="Height unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></span></label>
+      </div>
+      <div id="waferCustomFields" class="wafer-shape-fields hidden">
+        <label class="coordinate-label">Polygon vertices
+          <textarea id="waferCoordinates" rows="8" spellcheck="false" aria-label="Polygon vertex coordinates">-50, -50
+50, -50
+50, 50
+-50, 50</textarea>
+        </label>
+        <label>Coordinate unit<select class="wafer-lateral-unit" aria-label="Polygon coordinate unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></label>
+        <div class="coordinate-help">One <code>x, y</code> vertex per line, in the selected lateral unit. The final vertex closes to the first. Coordinates are preserved relative to (0, 0).</div>
+      </div>
+      <label>Thickness<span class="number-unit"><input id="waferThickness" type="number" value="500" min="0.0001" step="any" /><select id="waferThicknessUnit" aria-label="Thickness unit"><option value="nm">nm</option><option value="um" selected>µm</option><option value="mm">mm</option><option value="cm">cm</option></select></span></label>
+      <label>Material<input id="waferMaterial" value="Si" /></label>
+      <div id="waferFormError" class="form-error hidden"></div>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="createWaferConfirm" value="default" class="primary">Create</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="layerVisualDialog">
+    <form method="dialog" id="layerVisualForm">
+      <h3>Layer display</h3>
+      <label>Material name<input id="layerVisualName" type="text" /></label>
+      <label>Color<input id="layerVisualColor" type="color" value="#9ca3af" /></label>
+      <label>Layer Z scale<input id="layerVisualScale" type="number" min="0.01" max="100" step="0.1" value="1" /></label>
+      <div class="coordinate-help">The material name updates process data. Color and layer Z scale are display-only; physical thickness is unchanged. The global Z display control still applies to the complete model.</div>
+      <div id="layerVisualError" class="form-error hidden"></div>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="applyLayerVisualBtn" type="button" class="primary">Apply</button></div>
+    </form>
+  </dialog>
+
+  <script type="importmap">
+    {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
+  </script>
+  <script type="module" src="/static/app.js?v=axes-flip-z-v1"></script>
+</body>
+</html>

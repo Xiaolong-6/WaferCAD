@@ -1,0 +1,12 @@
+{
+  "name": "wafercad-mvp",
+  "version": "1.0.0",
+  "description": "A minimal local-first **2.5D wafer CAD editor** for building wafer/device geometry as a sequence of saved states.",
+  "private": true,
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "0.179.1"
+  }
+}
