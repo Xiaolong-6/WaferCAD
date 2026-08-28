@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const palette = ['#2563eb','#dc2626','#059669','#7c3aed','#d97706','#0891b2','#db2777','#4f46e5','#65a30d','#9333ea'];
 
-const DEFAULT_WAFER = { shape: 'circle', diameter: 100000, thickness: 500, material: 'Si', displayUnits: {lateral:'mm',thickness:'um'} };
+const DEFAULT_WAFER = { shape: 'circle', diameter: 100000, thickness: 500, material: 'Si', displayUnits: {lateral:'mm',thickness:'um'}, edgeFeature: 'none' };
 const state = {
   wafer: null, // internal geometry units: µm; null until the user creates or opens a wafer
   activeFace: 'front',
@@ -45,17 +45,99 @@ function normalizeWafer(w){
   wafer.thickness=Number(wafer.thickness)||500;
   wafer.material=wafer.material||'Si';
   wafer.displayUnits=wafer.displayUnits||{lateral:'mm',thickness:'um'};
+  wafer.edgeFeature=wafer.edgeFeature||'none';
   if(wafer.shape==='circle') wafer.diameter=Number(wafer.diameter)||100000;
   if(wafer.shape==='rect'){wafer.width=Number(wafer.width)||100000;wafer.height=Number(wafer.height)||100000;}
   if(wafer.shape==='custom'&&(!Array.isArray(wafer.outline)||wafer.outline.length<3)) return {...wafer,shape:'circle',diameter:100000};
   return wafer;
+}
+function waferFlatLengthMm(diameterMm){
+  if(diameterMm < 60) return 15.88;
+  if(diameterMm < 88){
+    const t=(diameterMm-50.8)/(76.2-50.8);
+    return 15.88 + t*(22.22-15.88);
+  }
+  if(diameterMm < 112){
+    const t=(diameterMm-76.2)/(100-76.2);
+    return 22.22 + t*(32.5-22.22);
+  }
+  if(diameterMm < 137){
+    const t=(diameterMm-100)/(125-100);
+    return 32.5 + t*(42.5-32.5);
+  }
+  if(diameterMm < 175){
+    const t=(diameterMm-125)/(150-125);
+    return 42.5 + t*(57.5-42.5);
+  }
+  return 57.5;
+}
+function waferNotchDepthMm(diameterMm){
+  return diameterMm >= 100 ? 1.0 : 0.7;
 }
 function waferOutline(wafer=state.wafer){
   if(!wafer)return [];
   const w=normalizeWafer(wafer);
   if(w.shape==='custom') return w.outline.map(p=>[Number(p[0]),Number(p[1])]);
   if(w.shape==='rect'){const x=w.width/2,y=w.height/2;return [[-x,-y],[x,-y],[x,y],[-x,y]];}
-  const r=w.diameter/2,points=[];for(let i=0;i<128;i++){const a=i/128*Math.PI*2;points.push([Math.cos(a)*r,Math.sin(a)*r]);}return points;
+  const r=w.diameter/2;
+  const edge=w.edgeFeature||'none';
+  if(edge==='flat'){
+    const diamMm=w.diameter/1000;
+    const flatMm=waferFlatLengthMm(diamMm);
+    const halfL=flatMm*1000/2;
+    if(halfL >= r){ // flat longer than diameter, fallback to circle
+      const points=[];for(let i=0;i<128;i++){const a=i/128*Math.PI*2;points.push([Math.cos(a)*r,Math.sin(a)*r]);}return points;
+    }
+    const theta=Math.asin(Math.min(1, halfL/r));
+    const yFlat=-Math.sqrt(Math.max(0, r*r - halfL*halfL));
+    const points=[];
+    // flat segment
+    points.push([-halfL, yFlat], [halfL, yFlat]);
+    // arc from right to left the long way (through top)
+    const startAngle=Math.asin(halfL/r) - Math.PI/2; // angle of right flat endpoint
+    // Actually right endpoint angle = -90° + theta = -PI/2 + theta
+    // left endpoint angle = -90° - theta = -PI/2 - theta
+    // We need to go from right (+halfL) around through top (0 to 360) to left (-halfL)
+    const aStart=-Math.PI/2 + theta;
+    const aEnd=-Math.PI/2 - theta + Math.PI*2; // add 2PI to go long way
+    const arcPoints=96;
+    for(let i=1;i<arcPoints;i++){
+      const t=i/arcPoints;
+      const a=aStart + t*(aEnd - aStart);
+      const aa=a % (Math.PI*2);
+      points.push([Math.cos(aa)*r, Math.sin(aa)*r]);
+    }
+    return points;
+  }
+  if(edge==='notch'){
+    const diamMm=w.diameter/1000;
+    const depthMm=waferNotchDepthMm(diamMm);
+    const depthUm=depthMm*1000;
+    const halfW=depthUm * Math.tan(45*Math.PI/180); // for 90° V, half width = depth
+    // notch tip at (0, -r + depth), opening at y=-r, x=±halfW
+    const yEdge=-r;
+    const yTip=-r + depthUm;
+    const theta=Math.asin(Math.min(1, halfW/r));
+    const points=[];
+    // left opening
+    points.push([-halfW, yEdge]);
+    // tip
+    points.push([0, yTip]);
+    // right opening
+    points.push([halfW, yEdge]);
+    // arc from right opening around to left opening (long way)
+    const aStart=-Math.PI/2 + theta;
+    const aEnd=-Math.PI/2 - theta + Math.PI*2;
+    const arcPoints=96;
+    for(let i=1;i<arcPoints;i++){
+      const t=i/arcPoints;
+      const a=aStart + t*(aEnd - aStart);
+      const aa=a % (Math.PI*2);
+      points.push([Math.cos(aa)*r, Math.sin(aa)*r]);
+    }
+    return points;
+  }
+  const points=[];for(let i=0;i<128;i++){const a=i/128*Math.PI*2;points.push([Math.cos(a)*r,Math.sin(a)*r]);}return points;
 }
 function waferBounds(){const outline=waferOutline();return outline.length?bboxPolys([outline]):[-1,-1,1,1];}
 function viewAspectBounds(bb,padFraction=.08){
@@ -132,7 +214,21 @@ function renderFigureLegend(){
 }
 function editableLayerMaterial(id){if(id==='substrate')return state.wafer?.material||'Substrate';const solid=state.solids.find(s=>s.layerId===id);if(solid)return solid.material||layerVisual(id).name;const doping=state.dopings.find(d=>d.layerId===id);return doping?.dopant||layerVisual(id).name.replace(/^Doping\s*·\s*/,'');}
 function renameLayerMaterial(id,name){if(id==='substrate'){state.wafer.material=name;state.layerVisuals[id].name=`Substrate · ${name}`;return;}const solids=state.solids.filter(s=>s.layerId===id);if(solids.length){for(const solid of solids)solid.material=name;state.layerVisuals[id].name=name;return;}const dopings=state.dopings.filter(d=>d.layerId===id);if(dopings.length){for(const doping of dopings)doping.dopant=name;state.layerVisuals[id].name=`Doping · ${name}`;}}
-function openLayerVisualDialog(id){const v=layerVisual(id);editingLayerVisualId=id;$('layerVisualName').value=editableLayerMaterial(id);$('layerVisualColor').value=v.color;$('layerVisualScale').value=formatDisplayNumber(v.scale);$('layerVisualError').classList.add('hidden');$('layerVisualDialog').showModal();}
+function openLayerVisualDialog(id){
+  try{
+    const v=layerVisual(id); editingLayerVisualId=id;
+    $('layerVisualName').value=editableLayerMaterial(id);
+    $('layerVisualColor').value=v.color;
+    $('layerVisualScale').value=formatDisplayNumber(v.scale);
+    $('layerVisualError').classList.add('hidden');
+    const dlg=$('layerVisualDialog');
+    if(dlg.open) dlg.close();
+    dlg.showModal();
+  }catch(e){
+    console.error('openLayerVisualDialog failed', e);
+    status('Cannot open layer dialog: '+e.message);
+  }
+}
 function rgbHexToInt(hex){ return parseInt(hex.replace('#',''),16); }
 function polygonArea(poly){let sum=0;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];sum+=a[0]*b[1]-b[0]*a[1];}return sum/2;}
 function orient(a,b,c){return (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);}
@@ -814,7 +910,28 @@ function saveProject(){
 }
 async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.maskBaseOpacity=Number.isFinite(Number(p.view?.maskBaseOpacity))?Math.min(1,Math.max(0,Number(p.view.maskBaseOpacity))):0.35;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name}.`);}catch(e){status(`Open project failed: ${e.message}`)}}
 
-function updateWaferShapeFields(){const shape=$('waferShape').value;$('waferCircleFields').classList.toggle('hidden',shape!=='circle');$('waferRectFields').classList.toggle('hidden',shape!=='rect');$('waferCustomFields').classList.toggle('hidden',shape!=='custom');}
+function updateWaferShapeFields(){const shape=$('waferShape').value;$('waferCircleFields').classList.toggle('hidden',shape!=='circle');$('waferRectFields').classList.toggle('hidden',shape!=='rect');$('waferCustomFields').classList.toggle('hidden',shape!=='custom');updateWaferEdgeInfo();}
+function updateWaferEdgeInfo(){
+  const info=$('waferEdgeInfo'); if(!info) return;
+  const shape=$('waferShape').value;
+  if(shape!=='circle'){info.textContent='';return;}
+  const edge=$('waferEdgeFeature')?.value||'none';
+  if(edge==='none'){info.textContent='Full circle — no flat or notch.';return;}
+  const diamVal=Number($('waferDiameter').value);
+  const unit=waferDialogLateralUnit;
+  const diamUm=diamVal*UNIT_TO_UM[unit];
+  const diamMm=diamUm/1000;
+  if(!Number.isFinite(diamMm) || diamMm<=0){info.textContent='';return;}
+  if(edge==='flat'){
+    const flatMm=waferFlatLengthMm(diamMm);
+    const flatInUnit=flatMm*1000/UNIT_TO_UM[unit];
+    info.textContent=`Main flat at -Y: length ${formatDisplayNumber(flatInUnit)} ${unit} (SEMI for ${diamMm.toFixed(1)} mm wafer)`;
+  } else if(edge==='notch'){
+    const depthMm=waferNotchDepthMm(diamMm);
+    const depthInUnit=depthMm*1000/UNIT_TO_UM[unit];
+    info.textContent=`Notch at -Y: depth ${formatDisplayNumber(depthInUnit)} ${unit}, 90° V, opening ~${formatDisplayNumber(depthInUnit*2)} ${unit} (SEMI)`;
+  }
+}
 function convertFields(ids,fromUnit,toUnit){const ratio=UNIT_TO_UM[fromUnit]/UNIT_TO_UM[toUnit];for(const id of ids){const el=$(id),v=Number(el.value);if(Number.isFinite(v))el.value=String(Number((v*ratio).toPrecision(10)));}}
 function waferLateralUnitSelects(){return [...document.querySelectorAll('.wafer-lateral-unit')];}
 function setWaferLateralUnit(unit){for(const select of waferLateralUnitSelects())select.value=unit;}
@@ -831,25 +948,27 @@ function parseCoordinateText(text,unit){
 }
 function loadWaferForm(){
   const w=normalizeWafer(state.wafer||DEFAULT_WAFER),lu=w.displayUnits?.lateral||'mm',tu=w.displayUnits?.thickness||'um';waferDialogLateralUnit=lu;waferDialogThicknessUnit=tu;setWaferLateralUnit(lu);$('waferThicknessUnit').value=tu;$('waferShape').value=w.shape;$('waferMaterial').value=w.material;$('waferThickness').value=String(w.thickness/UNIT_TO_UM[tu]);
-  if(w.shape==='circle')$('waferDiameter').value=String(w.diameter/UNIT_TO_UM[lu]);
+  if(w.shape==='circle'){$('waferDiameter').value=String(w.diameter/UNIT_TO_UM[lu]); if($('waferEdgeFeature')) $('waferEdgeFeature').value=w.edgeFeature||'none';}
   if(w.shape==='rect'){$('waferWidth').value=String(w.width/UNIT_TO_UM[lu]);$('waferHeight').value=String(w.height/UNIT_TO_UM[lu]);}
   $('waferCoordinates').value=formatCoordinateText(waferOutline(w),lu);
-  $('waferFormError').classList.add('hidden');updateWaferShapeFields();
+  $('waferFormError').classList.add('hidden');updateWaferShapeFields();updateWaferEdgeInfo();
 }
 
 function bindUi(){
   $('newWaferBtn').addEventListener('click',()=>{loadWaferForm();$('waferDialog').showModal();});
   $('flipFaceBtn').addEventListener('click',flipActiveFace);
   $('waferShape').addEventListener('change',updateWaferShapeFields);
-  for(const select of waferLateralUnitSelects())select.addEventListener('change',()=>{const next=select.value;convertFields(['waferDiameter','waferWidth','waferHeight'],waferDialogLateralUnit,next);$('waferCoordinates').value=convertCoordinateTextUnits($('waferCoordinates').value,waferDialogLateralUnit,next);waferDialogLateralUnit=next;setWaferLateralUnit(next);});
+  for(const select of waferLateralUnitSelects())select.addEventListener('change',()=>{const next=select.value;convertFields(['waferDiameter','waferWidth','waferHeight'],waferDialogLateralUnit,next);$('waferCoordinates').value=convertCoordinateTextUnits($('waferCoordinates').value,waferDialogLateralUnit,next);waferDialogLateralUnit=next;setWaferLateralUnit(next);updateWaferEdgeInfo();});
+  $('waferDiameter')?.addEventListener('input',updateWaferEdgeInfo);
+  $('waferEdgeFeature')?.addEventListener('change',updateWaferEdgeInfo);
   $('waferThicknessUnit').addEventListener('change',()=>{const next=$('waferThicknessUnit').value;convertFields(['waferThickness'],waferDialogThicknessUnit,next);waferDialogThicknessUnit=next;});
   $('waferForm').addEventListener('submit',(ev)=>{
     if(ev.submitter?.value==='cancel')return;ev.preventDefault();const error=$('waferFormError');error.classList.add('hidden');
     try{
       const shape=$('waferShape').value,lu=waferDialogLateralUnit,tu=$('waferThicknessUnit').value,lateralScale=UNIT_TO_UM[lu],thicknessScale=UNIT_TO_UM[tu];
       const positive=(id,label)=>{const v=Number($(id).value);if(!Number.isFinite(v)||v<=0)throw new Error(`${label} must be positive.`);return v;};
-      const wafer={shape,thickness:positive('waferThickness','Thickness')*thicknessScale,material:$('waferMaterial').value.trim()||'Si',displayUnits:{lateral:lu,thickness:tu}};
-      if(shape==='circle')wafer.diameter=positive('waferDiameter','Diameter')*lateralScale;
+      const wafer={shape,thickness:positive('waferThickness','Thickness')*thicknessScale,material:$('waferMaterial').value.trim()||'Si',displayUnits:{lateral:lu,thickness:tu},edgeFeature:'none'};
+      if(shape==='circle'){wafer.diameter=positive('waferDiameter','Diameter')*lateralScale; wafer.edgeFeature=$('waferEdgeFeature').value||'none';}
       if(shape==='rect'){wafer.width=positive('waferWidth','Width')*lateralScale;wafer.height=positive('waferHeight','Height')*lateralScale;}
       if(shape==='custom')wafer.outline=parseCoordinateText($('waferCoordinates').value,lu);
       state.wafer=normalizeWafer(wafer);state.activeFace='front';state.solids=[];state.cuts=[];state.dopings=[];state.operationUndo=[];state._exactThickness=null;state.layerVisuals={substrate:{name:`Substrate · ${state.wafer.material}`,color:materialColor(state.wafer.material),scale:1}};state.imprintedFaces=[];state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();fitWafer();renderGdsControls();renderAll();$('waferDialog').close('default');status(`New ${shape} wafer created.`);

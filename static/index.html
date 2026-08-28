@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=mask-border-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=flat-notch-v1" />
 </head>
 <body>
   <div id="app">
@@ -127,6 +127,8 @@
       </label>
       <div id="waferCircleFields" class="wafer-shape-fields">
         <label>Diameter<span class="number-unit"><input id="waferDiameter" type="number" value="100" min="0.0001" step="any" /><select class="wafer-lateral-unit" aria-label="Diameter unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></span></label>
+        <label>Edge feature<select id="waferEdgeFeature"><option value="none">None (full circle)</option><option value="flat">Main flat (-Y, auto)</option><option value="notch">Notch (-Y, auto)</option></select></label>
+        <div id="waferEdgeInfo" class="hint"></div>
       </div>
       <div id="waferRectFields" class="wafer-shape-fields hidden">
         <label>Width<span class="number-unit"><input id="waferWidth" type="number" value="100" min="0.0001" step="any" /><select class="wafer-lateral-unit" aria-label="Width unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></span></label>
@@ -164,6 +166,6 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=mask-border-v1"></script>
+  <script type="module" src="/static/app.js?v=flat-notch-v1"></script>
 </body>
 </html>
