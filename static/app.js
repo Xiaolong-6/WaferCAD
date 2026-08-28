@@ -13,6 +13,7 @@ const state = {
   gds: { filename: null, bbox: null, layers: [], topCells: [], activeTopCell: null, transform: {offsetX:0,offsetY:0,rotationDeg:0} },
   imprintedFaces: [],
   selectedFaceIds: new Set(),
+  patternSelectedKeys: new Set(),
   slice: null,
   snapshots: [],
   activeSnapshotId: null,
@@ -178,6 +179,8 @@ function normalizeGds(gds){
 function renderHierarchy(){
   const panel=$('hierarchyPanel'), tree=$('hierarchyTree'), meta=$('hierarchyMeta');
   if(!panel||!tree) return;
+  // Only visible in Patterns mode per spec
+  if(!isPatternsSelection()){panel.classList.add('hidden');return;}
   const h=state.gds.hierarchy||[];
   if(!h.length){panel.classList.add('hidden');return;}
   panel.classList.remove('hidden');
@@ -186,8 +189,8 @@ function renderHierarchy(){
   const topSet=new Set(state.gds.topCells||[]);
   for(const cell of h){
     const row=document.createElement('button');row.type='button';row.className='hierarchy-row'+(cell.name===state.gds.activeTopCell?' active':'');
-    row.disabled=!!state.imprintedFaces.length;
-    row.title=state.imprintedFaces.length?'Create a new wafer before switching cells':`Load ${cell.name} as active cell (flattened preview)`;
+    row.disabled=!gdsSourceFile;
+    row.title=!gdsSourceFile?'No layout file loaded':`Load ${cell.name} as active cell (flattened preview)`;
     const head=document.createElement('div');head.className='hierarchy-head';
     const name=document.createElement('span');name.className='hierarchy-name';name.textContent=cell.name + (topSet.has(cell.name)?' ★':'');
     const cnt=document.createElement('span');cnt.className='muted';cnt.textContent=`${cell.local_polygon_count} polys`;
@@ -207,7 +210,6 @@ function renderHierarchy(){
       row.appendChild(refs);
     }
     row.addEventListener('click', async()=>{
-      if(state.imprintedFaces.length){status('Create a new wafer before switching cells.');return;}
       if(!gdsSourceFile){status('No layout file loaded.');return;}
       if(cell.name===state.gds.activeTopCell) return;
       await importGds(gdsSourceFile, cell.name, true);
@@ -220,9 +222,17 @@ function transformedPolygon(poly){return poly.map(p=>transformPoint(p));}
 function effectiveLayerPolygons(layer){return layer.fillPattern===true&&Array.isArray(layer.filledPolygons)?layer.filledPolygons:(layer.polygons||[]);}
 function transformedLayerPolygon(layer,poly){return poly.map(([x,y])=>transformPoint([layer.mirrored===true?-x:x,y]));}
 function transformedGdsBounds(){const polys=state.gds.layers.flatMap(layer=>effectiveLayerPolygons(layer).map(poly=>transformedLayerPolygon(layer,poly)));return polys.length?bboxPolys(polys):null;}
+function patternSelectedLayers(){return state.gds.layers.filter(l=>state.patternSelectedKeys.has(l.key));}
+function patternRawMaskPolygons(){
+  const out=[];
+  for(const layer of patternSelectedLayers()){
+    for(const poly of effectiveLayerPolygons(layer)) out.push({layer, poly: transformedLayerPolygon(layer, poly)});
+  }
+  return out;
+}
 function setDefaultSlice(){if(!state.wafer){state.slice=null;return;}const [x0,y0,x1,y1]=waferBounds(),cy=(y0+y1)/2;state.slice={a:{x:x0+(x1-x0)*.175,y:cy},b:{x:x1-(x1-x0)*.175,y:cy}};}
 function currentDeviceSnapshot(){ensureLayerVisuals();return clone({wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,imprintedFaces:state.imprintedFaces});}
-function restoreDeviceSnapshot(s){state.wafer=s.wafer?normalizeWafer(clone(s.wafer)):null;state.activeFace=s.activeFace||'front';state.solids=clone(s.solids||[]);state.cuts=clone(s.cuts||[]);state.dopings=clone(s.dopings||[]);state.layerVisuals=clone(s.layerVisuals||{});state.imprintedFaces=clone(s.imprintedFaces||[]);state.operationUndo=[];ensureLayerVisuals();state.selectedFaceIds.clear();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();renderAll();}
+function restoreDeviceSnapshot(s){state.wafer=s.wafer?normalizeWafer(clone(s.wafer)):null;state.activeFace=s.activeFace||'front';state.solids=clone(s.solids||[]);state.cuts=clone(s.cuts||[]);state.dopings=clone(s.dopings||[]);state.layerVisuals=clone(s.layerVisuals||{});state.imprintedFaces=clone(s.imprintedFaces||[]);state.operationUndo=[];ensureLayerVisuals();state.selectedFaceIds.clear();clearPatternSelection();clearTopSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderAll();}
 
 function makeSvg(tag, attrs={}){ const e=document.createElementNS(NS,tag); for(const [k,v] of Object.entries(attrs)) e.setAttribute(k,v); return e; }
 function clearSvg(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
@@ -260,17 +270,38 @@ function renderTop(){
   // Viewport culling: skip polys entirely outside topBounds (major win near 20k cap when zoomed/panned)
   const viewport=state.topBounds;
   let culled=0, drawn=0;
+  const patternsMode=isPatternsSelection();
   for(const layer of state.gds.layers){
     if(layer.visible===false) continue;
+    const isPatSel=patternsMode && state.patternSelectedKeys.has(layer.key);
     for(const sourcePoly of effectiveLayerPolygons(layer)){
       const poly=transformedLayerPolygon(layer,sourcePoly);
       if(!isPolyInViewport(poly, viewport)){culled++; continue;}
       drawn++;
-      const path=makeSvg('path',{d:polyPath(poly),fill:layer.color,'fill-opacity':'0.12',stroke:layer.color,'stroke-opacity':'0.55','stroke-width':'1'});
+      const isSel=isPatSel;
+      const path=makeSvg('path',{
+        d:polyPath(poly),
+        fill:isSel?'#f59e0b':layer.color,
+        'fill-opacity':isSel?'0.32':'0.12',
+        stroke:isSel?'#b45309':layer.color,
+        'stroke-opacity':isSel?'0.9':'0.55',
+        'stroke-width':isSel?'1.6':'1',
+        'data-layer':layer.key
+      });
+      if(patternsMode){
+        path.style.cursor='pointer';
+        path.addEventListener('click',(ev)=>{
+          ev.stopPropagation();
+          if(state.patternSelectedKeys.has(layer.key)) state.patternSelectedKeys.delete(layer.key);
+          else state.patternSelectedKeys.add(layer.key);
+          updateSelectionInfo(); renderLayerList(); renderTop();
+        });
+      }
       svg.appendChild(path);
     }
   }
   if(culled>0) $('viewportCullInfo') && ($('viewportCullInfo').textContent=`${drawn} shown · ${culled} culled outside viewport`);
+  else if($('viewportCullInfo')) $('viewportCullInfo').textContent='';
 
   if(isTopFaceSelection()){
     // Draw top-face model regions (solids covering active face) as selectable
@@ -287,6 +318,9 @@ function renderTop(){
     }
     // substrate top region: click empty wafer area to select substrate top face
     // handled via svg background click below
+  } else if(patternsMode){
+    // Patterns mode: selection is via checkboxes/layer clicks; no imprinted faces drawn as selectable
+    // (selected layers already highlighted above)
   } else {
     for(const face of state.imprintedFaces.filter(face=>(face.side||'front')===state.activeFace)){
       if(!isPolyInViewport(face.polygon, viewport)) continue;
@@ -390,14 +424,29 @@ function topLayerAt(point,side='front'){
   return {kind:'solid', id:top.id, layerId:top.layerId, solid:top, z: side==='back'?top.zMin:top.zMax};
 }
 function isTopFaceSelection(){return $('selectionMode')?.value==='top';}
+function isPatternsSelection(){const v=$('selectionMode')?.value; return v==='imprinted' || v==='patterns';}
 function topSelectionCount(){return state._topFaceSelection.selectedSolidIds.size;}
 function clearTopSelection(){state._topFaceSelection.selectedSolidIds.clear();}
+function clearPatternSelection(){state.patternSelectedKeys.clear();}
+function patternSelectionCount(){return state.patternSelectedKeys.size;}
+function updateLayoutSectionVisibility(){
+  const sec=$('layoutSection');
+  if(!sec) return;
+  const show=isPatternsSelection();
+  sec.classList.toggle('hidden', !show);
+}
 function updateSelectionInfo(){
   if($('pushMode')?.value==='doping'){$('selectionInfo').textContent='Doping overlaps the selected physical target layer; mask-face selection is not used.';return;}
   if(isTopFaceSelection()){
     const n=topSelectionCount();
     if(n) {$('selectionInfo').textContent=`${n} top face${n>1?'s':''} selected (model).`;}
     else {$('selectionInfo').textContent=`No top face selected — the whole ${state.activeFace} face will be used. Click a visible top region.`;}
+    return;
+  }
+  if(isPatternsSelection()){
+    const n=patternSelectionCount();
+    if(n) {$('selectionInfo').textContent=`${n} pattern layer${n>1?'s':''} selected — alignment and tone apply live, then Apply.`;}
+    else {$('selectionInfo').textContent=`No pattern layer selected — the whole ${state.activeFace} face will be used. Check layers below.`;}
     return;
   }
   const n=state.selectedFaceIds.size;$('selectionInfo').textContent=n?`${n} patterned face${n>1?'s':''} selected.`:`No pattern selected — the whole ${state.activeFace} face will be used.`;
@@ -467,6 +516,31 @@ async function applyPushPull(){
       selected=solids.map(s=>({id:s.id,side:s.side||state.activeFace,polygon:clone(s.footprint),wholeFace:false}));
       if(!selected.length){status('Selected top faces are no longer present.');return;}
     }
+  } else if(isPatternsSelection()){
+    const selKeys=[...state.patternSelectedKeys];
+    wholeFace=selKeys.length===0;
+    if(wholeFace){
+      selected=[{id:null,side:state.activeFace,polygon:waferOutline(),wholeFace:true}];
+    } else {
+      // Multi-layer pattern masks: collect transformed polys; for inverted layers resolve substrate complement
+      selected=[];
+      for(const key of selKeys){
+        const layer=state.gds.layers.find(l=>l.key===key);
+        if(!layer) continue;
+        const raw=effectiveLayerPolygons(layer).map(poly=>transformedLayerPolygon(layer, poly));
+        if(!raw.length) continue;
+        if(layer.inverted===true){
+          status(`Resolving inverted pattern ${layer.layer}/${layer.datatype}…`);
+          try{
+            const regions=await resolveMaskRegions(raw, true);
+            for(const poly of regions) selected.push({id:layer.key,side:state.activeFace,polygon:poly,wholeFace:false});
+          }catch(e){status(`Pattern ${layer.layer}/${layer.datatype} inverted resolve failed: ${e.message}`);return;}
+        } else {
+          for(const poly of raw) selected.push({id:layer.key,side:state.activeFace,polygon:poly,wholeFace:false});
+        }
+      }
+      if(!selected.length){status('Selected pattern layers produced no geometry.');return;}
+    }
   } else {
     wholeFace=state.selectedFaceIds.size===0;
     selected=wholeFace?[{id:null,side:state.activeFace,polygon:waferOutline(),wholeFace:true}]:state.imprintedFaces.filter(f=>state.selectedFaceIds.has(f.id));
@@ -487,6 +561,7 @@ async function applyPushPull(){
     const previousNames=new Map(solidLayerDescriptors().map(d=>[d.id,layerVisual(d.id).name]));status('Calculating layer-by-layer material consumption…');let consumed;try{consumed=await buildMaterialConsumption(pieces,distance,mode);}catch(e){status(`Operation failed: ${e.message}`);return;}recordOperationUndo();state.solids=consumed.solids;state.dopings=consumed.dopings;state.cuts=consumed.cuts;const removed=cleanupConsumedLayers(previousNames),removedText=removed.length?` Removed layer${removed.length>1?'s':''}: ${removed.join(', ')}.`:'';
     status(mode==='isotropic-etch'?`Isotropically etched inward from the ${state.activeFace} surface by ${distance.toFixed(3)} µm.${removedText}`:`Pushed inward from the ${state.activeFace} surface by ${distance.toFixed(3)} µm.${removedText}`);
   }
+  // Keep Patterns selection for iterative tuning; clear legacy imprinted/top
   state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();renderAll();
 }
 
@@ -498,28 +573,64 @@ function renderGdsControls(){
   for(const name of allCells){const option=document.createElement('option');option.value=name;option.textContent=name + (topSet.has(name)?' ★':'' );option.selected=name===state.gds.activeTopCell;topSelect.appendChild(option);}
   const scale=UNIT_TO_UM[gdsAlignmentUnit],transform=state.gds.transform||{};
   $('gdsOffsetX').value=formatDisplayNumber((Number(transform.offsetX)||0)/scale);$('gdsOffsetY').value=formatDisplayNumber((Number(transform.offsetY)||0)/scale);$('gdsRotation').value=formatDisplayNumber(Number(transform.rotationDeg)||0);$('gdsAlignmentUnit').value=gdsAlignmentUnit;
-  const locked=state.imprintedFaces.length>0;for(const el of [$('gdsOffsetX'),$('gdsOffsetY'),$('gdsRotation'),$('gdsAlignmentUnit'),$('applyGdsAlignmentBtn')])el.disabled=locked;topSelect.disabled=locked||!gdsSourceFile||allCells.length<2;$('gdsLockHint').classList.toggle('hidden',!locked);
+  // Live preview: alignment remains editable even after geometry exists
+  const disabled=!gdsSourceFile;for(const el of [$('gdsOffsetX'),$('gdsOffsetY'),$('gdsRotation'),$('gdsAlignmentUnit'),$('applyGdsAlignmentBtn')])el.disabled=disabled;topSelect.disabled=disabled||allCells.length<2;
 }
 function renderLayerList(){
   const box=$('layerList');box.innerHTML='';
-  renderGdsControls();if(!state.gds.layers.length){box.className='layer-list empty-note';box.textContent='Import a GDSII or OASIS file to view its layers.';return;} box.className='layer-list';
+  renderGdsControls();
+  // Keep hierarchy in sync when layout section is visible
+  if(isPatternsSelection()) renderHierarchy();
+  if(!state.gds.layers.length){box.className='layer-list empty-note';box.textContent='Import a GDSII or OASIS file to view its layers.';renderImprintDebug();return;} box.className='layer-list';
+  const patternsMode=isPatternsSelection();
   for(const layer of state.gds.layers){
-    const item=document.createElement('div');item.className='layer-item';
+    const item=document.createElement('div');item.className='layer-item'+(patternsMode && state.patternSelectedKeys.has(layer.key)?' selected-pattern':'');
     const head=document.createElement('div');head.className='layer-head';
-    const vis=document.createElement('input');vis.type='checkbox';vis.checked=layer.visible!==false;vis.addEventListener('change',()=>{layer.visible=vis.checked;renderTop();});
+    const vis=document.createElement('input');vis.type='checkbox';vis.title='Toggle visibility in Top View';vis.checked=layer.visible!==false;vis.addEventListener('change',()=>{layer.visible=vis.checked;renderTop();});
+    const pat=document.createElement('input');pat.type='checkbox';pat.title='Include in Patterns Apply (multi-select)';pat.checked=state.patternSelectedKeys.has(layer.key);
+    pat.addEventListener('change',()=>{
+      if(pat.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key);
+      updateSelectionInfo(); renderLayerList(); renderTop();
+      status(pat.checked?`Pattern ${layer.layer}/${layer.datatype} selected.`:`Pattern ${layer.layer}/${layer.datatype} deselected.`);
+    });
+    // Only show pattern checkbox in Patterns mode; keep visibility always
+    if(!patternsMode) pat.style.display='none';
     const sw=document.createElement('span');sw.className='layer-swatch';sw.style.background=layer.color;
     const strong=document.createElement('strong');strong.textContent=layer.alias||`Layer ${layer.layer}/${layer.datatype}`;strong.title=`Layer ${layer.layer}/${layer.datatype}`;
     const count=document.createElement('span');count.className='muted';count.textContent=`${layer.count||layer.polygons.length}`;
-    head.append(vis,sw,strong,count);item.appendChild(head);
-    const locked=state.imprintedFaces.some(f=>f.layerKey===layer.key),options=document.createElement('div');options.className='layer-options';
-    const tone=document.createElement('label');tone.className='layer-tone';const invert=document.createElement('input');invert.type='checkbox';invert.checked=layer.inverted===true;invert.disabled=locked;invert.addEventListener('change',()=>{layer.inverted=invert.checked;status(`Layer ${layer.layer}/${layer.datatype} tone: ${layer.inverted?'inverted':'normal'}.`);});tone.append(invert,document.createTextNode('Invert'));options.appendChild(tone);
-    const fillLabel=document.createElement('label');fillLabel.className='layer-tone';const fill=document.createElement('input');fill.type='checkbox';fill.checked=layer.fillPattern===true;fill.disabled=locked;fill.addEventListener('change',async()=>{fill.disabled=true;const enabled=fill.checked;try{await setLayerFillPattern(layer,enabled);status(`Layer ${layer.layer}/${layer.datatype}: ${enabled?'filled closed patterns':'original geometry'}.`);}catch(e){fill.checked=!enabled;status(`Fill pattern failed: ${e.message}`);}finally{fill.disabled=locked;}});fillLabel.append(fill,document.createTextNode('Fill pattern'));options.appendChild(fillLabel);
-    const mirrorLabel=document.createElement('label');mirrorLabel.className='layer-tone';const mirror=document.createElement('input');mirror.type='checkbox';mirror.checked=layer.mirrored===true;mirror.disabled=locked;mirror.addEventListener('change',()=>{layer.mirrored=mirror.checked;state.topBounds=null;renderTop();status(`Layer ${layer.layer}/${layer.datatype}: ${layer.mirrored?'mirrored left/right about the layout origin':'original orientation'}.`);});mirrorLabel.append(mirror,document.createTextNode('Mirror'));options.appendChild(mirrorLabel);item.appendChild(options);
+    head.append(pat,vis,sw,strong,count);item.appendChild(head);
+    const options=document.createElement('div');options.className='layer-options';
+    const tone=document.createElement('label');tone.className='layer-tone';const invert=document.createElement('input');invert.type='checkbox';invert.checked=layer.inverted===true;
+    invert.addEventListener('change',()=>{layer.inverted=invert.checked;status(`Layer ${layer.layer}/${layer.datatype} tone: ${layer.inverted?'inverted':'normal'}.`); renderTop();});
+    tone.append(invert,document.createTextNode('Invert'));options.appendChild(tone);
+    const fillLabel=document.createElement('label');fillLabel.className='layer-tone';const fill=document.createElement('input');fill.type='checkbox';fill.checked=layer.fillPattern===true;
+    fill.addEventListener('change',async()=>{
+      fill.disabled=true;const enabled=fill.checked;
+      try{await setLayerFillPattern(layer,enabled);status(`Layer ${layer.layer}/${layer.datatype}: ${enabled?'filled closed patterns':'original geometry'}.`);}catch(e){fill.checked=!enabled;status(`Fill pattern failed: ${e.message}`);}finally{fill.disabled=false;}
+    });fillLabel.append(fill,document.createTextNode('Fill pattern'));options.appendChild(fillLabel);
+    const mirrorLabel=document.createElement('label');mirrorLabel.className='layer-tone';const mirror=document.createElement('input');mirror.type='checkbox';mirror.checked=layer.mirrored===true;
+    mirror.addEventListener('change',()=>{layer.mirrored=mirror.checked;state.topBounds=null;renderTop();status(`Layer ${layer.layer}/${layer.datatype}: ${layer.mirrored?'mirrored left/right about the layout origin':'original orientation'}.`);});
+    mirrorLabel.append(mirror,document.createTextNode('Mirror'));options.appendChild(mirrorLabel);item.appendChild(options);
     const acts=document.createElement('div');acts.className='layer-actions';
-    const imprint=document.createElement('button');imprint.textContent='Imprint';imprint.addEventListener('click',()=>imprintLayer(layer));
-    const sel=document.createElement('button');sel.textContent='Select faces';sel.addEventListener('click',()=>{for(const f of state.imprintedFaces.filter(f=>f.layerKey===layer.key&&(f.side||'front')===state.activeFace))state.selectedFaceIds.add(f.id);updateSelectionInfo();renderTop();});
     const alias=document.createElement('button');alias.textContent='Alias';alias.addEventListener('click',()=>{const value=prompt(`Alias for layer ${layer.layer}/${layer.datatype}`,layer.alias||'');if(value===null)return;layer.alias=value.trim();renderLayerList();});
-    acts.append(imprint,sel,alias);item.appendChild(acts);box.appendChild(item);
+    acts.append(alias);item.appendChild(acts);box.appendChild(item);
+  }
+  renderImprintDebug();
+}
+function renderImprintDebug(){
+  const box=$('imprintDebugActions'); if(!box) return; box.innerHTML='';
+  if(!state.gds.layers.length){box.textContent='No layers.';return;}
+  // Rebuild per-layer imprint/select for debug parity
+  for(const layer of state.gds.layers){
+    const row=document.createElement('div');row.className='layer-actions';
+    const imprint=document.createElement('button');imprint.textContent=`Imprint ${layer.layer}/${layer.datatype}`;imprint.addEventListener('click',()=>imprintLayer(layer));
+    const sel=document.createElement('button');sel.textContent=`Select ${layer.layer}/${layer.datatype}`;sel.addEventListener('click',()=>{
+      // Switch to legacy imprinted selection for comparison
+      $('selectionMode').value='imprinted'; updateLayoutSectionVisibility(); clearPatternSelection();
+      for(const f of state.imprintedFaces.filter(f=>f.layerKey===layer.key&&(f.side||'front')===state.activeFace))state.selectedFaceIds.add(f.id);
+      updateSelectionInfo();renderTop();renderLayerList();
+    });
+    row.append(imprint, sel); box.appendChild(row);
   }
 }
 async function setLayerFillPattern(layer,enabled){
@@ -535,16 +646,19 @@ async function imprintLayer(layer){
 }
 
 async function importGds(file,topCell=null,preserveTransform=false){
-  if(state.imprintedFaces.length){status('Create a new wafer before replacing a layout that has already been imprinted.');return;}
+  // Live Patterns path: allow re-import even after geometry; imprint snapshot remains locked behind debug
+  // (Alignment tuning after geometry is handled via live preview, not file replacement)
   status(`Reading ${file.name}…`);const form=new FormData();form.append('file',file);if(topCell)form.append('top_cell',topCell);
   let res;try{res=await fetch('/api/gds/inspect',{method:'POST',body:form});}catch(e){status(`Layout request failed: ${e.message}`);return;}
   if(!res.ok){const j=await res.json().catch(()=>({detail:res.statusText}));status(`Layout import: ${j.detail||res.statusText}`);return;}
   const data=await res.json();
   const previousTransform=preserveTransform?state.gds.transform:null,previousAliases=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.alias])),previousTones=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.inverted===true])),previousFills=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.fillPattern===true])),previousMirrors=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.mirrored===true]));
   state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file;
+  // New file → clear pattern selection (layers changed)
+  clearPatternSelection();
   for(const layer of state.gds.layers.filter(l=>l.fillPattern))await setLayerFillPattern(layer,true);
   $('gdsStatus').textContent=`${state.gds.layers.length} layers`;
-  renderLayerList();renderHierarchy();fitLayout();renderAll();
+  updateLayoutSectionVisibility(); renderLayerList();renderHierarchy();fitLayout();renderAll();
   status(`Loaded ${data.filename}: ${data.active_top_cell}, ${data.layers.length} layer/datatype pairs${data.truncated?' (polygon limit reached)':''}.`);
 }
 function renderSnapshots(){
@@ -622,7 +736,7 @@ function render3D(){
 function saveProject(){
   ensureLayerVisuals();const payload={format:'wafercad-mvp',version:6,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,view:{zExag:state.zExag,showAxes:state.showAxes}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
 }
-async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name}.`);}catch(e){status(`Open project failed: ${e.message}`)}}
+async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name}.`);}catch(e){status(`Open project failed: ${e.message}`)}}
 
 function updateWaferShapeFields(){const shape=$('waferShape').value;$('waferCircleFields').classList.toggle('hidden',shape!=='circle');$('waferRectFields').classList.toggle('hidden',shape!=='rect');$('waferCustomFields').classList.toggle('hidden',shape!=='custom');}
 function convertFields(ids,fromUnit,toUnit){const ratio=UNIT_TO_UM[fromUnit]/UNIT_TO_UM[toUnit];for(const id of ids){const el=$(id),v=Number(el.value);if(Number.isFinite(v))el.value=String(Number((v*ratio).toPrecision(10)));}}
@@ -662,7 +776,7 @@ function bindUi(){
       if(shape==='circle')wafer.diameter=positive('waferDiameter','Diameter')*lateralScale;
       if(shape==='rect'){wafer.width=positive('waferWidth','Width')*lateralScale;wafer.height=positive('waferHeight','Height')*lateralScale;}
       if(shape==='custom')wafer.outline=parseCoordinateText($('waferCoordinates').value,lu);
-      state.wafer=normalizeWafer(wafer);state.activeFace='front';state.solids=[];state.cuts=[];state.dopings=[];state.operationUndo=[];state._exactThickness=null;state.layerVisuals={substrate:{name:`Substrate · ${state.wafer.material}`,color:materialColor(state.wafer.material),scale:1}};state.imprintedFaces=[];state.selectedFaceIds.clear();clearTopSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();fitWafer();renderGdsControls();renderAll();$('waferDialog').close('default');status(`New ${shape} wafer created.`);
+      state.wafer=normalizeWafer(wafer);state.activeFace='front';state.solids=[];state.cuts=[];state.dopings=[];state.operationUndo=[];state._exactThickness=null;state.layerVisuals={substrate:{name:`Substrate · ${state.wafer.material}`,color:materialColor(state.wafer.material),scale:1}};state.imprintedFaces=[];state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();fitWafer();renderGdsControls();renderAll();$('waferDialog').close('default');status(`New ${shape} wafer created.`);
     }catch(e){error.textContent=e.message;error.classList.remove('hidden');}
   });
   $('gdsInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)importGds(f);e.target.value='';});
@@ -670,17 +784,21 @@ function bindUi(){
   $('applySliceCoordinatesBtn').addEventListener('click',()=>{if(!state.slice)return;const values=['sliceAx','sliceAy','sliceBx','sliceBy'].map(id=>Number($(id).value));if(values.some(v=>!Number.isFinite(v))){status('A–B coordinates must be valid numbers.');return;}if(values[0]===values[2]&&values[1]===values[3]){status('A and B must be different points.');return;}const scale=UNIT_TO_UM[sliceCoordinateUnit];state.slice={a:{x:values[0]*scale,y:values[1]*scale},b:{x:values[2]*scale,y:values[3]*scale}};renderTop();renderSection();render3D();status('Applied A–B section coordinates.');});
   $('gdsTopCell').addEventListener('change',async()=>{if(!gdsSourceFile)return;await importGds(gdsSourceFile,$('gdsTopCell').value,true);});
   $('gdsAlignmentUnit').addEventListener('change',()=>{const next=$('gdsAlignmentUnit').value;convertFields(['gdsOffsetX','gdsOffsetY'],gdsAlignmentUnit,next);gdsAlignmentUnit=next;});
-  $('applyGdsAlignmentBtn').addEventListener('click',()=>{if(state.imprintedFaces.length){status('Alignment is locked after imprinting.');return;}const x=Number($('gdsOffsetX').value),y=Number($('gdsOffsetY').value),rotation=Number($('gdsRotation').value);if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(rotation)){status('GDS alignment values must be valid numbers.');return;}const scale=UNIT_TO_UM[gdsAlignmentUnit];state.gds.transform={offsetX:x*scale,offsetY:y*scale,rotationDeg:rotation};state.topBounds=null;fitLayout();renderAll();status(`Applied GDS alignment: X ${x} ${gdsAlignmentUnit}, Y ${y} ${gdsAlignmentUnit}, rotation ${rotation}°.`);});
+  $('applyGdsAlignmentBtn').addEventListener('click',()=>{const x=Number($('gdsOffsetX').value),y=Number($('gdsOffsetY').value),rotation=Number($('gdsRotation').value);if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(rotation)){status('GDS alignment values must be valid numbers.');return;}const scale=UNIT_TO_UM[gdsAlignmentUnit];state.gds.transform={offsetX:x*scale,offsetY:y*scale,rotationDeg:rotation};state.topBounds=null;fitLayout();renderAll();status(`Applied GDS alignment: X ${x} ${gdsAlignmentUnit}, Y ${y} ${gdsAlignmentUnit}, rotation ${rotation}°.`);});
   $('applyPushPullBtn').addEventListener('click',applyPushPull);$('snapshotBtn').addEventListener('click',createSnapshot);$('fitWaferBtn').addEventListener('click',fitWafer);$('fitLayoutBtn').addEventListener('click',fitLayout);
   $('zExag')?.addEventListener('input',()=>setZExag($('zExag').value,'slider'));
   $('zExagNumber')?.addEventListener('change',()=>setZExag($('zExagNumber').value,'number'));
   $('zExagNumber')?.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();$('zExagNumber').blur();}});
   $('showAxes').addEventListener('change',updateAxesVisibility);$('saveProjectBtn').addEventListener('click',saveProject);$('openProjectInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)openProject(f);e.target.value='';});
   $('pushMode').addEventListener('change',updateOperationModeUi);updateOperationModeUi();
-  $('selectionMode')?.addEventListener('change',()=>{state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();renderTop();status(isTopFaceSelection()?'Selection: top faces (model). Click a visible film top in Top View.':'Selection: imprinted faces.');});
+  $('selectionMode')?.addEventListener('change',()=>{
+    state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();
+    updateLayoutSectionVisibility(); updateSelectionInfo(); renderLayerList(); renderTop();
+    status(isTopFaceSelection()?'Selection: top faces (model). Click a visible film top in Top View.':'Selection: Patterns — check layers below, adjust alignment/tone live, then Apply.');
+  });
   $('undoOperationBtn').addEventListener('click',undoOperation);
   $('applyLayerVisualBtn').addEventListener('click',()=>{const scale=Number($('layerVisualScale').value),name=$('layerVisualName').value.trim(),error=$('layerVisualError');if(!name){error.textContent='Material name cannot be empty.';error.classList.remove('hidden');return;}if(!Number.isFinite(scale)||scale<=0||scale>100){error.textContent='Display scale must be greater than 0 and no more than 100.';error.classList.remove('hidden');return;}if(!editingLayerVisualId||!state.layerVisuals[editingLayerVisualId])return;renameLayerMaterial(editingLayerVisualId,name);state.layerVisuals[editingLayerVisualId].color=validColor($('layerVisualColor').value);state.layerVisuals[editingLayerVisualId].scale=scale;$('layerVisualDialog').close('default');renderAll();status(`Updated ${state.layerVisuals[editingLayerVisualId].name}: display ×${formatDisplayNumber(scale)}.`);});
 }
 
-bindUi();bindTopNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();renderLayerList();renderSnapshots();renderAll();initThree();
+bindUi();bindTopNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
 fetch('/api/health').then(r=>r.json()).then(h=>{if(!h.gdstk)status("Ready. GDS import is disabled until 'gdstk' is installed.");}).catch(()=>{});

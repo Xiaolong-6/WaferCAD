@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=z-fix-v2" />
+  <link rel="stylesheet" href="/static/style.css?v=patterns-v1" />
 </head>
 <body>
   <div id="app">
@@ -25,27 +25,6 @@
           <div id="snapshotList" class="snapshot-list"></div>
         </section>
 
-        <section class="grow">
-          <div class="section-title"><span>Layout layers</span><span id="gdsStatus" class="muted">none</span></div>
-          <div id="gdsControls" class="gds-controls hidden">
-            <label>Top cell<select id="gdsTopCell"></select></label>
-            <div class="gds-align-title"><span>Layout alignment</span><span class="muted">about layout origin</span></div>
-            <div class="gds-align-grid">
-              <label>X<input id="gdsOffsetX" type="number" value="0" step="any" /></label>
-              <label>Y<input id="gdsOffsetY" type="number" value="0" step="any" /></label>
-              <label>Rotation<input id="gdsRotation" type="number" value="0" step="any" /></label>
-              <label>Unit<select id="gdsAlignmentUnit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></label>
-            </div>
-            <button id="applyGdsAlignmentBtn" class="small">Apply alignment</button>
-            <div id="gdsLockHint" class="hint hidden">Alignment is locked after imprinting. Create a new wafer or reopen the project to change it.</div>
-          </div>
-          <div id="layerList" class="layer-list empty-note">Import a GDSII or OASIS file to view its layers.</div>
-          <div id="hierarchyPanel" class="hierarchy-panel hidden">
-            <div class="section-title"><span>Cell hierarchy</span><span id="hierarchyMeta" class="muted"></span></div>
-            <div id="hierarchyTree" class="hierarchy-tree"></div>
-          </div>
-        </section>
-
         <section class="operation-panel">
           <div class="section-title">Geometry operation</div>
           <div class="field-row"><label>Distance</label><input id="distanceInput" type="number" value="100" step="10" /><select id="distanceUnit"><option value="1">µm</option><option value="0.001">nm</option><option value="1000">mm</option></select></div>
@@ -57,8 +36,33 @@
           </div>
           <div class="operation-actions"><button id="applyPushPullBtn" class="primary">Apply operation</button><button id="undoOperationBtn" disabled title="Undo last geometry operation">Undo</button></div>
           <div id="operationModeHint" class="hint hidden">2.5D isotropic approximation: the same radius is applied laterally and along Z.</div>
-          <div class="field-row"><label>Selection</label><select id="selectionMode"><option value="imprinted">Imprinted faces</option><option value="top">Top faces (model)</option></select></div>
+          <div class="field-row"><label>Selection</label><select id="selectionMode"><option value="top">Top faces (model)</option><option value="imprinted">Patterns</option></select></div>
           <div id="selectionInfo" class="hint">No pattern selected — the whole active face will be used.</div>
+        </section>
+
+        <section id="layoutSection" class="grow hidden">
+          <div class="section-title"><span>Layout layers</span><span id="gdsStatus" class="muted">none</span></div>
+          <div id="gdsControls" class="gds-controls hidden">
+            <label>Top cell<select id="gdsTopCell"></select></label>
+            <div class="gds-align-title"><span>Layout alignment</span><span class="muted">about layout origin</span></div>
+            <div class="gds-align-grid">
+              <label>X<input id="gdsOffsetX" type="number" value="0" step="any" /></label>
+              <label>Y<input id="gdsOffsetY" type="number" value="0" step="any" /></label>
+              <label>Rotation<input id="gdsRotation" type="number" value="0" step="any" /></label>
+              <label>Unit<select id="gdsAlignmentUnit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></label>
+            </div>
+            <button id="applyGdsAlignmentBtn" class="small">Apply alignment</button>
+          </div>
+          <div id="layerList" class="layer-list empty-note">Import a GDSII or OASIS file to view its layers.</div>
+          <div id="hierarchyPanel" class="hierarchy-panel hidden">
+            <div class="section-title"><span>Cell hierarchy</span><span id="hierarchyMeta" class="muted"></span></div>
+            <div id="hierarchyTree" class="hierarchy-tree"></div>
+          </div>
+          <details id="imprintDebugDetails" class="imprint-debug">
+            <summary>Debug: Imprint snapshot</summary>
+            <div class="hint">Legacy imprint path — creates selectable imprinted faces for comparison. Main Patterns path no longer requires it.</div>
+            <div id="imprintDebugActions" class="layer-actions"></div>
+          </details>
         </section>
       </aside>
 
@@ -83,7 +87,7 @@
               <select id="sliceCoordinateUnit" aria-label="Slice coordinate unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select>
               <button id="applySliceCoordinatesBtn" class="small">Apply A–B</button>
             </div>
-            <div class="hint">Drag A/B · wheel to zoom · drag empty space to pan · click an imprinted face to select.</div>
+            <div class="hint">Drag A/B · wheel to zoom · drag empty space to pan · click a pattern/top face to select.</div>
             <div id="viewportCullInfo" class="hint"></div>
           </div>
         </section>
@@ -156,6 +160,6 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=z-fix-v2"></script>
+  <script type="module" src="/static/app.js?v=patterns-v1"></script>
 </body>
 </html>
