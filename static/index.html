@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=patterns-v2" />
+  <link rel="stylesheet" href="/static/style.css?v=mask-border-v1" />
 </head>
 <body>
   <div id="app">
@@ -87,6 +87,10 @@
               <select id="sliceCoordinateUnit" aria-label="Slice coordinate unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select>
               <button id="applySliceCoordinatesBtn" class="small">Apply A–B</button>
             </div>
+            <div class="mask-opacity-control">
+              <label>Mask veil <input id="maskOpacity" type="range" min="0" max="100" value="35" /></label>
+              <output id="maskOpacityValue">35%</output>
+            </div>
             <div class="hint">Drag A/B · wheel to zoom · drag empty space to pan · click a pattern/top face to select.</div>
             <div id="viewportCullInfo" class="hint"></div>
           </div>
@@ -160,6 +164,6 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=patterns-v2"></script>
+  <script type="module" src="/static/app.js?v=mask-border-v1"></script>
 </body>
 </html>

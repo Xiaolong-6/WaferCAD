@@ -20,6 +20,7 @@ const state = {
   topBounds: null,
   zExag: 8,
   showAxes: false,
+  maskBaseOpacity: 0.35,
   operationUndo: [],
   _exactThickness: null,
   _topFaceSelection: {enabled:false, selectedSolidIds:new Set()},
@@ -156,6 +157,17 @@ function bboxPolys(polys){
   for(const poly of polys) for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
   return [x0,y0,x1,y1];
 }
+function detectBorderOnly(layer){
+  const polys=layer.polygons||[];
+  if(polys.length<3) return false;
+  const bb=bboxPolys(polys);
+  if(!bb) return false;
+  const bboxArea=(bb[2]-bb[0])*(bb[3]-bb[1]);
+  if(!bboxArea || !Number.isFinite(bboxArea)) return false;
+  let sum=0; for(const p of polys) sum+=Math.abs(polygonArea(p));
+  // Border frame: sum area is small vs bbox (ring). Solid block: sum ~ bbox
+  return sum / bboxArea < 0.5;
+}
 function polyBbox(poly){
   let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
   for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
@@ -227,9 +239,16 @@ function patternSelectedLayers(){return state.gds.layers.filter(l=>state.pattern
 function patternRawMaskPolygons(){
   const out=[];
   for(const layer of patternSelectedLayers()){
+    if(layer.isBorderOnly && !layer.fillPattern){
+      // Border-only closed shape without fill is not a valid mask by default
+      continue;
+    }
     for(const poly of effectiveLayerPolygons(layer)) out.push({layer, poly: transformedLayerPolygon(layer, poly)});
   }
   return out;
+}
+function patternHasBlockedBorder(){
+  return patternSelectedLayers().some(l=>l.isBorderOnly && !l.fillPattern);
 }
 function setDefaultSlice(){if(!state.wafer){state.slice=null;return;}const [x0,y0,x1,y1]=waferBounds(),cy=(y0+y1)/2;state.slice={a:{x:x0+(x1-x0)*.175,y:cy},b:{x:x1-(x1-x0)*.175,y:cy}};}
 function currentDeviceSnapshot(){ensureLayerVisuals();return clone({wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,imprintedFaces:state.imprintedFaces});}
@@ -265,7 +284,15 @@ function renderTop(){
   const svg=$('topSvg'); clearSvg(svg);
   if(!state.wafer&&!state.gds.layers.length){updateSliceInputs();return;}
   if(!state.topBounds) fitWafer();
-  if(state.wafer)svg.appendChild(makeSvg('path',{d:polyPath(waferOutline()),fill:'#f0f1f2',stroke:'#626b75','stroke-width':'1.5'}));
+  if(state.wafer){
+    svg.appendChild(makeSvg('path',{d:polyPath(waferOutline()),fill:'#f0f1f2',stroke:'#626b75','stroke-width':'1.5'}));
+    // Mask veil for alignment: semi-transparent overlay on empty wafer area, adjustable
+    const veilOpacity=Math.min(0.6, Math.max(0, Number(state.maskBaseOpacity)||0.35)*0.7);
+    if(veilOpacity>0.01){
+      const veil=makeSvg('path',{d:polyPath(waferOutline()),fill:'#cbd5e1','fill-opacity': String(veilOpacity), stroke:'none', 'pointer-events':'none'});
+      svg.appendChild(veil);
+    }
+  }
 
   // Imported layout layers remain visually distinct by layer/datatype.
   // Viewport culling: skip polys entirely outside topBounds (major win near 20k cap when zoomed/panned)
@@ -275,21 +302,25 @@ function renderTop(){
   for(const layer of state.gds.layers){
     if(layer.visible===false) continue;
     const isPatSel=patternsMode && state.patternSelectedKeys.has(layer.key);
+    const isBorder=!!layer.isBorderOnly && !layer.fillPattern;
+    // Border-only without fill is shown as dashed inactive preview, not as active mask
+    const willBeActive=isPatSel && !isBorder;
     for(const sourcePoly of effectiveLayerPolygons(layer)){
       const poly=transformedLayerPolygon(layer,sourcePoly);
       if(!isPolyInViewport(poly, viewport)){culled++; continue;}
       drawn++;
-      const isSel=isPatSel;
       const path=makeSvg('path',{
         d:polyPath(poly),
-        fill:isSel?'#f59e0b':layer.color,
-        'fill-opacity':isSel?'0.32':'0.12',
-        stroke:isSel?'#b45309':layer.color,
-        'stroke-opacity':isSel?'0.9':'0.55',
-        'stroke-width':isSel?'1.6':'1',
+        fill:willBeActive?'#f59e0b':(isBorder?'#94a3b8':layer.color),
+        'fill-opacity':willBeActive?'0.38':(isBorder?'0.04':'0.10'),
+        stroke:willBeActive?'#b45309':(isBorder?'#64748b':layer.color),
+        'stroke-opacity':willBeActive?'0.95':(isBorder?'0.5':'0.45'),
+        'stroke-width':willBeActive?'1.7':'1',
+        'stroke-dasharray':isBorder?'4 3':null,
         'data-layer':layer.key
       });
-      if(patternsMode){
+      if(isBorder) path.setAttribute('data-border','true');
+      if(patternsMode && !isBorder){
         path.style.cursor='pointer';
         path.addEventListener('click',(ev)=>{
           ev.stopPropagation();
@@ -297,6 +328,9 @@ function renderTop(){
           else state.patternSelectedKeys.add(layer.key);
           updateSelectionInfo(); renderLayerList(); renderTop();
         });
+      } else if(patternsMode && isBorder){
+        path.style.cursor='not-allowed';
+        path.setAttribute('title','Closed border without fill — enable Fill pattern to use as mask');
       }
       svg.appendChild(path);
     }
@@ -524,10 +558,13 @@ async function applyPushPull(){
       selected=[{id:null,side:state.activeFace,polygon:waferOutline(),wholeFace:true}];
     } else {
       // Multi-layer pattern masks: collect transformed polys; for inverted layers resolve substrate complement
+      // Border-only without Fill is ignored by default (natural: closed but unfilled border is not a mask)
       selected=[];
+      let blockedBorders=[];
       for(const key of selKeys){
         const layer=state.gds.layers.find(l=>l.key===key);
         if(!layer) continue;
+        if(layer.isBorderOnly && !layer.fillPattern){ blockedBorders.push(`${layer.layer}/${layer.datatype}`); continue; }
         const raw=effectiveLayerPolygons(layer).map(poly=>transformedLayerPolygon(layer, poly));
         if(!raw.length) continue;
         if(layer.inverted===true){
@@ -540,7 +577,8 @@ async function applyPushPull(){
           for(const poly of raw) selected.push({id:layer.key,side:state.activeFace,polygon:poly,wholeFace:false});
         }
       }
-      if(!selected.length){status('Selected pattern layers produced no geometry.');return;}
+      if(blockedBorders.length){ status(`Border-only layer(s) ${blockedBorders.join(', ')} without Fill are not used as mask — enable Fill pattern to use as filled outer contour.`); }
+      if(!selected.length){status('Selected pattern layers produced no geometry (border-only without Fill is ignored).');return;}
     }
   } else {
     wholeFace=state.selectedFaceIds.size===0;
@@ -594,9 +632,12 @@ function renderLayerList(){
     const vis=document.createElement('input');vis.type='checkbox';vis.checked=layer.visible!==false;vis.addEventListener('change',()=>{layer.visible=vis.checked;renderTop();});
     const visText=document.createElement('span');visText.textContent='Show';
     visLabel.append(vis,visText);
-    // Pattern selection toggle (only in Patterns mode)
-    const patLabel=document.createElement('label');patLabel.className='check-text pat-check';patLabel.title='Use in Patterns Apply — multi-select, combined on Apply';
+    // Pattern selection toggle (only in Patterns mode) — border-only without Fill is disabled by default
+    const isBorder=!!layer.isBorderOnly;
+    const patLabel=document.createElement('label');patLabel.className='check-text pat-check';
+    patLabel.title=isBorder && !layer.fillPattern ? 'Closed border without fill — enable Fill pattern to use as mask (border alone is not used by default)' : 'Use in Patterns Apply — multi-select, combined on Apply';
     const pat=document.createElement('input');pat.type='checkbox';pat.checked=state.patternSelectedKeys.has(layer.key);
+    if(isBorder && !layer.fillPattern){ pat.disabled=true; patLabel.style.opacity='0.45'; }
     pat.addEventListener('change',()=>{
       if(pat.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key);
       updateSelectionInfo(); renderLayerList(); renderTop();
@@ -605,6 +646,11 @@ function renderLayerList(){
     if(!patternsMode) patLabel.style.display='none';
     const patText=document.createElement('span');patText.textContent='Use';
     patLabel.append(pat,patText);
+    if(isBorder && !layer.fillPattern){
+      const hint=document.createElement('span');hint.className='muted';hint.textContent='border';hint.title='Closed border without fill — not used until Fill is enabled';
+      // show hint next to Use, but keep layout compact
+      patLabel.append(hint);
+    }
     const sw=document.createElement('span');sw.className='layer-swatch';sw.style.background=layer.color;
     const strong=document.createElement('strong');
     strong.textContent=layer.alias||`Layer ${layer.layer}/${layer.datatype}`;
@@ -669,6 +715,7 @@ async function importGds(file,topCell=null,preserveTransform=false){
   const data=await res.json();
   const previousTransform=preserveTransform?state.gds.transform:null,previousAliases=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.alias])),previousTones=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.inverted===true])),previousFills=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.fillPattern===true])),previousMirrors=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.mirrored===true]));
   state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file;
+  for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);
   // New file → clear pattern selection (layers changed)
   clearPatternSelection();
   for(const layer of state.gds.layers.filter(l=>l.fillPattern))await setLayerFillPattern(layer,true);
@@ -711,6 +758,11 @@ function syncViewControls(){
     if($('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(state.zExag);
     $('zExagValue').value=`×${formatDisplayNumber(state.zExag)}`;
   }
+  if($('maskOpacity')){
+    const pct=Math.round((Number(state.maskBaseOpacity)||0.35)*100);
+    $('maskOpacity').value=String(pct);
+    if($('maskOpacityValue')) $('maskOpacityValue').textContent=pct+'%';
+  }
   $('showAxes').checked=state.showAxes;if(axesGroup)axesGroup.visible=state.showAxes;
 }
 function setZExag(v, source='slider'){
@@ -723,6 +775,15 @@ function setZExag(v, source='slider'){
   if(source!=='number' && $('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(n);
   if($('zExagValue')) $('zExagValue').value=`×${formatDisplayNumber(n)}`;
   renderSection();render3D();
+}
+function setMaskOpacity(v){
+  let n=Number(v);
+  if(!Number.isFinite(n)) return;
+  n=Math.min(100, Math.max(0, n))/100;
+  state.maskBaseOpacity=n;
+  if($('maskOpacity')) $('maskOpacity').value=String(Math.round(n*100));
+  if($('maskOpacityValue')) $('maskOpacityValue').textContent=Math.round(n*100)+'%';
+  renderTop();
 }
 function animateThree(now=performance.now()){if(!renderer)return;requestAnimationFrame(animateThree);updateCameraFaceFlip(now);controls.update();renderer.render(scene,camera);}
 function disposeGroup(g){while(g.children.length){const o=g.children.pop();if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}}}
@@ -749,9 +810,9 @@ function render3D(){
 }
 
 function saveProject(){
-  ensureLayerVisuals();const payload={format:'wafercad-mvp',version:6,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,view:{zExag:state.zExag,showAxes:state.showAxes}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
+  ensureLayerVisuals();const payload={format:'wafercad-mvp',version:6,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,view:{zExag:state.zExag,showAxes:state.showAxes,maskBaseOpacity:state.maskBaseOpacity}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
 }
-async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name}.`);}catch(e){status(`Open project failed: ${e.message}`)}}
+async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.maskBaseOpacity=Number.isFinite(Number(p.view?.maskBaseOpacity))?Math.min(1,Math.max(0,Number(p.view.maskBaseOpacity))):0.35;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name}.`);}catch(e){status(`Open project failed: ${e.message}`)}}
 
 function updateWaferShapeFields(){const shape=$('waferShape').value;$('waferCircleFields').classList.toggle('hidden',shape!=='circle');$('waferRectFields').classList.toggle('hidden',shape!=='rect');$('waferCustomFields').classList.toggle('hidden',shape!=='custom');}
 function convertFields(ids,fromUnit,toUnit){const ratio=UNIT_TO_UM[fromUnit]/UNIT_TO_UM[toUnit];for(const id of ids){const el=$(id),v=Number(el.value);if(Number.isFinite(v))el.value=String(Number((v*ratio).toPrecision(10)));}}
@@ -810,6 +871,7 @@ function bindUi(){
   $('zExag')?.addEventListener('input',()=>setZExag($('zExag').value,'slider'));
   $('zExagNumber')?.addEventListener('change',()=>setZExag($('zExagNumber').value,'number'));
   $('zExagNumber')?.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();$('zExagNumber').blur();}});
+  $('maskOpacity')?.addEventListener('input',()=>setMaskOpacity($('maskOpacity').value));
   $('showAxes').addEventListener('change',updateAxesVisibility);$('saveProjectBtn').addEventListener('click',saveProject);$('openProjectInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)openProject(f);e.target.value='';});
   $('pushMode').addEventListener('change',updateOperationModeUi);updateOperationModeUi();
   $('selectionMode')?.addEventListener('change',()=>{
