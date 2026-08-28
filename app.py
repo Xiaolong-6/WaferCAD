@@ -73,6 +73,16 @@ class PolygonSubjectsRequest(BaseModel):
     subjects: list[list[list[float]]] = Field(max_length=20000)
 
 
+class SubstrateThicknessRequest(BaseModel):
+    outline: list[list[float]] = Field(min_length=3)
+    thickness: float = Field(gt=0)
+    cuts: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class HierarchyInspectRequest(BaseModel):
+    filename: str | None = None
+
+
 def _remove_boolean_hole_bridges(points: Any, precision: float = 1e-6) -> list[list[float]]:
     """Keep the outer contour of a gdstk Boolean polygon and discard hole walks.
 
@@ -96,6 +106,38 @@ def _remove_boolean_hole_bridges(points: Any, precision: float = 1e-6) -> list[l
         start, end = bridge
         result = result[: start + 1] + result[end + 1 :]
     return result
+
+
+def _point_in_poly(pt: list[float], poly: list[list[float]]) -> bool:
+    x, y = float(pt[0]), float(pt[1])
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        ax, ay = poly[i]
+        bx, by = poly[(i + 1) % n]
+        # edge straddles horizontal line at y
+        if ((ay > y) != (by > y)) and (x < (bx - ax) * (y - ay) / (by - ay + 1e-30) + ax):
+            inside = not inside
+    return inside
+
+
+def _atom_interior_point(poly: list[list[float]]) -> list[float]:
+    # centroid with fallback to edge-midpoint sampling for non-convex / centroid-outside cases
+    n = len(poly)
+    cx = sum(p[0] for p in poly) / n
+    cy = sum(p[1] for p in poly) / n
+    if _point_in_poly([cx, cy], poly):
+        return [cx, cy]
+    # try points slightly inset from each vertex toward centroid
+    for p in poly:
+        q = [p[0] * 0.995 + cx * 0.005, p[1] * 0.995 + cy * 0.005]
+        if _point_in_poly(q, poly):
+            return q
+    # fallback: midpoint of first edge nudged inward
+    mx = (poly[0][0] + poly[1][0]) / 2
+    my = (poly[0][1] + poly[1][1]) / 2
+    q = [mx * 0.99 + cx * 0.01, my * 0.99 + cy * 0.01]
+    return q
 
 
 @app.post("/api/geometry/fill-holes")
@@ -262,6 +304,97 @@ def split_by_mask(payload: PolygonSplitRequest) -> dict[str, Any]:
     return {"remaining": remaining, "overlaps": overlaps}
 
 
+@app.post("/api/geometry/substrate-thickness")
+def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
+    """Compute exact remaining substrate thickness range via planar partition.
+
+    The previous frontend heuristic sampled interior points of outline and cuts.
+    For pathological overlapping / concave cases this could miss an atomic region.
+    This endpoint partitions the wafer by all cut footprints using gdstk Booleans
+    and evaluates the uniform thickness inside each atomic XY region.
+    """
+    try:
+        import gdstk
+    except Exception as exc:
+        raise HTTPException(503, "Thickness calculation requires gdstk") from exc
+    try:
+        if len(payload.outline) < 3:
+            raise HTTPException(400, "Wafer outline must have at least 3 vertices")
+        t = float(payload.thickness)
+        if not math.isfinite(t) or t <= 0:
+            raise HTTPException(400, "Thickness must be positive")
+        # Build atomic partition: start with wafer, split by each cut
+        atoms: list[list[list[float]]] = [payload.outline]
+        cut_polys: list[list[list[float]]] = []
+        cut_intervals: list[tuple[float, float]] = []
+        for c in payload.cuts:
+            fp = c.get("footprint")
+            if not isinstance(fp, list) or len(fp) < 3:
+                continue
+            zmin = float(c.get("zMin", -t))
+            zmax = float(c.get("zMax", 0))
+            zmin = max(-t, min(zmin, zmax))
+            zmax = min(0, max(zmin, zmax))
+            if zmax <= zmin + 1e-9:
+                continue
+            cut_polys.append(fp)
+            cut_intervals.append((zmin, zmax))
+        # Partition atoms
+        for cp in cut_polys:
+            new_atoms: list[list[list[float]]] = []
+            cut_poly = gdstk.Polygon(cp)
+            for atom_pts in atoms:
+                atom = gdstk.Polygon(atom_pts)
+                inter = gdstk.boolean(atom, cut_poly, "and", precision=1e-6)
+                diff = gdstk.boolean(atom, cut_poly, "not", precision=1e-6)
+                for poly in inter:
+                    if len(poly.points) >= 3:
+                        new_atoms.append([[float(x), float(y)] for x, y in poly.points])
+                for poly in diff:
+                    if len(poly.points) >= 3:
+                        new_atoms.append([[float(x), float(y)] for x, y in poly.points])
+                if not inter and not diff:
+                    # empty atom is outside wafer after split — drop
+                    pass
+            # guard against explosion: cap at 5000 atoms
+            if len(new_atoms) > 5000:
+                # fallback to sampling if partition explodes
+                break
+            if new_atoms:
+                atoms = new_atoms
+        if not atoms:
+            return {"min": t, "max": t, "exact": True}
+
+        def merged_length(intervals: list[tuple[float, float]]) -> float:
+            if not intervals:
+                return 0.0
+            segs = sorted(intervals)
+            total = 0.0
+            lo, hi = segs[0]
+            for a, b in segs[1:]:
+                if a <= hi + 1e-7:
+                    hi = max(hi, b)
+                else:
+                    total += hi - lo
+                    lo, hi = a, b
+            return total + hi - lo
+
+        values: list[float] = []
+        for atom in atoms:
+            interior = _atom_interior_point(atom)
+            covering: list[tuple[float, float]] = []
+            for idx, cp in enumerate(cut_polys):
+                if _point_in_poly(interior, cp):
+                    covering.append(cut_intervals[idx])
+            remaining = max(0.0, t - merged_length(covering))
+            values.append(remaining)
+        return {"min": min(values), "max": max(values), "exact": True, "atoms": len(atoms)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400, f"Unable to compute thickness: {exc}") from exc
+
+
 @app.post("/api/gds/inspect")
 async def inspect_gds(
     file: UploadFile = File(...), top_cell: str | None = Form(default=None)
@@ -364,6 +497,34 @@ async def inspect_gds(
 
     layers = sorted(layer_map.values(), key=lambda x: (x["layer"], x["datatype"]))
 
+    # Build hierarchy for browser (non-flattened per-cell view)
+    hierarchy = []
+    for c in lib.cells:
+        try:
+            refs = []
+            for ref in getattr(c, "references", []):
+                # gdstk Reference
+                target = getattr(ref, "cell", None)
+                refs.append(
+                    {
+                        "cell": getattr(target, "name", str(target)) if target else None,
+                        "origin": [float(v) * unit_um for v in getattr(ref, "origin", (0, 0))],
+                        "rotation": float(getattr(ref, "rotation", 0) or 0),
+                        "magnification": float(getattr(ref, "magnification", 1) or 1),
+                        "x_reflection": bool(getattr(ref, "x_reflection", False)),
+                    }
+                )
+            # count polygons in this cell without flattening references
+            try:
+                local_polys = c.get_polygons(depth=0)
+            except TypeError:
+                local_polys = []
+            local_count = len(local_polys) if isinstance(local_polys, list) else 0
+        except Exception:
+            refs = []
+            local_count = 0
+        hierarchy.append({"name": c.name, "references": refs, "local_polygon_count": local_count})
+
     return JSONResponse(
         {
             "filename": file.filename,
@@ -376,5 +537,6 @@ async def inspect_gds(
             "bbox": overall_bbox,
             "truncated": truncated,
             "polygon_limit": polygon_limit,
+            "hierarchy": hierarchy,
         }
     )

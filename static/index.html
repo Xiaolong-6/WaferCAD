@@ -40,6 +40,10 @@
             <div id="gdsLockHint" class="hint hidden">Alignment is locked after imprinting. Create a new wafer or reopen the project to change it.</div>
           </div>
           <div id="layerList" class="layer-list empty-note">Import a GDSII or OASIS file to view its layers.</div>
+          <div id="hierarchyPanel" class="hierarchy-panel hidden">
+            <div class="section-title"><span>Cell hierarchy</span><span id="hierarchyMeta" class="muted"></span></div>
+            <div id="hierarchyTree" class="hierarchy-tree"></div>
+          </div>
         </section>
 
         <section class="operation-panel">
@@ -53,6 +57,7 @@
           </div>
           <div class="operation-actions"><button id="applyPushPullBtn" class="primary">Apply operation</button><button id="undoOperationBtn" disabled title="Undo last geometry operation">Undo</button></div>
           <div id="operationModeHint" class="hint hidden">2.5D isotropic approximation: the same radius is applied laterally and along Z.</div>
+          <div class="field-row"><label>Selection</label><select id="selectionMode"><option value="imprinted">Imprinted faces</option><option value="top">Top faces (model)</option></select></div>
           <div id="selectionInfo" class="hint">No pattern selected — the whole active face will be used.</div>
         </section>
       </aside>
