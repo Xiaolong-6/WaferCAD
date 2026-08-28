@@ -395,7 +395,7 @@ function svgToModel(sx,sy){
 }
 function polyPath(poly){ return poly.map((p,i)=>{const [x,y]=modelToSvg(p[0],p[1]); return `${i?'L':'M'}${x.toFixed(2)},${y.toFixed(2)}`}).join(' ')+' Z'; }
 function placeCameraOnActiveFace(){if(!camera)return;const back=state.activeFace==='back';camera.position.x=back?-Math.abs(camera.position.x):Math.abs(camera.position.x);camera.position.z=back?-Math.abs(camera.position.z):Math.abs(camera.position.z);controls?.update();}
-function updateActiveFaceUi(syncCamera=true){const back=state.activeFace==='back';$('activeFaceLabel').textContent=back?'Back face':'Front face';$('flipFaceBtn').textContent=back?'Face: Back':'Face: Front';$('flipFaceBtn').disabled=!state.wafer;if(syncCamera)placeCameraOnActiveFace();}
+function updateActiveFaceUi(syncCamera=true){const back=state.activeFace==='back';$('activeFaceLabel').textContent=back?'Back face':'Front face';$('flipFaceBtn').textContent=back?'Back':'Front';$('flipFaceBtn').disabled=!state.wafer;if(syncCamera)placeCameraOnActiveFace();}
 function startCameraFaceFlip(){if(!camera||!controls)return;const target=controls.target.clone(),relative=camera.position.clone().sub(target);cameraFlipAnimation={started:performance.now(),duration:720,target,relative};controls.enabled=false;}
 function updateCameraFaceFlip(now){if(!cameraFlipAnimation)return;const a=cameraFlipAnimation,t=Math.min(1,(now-a.started)/a.duration),eased=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,angle=Math.PI*eased,c=Math.cos(angle),s=Math.sin(angle),r=a.relative;camera.position.set(a.target.x+r.x*c+r.z*s,a.target.y+r.y,a.target.z-r.x*s+r.z*c);camera.lookAt(a.target);if(t>=1){cameraFlipAnimation=null;controls.enabled=true;controls.update();}}
 function flipActiveFace(){if(!state.wafer)return;state.activeFace=state.activeFace==='front'?'back':'front';state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();updateActiveFaceUi(false);startCameraFaceFlip();renderAll();status(`Active processing face: ${state.activeFace}. The 3D camera is flipping to the ${state.activeFace} side.`);}
@@ -595,8 +595,8 @@ function updateSelectionInfo(){
   if($('pushMode')?.value==='doping'){$('selectionInfo').textContent='Doping overlaps the selected physical target layer; mask-face selection is not used.';return;}
   if(isTopFaceSelection()){
     const n=topSelectionCount();
-    if(n) {$('selectionInfo').textContent=`${n} top face${n>1?'s':''} selected (model).`;}
-    else {$('selectionInfo').textContent=`No top face selected — the whole ${state.activeFace} face will be used. Click a visible top region.`;}
+    if(n) {$('selectionInfo').textContent=`${n} full face${n>1?'s':''} selected (model).`;}
+    else {$('selectionInfo').textContent=`No full face selected — the whole ${state.activeFace} face will be used. Click a visible top region.`;}
     return;
   }
   if(isPatternsSelection()){
@@ -670,7 +670,7 @@ async function applyPushPull(){
     else {
       const solids=state.solids.filter(s=>ids.has(s.id) && (s.side||'front')===state.activeFace);
       selected=solids.map(s=>({id:s.id,side:s.side||state.activeFace,polygon:clone(s.footprint),wholeFace:false}));
-      if(!selected.length){status('Selected top faces are no longer present.');return;}
+      if(!selected.length){status('Selected full faces are no longer present.');return;}
     }
   } else if(isPatternsSelection()){
     const selKeys=[...state.patternSelectedKeys];
@@ -866,12 +866,28 @@ function renderSnapshots(){
     info.append(name,meta);
     const del=document.createElement('button');del.type='button';del.className='snapshot-delete';del.title='Delete snapshot';del.textContent='×';
     del.addEventListener('click',(e)=>{ e.stopPropagation(); deleteSnapshot(s.id); });
-    card.addEventListener('click',()=>{ state.activeSnapshotId=s.id; restoreDeviceSnapshot(s.device); renderSnapshots(); status(`Restored snapshot: ${s.name}`); });
+    card.addEventListener('click',()=>{
+      if(s.id===state.activeSnapshotId) return;
+      // Auto-save current active snapshot before switching — re-shoot covering current archive
+      const active=state.snapshots.find(x=>x.id===state.activeSnapshotId);
+      if(active){
+        try{
+          active.device=currentDeviceSnapshot();
+          const newThumb=captureSnapshotThumb();
+          if(newThumb) active.thumb=newThumb;
+          active.updated=new Date().toISOString();
+        }catch(e){ console.warn('auto-save snapshot failed',e); }
+      }
+      state.activeSnapshotId=s.id;
+      restoreDeviceSnapshot(s.device);
+      renderSnapshots();
+      status(active?`Auto-saved previous state, switched to ${s.name}`:`Restored snapshot: ${s.name}`);
+    });
     card.append(thumb,info,del);
     track.appendChild(card);
   }
   // keep newest visible on the right
-  requestAnimationFrame(()=>{ if(strip) strip.scrollLeft = strip.scrollWidth; });
+  requestAnimationFrame(()=>{ const strip=$('snapshotStrip'); if(strip) strip.scrollLeft=strip.scrollWidth; });
 }
 function captureSnapshotThumb(){
   try{
@@ -1070,7 +1086,7 @@ function bindUi(){
   $('selectionMode')?.addEventListener('change',()=>{
     state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();
     updateLayoutSectionVisibility(); updateSelectionInfo(); renderLayerList(); renderTop();
-    status(isTopFaceSelection()?'Selection: top faces (model). Click a visible film top in Top View.':'Selection: Patterns — check layers below, adjust alignment/tone live, then Apply.');
+    status(isTopFaceSelection()?'Selection: full faces (model). Click a visible film top in Top View.':'Selection: Patterns — check layers below, adjust alignment/tone live, then Apply.');
   });
   $('undoOperationBtn').addEventListener('click',undoOperation);
   $('applyLayerVisualBtn').addEventListener('click',()=>{const scale=Number($('layerVisualScale').value),name=$('layerVisualName').value.trim(),error=$('layerVisualError');if(!name){error.textContent='Material name cannot be empty.';error.classList.remove('hidden');return;}if(!Number.isFinite(scale)||scale<=0||scale>100){error.textContent='Display scale must be greater than 0 and no more than 100.';error.classList.remove('hidden');return;}if(!editingLayerVisualId||!state.layerVisuals[editingLayerVisualId])return;renameLayerMaterial(editingLayerVisualId,name);state.layerVisuals[editingLayerVisualId].color=validColor($('layerVisualColor').value);state.layerVisuals[editingLayerVisualId].scale=scale;$('layerVisualDialog').close('default');renderAll();status(`Updated ${state.layerVisuals[editingLayerVisualId].name}: display ×${formatDisplayNumber(scale)}.`);});

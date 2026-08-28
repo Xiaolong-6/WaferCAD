@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=snapshot-strip-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=auto-save-v1" />
 </head>
 <body>
   <div id="app">
@@ -13,7 +13,6 @@
       <button id="newWaferBtn">New wafer</button>
        <label class="file-btn">Import layout<input id="gdsInput" type="file" accept=".gds,.gdsii,.oas,.oasis" hidden /></label>
       <button id="snapshotBtn" class="small">+ Snapshot</button>
-      <button id="flipFaceBtn" disabled>Face: Front</button>
       <div class="spacer"></div>
       <button id="saveProjectBtn">Save project</button>
       <label class="file-btn">Open project<input id="openProjectInput" type="file" accept=".json" hidden /></label>
@@ -31,10 +30,11 @@
             <label>Target layer<select id="dopingTargetLayer"></select></label>
             <label>Region<select id="dopingPosition"><option value="upper">Upper side (+Z)</option><option value="lower">Lower side (−Z)</option></select></label>
           </div>
-          <div class="operation-actions"><button id="applyPushPullBtn" class="primary">Apply operation</button><button id="undoOperationBtn" disabled title="Undo last geometry operation">Undo</button></div>
           <div id="operationModeHint" class="hint hidden">2.5D isotropic approximation: the same radius is applied laterally and along Z.</div>
-          <div class="field-row"><label>Selection</label><select id="selectionMode"><option value="top">Top faces (model)</option><option value="imprinted">Patterns</option></select></div>
+          <div class="field-row"><label>Face</label><button id="flipFaceBtn" disabled>Front</button></div>
+          <div class="field-row"><label>Selection</label><select id="selectionMode"><option value="top">Full faces</option><option value="imprinted">Patterns</option></select></div>
           <div id="selectionInfo" class="hint">No pattern selected — the whole active face will be used.</div>
+          <div class="operation-actions"><button id="applyPushPullBtn" class="primary">Apply operation</button><button id="undoOperationBtn" disabled title="Undo last geometry operation">Undo</button></div>
         </section>
 
         <section id="layoutSection" class="grow hidden">
@@ -89,7 +89,7 @@
               <label>Mask veil <input id="maskOpacity" type="range" min="0" max="100" value="35" /></label>
               <output id="maskOpacityValue">35%</output>
             </div>
-            <div class="hint">Drag A/B · wheel to zoom · drag empty space to pan · click a pattern/top face to select.</div>
+            <div class="hint">Drag A/B · wheel to zoom · drag empty space to pan · click a pattern/full face to select.</div>
             <div id="viewportCullInfo" class="hint"></div>
           </div>
         </section>
@@ -164,6 +164,6 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=snapshot-strip-v1"></script>
+  <script type="module" src="/static/app.js?v=auto-save-v1"></script>
 </body>
 </html>
