@@ -209,7 +209,23 @@ function formatThicknessRange(range){const [min,max]=range;return Math.abs(max-m
 function renderFigureLegend(){
   const box=$('figureLegend');if(!box)return;box.innerHTML='';const entries=layerLegendEntries();box.classList.toggle('hidden',!entries.length);if(!entries.length)return;
   const title=document.createElement('div');title.className='figure-legend-title';title.textContent='Figure legend';box.appendChild(title);
-  for(const entry of entries){const row=document.createElement('button');row.type='button';row.className='figure-legend-row';row.title='Change material name, color and display scale';row.addEventListener('click',()=>openLayerVisualDialog(entry.id));const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(name,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;row.append(sw,label,scale);box.appendChild(row);}
+  for(const entry of entries){
+    const row=document.createElement('button');row.type='button';row.className='figure-legend-row';
+    row.dataset.layerId=entry.id;
+    row.title='Click to change material name, color and display scale';
+    row.style.pointerEvents='auto';
+    const handler=(e)=>{ e.preventDefault(); e.stopPropagation(); console.log('legend click',entry.id); status('Opening '+entry.name+'…'); openLayerVisualDialog(entry.id); };
+    row.addEventListener('click',handler);
+    row.addEventListener('mousedown',(e)=>{ e.stopPropagation(); });
+    const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(name,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;row.append(sw,label,scale);box.appendChild(row);
+  }
+  // Delegated fallback — handles cases where per-row listeners are lost after async re-render
+  box.onclick=(e)=>{
+    const btn=e.target.closest('.figure-legend-row');
+    if(!btn || !btn.dataset.layerId) return;
+    e.preventDefault(); e.stopPropagation();
+    openLayerVisualDialog(btn.dataset.layerId);
+  };
   if(state.wafer) refreshExactThickness();
 }
 function editableLayerMaterial(id){if(id==='substrate')return state.wafer?.material||'Substrate';const solid=state.solids.find(s=>s.layerId===id);if(solid)return solid.material||layerVisual(id).name;const doping=state.dopings.find(d=>d.layerId===id);return doping?.dopant||layerVisual(id).name.replace(/^Doping\s*·\s*/,'');}
@@ -217,13 +233,22 @@ function renameLayerMaterial(id,name){if(id==='substrate'){state.wafer.material=
 function openLayerVisualDialog(id){
   try{
     const v=layerVisual(id); editingLayerVisualId=id;
-    $('layerVisualName').value=editableLayerMaterial(id);
-    $('layerVisualColor').value=v.color;
-    $('layerVisualScale').value=formatDisplayNumber(v.scale);
-    $('layerVisualError').classList.add('hidden');
-    const dlg=$('layerVisualDialog');
+    const nameEl=$('layerVisualName'), colorEl=$('layerVisualColor'), scaleEl=$('layerVisualScale'), errEl=$('layerVisualError'), dlg=$('layerVisualDialog');
+    if(!nameEl||!colorEl||!scaleEl||!dlg) throw new Error('Layer dialog elements missing');
+    nameEl.value=editableLayerMaterial(id);
+    colorEl.value=v.color;
+    scaleEl.value=formatDisplayNumber(v.scale);
+    errEl.classList.add('hidden');
+    if(typeof dlg.showModal !== 'function'){
+      dlg.setAttribute('open','');
+      dlg.style.display='block';
+      status('Opened '+v.name+' (fallback)');
+      return;
+    }
     if(dlg.open) dlg.close();
     dlg.showModal();
+    // Ensure dialog is on top
+    dlg.style.zIndex='9999';
   }catch(e){
     console.error('openLayerVisualDialog failed', e);
     status('Cannot open layer dialog: '+e.message);
