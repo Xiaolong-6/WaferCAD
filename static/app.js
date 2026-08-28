@@ -586,15 +586,23 @@ function renderLayerList(){
   for(const layer of state.gds.layers){
     const item=document.createElement('div');item.className='layer-item'+(patternsMode && state.patternSelectedKeys.has(layer.key)?' selected-pattern':'');
     const head=document.createElement('div');head.className='layer-head';
-    const vis=document.createElement('input');vis.type='checkbox';vis.title='Toggle visibility in Top View';vis.checked=layer.visible!==false;vis.addEventListener('change',()=>{layer.visible=vis.checked;renderTop();});
-    const pat=document.createElement('input');pat.type='checkbox';pat.title='Include in Patterns Apply (multi-select)';pat.checked=state.patternSelectedKeys.has(layer.key);
+    // Visibility toggle with eye icon — always visible
+    const visLabel=document.createElement('label');visLabel.className='check-icon vis-check';visLabel.title='Show/hide in Top View (eye = visible)';
+    const vis=document.createElement('input');vis.type='checkbox';vis.checked=layer.visible!==false;vis.addEventListener('change',()=>{layer.visible=vis.checked;renderTop();});
+    const visIcon=document.createElement('span');visIcon.textContent='👁';visIcon.setAttribute('aria-hidden','true');
+    visLabel.append(vis,visIcon);
+    // Pattern selection toggle (only in Patterns mode) — amber, with explicit 'Use'
+    const patLabel=document.createElement('label');patLabel.className='check-icon pat-check';patLabel.title='Use in Patterns Apply — multi-select, combined on Apply';
+    const pat=document.createElement('input');pat.type='checkbox';pat.checked=state.patternSelectedKeys.has(layer.key);
     pat.addEventListener('change',()=>{
       if(pat.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key);
       updateSelectionInfo(); renderLayerList(); renderTop();
       status(pat.checked?`Pattern ${layer.layer}/${layer.datatype} selected.`:`Pattern ${layer.layer}/${layer.datatype} deselected.`);
     });
-    // Only show pattern checkbox in Patterns mode; keep visibility always
-    if(!patternsMode) pat.style.display='none';
+    if(!patternsMode) patLabel.style.display='none';
+    const patIcon=document.createElement('span');patIcon.textContent='⬢';patIcon.setAttribute('aria-hidden','true');
+    const patText=document.createElement('span');patText.textContent='Use';patText.style.fontSize='9px';
+    patLabel.append(pat,patIcon,patText);
     const sw=document.createElement('span');sw.className='layer-swatch';sw.style.background=layer.color;
     const strong=document.createElement('strong');
     strong.textContent=layer.alias||`Layer ${layer.layer}/${layer.datatype}`;
@@ -605,7 +613,7 @@ function renderLayerList(){
       if(value===null) return; layer.alias=value.trim(); renderLayerList(); renderTop();
     });
     const count=document.createElement('span');count.className='muted';count.textContent=`${layer.count||layer.polygons.length}`;
-    head.append(pat,vis,sw,strong,count);item.appendChild(head);
+    head.append(patLabel,visLabel,sw,strong,count);item.appendChild(head);
     const options=document.createElement('div');options.className='layer-options';
     const tone=document.createElement('label');tone.className='layer-tone';const invert=document.createElement('input');invert.type='checkbox';invert.checked=layer.inverted===true;
     invert.addEventListener('change',()=>{layer.inverted=invert.checked;status(`Layer ${layer.layer}/${layer.datatype} tone: ${layer.inverted?'inverted':'normal'}.`); renderTop();});
