@@ -10,7 +10,7 @@ const state = {
   cuts: [],
   dopings: [],
   layerVisuals: {},
-  gds: { filename: null, bbox: null, layers: [], topCells: [], activeTopCell: null, transform: {offsetX:0,offsetY:0,rotationDeg:0} },
+  gds: { filename: null, bbox: null, layers: [], topCells: [], activeTopCell: null, transform: {offsetX:0,offsetY:0,rotationDeg:0, scale:1} },
   imprintedFaces: [],
   selectedFaceIds: new Set(),
   patternSelectedKeys: new Set(),
@@ -170,10 +170,11 @@ function isPolyInViewport(poly, viewport){
   return bboxIntersects(bb, viewport);
 }
 function normalizeGds(gds){
-  const g={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0},hierarchy:[],...(gds||{})};
+  const g={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0, scale:1},hierarchy:[],...(gds||{})};
   g.layers=Array.isArray(g.layers)?g.layers:[];g.topCells=Array.isArray(g.topCells)?g.topCells:[];
   g.hierarchy=Array.isArray(g.hierarchy)?g.hierarchy:[];
-  g.transform={offsetX:0,offsetY:0,rotationDeg:0,...(g.transform||{})};
+  g.transform={offsetX:0,offsetY:0,rotationDeg:0, scale:1,...(g.transform||{})};
+  if(!Number.isFinite(Number(g.transform.scale)) || Number(g.transform.scale)<=0) g.transform.scale=1;
   return g;
 }
 function renderHierarchy(){
@@ -217,7 +218,7 @@ function renderHierarchy(){
     tree.appendChild(row);
   }
 }
-function transformPoint([x,y],transform=state.gds.transform){const a=(Number(transform?.rotationDeg)||0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a);return [x*c-y*s+(Number(transform?.offsetX)||0),x*s+y*c+(Number(transform?.offsetY)||0)];}
+function transformPoint([x,y],transform=state.gds.transform){const s=Number(transform?.scale)||1; const sx=x*s, sy=y*s; const a=(Number(transform?.rotationDeg)||0)*Math.PI/180,c=Math.cos(a),sn=Math.sin(a);return [sx*c-sy*sn+(Number(transform?.offsetX)||0),sx*sn+sy*c+(Number(transform?.offsetY)||0)];}
 function transformedPolygon(poly){return poly.map(p=>transformPoint(p));}
 function effectiveLayerPolygons(layer){return layer.fillPattern===true&&Array.isArray(layer.filledPolygons)?layer.filledPolygons:(layer.polygons||[]);}
 function transformedLayerPolygon(layer,poly){return poly.map(([x,y])=>transformPoint([layer.mirrored===true?-x:x,y]));}
@@ -568,13 +569,15 @@ async function applyPushPull(){
 function formatDisplayNumber(value){return String(Number(Number(value).toPrecision(10)));}
 function renderGdsControls(){
   const controls=$('gdsControls'),hasLayers=state.gds.layers.length>0;controls.classList.toggle('hidden',!hasLayers);if(!hasLayers)return;
-  const topSelect=$('gdsTopCell'),allCells=(state.gds.hierarchy?.length? state.gds.hierarchy.map(c=>c.name): (state.gds.topCells||[]));topSelect.innerHTML='';
-  const topSet=new Set(state.gds.topCells||[]);
-  for(const name of allCells){const option=document.createElement('option');option.value=name;option.textContent=name + (topSet.has(name)?' ★':'' );option.selected=name===state.gds.activeTopCell;topSelect.appendChild(option);}
-  const scale=UNIT_TO_UM[gdsAlignmentUnit],transform=state.gds.transform||{};
-  $('gdsOffsetX').value=formatDisplayNumber((Number(transform.offsetX)||0)/scale);$('gdsOffsetY').value=formatDisplayNumber((Number(transform.offsetY)||0)/scale);$('gdsRotation').value=formatDisplayNumber(Number(transform.rotationDeg)||0);$('gdsAlignmentUnit').value=gdsAlignmentUnit;
-  // Live preview: alignment remains editable even after geometry exists
-  const disabled=!gdsSourceFile;for(const el of [$('gdsOffsetX'),$('gdsOffsetY'),$('gdsRotation'),$('gdsAlignmentUnit'),$('applyGdsAlignmentBtn')])el.disabled=disabled;topSelect.disabled=disabled||allCells.length<2;
+  const uScale=UNIT_TO_UM[gdsAlignmentUnit],transform=state.gds.transform||{};
+  $('gdsOffsetX').value=formatDisplayNumber((Number(transform.offsetX)||0)/uScale);
+  $('gdsOffsetY').value=formatDisplayNumber((Number(transform.offsetY)||0)/uScale);
+  $('gdsRotation').value=formatDisplayNumber(Number(transform.rotationDeg)||0);
+  $('gdsScale').value=formatDisplayNumber(Number(transform.scale)||1);
+  $('gdsAlignmentUnit').value=gdsAlignmentUnit;
+  // Live preview: alignment remains editable even after geometry exists; no lock
+  const disabled=!gdsSourceFile;
+  for(const el of [$('gdsOffsetX'),$('gdsOffsetY'),$('gdsRotation'),$('gdsScale'),$('gdsAlignmentUnit'),$('applyGdsAlignmentBtn')]) el.disabled=disabled;
 }
 function renderLayerList(){
   const box=$('layerList');box.innerHTML='';
@@ -586,13 +589,13 @@ function renderLayerList(){
   for(const layer of state.gds.layers){
     const item=document.createElement('div');item.className='layer-item'+(patternsMode && state.patternSelectedKeys.has(layer.key)?' selected-pattern':'');
     const head=document.createElement('div');head.className='layer-head';
-    // Visibility toggle with eye icon — always visible
-    const visLabel=document.createElement('label');visLabel.className='check-icon vis-check';visLabel.title='Show/hide in Top View (eye = visible)';
+    // Visibility toggle — plain checkbox with text
+    const visLabel=document.createElement('label');visLabel.className='check-text vis-check';visLabel.title='Show/hide in Top View';
     const vis=document.createElement('input');vis.type='checkbox';vis.checked=layer.visible!==false;vis.addEventListener('change',()=>{layer.visible=vis.checked;renderTop();});
-    const visIcon=document.createElement('span');visIcon.textContent='👁';visIcon.setAttribute('aria-hidden','true');
-    visLabel.append(vis,visIcon);
-    // Pattern selection toggle (only in Patterns mode) — amber, with explicit 'Use'
-    const patLabel=document.createElement('label');patLabel.className='check-icon pat-check';patLabel.title='Use in Patterns Apply — multi-select, combined on Apply';
+    const visText=document.createElement('span');visText.textContent='Show';
+    visLabel.append(vis,visText);
+    // Pattern selection toggle (only in Patterns mode)
+    const patLabel=document.createElement('label');patLabel.className='check-text pat-check';patLabel.title='Use in Patterns Apply — multi-select, combined on Apply';
     const pat=document.createElement('input');pat.type='checkbox';pat.checked=state.patternSelectedKeys.has(layer.key);
     pat.addEventListener('change',()=>{
       if(pat.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key);
@@ -600,9 +603,8 @@ function renderLayerList(){
       status(pat.checked?`Pattern ${layer.layer}/${layer.datatype} selected.`:`Pattern ${layer.layer}/${layer.datatype} deselected.`);
     });
     if(!patternsMode) patLabel.style.display='none';
-    const patIcon=document.createElement('span');patIcon.textContent='⬢';patIcon.setAttribute('aria-hidden','true');
-    const patText=document.createElement('span');patText.textContent='Use';patText.style.fontSize='9px';
-    patLabel.append(pat,patIcon,patText);
+    const patText=document.createElement('span');patText.textContent='Use';
+    patLabel.append(pat,patText);
     const sw=document.createElement('span');sw.className='layer-swatch';sw.style.background=layer.color;
     const strong=document.createElement('strong');
     strong.textContent=layer.alias||`Layer ${layer.layer}/${layer.datatype}`;
@@ -666,7 +668,7 @@ async function importGds(file,topCell=null,preserveTransform=false){
   if(!res.ok){const j=await res.json().catch(()=>({detail:res.statusText}));status(`Layout import: ${j.detail||res.statusText}`);return;}
   const data=await res.json();
   const previousTransform=preserveTransform?state.gds.transform:null,previousAliases=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.alias])),previousTones=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.inverted===true])),previousFills=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.fillPattern===true])),previousMirrors=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.mirrored===true]));
-  state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file;
+  state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file;
   // New file → clear pattern selection (layers changed)
   clearPatternSelection();
   for(const layer of state.gds.layers.filter(l=>l.fillPattern))await setLayerFillPattern(layer,true);
@@ -795,9 +797,15 @@ function bindUi(){
   $('gdsInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)importGds(f);e.target.value='';});
   $('sliceCoordinateUnit').addEventListener('change',()=>{const next=$('sliceCoordinateUnit').value;convertFields(['sliceAx','sliceAy','sliceBx','sliceBy'],sliceCoordinateUnit,next);sliceCoordinateUnit=next;});
   $('applySliceCoordinatesBtn').addEventListener('click',()=>{if(!state.slice)return;const values=['sliceAx','sliceAy','sliceBx','sliceBy'].map(id=>Number($(id).value));if(values.some(v=>!Number.isFinite(v))){status('A–B coordinates must be valid numbers.');return;}if(values[0]===values[2]&&values[1]===values[3]){status('A and B must be different points.');return;}const scale=UNIT_TO_UM[sliceCoordinateUnit];state.slice={a:{x:values[0]*scale,y:values[1]*scale},b:{x:values[2]*scale,y:values[3]*scale}};renderTop();renderSection();render3D();status('Applied A–B section coordinates.');});
-  $('gdsTopCell').addEventListener('change',async()=>{if(!gdsSourceFile)return;await importGds(gdsSourceFile,$('gdsTopCell').value,true);});
   $('gdsAlignmentUnit').addEventListener('change',()=>{const next=$('gdsAlignmentUnit').value;convertFields(['gdsOffsetX','gdsOffsetY'],gdsAlignmentUnit,next);gdsAlignmentUnit=next;});
-  $('applyGdsAlignmentBtn').addEventListener('click',()=>{const x=Number($('gdsOffsetX').value),y=Number($('gdsOffsetY').value),rotation=Number($('gdsRotation').value);if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(rotation)){status('GDS alignment values must be valid numbers.');return;}const scale=UNIT_TO_UM[gdsAlignmentUnit];state.gds.transform={offsetX:x*scale,offsetY:y*scale,rotationDeg:rotation};state.topBounds=null;fitLayout();renderAll();status(`Applied GDS alignment: X ${x} ${gdsAlignmentUnit}, Y ${y} ${gdsAlignmentUnit}, rotation ${rotation}°.`);});
+  $('applyGdsAlignmentBtn').addEventListener('click',()=>{
+    const x=Number($('gdsOffsetX').value),y=Number($('gdsOffsetY').value),rotation=Number($('gdsRotation').value),sc=Number($('gdsScale').value);
+    if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(rotation)||!Number.isFinite(sc)||sc<=0){status('Alignment values must be valid numbers (scale >0).');return;}
+    const scale=UNIT_TO_UM[gdsAlignmentUnit];
+    state.gds.transform={offsetX:x*scale,offsetY:y*scale,rotationDeg:rotation,scale:sc};
+    state.topBounds=null;fitLayout();renderAll();
+    status(`Applied alignment: X ${x} ${gdsAlignmentUnit}, Y ${y} ${gdsAlignmentUnit}, rotation ${rotation}°, scale ${sc}×.`);
+  });
   $('applyPushPullBtn').addEventListener('click',applyPushPull);$('snapshotBtn').addEventListener('click',createSnapshot);$('fitWaferBtn').addEventListener('click',fitWafer);$('fitLayoutBtn').addEventListener('click',fitLayout);
   $('zExag')?.addEventListener('input',()=>setZExag($('zExag').value,'slider'));
   $('zExagNumber')?.addEventListener('change',()=>setZExag($('zExagNumber').value,'number'));

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=patterns-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=patterns-v2" />
 </head>
 <body>
   <div id="app">
@@ -42,21 +42,21 @@
 
         <section id="layoutSection" class="grow hidden">
           <div class="section-title"><span>Layout layers</span><span id="gdsStatus" class="muted">none</span></div>
+          <div id="hierarchyPanel" class="hierarchy-panel hidden">
+            <div class="section-title"><span>Cell</span><span id="hierarchyMeta" class="muted"></span></div>
+            <div id="hierarchyTree" class="hierarchy-tree"></div>
+          </div>
+          <div id="layerList" class="layer-list empty-note">Import a GDSII or OASIS file to view its layers.</div>
           <div id="gdsControls" class="gds-controls hidden">
-            <label>Top cell<select id="gdsTopCell"></select></label>
-            <div class="gds-align-title"><span>Layout alignment</span><span class="muted">about layout origin</span></div>
+            <div class="gds-align-title"><span>Layout alignment</span><span class="muted">about layout origin · scale 1 = actual</span></div>
             <div class="gds-align-grid">
               <label>X<input id="gdsOffsetX" type="number" value="0" step="any" /></label>
               <label>Y<input id="gdsOffsetY" type="number" value="0" step="any" /></label>
               <label>Rotation<input id="gdsRotation" type="number" value="0" step="any" /></label>
+              <label>Scale<input id="gdsScale" type="number" value="1" step="0.01" min="0.01" /></label>
               <label>Unit<select id="gdsAlignmentUnit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></label>
             </div>
             <button id="applyGdsAlignmentBtn" class="small">Apply alignment</button>
-          </div>
-          <div id="layerList" class="layer-list empty-note">Import a GDSII or OASIS file to view its layers.</div>
-          <div id="hierarchyPanel" class="hierarchy-panel hidden">
-            <div class="section-title"><span>Cell hierarchy</span><span id="hierarchyMeta" class="muted"></span></div>
-            <div id="hierarchyTree" class="hierarchy-tree"></div>
           </div>
           <details id="imprintDebugDetails" class="imprint-debug">
             <summary>Debug: Imprint snapshot</summary>
@@ -160,6 +160,6 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=patterns-v1"></script>
+  <script type="module" src="/static/app.js?v=patterns-v2"></script>
 </body>
 </html>
