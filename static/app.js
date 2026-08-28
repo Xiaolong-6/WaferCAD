@@ -342,10 +342,12 @@ function lineCircleInterval(a,b,r){
 }
 function displayZ(z){
   if(!state.wafer)return 0;
-  const t=state.wafer.thickness, ex=state.zExag, substrateScale=validLayerScale(state.layerVisuals?.substrate?.scale);
-  if(z>=0) return z/t*0.8*ex;
-  if(z<=-t)return -0.8*ex*substrateScale-(Math.abs(z+t)/t)*0.8*ex;
-  return z/t*0.8*ex*substrateScale;
+  const xy=waferXYScale(), ex=state.zExag, t=state.wafer.thickness;
+  const substrateScale=validLayerScale(state.layerVisuals?.substrate?.scale);
+  // ×1 = true physical proportions (z scaled with same xy factor); slider is exaggeration
+  if(z>=0) return z*xy*ex;
+  if(z<=-t) return -t*xy*ex*substrateScale - Math.abs(z+t)*xy*ex;
+  return z*xy*ex*substrateScale;
 }
 function mappedDopingBounds(doping,layerDescriptors=solidLayerDescriptors()){
   let mapped;if(doping.targetLayerId==='substrate')mapped={zMin:displayZ(doping.zMin),zMax:displayZ(doping.zMax)};else mapped=mappedSolidBounds({layerId:doping.targetLayerId,zMin:doping.zMin,zMax:doping.zMax},layerDescriptors);
