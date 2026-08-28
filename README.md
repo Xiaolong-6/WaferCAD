@@ -6,36 +6,24 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
 
 ## What works in this MVP
 
-- Create a circular, rectangular, or coordinate-defined polygon wafer with independently selectable lateral/thickness units.
-- Import GDSII or OASIS and identify **each layer/datatype pair separately** using `gdstk`.
-- Choose a layout top cell and align it to the wafer with X/Y offsets and rotation.
-- Assign project-local aliases to layer/datatype pairs.
-- Clip every imprint and push/pull operation to the physical substrate outline.
-- Flip between front and back processing faces; backside additions and cuts use the wafer bottom surface.
-- Invert each mask layer inside the substrate to represent opposite photoresist/mask tone.
-- Optionally fill enclosed border-only mask geometry and mirror an individual layout layer left/right about the layout origin before imprinting.
-- Preserve imported polygons as vector geometry; no rasterization.
-- Show GDS layers independently in the Top View.
-- Imprint a chosen GDS layer into selectable patterned faces.
-- Select imprinted polygons and:
-  - **Pull up**: create a new extruded solid with a chosen material.
-  - **Push down**: consume stacked material layers from the active surface, then continue into the substrate.
-  - **Conformal grow**: apply the same physical radius laterally and along Z using a round-offset 2.5D approximation.
-  - **Isotropic etch**: laterally dilate the etch region and remove the substrate by the same depth.
-- Add a named dopant to the upper or lower part of a selected physical layer. Doping overlaps its target, does not change the surface, and appears as a gradient in Cross Section.
-- Undo geometry operations one at a time from the button beside Apply.
-- With no pattern selected, operations use the entire active face: Pull creates a blanket layer, while Push consumes any covering films before continuing into the substrate.
-- Linked views of the same model state:
-  - interactive 3D view;
-  - top view;
-  - live A–B cross section.
-- Switching to the back face mirrors Top View, animates the 3D camera through a continuous 180° transition to the underside, and flips the A–B section horizontally and vertically.
-- Drag A/B endpoints in the top view and update the cross section + 3D slice plane.
-- Enter exact A/B coordinates, zoom with the mouse wheel, and pan by dragging empty Top View space.
-- Save named snapshots of the current model and restore them later.
-- Save/open the whole project as JSON.
-- Use the in-canvas 3D figure legend to inspect each layer's read-only physical thickness (or local minimum–maximum), rename its material, change its color, and set an independent display-only Z scale (default ×1).
-- Show or hide viewport-spanning X/Y/Z axes and the model origin in 3D. The vertical global Z display slider in Cross Section scales the displayed height of the substrate and every layer.
+- Create a circular (with optional `Main flat` or `Notch` at `-Y` auto-sized per SEMI M1), rectangular, or coordinate-defined polygon wafer with independently selectable lateral/thickness units.
+- Import GDSII or OASIS and identify **each layer/datatype pair separately** using `gdstk`; browse the full cell hierarchy and choose any cell as the active top cell.
+- Viewport-cull Top View outside the current `topBounds` for smooth pan/zoom near the 20 000-polygon cap; `Mask veil` opacity is adjustable for alignment.
+- Assign project-local aliases by clicking a layer name (dotted underline) and set per-layer `Invert`, `Fill pattern`, `Mirror` with live Top preview.
+- For border-only closed shapes, `Use` is disabled until `Fill pattern` is enabled (filled outer contour), avoiding accidental ring masks.
+- Align the active cell to the wafer with `X/Y` offset, `Rotation` and global `Scale` (default 1, about layout origin) — live preview, no lock after geometry.
+- Clip every push/pull/conformal/isotropic operation to the exact wafer outline (including flat/notch and non-convex customs).
+- Flip between front and back processing faces (`Face: Front/Back` in the Geometry panel); backside Pull grows below `z=-thickness` and Push etches upward.
+- Geometry operation panel order: `Distance → Mode → Material → Face → Selection → Apply/Undo` at the bottom. `Selection` defaults to `Full faces` (topmost model faces, blue selectable in Top View); `Patterns` is multi-select (`Use` checkboxes, amber highlight, inverted layers hatched) and is applied as a combined mask (per-layer `S\layer` ∪ `S∩layer`).
+- Operations:
+  - **Pull up**: extruded solid with material.
+  - **Push down / Isotropic etch**: layer-by-layer consumption of the stack in depth order via `split-by-mask`, then substrate cut; fully consumed layers and their dopings are removed.
+  - **Conformal grow / Isotropic etch**: round `gdstk.offset` plus same Z distance (2.5D isotropic approximation).
+- Doping, Undo (50 steps), whole-face fallback, and per-layer/global Z display (true `×1` is isotropic, `Z display` is exaggeration) remain.
+- Linked views: interactive 3D (with `Show axes`), Top, and live `A–B` section (`×1` is true scale).
+- `Figure legend` shows per-layer thickness (exact planar partition for substrate, `atoms` count) and allows renaming/color/Z-scale; now reliably clickable via delegation.
+- `Snapshots` as a Google-Maps-style horizontal strip below `3D`: `+ Snapshot` in the header captures the current 3D perspective (`camera position/target` + thumb), new cards appear on the right, hover `×` to delete, click to restore (auto-saves the previous snapshot covering the current archive), and `New wafer` prompts to snapshot-save.
+- Save/open the whole project as JSON (version 7).
 
 ## Run
 
@@ -63,16 +51,14 @@ Three.js is pinned in `package-lock.json` and served locally by the FastAPI appl
 
 ## Basic workflow
 
-1. Create/open a wafer.
-2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file.
-3. Choose the top cell, then set any X/Y offset and rotation needed to align the layout origin with the wafer.
-4. The left panel lists separate layout `layer/datatype` pairs, e.g. `1/0`, `10/5`; optionally give them aliases.
-5. Press **Imprint** on a layer. Top-cell and alignment controls lock after imprinting to keep committed geometry consistent.
-6. Click one or more imprinted polygons in Top View (or use **Select faces**).
-7. Enter a distance and choose Pull, Push, Conformal grow, Isotropic etch, or Doping.
-8. Inspect the 3D model and A–B section.
-9. Press **Snapshot** to preserve the current fabrication state.
-10. Continue editing and create the next snapshot.
+1. Create/open a wafer (for circles optionally add a SEMI-sized `Main flat` or `Notch` at `-Y`).
+2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file; pick a `Cell` from the hierarchy as the active top cell.
+3. In `Patterns` mode check one or more `Use` layers (e.g. `1/0`, `10/5`), optionally alias by clicking the name, and set `Scale`/`X/Y`/`Rotation`/`Invert`/`Fill`/`Mirror` — all live in `Top`.
+4. Choose `Face: Front/Back`, then `Full faces` (click blue top regions) or `Patterns` (checked layers).
+5. Enter a distance and choose `Pull`, `Push`, `Conformal grow`, `Isotropic etch`, or `Doping` (`Face` + `Selection` decide the mask; empty selection uses the whole face).
+6. Inspect `3D` (true `×1`), `Top` (with `Mask veil` opacity) and `A–B` section.
+7. Click `+ Snapshot` in the header to capture the current `3D` perspective; find it in the strip below `3D`, switch by clicking cards (previous state is auto-saved).
+8. New wafer prompts to snapshot-save the current state first.
 
 ## Important limitations
 
@@ -81,10 +67,11 @@ This is an architectural/interaction MVP, not a finished CAD kernel.
 - Push/Isotropic etch consume the geometric stack in depth order, but do not yet model chemistry-dependent selectivity, etch stops, loading, redeposition or different rates per material.
 - Pull-up uses a 2.5D polygon extrusion. Conformal grow/isotropic etch use a round lateral offset plus the same Z distance; a true 3D sidewall shell, sloped profile, loading effect and transport model are not implemented.
 - Overlapping/stacked polygons use a centroid-based surface-height estimate for pull-up placement.
-- GDSII/OASIS hierarchy is read and top cells can be selected, but the editor still displays a flattened polygon view of the selected top cell rather than a hierarchy browser.
+- `Invert` multi-select currently unions per-layer `S\layer` / `S∩layer` (`(S\A)∪(S\B)`), which is per-layer tone; `S\(A∪B)` would require a different grouping.
+- `Top` inverted preview is hatched, not a true wafer-with-hole; precise inverted hole preview would need async Boolean preview.
 - No automatic process semantics (oxidation, deposition, lithography, etc.) yet.
-- The model uses physical dimensions internally but display Z is exaggerated for visibility.
+- At `×1` display Z is true isotropic; higher values are exaggeration for visibility.
 - Per-layer and global Z scaling are visualization settings only; they never change stored physical thicknesses.
-- Large layout files are capped at 20,000 flattened polygons in this MVP.
+- Large layout files are capped at 20,000 flattened polygons; Top View uses viewport culling but 20k SVG paths remain heavy when fully zoomed out.
 
 See `HANDOFF.md` before extending the project.

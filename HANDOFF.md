@@ -439,3 +439,49 @@ Known follow-up / not fully verified:
 - There was no synthetic GDS/OAS file in this baseline directory, so the new per-layer checkboxes were not exercised end-to-end through the browser file chooser in this batch; the fill backend itself was verified and the frontend passed syntax checks.
 - Substrate min–max thickness uses representative interior samples. It is reliable for ordinary disjoint or nested process regions, but an exact planar-partition calculation would be preferable for pathological overlapping cuts or strongly concave custom wafers.
 - The face-flip completion and editing-view state were browser-verified; a frame-by-frame visual regression test of the 720 ms camera trajectory has not yet been added.
+
+## 27. Exact thickness, top-face selection, hierarchy and viewport culling (2026-08-28)
+
+- New endpoint `POST /api/geometry/substrate-thickness` partitions the wafer by all cut footprints via `gdstk.boolean` and evaluates uniform thickness per atomic region, replacing the heuristic interior sampling (cap 5000 atoms). Frontend caches `state._exactThickness` and shows `atoms` in the legend.
+- Top-face selection: `Selection: Top faces (model)` now highlights the uppermost solid per XY point (via `topLayerAt`) as blue selectable regions in Top View; `Apply` consumes the selected solid footprints directly, preserving whole-face fallback.
+- Hierarchy is now browsable: `/api/gds/inspect` returns `hierarchy` with per-cell reference list and per-cell layer breakdown; frontend shows a `Cell hierarchy` panel and allows any cell (not only top-level) to be chosen as `activeTopCell`.
+- Top View viewport culling: GDS and imprinted/top regions outside `state.topBounds` are skipped via `polyBbox` intersection, with `viewportCullInfo` showing `drawn·culled` near the 20 000-polygon cap.
+
+## 28. True physical Z, uncapped input and left-panel reordering (2026-08-28)
+
+- `displayZ` now uses `waferXYScale()` so `×1` is true isotropic 1:1 (previously `0.8/t` schematic, ~17× exaggerated for 100 mm/500 µm). `3D` and cross-section share the same physical mapping.
+- `Z display` slider widened to `0.1–200` plus a numeric input `0.1–1000` with bidirectional sync (`setZExag`) and project clamp `0.1–1000`.
+- Aesthetics fix for the vertical control: `horizontal-tb` number field in a dedicated `z-number-row` (previous `∞` rotation fixed).
+- Left panel reordered per request: `Snapshots → Geometry operation (default Top faces) → Layout layers` where `Layout layers` is visible only when `Selection=Patterns`. `Patterns` is multi-select (`state.patternSelectedKeys`); `Use` vs `Show` checkboxes replace the previous amber/blue capsules, alias editing is now click-on-name (dotted underline). `Top cell` dropdown removed; hierarchy is the sole Cell picker. `Layout alignment` now includes global `Scale` (default 1, about layout origin, before mirror/rotation) and stays editable after geometry (live preview).
+
+## 29. Mask veil, border-only handling and wafer flat/notch (2026-08-28)
+
+- Top View mask veil: wafer-shaped semi-transparent overlay (`#cbd5e1`, opacity `maskBaseOpacity*0.7`, default `0.35`) with a `Mask veil 0–100%` slider for alignment. Selected `Use` layers are amber solid `0.38`, unselected faint `0.10`; inverted active layers use `inverted-hatch` (45° amber stripes) with dashed border.
+- Border-only closed shapes detected via `detectBorderOnly` (`≥3` polys, `sumArea/bboxArea<0.5`). Such layers are marked `isBorderOnly`, shown dashed and `Use` disabled until `Fill pattern` is enabled; `Apply` skips border-only without fill with a status hint.
+- Circle wafer now supports `Edge feature` at `-Y`: `None`, `Main flat` or `Notch`, sizes auto-derived from SEMI M1 (`15.88@50.8,22.22@76.2,32.5@100,42.5@125,57.5@150mm` interpolated, notch `90° V depth 1.0/0.7mm`). Outline generation replaces the bottom arc with the flat chord or V notch via `asin` and long-arc sampling.
+- Figure legend intermittency fixed: `z-index 10→30`, `isolation`, `pointer-events:auto`, delegated click on `#figureLegend` plus throttled `refreshExactThickness` → `updateFigureLegendThickness` instead of full re-render.
+
+## 30. Snapshot strip, auto-save and camera (2026-08-28)
+
+- Left `Snapshots` section removed. `+ Snapshot` moved to the header next to `Import layout`.
+- `3D` view now hosts a Google-Maps-style horizontal `snapshot-strip` (`snapshot-strip/track`) below the canvas, cards `148×86` with `thumb` (`preserveDrawingBuffer` `toDataURL`), name and `solids·cuts` meta, `×` delete on hover, newest on the right with auto-scroll, left/right scrollable.
+- Each snapshot stores `device` + `thumb` + `camera` (`position/target/up` via `captureCameraState`). Switching snapshots auto-saves the current `activeSnapshot` (device+thumb+camera, `updated`) covering the current archive before `restoreDeviceSnapshot` + `restoreCameraState`.
+- `New wafer` now prompts if a wafer exists: dialog `Save snapshot / Don't save / Cancel`; `Save` captures thumb+camera before opening `Create wafer`.
+- Project JSON bumped to version 7 (`view.maskBaseOpacity`, snapshot `camera/thumb`, wafer `edgeFeature`). Old 1–6 remain loadable.
+
+## 31. Invert semantics — natural decision (2026-08-28)
+
+- Backend `POST /api/geometry/mask-regions` keeps `S\mask` vs `S∩mask` single-layer correctness.
+- Multi-select `Patterns` remains per-layer independent `⋃(inverted? S\layer : S∩layer)` (e.g. `(S\A)∪(S\B)`), which matches per-layer `Invert` checkbox mental model. Preview now distinguishes inverted active layers with the amber hatch; `selectionInfo` appends a hint for `≥2` inverted or mixed (`S\A ∪ B`).
+- No change to `app.py:195`; only frontend preview and hint were added. Future `Top` hole preview for inverted could be added without backend change.
+
+Verification for this batch:
+
+- `node --check` and `ast.parse` pass.
+- `POST /api/geometry/substrate-thickness` with two overlapping cuts correctly returned `min 400 max 500` with `4 atoms`.
+- Top-face selection correctly highlighted the uppermost solid and applied via its footprint; hierarchy cell switch preserved transform and per-cell layer counts.
+- Viewport culling with a 20 000-polygon synthetic GDS showed `drawn·culled` and smooth pan/zoom; `true` `×1` Z now shows a thin wafer (`0.045` height for 100 mm/500 µm) and `×17` reproduces the old schematic thickness.
+- Flat (`100mm → 32.5mm flat at -Y`) and notch (`1mm V at -Y`) outlines verified in Top/3D/section and persisted through project save/load.
+- Figure legend now reliably opens the layer dialog on every click (delegated handler + throttled thickness update).
+- Snapshot strip captures 3D perspective, scrolls, deletes, and switching auto-saves the previous camera+device; new-wafer prompt correctly offers snapshot save.
+- Inverted single-layer `S\mask` and multi-layer `⋃` cases produce the expected hole preservation in `Top/3D/section`; striped preview matches the logical tone.
