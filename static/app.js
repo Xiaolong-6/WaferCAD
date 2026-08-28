@@ -155,6 +155,19 @@ function bboxPolys(polys){
   for(const poly of polys) for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
   return [x0,y0,x1,y1];
 }
+function polyBbox(poly){
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
+  return [x0,y0,x1,y1];
+}
+function bboxIntersects(a,b){
+  return !(a[2] < b[0] || a[0] > b[2] || a[3] < b[1] || a[1] > b[3]);
+}
+function isPolyInViewport(poly, viewport){
+  if(!viewport) return true;
+  const bb=polyBbox(poly);
+  return bboxIntersects(bb, viewport);
+}
 function normalizeGds(gds){
   const g={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0},hierarchy:[],...(gds||{})};
   g.layers=Array.isArray(g.layers)?g.layers:[];g.topCells=Array.isArray(g.topCells)?g.topCells:[];
@@ -172,11 +185,18 @@ function renderHierarchy(){
   tree.innerHTML='';
   const topSet=new Set(state.gds.topCells||[]);
   for(const cell of h){
-    const row=document.createElement('div');row.className='hierarchy-row'+(cell.name===state.gds.activeTopCell?' active':'');
+    const row=document.createElement('button');row.type='button';row.className='hierarchy-row'+(cell.name===state.gds.activeTopCell?' active':'');
+    row.disabled=!!state.imprintedFaces.length;
+    row.title=state.imprintedFaces.length?'Create a new wafer before switching cells':`Load ${cell.name} as active cell (flattened preview)`;
+    const head=document.createElement('div');head.className='hierarchy-head';
     const name=document.createElement('span');name.className='hierarchy-name';name.textContent=cell.name + (topSet.has(cell.name)?' ★':'');
-    name.title=cell.name===state.gds.activeTopCell?'Active top cell (flattened in preview)':'Cell';
     const cnt=document.createElement('span');cnt.className='muted';cnt.textContent=`${cell.local_polygon_count} polys`;
-    row.append(name,cnt);
+    head.append(name,cnt); row.appendChild(head);
+    if(cell.layers?.length){
+      const layers=document.createElement('div');layers.className='hierarchy-layers';
+      for(const l of cell.layers){const s=document.createElement('span');s.className='hierarchy-layer';s.textContent=`${l.layer}/${l.datatype}:${l.count}`;layers.appendChild(s);}
+      row.appendChild(layers);
+    }
     if(cell.references?.length){
       const refs=document.createElement('div');refs.className='hierarchy-refs';
       for(const r of cell.references){
@@ -186,6 +206,12 @@ function renderHierarchy(){
       }
       row.appendChild(refs);
     }
+    row.addEventListener('click', async()=>{
+      if(state.imprintedFaces.length){status('Create a new wafer before switching cells.');return;}
+      if(!gdsSourceFile){status('No layout file loaded.');return;}
+      if(cell.name===state.gds.activeTopCell) return;
+      await importGds(gdsSourceFile, cell.name, true);
+    });
     tree.appendChild(row);
   }
 }
@@ -231,19 +257,26 @@ function renderTop(){
   if(state.wafer)svg.appendChild(makeSvg('path',{d:polyPath(waferOutline()),fill:'#f0f1f2',stroke:'#626b75','stroke-width':'1.5'}));
 
   // Imported layout layers remain visually distinct by layer/datatype.
+  // Viewport culling: skip polys entirely outside topBounds (major win near 20k cap when zoomed/panned)
+  const viewport=state.topBounds;
+  let culled=0, drawn=0;
   for(const layer of state.gds.layers){
     if(layer.visible===false) continue;
     for(const sourcePoly of effectiveLayerPolygons(layer)){
       const poly=transformedLayerPolygon(layer,sourcePoly);
+      if(!isPolyInViewport(poly, viewport)){culled++; continue;}
+      drawn++;
       const path=makeSvg('path',{d:polyPath(poly),fill:layer.color,'fill-opacity':'0.12',stroke:layer.color,'stroke-opacity':'0.55','stroke-width':'1'});
       svg.appendChild(path);
     }
   }
+  if(culled>0) $('viewportCullInfo') && ($('viewportCullInfo').textContent=`${drawn} shown · ${culled} culled outside viewport`);
 
   if(isTopFaceSelection()){
     // Draw top-face model regions (solids covering active face) as selectable
     const solidsOnFace=state.solids.filter(s=>(s.side||'front')===state.activeFace);
     for(const solid of solidsOnFace){
+      if(!isPolyInViewport(solid.footprint, viewport)) continue;
       const isTop=topLayerAt(centroid(solid.footprint), state.activeFace)?.id===solid.id;
       if(!isTop) continue;
       const selected=state._topFaceSelection.selectedSolidIds.has(solid.id);
@@ -256,6 +289,7 @@ function renderTop(){
     // handled via svg background click below
   } else {
     for(const face of state.imprintedFaces.filter(face=>(face.side||'front')===state.activeFace)){
+      if(!isPolyInViewport(face.polygon, viewport)) continue;
       const selected=state.selectedFaceIds.has(face.id);
       const path=makeSvg('path',{d:polyPath(face.polygon),fill:selected?'#f59e0b':'#ffffff','fill-opacity':selected?'0.42':'0.08',stroke:selected?'#d97706':'#111827','stroke-width':selected?'2.2':'1.2','data-face':face.id});
       path.style.cursor='pointer';
@@ -457,11 +491,12 @@ async function applyPushPull(){
 function formatDisplayNumber(value){return String(Number(Number(value).toPrecision(10)));}
 function renderGdsControls(){
   const controls=$('gdsControls'),hasLayers=state.gds.layers.length>0;controls.classList.toggle('hidden',!hasLayers);if(!hasLayers)return;
-  const topSelect=$('gdsTopCell'),topCells=state.gds.topCells||[];topSelect.innerHTML='';
-  for(const name of topCells){const option=document.createElement('option');option.value=name;option.textContent=name;option.selected=name===state.gds.activeTopCell;topSelect.appendChild(option);}
+  const topSelect=$('gdsTopCell'),allCells=(state.gds.hierarchy?.length? state.gds.hierarchy.map(c=>c.name): (state.gds.topCells||[]));topSelect.innerHTML='';
+  const topSet=new Set(state.gds.topCells||[]);
+  for(const name of allCells){const option=document.createElement('option');option.value=name;option.textContent=name + (topSet.has(name)?' ★':'' );option.selected=name===state.gds.activeTopCell;topSelect.appendChild(option);}
   const scale=UNIT_TO_UM[gdsAlignmentUnit],transform=state.gds.transform||{};
   $('gdsOffsetX').value=formatDisplayNumber((Number(transform.offsetX)||0)/scale);$('gdsOffsetY').value=formatDisplayNumber((Number(transform.offsetY)||0)/scale);$('gdsRotation').value=formatDisplayNumber(Number(transform.rotationDeg)||0);$('gdsAlignmentUnit').value=gdsAlignmentUnit;
-  const locked=state.imprintedFaces.length>0;for(const el of [$('gdsOffsetX'),$('gdsOffsetY'),$('gdsRotation'),$('gdsAlignmentUnit'),$('applyGdsAlignmentBtn')])el.disabled=locked;topSelect.disabled=locked||!gdsSourceFile||topCells.length<2;$('gdsLockHint').classList.toggle('hidden',!locked);
+  const locked=state.imprintedFaces.length>0;for(const el of [$('gdsOffsetX'),$('gdsOffsetY'),$('gdsRotation'),$('gdsAlignmentUnit'),$('applyGdsAlignmentBtn')])el.disabled=locked;topSelect.disabled=locked||!gdsSourceFile||allCells.length<2;$('gdsLockHint').classList.toggle('hidden',!locked);
 }
 function renderLayerList(){
   const box=$('layerList');box.innerHTML='';

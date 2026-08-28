@@ -440,9 +440,13 @@ async def inspect_gds(
     if not top:
         raise HTTPException(400, "The GDS contains no top-level cell")
     top_by_name = {candidate.name: candidate for candidate in top}
-    if top_cell and top_cell not in top_by_name:
-        raise HTTPException(400, "Selected top cell is not a top-level cell in this GDS")
-    cell = top_by_name[top_cell] if top_cell else top[0]
+    all_by_name = {c.name: c for c in lib.cells}
+    if top_cell:
+        if top_cell not in all_by_name:
+            raise HTTPException(400, "Selected cell is not present in this GDS")
+        cell = all_by_name[top_cell]
+    else:
+        cell = top[0]
 
     # get_polygons includes polygons through references when depth is None.
     try:
@@ -520,10 +524,23 @@ async def inspect_gds(
             except TypeError:
                 local_polys = []
             local_count = len(local_polys) if isinstance(local_polys, list) else 0
+            # per-cell layer breakdown for selective import UI
+            cell_layer_map: dict[tuple[int,int], int] = {}
+            try:
+                for lp in (local_polys or []):
+                    try:
+                        lk = (int(lp.layer), int(lp.datatype))
+                    except Exception:
+                        continue
+                    cell_layer_map[lk] = cell_layer_map.get(lk, 0) + 1
+            except Exception:
+                cell_layer_map = {}
+            cell_layers = [{"layer": k[0], "datatype": k[1], "count": v} for k, v in sorted(cell_layer_map.items())]
         except Exception:
             refs = []
             local_count = 0
-        hierarchy.append({"name": c.name, "references": refs, "local_polygon_count": local_count})
+            cell_layers = []
+        hierarchy.append({"name": c.name, "references": refs, "local_polygon_count": local_count, "layers": cell_layers})
 
     return JSONResponse(
         {
