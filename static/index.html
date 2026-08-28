@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=axes-fill-mirror-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=z-fix-v2" />
 </head>
 <body>
   <div id="app">
@@ -90,12 +90,14 @@
         <section class="cross-section-panel">
           <div class="view-title"><span>Cross section A–B</span><span id="sectionMeta" class="muted"></span></div>
           <div class="cross-section-body">
-            <label class="z-display-control" title="Scale the displayed height of the substrate and every layer">
+            <div class="z-display-control" title="Scale the displayed height of the substrate and every layer">
               <span>Z display</span>
               <input id="zExag" type="range" min="0.1" max="200" value="8" step="0.1" orient="vertical" aria-label="Global Z display scale" />
-              <input id="zExagNumber" type="number" min="0.1" max="1000" step="0.1" value="8" aria-label="Z display value" style="width:56px" />
-              <output id="zExagValue">×8</output>
-            </label>
+              <div class="z-number-row">
+                <span class="z-prefix">×</span><input id="zExagNumber" type="number" min="0.1" max="1000" step="0.1" value="8" aria-label="Z display value" />
+              </div>
+              <output id="zExagValue" class="hidden">×8</output>
+            </div>
             <svg id="sectionSvg" viewBox="0 0 600 320" aria-label="Cross section"></svg>
           </div>
         </section>
@@ -154,6 +156,6 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=axes-flip-z-v1"></script>
+  <script type="module" src="/static/app.js?v=z-fix-v2"></script>
 </body>
 </html>
