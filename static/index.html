@@ -92,7 +92,8 @@
           <div class="cross-section-body">
             <label class="z-display-control" title="Scale the displayed height of the substrate and every layer">
               <span>Z display</span>
-              <input id="zExag" type="range" min="1" max="40" value="8" orient="vertical" aria-label="Global Z display scale" />
+              <input id="zExag" type="range" min="0.1" max="200" value="8" step="0.1" orient="vertical" aria-label="Global Z display scale" />
+              <input id="zExagNumber" type="number" min="0.1" max="1000" step="0.1" value="8" aria-label="Z display value" style="width:56px" />
               <output id="zExagValue">×8</output>
             </label>
             <svg id="sectionSvg" viewBox="0 0 600 320" aria-label="Cross section"></svg>

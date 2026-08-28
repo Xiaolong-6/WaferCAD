@@ -576,7 +576,25 @@ function createInfiniteAxes(){
   const origin=new THREE.Mesh(new THREE.SphereGeometry(.085,18,12),new THREE.MeshBasicMaterial({color:0x111827,depthTest:false,depthWrite:false}));origin.renderOrder=1001;origin.name='Origin';group.add(origin,createAxisLabel('X','#dc2626',[5.1,0,0]),createAxisLabel('Y','#16a34a',[0,5.1,0]),createAxisLabel('Z','#2563eb',[0,0,5.1]),createAxisLabel('O','#111827',[.18,.18,.18]));return group;
 }
 function updateAxesVisibility(){state.showAxes=$('showAxes').checked;if(axesGroup)axesGroup.visible=state.showAxes;status(state.showAxes?'3D origin and X/Y/Z axes shown.':'3D axes hidden.');}
-function syncViewControls(){if($('zExag')){$('zExag').value=String(state.zExag);$('zExagValue').value=`×${formatDisplayNumber(state.zExag)}`;}$('showAxes').checked=state.showAxes;if(axesGroup)axesGroup.visible=state.showAxes;}
+function syncViewControls(){
+  if($('zExag')){
+    $('zExag').value=String(Math.min(200, Math.max(0.1, state.zExag)));
+    if($('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(state.zExag);
+    $('zExagValue').value=`×${formatDisplayNumber(state.zExag)}`;
+  }
+  $('showAxes').checked=state.showAxes;if(axesGroup)axesGroup.visible=state.showAxes;
+}
+function setZExag(v, source='slider'){
+  let n=Number(v);
+  if(!Number.isFinite(n) || n<=0) return;
+  n=Math.min(1000, Math.max(0.1, n));
+  state.zExag=n;
+  // keep slider and number in sync without feedback loop
+  if(source!=='slider' && $('zExag')) $('zExag').value=String(Math.min(200, Math.max(0.1, n)));
+  if(source!=='number' && $('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(n);
+  if($('zExagValue')) $('zExagValue').value=`×${formatDisplayNumber(n)}`;
+  renderSection();render3D();
+}
 function animateThree(now=performance.now()){if(!renderer)return;requestAnimationFrame(animateThree);updateCameraFaceFlip(now);controls.update();renderer.render(scene,camera);}
 function disposeGroup(g){while(g.children.length){const o=g.children.pop();if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}}}
 function scaledPoly(poly,scale){return poly.map(([x,y])=>[x*scale,y*scale]);}
@@ -604,7 +622,7 @@ function render3D(){
 function saveProject(){
   ensureLayerVisuals();const payload={format:'wafercad-mvp',version:6,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,view:{zExag:state.zExag,showAxes:state.showAxes}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
 }
-async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(40,Math.max(1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name}.`);}catch(e){status(`Open project failed: ${e.message}`)}}
+async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name}.`);}catch(e){status(`Open project failed: ${e.message}`)}}
 
 function updateWaferShapeFields(){const shape=$('waferShape').value;$('waferCircleFields').classList.toggle('hidden',shape!=='circle');$('waferRectFields').classList.toggle('hidden',shape!=='rect');$('waferCustomFields').classList.toggle('hidden',shape!=='custom');}
 function convertFields(ids,fromUnit,toUnit){const ratio=UNIT_TO_UM[fromUnit]/UNIT_TO_UM[toUnit];for(const id of ids){const el=$(id),v=Number(el.value);if(Number.isFinite(v))el.value=String(Number((v*ratio).toPrecision(10)));}}
@@ -653,7 +671,11 @@ function bindUi(){
   $('gdsTopCell').addEventListener('change',async()=>{if(!gdsSourceFile)return;await importGds(gdsSourceFile,$('gdsTopCell').value,true);});
   $('gdsAlignmentUnit').addEventListener('change',()=>{const next=$('gdsAlignmentUnit').value;convertFields(['gdsOffsetX','gdsOffsetY'],gdsAlignmentUnit,next);gdsAlignmentUnit=next;});
   $('applyGdsAlignmentBtn').addEventListener('click',()=>{if(state.imprintedFaces.length){status('Alignment is locked after imprinting.');return;}const x=Number($('gdsOffsetX').value),y=Number($('gdsOffsetY').value),rotation=Number($('gdsRotation').value);if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(rotation)){status('GDS alignment values must be valid numbers.');return;}const scale=UNIT_TO_UM[gdsAlignmentUnit];state.gds.transform={offsetX:x*scale,offsetY:y*scale,rotationDeg:rotation};state.topBounds=null;fitLayout();renderAll();status(`Applied GDS alignment: X ${x} ${gdsAlignmentUnit}, Y ${y} ${gdsAlignmentUnit}, rotation ${rotation}°.`);});
-  $('applyPushPullBtn').addEventListener('click',applyPushPull);$('snapshotBtn').addEventListener('click',createSnapshot);$('fitWaferBtn').addEventListener('click',fitWafer);$('fitLayoutBtn').addEventListener('click',fitLayout);$('zExag').addEventListener('input',()=>{state.zExag=Number($('zExag').value);$('zExagValue').value=`×${formatDisplayNumber(state.zExag)}`;renderSection();render3D();});$('showAxes').addEventListener('change',updateAxesVisibility);$('saveProjectBtn').addEventListener('click',saveProject);$('openProjectInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)openProject(f);e.target.value='';});
+  $('applyPushPullBtn').addEventListener('click',applyPushPull);$('snapshotBtn').addEventListener('click',createSnapshot);$('fitWaferBtn').addEventListener('click',fitWafer);$('fitLayoutBtn').addEventListener('click',fitLayout);
+  $('zExag')?.addEventListener('input',()=>setZExag($('zExag').value,'slider'));
+  $('zExagNumber')?.addEventListener('change',()=>setZExag($('zExagNumber').value,'number'));
+  $('zExagNumber')?.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();$('zExagNumber').blur();}});
+  $('showAxes').addEventListener('change',updateAxesVisibility);$('saveProjectBtn').addEventListener('click',saveProject);$('openProjectInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)openProject(f);e.target.value='';});
   $('pushMode').addEventListener('change',updateOperationModeUi);updateOperationModeUi();
   $('selectionMode')?.addEventListener('change',()=>{state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();renderTop();status(isTopFaceSelection()?'Selection: top faces (model). Click a visible film top in Top View.':'Selection: imprinted faces.');});
   $('undoOperationBtn').addEventListener('click',undoOperation);
