@@ -98,3 +98,39 @@ test('Top view mirrors current model solids and substrate cuts', async ({ page }
   await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(0);
   await expect(page.locator('#topSvg [data-model-cut]')).toHaveCount(1);
 });
+
+
+test('Legend deletes only exposed top and bottom material layers', async ({ page }) => {
+  await page.goto('/?qa=playwright-outer-layer-delete');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+
+  await page.locator('#materialInput').fill('Front inner');
+  await page.locator('#distanceInput').fill('100');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+
+  await page.locator('#materialInput').fill('Front outer');
+  await page.locator('#distanceInput').fill('50');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+
+  await expect(page.getByRole('button', { name: 'Delete Front inner' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Delete Front outer' })).toHaveCount(1);
+
+  await page.locator('#flipFaceBtn').click();
+  await page.locator('#materialInput').fill('Back outer');
+  await page.locator('#distanceInput').fill('25');
+  await page.locator('#pushMode').selectOption('up');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.getByRole('button', { name: 'Delete Back outer' })).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Delete Front outer' }).click();
+  await expect(page.locator('#deleteLayerDialog')).toBeVisible();
+  await expect(page.locator('#deleteLayerMessage')).toContainText('exposed top layer');
+  await page.getByRole('button', { name: 'Delete layer' }).click();
+  await expect(page.locator('#figureLegend')).not.toContainText('Front outer');
+  await expect(page.getByRole('button', { name: 'Delete Front inner' })).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('#figureLegend')).toContainText('Front outer');
+  await expect(page.getByRole('button', { name: 'Delete Front inner' })).toHaveCount(0);
+});

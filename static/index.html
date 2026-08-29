@@ -183,9 +183,17 @@
     </form>
   </dialog>
 
+  <dialog id="deleteLayerDialog">
+    <form method="dialog" id="deleteLayerForm">
+      <h3>Delete outer layer</h3>
+      <p id="deleteLayerMessage" class="dialog-message"></p>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="confirmDeleteLayerBtn" type="button" class="danger">Delete layer</button></div>
+    </form>
+  </dialog>
+
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=top-projection-v1"></script>
+  <script type="module" src="/static/app.js?v=outer-layer-delete-v1"></script>
 </body>
 </html>

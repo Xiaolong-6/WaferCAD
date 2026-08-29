@@ -35,6 +35,7 @@ let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
 let editingLayerVisualId = null;
 let snapshotNamePurpose = 'snapshot';
+let pendingDeleteLayerId = null;
 
 function uid(prefix='id'){ return `${prefix}_${Math.random().toString(36).slice(2,10)}`; }
 function clone(v){ return JSON.parse(JSON.stringify(v)); }
@@ -170,6 +171,18 @@ function solidLayerDescriptors(){
   for(const solid of state.solids){const d=map.get(solid.layerId)||{id:solid.layerId,side:solid.side||'front',zMin:solid.zMin,zMax:solid.zMax,scale:validLayerScale(state.layerVisuals[solid.layerId]?.scale)};d.zMin=Math.min(d.zMin,solid.zMin);d.zMax=Math.max(d.zMax,solid.zMax);map.set(solid.layerId,d);}
   return [...map.values()];
 }
+function outerLayerPosition(id){
+  if(id==='substrate')return null;
+  const layers=solidLayerDescriptors(),current=layers.find(layer=>layer.id===id),eps=1e-7;
+  if(!current)return null;
+  const sameSide=layers.filter(layer=>layer.side===current.side);
+  if(current.side==='back'){
+    const bottom=Math.min(...sameSide.map(layer=>layer.zMin));
+    return Math.abs(current.zMin-bottom)<=eps?'bottom':null;
+  }
+  const top=Math.max(...sameSide.map(layer=>layer.zMax));
+  return Math.abs(current.zMax-top)<=eps?'top':null;
+}
 function mappedSolidBounds(solid,layers=solidLayerDescriptors()){
   const current=layers.find(d=>d.id===solid.layerId),rawMin=displayZ(solid.zMin),rawMax=displayZ(solid.zMax);if(!current)return {zMin:rawMin,zMax:rawMax};
   const eps=1e-7;
@@ -181,7 +194,7 @@ function mappedSolidBounds(solid,layers=solidLayerDescriptors()){
   const zMin=rawMin+offset;return {zMin,zMax:zMin+(rawMax-rawMin)*current.scale};
 }
 function layerLegendEntries(){
-  if(!state.wafer)return [];ensureLayerVisuals();const entries=[{id:'substrate',...state.layerVisuals.substrate,thickness:substrateThicknessRange()}];const seen=new Set();for(const solid of state.solids)if(!seen.has(solid.layerId)){seen.add(solid.layerId);entries.push({id:solid.layerId,...layerVisual(solid.layerId),thickness:pieceThicknessRange(state.solids.filter(s=>s.layerId===solid.layerId))});}for(const doping of state.dopings)if(!seen.has(doping.layerId)){seen.add(doping.layerId);entries.push({id:doping.layerId,...layerVisual(doping.layerId),thickness:pieceThicknessRange(state.dopings.filter(d=>d.layerId===doping.layerId))});}return entries;
+  if(!state.wafer)return [];ensureLayerVisuals();const entries=[{id:'substrate',kind:'substrate',...state.layerVisuals.substrate,thickness:substrateThicknessRange()}];const seen=new Set();for(const solid of state.solids)if(!seen.has(solid.layerId)){seen.add(solid.layerId);entries.push({id:solid.layerId,kind:'solid',outerPosition:outerLayerPosition(solid.layerId),...layerVisual(solid.layerId),thickness:pieceThicknessRange(state.solids.filter(s=>s.layerId===solid.layerId))});}for(const doping of state.dopings)if(!seen.has(doping.layerId)){seen.add(doping.layerId);entries.push({id:doping.layerId,kind:'doping',...layerVisual(doping.layerId),thickness:pieceThicknessRange(state.dopings.filter(d=>d.layerId===doping.layerId))});}return entries;
 }
 function pieceThicknessRange(pieces){const values=pieces.map(p=>Math.max(0,Number(p.zMax)-Number(p.zMin))).filter(Number.isFinite);return values.length?[Math.min(...values),Math.max(...values)]:[0,0];}
 function mergedIntervalLength(intervals){if(!intervals.length)return 0;const sorted=intervals.map(([a,b])=>[Math.min(a,b),Math.max(a,b)]).sort((a,b)=>a[0]-b[0]);let total=0,[lo,hi]=sorted[0];for(let i=1;i<sorted.length;i++){const [a,b]=sorted[i];if(a<=hi+1e-7)hi=Math.max(hi,b);else{total+=hi-lo;lo=a;hi=b;}}return total+hi-lo;}
@@ -232,16 +245,38 @@ function renderFigureLegend(){
   box.innerHTML='';const entries=layerLegendEntries();box.classList.toggle('hidden',!entries.length);if(!entries.length)return;
   const title=document.createElement('div');title.className='figure-legend-title';title.textContent='Figure legend';box.appendChild(title);
   for(const entry of entries){
-    const row=document.createElement('button');row.type='button';row.className='figure-legend-row';
+    const row=document.createElement('div');row.className='figure-legend-row';
     row.dataset.layerId=entry.id;
-    row.title='Click to change material name, color and display scale';
-    row.addEventListener('click',(e)=>{ e.preventDefault(); e.stopPropagation(); openLayerVisualDialog(entry.id); });
-    const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(name,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;row.append(sw,label,scale);box.appendChild(row);
+    const edit=document.createElement('button');edit.type='button';edit.className='figure-legend-edit';edit.title='Click to change material name, color and display scale';
+    const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(name,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;edit.append(sw,label,scale);row.appendChild(edit);
+    if(entry.kind==='solid'&&entry.outerPosition){const remove=document.createElement('button');remove.type='button';remove.className='figure-legend-delete';remove.textContent='×';remove.title=`Delete exposed ${entry.outerPosition} layer`;remove.setAttribute('aria-label',`Delete ${entry.name}`);remove.dataset.deleteLayerId=entry.id;remove.addEventListener('click',(event)=>{event.preventDefault();event.stopPropagation();openDeleteLayerDialog(entry.id);});row.appendChild(remove);}
+    box.appendChild(row);
   }
   if(state.wafer) refreshExactThickness();
 }
 function editableLayerMaterial(id){if(id==='substrate')return state.wafer?.material||'Substrate';const solid=state.solids.find(s=>s.layerId===id);if(solid)return solid.material||layerVisual(id).name;const doping=state.dopings.find(d=>d.layerId===id);return doping?.dopant||layerVisual(id).name.replace(/^Doping\s*·\s*/,'');}
 function renameLayerMaterial(id,name){if(id==='substrate'){state.wafer.material=name;state.layerVisuals[id].name=`Substrate · ${name}`;return;}const solids=state.solids.filter(s=>s.layerId===id);if(solids.length){for(const solid of solids)solid.material=name;state.layerVisuals[id].name=name;return;}const dopings=state.dopings.filter(d=>d.layerId===id);if(dopings.length){for(const doping of dopings)doping.dopant=name;state.layerVisuals[id].name=`Doping · ${name}`;}}
+function openDeleteLayerDialog(id){
+  const position=outerLayerPosition(id),entry=layerLegendEntries().find(item=>item.id===id);
+  if(!position||!entry){status('Only an exposed top or bottom material layer can be deleted.');return;}
+  pendingDeleteLayerId=id;
+  $('deleteLayerMessage').textContent=`Delete ${entry.name}, the exposed ${position} layer? Associated doping on this layer will also be removed.`;
+  const dialog=$('deleteLayerDialog');if(dialog.open)dialog.close();dialog.showModal();
+}
+function deleteOuterLayer(id){
+  const position=outerLayerPosition(id),entry=layerLegendEntries().find(item=>item.id===id);
+  if(!position||!entry){status('Layer deletion cancelled because it is no longer an exposed outer layer.');return;}
+  recordOperationUndo();
+  const removedSolidIds=new Set(state.solids.filter(s=>s.layerId===id).map(s=>s.id));
+  const removedDopingLayerIds=new Set(state.dopings.filter(d=>d.targetLayerId===id).map(d=>d.layerId));
+  state.solids=state.solids.filter(s=>s.layerId!==id);
+  state.dopings=state.dopings.filter(d=>d.targetLayerId!==id&&d.layerId!==id);
+  delete state.layerVisuals[id];
+  for(const dopingLayerId of removedDopingLayerIds)delete state.layerVisuals[dopingLayerId];
+  for(const solidId of removedSolidIds)state._topFaceSelection.selectedSolidIds.delete(solidId);
+  ensureLayerVisuals();updateSelectionInfo();renderAll();
+  status(`Deleted ${entry.name}, the exposed ${position} layer.`);
+}
 function openLayerVisualDialog(id){
   try{
     const v=layerVisual(id); editingLayerVisualId=id;
@@ -1153,6 +1188,8 @@ function bindUi(){
     saveNamedSnapshot(name);$('snapshotNameDialog').close('default');snapshotNamePurpose='snapshot';
     if(purpose==='new-wafer')requestAnimationFrame(()=>{loadWaferForm();$('waferDialog').showModal();});
   });
+  $('confirmDeleteLayerBtn').addEventListener('click',()=>{const id=pendingDeleteLayerId;pendingDeleteLayerId=null;$('deleteLayerDialog').close('default');if(id)deleteOuterLayer(id);});
+  $('deleteLayerDialog').addEventListener('close',()=>{if($('deleteLayerDialog').returnValue==='cancel')pendingDeleteLayerId=null;});
   $('flipFaceBtn').addEventListener('click',flipActiveFace);
   $('waferShape').addEventListener('change',updateWaferShapeFields);
   for(const select of waferLateralUnitSelects())select.addEventListener('change',()=>{const next=select.value;convertFields(['waferDiameter','waferWidth','waferHeight'],waferDialogLateralUnit,next);$('waferCoordinates').value=convertCoordinateTextUnits($('waferCoordinates').value,waferDialogLateralUnit,next);waferDialogLateralUnit=next;setWaferLateralUnit(next);updateWaferEdgeInfo();});
@@ -1201,6 +1238,7 @@ function bindUi(){
   const legendBox=$('figureLegend');
   if(legendBox && !legendBox._delegated){
     legendBox.addEventListener('click',(e)=>{
+      if(e.target.closest('.figure-legend-delete'))return;
       const btn=e.target.closest('.figure-legend-row');
       if(!btn || !btn.dataset.layerId) return;
       e.preventDefault(); e.stopPropagation();
