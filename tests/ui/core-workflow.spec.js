@@ -123,6 +123,19 @@ test('Legend deletes only exposed top and bottom material layers', async ({ page
   await page.getByRole('button', { name: 'Apply operation' }).click();
   await expect(page.getByRole('button', { name: 'Delete Back outer' })).toHaveCount(1);
 
+  await expect(page.locator('#figureLegend .figure-legend-name')).toHaveText([
+    'Front outer',
+    'Front inner',
+    'Substrate · Si',
+    'Back outer',
+  ]);
+  const frontOuterRow=page.locator('#figureLegend .figure-legend-row').filter({hasText:'Front outer'});
+  const frontInnerRow=page.locator('#figureLegend .figure-legend-row').filter({hasText:'Front inner'});
+  const backOuterRow=page.locator('#figureLegend .figure-legend-row').filter({hasText:'Back outer'});
+  await expect(frontOuterRow.locator('.figure-legend-badge')).toHaveText(['Front','Top']);
+  await expect(frontInnerRow.locator('.figure-legend-badge')).toHaveText(['Front']);
+  await expect(backOuterRow.locator('.figure-legend-badge')).toHaveText(['Back','Bottom']);
+
   await page.getByRole('button', { name: 'Delete Front outer' }).click();
   await expect(page.locator('#deleteLayerDialog')).toBeVisible();
   await expect(page.locator('#deleteLayerMessage')).toContainText('exposed top layer');

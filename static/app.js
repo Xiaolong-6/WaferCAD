@@ -194,7 +194,26 @@ function mappedSolidBounds(solid,layers=solidLayerDescriptors()){
   const zMin=rawMin+offset;return {zMin,zMax:zMin+(rawMax-rawMin)*current.scale};
 }
 function layerLegendEntries(){
-  if(!state.wafer)return [];ensureLayerVisuals();const entries=[{id:'substrate',kind:'substrate',...state.layerVisuals.substrate,thickness:substrateThicknessRange()}];const seen=new Set();for(const solid of state.solids)if(!seen.has(solid.layerId)){seen.add(solid.layerId);entries.push({id:solid.layerId,kind:'solid',outerPosition:outerLayerPosition(solid.layerId),...layerVisual(solid.layerId),thickness:pieceThicknessRange(state.solids.filter(s=>s.layerId===solid.layerId))});}for(const doping of state.dopings)if(!seen.has(doping.layerId)){seen.add(doping.layerId);entries.push({id:doping.layerId,kind:'doping',...layerVisual(doping.layerId),thickness:pieceThicknessRange(state.dopings.filter(d=>d.layerId===doping.layerId))});}return entries;
+  if(!state.wafer)return [];
+  ensureLayerVisuals();
+  const descriptors=solidLayerDescriptors();
+  const front=descriptors.filter(layer=>layer.side!=='back').sort((a,b)=>b.zMax-a.zMax||b.zMin-a.zMin);
+  const back=descriptors.filter(layer=>layer.side==='back').sort((a,b)=>b.zMax-a.zMax||b.zMin-a.zMin);
+  const dopingEntries=[],seenDoping=new Set();
+  for(const doping of state.dopings){
+    if(seenDoping.has(doping.layerId))continue;
+    seenDoping.add(doping.layerId);
+    dopingEntries.push({id:doping.layerId,kind:'doping',targetLayerId:doping.targetLayerId,...layerVisual(doping.layerId),thickness:pieceThicknessRange(state.dopings.filter(item=>item.layerId===doping.layerId))});
+  }
+  const usedDoping=new Set();
+  const attachedDoping=(targetLayerId)=>dopingEntries.filter(entry=>entry.targetLayerId===targetLayerId).map(entry=>{usedDoping.add(entry.id);return entry;});
+  const solidEntry=(layer)=>({id:layer.id,kind:'solid',sideLabel:layer.side==='back'?'Back':'Front',outerPosition:outerLayerPosition(layer.id),...layerVisual(layer.id),thickness:pieceThicknessRange(state.solids.filter(solid=>solid.layerId===layer.id))});
+  const entries=[];
+  for(const layer of front)entries.push(solidEntry(layer),...attachedDoping(layer.id));
+  entries.push({id:'substrate',kind:'substrate',...state.layerVisuals.substrate,thickness:substrateThicknessRange()},...attachedDoping('substrate'));
+  for(const layer of back)entries.push(solidEntry(layer),...attachedDoping(layer.id));
+  entries.push(...dopingEntries.filter(entry=>!usedDoping.has(entry.id)));
+  return entries;
 }
 function pieceThicknessRange(pieces){const values=pieces.map(p=>Math.max(0,Number(p.zMax)-Number(p.zMin))).filter(Number.isFinite);return values.length?[Math.min(...values),Math.max(...values)]:[0,0];}
 function mergedIntervalLength(intervals){if(!intervals.length)return 0;const sorted=intervals.map(([a,b])=>[Math.min(a,b),Math.max(a,b)]).sort((a,b)=>a[0]-b[0]);let total=0,[lo,hi]=sorted[0];for(let i=1;i<sorted.length;i++){const [a,b]=sorted[i];if(a<=hi+1e-7)hi=Math.max(hi,b);else{total+=hi-lo;lo=a;hi=b;}}return total+hi-lo;}
@@ -248,7 +267,7 @@ function renderFigureLegend(){
     const row=document.createElement('div');row.className='figure-legend-row';
     row.dataset.layerId=entry.id;
     const edit=document.createElement('button');edit.type='button';edit.className='figure-legend-edit';edit.title='Click to change material name, color and display scale';
-    const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(name,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;edit.append(sw,label,scale);row.appendChild(edit);
+    const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const nameLine=document.createElement('span');nameLine.className='figure-legend-name-line';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;nameLine.appendChild(name);if(entry.sideLabel){const sideBadge=document.createElement('span');sideBadge.className='figure-legend-badge';sideBadge.textContent=entry.sideLabel;nameLine.appendChild(sideBadge);}if(entry.outerPosition){const outerBadge=document.createElement('span');outerBadge.className='figure-legend-badge outer';outerBadge.textContent=entry.outerPosition[0].toUpperCase()+entry.outerPosition.slice(1);nameLine.appendChild(outerBadge);}const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(nameLine,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;edit.append(sw,label,scale);row.appendChild(edit);
     if(entry.kind==='solid'&&entry.outerPosition){const remove=document.createElement('button');remove.type='button';remove.className='figure-legend-delete';remove.textContent='×';remove.title=`Delete exposed ${entry.outerPosition} layer`;remove.setAttribute('aria-label',`Delete ${entry.name}`);remove.dataset.deleteLayerId=entry.id;remove.addEventListener('click',(event)=>{event.preventDefault();event.stopPropagation();openDeleteLayerDialog(entry.id);});row.appendChild(remove);}
     box.appendChild(row);
   }
