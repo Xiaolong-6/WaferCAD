@@ -17,15 +17,27 @@ function patTransform([x,y]){
 function effectiveLayer(l){ return l.fillPattern===true && Array.isArray(l.filledPolygons) ? l.filledPolygons : (l.polygons||[]); }
 
 let topBounds=null;
-function fitPat(){
+let fitMode='gds'; // gds | wafer | both
+function fitPat(mode){
+  if(mode) fitMode=mode;
   const outline=waferOutline();
   const waferBB = outline.length ? bboxPolys([outline]) : null;
-  const gdsBB = state.gds.bbox ? [...state.gds.bbox] : null;
+  // compute transformed GDS bbox (after patTransform) for accurate fit
+  let gdsTransBB=null;
+  if(state.gds.layers.length){
+    const allTransPolys = state.gds.layers.flatMap(l=> effectiveLayer(l).map(p=>p.map(([x,y])=>patTransform([x,y]))));
+    if(allTransPolys.length) gdsTransBB = bboxPolys(allTransPolys);
+  }
+  if(!gdsTransBB && state.gds.bbox) gdsTransBB=[...state.gds.bbox];
   let bb=null;
-  if(waferBB && gdsBB) bb=[Math.min(waferBB[0],gdsBB[0]), Math.min(waferBB[1],gdsBB[1]), Math.max(waferBB[2],gdsBB[2]), Math.max(waferBB[3],gdsBB[3])];
-  else bb = waferBB || gdsBB || [-50000,-50000,50000,50000];
+  if(fitMode==='gds' && gdsTransBB) bb=[...gdsTransBB];
+  else if(fitMode==='wafer' && waferBB) bb=[...waferBB];
+  else if(waferBB && gdsTransBB) bb=[Math.min(waferBB[0],gdsTransBB[0]), Math.min(waferBB[1],gdsTransBB[1]), Math.max(waferBB[2],gdsTransBB[2]), Math.max(waferBB[3],gdsTransBB[3])];
+  else bb = waferBB || gdsTransBB || [-50000,-50000,50000,50000];
   topBounds = viewAspectBounds(bb,0.12);
   render();
+  // update button label
+  const btn=$('patFitBtn'); if(btn) btn.textContent = fitMode==='gds' ? 'Fit: GDS' : fitMode==='wafer' ? 'Fit: Wafer' : 'Fit: Both';
 }
 function modelToSvg(x,y){
   const [x0,y0,x1,y1]=topBounds||[-1,-1,1,1];
@@ -134,8 +146,9 @@ function renderCellSelector(){
     c.appendChild(hint);
   }
   sel.addEventListener('change',async()=>{
-    if(!gdsFile){ alert('No file loaded to switch cell'); return; }
-    const form=new FormData(); form.append('file', gdsFile); form.append('top_cell', sel.value);
+    const file = gdsFile || state._gdsFileBlob;
+    if(!file){ alert('No file loaded to switch cell — please re-import the GDS/OAS file'); return; }
+    const form=new FormData(); form.append('file', file); form.append('top_cell', sel.value);
     const res=await fetch('/api/gds/inspect',{method:'POST', body:form});
     if(!res.ok){ const j=await res.json().catch(()=>({detail:res.statusText})); alert(j.detail); return; }
     const data=await res.json();
@@ -175,6 +188,7 @@ function renderLayerList(){
 }
 
 async function importGds(file){
+  state._gdsFileBlob = file; state._gdsFileName = file.name;
   const form=new FormData(); form.append('file', file);
   $('patStatus').textContent=`Reading ${file.name}…`;
   const res=await fetch('/api/gds/inspect',{method:'POST', body:form});
@@ -207,7 +221,11 @@ window.patRender = ()=>{ loadShared(); renderLayerList(); render(); };
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
 const _patFit = document.getElementById('patFitBtn');
-if(_patFit) _patFit.addEventListener('click', fitPat);
+if(_patFit) _patFit.addEventListener('click', ()=>{
+  // cycle gds -> wafer -> both
+  fitMode = fitMode==='gds' ? 'wafer' : fitMode==='wafer' ? 'both' : 'gds';
+  fitPat();
+});
 // also allow main gdsInput to populate patterns when dock is used
 const _mainGds = document.getElementById('gdsInput');
 if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ loadShared(); renderLayerList(); render(); }, 300));
