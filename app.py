@@ -28,7 +28,10 @@ def index() -> FileResponse:
 
 @app.get("/patterns")
 def patterns_page() -> FileResponse:
-    return FileResponse(STATIC / "patterns.html")
+    # Old standalone page removed — redirect to dock in main (302)
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/", status_code=302)
 
 
 @app.get("/api/health")

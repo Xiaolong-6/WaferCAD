@@ -146,7 +146,14 @@ function renderCellSelector(){
     c.appendChild(hint);
   }
   sel.addEventListener('change',async()=>{
-    const file = gdsFile || state._gdsFileBlob;
+    let file = gdsFile || state._gdsFileBlob;
+    if(!file){
+      try{
+        const b64=sessionStorage.getItem('wafercad_gds_blob');
+        const name=sessionStorage.getItem('wafercad_gds_name')||'file.gds';
+        if(b64){ const bytes=Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); file=new File([bytes], name); gdsFile=file; state._gdsFileBlob=file; }
+      }catch{}
+    }
     if(!file){ alert('No file loaded to switch cell — please re-import the GDS/OAS file'); return; }
     const form=new FormData(); form.append('file', file); form.append('top_cell', sel.value);
     const res=await fetch('/api/gds/inspect',{method:'POST', body:form});
@@ -189,6 +196,12 @@ function renderLayerList(){
 
 async function importGds(file){
   state._gdsFileBlob = file; state._gdsFileName = file.name;
+  // persist file for cell switching after reload/dock switch (base64 in sessionStorage)
+  try{
+    const reader=new FileReader();
+    reader.onload=()=>{ try{ const b64=String(reader.result).split(',')[1]; sessionStorage.setItem('wafercad_gds_blob', b64); sessionStorage.setItem('wafercad_gds_name', file.name); }catch{} };
+    reader.readAsDataURL(file);
+  }catch{}
   const form=new FormData(); form.append('file', file);
   $('patStatus').textContent=`Reading ${file.name}…`;
   const res=await fetch('/api/gds/inspect',{method:'POST', body:form});

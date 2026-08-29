@@ -75,8 +75,17 @@ export function loadSharedState(){
     if(d.zExag!==undefined) state.zExag=d.zExag;
     if(d.showAxes!==undefined) state.showAxes=d.showAxes;
     if(d.maskBaseOpacity!==undefined) state.maskBaseOpacity=d.maskBaseOpacity;
-    // re-ensure Sets for topFaceSelection
     if(d._topFaceSelection && Array.isArray(d._topFaceSelection.selectedSolidIds)) state._topFaceSelection.selectedSolidIds=new Set(d._topFaceSelection.selectedSolidIds);
+    // restore file blob for cell switching (base64 stored on import)
+    try{
+      const b64=sessionStorage.getItem('wafercad_gds_blob');
+      const name=sessionStorage.getItem('wafercad_gds_name');
+      if(b64 && !state._gdsFileBlob){
+        const bytes=Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+        state._gdsFileBlob=new File([bytes], name||'file.gds');
+        state._gdsFileName=name||'file.gds';
+      }
+    }catch{}
     return true;
   }catch{ return false; }
 }

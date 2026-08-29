@@ -560,7 +560,8 @@ async function importGds(file,topCell=null,preserveTransform=false){
   if(!res.ok){const j=await res.json().catch(()=>({detail:res.statusText}));status(`Layout import: ${j.detail||res.statusText}`);return;}
   const data=await res.json();
   const previousTransform=preserveTransform?state.gds.transform:null,previousAliases=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.alias])),previousTones=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.inverted===true])),previousFills=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.fillPattern===true])),previousMirrors=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.mirrored===true]));
-  state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file;
+  state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file; state._gdsFileBlob=file; state._gdsFileName=file.name;
+  try{ const r=new FileReader(); r.onload=()=>{ try{ const b64=String(r.result).split(',')[1]; sessionStorage.setItem('wafercad_gds_blob', b64); sessionStorage.setItem('wafercad_gds_name', file.name); }catch{} }; r.readAsDataURL(file); }catch{}
   for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);
   // New file → clear pattern selection (layers changed)
   clearPatternSelection();
@@ -782,7 +783,10 @@ function loadWaferForm(){
 
 function bindUi(){
   legendController.bindUi();
-  $('newWaferBtn').addEventListener('click',()=>{
+  const _nwb=$('newWaferBtn');
+  console.log('bindUi newWaferBtn', !!_nwb, _nwb?.id);
+  if(_nwb) _nwb.addEventListener('click',()=>{
+    console.log('newWaferBtn clicked, wafer', !!state.wafer);
     if(state.wafer){
       const dlg=$('newWaferConfirmDialog');
       if(dlg.open) dlg.close();
@@ -790,7 +794,7 @@ function bindUi(){
     } else {
       loadWaferForm();$('waferDialog').showModal();
     }
-  });
+  }); else console.error('newWaferBtn not found at bindUi');
   $('newWaferConfirmSave')?.addEventListener('click',()=>{
     const dlg=$('newWaferConfirmDialog'); dlg.close();
     openSnapshotNameDialog('new-wafer');
