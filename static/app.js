@@ -13,6 +13,7 @@ let resizeObserver = null;
 let waferDialogLateralUnit = 'mm', waferDialogThicknessUnit = 'um';
 let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
+let sectionPan = null, sectionScale = 1, sectionTx = 0, sectionTy = 0;
 let snapshotNamePurpose = 'snapshot';
 const legendController=createLegendController({recordOperationUndo:()=>recordOperationUndo(),updateSelectionInfo:()=>updateSelectionInfo(),renderAll:()=>renderAll()});
 const renderFigureLegend=()=>legendController.render();
@@ -248,14 +249,50 @@ function bindTopNavigation(){
 function renderSection(){
   const svg=$('sectionSvg');clearSvg(svg);$('sectionMeta').textContent='';if(!state.wafer||!state.slice)return;const a=state.slice.a,b=state.slice.b,back=state.activeFace==='back',waferIntervals=linePolyIntervals(a,b,waferOutline()),layerDescriptors=solidLayerDescriptors(),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors)),mappedDopings=state.dopings.map(d=>mappedDopingBounds(d,layerDescriptors));
   const yMin=Math.min(-0.86,displayZ(-state.wafer.thickness)-.12,...mappedSolids.map(s=>s.zMin-.12),...mappedDopings.map(s=>s.zMin-.12)),yMax=Math.max(0.3,...mappedSolids.map(s=>s.zMax+.12),...mappedDopings.map(s=>s.zMax+.12)),mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>back?30+(z-yMin)/(yMax-yMin)*245:290-(z-yMin)/(yMax-yMin)*245,mapY=z=>mapDisplayY(displayZ(z)),rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
-  svg.appendChild(makeSvg('line',{x1:45,y1:mapDisplayY(0),x2:555,y2:mapDisplayY(0),stroke:'#b6bbc2','stroke-width':'1'}));
-  for(const waferI of waferIntervals){const xr=rectX(waferI[0],waferI[1]),yr=rectY(displayZ(-state.wafer.thickness),displayZ(0));svg.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate'}));}
-  for(const cut of state.cuts)for(const [t0,t1] of linePolyIntervals(a,b,cut.footprint)){const xr=rectX(t0,t1),yr=rectY(displayZ(cut.zMin),displayZ(cut.zMax));svg.appendChild(makeSvg('rect',{...xr,...yr,fill:'#fbfbfc',stroke:'#9ca3af','stroke-dasharray':'3 2'}));}
-  for(const solid of state.solids)for(const [t0,t1] of linePolyIntervals(a,b,solid.footprint)){const mapped=mappedSolidBounds(solid,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);svg.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual(solid.layerId).color,stroke:'#4b5563','data-layer-id':solid.layerId}));}
-  const defs=makeSvg('defs');svg.appendChild(defs);
-  for(const doping of state.dopings){const color=layerVisual(doping.layerId).color,gradientId=`gradient_${doping.layerId}`,highAtTop=(doping.position==='upper')!==back,gradient=makeSvg('linearGradient',{id:gradientId,x1:'0%',x2:'0%',y1:highAtTop?'100%':'0%',y2:highAtTop?'0%':'100%'});gradient.append(makeSvg('stop',{offset:'0%','stop-color':color,'stop-opacity':'0.08'}),makeSvg('stop',{offset:'100%','stop-color':color,'stop-opacity':'0.9'}));defs.appendChild(gradient);for(const [t0,t1] of linePolyIntervals(a,b,doping.footprint)){const mapped=mappedDopingBounds(doping,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);svg.appendChild(makeSvg('rect',{...xr,...yr,fill:`url(#${gradientId})`,stroke:color,'stroke-opacity':'.65','data-layer-id':doping.layerId,'data-doping':'true'}));}}
-  const labelY=back?17:310,ta=makeSvg('text',{x:back?558:35,y:labelY,'font-size':'12','font-weight':'700'});ta.textContent='A';svg.appendChild(ta);const tb=makeSvg('text',{x:back?35:558,y:labelY,'font-size':'12','font-weight':'700'});tb.textContent='B';svg.appendChild(tb);
+  const content=makeSvg('g',{id:'sectionContent',transform:`translate(${sectionTx},${sectionTy}) scale(${sectionScale})`});
+  content.appendChild(makeSvg('line',{x1:45,y1:mapDisplayY(0),x2:555,y2:mapDisplayY(0),stroke:'#b6bbc2','stroke-width':'1'}));
+  for(const waferI of waferIntervals){const xr=rectX(waferI[0],waferI[1]),yr=rectY(displayZ(-state.wafer.thickness),displayZ(0));content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate'}));}
+  for(const cut of state.cuts)for(const [t0,t1] of linePolyIntervals(a,b,cut.footprint)){const xr=rectX(t0,t1),yr=rectY(displayZ(cut.zMin),displayZ(cut.zMax));content.appendChild(makeSvg('rect',{...xr,...yr,fill:'#fbfbfc',stroke:'#9ca3af','stroke-dasharray':'3 2'}));}
+  for(const solid of state.solids)for(const [t0,t1] of linePolyIntervals(a,b,solid.footprint)){const mapped=mappedSolidBounds(solid,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual(solid.layerId).color,stroke:'#4b5563','data-layer-id':solid.layerId}));}
+  const defs=makeSvg('defs');content.appendChild(defs);
+  for(const doping of state.dopings){const color=layerVisual(doping.layerId).color,gradientId=`gradient_${doping.layerId}`,highAtTop=(doping.position==='upper')!==back,gradient=makeSvg('linearGradient',{id:gradientId,x1:'0%',x2:'0%',y1:highAtTop?'100%':'0%',y2:highAtTop?'0%':'100%'});gradient.append(makeSvg('stop',{offset:'0%','stop-color':color,'stop-opacity':'0.08'}),makeSvg('stop',{offset:'100%','stop-color':color,'stop-opacity':'0.9'}));defs.appendChild(gradient);for(const [t0,t1] of linePolyIntervals(a,b,doping.footprint)){const mapped=mappedDopingBounds(doping,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:`url(#${gradientId})`,stroke:color,'stroke-opacity':'.65','data-layer-id':doping.layerId,'data-doping':'true'}));}}
+  const labelY=back?17:310,ta=makeSvg('text',{x:back?558:35,y:labelY,'font-size':'12','font-weight':'700'});ta.textContent='A';content.appendChild(ta);const tb=makeSvg('text',{x:back?35:558,y:labelY,'font-size':'12','font-weight':'700'});tb.textContent='B';content.appendChild(tb);
+  svg.appendChild(content);
   const len=Math.hypot(b.x-a.x,b.y-a.y); $('sectionMeta').textContent=`${(len/1000).toFixed(2)} mm line · ${back?'backside flipped · ':''}schematic Z`;
+}
+function bindSectionNavigation(){
+  const svg=$('sectionSvg'); if(!svg) return;
+  svg.style.cursor='grab';
+  svg.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=svg.getBoundingClientRect();
+    const cx=(e.clientX-rect.left)/rect.width*600, cy=(e.clientY-rect.top)/rect.height*320;
+    const factor=Math.exp(-e.deltaY*0.0015);
+    const newScale=Math.min(8, Math.max(0.5, sectionScale*factor));
+    // adjust translation to keep cursor point stable
+    sectionTx = cx - (cx - sectionTx) * (newScale/sectionScale);
+    sectionTy = cy - (cy - sectionTy) * (newScale/sectionScale);
+    sectionScale=newScale;
+    const g=$('sectionContent'); if(g) g.setAttribute('transform',`translate(${sectionTx},${sectionTy}) scale(${sectionScale})`);
+  },{passive:false});
+  svg.addEventListener('pointerdown',e=>{
+    if(e.button!==0) return;
+    // don't interfere with slice handle if we add later
+    sectionPan={x:e.clientX, y:e.clientY, tx:sectionTx, ty:sectionTy};
+    svg.setPointerCapture(e.pointerId); svg.style.cursor='grabbing';
+  });
+  svg.addEventListener('pointermove',e=>{
+    if(!sectionPan) return;
+    sectionTx = sectionPan.tx + (e.clientX - sectionPan.x);
+    sectionTy = sectionPan.ty + (e.clientY - sectionPan.y);
+    const g=$('sectionContent'); if(g) g.setAttribute('transform',`translate(${sectionTx},${sectionTy}) scale(${sectionScale})`);
+  });
+  const end=()=>{ sectionPan=null; const s=$('sectionSvg'); if(s) s.style.cursor='grab'; };
+  svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end);
+  svg.addEventListener('dblclick',()=>{
+    sectionScale=1; sectionTx=0; sectionTy=0;
+    const g=$('sectionContent'); if(g) g.setAttribute('transform',`translate(0,0) scale(1)`);
+  });
 }
 
 function surfaceZAt(p,side='front'){
@@ -821,7 +858,7 @@ function bindUi(){
 }
 
 loadSharedState();
-bindUi();bindTopNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
+bindUi();bindTopNavigation();bindSectionNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
 // Dock switching: header stays, content toggles; info persists via core.state (no page reload)
 (function(){
   const mainWs=$('mainWorkspace'), patWs=$('patternsWorkspace'), btnMain=$('navMainBtn'), btnPat=$('navPatternsBtn');
