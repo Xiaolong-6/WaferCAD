@@ -1,4 +1,4 @@
-# Architecture — v0.2
+# Architecture — v0.3 (modular frontend)
 
 ## Domain vs renderer
 
@@ -20,20 +20,20 @@ Endpoints: `/api/gds/inspect` (any cell as active, per-cell breakdown, hierarchy
 
 `gdstk` objects are converted immediately to neutral JSON polygons so the rest of the project does not depend on `gdstk` types. Hierarchy is preserved for browsing but the editor still consumes a flattened view of the active cell.
 
-### `static/app.js`
+### `static/app.js` + `static/js/*`
 
-Owns the current project state and all MVP interactions. Still a single file for the vertical slice; split only when a clear boundary appears.
+`static/app.js` is now a thin orchestrator; domain logic lives in `static/js/` (ES modules, imported via importmap). Split occurred at v0.3 when the single-file vertical slice exceeded maintainability.
 
-Main responsibilities:
+- `static/js/core.js` — `state`, `DEFAULT_WAFER`, `UNIT_TO_UM`, `palette`, `uid/clone/status`, `NS`. Single source of truth for `state.wafer/solids/cuts/dopings/layerVisuals/gds/imprintedFaces/patternSelectedKeys/slice/snapshots/topBounds/zExag/showAxes/maskBaseOpacity/operationUndo/_exactThickness/_topFaceSelection`.
+- `static/js/geometry.js` — `normalizeWafer`, `waferOutline` (circle/rect/custom + `Main flat/Notch` at `-Y` auto-sized per SEMI M1 via `waferFlatLengthMm/waferNotchDepthMm`), `waferBounds/viewAspectBounds/waferXYScale`, `bboxPolys/polygonArea/orient/isSimplePolygon/pointInPoly/centroid/detectBorderOnly/polyBbox/bboxIntersects/isPolyInViewport/linePolyIntervals/lineCircleInterval`.
+- `static/js/geometry-api.js` — thin `fetch` wrappers `clipPolygonsToWafer`, `resolveMaskRegions`, `isotropicOffset`, `splitPolygonsByMask` (each `POST /api/geometry/*` with waferOutline clip and error mapping).
+- `static/js/layer-model.js` — `materialColor/validColor/validLayerScale/nextLayerName/ensureLayerVisuals/layerVisual/solidLayerDescriptors/outerLayerPosition/displayZ/mappedSolidBounds/mappedDopingBounds/pieceThicknessRange/substrateThicknessRange/layerLegendEntries/formatThickness/editableLayerMaterial/renameLayerMaterial/physicalLayerOptions`. `displayZ` and `mapped*Bounds` implement true `×1` (`z*waferXYScale()`) plus global `zExag` and per-layer `scale` (visual only).
+- `static/js/layout-model.js` — `normalizeGds`, `transformPoint` (`scale→mirror→rotate→offset` about layout origin), `effectiveLayerPolygons/transformedLayerPolygon/transformedGdsBounds/patternSelectedLayers/patternRawMaskPolygons/patternHasBlockedBorder`.
+- `static/js/legend-controller.js` — `createLegendController` (figure legend render, `refreshExactThickness` → `POST /api/geometry/substrate-thickness` with `atoms/exact`, edit/delete dialogs, delegated click `z-index 30`).
+- `static/js/svg.js` — `NS/makeSvg/clearSvg`.
+- `static/app.js` — owns `THREE`/`OrbitControls` setup, wafer dialog, GDS import (`importGds` preserving aliases/tones/fills/mirrors), `Full faces` (`topLayerAt`) vs `Patterns` (`∪(inverted?S\layer:S∩layer)`) vs legacy `Imprinted`, `push/pull/conformal/isotropic/doping` + layer-by-layer `split-by-mask` consumption, snapshots strip (`thumb` via `preserveDrawingBuffer` + `camera position/target/up`, auto-save on switch), save/open (JSON v7), `renderTop`/`renderSection`/`render3D` derivation, `mask veil`, `Z display`, hierarchy UI (`renderHierarchy`), slice handling.
 
-- wafer state (`circle` with optional `Main flat/Notch` at `-Y` auto-sized per SEMI, `rect`, `custom`; `normalizeWafer`/`waferOutline`);
-- GDS layer list + `Cell` single-select + `Layers` multi-select (`Use`/`Show`, `isBorderOnly` detection, `Fill` cache);
-- transform `scale` about layout origin (`transformPoint` does `scale→mirror→rotate→offset`);
-- viewport culling (`isPolyInViewport` vs `topBounds`);
-- `Full faces` (topmost solid) vs `Patterns` (combined mask, per-layer `S\layer` ∪ `S∩layer`) vs legacy `Imprinted` for selection;
-- push/pull/conformal/isotropic/doping + layer-by-layer `split-by-mask` consumption;
-- snapshots as a horizontal strip below `3D` with `thumb` (`preserveDrawingBuffer` `toDataURL`) and `camera` (`position/target/up`), auto-save on switch covering the current archive, `New wafer` confirmation dialog;
-- save/open (JSON version 7), top-view geometry, section, `Three.js` derivation, `figure legend` (exact thickness, delegated click), `mask veil` opacity, `Z display` uncapped.
+Previous monolithic `static/app.js` is preserved in git history (`515cd33` and earlier).
 
 ## Geometry units
 

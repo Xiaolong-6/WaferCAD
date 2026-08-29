@@ -1,30 +1,10 @@
-const $ = (id) => document.getElementById(id);
-const NS = 'http://www.w3.org/2000/svg';
-const palette = ['#2563eb','#dc2626','#059669','#7c3aed','#d97706','#0891b2','#db2777','#4f46e5','#65a30d','#9333ea'];
-
-const DEFAULT_WAFER = { shape: 'circle', diameter: 100000, thickness: 500, material: 'Si', displayUnits: {lateral:'mm',thickness:'um'}, edgeFeature: 'none' };
-const state = {
-  wafer: null, // internal geometry units: µm; null until the user creates or opens a wafer
-  activeFace: 'front',
-  solids: [],
-  cuts: [],
-  dopings: [],
-  layerVisuals: {},
-  gds: { filename: null, bbox: null, layers: [], topCells: [], activeTopCell: null, transform: {offsetX:0,offsetY:0,rotationDeg:0, scale:1} },
-  imprintedFaces: [],
-  selectedFaceIds: new Set(),
-  patternSelectedKeys: new Set(),
-  slice: null,
-  snapshots: [],
-  activeSnapshotId: null,
-  topBounds: null,
-  zExag: 8,
-  showAxes: false,
-  maskBaseOpacity: 0.35,
-  operationUndo: [],
-  _exactThickness: null,
-  _topFaceSelection: {enabled:false, selectedSolidIds:new Set()},
-};
+import {$,DEFAULT_WAFER,UNIT_TO_UM,clone,formatDisplayNumber,palette,rgbHexToInt,state,status,uid} from './js/core.js';
+import {bboxPolys,centroid,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
+import {clipPolygonsToWafer,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
+import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
+import {createLegendController} from './js/legend-controller.js';
+import {effectiveLayerPolygons,normalizeGds,patternHasBlockedBorder,patternRawMaskPolygons,patternSelectedLayers,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
+import {clearSvg,makeSvg} from './js/svg.js';
 
 let THREE = null, OrbitControls = null;
 let renderer = null, scene = null, camera = null, controls = null, deviceGroup = null, axesGroup = null;
@@ -33,349 +13,9 @@ let resizeObserver = null;
 let waferDialogLateralUnit = 'mm', waferDialogThicknessUnit = 'um';
 let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
-let editingLayerVisualId = null;
 let snapshotNamePurpose = 'snapshot';
-let pendingDeleteLayerId = null;
-
-function uid(prefix='id'){ return `${prefix}_${Math.random().toString(36).slice(2,10)}`; }
-function clone(v){ return JSON.parse(JSON.stringify(v)); }
-function status(msg){ $('statusText').textContent = msg; }
-const UNIT_TO_UM={nm:.001,um:1,mm:1000,cm:10000};
-function normalizeWafer(w){
-  const wafer={...(w||DEFAULT_WAFER)};
-  wafer.shape=wafer.shape||'circle';
-  wafer.thickness=Number(wafer.thickness)||500;
-  wafer.material=wafer.material||'Si';
-  wafer.displayUnits=wafer.displayUnits||{lateral:'mm',thickness:'um'};
-  wafer.edgeFeature=wafer.edgeFeature||'none';
-  if(wafer.shape==='circle') wafer.diameter=Number(wafer.diameter)||100000;
-  if(wafer.shape==='rect'){wafer.width=Number(wafer.width)||100000;wafer.height=Number(wafer.height)||100000;}
-  if(wafer.shape==='custom'&&(!Array.isArray(wafer.outline)||wafer.outline.length<3)) return {...wafer,shape:'circle',diameter:100000};
-  return wafer;
-}
-function waferFlatLengthMm(diameterMm){
-  if(diameterMm < 60) return 15.88;
-  if(diameterMm < 88){
-    const t=(diameterMm-50.8)/(76.2-50.8);
-    return 15.88 + t*(22.22-15.88);
-  }
-  if(diameterMm < 112){
-    const t=(diameterMm-76.2)/(100-76.2);
-    return 22.22 + t*(32.5-22.22);
-  }
-  if(diameterMm < 137){
-    const t=(diameterMm-100)/(125-100);
-    return 32.5 + t*(42.5-32.5);
-  }
-  if(diameterMm < 175){
-    const t=(diameterMm-125)/(150-125);
-    return 42.5 + t*(57.5-42.5);
-  }
-  return 57.5;
-}
-function waferNotchDepthMm(diameterMm){
-  return diameterMm >= 100 ? 1.0 : 0.7;
-}
-function waferOutline(wafer=state.wafer){
-  if(!wafer)return [];
-  const w=normalizeWafer(wafer);
-  if(w.shape==='custom') return w.outline.map(p=>[Number(p[0]),Number(p[1])]);
-  if(w.shape==='rect'){const x=w.width/2,y=w.height/2;return [[-x,-y],[x,-y],[x,y],[-x,y]];}
-  const r=w.diameter/2;
-  const edge=w.edgeFeature||'none';
-  if(edge==='flat'){
-    const diamMm=w.diameter/1000;
-    const flatMm=waferFlatLengthMm(diamMm);
-    const halfL=flatMm*1000/2;
-    if(halfL >= r){ // flat longer than diameter, fallback to circle
-      const points=[];for(let i=0;i<128;i++){const a=i/128*Math.PI*2;points.push([Math.cos(a)*r,Math.sin(a)*r]);}return points;
-    }
-    const theta=Math.asin(Math.min(1, halfL/r));
-    const yFlat=-Math.sqrt(Math.max(0, r*r - halfL*halfL));
-    const points=[];
-    // flat segment
-    points.push([-halfL, yFlat], [halfL, yFlat]);
-    // arc from right to left the long way (through top)
-    const startAngle=Math.asin(halfL/r) - Math.PI/2; // angle of right flat endpoint
-    // Actually right endpoint angle = -90° + theta = -PI/2 + theta
-    // left endpoint angle = -90° - theta = -PI/2 - theta
-    // We need to go from right (+halfL) around through top (0 to 360) to left (-halfL)
-    const aStart=-Math.PI/2 + theta;
-    const aEnd=-Math.PI/2 - theta + Math.PI*2; // add 2PI to go long way
-    const arcPoints=96;
-    for(let i=1;i<arcPoints;i++){
-      const t=i/arcPoints;
-      const a=aStart + t*(aEnd - aStart);
-      const aa=a % (Math.PI*2);
-      points.push([Math.cos(aa)*r, Math.sin(aa)*r]);
-    }
-    return points;
-  }
-  if(edge==='notch'){
-    const diamMm=w.diameter/1000;
-    const depthMm=waferNotchDepthMm(diamMm);
-    const depthUm=depthMm*1000;
-    const halfW=depthUm * Math.tan(45*Math.PI/180); // for 90° V, half width = depth
-    // notch tip at (0, -r + depth), opening at y=-r, x=±halfW
-    const yEdge=-r;
-    const yTip=-r + depthUm;
-    const theta=Math.asin(Math.min(1, halfW/r));
-    const points=[];
-    // left opening
-    points.push([-halfW, yEdge]);
-    // tip
-    points.push([0, yTip]);
-    // right opening
-    points.push([halfW, yEdge]);
-    // arc from right opening around to left opening (long way)
-    const aStart=-Math.PI/2 + theta;
-    const aEnd=-Math.PI/2 - theta + Math.PI*2;
-    const arcPoints=96;
-    for(let i=1;i<arcPoints;i++){
-      const t=i/arcPoints;
-      const a=aStart + t*(aEnd - aStart);
-      const aa=a % (Math.PI*2);
-      points.push([Math.cos(aa)*r, Math.sin(aa)*r]);
-    }
-    return points;
-  }
-  const points=[];for(let i=0;i<128;i++){const a=i/128*Math.PI*2;points.push([Math.cos(a)*r,Math.sin(a)*r]);}return points;
-}
-function waferBounds(){const outline=waferOutline();return outline.length?bboxPolys([outline]):[-1,-1,1,1];}
-function viewAspectBounds(bb,padFraction=.08){
-  let [x0,y0,x1,y1]=bb;let w=Math.max(x1-x0,1),h=Math.max(y1-y0,1);const pad=Math.max(w,h)*padFraction;x0-=pad;x1+=pad;y0-=pad;y1+=pad;w=x1-x0;h=y1-y0;
-  const target=600/420,current=w/h;if(current>target){const need=w/target-h;y0-=need/2;y1+=need/2;}else{const need=h*target-w;x0-=need/2;x1+=need/2;}return [x0,y0,x1,y1];
-}
-function waferXYScale(){const [x0,y0,x1,y1]=waferBounds();return 9/Math.max(x1-x0,y1-y0,1);}
-function materialColor(name){
-  let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))>>>0;
-  const colors=['#9ca3af','#60a5fa','#f59e0b','#34d399','#c084fc','#f87171','#22d3ee','#a3e635'];
-  return colors[h%colors.length];
-}
-function validColor(value,fallback='#9ca3af'){return /^#[0-9a-f]{6}$/i.test(value||'')?value:fallback;}
-function validLayerScale(value){const n=Number(value);return Number.isFinite(n)&&n>0?Math.min(n,100):1;}
-function nextLayerName(base){const names=new Set(Object.values(state.layerVisuals||{}).map(v=>v.name));if(!names.has(base))return base;let n=2;while(names.has(`${base} ${n}`))n++;return `${base} ${n}`;}
-function ensureLayerVisuals(){
-  state.layerVisuals=state.layerVisuals&&typeof state.layerVisuals==='object'?state.layerVisuals:{};
-  if(state.wafer){const old=state.layerVisuals.substrate||{};state.layerVisuals.substrate={name:old.name||`Substrate · ${state.wafer.material}`,color:validColor(old.color,materialColor(state.wafer.material)),scale:validLayerScale(old.scale)};}
-  const migrated=new Map();
-  for(const solid of state.solids){
-    if(!solid.layerId){const key=`${solid.side||'front'}|${solid.material}|${solid.zMin}|${solid.zMax}`;if(!migrated.has(key))migrated.set(key,uid('layer'));solid.layerId=migrated.get(key);}
-    const old=state.layerVisuals[solid.layerId]||{};state.layerVisuals[solid.layerId]={name:old.name||nextLayerName(solid.material||'Layer'),color:validColor(old.color,materialColor(solid.material||'Layer')),scale:validLayerScale(old.scale)};
-  }
-  for(const doping of state.dopings){const old=state.layerVisuals[doping.layerId]||{};state.layerVisuals[doping.layerId]={name:old.name||`Doping · ${doping.dopant||'Dopant'}`,color:validColor(old.color,materialColor(doping.dopant||'Dopant')),scale:validLayerScale(old.scale),gradient:true};}
-}
-function layerVisual(id){return state.layerVisuals?.[id]||{name:'Layer',color:'#9ca3af',scale:1};}
-function solidLayerDescriptors(){
-  ensureLayerVisuals();const map=new Map();
-  for(const solid of state.solids){const d=map.get(solid.layerId)||{id:solid.layerId,side:solid.side||'front',zMin:solid.zMin,zMax:solid.zMax,scale:validLayerScale(state.layerVisuals[solid.layerId]?.scale)};d.zMin=Math.min(d.zMin,solid.zMin);d.zMax=Math.max(d.zMax,solid.zMax);map.set(solid.layerId,d);}
-  return [...map.values()];
-}
-function outerLayerPosition(id){
-  if(id==='substrate')return null;
-  const layers=solidLayerDescriptors(),current=layers.find(layer=>layer.id===id),eps=1e-7;
-  if(!current)return null;
-  const sameSide=layers.filter(layer=>layer.side===current.side);
-  if(current.side==='back'){
-    const bottom=Math.min(...sameSide.map(layer=>layer.zMin));
-    return Math.abs(current.zMin-bottom)<=eps?'bottom':null;
-  }
-  const top=Math.max(...sameSide.map(layer=>layer.zMax));
-  return Math.abs(current.zMax-top)<=eps?'top':null;
-}
-function mappedSolidBounds(solid,layers=solidLayerDescriptors()){
-  const current=layers.find(d=>d.id===solid.layerId),rawMin=displayZ(solid.zMin),rawMax=displayZ(solid.zMax);if(!current)return {zMin:rawMin,zMax:rawMax};
-  const eps=1e-7;
-  if(current.side==='back'){
-    const offset=layers.filter(d=>d.id!==current.id&&d.side==='back'&&d.zMin>=current.zMax-eps).reduce((sum,d)=>sum+(d.scale-1)*(displayZ(d.zMax)-displayZ(d.zMin)),0);
-    const zMax=rawMax-offset;return {zMin:zMax-(rawMax-rawMin)*current.scale,zMax};
-  }
-  const offset=layers.filter(d=>d.id!==current.id&&d.side!=='back'&&d.zMax<=current.zMin+eps).reduce((sum,d)=>sum+(d.scale-1)*(displayZ(d.zMax)-displayZ(d.zMin)),0);
-  const zMin=rawMin+offset;return {zMin,zMax:zMin+(rawMax-rawMin)*current.scale};
-}
-function layerLegendEntries(){
-  if(!state.wafer)return [];
-  ensureLayerVisuals();
-  const descriptors=solidLayerDescriptors();
-  const front=descriptors.filter(layer=>layer.side!=='back').sort((a,b)=>b.zMax-a.zMax||b.zMin-a.zMin);
-  const back=descriptors.filter(layer=>layer.side==='back').sort((a,b)=>b.zMax-a.zMax||b.zMin-a.zMin);
-  const dopingEntries=[],seenDoping=new Set();
-  for(const doping of state.dopings){
-    if(seenDoping.has(doping.layerId))continue;
-    seenDoping.add(doping.layerId);
-    dopingEntries.push({id:doping.layerId,kind:'doping',targetLayerId:doping.targetLayerId,...layerVisual(doping.layerId),thickness:pieceThicknessRange(state.dopings.filter(item=>item.layerId===doping.layerId))});
-  }
-  const usedDoping=new Set();
-  const attachedDoping=(targetLayerId)=>dopingEntries.filter(entry=>entry.targetLayerId===targetLayerId).map(entry=>{usedDoping.add(entry.id);return entry;});
-  const solidEntry=(layer)=>({id:layer.id,kind:'solid',sideLabel:layer.side==='back'?'Back':'Front',outerPosition:outerLayerPosition(layer.id),...layerVisual(layer.id),thickness:pieceThicknessRange(state.solids.filter(solid=>solid.layerId===layer.id))});
-  const entries=[];
-  for(const layer of front)entries.push(solidEntry(layer),...attachedDoping(layer.id));
-  entries.push({id:'substrate',kind:'substrate',...state.layerVisuals.substrate,thickness:substrateThicknessRange()},...attachedDoping('substrate'));
-  for(const layer of back)entries.push(solidEntry(layer),...attachedDoping(layer.id));
-  entries.push(...dopingEntries.filter(entry=>!usedDoping.has(entry.id)));
-  return entries;
-}
-function pieceThicknessRange(pieces){const values=pieces.map(p=>Math.max(0,Number(p.zMax)-Number(p.zMin))).filter(Number.isFinite);return values.length?[Math.min(...values),Math.max(...values)]:[0,0];}
-function mergedIntervalLength(intervals){if(!intervals.length)return 0;const sorted=intervals.map(([a,b])=>[Math.min(a,b),Math.max(a,b)]).sort((a,b)=>a[0]-b[0]);let total=0,[lo,hi]=sorted[0];for(let i=1;i<sorted.length;i++){const [a,b]=sorted[i];if(a<=hi+1e-7)hi=Math.max(hi,b);else{total+=hi-lo;lo=a;hi=b;}}return total+hi-lo;}
-function substrateRemainingAt(point){const t=state.wafer.thickness,intervals=state.cuts.filter(c=>pointInPoly(point,c.footprint)).map(c=>[Math.max(-t,c.zMin),Math.min(0,c.zMax)]).filter(([a,b])=>b>a);return Math.max(0,t-mergedIntervalLength(intervals));}
-function polygonInteriorSamples(poly){const c=centroid(poly);return [c,...poly.map(([x,y])=>({x:x*.995+c.x*.005,y:y*.995+c.y*.005}))];}
-function substrateThicknessRange(){
-  if(state._exactThickness && state._exactThickness.min!=null) return [state._exactThickness.min, state._exactThickness.max];
-  const outline=waferOutline(),samples=polygonInteriorSamples(outline);for(const cut of state.cuts)samples.push(...polygonInteriorSamples(cut.footprint));const values=samples.filter(p=>pointInPoly(p,outline)).map(substrateRemainingAt);return values.length?[Math.min(...values),Math.max(...values)]:[state.wafer.thickness,state.wafer.thickness];
-}
-let _thicknessRefreshSeq=0;
-let _thicknessRefreshPending=false;
-async function refreshExactThickness(){
-  if(!state.wafer) {state._exactThickness=null; return;}
-  if(_thicknessRefreshPending) return;
-  _thicknessRefreshPending=true;
-  const seq=++_thicknessRefreshSeq;
-  try{
-    const payload={outline:waferOutline(),thickness:state.wafer.thickness,cuts:state.cuts.map(c=>({footprint:c.footprint,zMin:c.zMin,zMax:c.zMax}))};
-    const res=await fetch('/api/geometry/substrate-thickness',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!res.ok) return;
-    const data=await res.json();
-    if(seq!==_thicknessRefreshSeq) return;
-    state._exactThickness={min:Number(data.min),max:Number(data.max),atoms:data.atoms,exact:data.exact!==false};
-    updateFigureLegendThickness();
-  }catch(e){ /* keep heuristic */ } finally { _thicknessRefreshPending=false; }
-}
-function updateFigureLegendThickness(){
-  const box=$('figureLegend'); if(!box || box.classList.contains('hidden')) return;
-  const entries=layerLegendEntries();
-  const rows=box.querySelectorAll('.figure-legend-row');
-  for(let i=0;i<entries.length && i<rows.length;i++){
-    const entry=entries[i];
-    const row=rows[i];
-    const thickEl=row.querySelector('.figure-legend-thickness');
-    if(!thickEl) continue;
-    const exact=entry.id==='substrate'&&state._exactThickness;
-    thickEl.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms${exact.exact===false?' · approx.':''}`:''}`;
-  }
-  // If counts differ (e.g., after wafer change), fallback to full re-render
-  if(entries.length !== rows.length) renderFigureLegend();
-}
-function formatThickness(value){const v=Math.max(0,value);if(v>=1000)return `${formatDisplayNumber(v/1000)} mm`;if(v<1)return `${formatDisplayNumber(v*1000)} nm`;return `${formatDisplayNumber(v)} µm`;}
-function formatThicknessRange(range){const [min,max]=range;return Math.abs(max-min)<1e-7?formatThickness(max):`${formatThickness(min)}–${formatThickness(max)}`;}
-function renderFigureLegend(){
-  const box=$('figureLegend');if(!box)return;
-  // Preserve delegated handler — only clear rows, keep container listeners
-  const existingHandler=box._legendDelegated;
-  box.innerHTML='';const entries=layerLegendEntries();box.classList.toggle('hidden',!entries.length);if(!entries.length)return;
-  const title=document.createElement('div');title.className='figure-legend-title';title.textContent='Figure legend';box.appendChild(title);
-  for(const entry of entries){
-    const row=document.createElement('div');row.className='figure-legend-row';
-    row.dataset.layerId=entry.id;
-    const edit=document.createElement('button');edit.type='button';edit.className='figure-legend-edit';edit.title='Click to change material name, color and display scale';
-    const sw=document.createElement('span');sw.className='figure-legend-swatch';sw.style.background=entry.gradient?`linear-gradient(90deg,transparent,${entry.color})`:entry.color;const label=document.createElement('span');label.className='figure-legend-label';const nameLine=document.createElement('span');nameLine.className='figure-legend-name-line';const name=document.createElement('span');name.className='figure-legend-name';name.textContent=entry.name;nameLine.appendChild(name);if(entry.sideLabel){const sideBadge=document.createElement('span');sideBadge.className='figure-legend-badge';sideBadge.textContent=entry.sideLabel;nameLine.appendChild(sideBadge);}if(entry.outerPosition){const outerBadge=document.createElement('span');outerBadge.className='figure-legend-badge outer';outerBadge.textContent=entry.outerPosition[0].toUpperCase()+entry.outerPosition.slice(1);nameLine.appendChild(outerBadge);}const thickness=document.createElement('span');thickness.className='figure-legend-thickness';const exact=entry.id==='substrate'&&state._exactThickness;thickness.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;label.append(nameLine,thickness);const scale=document.createElement('span');scale.className='figure-legend-scale';scale.textContent=`×${formatDisplayNumber(entry.scale)}`;edit.append(sw,label,scale);row.appendChild(edit);
-    if(entry.kind==='solid'&&entry.outerPosition){const remove=document.createElement('button');remove.type='button';remove.className='figure-legend-delete';remove.textContent='×';remove.title=`Delete exposed ${entry.outerPosition} layer`;remove.setAttribute('aria-label',`Delete ${entry.name}`);remove.dataset.deleteLayerId=entry.id;remove.addEventListener('click',(event)=>{event.preventDefault();event.stopPropagation();openDeleteLayerDialog(entry.id);});row.appendChild(remove);}
-    box.appendChild(row);
-  }
-  if(state.wafer) refreshExactThickness();
-}
-function editableLayerMaterial(id){if(id==='substrate')return state.wafer?.material||'Substrate';const solid=state.solids.find(s=>s.layerId===id);if(solid)return solid.material||layerVisual(id).name;const doping=state.dopings.find(d=>d.layerId===id);return doping?.dopant||layerVisual(id).name.replace(/^Doping\s*·\s*/,'');}
-function renameLayerMaterial(id,name){if(id==='substrate'){state.wafer.material=name;state.layerVisuals[id].name=`Substrate · ${name}`;return;}const solids=state.solids.filter(s=>s.layerId===id);if(solids.length){for(const solid of solids)solid.material=name;state.layerVisuals[id].name=name;return;}const dopings=state.dopings.filter(d=>d.layerId===id);if(dopings.length){for(const doping of dopings)doping.dopant=name;state.layerVisuals[id].name=`Doping · ${name}`;}}
-function openDeleteLayerDialog(id){
-  const position=outerLayerPosition(id),entry=layerLegendEntries().find(item=>item.id===id);
-  if(!position||!entry){status('Only an exposed top or bottom material layer can be deleted.');return;}
-  pendingDeleteLayerId=id;
-  $('deleteLayerMessage').textContent=`Delete ${entry.name}, the exposed ${position} layer? Associated doping on this layer will also be removed.`;
-  const dialog=$('deleteLayerDialog');if(dialog.open)dialog.close();dialog.showModal();
-}
-function deleteOuterLayer(id){
-  const position=outerLayerPosition(id),entry=layerLegendEntries().find(item=>item.id===id);
-  if(!position||!entry){status('Layer deletion cancelled because it is no longer an exposed outer layer.');return;}
-  recordOperationUndo();
-  const removedSolidIds=new Set(state.solids.filter(s=>s.layerId===id).map(s=>s.id));
-  const removedDopingLayerIds=new Set(state.dopings.filter(d=>d.targetLayerId===id).map(d=>d.layerId));
-  state.solids=state.solids.filter(s=>s.layerId!==id);
-  state.dopings=state.dopings.filter(d=>d.targetLayerId!==id&&d.layerId!==id);
-  delete state.layerVisuals[id];
-  for(const dopingLayerId of removedDopingLayerIds)delete state.layerVisuals[dopingLayerId];
-  for(const solidId of removedSolidIds)state._topFaceSelection.selectedSolidIds.delete(solidId);
-  ensureLayerVisuals();updateSelectionInfo();renderAll();
-  status(`Deleted ${entry.name}, the exposed ${position} layer.`);
-}
-function openLayerVisualDialog(id){
-  try{
-    const v=layerVisual(id); editingLayerVisualId=id;
-    const nameEl=$('layerVisualName'), colorEl=$('layerVisualColor'), scaleEl=$('layerVisualScale'), errEl=$('layerVisualError'), dlg=$('layerVisualDialog');
-    if(!nameEl||!colorEl||!scaleEl||!dlg) throw new Error('Layer dialog elements missing');
-    nameEl.value=editableLayerMaterial(id);
-    colorEl.value=v.color;
-    scaleEl.value=formatDisplayNumber(v.scale);
-    errEl.classList.add('hidden');
-    if(typeof dlg.showModal !== 'function'){
-      dlg.setAttribute('open','');
-      dlg.style.display='block';
-      status('Opened '+v.name+' (fallback)');
-      return;
-    }
-    if(dlg.open) dlg.close();
-    dlg.showModal();
-    // Ensure dialog is on top
-    dlg.style.zIndex='9999';
-  }catch(e){
-    console.error('openLayerVisualDialog failed', e);
-    status('Cannot open layer dialog: '+e.message);
-  }
-}
-function rgbHexToInt(hex){ return parseInt(hex.replace('#',''),16); }
-function polygonArea(poly){let sum=0;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];sum+=a[0]*b[1]-b[0]*a[1];}return sum/2;}
-function orient(a,b,c){return (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);}
-function segmentsCross(a,b,c,d){return orient(a,b,c)*orient(a,b,d)<0&&orient(c,d,a)*orient(c,d,b)<0;}
-function isSimplePolygon(poly){for(let i=0;i<poly.length;i++)for(let j=i+1;j<poly.length;j++){if(j===i||j===(i+1)%poly.length||i===(j+1)%poly.length)continue;if(segmentsCross(poly[i],poly[(i+1)%poly.length],poly[j],poly[(j+1)%poly.length]))return false;}return true;}
-function pointInPoly(p, poly){
-  let inside=false;
-  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
-    const a=poly[i], b=poly[j];
-    const hit=((a[1]>p.y)!==(b[1]>p.y)) && (p.x < (b[0]-a[0])*(p.y-a[1])/(b[1]-a[1]+1e-30)+a[0]);
-    if(hit) inside=!inside;
-  }
-  return inside;
-}
-function centroid(poly){
-  let x=0,y=0; for(const p of poly){x+=p[0];y+=p[1];}
-  return {x:x/poly.length,y:y/poly.length};
-}
-function bboxPolys(polys){
-  if(!polys.length) return null;
-  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
-  for(const poly of polys) for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
-  return [x0,y0,x1,y1];
-}
-function detectBorderOnly(layer){
-  const polys=layer.polygons||[];
-  if(polys.length<3) return false;
-  const bb=bboxPolys(polys);
-  if(!bb) return false;
-  const bboxArea=(bb[2]-bb[0])*(bb[3]-bb[1]);
-  if(!bboxArea || !Number.isFinite(bboxArea)) return false;
-  let sum=0; for(const p of polys) sum+=Math.abs(polygonArea(p));
-  // Border frame: sum area is small vs bbox (ring). Solid block: sum ~ bbox
-  return sum / bboxArea < 0.5;
-}
-function polyBbox(poly){
-  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
-  for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
-  return [x0,y0,x1,y1];
-}
-function bboxIntersects(a,b){
-  return !(a[2] < b[0] || a[0] > b[2] || a[3] < b[1] || a[1] > b[3]);
-}
-function isPolyInViewport(poly, viewport){
-  if(!viewport) return true;
-  const bb=polyBbox(poly);
-  return bboxIntersects(bb, viewport);
-}
-function normalizeGds(gds){
-  const g={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0, scale:1},hierarchy:[],...(gds||{})};
-  g.layers=Array.isArray(g.layers)?g.layers:[];g.topCells=Array.isArray(g.topCells)?g.topCells:[];
-  g.hierarchy=Array.isArray(g.hierarchy)?g.hierarchy:[];
-  g.transform={offsetX:0,offsetY:0,rotationDeg:0, scale:1,...(g.transform||{})};
-  if(!Number.isFinite(Number(g.transform.scale)) || Number(g.transform.scale)<=0) g.transform.scale=1;
-  return g;
-}
+const legendController=createLegendController({recordOperationUndo:()=>recordOperationUndo(),updateSelectionInfo:()=>updateSelectionInfo(),renderAll:()=>renderAll()});
+const renderFigureLegend=()=>legendController.render();
 function renderHierarchy(){
   const panel=$('hierarchyPanel'), tree=$('hierarchyTree'), meta=$('hierarchyMeta');
   if(!panel||!tree) return;
@@ -417,26 +57,6 @@ function renderHierarchy(){
     tree.appendChild(row);
   }
 }
-function transformPoint([x,y],transform=state.gds.transform){const s=Number(transform?.scale)||1; const sx=x*s, sy=y*s; const a=(Number(transform?.rotationDeg)||0)*Math.PI/180,c=Math.cos(a),sn=Math.sin(a);return [sx*c-sy*sn+(Number(transform?.offsetX)||0),sx*sn+sy*c+(Number(transform?.offsetY)||0)];}
-function transformedPolygon(poly){return poly.map(p=>transformPoint(p));}
-function effectiveLayerPolygons(layer){return layer.fillPattern===true&&Array.isArray(layer.filledPolygons)?layer.filledPolygons:(layer.polygons||[]);}
-function transformedLayerPolygon(layer,poly){return poly.map(([x,y])=>transformPoint([layer.mirrored===true?-x:x,y]));}
-function transformedGdsBounds(){const polys=state.gds.layers.flatMap(layer=>effectiveLayerPolygons(layer).map(poly=>transformedLayerPolygon(layer,poly)));return polys.length?bboxPolys(polys):null;}
-function patternSelectedLayers(){return state.gds.layers.filter(l=>state.patternSelectedKeys.has(l.key));}
-function patternRawMaskPolygons(){
-  const out=[];
-  for(const layer of patternSelectedLayers()){
-    if(layer.isBorderOnly && !layer.fillPattern){
-      // Border-only closed shape without fill is not a valid mask by default
-      continue;
-    }
-    for(const poly of effectiveLayerPolygons(layer)) out.push({layer, poly: transformedLayerPolygon(layer, poly)});
-  }
-  return out;
-}
-function patternHasBlockedBorder(){
-  return patternSelectedLayers().some(l=>l.isBorderOnly && !l.fillPattern);
-}
 function setDefaultSlice(){if(!state.wafer){state.slice=null;return;}const [x0,y0,x1,y1]=waferBounds(),cy=(y0+y1)/2;state.slice={a:{x:x0+(x1-x0)*.175,y:cy},b:{x:x1-(x1-x0)*.175,y:cy}};}
 function currentDeviceSnapshot(){ensureLayerVisuals();return clone({wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,imprintedFaces:state.imprintedFaces});}
 function captureCameraState(){
@@ -453,9 +73,6 @@ function restoreCameraState(cam){
   }catch(e){ console.warn('restore camera failed',e); }
 }
 function restoreDeviceSnapshot(s){state.wafer=s.wafer?normalizeWafer(clone(s.wafer)):null;state.activeFace=s.activeFace||'front';state.solids=clone(s.solids||[]);state.cuts=clone(s.cuts||[]);state.dopings=clone(s.dopings||[]);state.layerVisuals=clone(s.layerVisuals||{});state.imprintedFaces=clone(s.imprintedFaces||[]);state.operationUndo=[];ensureLayerVisuals();state.selectedFaceIds.clear();clearPatternSelection();clearTopSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderAll();}
-
-function makeSvg(tag, attrs={}){ const e=document.createElementNS(NS,tag); for(const [k,v] of Object.entries(attrs)) e.setAttribute(k,v); return e; }
-function clearSvg(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
 
 function fitWafer(){state.topBounds=state.wafer?viewAspectBounds(waferBounds()):[-1,-1,1,1];renderTop();}
 function fitLayout(){
@@ -628,36 +245,6 @@ function bindTopNavigation(){
   const endSlice=()=>{if(!sliceDragName)return;sliceDragName=null;render3D();};window.addEventListener('pointerup',endSlice);window.addEventListener('pointercancel',endSlice);
 }
 
-function linePolyIntervals(a,b,poly){
-  const ts=[0,1], dx=b.x-a.x, dy=b.y-a.y;
-  for(let i=0;i<poly.length;i++){
-    const p=poly[i], q=poly[(i+1)%poly.length]; const ex=q[0]-p[0], ey=q[1]-p[1];
-    const den=dx*ey-dy*ex; if(Math.abs(den)<1e-12) continue;
-    const px=p[0]-a.x, py=p[1]-a.y; const t=(px*ey-py*ex)/den, u=(px*dy-py*dx)/den;
-    if(t>0&&t<1&&u>=0&&u<=1) ts.push(t);
-  }
-  ts.sort((x,y)=>x-y); const uniq=ts.filter((t,i)=>i===0||Math.abs(t-ts[i-1])>1e-7); const out=[];
-  for(let i=0;i<uniq.length-1;i++){const t0=uniq[i],t1=uniq[i+1],tm=(t0+t1)/2;const p={x:a.x+dx*tm,y:a.y+dy*tm};if(pointInPoly(p,poly))out.push([t0,t1]);}
-  return out;
-}
-function lineCircleInterval(a,b,r){
-  const dx=b.x-a.x,dy=b.y-a.y,A=dx*dx+dy*dy,B=2*(a.x*dx+a.y*dy),C=a.x*a.x+a.y*a.y-r*r,D=B*B-4*A*C;
-  if(D<0){return (a.x*a.x+a.y*a.y<r*r&&b.x*b.x+b.y*b.y<r*r)?[0,1]:null;}
-  const s=Math.sqrt(D),t0=(-B-s)/(2*A),t1=(-B+s)/(2*A); const lo=Math.max(0,Math.min(t0,t1)),hi=Math.min(1,Math.max(t0,t1)); return hi>lo?[lo,hi]:null;
-}
-function displayZ(z){
-  if(!state.wafer)return 0;
-  const xy=waferXYScale(), ex=state.zExag, t=state.wafer.thickness;
-  const substrateScale=validLayerScale(state.layerVisuals?.substrate?.scale);
-  // ×1 = true physical proportions (z scaled with same xy factor); slider is exaggeration
-  if(z>=0) return z*xy*ex;
-  if(z<=-t) return -t*xy*ex*substrateScale - Math.abs(z+t)*xy*ex;
-  return z*xy*ex*substrateScale;
-}
-function mappedDopingBounds(doping,layerDescriptors=solidLayerDescriptors()){
-  let mapped;if(doping.targetLayerId==='substrate')mapped={zMin:displayZ(doping.zMin),zMax:displayZ(doping.zMax)};else mapped=mappedSolidBounds({layerId:doping.targetLayerId,zMin:doping.zMin,zMax:doping.zMax},layerDescriptors);
-  const scale=validLayerScale(layerVisual(doping.layerId).scale),height=mapped.zMax-mapped.zMin;if(doping.position==='lower')return {zMin:mapped.zMin,zMax:mapped.zMin+height*scale};return {zMin:mapped.zMax-height*scale,zMax:mapped.zMax};
-}
 function renderSection(){
   const svg=$('sectionSvg');clearSvg(svg);$('sectionMeta').textContent='';if(!state.wafer||!state.slice)return;const a=state.slice.a,b=state.slice.b,back=state.activeFace==='back',waferIntervals=linePolyIntervals(a,b,waferOutline()),layerDescriptors=solidLayerDescriptors(),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors)),mappedDopings=state.dopings.map(d=>mappedDopingBounds(d,layerDescriptors));
   const yMin=Math.min(-0.86,displayZ(-state.wafer.thickness)-.12,...mappedSolids.map(s=>s.zMin-.12),...mappedDopings.map(s=>s.zMin-.12)),yMax=Math.max(0.3,...mappedSolids.map(s=>s.zMax+.12),...mappedDopings.map(s=>s.zMax+.12)),mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>back?30+(z-yMin)/(yMax-yMin)*245:290-(z-yMin)/(yMax-yMin)*245,mapY=z=>mapDisplayY(displayZ(z)),rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
@@ -729,24 +316,6 @@ function updateSelectionInfo(){
   const n=state.selectedFaceIds.size;$('selectionInfo').textContent=n?`${n} patterned face${n>1?'s':''} selected.`:`No pattern selected — the whole ${state.activeFace} face will be used.`;
 }
 
-async function clipPolygonsToWafer(polygons){
-  if(!state.wafer)return polygons.map(()=>[]);
-  let response;try{response=await fetch('/api/geometry/intersection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subjects:polygons,clip:waferOutline()})});}catch(e){throw new Error(`Substrate clipping request failed: ${e.message}`);}
-  if(!response.ok){const detail=await response.json().catch(()=>({detail:response.statusText}));throw new Error(detail.detail||response.statusText);}
-  const data=await response.json();if(!Array.isArray(data.results)||data.results.length!==polygons.length)throw new Error('Substrate clipping returned an invalid result.');return data.results;
-}
-async function resolveMaskRegions(maskPolygons,invert){
-  let response;try{response=await fetch('/api/geometry/mask-regions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mask:maskPolygons,substrate:waferOutline(),invert})});}catch(e){throw new Error(`Mask Boolean request failed: ${e.message}`);}
-  if(!response.ok){const detail=await response.json().catch(()=>({detail:response.statusText}));throw new Error(detail.detail||response.statusText);}const data=await response.json();if(!Array.isArray(data.regions))throw new Error('Mask Boolean operation returned an invalid result.');return data.regions;
-}
-async function isotropicOffset(polygons,distance){
-  let response;try{response=await fetch('/api/geometry/isotropic-offset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subjects:polygons,distance,clip:waferOutline()})});}catch(e){throw new Error(`Isotropic geometry request failed: ${e.message}`);}
-  if(!response.ok){const detail=await response.json().catch(()=>({detail:response.statusText}));throw new Error(detail.detail||response.statusText);}const data=await response.json();if(!Array.isArray(data.regions))throw new Error('Isotropic geometry operation returned an invalid result.');return data.regions;
-}
-async function splitPolygonsByMask(subjects,masks){
-  let response;try{response=await fetch('/api/geometry/split-by-mask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subjects,masks})});}catch(e){throw new Error(`Material split request failed: ${e.message}`);}
-  if(!response.ok){const detail=await response.json().catch(()=>({detail:response.statusText}));throw new Error(detail.detail||response.statusText);}const data=await response.json();if(!Array.isArray(data.remaining)||!Array.isArray(data.overlaps)||data.remaining.length!==subjects.length||data.overlaps.length!==subjects.length)throw new Error('Material split returned an invalid result.');return data;
-}
 async function buildMaterialConsumption(pieces,distance,mode){
   const groups=new Map(),eps=1e-7,t=state.wafer.thickness;
   for(const piece of pieces){const side=piece.face.side||state.activeFace,surface=surfaceZAt(centroid(piece.polygon),side),key=`${side}|${surface.toFixed(6)}`,group=groups.get(key)||{side,surface,masks:[]};group.masks.push(piece.polygon);groups.set(key,group);}
@@ -765,7 +334,6 @@ function cleanupConsumedLayers(previousNames){
   const activeDopingLayers=new Set(state.dopings.map(d=>d.layerId));for(const [id,visual] of Object.entries(state.layerVisuals))if(visual.gradient&&!activeDopingLayers.has(id))delete state.layerVisuals[id];
   return removed;
 }
-function physicalLayerOptions(){const entries=[{id:'substrate',name:layerVisual('substrate').name}];const seen=new Set();for(const solid of state.solids)if(!seen.has(solid.layerId)){seen.add(solid.layerId);entries.push({id:solid.layerId,name:layerVisual(solid.layerId).name});}return entries;}
 function renderDopingControls(){const select=$('dopingTargetLayer');if(!select)return;const previous=select.value,options=state.wafer?physicalLayerOptions():[];select.innerHTML='';for(const entry of options){const option=document.createElement('option');option.value=entry.id;option.textContent=entry.name;select.appendChild(option);}if(options.some(o=>o.id===previous))select.value=previous;select.disabled=!options.length;}
 function updateOperationModeUi(){const mode=$('pushMode').value,conformal=['conformal-grow','isotropic-etch'].includes(mode),doping=mode==='doping';$('operationModeHint').classList.toggle('hidden',!conformal);$('dopingControls').classList.toggle('hidden',!doping);$('materialFieldLabel').textContent=doping?'Dopant':'Material';$('materialInput').disabled=mode==='down'||mode==='isotropic-etch';renderDopingControls();updateSelectionInfo();}
 function captureOperationState(){return clone({solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals});}
@@ -846,7 +414,6 @@ async function applyPushPull(){
   state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();renderAll();
 }
 
-function formatDisplayNumber(value){return String(Number(Number(value).toPrecision(10)));}
 function renderGdsControls(){
   const controls=$('gdsControls'),hasLayers=state.gds.layers.length>0;controls.classList.toggle('hidden',!hasLayers);if(!hasLayers)return;
   const uScale=UNIT_TO_UM[gdsAlignmentUnit],transform=state.gds.transform||{};
@@ -1177,6 +744,7 @@ function loadWaferForm(){
 }
 
 function bindUi(){
+  legendController.bindUi();
   $('newWaferBtn').addEventListener('click',()=>{
     if(state.wafer){
       const dlg=$('newWaferConfirmDialog');
@@ -1207,8 +775,6 @@ function bindUi(){
     saveNamedSnapshot(name);$('snapshotNameDialog').close('default');snapshotNamePurpose='snapshot';
     if(purpose==='new-wafer')requestAnimationFrame(()=>{loadWaferForm();$('waferDialog').showModal();});
   });
-  $('confirmDeleteLayerBtn').addEventListener('click',()=>{const id=pendingDeleteLayerId;pendingDeleteLayerId=null;$('deleteLayerDialog').close('default');if(id)deleteOuterLayer(id);});
-  $('deleteLayerDialog').addEventListener('close',()=>{if($('deleteLayerDialog').returnValue==='cancel')pendingDeleteLayerId=null;});
   $('flipFaceBtn').addEventListener('click',flipActiveFace);
   $('waferShape').addEventListener('change',updateWaferShapeFields);
   for(const select of waferLateralUnitSelects())select.addEventListener('change',()=>{const next=select.value;convertFields(['waferDiameter','waferWidth','waferHeight'],waferDialogLateralUnit,next);$('waferCoordinates').value=convertCoordinateTextUnits($('waferCoordinates').value,waferDialogLateralUnit,next);waferDialogLateralUnit=next;setWaferLateralUnit(next);updateWaferEdgeInfo();});
@@ -1252,19 +818,6 @@ function bindUi(){
     status(isTopFaceSelection()?'Selection: full faces (model). Click a visible film top in Top View.':'Selection: Patterns — check layers below, adjust alignment/tone live, then Apply.');
   });
   $('undoOperationBtn').addEventListener('click',undoOperation);
-  $('applyLayerVisualBtn').addEventListener('click',()=>{const scale=Number($('layerVisualScale').value),name=$('layerVisualName').value.trim(),error=$('layerVisualError');if(!name){error.textContent='Material name cannot be empty.';error.classList.remove('hidden');return;}if(!Number.isFinite(scale)||scale<=0||scale>100){error.textContent='Display scale must be greater than 0 and no more than 100.';error.classList.remove('hidden');return;}if(!editingLayerVisualId||!state.layerVisuals[editingLayerVisualId])return;renameLayerMaterial(editingLayerVisualId,name);state.layerVisuals[editingLayerVisualId].color=validColor($('layerVisualColor').value);state.layerVisuals[editingLayerVisualId].scale=scale;$('layerVisualDialog').close('default');renderAll();status(`Updated ${state.layerVisuals[editingLayerVisualId].name}: display ×${formatDisplayNumber(scale)}.`);});
-  // Delegated figure legend — stable across async re-renders, fixes intermittent click loss
-  const legendBox=$('figureLegend');
-  if(legendBox && !legendBox._delegated){
-    legendBox.addEventListener('click',(e)=>{
-      if(e.target.closest('.figure-legend-delete'))return;
-      const btn=e.target.closest('.figure-legend-row');
-      if(!btn || !btn.dataset.layerId) return;
-      e.preventDefault(); e.stopPropagation();
-      openLayerVisualDialog(btn.dataset.layerId);
-    });
-    legendBox._delegated=true;
-  }
 }
 
 bindUi();bindTopNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
