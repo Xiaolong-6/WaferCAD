@@ -865,7 +865,7 @@ try{
     const bar=document.createElement('div');
     bar.id='restoreBanner';
     bar.style.cssText='position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:90;background:#fff;border:1px solid #d8dce1;border-radius:8px;padding:8px 12px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 12px rgba(0,0,0,.12);font-size:12px';
-    bar.innerHTML='<span style="color:#334155">Previous session found (refresh reset to empty)</span><button id="restoreBtn" class="small primary">Restore</button><button id="discardBtn" class="small">Dismiss</button>';
+    bar.innerHTML='<span style="color:#334155">Previous session found (refresh reset to empty)</span><button id="restoreBtn" class="small primary">Restore</button><button id="discardBtn" class="small">Reset</button>';
     document.body.appendChild(bar);
     document.getElementById('restoreBtn').onclick=()=>{
       const hadTopBounds = !!state.topBounds;
@@ -880,7 +880,16 @@ try{
       try{ const ts=localStorage.getItem('wafercad_last_save_ts'); status('Restored previous session'+(ts?' — '+new Date(Number(ts)).toLocaleString():'')); }catch{ status('Restored previous session.'); }
       bar.remove();
     };
-    document.getElementById('discardBtn').onclick=()=>{ bar.remove(); try{ sessionStorage.removeItem('wafercad_gds'); localStorage.removeItem('wafercad_shared'); localStorage.removeItem('wafercad_last_save_ts'); }catch{} status('Previous session dismissed — current empty state kept. Use Save project file to keep it permanently.'); };
+    document.getElementById('discardBtn').onclick=()=>{
+      bar.remove();
+      try{ sessionStorage.removeItem('wafercad_gds'); localStorage.removeItem('wafercad_shared'); localStorage.removeItem('wafercad_last_save_ts'); }catch{}
+      // Reset current in-memory state to empty (no refresh needed)
+      state.wafer=null; state.solids=[]; state.cuts=[]; state.dopings=[]; state.layerVisuals={}; state.imprintedFaces=[]; state.selectedFaceIds.clear(); state.patternSelectedKeys.clear(); state.slice=null; state.snapshots=[]; state.activeSnapshotId=null; state.topBounds=null; state._exactThickness=null; state.operationUndo=[];
+      // also clear GDS to fully reset pattern editor
+      state.gds={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:[]};
+      syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();renderAll();
+      status('Reset to empty — previous session cleared. No refresh needed.');
+    };
   }
 }catch{}
 // Dock switching: header stays, content toggles; info persists via core.state (no page reload)
