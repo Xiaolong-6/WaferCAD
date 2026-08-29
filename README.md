@@ -20,7 +20,7 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
   - **Push down / Isotropic etch**: layer-by-layer consumption of the stack in depth order via `split-by-mask`, then substrate cut; fully consumed layers and their dopings are removed.
   - **Conformal grow / Isotropic etch**: round `gdstk.offset` plus same Z distance (2.5D isotropic approximation).
 - Doping, Undo (50 steps), whole-face fallback, and per-layer/global Z display (true `×1` is isotropic, `Z display` is exaggeration) remain.
-- Linked views: interactive 3D (with `Show axes`), Top, and live `A–B` section (`×1` is true scale).
+- Linked views: interactive 3D (with `Show axes`), Top, and live `A–B` section (`×1` is true scale). Top always projects the current model's visible solids, substrate cuts and doping beneath any layout/selection overlays.
 - `Figure legend` shows per-layer thickness (exact planar partition for substrate, `atoms` count) and allows renaming/color/Z-scale; now reliably clickable via delegation.
 - `Snapshots` as a Google-Maps-style horizontal strip below `3D`: `+ Snapshot` in the header opens an in-app naming dialog and captures the current 3D perspective (`camera position/target` + thumb), new cards appear on the right, hover `×` to delete, click to restore (auto-saves the previous snapshot covering the current archive), and `New wafer` offers snapshot-save.
 - Save/open the whole project as JSON (version 7).

@@ -445,11 +445,38 @@ function renderTop(){
   patHatch.appendChild(makeSvg('rect',{width:'8', height:'8', fill:'#fff7ed'}));
   patHatch.appendChild(makeSvg('line',{x1:'0', y1:'0', x2:'0', y2:'8', stroke:'#f59e0b', 'stroke-width':'1.4', opacity:'0.75'}));
   defsHatch.appendChild(patHatch);
+  const cutHatch=makeSvg('pattern',{id:'model-cut-hatch',width:'7',height:'7',patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});
+  cutHatch.appendChild(makeSvg('rect',{width:'7',height:'7',fill:'#f8fafc'}));
+  cutHatch.appendChild(makeSvg('line',{x1:'0',y1:'0',x2:'0',y2:'7',stroke:'#94a3b8','stroke-width':'1',opacity:'0.7'}));
+  defsHatch.appendChild(cutHatch);
   svg.appendChild(defsHatch);
+
+  // The Top view is always a projection of the current physical model.  GDS
+  // masks and selection affordances are overlays, not substitutes for solids,
+  // cuts and doping already visible in the derived 3D scene.
+  const viewport=state.topBounds;
+  if(state.wafer){
+    const activeCuts=state.cuts.filter(c=>(c.side||'front')===state.activeFace);
+    for(const cut of activeCuts){
+      if(!isPolyInViewport(cut.footprint,viewport))continue;
+      svg.appendChild(makeSvg('path',{d:polyPath(cut.footprint),fill:'url(#model-cut-hatch)',stroke:'#64748b','stroke-width':'1.2','stroke-dasharray':'3 2','pointer-events':'none','data-model-cut':cut.id}));
+    }
+    const back=state.activeFace==='back';
+    const modelSolids=state.solids.filter(s=>(s.side||'front')===state.activeFace).sort((a,b)=>back?b.zMin-a.zMin:a.zMax-b.zMax);
+    for(const solid of modelSolids){
+      if(!isPolyInViewport(solid.footprint,viewport))continue;
+      const color=layerVisual(solid.layerId).color;
+      svg.appendChild(makeSvg('path',{d:polyPath(solid.footprint),fill:color,'fill-opacity':'0.72',stroke:color,'stroke-opacity':'0.95','stroke-width':'1.2','pointer-events':'none','data-model-solid':solid.id,'data-model-layer':solid.layerId}));
+    }
+    for(const doping of state.dopings){
+      if(!isPolyInViewport(doping.footprint,viewport))continue;
+      const color=layerVisual(doping.layerId).color;
+      svg.appendChild(makeSvg('path',{d:polyPath(doping.footprint),fill:color,'fill-opacity':'0.24',stroke:color,'stroke-opacity':'0.8','stroke-width':'1.1','stroke-dasharray':'2 2','pointer-events':'none','data-model-doping':doping.id}));
+    }
+  }
 
   // Imported layout layers remain visually distinct by layer/datatype.
   // Viewport culling: skip polys entirely outside topBounds (major win near 20k cap when zoomed/panned)
-  const viewport=state.topBounds;
   let culled=0, drawn=0;
   const patternsMode=isPatternsSelection();
   for(const layer of state.gds.layers){

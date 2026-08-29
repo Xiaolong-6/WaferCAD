@@ -33,6 +33,7 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.locator('#distanceInput').fill('100');
   await page.getByRole('button', { name: 'Apply operation' }).click();
   await expect(page.locator('#modelStats')).toContainText('1 solids');
+  await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(1);
   await expect(page.locator('#figureLegend')).toContainText('Automated oxide');
   await expect(page.locator('#figureLegend')).toContainText('Thickness 100 µm');
 
@@ -74,4 +75,26 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await expect(page.locator('#modelStats')).toContainText('1 solids');
 
   expect(pageErrors).toEqual([]);
+});
+
+
+test('Top view mirrors current model solids and substrate cuts', async ({ page }) => {
+  await page.goto('/?qa=playwright-top-model-projection');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+
+  await page.locator('#materialInput').fill('Projection film');
+  await page.locator('#distanceInput').fill('100');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(1);
+
+  await page.locator('#selectionMode').selectOption('imprinted');
+  await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(1);
+
+  await page.locator('#selectionMode').selectOption('top');
+  await page.locator('#pushMode').selectOption('down');
+  await page.locator('#distanceInput').fill('150');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(0);
+  await expect(page.locator('#topSvg [data-model-cut]')).toHaveCount(1);
 });
