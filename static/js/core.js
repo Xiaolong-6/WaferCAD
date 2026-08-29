@@ -30,6 +30,27 @@ export const state = {
 
 export function uid(prefix='id'){return `${prefix}_${Math.random().toString(36).slice(2,10)}`;}
 export function clone(value){return JSON.parse(JSON.stringify(value));}
-export function status(message){$('statusText').textContent=message;}
+export function status(message){const el=$('statusText'); if(el) el.textContent=message;}
 export function formatDisplayNumber(value){return String(Number(Number(value).toPrecision(10)));}
 export function rgbHexToInt(hex){return parseInt(hex.replace('#',''),16);}
+export function persistSharedState(){
+  try{
+    const payload = JSON.stringify({wafer:state.wafer, gds:state.gds, transform:state.gds.transform, patternSelectedKeys:[... (state.patternSelectedKeys||[]) ]});
+    sessionStorage.setItem('wafercad_gds', payload);
+    localStorage.setItem('wafercad_shared', payload);
+  }catch{}
+}
+export function loadSharedState(){
+  try{
+    const raw = sessionStorage.getItem('wafercad_gds') || localStorage.getItem('wafercad_shared');
+    if(!raw) return false;
+    const d=JSON.parse(raw);
+    if(d.wafer) state.wafer=d.wafer;
+    if(d.gds) {
+      state.gds={...state.gds, ...d.gds};
+      if(d.transform) state.gds.transform=d.transform;
+      if(Array.isArray(d.patternSelectedKeys)) state.patternSelectedKeys=new Set(d.patternSelectedKeys);
+    }
+    return true;
+  }catch{ return false; }
+}

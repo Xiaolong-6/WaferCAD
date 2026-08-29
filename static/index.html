@@ -11,16 +11,17 @@
   <div id="app">
     <header class="toolbar">
       <div class="brand">WaferCAD <span>MVP</span></div>
-      <button id="newWaferBtn">New wafer</button>
+      <div class="nav-tabs">
+        <button id="navMainBtn" class="nav-tab active">Main</button>
+        <button id="navPatternsBtn" class="nav-tab">Pattern Editor</button>
+      </div>
        <label class="file-btn">Import layout<input id="gdsInput" type="file" accept=".gds,.gdsii,.oas,.oasis" hidden /></label>
-      <a href="/patterns" class="file-btn" style="text-decoration:none">2D Patterns</a>
-      <button id="snapshotBtn" class="small">+ Snapshot</button>
       <div class="spacer"></div>
       <button id="saveProjectBtn">Save project</button>
       <label class="file-btn">Open project<input id="openProjectInput" type="file" accept=".json" hidden /></label>
     </header>
 
-    <main class="workspace">
+    <main id="mainWorkspace" class="workspace">
       <aside class="left-panel">
 
         <section class="operation-panel">
@@ -68,7 +69,12 @@
 
       <section class="view-3d">
         <div class="view-title"><span>3D model</span><span class="view-title-actions"><label class="axes-toggle"><input id="showAxes" type="checkbox" /> Show axes</label><span class="muted">rotate · zoom · pan</span></span></div>
-        <div id="threeContainer"></div>
+        <div id="threeContainer" style="position:relative">
+          <div class="view3d-float">
+            <button id="newWaferBtn" class="float-btn">New wafer</button>
+            <button id="snapshotBtn" class="float-btn primary">+ Snapshot</button>
+          </div>
+        </div>
         <div id="snapshotStrip" class="snapshot-strip" aria-label="Snapshots"><div id="snapshotTrack" class="snapshot-track"></div></div>
         <div id="figureLegend" class="figure-legend hidden" aria-label="3D figure legend"></div>
         <div id="threeError" class="three-error hidden"></div>
@@ -113,7 +119,77 @@
       </aside>
     </main>
 
+    <div id="patternsWorkspace" class="patterns-workspace hidden">
+      <aside class="patterns-panel">
+        <div class="panel-head">Layers <span id="patLayerCount" class="muted">0</span></div>
+        <div class="panel-body">
+          <div id="patLayerList" class="empty-note" style="font-size:12px;color:#6b7785">Import a file to view layers.</div>
+          <div id="patHierarchy" class="hidden" style="margin-top:12px;border-top:1px solid #e2e7eb;padding-top:8px"></div>
+          <div id="patWaferHint" class="hint" style="margin-top:8px;font-size:11px;color:#6b7785"></div>
+        </div>
+      </aside>
+      <div class="patterns-canvas-wrap" style="position:relative;display:grid;place-items:center;background:#fff;border:1px solid #d6dbe0;border-radius:10px;overflow:hidden">
+        <svg id="patSvg" viewBox="0 0 600 420" style="width:100%;height:100%;display:block"></svg>
+        <div style="position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.9);padding:3px 6px;border-radius:4px;font-size:11px;color:#6b7785">Pan: drag empty · Zoom: wheel · Preview: polygon-clipping</div>
+      </div>
+      <aside class="patterns-panel">
+        <div class="panel-head">Preview
+          <select id="patInvertMode" title="Invert semantics"><option value="per-layer">Per-layer S\L</option><option value="global">Global S\∪L</option></select>
+        </div>
+        <div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label class="check-text"><input id="patShowWafer" type="checkbox" checked /> Show wafer clip</label>
+            <label class="check-text"><input id="patShowFill" type="checkbox" /> Fill closed borders (preview)</label>
+            <div class="hint" style="font-size:11px;color:#6b7785">Fill unions border polys (gdstk-compatible). Global = substrate minus union of active layers.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+              <label>X <input id="patOffX" type="number" value="0" step="any" style="width:100%" /></label>
+              <label>Y <input id="patOffY" type="number" value="0" step="any" style="width:100%" /></label>
+              <label>Rot <input id="patRot" type="number" value="0" step="any" style="width:100%" /></label>
+              <label>Scale <input id="patScale" type="number" value="1" step="0.01" style="width:100%" /></label>
+            </div>
+            <button id="patPreviewBtn" class="small">Update preview</button>
+            <div id="patPreviewInfo" class="hint" style="min-height:18px"></div>
+            <button id="patApplyBtn" class="primary" disabled>Apply to Main</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
     <footer class="statusbar"><span id="statusText">Ready.</span><span id="modelStats"></span></footer>
+  </div>
+    <aside class="patterns-panel">
+      <div class="panel-head">Layers <span id="patLayerCount" class="muted">0</span></div>
+      <div class="panel-body">
+        <div id="patLayerList" class="empty-note" style="font-size:12px;color:#6b7785">Import a file to view layers.</div>
+        <div id="patHierarchy" class="hidden" style="margin-top:12px;border-top:1px solid #e2e7eb;padding-top:8px"></div>
+        <div id="patWaferHint" class="hint" style="margin-top:8px;font-size:11px;color:#6b7785"></div>
+      </div>
+    </aside>
+    <div class="patterns-canvas-wrap">
+      <svg id="patSvg" viewBox="0 0 600 420" style="width:100%;height:100%;display:block"></svg>
+      <div style="position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.9);padding:3px 6px;border-radius:4px;font-size:11px;color:#6b7785">Pan: drag empty · Zoom: wheel · Preview: polygon-clipping</div>
+    </div>
+    <aside class="patterns-panel">
+      <div class="panel-head">Preview
+        <select id="patInvertMode" title="Invert semantics"><option value="per-layer">Per-layer S\L</option><option value="global">Global S\∪L</option></select>
+      </div>
+      <div class="panel-body">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="check-text"><input id="patShowWafer" type="checkbox" checked /> Show wafer clip</label>
+          <label class="check-text"><input id="patShowFill" type="checkbox" /> Fill closed borders (preview)</label>
+          <div class="hint" style="font-size:11px;color:#6b7785">Fill unions border polys (gdstk-compatible). Global = substrate minus union of active layers.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <label>X <input id="patOffX" type="number" value="0" step="any" style="width:100%" /></label>
+            <label>Y <input id="patOffY" type="number" value="0" step="any" style="width:100%" /></label>
+            <label>Rot <input id="patRot" type="number" value="0" step="any" style="width:100%" /></label>
+            <label>Scale <input id="patScale" type="number" value="1" step="0.01" style="width:100%" /></label>
+          </div>
+          <button id="patPreviewBtn" class="small">Update preview</button>
+          <div id="patPreviewInfo" class="hint" style="min-height:18px"></div>
+          <button id="patApplyBtn" class="primary" disabled>Apply to Main</button>
+        </div>
+      </div>
+    </aside>
   </div>
 
   <dialog id="waferDialog">
@@ -193,9 +269,11 @@
     </form>
   </dialog>
 
+  <script src="/static/vendor/polygon-clipping.umd.js"></script>
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
   <script type="module" src="/static/app.js?v=modular-app-v1"></script>
+  <script type="module" src="/static/js/patterns/app.js?v=patterns-v1"></script>
 </body>
 </html>

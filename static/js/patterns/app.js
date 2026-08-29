@@ -1,4 +1,4 @@
-import {state} from '../core.js';
+import {state, loadSharedState, persistSharedState} from '../core.js';
 import {waferOutline, bboxPolys, isSimplePolygon, viewAspectBounds, waferBounds} from '../geometry.js';
 import {clearSvg, makeSvg} from '../svg.js';
 import * as Bool from './boolean.js';
@@ -6,10 +6,8 @@ import * as Bool from './boolean.js';
 const $ = id => document.getElementById(id);
 let gdsFile = null;
 
-// re-use core state.gds; patterns page shares same localStorage? For now in-memory sharing via same module; navigating to /patterns loses state (new page load).
-// So we persist gds via sessionStorage: main page saves on import.
-function saveShared(){ try{ sessionStorage.setItem('wafercad_gds', JSON.stringify({gds:state.gds, wafer:state.wafer})); } catch{} }
-function loadShared(){ try{ const raw=sessionStorage.getItem('wafercad_gds'); if(!raw) return; const d=JSON.parse(raw); if(d.gds) state.gds=d.gds; if(d.wafer) state.wafer=d.wafer; } catch{} }
+function saveShared(){ persistSharedState(); }
+function loadShared(){ loadSharedState(); }
 function patTransform([x,y]){
   const t=state.gds.transform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1};
   const s=Number(t.scale)||1, sx=x*s, sy=y*s;
@@ -29,46 +27,61 @@ function modelToSvg(x,y){
   const [x0,y0,x1,y1]=topBounds||[-1,-1,1,1];
   const W=600,H=420; return [(x-x0)/(x1-x0)*W, H-(y-y0)/(y1-y0)*H];
 }
-function polyPath(poly){ return poly.map((p,i)=>{const [x,y]=modelToSvg(p[0],p[1]); return `${i?'M':'L'}${x.toFixed(2)},${y.toFixed(2)}`}).join(' ')+' Z'; }
+function polyPath(poly){ return poly.map((p,i)=>{const [x,y]=modelToSvg(p[0],p[1]); return `${i?'L':'M'}${x.toFixed(2)},${y.toFixed(2)}`}).join(' ')+' Z'; }
 
 function render(){
   const svg=$('patSvg'); clearSvg(svg);
   if(!topBounds) fitPat();
   const outline=waferOutline();
-  if(outline.length){
+  const hasWafer = outline.length>0;
+  if(hasWafer){
     svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'#f0f1f2',stroke:'#626b75','stroke-width':'1.2'}));
     if($('patShowWafer').checked){
       svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'#cbd5e1','fill-opacity':'0.22',stroke:'none','pointer-events':'none'}));
     }
+  } else {
+    // No wafer yet — show hint background
+    svg.appendChild(makeSvg('rect',{x:0,y:0,width:600,height:420,fill:'#f8fafc'}));
+    const t=makeSvg('text',{x:300,y:200,'text-anchor':'middle','font-size':'12',fill:'#94a3b8'}); t.textContent='No wafer — create one in Main or import preview is unclipped'; svg.appendChild(t);
   }
-  // preview previewPolys
+  // draw faint background of all visible layers (unselected) for context
+  for(const layer of state.gds.layers){
+    if(layer.visible===false) continue;
+    // skip active layers (they will be drawn as preview)
+    if(state.patternSelectedKeys?.has(layer.key)) continue;
+    for(const poly of effectiveLayer(layer).map(p=>p.map(([x,y])=>patTransform([x,y])))){
+      svg.appendChild(makeSvg('path',{d:polyPath(poly),fill:layer.color,'fill-opacity':'0.08',stroke:layer.color,'stroke-opacity':'0.35','stroke-width':'1'}));
+    }
+  }
+  // preview previewPolys (selected)
   const preview = computePreview();
   for(const poly of preview){
     svg.appendChild(makeSvg('path',{d:polyPath(poly),fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.4'}));
   }
   // draw wafer outline on top
-  if(outline.length) svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'none',stroke:'#94a3b8','stroke-width':'1','stroke-dasharray':'4 3','pointer-events':'none'}));
+  if(hasWafer) svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'none',stroke:'#94a3b8','stroke-width':'1','stroke-dasharray':'4 3','pointer-events':'none'}));
 
-  $('patPreviewInfo').textContent = preview.length ? `${preview.length} preview region(s)` : 'No preview — select active layers or enable Fill';
+  if(!hasWafer && preview.length) $('patPreviewInfo').textContent = `${preview.length} preview region(s) · unclipped (no wafer)`;
+  else if(preview.length) $('patPreviewInfo').textContent = `${preview.length} preview region(s) · clipped to wafer`;
+  else $('patPreviewInfo').textContent = hasWafer ? 'No preview — select active layers' : 'No preview — select layers (unclipped preview)';
   const hasSel = state.gds.layers.some(l=>state.patternSelectedKeys?.has(l.key));
   $('patApplyBtn').disabled = !hasSel || !preview.length;
+  const waferHint=$('patWaferHint'); if(waferHint) waferHint.textContent = hasWafer ? `Wafer: ${state.wafer.shape} ${state.wafer.diameter? (state.wafer.diameter/1000).toFixed(1)+'mm':''}` : 'No wafer';
 }
 
 function computePreview(){
   const outline=waferOutline();
-  if(!outline.length) return [];
+  const hasWafer = outline.length>0;
   const mode=$('patInvertMode').value;
   const showFill=$('patShowFill').checked;
   const activeKeys=[... (state.patternSelectedKeys||new Set())];
   const activeLayers=state.gds.layers.filter(l=>activeKeys.includes(l.key));
   if(!activeLayers.length) return [];
-  // collect transformed polys
   const perLayerGroups=[];
   const allPolys=[];
   for(const layer of activeLayers){
     let polys = effectiveLayer(layer).map(p=>p.map(([x,y])=>patTransform([x,y])));
     if(showFill && layer.isBorderOnly){
-      // preview fill via union of its border polys
       try{ polys = Bool.union(polys); }catch{}
     }
     if(!polys.length) continue;
@@ -76,17 +89,57 @@ function computePreview(){
     allPolys.push(...polys);
   }
   if(!allPolys.length) return [];
+  // No wafer → show unclipped union (preview)
+  if(!hasWafer){
+    try{ return Bool.union(allPolys); }catch{ return allPolys; }
+  }
   try{
     if(mode==='global'){
       const u = Bool.union(allPolys);
       return Bool.difference([outline], u);
     } else {
-      // per-layer S \ layer unioned
       return Bool.previewPerLayerInvert(outline, perLayerGroups);
     }
   }catch(e){ console.warn(e); return []; }
 }
 
+function renderCellSelector(){
+  const c = $('patHierarchy'); if(!c) return;
+  const hierarchy = state.gds.hierarchy||[];
+  const topCells = state.gds.topCells||[];
+  if(!hierarchy.length){ c.classList.add('hidden'); c.innerHTML=''; return; }
+  c.classList.remove('hidden');
+  c.innerHTML=`<div style="font-weight:600;font-size:11px;color:#34414e;margin-bottom:6px">Cells · active: ${state.gds.activeTopCell||'—'}</div>`;
+  // dropdown
+  const sel=document.createElement('select'); sel.style.width='100%'; sel.style.marginBottom='8px';
+  for(const cell of hierarchy){
+    const opt=document.createElement('option'); opt.value=cell.name; opt.textContent=`${cell.name}${topCells.includes(cell.name)?' ★':''} (${cell.local_polygon_count})`;
+    if(cell.name===state.gds.activeTopCell) opt.selected=true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change',async()=>{
+    if(!gdsFile){ alert('No file loaded to switch cell'); return; }
+    const form=new FormData(); form.append('file', gdsFile); form.append('top_cell', sel.value);
+    const res=await fetch('/api/gds/inspect',{method:'POST', body:form});
+    if(!res.ok){ const j=await res.json().catch(()=>({detail:res.statusText})); alert(j.detail); return; }
+    const data=await res.json();
+    const {normalizeGds}=await import('../layout-model.js');
+    const g=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells,activeTopCell:data.active_top_cell,hierarchy:data.hierarchy,layers:data.layers.map((l,i)=>({...l,key:`${l.layer}/${l.datatype}`,alias:state.gds.layers.find(x=>x.key===`${l.layer}/${l.datatype}`)?.alias||'',inverted:false,fillPattern:false,mirrored:false,visible:true,color:['#2563eb','#dc2626','#059669','#7c3aed','#d97706'][i%5]}))});
+    state.gds=g;
+    const {detectBorderOnly}=await import('../geometry.js');
+    for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
+    state.patternSelectedKeys=new Set();
+    saveShared(); renderLayerList(); renderCellSelector(); fitPat();
+  });
+  c.appendChild(sel);
+  // show hierarchy refs for active
+  const active = hierarchy.find(h=>h.name===state.gds.activeTopCell);
+  if(active && active.references && active.references.length){
+    const refs=document.createElement('div'); refs.style.fontSize='11px'; refs.style.color='#6b7785';
+    refs.innerHTML = active.references.map(r=>`→ ${r.cell} @(${r.origin[0].toFixed(0)},${r.origin[1].toFixed(0)})`).join('<br>');
+    c.appendChild(refs);
+  }
+}
 function renderLayerList(){
   const box=$('patLayerList'), cnt=$('patLayerCount');
   if(!state.gds.layers.length){ box.textContent='Import a file to view layers.'; cnt.textContent='0'; return; }
@@ -102,6 +155,7 @@ function renderLayerList(){
     row.append(cb, sw, label, alias);
     box.appendChild(row);
   }
+  renderCellSelector();
 }
 
 async function importGds(file){
@@ -123,27 +177,36 @@ async function importGds(file){
 }
 
 function applyToMain(){
-  // Persist selection and transform for main page to pick up
   saveShared();
-  // Also call backend truth for selected layers via resolveMaskRegions? For now rely on main's applyPushPull to resolve via backend when user clicks Apply operation.
-  // Just navigate back
-  window.location.href='/';
+  if(window.showMainDock) window.showMainDock();
+  else window.location.href='/';
 }
 
 // Init
 loadShared();
 renderLayerList();
 if(state.wafer) fitPat(); else { topBounds=[-60000,-60000,60000,60000]; render(); }
-document.getElementById('patGdsInput').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
-document.getElementById('patInvertMode').addEventListener('change', render);
-document.getElementById('patShowWafer').addEventListener('change', render);
-document.getElementById('patShowFill').addEventListener('change', render);
-document.getElementById('patPreviewBtn').addEventListener('click', render);
-document.getElementById('patApplyBtn').addEventListener('click', applyToMain);
-['patOffX','patOffY','patRot','patScale'].forEach(id=> document.getElementById(id).addEventListener('change',()=>{
-  state.gds.transform={offsetX:Number($('patOffX').value)||0, offsetY:Number($('patOffY').value)||0, rotationDeg:Number($('patRot').value)||0, scale:Number($('patScale').value)||1};
-  saveShared(); render();
-}));
+window.patRender = ()=>{ loadShared(); renderLayerList(); render(); };
+const _patGds = document.getElementById('patGdsInput');
+if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
+// also allow main gdsInput to populate patterns when dock is used
+const _mainGds = document.getElementById('gdsInput');
+if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ loadShared(); renderLayerList(); render(); }, 300));
+['patInvertMode','patShowWafer','patShowFill','patPreviewBtn','patApplyBtn'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(!el) return;
+  const ev = id==='patPreviewBtn'||id==='patApplyBtn' ? 'click' : 'change';
+  el.addEventListener(ev, id==='patApplyBtn'? applyToMain : render);
+});
+['patOffX','patOffY','patRot','patScale'].forEach(id=> {
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('change',()=>{
+    const get = i=> Number(document.getElementById(i)?.value)||0;
+    state.gds.transform={offsetX:get('patOffX'), offsetY:get('patOffY'), rotationDeg:get('patRot'), scale:get('patScale')||1};
+    saveShared(); render();
+  });
+});
  // pan/zoom for patterns page (simple)
  (function(){
    const svg=$('patSvg');

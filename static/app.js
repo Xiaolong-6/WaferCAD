@@ -1,4 +1,4 @@
-import {$,DEFAULT_WAFER,UNIT_TO_UM,clone,formatDisplayNumber,palette,rgbHexToInt,state,status,uid} from './js/core.js';
+import {$,DEFAULT_WAFER,UNIT_TO_UM,clone,formatDisplayNumber,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
 import {bboxPolys,centroid,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
 import {clipPolygonsToWafer,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
 import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
@@ -529,7 +529,7 @@ async function importGds(file,topCell=null,preserveTransform=false){
   clearPatternSelection();
   for(const layer of state.gds.layers.filter(l=>l.fillPattern))await setLayerFillPattern(layer,true);
   $('gdsStatus').textContent=`${state.gds.layers.length} layers`;
-  updateLayoutSectionVisibility(); renderLayerList();renderHierarchy();fitLayout();renderAll();
+  updateLayoutSectionVisibility(); renderLayerList();renderHierarchy();fitLayout();renderAll();persistSharedState();
   status(`Loaded ${data.filename}: ${data.active_top_cell}, ${data.layers.length} layer/datatype pairs${data.truncated?' (polygon limit reached)':''}.`);
 }
 function renderSnapshots(){
@@ -790,7 +790,7 @@ function bindUi(){
       if(shape==='circle'){wafer.diameter=positive('waferDiameter','Diameter')*lateralScale; wafer.edgeFeature=$('waferEdgeFeature').value||'none';}
       if(shape==='rect'){wafer.width=positive('waferWidth','Width')*lateralScale;wafer.height=positive('waferHeight','Height')*lateralScale;}
       if(shape==='custom')wafer.outline=parseCoordinateText($('waferCoordinates').value,lu);
-      state.wafer=normalizeWafer(wafer);state.activeFace='front';state.solids=[];state.cuts=[];state.dopings=[];state.operationUndo=[];state._exactThickness=null;state.layerVisuals={substrate:{name:`Substrate · ${state.wafer.material}`,color:materialColor(state.wafer.material),scale:1}};state.imprintedFaces=[];state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();fitWafer();renderGdsControls();renderAll();$('waferDialog').close('default');status(`New ${shape} wafer created.`);
+      state.wafer=normalizeWafer(wafer);state.activeFace='front';state.solids=[];state.cuts=[];state.dopings=[];state.operationUndo=[];state._exactThickness=null;state.layerVisuals={substrate:{name:`Substrate · ${state.wafer.material}`,color:materialColor(state.wafer.material),scale:1}};state.imprintedFaces=[];state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();fitWafer();renderGdsControls();renderAll();persistSharedState();$('waferDialog').close('default');status(`New ${shape} wafer created.`);
     }catch(e){error.textContent=e.message;error.classList.remove('hidden');}
   });
   $('gdsInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)importGds(f);e.target.value='';});
@@ -802,7 +802,7 @@ function bindUi(){
     if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(rotation)||!Number.isFinite(sc)||sc<=0){status('Alignment values must be valid numbers (scale >0).');return;}
     const scale=UNIT_TO_UM[gdsAlignmentUnit];
     state.gds.transform={offsetX:x*scale,offsetY:y*scale,rotationDeg:rotation,scale:sc};
-    state.topBounds=null;fitLayout();renderAll();
+    state.topBounds=null;fitLayout();renderAll();persistSharedState();
     status(`Applied alignment: X ${x} ${gdsAlignmentUnit}, Y ${y} ${gdsAlignmentUnit}, rotation ${rotation}°, scale ${sc}×.`);
   });
   $('applyPushPullBtn').addEventListener('click',applyPushPull);$('snapshotBtn').addEventListener('click',createSnapshot);$('fitWaferBtn').addEventListener('click',fitWafer);$('fitLayoutBtn').addEventListener('click',fitLayout);
@@ -820,5 +820,29 @@ function bindUi(){
   $('undoOperationBtn').addEventListener('click',undoOperation);
 }
 
+loadSharedState();
 bindUi();bindTopNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
+// Dock switching: header stays, content toggles; info persists via core.state (no page reload)
+(function(){
+  const mainWs=$('mainWorkspace'), patWs=$('patternsWorkspace'), btnMain=$('navMainBtn'), btnPat=$('navPatternsBtn');
+  if(!mainWs||!patWs||!btnMain||!btnPat) return;
+  function showMain(){
+    mainWs.classList.remove('hidden'); patWs.classList.add('hidden');
+    btnMain.classList.add('active'); btnPat.classList.remove('active');
+    // trigger Three resize after becoming visible
+    setTimeout(()=>window.dispatchEvent(new Event('resize')), 50);
+  }
+  function showPatterns(){
+    mainWs.classList.add('hidden'); patWs.classList.remove('hidden');
+    btnPat.classList.add('active'); btnMain.classList.remove('active');
+    // trigger patterns render
+    if(window.patRender) window.patRender();
+  }
+  btnMain.addEventListener('click', showMain);
+  btnPat.addEventListener('click', showPatterns);
+  // expose for patterns Apply to Main
+  window.showMainDock=showMain;
+  // handle /patterns deep link
+  if(location.pathname==='/patterns'){ showPatterns(); history.replaceState(null,'','/'); }
+})();
 fetch('/api/health').then(r=>r.json()).then(h=>{if(!h.gdstk)status("Ready. GDS import is disabled until 'gdstk' is installed.");}).catch(()=>{});
