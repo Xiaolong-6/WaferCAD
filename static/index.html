@@ -13,6 +13,7 @@
       <div class="brand">WaferCAD <span>MVP</span></div>
       <button id="newWaferBtn">New wafer</button>
        <label class="file-btn">Import layout<input id="gdsInput" type="file" accept=".gds,.gdsii,.oas,.oasis" hidden /></label>
+      <a href="/patterns" class="file-btn" style="text-decoration:none">2D Patterns</a>
       <button id="snapshotBtn" class="small">+ Snapshot</button>
       <div class="spacer"></div>
       <button id="saveProjectBtn">Save project</button>
@@ -39,6 +40,7 @@
         </section>
 
         <section id="layoutSection" class="grow hidden">
+          <div class="hint" style="margin-bottom:8px">Pattern editing moved to <a href="/patterns">2D Patterns</a> (dedicated page with Clipper2 preview, global/per-layer invert, fill). Use that page to select active layers, then Apply to Main.</div>
           <div class="section-title"><span>Layout layers</span><span id="gdsStatus" class="muted">none</span></div>
           <div id="hierarchyPanel" class="hierarchy-panel hidden">
             <div class="section-title"><span>Cell</span><span id="hierarchyMeta" class="muted"></span></div>

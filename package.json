@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "polygon-clipping": "^0.15.7",
     "three": "0.179.1"
   },
   "devDependencies": {

@@ -26,6 +26,11 @@ def index() -> FileResponse:
     return FileResponse(STATIC / "index.html")
 
 
+@app.get("/patterns")
+def patterns_page() -> FileResponse:
+    return FileResponse(STATIC / "patterns.html")
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     try:
