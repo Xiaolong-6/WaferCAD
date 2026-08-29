@@ -35,7 +35,16 @@ export function formatDisplayNumber(value){return String(Number(Number(value).to
 export function rgbHexToInt(hex){return parseInt(hex.replace('#',''),16);}
 export function persistSharedState(){
   try{
-    const payload = JSON.stringify({wafer:state.wafer, gds:state.gds, transform:state.gds.transform, patternSelectedKeys:[... (state.patternSelectedKeys||[]) ], solids:state.solids, cuts:state.cuts, dopings:state.dopings, layerVisuals:state.layerVisuals, snapshots:state.snapshots });
+    const payload = JSON.stringify({
+      wafer:state.wafer, activeFace:state.activeFace,
+      solids:state.solids, cuts:state.cuts, dopings:state.dopings, layerVisuals:state.layerVisuals,
+      gds:state.gds, imprintedFaces:state.imprintedFaces,
+      selectedFaceIds:[... (state.selectedFaceIds||[])], patternSelectedKeys:[... (state.patternSelectedKeys||[]) ],
+      slice:state.slice, snapshots:state.snapshots, activeSnapshotId:state.activeSnapshotId,
+      topBounds:state.topBounds, zExag:state.zExag, showAxes:state.showAxes, maskBaseOpacity:state.maskBaseOpacity,
+      // transform is inside gds, keep for compat
+      transform:state.gds.transform
+    });
     sessionStorage.setItem('wafercad_gds', payload);
     localStorage.setItem('wafercad_shared', payload);
     localStorage.setItem('wafercad_last_save_ts', String(Date.now()));
@@ -46,17 +55,28 @@ export function loadSharedState(){
     const raw = sessionStorage.getItem('wafercad_gds') || localStorage.getItem('wafercad_shared');
     if(!raw) return false;
     const d=JSON.parse(raw);
-    if(d.wafer) state.wafer=d.wafer;
-    if(d.gds) {
-      state.gds={...state.gds, ...d.gds};
-      if(d.transform) state.gds.transform=d.transform;
-      if(Array.isArray(d.patternSelectedKeys)) state.patternSelectedKeys=new Set(d.patternSelectedKeys);
-    }
+    if(d.wafer!==undefined) state.wafer=d.wafer;
+    if(d.activeFace) state.activeFace=d.activeFace;
     if(Array.isArray(d.solids)) state.solids=d.solids;
     if(Array.isArray(d.cuts)) state.cuts=d.cuts;
     if(Array.isArray(d.dopings)) state.dopings=d.dopings;
     if(d.layerVisuals) state.layerVisuals=d.layerVisuals;
+    if(d.gds) {
+      state.gds={...state.gds, ...d.gds};
+      if(d.transform) state.gds.transform=d.transform;
+    }
+    if(Array.isArray(d.imprintedFaces)) state.imprintedFaces=d.imprintedFaces;
+    if(Array.isArray(d.selectedFaceIds)) state.selectedFaceIds=new Set(d.selectedFaceIds);
+    if(Array.isArray(d.patternSelectedKeys)) state.patternSelectedKeys=new Set(d.patternSelectedKeys);
+    if(d.slice!==undefined) state.slice=d.slice;
     if(Array.isArray(d.snapshots)) state.snapshots=d.snapshots;
+    if(d.activeSnapshotId!==undefined) state.activeSnapshotId=d.activeSnapshotId;
+    if(d.topBounds!==undefined) state.topBounds=d.topBounds;
+    if(d.zExag!==undefined) state.zExag=d.zExag;
+    if(d.showAxes!==undefined) state.showAxes=d.showAxes;
+    if(d.maskBaseOpacity!==undefined) state.maskBaseOpacity=d.maskBaseOpacity;
+    // re-ensure Sets for topFaceSelection
+    if(d._topFaceSelection && Array.isArray(d._topFaceSelection.selectedSolidIds)) state._topFaceSelection.selectedSolidIds=new Set(d._topFaceSelection.selectedSolidIds);
     return true;
   }catch{ return false; }
 }

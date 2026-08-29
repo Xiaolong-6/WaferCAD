@@ -248,7 +248,7 @@ function bindTopNavigation(){
 
 function renderSection(){
   const svg=$('sectionSvg');clearSvg(svg);$('sectionMeta').textContent='';if(!state.wafer||!state.slice)return;const a=state.slice.a,b=state.slice.b,back=state.activeFace==='back',waferIntervals=linePolyIntervals(a,b,waferOutline()),layerDescriptors=solidLayerDescriptors(),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors)),mappedDopings=state.dopings.map(d=>mappedDopingBounds(d,layerDescriptors));
-  const rawMin=Math.min(displayZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin),...mappedDopings.map(s=>s.zMin),0), rawMax=Math.max(displayZ(0),...mappedSolids.map(s=>s.zMax),...mappedDopings.map(s=>s.zMax)), pad=(rawMax-rawMin)*0.08+0.04, yMin=rawMin-pad, yMax=rawMax+pad, mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>back?30+(z-yMin)/(yMax-yMin)*245:290-(z-yMin)/(yMax-yMin)*245,mapY=z=>mapDisplayY(displayZ(z)),rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
+  const rawMin=Math.min(displayZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin),...mappedDopings.map(s=>s.zMin),0), rawMax=Math.max(displayZ(0),...mappedSolids.map(s=>s.zMax),...mappedDopings.map(s=>s.zMax)), pad=(rawMax-rawMin)*0.04+0.02, yMin=rawMin-pad, yMax=rawMax+pad, mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>back?12+(z-yMin)/(yMax-yMin)*296:308-(z-yMin)/(yMax-yMin)*296,mapY=z=>mapDisplayY(displayZ(z)),rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
   const content=makeSvg('g',{id:'sectionContent',transform:`translate(${sectionTx},${sectionTy}) scale(${sectionScale})`});
   content.appendChild(makeSvg('line',{x1:45,y1:mapDisplayY(0),x2:555,y2:mapDisplayY(0),stroke:'#b6bbc2','stroke-width':'1'}));
   for(const waferI of waferIntervals){const xr=rectX(waferI[0],waferI[1]),yr=rectY(displayZ(-state.wafer.thickness),displayZ(0));content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate'}));}
@@ -868,8 +868,15 @@ try{
     bar.innerHTML='<span style="color:#334155">Previous session found (refresh reset to empty)</span><button id="restoreBtn" class="small primary">Restore</button><button id="discardBtn" class="small">Dismiss</button>';
     document.body.appendChild(bar);
     document.getElementById('restoreBtn').onclick=()=>{
+      const hadTopBounds = !!state.topBounds;
       loadSharedState();
-      syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();
+      if(window.showMainDock) window.showMainDock();
+      syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();
+      if(!state.topBounds && !hadTopBounds) fitWafer();
+      renderAll();
+      // Force 3D resize after dock switch (hidden canvas has zero size)
+      setTimeout(()=>{ window.dispatchEvent(new Event('resize')); renderAll(); }, 80);
+      setTimeout(()=>{ window.dispatchEvent(new Event('resize')); }, 300);
       try{ const ts=localStorage.getItem('wafercad_last_save_ts'); status('Restored previous session'+(ts?' — '+new Date(Number(ts)).toLocaleString():'')); }catch{ status('Restored previous session.'); }
       bar.remove();
     };
