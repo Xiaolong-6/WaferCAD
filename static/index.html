@@ -40,31 +40,14 @@
           <div class="operation-actions"><button id="applyPushPullBtn" class="primary">Apply operation</button><button id="undoOperationBtn" disabled title="Undo last geometry operation">Undo</button></div>
         </section>
 
-        <section id="layoutSection" class="grow hidden">
-          <div class="hint" style="margin-bottom:8px">Pattern editing moved to <a href="/patterns">2D Patterns</a> (dedicated page with Clipper2 preview, global/per-layer invert, fill). Use that page to select active layers, then Apply to Main.</div>
-          <div class="section-title"><span>Layout layers</span><span id="gdsStatus" class="muted">none</span></div>
-          <div id="hierarchyPanel" class="hierarchy-panel hidden">
-            <div class="section-title"><span>Cell</span><span id="hierarchyMeta" class="muted"></span></div>
-            <div id="hierarchyTree" class="hierarchy-tree"></div>
-          </div>
-          <div id="layerList" class="layer-list empty-note">Import a GDSII or OASIS file to view its layers.</div>
-          <div id="gdsControls" class="gds-controls hidden">
-            <div class="gds-align-title"><span>Layout alignment</span><span class="muted">about layout origin · scale 1 = actual</span></div>
-            <div class="gds-align-grid">
-              <label>X<input id="gdsOffsetX" type="number" value="0" step="any" /></label>
-              <label>Y<input id="gdsOffsetY" type="number" value="0" step="any" /></label>
-              <label>Rotation<input id="gdsRotation" type="number" value="0" step="any" /></label>
-              <label>Scale<input id="gdsScale" type="number" value="1" step="0.01" min="0.01" /></label>
-              <label>Unit<select id="gdsAlignmentUnit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select></label>
-            </div>
-            <button id="applyGdsAlignmentBtn" class="small">Apply alignment</button>
-          </div>
-          <details id="imprintDebugDetails" class="imprint-debug">
-            <summary>Debug: Imprint snapshot</summary>
-            <div class="hint">Legacy imprint path — creates selectable imprinted faces for comparison. Main Patterns path no longer requires it.</div>
-            <div id="imprintDebugActions" class="layer-actions"></div>
-          </details>
-        </section>
+        <!-- Hidden legacy containers kept for JS compat (layers now in Pattern Editor dock) -->
+        <div style="display:none">
+          <div id="layerList"></div><span id="gdsStatus"></span><div id="hierarchyPanel"></div><div id="hierarchyTree"></div><span id="hierarchyMeta"></span>
+          <div id="gdsControls"></div><input id="gdsOffsetX"/><input id="gdsOffsetY"/><input id="gdsRotation"/><input id="gdsScale"/><select id="gdsAlignmentUnit"></select><button id="applyGdsAlignmentBtn"></button>
+          <details id="imprintDebugDetails"><div id="imprintDebugActions"></div></details>
+        </div>
+
+
       </aside>
 
       <section class="view-3d">
@@ -158,41 +141,6 @@
 
     <footer class="statusbar"><span id="statusText">Ready.</span><span id="modelStats"></span></footer>
   </div>
-    <aside class="patterns-panel">
-      <div class="panel-head">Layers <span id="patLayerCount" class="muted">0</span></div>
-      <div class="panel-body">
-        <div id="patLayerList" class="empty-note" style="font-size:12px;color:#6b7785">Import a file to view layers.</div>
-        <div id="patHierarchy" class="hidden" style="margin-top:12px;border-top:1px solid #e2e7eb;padding-top:8px"></div>
-        <div id="patWaferHint" class="hint" style="margin-top:8px;font-size:11px;color:#6b7785"></div>
-      </div>
-    </aside>
-    <div class="patterns-canvas-wrap">
-      <svg id="patSvg" viewBox="0 0 600 420" style="width:100%;height:100%;display:block"></svg>
-      <div style="position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.9);padding:3px 6px;border-radius:4px;font-size:11px;color:#6b7785">Pan: drag empty · Zoom: wheel · Preview: polygon-clipping</div>
-    </div>
-    <aside class="patterns-panel">
-      <div class="panel-head">Preview
-        <select id="patInvertMode" title="Invert semantics"><option value="per-layer">Per-layer S\L</option><option value="global">Global S\∪L</option></select>
-      </div>
-      <div class="panel-body">
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <label class="check-text"><input id="patShowWafer" type="checkbox" checked /> Show wafer clip</label>
-          <label class="check-text"><input id="patShowFill" type="checkbox" /> Fill closed borders (preview)</label>
-          <div class="hint" style="font-size:11px;color:#6b7785">Fill unions border polys (gdstk-compatible). Global = substrate minus union of active layers.</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-            <label>X <input id="patOffX" type="number" value="0" step="any" style="width:100%" /></label>
-            <label>Y <input id="patOffY" type="number" value="0" step="any" style="width:100%" /></label>
-            <label>Rot <input id="patRot" type="number" value="0" step="any" style="width:100%" /></label>
-            <label>Scale <input id="patScale" type="number" value="1" step="0.01" style="width:100%" /></label>
-          </div>
-          <button id="patPreviewBtn" class="small">Update preview</button>
-          <div id="patPreviewInfo" class="hint" style="min-height:18px"></div>
-          <button id="patApplyBtn" class="primary" disabled>Apply to Main</button>
-        </div>
-      </div>
-    </aside>
-  </div>
-
   <dialog id="waferDialog">
     <form method="dialog" id="waferForm">
       <h3>Create wafer</h3>

@@ -23,12 +23,13 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.locator('#gdsInput').setInputFiles(gdsFixture);
   await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
 
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await expect(page.locator('#patLayerList')).toContainText('1/0');
+  await expect(page.locator('#patLayerList')).toContainText('10/5');
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
+  await page.getByRole('button', { name: 'Main' }).click();
   await page.locator('#selectionMode').selectOption('imprinted');
-  await expect(page.locator('#layerList .layer-head strong')).toHaveText([
-    'Layer 1/0',
-    'Layer 10/5',
-  ]);
-  await page.locator('#layerList .pat-check input').first().check();
   await page.locator('#materialInput').fill('Automated oxide');
   await page.locator('#distanceInput').fill('100');
   await page.getByRole('button', { name: 'Apply operation' }).click();
