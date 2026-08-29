@@ -126,6 +126,14 @@
             <label class="check-text"><input id="patShowWafer" type="checkbox" checked /> Show wafer clip</label>
             <label class="check-text"><input id="patShowFill" type="checkbox" /> Fill closed borders (preview)</label>
             <div class="hint" style="font-size:11px;color:#6b7785">Fill unions border polys (gdstk-compatible). Global = substrate minus union of active layers.</div>
+            <label style="font-size:11px;display:flex;gap:6px;align-items:center;margin-top:6px">Highlight <select id="patHighlight" style="flex:1"><option value="none">None</option><option value="top" selected>Top faces (model)</option><option value="wafer">Wafer invert</option></select></label>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+              <label class="check-text"><input id="patLassoToggle" type="checkbox"> Lasso</label>
+              <span class="hint" style="font-size:10px">Shift+drag on empty</span>
+              <button id="patSavePatternBtn" class="small" style="margin-left:auto">Save lasso as new pattern</button>
+            </div>
+            <button id="patInvertWaferBtn" class="small" style="width:100%">Invert → Wafer other part</button>
+            <div id="patLassoInfo" class="hint" style="min-height:14px"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
               <label>X <input id="patOffX" type="number" value="0" step="any" style="width:100%" /></label>
               <label>Y <input id="patOffY" type="number" value="0" step="any" style="width:100%" /></label>
