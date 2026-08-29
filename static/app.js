@@ -854,9 +854,11 @@ function bindUi(){
   $('showAxes').addEventListener('change',updateAxesVisibility);$('saveProjectBtn').addEventListener('click',saveProject);$('openProjectInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)openProject(f);e.target.value='';});
   $('pushMode').addEventListener('change',updateOperationModeUi);updateOperationModeUi();
   $('selectionMode')?.addEventListener('change',()=>{
-    state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();
+    const mode=$('selectionMode').value;
+    state.selectedFaceIds.clear();clearTopSelection();
+    // keep patternSelectedKeys when switching to Patterns (set in dock), clear only when switching away? For now keep
     updateLayoutSectionVisibility(); updateSelectionInfo(); renderLayerList(); renderTop();
-    status(isTopFaceSelection()?'Selection: full faces (model). Click a visible film top in Top View.':'Selection: Patterns — check layers below, adjust alignment/tone live, then Apply.');
+    status(mode==='top'?'Selection: full faces (model). Click a visible film top in Top View.':'Selection: Patterns — layers selected in Pattern Editor dock will be used. Adjust in dock then Apply.');
   });
   $('undoOperationBtn').addEventListener('click',undoOperation);
 }
