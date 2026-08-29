@@ -455,19 +455,35 @@ async def inspect_gds(
         raise HTTPException(400, "The GDS contains no top-level cell")
     top_by_name = {candidate.name: candidate for candidate in top}
     all_by_name = {c.name: c for c in lib.cells}
-    if top_cell:
+    # Special aggregated view: all cells' local polygons (each cell holds different layer)
+    if top_cell == "__ALL__":
+        polys = []
+        for _c in lib.cells:
+            try:
+                local = _c.get_polygons(apply_repetitions=True, include_paths=True, depth=0)
+            except TypeError:
+                local = _c.get_polygons(depth=0) if hasattr(_c, 'get_polygons') else []
+            # gdstk returns list of polygons; extend
+            if isinstance(local, list):
+                polys.extend(local)
+        cell = top[0]  # keep a reference cell for bbox/unit, but layers come from all
+        # override active name for response
+        active_cell_name = "__ALL__"
+    elif top_cell:
         if top_cell not in all_by_name:
             raise HTTPException(400, "Selected cell is not present in this GDS")
         cell = all_by_name[top_cell]
+        active_cell_name = cell.name
     else:
         cell = top[0]
+        active_cell_name = cell.name
 
-    # get_polygons includes polygons through references when depth is None.
-    try:
-        polys = cell.get_polygons(apply_repetitions=True, include_paths=True, depth=None)
-    except TypeError:
-        # Compatibility fallback for older gdstk versions.
-        polys = cell.get_polygons()
+    # get_polygons includes polygons through references when depth is None (except __ALL__ already handled).
+    if top_cell != "__ALL__":
+        try:
+            polys = cell.get_polygons(apply_repetitions=True, include_paths=True, depth=None)
+        except TypeError:
+            polys = cell.get_polygons()
 
     unit_um = float(getattr(lib, "unit", 1e-6)) * 1e6
     layer_map: dict[tuple[int, int], dict[str, Any]] = {}
@@ -563,7 +579,7 @@ async def inspect_gds(
             "library_precision": float(getattr(lib, "precision", 1e-9)),
             "cells": cells,
             "top_cells": [c.name for c in top],
-            "active_top_cell": cell.name,
+            "active_top_cell": "__ALL__" if top_cell == "__ALL__" else cell.name,
             "layers": layers,
             "bbox": overall_bbox,
             "truncated": truncated,

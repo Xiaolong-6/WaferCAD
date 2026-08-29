@@ -116,12 +116,22 @@ function renderCellSelector(){
   c.classList.remove('hidden');
   const count = hierarchy.length || topCells.length || 1;
   c.innerHTML=`<div style="font-weight:600;font-size:11px;color:#34414e;margin-bottom:6px">Cells · active: ${state.gds.activeTopCell||'—'} · ${count} total</div>`;
-  // dropdown
+  // dropdown - include All cells aggregate on top
   const sel=document.createElement('select'); sel.style.width='100%'; sel.style.marginBottom='8px';
+  const distinctAll = new Set(hierarchy.flatMap(c=> (c.layers||[]).map(l=>`${l.layer}/${l.datatype}`)));
+  const allOpt=document.createElement('option'); allOpt.value="__ALL__"; allOpt.textContent=`All cells — ${distinctAll.size||hierarchy.length} layers total`;
+  if(state.gds.activeTopCell==="__ALL__") allOpt.selected=true;
+  sel.appendChild(allOpt);
   for(const cell of hierarchy){
-    const opt=document.createElement('option'); opt.value=cell.name; opt.textContent=`${cell.name}${topCells.includes(cell.name)?' ★':''} (${cell.local_polygon_count})`;
+    const opt=document.createElement('option'); opt.value=cell.name; opt.textContent=`${cell.name}${topCells.includes(cell.name)?' ★':''} (${cell.local_polygon_count}) — ${cell.layers.map(l=>`${l.layer}/${l.datatype}`).join(', ')||'no layers'}`;
     if(cell.name===state.gds.activeTopCell) opt.selected=true;
     sel.appendChild(opt);
+  }
+  // hint if file has layers spread across cells
+  if(distinctAll.size > (state.gds.layers?.length||0)){
+    const hint=document.createElement('div'); hint.style.fontSize='10px'; hint.style.color='#b45309'; hint.style.marginBottom='6px';
+    hint.textContent=`This file has ${distinctAll.size} layers across ${hierarchy.length} cells, but active cell shows ${state.gds.layers.length}. Switch to "All cells" to see all.`;
+    c.appendChild(hint);
   }
   sel.addEventListener('change',async()=>{
     if(!gdsFile){ alert('No file loaded to switch cell'); return; }
