@@ -34,6 +34,7 @@ let waferDialogLateralUnit = 'mm', waferDialogThicknessUnit = 'um';
 let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
 let editingLayerVisualId = null;
+let snapshotNamePurpose = 'snapshot';
 
 function uid(prefix='id'){ return `${prefix}_${Math.random().toString(36).slice(2,10)}`; }
 function clone(v){ return JSON.parse(JSON.stringify(v)); }
@@ -203,7 +204,7 @@ async function refreshExactThickness(){
     if(!res.ok) return;
     const data=await res.json();
     if(seq!==_thicknessRefreshSeq) return;
-    state._exactThickness={min:Number(data.min),max:Number(data.max),atoms:data.atoms};
+    state._exactThickness={min:Number(data.min),max:Number(data.max),atoms:data.atoms,exact:data.exact!==false};
     updateFigureLegendThickness();
   }catch(e){ /* keep heuristic */ } finally { _thicknessRefreshPending=false; }
 }
@@ -217,7 +218,7 @@ function updateFigureLegendThickness(){
     const thickEl=row.querySelector('.figure-legend-thickness');
     if(!thickEl) continue;
     const exact=entry.id==='substrate'&&state._exactThickness;
-    thickEl.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms`:''}`;
+    thickEl.textContent=`Thickness ${formatThicknessRange(entry.thickness)}${exact?` · ${exact.atoms} atoms${exact.exact===false?' · approx.':''}`:''}`;
   }
   // If counts differ (e.g., after wafer change), fallback to full re-render
   if(entries.length !== rows.length) renderFigureLegend();
@@ -950,15 +951,20 @@ function deleteSnapshot(id){
   renderSnapshots();
   status(`Deleted snapshot: ${name}`);
 }
-function createSnapshot(){
-  if(!state.wafer){status('Create or open a wafer before saving a snapshot.');return;}
-  const name=prompt('Snapshot name',`State ${state.snapshots.length+1}`);
-  if(!name) return;
+function saveNamedSnapshot(name){
   const thumb=captureSnapshotThumb();
   const cam=captureCameraState();
   const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot(),thumb,camera:cam};
   state.snapshots.push(s);state.activeSnapshotId=s.id;renderSnapshots();status(`Snapshot saved: ${name}`);
 }
+function openSnapshotNameDialog(purpose='snapshot'){
+  if(!state.wafer){status('Create or open a wafer before saving a snapshot.');return;}
+  snapshotNamePurpose=purpose;
+  const dialog=$('snapshotNameDialog'),input=$('snapshotNameInput'),error=$('snapshotNameError');
+  error.classList.add('hidden');error.textContent='';input.value=`State ${state.snapshots.length+1}`;
+  if(dialog.open)dialog.close();dialog.showModal();input.focus();input.select();
+}
+function createSnapshot(){openSnapshotNameDialog('snapshot');}
 
 function modelStats(){$('modelStats').textContent=state.wafer?`${state.solids.length} solids · ${state.cuts.length} cuts · ${state.dopings.length} doped regions · ${state.imprintedFaces.length} faces`:'';}
 function renderAll(){ensureLayerVisuals();renderTop();renderSection();render3D();renderFigureLegend();renderDopingControls();updateUndoUi();modelStats();}
@@ -1101,23 +1107,24 @@ function bindUi(){
   });
   $('newWaferConfirmSave')?.addEventListener('click',()=>{
     const dlg=$('newWaferConfirmDialog'); dlg.close();
-    // Save current state as snapshot before discarding
-    if(state.wafer){
-      const defaultName=`State ${state.snapshots.length+1}`;
-      const name=prompt('Snapshot name', defaultName);
-      if(name){
-        const thumb=captureSnapshotThumb();
-        const cam=captureCameraState();
-        const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot(),thumb,camera:cam};
-        state.snapshots.push(s); state.activeSnapshotId=s.id; renderSnapshots();
-        status(`Snapshot saved: ${name} — creating new wafer`);
-      }
-    }
-    loadWaferForm();$('waferDialog').showModal();
+    openSnapshotNameDialog('new-wafer');
   });
   $('newWaferConfirmDiscard')?.addEventListener('click',()=>{
     $('newWaferConfirmDialog').close();
     loadWaferForm();$('waferDialog').showModal();
+  });
+  $('snapshotNameForm').addEventListener('submit',(ev)=>{
+    const purpose=snapshotNamePurpose;
+    if(ev.submitter?.value==='cancel'){
+      snapshotNamePurpose='snapshot';
+      if(purpose==='new-wafer')requestAnimationFrame(()=>{loadWaferForm();$('waferDialog').showModal();});
+      return;
+    }
+    ev.preventDefault();
+    const name=$('snapshotNameInput').value.trim(),error=$('snapshotNameError');
+    if(!name){error.textContent='Snapshot name cannot be empty.';error.classList.remove('hidden');return;}
+    saveNamedSnapshot(name);$('snapshotNameDialog').close('default');snapshotNamePurpose='snapshot';
+    if(purpose==='new-wafer')requestAnimationFrame(()=>{loadWaferForm();$('waferDialog').showModal();});
   });
   $('flipFaceBtn').addEventListener('click',flipActiveFace);
   $('waferShape').addEventListener('change',updateWaferShapeFields);

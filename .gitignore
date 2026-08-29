@@ -6,6 +6,8 @@ __pycache__/
 *.gdsii
 *.oas
 *.oasis
+!tests/fixtures/synthetic_two_layer.gds
+!tests/fixtures/synthetic_two_layer.oas
 *.blend
 *.stl
 *.step
@@ -18,3 +20,4 @@ user_projects/
 exports/
 cache/
 .DS_Store
+.pytest_cache/

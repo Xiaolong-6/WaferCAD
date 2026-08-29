@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
-  <link rel="stylesheet" href="/static/style.css?v=handoff-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=baseline-v1" />
 </head>
 <body>
   <div id="app">
@@ -173,9 +173,18 @@
     </form>
   </dialog>
 
+  <dialog id="snapshotNameDialog">
+    <form method="dialog" id="snapshotNameForm">
+      <h3>Save snapshot</h3>
+      <label>Name<input id="snapshotNameInput" type="text" autocomplete="off" /></label>
+      <div id="snapshotNameError" class="form-error hidden"></div>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button value="default" class="primary">Save</button></div>
+    </form>
+  </dialog>
+
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=handoff-v1"></script>
+  <script type="module" src="/static/app.js?v=baseline-v1"></script>
 </body>
 </html>

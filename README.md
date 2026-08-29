@@ -22,7 +22,7 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
 - Doping, Undo (50 steps), whole-face fallback, and per-layer/global Z display (true `×1` is isotropic, `Z display` is exaggeration) remain.
 - Linked views: interactive 3D (with `Show axes`), Top, and live `A–B` section (`×1` is true scale).
 - `Figure legend` shows per-layer thickness (exact planar partition for substrate, `atoms` count) and allows renaming/color/Z-scale; now reliably clickable via delegation.
-- `Snapshots` as a Google-Maps-style horizontal strip below `3D`: `+ Snapshot` in the header captures the current 3D perspective (`camera position/target` + thumb), new cards appear on the right, hover `×` to delete, click to restore (auto-saves the previous snapshot covering the current archive), and `New wafer` prompts to snapshot-save.
+- `Snapshots` as a Google-Maps-style horizontal strip below `3D`: `+ Snapshot` in the header opens an in-app naming dialog and captures the current 3D perspective (`camera position/target` + thumb), new cards appear on the right, hover `×` to delete, click to restore (auto-saves the previous snapshot covering the current archive), and `New wafer` offers snapshot-save.
 - Save/open the whole project as JSON (version 7).
 
 ## Run
@@ -46,6 +46,17 @@ Open:
 ```text
 http://127.0.0.1:8765
 ```
+
+## Test
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The test suite generates and checks in a small synthetic `BASE → TOP` layout in
+both GDSII and OASIS formats. It contains only two rectangles on layer/datatype
+pairs `1/0` and `10/5`; no confidential layout data is used.
 
 Three.js is pinned in `package-lock.json` and served locally by the FastAPI application, so the 3D view does not require a CDN connection.
 

@@ -15,6 +15,7 @@ STATIC = ROOT / "static"
 THREE = ROOT / "node_modules" / "three"
 
 app = FastAPI(title="WaferCAD MVP", version="0.1.0")
+SUBSTRATE_ATOM_LIMIT = 5000
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 if THREE.is_dir():
     app.mount("/vendor/three", StaticFiles(directory=THREE), name="three")
@@ -339,7 +340,10 @@ def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
                 continue
             cut_polys.append(fp)
             cut_intervals.append((zmin, zmax))
-        # Partition atoms
+        # Partition atoms. If the partition would grow beyond the safety cap,
+        # keep the last complete partition and report the sampled result as an
+        # approximation instead of incorrectly labelling it exact.
+        partition_complete = True
         for cp in cut_polys:
             new_atoms: list[list[list[float]]] = []
             cut_poly = gdstk.Polygon(cp)
@@ -356,14 +360,13 @@ def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
                 if not inter and not diff:
                     # empty atom is outside wafer after split — drop
                     pass
-            # guard against explosion: cap at 5000 atoms
-            if len(new_atoms) > 5000:
-                # fallback to sampling if partition explodes
+            if len(new_atoms) > SUBSTRATE_ATOM_LIMIT:
+                partition_complete = False
                 break
             if new_atoms:
                 atoms = new_atoms
         if not atoms:
-            return {"min": t, "max": t, "exact": True}
+            return {"min": t, "max": t, "exact": partition_complete}
 
         def merged_length(intervals: list[tuple[float, float]]) -> float:
             if not intervals:
@@ -388,7 +391,13 @@ def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
                     covering.append(cut_intervals[idx])
             remaining = max(0.0, t - merged_length(covering))
             values.append(remaining)
-        return {"min": min(values), "max": max(values), "exact": True, "atoms": len(atoms)}
+        return {
+            "min": min(values),
+            "max": max(values),
+            "exact": partition_complete,
+            "atoms": len(atoms),
+            "atom_limit": SUBSTRATE_ATOM_LIMIT,
+        }
     except HTTPException:
         raise
     except Exception as exc:
