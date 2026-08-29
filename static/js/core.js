@@ -35,9 +35,10 @@ export function formatDisplayNumber(value){return String(Number(Number(value).to
 export function rgbHexToInt(hex){return parseInt(hex.replace('#',''),16);}
 export function persistSharedState(){
   try{
-    const payload = JSON.stringify({wafer:state.wafer, gds:state.gds, transform:state.gds.transform, patternSelectedKeys:[... (state.patternSelectedKeys||[]) ]});
+    const payload = JSON.stringify({wafer:state.wafer, gds:state.gds, transform:state.gds.transform, patternSelectedKeys:[... (state.patternSelectedKeys||[]) ], solids:state.solids, cuts:state.cuts, dopings:state.dopings, layerVisuals:state.layerVisuals, snapshots:state.snapshots });
     sessionStorage.setItem('wafercad_gds', payload);
     localStorage.setItem('wafercad_shared', payload);
+    localStorage.setItem('wafercad_last_save_ts', String(Date.now()));
   }catch{}
 }
 export function loadSharedState(){
@@ -51,6 +52,17 @@ export function loadSharedState(){
       if(d.transform) state.gds.transform=d.transform;
       if(Array.isArray(d.patternSelectedKeys)) state.patternSelectedKeys=new Set(d.patternSelectedKeys);
     }
+    if(Array.isArray(d.solids)) state.solids=d.solids;
+    if(Array.isArray(d.cuts)) state.cuts=d.cuts;
+    if(Array.isArray(d.dopings)) state.dopings=d.dopings;
+    if(d.layerVisuals) state.layerVisuals=d.layerVisuals;
+    if(Array.isArray(d.snapshots)) state.snapshots=d.snapshots;
     return true;
   }catch{ return false; }
+}
+export function hasSharedState(){
+  try{ return !!(sessionStorage.getItem('wafercad_gds') || localStorage.getItem('wafercad_shared')); }catch{ return false; }
+}
+export function clearSharedState(){
+  try{ sessionStorage.removeItem('wafercad_gds'); localStorage.removeItem('wafercad_shared'); localStorage.removeItem('wafercad_last_save_ts'); }catch{}
 }

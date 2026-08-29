@@ -19,8 +19,12 @@ function effectiveLayer(l){ return l.fillPattern===true && Array.isArray(l.fille
 let topBounds=null;
 function fitPat(){
   const outline=waferOutline();
-  const bb = outline.length ? bboxPolys([outline]) : ([...(state.gds.bbox||[-50000,-50000,50000,50000])]);
-  topBounds = viewAspectBounds(bb,0.08);
+  const waferBB = outline.length ? bboxPolys([outline]) : null;
+  const gdsBB = state.gds.bbox ? [...state.gds.bbox] : null;
+  let bb=null;
+  if(waferBB && gdsBB) bb=[Math.min(waferBB[0],gdsBB[0]), Math.min(waferBB[1],gdsBB[1]), Math.max(waferBB[2],gdsBB[2]), Math.max(waferBB[3],gdsBB[3])];
+  else bb = waferBB || gdsBB || [-50000,-50000,50000,50000];
+  topBounds = viewAspectBounds(bb,0.12);
   render();
 }
 function modelToSvg(x,y){
@@ -107,9 +111,11 @@ function renderCellSelector(){
   const c = $('patHierarchy'); if(!c) return;
   const hierarchy = state.gds.hierarchy||[];
   const topCells = state.gds.topCells||[];
-  if(!hierarchy.length){ c.classList.add('hidden'); c.innerHTML=''; return; }
+  const hasCells = hierarchy.length>0 || topCells.length>0 || state.gds.activeTopCell;
+  if(!hasCells){ c.classList.add('hidden'); c.innerHTML=''; return; }
   c.classList.remove('hidden');
-  c.innerHTML=`<div style="font-weight:600;font-size:11px;color:#34414e;margin-bottom:6px">Cells · active: ${state.gds.activeTopCell||'—'}</div>`;
+  const count = hierarchy.length || topCells.length || 1;
+  c.innerHTML=`<div style="font-weight:600;font-size:11px;color:#34414e;margin-bottom:6px">Cells · active: ${state.gds.activeTopCell||'—'} · ${count} total</div>`;
   // dropdown
   const sel=document.createElement('select'); sel.style.width='100%'; sel.style.marginBottom='8px';
   for(const cell of hierarchy){
@@ -168,11 +174,12 @@ async function importGds(file){
   const {normalizeGds} = await import('../layout-model.js');
   const g=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells,activeTopCell:data.active_top_cell,hierarchy:data.hierarchy,layers:data.layers.map((l,i)=>({...l,key:`${l.layer}/${l.datatype}`,alias:'',inverted:false,fillPattern:false,mirrored:false,visible:true,color:['#2563eb','#dc2626','#059669','#7c3aed','#d97706'][i%5]}))});
   state.gds=g; gdsFile=file;
-  // detect border
   const {detectBorderOnly}=await import('../geometry.js');
   for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
   if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set();
-  $('patStatus').textContent=`${data.filename}: ${data.layers.length} layers`;
+  // auto-select first layer for immediate preview if none selected
+  if(state.patternSelectedKeys.size===0 && state.gds.layers.length) state.patternSelectedKeys.add(state.gds.layers[0].key);
+  $('patStatus').textContent=`${data.filename}: ${data.layers.length} layers · ${data.active_top_cell} (tap Cell to switch)`;
   saveShared(); renderLayerList(); fitPat();
 }
 
@@ -189,6 +196,8 @@ if(state.wafer) fitPat(); else { topBounds=[-60000,-60000,60000,60000]; render()
 window.patRender = ()=>{ loadShared(); renderLayerList(); render(); };
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
+const _patFit = document.getElementById('patFitBtn');
+if(_patFit) _patFit.addEventListener('click', fitPat);
 // also allow main gdsInput to populate patterns when dock is used
 const _mainGds = document.getElementById('gdsInput');
 if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ loadShared(); renderLayerList(); render(); }, 300));

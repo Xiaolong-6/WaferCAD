@@ -248,7 +248,7 @@ function bindTopNavigation(){
 
 function renderSection(){
   const svg=$('sectionSvg');clearSvg(svg);$('sectionMeta').textContent='';if(!state.wafer||!state.slice)return;const a=state.slice.a,b=state.slice.b,back=state.activeFace==='back',waferIntervals=linePolyIntervals(a,b,waferOutline()),layerDescriptors=solidLayerDescriptors(),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors)),mappedDopings=state.dopings.map(d=>mappedDopingBounds(d,layerDescriptors));
-  const yMin=Math.min(-0.86,displayZ(-state.wafer.thickness)-.12,...mappedSolids.map(s=>s.zMin-.12),...mappedDopings.map(s=>s.zMin-.12)),yMax=Math.max(0.3,...mappedSolids.map(s=>s.zMax+.12),...mappedDopings.map(s=>s.zMax+.12)),mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>back?30+(z-yMin)/(yMax-yMin)*245:290-(z-yMin)/(yMax-yMin)*245,mapY=z=>mapDisplayY(displayZ(z)),rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
+  const rawMin=Math.min(displayZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin),...mappedDopings.map(s=>s.zMin),0), rawMax=Math.max(displayZ(0),...mappedSolids.map(s=>s.zMax),...mappedDopings.map(s=>s.zMax)), pad=(rawMax-rawMin)*0.08+0.04, yMin=rawMin-pad, yMax=rawMax+pad, mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>back?30+(z-yMin)/(yMax-yMin)*245:290-(z-yMin)/(yMax-yMin)*245,mapY=z=>mapDisplayY(displayZ(z)),rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
   const content=makeSvg('g',{id:'sectionContent',transform:`translate(${sectionTx},${sectionTy}) scale(${sectionScale})`});
   content.appendChild(makeSvg('line',{x1:45,y1:mapDisplayY(0),x2:555,y2:mapDisplayY(0),stroke:'#b6bbc2','stroke-width':'1'}));
   for(const waferI of waferIntervals){const xr=rectX(waferI[0],waferI[1]),yr=rectY(displayZ(-state.wafer.thickness),displayZ(0));content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate'}));}
@@ -857,8 +857,25 @@ function bindUi(){
   $('undoOperationBtn').addEventListener('click',undoOperation);
 }
 
-loadSharedState();
 bindUi();bindTopNavigation();bindSectionNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
+// Previous session banner: refresh is now a clean reset, but previous state remains restorable
+try{
+  const hasPrev = !!(sessionStorage.getItem('wafercad_gds') || localStorage.getItem('wafercad_shared'));
+  if(hasPrev){
+    const bar=document.createElement('div');
+    bar.id='restoreBanner';
+    bar.style.cssText='position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:90;background:#fff;border:1px solid #d8dce1;border-radius:8px;padding:8px 12px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 12px rgba(0,0,0,.12);font-size:12px';
+    bar.innerHTML='<span style="color:#334155">Previous session found (refresh reset to empty)</span><button id="restoreBtn" class="small primary">Restore</button><button id="discardBtn" class="small">Dismiss</button>';
+    document.body.appendChild(bar);
+    document.getElementById('restoreBtn').onclick=()=>{
+      loadSharedState();
+      syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();
+      try{ const ts=localStorage.getItem('wafercad_last_save_ts'); status('Restored previous session'+(ts?' — '+new Date(Number(ts)).toLocaleString():'')); }catch{ status('Restored previous session.'); }
+      bar.remove();
+    };
+    document.getElementById('discardBtn').onclick=()=>{ bar.remove(); try{ sessionStorage.removeItem('wafercad_gds'); localStorage.removeItem('wafercad_shared'); localStorage.removeItem('wafercad_last_save_ts'); }catch{} status('Previous session dismissed — current empty state kept. Use Save project file to keep it permanently.'); };
+  }
+}catch{}
 // Dock switching: header stays, content toggles; info persists via core.state (no page reload)
 (function(){
   const mainWs=$('mainWorkspace'), patWs=$('patternsWorkspace'), btnMain=$('navMainBtn'), btnPat=$('navPatternsBtn');
