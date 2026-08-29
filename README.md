@@ -52,11 +52,17 @@ http://127.0.0.1:8765
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest
+npm run test:ui
 ```
 
 The test suite generates and checks in a small synthetic `BASE → TOP` layout in
 both GDSII and OASIS formats. It contains only two rectangles on layer/datatype
 pairs `1/0` and `10/5`; no confidential layout data is used.
+
+The UI suite launches the installed Google Chrome in headless mode, starts the
+FastAPI service when necessary, and exercises the complete create/import/
+geometry/undo/snapshot/save/open workflow. Use `npm run test:ui:headed` to watch
+the same test in a visible Chrome window.
 
 Three.js is pinned in `package-lock.json` and served locally by the FastAPI application, so the 3D view does not require a CDN connection.
 

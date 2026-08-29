@@ -21,3 +21,5 @@ exports/
 cache/
 .DS_Store
 .pytest_cache/
+playwright-report/
+test-results/

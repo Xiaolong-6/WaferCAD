@@ -3,10 +3,17 @@
   "version": "1.0.0",
   "description": "A minimal local-first **2.5D wafer CAD editor** for building wafer/device geometry as a sequence of saved states.",
   "private": true,
+  "scripts": {
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "three": "0.179.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
   }
 }
