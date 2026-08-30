@@ -17,6 +17,8 @@ def test_health_and_static_assets(client):
     assert index.status_code == 200
     assert "WaferCAD MVP" in index.text
     assert 'id="snapshotNameDialog"' in index.text
+    assert "object-src 'none'" in index.headers["content-security-policy"]
+    assert index.headers["x-content-type-options"] == "nosniff"
 
     three = client.get("/vendor/three/build/three.module.js")
     assert three.status_code == 200
@@ -83,17 +85,17 @@ def test_mask_component_ids_are_stable_across_polygon_order(client):
     assert first["components"][0]["id"] == second["components"][0]["id"]
 
 
-def test_physical_components_merge_edge_touching_filled_boundaries():
+def test_filled_boundaries_remain_independently_selectable_when_touching():
     left = [[0, 0], [10, 0], [10, 10], [0, 10]]
     right_reversed = [[20, 10], [20, 0], [10, 0], [10, 10]]
     separated_alignment_mark = [[30, 4], [34, 4], [34, 6], [30, 6]]
 
-    components = app_module._compose_physical_components(
+    components = app_module._compose_selection_components(
         [left, right_reversed, separated_alignment_mark]
     )
 
-    assert len(components) == 2
-    assert sorted(len(source_indices) for _, source_indices in components) == [1, 2]
+    assert len(components) == 3
+    assert sorted(len(source_indices) for _, source_indices in components) == [1, 1, 1]
     assert sorted(index for _, indices in components for index in indices) == [0, 1, 2]
 
 

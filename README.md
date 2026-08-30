@@ -7,7 +7,7 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
 ## What works in this MVP
 
 - Create a circular (with optional `Main flat` or `Notch` at `-Y` auto-sized per SEMI M1), rectangular, or coordinate-defined polygon wafer with independently selectable lateral/thickness units. `New wafer` is a floating button in the 3D view (header stays, `view3d-float`).
-- **Physical Mask Composer:** imported polygons are unioned into stable optical components before preview or process geometry, so overlaps and stitch boundaries never become model edges. Pattern Editor has separate `Mask` and `Wafer Projection` views: Mask selects components/polarity without substrate clipping; Wafer Projection applies transform, face and substrate clipping. `Commit projection to Main` freezes the resolved exposure geometry, and every process operation consumes only that committed projection.
+- **Physical Mask Composer:** every filled GDS boundary remains independently selectable, then selected boundaries are unioned before process geometry so overlaps and stitch boundaries never become model edges. Pattern Editor shows `Mask` and `Wafer Projection` side by side with linked pan/zoom: Mask exposes selection and polarity, while Wafer Projection shows only the wafer and a borderless solid-purple UV exposure. `Commit projection to Main` freezes the resolved exposure geometry, and every process operation consumes only that committed projection.
 - Import GDSII or OASIS and identify **each layer/datatype pair separately** using `gdstk`; browse the full cell hierarchy and choose any cell or `All cells` aggregate. `All cells` collects `depth=0` polygons from every cell (solves per-cell-per-layer files).
 - Main `Top view` renders the physical model plus the committed substrate projection only; raw GDS/mask geometry is confined to Pattern Editor's Mask view.
 - Assign project-local aliases by clicking a layer name (dotted underline) in the old `Main` panel (now deprecated, layers live in the dock). Legacy project tone/fill fields remain loadable, while new mask work uses optical components and one explicit physical polarity.
@@ -71,8 +71,8 @@ Three.js is pinned in `package-lock.json` and served locally by the FastAPI appl
 ## Basic workflow
 
 1. Create/open a wafer (for circles optionally add a SEMI-sized `Main flat` or `Notch` at `-Y`) — use the floating `New wafer` in 3D.
-2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file; pick a `Cell` or `All cells`, enable layers, then select optical components directly or use Lasso to save complete components as a named pattern. Choose whether polygons transmit or block light.
-3. In `Mask`, select optical components and polarity. Switch to `Wafer Projection`, set `Scale`/`X/Y`/`Rotation`, verify the substrate-clipped exposure, then click `Commit projection to Main`.
+2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file; pick a `Cell` or the local-geometry aggregate, enable layers, then select filled boundaries directly or use Lasso to save complete boundaries as a named pattern. Choose whether polygons transmit or block light.
+3. Use the parallel `Mask` and `Wafer Projection` panels to set `Scale`/`X/Y`/`Rotation` and verify the substrate-clipped exposure. Their pan and zoom stay synchronized, and all plan views include a live scale bar. Click `Commit projection to Main` when the purple UV area is correct.
 4. In `Main` choose `Face: Front/Back`, then `Full faces` (click blue top regions) or `Patterns` (layers checked in dock).
 5. Enter a distance and choose `Pull`, `Push`, `Conformal grow`, `Isotropic etch`, or `Doping` (`Face` + `Selection` decide the mask; empty selection uses the whole face).
 6. Inspect `3D` (true `×1`), `Top` (with `Mask veil` opacity) and `A–B` section (wheel/drag/double-click).

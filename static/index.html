@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="/static/style.css?v=mask-projection-legend-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=parallel-mask-projection-v1" />
 </head>
 <body>
   <div id="app">
@@ -81,14 +81,14 @@
               <label>Mask veil <input id="maskOpacity" type="range" min="0" max="100" value="35" /></label>
               <output id="maskOpacityValue">35%</output>
             </div>
-            <div class="hint">Drag A/B · wheel to zoom · drag empty space to pan · click a pattern/full face to select.</div>
+            <div class="hint">Left-drag empty space to pan · wheel to zoom · double-click to fit · drag A/B · click to select.</div>
             <div id="viewportCullInfo" class="hint"></div>
           </div>
         </section>
         <section class="cross-section-panel">
           <div class="view-title"><span>Cross section A–B</span><span id="sectionMeta" class="muted"></span></div>
           <div class="cross-section-body" style="position:relative">
-            <div style="position:absolute;left:56px;top:6px;z-index:2;background:rgba(255,255,255,.92);padding:2px 6px;border-radius:4px;font-size:10px;color:#6b7785;pointer-events:none">Wheel to zoom · drag to pan · double-click to reset</div>
+            <div style="position:absolute;left:56px;top:6px;z-index:2;background:rgba(255,255,255,.92);padding:2px 6px;border-radius:4px;font-size:10px;color:#6b7785;pointer-events:none">Left-drag to pan · wheel to zoom · double-click to reset</div>
             <div class="z-display-control" title="Scale the displayed height of the substrate and every layer">
               <span>Z display</span>
               <input id="zExag" type="range" min="0.1" max="200" value="8" step="0.1" orient="vertical" aria-label="Global Z display scale" />
@@ -104,53 +104,59 @@
     </main>
 
     <div id="patternsWorkspace" class="patterns-workspace hidden">
-      <aside class="patterns-panel">
-        <div class="panel-head">Layers <span id="patLayerCount" class="muted">0</span></div>
-        <div class="panel-body">
-          <div id="patLayerList" class="empty-note" style="font-size:12px;color:#6b7785">Import a file to view layers.</div>
-          <div id="patHierarchy" class="hidden" style="margin-top:12px;border-top:1px solid #e2e7eb;padding-top:8px"></div>
-          <div id="patWaferHint" class="hint" style="margin-top:8px;font-size:11px;color:#6b7785"></div>
-        </div>
-      </aside>
-      <div class="patterns-canvas-wrap" style="position:relative;display:grid;place-items:center;background:#fff;border:1px solid #d6dbe0;border-radius:10px;overflow:hidden">
-        <div style="position:absolute;left:8px;top:8px;z-index:3;display:flex;gap:4px;background:#fff;padding:3px;border:1px solid #d6dbe0;border-radius:7px">
-          <button id="patViewMaskBtn" class="small primary" type="button">Mask</button>
-          <button id="patViewProjectionBtn" class="small" type="button">Wafer Projection</button>
-        </div>
-        <svg id="patSvg" viewBox="0 0 600 420" style="width:100%;height:100%;display:block"></svg>
-        <button id="patFitBtn" style="position:absolute;right:8px;top:8px;padding:4px 8px;border:1px solid #c8cdd3;background:#fff;border-radius:6px;font-size:11px;cursor:pointer">Fit</button>
-        <div id="patLegend" class="pat-legend" role="group" aria-label="Pattern view legend"></div>
-        <div style="position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.9);padding:3px 6px;border-radius:4px;font-size:11px;color:#6b7785">Pan: drag empty · Zoom: wheel · Preview: physical mask composer</div>
-      </div>
-      <aside class="patterns-panel">
-        <div class="panel-head"><span id="patViewTitle">Mask</span>
-          <select id="patMaskPolarity" title="Physical mask polarity"><option value="transmit">Polygons transmit</option><option value="block">Polygons block</option></select>
-        </div>
-        <div class="panel-body">
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div class="hint" style="font-size:11px;color:#6b7785">Raw polygons are unioned before projection. Overlaps and stitch boundaries never become physical model edges.</div>
+      <aside class="patterns-sidebar">
+        <section class="patterns-panel patterns-layers-panel">
+          <div class="panel-head">Layers <span id="patLayerCount" class="muted">0</span></div>
+          <div class="panel-body">
+            <div id="patLayerList" class="empty-note">Import a file to view layers.</div>
+            <div id="patHierarchy" class="hidden pat-hierarchy"></div>
+            <div id="patWaferHint" class="hint pat-wafer-hint"></div>
+          </div>
+        </section>
+        <section class="patterns-panel patterns-mask-panel">
+          <div class="panel-head">Mask controls
+            <select id="patMaskPolarity" title="Physical mask polarity"><option value="transmit">Polygons transmit</option><option value="block">Polygons block</option></select>
+          </div>
+          <div class="panel-body pat-controls-body">
+            <div class="hint">Each filled boundary remains selectable. Selected regions are unioned only when calculating exposure; borders and stitch lines are not projected.</div>
             <div id="patMaskControls">
               <label class="check-text"><input id="patLassoToggle" type="checkbox"> Lasso</label>
-              <span class="hint" style="font-size:10px">Shift+drag on empty</span>
-              <button id="patSavePatternBtn" class="small" style="margin-left:auto">Save lasso components</button>
+              <span class="hint">Shift+drag</span>
+              <button id="patSavePatternBtn" class="small">Save components</button>
             </div>
-            <div id="patLassoInfo" class="hint" style="min-height:14px"></div>
-            <div id="patProjectionControls" class="hidden">
-              <label class="check-text"><input id="patShowWafer" type="checkbox" checked /> Show wafer clip</label>
-              <label style="font-size:11px;display:flex;gap:6px;align-items:center">Highlight <select id="patHighlight" style="flex:1"><option value="none">None</option><option value="top" selected>Top faces (model)</option><option value="wafer">Wafer invert</option></select></label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
-                <label>X <input id="patOffX" type="number" value="0" step="any" style="width:100%" /></label>
-                <label>Y <input id="patOffY" type="number" value="0" step="any" style="width:100%" /></label>
-                <label>Rot <input id="patRot" type="number" value="0" step="any" style="width:100%" /></label>
-                <label>Scale <input id="patScale" type="number" value="1" step="0.01" style="width:100%" /></label>
+            <div id="patLassoInfo" class="hint"></div>
+            <div id="patProjectionControls">
+              <div class="pat-transform-grid">
+                <label>X <input id="patOffX" type="number" value="0" step="any" /></label>
+                <label>Y <input id="patOffY" type="number" value="0" step="any" /></label>
+                <label>Rot <input id="patRot" type="number" value="0" step="any" /></label>
+                <label>Scale <input id="patScale" type="number" value="1" step="0.01" /></label>
               </div>
             </div>
-            <button id="patPreviewBtn" class="small">Update preview</button>
-            <div id="patPreviewInfo" class="hint" style="min-height:18px"></div>
-            <button id="patApplyBtn" class="primary" disabled>Use selection in projection</button>
+            <button id="patPreviewBtn" class="small">Update both views</button>
+            <div id="patPreviewInfo" class="hint"></div>
+            <button id="patApplyBtn" class="primary" disabled>Commit projection to Main</button>
           </div>
-        </div>
+        </section>
       </aside>
+      <div class="patterns-views">
+        <section class="pattern-view-panel">
+          <div class="pattern-view-head"><span>Mask</span><button id="patFitBtn" class="small">Fit mask</button></div>
+          <div class="patterns-canvas-wrap">
+            <svg id="patSvg" viewBox="0 0 600 420" aria-label="Mask view"></svg>
+            <div id="patLegend" class="pat-legend" role="group" aria-label="Mask legend"></div>
+            <div class="pattern-canvas-hint">Left-drag empty space to pan · wheel to zoom · double-click to fit</div>
+          </div>
+        </section>
+        <section class="pattern-view-panel projection-view-panel">
+          <div class="pattern-view-head"><span>Wafer Projection</span><button id="patProjectionFitBtn" class="small">Fit wafer</button></div>
+          <div class="patterns-canvas-wrap projection-canvas-wrap">
+            <svg id="patProjectionSvg" viewBox="0 0 600 420" aria-label="Wafer projection view"></svg>
+            <div id="patProjectionLegend" class="pat-legend" role="group" aria-label="Wafer projection legend"></div>
+            <div class="pattern-canvas-hint">Left-drag to pan · wheel to zoom · double-click to fit</div>
+          </div>
+        </section>
+      </div>
     </div>
 
     <footer class="statusbar"><span id="statusText">Ready.</span><span id="modelStats"></span></footer>
@@ -236,7 +242,7 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=mask-projection-legend-v1"></script>
-  <script type="module" src="/static/js/patterns/app.js?v=filled-gds-boundaries-v1"></script>
+  <script type="module" src="/static/app.js?v=linked-layout-navigation-v2"></script>
+  <script type="module" src="/static/js/patterns/app.js?v=filled-boundary-projection-v2"></script>
 </body>
 </html>

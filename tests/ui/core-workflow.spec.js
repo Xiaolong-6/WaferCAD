@@ -26,21 +26,30 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patLayerList')).toContainText('10/5');
-  await expect(page.locator('#patLayerList')).toContainText('raw → 1 physical');
-  await expect(page.locator('#patViewTitle')).toHaveText('Mask');
+  await expect(page.locator('#patLayerList')).toContainText('raw → 1 filled');
+  await expect(page.locator('.pattern-view-panel')).toHaveCount(2);
+  await expect(page.locator('#patSvg')).toBeVisible();
+  await expect(page.locator('#patProjectionSvg')).toBeVisible();
   await expect(page.locator('#patLegend')).toContainText('Mask legend');
   await expect(page.locator('#patLegend')).toContainText('Selected polygons — transmits light');
   await expect(page.locator('#patLegend')).toContainText('Excluded component boundary');
-  await expect(page.locator('#patProjectionControls')).toBeHidden();
+  await expect(page.locator('#patProjectionLegend')).toContainText('UV light reaching substrate');
+  await expect(page.locator('#patProjectionControls')).toBeVisible();
   await page.locator('#patLayerList input[type="checkbox"]').first().check();
   await expect(page.locator('#patSvg [data-component-id]')).toHaveCount(1);
   await expect(page.locator('#patApplyBtn')).toBeEnabled();
-  await page.locator('#patApplyBtn').click();
-  await expect(page.locator('#patViewTitle')).toHaveText('Wafer Projection');
-  await expect(page.locator('#patLegend')).toContainText('Wafer Projection legend');
-  await expect(page.locator('#patLegend')).toContainText('Exposure reaching substrate');
-  await expect(page.locator('#patLegend')).toContainText('Affected model top faces');
-  await expect(page.locator('#patProjectionControls')).toBeVisible();
+  await expect(page.locator('#patProjectionSvg [data-uv-exposure]')).toHaveCount(1);
+  await expect(page.locator('#patProjectionSvg [data-uv-exposure]')).toHaveAttribute('stroke', 'none');
+  await expect(page.locator('#patProjectionSvg [data-component-id]')).toHaveCount(0);
+  await expect(page.locator('#topSvg [data-scale-bar="top"]')).toHaveCount(1);
+  await expect(page.locator('#patSvg [data-scale-bar="mask"]')).toHaveCount(1);
+  await expect(page.locator('#patProjectionSvg [data-scale-bar="projection"]')).toHaveCount(1);
+  const maskPathBefore = await page.locator('#patSvg [data-component-id]').getAttribute('d');
+  const projectionPathBefore = await page.locator('#patProjectionSvg clipPath path').getAttribute('d');
+  await page.locator('#patSvg').hover({ position: { x: 300, y: 210 } });
+  await page.mouse.wheel(0, -160);
+  await expect.poll(() => page.locator('#patSvg [data-component-id]').getAttribute('d')).not.toBe(maskPathBefore);
+  await expect.poll(() => page.locator('#patProjectionSvg clipPath path').getAttribute('d')).not.toBe(projectionPathBefore);
   await expect(page.locator('#patApplyBtn')).toHaveText('Commit projection to Main');
   await page.locator('#patApplyBtn').click();
   await expect(page.locator('#selectionMode')).toHaveValue('imprinted');
@@ -111,6 +120,38 @@ test('refresh stays empty until the user restores the previous session', async (
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patHierarchy')).toContainText('Cells');
+});
+
+
+test('new wafer invalidates a committed substrate projection', async ({ page }) => {
+  await page.goto('/?qa=playwright-projection-invalidation');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#gdsInput').setInputFiles(path.resolve('tests/fixtures/synthetic_two_layer.gds'));
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await expect(page.locator('#patApplyBtn')).toBeEnabled();
+  await page.locator('#patApplyBtn').click();
+  await expect(page.locator('#selectionInfo')).toContainText('Committed front substrate projection');
+
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.locator('#newWaferConfirmDiscard').click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.locator('#selectionInfo')).toContainText('No substrate projection committed');
+  await expect(page.locator('#topSvg [data-committed-projection]')).toHaveCount(0);
+});
+
+
+test('slow layout import still notifies Pattern Editor after completion', async ({ page }) => {
+  await page.route('**/api/gds/inspect', async route => {
+    await new Promise(resolve => setTimeout(resolve, 650));
+    await route.continue();
+  });
+  await page.goto('/?qa=playwright-gds-loaded-event');
+  await page.locator('#gdsInput').setInputFiles(path.resolve('tests/fixtures/synthetic_two_layer.gds'));
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await expect(page.locator('#patLayerList')).toContainText('1/0');
+  await expect(page.locator('#patLayerList')).toContainText('10/5');
 });
 
 

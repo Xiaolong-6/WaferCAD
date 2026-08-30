@@ -17,6 +17,20 @@ THREE = ROOT / "node_modules" / "three"
 
 app = FastAPI(title="WaferCAD MVP", version="0.1.0")
 SUBSTRATE_ATOM_LIMIT = 5000
+
+
+@app.middleware("http")
+async def add_security_headers(request: Any, call_next: Any) -> Any:
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+        "connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 if THREE.is_dir():
     app.mount("/vendor/three", StaticFiles(directory=THREE), name="three")
@@ -142,7 +156,15 @@ def _compose_polygons(polygons: list[list[list[float]]], precision: float = 1e-6
     import gdstk
 
     subjects = [gdstk.Polygon(points) for points in polygons if len(points) >= 3]
-    return gdstk.boolean(subjects, [], "or", precision=precision) if subjects else []
+    if not subjects:
+        return []
+    # Boolean OR alone can retain separate polygons at exactly shared edges.
+    # A precision-scale close dissolves those zero-width stitch boundaries
+    # without changing any resolvable mask dimension.
+    epsilon = max(float(precision), 1e-7)
+    grown = gdstk.offset(subjects, epsilon, join="miter", tolerance=2, use_union=True, precision=precision)
+    composed = gdstk.offset(grown, -epsilon, join="miter", tolerance=2, use_union=True, precision=precision)
+    return composed or gdstk.boolean(subjects, [], "or", precision=precision)
 
 
 def _component_payload(polygon: Any, source_polygon_indices: list[int] | None = None) -> dict[str, Any]:
@@ -158,78 +180,21 @@ def _component_payload(polygon: Any, source_polygon_indices: list[int] | None = 
     return payload
 
 
-def _compose_physical_components(
+def _compose_selection_components(
     polygons: list[list[list[float]]], precision: float = 1e-6
 ) -> list[tuple[Any, list[int]]]:
-    """Group filled GDS boundaries by physical contact without losing provenance.
+    """Expose each filled GDS BOUNDARY as an independently selectable region.
 
-    GDS BOUNDARY records are filled independently of point winding. Boolean
-    libraries can leave polygons that only share an edge as separate outputs,
-    which made a tiled filled mask look like holes after one output component
-    was selected. A sub-nanometre close is used only to discover connectivity;
-    projection geometry continues to use the untouched source boundaries.
+    Merely touching boundaries must not become one selection component.  A
+    photomask projection unions the selected filled regions later, but selection
+    must still be able to isolate an alignment mark from an adjacent frame or
+    stitch line.  Keeping the source index also makes the final projection use
+    the original filled boundary instead of a display-derived outline.
     """
     import gdstk
 
     subjects = [gdstk.Polygon(points) for points in polygons if len(points) >= 3]
-    if not subjects:
-        return []
-    contact_epsilon = max(float(precision), 1e-7)
-    grown = gdstk.offset(
-        subjects,
-        contact_epsilon,
-        join="miter",
-        tolerance=2,
-        use_union=True,
-        precision=precision,
-    )
-    components = gdstk.offset(
-        grown,
-        -contact_epsilon,
-        join="miter",
-        tolerance=2,
-        use_union=True,
-        precision=precision,
-    )
-    if not components:
-        components = _compose_polygons(polygons, precision)
-
-    component_bounds = [_bbox(polygon.points) for polygon in components]
-    memberships: list[list[int]] = [[] for _ in components]
-    for source_index, subject in enumerate(subjects):
-        source_points = [[float(x), float(y)] for x, y in subject.points]
-        source_bound = _bbox(source_points)
-        interior = _atom_interior_point(source_points)
-        candidate_indices = [
-            index
-            for index, bound in enumerate(component_bounds)
-            if not (
-                source_bound[2] < bound[0]
-                or source_bound[0] > bound[2]
-                or source_bound[3] < bound[1]
-                or source_bound[1] > bound[3]
-            )
-        ]
-        assigned = next(
-            (
-                index
-                for index in candidate_indices
-                if bool(gdstk.inside([interior], components[index])[0])
-            ),
-            None,
-        )
-        if assigned is None:
-            # Defensive fallback for an interior point quantized onto a boundary.
-            overlaps = []
-            for index in candidate_indices:
-                clipped = gdstk.boolean(subject, components[index], "and", precision=precision)
-                overlaps.append((sum(polygon.area() for polygon in clipped), index))
-            if overlaps:
-                assigned = max(overlaps)[1]
-        if assigned is not None:
-            memberships[assigned].append(source_index)
-
-    return list(zip(components, memberships))
+    return [(subject, [source_index]) for source_index, subject in enumerate(subjects)]
 
 
 def _point_in_poly(pt: list[float], poly: list[list[float]]) -> bool:
@@ -693,7 +658,7 @@ async def inspect_gds(
     layers = sorted(layer_map.values(), key=lambda x: (x["layer"], x["datatype"]))
     for layer_item in layers:
         try:
-            composed = _compose_physical_components(layer_item["polygons"])
+            composed = _compose_selection_components(layer_item["polygons"])
             layer_item["components"] = sorted(
                 (
                     _component_payload(polygon, source_indices)

@@ -1,13 +1,13 @@
-import {$,formatDisplayNumber,state,status} from './core.js';
+import {$,formatDisplayNumber,persistSharedState,state,status} from './core.js';
 import {waferOutline} from './geometry.js';
 import {editableLayerMaterial,ensureLayerVisuals,formatThicknessRange,layerLegendEntries,layerVisual,outerLayerPosition,renameLayerMaterial,validColor} from './layer-model.js';
 
 export function createLegendController({recordOperationUndo,updateSelectionInfo,renderAll}){
-  let editingLayerVisualId=null,pendingDeleteLayerId=null,thicknessRefreshSeq=0,thicknessRefreshPending=false;
+  let editingLayerVisualId=null,pendingDeleteLayerId=null,thicknessRefreshSeq=0,thicknessRefreshPending=false,thicknessRefreshDirty=false;
 
   async function refreshExactThickness(){
     if(!state.wafer){state._exactThickness=null;return;}
-    if(thicknessRefreshPending)return;
+    if(thicknessRefreshPending){thicknessRefreshDirty=true;return;}
     thicknessRefreshPending=true;
     const sequence=++thicknessRefreshSeq;
     try{
@@ -19,7 +19,7 @@ export function createLegendController({recordOperationUndo,updateSelectionInfo,
       state._exactThickness={min:Number(data.min),max:Number(data.max),atoms:data.atoms,exact:data.exact!==false};
       updateThickness();
     }catch(error){/* retain the local estimate */}
-    finally{thicknessRefreshPending=false;}
+    finally{thicknessRefreshPending=false;if(thicknessRefreshDirty){thicknessRefreshDirty=false;refreshExactThickness();}}
   }
 
   function updateThickness(){
@@ -60,10 +60,10 @@ export function createLegendController({recordOperationUndo,updateSelectionInfo,
   }
 
   function openDeleteDialog(id){const position=outerLayerPosition(id),entry=layerLegendEntries().find(item=>item.id===id);if(!position||!entry){status('Only an exposed top or bottom material layer can be deleted.');return;}pendingDeleteLayerId=id;$('deleteLayerMessage').textContent=`Delete ${entry.name}, the exposed ${position} layer? Associated doping on this layer will also be removed.`;const dialog=$('deleteLayerDialog');if(dialog.open)dialog.close();dialog.showModal();}
-  function deleteOuterLayer(id){const position=outerLayerPosition(id),entry=layerLegendEntries().find(item=>item.id===id);if(!position||!entry){status('Layer deletion cancelled because it is no longer an exposed outer layer.');return;}recordOperationUndo();const removedSolidIds=new Set(state.solids.filter(solid=>solid.layerId===id).map(solid=>solid.id)),removedDopingLayerIds=new Set(state.dopings.filter(doping=>doping.targetLayerId===id).map(doping=>doping.layerId));state.solids=state.solids.filter(solid=>solid.layerId!==id);state.dopings=state.dopings.filter(doping=>doping.targetLayerId!==id&&doping.layerId!==id);delete state.layerVisuals[id];for(const dopingLayerId of removedDopingLayerIds)delete state.layerVisuals[dopingLayerId];for(const solidId of removedSolidIds)state._topFaceSelection.selectedSolidIds.delete(solidId);ensureLayerVisuals();updateSelectionInfo();renderAll();status(`Deleted ${entry.name}, the exposed ${position} layer.`);}
+  function deleteOuterLayer(id){const position=outerLayerPosition(id),entry=layerLegendEntries().find(item=>item.id===id);if(!position||!entry){status('Layer deletion cancelled because it is no longer an exposed outer layer.');return;}recordOperationUndo();const removedSolidIds=new Set(state.solids.filter(solid=>solid.layerId===id).map(solid=>solid.id)),removedDopingLayerIds=new Set(state.dopings.filter(doping=>doping.targetLayerId===id).map(doping=>doping.layerId));state.solids=state.solids.filter(solid=>solid.layerId!==id);state.dopings=state.dopings.filter(doping=>doping.targetLayerId!==id&&doping.layerId!==id);delete state.layerVisuals[id];for(const dopingLayerId of removedDopingLayerIds)delete state.layerVisuals[dopingLayerId];for(const solidId of removedSolidIds)state._topFaceSelection.selectedSolidIds.delete(solidId);ensureLayerVisuals();updateSelectionInfo();renderAll();persistSharedState();status(`Deleted ${entry.name}, the exposed ${position} layer.`);}
 
   function bindUi(){
-    $('applyLayerVisualBtn').addEventListener('click',()=>{const scale=Number($('layerVisualScale').value),name=$('layerVisualName').value.trim(),error=$('layerVisualError');if(!name){error.textContent='Material name cannot be empty.';error.classList.remove('hidden');return;}if(!Number.isFinite(scale)||scale<=0||scale>100){error.textContent='Display scale must be greater than 0 and no more than 100.';error.classList.remove('hidden');return;}if(!editingLayerVisualId||!state.layerVisuals[editingLayerVisualId])return;renameLayerMaterial(editingLayerVisualId,name);state.layerVisuals[editingLayerVisualId].color=validColor($('layerVisualColor').value);state.layerVisuals[editingLayerVisualId].scale=scale;$('layerVisualDialog').close('default');renderAll();status(`Updated ${state.layerVisuals[editingLayerVisualId].name}: display ×${scale}.`);});
+    $('applyLayerVisualBtn').addEventListener('click',()=>{const scale=Number($('layerVisualScale').value),name=$('layerVisualName').value.trim(),error=$('layerVisualError');if(!name){error.textContent='Material name cannot be empty.';error.classList.remove('hidden');return;}if(!Number.isFinite(scale)||scale<=0||scale>100){error.textContent='Display scale must be greater than 0 and no more than 100.';error.classList.remove('hidden');return;}if(!editingLayerVisualId||!state.layerVisuals[editingLayerVisualId])return;renameLayerMaterial(editingLayerVisualId,name);state.layerVisuals[editingLayerVisualId].color=validColor($('layerVisualColor').value);state.layerVisuals[editingLayerVisualId].scale=scale;$('layerVisualDialog').close('default');renderAll();persistSharedState();status(`Updated ${state.layerVisuals[editingLayerVisualId].name}: display ×${scale}.`);});
     $('confirmDeleteLayerBtn').addEventListener('click',()=>{const id=pendingDeleteLayerId;pendingDeleteLayerId=null;$('deleteLayerDialog').close('default');if(id)deleteOuterLayer(id);});
     $('deleteLayerDialog').addEventListener('close',()=>{if($('deleteLayerDialog').returnValue==='cancel')pendingDeleteLayerId=null;});
     const box=$('figureLegend');box?.addEventListener('click',event=>{if(event.target.closest('.figure-legend-delete'))return;const row=event.target.closest('.figure-legend-row');if(!row?.dataset.layerId)return;event.preventDefault();event.stopPropagation();openVisualDialog(row.dataset.layerId);});
