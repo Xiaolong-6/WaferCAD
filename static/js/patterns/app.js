@@ -64,6 +64,36 @@ let maskPreview=[];
 let projectionPreview=[];
 let previewGeneration=0;
 
+function renderLegend(){
+  const legend=$('patLegend');
+  if(!legend)return;
+  legend.replaceChildren();
+  const title=document.createElement('div');
+  title.className='pat-legend-title';
+  title.textContent=editorView==='mask'?'Mask legend':'Wafer Projection legend';
+  legend.appendChild(title);
+  const addRow=(swatchClass,label)=>{
+    const row=document.createElement('div');row.className='pat-legend-row';
+    const swatch=document.createElement('span');swatch.className=`pat-legend-swatch ${swatchClass}`;
+    const text=document.createElement('span');text.textContent=label;
+    row.append(swatch,text);legend.appendChild(row);
+  };
+  if(editorView==='mask'){
+    const polarity=state.gds.maskPolarity==='block'?'blocks light':'transmits light';
+    addRow('optical',`Selected polygons — ${polarity}`);
+    addRow('included','Included component boundary');
+    addRow('excluded','Excluded component boundary');
+    addRow('context','Unselected layer context');
+    return;
+  }
+  addRow('wafer','Substrate / wafer');
+  addRow('optical','Exposure reaching substrate');
+  addRow('context','Mask geometry reference');
+  const highlight=$('patHighlight')?.value;
+  if(highlight==='top')addRow('top-face','Affected model top faces');
+  else if(highlight==='wafer')addRow('wafer-invert','Wafer invert highlight');
+}
+
 async function refreshPreview(){
   const generation=++previewGeneration;
   const maskPolygons=[],projectionPolygons=[];
@@ -157,6 +187,7 @@ function getTopFaces(){
 
 function render(){
   const svg=$('patSvg'); clearSvg(svg);
+  renderLegend();
   if(!topBounds) fitPat();
   const outline=waferOutline();
   const hasWafer = editorView==='projection'&&outline.length>0;

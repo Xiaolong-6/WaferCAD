@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WaferCAD MVP</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="/static/style.css?v=dual-mask-projection-v1" />
+  <link rel="stylesheet" href="/static/style.css?v=mask-projection-legend-v1" />
 </head>
 <body>
   <div id="app">
@@ -119,6 +119,7 @@
         </div>
         <svg id="patSvg" viewBox="0 0 600 420" style="width:100%;height:100%;display:block"></svg>
         <button id="patFitBtn" style="position:absolute;right:8px;top:8px;padding:4px 8px;border:1px solid #c8cdd3;background:#fff;border-radius:6px;font-size:11px;cursor:pointer">Fit</button>
+        <div id="patLegend" class="pat-legend" role="group" aria-label="Pattern view legend"></div>
         <div style="position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.9);padding:3px 6px;border-radius:4px;font-size:11px;color:#6b7785">Pan: drag empty · Zoom: wheel · Preview: physical mask composer</div>
       </div>
       <aside class="patterns-panel">
@@ -235,7 +236,7 @@
   <script type="importmap">
     {"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}
   </script>
-  <script type="module" src="/static/app.js?v=dual-mask-projection-v1"></script>
-  <script type="module" src="/static/js/patterns/app.js?v=dual-mask-projection-v1"></script>
+  <script type="module" src="/static/app.js?v=mask-projection-legend-v1"></script>
+  <script type="module" src="/static/js/patterns/app.js?v=mask-projection-legend-v1"></script>
 </body>
 </html>

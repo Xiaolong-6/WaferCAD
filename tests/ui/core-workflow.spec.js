@@ -28,11 +28,17 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await expect(page.locator('#patLayerList')).toContainText('10/5');
   await expect(page.locator('#patLayerList')).toContainText('raw → 1 optical');
   await expect(page.locator('#patViewTitle')).toHaveText('Mask');
+  await expect(page.locator('#patLegend')).toContainText('Mask legend');
+  await expect(page.locator('#patLegend')).toContainText('Selected polygons — transmits light');
+  await expect(page.locator('#patLegend')).toContainText('Excluded component boundary');
   await expect(page.locator('#patProjectionControls')).toBeHidden();
   await page.locator('#patLayerList input[type="checkbox"]').first().check();
   await expect(page.locator('#patSvg [data-component-id]')).toHaveCount(1);
   await page.locator('#patApplyBtn').click();
   await expect(page.locator('#patViewTitle')).toHaveText('Wafer Projection');
+  await expect(page.locator('#patLegend')).toContainText('Wafer Projection legend');
+  await expect(page.locator('#patLegend')).toContainText('Exposure reaching substrate');
+  await expect(page.locator('#patLegend')).toContainText('Affected model top faces');
   await expect(page.locator('#patProjectionControls')).toBeVisible();
   await expect(page.locator('#patApplyBtn')).toHaveText('Commit projection to Main');
   await page.locator('#patApplyBtn').click();
