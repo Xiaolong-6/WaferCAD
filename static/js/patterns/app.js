@@ -1,4 +1,4 @@
-import {state, loadSharedState, persistSharedState} from '../core.js';
+import {state, persistSharedState} from '../core.js';
 import {waferOutline, bboxPolys, isSimplePolygon, viewAspectBounds, waferBounds, polygonArea, pointInPoly, centroid} from '../geometry.js';
 import {composeMaskRegions} from '../geometry-api.js';
 import {effectiveLayerPolygons} from '../layout-model.js';
@@ -9,7 +9,6 @@ const $ = id => document.getElementById(id);
 let gdsFile = null;
 
 function saveShared(){ persistSharedState(); }
-function loadShared(){ loadSharedState(); }
 function patTransform([x,y]){
   const t=state.gds.transform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1};
   const s=Number(t.scale)||1, sx=x*s, sy=y*s;
@@ -399,11 +398,11 @@ function handleInvertWafer(){
 }
 
 // Init
-loadShared();
 renderLayerList();
 if(state.wafer) fitPat(); else { topBounds=[-60000,-60000,60000,60000]; render(); }
 refreshPreview();
-window.patRender = ()=>{ loadShared(); if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit'; renderLayerList(); render(); refreshPreview(); };
+window.patRender = ()=>{ if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit'; renderLayerList(); render(); refreshPreview(); };
+window.patReset = ()=>{ gdsFile=null;resolvedPreview=[];previewGeneration++;lassoStart=null;lassoRect=null;lassoActive=false;topBounds=[-60000,-60000,60000,60000];renderLayerList();render(); };
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
 const _patFit = document.getElementById('patFitBtn');
@@ -412,7 +411,7 @@ if(_patFit) _patFit.addEventListener('click', ()=>{
   fitPat();
 });
 const _mainGds = document.getElementById('gdsInput');
-if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ loadShared(); renderLayerList(); resolvedPreview=[]; render(); refreshPreview(); }, 300));
+if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ renderLayerList(); resolvedPreview=[]; render(); refreshPreview(); }, 300));
 ['patShowWafer','patHighlight'].forEach(id=>document.getElementById(id)?.addEventListener('change',render));
 const _polarity=$('patMaskPolarity');
 if(_polarity){_polarity.value=state.gds.maskPolarity||'transmit';_polarity.addEventListener('change',()=>{state.gds.maskPolarity=_polarity.value==='block'?'block':'transmit';saveShared();refreshPreview();});}

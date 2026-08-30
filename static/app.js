@@ -1,4 +1,4 @@
-import {$,DEFAULT_WAFER,UNIT_TO_UM,clone,formatDisplayNumber,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
+import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
 import {bboxPolys,centroid,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
 import {clipPolygonsToWafer,composeMaskRegions,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
 import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
@@ -870,6 +870,7 @@ try{
     document.getElementById('restoreBtn').onclick=()=>{
       const hadTopBounds = !!state.topBounds;
       loadSharedState();
+      gdsSourceFile=state._gdsFileBlob||null;
       if(window.showMainDock) window.showMainDock();
       syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();
       if(!state.topBounds && !hadTopBounds) fitWafer();
@@ -882,11 +883,12 @@ try{
     };
     document.getElementById('discardBtn').onclick=()=>{
       bar.remove();
-      try{ sessionStorage.removeItem('wafercad_gds'); localStorage.removeItem('wafercad_shared'); localStorage.removeItem('wafercad_last_save_ts'); }catch{}
+      clearSharedState();
       // Reset current in-memory state to empty (no refresh needed)
       state.wafer=null; state.solids=[]; state.cuts=[]; state.dopings=[]; state.layerVisuals={}; state.imprintedFaces=[]; state.selectedFaceIds.clear(); state.patternSelectedKeys.clear(); state.slice=null; state.snapshots=[]; state.activeSnapshotId=null; state.topBounds=null; state._exactThickness=null; state.operationUndo=[];
       // also clear GDS to fully reset pattern editor
-      state.gds={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:[]};
+      state.gds=normalizeGds(null);state._gdsFileBlob=null;state._gdsFileName=null;gdsSourceFile=null;
+      if(window.patReset)window.patReset();
       syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();renderAll();
       status('Reset to empty — previous session cleared. No refresh needed.');
     };

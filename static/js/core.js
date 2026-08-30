@@ -93,5 +93,11 @@ export function hasSharedState(){
   try{ return !!(sessionStorage.getItem('wafercad_gds') || localStorage.getItem('wafercad_shared')); }catch{ return false; }
 }
 export function clearSharedState(){
-  try{ sessionStorage.removeItem('wafercad_gds'); localStorage.removeItem('wafercad_shared'); localStorage.removeItem('wafercad_last_save_ts'); }catch{}
+  try{
+    sessionStorage.removeItem('wafercad_gds');
+    sessionStorage.removeItem('wafercad_gds_blob');
+    sessionStorage.removeItem('wafercad_gds_name');
+    localStorage.removeItem('wafercad_shared');
+    localStorage.removeItem('wafercad_last_save_ts');
+  }catch{}
 }

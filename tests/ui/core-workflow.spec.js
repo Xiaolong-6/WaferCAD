@@ -81,6 +81,25 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
 });
 
 
+test('refresh stays empty until the user restores the previous session', async ({ page }) => {
+  await page.goto('/?qa=playwright-refresh-reset');
+  const gdsFixture = path.resolve('tests/fixtures/synthetic_two_layer.gds');
+  await page.locator('#gdsInput').setInputFiles(gdsFixture);
+  await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
+
+  await page.reload();
+  await expect(page.locator('#restoreBanner')).toBeVisible();
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await expect(page.locator('#patLayerList')).toContainText('Import a file to view layers');
+  await expect(page.locator('#patHierarchy')).toBeHidden();
+
+  await page.locator('#restoreBtn').click();
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await expect(page.locator('#patLayerList')).toContainText('1/0');
+  await expect(page.locator('#patHierarchy')).toContainText('Cells');
+});
+
+
 test('Top view mirrors current model solids and substrate cuts', async ({ page }) => {
   await page.goto('/?qa=playwright-top-model-projection');
   await page.getByRole('button', { name: 'New wafer' }).click();
