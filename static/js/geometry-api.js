@@ -22,6 +22,14 @@ export async function resolveMaskRegions(maskPolygons,invert){
   return data.regions;
 }
 
+export async function composeMaskRegions(polygons,polarity='transmit',substrate=null){
+  const payload={polygons,polarity};
+  if(Array.isArray(substrate)&&substrate.length>=3)payload.substrate=substrate;
+  const data=await postGeometry('/api/geometry/mask-compose',payload,'Physical mask composition failed');
+  if(!Array.isArray(data.regions)||!Array.isArray(data.components))throw new Error('Mask composition returned an invalid result.');
+  return data;
+}
+
 export async function isotropicOffset(polygons,distance){
   const data=await postGeometry('/api/geometry/isotropic-offset',{subjects:polygons,distance,clip:waferOutline()},'Isotropic geometry request failed');
   if(!Array.isArray(data.regions))throw new Error('Isotropic geometry operation returned an invalid result.');

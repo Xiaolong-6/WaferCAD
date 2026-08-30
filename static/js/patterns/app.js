@@ -1,5 +1,7 @@
 import {state, loadSharedState, persistSharedState} from '../core.js';
 import {waferOutline, bboxPolys, isSimplePolygon, viewAspectBounds, waferBounds, polygonArea, pointInPoly, centroid} from '../geometry.js';
+import {composeMaskRegions} from '../geometry-api.js';
+import {effectiveLayerPolygons} from '../layout-model.js';
 import {clearSvg, makeSvg} from '../svg.js';
 import * as Bool from './boolean.js';
 
@@ -14,7 +16,7 @@ function patTransform([x,y]){
   const a=(Number(t.rotationDeg)||0)*Math.PI/180, c=Math.cos(a), s2=Math.sin(a);
   return [sx*c - sy*s2 + (Number(t.offsetX)||0), sx*s2 + sy*c + (Number(t.offsetY)||0)];
 }
-function effectiveLayer(l){ return l.fillPattern===true && Array.isArray(l.filledPolygons) ? l.filledPolygons : (l.polygons||[]); }
+function effectiveLayer(l){ return effectiveLayerPolygons(l); }
 function isAreaValid(polys){
   if(!polys.length) return false;
   let total=0;
@@ -56,6 +58,40 @@ function polyPath(poly){ return poly.map((p,i)=>{const [x,y]=modelToSvg(p[0],p[1
 // Lasso state
 let lassoStart=null, lassoRect=null, lassoActive=false;
 let highlightMode='top'; // top | wafer | none
+let resolvedPreview=[];
+let previewGeneration=0;
+
+async function refreshPreview(){
+  const generation=++previewGeneration;
+  const polygons=[];
+  for(const layer of state.gds.layers){
+    if(!state.patternSelectedKeys?.has(layer.key))continue;
+    for(const polygon of effectiveLayer(layer))polygons.push(polygon.map(([x,y])=>patTransform([x,y])));
+  }
+  if(!polygons.length){resolvedPreview=[];render();return;}
+  try{
+    const outline=waferOutline();
+    const result=await composeMaskRegions(polygons,state.gds.maskPolarity||'transmit',outline.length?outline:null);
+    if(generation!==previewGeneration)return;
+    resolvedPreview=result.regions;
+    render();
+  }catch(error){
+    if(generation!==previewGeneration)return;
+    resolvedPreview=[];
+    const info=$('patPreviewInfo');if(info)info.textContent=`Preview failed: ${error.message}`;
+  }
+}
+
+function chooseComponent(layer,componentId,additive=false){
+  if(!additive){
+    layer.selectedComponentIds=[componentId];
+  }else{
+    const selected=new Set(Array.isArray(layer.selectedComponentIds)?layer.selectedComponentIds:[]);
+    if(selected.has(componentId))selected.delete(componentId);else selected.add(componentId);
+    layer.selectedComponentIds=[...selected];
+  }
+  saveShared();renderLayerList();refreshPreview();
+}
 
 function getTopFaces(){
   // Compute top faces that intersect current preview (for highlight)
@@ -129,14 +165,29 @@ function render(){
   for(const layer of state.gds.layers){
     if(layer.visible===false) continue;
     if(state.patternSelectedKeys?.has(layer.key)) continue;
-    for(const poly of effectiveLayer(layer).map(p=>p.map(([x,y])=>patTransform([x,y])))){
+    for(const rawPoly of effectiveLayer(layer)){
+      const poly=rawPoly.map(([x,y])=>patTransform([x,y]));
       svg.appendChild(makeSvg('path',{d:polyPath(poly),fill:layer.color,'fill-opacity':'0.08',stroke:layer.color,'stroke-opacity':'0.35','stroke-width':'1'}));
+    }
+  }
+  // Optical component hit targets. A first click isolates one component;
+  // Shift/Ctrl-click toggles additional components without guessing by size.
+  for(const layer of state.gds.layers){
+    if(!state.patternSelectedKeys?.has(layer.key)||!Array.isArray(layer.components))continue;
+    const explicit=Array.isArray(layer.selectedComponentIds)?new Set(layer.selectedComponentIds):null;
+    for(const component of layer.components){
+      const poly=component.polygon.map(([x,y])=>patTransform([x,y]));
+      const chosen=!explicit||explicit.has(component.id);
+      const path=makeSvg('path',{d:polyPath(poly),fill:'transparent',stroke:chosen?'#b45309':'#94a3b8','stroke-opacity':chosen?'0.75':'0.5','stroke-width':chosen?'1.2':'0.7','stroke-dasharray':chosen?'none':'3 3','data-component-id':component.id,'data-layer-key':layer.key});
+      path.style.cursor='pointer';
+      path.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();chooseComponent(layer,component.id,event.shiftKey||event.ctrlKey||event.metaKey);});
+      svg.appendChild(path);
     }
   }
   // preview previewPolys (selected)
   const preview = computePreview();
   for(const poly of preview){
-    svg.appendChild(makeSvg('path',{d:polyPath(poly),fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.4'}));
+    svg.appendChild(makeSvg('path',{d:polyPath(poly),fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.4','pointer-events':'none'}));
   }
   // lasso rect
   if(lassoRect){
@@ -168,51 +219,18 @@ function getLassoSelectedCount(){
   let cnt=0;
   for(const layer of state.gds.layers){
     if(!state.patternSelectedKeys?.has(layer.key)) continue;
-    for(const poly of effectiveLayer(layer).map(p=>p.map(([x,y])=>patTransform([x,y])))){
+    for(const rawPoly of effectiveLayer(layer)){
+      const poly=rawPoly.map(([x,y])=>patTransform([x,y]));
       // check if poly centroid in rect or rect centroid in poly
       const c=centroid(poly);
       if(c.x>=Math.min(x0,x1) && c.x<=Math.max(x0,x1) && c.y>=Math.min(y0,y1) && c.y<=Math.max(y0,y1)) cnt++;
-      else if(pointInPoly({x:(x0+x1)/2,y:(y0+y1)/2}, poly)) cnt++;
     }
   }
   return cnt;
 }
 
 function computePreview(){
-  const outline=waferOutline();
-  const hasWafer = outline.length>0;
-  const modeEl=$('patInvertMode'); const mode=modeEl?modeEl.value:'per-layer';
-  const showFillEl=$('patShowFill'); const showFill=showFillEl?showFillEl.checked:false;
-  const activeKeys=[... (state.patternSelectedKeys||new Set())];
-  const activeLayers=state.gds.layers.filter(l=>activeKeys.includes(l.key));
-  if(!activeLayers.length) return [];
-  const perLayerGroups=[];
-  const allPolys=[];
-  for(const layer of activeLayers){
-    let polys = effectiveLayer(layer).map(p=>p.map(([x,y])=>patTransform([x,y])));
-    if(showFill && layer.isBorderOnly){
-      try{ polys = Bool.union(polys); }catch{}
-    }
-    if(!polys.length) continue;
-    perLayerGroups.push(polys);
-    allPolys.push(...polys);
-  }
-  if(!allPolys.length) return [];
-  if(!hasWafer){
-    try{ return Bool.union(allPolys); }catch{ return allPolys; }
-  }
-  try{
-    if(mode==='global'){
-      const u = Bool.union(allPolys);
-      return Bool.difference([outline], u);
-    } else if(mode==='wafer'){
-      // wafer other part: same as global but as selectable region (highlight)
-      const u = Bool.union(allPolys);
-      return Bool.difference([outline], u);
-    } else {
-      return Bool.previewPerLayerInvert(outline, perLayerGroups);
-    }
-  }catch(e){ console.warn(e); return []; }
+  return resolvedPreview;
 }
 
 function renderCellSelector(){
@@ -254,12 +272,12 @@ function renderCellSelector(){
     if(!res.ok){ const j=await res.json().catch(()=>({detail:res.statusText})); alert(j.detail); return; }
     const data=await res.json();
     const {normalizeGds}=await import('../layout-model.js');
-    const g=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells,activeTopCell:data.active_top_cell,hierarchy:data.hierarchy,layers:data.layers.map((l,i)=>({...l,key:`${l.layer}/${l.datatype}`,alias:state.gds.layers.find(x=>x.key===`${l.layer}/${l.datatype}`)?.alias||'',inverted:false,fillPattern:false,mirrored:false,visible:true,color:['#2563eb','#dc2626','#059669','#7c3aed','#d97706'][i%5]}))});
+    const g=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells,activeTopCell:data.active_top_cell,maskPolarity:state.gds.maskPolarity||'transmit',hierarchy:data.hierarchy,layers:data.layers.map((l,i)=>({...l,key:`${l.layer}/${l.datatype}`,alias:state.gds.layers.find(x=>x.key===`${l.layer}/${l.datatype}`)?.alias||'',inverted:false,fillPattern:false,mirrored:false,visible:true,color:['#2563eb','#dc2626','#059669','#7c3aed','#d97706'][i%5]}))});
     state.gds=g;
     const {detectBorderOnly}=await import('../geometry.js');
     for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
     state.patternSelectedKeys=new Set();
-    saveShared(); renderLayerList(); renderCellSelector(); fitPat();
+    resolvedPreview=[]; saveShared(); renderLayerList(); renderCellSelector(); fitPat(); refreshPreview();
   });
   c.appendChild(sel);
   const active = hierarchy.find(h=>h.name===state.gds.activeTopCell);
@@ -283,15 +301,21 @@ function renderLayerList(){
       cb.disabled=true; cb.title='Line geometry has no area — Fill or close the shape to enable';
       row.style.opacity='0.55';
     }
-    cb.addEventListener('change',()=>{ if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set(); if(cb.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key); renderLayerList(); render(); saveShared(); });
+    cb.addEventListener('change',()=>{ if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set(); if(cb.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key); renderLayerList(); saveShared(); refreshPreview(); });
     const sw=document.createElement('span'); sw.className='sw'; sw.style.background=layer.color;
-    const label=document.createElement('span'); label.textContent=`${layer.layer}/${layer.datatype} · ${layer.count}`; label.style.fontSize='12px';
+    const opticalCount=Array.isArray(layer.components)?layer.components.length:layer.count;
+    const selectedCount=Array.isArray(layer.selectedComponentIds)?layer.selectedComponentIds.length:opticalCount;
+    const label=document.createElement('span'); label.textContent=`${layer.layer}/${layer.datatype} · ${layer.count} raw → ${opticalCount} optical · ${selectedCount} selected`; label.style.fontSize='12px';
     if(!areaOk){
       const warn=document.createElement('span'); warn.textContent=' · line (no area)'; warn.style.fontSize='10px'; warn.style.color='#b45309';
       label.appendChild(warn);
     }
     const alias=document.createElement('span'); alias.textContent=layer.alias?` alias:${layer.alias}`:''; alias.style.fontSize='11px'; alias.style.color='#6b7785';
     row.append(cb, sw, label, alias);
+    if(Array.isArray(layer.components)&&Array.isArray(layer.selectedComponentIds)){
+      const all=document.createElement('button');all.type='button';all.className='small';all.textContent='All';all.title='Use all optical components in this layer';
+      all.addEventListener('click',event=>{event.preventDefault();delete layer.selectedComponentIds;saveShared();renderLayerList();refreshPreview();});row.appendChild(all);
+    }
     box.appendChild(row);
   }
   renderCellSelector();
@@ -315,13 +339,8 @@ async function importGds(file){
   const {detectBorderOnly}=await import('../geometry.js');
   for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
   if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set();
-  if(state.patternSelectedKeys.size===0 && state.gds.layers.length){
-    // auto-select first area-valid layer
-    const firstValid=state.gds.layers.find(l=>isAreaValid(effectiveLayer(l)));
-    state.patternSelectedKeys.add((firstValid||state.gds.layers[0]).key);
-  }
   $('patStatus').textContent=`${data.filename}: ${data.layers.length} layers · ${data.active_top_cell} (tap Cell to switch)`;
-  saveShared(); renderLayerList(); fitPat();
+  resolvedPreview=[]; saveShared(); renderLayerList(); fitPat(); refreshPreview();
 }
 
 function applyToMain(){
@@ -337,21 +356,21 @@ function saveAsNewPattern(){
   const newPolys=[];
   for(const layer of state.gds.layers){
     if(!state.patternSelectedKeys?.has(layer.key)) continue;
-    for(const poly of effectiveLayer(layer).map(p=>p.map(([x,y])=>patTransform([x,y])))){
-      // intersect poly with rect
-      try{
-        const inter = Bool.intersection([poly], [rectPoly]);
-        if(inter.length) newPolys.push(...inter);
-      }catch{}
+    for(const rawPoly of effectiveLayer(layer)){
+      const poly=rawPoly.map(([x,y])=>patTransform([x,y]));
+      // Lasso selects complete optical components; it never cuts a component
+      // or turns the selection rectangle itself into mask geometry.
+      const center=centroid(poly);
+      if(center.x>=Math.min(x0,x1)&&center.x<=Math.max(x0,x1)&&center.y>=Math.min(y0,y1)&&center.y<=Math.max(y0,y1))newPolys.push(rawPoly);
     }
   }
-  if(!newPolys.length){ alert('No fragments inside lasso'); return; }
+  if(!newPolys.length){ alert('No optical components intersect the lasso'); return; }
   const newKey=`pattern:${Date.now()}`;
   const newLayer={key:newKey, layer:900+state.gds.layers.length, datatype:0, name:`Pattern ${state.gds.layers.length+1}`, count:newPolys.length, bbox:bboxPolys(newPolys), polygons:newPolys, visible:true, color:'#f59e0b', alias:`Pattern ${state.gds.layers.length+1}`, isVirtual:true, isBorderOnly:false};
   state.gds.layers.push(newLayer);
   state.patternSelectedKeys=new Set([newKey]);
   lassoRect=null; lassoActive=false;
-  saveShared(); renderLayerList(); render();
+  resolvedPreview=[]; saveShared(); renderLayerList(); refreshPreview();
   const name=prompt('Name for new pattern', newLayer.alias);
   if(name!==null){ newLayer.alias=name.trim()||newLayer.alias; renderLayerList(); }
 }
@@ -383,7 +402,8 @@ function handleInvertWafer(){
 loadShared();
 renderLayerList();
 if(state.wafer) fitPat(); else { topBounds=[-60000,-60000,60000,60000]; render(); }
-window.patRender = ()=>{ loadShared(); renderLayerList(); render(); };
+refreshPreview();
+window.patRender = ()=>{ loadShared(); if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit'; renderLayerList(); render(); refreshPreview(); };
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
 const _patFit = document.getElementById('patFitBtn');
@@ -392,13 +412,12 @@ if(_patFit) _patFit.addEventListener('click', ()=>{
   fitPat();
 });
 const _mainGds = document.getElementById('gdsInput');
-if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ loadShared(); renderLayerList(); render(); }, 300));
-['patInvertMode','patShowWafer','patShowFill','patPreviewBtn','patApplyBtn','patHighlight'].forEach(id=>{
-  const el=document.getElementById(id);
-  if(!el) return;
-  const ev = id==='patPreviewBtn'||id==='patApplyBtn' ? 'click' : 'change';
-  el.addEventListener(ev, id==='patApplyBtn'? applyToMain : render);
-});
+if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ loadShared(); renderLayerList(); resolvedPreview=[]; render(); refreshPreview(); }, 300));
+['patShowWafer','patHighlight'].forEach(id=>document.getElementById(id)?.addEventListener('change',render));
+const _polarity=$('patMaskPolarity');
+if(_polarity){_polarity.value=state.gds.maskPolarity||'transmit';_polarity.addEventListener('change',()=>{state.gds.maskPolarity=_polarity.value==='block'?'block':'transmit';saveShared();refreshPreview();});}
+$('patPreviewBtn')?.addEventListener('click',refreshPreview);
+$('patApplyBtn')?.addEventListener('click',applyToMain);
 const _savePat=document.getElementById('patSavePatternBtn');
 if(_savePat) _savePat.addEventListener('click', saveAsNewPattern);
 const _invertWafer=document.getElementById('patInvertWaferBtn');
@@ -409,7 +428,7 @@ if(_invertWafer) _invertWafer.addEventListener('click', handleInvertWafer);
   el.addEventListener('change',()=>{
     const get = i=> Number(document.getElementById(i)?.value)||0;
     state.gds.transform={offsetX:get('patOffX'), offsetY:get('patOffY'), rotationDeg:get('patRot'), scale:get('patScale')||1};
-    saveShared(); render();
+    saveShared(); refreshPreview();
   });
 });
  // pan/zoom for patterns page (simple) + lasso

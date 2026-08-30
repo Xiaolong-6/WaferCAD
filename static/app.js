@@ -1,6 +1,6 @@
 import {$,DEFAULT_WAFER,UNIT_TO_UM,clone,formatDisplayNumber,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
 import {bboxPolys,centroid,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
-import {clipPolygonsToWafer,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
+import {clipPolygonsToWafer,composeMaskRegions,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
 import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
 import {effectiveLayerPolygons,normalizeGds,patternHasBlockedBorder,patternRawMaskPolygons,patternSelectedLayers,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
@@ -404,28 +404,22 @@ async function applyPushPull(){
     if(wholeFace){
       selected=[{id:null,side:state.activeFace,polygon:waferOutline(),wholeFace:true}];
     } else {
-      // Multi-layer pattern masks: collect transformed polys; for inverted layers resolve substrate complement
-      // Border-only without Fill is ignored by default (natural: closed but unfilled border is not a mask)
-      selected=[];
-      let blockedBorders=[];
+      // A physical mask is one optical field, not a list of GDS fragments.
+      // Compose all selected optical components before any process geometry is made.
+      const maskPolygons=[];
       for(const key of selKeys){
         const layer=state.gds.layers.find(l=>l.key===key);
         if(!layer) continue;
-        if(layer.isBorderOnly && !layer.fillPattern){ blockedBorders.push(`${layer.layer}/${layer.datatype}`); continue; }
         const raw=effectiveLayerPolygons(layer).map(poly=>transformedLayerPolygon(layer, poly));
-        if(!raw.length) continue;
-        if(layer.inverted===true){
-          status(`Resolving inverted pattern ${layer.layer}/${layer.datatype}…`);
-          try{
-            const regions=await resolveMaskRegions(raw, true);
-            for(const poly of regions) selected.push({id:layer.key,side:state.activeFace,polygon:poly,wholeFace:false});
-          }catch(e){status(`Pattern ${layer.layer}/${layer.datatype} inverted resolve failed: ${e.message}`);return;}
-        } else {
-          for(const poly of raw) selected.push({id:layer.key,side:state.activeFace,polygon:poly,wholeFace:false});
-        }
+        maskPolygons.push(...raw);
       }
-      if(blockedBorders.length){ status(`Border-only layer(s) ${blockedBorders.join(', ')} without Fill are not used as mask — enable Fill pattern to use as filled outer contour.`); }
-      if(!selected.length){status('Selected pattern layers produced no geometry (border-only without Fill is ignored).');return;}
+      if(!maskPolygons.length){status('Selected patterns produced no optical geometry.');return;}
+      status(`Composing ${maskPolygons.length} layout polygon(s) into a physical ${state.gds.maskPolarity==='block'?'blocking':'transmitting'} mask…`);
+      let composed;
+      try{composed=await composeMaskRegions(maskPolygons,state.gds.maskPolarity||'transmit',waferOutline());}
+      catch(e){status(`Physical mask composition failed: ${e.message}`);return;}
+      selected=composed.regions.map(polygon=>({id:'resolved-mask',side:state.activeFace,polygon,wholeFace:false}));
+      if(!selected.length){status('The resolved mask has no exposure area on the wafer.');return;}
     }
   } else {
     wholeFace=state.selectedFaceIds.size===0;
@@ -559,8 +553,8 @@ async function importGds(file,topCell=null,preserveTransform=false){
   let res;try{res=await fetch('/api/gds/inspect',{method:'POST',body:form});}catch(e){status(`Layout request failed: ${e.message}`);return;}
   if(!res.ok){const j=await res.json().catch(()=>({detail:res.statusText}));status(`Layout import: ${j.detail||res.statusText}`);return;}
   const data=await res.json();
-  const previousTransform=preserveTransform?state.gds.transform:null,previousAliases=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.alias])),previousTones=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.inverted===true])),previousFills=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.fillPattern===true])),previousMirrors=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.mirrored===true]));
-  state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file; state._gdsFileBlob=file; state._gdsFileName=file.name;
+  const previousTransform=preserveTransform?state.gds.transform:null,previousPolarity=state.gds.maskPolarity||'transmit',previousAliases=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.alias])),previousTones=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.inverted===true])),previousFills=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.fillPattern===true])),previousMirrors=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.mirrored===true]));
+  state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,maskPolarity:previousPolarity,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file; state._gdsFileBlob=file; state._gdsFileName=file.name;
   try{ const r=new FileReader(); r.onload=()=>{ try{ const b64=String(r.result).split(',')[1]; sessionStorage.setItem('wafercad_gds_blob', b64); sessionStorage.setItem('wafercad_gds_name', file.name); }catch{} }; r.readAsDataURL(file); }catch{}
   for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);
   // New file → clear pattern selection (layers changed)

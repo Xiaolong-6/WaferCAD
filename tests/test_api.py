@@ -51,6 +51,38 @@ def test_mask_regions_normal_and_inverted(client):
     assert len(inverted.json()["regions"][0]) > 4  # hole walk retained by gdstk
 
 
+def test_mask_compose_removes_stitches_and_applies_polarity(client):
+    left = [[-20, -10], [0, -10], [0, 10], [-20, 10]]
+    right = [[0, -10], [20, -10], [20, 10], [0, 10]]
+    overlapping = [[-5, -5], [5, -5], [5, 5], [-5, 5]]
+
+    transmitted = client.post(
+        "/api/geometry/mask-compose",
+        json={"polygons": [left, right, overlapping], "substrate": WAFER, "polarity": "transmit"},
+    )
+    blocked = client.post(
+        "/api/geometry/mask-compose",
+        json={"polygons": [left, right, overlapping], "substrate": WAFER, "polarity": "block"},
+    )
+
+    assert transmitted.status_code == blocked.status_code == 200
+    result = transmitted.json()
+    assert result["raw_polygon_count"] == 3
+    assert len(result["components"]) == 1
+    assert result["components"][0]["area"] == pytest.approx(800)
+    assert result["components"][0]["bbox"] == pytest.approx([-20, -10, 20, 10])
+    assert len(result["regions"]) == 1
+    assert len(blocked.json()["regions"]) == 1
+
+
+def test_mask_component_ids_are_stable_across_polygon_order(client):
+    a = [[-20, -10], [0, -10], [0, 10], [-20, 10]]
+    b = [[0, -10], [20, -10], [20, 10], [0, 10]]
+    first = client.post("/api/geometry/mask-compose", json={"polygons": [a, b]}).json()
+    second = client.post("/api/geometry/mask-compose", json={"polygons": [list(reversed(b)), a]}).json()
+    assert first["components"][0]["id"] == second["components"][0]["id"]
+
+
 def test_isotropic_offset_and_material_split(client):
     subject = [[-10, -10], [10, -10], [10, 10], [-10, 10]]
     offset = client.post(
@@ -126,6 +158,8 @@ def test_layout_inspection_preserves_layers_and_hierarchy(
     assert result["filename"].endswith(extension)
     assert result["active_top_cell"] == "TOP"
     assert {(layer["layer"], layer["datatype"]) for layer in result["layers"]} == {(1, 0), (10, 5)}
+    assert all(layer["component_count"] == 1 for layer in result["layers"])
+    assert all(layer["components"][0]["id"].startswith("component-") for layer in result["layers"])
     hierarchy = {cell["name"]: cell for cell in result["hierarchy"]}
     assert set(hierarchy) == {"BASE", "TOP"}
     assert hierarchy["TOP"]["references"][0]["cell"] == "BASE"

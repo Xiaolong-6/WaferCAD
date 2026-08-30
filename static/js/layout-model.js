@@ -1,10 +1,17 @@
 import {state} from './core.js';
 import {bboxPolys} from './geometry.js';
 
-export function normalizeGds(value){const g={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:[],...(value||{})};g.layers=Array.isArray(g.layers)?g.layers:[];g.topCells=Array.isArray(g.topCells)?g.topCells:[];g.hierarchy=Array.isArray(g.hierarchy)?g.hierarchy:[];g.transform={offsetX:0,offsetY:0,rotationDeg:0,scale:1,...(g.transform||{})};if(!Number.isFinite(Number(g.transform.scale))||Number(g.transform.scale)<=0)g.transform.scale=1;return g;}
+export function normalizeGds(value){const g={filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,maskPolarity:'transmit',transform:{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:[],...(value||{})};g.layers=Array.isArray(g.layers)?g.layers:[];g.topCells=Array.isArray(g.topCells)?g.topCells:[];g.hierarchy=Array.isArray(g.hierarchy)?g.hierarchy:[];g.maskPolarity=g.maskPolarity==='block'?'block':'transmit';g.transform={offsetX:0,offsetY:0,rotationDeg:0,scale:1,...(g.transform||{})};if(!Number.isFinite(Number(g.transform.scale))||Number(g.transform.scale)<=0)g.transform.scale=1;return g;}
 export function transformPoint([x,y],transform=state.gds.transform){const scale=Number(transform?.scale)||1,sx=x*scale,sy=y*scale,angle=(Number(transform?.rotationDeg)||0)*Math.PI/180,cos=Math.cos(angle),sin=Math.sin(angle);return [sx*cos-sy*sin+(Number(transform?.offsetX)||0),sx*sin+sy*cos+(Number(transform?.offsetY)||0)];}
 export function transformedPolygon(polygon){return polygon.map(point=>transformPoint(point));}
-export function effectiveLayerPolygons(layer){return layer.fillPattern===true&&Array.isArray(layer.filledPolygons)?layer.filledPolygons:(layer.polygons||[]);}
+export function effectiveLayerPolygons(layer){
+  if(layer.fillPattern===true&&Array.isArray(layer.filledPolygons))return layer.filledPolygons;
+  if(Array.isArray(layer.components)&&layer.components.length){
+    const selected=Array.isArray(layer.selectedComponentIds)?new Set(layer.selectedComponentIds):null;
+    return layer.components.filter(component=>!selected||selected.has(component.id)).map(component=>component.polygon);
+  }
+  return layer.polygons||[];
+}
 export function transformedLayerPolygon(layer,polygon){return polygon.map(([x,y])=>transformPoint([layer.mirrored===true?-x:x,y]));}
 export function transformedGdsBounds(){const polygons=state.gds.layers.flatMap(layer=>effectiveLayerPolygons(layer).map(polygon=>transformedLayerPolygon(layer,polygon)));return polygons.length?bboxPolys(polygons):null;}
 export function patternSelectedLayers(){return state.gds.layers.filter(layer=>state.patternSelectedKeys.has(layer.key));}

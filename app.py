@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import math
+import hashlib
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
@@ -67,6 +68,12 @@ class MaskRegionsRequest(BaseModel):
     invert: bool = False
 
 
+class MaskComposeRequest(BaseModel):
+    polygons: list[list[list[float]]] = Field(max_length=20000)
+    substrate: list[list[float]] | None = None
+    polarity: Literal["transmit", "block"] = "transmit"
+
+
 class PolygonOffsetRequest(BaseModel):
     subjects: list[list[list[float]]] = Field(max_length=20000)
     distance: float = Field(gt=0)
@@ -115,6 +122,37 @@ def _remove_boolean_hole_bridges(points: Any, precision: float = 1e-6) -> list[l
         start, end = bridge
         result = result[: start + 1] + result[end + 1 :]
     return result
+
+
+def _component_id(points: Any, precision: float = 1e-6) -> str:
+    """Return a stable geometry id independent of polygon start point/direction."""
+    quantized = [(round(float(x) / precision), round(float(y) / precision)) for x, y in points]
+    if not quantized:
+        return "component-empty"
+    variants: list[tuple[tuple[int, int], ...]] = []
+    for seq in (quantized, list(reversed(quantized))):
+        start = min(range(len(seq)), key=lambda index: seq[index:]+seq[:index])
+        variants.append(tuple(seq[start:]+seq[:start]))
+    canonical = min(variants)
+    digest = hashlib.sha256(repr(canonical).encode("ascii")).hexdigest()[:16]
+    return f"component-{digest}"
+
+
+def _compose_polygons(polygons: list[list[list[float]]], precision: float = 1e-6) -> list[Any]:
+    import gdstk
+
+    subjects = [gdstk.Polygon(points) for points in polygons if len(points) >= 3]
+    return gdstk.boolean(subjects, [], "or", precision=precision) if subjects else []
+
+
+def _component_payload(polygon: Any) -> dict[str, Any]:
+    points = [[float(x), float(y)] for x, y in polygon.points]
+    return {
+        "id": _component_id(polygon.points),
+        "polygon": points,
+        "area": float(polygon.area()),
+        "bbox": _bbox(points),
+    }
 
 
 def _point_in_poly(pt: list[float], poly: list[list[float]]) -> bool:
@@ -227,6 +265,49 @@ def mask_regions(payload: MaskRegionsRequest) -> dict[str, Any]:
             for polygon in regions
             if len(polygon.points) >= 3
         ]
+    }
+
+
+@app.post("/api/geometry/mask-compose")
+def compose_mask(payload: MaskComposeRequest) -> dict[str, Any]:
+    """Compose raw layout polygons into physical optical regions.
+
+    Union happens before polarity and substrate clipping so GDS fragmentation,
+    overlaps, and stitch boundaries never leak into process geometry.
+    """
+    try:
+        import gdstk
+    except Exception as exc:
+        raise HTTPException(503, "Mask composition requires gdstk") from exc
+
+    try:
+        components = _compose_polygons(payload.polygons)
+        if payload.substrate is None:
+            if payload.polarity == "block":
+                raise HTTPException(400, "Block polarity requires a substrate outline")
+            regions = components
+        else:
+            substrate = gdstk.Polygon(payload.substrate)
+            if payload.polarity == "block":
+                regions = gdstk.boolean(substrate, components, "not", precision=1e-6)
+            elif components:
+                regions = gdstk.boolean(components, substrate, "and", precision=1e-6)
+            else:
+                regions = []
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400, f"Unable to compose mask: {exc}") from exc
+
+    return {
+        "polarity": payload.polarity,
+        "raw_polygon_count": len(payload.polygons),
+        "components": [_component_payload(polygon) for polygon in components],
+        "regions": [
+            [[float(x), float(y)] for x, y in polygon.points]
+            for polygon in regions
+            if len(polygon.points) >= 3
+        ],
     }
 
 
@@ -533,6 +614,21 @@ async def inspect_gds(
         item["polygons"].append(pts)
 
     layers = sorted(layer_map.values(), key=lambda x: (x["layer"], x["datatype"]))
+    for layer_item in layers:
+        try:
+            composed = _compose_polygons(layer_item["polygons"])
+            layer_item["components"] = sorted(
+                (_component_payload(polygon) for polygon in composed),
+                key=lambda component: component["area"],
+                reverse=True,
+            )
+            layer_item["component_count"] = len(composed)
+        except Exception as exc:
+            raise HTTPException(
+                400,
+                f"Unable to compose optical components for layer "
+                f"{layer_item['layer']}/{layer_item['datatype']}: {exc}",
+            ) from exc
 
     # Build hierarchy for browser (non-flattened per-cell view)
     hierarchy = []

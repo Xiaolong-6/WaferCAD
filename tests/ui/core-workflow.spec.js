@@ -26,7 +26,9 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patLayerList')).toContainText('10/5');
+  await expect(page.locator('#patLayerList')).toContainText('raw → 1 optical');
   await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await expect(page.locator('#patSvg [data-component-id]')).toHaveCount(1);
   await page.locator('#patApplyBtn').click();
   await page.getByRole('button', { name: 'Main' }).click();
   await page.locator('#selectionMode').selectOption('imprinted');

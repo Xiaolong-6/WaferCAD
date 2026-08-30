@@ -12,7 +12,7 @@ export const state = {
   cuts:[],
   dopings:[],
   layerVisuals:{},
-  gds:{filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,transform:{offsetX:0,offsetY:0,rotationDeg:0,scale:1}},
+  gds:{filename:null,bbox:null,layers:[],topCells:[],activeTopCell:null,maskPolarity:'transmit',transform:{offsetX:0,offsetY:0,rotationDeg:0,scale:1}},
   imprintedFaces:[],
   selectedFaceIds:new Set(),
   patternSelectedKeys:new Set(),

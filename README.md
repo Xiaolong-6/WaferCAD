@@ -7,15 +7,15 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
 ## What works in this MVP
 
 - Create a circular (with optional `Main flat` or `Notch` at `-Y` auto-sized per SEMI M1), rectangular, or coordinate-defined polygon wafer with independently selectable lateral/thickness units. `New wafer` is a floating button in the 3D view (header stays, `view3d-float`).
-- **Pattern Editor dock** (`Main` ↔ `Pattern Editor` in header, no reload, `state` shared via `core.js` + `sessionStorage` base64 for GDS file). Dedicated 2D canvas (pan/zoom, `Fit: GDS/Wafer/Both` cycling) shows wafer outline, faint unselected layers, and orange preview. Uses `polygon-clipping` (local `static/vendor/polygon-clipping.umd.js`) for client-side `union/difference` preview (scaled `nm` integer, `gdstk` remains backend truth). Features: cell hierarchy with `All cells` aggregate (solves 4-layers-in-4-cells files), per-layer `Invert` (`S\L`) vs `Global S\∪L` vs `Wafer invert` (`wafer \ union`), `Fill closed borders` (union preview), `Highlight` (`Top faces` blue / `Wafer invert` amber hatch), `Lasso` (Shift+drag rect, `Save lasso as new pattern` creates virtual `pattern:*` layer 900+), `Area guard` (line-like layers disabled until `Fill`), `Scale/Rotate/X/Y` live.
+- **Physical Mask Composer:** imported polygons are unioned into stable optical components before preview or process geometry, so overlaps and stitch boundaries never become model edges. The Pattern Editor reports `raw → optical` counts, supports direct component selection, Shift/Ctrl multi-select, whole-component Lasso patterns, and explicit `Polygons transmit / Polygons block` polarity. Preview and Apply use the same backend `gdstk` composition.
 - Import GDSII or OASIS and identify **each layer/datatype pair separately** using `gdstk`; browse the full cell hierarchy and choose any cell or `All cells` aggregate. `All cells` collects `depth=0` polygons from every cell (solves per-cell-per-layer files).
 - Viewport-cull Top View outside the current `topBounds` for smooth pan/zoom near the 20 000-polygon cap; `Mask veil` opacity is adjustable for alignment.
-- Assign project-local aliases by clicking a layer name (dotted underline) in the old `Main` panel (now deprecated, layers live in dock) and set per-layer `Invert`, `Fill pattern`, `Mirror` with live preview (now in dock, global/per-layer invert, fill, highlight).
-- For border-only closed shapes, `Use` is disabled until `Fill pattern` is enabled (filled outer contour), avoiding accidental ring masks. Line-like layers (area < 1 nm²) are similarly disabled with `line (no area)` hint.
+- Assign project-local aliases by clicking a layer name (dotted underline) in the old `Main` panel (now deprecated, layers live in the dock). Legacy project tone/fill fields remain loadable, while new mask work uses optical components and one explicit physical polarity.
+- Line-like layers with no physical area remain guarded. Filled GDS boundaries and width-bearing paths are treated as physical geometry; independent components are never silently discarded by an area heuristic.
 - Align the active cell to the wafer with `X/Y` offset, `Rotation` and global `Scale` (default 1, about layout origin) — live preview in dock, persisted via `state.gds.transform` and `persistSharedState`.
 - Clip every push/pull/conformal/isotropic operation to the exact wafer outline (including flat/notch and non-convex customs).
 - Flip between front and back processing faces (`Face: Front/Back` in the Geometry panel); backside Pull grows below `z=-thickness` and Push etches upward.
-- Geometry operation panel order: `Distance → Mode → Material → Face → Selection → Apply/Undo` at the bottom. `Selection` defaults to `Full faces` (topmost model faces, blue selectable in Top View); `Patterns` is multi-select (checked in dock, amber highlight, inverted layers hatched) and is applied as a combined mask (per-layer `S\layer` ∪ `S∩layer`, or global `S\∪layer` / `wafer`).
+- Geometry operation panel order: `Distance → Mode → Material → Face → Selection → Apply/Undo` at the bottom. `Selection` defaults to `Full faces`; `Patterns` resolves all selected layers/components as one physical exposure field before Pull, Push, Conformal, Etch, or Doping.
 - Operations:
   - **Pull up**: extruded solid with material.
   - **Push down / Isotropic etch**: layer-by-layer consumption of the stack in depth order via `split-by-mask`, then substrate cut; fully consumed layers and their dopings are removed.
@@ -71,7 +71,7 @@ Three.js is pinned in `package-lock.json` and served locally by the FastAPI appl
 ## Basic workflow
 
 1. Create/open a wafer (for circles optionally add a SEMI-sized `Main flat` or `Notch` at `-Y`) — use the floating `New wafer` in 3D.
-2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file via header `Import layout` (or dock `Import GDS/OAS`); pick a `Cell` or `All cells` from the hierarchy as the active view. Use `Pattern Editor` to check `Use` layers, set `Highlight` (`Top faces` / `Wafer invert`), `Fill`, `Lasso` → `Save as new pattern`, and `Invert → Wafer other part` if needed.
+2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file; pick a `Cell` or `All cells`, enable layers, then select optical components directly or use Lasso to save complete components as a named pattern. Choose whether polygons transmit or block light.
 3. In `Pattern Editor` set `Scale`/`X/Y`/`Rotation` — live preview; click `Apply to Main`.
 4. In `Main` choose `Face: Front/Back`, then `Full faces` (click blue top regions) or `Patterns` (layers checked in dock).
 5. Enter a distance and choose `Pull`, `Push`, `Conformal grow`, `Isotropic etch`, or `Doping` (`Face` + `Selection` decide the mask; empty selection uses the whole face).
@@ -86,8 +86,7 @@ This is an architectural/interaction MVP, not a finished CAD kernel.
 - Push/Isotropic etch consume the geometric stack in depth order, but do not yet model chemistry-dependent selectivity, etch stops, loading, redeposition or different rates per material.
 - Pull-up uses a 2.5D polygon extrusion. Conformal grow/isotropic etch use a round lateral offset plus the same Z distance; a true 3D sidewall shell, sloped profile, loading effect and transport model are not implemented.
 - Overlapping/stacked polygons use a centroid-based surface-height estimate for pull-up placement.
-- `Invert` multi-select currently offers per-layer `S\layer` / `S∩layer` (`(S\A)∪(S\B)`) and global `S\∪` as well as `Wafer invert` (`wafer \ union`); `Top` inverted preview is hatched, not a true wafer-with-hole; precise inverted hole preview would need async Boolean preview.
-- `Top` inverted preview is hatched, not a true wafer-with-hole; precise inverted hole preview would need async Boolean preview.
+- The composer is a binary geometric projection model; diffraction, partial coherence, focus, aerial-image thresholds, resist chemistry, and process bias are not yet simulated.
 - No automatic process semantics (oxidation, deposition, lithography, etc.) yet.
 - At `×1` display Z is true isotropic; higher values are exaggeration for visibility.
 - Per-layer and global Z scaling are visualization settings only; they never change stored physical thicknesses.
