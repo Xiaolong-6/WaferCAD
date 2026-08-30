@@ -9,6 +9,7 @@ const $ = id => document.getElementById(id);
 let gdsFile = null;
 
 function saveShared(){ persistSharedState(); }
+function setPatternStatus(message){const target=$('patStatus')||$('statusText');if(target)target.textContent=message;}
 function patTransform([x,y]){
   const t=state.gds.transform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1};
   const s=Number(t.scale)||1, sx=x*s, sy=y*s;
@@ -63,6 +64,7 @@ let highlightMode='top'; // top | wafer | none
 let maskPreview=[];
 let projectionPreview=[];
 let previewGeneration=0;
+let componentMigrationRunning=false;
 
 function renderLegend(){
   const legend=$('patLegend');
@@ -263,7 +265,7 @@ function render(){
   // draw wafer outline on top
   if(hasWafer) svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'none',stroke:'#94a3b8','stroke-width':'1','stroke-dasharray':'4 3','pointer-events':'none'}));
 
-  if(editorView==='mask'&&preview.length)$('patPreviewInfo').textContent=`${preview.length} optical mask component(s) · no substrate clipping`;
+  if(editorView==='mask'&&preview.length)$('patPreviewInfo').textContent='Filled mask preview · source boundaries unioned · no substrate clipping';
   else if(editorView==='projection'&&preview.length) $('patPreviewInfo').textContent = `${preview.length} exposure region(s) · clipped to substrate`;
   else $('patPreviewInfo').textContent = editorView==='mask'?'No mask preview — select layers/components':hasWafer?'No projection — select mask components':'Create a substrate in Main before projection';
   const hasSel = state.gds.layers.some(l=>state.patternSelectedKeys?.has(l.key));
@@ -369,7 +371,7 @@ function renderLayerList(){
     const sw=document.createElement('span'); sw.className='sw'; sw.style.background=layer.color;
     const opticalCount=Array.isArray(layer.components)?layer.components.length:layer.count;
     const selectedCount=Array.isArray(layer.selectedComponentIds)?layer.selectedComponentIds.length:opticalCount;
-    const label=document.createElement('span'); label.textContent=`${layer.layer}/${layer.datatype} · ${layer.count} raw → ${opticalCount} optical · ${selectedCount} selected`; label.style.fontSize='12px';
+    const label=document.createElement('span'); label.textContent=`${layer.layer}/${layer.datatype} · ${layer.count} raw → ${opticalCount} physical · ${selectedCount} selected`; label.style.fontSize='12px';
     if(!areaOk){
       const warn=document.createElement('span'); warn.textContent=' · line (no area)'; warn.style.fontSize='10px'; warn.style.color='#b45309';
       label.appendChild(warn);
@@ -385,26 +387,38 @@ function renderLayerList(){
   renderCellSelector();
 }
 
-async function importGds(file){
+async function importGds(file,topCell=null,preserveSettings=false){
   state._gdsFileBlob = file; state._gdsFileName = file.name;
   try{
     const reader=new FileReader();
     reader.onload=()=>{ try{ const b64=String(reader.result).split(',')[1]; sessionStorage.setItem('wafercad_gds_blob', b64); sessionStorage.setItem('wafercad_gds_name', file.name); }catch{} };
     reader.readAsDataURL(file);
   }catch{}
-  const form=new FormData(); form.append('file', file);
-  $('patStatus').textContent=`Reading ${file.name}…`;
+  const previousGds=state.gds;
+  const previousLayers=new Map((previousGds.layers||[]).map(layer=>[layer.key,layer]));
+  const form=new FormData(); form.append('file', file); if(topCell)form.append('top_cell',topCell);
+  setPatternStatus(`Reading ${file.name}…`);
   const res=await fetch('/api/gds/inspect',{method:'POST', body:form});
-  if(!res.ok){ const j=await res.json().catch(()=>({detail:res.statusText})); $('patStatus').textContent=j.detail; return; }
+  if(!res.ok){ const j=await res.json().catch(()=>({detail:res.statusText})); setPatternStatus(j.detail); return; }
   const data=await res.json();
   const {normalizeGds} = await import('../layout-model.js');
-  const g=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells,activeTopCell:data.active_top_cell,hierarchy:data.hierarchy,layers:data.layers.map((l,i)=>({...l,key:`${l.layer}/${l.datatype}`,alias:'',inverted:false,fillPattern:false,mirrored:false,visible:true,color:['#2563eb','#dc2626','#059669','#7c3aed','#d97706'][i%5]}))});
+  const g=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells,activeTopCell:data.active_top_cell,hierarchy:data.hierarchy,maskPolarity:preserveSettings?previousGds.maskPolarity:'transmit',committedProjection:preserveSettings?previousGds.committedProjection:null,transform:preserveSettings?previousGds.transform:undefined,layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`,old=previousLayers.get(key);return {...l,key,alias:preserveSettings?old?.alias||'':'',inverted:preserveSettings&&old?.inverted===true,fillPattern:preserveSettings&&old?.fillPattern===true,filledPolygons:preserveSettings?old?.filledPolygons:undefined,mirrored:preserveSettings&&old?.mirrored===true,visible:preserveSettings?old?.visible!==false:true,color:preserveSettings&&old?.color?old.color:['#2563eb','#dc2626','#059669','#7c3aed','#d97706'][i%5]};})});
   state.gds=g; gdsFile=file;
   const {detectBorderOnly}=await import('../geometry.js');
   for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
   if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set();
-  $('patStatus').textContent=`${data.filename}: ${data.layers.length} layers · ${data.active_top_cell} (tap Cell to switch)`;
+  setPatternStatus(`${data.filename}: ${data.layers.length} layers · ${data.active_top_cell} (tap Cell to switch)`);
   maskPreview=[];projectionPreview=[]; saveShared(); renderLayerList(); fitPat(); refreshPreview();
+}
+
+async function migrateLegacyComponents(){
+  const stale=state.gds.layers.some(layer=>Array.isArray(layer.components)&&layer.components.some(component=>!Array.isArray(component.source_polygon_indices)));
+  const file=gdsFile||state._gdsFileBlob;
+  if(!stale||!file||componentMigrationRunning)return;
+  componentMigrationRunning=true;
+  try{await importGds(file,state.gds.activeTopCell||null,true);}
+  catch(error){setPatternStatus(`Unable to refresh legacy mask components: ${error.message}`);}
+  finally{componentMigrationRunning=false;}
 }
 
 function applyToMain(){
@@ -459,7 +473,7 @@ function saveAsNewPattern(){
 renderLayerList();
 if(state.wafer) fitPat(); else { topBounds=[-60000,-60000,60000,60000]; render(); }
 refreshPreview();
-window.patRender = ()=>{ if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit'; renderLayerList(); setEditorView(editorView); };
+window.patRender = ()=>{ if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit'; renderLayerList(); setEditorView(editorView); migrateLegacyComponents(); };
 window.patReset = ()=>{ gdsFile=null;maskPreview=[];projectionPreview=[];previewGeneration++;lassoStart=null;lassoRect=null;lassoActive=false;editorView='mask';topBounds=[-60000,-60000,60000,60000];renderLayerList();setEditorView('mask'); };
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });

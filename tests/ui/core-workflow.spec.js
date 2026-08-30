@@ -26,7 +26,7 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patLayerList')).toContainText('10/5');
-  await expect(page.locator('#patLayerList')).toContainText('raw → 1 optical');
+  await expect(page.locator('#patLayerList')).toContainText('raw → 1 physical');
   await expect(page.locator('#patViewTitle')).toHaveText('Mask');
   await expect(page.locator('#patLegend')).toContainText('Mask legend');
   await expect(page.locator('#patLegend')).toContainText('Selected polygons — transmits light');
@@ -34,6 +34,7 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await expect(page.locator('#patProjectionControls')).toBeHidden();
   await page.locator('#patLayerList input[type="checkbox"]').first().check();
   await expect(page.locator('#patSvg [data-component-id]')).toHaveCount(1);
+  await expect(page.locator('#patApplyBtn')).toBeEnabled();
   await page.locator('#patApplyBtn').click();
   await expect(page.locator('#patViewTitle')).toHaveText('Wafer Projection');
   await expect(page.locator('#patLegend')).toContainText('Wafer Projection legend');
