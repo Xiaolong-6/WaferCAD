@@ -25,24 +25,27 @@ function isAreaValid(polys){
 
 let topBounds=null;
 let fitMode='gds'; // gds | wafer | both
+let editorView='mask'; // mask | projection
+function viewPoint(point){return editorView==='mask'?[point[0],point[1]]:patTransform(point);}
 function fitPat(mode){
   if(mode) fitMode=mode;
   const outline=waferOutline();
-  const waferBB = outline.length ? bboxPolys([outline]) : null;
+  const waferBB = editorView==='projection'&&outline.length ? bboxPolys([outline]) : null;
   let gdsTransBB=null;
   if(state.gds.layers.length){
-    const allTransPolys = state.gds.layers.flatMap(l=> effectiveLayer(l).map(p=>p.map(([x,y])=>patTransform([x,y]))));
+    const allTransPolys = state.gds.layers.flatMap(l=> effectiveLayer(l).map(p=>p.map(point=>viewPoint(point))));
     if(allTransPolys.length) gdsTransBB = bboxPolys(allTransPolys);
   }
   if(!gdsTransBB && state.gds.bbox) gdsTransBB=[...state.gds.bbox];
   let bb=null;
-  if(fitMode==='gds' && gdsTransBB) bb=[...gdsTransBB];
+  if(editorView==='mask'&&gdsTransBB)bb=[...gdsTransBB];
+  else if(fitMode==='gds' && gdsTransBB) bb=[...gdsTransBB];
   else if(fitMode==='wafer' && waferBB) bb=[...waferBB];
   else if(waferBB && gdsTransBB) bb=[Math.min(waferBB[0],gdsTransBB[0]), Math.min(waferBB[1],gdsTransBB[1]), Math.max(waferBB[2],gdsTransBB[2]), Math.max(waferBB[3],gdsTransBB[3])];
   else bb = waferBB || gdsTransBB || [-50000,-50000,50000,50000];
   topBounds = viewAspectBounds(bb,0.12);
   render();
-  const btn=$('patFitBtn'); if(btn) btn.textContent = fitMode==='gds' ? 'Fit: GDS' : fitMode==='wafer' ? 'Fit: Wafer' : 'Fit: Both';
+  const btn=$('patFitBtn'); if(btn) btn.textContent = editorView==='mask'?'Fit: Mask':fitMode==='gds' ? 'Fit: Projection' : fitMode==='wafer' ? 'Fit: Wafer' : 'Fit: Both';
 }
 function modelToSvg(x,y){
   const [x0,y0,x1,y1]=topBounds||[-1,-1,1,1];
@@ -57,28 +60,59 @@ function polyPath(poly){ return poly.map((p,i)=>{const [x,y]=modelToSvg(p[0],p[1
 // Lasso state
 let lassoStart=null, lassoRect=null, lassoActive=false;
 let highlightMode='top'; // top | wafer | none
-let resolvedPreview=[];
+let maskPreview=[];
+let projectionPreview=[];
 let previewGeneration=0;
 
 async function refreshPreview(){
   const generation=++previewGeneration;
-  const polygons=[];
+  const maskPolygons=[],projectionPolygons=[];
   for(const layer of state.gds.layers){
     if(!state.patternSelectedKeys?.has(layer.key))continue;
-    for(const polygon of effectiveLayer(layer))polygons.push(polygon.map(([x,y])=>patTransform([x,y])));
+    for(const polygon of effectiveLayer(layer)){
+      maskPolygons.push(polygon);
+      projectionPolygons.push(polygon.map(([x,y])=>patTransform([x,y])));
+    }
   }
-  if(!polygons.length){resolvedPreview=[];render();return;}
+  if(!maskPolygons.length){maskPreview=[];projectionPreview=[];render();return {mask:[],projection:[]};}
+  if(editorView==='mask')maskPreview=[];else projectionPreview=[];
+  render();
   try{
     const outline=waferOutline();
-    const result=await composeMaskRegions(polygons,state.gds.maskPolarity||'transmit',outline.length?outline:null);
+    const maskRequest=composeMaskRegions(maskPolygons,'transmit',null);
+    const projectionRequest=outline.length
+      ?composeMaskRegions(projectionPolygons,state.gds.maskPolarity||'transmit',outline)
+      :Promise.resolve({regions:[]});
+    const [maskResult,projectionResult]=await Promise.all([maskRequest,projectionRequest]);
     if(generation!==previewGeneration)return;
-    resolvedPreview=result.regions;
+    maskPreview=maskResult.regions;
+    projectionPreview=projectionResult.regions;
     render();
+    return {mask:maskPreview,projection:projectionPreview};
   }catch(error){
     if(generation!==previewGeneration)return;
-    resolvedPreview=[];
+    maskPreview=[];projectionPreview=[];
     const info=$('patPreviewInfo');if(info)info.textContent=`Preview failed: ${error.message}`;
+    return {mask:[],projection:[]};
   }
+}
+
+function setEditorView(view){
+  editorView=view==='projection'?'projection':'mask';
+  if(editorView==='projection')projectionPreview=[];else maskPreview=[];
+  if(editorView==='projection'){lassoActive=false;lassoRect=null;if($('patLassoToggle'))$('patLassoToggle').checked=false;}
+  $('patViewMaskBtn')?.classList.toggle('primary',editorView==='mask');
+  $('patViewProjectionBtn')?.classList.toggle('primary',editorView==='projection');
+  $('patMaskControls')?.classList.toggle('hidden',editorView!=='mask');
+  $('patProjectionControls')?.classList.toggle('hidden',editorView!=='projection');
+  if($('patViewTitle'))$('patViewTitle').textContent=editorView==='mask'?'Mask':'Wafer Projection';
+  if($('patApplyBtn'))$('patApplyBtn').textContent=editorView==='mask'?'Use selection in projection':'Commit projection to Main';
+  const transform=state.gds.transform||{};
+  if($('patOffX'))$('patOffX').value=Number(transform.offsetX)||0;
+  if($('patOffY'))$('patOffY').value=Number(transform.offsetY)||0;
+  if($('patRot'))$('patRot').value=Number(transform.rotationDeg)||0;
+  if($('patScale'))$('patScale').value=Number(transform.scale)||1;
+  topBounds=null;fitPat(editorView==='mask'?'gds':'both');refreshPreview();
 }
 
 function chooseComponent(layer,componentId,additive=false){
@@ -125,18 +159,18 @@ function render(){
   const svg=$('patSvg'); clearSvg(svg);
   if(!topBounds) fitPat();
   const outline=waferOutline();
-  const hasWafer = outline.length>0;
+  const hasWafer = editorView==='projection'&&outline.length>0;
   if(hasWafer){
     svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'#f0f1f2',stroke:'#626b75','stroke-width':'1.2'}));
     if($('patShowWafer') && $('patShowWafer').checked){
       svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'#cbd5e1','fill-opacity':'0.22',stroke:'none','pointer-events':'none'}));
     }
-  } else {
+  } else if(editorView==='projection') {
     svg.appendChild(makeSvg('rect',{x:0,y:0,width:600,height:420,fill:'#f8fafc'}));
     const t=makeSvg('text',{x:300,y:200,'text-anchor':'middle','font-size':'12',fill:'#94a3b8'}); t.textContent='No wafer — create one in Main or import preview is unclipped'; svg.appendChild(t);
   }
   // highlight: wafer invert region (when invert mode) or top faces
-  if($('patHighlight') && $('patHighlight').value!=='none'){
+  if(editorView==='projection'&&$('patHighlight') && $('patHighlight').value!=='none'){
     const mode=$('patHighlight').value;
     if(mode==='wafer' && hasWafer){
       const allPolys = state.gds.layers.flatMap(l=> effectiveLayer(l).map(p=>p.map(([x,y])=>patTransform([x,y]))));
@@ -165,7 +199,7 @@ function render(){
     if(layer.visible===false) continue;
     if(state.patternSelectedKeys?.has(layer.key)) continue;
     for(const rawPoly of effectiveLayer(layer)){
-      const poly=rawPoly.map(([x,y])=>patTransform([x,y]));
+      const poly=rawPoly.map(point=>viewPoint(point));
       svg.appendChild(makeSvg('path',{d:polyPath(poly),fill:layer.color,'fill-opacity':'0.08',stroke:layer.color,'stroke-opacity':'0.35','stroke-width':'1'}));
     }
   }
@@ -175,7 +209,7 @@ function render(){
     if(!state.patternSelectedKeys?.has(layer.key)||!Array.isArray(layer.components))continue;
     const explicit=Array.isArray(layer.selectedComponentIds)?new Set(layer.selectedComponentIds):null;
     for(const component of layer.components){
-      const poly=component.polygon.map(([x,y])=>patTransform([x,y]));
+      const poly=component.polygon.map(point=>viewPoint(point));
       const chosen=!explicit||explicit.has(component.id);
       const path=makeSvg('path',{d:polyPath(poly),fill:'transparent',stroke:chosen?'#b45309':'#94a3b8','stroke-opacity':chosen?'0.75':'0.5','stroke-width':chosen?'1.2':'0.7','stroke-dasharray':chosen?'none':'3 3','data-component-id':component.id,'data-layer-key':layer.key});
       path.style.cursor='pointer';
@@ -189,7 +223,7 @@ function render(){
     svg.appendChild(makeSvg('path',{d:polyPath(poly),fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.4','pointer-events':'none'}));
   }
   // lasso rect
-  if(lassoRect){
+  if(editorView==='mask'&&lassoRect){
     const [x0,y0,x1,y1]=lassoRect;
     const p0=modelToSvg(x0,y0), p1=modelToSvg(x1,y1);
     const x=Math.min(p0[0],p1[0]), y=Math.min(p0[1],p1[1]), w=Math.abs(p1[0]-p0[0]), h=Math.abs(p1[1]-p0[1]);
@@ -198,11 +232,11 @@ function render(){
   // draw wafer outline on top
   if(hasWafer) svg.appendChild(makeSvg('path',{d:polyPath(outline),fill:'none',stroke:'#94a3b8','stroke-width':'1','stroke-dasharray':'4 3','pointer-events':'none'}));
 
-  if(!hasWafer && preview.length) $('patPreviewInfo').textContent = `${preview.length} preview region(s) · unclipped (no wafer)`;
-  else if(preview.length) $('patPreviewInfo').textContent = `${preview.length} preview region(s) · clipped to wafer`;
-  else $('patPreviewInfo').textContent = hasWafer ? 'No preview — select active layers' : 'No preview — select layers (unclipped preview)';
+  if(editorView==='mask'&&preview.length)$('patPreviewInfo').textContent=`${preview.length} optical mask component(s) · no substrate clipping`;
+  else if(editorView==='projection'&&preview.length) $('patPreviewInfo').textContent = `${preview.length} exposure region(s) · clipped to substrate`;
+  else $('patPreviewInfo').textContent = editorView==='mask'?'No mask preview — select layers/components':hasWafer?'No projection — select mask components':'Create a substrate in Main before projection';
   const hasSel = state.gds.layers.some(l=>state.patternSelectedKeys?.has(l.key));
-  const applyBtn=$('patApplyBtn'); if(applyBtn) applyBtn.disabled = !hasSel || !preview.length;
+  const applyBtn=$('patApplyBtn'); if(applyBtn) applyBtn.disabled = !hasSel || !preview.length || (editorView==='projection'&&!hasWafer);
   const waferHint=$('patWaferHint'); if(waferHint) waferHint.textContent = hasWafer ? `Wafer: ${state.wafer.shape} ${state.wafer.diameter? (state.wafer.diameter/1000).toFixed(1)+'mm':''}` : 'No wafer';
   // update lasso count
   const lassoInfo=$('patLassoInfo'); if(lassoInfo && lassoRect){
@@ -219,7 +253,7 @@ function getLassoSelectedCount(){
   for(const layer of state.gds.layers){
     if(!state.patternSelectedKeys?.has(layer.key)) continue;
     for(const rawPoly of effectiveLayer(layer)){
-      const poly=rawPoly.map(([x,y])=>patTransform([x,y]));
+      const poly=rawPoly.map(point=>viewPoint(point));
       // check if poly centroid in rect or rect centroid in poly
       const c=centroid(poly);
       if(c.x>=Math.min(x0,x1) && c.x<=Math.max(x0,x1) && c.y>=Math.min(y0,y1) && c.y<=Math.max(y0,y1)) cnt++;
@@ -229,7 +263,7 @@ function getLassoSelectedCount(){
 }
 
 function computePreview(){
-  return resolvedPreview;
+  return editorView==='mask'?maskPreview:projectionPreview;
 }
 
 function renderCellSelector(){
@@ -276,7 +310,7 @@ function renderCellSelector(){
     const {detectBorderOnly}=await import('../geometry.js');
     for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
     state.patternSelectedKeys=new Set();
-    resolvedPreview=[]; saveShared(); renderLayerList(); renderCellSelector(); fitPat(); refreshPreview();
+    maskPreview=[];projectionPreview=[]; saveShared(); renderLayerList(); renderCellSelector(); fitPat(); refreshPreview();
   });
   c.appendChild(sel);
   const active = hierarchy.find(h=>h.name===state.gds.activeTopCell);
@@ -339,13 +373,29 @@ async function importGds(file){
   for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
   if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set();
   $('patStatus').textContent=`${data.filename}: ${data.layers.length} layers · ${data.active_top_cell} (tap Cell to switch)`;
-  resolvedPreview=[]; saveShared(); renderLayerList(); fitPat(); refreshPreview();
+  maskPreview=[];projectionPreview=[]; saveShared(); renderLayerList(); fitPat(); refreshPreview();
 }
 
 function applyToMain(){
+  if(editorView==='mask'){setEditorView('projection');return;}
+  const regions=projectionPreview;
+  if(!state.wafer||!regions.length){const info=$('patPreviewInfo');if(info)info.textContent='Nothing to commit — create a substrate and verify the projection.';return;}
+  const componentSelections={};
+  for(const layer of state.gds.layers)if(state.patternSelectedKeys?.has(layer.key))componentSelections[layer.key]=Array.isArray(layer.selectedComponentIds)?[...layer.selectedComponentIds]:null;
+  state.gds.committedProjection={
+    regions:regions.map(poly=>poly.map(([x,y])=>[x,y])),
+    polarity:state.gds.maskPolarity||'transmit',
+    face:state.activeFace||'front',
+    transform:{...(state.gds.transform||{})},
+    selectedLayerKeys:[...(state.patternSelectedKeys||[])],
+    componentSelections,
+    committedAt:new Date().toISOString()
+  };
+  const committedBounds=bboxPolys(regions);if(committedBounds)state.topBounds=viewAspectBounds(committedBounds,0.08);
   saveShared();
-  if(window.showMainDock) window.showMainDock();
-  else window.location.href='/';
+  const selection=$('selectionMode');if(selection){selection.value='imprinted';selection.dispatchEvent(new Event('change'));}
+  if(window.showMainDock) window.showMainDock(); else window.location.href='/';
+  const statusEl=$('statusText');if(statusEl)statusEl.textContent=`Committed ${regions.length} substrate projection region(s) to Main.`;
 }
 
 function saveAsNewPattern(){
@@ -356,7 +406,7 @@ function saveAsNewPattern(){
   for(const layer of state.gds.layers){
     if(!state.patternSelectedKeys?.has(layer.key)) continue;
     for(const rawPoly of effectiveLayer(layer)){
-      const poly=rawPoly.map(([x,y])=>patTransform([x,y]));
+      const poly=rawPoly.map(point=>viewPoint(point));
       // Lasso selects complete optical components; it never cuts a component
       // or turns the selection rectangle itself into mask geometry.
       const center=centroid(poly);
@@ -369,49 +419,29 @@ function saveAsNewPattern(){
   state.gds.layers.push(newLayer);
   state.patternSelectedKeys=new Set([newKey]);
   lassoRect=null; lassoActive=false;
-  resolvedPreview=[]; saveShared(); renderLayerList(); refreshPreview();
+  maskPreview=[];projectionPreview=[]; saveShared(); renderLayerList(); refreshPreview();
   const name=prompt('Name for new pattern', newLayer.alias);
   if(name!==null){ newLayer.alias=name.trim()||newLayer.alias; renderLayerList(); }
-}
-
-function handleInvertWafer(){
-  const outline=waferOutline();
-  if(!outline.length){ alert('Create a wafer first'); return; }
-  // set invert mode to wafer and select it
-  const sel=$('patInvertMode'); if(sel) sel.value='wafer';
-  // create a virtual invert layer as preview (wafer minus union)
-  const allPolys=state.gds.layers.flatMap(l=> effectiveLayer(l).map(p=>p.map(([x,y])=>patTransform([x,y]))));
-  if(!allPolys.length){ alert('No layers to invert'); return; }
-  try{
-    const uni=Bool.union(allPolys);
-    const inv=Bool.difference([outline], uni);
-    if(!inv.length){ alert('Invert produced no region'); return; }
-    const newKey=`invert:${Date.now()}`;
-    const newLayer={key:newKey, layer:800, datatype:0, name:'Wafer invert', count:inv.length, bbox:bboxPolys(inv), polygons:inv.map(p=>p.map(([x,y])=>[x,y])), visible:true, color:'#a78bfa', alias:'Wafer invert', isVirtual:true, isBorderOnly:false};
-    // store untransformed (already transformed) but need to store as is for preview (no further transform)
-    // To keep consistent, store as already transformed and set a flag to skip patTransform
-    newLayer._alreadyTransformed=true;
-    state.gds.layers.push(newLayer);
-    state.patternSelectedKeys=new Set([newKey]);
-    saveShared(); renderLayerList(); render();
-  }catch(e){ alert('Invert failed: '+e.message); }
 }
 
 // Init
 renderLayerList();
 if(state.wafer) fitPat(); else { topBounds=[-60000,-60000,60000,60000]; render(); }
 refreshPreview();
-window.patRender = ()=>{ if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit'; renderLayerList(); render(); refreshPreview(); };
-window.patReset = ()=>{ gdsFile=null;resolvedPreview=[];previewGeneration++;lassoStart=null;lassoRect=null;lassoActive=false;topBounds=[-60000,-60000,60000,60000];renderLayerList();render(); };
+window.patRender = ()=>{ if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit'; renderLayerList(); setEditorView(editorView); };
+window.patReset = ()=>{ gdsFile=null;maskPreview=[];projectionPreview=[];previewGeneration++;lassoStart=null;lassoRect=null;lassoActive=false;editorView='mask';topBounds=[-60000,-60000,60000,60000];renderLayerList();setEditorView('mask'); };
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
 const _patFit = document.getElementById('patFitBtn');
 if(_patFit) _patFit.addEventListener('click', ()=>{
+  if(editorView==='mask'){fitPat('gds');return;}
   fitMode = fitMode==='gds' ? 'wafer' : fitMode==='wafer' ? 'both' : 'gds';
   fitPat();
 });
+$('patViewMaskBtn')?.addEventListener('click',()=>setEditorView('mask'));
+$('patViewProjectionBtn')?.addEventListener('click',()=>setEditorView('projection'));
 const _mainGds = document.getElementById('gdsInput');
-if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ renderLayerList(); resolvedPreview=[]; render(); refreshPreview(); }, 300));
+if(_mainGds) _mainGds.addEventListener('change',()=> setTimeout(()=>{ renderLayerList(); maskPreview=[];projectionPreview=[]; render(); refreshPreview(); }, 300));
 ['patShowWafer','patHighlight'].forEach(id=>document.getElementById(id)?.addEventListener('change',render));
 const _polarity=$('patMaskPolarity');
 if(_polarity){_polarity.value=state.gds.maskPolarity||'transmit';_polarity.addEventListener('change',()=>{state.gds.maskPolarity=_polarity.value==='block'?'block':'transmit';saveShared();refreshPreview();});}
@@ -419,8 +449,6 @@ $('patPreviewBtn')?.addEventListener('click',refreshPreview);
 $('patApplyBtn')?.addEventListener('click',applyToMain);
 const _savePat=document.getElementById('patSavePatternBtn');
 if(_savePat) _savePat.addEventListener('click', saveAsNewPattern);
-const _invertWafer=document.getElementById('patInvertWaferBtn');
-if(_invertWafer) _invertWafer.addEventListener('click', handleInvertWafer);
 ['patOffX','patOffY','patRot','patScale'].forEach(id=> {
   const el=document.getElementById(id);
   if(!el) return;

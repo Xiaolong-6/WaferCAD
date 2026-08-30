@@ -1,9 +1,9 @@
 import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
 import {bboxPolys,centroid,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
-import {clipPolygonsToWafer,composeMaskRegions,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
+import {clipPolygonsToWafer,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
 import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
-import {effectiveLayerPolygons,normalizeGds,patternHasBlockedBorder,patternRawMaskPolygons,patternSelectedLayers,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
+import {effectiveLayerPolygons,normalizeGds,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
 import {clearSvg,makeSvg} from './js/svg.js';
 
 let THREE = null, OrbitControls = null;
@@ -147,50 +147,16 @@ function renderTop(){
     }
   }
 
-  // Imported layout layers remain visually distinct by layer/datatype.
-  // Viewport culling: skip polys entirely outside topBounds (major win near 20k cap when zoomed/panned)
-  let culled=0, drawn=0;
   const patternsMode=isPatternsSelection();
-  for(const layer of state.gds.layers){
-    if(layer.visible===false) continue;
-    const isPatSel=patternsMode && state.patternSelectedKeys.has(layer.key);
-    const isBorder=!!layer.isBorderOnly && !layer.fillPattern;
-    // Border-only without fill is shown as dashed inactive preview, not as active mask
-    const willBeActive=isPatSel && !isBorder;
-    for(const sourcePoly of effectiveLayerPolygons(layer)){
-      const poly=transformedLayerPolygon(layer,sourcePoly);
-      if(!isPolyInViewport(poly, viewport)){culled++; continue;}
-      drawn++;
-      const isInvertedActive=willBeActive && layer.inverted===true;
-      const path=makeSvg('path',{
-        d:polyPath(poly),
-        fill:isInvertedActive?'url(#inverted-hatch)':(willBeActive?'#f59e0b':(isBorder?'#94a3b8':layer.color)),
-        'fill-opacity':isInvertedActive?'0.9':(willBeActive?'0.38':(isBorder?'0.04':'0.10')),
-        stroke:isInvertedActive?'#b45309':(willBeActive?'#b45309':(isBorder?'#64748b':layer.color)),
-        'stroke-opacity':isInvertedActive?'0.9':(willBeActive?'0.95':(isBorder?'0.5':'0.45')),
-        'stroke-width':isInvertedActive?'1.6':(willBeActive?'1.7':'1'),
-        'stroke-dasharray':isBorder?'4 3':(isInvertedActive?'6 3':null),
-        'data-layer':layer.key
-      });
-      if(isBorder) path.setAttribute('data-border','true');
-      if(isInvertedActive) path.setAttribute('data-inverted','true');
-      if(patternsMode && !isBorder){
-        path.style.cursor='pointer';
-        path.addEventListener('click',(ev)=>{
-          ev.stopPropagation();
-          if(state.patternSelectedKeys.has(layer.key)) state.patternSelectedKeys.delete(layer.key);
-          else state.patternSelectedKeys.add(layer.key);
-          updateSelectionInfo(); renderLayerList(); renderTop();
-        });
-      } else if(patternsMode && isBorder){
-        path.style.cursor='not-allowed';
-        path.setAttribute('title','Closed border without fill — enable Fill pattern to use as mask');
-      }
-      svg.appendChild(path);
+  // Main Top View never displays raw mask/GDS geometry.  It only displays the
+  // committed, substrate-clipped projection produced by Pattern Editor.
+  if(patternsMode&&(state.gds.committedProjection?.face||'front')===state.activeFace&&Array.isArray(state.gds.committedProjection?.regions)){
+    for(const region of state.gds.committedProjection.regions){
+      if(!isPolyInViewport(region,viewport))continue;
+      svg.appendChild(makeSvg('path',{d:polyPath(region),fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.7','pointer-events':'none','data-committed-projection':'true'}));
     }
   }
-  if(culled>0) $('viewportCullInfo') && ($('viewportCullInfo').textContent=`${drawn} shown · ${culled} culled outside viewport`);
-  else if($('viewportCullInfo')) $('viewportCullInfo').textContent='';
+  if($('viewportCullInfo'))$('viewportCullInfo').textContent='';
 
   if(isTopFaceSelection()){
     // Draw top-face model regions (solids covering active face) as selectable
@@ -339,15 +305,9 @@ function updateSelectionInfo(){
     return;
   }
   if(isPatternsSelection()){
-    const n=patternSelectionCount();
-    if(n) {
-      const inv=patternSelectedLayers().filter(l=>l.inverted).length;
-      let txt=`${n} pattern layer${n>1?'s':''} selected — alignment and tone apply live, then Apply.`;
-      if(inv>=2) txt+=` (${inv} inverted → union of each S\\layer)`;
-      else if(inv===1 && n>1) txt+=` (mixed: inverted contributes wafer minus its shapes)`;
-      $('selectionInfo').textContent=txt;
-    }
-    else {$('selectionInfo').textContent=`No pattern layer selected — the whole ${state.activeFace} face will be used. Check layers below.`;}
+    const projection=state.gds.committedProjection;
+    if(Array.isArray(projection?.regions)&&projection.regions.length)$('selectionInfo').textContent=`Committed ${projection.face||'front'} substrate projection: ${projection.regions.length} region${projection.regions.length>1?'s':''} · polygons ${projection.polarity==='block'?'block':'transmit'}.`;
+    else $('selectionInfo').textContent='No substrate projection committed — open Pattern Editor, inspect Wafer Projection, then commit it.';
     return;
   }
   const n=state.selectedFaceIds.size;$('selectionInfo').textContent=n?`${n} patterned face${n>1?'s':''} selected.`:`No pattern selected — the whole ${state.activeFace} face will be used.`;
@@ -399,28 +359,11 @@ async function applyPushPull(){
       if(!selected.length){status('Selected full faces are no longer present.');return;}
     }
   } else if(isPatternsSelection()){
-    const selKeys=[...state.patternSelectedKeys];
-    wholeFace=selKeys.length===0;
-    if(wholeFace){
-      selected=[{id:null,side:state.activeFace,polygon:waferOutline(),wholeFace:true}];
-    } else {
-      // A physical mask is one optical field, not a list of GDS fragments.
-      // Compose all selected optical components before any process geometry is made.
-      const maskPolygons=[];
-      for(const key of selKeys){
-        const layer=state.gds.layers.find(l=>l.key===key);
-        if(!layer) continue;
-        const raw=effectiveLayerPolygons(layer).map(poly=>transformedLayerPolygon(layer, poly));
-        maskPolygons.push(...raw);
-      }
-      if(!maskPolygons.length){status('Selected patterns produced no optical geometry.');return;}
-      status(`Composing ${maskPolygons.length} layout polygon(s) into a physical ${state.gds.maskPolarity==='block'?'blocking':'transmitting'} mask…`);
-      let composed;
-      try{composed=await composeMaskRegions(maskPolygons,state.gds.maskPolarity||'transmit',waferOutline());}
-      catch(e){status(`Physical mask composition failed: ${e.message}`);return;}
-      selected=composed.regions.map(polygon=>({id:'resolved-mask',side:state.activeFace,polygon,wholeFace:false}));
-      if(!selected.length){status('The resolved mask has no exposure area on the wafer.');return;}
-    }
+    const projection=state.gds.committedProjection;
+    if(!Array.isArray(projection?.regions)||!projection.regions.length){status('No substrate projection committed. Open Pattern Editor → Wafer Projection and commit it first.');return;}
+    if((projection.face||'front')!==state.activeFace){status(`The committed projection targets the ${projection.face||'front'} face. Commit a projection for the active ${state.activeFace} face first.`);return;}
+    wholeFace=false;
+    selected=projection.regions.map(polygon=>({id:'committed-projection',side:state.activeFace,polygon:clone(polygon),wholeFace:false}));
   } else {
     wholeFace=state.selectedFaceIds.size===0;
     selected=wholeFace?[{id:null,side:state.activeFace,polygon:waferOutline(),wholeFace:true}]:state.imprintedFaces.filter(f=>state.selectedFaceIds.has(f.id));
@@ -852,7 +795,7 @@ function bindUi(){
     state.selectedFaceIds.clear();clearTopSelection();
     // keep patternSelectedKeys when switching to Patterns (set in dock), clear only when switching away? For now keep
     updateLayoutSectionVisibility(); updateSelectionInfo(); renderLayerList(); renderTop();
-    status(mode==='top'?'Selection: full faces (model). Click a visible film top in Top View.':'Selection: Patterns — layers selected in Pattern Editor dock will be used. Adjust in dock then Apply.');
+    status(mode==='top'?'Selection: full faces (model). Click a visible film top in Top View.':'Selection: Patterns — the committed substrate projection will be used.');
   });
   $('undoOperationBtn').addEventListener('click',undoOperation);
 }

@@ -7,6 +7,8 @@
 .patterns-panel .panel-body{flex:1;overflow:auto;padding:12px;min-height:0}
 .patterns-canvas-wrap{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .patterns-canvas-wrap svg{flex:1;min-height:280px}
+#patMaskControls{display:flex;gap:8px;align-items:center;margin-top:6px}#patMaskControls.hidden{display:none}
+#patProjectionControls{display:flex;flex-direction:column;gap:8px}#patProjectionControls.hidden{display:none}
 #mainWorkspace.hidden{display:none}
 #mainWorkspace, #patternsWorkspace{grid-row:2;grid-column:1;min-height:0}
 #app:has(#patternsWorkspace:not(.hidden)) #mainWorkspace{pointer-events:none}

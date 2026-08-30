@@ -7,9 +7,9 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
 ## What works in this MVP
 
 - Create a circular (with optional `Main flat` or `Notch` at `-Y` auto-sized per SEMI M1), rectangular, or coordinate-defined polygon wafer with independently selectable lateral/thickness units. `New wafer` is a floating button in the 3D view (header stays, `view3d-float`).
-- **Physical Mask Composer:** imported polygons are unioned into stable optical components before preview or process geometry, so overlaps and stitch boundaries never become model edges. The Pattern Editor reports `raw → optical` counts, supports direct component selection, Shift/Ctrl multi-select, whole-component Lasso patterns, and explicit `Polygons transmit / Polygons block` polarity. Preview and Apply use the same backend `gdstk` composition.
+- **Physical Mask Composer:** imported polygons are unioned into stable optical components before preview or process geometry, so overlaps and stitch boundaries never become model edges. Pattern Editor has separate `Mask` and `Wafer Projection` views: Mask selects components/polarity without substrate clipping; Wafer Projection applies transform, face and substrate clipping. `Commit projection to Main` freezes the resolved exposure geometry, and every process operation consumes only that committed projection.
 - Import GDSII or OASIS and identify **each layer/datatype pair separately** using `gdstk`; browse the full cell hierarchy and choose any cell or `All cells` aggregate. `All cells` collects `depth=0` polygons from every cell (solves per-cell-per-layer files).
-- Viewport-cull Top View outside the current `topBounds` for smooth pan/zoom near the 20 000-polygon cap; `Mask veil` opacity is adjustable for alignment.
+- Main `Top view` renders the physical model plus the committed substrate projection only; raw GDS/mask geometry is confined to Pattern Editor's Mask view.
 - Assign project-local aliases by clicking a layer name (dotted underline) in the old `Main` panel (now deprecated, layers live in the dock). Legacy project tone/fill fields remain loadable, while new mask work uses optical components and one explicit physical polarity.
 - Line-like layers with no physical area remain guarded. Filled GDS boundaries and width-bearing paths are treated as physical geometry; independent components are never silently discarded by an area heuristic.
 - Align the active cell to the wafer with `X/Y` offset, `Rotation` and global `Scale` (default 1, about layout origin) — live preview in dock, persisted via `state.gds.transform` and `persistSharedState`.
@@ -63,7 +63,7 @@ pairs `1/0` and `10/5`; no confidential layout data is used.
 
 The UI suite launches the installed Google Chrome in headless mode, starts the
 FastAPI service when necessary, and exercises the complete create/import/
-geometry/undo/snapshot/save/open workflow **via the Pattern Editor dock** (`Pattern Editor` → check `patLayerList` → `Apply to Main` → `Main` `imprinted`). Use `npm run test:ui:headed` to watch
+geometry/undo/snapshot/save/open workflow **via the Pattern Editor dock** (`Mask` selection → `Wafer Projection` → `Commit projection to Main` → process operation). Use `npm run test:ui:headed` to watch
 the same test in a visible Chrome window.
 
 Three.js is pinned in `package-lock.json` and served locally by the FastAPI application, so the 3D view does not require a CDN connection. `polygon-clipping` is vendored as `static/vendor/polygon-clipping.umd.js` for offline preview.
@@ -72,7 +72,7 @@ Three.js is pinned in `package-lock.json` and served locally by the FastAPI appl
 
 1. Create/open a wafer (for circles optionally add a SEMI-sized `Main flat` or `Notch` at `-Y`) — use the floating `New wafer` in 3D.
 2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file; pick a `Cell` or `All cells`, enable layers, then select optical components directly or use Lasso to save complete components as a named pattern. Choose whether polygons transmit or block light.
-3. In `Pattern Editor` set `Scale`/`X/Y`/`Rotation` — live preview; click `Apply to Main`.
+3. In `Mask`, select optical components and polarity. Switch to `Wafer Projection`, set `Scale`/`X/Y`/`Rotation`, verify the substrate-clipped exposure, then click `Commit projection to Main`.
 4. In `Main` choose `Face: Front/Back`, then `Full faces` (click blue top regions) or `Patterns` (layers checked in dock).
 5. Enter a distance and choose `Pull`, `Push`, `Conformal grow`, `Isotropic etch`, or `Doping` (`Face` + `Selection` decide the mask; empty selection uses the whole face).
 6. Inspect `3D` (true `×1`), `Top` (with `Mask veil` opacity) and `A–B` section (wheel/drag/double-click).
@@ -90,7 +90,7 @@ This is an architectural/interaction MVP, not a finished CAD kernel.
 - No automatic process semantics (oxidation, deposition, lithography, etc.) yet.
 - At `×1` display Z is true isotropic; higher values are exaggeration for visibility.
 - Per-layer and global Z scaling are visualization settings only; they never change stored physical thicknesses.
-- Large layout files are capped at 20,000 flattened polygons; Top View uses viewport culling but 20k SVG paths remain heavy when fully zoomed out.
-- Pattern Editor's `Lasso` is a rectangular `Shift+drag` on empty canvas, `Save as new pattern` creates a virtual `pattern:*` layer 900+ in `state.gds.layers` (area-guarded, `_alreadyTransformed` to avoid double `patTransform`).
+- Large layout files are capped at 20,000 flattened polygons; Mask view can still be heavy when many optical components are fully zoomed out.
+- Pattern Editor's `Lasso` is a rectangular `Shift+drag` in Mask view; saving creates a virtual `pattern:*` layer from complete optical components rather than clipping fragments to the lasso rectangle.
 
 See `HANDOFF.md` before extending the project.
