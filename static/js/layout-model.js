@@ -8,7 +8,11 @@ export function effectiveLayerPolygons(layer){
   if(layer.fillPattern===true&&Array.isArray(layer.filledPolygons))return layer.filledPolygons;
   if(Array.isArray(layer.components)&&layer.components.length){
     const selected=Array.isArray(layer.selectedComponentIds)?new Set(layer.selectedComponentIds):null;
-    return layer.components.filter(component=>!selected||selected.has(component.id)).map(component=>component.polygon);
+    if(!selected)return layer.polygons||[];
+    const chosen=layer.components.filter(component=>selected.has(component.id));
+    const sourceIndices=[...new Set(chosen.flatMap(component=>Array.isArray(component.source_polygon_indices)?component.source_polygon_indices:[]))];
+    if(sourceIndices.length&&Array.isArray(layer.polygons))return sourceIndices.map(index=>layer.polygons[index]).filter(Boolean);
+    return chosen.map(component=>component.polygon);
   }
   return layer.polygons||[];
 }

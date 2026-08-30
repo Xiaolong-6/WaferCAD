@@ -145,14 +145,91 @@ def _compose_polygons(polygons: list[list[list[float]]], precision: float = 1e-6
     return gdstk.boolean(subjects, [], "or", precision=precision) if subjects else []
 
 
-def _component_payload(polygon: Any) -> dict[str, Any]:
+def _component_payload(polygon: Any, source_polygon_indices: list[int] | None = None) -> dict[str, Any]:
     points = [[float(x), float(y)] for x, y in polygon.points]
-    return {
+    payload = {
         "id": _component_id(polygon.points),
         "polygon": points,
         "area": float(polygon.area()),
         "bbox": _bbox(points),
     }
+    if source_polygon_indices is not None:
+        payload["source_polygon_indices"] = source_polygon_indices
+    return payload
+
+
+def _compose_physical_components(
+    polygons: list[list[list[float]]], precision: float = 1e-6
+) -> list[tuple[Any, list[int]]]:
+    """Group filled GDS boundaries by physical contact without losing provenance.
+
+    GDS BOUNDARY records are filled independently of point winding. Boolean
+    libraries can leave polygons that only share an edge as separate outputs,
+    which made a tiled filled mask look like holes after one output component
+    was selected. A sub-nanometre close is used only to discover connectivity;
+    projection geometry continues to use the untouched source boundaries.
+    """
+    import gdstk
+
+    subjects = [gdstk.Polygon(points) for points in polygons if len(points) >= 3]
+    if not subjects:
+        return []
+    contact_epsilon = max(float(precision), 1e-7)
+    grown = gdstk.offset(
+        subjects,
+        contact_epsilon,
+        join="miter",
+        tolerance=2,
+        use_union=True,
+        precision=precision,
+    )
+    components = gdstk.offset(
+        grown,
+        -contact_epsilon,
+        join="miter",
+        tolerance=2,
+        use_union=True,
+        precision=precision,
+    )
+    if not components:
+        components = _compose_polygons(polygons, precision)
+
+    component_bounds = [_bbox(polygon.points) for polygon in components]
+    memberships: list[list[int]] = [[] for _ in components]
+    for source_index, subject in enumerate(subjects):
+        source_points = [[float(x), float(y)] for x, y in subject.points]
+        source_bound = _bbox(source_points)
+        interior = _atom_interior_point(source_points)
+        candidate_indices = [
+            index
+            for index, bound in enumerate(component_bounds)
+            if not (
+                source_bound[2] < bound[0]
+                or source_bound[0] > bound[2]
+                or source_bound[3] < bound[1]
+                or source_bound[1] > bound[3]
+            )
+        ]
+        assigned = next(
+            (
+                index
+                for index in candidate_indices
+                if bool(gdstk.inside([interior], components[index])[0])
+            ),
+            None,
+        )
+        if assigned is None:
+            # Defensive fallback for an interior point quantized onto a boundary.
+            overlaps = []
+            for index in candidate_indices:
+                clipped = gdstk.boolean(subject, components[index], "and", precision=precision)
+                overlaps.append((sum(polygon.area() for polygon in clipped), index))
+            if overlaps:
+                assigned = max(overlaps)[1]
+        if assigned is not None:
+            memberships[assigned].append(source_index)
+
+    return list(zip(components, memberships))
 
 
 def _point_in_poly(pt: list[float], poly: list[list[float]]) -> bool:
@@ -616,9 +693,12 @@ async def inspect_gds(
     layers = sorted(layer_map.values(), key=lambda x: (x["layer"], x["datatype"]))
     for layer_item in layers:
         try:
-            composed = _compose_polygons(layer_item["polygons"])
+            composed = _compose_physical_components(layer_item["polygons"])
             layer_item["components"] = sorted(
-                (_component_payload(polygon) for polygon in composed),
+                (
+                    _component_payload(polygon, source_indices)
+                    for polygon, source_indices in composed
+                ),
                 key=lambda component: component["area"],
                 reverse=True,
             )
