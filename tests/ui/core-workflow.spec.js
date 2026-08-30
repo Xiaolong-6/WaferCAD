@@ -163,6 +163,7 @@ test('Top view mirrors current model solids and substrate cuts', async ({ page }
   await page.locator('#materialInput').fill('Projection film');
   await page.locator('#distanceInput').fill('100');
   await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 solids');
   await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(1);
 
   await page.locator('#selectionMode').selectOption('imprinted');
@@ -174,6 +175,82 @@ test('Top view mirrors current model solids and substrate cuts', async ({ page }
   await page.getByRole('button', { name: 'Apply operation' }).click();
   await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(0);
   await expect(page.locator('#topSvg [data-model-cut]')).toHaveCount(1);
+});
+
+
+test('blanket growth partitions a mask across mixed surface heights', async ({ page }) => {
+  await page.goto('/?qa=playwright-mixed-surface-growth');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#gdsInput').setInputFiles(path.resolve('tests/fixtures/synthetic_two_layer.gds'));
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
+  await page.locator('#materialInput').fill('Partial base film');
+  await page.locator('#distanceInput').fill('100');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 solids');
+
+  await page.locator('#selectionMode').selectOption('top');
+  await page.locator('#materialInput').fill('Partitioned blanket');
+  await page.locator('#distanceInput').fill('50');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('3 solids');
+
+  const bounds = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    return state.solids.map(solid => [solid.material, solid.zMin, solid.zMax]);
+  });
+  expect(bounds.some(([material,zMin,zMax]) => material === 'Partitioned blanket' && zMin === 0 && zMax === 50)).toBeTruthy();
+  expect(bounds.some(([material,zMin,zMax]) => material === 'Partitioned blanket' && zMin === 100 && zMax === 150)).toBeTruthy();
+  await expect(page.locator('#topSvg [data-surface-face]')).toHaveCount(2);
+  await expect(page.locator('#topSvg [data-surface-kind="solid"]')).toHaveCount(2);
+});
+
+
+test('substrate doping starts from the locally etched surface', async ({ page }) => {
+  await page.goto('/?qa=playwright-local-surface-doping');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#pushMode').selectOption('down');
+  await page.locator('#distanceInput').fill('100');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await page.locator('#pushMode').selectOption('doping');
+  await page.locator('#dopingTargetLayer').selectOption('substrate');
+  await page.locator('#materialInput').fill('Boron');
+  await page.locator('#distanceInput').fill('25');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 doped regions');
+  const dopings = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    return state.dopings.map(region => ({ zMin: region.zMin, zMax: region.zMax, target: region.targetLayerId }));
+  });
+  expect(dopings).toEqual([{ zMin: -125, zMax: -100, target: 'substrate' }]);
+});
+
+
+test('push down consumes mixed-height materials before cutting local substrate', async ({ page }) => {
+  await page.goto('/?qa=playwright-mixed-surface-etch');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#gdsInput').setInputFiles(path.resolve('tests/fixtures/synthetic_two_layer.gds'));
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
+  await page.locator('#materialInput').fill('Etch stop film');
+  await page.locator('#distanceInput').fill('100');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 solids');
+  await page.locator('#selectionMode').selectOption('top');
+  await page.locator('#pushMode').selectOption('down');
+  await page.locator('#distanceInput').fill('150');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('0 solids');
+  const cutDepths = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    return [...new Set(state.cuts.map(cut => cut.zMin))].sort((a,b) => a-b);
+  });
+  expect(cutDepths).toEqual([-150, -50]);
 });
 
 

@@ -475,6 +475,13 @@ Known follow-up / not fully verified:
 - Multi-select `Patterns` remains per-layer independent `⋃(inverted? S\layer : S∩layer)` (e.g. `(S\A)∪(S\B)`), which matches per-layer `Invert` checkbox mental model. Preview now distinguishes inverted active layers with the amber hatch; `selectionInfo` appends a hint for `≥2` inverted or mixed (`S\A ∪ B`).
 - No change to `app.py:195`; only frontend preview and hint were added. Future `Top` hole preview for inverted could be added without backend change.
 
+## 32. Exact planar exposed-surface partition (2026-08-30)
+
+- `POST /api/geometry/surface-partition` builds an atomic XY arrangement from the wafer, every solid footprint, both-face substrate cuts and an optional process mask.
+- Each returned atom has exactly one exposed `sourceId/layerId`, one physical `surface` Z and exact local substrate bounds. Atoms exceeding the safety cap fail explicitly instead of falling back to centroid sampling.
+- Pull, Push, conformal grow, isotropic etch, Full-face selection and doping all consume this common surface model. Partially covered lower films remain selectable only on their exposed remainder, and substrate doping begins at the locally etched surface.
+- Regression coverage includes mixed 0/100 µm deposition heights, layer-first consumption producing local −50/−150 µm cuts, partially exposed lower films, local etched-surface doping and through-etched void removal.
+
 Verification for this batch:
 
 - `node --check` and `ast.parse` pass.

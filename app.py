@@ -17,6 +17,7 @@ THREE = ROOT / "node_modules" / "three"
 
 app = FastAPI(title="WaferCAD MVP", version="0.1.0")
 SUBSTRATE_ATOM_LIMIT = 5000
+SURFACE_ATOM_LIMIT = 10000
 
 
 @app.middleware("http")
@@ -107,6 +108,15 @@ class SubstrateThicknessRequest(BaseModel):
     outline: list[list[float]] = Field(min_length=3)
     thickness: float = Field(gt=0)
     cuts: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class SurfacePartitionRequest(BaseModel):
+    outline: list[list[float]] = Field(min_length=3)
+    thickness: float = Field(gt=0)
+    side: Literal["front", "back"] = "front"
+    solids: list[dict[str, Any]] = Field(default_factory=list, max_length=20000)
+    cuts: list[dict[str, Any]] = Field(default_factory=list, max_length=20000)
+    masks: list[list[list[float]]] = Field(default_factory=list, max_length=20000)
 
 
 class HierarchyInspectRequest(BaseModel):
@@ -434,6 +444,146 @@ def split_by_mask(payload: PolygonSplitRequest) -> dict[str, Any]:
         raise HTTPException(400, f"Unable to split polygons: {exc}") from exc
 
     return {"remaining": remaining, "overlaps": overlaps}
+
+
+@app.post("/api/geometry/surface-partition")
+def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
+    """Partition an operation mask into regions with one exact exposed surface.
+
+    Every solid and substrate-cut footprint is used as a planar arrangement
+    boundary.  Classification is performed only after that split, so an atom
+    can never span two materials or two surface heights.
+    """
+    try:
+        import gdstk
+    except Exception as exc:
+        raise HTTPException(503, "Surface partition requires gdstk") from exc
+
+    try:
+        thickness = float(payload.thickness)
+        wafer = gdstk.Polygon(payload.outline)
+        masks = [gdstk.Polygon(points) for points in payload.masks if len(points) >= 3]
+        atoms = (
+            gdstk.boolean(wafer, masks, "and", precision=1e-6)
+            if masks
+            else [wafer]
+        )
+        solids: list[dict[str, Any]] = []
+        cuts: list[dict[str, Any]] = []
+        boundaries: list[Any] = []
+
+        for raw in payload.solids:
+            footprint = raw.get("footprint")
+            if not isinstance(footprint, list) or len(footprint) < 3:
+                continue
+            z_min, z_max = float(raw.get("zMin", 0)), float(raw.get("zMax", 0))
+            if not all(math.isfinite(value) for value in (z_min, z_max)) or z_max <= z_min:
+                continue
+            item = {
+                "id": str(raw.get("id") or ""),
+                "layerId": raw.get("layerId"),
+                "side": "back" if raw.get("side") == "back" else "front",
+                "zMin": z_min,
+                "zMax": z_max,
+                "polygon": gdstk.Polygon(footprint),
+            }
+            solids.append(item)
+            boundaries.append(item["polygon"])
+
+        for raw in payload.cuts:
+            footprint = raw.get("footprint")
+            if not isinstance(footprint, list) or len(footprint) < 3:
+                continue
+            z_min, z_max = float(raw.get("zMin", -thickness)), float(raw.get("zMax", 0))
+            if not all(math.isfinite(value) for value in (z_min, z_max)) or z_max <= z_min:
+                continue
+            item = {
+                "side": "back" if raw.get("side") == "back" else "front",
+                "zMin": max(-thickness, z_min),
+                "zMax": min(0, z_max),
+                "polygon": gdstk.Polygon(footprint),
+            }
+            cuts.append(item)
+            boundaries.append(item["polygon"])
+
+        partition_complete = True
+        for boundary in boundaries:
+            next_atoms: list[Any] = []
+            for atom in atoms:
+                next_atoms.extend(gdstk.boolean(atom, boundary, "and", precision=1e-6))
+                next_atoms.extend(gdstk.boolean(atom, boundary, "not", precision=1e-6))
+            if len(next_atoms) > SURFACE_ATOM_LIMIT:
+                partition_complete = False
+                break
+            atoms = [atom for atom in next_atoms if len(atom.points) >= 3 and atom.area() > 1e-9]
+
+        if not partition_complete:
+            raise HTTPException(
+                422,
+                f"Surface arrangement exceeds the {SURFACE_ATOM_LIMIT}-atom safety limit",
+            )
+
+        result: list[dict[str, Any]] = []
+        for atom in atoms:
+            points = [[float(x), float(y)] for x, y in atom.points]
+            interior = _atom_interior_point(points)
+            front_surface = 0.0
+            back_surface = -thickness
+            for cut in cuts:
+                if not bool(gdstk.inside([interior], cut["polygon"])[0]):
+                    continue
+                if cut["side"] == "front":
+                    front_surface = min(front_surface, cut["zMin"])
+                else:
+                    back_surface = max(back_surface, cut["zMax"])
+
+            candidates = [
+                solid
+                for solid in solids
+                if solid["side"] == payload.side
+                and bool(gdstk.inside([interior], solid["polygon"])[0])
+            ]
+            if candidates:
+                top = (
+                    max(candidates, key=lambda solid: solid["zMax"])
+                    if payload.side == "front"
+                    else min(candidates, key=lambda solid: solid["zMin"])
+                )
+                surface = top["zMax"] if payload.side == "front" else top["zMin"]
+                kind = "solid"
+                source_id = top["id"]
+                layer_id = top["layerId"]
+                z_min, z_max = top["zMin"], top["zMax"]
+            elif front_surface > back_surface + 1e-9:
+                surface = front_surface if payload.side == "front" else back_surface
+                kind = "substrate"
+                source_id = "substrate"
+                layer_id = "substrate"
+                z_min, z_max = back_surface, front_surface
+            else:
+                continue
+
+            geometry_id = _component_id(atom.points)
+            result.append(
+                {
+                    "id": f"face-{source_id}-{geometry_id.removeprefix('component-')}",
+                    "kind": kind,
+                    "sourceId": source_id,
+                    "layerId": layer_id,
+                    "side": payload.side,
+                    "surface": surface,
+                    "zMin": z_min,
+                    "zMax": z_max,
+                    "polygon": points,
+                    "area": float(atom.area()),
+                }
+            )
+
+        return {"atoms": result, "exact": True, "atom_limit": SURFACE_ATOM_LIMIT}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400, f"Unable to partition top surface: {exc}") from exc
 
 
 @app.post("/api/geometry/substrate-thickness")

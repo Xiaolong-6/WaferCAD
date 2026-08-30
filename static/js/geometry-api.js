@@ -41,3 +41,13 @@ export async function splitPolygonsByMask(subjects,masks){
   if(!Array.isArray(data.remaining)||!Array.isArray(data.overlaps)||data.remaining.length!==subjects.length||data.overlaps.length!==subjects.length)throw new Error('Material split returned an invalid result.');
   return data;
 }
+
+export async function partitionTopSurface(masks=[]){
+  if(!state.wafer)return [];
+  const data=await postGeometry('/api/geometry/surface-partition',{
+    outline:waferOutline(),thickness:state.wafer.thickness,side:state.activeFace,
+    solids:state.solids,cuts:state.cuts,masks,
+  },'Top-surface partition failed');
+  if(!Array.isArray(data.atoms)||data.exact!==true)throw new Error('Top-surface partition returned an invalid result.');
+  return data.atoms;
+}

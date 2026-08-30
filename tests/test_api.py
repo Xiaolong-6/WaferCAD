@@ -120,6 +120,79 @@ def test_isotropic_offset_and_material_split(client):
     assert len(split.json()["overlaps"][0]) == 1
 
 
+def test_surface_partition_assigns_one_height_and_material_per_atom(client):
+    response = client.post(
+        "/api/geometry/surface-partition",
+        json={
+            "outline": WAFER,
+            "thickness": 500,
+            "side": "front",
+            "solids": [
+                {
+                    "id": "lower",
+                    "layerId": "oxide",
+                    "side": "front",
+                    "footprint": [[-50, -50], [0, -50], [0, 50], [-50, 50]],
+                    "zMin": 0,
+                    "zMax": 100,
+                }
+            ],
+            "cuts": [],
+            "masks": [WAFER],
+        },
+    )
+    assert response.status_code == 200
+    atoms = response.json()["atoms"]
+    assert {atom["surface"] for atom in atoms} == {0, 100}
+    assert {atom["kind"] for atom in atoms} == {"substrate", "solid"}
+    assert all(atom["sourceId"] == "lower" for atom in atoms if atom["kind"] == "solid")
+
+
+def test_surface_partition_exposes_only_uncovered_lower_film(client):
+    response = client.post(
+        "/api/geometry/surface-partition",
+        json={
+            "outline": WAFER,
+            "thickness": 500,
+            "side": "front",
+            "solids": [
+                {"id": "lower", "layerId": "lower-layer", "side": "front", "footprint": WAFER, "zMin": 0, "zMax": 100},
+                {"id": "upper", "layerId": "upper-layer", "side": "front", "footprint": [[0, -50], [50, -50], [50, 50], [0, 50]], "zMin": 100, "zMax": 150},
+            ],
+            "cuts": [],
+        },
+    )
+    assert response.status_code == 200
+    atoms = response.json()["atoms"]
+    assert {atom["sourceId"] for atom in atoms} == {"lower", "upper"}
+    lower_area = sum(atom["area"] for atom in atoms if atom["sourceId"] == "lower")
+    upper_area = sum(atom["area"] for atom in atoms if atom["sourceId"] == "upper")
+    assert lower_area == pytest.approx(5000)
+    assert upper_area == pytest.approx(5000)
+
+
+def test_surface_partition_uses_local_etched_substrate_surface_and_drops_void(client):
+    response = client.post(
+        "/api/geometry/surface-partition",
+        json={
+            "outline": WAFER,
+            "thickness": 500,
+            "side": "front",
+            "solids": [],
+            "cuts": [
+                {"side": "front", "footprint": [[-50, -50], [0, -50], [0, 50], [-50, 50]], "zMin": -100, "zMax": 0},
+                {"side": "front", "footprint": [[0, -50], [50, -50], [50, 50], [0, 50]], "zMin": -500, "zMax": 0},
+            ],
+        },
+    )
+    assert response.status_code == 200
+    atoms = response.json()["atoms"]
+    assert len(atoms) == 1
+    assert atoms[0]["kind"] == "substrate"
+    assert atoms[0]["surface"] == pytest.approx(-100)
+    assert atoms[0]["area"] == pytest.approx(5000)
+
+
 def test_exact_substrate_thickness_with_overlapping_cuts(client):
     response = client.post(
         "/api/geometry/substrate-thickness",

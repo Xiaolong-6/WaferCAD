@@ -20,6 +20,7 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
   - **Pull up**: extruded solid with material.
   - **Push down / Isotropic etch**: layer-by-layer consumption of the stack in depth order via `split-by-mask`, then substrate cut; fully consumed layers and their dopings are removed.
   - **Conformal grow / Isotropic etch**: round `gdstk.offset` plus same Z distance (2.5D isotropic approximation).
+  - **Planar top-surface partition**: every process mask is split by all current solid and cut footprints before Z assignment. Pull, Push, isotropic etch, exposed-face selection and doping therefore operate on one material and one surface height per atomic XY region.
 - Doping, Undo (50 steps), whole-face fallback, and per-layer/global Z display (true `×1` is isotropic, `Z display` is exaggeration) remain.
 - Linked views: interactive 3D (with `Show axes`), Top (wheel zoom + drag pan on empty, `Fit wafer/layout`), and live `A–B` section (`×1` is true scale, now with `wheel zoom / drag pan / double-click reset` via `translate/scale` on `sectionContent` group, hint as overlay, tight `yMin/yMax` with 4% pad). Top always projects the current model's visible solids, substrate cuts and doping beneath any layout/selection overlays.
 - `Figure legend` is ordered as a physical stack (`Front top → substrate → Back bottom`), labels material layers as Front/Back and Top/Bottom, shows per-layer thickness (exact planar partition for substrate, `atoms` count), and allows renaming/color/Z-scale. It exposes a guarded delete action only for the current physical Front top or Back bottom material layer; substrate and interior layers cannot be deleted, and deletion participates in Undo.
@@ -85,7 +86,7 @@ This is an architectural/interaction MVP, not a finished CAD kernel.
 
 - Push/Isotropic etch consume the geometric stack in depth order, but do not yet model chemistry-dependent selectivity, etch stops, loading, redeposition or different rates per material.
 - Pull-up uses a 2.5D polygon extrusion. Conformal grow/isotropic etch use a round lateral offset plus the same Z distance; a true 3D sidewall shell, sloped profile, loading effect and transport model are not implemented.
-- Overlapping/stacked polygons use a centroid-based surface-height estimate for pull-up placement.
+- Curved sidewalls and true 3D conformal shells remain outside the 2.5D model, but stacked planar topography is partitioned exactly in XY before every operation; no centroid surface-height estimate is used.
 - The composer is a binary geometric projection model; diffraction, partial coherence, focus, aerial-image thresholds, resist chemistry, and process bias are not yet simulated.
 - No automatic process semantics (oxidation, deposition, lithography, etc.) yet.
 - At `×1` display Z is true isotropic; higher values are exaggeration for visibility.

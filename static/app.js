@@ -1,6 +1,6 @@
 import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
-import {bboxPolys,centroid,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
-import {clipPolygonsToWafer,isotropicOffset,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
+import {bboxPolys,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
+import {clipPolygonsToWafer,isotropicOffset,partitionTopSurface,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
 import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
 import {effectiveLayerPolygons,normalizeGds,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
@@ -14,6 +14,7 @@ let waferDialogLateralUnit = 'mm', waferDialogThicknessUnit = 'um';
 let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
 let sectionPan = null, sectionScale = 1, sectionTx = 0, sectionTy = 0;
+let topSurfaceAtoms = [], topSurfaceKey = null, topSurfacePendingKey = null;
 let snapshotNamePurpose = 'snapshot';
 const legendController=createLegendController({recordOperationUndo:()=>recordOperationUndo(),updateSelectionInfo:()=>updateSelectionInfo(),renderAll:()=>renderAll()});
 const renderFigureLegend=()=>legendController.render();
@@ -91,6 +92,33 @@ function svgToModel(sx,sy){
   if(state.activeFace==='back')sx=600-sx;return {x:x0+sx/600*(x1-x0),y:y0+(1-sy/420)*(y1-y0)};
 }
 function polyPath(poly){ return poly.map((p,i)=>{const [x,y]=modelToSvg(p[0],p[1]); return `${i?'L':'M'}${x.toFixed(2)},${y.toFixed(2)}`}).join(' ')+' Z'; }
+function surfaceGeometryKey(){
+  if(!state.wafer)return 'empty';
+  const wafer=state.wafer;
+  return JSON.stringify([
+    state.activeFace,wafer.shape,wafer.diameter,wafer.width,wafer.height,wafer.thickness,wafer.outline,
+    state.solids.map(s=>[s.id,s.side,s.layerId,s.zMin,s.zMax,s.footprint?.length]),
+    state.cuts.map(c=>[c.id,c.side,c.zMin,c.zMax,c.footprint?.length]),
+  ]);
+}
+async function ensureTopSurfacePartition(force=false){
+  const key=surfaceGeometryKey();
+  if(key==='empty'){topSurfaceAtoms=[];topSurfaceKey=key;topSurfacePendingKey=null;return [];}
+  if(!force&&topSurfaceKey===key)return topSurfaceAtoms;
+  if(!force&&topSurfacePendingKey===key)return null;
+  topSurfacePendingKey=key;
+  try{
+    const atoms=await partitionTopSurface();
+    if(surfaceGeometryKey()!==key)return null;
+    topSurfaceAtoms=atoms;topSurfaceKey=key;
+    const valid=new Set(atoms.map(atom=>atom.id));
+    for(const id of [...state._topFaceSelection.selectedSolidIds])if(!valid.has(id))state._topFaceSelection.selectedSolidIds.delete(id);
+    updateSelectionInfo();renderTop();
+    return atoms;
+  }catch(error){if(surfaceGeometryKey()===key)status(`Top-surface partition failed: ${error.message}`);return null;}
+  finally{if(topSurfacePendingKey===key)topSurfacePendingKey=null;}
+}
+function invalidateTopSurfacePartition(){topSurfaceKey=null;topSurfacePendingKey=null;topSurfaceAtoms=[];}
 function niceScaleDistance(target){if(!(target>0))return 1;const power=10**Math.floor(Math.log10(target)),normalized=target/power;return (normalized>=5?5:normalized>=2?2:1)*power;}
 function appendTopScaleBar(svg){
   if(!state.topBounds)return;const span=state.topBounds[2]-state.topBounds[0],distance=niceScaleDistance(span*.16),pixels=distance/span*600,x=18,y=392,label=distance>=1000?`${Number((distance/1000).toPrecision(3))} mm`:`${Number(distance.toPrecision(3))} µm`,group=makeSvg('g',{'data-scale-bar':'top','pointer-events':'none'});
@@ -107,6 +135,7 @@ function renderTop(){
   const svg=$('topSvg'); clearSvg(svg);
   if(!state.wafer&&!state.gds.layers.length){updateSliceInputs();return;}
   if(!state.topBounds) fitWafer();
+  if(state.wafer)void ensureTopSurfacePartition();
   if(state.wafer){
     svg.appendChild(makeSvg('path',{d:polyPath(waferOutline()),fill:'#f0f1f2',stroke:'#626b75','stroke-width':'1.5'}));
     // Mask veil for alignment: semi-transparent overlay on empty wafer area, adjustable
@@ -164,20 +193,15 @@ function renderTop(){
   if($('viewportCullInfo'))$('viewportCullInfo').textContent='';
 
   if(isTopFaceSelection()){
-    // Draw top-face model regions (solids covering active face) as selectable
-    const solidsOnFace=state.solids.filter(s=>(s.side||'front')===state.activeFace);
-    for(const solid of solidsOnFace){
-      if(!isPolyInViewport(solid.footprint, viewport)) continue;
-      const isTop=topLayerAt(centroid(solid.footprint), state.activeFace)?.id===solid.id;
-      if(!isTop) continue;
-      const selected=state._topFaceSelection.selectedSolidIds.has(solid.id);
-      const path=makeSvg('path',{d:polyPath(solid.footprint),fill:selected?'#f59e0b':'#60a5fa','fill-opacity':selected?'0.42':'0.18',stroke:selected?'#d97706':'#2563eb','stroke-width':selected?'2.2':'1.4','data-solid':solid.id});
+    // Each selectable path is one exact atom of the exposed planar surface.
+    for(const atom of topSurfaceAtoms){
+      if(atom.side!==state.activeFace||!isPolyInViewport(atom.polygon,viewport))continue;
+      const selected=state._topFaceSelection.selectedSolidIds.has(atom.id);
+      const path=makeSvg('path',{d:polyPath(atom.polygon),fill:selected?'#f59e0b':atom.kind==='substrate'?'#ffffff':'#60a5fa','fill-opacity':selected?'0.42':atom.kind==='substrate'?'0.05':'0.18',stroke:selected?'#d97706':atom.kind==='substrate'?'#64748b':'#2563eb','stroke-opacity':atom.kind==='substrate'?'0.35':'1','stroke-width':selected?'2.2':'1.2','data-surface-face':atom.id,'data-source-id':atom.sourceId,'data-surface-kind':atom.kind});
       path.style.cursor='pointer';
-      path.addEventListener('click',(ev)=>{ev.stopPropagation(); if(state._topFaceSelection.selectedSolidIds.has(solid.id)) state._topFaceSelection.selectedSolidIds.delete(solid.id); else state._topFaceSelection.selectedSolidIds.add(solid.id); updateSelectionInfo(); renderTop();});
+      path.addEventListener('click',(ev)=>{ev.stopPropagation();if(state._topFaceSelection.selectedSolidIds.has(atom.id))state._topFaceSelection.selectedSolidIds.delete(atom.id);else state._topFaceSelection.selectedSolidIds.add(atom.id);updateSelectionInfo();renderTop();});
       svg.appendChild(path);
     }
-    // substrate top region: click empty wafer area to select substrate top face
-    // handled via svg background click below
   } else if(patternsMode){
     // Patterns mode: selection is via checkboxes/layer clicks; no imprinted faces drawn as selectable
     // (selected layers already highlighted above)
@@ -268,29 +292,6 @@ function bindSectionNavigation(){
   });
 }
 
-function surfaceZAt(p,side='front'){
-  let z=side==='back'?-state.wafer.thickness:0;
-  if(side==='back'){
-    for(const cut of state.cuts)if((cut.side||'front')==='back'&&pointInPoly(p,cut.footprint))z=Math.max(z,cut.zMax);
-    for(const solid of state.solids)if((solid.side||'front')==='back'&&pointInPoly(p,solid.footprint))z=Math.min(z,solid.zMin);
-  }else{
-    for(const cut of state.cuts)if((cut.side||'front')==='front'&&pointInPoly(p,cut.footprint))z=Math.min(z,cut.zMin);
-    for(const solid of state.solids)if((solid.side||'front')==='front'&&pointInPoly(p,solid.footprint))z=Math.max(z,solid.zMax);
-  }
-  return z;
-}
-function topLayerAt(point,side='front'){
-  const p={x:point[0],y:point[1]};
-  if(!pointInPoly(p, waferOutline())) return null;
-  // check cuts that etch substrate: if point inside a front cut that lowers surface, substrate is no longer top unless a solid covers it
-  let candidates=[];
-  for(const solid of state.solids) if((solid.side||'front')===side && pointInPoly(p, solid.footprint)) candidates.push(solid);
-  if(!candidates.length) return {kind:'substrate', id:'substrate', z:surfaceZAt(p,side)};
-  // topmost is max zMax (front) or min zMin (back)
-  candidates.sort((a,b)=> side==='back'? a.zMin - b.zMin : b.zMax - a.zMax);
-  const top=candidates[0];
-  return {kind:'solid', id:top.id, layerId:top.layerId, solid:top, z: side==='back'?top.zMin:top.zMax};
-}
 function isTopFaceSelection(){return $('selectionMode')?.value==='top';}
 function isPatternsSelection(){const v=$('selectionMode')?.value; return v==='imprinted' || v==='patterns';}
 function topSelectionCount(){return state._topFaceSelection.selectedSolidIds.size;}
@@ -307,8 +308,8 @@ function updateSelectionInfo(){
   if($('pushMode')?.value==='doping'){$('selectionInfo').textContent='Doping overlaps the selected physical target layer; mask-face selection is not used.';return;}
   if(isTopFaceSelection()){
     const n=topSelectionCount();
-    if(n) {$('selectionInfo').textContent=`${n} full face${n>1?'s':''} selected (model).`;}
-    else {$('selectionInfo').textContent=`No full face selected — the whole ${state.activeFace} face will be used. Click a visible top region.`;}
+    if(n) {$('selectionInfo').textContent=`${n} exposed surface region${n>1?'s':''} selected.`;}
+    else {$('selectionInfo').textContent=`No exposed region selected — the whole ${state.activeFace} surface will be used.`;}
     return;
   }
   if(isPatternsSelection()){
@@ -320,9 +321,9 @@ function updateSelectionInfo(){
   const n=state.selectedFaceIds.size;$('selectionInfo').textContent=n?`${n} patterned face${n>1?'s':''} selected.`:`No pattern selected — the whole ${state.activeFace} face will be used.`;
 }
 
-async function buildMaterialConsumption(pieces,distance,mode){
+async function buildMaterialConsumption(surfaceAtoms,distance,mode){
   const groups=new Map(),eps=1e-7,t=state.wafer.thickness;
-  for(const piece of pieces){const side=piece.face.side||state.activeFace,surface=surfaceZAt(centroid(piece.polygon),side),key=`${side}|${surface.toFixed(6)}`,group=groups.get(key)||{side,surface,masks:[]};group.masks.push(piece.polygon);groups.set(key,group);}
+  for(const atom of surfaceAtoms){const side=atom.side||state.activeFace,surface=Number(atom.surface),key=`${side}|${surface.toFixed(6)}`,group=groups.get(key)||{side,surface,masks:[]};group.masks.push(atom.polygon);groups.set(key,group);}
   let working=clone(state.solids),workingDopings=clone(state.dopings);const substrateCuts=[];
   for(const group of groups.values()){
     const front=group.side!=='back',cutLow=group.surface-distance,cutHigh=group.surface+distance,candidates=working.filter(s=>(s.side||'front')===group.side&&(front?(s.zMax>cutLow+eps&&s.zMin<group.surface-eps):(s.zMin<cutHigh-eps&&s.zMax>group.surface+eps)));
@@ -344,26 +345,30 @@ function captureOperationState(){return clone({solids:state.solids,cuts:state.cu
 function recordOperationUndo(){state.operationUndo.push(captureOperationState());if(state.operationUndo.length>50)state.operationUndo.shift();updateUndoUi();}
 function updateUndoUi(){$('undoOperationBtn').disabled=!state.operationUndo.length;}
 function undoOperation(){const previous=state.operationUndo.pop();if(!previous)return;state.solids=previous.solids||[];state.cuts=previous.cuts||[];state.dopings=previous.dopings||[];state.layerVisuals=previous.layerVisuals||{};ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();renderAll();updateUndoUi();persistSharedState();status('Undid the last geometry operation.');}
-function applyDoping(distance,dopant){
-  const targetLayerId=$('dopingTargetLayer').value,position=$('dopingPosition').value,targets=targetLayerId==='substrate'?[{footprint:waferOutline(),zMin:-state.wafer.thickness,zMax:0}]:state.solids.filter(s=>s.layerId===targetLayerId);if(!targets.length){status('Choose an existing target layer for doping.');return;}
-  recordOperationUndo();const layerId=uid('doping'),name=nextLayerName(`Doping · ${dopant}`);state.layerVisuals[layerId]={name,color:materialColor(dopant),scale:1,gradient:true};
-  for(const target of targets){const available=Math.max(0,target.zMax-target.zMin),depth=Math.min(distance,available);if(depth<=0)continue;const zMin=position==='upper'?target.zMax-depth:target.zMin,zMax=position==='upper'?target.zMax:target.zMin+depth;state.dopings.push({id:uid('doping-region'),layerId,targetLayerId,dopant,position,depth,footprint:clone(target.footprint),zMin,zMax});}
-  renderAll();persistSharedState();status(`Added ${dopant} doping to the ${position} ${Math.min(distance,Math.max(...targets.map(t=>t.zMax-t.zMin))).toFixed(3)} µm of ${layerVisual(targetLayerId).name}.`);
+async function applyDoping(distance,dopant){
+  const targetLayerId=$('dopingTargetLayer').value;
+  status('Partitioning the exposed target surface for doping…');
+  let atoms;try{atoms=await partitionTopSurface();}catch(error){status(`Doping failed: ${error.message}`);return;}
+  const targets=atoms.filter(atom=>atom.layerId===targetLayerId);if(!targets.length){status('The selected target layer has no exposed region on the active face.');return;}
+  recordOperationUndo();const layerId=uid('doping'),name=nextLayerName(`Doping · ${dopant}`),front=state.activeFace!=='back',position=front?'upper':'lower';state.layerVisuals[layerId]={name,color:materialColor(dopant),scale:1,gradient:true};
+  let maxDepth=0;
+  for(const target of targets){const available=Math.max(0,target.zMax-target.zMin),depth=Math.min(distance,available);if(depth<=0)continue;maxDepth=Math.max(maxDepth,depth);const zMin=front?target.surface-depth:target.surface,zMax=front?target.surface:target.surface+depth;state.dopings.push({id:uid('doping-region'),layerId,targetLayerId,dopant,position,depth,footprint:clone(target.polygon),zMin,zMax});}
+  invalidateTopSurfacePartition();renderAll();persistSharedState();status(`Added ${dopant} doping ${maxDepth.toFixed(3)} µm inward from the exposed ${state.activeFace} surface of ${layerVisual(targetLayerId).name}.`);
 }
 async function applyPushPull(){
   if(!state.wafer){status('Create or open a wafer before using Push / Pull.');return;}
   const distance=Number($('distanceInput').value)*Number($('distanceUnit').value); if(!Number.isFinite(distance)||distance<=0){status('Distance must be positive.');return;}
   const mode=$('pushMode').value, material=$('materialInput').value.trim()||'Generic film';
-  if(mode==='doping'){applyDoping(distance,material==='Generic film'?'Dopant':material);return;}
+  if(mode==='doping'){await applyDoping(distance,material==='Generic film'?'Dopant':material);return;}
   let wholeFace, selected;
   if(isTopFaceSelection()){
     const ids=state._topFaceSelection.selectedSolidIds;
     wholeFace=ids.size===0;
     if(wholeFace) selected=[{id:null,side:state.activeFace,polygon:waferOutline(),wholeFace:true}];
     else {
-      const solids=state.solids.filter(s=>ids.has(s.id) && (s.side||'front')===state.activeFace);
-      selected=solids.map(s=>({id:s.id,side:s.side||state.activeFace,polygon:clone(s.footprint),wholeFace:false}));
-      if(!selected.length){status('Selected full faces are no longer present.');return;}
+      const atoms=await ensureTopSurfacePartition();
+      selected=(atoms||topSurfaceAtoms).filter(atom=>ids.has(atom.id)&&atom.side===state.activeFace).map(atom=>({id:atom.id,side:atom.side,polygon:clone(atom.polygon),wholeFace:false}));
+      if(!selected.length){status('Selected exposed face regions are no longer present.');return;}
     }
   } else if(isPatternsSelection()){
     if(state.gds.truncated===true){status(`Layout is incomplete at the ${state.gds.polygonLimit||20000}-polygon import limit. Projection-based processing is blocked.`);return;}
@@ -383,17 +388,19 @@ async function applyPushPull(){
     status(mode==='conformal-grow'?'Calculating conformal growth…':'Calculating isotropic etch…');let regions;try{regions=await isotropicOffset(pieces.map(p=>p.polygon),distance);}catch(e){status(`Operation failed: ${e.message}`);return;}
     pieces=regions.map(polygon=>({face:{id:null,side:state.activeFace},polygon}));if(!pieces.length){state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();renderTop();status('The isotropic operation produced no region inside the substrate.');return;}
   }
+  let surfaceAtoms;try{surfaceAtoms=await partitionTopSurface(pieces.map(piece=>piece.polygon));}catch(error){status(`Operation failed: ${error.message}`);return;}
+  if(!surfaceAtoms.length){status('The selected mask does not overlap an exposed material surface.');return;}
   if(mode==='up'||mode==='conformal-grow'){
     recordOperationUndo();
     const layerId=uid('layer');state.layerVisuals[layerId]={name:nextLayerName(material),color:materialColor(material),scale:1};
-    for(const piece of pieces){const side=piece.face.side||'front',c=centroid(piece.polygon),z0=surfaceZAt(c,side);state.solids.push({id:uid('solid'),layerId,side,material,footprint:clone(piece.polygon),zMin:side==='back'?z0-distance:z0,zMax:side==='back'?z0:z0+distance,sourceFaceId:piece.face.id,wholeFace,profile:mode==='conformal-grow'?'conformal':'vertical',lateralRadius:mode==='conformal-grow'?distance:0});}
+    for(const atom of surfaceAtoms){const side=atom.side||state.activeFace,z0=atom.surface;state.solids.push({id:uid('solid'),layerId,side,material,footprint:clone(atom.polygon),zMin:side==='back'?z0-distance:z0,zMax:side==='back'?z0:z0+distance,sourceFaceId:atom.id,wholeFace,profile:mode==='conformal-grow'?'conformal':'vertical',lateralRadius:mode==='conformal-grow'?distance:0});}
     status(mode==='conformal-grow'?`Conformally grew ${material} with a ${distance.toFixed(3)} µm isotropic radius on the ${state.activeFace} face.`:(wholeFace?`Created a ${distance.toFixed(3)} µm ${material} blanket layer on the ${state.activeFace} face.`:`Pulled ${pieces.length} substrate-bounded region(s) from the ${state.activeFace} face by ${distance.toFixed(3)} µm.`));
   }else{
-    const previousNames=new Map(solidLayerDescriptors().map(d=>[d.id,layerVisual(d.id).name]));status('Calculating layer-by-layer material consumption…');let consumed;try{consumed=await buildMaterialConsumption(pieces,distance,mode);}catch(e){status(`Operation failed: ${e.message}`);return;}recordOperationUndo();state.solids=consumed.solids;state.dopings=consumed.dopings;state.cuts=consumed.cuts;const removed=cleanupConsumedLayers(previousNames),removedText=removed.length?` Removed layer${removed.length>1?'s':''}: ${removed.join(', ')}.`:'';
+    const previousNames=new Map(solidLayerDescriptors().map(d=>[d.id,layerVisual(d.id).name]));status('Calculating layer-by-layer material consumption…');let consumed;try{consumed=await buildMaterialConsumption(surfaceAtoms,distance,mode);}catch(e){status(`Operation failed: ${e.message}`);return;}recordOperationUndo();state.solids=consumed.solids;state.dopings=consumed.dopings;state.cuts=consumed.cuts;const removed=cleanupConsumedLayers(previousNames),removedText=removed.length?` Removed layer${removed.length>1?'s':''}: ${removed.join(', ')}.`:'';
     status(mode==='isotropic-etch'?`Isotropically etched inward from the ${state.activeFace} surface by ${distance.toFixed(3)} µm.${removedText}`:`Pushed inward from the ${state.activeFace} surface by ${distance.toFixed(3)} µm.${removedText}`);
   }
   // Keep Patterns selection for iterative tuning; clear legacy imprinted/top
-  state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();renderAll();persistSharedState();
+  state.selectedFaceIds.clear();clearTopSelection();invalidateTopSurfacePartition();updateSelectionInfo();renderAll();persistSharedState();
 }
 
 function renderGdsControls(){
