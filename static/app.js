@@ -1,9 +1,9 @@
-import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
+import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,hasSharedState,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
 import {bboxPolys,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
-import {clipPolygonsToWafer,isotropicOffset,partitionTopSurface,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
+import {clipPolygonsToWafer,composeMaskRegions,isotropicOffset,partitionTopSurface,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
 import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
-import {effectiveLayerPolygons,normalizeGds,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
+import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
 import {clearSvg,makeSvg} from './js/svg.js';
 
 let THREE = null, OrbitControls = null;
@@ -15,6 +15,7 @@ let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
 let sectionPan = null, sectionScale = 1, sectionTx = 0, sectionTy = 0;
 let topSurfaceAtoms = [], topSurfaceKey = null, topSurfacePendingKey = null;
+let cutUnionCacheKey=null,cutUnionPendingKey=null,cutUnionBySlab=new Map();
 let snapshotNamePurpose = 'snapshot';
 const legendController=createLegendController({recordOperationUndo:()=>recordOperationUndo(),updateSelectionInfo:()=>updateSelectionInfo(),renderAll:()=>renderAll()});
 const renderFigureLegend=()=>legendController.render();
@@ -119,6 +120,14 @@ async function ensureTopSurfacePartition(force=false){
   finally{if(topSurfacePendingKey===key)topSurfacePendingKey=null;}
 }
 function invalidateTopSurfacePartition(){topSurfaceKey=null;topSurfacePendingKey=null;topSurfaceAtoms=[];}
+function cutGeometryKey(){return state.wafer?JSON.stringify([state.wafer.thickness,state.cuts.map(c=>[c.id,c.side,c.zMin,c.zMax,c.footprint])]):'empty';}
+function substrateZBounds(){return state.wafer?[-state.wafer.thickness,0,...state.cuts.flatMap(c=>[Math.max(-state.wafer.thickness,c.zMin),Math.min(0,c.zMax)])].sort((a,b)=>a-b).filter((v,i,a)=>i===0||Math.abs(v-a[i-1])>1e-9):[];}
+async function ensureCutUnionCache(){
+  const key=cutGeometryKey();if(cutUnionCacheKey===key||cutUnionPendingKey===key)return;cutUnionPendingKey=key;
+  try{const bounds=substrateZBounds(),entries=await Promise.all(bounds.slice(0,-1).map(async(lowIndex,index)=>{const low=bounds[index],high=bounds[index+1],active=state.cuts.filter(c=>c.zMin<=low+1e-8&&c.zMax>=high-1e-8);if(!active.length)return [`${low}|${high}`,[],0];const result=await composeMaskRegions(active.map(c=>c.footprint),'transmit',null);return [`${low}|${high}`,result.regions,active.length];}));if(cutGeometryKey()!==key)return;cutUnionBySlab=new Map(entries.map(([slab,regions])=>[slab,regions]));state._cutUnionStats=entries.map(([slab,regions,sourceCount])=>({slab,sourceCount,regionCount:regions.length}));cutUnionCacheKey=key;render3D();}
+  catch(error){if(cutGeometryKey()===key)status(`3D cut union failed: ${error.message}`);}
+  finally{if(cutUnionPendingKey===key)cutUnionPendingKey=null;}
+}
 function niceScaleDistance(target){if(!(target>0))return 1;const power=10**Math.floor(Math.log10(target)),normalized=target/power;return (normalized>=5?5:normalized>=2?2:1)*power;}
 function appendTopScaleBar(svg){
   if(!state.topBounds)return;const span=state.topBounds[2]-state.topBounds[0],distance=niceScaleDistance(span*.16),pixels=distance/span*600,x=18,y=392,label=distance>=1000?`${Number((distance/1000).toPrecision(3))} mm`:`${Number(distance.toPrecision(3))} µm`,group=makeSvg('g',{'data-scale-bar':'top','pointer-events':'none'});
@@ -184,7 +193,7 @@ function renderTop(){
   const patternsMode=isPatternsSelection();
   // Main Top View never displays raw mask/GDS geometry.  It only displays the
   // committed, substrate-clipped projection produced by Pattern Editor.
-  if(patternsMode&&(state.gds.committedProjection?.face||'front')===state.activeFace&&Array.isArray(state.gds.committedProjection?.regions)){
+  if(patternsMode&&committedProjectionIsCurrent()&&(state.gds.committedProjection?.face||'front')===state.activeFace&&Array.isArray(state.gds.committedProjection?.regions)){
     for(const region of state.gds.committedProjection.regions){
       if(!isPolyInViewport(region,viewport))continue;
       svg.appendChild(makeSvg('path',{d:polyPath(region),fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.7','pointer-events':'none','data-committed-projection':'true'}));
@@ -314,7 +323,8 @@ function updateSelectionInfo(){
   }
   if(isPatternsSelection()){
     const projection=state.gds.committedProjection;
-    if(Array.isArray(projection?.regions)&&projection.regions.length)$('selectionInfo').textContent=`Committed ${projection.face||'front'} substrate projection: ${projection.regions.length} region${projection.regions.length>1?'s':''} · polygons ${projection.polarity==='block'?'block':'transmit'}.`;
+    if(Array.isArray(projection?.regions)&&projection.regions.length&&committedProjectionIsCurrent(projection))$('selectionInfo').textContent=`Committed ${projection.face||'front'} substrate projection: ${projection.regions.length} region${projection.regions.length>1?'s':''} · polygons ${projection.polarity==='block'?'block':'transmit'}.`;
+    else if(Array.isArray(projection?.regions)&&projection.regions.length)$('selectionInfo').textContent='Committed projection is stale because the wafer or mask source changed. Recommit it in Pattern Editor.';
     else $('selectionInfo').textContent='No substrate projection committed — open Pattern Editor, inspect Wafer Projection, then commit it.';
     return;
   }
@@ -374,6 +384,7 @@ async function applyPushPull(){
     if(state.gds.truncated===true){status(`Layout is incomplete at the ${state.gds.polygonLimit||20000}-polygon import limit. Projection-based processing is blocked.`);return;}
     const projection=state.gds.committedProjection;
     if(!Array.isArray(projection?.regions)||!projection.regions.length){status('No substrate projection committed. Open Pattern Editor → Wafer Projection and commit it first.');return;}
+    if(!committedProjectionIsCurrent(projection)){status('The committed projection is stale. Reopen Pattern Editor and commit the current wafer/mask projection.');return;}
     if((projection.face||'front')!==state.activeFace){status(`The committed projection targets the ${projection.face||'front'} face. Commit a projection for the active ${state.activeFace} face first.`);return;}
     wholeFace=false;
     selected=projection.regions.map(polygon=>({id:'committed-projection',side:state.activeFace,polygon:clone(polygon),wholeFace:false}));
@@ -513,13 +524,12 @@ async function importGds(file,topCell=null,preserveTransform=false){
   const data=await res.json();
   const previousTransform=preserveTransform?state.gds.transform:null,previousPolarity=state.gds.maskPolarity||'transmit',previousAliases=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.alias])),previousTones=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.inverted===true])),previousFills=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.fillPattern===true])),previousMirrors=new Map(state.gds.layers.map(l=>[`${l.layer}/${l.datatype}`,l.mirrored===true]));
   state.gds=normalizeGds({filename:data.filename,bbox:data.bbox,topCells:data.top_cells||[],activeTopCell:data.active_top_cell,maskPolarity:previousPolarity,truncated:data.truncated===true,polygonLimit:data.polygon_limit||20000,transform:previousTransform||{offsetX:0,offsetY:0,rotationDeg:0,scale:1},hierarchy:data.hierarchy||[],layers:data.layers.map((l,i)=>{const key=`${l.layer}/${l.datatype}`;return {...l,key,alias:previousAliases.get(key)||'',inverted:previousTones.get(key)||false,fillPattern:previousFills.get(key)||false,mirrored:previousMirrors.get(key)||false,visible:true,color:palette[i%palette.length]};})});gdsSourceFile=file; state._gdsFileBlob=file; state._gdsFileName=file.name;
-  try{ const r=new FileReader(); r.onload=()=>{ try{ const b64=String(r.result).split(',')[1]; sessionStorage.setItem('wafercad_gds_blob', b64); sessionStorage.setItem('wafercad_gds_name', file.name); }catch{} }; r.readAsDataURL(file); }catch{}
   for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);
   // New file → clear pattern selection (layers changed)
   clearPatternSelection();
   for(const layer of state.gds.layers.filter(l=>l.fillPattern))await setLayerFillPattern(layer,true);
   $('gdsStatus').textContent=`${state.gds.layers.length} layers`;
-  updateLayoutSectionVisibility(); renderLayerList();renderHierarchy();fitLayout();renderAll();persistSharedState();window.dispatchEvent(new CustomEvent('wafercad:gds-loaded',{detail:{filename:data.filename,truncated:data.truncated===true}}));
+  updateLayoutSectionVisibility(); renderLayerList();renderHierarchy();fitLayout();renderAll();await persistSharedState('layout-import');window.dispatchEvent(new CustomEvent('wafercad:gds-loaded',{detail:{filename:data.filename,truncated:data.truncated===true}}));
   status(`Loaded ${data.filename}: ${data.active_top_cell}, ${data.layers.length} layer/datatype pairs${data.truncated?' (polygon limit reached)':''}.`);
 }
 function renderSnapshots(){
@@ -667,12 +677,14 @@ function mappedZ(z){return displayZ(z);}
 function render3D(){
   if(!THREE||!deviceGroup)return;disposeGroup(deviceGroup);if(!state.wafer||!state.slice)return;
   const xy=waferXYScale(),scaledWafer=scaledPoly(waferOutline(),xy);
-  // Build substrate as vertical slabs. Each slab gets holes for cuts that fully span it.
-  const zBounds=[-state.wafer.thickness,0,...state.cuts.flatMap(c=>[Math.max(-state.wafer.thickness,c.zMin),Math.min(0,c.zMax)])].sort((a,b)=>a-b).filter((v,i,a)=>i===0||Math.abs(v-a[i-1])>1e-9);
+  // Build substrate slabs only from Boolean-unioned cut regions. While a new
+  // union is pending, render the slab without holes rather than feeding
+  // overlapping invalid hole paths to Three.js triangulation.
+  const zBounds=substrateZBounds(),cutKey=cutGeometryKey();if(cutUnionCacheKey!==cutKey)void ensureCutUnionCache();
   for(let i=0;i<zBounds.length-1;i++){
     const low=zBounds[i],high=zBounds[i+1]; const shape=makeShape(scaledWafer);
-    const activeCuts=state.cuts.filter(c=>c.zMin<=low+1e-8&&c.zMax>=high-1e-8);
-    for(const cut of activeCuts){const pp=scaledPoly(cut.footprint,xy);const hole=new THREE.Path();pp.forEach(([x,y],j)=>j?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole);}
+    const unitedCuts=cutUnionCacheKey===cutKey?(cutUnionBySlab.get(`${low}|${high}`)||[]):[];
+    for(const footprint of unitedCuts){const pp=scaledPoly(footprint,xy);const hole=new THREE.Path();pp.forEach(([x,y],j)=>j?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole);}
     const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});const mesh=new THREE.Mesh(geo,mat);deviceGroup.add(mesh);
   }
   const layerDescriptors=solidLayerDescriptors();
@@ -818,16 +830,16 @@ function bindUi(){
 bindUi();bindTopNavigation();bindSectionNavigation();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
 // Previous session banner: refresh is now a clean reset, but previous state remains restorable
 try{
-  const hasPrev = !!(sessionStorage.getItem('wafercad_gds') || localStorage.getItem('wafercad_shared'));
+  const hasPrev = hasSharedState();
   if(hasPrev){
     const bar=document.createElement('div');
     bar.id='restoreBanner';
     bar.style.cssText='position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:90;background:#fff;border:1px solid #d8dce1;border-radius:8px;padding:8px 12px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 12px rgba(0,0,0,.12);font-size:12px';
     bar.innerHTML='<span style="color:#334155">Previous session found (refresh reset to empty)</span><button id="restoreBtn" class="small primary">Restore</button><button id="discardBtn" class="small">Reset</button>';
     document.body.appendChild(bar);
-    document.getElementById('restoreBtn').onclick=()=>{
+    document.getElementById('restoreBtn').onclick=async()=>{
       const hadTopBounds = !!state.topBounds;
-      loadSharedState();
+      const restored=await loadSharedState();if(!restored){status('No recoverable previous session was found.');bar.remove();return;}
       gdsSourceFile=state._gdsFileBlob||null;
       if(window.showMainDock) window.showMainDock();
       syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();
@@ -859,6 +871,7 @@ try{
   function showMain(){
     mainWs.classList.remove('hidden'); patWs.classList.add('hidden');
     btnMain.classList.add('active'); btnPat.classList.remove('active');
+    updateSelectionInfo();renderTop();
     // trigger Three resize after becoming visible
     setTimeout(()=>window.dispatchEvent(new Event('resize')), 50);
   }

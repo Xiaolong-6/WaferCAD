@@ -22,6 +22,13 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   const gdsFixture = path.resolve('tests/fixtures/synthetic_two_layer.gds');
   await page.locator('#gdsInput').setInputFiles(gdsFixture);
   await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
+  await expect.poll(() => page.evaluate(async () => {
+    const request=indexedDB.open('wafercad-local',1);
+    const db=await new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    const value=await new Promise((resolve,reject)=>{const tx=db.transaction('records','readonly'),get=tx.objectStore('records').get('state');get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);});
+    db.close();return !!value?.gds?.layers?.length;
+  })).toBe(true);
+  expect(await page.evaluate(() => ({marker:localStorage.getItem('wafercad_has_state'),legacyLocal:localStorage.getItem('wafercad_shared'),legacySession:sessionStorage.getItem('wafercad_gds_blob')}))).toEqual({marker:'1',legacyLocal:null,legacySession:null});
 
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
@@ -117,6 +124,7 @@ test('refresh stays empty until the user restores the previous session', async (
   await expect(page.locator('#patHierarchy')).toBeHidden();
 
   await page.locator('#restoreBtn').click();
+  await expect(page.locator('#restoreBanner')).toHaveCount(0);
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patHierarchy')).toContainText('Cells');
@@ -138,6 +146,23 @@ test('new wafer invalidates a committed substrate projection', async ({ page }) 
   await page.locator('#newWaferConfirmDiscard').click();
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('#selectionInfo')).toContainText('No substrate projection committed');
+  await expect(page.locator('#topSvg [data-committed-projection]')).toHaveCount(0);
+});
+
+
+test('mask source changes make a committed projection stale until recommit', async ({ page }) => {
+  await page.goto('/?qa=playwright-projection-fingerprint');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#gdsInput').setInputFiles(path.resolve('tests/fixtures/synthetic_two_layer.gds'));
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
+  await expect(page.locator('#selectionInfo')).toContainText('Committed front substrate projection');
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patMaskPolarity').selectOption('block');
+  await page.getByRole('button', { name: 'Main', exact: true }).click();
+  await expect(page.locator('#selectionInfo')).toContainText('projection is stale');
   await expect(page.locator('#topSvg [data-committed-projection]')).toHaveCount(0);
 });
 
@@ -175,6 +200,26 @@ test('Top view mirrors current model solids and substrate cuts', async ({ page }
   await page.getByRole('button', { name: 'Apply operation' }).click();
   await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(0);
   await expect(page.locator('#topSvg [data-model-cut]')).toHaveCount(1);
+});
+
+
+test('overlapping substrate cuts are unioned before Three.js hole creation', async ({ page }) => {
+  await page.goto('/?qa=playwright-cut-hole-union');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    state.cuts=[
+      {id:'cut-a',side:'front',footprint:[[-10000,-10000],[5000,-10000],[5000,10000],[-10000,10000]],zMin:-100,zMax:0},
+      {id:'cut-b',side:'front',footprint:[[-5000,-10000],[10000,-10000],[10000,10000],[-5000,10000]],zMin:-100,zMax:0},
+    ];
+  });
+  await page.locator('#zExagNumber').fill('9');
+  await page.locator('#zExagNumber').dispatchEvent('change');
+  await expect.poll(() => page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    return state._cutUnionStats?.find(entry => entry.sourceCount===2)?.regionCount;
+  })).toBe(1);
 });
 
 

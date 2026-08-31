@@ -1,7 +1,7 @@
 import {state, persistSharedState} from '../core.js';
 import {waferOutline, bboxPolys, isSimplePolygon, viewAspectBounds, waferBounds, polygonArea, centroid} from '../geometry.js';
 import {composeMaskRegions} from '../geometry-api.js';
-import {effectiveLayerPolygons} from '../layout-model.js';
+import {effectiveLayerPolygons,maskProjectionFingerprint,substrateProjectionFingerprint} from '../layout-model.js';
 import {clearSvg, makeSvg} from '../svg.js';
 
 const $ = id => document.getElementById(id);
@@ -270,14 +270,7 @@ function renderCellSelector(){
     c.appendChild(hint);
   }
   sel.addEventListener('change',async()=>{
-    let file = gdsFile || state._gdsFileBlob;
-    if(!file){
-      try{
-        const b64=sessionStorage.getItem('wafercad_gds_blob');
-        const name=sessionStorage.getItem('wafercad_gds_name')||'file.gds';
-        if(b64){ const bytes=Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); file=new File([bytes], name); gdsFile=file; state._gdsFileBlob=file; }
-      }catch{}
-    }
+    const file = gdsFile || state._gdsFileBlob;
     if(!file){ alert('No file loaded to switch cell — please re-import the GDS/OAS file'); return; }
     const form=new FormData(); form.append('file', file); form.append('top_cell', sel.value);
     const res=await fetch('/api/gds/inspect',{method:'POST', body:form});
@@ -335,11 +328,6 @@ function renderLayerList(){
 
 async function importGds(file,topCell=null,preserveSettings=false){
   state._gdsFileBlob = file; state._gdsFileName = file.name;
-  try{
-    const reader=new FileReader();
-    reader.onload=()=>{ try{ const b64=String(reader.result).split(',')[1]; sessionStorage.setItem('wafercad_gds_blob', b64); sessionStorage.setItem('wafercad_gds_name', file.name); }catch{} };
-    reader.readAsDataURL(file);
-  }catch{}
   const previousGds=state.gds;
   const previousLayers=new Map((previousGds.layers||[]).map(layer=>[layer.key,layer]));
   const form=new FormData(); form.append('file', file); if(topCell)form.append('top_cell',topCell);
@@ -388,6 +376,8 @@ function applyToMain(){
   state.gds.committedProjection={
     regions:regions.map(poly=>poly.map(([x,y])=>[x,y])),
     polarity:state.gds.maskPolarity||'transmit',
+    substrateFingerprint:substrateProjectionFingerprint(state.activeFace),
+    sourceFingerprint:maskProjectionFingerprint(),
     face:state.activeFace||'front',
     transform:{...(state.gds.transform||{})},
     selectedLayerKeys:[...(state.patternSelectedKeys||[])],

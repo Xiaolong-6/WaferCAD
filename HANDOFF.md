@@ -482,6 +482,12 @@ Known follow-up / not fully verified:
 - Pull, Push, conformal grow, isotropic etch, Full-face selection and doping all consume this common surface model. Partially covered lower films remain selectable only on their exposed remainder, and substrate doping begins at the locally etched surface.
 - Regression coverage includes mixed 0/100 µm deposition heights, layer-first consumption producing local −50/−150 µm cuts, partially exposed lower films, local etched-surface doping and through-etched void removal.
 
+## 33. State integrity and safe 3D cut topology (2026-08-30)
+
+- Full state moved from Web Storage to IndexedDB; the source GDS/OAS remains a Blob and is no longer base64-expanded. `commitState()` serializes writes, increments `state._revision`, emits `wafercad:state-change`, and surfaces quota/write failures.
+- Committed projections carry independent substrate and mask-source fingerprints. Wafer, cell, polarity, transform or component-selection changes make the projection visibly stale and block processing until recommitted.
+- Three.js substrate slabs consume Boolean-unioned cut footprints per Z interval. A pending union temporarily renders an uncut slab instead of passing overlapping invalid holes to triangulation.
+
 Verification for this batch:
 
 - `node --check` and `ast.parse` pass.
