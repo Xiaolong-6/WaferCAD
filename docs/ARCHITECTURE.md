@@ -31,7 +31,11 @@ Endpoints: `/api/gds/inspect` (any cell as active, per-cell breakdown, hierarchy
 - `static/js/layout-model.js` — `normalizeGds`, `transformPoint` (`scale→mirror→rotate→offset` about layout origin), `effectiveLayerPolygons/transformedLayerPolygon/transformedGdsBounds/patternSelectedLayers/patternRawMaskPolygons/patternHasBlockedBorder`.
 - `static/js/legend-controller.js` — `createLegendController` (figure legend render, `refreshExactThickness` → `POST /api/geometry/substrate-thickness` with `atoms/exact`, edit/delete dialogs, delegated click `z-index 30`).
 - `static/js/svg.js` — `NS/makeSvg/clearSvg`.
-- `static/app.js` — owns `THREE`/`OrbitControls` setup, wafer dialog, GDS import, exact exposed-surface atom selection, `push/pull/conformal/isotropic/doping` through `POST /api/geometry/surface-partition` plus layer-by-layer `split-by-mask` consumption, snapshots, project I/O and derived views. The surface endpoint splits the wafer or process mask by all solid/cut footprints and assigns one source material and one Z to every atomic region.
+- `static/app.js` — coordinates `THREE`/`OrbitControls`, dialogs, process commands and derived views. The remaining process-command extraction is deliberately incremental rather than claiming this file is already a thin orchestrator.
+- `static/js/project-schema.js` — validates project JSON, rejects future/invalid input and migrates versions 1–7 to v8.
+- `static/js/snapshot-store.js` — content-addresses immutable device geometry and thumbnails; snapshot cards contain references rather than full copies.
+- `static/js/core.js` — revisioned in-memory state and the serialized IndexedDB repository boundary.
+- `static/js/legend-controller.js` — exact-thickness requests are keyed by a geometry revision and discard stale responses.
 
 Previous monolithic `static/app.js` is preserved in git history (`515cd33` and earlier).
 

@@ -488,6 +488,15 @@ Known follow-up / not fully verified:
 - Committed projections carry independent substrate and mask-source fingerprints. Wafer, cell, polarity, transform or component-selection changes make the projection visibly stale and block processing until recommitted.
 - Three.js substrate slabs consume Boolean-unioned cut footprints per Z interval. A pending union temporarily renders an uncut slab instead of passing overlapping invalid holes to triangulation.
 
+## 34. P2 robustness and reproducible verification (2026-08-31)
+
+- Project JSON v8 passes through `project-schema.js` before any live state is mutated. Versions 1–7 migrate forward; future versions, invalid dimensions, non-finite coordinates, malformed polygons, bad Z intervals and missing snapshot references fail visibly.
+- Snapshot cards now reference content-addressed device geometry and thumbnail stores. Identical device states are shared, legacy inline `device`/`thumb` fields migrate on load, and unused records are pruned after deletion.
+- Exact substrate-thickness responses carry an implicit geometry-revision key. A response is ignored if wafer/cut geometry changed while it was in flight, followed immediately by a fresh request.
+- Geometry APIs cap points per polygon, total vertices and coordinate magnitude. GDS/OAS uploads are copied to a private temporary file in 1 MiB chunks and rejected once the streamed 100 MB limit is crossed.
+- Pattern Editor applies legacy per-layer mirror before the canonical global mask transform. Legacy per-layer invert is migrated once to global polarity when possible, then removed; new optical work has one physical polarity.
+- `constraints.txt` records the known-good Python environment. `docs/VERIFICATION.md` maps material claims to committed API and Chrome tests; earlier manual checks remain historical notes, not automated coverage claims.
+
 Verification for this batch:
 
 - `node --check` and `ast.parse` pass.

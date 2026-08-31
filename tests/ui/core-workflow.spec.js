@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs/promises';
 
 import { expect, test } from '@playwright/test';
 
@@ -94,6 +95,11 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.locator('#saveProjectBtn').click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('wafercad-project.json');
+  const savedProject=JSON.parse(await fs.readFile(await download.path(),'utf8'));
+  expect(savedProject.version).toBe(8);
+  expect(savedProject.snapshots[0].device).toBeUndefined();
+  expect(savedProject.snapshots[0].deviceRef).toBeTruthy();
+  expect(savedProject.snapshotDevices[savedProject.snapshots[0].deviceRef]).toBeTruthy();
   await expect(page.locator('#statusText')).toHaveText('Project saved.');
 
   const projectFixture = path.resolve('tests/fixtures/synthetic_project.json');
@@ -128,6 +134,36 @@ test('refresh stays empty until the user restores the previous session', async (
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patHierarchy')).toContainText('Cells');
+});
+
+test('project loader rejects future versions and invalid wafer dimensions', async ({ page }) => {
+  await page.goto('/?qa=playwright-project-schema');
+  const future={format:'wafercad-mvp',version:999,wafer:null,solids:[],cuts:[],dopings:[],imprintedFaces:[],snapshots:[]};
+  await page.locator('#openProjectInput').setInputFiles({name:'future.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(future))});
+  await expect(page.locator('#statusText')).toContainText('newer than supported');
+  const invalid={...future,version:7,wafer:{shape:'circle',diameter:-1,thickness:500},snapshots:[]};
+  await page.locator('#openProjectInput').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(invalid))});
+  await expect(page.locator('#statusText')).toContainText('wafer.diameter must be greater than zero');
+  await expect(page.locator('#modelStats')).toBeEmpty();
+});
+
+test('slow exact-thickness response cannot overwrite newer cut geometry', async ({ page }) => {
+  await page.route('**/api/geometry/substrate-thickness', async route => {
+    const body=route.request().postDataJSON();
+    const response=await route.fetch();
+    if(!body.cuts.length)await new Promise(resolve=>setTimeout(resolve,350));
+    await route.fulfill({response});
+  });
+  await page.goto('/?qa=playwright-thickness-revision');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#pushMode').selectOption('down');
+  await page.locator('#distanceInput').fill('50');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#figureLegend')).toContainText('Thickness 450 µm');
+  await page.waitForTimeout(450);
+  await expect(page.locator('#figureLegend')).toContainText('Thickness 450 µm');
+  await expect(page.locator('#figureLegend')).not.toContainText('Thickness 500 µm');
 });
 
 

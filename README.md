@@ -39,7 +39,7 @@ python -m venv .venv
 # macOS/Linux
 source .venv/bin/activate
 
-pip install -r requirements.txt
+pip install -c constraints.txt -r requirements.txt
 npm install
 python run.py
 ```
@@ -53,7 +53,7 @@ http://127.0.0.1:8765
 ## Test
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -c constraints.txt -r requirements-dev.txt
 python -m pytest
 npm run test:ui
 ```
@@ -68,6 +68,10 @@ geometry/undo/snapshot/save/open workflow **via the Pattern Editor dock** (`Mask
 the same test in a visible Chrome window.
 
 Three.js is pinned in `package-lock.json` and served locally by the FastAPI application, so the 3D view does not require a CDN connection. `polygon-clipping` is vendored as `static/vendor/polygon-clipping.umd.js` for offline preview.
+
+Project JSON v8 is validated before state mutation. Versions 1–7 migrate to the current schema; unsupported future versions, non-finite geometry and invalid wafer dimensions are rejected. Snapshot geometry and thumbnails are content-addressed in separate stores so identical device states are not copied once per snapshot.
+
+The reproducible requirement-to-test map is in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## Basic workflow
 

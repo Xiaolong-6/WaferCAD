@@ -15,7 +15,7 @@ function patTransform([x,y]){
   const a=(Number(t.rotationDeg)||0)*Math.PI/180, c=Math.cos(a), s2=Math.sin(a);
   return [sx*c - sy*s2 + (Number(t.offsetX)||0), sx*s2 + sy*c + (Number(t.offsetY)||0)];
 }
-function effectiveLayer(l){ return effectiveLayerPolygons(l); }
+function effectiveLayer(l){return effectiveLayerPolygons(l).map(polygon=>l.mirrored===true?polygon.map(([x,y])=>[-x,y]):polygon);}
 function isAreaValid(polys){
   if(!polys.length) return false;
   let total=0;

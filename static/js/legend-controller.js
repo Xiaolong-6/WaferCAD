@@ -4,19 +4,21 @@ import {editableLayerMaterial,ensureLayerVisuals,formatThicknessRange,layerLegen
 
 export function createLegendController({recordOperationUndo,updateSelectionInfo,renderAll}){
   let editingLayerVisualId=null,pendingDeleteLayerId=null,thicknessRefreshSeq=0,thicknessRefreshPending=false,thicknessRefreshDirty=false;
+  function thicknessGeometryRevision(){return JSON.stringify([state.wafer?.thickness,waferOutline(),state.cuts.map(cut=>[cut.footprint,cut.zMin,cut.zMax])]);}
 
   async function refreshExactThickness(){
     if(!state.wafer){state._exactThickness=null;return;}
     if(thicknessRefreshPending){thicknessRefreshDirty=true;return;}
     thicknessRefreshPending=true;
     const sequence=++thicknessRefreshSeq;
+    const geometryRevision=thicknessGeometryRevision();
     try{
       const payload={outline:waferOutline(),thickness:state.wafer.thickness,cuts:state.cuts.map(cut=>({footprint:cut.footprint,zMin:cut.zMin,zMax:cut.zMax}))};
       const response=await fetch('/api/geometry/substrate-thickness',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!response.ok)return;
       const data=await response.json();
-      if(sequence!==thicknessRefreshSeq)return;
-      state._exactThickness={min:Number(data.min),max:Number(data.max),atoms:data.atoms,exact:data.exact!==false};
+      if(sequence!==thicknessRefreshSeq||geometryRevision!==thicknessGeometryRevision()){thicknessRefreshDirty=true;return;}
+      state._exactThickness={min:Number(data.min),max:Number(data.max),atoms:data.atoms,exact:data.exact!==false,geometryRevision};
       updateThickness();
     }catch(error){/* retain the local estimate */}
     finally{thicknessRefreshPending=false;if(thicknessRefreshDirty){thicknessRefreshDirty=false;refreshExactThickness();}}

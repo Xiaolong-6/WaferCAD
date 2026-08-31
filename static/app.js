@@ -3,6 +3,8 @@ import {bboxPolys,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyInte
 import {clipPolygonsToWafer,composeMaskRegions,isotropicOffset,partitionTopSurface,resolveMaskRegions,splitPolygonsByMask} from './js/geometry-api.js';
 import {displayZ,ensureLayerVisuals,layerVisual,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,solidLayerDescriptors} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
+import {CURRENT_PROJECT_VERSION,validateAndMigrateProject} from './js/project-schema.js';
+import {captureDevice,internDevice,internThumbnail,pruneSnapshotDevices,resolveSnapshotDevice,resolveSnapshotThumbnail} from './js/snapshot-store.js';
 import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
 import {clearSvg,makeSvg} from './js/svg.js';
 
@@ -61,7 +63,7 @@ function renderHierarchy(){
   }
 }
 function setDefaultSlice(){if(!state.wafer){state.slice=null;return;}const [x0,y0,x1,y1]=waferBounds(),cy=(y0+y1)/2;state.slice={a:{x:x0+(x1-x0)*.175,y:cy},b:{x:x1-(x1-x0)*.175,y:cy}};}
-function currentDeviceSnapshot(){ensureLayerVisuals();return clone({wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,imprintedFaces:state.imprintedFaces});}
+function currentDeviceSnapshot(){ensureLayerVisuals();return captureDevice();}
 function captureCameraState(){
   if(!camera || !controls) return null;
   return { position: camera.position.toArray(), target: controls.target.toArray(), up: camera.up.toArray() };
@@ -545,12 +547,12 @@ function renderSnapshots(){
     const card=document.createElement('div');card.className='snapshot-card'+(s.id===state.activeSnapshotId?' active':'');
     card.title=`${s.name} — click to restore`;
     const thumb=document.createElement('img');thumb.className='snapshot-thumb';
-    thumb.src=s.thumb||''; thumb.alt=s.name;
-    if(!s.thumb) thumb.style.background='#e2e8f0';
+    const thumbnail=resolveSnapshotThumbnail(s);thumb.src=thumbnail||''; thumb.alt=s.name;
+    if(!thumbnail) thumb.style.background='#e2e8f0';
     thumb.onerror=()=>{ thumb.style.background='#e2e8f0'; thumb.removeAttribute('src'); };
     const info=document.createElement('div');info.className='snapshot-info';
     const name=document.createElement('div');name.className='snapshot-name';name.textContent=s.name;
-    const meta=document.createElement('div');meta.className='snapshot-meta';meta.textContent=`${s.device.solids.length} solids · ${s.device.cuts.length} cuts`;
+    const device=resolveSnapshotDevice(s);const meta=document.createElement('div');meta.className='snapshot-meta';meta.textContent=`${device.solids.length} solids · ${device.cuts.length} cuts`;
     info.append(name,meta);
     const del=document.createElement('button');del.type='button';del.className='snapshot-delete';del.title='Delete snapshot';del.textContent='×';
     del.addEventListener('click',(e)=>{ e.stopPropagation(); deleteSnapshot(s.id); });
@@ -560,16 +562,17 @@ function renderSnapshots(){
       const active=state.snapshots.find(x=>x.id===state.activeSnapshotId);
       if(active){
         try{
-          active.device=currentDeviceSnapshot();
+          active.deviceRef=internDevice(currentDeviceSnapshot());
+          delete active.device;
           const newThumb=captureSnapshotThumb();
-          if(newThumb) active.thumb=newThumb;
+          if(newThumb){active.thumbRef=internThumbnail(newThumb);delete active.thumb;}
           const newCam=captureCameraState();
           if(newCam) active.camera=newCam;
           active.updated=new Date().toISOString();
         }catch(e){ console.warn('auto-save snapshot failed',e); }
       }
       state.activeSnapshotId=s.id;
-      restoreDeviceSnapshot(s.device);
+      restoreDeviceSnapshot(resolveSnapshotDevice(s));
       if(s.camera) restoreCameraState(s.camera);
       else renderAll();
       renderSnapshots();
@@ -595,6 +598,7 @@ function deleteSnapshot(id){
   if(idx===-1) return;
   const name=state.snapshots[idx].name;
   state.snapshots.splice(idx,1);
+  pruneSnapshotDevices();
   if(state.activeSnapshotId===id) state.activeSnapshotId=state.snapshots.length? state.snapshots[state.snapshots.length-1].id : null;
   renderSnapshots();persistSharedState();
   status(`Deleted snapshot: ${name}`);
@@ -602,7 +606,7 @@ function deleteSnapshot(id){
 function saveNamedSnapshot(name){
   const thumb=captureSnapshotThumb();
   const cam=captureCameraState();
-  const s={id:uid('snap'),name,created:new Date().toISOString(),device:currentDeviceSnapshot(),thumb,camera:cam};
+  const s={id:uid('snap'),name,created:new Date().toISOString(),deviceRef:internDevice(currentDeviceSnapshot()),thumbRef:internThumbnail(thumb),camera:cam};
   state.snapshots.push(s);state.activeSnapshotId=s.id;renderSnapshots();persistSharedState();status(`Snapshot saved: ${name}`);
 }
 function openSnapshotNameDialog(purpose='snapshot'){
@@ -696,10 +700,10 @@ function render3D(){
 }
 
 function saveProject(){
-  ensureLayerVisuals();const payload={format:'wafercad-mvp',version:7,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,view:{zExag:state.zExag,showAxes:state.showAxes,maskBaseOpacity:state.maskBaseOpacity}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
+  ensureLayerVisuals();const payload={format:'wafercad-mvp',version:CURRENT_PROJECT_VERSION,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,snapshotDevices:state.snapshotDevices,snapshotThumbnails:state.snapshotThumbnails,view:{zExag:state.zExag,showAxes:state.showAxes,maskBaseOpacity:state.maskBaseOpacity}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
 }
-async function openProject(file){try{const p=JSON.parse(await file.text());if(p.format!=='wafercad-mvp')throw new Error('Not a WaferCAD MVP project');state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids||[];state.cuts=p.cuts||[];state.dopings=p.dopings||[];state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);state.imprintedFaces=p.imprintedFaces||[];state.slice=p.slice||null;state.snapshots=p.snapshots||[];for(const s of state.snapshots){ if(!s.camera) s.camera=null; if(!s.thumb) s.thumb=null; }
-  state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.maskBaseOpacity=Number.isFinite(Number(p.view?.maskBaseOpacity))?Math.min(1,Math.max(0,Number(p.view.maskBaseOpacity))):0.35;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();status(`Opened ${file.name} (v${p.version||6}→7).`);}catch(e){status(`Open project failed: ${e.message}`)}}
+async function openProject(file){try{const p=validateAndMigrateProject(JSON.parse(await file.text()));state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids;state.cuts=p.cuts;state.dopings=p.dopings;state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);state.imprintedFaces=p.imprintedFaces;state.slice=p.slice||null;state.snapshots=p.snapshots;state.snapshotDevices=p.snapshotDevices;state.snapshotThumbnails=p.snapshotThumbnails;for(const s of state.snapshots)if(!s.camera)s.camera=null;
+  state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.showAxes=p.view?.showAxes===true;state.maskBaseOpacity=Number.isFinite(Number(p.view?.maskBaseOpacity))?Math.min(1,Math.max(0,Number(p.view.maskBaseOpacity))):0.35;state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();persistSharedState('project-open');status(`Opened ${file.name} (project v${CURRENT_PROJECT_VERSION}).`);}catch(e){status(`Open project failed: ${e.message}`)}}
 
 function updateWaferShapeFields(){const shape=$('waferShape').value;$('waferCircleFields').classList.toggle('hidden',shape!=='circle');$('waferRectFields').classList.toggle('hidden',shape!=='rect');$('waferCustomFields').classList.toggle('hidden',shape!=='custom');updateWaferEdgeInfo();}
 function updateWaferEdgeInfo(){
@@ -855,7 +859,7 @@ try{
       bar.remove();
       clearSharedState();
       // Reset current in-memory state to empty (no refresh needed)
-      state.wafer=null; state.solids=[]; state.cuts=[]; state.dopings=[]; state.layerVisuals={}; state.imprintedFaces=[]; state.selectedFaceIds.clear(); state.patternSelectedKeys.clear(); state.slice=null; state.snapshots=[]; state.activeSnapshotId=null; state.topBounds=null; state._exactThickness=null; state.operationUndo=[];
+      state.wafer=null; state.solids=[]; state.cuts=[]; state.dopings=[]; state.layerVisuals={}; state.imprintedFaces=[]; state.selectedFaceIds.clear(); state.patternSelectedKeys.clear(); state.slice=null; state.snapshots=[]; state.snapshotDevices={}; state.snapshotThumbnails={}; state.activeSnapshotId=null; state.topBounds=null; state._exactThickness=null; state.operationUndo=[];
       // also clear GDS to fully reset pattern editor
       state.gds=normalizeGds(null);state._gdsFileBlob=null;state._gdsFileName=null;gdsSourceFile=null;
       if(window.patReset)window.patReset();

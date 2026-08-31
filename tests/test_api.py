@@ -37,6 +37,26 @@ def test_polygon_intersection_clips_to_wafer(client):
     assert max(xs) == pytest.approx(25)
 
 
+def test_geometry_request_rejects_total_vertex_budget(client, monkeypatch):
+    monkeypatch.setattr(app_module, "MAX_TOTAL_VERTICES", 3)
+    response = client.post(
+        "/api/geometry/intersection",
+        json={"subjects": [[[0, 0], [1, 0], [1, 1], [0, 1]]], "clip": WAFER},
+    )
+    assert response.status_code == 422
+    assert "total polygon vertices" in response.text
+
+
+def test_gds_upload_limit_is_enforced_while_streaming(client, monkeypatch):
+    monkeypatch.setattr(app_module, "MAX_UPLOAD_BYTES", 4)
+    response = client.post(
+        "/api/gds/inspect",
+        files={"file": ("oversize.gds", b"12345", "application/octet-stream")},
+    )
+    assert response.status_code == 413
+    assert "larger than" in response.text
+
+
 def test_mask_regions_normal_and_inverted(client):
     mask = [[-10, -10], [10, -10], [10, 10], [-10, 10]]
     normal = client.post(

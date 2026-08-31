@@ -9,7 +9,7 @@ from typing import Any, Literal
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
@@ -18,6 +18,10 @@ THREE = ROOT / "node_modules" / "three"
 app = FastAPI(title="WaferCAD MVP", version="0.1.0")
 SUBSTRATE_ATOM_LIMIT = 5000
 SURFACE_ATOM_LIMIT = 10000
+MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+MAX_POINTS_PER_POLYGON = 100000
+MAX_TOTAL_VERTICES = 1000000
+MAX_COORDINATE_ABS = 1e9
 
 
 @app.middleware("http")
@@ -72,45 +76,80 @@ def _merge_bbox(a: list[float] | None, b: list[float]) -> list[float]:
     return [min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])]
 
 
-class PolygonIntersectionRequest(BaseModel):
+class GeometryRequest(BaseModel):
+    @model_validator(mode="after")
+    def validate_geometry_complexity(self) -> "GeometryRequest":
+        total = 0
+
+        def walk(value: Any) -> None:
+            nonlocal total
+            if isinstance(value, dict):
+                for child in value.values():
+                    walk(child)
+            elif isinstance(value, (list, tuple)):
+                is_polygon = bool(value) and all(
+                    isinstance(point, (list, tuple))
+                    and len(point) == 2
+                    and all(isinstance(coord, (int, float)) for coord in point)
+                    for point in value
+                )
+                if is_polygon:
+                    if len(value) > MAX_POINTS_PER_POLYGON:
+                        raise ValueError(f"polygon exceeds {MAX_POINTS_PER_POLYGON} points")
+                    total += len(value)
+                    for point in value:
+                        for coordinate in point:
+                            if not math.isfinite(float(coordinate)) or abs(float(coordinate)) > MAX_COORDINATE_ABS:
+                                raise ValueError("polygon coordinate is non-finite or outside the supported range")
+                else:
+                    for child in value:
+                        walk(child)
+
+        walk(self.model_dump())
+        if total > MAX_TOTAL_VERTICES:
+            raise ValueError(f"request exceeds {MAX_TOTAL_VERTICES} total polygon vertices")
+        return self
+
+
+class PolygonIntersectionRequest(GeometryRequest):
     subjects: list[list[list[float]]] = Field(max_length=20000)
     clip: list[list[float]] = Field(min_length=3)
 
 
-class MaskRegionsRequest(BaseModel):
+class MaskRegionsRequest(GeometryRequest):
     mask: list[list[list[float]]] = Field(max_length=20000)
     substrate: list[list[float]] = Field(min_length=3)
     invert: bool = False
 
 
-class MaskComposeRequest(BaseModel):
+class MaskComposeRequest(GeometryRequest):
     polygons: list[list[list[float]]] = Field(max_length=20000)
     substrate: list[list[float]] | None = None
     polarity: Literal["transmit", "block"] = "transmit"
 
 
-class PolygonOffsetRequest(BaseModel):
+class PolygonOffsetRequest(GeometryRequest):
     subjects: list[list[list[float]]] = Field(max_length=20000)
     distance: float = Field(gt=0)
     clip: list[list[float]] = Field(min_length=3)
 
 
-class PolygonSplitRequest(BaseModel):
+class PolygonSplitRequest(GeometryRequest):
     subjects: list[list[list[float]]] = Field(max_length=20000)
     masks: list[list[list[float]]] = Field(max_length=20000)
 
 
-class PolygonSubjectsRequest(BaseModel):
+class PolygonSubjectsRequest(GeometryRequest):
     subjects: list[list[list[float]]] = Field(max_length=20000)
 
 
-class SubstrateThicknessRequest(BaseModel):
+class SubstrateThicknessRequest(GeometryRequest):
     outline: list[list[float]] = Field(min_length=3)
     thickness: float = Field(gt=0)
     cuts: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class SurfacePartitionRequest(BaseModel):
+class SurfacePartitionRequest(GeometryRequest):
     outline: list[list[float]] = Field(min_length=3)
     thickness: float = Field(gt=0)
     side: Literal["front", "back"] = "front"
@@ -707,17 +746,18 @@ async def inspect_gds(
             "GDS support requires the optional 'gdstk' package. Install requirements.txt and restart.",
         ) from exc
 
-    data = await file.read()
-    if len(data) > 100 * 1024 * 1024:
-        raise HTTPException(413, "GDS file is larger than the 100 MB MVP limit")
-
     temp_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(suffix=".gds", delete=False) as tmp:
-            tmp.write(data)
+        suffix = Path(file.filename).suffix.lower()
+        size = 0
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             temp_path = Path(tmp.name)
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_UPLOAD_BYTES:
+                    raise HTTPException(413, "GDS file is larger than the 100 MB MVP limit")
+                tmp.write(chunk)
         try:
-            suffix = Path(file.filename).suffix.lower()
             lib = gdstk.read_oas(temp_path) if suffix in {".oas", ".oasis"} else gdstk.read_gds(temp_path)
         except Exception as exc:
             raise HTTPException(400, f"Unable to parse GDS: {exc}") from exc
