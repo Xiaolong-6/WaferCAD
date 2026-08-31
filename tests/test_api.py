@@ -140,6 +140,28 @@ def test_isotropic_offset_and_material_split(client):
     assert len(split.json()["overlaps"][0]) == 1
 
 
+def test_material_split_prunes_disjoint_mask_components(client):
+    regions = []
+    for row in range(4):
+        for column in range(5):
+            x0 = -48 + column * 19
+            y0 = -48 + row * 24
+            regions.append([[x0, y0], [x0 + 8, y0], [x0 + 8, y0 + 8], [x0, y0 + 8]])
+    response = client.post(
+        "/api/geometry/split-by-mask",
+        json={"subjects": regions, "masks": regions},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert all(not outside for outside in result["remaining"])
+    assert all(len(inside) == 1 for inside in result["overlaps"])
+    assert result["stats"]["input_masks"] == 20
+    assert result["stats"]["unique_masks"] == 20
+    assert result["stats"]["boolean_splits"] == 0
+    assert result["stats"]["exact_matches"] == 20
+    assert result["stats"]["bbox_skips"] == 380
+
+
 def test_surface_partition_assigns_one_height_and_material_per_atom(client):
     response = client.post(
         "/api/geometry/surface-partition",
@@ -275,6 +297,36 @@ def test_exact_substrate_thickness_with_overlapping_cuts(client):
     assert result["min"] == pytest.approx(400)
     assert result["max"] == pytest.approx(500)
     assert result["atoms"] == 5
+
+
+def test_substrate_thickness_groups_disconnected_equal_depth_cuts(client):
+    regions = []
+    for row in range(4):
+        for column in range(5):
+            x0 = -48 + column * 19
+            y0 = -48 + row * 24
+            regions.append([[x0, y0], [x0 + 8, y0], [x0 + 8, y0 + 8], [x0, y0 + 8]])
+    response = client.post(
+        "/api/geometry/substrate-thickness",
+        json={
+            "outline": WAFER,
+            "thickness": 500,
+            "cuts": [
+                {"footprint": region, "zMin": -10, "zMax": 0}
+                for region in regions
+            ],
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["exact"] is True
+    assert result["min"] == pytest.approx(490)
+    assert result["max"] == pytest.approx(500)
+    assert result["atoms"] == 21
+    assert result["stats"]["input_cuts"] == 20
+    assert result["stats"]["interval_groups"] == 1
+    assert result["stats"]["coverage_states"] == 2
+    assert result["stats"]["boolean_splits"] == 1
 
 
 def test_substrate_thickness_reports_approximation_at_atom_cap(client, monkeypatch):

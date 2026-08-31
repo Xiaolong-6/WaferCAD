@@ -470,17 +470,43 @@ def split_by_mask(payload: PolygonSplitRequest) -> dict[str, Any]:
         raise HTTPException(503, "Material consumption requires gdstk") from exc
 
     try:
-        masks = [gdstk.Polygon(points) for points in payload.masks if len(points) >= 3]
+        masks: dict[str, dict[str, Any]] = {}
+        for points in payload.masks:
+            if len(points) < 3:
+                continue
+            polygon = gdstk.Polygon(points)
+            component_id = _component_id(polygon.points)
+            masks.setdefault(
+                component_id,
+                {"id": component_id, "polygon": polygon, "bbox": _bbox(points)},
+            )
         remaining: list[list[list[list[float]]]] = []
         overlaps: list[list[list[list[float]]]] = []
+        bbox_skips = 0
+        boolean_splits = 0
+        exact_matches = 0
         for points in payload.subjects:
             if len(points) < 3:
                 remaining.append([])
                 overlaps.append([])
                 continue
             subject = gdstk.Polygon(points)
-            outside = gdstk.boolean(subject, masks, "not", precision=1e-6) if masks else [subject]
-            inside = gdstk.boolean(subject, masks, "and", precision=1e-6) if masks else []
+            subject_bbox = _bbox(points)
+            relevant = [mask for mask in masks.values() if _bbox_overlaps(subject_bbox, mask["bbox"])]
+            bbox_skips += len(masks) - len(relevant)
+            subject_id = _component_id(subject.points)
+            if any(mask["id"] == subject_id for mask in relevant):
+                outside = []
+                inside = [subject]
+                exact_matches += 1
+            elif relevant:
+                relevant_polygons = [mask["polygon"] for mask in relevant]
+                outside = gdstk.boolean(subject, relevant_polygons, "not", precision=1e-6)
+                inside = gdstk.boolean(subject, relevant_polygons, "and", precision=1e-6)
+                boolean_splits += 1
+            else:
+                outside = [subject]
+                inside = []
             remaining.append(
                 [
                     [[float(x), float(y)] for x, y in polygon.points]
@@ -498,7 +524,17 @@ def split_by_mask(payload: PolygonSplitRequest) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(400, f"Unable to split polygons: {exc}") from exc
 
-    return {"remaining": remaining, "overlaps": overlaps}
+    return {
+        "remaining": remaining,
+        "overlaps": overlaps,
+        "stats": {
+            "input_masks": len(payload.masks),
+            "unique_masks": len(masks),
+            "boolean_splits": boolean_splits,
+            "exact_matches": exact_matches,
+            "bbox_skips": bbox_skips,
+        },
+    }
 
 
 @app.post("/api/geometry/surface-partition")
@@ -696,10 +732,13 @@ def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
         t = float(payload.thickness)
         if not math.isfinite(t) or t <= 0:
             raise HTTPException(400, "Thickness must be positive")
-        # Build atomic partition: start with wafer, split by each cut
-        atoms: list[list[list[float]]] = [payload.outline]
-        cut_polys: list[list[list[float]]] = []
-        cut_intervals: list[tuple[float, float]] = []
+        # Thickness depends on depth intervals, not individual cut identities.
+        # Union every equal-depth mask into one logical coverage group, then
+        # carry multi-polygons for each coverage state.  Complexity therefore
+        # follows the number of distinct depth intervals (normally 1–3), not
+        # the hundreds or thousands of disconnected mask components.
+        interval_groups: dict[tuple[float, float], list[Any]] = {}
+        input_cut_count = 0
         for c in payload.cuts:
             fp = c.get("footprint")
             if not isinstance(fp, list) or len(fp) < 3:
@@ -710,34 +749,29 @@ def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
             zmax = min(0, max(zmin, zmax))
             if zmax <= zmin + 1e-9:
                 continue
-            cut_polys.append(fp)
-            cut_intervals.append((zmin, zmax))
-        # Partition atoms. If the partition would grow beyond the safety cap,
-        # keep the last complete partition and report the sampled result as an
-        # approximation instead of incorrectly labelling it exact.
+            input_cut_count += 1
+            interval_groups.setdefault((zmin, zmax), []).append(gdstk.Polygon(fp))
+
+        states: list[tuple[list[Any], tuple[tuple[float, float], ...]]] = [
+            ([gdstk.Polygon(payload.outline)], ())
+        ]
         partition_complete = True
-        for cp in cut_polys:
-            new_atoms: list[list[list[float]]] = []
-            cut_poly = gdstk.Polygon(cp)
-            for atom_pts in atoms:
-                atom = gdstk.Polygon(atom_pts)
-                inter = gdstk.boolean(atom, cut_poly, "and", precision=1e-6)
-                diff = gdstk.boolean(atom, cut_poly, "not", precision=1e-6)
-                for poly in inter:
-                    if len(poly.points) >= 3:
-                        new_atoms.append([[float(x), float(y)] for x, y in poly.points])
-                for poly in diff:
-                    if len(poly.points) >= 3:
-                        new_atoms.append([[float(x), float(y)] for x, y in poly.points])
-                if not inter and not diff:
-                    # empty atom is outside wafer after split — drop
-                    pass
-            if len(new_atoms) > SUBSTRATE_ATOM_LIMIT:
+        boolean_splits = 0
+        for interval, mask_polygons in interval_groups.items():
+            next_states: list[tuple[list[Any], tuple[tuple[float, float], ...]]] = []
+            for geometries, coverage in states:
+                inside = gdstk.boolean(geometries, mask_polygons, "and", precision=1e-6)
+                outside = gdstk.boolean(geometries, mask_polygons, "not", precision=1e-6)
+                boolean_splits += 1
+                if inside:
+                    next_states.append((inside, coverage + (interval,)))
+                if outside:
+                    next_states.append((outside, coverage))
+            if sum(len(geometries) for geometries, _ in next_states) > SUBSTRATE_ATOM_LIMIT:
                 partition_complete = False
                 break
-            if new_atoms:
-                atoms = new_atoms
-        if not atoms:
+            states = next_states
+        if not states:
             return {"min": t, "max": t, "exact": partition_complete}
 
         def merged_length(intervals: list[tuple[float, float]]) -> float:
@@ -754,21 +788,20 @@ def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
                     lo, hi = a, b
             return total + hi - lo
 
-        values: list[float] = []
-        for atom in atoms:
-            interior = _atom_interior_point(atom)
-            covering: list[tuple[float, float]] = []
-            for idx, cp in enumerate(cut_polys):
-                if _point_in_poly(interior, cp):
-                    covering.append(cut_intervals[idx])
-            remaining = max(0.0, t - merged_length(covering))
-            values.append(remaining)
+        values = [max(0.0, t - merged_length(list(coverage))) for _, coverage in states]
+        atom_count = sum(len(geometries) for geometries, _ in states)
         return {
             "min": min(values),
             "max": max(values),
             "exact": partition_complete,
-            "atoms": len(atoms),
+            "atoms": atom_count,
             "atom_limit": SUBSTRATE_ATOM_LIMIT,
+            "stats": {
+                "input_cuts": input_cut_count,
+                "interval_groups": len(interval_groups),
+                "coverage_states": len(states),
+                "boolean_splits": boolean_splits,
+            },
         }
     except HTTPException:
         raise
