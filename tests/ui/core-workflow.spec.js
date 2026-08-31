@@ -119,9 +119,14 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
 
 test('refresh stays empty until the user restores the previous session', async ({ page }) => {
   await page.goto('/?qa=playwright-refresh-reset');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
   const gdsFixture = path.resolve('tests/fixtures/synthetic_two_layer.gds');
   await page.locator('#gdsInput').setInputFiles(gdsFixture);
   await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
 
   await page.reload();
   await expect(page.locator('#restoreBanner')).toBeVisible();
@@ -131,6 +136,7 @@ test('refresh stays empty until the user restores the previous session', async (
 
   await page.locator('#restoreBtn').click();
   await expect(page.locator('#restoreBanner')).toHaveCount(0);
+  await expect(page.locator('#selectionMode')).toHaveValue('imprinted');
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patHierarchy')).toContainText('Cells');
@@ -213,6 +219,49 @@ test('slow layout import still notifies Pattern Editor after completion', async 
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patLayerList')).toContainText('10/5');
+});
+
+test('Pattern Editor reuses a current preview and releases hidden SVG geometry', async ({ page }) => {
+  let composeRequests=0;
+  page.on('request', request => {if(request.url().includes('/api/geometry/mask-compose'))composeRequests++;});
+  await page.goto('/?qa=playwright-pattern-preview-cache');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#gdsInput').setInputFiles(path.resolve('tests/fixtures/synthetic_two_layer.gds'));
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await expect(page.locator('#patApplyBtn')).toBeEnabled();
+  const firstRequestCount=composeRequests;
+  expect(firstRequestCount).toBe(2);
+  await expect(page.locator('#patSvg [data-mask-union]')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Main', exact: true }).click();
+  await expect(page.locator('#patSvg path')).toHaveCount(0);
+  await expect(page.locator('#patProjectionSvg path')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await expect(page.locator('#patApplyBtn')).toBeEnabled();
+  await page.waitForTimeout(150);
+  expect(composeRequests).toBe(firstRequestCount);
+});
+
+test('Main batches many physical cuts into one SVG path', async ({ page }) => {
+  await page.goto('/?qa=playwright-batched-cuts');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.evaluate(async () => {
+    const {state}=await import('/static/js/core.js');
+    state.cuts=Array.from({length:50},(_,index)=>({id:`cut-${index}`,side:'front',footprint:[[index*100,-100],[index*100+50,-100],[index*100+50,100],[index*100,100]],zMin:-10,zMax:0,target:'substrate',sourceFaceId:null,wholeFace:false,profile:'vertical',lateralRadius:0}));
+    state.layerVisuals.batch={name:'Batch film',color:'#2563eb',scale:1};
+    state.solids=Array.from({length:50},(_,index)=>({id:`solid-${index}`,layerId:'batch',side:'front',material:'Batch film',footprint:[[index*100,200],[index*100+50,200],[index*100+50,400],[index*100,400]],zMin:0,zMax:10}));
+  });
+  await page.locator('#selectionMode').selectOption('imprinted');
+  await expect(page.locator('#topSvg [data-model-cut]')).toHaveCount(1);
+  await expect(page.locator('#topSvg [data-model-cut]')).toHaveAttribute('data-region-count','50');
+  await expect(page.locator('#topSvg [data-model-solid]')).toHaveCount(1);
+  await expect(page.locator('#topSvg [data-model-solid]')).toHaveAttribute('data-region-count','50');
+  await page.locator('#zExagNumber').fill('9');
+  await page.locator('#zExagNumber').dispatchEvent('change');
+  await expect.poll(() => page.evaluate(async () => {const {state}=await import('/static/js/core.js');return state._renderStats?.solidMeshes;})).toBe(1);
+  await expect.poll(() => page.evaluate(async () => {const {state}=await import('/static/js/core.js');return state._cutUnionStats?.find(entry=>entry.sourceCount===50)?.reusedPartition;})).toBe(true);
 });
 
 

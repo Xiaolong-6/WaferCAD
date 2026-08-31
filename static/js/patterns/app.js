@@ -26,15 +26,24 @@ function isAreaValid(polys){
 let viewBounds={mask:null,projection:null};
 let projectionFitMode='wafer'; // projection | wafer | both
 function viewPoint(point,view='mask'){return view==='mask'?[point[0],point[1]]:patTransform(point);}
+function layoutBounds(view='mask'){
+  let result=null;
+  for(const layer of state.gds.layers){
+    if(!Array.isArray(layer.bbox)||layer.bbox.length!==4)continue;
+    let [x0,y0,x1,y1]=layer.bbox;
+    if(layer.mirrored===true)[x0,x1]=[-x1,-x0];
+    for(const point of [[x0,y0],[x0,y1],[x1,y0],[x1,y1]]){
+      const [x,y]=viewPoint(point,view);
+      result=result?[Math.min(result[0],x),Math.min(result[1],y),Math.max(result[2],x),Math.max(result[3],y)]:[x,y,x,y];
+    }
+  }
+  return result;
+}
 function fitView(view,mode=null,shouldRender=true){
   if(view==='projection'&&mode)projectionFitMode=mode;
   const outline=waferOutline();
   const waferBB = view==='projection'&&outline.length ? bboxPolys([outline]) : null;
-  let gdsTransBB=null;
-  if(state.gds.layers.length){
-    const allTransPolys = state.gds.layers.flatMap(l=> effectiveLayer(l).map(p=>p.map(point=>viewPoint(point,view))));
-    if(allTransPolys.length) gdsTransBB = bboxPolys(allTransPolys);
-  }
+  let gdsTransBB=layoutBounds(view);
   if(!gdsTransBB && state.gds.bbox) gdsTransBB=[...state.gds.bbox];
   let bb=null;
   if(view==='mask'&&gdsTransBB)bb=[...gdsTransBB];
@@ -80,7 +89,17 @@ let highlightMode='top'; // top | wafer | none
 let maskPreview=[];
 let projectionPreview=[];
 let previewGeneration=0;
+let previewCacheKey=null;
+let previewPendingKey=null;
+let previewPendingPromise=null;
+let previewBusy=false;
 let componentMigrationRunning=false;
+function patternsVisible(){return !$('patternsWorkspace')?.classList.contains('hidden');}
+function currentPreviewKey(){return `${maskProjectionFingerprint()}|${substrateProjectionFingerprint()}`;}
+function clearPreviewCache(clearResults=true){
+  previewCacheKey=null;previewPendingKey=null;previewPendingPromise=null;previewBusy=false;previewGeneration++;
+  if(clearResults){maskPreview=[];projectionPreview=[];}
+}
 
 function renderLegend(view){
   const legend=$(view==='mask'?'patLegend':'patProjectionLegend');
@@ -108,7 +127,10 @@ function renderLegend(view){
   addRow('uv','UV light reaching substrate');
 }
 
-async function refreshPreview(){
+async function refreshPreview({force=false}={}){
+  const key=currentPreviewKey();
+  if(!force&&previewCacheKey===key){render();return {mask:maskPreview,projection:projectionPreview};}
+  if(!force&&previewPendingKey===key&&previewPendingPromise)return previewPendingPromise;
   const generation=++previewGeneration;
   const maskPolygons=[],projectionPolygons=[];
   for(const layer of state.gds.layers){
@@ -118,27 +140,30 @@ async function refreshPreview(){
       projectionPolygons.push(polygon.map(([x,y])=>patTransform([x,y])));
     }
   }
-  if(!maskPolygons.length){maskPreview=[];projectionPreview=[];render();return {mask:[],projection:[]};}
-  maskPreview=[];projectionPreview=[];
-  render();
-  try{
-    const outline=waferOutline();
-    const maskRequest=composeMaskRegions(maskPolygons,'transmit',null);
-    const projectionRequest=outline.length
-      ?composeMaskRegions(projectionPolygons,state.gds.maskPolarity||'transmit',outline)
-      :Promise.resolve({regions:[]});
-    const [maskResult,projectionResult]=await Promise.all([maskRequest,projectionRequest]);
-    if(generation!==previewGeneration)return;
-    maskPreview=maskResult.regions;
-    projectionPreview=projectionResult.regions;
-    render();
-    return {mask:maskPreview,projection:projectionPreview};
-  }catch(error){
-    if(generation!==previewGeneration)return;
-    maskPreview=[];projectionPreview=[];
-    const info=$('patPreviewInfo');if(info)info.textContent=`Preview failed: ${error.message}`;
-    return {mask:[],projection:[]};
-  }
+  if(!maskPolygons.length){clearPreviewCache(true);previewCacheKey=key;render();return {mask:[],projection:[]};}
+  previewBusy=true;render();
+  const task=(async()=>{
+    try{
+      const outline=waferOutline();
+      const maskRequest=composeMaskRegions(maskPolygons,'transmit',null);
+      const projectionRequest=outline.length
+        ?composeMaskRegions(projectionPolygons,state.gds.maskPolarity||'transmit',outline)
+        :Promise.resolve({regions:[]});
+      const [maskResult,projectionResult]=await Promise.all([maskRequest,projectionRequest]);
+      if(generation!==previewGeneration||key!==currentPreviewKey())return {mask:maskPreview,projection:projectionPreview};
+      maskPreview=maskResult.regions;projectionPreview=projectionResult.regions;previewCacheKey=key;previewBusy=false;render();
+      return {mask:maskPreview,projection:projectionPreview};
+    }catch(error){
+      if(generation!==previewGeneration)return {mask:maskPreview,projection:projectionPreview};
+      maskPreview=[];projectionPreview=[];previewCacheKey=null;previewBusy=false;render();
+      const info=$('patPreviewInfo');if(info)info.textContent=`Preview failed: ${error.message}`;
+      return {mask:[],projection:[]};
+    }finally{
+      if(previewPendingPromise===task){previewPendingKey=null;previewPendingPromise=null;}
+    }
+  })();
+  previewPendingKey=key;previewPendingPromise=task;
+  return task;
 }
 
 function syncTransformControls(){
@@ -166,10 +191,9 @@ function renderMask(svg){
   for(const layer of state.gds.layers){
     if(layer.visible===false) continue;
     if(state.patternSelectedKeys?.has(layer.key)) continue;
-    for(const rawPoly of effectiveLayer(layer)){
-      const poly=rawPoly.map(point=>viewPoint(point,'mask'));
-      svg.appendChild(makeSvg('path',{d:polyPath(poly,'mask'),fill:layer.color,'fill-opacity':'0.08',stroke:layer.color,'stroke-opacity':'0.35','stroke-width':'1'}));
-    }
+    const polygons=effectiveLayer(layer);
+    const d=polygons.map(rawPoly=>polyPath(rawPoly.map(point=>viewPoint(point,'mask')),'mask')).join(' ');
+    if(d)svg.appendChild(makeSvg('path',{d,fill:layer.color,'fill-opacity':'0.08',stroke:layer.color,'stroke-opacity':'0.35','stroke-width':'1','fill-rule':'nonzero','data-context-layer':layer.key,'data-region-count':polygons.length}));
   }
   for(const layer of state.gds.layers){
     if(!state.patternSelectedKeys?.has(layer.key)||!Array.isArray(layer.components))continue;
@@ -183,8 +207,9 @@ function renderMask(svg){
       svg.appendChild(path);
     }
   }
-  for(const poly of maskPreview){
-    svg.appendChild(makeSvg('path',{d:polyPath(poly,'mask'),fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.4','pointer-events':'none'}));
+  if(maskPreview.length){
+    const d=maskPreview.map(poly=>polyPath(poly,'mask')).join(' ');
+    svg.appendChild(makeSvg('path',{d,fill:'#f59e0b','fill-opacity':'0.38',stroke:'#b45309','stroke-width':'1.4','pointer-events':'none','fill-rule':'nonzero','data-mask-union':'true','data-region-count':maskPreview.length}));
   }
   if(lassoRect){
     const [x0,y0,x1,y1]=lassoRect;
@@ -215,11 +240,12 @@ function render(){
   if(!viewBounds.projection)fitView('projection',projectionFitMode,false);
   renderMask($('patSvg'));renderProjection($('patProjectionSvg'));
   const hasWafer=waferOutline().length>0;
-  if(maskPreview.length&&projectionPreview.length)$('patPreviewInfo').textContent=`Filled mask union · ${projectionPreview.length} UV exposure region(s) clipped to substrate`;
+  if(previewBusy)$('patPreviewInfo').textContent='Updating physical mask projection…';
+  else if(maskPreview.length&&projectionPreview.length)$('patPreviewInfo').textContent=`Filled mask union · ${projectionPreview.length} UV exposure region(s) clipped to substrate`;
   else if(maskPreview.length&&!hasWafer)$('patPreviewInfo').textContent='Filled mask ready · create a substrate in Main for projection';
   else $('patPreviewInfo').textContent=hasWafer?'Select mask layers/components to calculate UV exposure':'Import a mask and create a substrate';
   const hasSel = state.gds.layers.some(l=>state.patternSelectedKeys?.has(l.key));
-  const applyBtn=$('patApplyBtn'); if(applyBtn){applyBtn.disabled=!hasSel||!projectionPreview.length||!hasWafer||state.gds.truncated===true;applyBtn.title=state.gds.truncated===true?'Incomplete layout: projection commit is blocked':'';}
+  const applyBtn=$('patApplyBtn'); if(applyBtn){applyBtn.disabled=previewBusy||!hasSel||!projectionPreview.length||!hasWafer||state.gds.truncated===true;applyBtn.title=state.gds.truncated===true?'Incomplete layout: projection commit is blocked':'';}
   const waferHint=$('patWaferHint'); if(waferHint) waferHint.textContent = hasWafer ? `Wafer: ${state.wafer.shape} ${state.wafer.diameter? (state.wafer.diameter/1000).toFixed(1)+'mm':''}` : 'No wafer';
   const lassoInfo=$('patLassoInfo'); if(lassoInfo && lassoRect){
     const selCount = getLassoSelectedCount();
@@ -282,7 +308,8 @@ function renderCellSelector(){
     const {detectBorderOnly}=await import('../geometry.js');
     for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
     state.patternSelectedKeys=new Set();
-    maskPreview=[];projectionPreview=[]; saveShared(); renderLayerList(); renderCellSelector(); fitPat(); refreshPreview();
+    clearPreviewCache(true);saveShared();renderLayerList();renderCellSelector();
+    if(patternsVisible()){viewBounds={mask:null,projection:null};fitPat();refreshPreview();}
   });
   c.appendChild(sel);
   const active = hierarchy.find(h=>h.name===state.gds.activeTopCell);
@@ -342,7 +369,8 @@ async function importGds(file,topCell=null,preserveSettings=false){
   for(const l of state.gds.layers) l.isBorderOnly=detectBorderOnly(l);
   if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set();
   setPatternStatus(`${data.filename}: ${data.layers.length} layers · ${data.active_top_cell} (tap Cell to switch)`);
-  maskPreview=[];projectionPreview=[]; saveShared(); renderLayerList(); fitPat(); refreshPreview();
+  clearPreviewCache(true);saveShared();renderLayerList();
+  if(patternsVisible()){viewBounds={mask:null,projection:null};fitPat();refreshPreview();}
 }
 
 async function migrateLegacyComponents(){
@@ -357,7 +385,7 @@ async function migrateLegacyComponents(){
     if(hadLegacySelection)delete layer.selectedComponentIds;
     migratedLocally=true;
   }
-  if(migratedLocally){setPatternStatus('Updated mask selection semantics; legacy merged selections were reset to all filled boundaries.');saveShared();renderLayerList();refreshPreview();}
+  if(migratedLocally){setPatternStatus('Updated mask selection semantics; legacy merged selections were reset to all filled boundaries.');clearPreviewCache(true);saveShared();renderLayerList();refreshPreview();}
   const stale=state.gds.layers.some(layer=>Array.isArray(layer.components)&&layer.components.some(component=>!Array.isArray(component.source_polygon_indices)));
   const file=gdsFile||state._gdsFileBlob;
   if(!stale||!file||componentMigrationRunning)return;
@@ -411,28 +439,33 @@ function saveAsNewPattern(){
   const newLayer={key:newKey, layer:900+state.gds.layers.length, datatype:0, name:`Pattern ${state.gds.layers.length+1}`, count:newPolys.length, bbox:bboxPolys(newPolys), polygons:newPolys, visible:true, color:'#f59e0b', alias:`Pattern ${state.gds.layers.length+1}`, isVirtual:true, isBorderOnly:false};
   state.gds.layers.push(newLayer);
   state.patternSelectedKeys=new Set([newKey]);
-  lassoRect=null; lassoActive=false;
-  maskPreview=[];projectionPreview=[]; saveShared(); renderLayerList(); refreshPreview();
+  lassoRect=null;lassoActive=false;clearPreviewCache(true);saveShared();renderLayerList();refreshPreview();
   const name=prompt('Name for new pattern', newLayer.alias);
   if(name!==null){ newLayer.alias=name.trim()||newLayer.alias; renderLayerList(); }
 }
 
 // Init
-renderLayerList();
-fitPat();syncTransformControls();
-refreshPreview();
-window.patRender = ()=>{ if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit';renderLayerList();syncTransformControls();viewBounds={mask:null,projection:null};fitPat();refreshPreview();migrateLegacyComponents(); };
-window.patReset = ()=>{ gdsFile=null;maskPreview=[];projectionPreview=[];previewGeneration++;lassoStart=null;lassoRect=null;lassoActive=false;viewBounds={mask:null,projection:null};renderLayerList();syncTransformControls();fitPat(); };
+renderLayerList();syncTransformControls();
+if(patternsVisible()){fitPat();refreshPreview();}
+window.patRender=()=>{
+  if($('patMaskPolarity'))$('patMaskPolarity').value=state.gds.maskPolarity||'transmit';
+  renderLayerList();syncTransformControls();
+  if(!viewBounds.mask||!viewBounds.projection)fitPat();else render();
+  if(previewCacheKey!==currentPreviewKey())refreshPreview();
+  migrateLegacyComponents();
+};
+window.patSuspend=()=>{clearSvg($('patSvg'));clearSvg($('patProjectionSvg'));};
+window.patReset=()=>{gdsFile=null;clearPreviewCache(true);lassoStart=null;lassoRect=null;lassoActive=false;viewBounds={mask:null,projection:null};renderLayerList();syncTransformControls();if(patternsVisible())fitPat();};
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });
 const _patFit = document.getElementById('patFitBtn');
 if(_patFit)_patFit.addEventListener('click',()=>fitPat());
 const _projectionFit=document.getElementById('patProjectionFitBtn');
 if(_projectionFit)_projectionFit.addEventListener('click',()=>{projectionFitMode=projectionFitMode==='wafer'?'projection':projectionFitMode==='projection'?'both':'wafer';fitPat();});
-window.addEventListener('wafercad:gds-loaded',()=>{renderLayerList();maskPreview=[];projectionPreview=[];viewBounds={mask:null,projection:null};fitPat();refreshPreview();});
+window.addEventListener('wafercad:gds-loaded',()=>{clearPreviewCache(true);renderLayerList();viewBounds={mask:null,projection:null};if(patternsVisible()){fitPat();refreshPreview();}else window.patSuspend();});
 const _polarity=$('patMaskPolarity');
 if(_polarity){_polarity.value=state.gds.maskPolarity||'transmit';_polarity.addEventListener('change',()=>{state.gds.maskPolarity=_polarity.value==='block'?'block':'transmit';saveShared();refreshPreview();});}
-$('patPreviewBtn')?.addEventListener('click',refreshPreview);
+$('patPreviewBtn')?.addEventListener('click',()=>refreshPreview({force:true}));
 $('patApplyBtn')?.addEventListener('click',applyToMain);
 const _savePat=document.getElementById('patSavePatternBtn');
 if(_savePat) _savePat.addEventListener('click', saveAsNewPattern);
