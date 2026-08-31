@@ -320,8 +320,17 @@ function renderCellSelector(){
   }
 }
 function renderLayerList(){
-  const box=$('patLayerList'), cnt=$('patLayerCount');
-  if(!state.gds.layers.length){ box.textContent='Import a file to view layers.'; cnt.textContent='0'; return; }
+  const box=$('patLayerList'), cnt=$('patLayerCount'),filename=$('patLayoutFilename'),importText=$('patImportLayoutText');
+  const hasLayers=state.gds.layers.length>0,fileLabel=state.gds.filename||state._gdsFileName||'';
+  if(filename){filename.textContent=fileLabel;filename.title=fileLabel;}
+  if(importText)importText.textContent=hasLayers?'Replace layout':'Import layout';
+  if(!hasLayers){
+    box.innerHTML='';cnt.textContent='0';
+    const empty=document.createElement('div');empty.className='pat-layer-empty';
+    const message=document.createElement('span');message.textContent='Import a GDSII or OASIS file to view layers.';
+    const action=document.createElement('button');action.type='button';action.className='file-btn';action.textContent='Import layout';action.addEventListener('click',()=>$('gdsInput')?.click());
+    empty.append(message,action);box.appendChild(empty);return;
+  }
   cnt.textContent=String(state.gds.layers.length);
   box.innerHTML='';
   for(const layer of state.gds.layers){

@@ -14,6 +14,8 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.goto('/?qa=playwright-core-workflow');
   await expect(page.locator('#statusText')).toHaveText('Ready.');
   await expect(page.locator('#modelStats')).toBeEmpty();
+  await expect(page.locator('.toolbar #gdsInput')).toHaveCount(0);
+  await expect(page.locator('.pat-layers-head #gdsInput')).toHaveCount(1);
 
   await page.getByRole('button', { name: 'New wafer' }).click();
   await page.getByRole('button', { name: 'Create' }).click();
@@ -125,13 +127,16 @@ test('refresh stays empty until the user restores the previous session', async (
   await page.locator('#gdsInput').setInputFiles(gdsFixture);
   await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await expect(page.locator('#patImportLayoutText')).toHaveText('Replace layout');
+  await expect(page.locator('#patLayoutFilename')).toContainText('synthetic_two_layer.gds');
   await page.locator('#patLayerList input[type="checkbox"]').first().check();
   await page.locator('#patApplyBtn').click();
 
   await page.reload();
   await expect(page.locator('#restoreBanner')).toBeVisible();
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
-  await expect(page.locator('#patLayerList')).toContainText('Import a file to view layers');
+  await expect(page.locator('#patLayerList')).toContainText('Import a GDSII or OASIS file to view layers');
+  await expect(page.locator('#patLayerList').getByRole('button', { name: 'Import layout' })).toBeVisible();
   await expect(page.locator('#patHierarchy')).toBeHidden();
 
   await page.locator('#restoreBtn').click();
@@ -219,6 +224,29 @@ test('slow layout import still notifies Pattern Editor after completion', async 
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patLayerList')).toContainText('1/0');
   await expect(page.locator('#patLayerList')).toContainText('10/5');
+});
+
+
+test('Apply operation disables while processing and rejects duplicate submission', async ({ page }) => {
+  let intersectionRequests=0;
+  await page.route('**/api/geometry/intersection', async route => {
+    intersectionRequests++;
+    await new Promise(resolve => setTimeout(resolve, 650));
+    await route.continue();
+  });
+  await page.goto('/?qa=playwright-operation-busy');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  const apply=page.locator('#applyPushPullBtn');
+  await apply.click();
+  await expect(apply).toBeDisabled();
+  await expect(apply).toHaveText(/Processing… \d+s/);
+  await expect(page.locator('#statusText')).toContainText('Preparing the whole front face');
+  await apply.dispatchEvent('click');
+  await expect.poll(() => intersectionRequests).toBe(1);
+  await expect(apply).toBeEnabled();
+  await expect(apply).toHaveText('Apply operation');
+  expect(intersectionRequests).toBe(1);
 });
 
 test('Pattern Editor reuses a current preview and releases hidden SVG geometry', async ({ page }) => {

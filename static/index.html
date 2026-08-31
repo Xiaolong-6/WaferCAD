@@ -15,7 +15,6 @@
         <button id="navMainBtn" class="nav-tab active">Main</button>
         <button id="navPatternsBtn" class="nav-tab">Pattern Editor</button>
       </div>
-       <label class="file-btn">Import layout<input id="gdsInput" type="file" accept=".gds,.gdsii,.oas,.oasis" hidden /></label>
       <div class="spacer"></div>
       <button id="saveProjectBtn">Save project</button>
       <label class="file-btn">Open project<input id="openProjectInput" type="file" accept=".json" hidden /></label>
@@ -106,7 +105,13 @@
     <div id="patternsWorkspace" class="patterns-workspace hidden">
       <aside class="patterns-sidebar">
         <section class="patterns-panel patterns-layers-panel">
-          <div class="panel-head">Layers <span id="patLayerCount" class="muted">0</span></div>
+          <div class="panel-head pat-layers-head">
+            <span>Layers <span id="patLayerCount" class="muted">0</span></span>
+            <div class="pat-layout-import">
+              <span id="patLayoutFilename" class="pat-layout-filename" title=""></span>
+              <label id="patImportLayoutBtn" class="file-btn small"><span id="patImportLayoutText">Import layout</span><input id="gdsInput" type="file" accept=".gds,.gdsii,.oas,.oasis" hidden /></label>
+            </div>
+          </div>
           <div class="panel-body">
             <div id="patLayerList" class="empty-note">Import a file to view layers.</div>
             <div id="patHierarchy" class="hidden pat-hierarchy"></div>
