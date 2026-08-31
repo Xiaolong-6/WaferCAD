@@ -50,6 +50,15 @@ Open:
 http://127.0.0.1:8765
 ```
 
+## Multi-computer development
+
+Use the private Git repository as the source of truth and clone it into a local
+folder that is not managed by OneDrive on each computer. Recreate `.venv` and
+`node_modules` independently on every computer using the commands above; do not
+synchronize either environment directory. Pull before starting work, commit and
+push completed changes, and avoid editing the same branch simultaneously on two
+computers.
+
 ## Test
 
 ```bash
