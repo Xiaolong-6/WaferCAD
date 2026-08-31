@@ -76,6 +76,22 @@ def _merge_bbox(a: list[float] | None, b: list[float]) -> list[float]:
     return [min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])]
 
 
+def _bbox_overlaps(a: list[float], b: list[float], epsilon: float = 1e-9) -> bool:
+    return not (
+        a[2] < b[0] - epsilon
+        or b[2] < a[0] - epsilon
+        or a[3] < b[1] - epsilon
+        or b[3] < a[1] - epsilon
+    )
+
+
+def _bbox_contains_point(bounds: list[float], point: list[float], epsilon: float = 1e-9) -> bool:
+    return (
+        bounds[0] - epsilon <= point[0] <= bounds[2] + epsilon
+        and bounds[1] - epsilon <= point[1] <= bounds[3] + epsilon
+    )
+
+
 class GeometryRequest(BaseModel):
     @model_validator(mode="after")
     def validate_geometry_complexity(self) -> "GeometryRequest":
@@ -509,7 +525,14 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
         )
         solids: list[dict[str, Any]] = []
         cuts: list[dict[str, Any]] = []
-        boundaries: list[Any] = []
+        boundaries: dict[str, dict[str, Any]] = {}
+
+        def add_boundary(polygon: Any, footprint: list[list[float]]) -> None:
+            component_id = _component_id(polygon.points)
+            boundaries.setdefault(
+                component_id,
+                {"id": component_id, "polygon": polygon, "bbox": _bbox(footprint)},
+            )
 
         for raw in payload.solids:
             footprint = raw.get("footprint")
@@ -525,9 +548,10 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
                 "zMin": z_min,
                 "zMax": z_max,
                 "polygon": gdstk.Polygon(footprint),
+                "bbox": _bbox(footprint),
             }
             solids.append(item)
-            boundaries.append(item["polygon"])
+            add_boundary(item["polygon"], footprint)
 
         for raw in payload.cuts:
             footprint = raw.get("footprint")
@@ -541,16 +565,30 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
                 "zMin": max(-thickness, z_min),
                 "zMax": min(0, z_max),
                 "polygon": gdstk.Polygon(footprint),
+                "bbox": _bbox(footprint),
             }
             cuts.append(item)
-            boundaries.append(item["polygon"])
+            add_boundary(item["polygon"], footprint)
 
         partition_complete = True
-        for boundary in boundaries:
+        boolean_split_count = 0
+        bbox_skip_count = 0
+        duplicate_boundary_count = len(solids) + len(cuts) - len(boundaries)
+        for boundary in boundaries.values():
             next_atoms: list[Any] = []
             for atom in atoms:
-                next_atoms.extend(gdstk.boolean(atom, boundary, "and", precision=1e-6))
-                next_atoms.extend(gdstk.boolean(atom, boundary, "not", precision=1e-6))
+                atom_points = atom.points
+                if not _bbox_overlaps(_bbox(atom_points), boundary["bbox"]):
+                    next_atoms.append(atom)
+                    bbox_skip_count += 1
+                    continue
+                if _component_id(atom_points) == boundary["id"]:
+                    next_atoms.append(atom)
+                    bbox_skip_count += 1
+                    continue
+                boolean_split_count += 1
+                next_atoms.extend(gdstk.boolean(atom, boundary["polygon"], "and", precision=1e-6))
+                next_atoms.extend(gdstk.boolean(atom, boundary["polygon"], "not", precision=1e-6))
             if len(next_atoms) > SURFACE_ATOM_LIMIT:
                 partition_complete = False
                 break
@@ -569,6 +607,8 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
             front_surface = 0.0
             back_surface = -thickness
             for cut in cuts:
+                if not _bbox_contains_point(cut["bbox"], interior):
+                    continue
                 if not bool(gdstk.inside([interior], cut["polygon"])[0]):
                     continue
                 if cut["side"] == "front":
@@ -580,6 +620,7 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
                 solid
                 for solid in solids
                 if solid["side"] == payload.side
+                and _bbox_contains_point(solid["bbox"], interior)
                 and bool(gdstk.inside([interior], solid["polygon"])[0])
             ]
             if candidates:
@@ -618,7 +659,18 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
                 }
             )
 
-        return {"atoms": result, "exact": True, "atom_limit": SURFACE_ATOM_LIMIT}
+        return {
+            "atoms": result,
+            "exact": True,
+            "atom_limit": SURFACE_ATOM_LIMIT,
+            "stats": {
+                "input_boundaries": len(solids) + len(cuts),
+                "unique_boundaries": len(boundaries),
+                "duplicate_boundaries": duplicate_boundary_count,
+                "boolean_splits": boolean_split_count,
+                "bbox_skips": bbox_skip_count,
+            },
+        }
     except HTTPException:
         raise
     except Exception as exc:

@@ -213,6 +213,50 @@ def test_surface_partition_uses_local_etched_substrate_surface_and_drops_void(cl
     assert atoms[0]["area"] == pytest.approx(5000)
 
 
+def test_surface_partition_prunes_disjoint_and_duplicate_boundaries(client):
+    regions = []
+    for row in range(4):
+        for column in range(5):
+            x0 = -48 + column * 19
+            y0 = -48 + row * 24
+            regions.append([[x0, y0], [x0 + 8, y0], [x0 + 8, y0 + 8], [x0, y0 + 8]])
+
+    solids = [
+        {
+            "id": f"solid-{index}",
+            "layerId": "film",
+            "side": "front",
+            "footprint": region,
+            "zMin": 0,
+            "zMax": 10,
+        }
+        for index, region in enumerate(regions)
+    ]
+    cuts = [
+        {"side": "front", "footprint": region, "zMin": -10, "zMax": 0}
+        for region in regions
+    ]
+    response = client.post(
+        "/api/geometry/surface-partition",
+        json={
+            "outline": WAFER,
+            "thickness": 500,
+            "side": "front",
+            "solids": solids,
+            "cuts": cuts,
+            "masks": regions,
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["atoms"]) == len(regions)
+    assert result["stats"]["input_boundaries"] == 40
+    assert result["stats"]["unique_boundaries"] == 20
+    assert result["stats"]["duplicate_boundaries"] == 20
+    assert result["stats"]["boolean_splits"] == 0
+    assert result["stats"]["bbox_skips"] == 400
+
+
 def test_exact_substrate_thickness_with_overlapping_cuts(client):
     response = client.post(
         "/api/geometry/substrate-thickness",
