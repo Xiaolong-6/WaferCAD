@@ -9,22 +9,25 @@ function collection(value,label,budget){if(value==null)return [];if(!Array.isArr
 function validateWafer(value,budget){if(value==null)return null;const wafer={...object(value,'wafer')};wafer.thickness=positive(wafer.thickness,'wafer.thickness');if(wafer.shape==='circle')wafer.diameter=positive(wafer.diameter,'wafer.diameter');else if(wafer.shape==='rect'){wafer.width=positive(wafer.width,'wafer.width');wafer.height=positive(wafer.height,'wafer.height');}else if(wafer.shape==='custom')wafer.outline=polygon(wafer.outline,'wafer.outline',budget);else throw new Error('wafer.shape must be circle, rect, or custom');return wafer;}
 function validateGds(value,budget){if(value==null)return null;const gds={...object(value,'gds')};if(!Array.isArray(gds.layers)||gds.layers.length>MAX_COLLECTION)throw new Error(`gds.layers must contain at most ${MAX_COLLECTION} items`);gds.layers=gds.layers.map((layer,index)=>{const result={...object(layer,`gds.layers[${index}]`)};result.layer=finite(layer.layer,`gds.layers[${index}].layer`);result.datatype=finite(layer.datatype,`gds.layers[${index}].datatype`);if(!Number.isInteger(result.layer)||!Number.isInteger(result.datatype))throw new Error(`gds.layers[${index}] layer/datatype must be integers`);if(!Array.isArray(layer.polygons)||layer.polygons.length>MAX_COLLECTION)throw new Error(`gds.layers[${index}].polygons is invalid`);result.polygons=layer.polygons.map((item,polygonIndex)=>polygon(item,`gds.layers[${index}].polygons[${polygonIndex}]`,budget));if(layer.filledPolygons!=null)result.filledPolygons=layer.filledPolygons.map((item,polygonIndex)=>polygon(item,`gds.layers[${index}].filledPolygons[${polygonIndex}]`,budget));return result;});const transform={offsetX:0,offsetY:0,rotationDeg:0,scale:1,...(gds.transform||{})};for(const key of ['offsetX','offsetY','rotationDeg','scale'])transform[key]=finite(transform[key],`gds.transform.${key}`);if(transform.scale<=0)throw new Error('gds.transform.scale must be greater than zero');gds.transform=transform;if(gds.committedProjection?.regions)gds.committedProjection={...gds.committedProjection,regions:gds.committedProjection.regions.map((item,index)=>polygon(item,`gds.committedProjection.regions[${index}]`,budget))};return gds;}
 function validateSlice(value){if(value==null)return null;object(value,'slice');const point=(input,label)=>{object(input,label);return {x:finite(input.x,`${label}.x`),y:finite(input.y,`${label}.y`)};};const slice={a:point(value.a,'slice.a'),b:point(value.b,'slice.b')};if(slice.a.x===slice.b.x&&slice.a.y===slice.b.y)throw new Error('slice endpoints must be different');return slice;}
+function backfillLayerBaseThickness(device){
+  if(!device||typeof device!=='object'||Array.isArray(device)||!device.layerVisuals||typeof device.layerVisuals!=='object')return;
+  const visuals=device.layerVisuals,solids=Array.isArray(device.solids)?device.solids:[];
+  const waferThickness=Number(device.wafer?.thickness),substrate=visuals.substrate;
+  if(substrate&&Number.isFinite(waferThickness)&&waferThickness>0&&(substrate.baseThickness==null||!Number.isFinite(Number(substrate.baseThickness))))substrate.baseThickness=waferThickness;
+  for(const [id,visual] of Object.entries(visuals)){
+    if(id==='substrate'||!visual||(visual.baseThickness!=null&&Number.isFinite(Number(visual.baseThickness))))continue;
+    // v8 did not retain a pre-etch thickness, so migration can only infer the
+    // physical extent that still exists in that saved device or snapshot.
+    const pieces=solids.filter(solid=>solid.layerId===id);if(!pieces.length)continue;
+    const min=Math.min(...pieces.map(solid=>Number(solid.zMin))),max=Math.max(...pieces.map(solid=>Number(solid.zMax))),thickness=max-min;
+    if(Number.isFinite(thickness)&&thickness>0)visual.baseThickness=thickness;
+  }
+}
 function migrate(input){const project=structuredClone(input),version=Number(project.version??1);if(!Number.isInteger(version)||version<1)throw new Error('Project version must be a positive integer');if(version>CURRENT_PROJECT_VERSION)throw new Error(`Project version ${version} is newer than supported version ${CURRENT_PROJECT_VERSION}`);project.version=CURRENT_PROJECT_VERSION;project.activeFace=project.activeFace==='back'?'back':'front';const hadLogMapping = project.view?.zMapping==='log';project.view={zExag:8,relativeZScale:1,zMapping:'linear',zLogK:.05,showAxes:false,maskBaseOpacity:.35,...(project.view||{})};if(project.view.zMapping==='log') project.view.zMapping='relative';else if(project.view.zMapping!=='relative') project.view.zMapping=project.view.zMapping==='relative'?'relative':'linear';if(hadLogMapping) project.view.relativeZScale=1;project.view.zLogK=Number.isFinite(Number(project.view.zLogK))&&Number(project.view.zLogK)>0?Number(project.view.zLogK):.05;project.view.zExag=Number.isFinite(Number(project.view.zExag))&&Number(project.view.zExag)>0?Math.min(1000,Math.max(0.1,Number(project.view.zExag))):8;project.view.relativeZScale=Number.isFinite(Number(project.view.relativeZScale))&&Number(project.view.relativeZScale)>0?Math.min(100,Math.max(0.1,Number(project.view.relativeZScale))):1;if(hadLogMapping) project.view.relativeZScale=1;project.snapshotDevices=project.snapshotDevices&&typeof project.snapshotDevices==='object'?project.snapshotDevices:{};project.snapshotThumbnails=project.snapshotThumbnails&&typeof project.snapshotThumbnails==='object'?project.snapshotThumbnails:{};for(const snapshot of project.snapshots||[]){if(snapshot.device&&!snapshot.deviceRef){const key=`legacy-${snapshot.id||Object.keys(project.snapshotDevices).length}`;project.snapshotDevices[key]=snapshot.device;snapshot.deviceRef=key;delete snapshot.device;}if(snapshot.thumb&&!snapshot.thumbRef){const key=`legacy-thumb-${snapshot.id||Object.keys(project.snapshotThumbnails).length}`;project.snapshotThumbnails[key]=snapshot.thumb;snapshot.thumbRef=key;delete snapshot.thumb;}}if(project.gds&&Array.isArray(project.gds.layers)){const legacyInvert=project.gds.layers.some(layer=>layer.inverted===true);if(legacyInvert&&project.gds.maskPolarity==null)project.gds.maskPolarity='block';for(const layer of project.gds.layers)delete layer.inverted;}
   // v9: ensure layerVisual baseThickness for relative mapping; legacy layers without it get derived from solids
-  if(version<9 && project.layerVisuals && typeof project.layerVisuals==='object'){
-    for(const [id,visual] of Object.entries(project.layerVisuals)){
-      if(id==='substrate') continue;
-      if(visual && (visual.baseThickness==null || !Number.isFinite(Number(visual.baseThickness)))){
-        // try to derive from solids
-        const solids=(project.solids||[]).filter(solid=>solid.layerId===id);
-        if(solids.length){
-          const min=Math.min(...solids.map(solid=>Number(solid.zMin)));
-          const max=Math.max(...solids.map(solid=>Number(solid.zMax)));
-          const thickness=Math.max(0,max-min);
-          if(thickness>0) visual.baseThickness=thickness;
-        }
-      }
-    }
+  if(version<9){
+    backfillLayerBaseThickness(project);
+    for(const device of Object.values(project.snapshotDevices))backfillLayerBaseThickness(device);
   }
   return project;}
 

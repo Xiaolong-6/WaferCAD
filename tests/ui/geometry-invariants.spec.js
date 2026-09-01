@@ -23,6 +23,12 @@ async function rerender(page){
   await input.blur();
 }
 
+async function rerenderStable(page){
+  const input=page.locator('#zExagNumber');
+  await input.dispatchEvent('change');
+  await input.blur();
+}
+
 test('whole-face and edge-touching cuts use remaining substrate slabs without degenerate holes',async({page})=>{
   await page.goto('/?qa=playwright-substrate-slabs');
   await createWafer(page);
@@ -57,6 +63,41 @@ test('whole-face and edge-touching cuts use remaining substrate slabs without de
   const edge=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return {slab:state._substrateSlabRegions.find(s=>s.zMin===-1&&s.zMax===0),stats:state._renderStats};});
   expect(edge.slab.remainingCount).toBeGreaterThan(0);
   expect(edge.stats.substratePendingSlabs).toBe(0);
+
+  await page.evaluate(async()=>{
+    const {state}=await import('/static/js/core.js');
+    state.cuts=[
+      {id:'edge-notch',side:'front',footprint:[[-50000,-5000],[0,-5000],[0,5000],[-50000,5000]],zMin:-1,zMax:0,target:'substrate',wholeFace:false,profile:'vertical',lateralRadius:0},
+      {id:'internal-hole',side:'front',footprint:[[10000,-5000],[20000,-5000],[20000,5000],[10000,5000]],zMin:-1,zMax:0,target:'substrate',wholeFace:false,profile:'vertical',lateralRadius:0},
+    ];
+  });
+  await rerender(page);
+  await expect.poll(()=>page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return state._substrateSlabRegions?.find(s=>s.zMin===-1&&s.zMax===0);})).toMatchObject({remainingCount:1,holeCount:1,isEmpty:false,useHoles:false});
+  const mixedTopology=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return state._renderStats;});
+  expect(mixedTopology).toMatchObject({substrateMeshes:2,substratePendingSlabs:0,substrateTopologyHoles:1});
+});
+
+test('through-etch is compositional and exposes opposite-origin material in Top View',async({page})=>{
+  await page.goto('/?qa=playwright-through-etch-composition');
+  await createWafer(page);
+  const installBackFilm=()=>page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const {waferOutline}=await import('/static/js/geometry.js');state.activeFace='front';state.solids=[{id:'back-film',layerId:'back-layer',side:'back',material:'Back film',footprint:waferOutline(),zMin:-502,zMax:-500}];state.cuts=[];state.dopings=[];state.layerVisuals['back-layer']={name:'Back film',color:'#12ab34',scale:1,baseThickness:2};});
+  const physicalState=()=>page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const clean=item=>{const copy=structuredClone(item);delete copy.id;delete copy.sourceFaceId;delete copy.partitionBatchId;return copy;};const {partitionTopSurface}=await import('/static/js/geometry-api.js');return {solids:state.solids.map(clean),cuts:state.cuts.map(clean),dopings:state.dopings.map(clean),front:(await partitionTopSurface([], 'front')).map(atom=>({kind:atom.kind,layerId:atom.layerId,surface:atom.surface,zMin:atom.zMin,zMax:atom.zMax}))};});
+
+  await installBackFilm();await rerender(page);await applyOperation(page,'down',501);const single=await physicalState();
+  await createWafer(page);await installBackFilm();await rerender(page);await applyOperation(page,'down',500);
+  const exposed=await page.evaluate(async()=>{const {partitionTopSurface}=await import('/static/js/geometry-api.js');return (await partitionTopSurface([], 'front')).map(atom=>({kind:atom.kind,layerId:atom.layerId,surface:atom.surface}));});
+  expect(exposed).toEqual([{kind:'solid',layerId:'back-layer',surface:-500}]);
+  await expect.poll(()=>page.locator('#topSvg [data-model-layer="back-layer"]').count()).toBe(1);
+  await applyOperation(page,'down',1);const split=await physicalState();expect(split).toEqual(single);
+
+  const mismatch=await page.evaluate(async()=>{const {availableMaterialDepth}=await import('/static/app.js');const atom=id=>({geometryId:id,surface:id==='a'?1:0});return {frontOnly:availableMaterialDepth([atom('a')],[]),backOnly:availableMaterialDepth([],[atom('a')]),different:availableMaterialDepth([atom('a')],[atom('b')])};});
+  expect(mismatch).toEqual({frontOnly:null,backOnly:null,different:null});
+
+  await createWafer(page);
+  await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const {waferOutline}=await import('/static/js/geometry.js');state.activeFace='back';state.solids=[{id:'front-film',layerId:'front-layer',side:'front',material:'Front film',footprint:waferOutline(),zMin:0,zMax:2}];state.cuts=[];state.layerVisuals['front-layer']={name:'Front film',color:'#ab1234',scale:1,baseThickness:2};});
+  await rerender(page);await applyOperation(page,'down',500);
+  const symmetric=await page.evaluate(async()=>{const {partitionTopSurface}=await import('/static/js/geometry-api.js');return (await partitionTopSurface([], 'back')).map(atom=>({kind:atom.kind,layerId:atom.layerId,surface:atom.surface}));});
+  expect(symmetric).toEqual([{kind:'solid',layerId:'front-layer',surface:0}]);
 });
 
 test('Push depth preflight allows through-etch and rejects over-depth atomically',async({page})=>{
@@ -161,4 +202,19 @@ test('Surface section break follows current A-B material envelope while coordina
   expect(coordinateBreak.mode).toBe('coordinates');
   expect(coordinateBreak.from).toBe(-300);
   expect(coordinateBreak.to).toBe(-20);
+});
+
+test('Cross Section vertical viewport only includes A-B intersected solids and dopings',async({page})=>{
+  await page.goto('/?qa=playwright-local-section-scale');await createWafer(page);
+  await page.locator('#zMapping').selectOption('linear');
+  await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');state.slice={a:{x:-30000,y:0},b:{x:30000,y:0}};state.solids=[];state.dopings=[];});await rerenderStable(page);
+  const baseline=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return state._sectionViewport;});
+  await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');state.solids=[{id:'remote-film',layerId:'remote-film',side:'front',material:'Tall',footprint:[[-10000,18000],[10000,18000],[10000,22000],[-10000,22000]],zMin:0,zMax:1000}];state.layerVisuals['remote-film']={name:'Remote',color:'#f00',scale:1,baseThickness:1000};});await rerenderStable(page);
+  const offSolid=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return state._sectionViewport;});expect(offSolid).toEqual(baseline);
+  await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');state.slice={a:{x:-30000,y:20000},b:{x:30000,y:20000}};});await rerenderStable(page);
+  const onSolid=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return state._sectionViewport;});expect(onSolid.rawMax).toBeGreaterThan(baseline.rawMax);expect(onSolid.solidCount).toBe(1);
+  await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');state.solids=[];state.dopings=[{id:'remote-doping',layerId:'remote-doping',targetLayerId:'substrate',dopant:'B',position:'upper',footprint:[[-10000,18000],[10000,18000],[10000,22000],[-10000,22000]],zMin:-10,zMax:1000}];state.layerVisuals['remote-doping']={name:'Remote doping',color:'#0f0',scale:1,gradient:true};state.slice={a:{x:-30000,y:0},b:{x:30000,y:0}};});await rerenderStable(page);
+  const offDoping=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return state._sectionViewport;});expect(offDoping.rawMin).toBe(baseline.rawMin);expect(offDoping.rawMax).toBe(baseline.rawMax);expect(offDoping.dopingCount).toBe(0);
+  await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');state.slice={a:{x:-30000,y:20000},b:{x:30000,y:20000}};});await rerenderStable(page);
+  const onDoping=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');return state._sectionViewport;});expect(onDoping.rawMax).toBeGreaterThan(baseline.rawMax);expect(onDoping.dopingCount).toBe(1);
 });

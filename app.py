@@ -748,44 +748,54 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
                 else:
                     back_surface = max(back_surface, cut["zMax"])
 
-            candidates = [
+            covering_solids = [
                 solid
                 for solid in solids
-                if solid["side"] == payload.side
-                and _bbox_contains_point(solid["bbox"], interior)
+                if _bbox_contains_point(solid["bbox"], interior)
                 and bool(gdstk.inside([interior], solid["polygons"])[0])
             ]
-            if candidates:
-                top = (
-                    max(candidates, key=lambda solid: solid["zMax"])
-                    if payload.side == "front"
-                    else min(candidates, key=lambda solid: solid["zMin"])
+            candidates: list[dict[str, Any]] = []
+            if front_surface > back_surface + 1e-9:
+                candidates.append(
+                    {
+                        "kind": "substrate",
+                        "sourceId": "substrate",
+                        "layerId": "substrate",
+                        "surface": front_surface if payload.side == "front" else back_surface,
+                        "zMin": back_surface,
+                        "zMax": front_surface,
+                    }
                 )
-                surface = top["zMax"] if payload.side == "front" else top["zMin"]
-                kind = "solid"
-                source_id = top["id"]
-                layer_id = top["layerId"]
-                z_min, z_max = top["zMin"], top["zMax"]
-            elif front_surface > back_surface + 1e-9:
-                surface = front_surface if payload.side == "front" else back_surface
-                kind = "substrate"
-                source_id = "substrate"
-                layer_id = "substrate"
-                z_min, z_max = back_surface, front_surface
-            else:
+            for solid in covering_solids:
+                candidates.append(
+                    {
+                        "kind": "solid",
+                        "sourceId": solid["id"],
+                        "layerId": solid["layerId"],
+                        "surface": solid["zMax"] if payload.side == "front" else solid["zMin"],
+                        "zMin": solid["zMin"],
+                        "zMax": solid["zMax"],
+                    }
+                )
+            if not candidates:
                 continue
+            winner = (
+                max(candidates, key=lambda item: item["surface"])
+                if payload.side == "front"
+                else min(candidates, key=lambda item: item["surface"])
+            )
 
             geometry_id = _component_id(atom.points)
             result.append(
                 {
-                    "id": f"face-{source_id}-{geometry_id.removeprefix('component-')}",
-                    "kind": kind,
-                    "sourceId": source_id,
-                    "layerId": layer_id,
+                    "id": f"face-{winner['sourceId']}-{geometry_id.removeprefix('component-')}",
+                    "kind": winner["kind"],
+                    "sourceId": winner["sourceId"],
+                    "layerId": winner["layerId"],
                     "side": payload.side,
-                    "surface": surface,
-                    "zMin": z_min,
-                    "zMax": z_max,
+                    "surface": winner["surface"],
+                    "zMin": winner["zMin"],
+                    "zMax": winner["zMax"],
                     "polygon": points,
                     "area": float(atom.area()),
                     "geometryId": geometry_id,

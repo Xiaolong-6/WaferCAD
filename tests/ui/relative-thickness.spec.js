@@ -313,6 +313,24 @@ test('relative thickness mapping is logarithmic between layers and linear within
   expect(migration.migratedVersion).toBe(9);
 });
 
+test('v9 migration backfills baseThickness for top-level and snapshot devices', async ({ page }) => {
+  await page.goto('/?qa=playwright-snapshot-base-thickness-migration');
+  const result = await page.evaluate(async () => {
+    const { validateAndMigrateProject } = await import('/static/js/project-schema.js');
+    const wafer={shape:'circle',diameter:100000,thickness:500,material:'Si',displayUnits:{lateral:'mm',thickness:'um'},edgeFeature:'none'};
+    const device={wafer,activeFace:'front',solids:[{id:'snapshot-piece',layerId:'S',side:'front',footprint:[[0,0],[1,0],[1,1],[0,1]],zMin:0,zMax:3}],cuts:[],dopings:[],imprintedFaces:[],layerVisuals:{substrate:{name:'Substrate',baseThickness:null},S:{name:'Snapshot',baseThickness:null},preserved:{name:'Preserved',baseThickness:17}}};
+    const legacy={format:'wafercad-mvp',version:8,wafer,activeFace:'front',solids:[{id:'top-piece',layerId:'L',side:'front',footprint:[[0,0],[1,0],[1,1],[0,1]],zMin:0,zMax:2}],cuts:[],dopings:[],imprintedFaces:[],layerVisuals:{substrate:{name:'Substrate'},L:{name:'Top'},preserved:{name:'Preserved',baseThickness:19}},gds:{layers:[],transform:{offsetX:0,offsetY:0,rotationDeg:0,scale:1}},slice:null,snapshots:[{id:'snap',deviceRef:'device'}],snapshotDevices:{device},snapshotThumbnails:{},view:{}};
+    const migrated=validateAndMigrateProject(legacy);
+    return {top:migrated.layerVisuals,snapshot:migrated.snapshotDevices.device.layerVisuals};
+  });
+  expect(result.top.L.baseThickness).toBe(2);
+  expect(result.snapshot.S.baseThickness).toBe(3);
+  expect(result.top.substrate.baseThickness).toBe(500);
+  expect(result.snapshot.substrate.baseThickness).toBe(500);
+  expect(result.top.preserved.baseThickness).toBe(19);
+  expect(result.snapshot.preserved.baseThickness).toBe(17);
+});
+
 test('actual Cross Section and 3D renderers use surface-detail substrate mapping', async ({ page }) => {
   await page.goto('/?qa=playwright-renderer-substrate');
   await page.getByRole('button', { name: 'New wafer' }).click();

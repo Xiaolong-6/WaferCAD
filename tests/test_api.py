@@ -239,6 +239,65 @@ def test_surface_partition_geometry_ids_match_across_processing_sides(client):
     assert sorted(available.values()) == pytest.approx([400, 502])
 
 
+def test_surface_partition_exposure_uses_physical_outermost_material_not_origin_side(client):
+    backside_film = {
+        "id": "back-film",
+        "layerId": "back-layer",
+        "side": "back",
+        "footprint": WAFER,
+        "zMin": -502,
+        "zMax": -500,
+    }
+    intact = client.post(
+        "/api/geometry/surface-partition",
+        json={"outline": WAFER, "thickness": 500, "side": "front", "solids": [backside_film], "cuts": []},
+    )
+    through_etched = client.post(
+        "/api/geometry/surface-partition",
+        json={
+            "outline": WAFER,
+            "thickness": 500,
+            "side": "front",
+            "solids": [backside_film],
+            "cuts": [{"side": "front", "footprint": WAFER, "zMin": -500, "zMax": 0}],
+        },
+    )
+    symmetric = client.post(
+        "/api/geometry/surface-partition",
+        json={
+            "outline": WAFER,
+            "thickness": 500,
+            "side": "back",
+            "solids": [{**backside_film, "id": "front-film", "layerId": "front-layer", "side": "front", "zMin": 0, "zMax": 2}],
+            "cuts": [{"side": "back", "footprint": WAFER, "zMin": -500, "zMax": 0}],
+        },
+    )
+    assert intact.status_code == through_etched.status_code == symmetric.status_code == 200
+    assert {(atom["kind"], atom["layerId"], atom["surface"]) for atom in intact.json()["atoms"]} == {("substrate", "substrate", 0)}
+    assert {(atom["kind"], atom["layerId"], atom["surface"]) for atom in through_etched.json()["atoms"]} == {("solid", "back-layer", -500)}
+    assert {(atom["kind"], atom["layerId"], atom["surface"]) for atom in symmetric.json()["atoms"]} == {("solid", "front-layer", 0)}
+
+
+def test_surface_partition_geometry_ids_match_with_mixed_front_back_material(client):
+    payload = {
+        "outline": WAFER,
+        "thickness": 500,
+        "solids": [
+            {"id": "front-film", "layerId": "front-layer", "side": "front", "footprint": [[-50, -50], [0, -50], [0, 50], [-50, 50]], "zMin": 0, "zMax": 2},
+            {"id": "back-film", "layerId": "back-layer", "side": "back", "footprint": WAFER, "zMin": -502, "zMax": -500},
+        ],
+        "cuts": [{"side": "front", "footprint": WAFER, "zMin": -500, "zMax": 0}],
+        "masks": [WAFER],
+    }
+    front = client.post("/api/geometry/surface-partition", json={**payload, "side": "front"}).json()["atoms"]
+    back = client.post("/api/geometry/surface-partition", json={**payload, "side": "back"}).json()["atoms"]
+    front_by_geometry = {atom["geometryId"]: atom for atom in front}
+    back_by_geometry = {atom["geometryId"]: atom for atom in back}
+    assert front_by_geometry.keys() == back_by_geometry.keys()
+    assert {atom["layerId"] for atom in front} == {"front-layer", "back-layer"}
+    assert {atom["layerId"] for atom in back} == {"back-layer"}
+
+
 def test_surface_partition_exposes_only_uncovered_lower_film(client):
     response = client.post(
         "/api/geometry/surface-partition",
