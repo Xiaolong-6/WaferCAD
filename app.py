@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import math
 import hashlib
+import multiprocessing
 import tempfile
+import threading
+import time
+import uuid
 from pathlib import Path
+from queue import Empty
 from typing import Any, Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -14,6 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
 THREE = ROOT / "node_modules" / "three"
+USER_PROJECTS = ROOT / "user_projects"
 
 app = FastAPI(title="WaferCAD MVP", version="0.1.0")
 SUBSTRATE_ATOM_LIMIT = 5000
@@ -62,6 +68,17 @@ def health() -> dict[str, Any]:
     except Exception:
         gds = False
     return {"ok": True, "gdstk": gds}
+
+
+@app.get("/api/projects/{name}")
+def local_project(name: str) -> FileResponse:
+    """Open an explicitly named local WaferCAD project without exposing arbitrary files."""
+    if Path(name).name != name or not name.lower().endswith(".wafercad.json"):
+        raise HTTPException(400, "Invalid local project name")
+    project = USER_PROJECTS / name
+    if not project.is_file():
+        raise HTTPException(404, "Local project not found")
+    return FileResponse(project, media_type="application/json", filename=name)
 
 
 def _bbox(points: list[list[float]]) -> list[float]:
@@ -176,6 +193,23 @@ class SurfacePartitionRequest(GeometryRequest):
 
 class HierarchyInspectRequest(BaseModel):
     filename: str | None = None
+
+
+GeometryJobOperation = Literal[
+    "fill-holes",
+    "intersection",
+    "mask-regions",
+    "mask-compose",
+    "isotropic-offset",
+    "split-by-mask",
+    "surface-partition",
+    "substrate-thickness",
+]
+
+
+class GeometryJobRequest(BaseModel):
+    operation: GeometryJobOperation
+    payload: dict[str, Any]
 
 
 def _remove_boolean_hole_bridges(points: Any, precision: float = 1e-6) -> list[list[float]]:
@@ -559,16 +593,9 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
             if masks
             else [wafer]
         )
-        solids: list[dict[str, Any]] = []
-        cuts: list[dict[str, Any]] = []
-        boundaries: dict[str, dict[str, Any]] = {}
-
-        def add_boundary(polygon: Any, footprint: list[list[float]]) -> None:
-            component_id = _component_id(polygon.points)
-            boundaries.setdefault(
-                component_id,
-                {"id": component_id, "polygon": polygon, "bbox": _bbox(footprint)},
-            )
+        solid_groups: dict[tuple[Any, ...], dict[str, Any]] = {}
+        cut_groups: dict[tuple[Any, ...], dict[str, Any]] = {}
+        input_boundary_count = 0
 
         for raw in payload.solids:
             footprint = raw.get("footprint")
@@ -577,17 +604,27 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
             z_min, z_max = float(raw.get("zMin", 0)), float(raw.get("zMax", 0))
             if not all(math.isfinite(value) for value in (z_min, z_max)) or z_max <= z_min:
                 continue
-            item = {
-                "id": str(raw.get("id") or ""),
-                "layerId": raw.get("layerId"),
-                "side": "back" if raw.get("side") == "back" else "front",
-                "zMin": z_min,
-                "zMax": z_max,
-                "polygon": gdstk.Polygon(footprint),
-                "bbox": _bbox(footprint),
-            }
-            solids.append(item)
-            add_boundary(item["polygon"], footprint)
+            side = "back" if raw.get("side") == "back" else "front"
+            layer_id = raw.get("layerId")
+            key = (side, str(layer_id), z_min, z_max)
+            group = solid_groups.setdefault(
+                key,
+                {
+                    "id": f"layer:{layer_id}",
+                    "layerId": layer_id,
+                    "side": side,
+                    "zMin": z_min,
+                    "zMax": z_max,
+                    "polygons": [],
+                    "bbox": None,
+                    "sourceIds": [],
+                },
+            )
+            polygon = gdstk.Polygon(footprint)
+            group["polygons"].append(polygon)
+            group["bbox"] = _merge_bbox(group["bbox"], _bbox(footprint))
+            group["sourceIds"].append(str(raw.get("id") or ""))
+            input_boundary_count += 1
 
         for raw in payload.cuts:
             footprint = raw.get("footprint")
@@ -596,35 +633,94 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
             z_min, z_max = float(raw.get("zMin", -thickness)), float(raw.get("zMax", 0))
             if not all(math.isfinite(value) for value in (z_min, z_max)) or z_max <= z_min:
                 continue
-            item = {
-                "side": "back" if raw.get("side") == "back" else "front",
-                "zMin": max(-thickness, z_min),
-                "zMax": min(0, z_max),
-                "polygon": gdstk.Polygon(footprint),
-                "bbox": _bbox(footprint),
-            }
-            cuts.append(item)
-            add_boundary(item["polygon"], footprint)
+            side = "back" if raw.get("side") == "back" else "front"
+            z_min, z_max = max(-thickness, z_min), min(0, z_max)
+            key = (side, z_min, z_max)
+            group = cut_groups.setdefault(
+                key,
+                {"side": side, "zMin": z_min, "zMax": z_max, "polygons": [], "bbox": None},
+            )
+            group["polygons"].append(gdstk.Polygon(footprint))
+            group["bbox"] = _merge_bbox(group["bbox"], _bbox(footprint))
+            input_boundary_count += 1
+
+        solids = list(solid_groups.values())
+        for group in solids:
+            if len(group["sourceIds"]) == 1:
+                group["id"] = group["sourceIds"][0]
+        cuts = list(cut_groups.values())
+        boundaries: dict[tuple[str, ...], dict[str, Any]] = {}
+        unique_component_ids: set[str] = set()
+        for group in solids + cuts:
+            components = [
+                {
+                    "id": _component_id(polygon.points),
+                    "polygon": polygon,
+                    "bbox": _bbox(polygon.points),
+                }
+                for polygon in group["polygons"]
+            ]
+            component_ids = {component["id"] for component in components}
+            unique_component_ids.update(component_ids)
+            geometry_key = tuple(sorted(component_ids))
+            boundary = boundaries.get(geometry_key)
+            if boundary is None:
+                boundaries[geometry_key] = {
+                    "bbox": group["bbox"],
+                    "component_ids": component_ids,
+                    "components": components,
+                }
+            else:
+                boundary["bbox"] = _merge_bbox(boundary["bbox"], group["bbox"])
 
         partition_complete = True
         boolean_split_count = 0
         bbox_skip_count = 0
-        duplicate_boundary_count = len(solids) + len(cuts) - len(boundaries)
-        for boundary in boundaries.values():
+        duplicate_boundary_count = input_boundary_count - len(unique_component_ids)
+        for boundary_index, boundary in enumerate(boundaries.values()):
+            if boundary_index == 0:
+                # `atoms` is already the physical union of the operation mask.
+                # Splitting that union against the first material group in one
+                # call avoids repeating the same large multi-polygon Boolean
+                # once per disconnected mask island.
+                boundary_polygons = [component["polygon"] for component in boundary["components"]]
+                inside = gdstk.boolean(atoms, boundary_polygons, "and", precision=1e-6)
+                outside = gdstk.boolean(atoms, boundary_polygons, "not", precision=1e-6)
+                boolean_split_count += 1
+                atoms = [
+                    atom
+                    for atom in [*inside, *outside]
+                    if len(atom.points) >= 3 and atom.area() > 1e-9
+                ]
+                if len(atoms) > SURFACE_ATOM_LIMIT:
+                    partition_complete = False
+                    break
+                continue
             next_atoms: list[Any] = []
             for atom in atoms:
                 atom_points = atom.points
-                if not _bbox_overlaps(_bbox(atom_points), boundary["bbox"]):
+                atom_bbox = _bbox(atom_points)
+                if not _bbox_overlaps(atom_bbox, boundary["bbox"]):
                     next_atoms.append(atom)
                     bbox_skip_count += 1
                     continue
-                if _component_id(atom_points) == boundary["id"]:
+                relevant = [
+                    component
+                    for component in boundary["components"]
+                    if _bbox_overlaps(atom_bbox, component["bbox"])
+                ]
+                if not relevant:
+                    next_atoms.append(atom)
+                    bbox_skip_count += 1
+                    continue
+                if len(relevant) == 1 and _component_id(atom_points) == relevant[0]["id"]:
                     next_atoms.append(atom)
                     bbox_skip_count += 1
                     continue
                 boolean_split_count += 1
-                next_atoms.extend(gdstk.boolean(atom, boundary["polygon"], "and", precision=1e-6))
-                next_atoms.extend(gdstk.boolean(atom, boundary["polygon"], "not", precision=1e-6))
+                relevant_polygons = [component["polygon"] for component in relevant]
+                next_atoms.extend(gdstk.boolean(atom, relevant_polygons, "and", precision=1e-6))
+                next_atoms.extend(gdstk.boolean(atom, relevant_polygons, "not", precision=1e-6))
             if len(next_atoms) > SURFACE_ATOM_LIMIT:
                 partition_complete = False
                 break
@@ -645,7 +741,7 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
             for cut in cuts:
                 if not _bbox_contains_point(cut["bbox"], interior):
                     continue
-                if not bool(gdstk.inside([interior], cut["polygon"])[0]):
+                if not bool(gdstk.inside([interior], cut["polygons"])[0]):
                     continue
                 if cut["side"] == "front":
                     front_surface = min(front_surface, cut["zMin"])
@@ -657,7 +753,7 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
                 for solid in solids
                 if solid["side"] == payload.side
                 and _bbox_contains_point(solid["bbox"], interior)
-                and bool(gdstk.inside([interior], solid["polygon"])[0])
+                and bool(gdstk.inside([interior], solid["polygons"])[0])
             ]
             if candidates:
                 top = (
@@ -700,9 +796,10 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
             "exact": True,
             "atom_limit": SURFACE_ATOM_LIMIT,
             "stats": {
-                "input_boundaries": len(solids) + len(cuts),
-                "unique_boundaries": len(boundaries),
+                "input_boundaries": input_boundary_count,
+                "unique_boundaries": len(unique_component_ids),
                 "duplicate_boundaries": duplicate_boundary_count,
+                "boundary_groups": len(boundaries),
                 "boolean_splits": boolean_split_count,
                 "bbox_skips": bbox_skip_count,
             },
@@ -807,6 +904,133 @@ def substrate_thickness(payload: SubstrateThicknessRequest) -> dict[str, Any]:
         raise
     except Exception as exc:
         raise HTTPException(400, f"Unable to compute thickness: {exc}") from exc
+
+
+def _geometry_job_handler(operation: GeometryJobOperation) -> tuple[type[BaseModel], Any]:
+    handlers: dict[str, tuple[type[BaseModel], Any]] = {
+        "fill-holes": (PolygonSubjectsRequest, fill_polygon_holes),
+        "intersection": (PolygonIntersectionRequest, intersect_polygons),
+        "mask-regions": (MaskRegionsRequest, mask_regions),
+        "mask-compose": (MaskComposeRequest, compose_mask),
+        "isotropic-offset": (PolygonOffsetRequest, isotropic_offset),
+        "split-by-mask": (PolygonSplitRequest, split_by_mask),
+        "surface-partition": (SurfacePartitionRequest, surface_partition),
+        "substrate-thickness": (SubstrateThicknessRequest, substrate_thickness),
+    }
+    return handlers[operation]
+
+
+def _run_geometry_job(operation: GeometryJobOperation, payload: dict[str, Any], output: Any) -> None:
+    """Run one geometry request in a process that the server can terminate."""
+    try:
+        model, handler = _geometry_job_handler(operation)
+        result = handler(model.model_validate(payload))
+        output.put({"status": "completed", "result": result})
+    except HTTPException as exc:
+        output.put({"status": "failed", "error": str(exc.detail), "status_code": exc.status_code})
+    except BaseException as exc:
+        output.put({"status": "failed", "error": str(exc), "status_code": 500})
+
+
+_GEOMETRY_JOBS: dict[str, dict[str, Any]] = {}
+_GEOMETRY_JOBS_LOCK = threading.Lock()
+_GEOMETRY_JOB_TTL_SECONDS = 15 * 60
+
+
+def _refresh_geometry_job(job: dict[str, Any]) -> None:
+    if job["status"] != "running":
+        return
+    try:
+        message = job["queue"].get_nowait()
+    except Empty:
+        process = job["process"]
+        if not process.is_alive() and process.exitcode not in (None, 0):
+            job.update(status="failed", error=f"Geometry worker exited with code {process.exitcode}.")
+            job["finished_at"] = time.monotonic()
+        return
+    job.update(message)
+    job["finished_at"] = time.monotonic()
+    job["process"].join(timeout=0.2)
+
+
+def _geometry_job_response(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
+    response = {"id": job_id, "status": job["status"], "operation": job["operation"]}
+    if "result" in job:
+        response["result"] = job["result"]
+    if "error" in job:
+        response["error"] = job["error"]
+    return response
+
+
+def _prune_geometry_jobs() -> None:
+    now = time.monotonic()
+    expired = [
+        job_id
+        for job_id, job in _GEOMETRY_JOBS.items()
+        if job["status"] != "running"
+        and now - job.get("finished_at", job["created_at"]) > _GEOMETRY_JOB_TTL_SECONDS
+    ]
+    for job_id in expired:
+        _GEOMETRY_JOBS.pop(job_id, None)
+
+
+@app.post("/api/geometry/jobs", status_code=202)
+def create_geometry_job(request: GeometryJobRequest) -> dict[str, Any]:
+    model, _ = _geometry_job_handler(request.operation)
+    validated_payload = model.model_validate(request.payload).model_dump()
+    context = multiprocessing.get_context("spawn")
+    output = context.Queue(maxsize=1)
+    job_id = uuid.uuid4().hex
+    process = context.Process(
+        target=_run_geometry_job,
+        args=(request.operation, validated_payload, output),
+        name=f"wafercad-geometry-{job_id[:8]}",
+        daemon=True,
+    )
+    job = {
+        "operation": request.operation,
+        "status": "running",
+        "process": process,
+        "queue": output,
+        "created_at": time.monotonic(),
+    }
+    with _GEOMETRY_JOBS_LOCK:
+        _prune_geometry_jobs()
+        _GEOMETRY_JOBS[job_id] = job
+    try:
+        process.start()
+    except Exception:
+        with _GEOMETRY_JOBS_LOCK:
+            _GEOMETRY_JOBS.pop(job_id, None)
+        raise
+    return _geometry_job_response(job_id, job)
+
+
+@app.get("/api/geometry/jobs/{job_id}")
+def get_geometry_job(job_id: str) -> dict[str, Any]:
+    with _GEOMETRY_JOBS_LOCK:
+        job = _GEOMETRY_JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(404, "Geometry job not found")
+        _refresh_geometry_job(job)
+        return _geometry_job_response(job_id, job)
+
+
+@app.delete("/api/geometry/jobs/{job_id}")
+def cancel_geometry_job(job_id: str) -> dict[str, Any]:
+    with _GEOMETRY_JOBS_LOCK:
+        job = _GEOMETRY_JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(404, "Geometry job not found")
+        _refresh_geometry_job(job)
+        if job["status"] == "running":
+            process = job["process"]
+            if process.is_alive():
+                process.terminate()
+                process.join(timeout=2)
+            job.update(status="cancelled", error="Geometry operation stopped by user.")
+            job["finished_at"] = time.monotonic()
+        return _geometry_job_response(job_id, job)
 
 
 @app.post("/api/gds/inspect")

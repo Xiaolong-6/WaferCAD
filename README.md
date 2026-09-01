@@ -16,13 +16,14 @@ This is intentionally **not** a TCAD simulator and **not** yet a process-flow en
 - Clip every push/pull/conformal/isotropic operation to the exact wafer outline (including flat/notch and non-convex customs).
 - Flip between front and back processing faces (`Face: Front/Back` in the Geometry panel); backside Pull grows below `z=-thickness` and Push etches upward.
 - Geometry operation panel order: `Distance → Mode → Material → Face → Selection → Apply/Undo` at the bottom. `Selection` defaults to `Full faces`; `Patterns` resolves all selected layers/components as one physical exposure field before Pull, Push, Conformal, Etch, or Doping.
+- `Apply operation` reports the current geometry stage and elapsed time. During cancellable Boolean work it becomes a red `Stop · Ns` control; Stop terminates the isolated geometry process and never commits an unfinished result. Equal-height material islands are grouped and spatially pruned before exact surface partitioning to keep large masks responsive.
 - Operations:
   - **Pull up**: extruded solid with material.
   - **Push down / Isotropic etch**: layer-by-layer consumption of the stack in depth order via `split-by-mask`, then substrate cut; fully consumed layers and their dopings are removed.
   - **Conformal grow / Isotropic etch**: round `gdstk.offset` plus same Z distance (2.5D isotropic approximation).
   - **Planar top-surface partition**: every process mask is split by all current solid and cut footprints before Z assignment. Pull, Push, isotropic etch, exposed-face selection and doping therefore operate on one material and one surface height per atomic XY region.
 - Doping, Undo (50 steps), whole-face fallback, and per-layer/global Z display (true `×1` is isotropic, `Z display` is exaggeration) remain.
-- Linked views: interactive 3D (with `Show axes`), Top (wheel zoom + drag pan on empty, `Fit wafer/layout`), and live `A–B` section (`×1` is true scale, now with `wheel zoom / drag pan / double-click reset` via `translate/scale` on `sectionContent` group, hint as overlay, tight `yMin/yMax` with 4% pad). Top always projects the current model's visible solids, substrate cuts and doping beneath any layout/selection overlays.
+- Linked views: interactive 3D (with `Show axes`), Top (wheel zoom + drag pan on empty, `Fit wafer/layout`), and live `A–B` section (wheel zoom / drag pan / double-click reset). Top `Mask veil` is literal linear opacity: `0%` hides the mask completely and `100%` makes the veil and committed projection opaque. Z display can use `Linear` physical spacing or `Log detail`, a continuous, monotonic, two-surface-symmetric mapping that expands nanometre surface features while compressing the substrate bulk. Cross section can also create a labeled display break by retaining independent Front/Back thicknesses or specifying the exact physical Z interval. Both display tools leave saved geometry, thicknesses, labels, and operations in physical coordinates.
 - `Figure legend` is ordered as a physical stack (`Front top → substrate → Back bottom`), labels material layers as Front/Back and Top/Bottom, shows per-layer thickness (exact planar partition for substrate, `atoms` count), and allows renaming/color/Z-scale. It exposes a guarded delete action only for the current physical Front top or Back bottom material layer; substrate and interior layers cannot be deleted, and deletion participates in Undo.
 - `Snapshots` as a Google-Maps-style horizontal strip below `3D`: `+ Snapshot` (floating) opens an in-app naming dialog and captures the current 3D perspective (`camera position/target` + thumb), new cards appear on the right, hover `×` to delete, click to restore (auto-saves the previous snapshot covering the current archive), and `New wafer` offers snapshot-save. Snapshots store camera and are part of project JSON.
 - **Persistence:** every mutation flows through the revisioned `commitState()` transaction. Complete structured state and the original GDS/OAS `Blob` are queued to IndexedDB; Web Storage contains only a tiny recovery marker/timestamp. Failures are visible in the status bar and emit `wafercad:persistence-error` instead of being swallowed. Refresh remains a clean reset with explicit `Restore / Reset`; legacy Web Storage sessions migrate once into IndexedDB.
@@ -82,6 +83,25 @@ Project JSON v8 is validated before state mutation. Versions 1–7 migrate to th
 
 The reproducible requirement-to-test map is in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
+## Boron-implanted black-silicon photodiode example
+
+`tools/build_bsi_photodiode_project.py` converts the five-layer detector mask into a reproducible WaferCAD project following the geometry reported in ACS Photonics 10 (2023) 1735–1743. The black-silicon nanostructure is intentionally represented as a shallow planar push-down on layer `1/0`; the generated project records this and the assumed rear-junction depth in `processModel.assumptions`.
+
+```powershell
+.venv\Scripts\python.exe tools\build_bsi_photodiode_project.py `
+  "C:\path\to\B-doped_detectors_masks_final_flattened.OAS" `
+  "user_projects\boron-implanted-bsi-photodiode.wafercad.json" `
+  --bsi-depth 0.5
+```
+
+The output contains six process snapshots, retains the mask layer aliases, and opens with the substrate bulk Z interval skipped in Cross section. `user_projects/` stays local and is intentionally ignored by Git.
+
+With the local service running, open the generated result directly—no file picker required:
+
+```text
+http://127.0.0.1:8765/?project=boron-implanted-bsi-photodiode.wafercad.json
+```
+
 ## Basic workflow
 
 1. Create/open a wafer (for circles optionally add a SEMI-sized `Main flat` or `Notch` at `-Y`) — use the floating `New wafer` in 3D.
@@ -89,7 +109,7 @@ The reproducible requirement-to-test map is in [docs/VERIFICATION.md](docs/VERIF
 3. Use the parallel `Mask` and `Wafer Projection` panels to set `Scale`/`X/Y`/`Rotation` and verify the substrate-clipped exposure. Their pan and zoom stay synchronized, and all plan views include a live scale bar. Click `Commit projection to Main` when the purple UV area is correct.
 4. In `Main` choose `Face: Front/Back`, then `Full faces` (click blue top regions) or `Patterns` (layers checked in dock).
 5. Enter a distance and choose `Pull`, `Push`, `Conformal grow`, `Isotropic etch`, or `Doping` (`Face` + `Selection` decide the mask; empty selection uses the whole face).
-6. Inspect `3D` (true `×1`), `Top` (with `Mask veil` opacity) and `A–B` section (wheel/drag/double-click).
+6. Inspect `3D` (true `×1`), `Top` (with `Mask veil` opacity) and `A–B` section (wheel/drag/double-click). For a thick substrate, enable `Skip Z` and enter the Front/Back thickness to keep; switch to `Z coordinates` when an exact hidden interval is preferred.
 7. Click `+ Snapshot` (floating) to capture the current `3D` perspective; find it in the strip below `3D`, switch by clicking cards (previous state is auto-saved).
 8. New wafer prompts to snapshot-save the current state first. Refresh shows an empty project but offers `Restore` for the previous session.
 
@@ -102,7 +122,9 @@ This is an architectural/interaction MVP, not a finished CAD kernel.
 - Curved sidewalls and true 3D conformal shells remain outside the 2.5D model, but stacked planar topography is partitioned exactly in XY before every operation; no centroid surface-height estimate is used.
 - The composer is a binary geometric projection model; diffraction, partial coherence, focus, aerial-image thresholds, resist chemistry, and process bias are not yet simulated.
 - No automatic process semantics (oxidation, deposition, lithography, etc.) yet.
-- At `×1` display Z is true isotropic; higher values are exaggeration for visibility.
+- With `Linear` mapping, `×1` display Z is true isotropic; higher values are exaggeration for visibility. `Log detail` is intentionally nonlinear.
+- `Log detail` uses a 50 nm knee and mirrors the transform about the two substrate surfaces, so front- and backside layers receive equal visual treatment while stored Z remains unchanged.
+- Cross-section `Skip Z` is a schematic display break only. It does not remove substrate, alter physical coordinates, or affect operations.
 - Per-layer and global Z scaling are visualization settings only; they never change stored physical thicknesses.
 - Large layout files are capped at 20,000 flattened polygons; Mask view can still be heavy when many optical components are fully zoomed out.
 - Pattern Editor's `Lasso` is a rectangular `Shift+drag` in Mask view; saving creates a virtual `pattern:*` layer from complete optical components rather than clipping fragments to the lasso rectangle.

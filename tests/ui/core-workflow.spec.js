@@ -21,6 +21,8 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('#statusText')).toHaveText('New circle wafer created.');
   await expect(page.locator('#figureLegend')).toContainText('Thickness 500 µm');
+  await expect(page.locator('.slice-row')).toHaveCount(2);
+  await expect(page.locator('.top-tool-row')).toBeVisible();
 
   const gdsFixture = path.resolve('tests/fixtures/synthetic_two_layer.gds');
   await page.locator('#gdsInput').setInputFiles(gdsFixture);
@@ -64,6 +66,17 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.locator('#patApplyBtn').click();
   await expect(page.locator('#selectionMode')).toHaveValue('imprinted');
   await expect(page.locator('#topSvg [data-committed-projection]')).toHaveCount(1);
+  await page.locator('#maskOpacity').fill('0');
+  await page.locator('#maskOpacity').dispatchEvent('input');
+  await expect(page.locator('#maskOpacityValue')).toHaveText('0%');
+  await expect(page.locator('#topSvg [data-mask-veil]')).toHaveCount(0);
+  await expect(page.locator('#topSvg [data-committed-projection]')).toHaveCount(0);
+  await page.locator('#maskOpacity').fill('100');
+  await page.locator('#maskOpacity').dispatchEvent('input');
+  await expect(page.locator('#topSvg [data-mask-veil]')).toHaveAttribute('fill-opacity','1');
+  await expect(page.locator('#topSvg [data-committed-projection]')).toHaveAttribute('fill-opacity','1');
+  await page.locator('#maskOpacity').fill('35');
+  await page.locator('#maskOpacity').dispatchEvent('input');
   await expect(page.locator('#topSvg [data-layer]')).toHaveCount(0);
   await page.locator('#materialInput').fill('Automated oxide');
   await page.locator('#distanceInput').fill('100');
@@ -76,7 +89,7 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   await page.locator('#sliceAy').fill('0.2');
   await page.locator('#sliceBy').fill('0.2');
   await page.getByRole('button', { name: 'Apply A–B' }).click();
-  await expect(page.locator('#sectionSvg rect')).toHaveCount(2);
+  await expect(page.locator('#sectionSvg [data-layer-id]')).toHaveCount(2);
 
   await page.locator('#pushMode').selectOption('down');
   await page.locator('#distanceInput').fill('50');
@@ -99,6 +112,7 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   expect(download.suggestedFilename()).toBe('wafercad-project.json');
   const savedProject=JSON.parse(await fs.readFile(await download.path(),'utf8'));
   expect(savedProject.version).toBe(8);
+  expect(savedProject.view.zMapping).toBe('linear');
   expect(savedProject.snapshots[0].device).toBeUndefined();
   expect(savedProject.snapshots[0].deviceRef).toBeTruthy();
   expect(savedProject.snapshotDevices[savedProject.snapshots[0].deviceRef]).toBeTruthy();
@@ -227,10 +241,10 @@ test('slow layout import still notifies Pattern Editor after completion', async 
 });
 
 
-test('Apply operation disables while processing and rejects duplicate submission', async ({ page }) => {
-  let intersectionRequests=0;
-  await page.route('**/api/geometry/intersection', async route => {
-    intersectionRequests++;
+test('Apply operation becomes Stop and terminates its geometry worker', async ({ page }) => {
+  let geometryJobs=0;
+  page.on('request', request => {if(request.method()==='POST'&&request.url().endsWith('/api/geometry/jobs'))geometryJobs++;});
+  await page.route('**/api/geometry/jobs', async route => {
     await new Promise(resolve => setTimeout(resolve, 650));
     await route.continue();
   });
@@ -239,14 +253,64 @@ test('Apply operation disables while processing and rejects duplicate submission
   await page.getByRole('button', { name: 'Create' }).click();
   const apply=page.locator('#applyPushPullBtn');
   await apply.click();
-  await expect(apply).toBeDisabled();
-  await expect(apply).toHaveText(/Processing… \d+s/);
-  await expect(page.locator('#statusText')).toContainText('Preparing the whole front face');
-  await apply.dispatchEvent('click');
-  await expect.poll(() => intersectionRequests).toBe(1);
+  await expect(apply).toBeEnabled();
+  await expect(apply).toHaveText(/Stop · \d+s/);
+  await expect.poll(() => geometryJobs).toBe(1);
+  await apply.click();
+  await expect(page.locator('#statusText')).toContainText('Operation stopped');
   await expect(apply).toBeEnabled();
   await expect(apply).toHaveText('Apply operation');
-  expect(intersectionRequests).toBe(1);
+  await expect(page.locator('#modelStats')).toContainText('0 solids');
+  expect(geometryJobs).toBe(1);
+});
+
+test('cross section can compress a persisted substrate Z interval', async ({ page }) => {
+  await page.goto('/?qa=playwright-section-z-break');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  const enabled=page.locator('#sectionBreakEnabled');
+  await expect(enabled).toBeChecked();
+  await expect(page.locator('#sectionBreakMode')).toHaveValue('surfaces');
+  await expect(page.locator('#sectionBreakFrontKeep')).toHaveValue('5');
+  await expect(page.locator('#sectionBreakBackKeep')).toHaveValue('5');
+  await expect(page.locator('#sectionBreakFrom')).toHaveValue('-495');
+  await expect(page.locator('#sectionBreakTo')).toHaveValue('-5');
+  await expect(page.locator('#sectionSvg [data-section-break="true"]')).toHaveCount(1);
+  await expect(page.locator('#sectionMeta')).toContainText('Z break 490.0 µm');
+  await page.locator('#zMapping').selectOption('log');
+  await expect(page.locator('#sectionMeta')).toContainText('log-detail Z');
+  const logMapping=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const {displayZ}=await import('/static/js/layer-model.js');const front=Math.abs(displayZ(-.05)-displayZ(0)),back=Math.abs(displayZ(-500.05)-displayZ(-500)),bulk=Math.abs(displayZ(-500)-displayZ(0));return {front,back,ratio:bulk/front,mapping:state.zMapping};});
+  expect(logMapping.mapping).toBe('log');
+  expect(logMapping.ratio).toBeLessThan(100);
+  expect(logMapping.back/logMapping.front).toBeCloseTo(1,5);
+  await page.locator('#zMapping').selectOption('linear');
+  await expect(page.locator('#sectionMeta')).toContainText('linear Z');
+  await page.locator('#sectionBreakFrontKeep').fill('10');
+  await page.locator('#sectionBreakFrontKeep').press('Enter');
+  await page.locator('#sectionBreakBackKeep').fill('20');
+  await page.locator('#sectionBreakBackKeep').press('Enter');
+  await expect(page.locator('#sectionBreakFrom')).toHaveValue('-480');
+  await expect(page.locator('#sectionBreakTo')).toHaveValue('-10');
+  await expect(page.locator('#sectionMeta')).toContainText('Z break 470.0 µm');
+  await enabled.uncheck();
+  await expect(page.locator('#sectionBreakControls')).toBeHidden();
+  await expect(page.locator('#sectionSvg [data-section-break="true"]')).toHaveCount(0);
+  await enabled.check();
+  await page.locator('#sectionBreakMode').selectOption('coordinates');
+  await expect(page.locator('#sectionBreakSurfaceFields')).toBeHidden();
+  await expect(page.locator('#sectionBreakCoordinateFields')).toBeVisible();
+  await page.locator('#sectionBreakFrom').fill('-400');
+  await page.locator('#sectionBreakFrom').press('Enter');
+  await page.locator('#sectionBreakTo').fill('-20');
+  await page.locator('#sectionBreakTo').press('Enter');
+  await expect(page.locator('#sectionSvg [data-section-break="true"]')).toHaveCount(1);
+  await expect(page.locator('#sectionSvg')).toContainText('Z -400 … -20 µm hidden');
+  await expect.poll(() => page.evaluate(async () => {
+    const request=indexedDB.open('wafercad-local',1);
+    const db=await new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    const value=await new Promise((resolve,reject)=>{const tx=db.transaction('records','readonly'),get=tx.objectStore('records').get('state');get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);});
+    db.close();return value?.sectionBreak;
+  })).toEqual({enabled:true,mode:'coordinates',frontKeep:20,backKeep:100,from:-400,to:-20});
 });
 
 test('Pattern Editor reuses a current preview and releases hidden SVG geometry', async ({ page }) => {

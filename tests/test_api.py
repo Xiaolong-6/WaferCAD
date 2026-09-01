@@ -25,6 +25,17 @@ def test_health_and_static_assets(client):
     assert len(three.content) > 500_000
 
 
+def test_named_local_project_route_is_scoped(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(app_module, "USER_PROJECTS", tmp_path)
+    project = tmp_path / "example.wafercad.json"
+    project.write_text('{"format":"wafercad-mvp"}', encoding="utf-8")
+    response = client.get("/api/projects/example.wafercad.json")
+    assert response.status_code == 200
+    assert response.json() == {"format": "wafercad-mvp"}
+    assert client.get("/api/projects/example.json").status_code == 400
+    assert client.get("/api/projects/missing.wafercad.json").status_code == 404
+
+
 def test_polygon_intersection_clips_to_wafer(client):
     response = client.post(
         "/api/geometry/intersection",
@@ -275,8 +286,9 @@ def test_surface_partition_prunes_disjoint_and_duplicate_boundaries(client):
     assert result["stats"]["input_boundaries"] == 40
     assert result["stats"]["unique_boundaries"] == 20
     assert result["stats"]["duplicate_boundaries"] == 20
-    assert result["stats"]["boolean_splits"] == 0
-    assert result["stats"]["bbox_skips"] == 400
+    assert result["stats"]["boundary_groups"] == 1
+    assert result["stats"]["boolean_splits"] == 1
+    assert result["stats"]["bbox_skips"] == 0
 
 
 def test_exact_substrate_thickness_with_overlapping_cuts(client):

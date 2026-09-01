@@ -69,33 +69,39 @@
             <span><button id="fitWaferBtn" class="small">Fit wafer</button><button id="fitLayoutBtn" class="small">Fit layout</button></span>
           </div>
           <svg id="topSvg" viewBox="0 0 600 420" aria-label="Top view"></svg>
-          <div class="top-view-controls">
+          <div class="top-view-controls view-control-panel">
             <div class="slice-editor">
-              <strong>A</strong><label>X<input id="sliceAx" type="number" step="any" /></label><label>Y<input id="sliceAy" type="number" step="any" /></label>
-              <strong>B</strong><label>X<input id="sliceBx" type="number" step="any" /></label><label>Y<input id="sliceBy" type="number" step="any" /></label>
-              <select id="sliceCoordinateUnit" aria-label="Slice coordinate unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select>
-              <button id="applySliceCoordinatesBtn" class="small">Apply A–B</button>
+              <div class="slice-row"><strong>A</strong><label><span>X</span><input id="sliceAx" type="number" step="any" /></label><label><span>Y</span><input id="sliceAy" type="number" step="any" /></label></div>
+              <div class="slice-row"><strong>B</strong><label><span>X</span><input id="sliceBx" type="number" step="any" /></label><label><span>Y</span><input id="sliceBy" type="number" step="any" /></label></div>
             </div>
-            <div class="mask-opacity-control">
-              <label>Mask veil <input id="maskOpacity" type="range" min="0" max="100" value="35" /></label>
-              <output id="maskOpacityValue">35%</output>
+            <div class="top-tool-row">
+              <div class="slice-actions"><select id="sliceCoordinateUnit" aria-label="Slice coordinate unit"><option value="nm">nm</option><option value="um">µm</option><option value="mm" selected>mm</option><option value="cm">cm</option></select><button id="applySliceCoordinatesBtn" class="small">Apply A–B</button></div>
+              <div class="mask-opacity-control"><span>Mask</span><input id="maskOpacity" type="range" min="0" max="100" value="35" aria-label="Mask veil opacity" /><output id="maskOpacityValue">35%</output></div>
             </div>
-            <div class="hint">Left-drag empty space to pan · wheel to zoom · double-click to fit · drag A/B · click to select.</div>
+            <div class="view-nav-hint">Drag to pan · Wheel to zoom · Double-click to fit · Drag A/B</div>
             <div id="viewportCullInfo" class="hint"></div>
           </div>
         </section>
         <section class="cross-section-panel">
-          <div class="view-title"><span>Cross section A–B</span><span id="sectionMeta" class="muted"></span></div>
-          <div class="cross-section-body" style="position:relative">
-            <div style="position:absolute;left:56px;top:6px;z-index:2;background:rgba(255,255,255,.92);padding:2px 6px;border-radius:4px;font-size:10px;color:#6b7785;pointer-events:none">Left-drag to pan · wheel to zoom · double-click to reset</div>
-            <div class="z-display-control" title="Scale the displayed height of the substrate and every layer">
-              <span>Z display</span>
-              <input id="zExag" type="range" min="0.1" max="200" value="8" step="0.1" orient="vertical" aria-label="Global Z display scale" />
-              <div class="z-number-row">
-                <span class="z-prefix">×</span><input id="zExagNumber" type="number" min="0.1" max="1000" step="0.1" value="8" aria-label="Z display value" />
-              </div>
+          <div class="view-title section-titlebar">
+            <div class="section-heading"><span>Cross section A–B</span><span id="sectionMeta" class="muted"></span></div>
+            <label class="section-break-toggle" title="Compress the hidden substrate bulk without changing physical geometry"><input id="sectionBreakEnabled" type="checkbox" /><span>Break substrate</span></label>
+          </div>
+          <div class="section-toolbar view-control-panel">
+            <div id="sectionBreakControls" class="section-break-controls hidden">
+              <select id="sectionBreakMode" aria-label="Z skip input mode"><option value="surfaces">Keep surfaces</option><option value="coordinates">Z coordinates</option></select>
+              <span id="sectionBreakSurfaceFields" class="section-break-fields"><label>Front <input id="sectionBreakFrontKeep" type="number" min="0" step="any" aria-label="Front surface thickness to keep" /></label><label>Back <input id="sectionBreakBackKeep" type="number" min="0" step="any" aria-label="Back surface thickness to keep" /></label><span>µm</span></span>
+              <span id="sectionBreakCoordinateFields" class="section-break-fields hidden"><label>From <input id="sectionBreakFrom" type="number" step="any" aria-label="Z skip start" /></label><label>To <input id="sectionBreakTo" type="number" step="any" aria-label="Z skip end" /></label><span>µm</span></span>
+              <button id="sectionBreakAuto" class="small" type="button" title="Keep 5 µm at each substrate surface">Reset</button>
+            </div>
+            <div class="z-display-inline" title="Scale displayed Z only; physical thickness is unchanged">
+              <span>Z</span><select id="zMapping" aria-label="Z coordinate mapping"><option value="linear">Linear</option><option value="log">Log detail</option></select><input id="zExag" type="range" min="0.1" max="200" value="8" step="0.1" aria-label="Global Z display scale" />
+              <div class="z-number-row"><span class="z-prefix">×</span><input id="zExagNumber" type="number" min="0.1" max="1000" step="0.1" value="8" aria-label="Z display value" /></div>
               <output id="zExagValue" class="hidden">×8</output>
             </div>
+          </div>
+          <div class="cross-section-body" style="position:relative">
+            <div class="section-nav-hint">Drag to pan · Wheel to zoom · Double-click to fit</div>
             <svg id="sectionSvg" viewBox="0 0 600 320" aria-label="Cross section"></svg>
           </div>
         </section>

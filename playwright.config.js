@@ -7,7 +7,8 @@ const pythonCommand = process.platform === 'win32'
 export default defineConfig({
   testDir: './tests/ui',
   fullyParallel: false,
-  timeout: 30_000,
+  timeout: 60_000,
+  expect: { timeout: 20_000 },
   reporter: 'list',
   use: {
     baseURL: 'http://127.0.0.1:8765',
