@@ -70,6 +70,26 @@ export function detectBorderOnly(layer){const polygons=layer.polygons||[];if(pol
 export function polyBbox(polygon){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const [x,y] of polygon){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}return [x0,y0,x1,y1];}
 export function bboxIntersects(a,b){return !(a[2]<b[0]||a[0]>b[2]||a[3]<b[1]||a[1]>b[3]);}
 export function isPolyInViewport(polygon,viewport){return !viewport||bboxIntersects(polyBbox(polygon),viewport);}
+export function polygonsOverlap(a,b){
+  if(!a||!b||a.length<3||b.length<3) return false;
+  const boxA=polyBbox(a), boxB=polyBbox(b);
+  if(!bboxIntersects(boxA,boxB)) return false;
+  // vertex inside
+  for(const p of a){ if(pointInPoly({x:p[0], y:p[1]}, b)) return true; }
+  for(const p of b){ if(pointInPoly({x:p[0], y:p[1]}, a)) return true; }
+  // edge intersection
+  for(let i=0;i<a.length;i++){
+    const p1=a[i], p2=a[(i+1)%a.length];
+    for(let j=0;j<b.length;j++){
+      const q1=b[j], q2=b[(j+1)%b.length];
+      if(segmentsCross(p1,p2,q1,q2)) return true;
+    }
+  }
+  // interior point fallback (for non-vertex containment)
+  const ca=centroid(a), cb=centroid(b);
+  if(pointInPoly(ca,b) || pointInPoly(cb,a)) return true;
+  return false;
+}
 
 export function linePolyIntervals(a,b,polygon){
   const ts=[0,1],dx=b.x-a.x,dy=b.y-a.y;

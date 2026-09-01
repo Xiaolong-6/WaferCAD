@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 test('relative thickness mapping is logarithmic between layers and linear within', async ({ page }) => {
@@ -354,4 +355,142 @@ test('switching display mode never mutates stored thickness labels', async ({ pa
   expect(physicalAfter).toBeCloseTo(physicalBefore, 8);
   await page.locator('#zMapping').selectOption('linear');
   await expect(page.locator('#figureLegend')).toContainText('Thickness 100 nm');
+});
+
+test('push then pull same region restores flush visual contact in relative mode', async ({ page }) => {
+  await page.goto('/?qa=playwright-push-pull-flush');
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  const gdsFixture = path.resolve('tests/fixtures/synthetic_two_layer.gds');
+  await page.locator('#gdsInput').setInputFiles(gdsFixture);
+  await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
+  await expect(page.locator('#selectionMode')).toHaveValue('imprinted');
+  // Ensure relative mode
+  await page.locator('#zMapping').selectOption('relative');
+  await expect(page.locator('#sectionMeta')).toContainText('relative thickness');
+  // Push 1 µm
+  await page.locator('#pushMode').selectOption('down');
+  await page.locator('#distanceInput').fill('1');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('0 solids');
+  await expect(page.locator('#modelStats')).toContainText('1 cuts');
+  const trenchVisual = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    const { mappedCutBounds, substrateVisualHeight } = await import('/static/js/layer-model.js');
+    const cut = state.cuts[0];
+    if(!cut) return { cutTop: null, cutBottom: null, H: substrateVisualHeight(), substrateTop: 0 };
+    const b = mappedCutBounds(cut.zMin, cut.zMax);
+    const H = substrateVisualHeight();
+    return { cutTop: b.zMax, cutBottom: b.zMin, H, substrateTop: 0 };
+  });
+  // trench top should be at substrate surface (0)
+  expect(trenchVisual.cutTop).toBeCloseTo(0, 5);
+  expect(trenchVisual.cutBottom).toBeLessThan(-0.3);
+  // Pull same region 1 µm
+  await page.locator('#pushMode').selectOption('up');
+  await page.locator('#distanceInput').fill('1');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 solids');
+  const flush = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    const { mappedSolidBounds } = await import('/static/js/layer-model.js');
+    const solid = state.solids[0];
+    const b = mappedSolidBounds(solid);
+    return { solidTop: b.zMax, solidBottom: b.zMin, substrateTop: 0 };
+  });
+  expect(flush.solidTop).toBeCloseTo(0, 4);
+  expect(flush.solidBottom).toBeLessThan(-0.3);
+  // Verify Cross Section shows flush top (SVG rect top at substrate line)
+  const crossFlush = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    const { mappedSolidBounds, mappedCutBounds } = await import('/static/js/layer-model.js');
+    const solid = state.solids[0];
+    const sb = mappedSolidBounds(solid);
+    const isFlush = Math.abs(sb.zMax - 0) < 1e-4;
+    return { isFlush, sb };
+  });
+  expect(crossFlush.isFlush).toBe(true);
+
+  // Push 2 Pull 2 flush
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.locator('#newWaferConfirmDiscard').click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#gdsInput').setInputFiles(gdsFixture);
+  await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
+  await expect(page.locator('#selectionMode')).toHaveValue('imprinted');
+  await page.locator('#zMapping').selectOption('relative');
+  await page.locator('#pushMode').selectOption('down');
+  await page.locator('#distanceInput').fill('2');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 cuts');
+  await page.locator('#pushMode').selectOption('up');
+  await page.locator('#distanceInput').fill('2');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 solids');
+  const flush2 = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    const { mappedSolidBounds } = await import('/static/js/layer-model.js');
+    const b = mappedSolidBounds(state.solids[0]);
+    return { top: b.zMax };
+  });
+  expect(flush2.top).toBeCloseTo(0, 4);
+
+  // Push 1 Pull 2: first 1 fills cavity, remaining 1 protrudes
+  await page.getByRole('button', { name: 'New wafer' }).click();
+  await page.locator('#newWaferConfirmDiscard').click();
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('#gdsInput').setInputFiles(gdsFixture);
+  await expect(page.locator('#statusText')).toContainText('2 layer/datatype pairs');
+  await page.getByRole('button', { name: 'Pattern Editor' }).click();
+  await page.locator('#patLayerList input[type="checkbox"]').first().check();
+  await page.locator('#patApplyBtn').click();
+  await expect(page.locator('#selectionMode')).toHaveValue('imprinted');
+  await page.locator('#zMapping').selectOption('relative');
+  await page.locator('#pushMode').selectOption('down');
+  await page.locator('#distanceInput').fill('1');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 cuts');
+  await page.locator('#pushMode').selectOption('up');
+  await page.locator('#distanceInput').fill('2');
+  await page.getByRole('button', { name: 'Apply operation' }).click();
+  await expect(page.locator('#modelStats')).toContainText('1 solids');
+  const protrude = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    const { mappedSolidBounds, relativeThickness } = await import('/static/js/layer-model.js');
+    const b = mappedSolidBounds(state.solids[0]);
+    const expectedProtruding = relativeThickness(1) * (state.relativeZScale||1);
+    return { top: b.zMax, bottom: b.zMin, expectedProtruding };
+  });
+  expect(protrude.top).toBeCloseTo(protrude.expectedProtruding, 3);
+  expect(protrude.bottom).toBeLessThan(-0.3);
+});
+
+test('polygonsOverlap does not falsely report bbox overlap as polygon overlap', async ({ page }) => {
+  await page.goto('/?qa=playwright-polygon-overlap');
+  const overlap = await page.evaluate(async () => {
+    const { polygonsOverlap } = await import('/static/js/geometry.js');
+    // Two L-shaped polygons whose bboxes overlap but polygons do not
+    const a = [[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]];
+    const b = [[1.5,1.5],[3,1.5],[3,3],[1.5,3]];
+    // bboxes: a [0,0,2,2], b [1.5,1.5,3,3] overlap at [1.5,1.5,2,2] but polygons are disjoint (a is L, b is square in the missing corner)
+    // Actually they are disjoint? Check: a covers L shape, b is top-right square, they touch at corner but not overlap interior
+    // Create more clear disjoint: two triangles with overlapping bboxes but disjoint
+    const triA = [[0,0],[1,0],[0,1]];
+    const triB = [[1,1],[2,1],[1,2]];
+    return {
+      lOverlap: polygonsOverlap(a,b),
+      triOverlap: polygonsOverlap(triA, triB),
+      bboxOverlapTri: true, // bboxes [0,0,1,1] and [1,1,2,2] touch at point
+      selfOverlap: polygonsOverlap(a,a),
+    };
+  });
+  expect(overlap.lOverlap).toBe(false);
+  expect(overlap.triOverlap).toBe(false);
+  expect(overlap.selfOverlap).toBe(true);
 });
