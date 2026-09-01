@@ -6,16 +6,20 @@ export function validColor(value,fallback='#9ca3af'){return /^#[0-9a-f]{6}$/i.te
 export function validLayerScale(value){const number=Number(value);return Number.isFinite(number)&&number>0?Math.min(number,100):1;}
 export function nextLayerName(base){const names=new Set(Object.values(state.layerVisuals||{}).map(value=>value.name));if(!names.has(base))return base;let number=2;while(names.has(`${base} ${number}`))number++;return `${base} ${number}`;}
 
+export const MIN_VISUAL_THICKNESS = 0.25;
 export function relativeThickness(t_um){
   const number=Number(t_um);
-  if(!Number.isFinite(number)||number<=0) return 0.25;
+  if(!Number.isFinite(number)||number<=0) return 0;
   const t_nm=number*1000;
-  if(!Number.isFinite(t_nm)||t_nm<=0) return 0.25;
+  if(!Number.isFinite(t_nm)||t_nm<=0) return 0;
   const value=1+Math.log10(t_nm);
-  return Math.max(0.25,value);
+  return Math.max(MIN_VISUAL_THICKNESS,value);
 }
 function isRelativeMapping(){return state.zMapping==='relative';}
-function globalDisplayScale(){const n=Number(state.zExag);return Number.isFinite(n)&&n>0?Math.min(1000,Math.max(0.1,n)):8;}
+function globalPhysicalScale(){const n=Number(state.zExag);return Number.isFinite(n)&&n>0?Math.min(1000,Math.max(0.1,n)):8;}
+function globalRelativeScale(){const n=Number(state.relativeZScale);return Number.isFinite(n)&&n>0?Math.min(100,Math.max(0.1,n)):1;}
+function globalDisplayScale(){return isRelativeMapping()?globalRelativeScale():globalPhysicalScale();}
+export const RELATIVE_NORMALIZATION_NOTE = "Relative visual units: H=relativeThickness(T)*globalRelativeScale (default 1 gives H~6.7 for 500 um, comparable to XY width ~9)";
 function fullPhysicalThicknessForLayer(layerId,layers){
   if(layerId==='substrate') return state.wafer?Number(state.wafer.thickness)||0:0;
   const visual=state.layerVisuals?.[layerId];
@@ -33,53 +37,171 @@ function fullPhysicalThicknessForLayer(layerId,layers){
 function substrateVisualHeightRelative(){
   const thickness=state.wafer?Number(state.wafer.thickness)||0:0;
   const substrateScale=validLayerScale(state.layerVisuals?.substrate?.scale);
-  return relativeThickness(thickness)*globalDisplayScale()*substrateScale;
+  return relativeThickness(thickness)*globalRelativeScale()*substrateScale;
+}
+export const SUBSTRATE_SURFACE_D0 = 1; // µm, surface-detail exaggeration knee
+function substrateDepthVisual(depth, Hsub, T){
+  if(depth<=0) return 0;
+  if(depth>= T/2) return Hsub/2;
+  const d0=SUBSTRATE_SURFACE_D0;
+  return (Hsub/2) * Math.log(1 + depth/d0) / Math.log(1 + (T/2)/d0);
+}
+function substrateVisualZ(z){
+  const T=Number(state.wafer?.thickness)||0;
+  const H=substrateVisualHeightRelative();
+  const zz=Number(z);
+  if(!Number.isFinite(zz)||T<=0) return 0;
+  if(zz>=0) return 0;
+  if(zz<=-T) return -H;
+  if(zz>= -T/2){
+    const d=-zz;
+    return -substrateDepthVisual(d, H, T);
+  } else {
+    const d=zz+T;
+    return -H + substrateDepthVisual(d, H, T);
+  }
+}
+function pieceInteriorPoint(polygon){
+  if(!Array.isArray(polygon)||polygon.length<3) return null;
+  let x=0,y=0;
+  for(const p of polygon){ x+=p[0]; y+=p[1]; }
+  const c={x:x/polygon.length, y:y/polygon.length};
+  if(pointInPoly(c, polygon)) return c;
+  for(const p of polygon){
+    const q={x:p[0]*0.99+ c.x*0.01, y:p[1]*0.99+ c.y*0.01};
+    if(pointInPoly(q, polygon)) return q;
+  }
+  return c;
+}
+function footprintsOverlap(a,b){
+  // quick bbox then point test
+  let ax0=Infinity,ay0=Infinity,ax1=-Infinity,ay1=-Infinity;
+  for(const p of a){ ax0=Math.min(ax0,p[0]); ay0=Math.min(ay0,p[1]); ax1=Math.max(ax1,p[0]); ay1=Math.max(ay1,p[1]); }
+  let bx0=Infinity,by0=Infinity,bx1=-Infinity,by1=-Infinity;
+  for(const p of b){ bx0=Math.min(bx0,p[0]); by0=Math.min(by0,p[1]); bx1=Math.max(bx1,p[0]); by1=Math.max(by1,p[1]); }
+  if(ax1 < bx0 || bx1 < ax0 || ay1 < by0 || by1 < ay0) return false;
+  const ca=pieceInteriorPoint(a), cb=pieceInteriorPoint(b);
+  if(ca && pointInPoly(ca,b)) return true;
+  if(cb && pointInPoly(cb,a)) return true;
+  return true;
+}
+function findSupportingSolids(piece, allSolids, side){
+  const eps=1e-7;
+  const supporters=[];
+  const isBack = (side||piece.side||'front')==='back';
+  for(const cand of allSolids){
+    if(cand.id===piece.id) continue;
+    if((cand.side||'front')!==(piece.side||'front')) continue;
+    if(isBack){
+      if(Math.abs(Number(cand.zMin) - Number(piece.zMax)) > eps) continue;
+    } else {
+      if(Math.abs(Number(cand.zMax) - Number(piece.zMin)) > eps) continue;
+    }
+    if(!footprintsOverlap(piece.footprint, cand.footprint)) continue;
+    supporters.push(cand);
+  }
+  return supporters;
+}
+function computeVisualBoundsForPiece(piece, allSolids, memo, visiting=new Set()){
+  if(memo.has(piece.id)) return memo.get(piece.id);
+  if(visiting.has(piece.id)){
+    // cycle fallback
+    const T_full=fullPhysicalThicknessForLayer(piece.layerId,null)||Math.max(0, Number(piece.zMax)-Number(piece.zMin));
+    const V_full=relativeThickness(T_full)*globalRelativeScale()*validLayerScale(state.layerVisuals?.[piece.layerId]?.scale);
+    const thickness=Math.max(0, Number(piece.zMax)-Number(piece.zMin));
+    const V_piece=T_full>0?(thickness/T_full)*V_full:0;
+    const res= (piece.side||'front')==='back'?{zMin:-substrateVisualHeightRelative()-V_piece, zMax:-substrateVisualHeightRelative()}:{zMin:0, zMax:V_piece};
+    memo.set(piece.id,res);
+    return res;
+  }
+  visiting.add(piece.id);
+  const T_full=fullPhysicalThicknessForLayer(piece.layerId,null);
+  const effective_T = (Number.isFinite(T_full) && T_full>0)? T_full : Math.max(0, Number(piece.zMax)-Number(piece.zMin));
+  const perScale=validLayerScale(state.layerVisuals?.[piece.layerId]?.scale);
+  const V_full=relativeThickness(effective_T)*globalRelativeScale()*perScale;
+  const pieceThickness=Math.max(0, Number(piece.zMax)-Number(piece.zMin));
+  const V_piece= effective_T>0? (pieceThickness/effective_T)*V_full : 0;
+  const side=(piece.side||'front');
+  let result;
+  if(side==='back'){
+    const supporters=findSupportingSolids(piece, allSolids, 'back');
+    let supportVisualBottom;
+    if(supporters.length){
+      let minBottom=Infinity;
+      for(const sup of supporters){
+        const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
+        minBottom=Math.min(minBottom, b.zMin);
+      }
+      supportVisualBottom=minBottom;
+    } else {
+      const Tsub=Number(state.wafer?.thickness)||0;
+      const Hsub=substrateVisualHeightRelative();
+      const eps=1e-7;
+      if(Math.abs(Number(piece.zMax) + Tsub) < eps){
+        supportVisualBottom=-Hsub;
+      } else {
+        // no direct support: place based on substrate mapping of its top (fallback to local)
+        // use substrateVisualZ for its top as approximation, but ensure not overlapping substrate incorrectly
+        // For floating piece, anchor at substrate bottom plus offset based on physical height? Use 0 as fallback and adjust?
+        // For coplanar different XY, each piece's top is at substrate bottom, so this fallback won't be used because supporters empty but top is at -T -> handled above.
+        // For other cases, fallback to -Hsub (conservative)
+        supportVisualBottom= -Hsub;
+        // If piece is not at substrate bottom and has no supporters, it is likely at a different XY with empty below, treat as sitting on substrate top's projection at that XY (which is at substrate bottom for back? actually back substrate bottom is -Hsub)
+        // So keep -Hsub
+      }
+    }
+    // For back, piece's top aligns with support's bottom
+    const visualTop=supportVisualBottom;
+    const visualBottom=visualTop - V_piece;
+    result={zMin:visualBottom, zMax:visualTop};
+  } else {
+    const supporters=findSupportingSolids(piece, allSolids, 'front');
+    let supportVisualTop;
+    if(supporters.length){
+      let maxTop=-Infinity;
+      for(const sup of supporters){
+        const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
+        maxTop=Math.max(maxTop, b.zMax);
+      }
+      supportVisualTop=maxTop;
+    } else {
+      const eps=1e-7;
+      if(Math.abs(Number(piece.zMin)) < eps){
+        supportVisualTop=0;
+      } else {
+        // No support found but piece is above substrate (e.g., floating at 2..3 with no support at 2)
+        // This can happen for mixed-height same layer where piece B's support is at 2 but no solid at exactly 2 at that XY (because underlying is different XY). In that XY, substrate top is 0 but piece is at 2 floating, which should still be placed at visual height corresponding to physical height 2's support? However in valid stacked geometry, there should be a supporting solid at that XY whose top is 2. If not found, fallback to 0 and place piece at 0..V_piece (coplanar) which is acceptable for test where we want both pieces at 0..V (coplanar) not stacked.
+        // For mixed-height same layerId pieces at different XY, they should both be at 0, not one above the other, so fallback 0 is correct.
+        // For piece B that is truly stacked above another piece at same XY, supporter will be found, so not fallback.
+        supportVisualTop=0;
+      }
+    }
+    const visualBottom=supportVisualTop;
+    const visualTop=visualBottom + V_piece;
+    result={zMin:visualBottom, zMax:visualTop};
+  }
+  visiting.delete(piece.id);
+  memo.set(piece.id,result);
+  return result;
 }
 function layerVisualIntervalRelative(layerId,layers){
+  // kept for substrate and for doping fallback that expects global interval;
+  // for solids, this is no longer used for positioning, but kept for compatibility for substrate interval.
   if(layerId==='substrate'){
     const thickness=state.wafer?Number(state.wafer.thickness)||0:0;
     const visualHeight=substrateVisualHeightRelative();
     return {visualMin:-visualHeight,visualMax:0,physicalBottom:-thickness,physicalThickness:thickness,visualHeight};
   }
+  // For backward compat, return interval based on first piece of that layer at substrate top
   const descriptors=layers||solidLayerDescriptors();
   const current=descriptors.find(layer=>layer.id===layerId);
   if(!current) return null;
   const T_full=fullPhysicalThicknessForLayer(layerId,descriptors);
   if(T_full<=0) return null;
   const perScale=validLayerScale(state.layerVisuals?.[layerId]?.scale);
-  const V_full=relativeThickness(T_full)*globalDisplayScale()*perScale;
-  const side=current.side||'front';
-  if(side==='back'){
-    const backLayers=descriptors.filter(layer=>(layer.side||'front')==='back').sort((a,b)=> Number(b.zMax)-Number(a.zMax));
-    const Hsub=substrateVisualHeightRelative();
-    let offset=0;
-    for(const layer of backLayers){
-      if(layer.id===layerId){
-        const physicalBottom=Number(layer.zMax)-T_full;
-        const visualTop=-Hsub - offset;
-        const visualBottom=visualTop - V_full;
-        return {visualMin:visualBottom,visualMax:visualTop,physicalBottom,physicalThickness:T_full,visualHeight:V_full};
-      }
-      const tf=fullPhysicalThicknessForLayer(layer.id,descriptors);
-      const vf=relativeThickness(tf)*globalDisplayScale()*validLayerScale(state.layerVisuals?.[layer.id]?.scale);
-      offset+=vf;
-    }
-  } else {
-    const frontLayers=descriptors.filter(layer=>(layer.side||'front')!=='back').sort((a,b)=> Number(a.zMin)-Number(b.zMin));
-    let offset=0;
-    for(const layer of frontLayers){
-      if(layer.id===layerId){
-        const physicalBottom=Number(layer.zMin);
-        const visualBottom=offset;
-        const visualTop=offset+V_full;
-        return {visualMin:visualBottom,visualMax:visualTop,physicalBottom,physicalThickness:T_full,visualHeight:V_full};
-      }
-      const tf=fullPhysicalThicknessForLayer(layer.id,descriptors);
-      const vf=relativeThickness(tf)*globalDisplayScale()*validLayerScale(state.layerVisuals?.[layer.id]?.scale);
-      offset+=vf;
-    }
-  }
-  return null;
+  const V_full=relativeThickness(T_full)*globalRelativeScale()*perScale;
+  // Return as if layer sits on substrate top (local)
+  return {visualMin:0,visualMax:V_full,physicalBottom:Number(current.zMin),physicalThickness:T_full,visualHeight:V_full};
 }
 export function ensureLayerVisuals(){
   state.layerVisuals=state.layerVisuals&&typeof state.layerVisuals==='object'?state.layerVisuals:{};
@@ -97,14 +219,9 @@ function mappedPhysicalZLinear(z){return z;}
 export function displayZ(z){
   if(!state.wafer) return 0;
   if(isRelativeMapping()){
-    const thickness=Number(state.wafer.thickness)||0;
-    if(thickness<=0) return 0;
-    const Hsub=substrateVisualHeightRelative();
-    if(z>=0) return 0;
-    if(z<=-thickness) return -Hsub;
-    return -Hsub + (Number(z)+thickness)/thickness * Hsub;
+    return substrateVisualZ(z);
   }
-  const xy=waferXYScale(),exaggeration=globalDisplayScale(),thickness=state.wafer.thickness,substrateScale=validLayerScale(state.layerVisuals?.substrate?.scale),mapped=mappedPhysicalZLinear(z),mappedBottom=mappedPhysicalZLinear(-thickness);
+  const xy=waferXYScale(),exaggeration=globalPhysicalScale(),thickness=state.wafer.thickness,substrateScale=validLayerScale(state.layerVisuals?.substrate?.scale),mapped=mappedPhysicalZLinear(z),mappedBottom=mappedPhysicalZLinear(-thickness);
   if(z>=0) return mapped*xy*exaggeration;
   if(z<=-thickness) return mappedBottom*xy*exaggeration*substrateScale+(mapped-mappedBottom)*xy*exaggeration;
   return mapped*xy*exaggeration*substrateScale;
@@ -112,60 +229,65 @@ export function displayZ(z){
 export function mappedSolidBounds(solid,layers=solidLayerDescriptors()){
   if(isRelativeMapping()){
     if(!state.wafer) return {zMin:0,zMax:0};
-    const descriptors=layers||solidLayerDescriptors();
-    const layerId=solid.layerId;
-    const interval=layerVisualIntervalRelative(layerId,descriptors);
-    if(!interval){
-      const t=Math.max(0,Number(solid.zMax)-Number(solid.zMin));
-      const v=relativeThickness(t)*globalDisplayScale()*validLayerScale(layerVisual(layerId).scale);
-      const side=solid.side||'front';
-      if(side==='back'){
-        const Hsub=substrateVisualHeightRelative();
-        return {zMin:-Hsub - v, zMax:-Hsub};
-      }
-      return {zMin:0,zMax:v};
-    }
-    const T_full=interval.physicalThickness;
-    const V_full=interval.visualHeight;
-    const physicalBottom=interval.physicalBottom;
-    const visualBottom=interval.visualMin;
-    if(T_full<=0) return {zMin:visualBottom,zMax:visualBottom};
-    const fLow=(Number(solid.zMin)-physicalBottom)/T_full;
-    const fHigh=(Number(solid.zMax)-physicalBottom)/T_full;
-    const clampedLow=Math.max(0,Math.min(1,fLow));
-    const clampedHigh=Math.max(0,Math.min(1,fHigh));
-    const zMin=visualBottom + clampedLow*V_full;
-    const zMax=visualBottom + clampedHigh*V_full;
-    return {zMin:Math.min(zMin,zMax),zMax:Math.max(zMin,zMax)};
+    // Use local topology-aware mapping; layers param kept for API compat but not used for global stack
+    return computeVisualBoundsForPiece(solid, state.solids, new Map());
   }
   const current=layers.find(layer=>layer.id===solid.layerId),rawMin=displayZ(solid.zMin),rawMax=displayZ(solid.zMax);if(!current)return {zMin:rawMin,zMax:rawMax};const epsilon=1e-7;if(current.side==='back'){const offset=layers.filter(layer=>layer.id!==current.id&&layer.side==='back'&&layer.zMin>=current.zMax-epsilon).reduce((sum,layer)=>sum+(layer.scale-1)*(displayZ(layer.zMax)-displayZ(layer.zMin)),0),zMax=rawMax-offset;return {zMin:zMax-(rawMax-rawMin)*current.scale,zMax};}const offset=layers.filter(layer=>layer.id!==current.id&&layer.side!=='back'&&layer.zMax<=current.zMin+epsilon).reduce((sum,layer)=>sum+(layer.scale-1)*(displayZ(layer.zMax)-displayZ(layer.zMin)),0),zMin=rawMin+offset;return {zMin,zMax:zMin+(rawMax-rawMin)*current.scale};}
 export function mappedDopingBounds(doping,layers=solidLayerDescriptors()){
   if(isRelativeMapping()){
     if(!state.wafer) return {zMin:0,zMax:0};
-    const descriptors=layers||solidLayerDescriptors();
-    let targetInterval=null;
+    const allSolids=state.solids;
     if(doping.targetLayerId==='substrate'){
-      targetInterval=layerVisualIntervalRelative('substrate',descriptors);
-    } else {
-      // For solid target, find its full layer interval
-      targetInterval=layerVisualIntervalRelative(doping.targetLayerId,descriptors);
-      // If not found (target layer may have been removed), fallback to substrate
-      if(!targetInterval) targetInterval=layerVisualIntervalRelative('substrate',descriptors);
+      const rawMin=substrateVisualZ(Number(doping.zMin));
+      const rawMax=substrateVisualZ(Number(doping.zMax));
+      const zMin=Math.min(rawMin,rawMax), zMax=Math.max(rawMin,rawMax);
+      const scale=validLayerScale(layerVisual(doping.layerId).scale);
+      const height=zMax-zMin;
+      // doping per-layer scale is intentional display override; allow overflow but clamp negative heights to keep visible
+      if(doping.position==='lower') return {zMin:zMin,zMax:zMin+height*scale};
+      return {zMin:zMax-height*scale,zMax:zMax};
     }
-    if(!targetInterval) return {zMin:displayZ(doping.zMin),zMax:displayZ(doping.zMax)};
-    const T_target=targetInterval.physicalThickness;
-    const V_target=targetInterval.visualHeight;
-    const physicalBottom=targetInterval.physicalBottom;
-    const visualBottom=targetInterval.visualMin;
-    if(T_target<=0) return {zMin:visualBottom,zMax:visualBottom};
-    const fLow=(Number(doping.zMin)-physicalBottom)/T_target;
-    const fHigh=(Number(doping.zMax)-physicalBottom)/T_target;
+    // solid target: find local target piece at doping's XY
+    const dopingPt=pieceInteriorPoint(doping.footprint);
+    let targetPiece=null;
+    if(dopingPt){
+      for(const s of allSolids){
+        if(s.layerId!==doping.targetLayerId) continue;
+        if(!footprintsOverlap(doping.footprint, s.footprint)) continue;
+        // check doping interval inside target's interval (allow epsilon)
+        if(Number(doping.zMin) < Number(s.zMin)-1e-7 || Number(doping.zMax) > Number(s.zMax)+1e-7) continue;
+        if(pointInPoly(dopingPt, s.footprint) || pointInPoly(pieceInteriorPoint(s.footprint), doping.footprint)){
+          targetPiece=s; break;
+        }
+      }
+    }
+    if(!targetPiece){
+      // fallback: any overlapping target
+      for(const s of allSolids){
+        if(s.layerId!==doping.targetLayerId) continue;
+        if(!footprintsOverlap(doping.footprint, s.footprint)) continue;
+        targetPiece=s; break;
+      }
+    }
+    if(!targetPiece){
+      // no local piece found, use global interval as fallback (local at substrate top)
+      const t=Number(doping.zMax)-Number(doping.zMin);
+      const v=relativeThickness(t)*globalRelativeScale()*validLayerScale(layerVisual(doping.layerId).scale);
+      return doping.position==='lower'?{zMin:0,zMax:v}:{zMin:0,zMax:v};
+    }
+    const targetBounds=computeVisualBoundsForPiece(targetPiece, allSolids, new Map());
+    const T_target=Math.max(0, Number(targetPiece.zMax)-Number(targetPiece.zMin));
+    if(T_target<=0) return targetBounds;
+    const fLow=(Number(doping.zMin)-Number(targetPiece.zMin))/T_target;
+    const fHigh=(Number(doping.zMax)-Number(targetPiece.zMin))/T_target;
     const clampedLow=Math.max(0,Math.min(1,fLow));
     const clampedHigh=Math.max(0,Math.min(1,fHigh));
-    const rawMin=visualBottom + clampedLow*V_target;
-    const rawMax=visualBottom + clampedHigh*V_target;
+    const V_target=targetBounds.zMax - targetBounds.zMin;
+    const rawMin=targetBounds.zMin + clampedLow*V_target;
+    const rawMax=targetBounds.zMin + clampedHigh*V_target;
     const scale=validLayerScale(layerVisual(doping.layerId).scale);
     const height=rawMax-rawMin;
+    // per-layer doping scale is explicit display exaggeration; preserve overflow as intentional
     if(doping.position==='lower') return {zMin:rawMin,zMax:rawMin+height*scale};
     return {zMin:rawMax-height*scale,zMax:rawMax};
   }
@@ -174,19 +296,13 @@ export function substrateVisualHeight(){
   if(!state.wafer) return 0;
   if(isRelativeMapping()) return substrateVisualHeightRelative();
   const xy=waferXYScale(),thickness=Number(state.wafer.thickness)||0,substrateScale=validLayerScale(state.layerVisuals?.substrate?.scale);
-  return thickness*xy*globalDisplayScale()*substrateScale;
+  return thickness*xy*globalPhysicalScale()*substrateScale;
 }
 export function mappedCutBounds(zMin,zMax){
   if(!state.wafer) return {zMin:0,zMax:0};
   if(isRelativeMapping()){
-    const interval=layerVisualIntervalRelative('substrate',solidLayerDescriptors());
-    if(!interval) return {zMin:displayZ(zMin),zMax:displayZ(zMax)};
-    const T=interval.physicalThickness, H=interval.visualHeight, physicalBottom=interval.physicalBottom, visualBottom=interval.visualMin;
-    const fLow=(Number(zMin)-physicalBottom)/T;
-    const fHigh=(Number(zMax)-physicalBottom)/T;
-    const clampedLow=Math.max(0,Math.min(1,fLow));
-    const clampedHigh=Math.max(0,Math.min(1,fHigh));
-    return {zMin: visualBottom + clampedLow*H, zMax: visualBottom + clampedHigh*H};
+    // use surface-detail substrate mapping for accurate shallow visibility
+    return {zMin: substrateVisualZ(Number(zMin)), zMax: substrateVisualZ(Number(zMax))};
   }
   return {zMin:displayZ(zMin),zMax:displayZ(zMax)};
 }

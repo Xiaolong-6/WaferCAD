@@ -276,8 +276,8 @@ function renderSection(){
   const compressedMin=sectionCoordinate(rawMin),compressedMax=sectionCoordinate(rawMax),pad=(compressedMax-compressedMin)*.04+.02,yMin=compressedMin-pad,yMax=compressedMax+pad,mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>{const compressed=sectionCoordinate(z);return back?12+(compressed-yMin)/(yMax-yMin)*296:308-(compressed-yMin)/(yMax-yMin)*296;},rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
   const content=makeSvg('g',{id:'sectionContent',transform:`translate(${sectionTx},${sectionTy}) scale(${sectionScale})`});
   content.appendChild(makeSvg('line',{x1:45,y1:mapDisplayY(0),x2:555,y2:mapDisplayY(0),stroke:'#b6bbc2','stroke-width':'1'}));
-  for(const waferI of waferIntervals){const xr=rectX(waferI[0],waferI[1]),yr=rectY(displayZ(-state.wafer.thickness),displayZ(0));content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate'}));}
-  for(const cut of state.cuts)for(const [t0,t1] of linePolyIntervals(a,b,cut.footprint)){const xr=rectX(t0,t1),yr=rectY(displayZ(cut.zMin),displayZ(cut.zMax));content.appendChild(makeSvg('rect',{...xr,...yr,fill:'#fbfbfc',stroke:'#9ca3af','stroke-dasharray':'3 2'}));}
+  for(const waferI of waferIntervals){const xr=rectX(waferI[0],waferI[1]),yr=rectY(mappedCutBounds(-state.wafer.thickness,0).zMin,mappedCutBounds(-state.wafer.thickness,0).zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate'}));}
+  for(const cut of state.cuts)for(const [t0,t1] of linePolyIntervals(a,b,cut.footprint)){const xr=rectX(t0,t1),yr=(()=>{const b=mappedCutBounds(cut.zMin,cut.zMax);return rectY(b.zMin,b.zMax);})();content.appendChild(makeSvg('rect',{...xr,...yr,fill:'#fbfbfc',stroke:'#9ca3af','stroke-dasharray':'3 2'}));}
   for(const solid of state.solids)for(const [t0,t1] of linePolyIntervals(a,b,solid.footprint)){const mapped=mappedSolidBounds(solid,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual(solid.layerId).color,stroke:'#4b5563','data-layer-id':solid.layerId}));}
   const defs=makeSvg('defs');content.appendChild(defs);
   for(const doping of state.dopings){const color=layerVisual(doping.layerId).color,gradientId=`gradient_${doping.layerId}`,highAtTop=(doping.position==='upper')!==back,gradient=makeSvg('linearGradient',{id:gradientId,x1:'0%',x2:'0%',y1:highAtTop?'100%':'0%',y2:highAtTop?'0%':'100%'});gradient.append(makeSvg('stop',{offset:'0%','stop-color':color,'stop-opacity':'0.08'}),makeSvg('stop',{offset:'100%','stop-color':color,'stop-opacity':'0.9'}));defs.appendChild(gradient);for(const [t0,t1] of linePolyIntervals(a,b,doping.footprint)){const mapped=mappedDopingBounds(doping,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:`url(#${gradientId})`,stroke:color,'stroke-opacity':'.65','data-layer-id':doping.layerId,'data-doping':'true'}));}}
@@ -720,11 +720,14 @@ function applySectionBreakControls(){
 }
 function syncViewControls(){
   const isRelative=state.zMapping==='relative';
+  const currentScale=isRelative?state.relativeZScale:state.zExag;
   if($('zMapping'))$('zMapping').value=isRelative?'relative':'linear';
   if($('zExag')){
-    $('zExag').value=String(Math.min(200, Math.max(0.1, state.zExag)));
-    if($('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(state.zExag);
-    $('zExagValue').value=`${isRelative?'':'×'}${formatDisplayNumber(state.zExag)}`;
+    const max=isRelative?20:200;
+    $('zExag').max=String(max);
+    $('zExag').value=String(Math.min(max, Math.max(0.1, currentScale)));
+    if($('zExagNumber')){ $('zExagNumber').value=formatDisplayNumber(currentScale); $('zExagNumber').max=String(isRelative?100:1000); }
+    $('zExagValue').value=`${isRelative?'':'×'}${formatDisplayNumber(currentScale)}`;
     if($('zScaleLabel')) $('zScaleLabel').textContent=isRelative?'Display scale':'Z';
     if($('zScalePrefix')) {$('zScalePrefix').textContent=isRelative?'':'×';$('zScalePrefix').style.display=isRelative?'none':'';}
     if($('zDisplayInline')) $('zDisplayInline').title=isRelative?'Relative thickness is logarithmic between layers and linear within each layer — 1 nm=1, 10 nm=2, 100 nm=3, 1 µm=4, 10 µm=5, 100 µm=6 (automatic). Display scale multiplies the visual height. Physical geometry is unchanged.':'Physical: true Z × exaggeration (1 = isotropic). Display scale multiplies physical thickness. Visual geometry only.';
@@ -740,12 +743,14 @@ function syncViewControls(){
 function setZExag(v, source='slider'){
   let n=Number(v);
   if(!Number.isFinite(n) || n<=0) return;
-  n=Math.min(1000, Math.max(0.1, n));
-  state.zExag=n;
-  // keep slider and number in sync without feedback loop
-  if(source!=='slider' && $('zExag')) $('zExag').value=String(Math.min(200, Math.max(0.1, n)));
-  if(source!=='number' && $('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(n);
   const isRelative=state.zMapping==='relative';
+  const max=isRelative?100:1000;
+  const sliderMax=isRelative?20:200;
+  n=Math.min(max, Math.max(0.1, n));
+  if(isRelative) state.relativeZScale=n; else state.zExag=n;
+  // keep slider and number in sync without feedback loop
+  if(source!=='slider' && $('zExag')) $('zExag').value=String(Math.min(sliderMax, Math.max(0.1, n)));
+  if(source!=='number' && $('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(n);
   if($('zExagValue')) $('zExagValue').value=`${isRelative?'':'×'}${formatDisplayNumber(n)}`;
   renderSection();render3D();persistSharedState();
 }
@@ -811,10 +816,10 @@ function render3D(){
 }
 
 function saveProject(){
-  ensureLayerVisuals();const payload={format:'wafercad-mvp',version:CURRENT_PROJECT_VERSION,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,snapshotDevices:state.snapshotDevices,snapshotThumbnails:state.snapshotThumbnails,view:{zExag:state.zExag,zMapping:state.zMapping,zLogK:state.zLogK,showAxes:state.showAxes,maskBaseOpacity:state.maskBaseOpacity,sectionBreak:state.sectionBreak}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
+  ensureLayerVisuals();const payload={format:'wafercad-mvp',version:CURRENT_PROJECT_VERSION,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,snapshotDevices:state.snapshotDevices,snapshotThumbnails:state.snapshotThumbnails,view:{zExag:state.zExag,relativeZScale:state.relativeZScale,zMapping:state.zMapping,zLogK:state.zLogK,showAxes:state.showAxes,maskBaseOpacity:state.maskBaseOpacity,sectionBreak:state.sectionBreak}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
 }
 async function openProject(file){try{const p=validateAndMigrateProject(JSON.parse(await file.text()));state.wafer=p.wafer?normalizeWafer(p.wafer):null;state.activeFace=p.activeFace||'front';state.solids=p.solids;state.cuts=p.cuts;state.dopings=p.dopings;state.layerVisuals=p.layerVisuals||{};state.gds=normalizeGds(p.gds);for(const layer of state.gds.layers) layer.isBorderOnly=detectBorderOnly(layer);state.imprintedFaces=p.imprintedFaces;state.slice=p.slice||null;state.snapshots=p.snapshots;state.snapshotDevices=p.snapshotDevices;state.snapshotThumbnails=p.snapshotThumbnails;for(const s of state.snapshots)if(!s.camera)s.camera=null;
-  state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;const rawMapping=p.view?.zMapping;state.zMapping=rawMapping==='relative'?'relative':rawMapping==='log'?'relative':'linear';state.zLogK=Number.isFinite(Number(p.view?.zLogK))&&Number(p.view.zLogK)>0?Number(p.view.zLogK):.05;state.showAxes=p.view?.showAxes===true;state.maskBaseOpacity=Number.isFinite(Number(p.view?.maskBaseOpacity))?Math.min(1,Math.max(0,Number(p.view.maskBaseOpacity))):0.35;state.sectionBreak=p.view?.sectionBreak&&typeof p.view.sectionBreak==='object'?{...p.view.sectionBreak}:defaultSectionBreak(state.wafer,state.wafer?.thickness>50);state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();persistSharedState('project-open');status(`Opened ${file.name} (project v${CURRENT_PROJECT_VERSION}).`);}catch(e){status(`Open project failed: ${e.message}`)}}
+  state.zExag=Number.isFinite(Number(p.view?.zExag))?Math.min(1000,Math.max(0.1,Number(p.view.zExag))):8;state.relativeZScale=Number.isFinite(Number(p.view?.relativeZScale))?Math.min(100,Math.max(0.1,Number(p.view?.relativeZScale))):1;const rawMapping=p.view?.zMapping;state.zMapping=rawMapping==='relative'?'relative':rawMapping==='log'?'relative':'linear';state.zLogK=Number.isFinite(Number(p.view?.zLogK))&&Number(p.view?.zLogK)>0?Number(p.view?.zLogK):.05;state.showAxes=p.view?.showAxes===true;state.maskBaseOpacity=Number.isFinite(Number(p.view?.maskBaseOpacity))?Math.min(1,Math.max(0,Number(p.view.maskBaseOpacity))):0.35;state.sectionBreak=p.view?.sectionBreak&&typeof p.view.sectionBreak==='object'?{...p.view.sectionBreak}:defaultSectionBreak(state.wafer,state.wafer?.thickness>50);state.operationUndo=[];state._exactThickness=null;ensureLayerVisuals();state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();gdsSourceFile=null;if(state.wafer&&!state.slice)setDefaultSlice();state.topBounds=null;$('gdsStatus').textContent=state.gds.layers?.length?`${state.gds.layers.length} layers`:'none';syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderHierarchy();renderSnapshots();fitWafer();renderAll();persistSharedState('project-open');status(`Opened ${file.name} (project v${CURRENT_PROJECT_VERSION}).`);}catch(e){status(`Open project failed: ${e.message}`)}}
 
 function updateWaferShapeFields(){const shape=$('waferShape').value;$('waferCircleFields').classList.toggle('hidden',shape!=='circle');$('waferRectFields').classList.toggle('hidden',shape!=='rect');$('waferCustomFields').classList.toggle('hidden',shape!=='custom');updateWaferEdgeInfo();}
 function updateWaferEdgeInfo(){
