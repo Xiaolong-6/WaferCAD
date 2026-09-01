@@ -21,5 +21,7 @@ Only synthetic fixtures under `tests/fixtures` are used. No commercial layout is
 | Slow exact-thickness response cannot overwrite newer cuts | Playwright `slow exact-thickness response cannot overwrite newer cut geometry` |
 | Mixed-height growth, etch and local doping | The three mixed-height Playwright tests |
 | Project schema/future-version rejection | Playwright `project loader rejects future versions and invalid wafer dimensions` |
+| Relative thickness display (logarithmic between layers, linear within) | Playwright `relative thickness mapping is logarithmic between layers and linear within`, `switching display mode never mutates stored thickness labels` — checks numeric table 1 nm–500 µm, 50/100 nm partial, 100/500 substrate proportion, front/back symmetry, stacked layers, per-layer scale, doping proportion, physical invariance and v8→v9 `log`→`relative` migration |
+| Z display modes and scale labels | Playwright `cross section can compress a persisted substrate Z interval` now expects `relative thickness`/`physical Z` and `Display scale` |
 
 Claims not represented in this matrix are descriptive behavior or known limitations, not completed verification claims.

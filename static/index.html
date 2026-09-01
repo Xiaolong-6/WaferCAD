@@ -94,9 +94,9 @@
               <span id="sectionBreakCoordinateFields" class="section-break-fields hidden"><label>From <input id="sectionBreakFrom" type="number" step="any" aria-label="Z skip start" /></label><label>To <input id="sectionBreakTo" type="number" step="any" aria-label="Z skip end" /></label><span>µm</span></span>
               <button id="sectionBreakAuto" class="small" type="button" title="Keep 5 µm at each substrate surface">Reset</button>
             </div>
-            <div class="z-display-inline" title="Scale displayed Z only; physical thickness is unchanged">
-              <span>Z</span><select id="zMapping" aria-label="Z coordinate mapping"><option value="linear">Linear</option><option value="log">Log detail</option></select><input id="zExag" type="range" min="0.1" max="200" value="8" step="0.1" aria-label="Global Z display scale" />
-              <div class="z-number-row"><span class="z-prefix">×</span><input id="zExagNumber" type="number" min="0.1" max="1000" step="0.1" value="8" aria-label="Z display value" /></div>
+            <div class="z-display-inline" id="zDisplayInline" title="Physical: true Z × exaggeration. Relative thickness: logarithmic between layers and linear within each layer — 1 nm=1, 10 nm=2, 100 nm=3, 1 µm=4, 10 µm=5, 100 µm=6 (automatic)">
+              <span id="zScaleLabel">Z</span><select id="zMapping" aria-label="Z coordinate mapping"><option value="linear">Physical</option><option value="relative">Relative thickness</option></select><input id="zExag" type="range" min="0.1" max="200" value="8" step="0.1" aria-label="Display scale" />
+              <div class="z-number-row"><span id="zScalePrefix" class="z-prefix">×</span><input id="zExagNumber" type="number" min="0.1" max="1000" step="0.1" value="8" aria-label="Display scale value" /></div>
               <output id="zExagValue" class="hidden">×8</output>
             </div>
           </div>

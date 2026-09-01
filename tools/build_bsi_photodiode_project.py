@@ -264,7 +264,7 @@ def build_project(source: Path, bsi_depth: float) -> dict[str, Any]:
         "snapshots": snapshots,
         "snapshotDevices": snapshot_devices,
         "snapshotThumbnails": {},
-        "view": {"zExag": 80, "zMapping": "log", "zLogK": 0.05, "showAxes": False, "maskBaseOpacity": 0.2, "sectionBreak": {"enabled": True, "mode": "surfaces", "frontKeep": 5, "backKeep": 5, "from": -345, "to": -5}},
+        "view": {"zExag": 8, "zMapping": "relative", "showAxes": False, "maskBaseOpacity": 0.2, "sectionBreak": {"enabled": True, "mode": "surfaces", "frontKeep": 5, "backKeep": 5, "from": -345, "to": -5}},
         "processModel": {
             "title": "Boron-implanted black-silicon photodiode",
             "source": "https://doi.org/10.1021/acsphotonics.2c01984",

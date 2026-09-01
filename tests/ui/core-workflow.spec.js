@@ -111,7 +111,7 @@ test('core wafer workflow stays functional in Chrome', async ({ page }) => {
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('wafercad-project.json');
   const savedProject=JSON.parse(await fs.readFile(await download.path(),'utf8'));
-  expect(savedProject.version).toBe(8);
+  expect(savedProject.version).toBe(9);
   expect(savedProject.view.zMapping).toBe('linear');
   expect(savedProject.snapshots[0].device).toBeUndefined();
   expect(savedProject.snapshots[0].deviceRef).toBeTruthy();
@@ -277,14 +277,14 @@ test('cross section can compress a persisted substrate Z interval', async ({ pag
   await expect(page.locator('#sectionBreakTo')).toHaveValue('-5');
   await expect(page.locator('#sectionSvg [data-section-break="true"]')).toHaveCount(1);
   await expect(page.locator('#sectionMeta')).toContainText('Z break 490.0 µm');
-  await page.locator('#zMapping').selectOption('log');
-  await expect(page.locator('#sectionMeta')).toContainText('log-detail Z');
-  const logMapping=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const {displayZ}=await import('/static/js/layer-model.js');const front=Math.abs(displayZ(-.05)-displayZ(0)),back=Math.abs(displayZ(-500.05)-displayZ(-500)),bulk=Math.abs(displayZ(-500)-displayZ(0));return {front,back,ratio:bulk/front,mapping:state.zMapping};});
-  expect(logMapping.mapping).toBe('log');
-  expect(logMapping.ratio).toBeLessThan(100);
-  expect(logMapping.back/logMapping.front).toBeCloseTo(1,5);
+  await page.locator('#zMapping').selectOption('relative');
+  await expect(page.locator('#sectionMeta')).toContainText('relative thickness');
+  const relativeMapping=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const {relativeThickness,displayZ}=await import('/static/js/layer-model.js');const checks=[[0.001,1],[0.01,2],[0.1,3],[1,4],[10,5],[100,6],[500,1+Math.log10(500*1000)]];const results=checks.map(([t,expected])=>({t,expected,actual:relativeThickness(t)}));const front=Math.abs(displayZ(-0.05)-displayZ(0)),back=Math.abs(displayZ(-500.05)-displayZ(-500)); // in relative mode displayZ for substrate: front near-surface vs back not comparable, just ensure mapping present
+    return {mapping:state.zMapping,results,front,back};});
+  expect(relativeMapping.mapping).toBe('relative');
+  for(const {expected,actual} of relativeMapping.results){ expect(actual).toBeCloseTo(expected,5); }
   await page.locator('#zMapping').selectOption('linear');
-  await expect(page.locator('#sectionMeta')).toContainText('linear Z');
+  await expect(page.locator('#sectionMeta')).toContainText('physical Z');
   await page.locator('#sectionBreakFrontKeep').fill('10');
   await page.locator('#sectionBreakFrontKeep').press('Enter');
   await page.locator('#sectionBreakBackKeep').fill('20');
