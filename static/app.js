@@ -1,7 +1,7 @@
 import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,hasSharedState,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
-import {bboxPolys,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
+import {bboxPolys,contoursTouch,detectBorderOnly,isPolyInViewport,isSimplePolygon,linePolyIntervals,normalizeWafer,pointInPoly,polygonArea,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
 import {GeometryJobCancelledError,cancelActiveGeometryJobs,clipPolygonsToWafer,composeMaskRegions,isotropicOffset,partitionTopSurface,resolveMaskRegions,runCancellableGeometry,splitPolygonsByMask} from './js/geometry-api.js';
-import {displayZ,ensureLayerVisuals,layerVisual,mappedCutBounds,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,relativeThickness,solidLayerDescriptors,substrateVisualHeight} from './js/layer-model.js';
+import {createLayerMappingContext,displayZ,ensureLayerVisuals,layerVisual,mappedCutBounds,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,relativeThickness,solidLayerDescriptors,substrateVisualHeight} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
 import {CURRENT_PROJECT_VERSION,validateAndMigrateProject} from './js/project-schema.js';
 import {captureDevice,internDevice,internThumbnail,pruneSnapshotDevices,resolveSnapshotDevice,resolveSnapshotThumbnail} from './js/snapshot-store.js';
@@ -17,7 +17,7 @@ let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
 let sectionPan = null, sectionScale = 1, sectionTx = 0, sectionTy = 0;
 let topSurfaceAtoms = [], topSurfaceKey = null, topSurfacePendingKey = null;
-let cutUnionCacheKey=null,cutUnionPendingKey=null,cutUnionBySlab=new Map();
+let cutUnionCacheKey=null,cutUnionPendingKey=null;
 let operationInFlight=false,operationStopRequested=false,operationStartedAt=0,operationTimer=null,operationStage='';
 let snapshotNamePurpose = 'snapshot';
 function groupBy(items,keyOf){const groups=new Map();for(const item of items){const key=keyOf(item),group=groups.get(key);if(group)group.push(item);else groups.set(key,[item]);}return groups;}
@@ -124,7 +124,7 @@ async function ensureTopSurfacePartition(force=false){
   finally{if(topSurfacePendingKey===key)topSurfacePendingKey=null;}
 }
 function invalidateTopSurfacePartition(){topSurfaceKey=null;topSurfacePendingKey=null;topSurfaceAtoms=[];}
-function cutGeometryKey(){return state.wafer?JSON.stringify([state.wafer.thickness,state.cuts.map(c=>[c.id,c.side,c.zMin,c.zMax,c.partitionBatchId,c.footprint])]):'empty';}
+function cutGeometryKey(){return state.wafer?JSON.stringify([state.wafer.thickness,state.cuts.map(c=>[c.id,c.side,c.zMin,c.zMax,c.wholeFace,c.partitionBatchId,c.footprint])]):'empty';}
 function substrateZBounds(){return state.wafer?[-state.wafer.thickness,0,...state.cuts.flatMap(c=>[Math.max(-state.wafer.thickness,c.zMin),Math.min(0,c.zMax)])].sort((a,b)=>a-b).filter((v,i,a)=>i===0||Math.abs(v-a[i-1])>1e-9):[];}
 function isKnownPartitionBatch(cuts){
   if(!cuts.length)return false;
@@ -135,10 +135,53 @@ function isKnownPartitionBatch(cuts){
   // arbitrary/imported cut geometry, which must still pass through boolean union.
   return !batchId&&cuts.every(c=>!c.partitionBatchId&&c.target==='substrate'&&c.sourceFaceId==null&&c.wholeFace===false&&c.side===cuts[0].side&&c.zMin===cuts[0].zMin&&c.zMax===cuts[0].zMax&&c.profile===cuts[0].profile&&Number(c.lateralRadius||0)===Number(cuts[0].lateralRadius||0));
 }
+let substrateSlabRegions=new Map();
+function contourPerimeter(polygon){let total=0;for(let i=0;i<polygon.length;i++){const a=polygon[i],b=polygon[(i+1)%polygon.length];total+=Math.hypot(b[0]-a[0],b[1]-a[1]);}return total;}
 async function ensureCutUnionCache(){
   const key=cutGeometryKey();if(cutUnionCacheKey===key||cutUnionPendingKey===key)return;cutUnionPendingKey=key;
-  try{const bounds=substrateZBounds(),entries=await Promise.all(bounds.slice(0,-1).map(async(lowIndex,index)=>{const low=bounds[index],high=bounds[index+1],active=state.cuts.filter(c=>c.zMin<=low+1e-8&&c.zMax>=high-1e-8);if(!active.length)return [`${low}|${high}`,[],0,false];if(isKnownPartitionBatch(active))return [`${low}|${high}`,active.map(c=>c.footprint),active.length,true];const result=await composeMaskRegions(active.map(c=>c.footprint),'transmit',null);return [`${low}|${high}`,result.regions,active.length,false];}));if(cutGeometryKey()!==key)return;cutUnionBySlab=new Map(entries.map(([slab,regions])=>[slab,regions]));state._cutUnionStats=entries.map(([slab,regions,sourceCount,reusedPartition])=>({slab,sourceCount,regionCount:regions.length,reusedPartition}));cutUnionCacheKey=key;render3D();}
-  catch(error){if(cutGeometryKey()===key)status(`3D cut union failed: ${error.message}`);}
+  try{
+    const waferOutlinePoly=waferOutline();
+    const bounds=substrateZBounds();
+    const entries=await Promise.all(bounds.slice(0,-1).map(async(low, idx)=>{
+      const high=bounds[idx+1];
+      const active=state.cuts.filter(c=>c.zMin<=low+1e-8&&c.zMax>=high-1e-8);
+      if(!active.length){
+        return [`${low}|${high}`, {zMin:low, zMax:high, remainingRegions:[waferOutlinePoly], unionRegions:[], activeCount:0, isEmpty:false, useHoles:false, reusedPartition:false}];
+      }
+      if(active.some(cut=>cut.wholeFace===true)){
+        return [`${low}|${high}`, {zMin:low,zMax:high,remainingRegions:[],unionRegions:[waferOutlinePoly],activeCount:active.length,isEmpty:true,useHoles:false,reusedPartition:true}];
+      }
+      // Compute remaining substrate = wafer - union(active)
+      // Use backend block operation for exact remaining
+      let remainingRegions, unionRegions;
+      const reusedPartition=isKnownPartitionBatch(active);
+      if(reusedPartition){
+        unionRegions=active.map(c=>c.footprint);
+        // For known partition, check if union covers whole wafer (whole-face)
+        const remainingCheck=await composeMaskRegions(active.map(c=>c.footprint),'block', waferOutlinePoly);
+        remainingRegions=remainingCheck.regions;
+      } else {
+        const [unionRes, remainingRes]=await Promise.all([
+          composeMaskRegions(active.map(c=>c.footprint),'transmit',null),
+          composeMaskRegions(active.map(c=>c.footprint),'block', waferOutlinePoly)
+        ]);
+        unionRegions=unionRes.regions;
+        remainingRegions=remainingRes.regions;
+      }
+      const remainingArea=remainingRegions.reduce((sum,region)=>sum+Math.abs(polygonArea(region)),0),booleanPrecisionArea=contourPerimeter(waferOutlinePoly)*2e-6;
+      const isEmpty=remainingRegions.length===0||remainingArea<=booleanPrecisionArea;
+      if(isEmpty)remainingRegions=[];
+      const touchesBoundary=!isEmpty&&unionRegions.some(region=>contoursTouch(region,waferOutlinePoly));
+      const useHoles=!isEmpty && !touchesBoundary && unionRegions.length>0;
+      return [`${low}|${high}`, {zMin:low, zMax:high, remainingRegions, unionRegions, activeCount:active.length, isEmpty, useHoles, reusedPartition}];
+    }));
+    if(cutGeometryKey()!==key) return;
+    substrateSlabRegions=new Map(entries);
+    state._cutUnionStats=entries.map(([k,v])=>({slab:k, sourceCount:v.activeCount, regionCount:v.useHoles?v.unionRegions.length:v.remainingRegions.length, isEmpty:v.isEmpty, useHoles:v.useHoles, remainingCount:v.remainingRegions.length, reusedPartition:v.reusedPartition}));
+    state._substrateSlabRegions=entries.map(([k,v])=>({slab:k, zMin:v.zMin, zMax:v.zMax, remainingCount:v.remainingRegions.length, isEmpty:v.isEmpty, useHoles:v.useHoles}));
+    cutUnionCacheKey=key;
+    syncSectionBreakControls();renderSection();render3D();
+  } catch(error){if(cutGeometryKey()===key)status(`Substrate slab Boolean failed: ${error.message}`);}
   finally{if(cutUnionPendingKey===key)cutUnionPendingKey=null;}
 }
 function niceScaleDistance(target){if(!(target>0))return 1;const power=10**Math.floor(Math.log10(target)),normalized=target/power;return (normalized>=5?5:normalized>=2?2:1)*power;}
@@ -260,27 +303,57 @@ function bindTopNavigation(){
   svg.addEventListener('dblclick',()=>fitLayout());
 }
 
+function currentSubstrateSlabs(){
+  if(!state.wafer)return [];
+  const key=cutGeometryKey();
+  if(cutUnionCacheKey===key)return [...substrateSlabRegions.values()];
+  if(!state.cuts.length)return [{zMin:-state.wafer.thickness,zMax:0,remainingRegions:[waferOutline()],unionRegions:[],isEmpty:false,useHoles:false}];
+  return null;
+}
+function sectionPhysicalEnvelope(){
+  if(!state.wafer||!state.slice)return null;
+  const {a,b}=state.slice;let top=-Infinity,bottom=Infinity;
+  const slabs=currentSubstrateSlabs();
+  if(slabs)for(const slab of slabs){
+    if(slab.isEmpty)continue;
+    if(slab.remainingRegions.some(region=>linePolyIntervals(a,b,region).length)){top=Math.max(top,slab.zMax);bottom=Math.min(bottom,slab.zMin);}
+  }
+  for(const solid of state.solids)if(linePolyIntervals(a,b,solid.footprint).length){top=Math.max(top,Number(solid.zMax));bottom=Math.min(bottom,Number(solid.zMin));}
+  const envelope=Number.isFinite(top)&&Number.isFinite(bottom)&&top>bottom?{top,bottom,thickness:top-bottom}:null;
+  state._sectionEnvelope=envelope;
+  return envelope;
+}
 function activeSectionBreak(){
-  if(!state.wafer||state.sectionBreak?.enabled!==true)return null;
-  const from=Number(state.sectionBreak.from),to=Number(state.sectionBreak.to),bottom=-state.wafer.thickness;
-  if(!Number.isFinite(from)||!Number.isFinite(to)||from>=to||from<=bottom||to>=0)return null;
+  const config=state.sectionBreak;
+  if(!state.wafer||config?.enabled!==true)return null;
+  const envelope=sectionPhysicalEnvelope();
+  let from=Number(config.from),to=Number(config.to);
+  if(config.mode!=='coordinates'){
+    const frontKeep=Number(config.frontKeep),backKeep=Number(config.backKeep);
+    if(!envelope||!Number.isFinite(frontKeep)||!Number.isFinite(backKeep)||frontKeep<0||backKeep<0||frontKeep+backKeep>=envelope.thickness)return null;
+    from=envelope.bottom+backKeep;to=envelope.top-frontKeep;
+    config.from=from;config.to=to;
+  }else if(!envelope||!Number.isFinite(from)||!Number.isFinite(to)||from>=to||from<=envelope.bottom||to>=envelope.top)return null;
+  if(!Number.isFinite(from)||!Number.isFinite(to)||from>=to)return null;
   return {from,to};
 }
 function renderSection(){
   const svg=$('sectionSvg');clearSvg(svg);$('sectionMeta').textContent='';
   if(!state.wafer||!state.slice)return;
-  const a=state.slice.a,b=state.slice.b,back=state.activeFace==='back',waferIntervals=linePolyIntervals(a,b,waferOutline()),layerDescriptors=solidLayerDescriptors(),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors)),mappedDopings=state.dopings.map(d=>mappedDopingBounds(d,layerDescriptors));
-  const rawMin=Math.min(displayZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin),...mappedDopings.map(s=>s.zMin),0),rawMax=Math.max(displayZ(0),...mappedSolids.map(s=>s.zMax),...mappedDopings.map(s=>s.zMax));
+  const a=state.slice.a,b=state.slice.b,back=state.activeFace==='back',layerDescriptors=solidLayerDescriptors(),mappingContext=createLayerMappingContext(),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors,mappingContext)),mappedDopings=state.dopings.map(d=>mappedDopingBounds(d,layerDescriptors,mappingContext)),envelope=sectionPhysicalEnvelope();
+  const rawMin=Math.min(envelope?displayZ(envelope.bottom):displayZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin),...mappedDopings.map(s=>s.zMin)),rawMax=Math.max(envelope?displayZ(envelope.top):displayZ(0),...mappedSolids.map(s=>s.zMax),...mappedDopings.map(s=>s.zMax));
   const sectionBreak=activeSectionBreak(),breakLow=sectionBreak?displayZ(sectionBreak.from):null,breakHigh=sectionBreak?displayZ(sectionBreak.to):null,removedSpan=sectionBreak?breakHigh-breakLow:0,keptSpan=Math.max(rawMax-rawMin-removedSpan,1e-9),breakGap=sectionBreak?Math.max(keptSpan*.14,(rawMax-rawMin)*.012):0;
   const sectionCoordinate=z=>!sectionBreak||z<=breakLow?z:z>=breakHigh?z-removedSpan+breakGap:breakLow+(z-breakLow)/removedSpan*breakGap;
   const compressedMin=sectionCoordinate(rawMin),compressedMax=sectionCoordinate(rawMax),pad=(compressedMax-compressedMin)*.04+.02,yMin=compressedMin-pad,yMax=compressedMax+pad,mapX=t=>back?555-t*510:45+t*510,mapDisplayY=z=>{const compressed=sectionCoordinate(z);return back?12+(compressed-yMin)/(yMax-yMin)*296:308-(compressed-yMin)/(yMax-yMin)*296;},rectX=(t0,t1)=>{const x0=mapX(t0),x1=mapX(t1);return {x:Math.min(x0,x1),width:Math.abs(x1-x0)};},rectY=(z0,z1)=>{const y0=mapDisplayY(z0),y1=mapDisplayY(z1);return {y:Math.min(y0,y1),height:Math.abs(y1-y0)};};
   const content=makeSvg('g',{id:'sectionContent',transform:`translate(${sectionTx},${sectionTy}) scale(${sectionScale})`});
   content.appendChild(makeSvg('line',{x1:45,y1:mapDisplayY(0),x2:555,y2:mapDisplayY(0),stroke:'#b6bbc2','stroke-width':'1'}));
-  for(const waferI of waferIntervals){const xr=rectX(waferI[0],waferI[1]),yr=rectY(mappedCutBounds(-state.wafer.thickness,0).zMin,mappedCutBounds(-state.wafer.thickness,0).zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate'}));}
+  const substrateSlabs=currentSubstrateSlabs();
+  if(substrateSlabs){for(const slab of substrateSlabs){if(slab.isEmpty)continue;const mapped=mappedCutBounds(slab.zMin,slab.zMax);for(const region of slab.remainingRegions)for(const [t0,t1] of linePolyIntervals(a,b,region)){const xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual('substrate').color,stroke:'#6b7280','data-layer-id':'substrate','data-substrate-slab':`${slab.zMin}|${slab.zMax}`}));}}}
+  else void ensureCutUnionCache();
   for(const cut of state.cuts)for(const [t0,t1] of linePolyIntervals(a,b,cut.footprint)){const xr=rectX(t0,t1),yr=(()=>{const b=mappedCutBounds(cut.zMin,cut.zMax);return rectY(b.zMin,b.zMax);})();content.appendChild(makeSvg('rect',{...xr,...yr,fill:'#fbfbfc',stroke:'#9ca3af','stroke-dasharray':'3 2'}));}
-  for(const solid of state.solids)for(const [t0,t1] of linePolyIntervals(a,b,solid.footprint)){const mapped=mappedSolidBounds(solid,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual(solid.layerId).color,stroke:'#4b5563','data-layer-id':solid.layerId}));}
+  for(const solid of state.solids)for(const [t0,t1] of linePolyIntervals(a,b,solid.footprint)){const mapped=mappedSolidBounds(solid,layerDescriptors,mappingContext),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:layerVisual(solid.layerId).color,stroke:'#4b5563','data-layer-id':solid.layerId}));}
   const defs=makeSvg('defs');content.appendChild(defs);
-  for(const doping of state.dopings){const color=layerVisual(doping.layerId).color,gradientId=`gradient_${doping.layerId}`,highAtTop=(doping.position==='upper')!==back,gradient=makeSvg('linearGradient',{id:gradientId,x1:'0%',x2:'0%',y1:highAtTop?'100%':'0%',y2:highAtTop?'0%':'100%'});gradient.append(makeSvg('stop',{offset:'0%','stop-color':color,'stop-opacity':'0.08'}),makeSvg('stop',{offset:'100%','stop-color':color,'stop-opacity':'0.9'}));defs.appendChild(gradient);for(const [t0,t1] of linePolyIntervals(a,b,doping.footprint)){const mapped=mappedDopingBounds(doping,layerDescriptors),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:`url(#${gradientId})`,stroke:color,'stroke-opacity':'.65','data-layer-id':doping.layerId,'data-doping':'true'}));}}
+  for(const doping of state.dopings){const color=layerVisual(doping.layerId).color,gradientId=`gradient_${doping.layerId}`,highAtTop=(doping.position==='upper')!==back,gradient=makeSvg('linearGradient',{id:gradientId,x1:'0%',x2:'0%',y1:highAtTop?'100%':'0%',y2:highAtTop?'0%':'100%'});gradient.append(makeSvg('stop',{offset:'0%','stop-color':color,'stop-opacity':'0.08'}),makeSvg('stop',{offset:'100%','stop-color':color,'stop-opacity':'0.9'}));defs.appendChild(gradient);for(const [t0,t1] of linePolyIntervals(a,b,doping.footprint)){const mapped=mappedDopingBounds(doping,layerDescriptors,mappingContext),xr=rectX(t0,t1),yr=rectY(mapped.zMin,mapped.zMax);content.appendChild(makeSvg('rect',{...xr,...yr,fill:`url(#${gradientId})`,stroke:color,'stroke-opacity':'.65','data-layer-id':doping.layerId,'data-doping':'true'}));}}
   if(sectionBreak){
     const y0=mapDisplayY(breakLow),y1=mapDisplayY(breakHigh),top=Math.min(y0,y1),height=Math.abs(y1-y0),mid=top+height/2;
     content.appendChild(makeSvg('rect',{x:42,y:top-1,width:516,height:height+2,fill:'#f8fafc','data-section-break':'true'}));
@@ -358,15 +431,15 @@ function updateSelectionInfo(){
   const n=state.selectedFaceIds.size;$('selectionInfo').textContent=n?`${n} patterned face${n>1?'s':''} selected.`:`No pattern selected — the whole ${state.activeFace} face will be used.`;
 }
 
-async function buildMaterialConsumption(surfaceAtoms,distance,mode){
+async function buildMaterialConsumption(surfaceAtoms,distance,mode,wholeFace=false){
   const groups=new Map(),eps=1e-7,t=state.wafer.thickness;
   for(const atom of surfaceAtoms){const side=atom.side||state.activeFace,surface=Number(atom.surface),key=`${side}|${surface.toFixed(6)}`,group=groups.get(key)||{side,surface,masks:[]};group.masks.push(atom.polygon);groups.set(key,group);}
   let working=clone(state.solids),workingDopings=clone(state.dopings);const substrateCuts=[],partitionBatchId=uid('cut-batch');
   for(const group of groups.values()){
-    const front=group.side!=='back',cutLow=group.surface-distance,cutHigh=group.surface+distance,candidates=working.filter(s=>(s.side||'front')===group.side&&(front?(s.zMax>cutLow+eps&&s.zMin<group.surface-eps):(s.zMin<cutHigh-eps&&s.zMax>group.surface+eps)));
+    const front=group.side!=='back',cutLow=group.surface-distance,cutHigh=group.surface+distance,candidates=working.filter(s=>front?(s.zMax>cutLow+eps&&s.zMin<group.surface-eps):(s.zMin<cutHigh-eps&&s.zMax>group.surface+eps));
     if(candidates.length){const split=await splitPolygonsByMask(candidates.map(s=>s.footprint),group.masks),candidateIds=new Set(candidates.map(s=>s.id)),next=working.filter(s=>!candidateIds.has(s.id));for(let i=0;i<candidates.length;i++){const solid=candidates[i];for(const polygon of split.remaining[i])next.push({...clone(solid),id:uid('solid'),footprint:polygon});if(front){const residualMax=Math.min(solid.zMax,cutLow);if(residualMax>solid.zMin+eps)for(const polygon of split.overlaps[i])next.push({...clone(solid),id:uid('solid'),footprint:polygon,zMax:residualMax});}else{const residualMin=Math.max(solid.zMin,cutHigh);if(solid.zMax>residualMin+eps)for(const polygon of split.overlaps[i])next.push({...clone(solid),id:uid('solid'),footprint:polygon,zMin:residualMin});}}working=next;}
     const dopingCandidates=workingDopings.filter(d=>front?(d.zMax>cutLow+eps&&d.zMin<group.surface-eps):(d.zMin<cutHigh-eps&&d.zMax>group.surface+eps));if(dopingCandidates.length){const split=await splitPolygonsByMask(dopingCandidates.map(d=>d.footprint),group.masks),candidateIds=new Set(dopingCandidates.map(d=>d.id)),next=workingDopings.filter(d=>!candidateIds.has(d.id));for(let i=0;i<dopingCandidates.length;i++){const doping=dopingCandidates[i];for(const polygon of split.remaining[i])next.push({...clone(doping),id:uid('doping-region'),footprint:polygon});if(front){const residualMax=Math.min(doping.zMax,cutLow);if(residualMax>doping.zMin+eps)for(const polygon of split.overlaps[i])next.push({...clone(doping),id:uid('doping-region'),footprint:polygon,zMax:residualMax,depth:residualMax-doping.zMin});}else{const residualMin=Math.max(doping.zMin,cutHigh);if(doping.zMax>residualMin+eps)for(const polygon of split.overlaps[i])next.push({...clone(doping),id:uid('doping-region'),footprint:polygon,zMin:residualMin,depth:doping.zMax-residualMin});}}workingDopings=next;}
-    const substrateMin=front?Math.max(-t,cutLow):Math.max(-t,group.surface),substrateMax=front?Math.min(0,group.surface):Math.min(0,cutHigh);if(substrateMax>substrateMin+eps)for(const footprint of group.masks)substrateCuts.push({id:uid('cut'),side:group.side,footprint:clone(footprint),zMin:substrateMin,zMax:substrateMax,sourceFaceId:null,target:'substrate',wholeFace:false,profile:mode==='isotropic-etch'?'isotropic':'vertical',lateralRadius:mode==='isotropic-etch'?distance:0,partitionBatchId});
+    const substrateMin=front?Math.max(-t,cutLow):Math.max(-t,group.surface),substrateMax=front?Math.min(0,group.surface):Math.min(0,cutHigh),substrateMasks=wholeFace&&groups.size===1?[waferOutline()]:group.masks;if(substrateMax>substrateMin+eps)for(const footprint of substrateMasks)substrateCuts.push({id:uid('cut'),side:group.side,footprint:clone(footprint),zMin:substrateMin,zMax:substrateMax,sourceFaceId:null,target:'substrate',wholeFace:wholeFace&&groups.size===1,profile:mode==='isotropic-etch'?'isotropic':'vertical',lateralRadius:mode==='isotropic-etch'?distance:0,partitionBatchId});
   }
   return {solids:working,dopings:workingDopings,cuts:[...state.cuts,...substrateCuts]};
 }
@@ -407,6 +480,19 @@ async function applyDoping(distance,dopant){
   for(const target of targets){const available=Math.max(0,target.zMax-target.zMin),depth=Math.min(distance,available);if(depth<=0)continue;maxDepth=Math.max(maxDepth,depth);const zMin=front?target.surface-depth:target.surface,zMax=front?target.surface:target.surface+depth;state.dopings.push({id:uid('doping-region'),layerId,targetLayerId,dopant,position,depth,footprint:clone(target.polygon),zMin,zMax});}
   invalidateTopSurfacePartition();renderAll();persistSharedState();status(`Added ${dopant} doping ${maxDepth.toFixed(3)} µm inward from the exposed ${state.activeFace} surface of ${layerVisual(targetLayerId).name}.`);
 }
+function availableMaterialDepth(frontAtoms,backAtoms){
+  const backByGeometry=new Map(backAtoms.map(atom=>[atom.geometryId,atom]));
+  const depths=[];
+  for(const frontAtom of frontAtoms){
+    const backAtom=backByGeometry.get(frontAtom.geometryId);
+    if(!backAtom)continue;
+    const depth=Number(frontAtom.surface)-Number(backAtom.surface);
+    if(Number.isFinite(depth)&&depth>=0)depths.push(depth);
+  }
+  if(!depths.length)return null;
+  const minimum=Math.min(...depths),maximum=Math.max(...depths),tolerance=1e-7*Math.max(1,Math.abs(minimum),Math.abs(maximum));
+  return {minimum,maximum,mixed:maximum-minimum>tolerance};
+}
 async function runPushPull(){
   if(!state.wafer){status('Create or open a wafer before using Push / Pull.');return;}
   const distance=Number($('distanceInput').value)*Number($('distanceUnit').value); if(!Number.isFinite(distance)||distance<=0){status('Distance must be positive.');return;}
@@ -443,13 +529,33 @@ async function runPushPull(){
   }
   setOperationStage('Partitioning the exposed material surface…');let surfaceAtoms;try{surfaceAtoms=await partitionTopSurface(pieces.map(piece=>piece.polygon));}catch(error){if(error instanceof GeometryJobCancelledError)throw error;status(`Operation failed: ${error.message}`);return;}
   if(!surfaceAtoms.length){status('The selected mask does not overlap an exposed material surface.');return;}
+  // Preflight for destructive Push: ensure requested depth does not exceed locally available material
+  if(mode==='down'||mode==='isotropic-etch'){
+    setOperationStage('Validating available material depth…');
+    const masksForCheck=pieces.map(piece=>piece.polygon);
+    const oppositeSide=state.activeFace==='front'?'back':'front';
+    let oppositeAtoms;
+    try{ oppositeAtoms=await partitionTopSurface(masksForCheck, oppositeSide); }catch(error){ if(error instanceof GeometryJobCancelledError) throw error; status(`Depth validation failed: ${error.message}`); return; }
+    const isFront=state.activeFace==='front';
+    const frontAtoms=isFront? surfaceAtoms : oppositeAtoms;
+    const backAtoms=isFront? oppositeAtoms : surfaceAtoms;
+    const availability=availableMaterialDepth(frontAtoms,backAtoms);
+    if(!availability){status('Unable to validate a continuous material path through every selected region. No geometry was changed.');return;}
+    const tolerance=1e-7*Math.max(1,Math.abs(distance),Math.abs(availability.minimum));
+    if(distance>availability.minimum+tolerance){
+      status(availability.mixed
+        ?`Requested Push depth ${formatDisplayNumber(distance)} µm exceeds the minimum available thickness of ${formatDisplayNumber(availability.minimum)} µm across the selected regions.`
+        :`Requested Push depth ${formatDisplayNumber(distance)} µm exceeds the available material thickness of ${formatDisplayNumber(availability.minimum)} µm in the selected region.`);
+      return;
+    }
+  }
   if(mode==='up'||mode==='conformal-grow'){
     recordOperationUndo();
     const layerId=uid('layer');state.layerVisuals[layerId]={name:nextLayerName(material),color:materialColor(material),scale:1,baseThickness:distance};
     for(const atom of surfaceAtoms){const side=atom.side||state.activeFace,z0=atom.surface;state.solids.push({id:uid('solid'),layerId,side,material,footprint:clone(atom.polygon),zMin:side==='back'?z0-distance:z0,zMax:side==='back'?z0:z0+distance,sourceFaceId:atom.id,wholeFace,profile:mode==='conformal-grow'?'conformal':'vertical',lateralRadius:mode==='conformal-grow'?distance:0});}
     status(mode==='conformal-grow'?`Conformally grew ${material} with a ${distance.toFixed(3)} µm isotropic radius on the ${state.activeFace} face.`:(wholeFace?`Created a ${distance.toFixed(3)} µm ${material} blanket layer on the ${state.activeFace} face.`:`Pulled ${pieces.length} substrate-bounded region(s) from the ${state.activeFace} face by ${distance.toFixed(3)} µm.`));
   }else{
-    const previousNames=new Map(solidLayerDescriptors().map(d=>[d.id,layerVisual(d.id).name]));setOperationStage('Calculating layer-by-layer material consumption…');let consumed;try{consumed=await buildMaterialConsumption(surfaceAtoms,distance,mode);}catch(e){if(e instanceof GeometryJobCancelledError)throw e;status(`Operation failed: ${e.message}`);return;}recordOperationUndo();state.solids=consumed.solids;state.dopings=consumed.dopings;state.cuts=consumed.cuts;const removed=cleanupConsumedLayers(previousNames),removedText=removed.length?` Removed layer${removed.length>1?'s':''}: ${removed.join(', ')}.`:'';
+    const previousNames=new Map(solidLayerDescriptors().map(d=>[d.id,layerVisual(d.id).name]));setOperationStage('Calculating layer-by-layer material consumption…');let consumed;try{consumed=await buildMaterialConsumption(surfaceAtoms,distance,mode,wholeFace);}catch(e){if(e instanceof GeometryJobCancelledError)throw e;status(`Operation failed: ${e.message}`);return;}recordOperationUndo();state.solids=consumed.solids;state.dopings=consumed.dopings;state.cuts=consumed.cuts;const removed=cleanupConsumedLayers(previousNames),removedText=removed.length?` Removed layer${removed.length>1?'s':''}: ${removed.join(', ')}.`:'';
     status(mode==='isotropic-etch'?`Isotropically etched inward from the ${state.activeFace} surface by ${distance.toFixed(3)} µm.${removedText}`:`Pushed inward from the ${state.activeFace} surface by ${distance.toFixed(3)} µm.${removedText}`);
   }
   // Keep Patterns selection for iterative tuning; clear legacy imprinted/top
@@ -692,7 +798,9 @@ function defaultSectionBreak(wafer=state.wafer,enabled=true){
   return {enabled:enabled&&thickness>edge*2+1,mode:'surfaces',frontKeep:edge,backKeep:edge,from:-thickness+edge,to:-edge};
 }
 function syncSectionBreakControls(){
-  const config=state.sectionBreak||defaultSectionBreak(state.wafer,false),enabled=config.enabled===true,thickness=Number(state.wafer?.thickness)||0,mode=config.mode==='coordinates'?'coordinates':'surfaces',from=Number(config.from)||0,to=Number(config.to)||0,frontKeep=Number.isFinite(Number(config.frontKeep))?Number(config.frontKeep):Math.max(0,-to),backKeep=Number.isFinite(Number(config.backKeep))?Number(config.backKeep):Math.max(0,thickness+from);
+  const config=state.sectionBreak||defaultSectionBreak(state.wafer,false),enabled=config.enabled===true,mode=config.mode==='coordinates'?'coordinates':'surfaces',frontKeep=Number.isFinite(Number(config.frontKeep))?Number(config.frontKeep):5,backKeep=Number.isFinite(Number(config.backKeep))?Number(config.backKeep):5,envelope=mode==='surfaces'?sectionPhysicalEnvelope():null;
+  if(envelope&&frontKeep>=0&&backKeep>=0&&frontKeep+backKeep<envelope.thickness){config.from=envelope.bottom+backKeep;config.to=envelope.top-frontKeep;}
+  const from=Number(config.from)||0,to=Number(config.to)||0;
   if($('sectionBreakEnabled'))$('sectionBreakEnabled').checked=enabled;
   if($('sectionBreakControls'))$('sectionBreakControls').classList.toggle('hidden',!enabled);
   if($('sectionBreakMode'))$('sectionBreakMode').value=mode;
@@ -705,16 +813,18 @@ function syncSectionBreakControls(){
 }
 function applySectionBreakControls(){
   if(!state.wafer)return;
-  const mode=$('sectionBreakMode').value==='coordinates'?'coordinates':'surfaces',thickness=state.wafer.thickness,bottom=-thickness;
+  const mode=$('sectionBreakMode').value==='coordinates'?'coordinates':'surfaces',envelope=sectionPhysicalEnvelope();
   let from,to,frontKeep,backKeep;
   if(mode==='surfaces'){
     frontKeep=Number($('sectionBreakFrontKeep').value);backKeep=Number($('sectionBreakBackKeep').value);
-    if(!Number.isFinite(frontKeep)||!Number.isFinite(backKeep)||frontKeep<0||backKeep<0||frontKeep+backKeep>=thickness){status(`Front + back retained thickness must be less than ${formatDisplayNumber(thickness)} µm.`);syncSectionBreakControls();return;}
-    from=bottom+backKeep;to=-frontKeep;
+    if(!envelope){status('The current A–B line does not intersect a physical material envelope.');syncSectionBreakControls();return;}
+    if(!Number.isFinite(frontKeep)||!Number.isFinite(backKeep)||frontKeep<0||backKeep<0||frontKeep+backKeep>=envelope.thickness){status(`Front + back retained thickness must be less than the current A–B material thickness of ${formatDisplayNumber(envelope.thickness)} µm.`);syncSectionBreakControls();return;}
+    from=envelope.bottom+backKeep;to=envelope.top-frontKeep;
   }else{
     from=Number($('sectionBreakFrom').value);to=Number($('sectionBreakTo').value);
-    if(!Number.isFinite(from)||!Number.isFinite(to)||from>=to||from<=bottom||to>=0){status(`Z break must satisfy ${formatDisplayNumber(bottom)} < start < end < 0 µm.`);syncSectionBreakControls();return;}
-    frontKeep=-to;backKeep=thickness+from;
+    if(!envelope){status('The current A–B line does not intersect a physical material envelope.');syncSectionBreakControls();return;}
+    if(!Number.isFinite(from)||!Number.isFinite(to)||from>=to||from<=envelope.bottom||to>=envelope.top){status(`Z break must satisfy ${formatDisplayNumber(envelope.bottom)} < start < end < ${formatDisplayNumber(envelope.top)} µm for the current A–B material envelope.`);syncSectionBreakControls();return;}
+    frontKeep=envelope.top-to;backKeep=from-envelope.bottom;
   }
   state.sectionBreak={enabled:true,mode,frontKeep,backKeep,from,to};syncSectionBreakControls();renderSection();persistSharedState('section-z-break');status(mode==='surfaces'?`Cross section keeps ${formatDisplayNumber(frontKeep)} µm at the front and ${formatDisplayNumber(backKeep)} µm at the back.`:`Cross section skips Z ${formatDisplayNumber(from)} to ${formatDisplayNumber(to)} µm.`);
 }
@@ -752,7 +862,7 @@ function setZExag(v, source='slider'){
   if(source!=='slider' && $('zExag')) $('zExag').value=String(Math.min(sliderMax, Math.max(0.1, n)));
   if(source!=='number' && $('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(n);
   if($('zExagValue')) $('zExagValue').value=`${isRelative?'':'×'}${formatDisplayNumber(n)}`;
-  renderSection();render3D();persistSharedState();
+  renderSection();render3D();persistSharedState('z-scale');
 }
 function setZMapping(value){
   const next=value==='relative'?'relative':'linear';
@@ -796,22 +906,45 @@ function addMergedExtrusions(items,xy,boundsOf,materialOf){
 function render3D(){
   if(!THREE||!deviceGroup)return;disposeGroup(deviceGroup);if(!state.wafer||!state.slice)return;
   const xy=waferXYScale(),scaledWafer=scaledPoly(waferOutline(),xy);
-  // Build substrate slabs only from Boolean-unioned cut regions. While a new
-  // union is pending, render the slab without holes rather than feeding
-  // overlapping invalid hole paths to Three.js triangulation.
   const zBounds=substrateZBounds(),cutKey=cutGeometryKey();if(cutUnionCacheKey!==cutKey)void ensureCutUnionCache();
+  // Use derived remaining substrate per Z slab; whole-face cuts produce empty remaining (no mesh) and edge-touching cuts are rendered as remaining outer regions, not as degenerate holes.
+  let substrateSlabCount=0,substrateRegionCount=0,substrateMeshCount=0,substratePendingSlabs=0;
   for(let i=0;i<zBounds.length-1;i++){
-    const low=zBounds[i],high=zBounds[i+1]; const shape=makeShape(scaledWafer);
-    const unitedCuts=cutUnionCacheKey===cutKey?(cutUnionBySlab.get(`${low}|${high}`)||[]):[];
-    for(const footprint of unitedCuts){const pp=scaledPoly(footprint,xy);const hole=new THREE.Path();pp.forEach(([x,y],j)=>j?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole);}
-    const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});const mesh=new THREE.Mesh(geo,mat);deviceGroup.add(mesh);
+    const low=zBounds[i],high=zBounds[i+1];
+    const slabKey=`${low}|${high}`;
+    const slabInfo=cutUnionCacheKey===cutKey?substrateSlabRegions.get(slabKey):null;
+    if(slabInfo){
+      if(slabInfo.isEmpty){
+        substrateSlabCount++;
+        continue;
+      }
+      if(slabInfo.useHoles){
+        const shape=makeShape(scaledWafer);
+        for(const footprint of slabInfo.unionRegions){const pp=scaledPoly(footprint,xy);const hole=new THREE.Path();pp.forEach(([x,y],j)=>j?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole);}
+        const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});deviceGroup.add(new THREE.Mesh(geo,mat));substrateRegionCount++;substrateMeshCount++;substrateSlabCount++;
+      } else {
+        for(const region of slabInfo.remainingRegions){
+          const shape=makeShape(scaledPoly(region,xy));
+          const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});deviceGroup.add(new THREE.Mesh(geo,mat));substrateRegionCount++;substrateMeshCount++;
+        }
+        substrateSlabCount++;
+      }
+    } else {
+      // While exact Boolean regions are pending, omit affected slabs. This avoids
+      // both a transient residual rim and ever constructing a boundary-touching
+      // or whole-face cut as a Three.js hole.
+      const active=state.cuts.filter(c=>c.zMin<=low+1e-8&&c.zMax>=high-1e-8);
+      if(active.length){substratePendingSlabs++;continue;}
+      const shape=makeShape(scaledWafer);
+      const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});deviceGroup.add(new THREE.Mesh(geo,mat));substrateSlabCount++;substrateRegionCount++;substrateMeshCount++;
+    }
   }
-  const layerDescriptors=solidLayerDescriptors();
-  const solidMeshes=addMergedExtrusions(state.solids,xy,solid=>mappedSolidBounds(solid,layerDescriptors),solid=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(solid.layerId).color),roughness:.55,metalness:solid.material.toLowerCase().includes('metal')?.6:.05,side:THREE.DoubleSide}));
-  const dopingMeshes=addMergedExtrusions(state.dopings,xy,doping=>mappedDopingBounds(doping,layerDescriptors),doping=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(doping.layerId).color),transparent:true,opacity:.38,depthWrite:false,roughness:.35,metalness:0,side:THREE.DoubleSide}));
-  state._renderStats={solidRegions:state.solids.length,solidMeshes,dopingRegions:state.dopings.length,dopingMeshes};
+  const layerDescriptors=solidLayerDescriptors(),mappingContext=createLayerMappingContext();
+  const solidMeshes=addMergedExtrusions(state.solids,xy,solid=>mappedSolidBounds(solid,layerDescriptors,mappingContext),solid=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(solid.layerId).color),roughness:.55,metalness:solid.material.toLowerCase().includes('metal')?.6:.05,side:THREE.DoubleSide}));
+  const dopingMeshes=addMergedExtrusions(state.dopings,xy,doping=>mappedDopingBounds(doping,layerDescriptors,mappingContext),doping=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(doping.layerId).color),transparent:true,opacity:.38,depthWrite:false,roughness:.35,metalness:0,side:THREE.DoubleSide}));
+  state._renderStats={substrateSlabs:substrateSlabCount,substrateRegions:substrateRegionCount,substrateMeshes:substrateMeshCount,substratePendingSlabs,solidRegions:state.solids.length,solidMeshes,dopingRegions:state.dopings.length,dopingMeshes};
   // Selected slice plane.
-  const a=state.slice.a,b=state.slice.b,ax=a.x*xy,ay=a.y*xy,bx=b.x*xy,by=b.y*xy,len=Math.hypot(bx-ax,by-ay),angle=Math.atan2(by-ay,bx-ax),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors));const maxz=Math.max(.3,...mappedSolids.map(s=>s.zMax));const minz=Math.min(mappedZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin)),height=maxz-minz+.2;const plane=new THREE.Mesh(new THREE.BoxGeometry(len,.018,height),new THREE.MeshBasicMaterial({color:0x2563eb,transparent:true,opacity:.18,depthWrite:false}));plane.position.set((ax+bx)/2,(ay+by)/2,(maxz+minz)/2);plane.rotation.z=angle;deviceGroup.add(plane);
+  const a=state.slice.a,b=state.slice.b,ax=a.x*xy,ay=a.y*xy,bx=b.x*xy,by=b.y*xy,len=Math.hypot(bx-ax,by-ay),angle=Math.atan2(by-ay,bx-ax),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors,mappingContext));const maxz=Math.max(.3,...mappedSolids.map(s=>s.zMax));const minz=Math.min(mappedZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin)),height=maxz-minz+.2;const plane=new THREE.Mesh(new THREE.BoxGeometry(len,.018,height),new THREE.MeshBasicMaterial({color:0x2563eb,transparent:true,opacity:.18,depthWrite:false}));plane.position.set((ax+bx)/2,(ay+by)/2,(maxz+minz)/2);plane.rotation.z=angle;deviceGroup.add(plane);
   const boundaryPoints=scaledWafer.map(([x,y])=>new THREE.Vector3(x,y,.006));const boundaryGeo=new THREE.BufferGeometry().setFromPoints(boundaryPoints);const boundary=new THREE.LineLoop(boundaryGeo,new THREE.LineBasicMaterial({color:0x475569}));deviceGroup.add(boundary);
 }
 
@@ -941,7 +1074,7 @@ function bindUi(){
   $('sectionBreakBackKeep')?.addEventListener('change',applySectionBreakControls);
   $('sectionBreakFrom')?.addEventListener('change',applySectionBreakControls);
   $('sectionBreakTo')?.addEventListener('change',applySectionBreakControls);
-  $('sectionBreakAuto')?.addEventListener('click',()=>{if(!state.wafer)return;state.sectionBreak=defaultSectionBreak(state.wafer,true);syncSectionBreakControls();renderSection();persistSharedState('section-z-break');status('Cross section keeps 5 µm at each substrate surface (or 10% for a very thin wafer).');});
+  $('sectionBreakAuto')?.addEventListener('click',()=>{if(!state.wafer)return;const envelope=sectionPhysicalEnvelope();if(!envelope){status('The current A–B line does not intersect a physical material envelope.');return;}const edge=Math.min(5,envelope.thickness*.1);state.sectionBreak={enabled:envelope.thickness>edge*2+1,mode:'surfaces',frontKeep:edge,backKeep:edge,from:envelope.bottom+edge,to:envelope.top-edge};syncSectionBreakControls();renderSection();persistSharedState('section-z-break');status('Cross section keeps 5 µm at each current A–B material surface (or 10% for a very thin envelope).');});
   $('maskOpacity')?.addEventListener('input',()=>setMaskOpacity($('maskOpacity').value));
   $('showAxes').addEventListener('change',updateAxesVisibility);$('saveProjectBtn').addEventListener('click',saveProject);$('openProjectInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)openProject(f);e.target.value='';});
   $('pushMode').addEventListener('change',updateOperationModeUi);updateOperationModeUi();

@@ -91,6 +91,21 @@ export function polygonsOverlap(a,b){
   return false;
 }
 
+function pointOnSegment(point,a,b,epsilon){
+  const dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
+  if(length<=epsilon)return Math.hypot(point[0]-a[0],point[1]-a[1])<=epsilon;
+  const cross=Math.abs((point[0]-a[0])*dy-(point[1]-a[1])*dx);
+  if(cross>epsilon*length)return false;
+  const dot=(point[0]-a[0])*dx+(point[1]-a[1])*dy;
+  return dot>=-epsilon*length&&dot<=length*length+epsilon*length;
+}
+export function contoursTouch(a,b,epsilon=1e-5){
+  if(!a||!b||a.length<2||b.length<2)return false;
+  for(const point of a)for(let i=0;i<b.length;i++)if(pointOnSegment(point,b[i],b[(i+1)%b.length],epsilon))return true;
+  for(const point of b)for(let i=0;i<a.length;i++)if(pointOnSegment(point,a[i],a[(i+1)%a.length],epsilon))return true;
+  return false;
+}
+
 export function linePolyIntervals(a,b,polygon){
   const ts=[0,1],dx=b.x-a.x,dy=b.y-a.y;
   for(let i=0;i<polygon.length;i++){const p=polygon[i],q=polygon[(i+1)%polygon.length],ex=q[0]-p[0],ey=q[1]-p[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-12)continue;const px=p[0]-a.x,py=p[1]-a.y,t=(px*ey-py*ex)/den,u=(px*dy-py*dx)/den;if(t>0&&t<1&&u>=0&&u<=1)ts.push(t);}

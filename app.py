@@ -788,6 +788,7 @@ def surface_partition(payload: SurfacePartitionRequest) -> dict[str, Any]:
                     "zMax": z_max,
                     "polygon": points,
                     "area": float(atom.area()),
+                    "geometryId": geometry_id,
                 }
             )
 

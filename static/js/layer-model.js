@@ -93,6 +93,29 @@ function findSupportingSolids(piece, allSolids, side){
   }
   return supporters;
 }
+function frontSupportVisualZ(piece, allSolids, memo, visiting){
+  const supporters=findSupportingSolids(piece, allSolids, 'front');
+  if(!supporters.length)return 0;
+  let maxTop=-Infinity;
+  for(const sup of supporters){
+    const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
+    maxTop=Math.max(maxTop, b.zMax);
+  }
+  return maxTop;
+}
+function backSupportVisualZ(piece, allSolids, memo, visiting){
+  const supporters=findSupportingSolids(piece, allSolids, 'back');
+  if(!supporters.length)return -substrateVisualHeightRelative();
+  let minBottom=Infinity;
+  for(const sup of supporters){
+    const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
+    minBottom=Math.min(minBottom, b.zMin);
+  }
+  return minBottom;
+}
+export function createLayerMappingContext(solids=state.solids){
+  return {solids,memo:new Map()};
+}
 function computeVisualBoundsForPiece(piece, allSolids, memo, visiting=new Set()){
   if(memo.has(piece.id)) return memo.get(piece.id);
   if(visiting.has(piece.id)){
@@ -113,198 +136,58 @@ function computeVisualBoundsForPiece(piece, allSolids, memo, visiting=new Set())
   const T_full_raw=fullPhysicalThicknessForLayer(piece.layerId,null);
   const T_full=(Number.isFinite(T_full_raw) && T_full_raw>0)? T_full_raw : Math.max(0, zMax-zMin);
   const V_full=relativeThickness(T_full)*globalRelativeScale()*perScale;
-  // split at substrate boundaries -T and 0
-  const segments=[];
-  const bounds=[-Tsub, 0];
-  let curMin=zMin, curMax=zMax;
-  // collect split points within piece
-  const splits=[zMin, zMax];
-  for(const b of bounds){ if(b>zMin+1e-9 && b<zMax-1e-9) splits.push(b); }
-  splits.sort((a,b)=>a-b);
-  for(let i=0;i<splits.length-1;i++){
-    const a=splits[i], b=splits[i+1];
-    if(b<=a+1e-9) continue;
-    const isInside = a>= -Tsub-1e-9 && b<= 0+1e-9;
-    const isBelow = b <= -Tsub+1e-9;
-    const isAbove = a >= 0-1e-9;
-    segments.push({bottom:a, top:b, isInside, isBelow, isAbove, thickness:b-a});
-  }
-  // If no split (should not happen), fallback
-  if(!segments.length){
-    const isInside = zMin>= -Tsub-1e-9 && zMax<= 0+1e-9;
-    if(isInside){
-      const vMin=substrateVisualZ(zMin), vMax=substrateVisualZ(zMax);
-      const res={zMin:Math.min(vMin,vMax), zMax:Math.max(vMin,vMax)};
-      visiting.delete(piece.id); memo.set(piece.id,res); return res;
-    }
-  }
-  // For inside-only pieces, use substrate mapping directly
-  const allInside = segments.every(s=>s.isInside);
-  const allOutside = segments.every(s=>!s.isInside);
-  if(allInside){
-    const vMin=substrateVisualZ(zMin), vMax=substrateVisualZ(zMax);
-    const res={zMin:Math.min(vMin,vMax), zMax:Math.max(vMin,vMax)};
-    visiting.delete(piece.id); memo.set(piece.id,res); return res;
-  }
-  // For mixed or fully outside, handle piecewise with support for outside parts
-  const isCrossing = segments.some(s=>s.isInside) && segments.some(s=>!s.isInside);
-  // Compute visual for bottommost segment first
-  let currentVisualBottom;
-  // Determine starting visual for bottommost segment
-  const bottomSeg=segments[0];
-  if(bottomSeg.isInside){
-    currentVisualBottom=substrateVisualZ(bottomSeg.bottom);
-  } else if(bottomSeg.isBelow){
-    const thickness=bottomSeg.thickness;
-    const height=isCrossing? relativeThickness(thickness)*globalRelativeScale()*perScale : (T_full>0?(thickness/T_full)*V_full: relativeThickness(thickness)*globalRelativeScale()*perScale);
-    const visualTop=-Hsub;
-    const visualBottom=visualTop - height;
-    currentVisualBottom=null; // will be handled in loop
-  } else if(bottomSeg.isAbove){
-    // front outside bottommost: find support at its bottom
-    const supporters=findSupportingSolids({ ...piece, zMin: bottomSeg.bottom, zMax: bottomSeg.bottom, footprint: piece.footprint, side: piece.side }, allSolids, side);
-    // Actually find supporters where candidate.zMax == bottom
-    let supportVisualTop=0;
-    if(supporters.length){
-      let maxTop=-Infinity;
-      for(const sup of supporters){
-        const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
-        maxTop=Math.max(maxTop, b.zMax);
-      }
-      supportVisualTop=maxTop;
-    } else {
-      const eps=1e-7;
-      if(Math.abs(bottomSeg.bottom) < eps) supportVisualTop=0;
-      else supportVisualTop=0; // fallback for floating
-    }
-    currentVisualBottom=supportVisualTop;
-  }
 
-  // Iterate segments bottom to top, accumulating
-  let visualBottom, visualTop;
-  let accumulatedBottom=null, accumulatedTop=null;
-  for(let idx=0; idx<segments.length; idx++){
-    const seg=segments[idx];
-    let segVisualBottom, segVisualTop, segHeight;
-    if(seg.isInside){
-      segVisualBottom=substrateVisualZ(seg.bottom);
-      segVisualTop=substrateVisualZ(seg.top);
-      segHeight=Math.abs(segVisualTop - segVisualBottom);
-    } else {
-      // outside: relative (independent for crossing, proportional otherwise to preserve linear-within for etched partials)
-      const thickness=seg.thickness;
-      const height=isCrossing? relativeThickness(thickness)*globalRelativeScale()*perScale : (T_full>0?(thickness/T_full)*V_full: relativeThickness(thickness)*globalRelativeScale()*perScale);
-      segHeight=height;
-      if(idx===0){
-        // bottommost outside
-        if(seg.isBelow){
-          // below substrate
-          const visualTopBelow=-Hsub;
-          segVisualTop=visualTopBelow;
-          segVisualBottom=visualTopBelow - height;
-        } else {
-          // above
-          let supportVisualTop=0;
-          // check support at seg.bottom
-          const tempPiece={ ...piece, zMin: seg.bottom, zMax: seg.bottom };
-          const supporters=findSupportingSolids(tempPiece, allSolids, side);
-          // Actually need to find solids with top == seg.bottom
-          // findSupportingSolids expects piece with zMin == bottom, so we create dummy
-          const dummy={ id: piece.id+"-seg-bottom-"+idx, side: piece.side, footprint: piece.footprint, zMin: seg.bottom, zMax: seg.bottom, layerId: piece.layerId };
-          const sups=findSupportingSolids(dummy, allSolids, side);
-          if(sups.length){
-            let maxTop=-Infinity;
-            for(const sup of sups){
-              const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
-              maxTop=Math.max(maxTop, b.zMax);
-            }
-            supportVisualTop=maxTop;
-          } else {
-            const eps=1e-7;
-            if(Math.abs(seg.bottom) < eps) supportVisualTop=0;
-            else {
-              // For front piece at 2..3 with support at 2, dummy at 2 should find support at 2
-              // Our dummy has zero thickness, zMin==zMax==2, findSupporting will look for candidates with zMax==2, which should find base at 0..2
-              // So not fallback
-              supportVisualTop=0;
-            }
-          }
-          segVisualBottom=supportVisualTop;
-          segVisualTop=segVisualBottom + height;
-        }
-      } else {
-        // not bottommost, continuity: bottom is previous top
-        segVisualBottom=accumulatedTop;
-        segVisualTop=segVisualBottom + height;
-      }
-    }
-    if(idx===0){
-      accumulatedBottom=segVisualBottom;
-      accumulatedTop=segVisualTop;
-    } else {
-      // For inside after outside? Actually order bottom to top ensures continuity: previous top should equal current bottom for substrate boundary at 0 or -T
-      // For front crossing, previous segment is inside [-1,0] with top 0, next segment above [0,1] bottom should be 0, so continuity holds if we set current bottom to previous top
-      // Our per-segment bottom for inside was substrateVisualZ(bottom) which for inside bottom -1 is -0.42, top 0
-      // For next above segment, its bottom should be 0 (previous top), which matches supportVisualTop 0
-      // So we can enforce continuity by setting current bottom to previous top if segments are contiguous at boundary
-      const prevTop=accumulatedTop;
-      // Adjust current segment to start at prevTop if they share boundary at 0 or -T
-      if(Math.abs(seg.bottom - segments[idx-1].top) < 1e-9){
-        segVisualBottom=prevTop;
-        segVisualTop=segVisualBottom + segHeight;
-      }
-      accumulatedBottom=Math.min(accumulatedBottom, segVisualBottom);
-      accumulatedTop=Math.max(accumulatedTop, segVisualTop);
-    }
-  }
-  // For fully outside case with single segment above, we already computed via support logic above, but our loop for single outside segment with idx0 handled
-  // For fully outside with single segment, result is segVisualBottom..segVisualTop
+  const isInsideOnly = zMin>= -Tsub-1e-9 && zMax<= 0+1e-9;
+  const isFrontExternal = zMin>= -1e-9;
+  const isBackExternal = zMax<= -Tsub+1e-9;
+  const isFrontCrossing = zMin < 0 && zMax > 0;
+  const isBackCrossing = zMin < -Tsub && zMax > -Tsub && zMax <= 0+1e-9;
+
   let result;
-  if(segments.length===1 && !segments[0].isInside){
-    // already computed as segVisualBottom/Top for idx0
-    result={zMin: accumulatedBottom, zMax: accumulatedTop};
-  } else if(allInside){
-    // already handled
+  if(isInsideOnly){
+    const vMin=substrateVisualZ(zMin), vMax=substrateVisualZ(zMax);
+    result={zMin:Math.min(vMin,vMax), zMax:Math.max(vMin,vMax)};
+  } else if(isFrontExternal){
+    const thickness=zMax-zMin;
+    const V_piece=T_full>0?(thickness/T_full)*V_full: relativeThickness(thickness)*globalRelativeScale()*perScale;
+    const supportTop=frontSupportVisualZ(piece, allSolids, memo, visiting);
+    result={zMin:supportTop, zMax:supportTop+V_piece};
+  } else if(isBackExternal){
+    const thickness=zMax-zMin;
+    const V_piece=T_full>0?(thickness/T_full)*V_full: relativeThickness(thickness)*globalRelativeScale()*perScale;
+    const supportBottom=backSupportVisualZ(piece, allSolids, memo, visiting);
+    result={zMin:supportBottom-V_piece, zMax:supportBottom};
+  } else if(isFrontCrossing){
+    const outsideThickness=zMax;
+    const outsideHeight=relativeThickness(outsideThickness)*globalRelativeScale()*perScale;
+    const visualBottom=substrateVisualZ(zMin);
+    const visualTop=0+outsideHeight;
+    result={zMin:visualBottom, zMax:visualTop};
+  } else if(isBackCrossing){
+    const belowBottom=zMin, belowTop=-Tsub;
+    const belowThickness=belowTop-belowBottom;
+    const belowHeight=relativeThickness(belowThickness)*globalRelativeScale()*perScale;
+    const visualBottomBelow=-Hsub - belowHeight;
+    const visualTopInside=substrateVisualZ(zMax);
+    result={zMin:visualBottomBelow, zMax:visualTopInside};
   } else {
-    result={zMin: Math.min(accumulatedBottom, accumulatedTop), zMax: Math.max(accumulatedBottom, accumulatedTop)};
-    // For crossing, we need to ensure bottom is substrateVisualZ(zMin) and top is from outside
-    // Our loop already did
-  }
-  // Fallback if not set (should not happen)
-  if(!result){
-    const thickness=Math.max(0, zMax-zMin);
-    const V_piece=T_full>0?(thickness/T_full)*V_full:0;
-    const sideIsBack=(side==='back');
-    if(sideIsBack){
-      const supporters=findSupportingSolids(piece, allSolids, 'back');
-      let supportVisualBottom=-Hsub;
-      if(supporters.length){
-        let minBottom=Infinity;
-        for(const sup of supporters){
-          const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
-          minBottom=Math.min(minBottom, b.zMin);
-        }
-        supportVisualBottom=minBottom;
-      }
-      result={zMin: supportVisualBottom - V_piece, zMax: supportVisualBottom};
+    // Fallback: generic split handling for any other mixed case
+    const thickness=zMax-zMin;
+    const V_piece=T_full>0?(thickness/T_full)*V_full: relativeThickness(thickness)*globalRelativeScale()*perScale;
+    if(side==='back'){
+      const supportBottom=backSupportVisualZ(piece, allSolids, memo, visiting);
+      result={zMin:supportBottom-V_piece, zMax:supportBottom};
     } else {
-      const supporters=findSupportingSolids(piece, allSolids, 'front');
-      let supportVisualTop=0;
-      if(supporters.length){
-        let maxTop=-Infinity;
-        for(const sup of supporters){
-          const b=computeVisualBoundsForPiece(sup, allSolids, memo, visiting);
-          maxTop=Math.max(maxTop, b.zMax);
-        }
-        supportVisualTop=maxTop;
-      }
-      result={zMin: supportVisualTop, zMax: supportVisualTop + V_piece};
+      const supportTop=frontSupportVisualZ(piece, allSolids, memo, visiting);
+      result={zMin:supportTop, zMax:supportTop+V_piece};
     }
   }
   visiting.delete(piece.id);
   memo.set(piece.id,result);
   return result;
 }
+
+
 function layerVisualIntervalRelative(layerId,layers){
   // kept for substrate and for doping fallback that expects global interval;
   // for solids, this is no longer used for positioning, but kept for compatibility for substrate interval.
@@ -347,17 +230,18 @@ export function displayZ(z){
   if(z<=-thickness) return mappedBottom*xy*exaggeration*substrateScale+(mapped-mappedBottom)*xy*exaggeration;
   return mapped*xy*exaggeration*substrateScale;
 }
-export function mappedSolidBounds(solid,layers=solidLayerDescriptors()){
+export function mappedSolidBounds(solid,layers=solidLayerDescriptors(),mappingContext=null){
   if(isRelativeMapping()){
     if(!state.wafer) return {zMin:0,zMax:0};
-    // Use local topology-aware mapping; layers param kept for API compat but not used for global stack
-    return computeVisualBoundsForPiece(solid, state.solids, new Map());
+    const context=mappingContext?.memo instanceof Map?mappingContext:createLayerMappingContext();
+    return computeVisualBoundsForPiece(solid, context.solids, context.memo);
   }
   const current=layers.find(layer=>layer.id===solid.layerId),rawMin=displayZ(solid.zMin),rawMax=displayZ(solid.zMax);if(!current)return {zMin:rawMin,zMax:rawMax};const epsilon=1e-7;if(current.side==='back'){const offset=layers.filter(layer=>layer.id!==current.id&&layer.side==='back'&&layer.zMin>=current.zMax-epsilon).reduce((sum,layer)=>sum+(layer.scale-1)*(displayZ(layer.zMax)-displayZ(layer.zMin)),0),zMax=rawMax-offset;return {zMin:zMax-(rawMax-rawMin)*current.scale,zMax};}const offset=layers.filter(layer=>layer.id!==current.id&&layer.side!=='back'&&layer.zMax<=current.zMin+epsilon).reduce((sum,layer)=>sum+(layer.scale-1)*(displayZ(layer.zMax)-displayZ(layer.zMin)),0),zMin=rawMin+offset;return {zMin,zMax:zMin+(rawMax-rawMin)*current.scale};}
-export function mappedDopingBounds(doping,layers=solidLayerDescriptors()){
+export function mappedDopingBounds(doping,layers=solidLayerDescriptors(),mappingContext=null){
   if(isRelativeMapping()){
     if(!state.wafer) return {zMin:0,zMax:0};
-    const allSolids=state.solids;
+    const context=mappingContext?.memo instanceof Map?mappingContext:createLayerMappingContext();
+    const allSolids=context.solids;
     if(doping.targetLayerId==='substrate'){
       const rawMin=substrateVisualZ(Number(doping.zMin));
       const rawMax=substrateVisualZ(Number(doping.zMax));
@@ -396,7 +280,7 @@ export function mappedDopingBounds(doping,layers=solidLayerDescriptors()){
       const v=relativeThickness(t)*globalRelativeScale()*validLayerScale(layerVisual(doping.layerId).scale);
       return doping.position==='lower'?{zMin:0,zMax:v}:{zMin:0,zMax:v};
     }
-    const targetBounds=computeVisualBoundsForPiece(targetPiece, allSolids, new Map());
+    const targetBounds=computeVisualBoundsForPiece(targetPiece, allSolids, context.memo);
     const T_target=Math.max(0, Number(targetPiece.zMax)-Number(targetPiece.zMin));
     if(T_target<=0) return targetBounds;
     const fLow=(Number(doping.zMin)-Number(targetPiece.zMin))/T_target;

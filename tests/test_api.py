@@ -199,6 +199,44 @@ def test_surface_partition_assigns_one_height_and_material_per_atom(client):
     assert {atom["surface"] for atom in atoms} == {0, 100}
     assert {atom["kind"] for atom in atoms} == {"substrate", "solid"}
     assert all(atom["sourceId"] == "lower" for atom in atoms if atom["kind"] == "solid")
+    assert len({atom["geometryId"] for atom in atoms}) == 2
+
+
+def test_surface_partition_geometry_ids_match_across_processing_sides(client):
+    payload = {
+        "outline": WAFER,
+        "thickness": 500,
+        "solids": [
+            {
+                "id": "front-film",
+                "layerId": "film",
+                "side": "front",
+                "footprint": [[-50, -50], [0, -50], [0, 50], [-50, 50]],
+                "zMin": 0,
+                "zMax": 2,
+            }
+        ],
+        "cuts": [
+            {
+                "side": "back",
+                "footprint": [[0, -50], [50, -50], [50, 50], [0, 50]],
+                "zMin": -500,
+                "zMax": -400,
+            }
+        ],
+        "masks": [WAFER],
+    }
+    front = client.post("/api/geometry/surface-partition", json={**payload, "side": "front"})
+    back = client.post("/api/geometry/surface-partition", json={**payload, "side": "back"})
+    assert front.status_code == back.status_code == 200
+    front_atoms = {atom["geometryId"]: atom for atom in front.json()["atoms"]}
+    back_atoms = {atom["geometryId"]: atom for atom in back.json()["atoms"]}
+    assert front_atoms.keys() == back_atoms.keys()
+    available = {
+        geometry_id: front_atoms[geometry_id]["surface"] - back_atoms[geometry_id]["surface"]
+        for geometry_id in front_atoms
+    }
+    assert sorted(available.values()) == pytest.approx([400, 502])
 
 
 def test_surface_partition_exposes_only_uncovered_lower_film(client):

@@ -100,10 +100,10 @@ export async function splitPolygonsByMask(subjects,masks){
   return data;
 }
 
-export async function partitionTopSurface(masks=[]){
+export async function partitionTopSurface(masks=[], side=state.activeFace){
   if(!state.wafer)return [];
   const data=await postGeometry('/api/geometry/surface-partition',{
-    outline:waferOutline(),thickness:state.wafer.thickness,side:state.activeFace,
+    outline:waferOutline(),thickness:state.wafer.thickness,side,
     solids:state.solids,cuts:state.cuts,masks,
   },'Top-surface partition failed');
   if(!Array.isArray(data.atoms)||data.exact!==true)throw new Error('Top-surface partition returned an invalid result.');

@@ -184,6 +184,36 @@ test('relative thickness mapping is logarithmic between layers and linear within
   expect(symmetry.frontHeight).toBeCloseTo(symmetry.backHeight, 5);
   expect(symmetry.frontHeight).toBeCloseTo(5, 5);
 
+  // Backside external layers stack downward from their local physical support.
+  const backsideStack = await page.evaluate(async () => {
+    const { state } = await import('/static/js/core.js');
+    const { createLayerMappingContext, displayZ, mappedSolidBounds } = await import('/static/js/layer-model.js');
+    const footprint = [[0,0],[10,0],[10,10],[0,10]];
+    state.wafer = { shape: 'circle', diameter: 100000, thickness: 500, material: 'Si', displayUnits: { lateral: 'mm', thickness: 'um' }, edgeFeature: 'none' };
+    state.zMapping = 'relative';
+    state.relativeZScale = 1;
+    state.layerVisuals = {
+      substrate: { name: 'Substrate', color: '#9ca3af', scale: 1, baseThickness: 500 },
+      A: { name: 'A', color: '#f00', scale: 1, baseThickness: 1 },
+      B: { name: 'B', color: '#0f0', scale: 1, baseThickness: 1 },
+      C: { name: 'C', color: '#00f', scale: 1, baseThickness: 1 },
+    };
+    state.solids = [
+      { id: 'back-a', layerId: 'A', side: 'back', material: 'A', footprint, zMin: -501, zMax: -500 },
+      { id: 'back-b', layerId: 'B', side: 'back', material: 'B', footprint, zMin: -502, zMax: -501 },
+      { id: 'back-c', layerId: 'C', side: 'back', material: 'C', footprint, zMin: -503, zMax: -502 },
+    ];
+    const context=createLayerMappingContext();
+    const [a,b,c]=state.solids.map(solid=>mappedSolidBounds(solid,undefined,context));
+    return {substrateBottom:displayZ(-500),a,b,c};
+  });
+  expect(backsideStack.a.zMax).toBeCloseTo(backsideStack.substrateBottom, 6);
+  expect(backsideStack.b.zMax).toBeCloseTo(backsideStack.a.zMin, 6);
+  expect(backsideStack.c.zMax).toBeCloseTo(backsideStack.b.zMin, 6);
+  expect(backsideStack.a.zMin).toBeLessThan(backsideStack.a.zMax);
+  expect(backsideStack.b.zMin).toBeLessThan(backsideStack.b.zMax);
+  expect(backsideStack.c.zMin).toBeLessThan(backsideStack.c.zMax);
+
   // Per-layer visual scale
   const perLayerScale = await page.evaluate(async () => {
     const { state } = await import('/static/js/core.js');
