@@ -16,11 +16,15 @@ export function effectiveLayerPolygons(layer){
   }
   return layer.polygons||[];
 }
+export function mirroredLayerPolygon(layer,polygon){return layer.mirrored===true?polygon.map(([x,y])=>[-x,y]):polygon.map(([x,y])=>[x,y]);}
 export function transformedLayerPolygon(layer,polygon){return polygon.map(([x,y])=>transformPoint([layer.mirrored===true?-x:x,y]));}
 export function transformedGdsBounds(){const polygons=state.gds.layers.flatMap(layer=>effectiveLayerPolygons(layer).map(polygon=>transformedLayerPolygon(layer,polygon)));return polygons.length?bboxPolys(polygons):null;}
 export function patternSelectedLayers(){return state.gds.layers.filter(layer=>state.patternSelectedKeys.has(layer.key));}
-export function patternRawMaskPolygons(){const result=[];for(const layer of patternSelectedLayers()){if(layer.isBorderOnly&&!layer.fillPattern)continue;for(const polygon of effectiveLayerPolygons(layer))result.push({layer,poly:transformedLayerPolygon(layer,polygon)});}return result;}
+export function patternLayerIsEligible(layer){return !(layer?.isBorderOnly===true&&layer?.fillPattern!==true);}
+export function patternProjectionEntries({transformed=false}={}){const result=[];for(const layer of patternSelectedLayers()){if(!patternLayerIsEligible(layer))continue;for(const source of effectiveLayerPolygons(layer)){const polygon=transformed?transformedLayerPolygon(layer,source):mirroredLayerPolygon(layer,source);result.push({layer,polygon});}}return result;}
+export function pruneIneligiblePatternSelection(){let changed=false;for(const layer of patternSelectedLayers())if(!patternLayerIsEligible(layer)){state.patternSelectedKeys.delete(layer.key);changed=true;}return changed;}
+export function patternRawMaskPolygons(){return patternProjectionEntries({transformed:true}).map(({layer,polygon})=>({layer,poly:polygon}));}
 export function patternHasBlockedBorder(){return patternSelectedLayers().some(layer=>layer.isBorderOnly&&!layer.fillPattern);}
 export function substrateProjectionFingerprint(face=state.activeFace){return JSON.stringify({face,outline:waferOutline(),thickness:state.wafer?.thickness||null});}
-export function maskProjectionFingerprint(){return JSON.stringify({filename:state.gds.filename||null,cell:state.gds.activeTopCell||null,polarity:state.gds.maskPolarity||'transmit',transform:state.gds.transform||null,layers:[...state.patternSelectedKeys].sort().map(key=>{const layer=state.gds.layers.find(item=>item.key===key);return [key,Array.isArray(layer?.selectedComponentIds)?[...layer.selectedComponentIds].sort():null];})});}
+export function maskProjectionFingerprint(){return JSON.stringify({filename:state.gds.filename||null,cell:state.gds.activeTopCell||null,polarity:state.gds.maskPolarity||'transmit',transform:state.gds.transform||null,layers:[...state.patternSelectedKeys].sort().map(key=>{const layer=state.gds.layers.find(item=>item.key===key);return {key,fillPattern:layer?.fillPattern===true,mirrored:layer?.mirrored===true,selectedComponentIds:Array.isArray(layer?.selectedComponentIds)?[...layer.selectedComponentIds].sort():null};})});}
 export function committedProjectionIsCurrent(projection=state.gds.committedProjection){return !!projection&&projection.substrateFingerprint===substrateProjectionFingerprint(projection.face||state.activeFace)&&projection.sourceFingerprint===maskProjectionFingerprint();}

@@ -1,0 +1,60 @@
+{
+  "filename": "realistic_pattern_projection.gds",
+  "bbox": [-30000, -18000, 30000, 18000],
+  "topCells": ["TOP"],
+  "activeTopCell": "TOP",
+  "maskPolarity": "transmit",
+  "transform": {"offsetX": 0, "offsetY": 0, "rotationDeg": 0, "scale": 1},
+  "layers": [
+    {
+      "key": "1/0", "layer": 1, "datatype": 0, "name": "DEVICE_RECT", "count": 1,
+      "bbox": [-24000, -4000, -16000, 4000], "isBorderOnly": false, "visible": true, "color": "#2563eb",
+      "polygons": [[[-24000, -4000], [-16000, -4000], [-16000, 4000], [-24000, 4000]]],
+      "components": [{"id": "device-rect", "polygon": [[-24000, -4000], [-16000, -4000], [-16000, 4000], [-24000, 4000]], "source_polygon_indices": [0]}]
+    },
+    {
+      "key": "90/0", "layer": 90, "datatype": 0, "name": "RETICLE_BORDER", "count": 4,
+      "bbox": [-30000, -18000, 30000, 18000], "isBorderOnly": true, "visible": true, "color": "#64748b",
+      "polygons": [
+        [[-30000, -18000], [30000, -18000], [30000, -17000], [-30000, -17000]],
+        [[-30000, 17000], [30000, 17000], [30000, 18000], [-30000, 18000]],
+        [[-30000, -17000], [-29000, -17000], [-29000, 17000], [-30000, 17000]],
+        [[29000, -17000], [30000, -17000], [30000, 17000], [29000, 17000]]
+      ],
+      "components": [
+        {"id": "border-bottom", "polygon": [[-30000, -18000], [30000, -18000], [30000, -17000], [-30000, -17000]], "source_polygon_indices": [0]},
+        {"id": "border-top", "polygon": [[-30000, 17000], [30000, 17000], [30000, 18000], [-30000, 18000]], "source_polygon_indices": [1]},
+        {"id": "border-left", "polygon": [[-30000, -17000], [-29000, -17000], [-29000, 17000], [-30000, 17000]], "source_polygon_indices": [2]},
+        {"id": "border-right", "polygon": [[29000, -17000], [30000, -17000], [30000, 17000], [29000, 17000]], "source_polygon_indices": [3]}
+      ]
+    },
+    {
+      "key": "2/0", "layer": 2, "datatype": 0, "name": "PROCESS_RING", "count": 4,
+      "bbox": [-8000, -8000, 8000, 8000], "isBorderOnly": false, "visible": true, "color": "#dc2626",
+      "polygons": [
+        [[-8000, -8000], [8000, -8000], [8000, -4000], [-8000, -4000]],
+        [[-8000, 4000], [8000, 4000], [8000, 8000], [-8000, 8000]],
+        [[-8000, -4000], [-4000, -4000], [-4000, 4000], [-8000, 4000]],
+        [[4000, -4000], [8000, -4000], [8000, 4000], [4000, 4000]]
+      ],
+      "components": [
+        {"id": "ring-bottom", "polygon": [[-8000, -8000], [8000, -8000], [8000, -4000], [-8000, -4000]], "source_polygon_indices": [0]},
+        {"id": "ring-top", "polygon": [[-8000, 4000], [8000, 4000], [8000, 8000], [-8000, 8000]], "source_polygon_indices": [1]},
+        {"id": "ring-left", "polygon": [[-8000, -4000], [-4000, -4000], [-4000, 4000], [-8000, 4000]], "source_polygon_indices": [2]},
+        {"id": "ring-right", "polygon": [[4000, -4000], [8000, -4000], [8000, 4000], [4000, 4000]], "source_polygon_indices": [3]}
+      ]
+    },
+    {
+      "key": "3/0", "layer": 3, "datatype": 0, "name": "DISCONNECTED", "count": 2,
+      "bbox": [16000, -7000, 26000, 7000], "isBorderOnly": false, "visible": true, "color": "#059669",
+      "polygons": [
+        [[16000, -7000], [22000, -7000], [22000, -1000], [16000, -1000]],
+        [[20000, 1000], [26000, 1000], [26000, 7000], [20000, 7000]]
+      ],
+      "components": [
+        {"id": "island-a", "polygon": [[16000, -7000], [22000, -7000], [22000, -1000], [16000, -1000]], "source_polygon_indices": [0]},
+        {"id": "island-b", "polygon": [[20000, 1000], [26000, 1000], [26000, 7000], [20000, 7000]], "source_polygon_indices": [1]}
+      ]
+    }
+  ]
+}

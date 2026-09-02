@@ -106,6 +106,24 @@ export function contoursTouch(a,b,epsilon=1e-5){
   return false;
 }
 
+function polygonBridgeLoops(poly,precision=1e-6){
+  const path=[],positions=new Map(),loops=[],key=point=>`${Math.round(Number(point[0])/precision)}|${Math.round(Number(point[1])/precision)}`,reindex=()=>{positions.clear();path.forEach((point,index)=>positions.set(key(point),index));};
+  for(const point of poly||[]){const normalized=[Number(point[0]),Number(point[1])],pointKey=key(normalized),start=positions.get(pointKey);if(start==null){positions.set(pointKey,path.length);path.push(normalized);continue;}const loop=path.slice(start);if(loop.length>=3&&Math.abs(polygonArea(loop))>1e-9)loops.push(loop);path.splice(start+1);reindex();}
+  if(path.length>=3&&Math.abs(polygonArea(path))>1e-9)loops.push(path);
+  return loops.length?loops:[poly];
+}
+
+function loopProbe(loop){const center=centroid(loop),candidate={x:center.x,y:center.y};if(pointInPoly(candidate,loop))return candidate;for(let index=0;index<loop.length;index++){const a=loop[index],b=loop[(index+1)%loop.length],point={x:(a[0]+b[0]+center.x*.02)/2.02,y:(a[1]+b[1]+center.y*.02)/2.02};if(pointInPoly(point,loop))return point;}return {x:loop[0][0],y:loop[0][1]};}
+
+export function polygonTopologies(poly){
+  const loops=polygonBridgeLoops(poly).filter(loop=>Array.isArray(loop)&&loop.length>=3),areas=loops.map(loop=>Math.abs(polygonArea(loop))),parents=loops.map(()=>-1);
+  for(let index=0;index<loops.length;index++){const probe=loopProbe(loops[index]);let parentArea=Infinity;for(let candidate=0;candidate<loops.length;candidate++){if(candidate===index||areas[candidate]<=areas[index]+1e-9)continue;if(pointInPoly(probe,loops[candidate])&&areas[candidate]<parentArea){parents[index]=candidate;parentArea=areas[candidate];}}}
+  const depth=index=>{let value=0,parent=parents[index],guard=0;while(parent>=0&&guard++<loops.length){value++;parent=parents[parent];}return value;},topologies=[],outerByIndex=new Map();
+  for(let index=0;index<loops.length;index++)if(depth(index)%2===0){const topology={outer:loops[index],holes:[]};topologies.push(topology);outerByIndex.set(index,topology);}
+  for(let index=0;index<loops.length;index++)if(depth(index)%2===1){let parent=parents[index];while(parent>=0&&depth(parent)%2!==0)parent=parents[parent];outerByIndex.get(parent)?.holes.push(loops[index]);}
+  return topologies.length?topologies:[{outer:poly,holes:[]}];
+}
+
 export function linePolyIntervals(a,b,polygon){
   const ts=[0,1],dx=b.x-a.x,dy=b.y-a.y;
   for(let i=0;i<polygon.length;i++){const p=polygon[i],q=polygon[(i+1)%polygon.length],ex=q[0]-p[0],ey=q[1]-p[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-12)continue;const px=p[0]-a.x,py=p[1]-a.y,t=(px*ey-py*ex)/den,u=(px*dy-py*dx)/den;if(t>0&&t<1&&u>=0&&u<=1)ts.push(t);}

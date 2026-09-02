@@ -15,6 +15,7 @@ export function createSectionView({getSubstrateSlabs,ensureSubstrateSlabs}){
   }
   function solidEntries(a,b,layerDescriptors,mappingContext){const entries=[];for(const solid of state.solids){const intervals=linePolyIntervals(a,b,solid.footprint);if(intervals.length)entries.push({solid,intervals,mapped:mappedSolidBounds(solid,layerDescriptors,mappingContext)});}return entries;}
   function dopingEntries(a,b,layerDescriptors,mappingContext){const entries=[];for(const doping of state.dopings){const intervals=linePolyIntervals(a,b,doping.footprint);if(intervals.length)entries.push({doping,intervals,mapped:mappedDopingBounds(doping,layerDescriptors,mappingContext)});}return entries;}
+  function debugEntries(){if(!state.wafer||!state.slice)return {solids:[],dopings:[]};const {a,b}=state.slice,layerDescriptors=solidLayerDescriptors(),mappingContext=createLayerMappingContext();return {solids:solidEntries(a,b,layerDescriptors,mappingContext).map(({solid,intervals,mapped})=>({id:solid.id,layerId:solid.layerId,physical:{min:Number(solid.zMin),max:Number(solid.zMax)},mapped:{min:mapped.zMin,max:mapped.zMax},intervals})),dopings:dopingEntries(a,b,layerDescriptors,mappingContext).map(({doping,intervals,mapped})=>({id:doping.id,layerId:doping.layerId,physical:{min:Number(doping.zMin),max:Number(doping.zMax)},mapped:{min:mapped.zMin,max:mapped.zMax},intervals}))};}
   function physicalEnvelope(localSolidEntries=null){
     if(!state.wafer||!state.slice)return null;
     const {a,b}=state.slice;let top=-Infinity,bottom=Infinity;
@@ -113,5 +114,5 @@ export function createSectionView({getSubstrateSlabs,ensureSubstrateSlabs}){
     for(const id of ['sectionBreakMode','sectionBreakFrontKeep','sectionBreakBackKeep','sectionBreakFrom','sectionBreakTo'])$(id)?.addEventListener('change',()=>{if(debug)debug.controlChanges++;applyControls();});
     $('sectionBreakAuto')?.addEventListener('click',()=>{if(debug)debug.controlChanges++;if(!state.wafer)return;const envelope=physicalEnvelope();if(!envelope){status('The current A–B line does not intersect a physical material envelope.');return;}const edge=Math.min(5,envelope.thickness*.1);state.sectionBreak={enabled:envelope.thickness>edge*2+1,mode:'surfaces',frontKeep:edge,backKeep:edge,from:envelope.bottom+edge,to:envelope.top-edge};syncControls();render();persistSharedState('section-z-break');status('Cross section keeps 5 µm at each current A–B material surface (or 10% for a very thin envelope).');});
   }
-  return {render,syncControls,fit:resetNavigation,bind,physicalEnvelope,defaultBreak};
+  return {render,syncControls,fit:resetNavigation,bind,physicalEnvelope,defaultBreak,debugEntries};
 }

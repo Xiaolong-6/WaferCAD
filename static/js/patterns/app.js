@@ -1,7 +1,7 @@
 import {state, persistSharedState} from '../core.js';
 import {waferOutline, bboxPolys, isSimplePolygon, viewAspectBounds, waferBounds, polygonArea, centroid} from '../geometry.js';
 import {composeMaskRegions} from '../geometry-api.js';
-import {effectiveLayerPolygons,maskProjectionFingerprint,substrateProjectionFingerprint} from '../layout-model.js';
+import {effectiveLayerPolygons,maskProjectionFingerprint,patternLayerIsEligible,patternProjectionEntries,pruneIneligiblePatternSelection,substrateProjectionFingerprint} from '../layout-model.js';
 import {clearSvg, makeSvg} from '../svg.js';
 
 const $ = id => document.getElementById(id);
@@ -132,14 +132,8 @@ async function refreshPreview({force=false}={}){
   if(!force&&previewCacheKey===key){render();return {mask:maskPreview,projection:projectionPreview};}
   if(!force&&previewPendingKey===key&&previewPendingPromise)return previewPendingPromise;
   const generation=++previewGeneration;
-  const maskPolygons=[],projectionPolygons=[];
-  for(const layer of state.gds.layers){
-    if(!state.patternSelectedKeys?.has(layer.key))continue;
-    for(const polygon of effectiveLayer(layer)){
-      maskPolygons.push(polygon);
-      projectionPolygons.push(polygon.map(([x,y])=>patTransform([x,y])));
-    }
-  }
+  const maskPolygons=patternProjectionEntries().map(entry=>entry.polygon);
+  const projectionPolygons=patternProjectionEntries({transformed:true}).map(entry=>entry.polygon);
   if(!maskPolygons.length){clearPreviewCache(true);previewCacheKey=key;render();return {mask:[],projection:[]};}
   previewBusy=true;render();
   const task=(async()=>{
@@ -332,13 +326,17 @@ function renderLayerList(){
     empty.append(message,action);box.appendChild(empty);return;
   }
   cnt.textContent=String(state.gds.layers.length);
+  if(pruneIneligiblePatternSelection())saveShared();
   box.innerHTML='';
   for(const layer of state.gds.layers){
     const row=document.createElement('div'); row.className='layer-row2' + (state.patternSelectedKeys?.has(layer.key)?' active':'');
     const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=state.patternSelectedKeys?.has(layer.key);
     // area guard: disable if line-like
     const areaOk=isAreaValid(effectiveLayer(layer));
-    if(!areaOk){
+    const processEligible=patternLayerIsEligible(layer);
+    if(!processEligible){
+      cb.disabled=true;cb.checked=false;cb.title='Border/frame context is excluded until Fill pattern is enabled';row.style.opacity='0.55';
+    }else if(!areaOk){
       cb.disabled=true; cb.title='Line geometry has no area — Fill or close the shape to enable';
       row.style.opacity='0.55';
     }
@@ -347,7 +345,9 @@ function renderLayerList(){
     const opticalCount=Array.isArray(layer.components)?layer.components.length:layer.count;
     const selectedCount=Array.isArray(layer.selectedComponentIds)?layer.selectedComponentIds.length:opticalCount;
     const label=document.createElement('span'); label.textContent=`${layer.layer}/${layer.datatype} · ${layer.count} raw → ${opticalCount} filled · ${selectedCount} selected`; label.style.fontSize='12px';
-    if(!areaOk){
+    if(!processEligible){
+      const warn=document.createElement('span');warn.textContent=' · context only (enable Fill in Main to process)';warn.style.fontSize='10px';warn.style.color='#b45309';label.appendChild(warn);
+    }else if(!areaOk){
       const warn=document.createElement('span'); warn.textContent=' · line (no area)'; warn.style.fontSize='10px'; warn.style.color='#b45309';
       label.appendChild(warn);
     }
@@ -409,7 +409,7 @@ function applyToMain(){
   const regions=projectionPreview;
   if(!state.wafer||!regions.length){const info=$('patPreviewInfo');if(info)info.textContent='Nothing to commit — create a substrate and verify the projection.';return;}
   const componentSelections={};
-  for(const layer of state.gds.layers)if(state.patternSelectedKeys?.has(layer.key))componentSelections[layer.key]=Array.isArray(layer.selectedComponentIds)?[...layer.selectedComponentIds]:null;
+  for(const {layer} of patternProjectionEntries())if(!(layer.key in componentSelections))componentSelections[layer.key]=Array.isArray(layer.selectedComponentIds)?[...layer.selectedComponentIds]:null;
   state.gds.committedProjection={
     regions:regions.map(poly=>poly.map(([x,y])=>[x,y])),
     polarity:state.gds.maskPolarity||'transmit',
