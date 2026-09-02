@@ -12,6 +12,7 @@ let THREE=null,OrbitControls=null,mergeGeometries=null;
 let renderer = null, scene = null, camera = null, controls = null, deviceGroup = null, axesGroup = null;
 let cameraFlipAnimation = null;
 let resizeObserver = null;
+let render3DFrame = null, threeLoopRunning = false, threeFrameId = null;
 let waferDialogLateralUnit = 'mm', waferDialogThicknessUnit = 'um';
 let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
@@ -789,7 +790,7 @@ async function initThree(){
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(35,1,.01,5000);camera.up.set(0,0,1);camera.position.set(state.activeFace==='back'?-7:7,-9,state.activeFace==='back'?-6:6);controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,-.1);controls.enableDamping=true;
   scene.add(new THREE.HemisphereLight(0xffffff,0x66717c,2.0));const dl=new THREE.DirectionalLight(0xffffff,2.4);dl.position.set(5,-4,9);scene.add(dl);
   deviceGroup=new THREE.Group();scene.add(deviceGroup);axesGroup=createInfiniteAxes();axesGroup.visible=state.showAxes;scene.add(axesGroup);
-  resizeObserver=new ResizeObserver(()=>resizeThree());resizeObserver.observe(host);resizeThree();animateThree();render3D();
+  resizeObserver=new ResizeObserver(()=>resizeThree());resizeObserver.observe(host);resizeThree();render3D();startThreeLoop();
 }
 function resizeThree(){if(!renderer)return;const host=$('threeContainer'),w=Math.max(host.clientWidth,1),h=Math.max(host.clientHeight,1);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 function createAxisLabel(text,color,position){const canvas=document.createElement('canvas');canvas.width=96;canvas.height=64;const context=canvas.getContext('2d');context.font='700 42px Segoe UI, sans-serif';context.textAlign='center';context.textBaseline='middle';context.fillStyle=color;context.fillText(text,48,32);const texture=new THREE.CanvasTexture(canvas),material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false});const sprite=new THREE.Sprite(material);sprite.position.set(...position);sprite.scale.set(.42,.28,1);sprite.renderOrder=1002;return sprite;}
@@ -856,7 +857,7 @@ function syncViewControls(){
   syncSectionBreakControls();
   $('showAxes').checked=state.showAxes;if(axesGroup)axesGroup.visible=state.showAxes;
 }
-function setZExag(v, source='slider'){
+function setZExag(v,{persist=true,source='slider'}={}){
   let n=Number(v);
   if(!Number.isFinite(n) || n<=0) return;
   const isRelative=state.zMapping==='relative';
@@ -868,7 +869,7 @@ function setZExag(v, source='slider'){
   if(source!=='slider' && $('zExag')) $('zExag').value=String(Math.min(sliderMax, Math.max(0.1, n)));
   if(source!=='number' && $('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(n);
   if($('zExagValue')) $('zExagValue').value=`${isRelative?'':'×'}${formatDisplayNumber(n)}`;
-  renderSection();render3D();persistSharedState('z-scale');
+  renderSection();scheduleRender3D();if(persist)persistSharedState('z-scale');
 }
 function setZMapping(value){
   const next=value==='relative'?'relative':'linear';
@@ -887,7 +888,16 @@ function setMaskOpacity(v){
   if($('maskOpacityValue')) $('maskOpacityValue').textContent=Math.round(n*100)+'%';
   renderTop();persistSharedState();
 }
-function animateThree(now=performance.now()){if(!renderer)return;requestAnimationFrame(animateThree);updateCameraFaceFlip(now);controls.update();renderer.render(scene,camera);}
+function mainWorkspaceVisible(){const workspace=$('mainWorkspace');return !!workspace&&!workspace.classList.contains('hidden');}
+function shouldRunThreeLoop(){return !!renderer&&!document.hidden&&mainWorkspaceVisible();}
+function startThreeLoop(){if(threeLoopRunning||!shouldRunThreeLoop())return;threeLoopRunning=true;threeFrameId=requestAnimationFrame(animateThree);}
+function stopThreeLoop(){threeLoopRunning=false;if(threeFrameId!=null){cancelAnimationFrame(threeFrameId);threeFrameId=null;}}
+function animateThree(now=performance.now()){if(!threeLoopRunning||!renderer)return;threeFrameId=null;updateCameraFaceFlip(now);controls.update();renderer.render(scene,camera);threeFrameId=requestAnimationFrame(animateThree);}
+function memoryDiagnosticsEnabled(){const params=new URLSearchParams(location.search),qa=params.get('qa')||'';return params.get('debug')==='memory'||qa==='memory'||qa.includes('memory');}
+function render3DDebugStats(){if(!memoryDiagnosticsEnabled())return null;return state._render3DStats||(state._render3DStats={requested:0,executed:0,scheduled:false});}
+export function scheduleRender3D(){const stats=render3DDebugStats();if(stats)stats.requested++;if(render3DFrame!=null)return;render3DFrame=requestAnimationFrame(()=>{render3DFrame=null;if(stats)stats.scheduled=false;render3D();});if(stats)stats.scheduled=true;}
+function cancelScheduledRender3D(){if(render3DFrame!=null){cancelAnimationFrame(render3DFrame);render3DFrame=null;}const stats=render3DDebugStats();if(stats)stats.scheduled=false;}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopThreeLoop();else if(mainWorkspaceVisible()){scheduleRender3D();startThreeLoop();}});
 function disposeGroup(g){while(g.children.length){const o=g.children.pop();if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}}}
 function scaledPoly(poly,scale){return poly.map(([x,y])=>[x*scale,y*scale]);}
 function makeShape(poly){const s=new THREE.Shape();poly.forEach(([x,y],i)=>i?s.lineTo(x,y):s.moveTo(x,y));s.closePath();return s;}
@@ -920,6 +930,7 @@ function addMergedExtrusions(items,xy,boundsOf,materialOf){
 }
 function render3D(){
   if(!THREE||!deviceGroup)return;disposeGroup(deviceGroup);if(!state.wafer||!state.slice)return;
+  const debugStats=render3DDebugStats();if(debugStats)debugStats.executed++;
   const xy=waferXYScale(),scaledWafer=scaledPoly(waferOutline(),xy);
   const zBounds=substrateZBounds(),cutKey=cutGeometryKey();if(cutUnionCacheKey!==cutKey)void ensureCutUnionCache();
   // Use derived remaining substrate per Z slab; whole-face cuts produce empty remaining (no mesh) and edge-touching cuts are rendered as remaining outer regions, not as degenerate holes.
@@ -963,6 +974,19 @@ function render3D(){
   const a=state.slice.a,b=state.slice.b,ax=a.x*xy,ay=a.y*xy,bx=b.x*xy,by=b.y*xy,len=Math.hypot(bx-ax,by-ay),angle=Math.atan2(by-ay,bx-ax),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors,mappingContext));const maxz=Math.max(.3,...mappedSolids.map(s=>s.zMax));const minz=Math.min(mappedZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin)),height=maxz-minz+.2;const plane=new THREE.Mesh(new THREE.BoxGeometry(len,.018,height),new THREE.MeshBasicMaterial({color:0x2563eb,transparent:true,opacity:.18,depthWrite:false}));plane.position.set((ax+bx)/2,(ay+by)/2,(maxz+minz)/2);plane.rotation.z=angle;deviceGroup.add(plane);
   const boundaryPoints=scaledWafer.map(([x,y])=>new THREE.Vector3(x,y,.006));const boundaryGeo=new THREE.BufferGeometry().setFromPoints(boundaryPoints);const boundary=new THREE.LineLoop(boundaryGeo,new THREE.LineBasicMaterial({color:0x475569}));deviceGroup.add(boundary);
 }
+function polygonTotals(layers=[]){let polygons=0,points=0;for(const layer of layers){for(const polygon of layer.polygons||[]){polygons++;points+=polygon.length;}}return {polygons,points};}
+function memoryDiagnostics(){
+  const gds=polygonTotals(state.gds?.layers);
+  return {
+    persistent:{solids:state.solids.length,cuts:state.cuts.length,dopings:state.dopings.length,gdsPolygons:gds.polygons,gdsPoints:gds.points,snapshots:state.snapshots.length,snapshotDevices:Object.keys(state.snapshotDevices||{}).length,snapshotThumbnailChars:Object.values(state.snapshotThumbnails||{}).reduce((sum,value)=>sum+(typeof value==='string'?value.length:JSON.stringify(value||'').length),0)},
+    pattern:window.patMemoryDiagnostics?.()||null,
+    three:renderer?{geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures}:null,
+    persistence:state._persistenceStats?{...state._persistenceStats}:null,
+    render3D:state._render3DStats?{...state._render3DStats}:null,
+    threeLoopRunning
+  };
+}
+if(memoryDiagnosticsEnabled())window.wafercadMemoryDiagnostics=memoryDiagnostics;
 
 function saveProject(){
   ensureLayerVisuals();const payload={format:'wafercad-mvp',version:CURRENT_PROJECT_VERSION,wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,slice:state.slice,snapshots:state.snapshots,snapshotDevices:state.snapshotDevices,snapshotThumbnails:state.snapshotThumbnails,view:{zExag:state.zExag,relativeZScale:state.relativeZScale,zMapping:state.zMapping,zLogK:state.zLogK,showAxes:state.showAxes,maskBaseOpacity:state.maskBaseOpacity,sectionBreak:state.sectionBreak}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);status('Project saved.');
@@ -1080,9 +1104,10 @@ function bindUi(){
     status(`Applied alignment: X ${x} ${gdsAlignmentUnit}, Y ${y} ${gdsAlignmentUnit}, rotation ${rotation}°, scale ${sc}×.`);
   });
   $('applyPushPullBtn').addEventListener('click',applyPushPull);$('snapshotBtn').addEventListener('click',createSnapshot);$('fitWaferBtn').addEventListener('click',fitWafer);$('fitLayoutBtn').addEventListener('click',fitLayout);
-  $('zExag')?.addEventListener('input',()=>setZExag($('zExag').value,'slider'));
+  $('zExag')?.addEventListener('input',()=>setZExag($('zExag').value,{persist:false,source:'slider'}));
+  $('zExag')?.addEventListener('change',()=>setZExag($('zExag').value,{persist:true,source:'slider'}));
   $('zMapping')?.addEventListener('change',()=>setZMapping($('zMapping').value));
-  $('zExagNumber')?.addEventListener('change',()=>setZExag($('zExagNumber').value,'number'));
+  $('zExagNumber')?.addEventListener('change',()=>setZExag($('zExagNumber').value,{persist:true,source:'number'}));
   $('zExagNumber')?.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();$('zExagNumber').blur();}});
   $('sectionBreakEnabled')?.addEventListener('change',()=>{if(!state.wafer){$('sectionBreakEnabled').checked=false;return;}if($('sectionBreakEnabled').checked){state.sectionBreak=activeSectionBreak()?{...state.sectionBreak,enabled:true}:defaultSectionBreak(state.wafer,true);}else state.sectionBreak={...(state.sectionBreak||defaultSectionBreak(state.wafer,false)),enabled:false};syncSectionBreakControls();renderSection();persistSharedState('section-z-break');});
   $('sectionBreakMode')?.addEventListener('change',applySectionBreakControls);
@@ -1154,11 +1179,10 @@ try{
     mainWs.classList.remove('hidden'); patWs.classList.add('hidden');
     if(window.patSuspend)window.patSuspend();
     btnMain.classList.add('active'); btnPat.classList.remove('active');
-    updateSelectionInfo();renderTop();
-    // trigger Three resize after becoming visible
-    setTimeout(()=>window.dispatchEvent(new Event('resize')), 50);
+    updateSelectionInfo();renderTop();resizeThree();scheduleRender3D();startThreeLoop();
   }
   function showPatterns(){
+    cancelScheduledRender3D();stopThreeLoop();
     mainWs.classList.add('hidden'); patWs.classList.remove('hidden');
     btnPat.classList.add('active'); btnMain.classList.remove('active');
     // trigger patterns render

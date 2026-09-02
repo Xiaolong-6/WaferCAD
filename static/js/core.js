@@ -42,23 +42,49 @@ export function status(message){const el=$('statusText'); if(el) el.textContent=
 export function formatDisplayNumber(value){return String(Number(Number(value).toPrecision(10)));}
 export function rgbHexToInt(hex){return parseInt(hex.replace('#',''),16);}
 const DB_NAME='wafercad-local',DB_STORE='records',DB_VERSION=1;
-let persistenceQueue=Promise.resolve();
+let persistenceWriteActive=false,persistencePending=false,persistencePendingReason=null,persistenceDrainPromise=Promise.resolve(true);
+function memoryDiagnosticsEnabled(){if(typeof location==='undefined')return false;const params=new URLSearchParams(location.search),qa=params.get('qa')||'';return params.get('debug')==='memory'||qa==='memory'||qa.includes('memory');}
+function persistenceStats(){if(!memoryDiagnosticsEnabled())return null;return state._persistenceStats||(state._persistenceStats={requested:0,writesStarted:0,writesCompleted:0,pending:false,active:false,clonesCreated:0});}
 function openPersistenceDb(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,DB_VERSION);request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(DB_STORE))request.result.createObjectStore(DB_STORE);};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error('IndexedDB open failed'));});}
-async function writeStateBundle(payload,source){const db=await openPersistenceDb();try{await new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,'readwrite'),store=tx.objectStore(DB_STORE);store.put(payload,'state');store.put(source,'gds-source');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('IndexedDB write failed'));tx.onabort=()=>reject(tx.error||new Error('IndexedDB write aborted'));});}finally{db.close();}}
+async function writeStateBundle(payload,source){const delay=memoryDiagnosticsEnabled()?Number(state._persistenceDebugDelayMs)||0:0;if(delay>0)await new Promise(resolve=>setTimeout(resolve,delay));const db=await openPersistenceDb();try{await new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,'readwrite'),store=tx.objectStore(DB_STORE);store.put(payload,'state');store.put(source,'gds-source');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('IndexedDB write failed'));tx.onabort=()=>reject(tx.error||new Error('IndexedDB write aborted'));});}finally{db.close();}}
 async function readRecord(key){const db=await openPersistenceDb();try{return await new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,'readonly'),request=tx.objectStore(DB_STORE).get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error('IndexedDB read failed'));});}finally{db.close();}}
 async function clearRecords(){const db=await openPersistenceDb();try{await new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('IndexedDB clear failed'));});}finally{db.close();}}
 function persistencePayload(){return {wafer:state.wafer,activeFace:state.activeFace,solids:state.solids,cuts:state.cuts,dopings:state.dopings,layerVisuals:state.layerVisuals,gds:state.gds,imprintedFaces:state.imprintedFaces,selectedFaceIds:[...(state.selectedFaceIds||[])],patternSelectedKeys:[...(state.patternSelectedKeys||[])],slice:state.slice,snapshots:state.snapshots,snapshotDevices:state.snapshotDevices,snapshotThumbnails:state.snapshotThumbnails,activeSnapshotId:state.activeSnapshotId,topBounds:state.topBounds,zExag:state.zExag,relativeZScale:state.relativeZScale,zMapping:state.zMapping,zLogK:state.zLogK,showAxes:state.showAxes,maskBaseOpacity:state.maskBaseOpacity,sectionBreak:state.sectionBreak,selectionMode:state.selectionMode,transform:state.gds.transform,_revision:state._revision,_topFaceSelection:{selectedSolidIds:[...(state._topFaceSelection?.selectedSolidIds||[])]}};}
 function hydrateState(d){
   if(!d||typeof d!=='object')return false;if(d.wafer!==undefined)state.wafer=d.wafer;if(d.activeFace)state.activeFace=d.activeFace;if(Array.isArray(d.solids))state.solids=d.solids;if(Array.isArray(d.cuts))state.cuts=d.cuts;if(Array.isArray(d.dopings))state.dopings=d.dopings;if(d.layerVisuals)state.layerVisuals=d.layerVisuals;if(d.gds){state.gds={...state.gds,...d.gds};if(d.transform)state.gds.transform=d.transform;}if(Array.isArray(d.imprintedFaces))state.imprintedFaces=d.imprintedFaces;if(Array.isArray(d.selectedFaceIds))state.selectedFaceIds=new Set(d.selectedFaceIds);if(Array.isArray(d.patternSelectedKeys))state.patternSelectedKeys=new Set(d.patternSelectedKeys);if(d.slice!==undefined)state.slice=d.slice;if(Array.isArray(d.snapshots))state.snapshots=d.snapshots;if(d.snapshotDevices&&typeof d.snapshotDevices==='object')state.snapshotDevices=d.snapshotDevices;if(d.snapshotThumbnails&&typeof d.snapshotThumbnails==='object')state.snapshotThumbnails=d.snapshotThumbnails;if(d.activeSnapshotId!==undefined)state.activeSnapshotId=d.activeSnapshotId;if(d.topBounds!==undefined)state.topBounds=d.topBounds;if(d.zExag!==undefined)state.zExag=d.zExag;if(d.relativeZScale!==undefined)state.relativeZScale=d.relativeZScale;let migratedFromLog=false;if(d.zMapping==='linear'||d.zMapping==='relative')state.zMapping=d.zMapping;else if(d.zMapping==='log'){state.zMapping='relative';migratedFromLog=true;}if(migratedFromLog){state.relativeZScale=1;} else if(d.relativeZScale!==undefined&&Number.isFinite(Number(d.relativeZScale))&&Number(d.relativeZScale)>0){state.relativeZScale=Math.min(100,Math.max(0.1,Number(d.relativeZScale)));} else if(state.relativeZScale==null||!Number.isFinite(Number(state.relativeZScale))) state.relativeZScale=1;if(Number.isFinite(Number(d.zLogK))&&Number(d.zLogK)>0)state.zLogK=Number(d.zLogK);if(d.showAxes!==undefined)state.showAxes=d.showAxes;if(d.maskBaseOpacity!==undefined)state.maskBaseOpacity=d.maskBaseOpacity;if(d.sectionBreak&&typeof d.sectionBreak==='object')state.sectionBreak={...state.sectionBreak,...d.sectionBreak};if(d.selectionMode==='top'||d.selectionMode==='imprinted'||d.selectionMode==='patterns')state.selectionMode=d.selectionMode;if(Number.isFinite(Number(d._revision)))state._revision=Number(d._revision);if(d._topFaceSelection&&Array.isArray(d._topFaceSelection.selectedSolidIds))state._topFaceSelection.selectedSolidIds=new Set(d._topFaceSelection.selectedSolidIds);return true;
 }
+async function drainPersistenceQueue(){
+  if(persistenceWriteActive)return persistenceDrainPromise;
+  persistenceWriteActive=true;const stats=persistenceStats();if(stats){stats.active=true;stats.pending=persistencePending;}
+  let success=true;
+  try{
+    while(persistencePending){
+      persistencePending=false;const reason=persistencePendingReason;persistencePendingReason=null;if(stats)stats.pending=false;
+      const payload=structuredClone(persistencePayload()),blob=state._gdsFileBlob||null,blobName=state._gdsFileName||blob?.name||null;
+      if(stats){stats.clonesCreated++;stats.writesStarted++;}
+      try{await writeStateBundle(payload,blob?{blob,name:blobName,revision:payload._revision,reason}:null);if(stats)stats.writesCompleted++;}
+      catch(error){success=false;status(`Persistence failed: ${error.message}. Current in-memory state is still active.`);window.dispatchEvent(new CustomEvent('wafercad:persistence-error',{detail:{error}}));}
+      if(stats)stats.pending=persistencePending;
+    }
+  }finally{
+    persistenceWriteActive=false;if(stats){stats.active=false;stats.pending=persistencePending;}
+  }
+  return success;
+}
+function queuePersistence(reason){
+  persistencePending=true;persistencePendingReason=reason;const stats=persistenceStats();if(stats){stats.requested++;stats.pending=true;stats.active=persistenceWriteActive;}
+  if(!persistenceWriteActive)persistenceDrainPromise=drainPersistenceQueue();
+  return persistenceDrainPromise;
+}
 export function commitState(reason='state-mutation'){
-  state._revision=(Number(state._revision)||0)+1;const payload=structuredClone(persistencePayload()),blob=state._gdsFileBlob||null,blobName=state._gdsFileName||blob?.name||null,timestamp=Date.now();
+  state._revision=(Number(state._revision)||0)+1;const timestamp=Date.now();
   try{localStorage.setItem('wafercad_has_state','1');localStorage.setItem('wafercad_last_save_ts',String(timestamp));}catch{}
   window.dispatchEvent(new CustomEvent('wafercad:state-change',{detail:{reason,revision:state._revision}}));
-  persistenceQueue=persistenceQueue.catch(()=>{}).then(async()=>{await writeStateBundle(payload,blob?{blob,name:blobName,revision:payload._revision}:null);return true;}).catch(error=>{status(`Persistence failed: ${error.message}. Current in-memory state is still active.`);window.dispatchEvent(new CustomEvent('wafercad:persistence-error',{detail:{error}}));return false;});
-  return persistenceQueue;
+  return queuePersistence(reason);
 }
 export function persistSharedState(reason){return commitState(reason||'legacy-mutation');}
+export function waitForPersistenceIdle(){return persistenceDrainPromise;}
+export function resetPersistenceDebugStats(){if(!memoryDiagnosticsEnabled())return null;state._persistenceStats={requested:0,writesStarted:0,writesCompleted:0,pending:persistencePending,active:persistenceWriteActive,clonesCreated:0};return state._persistenceStats;}
 export async function loadSharedState(){
   try{
     let saved=await readRecord('state');
@@ -71,7 +97,7 @@ export async function loadSharedState(){
 }
 export function hasSharedState(){try{return localStorage.getItem('wafercad_has_state')==='1'||!!(sessionStorage.getItem('wafercad_gds')||localStorage.getItem('wafercad_shared'));}catch{return false;}}
 export async function clearSharedState(){
-  await persistenceQueue.catch(()=>{});
+  await persistenceDrainPromise.catch(()=>{});
   try{await clearRecords();}catch(error){status(`Unable to clear persisted state: ${error.message}`);}
   try{sessionStorage.removeItem('wafercad_gds');sessionStorage.removeItem('wafercad_gds_blob');sessionStorage.removeItem('wafercad_gds_name');localStorage.removeItem('wafercad_shared');localStorage.removeItem('wafercad_has_state');localStorage.removeItem('wafercad_last_save_ts');}catch{}
 }

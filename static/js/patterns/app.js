@@ -463,7 +463,11 @@ window.patRender=()=>{
   if(previewCacheKey!==currentPreviewKey())refreshPreview();
   migrateLegacyComponents();
 };
-window.patSuspend=()=>{clearSvg($('patSvg'));clearSvg($('patProjectionSvg'));};
+window.patSuspend=()=>{clearPreviewCache(true);clearSvg($('patSvg'));clearSvg($('patProjectionSvg'));};
+if((()=>{const params=new URLSearchParams(location.search),qa=params.get('qa')||'';return params.get('debug')==='memory'||qa==='memory'||qa.includes('memory');})())window.patMemoryDiagnostics=()=>{
+  const totals=polygons=>({polygons:polygons.length,points:polygons.reduce((sum,polygon)=>sum+polygon.length,0)});
+  return {maskPreview:totals(maskPreview),projectionPreview:totals(projectionPreview),previewGeneration,previewPending:!!previewPendingPromise,previewBusy};
+};
 window.patReset=()=>{gdsFile=null;clearPreviewCache(true);lassoStart=null;lassoRect=null;lassoActive=false;viewBounds={mask:null,projection:null};renderLayerList();syncTransformControls();if(patternsVisible())fitPat();};
 const _patGds = document.getElementById('patGdsInput');
 if(_patGds) _patGds.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importGds(f); });

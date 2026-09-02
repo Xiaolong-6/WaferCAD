@@ -313,10 +313,10 @@ test('cross section can compress a persisted substrate Z interval', async ({ pag
   })).toEqual({enabled:true,mode:'coordinates',frontKeep:20,backKeep:100,from:-400,to:-20});
 });
 
-test('Pattern Editor reuses a current preview and releases hidden SVG geometry', async ({ page }) => {
+test('Pattern Editor releases transient previews while preserving GDS source data', async ({ page }) => {
   let composeRequests=0;
   page.on('request', request => {if(request.url().includes('/api/geometry/mask-compose'))composeRequests++;});
-  await page.goto('/?qa=playwright-pattern-preview-cache');
+  await page.goto('/?qa=memory');
   await page.getByRole('button', { name: 'New wafer' }).click();
   await page.getByRole('button', { name: 'Create' }).click();
   await page.locator('#gdsInput').setInputFiles(path.resolve('tests/fixtures/synthetic_two_layer.gds'));
@@ -326,13 +326,22 @@ test('Pattern Editor reuses a current preview and releases hidden SVG geometry',
   const firstRequestCount=composeRequests;
   expect(firstRequestCount).toBe(2);
   await expect(page.locator('#patSvg [data-mask-union]')).toHaveCount(1);
+  const beforeSuspend=await page.evaluate(()=>window.wafercadMemoryDiagnostics());
+  expect(beforeSuspend.pattern.maskPreview.polygons).toBeGreaterThan(0);
+  expect(beforeSuspend.pattern.projectionPreview.polygons).toBeGreaterThan(0);
+  expect(beforeSuspend.persistent.gdsPolygons).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Main', exact: true }).click();
   await expect(page.locator('#patSvg path')).toHaveCount(0);
   await expect(page.locator('#patProjectionSvg path')).toHaveCount(0);
+  const afterSuspend=await page.evaluate(()=>window.wafercadMemoryDiagnostics());
+  expect(afterSuspend.pattern.maskPreview.polygons).toBe(0);
+  expect(afterSuspend.pattern.projectionPreview.polygons).toBe(0);
+  expect(afterSuspend.persistent.gdsPolygons).toBe(beforeSuspend.persistent.gdsPolygons);
+  expect(afterSuspend.persistent.gdsPoints).toBe(beforeSuspend.persistent.gdsPoints);
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   await expect(page.locator('#patApplyBtn')).toBeEnabled();
-  await page.waitForTimeout(150);
-  expect(composeRequests).toBe(firstRequestCount);
+  await expect.poll(()=>composeRequests).toBe(firstRequestCount+2);
+  await expect.poll(()=>page.evaluate(()=>window.wafercadMemoryDiagnostics().pattern.maskPreview.polygons)).toBeGreaterThan(0);
 });
 
 test('Main batches many physical cuts into one SVG path', async ({ page }) => {
