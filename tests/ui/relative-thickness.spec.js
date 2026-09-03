@@ -368,7 +368,7 @@ test('actual Cross Section and 3D renderers use surface-detail substrate mapping
     state.solids = [];
   });
   await page.evaluate(async () => {
-    const mod = await import('/static/app.js');
+    const mod = await import(document.querySelector('script[src*="/static/app.js"]').src);
     // trigger render; the module's renderSection is not exported, but state change will be rendered on next call via custom event
     window.dispatchEvent(new Event('resize'));
   });

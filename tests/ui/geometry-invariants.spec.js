@@ -90,7 +90,7 @@ test('through-etch is compositional and exposes opposite-origin material in Top 
   await expect.poll(()=>page.locator('#topSvg [data-model-layer="back-layer"]').count()).toBe(1);
   await applyOperation(page,'down',1);const split=await physicalState();expect(split).toEqual(single);
 
-  const mismatch=await page.evaluate(async()=>{const {availableMaterialDepth}=await import('/static/app.js');const atom=id=>({geometryId:id,surface:id==='a'?1:0});return {frontOnly:availableMaterialDepth([atom('a')],[]),backOnly:availableMaterialDepth([],[atom('a')]),different:availableMaterialDepth([atom('a')],[atom('b')])};});
+  const mismatch=await page.evaluate(async()=>{const {availableMaterialDepth}=await import(document.querySelector('script[src*="/static/app.js"]').src);const atom=id=>({geometryId:id,surface:id==='a'?1:0});return {frontOnly:availableMaterialDepth([atom('a')],[]),backOnly:availableMaterialDepth([],[atom('a')]),different:availableMaterialDepth([atom('a')],[atom('b')])};});
   expect(mismatch).toEqual({frontOnly:null,backOnly:null,different:null});
 
   await createWafer(page);

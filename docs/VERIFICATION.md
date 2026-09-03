@@ -23,5 +23,11 @@ Only synthetic fixtures under `tests/fixtures` are used. No commercial layout is
 | Project schema/future-version rejection | Playwright `project loader rejects future versions and invalid wafer dimensions` |
 | Relative thickness display (logarithmic between layers, linear within) | Playwright `relative thickness mapping is logarithmic between layers and linear within`, `switching display mode never mutates stored thickness labels` — checks numeric table 1 nm–500 µm, 50/100 nm partial, 100/500 substrate proportion, front/back symmetry, stacked layers, per-layer scale, doping proportion, physical invariance and v8→v9 `log`→`relative` migration |
 | Z display modes and scale labels | Playwright `cross section can compress a persisted substrate Z interval` now expects `relative thickness`/`physical Z` and `Display scale` |
+| Three module lifetime and one canvas | `three-view-extraction.spec.js`: snapshot/camera restore, new wafer, Pattern/Main, project round trip, idempotent initialization, terminal cleanup and destroy during pending initialization |
+| Three RAF and visibility | `frontend-memory-p0.spec.js`: 50 requests → one rebuild and Pattern/Main pause/resume; `three-view-extraction.spec.js`: simulated document-hidden event stops frame advancement and visible event resumes |
+| Extracted Three topology and refill | Unchanged `pattern-refill-topology.spec.js`: real GDS upload/commit, Push2/Pull2 flush in Physical and Relative, canonical ring holes and QA-only bounds; existing section-view extraction tests remain independent |
+
+Tests importing the application reuse its actual script URL (including version
+query) so they do not instantiate a second application under an unversioned URL.
 
 Claims not represented in this matrix are descriptive behavior or known limitations, not completed verification claims.

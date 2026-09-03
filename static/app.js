@@ -1,7 +1,7 @@
-import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,hasSharedState,palette,persistSharedState,loadSharedState,rgbHexToInt,state,status,uid} from './js/core.js';
-import {bboxPolys,contoursTouch,detectBorderOnly,isPolyInViewport,isSimplePolygon,normalizeWafer,pointInPoly,polygonArea,polygonTopologies,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline,waferXYScale} from './js/geometry.js';
+import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,hasSharedState,palette,persistSharedState,loadSharedState,state,status,uid} from './js/core.js';
+import {bboxPolys,contoursTouch,detectBorderOnly,isPolyInViewport,isSimplePolygon,normalizeWafer,pointInPoly,polygonArea,polygonTopologies,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline} from './js/geometry.js';
 import {GeometryJobCancelledError,cancelActiveGeometryJobs,clipPolygonsToWafer,composeMaskRegions,isotropicOffset,partitionTopSurface,resolveMaskRegions,runCancellableGeometry,splitPolygonsByMask} from './js/geometry-api.js';
-import {createLayerMappingContext,displayZ,ensureLayerVisuals,layerVisual,mappedCutBounds,mappedDopingBounds,mappedSolidBounds,materialColor,nextLayerName,physicalLayerOptions,relativeThickness,solidLayerDescriptors,substrateVisualHeight} from './js/layer-model.js';
+import {ensureLayerVisuals,layerVisual,mappedCutBounds,materialColor,nextLayerName,physicalLayerOptions,relativeThickness,solidLayerDescriptors,substrateVisualHeight} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
 import {CURRENT_PROJECT_VERSION,validateAndMigrateProject} from './js/project-schema.js';
 import {captureDevice,internDevice,internThumbnail,pruneSnapshotDevices,resolveSnapshotDevice,resolveSnapshotThumbnail} from './js/snapshot-store.js';
@@ -9,12 +9,8 @@ import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,pattern
 import {ensureLayerFilledPolygons} from './js/pattern-fill.js';
 import {clearSvg,makeSvg} from './js/svg.js';
 import {createSectionView} from './js/views/section-view.js';
+import {createThreeView} from './js/views/three-view.js';
 
-let THREE=null,OrbitControls=null,mergeGeometries=null;
-let renderer = null, scene = null, camera = null, controls = null, deviceGroup = null, axesGroup = null;
-let cameraFlipAnimation = null;
-let resizeObserver = null;
-let render3DFrame = null, threeLoopRunning = false, threeFrameId = null;
 let waferDialogLateralUnit = 'mm', waferDialogThicknessUnit = 'um';
 let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
 let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
@@ -68,19 +64,6 @@ function renderHierarchy(){
 }
 function setDefaultSlice(){if(!state.wafer){state.slice=null;return;}const [x0,y0,x1,y1]=waferBounds(),cy=(y0+y1)/2;state.slice={a:{x:x0+(x1-x0)*.175,y:cy},b:{x:x1-(x1-x0)*.175,y:cy}};}
 function currentDeviceSnapshot(){ensureLayerVisuals();return captureDevice();}
-function captureCameraState(){
-  if(!camera || !controls) return null;
-  return { position: camera.position.toArray(), target: controls.target.toArray(), up: camera.up.toArray() };
-}
-function restoreCameraState(cam){
-  if(!cam || !camera || !controls) return;
-  try{
-    if(Array.isArray(cam.position)) camera.position.fromArray(cam.position);
-    if(Array.isArray(cam.target)) controls.target.fromArray(cam.target);
-    if(Array.isArray(cam.up)) camera.up.fromArray(cam.up);
-    controls.update();
-  }catch(e){ console.warn('restore camera failed',e); }
-}
 function restoreDeviceSnapshot(s){state.wafer=s.wafer?normalizeWafer(clone(s.wafer)):null;state.activeFace=s.activeFace||'front';state.solids=clone(s.solids||[]);state.cuts=clone(s.cuts||[]);state.dopings=clone(s.dopings||[]);state.layerVisuals=clone(s.layerVisuals||{});state.imprintedFaces=clone(s.imprintedFaces||[]);state.gds.committedProjection=null;state.operationUndo=[];ensureLayerVisuals();state.selectedFaceIds.clear();clearPatternSelection();clearTopSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderAll();persistSharedState();}
 
 function fitWafer(){state.topBounds=state.wafer?viewAspectBounds(waferBounds()):[-1,-1,1,1];renderTop();}
@@ -183,7 +166,7 @@ async function ensureCutUnionCache(){
     state._cutUnionStats=entries.map(([k,v])=>({slab:k, sourceCount:v.activeCount, regionCount:v.useHoles?v.unionRegions.length:v.remainingRegions.length, isEmpty:v.isEmpty, useHoles:v.useHoles, remainingCount:v.remainingRegions.length, reusedPartition:v.reusedPartition}));
     state._substrateSlabRegions=entries.map(([k,v])=>({slab:k,zMin:v.zMin,zMax:v.zMax,remainingCount:v.remainingRegions.length,holeCount:(v.remainingTopologies||[]).reduce((sum,topology)=>sum+topology.holes.length,0),isEmpty:v.isEmpty,useHoles:v.useHoles}));
     cutUnionCacheKey=key;
-    sectionView.syncControls();sectionView.render();render3D();
+    sectionView.syncControls();sectionView.render();threeView.scheduleRender();
   } catch(error){if(cutGeometryKey()===key)status(`Substrate slab Boolean failed: ${error.message}`);}
   finally{if(cutUnionPendingKey===key)cutUnionPendingKey=null;}
 }
@@ -192,11 +175,8 @@ function appendTopScaleBar(svg){
   if(!state.topBounds)return;const span=state.topBounds[2]-state.topBounds[0],distance=niceScaleDistance(span*.16),pixels=distance/span*600,x=18,y=392,label=distance>=1000?`${Number((distance/1000).toPrecision(3))} mm`:`${Number(distance.toPrecision(3))} µm`,group=makeSvg('g',{'data-scale-bar':'top','pointer-events':'none'});
   group.appendChild(makeSvg('rect',{x:x-7,y:y-24,width:pixels+14,height:31,rx:4,fill:'#fff','fill-opacity':'.82'}));group.appendChild(makeSvg('line',{x1:x,y1:y,x2:x+pixels,y2:y,stroke:'#27313b','stroke-width':'3'}));group.appendChild(makeSvg('line',{x1:x,y1:y-5,x2:x,y2:y+5,stroke:'#27313b','stroke-width':'2'}));group.appendChild(makeSvg('line',{x1:x+pixels,y1:y-5,x2:x+pixels,y2:y+5,stroke:'#27313b','stroke-width':'2'}));const text=makeSvg('text',{x:x+pixels/2,y:y-8,'text-anchor':'middle','font-size':'11','font-weight':'700',fill:'#27313b'});text.textContent=label;group.appendChild(text);svg.appendChild(group);
 }
-function placeCameraOnActiveFace(){if(!camera)return;const back=state.activeFace==='back';camera.position.x=back?-Math.abs(camera.position.x):Math.abs(camera.position.x);camera.position.z=back?-Math.abs(camera.position.z):Math.abs(camera.position.z);controls?.update();}
-function updateActiveFaceUi(syncCamera=true){const back=state.activeFace==='back';$('activeFaceLabel').textContent=back?'Back face':'Front face';$('flipFaceBtn').textContent=back?'Back':'Front';$('flipFaceBtn').disabled=!state.wafer;if(syncCamera)placeCameraOnActiveFace();}
-function startCameraFaceFlip(){if(!camera||!controls)return;const target=controls.target.clone(),relative=camera.position.clone().sub(target);cameraFlipAnimation={started:performance.now(),duration:720,target,relative};controls.enabled=false;}
-function updateCameraFaceFlip(now){if(!cameraFlipAnimation)return;const a=cameraFlipAnimation,t=Math.min(1,(now-a.started)/a.duration),eased=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,angle=Math.PI*eased,c=Math.cos(angle),s=Math.sin(angle),r=a.relative;camera.position.set(a.target.x+r.x*c+r.z*s,a.target.y+r.y,a.target.z-r.x*s+r.z*c);camera.lookAt(a.target);if(t>=1){cameraFlipAnimation=null;controls.enabled=true;controls.update();}}
-function flipActiveFace(){if(!state.wafer)return;state.activeFace=state.activeFace==='front'?'back':'front';state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();updateActiveFaceUi(false);startCameraFaceFlip();renderAll();persistSharedState();status(`Active processing face: ${state.activeFace}. The 3D camera is flipping to the ${state.activeFace} side.`);}
+function updateActiveFaceUi(syncCamera=true){const back=state.activeFace==='back';$('activeFaceLabel').textContent=back?'Back face':'Front face';$('flipFaceBtn').textContent=back?'Back':'Front';$('flipFaceBtn').disabled=!state.wafer;if(syncCamera)threeView.syncActiveFace();}
+function flipActiveFace(){if(!state.wafer)return;state.activeFace=state.activeFace==='front'?'back':'front';state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();updateActiveFaceUi(false);threeView.syncActiveFace({animate:true});renderAll();persistSharedState();status(`Active processing face: ${state.activeFace}. The 3D camera is flipping to the ${state.activeFace} side.`);}
 function formatSliceInput(value){const decimals={nm:1,um:3,mm:4,cm:5}[sliceCoordinateUnit]??4;return String(Number(Number(value).toFixed(decimals)));}
 function updateSliceInputs(){const focused=document.activeElement;if(!state.slice){for(const id of ['sliceAx','sliceAy','sliceBx','sliceBy']){$(id).value='';$(id).disabled=true;}$('applySliceCoordinatesBtn').disabled=true;return;}const scale=UNIT_TO_UM[sliceCoordinateUnit],values={sliceAx:state.slice.a.x/scale,sliceAy:state.slice.a.y/scale,sliceBx:state.slice.b.x/scale,sliceBy:state.slice.b.y/scale};for(const [id,value] of Object.entries(values)){const input=$(id);input.disabled=false;if(focused!==input)input.value=formatSliceInput(value);}$('applySliceCoordinatesBtn').disabled=false;$('sliceCoordinateUnit').value=sliceCoordinateUnit;}
 
@@ -302,7 +282,7 @@ function bindTopNavigation(){
   window.addEventListener('pointermove',(ev)=>{if(!sliceDragName||!state.slice)return;const rect=svg.getBoundingClientRect(),sx=(ev.clientX-rect.left)/rect.width*600,sy=(ev.clientY-rect.top)/rect.height*420;state.slice[sliceDragName.toLowerCase()]=svgToModel(sx,sy);if(!sliceDragFrame)sliceDragFrame=requestAnimationFrame(()=>{sliceDragFrame=null;renderTop();sectionView.render();});});
   svg.addEventListener('pointermove',(ev)=>{if(sliceDragName||!topPan)return;const rect=svg.getBoundingClientRect(),[x0,y0,x1,y1]=topPan.bounds,dx=(ev.clientX-topPan.x)/rect.width*(x1-x0),dy=(ev.clientY-topPan.y)/rect.height*(y1-y0),mx=state.activeFace==='back'?dx:-dx;state.topBounds=[x0+mx,y0+dy,x1+mx,y1+dy];renderTop();});
   const end=()=>{topPan=null;svg.style.cursor='';};svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
-  const endSlice=()=>{if(!sliceDragName)return;sliceDragName=null;render3D();};window.addEventListener('pointerup',endSlice);window.addEventListener('pointercancel',endSlice);
+  const endSlice=()=>{if(!sliceDragName)return;sliceDragName=null;threeView.render();};window.addEventListener('pointerup',endSlice);window.addEventListener('pointercancel',endSlice);
   svg.addEventListener('dblclick',()=>fitLayout());
 }
 
@@ -314,6 +294,11 @@ function currentSubstrateSlabs(){
   return null;
 }
 const sectionView=createSectionView({getSubstrateSlabs:currentSubstrateSlabs,ensureSubstrateSlabs:ensureCutUnionCache});
+export const threeView=createThreeView({
+  getSubstrateSlabs:currentSubstrateSlabs,ensureSubstrateSlabs:ensureCutUnionCache,
+  getSubstrateZBounds:substrateZBounds,mainWorkspaceVisible,
+  memoryDiagnosticsEnabled,correctnessDiagnosticsEnabled,
+});
 if((new URLSearchParams(location.search).get('qa')||'').includes('refill'))window.wafercadRefillDiagnostics=()=>({operation:state._lastOperationDebug||null,renderBounds:clone(state._solidRenderBounds||[]),section:sectionView.debugEntries()});
 
 function isTopFaceSelection(){return $('selectionMode')?.value==='top';}
@@ -643,14 +628,14 @@ function renderSnapshots(){
           delete active.device;
           const newThumb=captureSnapshotThumb();
           if(newThumb){active.thumbRef=internThumbnail(newThumb);delete active.thumb;}
-          const newCam=captureCameraState();
+          const newCam=threeView.captureCamera();
           if(newCam) active.camera=newCam;
           active.updated=new Date().toISOString();
         }catch(e){ console.warn('auto-save snapshot failed',e); }
       }
       state.activeSnapshotId=s.id;
       restoreDeviceSnapshot(resolveSnapshotDevice(s));
-      if(s.camera) restoreCameraState(s.camera);
+      if(s.camera) threeView.restoreCamera(s.camera);
       else renderAll();
       renderSnapshots();
       status(active?`Auto-saved previous state, switched to ${s.name}`:`Restored snapshot: ${s.name}`);
@@ -663,11 +648,7 @@ function renderSnapshots(){
 }
 function captureSnapshotThumb(){
   try{
-    if(!renderer || !renderer.domElement) return null;
-    // ensure current frame is rendered
-    if(typeof renderer.render === 'function' && scene && camera) renderer.render(scene,camera);
-    const dataUrl=renderer.domElement.toDataURL('image/png');
-    return dataUrl;
+    return threeView.captureImage();
   }catch(e){ console.warn('snapshot thumb failed',e); return null; }
 }
 function deleteSnapshot(id){
@@ -682,7 +663,7 @@ function deleteSnapshot(id){
 }
 function saveNamedSnapshot(name){
   const thumb=captureSnapshotThumb();
-  const cam=captureCameraState();
+  const cam=threeView.captureCamera();
   const s={id:uid('snap'),name,created:new Date().toISOString(),deviceRef:internDevice(currentDeviceSnapshot()),thumbRef:internThumbnail(thumb),camera:cam};
   state.snapshots.push(s);state.activeSnapshotId=s.id;renderSnapshots();persistSharedState();status(`Snapshot saved: ${name}`);
 }
@@ -696,28 +677,9 @@ function openSnapshotNameDialog(purpose='snapshot'){
 function createSnapshot(){openSnapshotNameDialog('snapshot');}
 
 function modelStats(){$('modelStats').textContent=state.wafer?`${state.solids.length} solids · ${state.cuts.length} cuts · ${state.dopings.length} doped regions · ${state.imprintedFaces.length} faces`:'';}
-function renderAll(){ensureLayerVisuals();renderTop();sectionView.render();render3D();renderFigureLegend();renderDopingControls();updateUndoUi();modelStats();}
+function renderAll(){ensureLayerVisuals();renderTop();sectionView.render();threeView.render();renderFigureLegend();renderDopingControls();updateUndoUi();modelStats();}
 
-async function initThree(){
-  try{
-    THREE=await import('three');
-    ({OrbitControls}=await import('three/addons/controls/OrbitControls.js'));
-    ({mergeGeometries}=await import('three/addons/utils/BufferGeometryUtils.js'));
-  }catch(e){$('threeError').classList.remove('hidden');$('threeError').textContent='The local 3D library could not be loaded. Run npm install and restart WaferCAD. '+e.message;return;}
-  const host=$('threeContainer');renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xf1f3f5);host.appendChild(renderer.domElement);
-  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(35,1,.01,5000);camera.up.set(0,0,1);camera.position.set(state.activeFace==='back'?-7:7,-9,state.activeFace==='back'?-6:6);controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,-.1);controls.enableDamping=true;
-  scene.add(new THREE.HemisphereLight(0xffffff,0x66717c,2.0));const dl=new THREE.DirectionalLight(0xffffff,2.4);dl.position.set(5,-4,9);scene.add(dl);
-  deviceGroup=new THREE.Group();scene.add(deviceGroup);axesGroup=createInfiniteAxes();axesGroup.visible=state.showAxes;scene.add(axesGroup);
-  resizeObserver=new ResizeObserver(()=>resizeThree());resizeObserver.observe(host);resizeThree();render3D();startThreeLoop();
-}
-function resizeThree(){if(!renderer)return;const host=$('threeContainer'),w=Math.max(host.clientWidth,1),h=Math.max(host.clientHeight,1);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
-function createAxisLabel(text,color,position){const canvas=document.createElement('canvas');canvas.width=96;canvas.height=64;const context=canvas.getContext('2d');context.font='700 42px Segoe UI, sans-serif';context.textAlign='center';context.textBaseline='middle';context.fillStyle=color;context.fillText(text,48,32);const texture=new THREE.CanvasTexture(canvas),material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false});const sprite=new THREE.Sprite(material);sprite.position.set(...position);sprite.scale.set(.42,.28,1);sprite.renderOrder=1002;return sprite;}
-function createInfiniteAxes(){
-  const group=new THREE.Group(),extent=1000,axes=[{points:[[-extent,0,0],[extent,0,0]],color:0xdc2626},{points:[[0,-extent,0],[0,extent,0]],color:0x16a34a},{points:[[0,0,-extent],[0,0,extent]],color:0x2563eb}];
-  for(const axis of axes){const geometry=new THREE.BufferGeometry().setFromPoints(axis.points.map(p=>new THREE.Vector3(...p))),material=new THREE.LineBasicMaterial({color:axis.color,transparent:true,opacity:.82,depthTest:false,depthWrite:false});const line=new THREE.Line(geometry,material);line.renderOrder=1000;group.add(line);}
-  const origin=new THREE.Mesh(new THREE.SphereGeometry(.085,18,12),new THREE.MeshBasicMaterial({color:0x111827,depthTest:false,depthWrite:false}));origin.renderOrder=1001;origin.name='Origin';group.add(origin,createAxisLabel('X','#dc2626',[5.1,0,0]),createAxisLabel('Y','#16a34a',[0,5.1,0]),createAxisLabel('Z','#2563eb',[0,0,5.1]),createAxisLabel('O','#111827',[.18,.18,.18]));return group;
-}
-function updateAxesVisibility(){state.showAxes=$('showAxes').checked;if(axesGroup)axesGroup.visible=state.showAxes;persistSharedState();status(state.showAxes?'3D origin and X/Y/Z axes shown.':'3D axes hidden.');}
+function updateAxesVisibility(){state.showAxes=$('showAxes').checked;threeView.syncAxes();persistSharedState();status(state.showAxes?'3D origin and X/Y/Z axes shown.':'3D axes hidden.');}
 function syncViewControls(){
   const isRelative=state.zMapping==='relative';
   const currentScale=isRelative?state.relativeZScale:state.zExag;
@@ -738,7 +700,7 @@ function syncViewControls(){
     if($('maskOpacityValue')) $('maskOpacityValue').textContent=pct+'%';
   }
   sectionView.syncControls();
-  $('showAxes').checked=state.showAxes;if(axesGroup)axesGroup.visible=state.showAxes;
+  $('showAxes').checked=state.showAxes;threeView.syncAxes();
 }
 function setZExag(v,{persist=true,source='slider'}={}){
   let n=Number(v);
@@ -752,14 +714,14 @@ function setZExag(v,{persist=true,source='slider'}={}){
   if(source!=='slider' && $('zExag')) $('zExag').value=String(Math.min(sliderMax, Math.max(0.1, n)));
   if(source!=='number' && $('zExagNumber')) $('zExagNumber').value=formatDisplayNumber(n);
   if($('zExagValue')) $('zExagValue').value=`${isRelative?'':'×'}${formatDisplayNumber(n)}`;
-  sectionView.render();scheduleRender3D();if(persist)persistSharedState('z-scale');
+  sectionView.render();threeView.scheduleRender();if(persist)persistSharedState('z-scale');
 }
 function setZMapping(value){
   const next=value==='relative'?'relative':'linear';
   state.zMapping=next;
   if($('zMapping'))$('zMapping').value=state.zMapping;
   syncViewControls();
-  sectionView.render();render3D();persistSharedState('z-mapping');
+  sectionView.render();threeView.render();persistSharedState('z-mapping');
   status(state.zMapping==='relative'?'Z display uses relative thickness: logarithmic between layers and linear within each layer. 1 nm=1, 10 nm=2, 100 nm=3, 1 µm=4, 10 µm=5, 100 µm=6. Physical coordinates are unchanged.':'Z display uses physical linear thickness (×1 is isotropic).');
 }
 function setMaskOpacity(v){
@@ -772,102 +734,19 @@ function setMaskOpacity(v){
   renderTop();persistSharedState();
 }
 function mainWorkspaceVisible(){const workspace=$('mainWorkspace');return !!workspace&&!workspace.classList.contains('hidden');}
-function shouldRunThreeLoop(){return !!renderer&&!document.hidden&&mainWorkspaceVisible();}
-function startThreeLoop(){if(threeLoopRunning||!shouldRunThreeLoop())return;threeLoopRunning=true;threeFrameId=requestAnimationFrame(animateThree);}
-function stopThreeLoop(){threeLoopRunning=false;if(threeFrameId!=null){cancelAnimationFrame(threeFrameId);threeFrameId=null;}}
-function animateThree(now=performance.now()){if(!threeLoopRunning||!renderer)return;threeFrameId=null;updateCameraFaceFlip(now);controls.update();renderer.render(scene,camera);threeFrameId=requestAnimationFrame(animateThree);}
 function memoryDiagnosticsEnabled(){const params=new URLSearchParams(location.search),qa=params.get('qa')||'';return params.get('debug')==='memory'||qa==='memory'||qa.includes('memory');}
 function correctnessDiagnosticsEnabled(){const qa=new URLSearchParams(location.search).get('qa')||'';return qa.includes('refill')||qa.includes('topology');}
 function operationAtomDiagnostics(atoms){return atoms.map(atom=>({geometryId:atom.geometryId,sourceId:atom.sourceId,kind:atom.kind,layerId:atom.layerId,surface:Number(atom.surface),zMin:Number(atom.zMin),zMax:Number(atom.zMax),area:Number(atom.area)}));}
-function render3DDebugStats(){if(!memoryDiagnosticsEnabled())return null;return state._render3DStats||(state._render3DStats={requested:0,executed:0,scheduled:false});}
-export function scheduleRender3D(){const stats=render3DDebugStats();if(stats)stats.requested++;if(render3DFrame!=null)return;render3DFrame=requestAnimationFrame(()=>{render3DFrame=null;if(stats)stats.scheduled=false;render3D();});if(stats)stats.scheduled=true;}
-function cancelScheduledRender3D(){if(render3DFrame!=null){cancelAnimationFrame(render3DFrame);render3DFrame=null;}const stats=render3DDebugStats();if(stats)stats.scheduled=false;}
-document.addEventListener('visibilitychange',()=>{if(document.hidden)stopThreeLoop();else if(mainWorkspaceVisible()){scheduleRender3D();startThreeLoop();}});
-function disposeGroup(g){while(g.children.length){const o=g.children.pop();if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}}}
-function scaledPoly(poly,scale){return poly.map(([x,y])=>[x*scale,y*scale]);}
-function makeShape(poly){const s=new THREE.Shape();poly.forEach(([x,y],i)=>i?s.lineTo(x,y):s.moveTo(x,y));s.closePath();return s;}
-function makeTopologyShape(topology,scale){const shape=makeShape(scaledPoly(topology.outer,scale));for(const contour of topology.holes){const hole=new THREE.Path();scaledPoly(contour,scale).forEach(([x,y],index)=>index?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole);}return shape;}
-function mappedZ(z){return displayZ(z);}
-function addMergedExtrusions(items,xy,boundsOf,materialOf,kind,collectRefillDiagnostics){
-  let meshCount=0;
-  for(const group of groupBy(items,item=>`${item.layerId}|${item.material||item.dopant||''}`).values()){
-    const geometries=[];
-    for(const item of group){
-      const mapped=boundsOf(item),depth=Math.max(mapped.zMax-mapped.zMin,1e-9),geometryBounds=collectRefillDiagnostics?{min:Infinity,max:-Infinity}:null;
-      for(const topology of polygonTopologies(item.footprint)){
-        const shape=makeTopologyShape(topology,xy),geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:16});geometry.translate(0,0,mapped.zMin);
-        if(collectRefillDiagnostics){geometry.computeBoundingBox();geometryBounds.min=Math.min(geometryBounds.min,geometry.boundingBox.min.z);geometryBounds.max=Math.max(geometryBounds.max,geometry.boundingBox.max.z);}
-        geometries.push(geometry);
-      }
-      if(collectRefillDiagnostics)state._solidRenderBounds.push({id:item.id,layerId:item.layerId,kind,physical:{min:Number(item.zMin),max:Number(item.zMax)},mapped:{min:mapped.zMin,max:mapped.zMax},geometry:geometryBounds});
-    }
-    const material=materialOf(group[0]);
-    if(geometries.length===1){deviceGroup.add(new THREE.Mesh(geometries[0],material));meshCount++;continue;}
-    const merged=mergeGeometries(geometries,false);
-    if(merged){for(const geometry of geometries)geometry.dispose();deviceGroup.add(new THREE.Mesh(merged,material));meshCount++;continue;}
-    for(const geometry of geometries){deviceGroup.add(new THREE.Mesh(geometry,material.clone()));meshCount++;}
-    material.dispose();
-  }
-  return meshCount;
-}
-function render3D(){
-  if(!THREE||!deviceGroup)return;disposeGroup(deviceGroup);if(!state.wafer||!state.slice)return;
-  const debugStats=render3DDebugStats();if(debugStats)debugStats.executed++;
-  const xy=waferXYScale(),scaledWafer=scaledPoly(waferOutline(),xy);
-  const zBounds=substrateZBounds(),cutKey=cutGeometryKey();if(cutUnionCacheKey!==cutKey)void ensureCutUnionCache();
-  // Use derived remaining substrate per Z slab; whole-face cuts produce empty remaining (no mesh) and edge-touching cuts are rendered as remaining outer regions, not as degenerate holes.
-  let substrateSlabCount=0,substrateRegionCount=0,substrateMeshCount=0,substratePendingSlabs=0,substrateTopologyHoles=0;
-  for(let i=0;i<zBounds.length-1;i++){
-    const low=zBounds[i],high=zBounds[i+1];
-    const slabKey=`${low}|${high}`;
-    const slabInfo=cutUnionCacheKey===cutKey?substrateSlabRegions.get(slabKey):null;
-    if(slabInfo){
-      if(slabInfo.isEmpty){
-        substrateSlabCount++;
-        continue;
-      }
-      if(slabInfo.useHoles){
-        const shape=makeShape(scaledWafer);
-        for(const footprint of slabInfo.unionRegions){const pp=scaledPoly(footprint,xy);const hole=new THREE.Path();pp.forEach(([x,y],j)=>j?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole);}
-        const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});deviceGroup.add(new THREE.Mesh(geo,mat));substrateRegionCount++;substrateMeshCount++;substrateSlabCount++;
-      } else {
-        for(const topology of slabInfo.remainingTopologies||slabInfo.remainingRegions.flatMap(polygonTopologies)){
-          const shape=makeTopologyShape(topology,xy);
-          substrateTopologyHoles+=topology.holes.length;
-          const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});deviceGroup.add(new THREE.Mesh(geo,mat));substrateRegionCount++;substrateMeshCount++;
-        }
-        substrateSlabCount++;
-      }
-    } else {
-      // While exact Boolean regions are pending, omit affected slabs. This avoids
-      // both a transient residual rim and ever constructing a boundary-touching
-      // or whole-face cut as a Three.js hole.
-      const active=state.cuts.filter(c=>c.zMin<=low+1e-8&&c.zMax>=high-1e-8);
-      if(active.length){substratePendingSlabs++;continue;}
-      const shape=makeShape(scaledWafer);
-      const depth=Math.max(mappedZ(high)-mappedZ(low),.0001);const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:96});geo.translate(0,0,mappedZ(low));const mat=new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual('substrate').color),roughness:.72,metalness:.02,side:THREE.DoubleSide});deviceGroup.add(new THREE.Mesh(geo,mat));substrateSlabCount++;substrateRegionCount++;substrateMeshCount++;
-    }
-  }
-  const layerDescriptors=solidLayerDescriptors(),mappingContext=createLayerMappingContext();
-  const collectRefillDiagnostics=correctnessDiagnosticsEnabled();
-  if(collectRefillDiagnostics)state._solidRenderBounds=[];
-  const solidMeshes=addMergedExtrusions(state.solids,xy,solid=>mappedSolidBounds(solid,layerDescriptors,mappingContext),solid=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(solid.layerId).color),roughness:.55,metalness:solid.material.toLowerCase().includes('metal')?.6:.05,side:THREE.DoubleSide}),'solid',collectRefillDiagnostics);
-  const dopingMeshes=addMergedExtrusions(state.dopings,xy,doping=>mappedDopingBounds(doping,layerDescriptors,mappingContext),doping=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(doping.layerId).color),transparent:true,opacity:.38,depthWrite:false,roughness:.35,metalness:0,side:THREE.DoubleSide}),'doping',collectRefillDiagnostics);
-  state._renderStats={substrateSlabs:substrateSlabCount,substrateRegions:substrateRegionCount,substrateMeshes:substrateMeshCount,substratePendingSlabs,substrateTopologyHoles,solidRegions:state.solids.length,solidMeshes,dopingRegions:state.dopings.length,dopingMeshes};
-  // Selected slice plane.
-  const a=state.slice.a,b=state.slice.b,ax=a.x*xy,ay=a.y*xy,bx=b.x*xy,by=b.y*xy,len=Math.hypot(bx-ax,by-ay),angle=Math.atan2(by-ay,bx-ax),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors,mappingContext));const maxz=Math.max(.3,...mappedSolids.map(s=>s.zMax));const minz=Math.min(mappedZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin)),height=maxz-minz+.2;const plane=new THREE.Mesh(new THREE.BoxGeometry(len,.018,height),new THREE.MeshBasicMaterial({color:0x2563eb,transparent:true,opacity:.18,depthWrite:false}));plane.position.set((ax+bx)/2,(ay+by)/2,(maxz+minz)/2);plane.rotation.z=angle;deviceGroup.add(plane);
-  const boundaryPoints=scaledWafer.map(([x,y])=>new THREE.Vector3(x,y,.006));const boundaryGeo=new THREE.BufferGeometry().setFromPoints(boundaryPoints);const boundary=new THREE.LineLoop(boundaryGeo,new THREE.LineBasicMaterial({color:0x475569}));deviceGroup.add(boundary);
-}
 function polygonTotals(layers=[]){let polygons=0,points=0;for(const layer of layers){for(const polygon of layer.polygons||[]){polygons++;points+=polygon.length;}}return {polygons,points};}
 function memoryDiagnostics(){
-  const gds=polygonTotals(state.gds?.layers);
+  const gds=polygonTotals(state.gds?.layers),three=threeView.diagnostics();
   return {
     persistent:{solids:state.solids.length,cuts:state.cuts.length,dopings:state.dopings.length,gdsPolygons:gds.polygons,gdsPoints:gds.points,snapshots:state.snapshots.length,snapshotDevices:Object.keys(state.snapshotDevices||{}).length,snapshotThumbnailChars:Object.values(state.snapshotThumbnails||{}).reduce((sum,value)=>sum+(typeof value==='string'?value.length:JSON.stringify(value||'').length),0)},
     pattern:window.patMemoryDiagnostics?.()||null,
-    three:renderer?{geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures}:null,
+    three:three.memory,
     persistence:state._persistenceStats?{...state._persistenceStats}:null,
-    render3D:state._render3DStats?{...state._render3DStats}:null,
-    threeLoopRunning
+    render3D:three.render3D,
+    threeLoopRunning:three.loopRunning
   };
 }
 if(memoryDiagnosticsEnabled())window.wafercadMemoryDiagnostics=memoryDiagnostics;
@@ -977,7 +856,7 @@ function bindUi(){
   });
   $('gdsInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)importGds(f);e.target.value='';});
   $('sliceCoordinateUnit').addEventListener('change',()=>{const next=$('sliceCoordinateUnit').value;convertFields(['sliceAx','sliceAy','sliceBx','sliceBy'],sliceCoordinateUnit,next);sliceCoordinateUnit=next;});
-  $('applySliceCoordinatesBtn').addEventListener('click',()=>{if(!state.slice)return;const values=['sliceAx','sliceAy','sliceBx','sliceBy'].map(id=>Number($(id).value));if(values.some(v=>!Number.isFinite(v))){status('A–B coordinates must be valid numbers.');return;}if(values[0]===values[2]&&values[1]===values[3]){status('A and B must be different points.');return;}const scale=UNIT_TO_UM[sliceCoordinateUnit];state.slice={a:{x:values[0]*scale,y:values[1]*scale},b:{x:values[2]*scale,y:values[3]*scale}};renderTop();sectionView.render();render3D();persistSharedState();status('Applied A–B section coordinates.');});
+  $('applySliceCoordinatesBtn').addEventListener('click',()=>{if(!state.slice)return;const values=['sliceAx','sliceAy','sliceBx','sliceBy'].map(id=>Number($(id).value));if(values.some(v=>!Number.isFinite(v))){status('A–B coordinates must be valid numbers.');return;}if(values[0]===values[2]&&values[1]===values[3]){status('A and B must be different points.');return;}const scale=UNIT_TO_UM[sliceCoordinateUnit];state.slice={a:{x:values[0]*scale,y:values[1]*scale},b:{x:values[2]*scale,y:values[3]*scale}};renderTop();sectionView.render();threeView.render();persistSharedState();status('Applied A–B section coordinates.');});
   $('gdsAlignmentUnit').addEventListener('change',()=>{const next=$('gdsAlignmentUnit').value;convertFields(['gdsOffsetX','gdsOffsetY'],gdsAlignmentUnit,next);gdsAlignmentUnit=next;});
   $('applyGdsAlignmentBtn').addEventListener('click',()=>{
     const x=Number($('gdsOffsetX').value),y=Number($('gdsOffsetY').value),rotation=Number($('gdsRotation').value),sc=Number($('gdsScale').value);
@@ -1009,7 +888,7 @@ function bindUi(){
 }
 
 if($('selectionMode'))$('selectionMode').value=state.selectionMode||'top';
-bindUi();bindTopNavigation();sectionView.bind();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();initThree();
+bindUi();bindTopNavigation();sectionView.bind();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();threeView.init();
 // Previous session banner: refresh is now a clean reset, but previous state remains restorable
 try{
   const hasPrev = hasSharedState();
@@ -1056,10 +935,10 @@ try{
     mainWs.classList.remove('hidden'); patWs.classList.add('hidden');
     if(window.patSuspend)window.patSuspend();
     btnMain.classList.add('active'); btnPat.classList.remove('active');
-    updateSelectionInfo();renderTop();resizeThree();scheduleRender3D();startThreeLoop();
+    updateSelectionInfo();renderTop();threeView.resize();threeView.scheduleRender();threeView.start();
   }
   function showPatterns(){
-    cancelScheduledRender3D();stopThreeLoop();
+    threeView.cancelScheduledRender();threeView.stop();
     mainWs.classList.add('hidden'); patWs.classList.remove('hidden');
     btnPat.classList.add('active'); btnMain.classList.remove('active');
     // trigger patterns render

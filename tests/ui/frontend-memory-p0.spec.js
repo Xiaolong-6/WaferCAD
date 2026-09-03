@@ -70,10 +70,12 @@ test('coalesces repeated 3D rebuild requests within one animation frame', async 
   await page.getByRole('button', { name: 'Pattern Editor' }).click();
   const immediate = await page.evaluate(async () => {
     const { state } = await import('/static/js/core.js');
-    const { scheduleRender3D } = await import('/static/app.js');
+    // Reuse the bootstrapped module, including its version query, without
+    // initializing a second application/renderer inside this test.
+    const { threeView } = await import(document.querySelector('script[src*="/static/app.js"]').src);
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     state._render3DStats = { requested: 0, executed: 0, scheduled: false };
-    for (let index = 0; index < 50; index++) scheduleRender3D();
+    for (let index = 0; index < 50; index++) threeView.scheduleRender();
     return { ...state._render3DStats };
   });
   expect(immediate.requested).toBe(50);
