@@ -1,7 +1,8 @@
 import {state, persistSharedState} from '../core.js';
 import {waferOutline, bboxPolys, isSimplePolygon, viewAspectBounds, waferBounds, polygonArea, centroid} from '../geometry.js';
 import {composeMaskRegions} from '../geometry-api.js';
-import {effectiveLayerPolygons,maskProjectionFingerprint,patternLayerIsEligible,patternProjectionEntries,substrateProjectionFingerprint} from '../layout-model.js';
+import {effectiveLayerPolygons,maskProjectionFingerprint,patternLayerIsEligible,patternProjectionEntries,patternSelectedLayers,substrateProjectionFingerprint} from '../layout-model.js';
+import {ensureLayerFilledPolygons} from '../pattern-fill.js';
 import {clearSvg, makeSvg} from '../svg.js';
 
 const $ = id => document.getElementById(id);
@@ -126,12 +127,14 @@ async function refreshPreview({force=false}={}){
   if(!force&&previewCacheKey===key){render();return {mask:maskPreview,projection:projectionPreview};}
   if(!force&&previewPendingKey===key&&previewPendingPromise)return previewPendingPromise;
   const generation=++previewGeneration;
-  const maskPolygons=patternProjectionEntries().map(entry=>entry.polygon);
-  const projectionPolygons=patternProjectionEntries({transformed:true}).map(entry=>entry.polygon);
-  if(!maskPolygons.length){clearPreviewCache(true);previewCacheKey=key;render();return {mask:[],projection:[]};}
-  previewBusy=true;render();
+  previewBusy=true;maskPreview=[];projectionPreview=[];render();
   const task=(async()=>{
     try{
+      await Promise.all(patternSelectedLayers().map(ensureLayerFilledPolygons));
+      if(generation!==previewGeneration||key!==currentPreviewKey())return {mask:maskPreview,projection:projectionPreview};
+      const maskPolygons=patternProjectionEntries().map(entry=>entry.polygon);
+      const projectionPolygons=patternProjectionEntries({transformed:true}).map(entry=>entry.polygon);
+      if(!maskPolygons.length){previewCacheKey=key;previewBusy=false;renderLayerList();render();return {mask:[],projection:[]};}
       const outline=waferOutline();
       const maskRequest=composeMaskRegions(maskPolygons,'transmit',null);
       const projectionRequest=outline.length
@@ -139,10 +142,10 @@ async function refreshPreview({force=false}={}){
         :Promise.resolve({regions:[]});
       const [maskResult,projectionResult]=await Promise.all([maskRequest,projectionRequest]);
       if(generation!==previewGeneration||key!==currentPreviewKey())return {mask:maskPreview,projection:projectionPreview};
-      maskPreview=maskResult.regions;projectionPreview=projectionResult.regions;previewCacheKey=key;previewBusy=false;render();
+      maskPreview=maskResult.regions;projectionPreview=projectionResult.regions;previewCacheKey=key;previewBusy=false;renderLayerList();render();
       return {mask:maskPreview,projection:projectionPreview};
     }catch(error){
-      if(generation!==previewGeneration)return {mask:maskPreview,projection:projectionPreview};
+      if(generation!==previewGeneration||key!==currentPreviewKey())return {mask:maskPreview,projection:projectionPreview};
       maskPreview=[];projectionPreview=[];previewCacheKey=null;previewBusy=false;render();
       const info=$('patPreviewInfo');if(info)info.textContent=`Preview failed: ${error.message}`;
       return {mask:[],projection:[]};
@@ -233,7 +236,7 @@ function render(){
   else if(maskPreview.length&&!hasWafer)$('patPreviewInfo').textContent='Filled mask ready · create a substrate in Main for projection';
   else $('patPreviewInfo').textContent=hasWafer?'Select mask layers/components to calculate UV exposure':'Import a mask and create a substrate';
   const hasSel = state.gds.layers.some(l=>state.patternSelectedKeys?.has(l.key));
-  const applyBtn=$('patApplyBtn'); if(applyBtn){applyBtn.disabled=previewBusy||!hasSel||!projectionPreview.length||!hasWafer||state.gds.truncated===true;applyBtn.title=state.gds.truncated===true?'Incomplete layout: projection commit is blocked':'';}
+  const applyBtn=$('patApplyBtn'); if(applyBtn){applyBtn.disabled=previewBusy||previewCacheKey!==currentPreviewKey()||!hasSel||!projectionPreview.length||!hasWafer||state.gds.truncated===true;applyBtn.title=state.gds.truncated===true?'Incomplete layout: projection commit is blocked':'';}
   const waferHint=$('patWaferHint'); if(waferHint) waferHint.textContent = hasWafer ? `Wafer: ${state.wafer.shape} ${state.wafer.diameter? (state.wafer.diameter/1000).toFixed(1)+'mm':''}` : 'No wafer';
   const lassoInfo=$('patLassoInfo'); if(lassoInfo && lassoRect){
     const selCount = getLassoSelectedCount();
@@ -395,6 +398,7 @@ async function migrateLegacyComponents(){
 }
 
 function applyToMain(){
+  if(previewBusy||previewCacheKey!==currentPreviewKey()){refreshPreview();return;}
   if(state.gds.truncated===true){const info=$('patPreviewInfo');if(info)info.textContent='Commit blocked: imported layout reached the polygon limit and is incomplete.';return;}
   const regions=projectionPreview;
   if(!state.wafer||!regions.length){const info=$('patPreviewInfo');if(info)info.textContent='Nothing to commit — create a substrate and verify the projection.';return;}

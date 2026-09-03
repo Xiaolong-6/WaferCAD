@@ -6,6 +6,7 @@ import {createLegendController} from './js/legend-controller.js';
 import {CURRENT_PROJECT_VERSION,validateAndMigrateProject} from './js/project-schema.js';
 import {captureDevice,internDevice,internThumbnail,pruneSnapshotDevices,resolveSnapshotDevice,resolveSnapshotThumbnail} from './js/snapshot-store.js';
 import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,patternLayerIsEligible,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
+import {ensureLayerFilledPolygons} from './js/pattern-fill.js';
 import {clearSvg,makeSvg} from './js/svg.js';
 import {createSectionView} from './js/views/section-view.js';
 
@@ -578,8 +579,13 @@ function renderImprintDebug(){
   }
 }
 async function setLayerFillPattern(layer,enabled){
-  if(enabled&&!Array.isArray(layer.filledPolygons)){const response=await fetch('/api/geometry/fill-holes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subjects:layer.polygons||[]})});if(!response.ok){const data=await response.json().catch(()=>({detail:response.statusText}));throw new Error(data.detail||response.statusText);}const data=await response.json();layer.filledPolygons=Array.isArray(data.regions)?data.regions:[];}
-  layer.fillPattern=enabled;state.topBounds=null;renderLayerList();renderTop();persistSharedState();
+  const previous=layer.fillPattern===true;
+  layer.fillPattern=enabled;
+  const refreshPattern=()=>{if(!$('patternsWorkspace')?.classList.contains('hidden'))window.patRender?.();};
+  refreshPattern();
+  try{await ensureLayerFilledPolygons(layer);}
+  catch(error){layer.fillPattern=previous;throw error;}
+  finally{state.topBounds=null;renderLayerList();renderTop();refreshPattern();persistSharedState();}
 }
 async function imprintLayer(layer){
   if(!state.wafer){status('Create or open a wafer before imprinting a layer.');return;}
