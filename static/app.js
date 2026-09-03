@@ -783,14 +783,18 @@ function scaledPoly(poly,scale){return poly.map(([x,y])=>[x*scale,y*scale]);}
 function makeShape(poly){const s=new THREE.Shape();poly.forEach(([x,y],i)=>i?s.lineTo(x,y):s.moveTo(x,y));s.closePath();return s;}
 function makeTopologyShape(topology,scale){const shape=makeShape(scaledPoly(topology.outer,scale));for(const contour of topology.holes){const hole=new THREE.Path();scaledPoly(contour,scale).forEach(([x,y],index)=>index?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole);}return shape;}
 function mappedZ(z){return displayZ(z);}
-function addMergedExtrusions(items,xy,boundsOf,materialOf,kind){
+function addMergedExtrusions(items,xy,boundsOf,materialOf,kind,collectRefillDiagnostics){
   let meshCount=0;
   for(const group of groupBy(items,item=>`${item.layerId}|${item.material||item.dopant||''}`).values()){
     const geometries=[];
     for(const item of group){
-      const mapped=boundsOf(item),depth=Math.max(mapped.zMax-mapped.zMin,1e-9),geometryBounds={min:Infinity,max:-Infinity};
-      for(const topology of polygonTopologies(item.footprint)){const shape=makeTopologyShape(topology,xy),geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:16});geometry.translate(0,0,mapped.zMin);geometry.computeBoundingBox();geometryBounds.min=Math.min(geometryBounds.min,geometry.boundingBox.min.z);geometryBounds.max=Math.max(geometryBounds.max,geometry.boundingBox.max.z);geometries.push(geometry);}
-      state._solidRenderBounds.push({id:item.id,layerId:item.layerId,kind,physical:{min:Number(item.zMin),max:Number(item.zMax)},mapped:{min:mapped.zMin,max:mapped.zMax},geometry:geometryBounds});
+      const mapped=boundsOf(item),depth=Math.max(mapped.zMax-mapped.zMin,1e-9),geometryBounds=collectRefillDiagnostics?{min:Infinity,max:-Infinity}:null;
+      for(const topology of polygonTopologies(item.footprint)){
+        const shape=makeTopologyShape(topology,xy),geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:16});geometry.translate(0,0,mapped.zMin);
+        if(collectRefillDiagnostics){geometry.computeBoundingBox();geometryBounds.min=Math.min(geometryBounds.min,geometry.boundingBox.min.z);geometryBounds.max=Math.max(geometryBounds.max,geometry.boundingBox.max.z);}
+        geometries.push(geometry);
+      }
+      if(collectRefillDiagnostics)state._solidRenderBounds.push({id:item.id,layerId:item.layerId,kind,physical:{min:Number(item.zMin),max:Number(item.zMax)},mapped:{min:mapped.zMin,max:mapped.zMax},geometry:geometryBounds});
     }
     const material=materialOf(group[0]);
     if(geometries.length===1){deviceGroup.add(new THREE.Mesh(geometries[0],material));meshCount++;continue;}
@@ -840,9 +844,10 @@ function render3D(){
     }
   }
   const layerDescriptors=solidLayerDescriptors(),mappingContext=createLayerMappingContext();
-  state._solidRenderBounds=[];
-  const solidMeshes=addMergedExtrusions(state.solids,xy,solid=>mappedSolidBounds(solid,layerDescriptors,mappingContext),solid=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(solid.layerId).color),roughness:.55,metalness:solid.material.toLowerCase().includes('metal')?.6:.05,side:THREE.DoubleSide}),'solid');
-  const dopingMeshes=addMergedExtrusions(state.dopings,xy,doping=>mappedDopingBounds(doping,layerDescriptors,mappingContext),doping=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(doping.layerId).color),transparent:true,opacity:.38,depthWrite:false,roughness:.35,metalness:0,side:THREE.DoubleSide}),'doping');
+  const collectRefillDiagnostics=correctnessDiagnosticsEnabled();
+  if(collectRefillDiagnostics)state._solidRenderBounds=[];
+  const solidMeshes=addMergedExtrusions(state.solids,xy,solid=>mappedSolidBounds(solid,layerDescriptors,mappingContext),solid=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(solid.layerId).color),roughness:.55,metalness:solid.material.toLowerCase().includes('metal')?.6:.05,side:THREE.DoubleSide}),'solid',collectRefillDiagnostics);
+  const dopingMeshes=addMergedExtrusions(state.dopings,xy,doping=>mappedDopingBounds(doping,layerDescriptors,mappingContext),doping=>new THREE.MeshStandardMaterial({color:rgbHexToInt(layerVisual(doping.layerId).color),transparent:true,opacity:.38,depthWrite:false,roughness:.35,metalness:0,side:THREE.DoubleSide}),'doping',collectRefillDiagnostics);
   state._renderStats={substrateSlabs:substrateSlabCount,substrateRegions:substrateRegionCount,substrateMeshes:substrateMeshCount,substratePendingSlabs,substrateTopologyHoles,solidRegions:state.solids.length,solidMeshes,dopingRegions:state.dopings.length,dopingMeshes};
   // Selected slice plane.
   const a=state.slice.a,b=state.slice.b,ax=a.x*xy,ay=a.y*xy,bx=b.x*xy,by=b.y*xy,len=Math.hypot(bx-ax,by-ay),angle=Math.atan2(by-ay,bx-ax),mappedSolids=state.solids.map(s=>mappedSolidBounds(s,layerDescriptors,mappingContext));const maxz=Math.max(.3,...mappedSolids.map(s=>s.zMax));const minz=Math.min(mappedZ(-state.wafer.thickness),...mappedSolids.map(s=>s.zMin)),height=maxz-minz+.2;const plane=new THREE.Mesh(new THREE.BoxGeometry(len,.018,height),new THREE.MeshBasicMaterial({color:0x2563eb,transparent:true,opacity:.18,depthWrite:false}));plane.position.set((ax+bx)/2,(ay+by)/2,(maxz+minz)/2);plane.rotation.z=angle;deviceGroup.add(plane);
