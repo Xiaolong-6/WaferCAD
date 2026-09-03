@@ -6,16 +6,17 @@ const fixture=JSON.parse(fs.readFileSync(path.resolve('tests/fixtures/realistic_
 
 async function createWafer(page){await page.getByRole('button',{name:'New wafer'}).click();await page.getByRole('button',{name:'Create'}).click();}
 async function applyOperation(page,mode,distance){await page.locator('#pushMode').selectOption(mode);await page.locator('#distanceInput').fill(String(distance));await page.getByRole('button',{name:'Apply operation'}).click();await expect(page.locator('#applyPushPullBtn')).toHaveText('Apply operation');}
-async function installFixture(page){await page.evaluate(data=>{window.localStorage.clear();return import('/static/js/core.js').then(async({state})=>{const {normalizeGds}=await import('/static/js/layout-model.js');state.gds=normalizeGds(structuredClone(data));state.patternSelectedKeys=new Set(state.gds.layers.map(layer=>layer.key));state._gdsFileName=data.filename;window.patReset?.();});},fixture);}
+async function installFixture(page){await page.evaluate(data=>{window.localStorage.clear();return import('/static/js/core.js').then(async({state})=>{const {normalizeGds}=await import('/static/js/layout-model.js');state.gds=normalizeGds(structuredClone(data));state.patternSelectedKeys=new Set(['1/0','2/0','3/0']);state._gdsFileName=data.filename;window.patReset?.();});},fixture);}
 
 test('canonical projection excludes context border but keeps valid rectangles, rings, and islands',async({page})=>{
   await page.goto('/?qa=playwright-refill-topology');await createWafer(page);await installFixture(page);
   const fingerprint=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const {committedProjectionIsCurrent,maskProjectionFingerprint,patternProjectionEntries,substrateProjectionFingerprint}=await import('/static/js/layout-model.js');const border=state.gds.layers.find(layer=>layer.key==='90/0'),device=state.gds.layers.find(layer=>layer.key==='1/0');state.patternSelectedKeys.add(border.key);const committed=()=>({regions:[[[0,0],[1,0],[1,1]]],face:'front',sourceFingerprint:maskProjectionFingerprint(),substrateFingerprint:substrateProjectionFingerprint('front')});const base=maskProjectionFingerprint(),mirrorProjection=committed();device.mirrored=true;const mirror=maskProjectionFingerprint(),mirrorInvalid=!committedProjectionIsCurrent(mirrorProjection);device.mirrored=false;const componentProjection=committed();device.selectedComponentIds=[];const components=maskProjectionFingerprint(),componentsInvalid=!committedProjectionIsCurrent(componentProjection);delete device.selectedComponentIds;const fillProjection=committed();border.fillPattern=true;const fill=maskProjectionFingerprint(),fillInvalid=!committedProjectionIsCurrent(fillProjection),fillEligible=patternProjectionEntries().some(entry=>entry.layer.key===border.key);border.fillPattern=false;return {eligibleKeys:[...new Set(patternProjectionEntries().map(entry=>entry.layer.key))],different:new Set([base,mirror,components,fill]).size,mirrorInvalid,componentsInvalid,fillInvalid,fillEligible};});
-  expect(fingerprint.eligibleKeys.sort()).toEqual(['1/0','2/0','3/0']);expect(fingerprint).toMatchObject({different:4,mirrorInvalid:true,componentsInvalid:true,fillInvalid:true,fillEligible:true});
+  expect(fingerprint.eligibleKeys.sort()).toEqual(['1/0','2/0','3/0','90/0']);expect(fingerprint).toMatchObject({different:4,mirrorInvalid:true,componentsInvalid:true,fillInvalid:true,fillEligible:true});
 
   await page.getByRole('button',{name:'Pattern Editor'}).click();
   const borderRow=page.locator('#patLayerList .layer-row2').filter({hasText:'90/0'});
-  await expect(borderRow.locator('input[type="checkbox"]')).toBeDisabled();await expect(borderRow).toContainText('context only');
+  await expect(borderRow.locator('input[type="checkbox"]')).toBeEnabled();await expect(borderRow).toContainText('possible frame/context');
+  await borderRow.locator('input[type="checkbox"]').uncheck();
   await expect(page.locator('#patSvg [data-context-layer="90/0"]')).toHaveCount(1);
   await expect(page.locator('#patApplyBtn')).toBeEnabled();await page.locator('#patApplyBtn').click();
   const projection=await page.evaluate(async()=>{const {state}=await import('/static/js/core.js');const {pointInPoly}=await import('/static/js/geometry.js');const contains=point=>state.gds.committedProjection.regions.some(poly=>pointInPoly({x:point[0],y:point[1]},poly));return {selected:[...state.patternSelectedKeys],containsDevice:contains([-20000,0]),containsBorder:contains([0,17500]),containsRingArm:contains([0,6000]),containsRingHole:contains([0,0]),regions:state.gds.committedProjection.regions.length};});
@@ -62,17 +63,18 @@ test('real GDS import preserves eligible projection and exact Push2 Pull2 refill
     const {patternLayerIsEligible}=await import('/static/js/layout-model.js');
     return Object.fromEntries(state.gds.layers.map(layer=>[layer.key,{isBorderOnly:layer.isBorderOnly,eligible:patternLayerIsEligible(layer),components:layer.components.length}]));
   });
-  // The density heuristic is safe for this separated-layer fixture, not a
-  // semantic classifier for mixed device/frame boundaries on the same layer.
+  // The density heuristic supplies a hint, never process permission.
   expect(classification).toEqual({
     '1/0':{isBorderOnly:false,eligible:true,components:1},
     '2/0':{isBorderOnly:false,eligible:true,components:4},
     '3/0':{isBorderOnly:false,eligible:true,components:2},
-    '90/0':{isBorderOnly:true,eligible:false,components:4},
+    '90/0':{isBorderOnly:true,eligible:true,components:4},
   });
   await page.getByRole('button',{name:'Pattern Editor'}).click();
   const rows=page.locator('#patLayerList .layer-row2');
-  await expect(rows.filter({hasText:'90/0'}).locator('input[type="checkbox"]')).toBeDisabled();
+  await expect(rows.filter({hasText:'90/0'}).locator('input[type="checkbox"]')).toBeEnabled();
+  await expect(rows.filter({hasText:'90/0'}).locator('input[type="checkbox"]')).not.toBeChecked();
+  await expect(rows.filter({hasText:'90/0'})).toContainText('possible frame/context');
   for(const key of ['1/0','2/0','3/0'])await rows.filter({hasText:key}).locator('input[type="checkbox"]').check();
   await expect(page.locator('#patApplyBtn')).toBeEnabled();
   await expect(page.locator('#patSvg [data-context-layer="90/0"]')).toHaveCount(1);

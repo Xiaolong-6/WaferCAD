@@ -8,6 +8,7 @@ __pycache__/
 *.oasis
 !tests/fixtures/synthetic_two_layer.gds
 !tests/fixtures/synthetic_two_layer.oas
+!tests/fixtures/selection_driven_patterns.gds
 *.blend
 *.stl
 *.step

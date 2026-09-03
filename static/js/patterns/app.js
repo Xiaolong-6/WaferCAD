@@ -1,7 +1,7 @@
 import {state, persistSharedState} from '../core.js';
 import {waferOutline, bboxPolys, isSimplePolygon, viewAspectBounds, waferBounds, polygonArea, centroid} from '../geometry.js';
 import {composeMaskRegions} from '../geometry-api.js';
-import {effectiveLayerPolygons,maskProjectionFingerprint,patternLayerIsEligible,patternProjectionEntries,pruneIneligiblePatternSelection,substrateProjectionFingerprint} from '../layout-model.js';
+import {effectiveLayerPolygons,maskProjectionFingerprint,patternLayerIsEligible,patternProjectionEntries,substrateProjectionFingerprint} from '../layout-model.js';
 import {clearSvg, makeSvg} from '../svg.js';
 
 const $ = id => document.getElementById(id);
@@ -16,12 +16,6 @@ function patTransform([x,y]){
   return [sx*c - sy*s2 + (Number(t.offsetX)||0), sx*s2 + sy*c + (Number(t.offsetY)||0)];
 }
 function effectiveLayer(l){return effectiveLayerPolygons(l).map(polygon=>l.mirrored===true?polygon.map(([x,y])=>[-x,y]):polygon);}
-function isAreaValid(polys){
-  if(!polys.length) return false;
-  let total=0;
-  for(const p of polys) total+=Math.abs(polygonArea(p));
-  return total > 1e-6; // ~1 nm²
-}
 
 let viewBounds={mask:null,projection:null};
 let projectionFitMode='wafer'; // projection | wafer | both
@@ -326,18 +320,13 @@ function renderLayerList(){
     empty.append(message,action);box.appendChild(empty);return;
   }
   cnt.textContent=String(state.gds.layers.length);
-  if(pruneIneligiblePatternSelection())saveShared();
   box.innerHTML='';
   for(const layer of state.gds.layers){
     const row=document.createElement('div'); row.className='layer-row2' + (state.patternSelectedKeys?.has(layer.key)?' active':'');
     const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=state.patternSelectedKeys?.has(layer.key);
-    // area guard: disable if line-like
-    const areaOk=isAreaValid(effectiveLayer(layer));
-    const processEligible=patternLayerIsEligible(layer);
-    if(!processEligible){
-      cb.disabled=true;cb.checked=false;cb.title='Border/frame context is excluded until Fill pattern is enabled';row.style.opacity='0.55';
-    }else if(!areaOk){
-      cb.disabled=true; cb.title='Line geometry has no area — Fill or close the shape to enable';
+    const areaOk=patternLayerIsEligible(layer);
+    if(!areaOk&&!cb.checked){
+      cb.disabled=true; cb.title='No selected area geometry — select components or close the shape';
       row.style.opacity='0.55';
     }
     cb.addEventListener('change',()=>{ if(!state.patternSelectedKeys) state.patternSelectedKeys=new Set(); if(cb.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key); renderLayerList(); saveShared(); refreshPreview(); });
@@ -345,10 +334,11 @@ function renderLayerList(){
     const opticalCount=Array.isArray(layer.components)?layer.components.length:layer.count;
     const selectedCount=Array.isArray(layer.selectedComponentIds)?layer.selectedComponentIds.length:opticalCount;
     const label=document.createElement('span'); label.textContent=`${layer.layer}/${layer.datatype} · ${layer.count} raw → ${opticalCount} filled · ${selectedCount} selected`; label.style.fontSize='12px';
-    if(!processEligible){
-      const warn=document.createElement('span');warn.textContent=' · context only (enable Fill in Main to process)';warn.style.fontSize='10px';warn.style.color='#b45309';label.appendChild(warn);
-    }else if(!areaOk){
-      const warn=document.createElement('span'); warn.textContent=' · line (no area)'; warn.style.fontSize='10px'; warn.style.color='#b45309';
+    if(layer.isBorderOnly===true){
+      const hint=document.createElement('span');hint.textContent=' · possible frame/context';hint.style.fontSize='10px';hint.style.color='#b45309';hint.title='Automatic visual hint only — select to include this geometry';label.appendChild(hint);
+    }
+    if(!areaOk){
+      const warn=document.createElement('span'); warn.textContent=' · no selected area'; warn.style.fontSize='10px'; warn.style.color='#b45309';
       label.appendChild(warn);
     }
     const alias=document.createElement('span'); alias.textContent=layer.alias?` alias:${layer.alias}`:''; alias.style.fontSize='11px'; alias.style.color='#6b7785';

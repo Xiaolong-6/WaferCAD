@@ -5,7 +5,7 @@ import {createLayerMappingContext,displayZ,ensureLayerVisuals,layerVisual,mapped
 import {createLegendController} from './js/legend-controller.js';
 import {CURRENT_PROJECT_VERSION,validateAndMigrateProject} from './js/project-schema.js';
 import {captureDevice,internDevice,internThumbnail,pruneSnapshotDevices,resolveSnapshotDevice,resolveSnapshotThumbnail} from './js/snapshot-store.js';
-import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,patternLayerIsEligible,pruneIneligiblePatternSelection,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
+import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,patternLayerIsEligible,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
 import {clearSvg,makeSvg} from './js/svg.js';
 import {createSectionView} from './js/views/section-view.js';
 
@@ -507,7 +507,6 @@ function renderLayerList(){
   if(isPatternsSelection()) renderHierarchy();
   if(!state.gds.layers.length){box.className='layer-list empty-note';box.textContent='Import a GDSII or OASIS file to view its layers.';renderImprintDebug();return;} box.className='layer-list';
   const patternsMode=isPatternsSelection();
-  if(pruneIneligiblePatternSelection())persistSharedState('pattern-eligibility');
   for(const layer of state.gds.layers){
     const item=document.createElement('div');item.className='layer-item'+(patternsMode && state.patternSelectedKeys.has(layer.key)?' selected-pattern':'');
     const head=document.createElement('div');head.className='layer-head';
@@ -516,12 +515,12 @@ function renderLayerList(){
     const vis=document.createElement('input');vis.type='checkbox';vis.checked=layer.visible!==false;vis.addEventListener('change',()=>{layer.visible=vis.checked;renderTop();persistSharedState();});
     const visText=document.createElement('span');visText.textContent='Show';
     visLabel.append(vis,visText);
-    // Pattern selection toggle (only in Patterns mode) — border-only without Fill is disabled by default
-    const isBorder=!patternLayerIsEligible(layer);
+    // Context classification is a hint; only geometry validity limits processing.
+    const areaOk=patternLayerIsEligible(layer);
     const patLabel=document.createElement('label');patLabel.className='check-text pat-check';
-    patLabel.title=isBorder && !layer.fillPattern ? 'Closed border without fill — enable Fill pattern to use as mask (border alone is not used by default)' : 'Use in Patterns Apply — multi-select, combined on Apply';
+    patLabel.title=areaOk?'Use in Patterns Apply — multi-select, combined on Apply':'No selected area geometry — select components or close the shape';
     const pat=document.createElement('input');pat.type='checkbox';pat.checked=state.patternSelectedKeys.has(layer.key);
-    if(isBorder && !layer.fillPattern){ pat.disabled=true; patLabel.style.opacity='0.45'; }
+    if(!areaOk&&!pat.checked){pat.disabled=true;patLabel.style.opacity='0.45';}
     pat.addEventListener('change',()=>{
       if(pat.checked) state.patternSelectedKeys.add(layer.key); else state.patternSelectedKeys.delete(layer.key);
       updateSelectionInfo(); renderLayerList(); renderTop();persistSharedState();
@@ -530,8 +529,8 @@ function renderLayerList(){
     if(!patternsMode) patLabel.style.display='none';
     const patText=document.createElement('span');patText.textContent='Use';
     patLabel.append(pat,patText);
-    if(isBorder && !layer.fillPattern){
-      const hint=document.createElement('span');hint.className='muted';hint.textContent='border';hint.title='Closed border without fill — not used until Fill is enabled';
+    if(layer.isBorderOnly===true){
+      const hint=document.createElement('span');hint.className='muted';hint.textContent='possible frame/context';hint.title='Automatic visual hint only — select Use to include this geometry';
       // show hint next to Use, but keep layout compact
       patLabel.append(hint);
     }
@@ -580,7 +579,7 @@ function renderImprintDebug(){
 }
 async function setLayerFillPattern(layer,enabled){
   if(enabled&&!Array.isArray(layer.filledPolygons)){const response=await fetch('/api/geometry/fill-holes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subjects:layer.polygons||[]})});if(!response.ok){const data=await response.json().catch(()=>({detail:response.statusText}));throw new Error(data.detail||response.statusText);}const data=await response.json();layer.filledPolygons=Array.isArray(data.regions)?data.regions:[];}
-  layer.fillPattern=enabled;if(!patternLayerIsEligible(layer))state.patternSelectedKeys.delete(layer.key);state.topBounds=null;renderLayerList();renderTop();persistSharedState();
+  layer.fillPattern=enabled;state.topBounds=null;renderLayerList();renderTop();persistSharedState();
 }
 async function imprintLayer(layer){
   if(!state.wafer){status('Create or open a wafer before imprinting a layer.');return;}
