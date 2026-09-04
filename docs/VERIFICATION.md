@@ -30,6 +30,8 @@ Only synthetic fixtures under `tests/fixtures` are used. No commercial layout is
 
 Snapshot-controller extraction is covered by `snapshot-controller-extraction.spec.js`: one UI controller, exact device/camera restoration, active auto-save preserving identity and thumbnail, shared device references surviving deletion, active-delete semantics, independent process undo, project replacement, and absence of diagnostics outside QA.
 
+Final architecture smoke coverage is limited to three tests in `final-frontend-architecture.spec.js`: Top pan/zoom/selection and mirrored A/B dragging; wafer validation/replacement/reset preserving snapshots; one instance of each view/controller, Top cleanup, acyclic local static imports and dependency direction. Existing behavior suites remain unchanged.
+
 Tests importing the application reuse its actual script URL (including version
 query) so they do not instantiate a second application under an unversioned URL.
 

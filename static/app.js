@@ -1,13 +1,14 @@
 import {$,DEFAULT_WAFER,UNIT_TO_UM,clearSharedState,clone,formatDisplayNumber,hasSharedState,palette,persistSharedState,loadSharedState,state,status,uid} from './js/core.js';
-import {bboxPolys,contoursTouch,detectBorderOnly,isPolyInViewport,isSimplePolygon,normalizeWafer,pointInPoly,polygonArea,polygonTopologies,viewAspectBounds,waferBounds,waferFlatLengthMm,waferNotchDepthMm,waferOutline} from './js/geometry.js';
+import {contoursTouch,detectBorderOnly,normalizeWafer,polygonArea,polygonTopologies,waferFlatLengthMm,waferNotchDepthMm,waferOutline} from './js/geometry.js';
 import {clipPolygonsToWafer,composeMaskRegions,partitionTopSurface,resolveMaskRegions} from './js/geometry-api.js';
-import {ensureLayerVisuals,layerVisual,mappedCutBounds,materialColor,physicalLayerOptions,relativeThickness,substrateVisualHeight} from './js/layer-model.js';
+import {ensureLayerVisuals,physicalLayerOptions} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
 import {CURRENT_PROJECT_VERSION,validateAndMigrateProject} from './js/project-schema.js';
 import {captureDevice} from './js/snapshot-store.js';
-import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,patternLayerIsEligible,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
+import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,patternLayerIsEligible,transformedLayerPolygon} from './js/layout-model.js';
 import {ensureLayerFilledPolygons} from './js/pattern-fill.js';
-import {clearSvg,makeSvg} from './js/svg.js';
+import {createTopView} from './js/views/top-view.js';
+import {createWaferController} from './js/controllers/wafer-controller.js';
 import {createSectionView} from './js/views/section-view.js';
 import {createThreeView} from './js/views/three-view.js';
 import {createProcessController} from './js/controllers/process-controller.js';
@@ -17,12 +18,10 @@ export {availableMaterialDepth} from './js/controllers/process-controller.js';
 
 let waferDialogLateralUnit = 'mm', waferDialogThicknessUnit = 'um';
 let gdsSourceFile = null, gdsAlignmentUnit = 'mm';
-let sliceCoordinateUnit = 'mm', topPan = null, sliceDragFrame = null, sliceDragName = null;
 let topSurfaceAtoms = [], topSurfaceKey = null, topSurfacePendingKey = null;
 let cutUnionCacheKey=null,cutUnionPendingKey=null;
 let operationInFlight=false,operationStopRequested=false,operationStartedAt=0,operationTimer=null,operationStage='';
 let snapshotNamePurpose = 'snapshot';
-function groupBy(items,keyOf){const groups=new Map();for(const item of items){const key=keyOf(item),group=groups.get(key);if(group)group.push(item);else groups.set(key,[item]);}return groups;}
 const legendController=createLegendController({recordOperationUndo:()=>processController.recordUndo(),updateSelectionInfo:()=>updateSelectionInfo(),renderAll:()=>renderAll()});
 const renderFigureLegend=()=>legendController.render();
 function renderHierarchy(){
@@ -66,26 +65,12 @@ function renderHierarchy(){
     tree.appendChild(row);
   }
 }
-function setDefaultSlice(){if(!state.wafer){state.slice=null;return;}const [x0,y0,x1,y1]=waferBounds(),cy=(y0+y1)/2;state.slice={a:{x:x0+(x1-x0)*.175,y:cy},b:{x:x1-(x1-x0)*.175,y:cy}};}
+function setDefaultSlice(){waferController.initializeSlice();}
 function currentDeviceSnapshot(){ensureLayerVisuals();return captureDevice();}
 function restoreDeviceSnapshot(s){state.wafer=s.wafer?normalizeWafer(clone(s.wafer)):null;state.activeFace=s.activeFace||'front';state.solids=clone(s.solids||[]);state.cuts=clone(s.cuts||[]);state.dopings=clone(s.dopings||[]);state.layerVisuals=clone(s.layerVisuals||{});state.imprintedFaces=clone(s.imprintedFaces||[]);state.gds.committedProjection=null;state.operationUndo=[];ensureLayerVisuals();state.selectedFaceIds.clear();clearPatternSelection();clearTopSelection();setDefaultSlice();state.topBounds=null;updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderAll();persistSharedState();}
 
-function fitWafer(){state.topBounds=state.wafer?viewAspectBounds(waferBounds()):[-1,-1,1,1];renderTop();}
-function fitLayout(){
-  let bb=transformedGdsBounds() || bboxPolys(state.imprintedFaces.map(f=>f.polygon));
-  if(!bb){fitWafer();return;}
-  const w=Math.max(bb[2]-bb[0],1), h=Math.max(bb[3]-bb[1],1), pad=Math.max(w,h)*0.15;
-  state.topBounds=viewAspectBounds([bb[0]-pad,bb[1]-pad,bb[2]+pad,bb[3]+pad],0); renderTop();
-}
-function modelToSvg(x,y){
-  const [x0,y0,x1,y1]=state.topBounds || [-1,-1,1,1];
-  const W=600,H=420; let sx=(x-x0)/(x1-x0)*W; const sy=H-(y-y0)/(y1-y0)*H;if(state.activeFace==='back')sx=W-sx; return [sx,sy];
-}
-function svgToModel(sx,sy){
-  const [x0,y0,x1,y1]=state.topBounds || [-1,-1,1,1];
-  if(state.activeFace==='back')sx=600-sx;return {x:x0+sx/600*(x1-x0),y:y0+(1-sy/420)*(y1-y0)};
-}
-function polyPath(poly){ return poly.map((p,i)=>{const [x,y]=modelToSvg(p[0],p[1]); return `${i?'L':'M'}${x.toFixed(2)},${y.toFixed(2)}`}).join(' ')+' Z'; }
+function fitWafer(){topView.fitWafer();}
+function fitLayout(){topView.fitLayout();}
 function surfaceGeometryKey(){
   if(!state.wafer)return 'empty';
   const wafer=state.wafer;
@@ -174,121 +159,9 @@ async function ensureCutUnionCache(){
   } catch(error){if(cutGeometryKey()===key)status(`Substrate slab Boolean failed: ${error.message}`);}
   finally{if(cutUnionPendingKey===key)cutUnionPendingKey=null;}
 }
-function niceScaleDistance(target){if(!(target>0))return 1;const power=10**Math.floor(Math.log10(target)),normalized=target/power;return (normalized>=5?5:normalized>=2?2:1)*power;}
-function appendTopScaleBar(svg){
-  if(!state.topBounds)return;const span=state.topBounds[2]-state.topBounds[0],distance=niceScaleDistance(span*.16),pixels=distance/span*600,x=18,y=392,label=distance>=1000?`${Number((distance/1000).toPrecision(3))} mm`:`${Number(distance.toPrecision(3))} µm`,group=makeSvg('g',{'data-scale-bar':'top','pointer-events':'none'});
-  group.appendChild(makeSvg('rect',{x:x-7,y:y-24,width:pixels+14,height:31,rx:4,fill:'#fff','fill-opacity':'.82'}));group.appendChild(makeSvg('line',{x1:x,y1:y,x2:x+pixels,y2:y,stroke:'#27313b','stroke-width':'3'}));group.appendChild(makeSvg('line',{x1:x,y1:y-5,x2:x,y2:y+5,stroke:'#27313b','stroke-width':'2'}));group.appendChild(makeSvg('line',{x1:x+pixels,y1:y-5,x2:x+pixels,y2:y+5,stroke:'#27313b','stroke-width':'2'}));const text=makeSvg('text',{x:x+pixels/2,y:y-8,'text-anchor':'middle','font-size':'11','font-weight':'700',fill:'#27313b'});text.textContent=label;group.appendChild(text);svg.appendChild(group);
-}
 function updateActiveFaceUi(syncCamera=true){const back=state.activeFace==='back';$('activeFaceLabel').textContent=back?'Back face':'Front face';$('flipFaceBtn').textContent=back?'Back':'Front';$('flipFaceBtn').disabled=!state.wafer;if(syncCamera)threeView.syncActiveFace();}
-function flipActiveFace(){if(!state.wafer)return;state.activeFace=state.activeFace==='front'?'back':'front';state.selectedFaceIds.clear();clearTopSelection();updateSelectionInfo();updateActiveFaceUi(false);threeView.syncActiveFace({animate:true});renderAll();persistSharedState();status(`Active processing face: ${state.activeFace}. The 3D camera is flipping to the ${state.activeFace} side.`);}
-function formatSliceInput(value){const decimals={nm:1,um:3,mm:4,cm:5}[sliceCoordinateUnit]??4;return String(Number(Number(value).toFixed(decimals)));}
-function updateSliceInputs(){const focused=document.activeElement;if(!state.slice){for(const id of ['sliceAx','sliceAy','sliceBx','sliceBy']){$(id).value='';$(id).disabled=true;}$('applySliceCoordinatesBtn').disabled=true;return;}const scale=UNIT_TO_UM[sliceCoordinateUnit],values={sliceAx:state.slice.a.x/scale,sliceAy:state.slice.a.y/scale,sliceBx:state.slice.b.x/scale,sliceBy:state.slice.b.y/scale};for(const [id,value] of Object.entries(values)){const input=$(id);input.disabled=false;if(focused!==input)input.value=formatSliceInput(value);}$('applySliceCoordinatesBtn').disabled=false;$('sliceCoordinateUnit').value=sliceCoordinateUnit;}
-
-function renderTop(){
-  const svg=$('topSvg'); clearSvg(svg);
-  if(!state.wafer&&!state.gds.layers.length){updateSliceInputs();return;}
-  if(!state.topBounds) fitWafer();
-  if(state.wafer)void ensureTopSurfacePartition();
-  if(state.wafer){
-    svg.appendChild(makeSvg('path',{d:polyPath(waferOutline()),fill:'#f0f1f2',stroke:'#626b75','stroke-width':'1.5'}));
-  }
-  // Inverted hatch pattern for preview
-  const defsHatch=makeSvg('defs');
-  const patHatch=makeSvg('pattern',{id:'inverted-hatch', width:'8', height:'8', patternUnits:'userSpaceOnUse', patternTransform:'rotate(45)', 'patternContentUnits':'userSpaceOnUse'});
-  patHatch.appendChild(makeSvg('rect',{width:'8', height:'8', fill:'#fff7ed'}));
-  patHatch.appendChild(makeSvg('line',{x1:'0', y1:'0', x2:'0', y2:'8', stroke:'#f59e0b', 'stroke-width':'1.4', opacity:'0.75'}));
-  defsHatch.appendChild(patHatch);
-  const cutHatch=makeSvg('pattern',{id:'model-cut-hatch',width:'7',height:'7',patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});
-  cutHatch.appendChild(makeSvg('rect',{width:'7',height:'7',fill:'#f8fafc'}));
-  cutHatch.appendChild(makeSvg('line',{x1:'0',y1:'0',x2:'0',y2:'7',stroke:'#94a3b8','stroke-width':'1',opacity:'0.7'}));
-  defsHatch.appendChild(cutHatch);
-  svg.appendChild(defsHatch);
-
-  // The Top view is always a projection of the current physical model.  GDS
-  // masks and selection affordances are overlays, not substitutes for solids,
-  // cuts and doping already visible in the derived 3D scene.
-  const viewport=state.topBounds;
-  if(state.wafer){
-    const activeCuts=state.cuts.filter(c=>(c.side||'front')===state.activeFace&&isPolyInViewport(c.footprint,viewport));
-    if(activeCuts.length){
-      svg.appendChild(makeSvg('path',{d:activeCuts.map(cut=>polyPath(cut.footprint)).join(' '),fill:'url(#model-cut-hatch)',stroke:'#64748b','stroke-width':'1.2','stroke-dasharray':'3 2','pointer-events':'none','fill-rule':'nonzero','data-model-cut':'batch','data-region-count':activeCuts.length}));
-    }
-    const currentSurfaceAtoms=topSurfaceKey===surfaceGeometryKey()?topSurfaceAtoms:null;
-    const exposedSolidAtoms=currentSurfaceAtoms?.filter(atom=>atom.side===state.activeFace&&atom.kind==='solid'&&isPolyInViewport(atom.polygon,viewport))||[];
-    const solidsByLayer=groupBy(exposedSolidAtoms,atom=>atom.layerId);
-    for(const [layerId,atoms] of solidsByLayer){
-      const color=layerVisual(layerId).color;
-      svg.appendChild(makeSvg('path',{d:atoms.map(atom=>polyPath(atom.polygon)).join(' '),fill:color,'fill-opacity':'0.72',stroke:color,'stroke-opacity':'0.95','stroke-width':'1.2','pointer-events':'none','fill-rule':'nonzero','data-model-solid':'batch','data-model-layer':layerId,'data-region-count':atoms.length}));
-    }
-    const dopingsByLayer=groupBy(state.dopings.filter(doping=>isPolyInViewport(doping.footprint,viewport)),doping=>doping.layerId);
-    for(const [layerId,dopings] of dopingsByLayer){
-      const color=layerVisual(layerId).color;
-      svg.appendChild(makeSvg('path',{d:dopings.map(doping=>polyPath(doping.footprint)).join(' '),fill:color,'fill-opacity':'0.24',stroke:color,'stroke-opacity':'0.8','stroke-width':'1.1','stroke-dasharray':'2 2','pointer-events':'none','fill-rule':'nonzero','data-model-doping':'batch','data-model-layer':layerId,'data-region-count':dopings.length}));
-    }
-  }
-
-  const patternsMode=isPatternsSelection();
-  // Main Top View never displays raw mask/GDS geometry.  It only displays the
-  // committed, substrate-clipped projection produced by Pattern Editor.
-  if(patternsMode&&committedProjectionIsCurrent()&&(state.gds.committedProjection?.face||'front')===state.activeFace&&Array.isArray(state.gds.committedProjection?.regions)){
-    const rawOpacity=Number(state.maskBaseOpacity),maskOpacity=Number.isFinite(rawOpacity)?Math.min(1,Math.max(0,rawOpacity)):.35,visibleRegions=state.gds.committedProjection.regions.filter(region=>isPolyInViewport(region,viewport));
-    if(maskOpacity>0){
-      svg.appendChild(makeSvg('path',{d:polyPath(waferOutline()),fill:'#cbd5e1','fill-opacity':String(maskOpacity),stroke:'none','pointer-events':'none','data-mask-veil':'true'}));
-      if(visibleRegions.length)svg.appendChild(makeSvg('path',{d:visibleRegions.map(region=>polyPath(region)).join(' '),fill:'#f59e0b','fill-opacity':String(maskOpacity),stroke:'#b45309','stroke-opacity':String(maskOpacity),'stroke-width':'1.7','pointer-events':'none','fill-rule':'nonzero','data-committed-projection':'true','data-region-count':visibleRegions.length}));
-    }
-  }
-  if($('viewportCullInfo'))$('viewportCullInfo').textContent='';
-
-  if(isTopFaceSelection()){
-    // Each selectable path is one exact atom of the exposed planar surface.
-    for(const atom of topSurfaceAtoms){
-      if(atom.side!==state.activeFace||!isPolyInViewport(atom.polygon,viewport))continue;
-      const selected=state._topFaceSelection.selectedSolidIds.has(atom.id);
-      const path=makeSvg('path',{d:polyPath(atom.polygon),fill:selected?'#f59e0b':atom.kind==='substrate'?'#ffffff':'#60a5fa','fill-opacity':selected?'0.42':atom.kind==='substrate'?'0.05':'0.18',stroke:selected?'#d97706':atom.kind==='substrate'?'#64748b':'#2563eb','stroke-opacity':atom.kind==='substrate'?'0.35':'1','stroke-width':selected?'2.2':'1.2','data-surface-face':atom.id,'data-source-id':atom.sourceId,'data-surface-kind':atom.kind});
-      path.style.cursor='pointer';
-      path.addEventListener('click',(ev)=>{ev.stopPropagation();if(state._topFaceSelection.selectedSolidIds.has(atom.id))state._topFaceSelection.selectedSolidIds.delete(atom.id);else state._topFaceSelection.selectedSolidIds.add(atom.id);updateSelectionInfo();renderTop();});
-      svg.appendChild(path);
-    }
-  } else if(patternsMode){
-    // Patterns mode: selection is via checkboxes/layer clicks; no imprinted faces drawn as selectable
-    // (selected layers already highlighted above)
-  } else {
-    for(const face of state.imprintedFaces.filter(face=>(face.side||'front')===state.activeFace)){
-      if(!isPolyInViewport(face.polygon, viewport)) continue;
-      const selected=state.selectedFaceIds.has(face.id);
-      const path=makeSvg('path',{d:polyPath(face.polygon),fill:selected?'#f59e0b':'#ffffff','fill-opacity':selected?'0.42':'0.08',stroke:selected?'#d97706':'#111827','stroke-width':selected?'2.2':'1.2','data-face':face.id});
-      path.style.cursor='pointer';
-      path.addEventListener('click',(ev)=>{ev.stopPropagation(); if(state.selectedFaceIds.has(face.id)) state.selectedFaceIds.delete(face.id); else state.selectedFaceIds.add(face.id); updateSelectionInfo(); renderTop();});
-      svg.appendChild(path);
-    }
-  }
-
-  if(!state.slice){appendTopScaleBar(svg);updateSliceInputs();return;}
-  const [ax,ay]=modelToSvg(state.slice.a.x,state.slice.a.y), [bx,by]=modelToSvg(state.slice.b.x,state.slice.b.y);
-  svg.appendChild(makeSvg('line',{x1:ax,y1:ay,x2:bx,y2:by,stroke:'#111827','stroke-width':'2','stroke-dasharray':'5 4'}));
-  for(const [name,p,sx,sy] of [['A',state.slice.a,ax,ay],['B',state.slice.b,bx,by]]){
-    const g=makeSvg('g',{'data-slice-handle':name}); g.style.cursor='grab';
-    g.appendChild(makeSvg('circle',{cx:sx,cy:sy,r:7,fill:'#fff',stroke:'#111827','stroke-width':'2'}));
-    const t=makeSvg('text',{x:sx+(name==='A'?-17:10),y:sy-10,'font-size':'13','font-weight':'700',fill:'#111827'});t.textContent=name;g.appendChild(t);svg.appendChild(g);
-    bindSliceDrag(g,name);
-  }
-  appendTopScaleBar(svg);
-  updateSliceInputs();
-}
-
-function bindSliceDrag(g,name){
-  g.addEventListener('pointerdown',(ev)=>{sliceDragName=name;ev.preventDefault();ev.stopPropagation();});
-}
-function bindTopNavigation(){
-  const svg=$('topSvg');
-  svg.addEventListener('wheel',(ev)=>{if(!state.topBounds)return;ev.preventDefault();const rect=svg.getBoundingClientRect(),sx=(ev.clientX-rect.left)/rect.width*600,sy=(ev.clientY-rect.top)/rect.height*420,anchor=svgToModel(sx,sy),factor=Math.exp(Math.max(-500,Math.min(500,ev.deltaY))*.0015),[x0,y0,x1,y1]=state.topBounds;state.topBounds=[anchor.x+(x0-anchor.x)*factor,anchor.y+(y0-anchor.y)*factor,anchor.x+(x1-anchor.x)*factor,anchor.y+(y1-anchor.y)*factor];renderTop();},{passive:false});
-  svg.addEventListener('pointerdown',(ev)=>{if(ev.button!==0||ev.target!==svg||!state.topBounds)return;svg.setPointerCapture(ev.pointerId);topPan={x:ev.clientX,y:ev.clientY,bounds:[...state.topBounds]};svg.style.cursor='grabbing';});
-  window.addEventListener('pointermove',(ev)=>{if(!sliceDragName||!state.slice)return;const rect=svg.getBoundingClientRect(),sx=(ev.clientX-rect.left)/rect.width*600,sy=(ev.clientY-rect.top)/rect.height*420;state.slice[sliceDragName.toLowerCase()]=svgToModel(sx,sy);if(!sliceDragFrame)sliceDragFrame=requestAnimationFrame(()=>{sliceDragFrame=null;renderTop();sectionView.render();});});
-  svg.addEventListener('pointermove',(ev)=>{if(sliceDragName||!topPan)return;const rect=svg.getBoundingClientRect(),[x0,y0,x1,y1]=topPan.bounds,dx=(ev.clientX-topPan.x)/rect.width*(x1-x0),dy=(ev.clientY-topPan.y)/rect.height*(y1-y0),mx=state.activeFace==='back'?dx:-dx;state.topBounds=[x0+mx,y0+dy,x1+mx,y1+dy];renderTop();});
-  const end=()=>{topPan=null;svg.style.cursor='';};svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
-  const endSlice=()=>{if(!sliceDragName)return;sliceDragName=null;threeView.render();};window.addEventListener('pointerup',endSlice);window.addEventListener('pointercancel',endSlice);
-  svg.addEventListener('dblclick',()=>fitLayout());
-}
+function flipActiveFace(){waferController.flipActiveFace();}
+function renderTop(){topView.render();}
 
 function currentSubstrateSlabs(){
   if(!state.wafer)return [];
@@ -297,11 +170,24 @@ function currentSubstrateSlabs(){
   if(!state.cuts.length)return [{zMin:-state.wafer.thickness,zMax:0,remainingRegions:[waferOutline()],unionRegions:[],isEmpty:false,useHoles:false}];
   return null;
 }
+export const topView=createTopView({
+  getTopSurfaceAtoms:()=>topSurfaceAtoms,
+  getCurrentTopSurfaceAtoms:()=>topSurfaceKey===surfaceGeometryKey()?topSurfaceAtoms:null,
+  ensureTopSurfacePartition,isTopFaceSelection,isPatternsSelection,onSelectionChanged:updateSelectionInfo,
+  onSliceChanged:phase=>{if(phase!=='end')sectionView.render();if(phase!=='drag')threeView.render();if(phase==='coordinates')persistSharedState();},
+  qa:(new URLSearchParams(location.search).get('qa')||'').includes('top-view'),
+});
 const sectionView=createSectionView({getSubstrateSlabs:currentSubstrateSlabs,ensureSubstrateSlabs:ensureCutUnionCache});
 export const threeView=createThreeView({
   getSubstrateSlabs:currentSubstrateSlabs,ensureSubstrateSlabs:ensureCutUnionCache,
   getSubstrateZBounds:substrateZBounds,mainWorkspaceVisible,
   memoryDiagnosticsEnabled,correctnessDiagnosticsEnabled,
+});
+const waferController=createWaferController({
+  defaultSectionBreak:(...args)=>sectionView.defaultBreak(...args),
+  onWaferChanged:()=>{sectionView.syncControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();fitWafer();renderGdsControls();renderAll();persistSharedState();$('waferDialog').close('default');},
+  onActiveFaceChanged:({animate})=>{updateSelectionInfo();updateActiveFaceUi(false);threeView.syncActiveFace({animate});renderAll();persistSharedState();},
+  reportStatus:status,qa:(new URLSearchParams(location.search).get('qa')||'').includes('wafer-controller'),
 });
 const processController=createProcessController({
   resolveProcessRegions,
@@ -676,15 +562,6 @@ function waferLateralUnitSelects(){return [...document.querySelectorAll('.wafer-
 function setWaferLateralUnit(unit){for(const select of waferLateralUnitSelects())select.value=unit;}
 function formatCoordinateText(poly,unit){const scale=UNIT_TO_UM[unit];return poly.map(([x,y])=>`${Number((x/scale).toPrecision(10))}, ${Number((y/scale).toPrecision(10))}`).join('\n');}
 function convertCoordinateTextUnits(text,fromUnit,toUnit){const ratio=UNIT_TO_UM[fromUnit]/UNIT_TO_UM[toUnit];return text.split(/\r?\n/).map(line=>{const parts=line.trim().split(/[,\s]+/).filter(Boolean);if(parts.length!==2)return line;const x=Number(parts[0]),y=Number(parts[1]);if(!Number.isFinite(x)||!Number.isFinite(y))return line;return `${Number((x*ratio).toPrecision(10))}, ${Number((y*ratio).toPrecision(10))}`;}).join('\n');}
-function parseCoordinateText(text,unit){
-  const scale=UNIT_TO_UM[unit],lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-  const poly=lines.map((line,i)=>{const parts=line.split(/[,\s]+/).filter(Boolean);if(parts.length!==2)throw new Error(`Line ${i+1}: enter one x, y coordinate pair.`);const x=Number(parts[0]),y=Number(parts[1]);if(!Number.isFinite(x)||!Number.isFinite(y))throw new Error(`Line ${i+1}: coordinates must be numbers.`);return [x*scale,y*scale];});
-  if(poly.length<3)throw new Error('Enter at least three polygon vertices.');
-  if(!isSimplePolygon(poly))throw new Error('The polygon crosses itself. Check the vertex order.');
-  if(Math.abs(polygonArea(poly))<1e-9)throw new Error('Polygon area must be non-zero.');
-  if(polygonArea(poly)<0)poly.reverse();
-  return poly;
-}
 function loadWaferForm(){
   const w=normalizeWafer(state.wafer||DEFAULT_WAFER),lu=w.displayUnits?.lateral||'mm',tu=w.displayUnits?.thickness||'um';waferDialogLateralUnit=lu;waferDialogThicknessUnit=tu;setWaferLateralUnit(lu);$('waferThicknessUnit').value=tu;$('waferShape').value=w.shape;$('waferMaterial').value=w.material;$('waferThickness').value=String(w.thickness/UNIT_TO_UM[tu]);
   if(w.shape==='circle'){$('waferDiameter').value=String(w.diameter/UNIT_TO_UM[lu]); if($('waferEdgeFeature')) $('waferEdgeFeature').value=w.edgeFeature||'none';}
@@ -737,18 +614,15 @@ function bindUi(){
   $('waferForm').addEventListener('submit',(ev)=>{
     if(ev.submitter?.value==='cancel')return;ev.preventDefault();const error=$('waferFormError');error.classList.add('hidden');
     try{
-      const shape=$('waferShape').value,lu=waferDialogLateralUnit,tu=$('waferThicknessUnit').value,lateralScale=UNIT_TO_UM[lu],thicknessScale=UNIT_TO_UM[tu];
-      const positive=(id,label)=>{const v=Number($(id).value);if(!Number.isFinite(v)||v<=0)throw new Error(`${label} must be positive.`);return v;};
-      const wafer={shape,thickness:positive('waferThickness','Thickness')*thicknessScale,material:$('waferMaterial').value.trim()||'Si',displayUnits:{lateral:lu,thickness:tu},edgeFeature:'none'};
-      if(shape==='circle'){wafer.diameter=positive('waferDiameter','Diameter')*lateralScale; wafer.edgeFeature=$('waferEdgeFeature').value||'none';}
-      if(shape==='rect'){wafer.width=positive('waferWidth','Width')*lateralScale;wafer.height=positive('waferHeight','Height')*lateralScale;}
-      if(shape==='custom')wafer.outline=parseCoordinateText($('waferCoordinates').value,lu);
-      state.wafer=normalizeWafer(wafer);state.sectionBreak=sectionView.defaultBreak(state.wafer,state.wafer.thickness>50);state.activeFace='front';state.solids=[];state.cuts=[];state.dopings=[];state.operationUndo=[];state._exactThickness=null;state.layerVisuals={substrate:{name:`Substrate · ${state.wafer.material}`,color:materialColor(state.wafer.material),scale:1}};state.imprintedFaces=[];state.gds.committedProjection=null;state.selectedFaceIds.clear();clearTopSelection();clearPatternSelection();setDefaultSlice();state.topBounds=null;sectionView.syncControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();fitWafer();renderGdsControls();renderAll();persistSharedState();$('waferDialog').close('default');status(`New ${shape} wafer created.`);
+      waferController.createWafer({
+        shape:$('waferShape').value,displayUnits:{lateral:waferDialogLateralUnit,thickness:$('waferThicknessUnit').value},
+        thickness:$('waferThickness').value,material:$('waferMaterial').value,
+        diameter:$('waferDiameter').value,width:$('waferWidth').value,height:$('waferHeight').value,
+        edgeFeature:$('waferEdgeFeature').value,coordinates:$('waferCoordinates').value,
+      });
     }catch(e){error.textContent=e.message;error.classList.remove('hidden');}
   });
   $('gdsInput').addEventListener('change',(e)=>{const f=e.target.files?.[0];if(f)importGds(f);e.target.value='';});
-  $('sliceCoordinateUnit').addEventListener('change',()=>{const next=$('sliceCoordinateUnit').value;convertFields(['sliceAx','sliceAy','sliceBx','sliceBy'],sliceCoordinateUnit,next);sliceCoordinateUnit=next;});
-  $('applySliceCoordinatesBtn').addEventListener('click',()=>{if(!state.slice)return;const values=['sliceAx','sliceAy','sliceBx','sliceBy'].map(id=>Number($(id).value));if(values.some(v=>!Number.isFinite(v))){status('A–B coordinates must be valid numbers.');return;}if(values[0]===values[2]&&values[1]===values[3]){status('A and B must be different points.');return;}const scale=UNIT_TO_UM[sliceCoordinateUnit];state.slice={a:{x:values[0]*scale,y:values[1]*scale},b:{x:values[2]*scale,y:values[3]*scale}};renderTop();sectionView.render();threeView.render();persistSharedState();status('Applied A–B section coordinates.');});
   $('gdsAlignmentUnit').addEventListener('change',()=>{const next=$('gdsAlignmentUnit').value;convertFields(['gdsOffsetX','gdsOffsetY'],gdsAlignmentUnit,next);gdsAlignmentUnit=next;});
   $('applyGdsAlignmentBtn').addEventListener('click',()=>{
     const x=Number($('gdsOffsetX').value),y=Number($('gdsOffsetY').value),rotation=Number($('gdsRotation').value),sc=Number($('gdsScale').value);
@@ -780,7 +654,7 @@ function bindUi(){
 }
 
 if($('selectionMode'))$('selectionMode').value=state.selectionMode||'top';
-bindUi();bindTopNavigation();sectionView.bind();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();threeView.init();
+bindUi();topView.bind();sectionView.bind();syncViewControls();updateActiveFaceUi();updateSelectionInfo();updateLayoutSectionVisibility();renderLayerList();renderSnapshots();renderAll();threeView.init();
 // Previous session banner: refresh is now a clean reset, but previous state remains restorable
 try{
   const hasPrev = hasSharedState();
@@ -810,7 +684,7 @@ try{
       bar.remove();
       clearSharedState();
       // Reset current in-memory state to empty (no refresh needed)
-      state.wafer=null; state.sectionBreak={enabled:false,mode:'surfaces',frontKeep:5,backKeep:5,from:-495,to:-5}; state.solids=[]; state.cuts=[]; state.dopings=[]; state.layerVisuals={}; state.imprintedFaces=[]; state.selectedFaceIds.clear(); state.patternSelectedKeys.clear(); state.slice=null; state.snapshots=[]; state.snapshotDevices={}; state.snapshotThumbnails={}; state.activeSnapshotId=null; state.topBounds=null; state._exactThickness=null; state.operationUndo=[];state.selectionMode='top';if($('selectionMode'))$('selectionMode').value='top';
+      waferController.reset();state.snapshots=[];state.snapshotDevices={};state.snapshotThumbnails={};state.activeSnapshotId=null;if($('selectionMode'))$('selectionMode').value='top';
       // also clear GDS to fully reset pattern editor
       state.gds=normalizeGds(null);state._gdsFileBlob=null;state._gdsFileName=null;gdsSourceFile=null;
       if(window.patReset)window.patReset();
