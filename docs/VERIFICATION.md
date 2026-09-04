@@ -26,6 +26,7 @@ Only synthetic fixtures under `tests/fixtures` are used. No commercial layout is
 | Three module lifetime and one canvas | `three-view-extraction.spec.js`: snapshot/camera restore, new wafer, Pattern/Main, project round trip, idempotent initialization, terminal cleanup and destroy during pending initialization |
 | Three RAF and visibility | `frontend-memory-p0.spec.js`: 50 requests → one rebuild and Pattern/Main pause/resume; `three-view-extraction.spec.js`: simulated document-hidden event stops frame advancement and visible event resumes |
 | Extracted Three topology and refill | Unchanged `pattern-refill-topology.spec.js`: real GDS upload/commit, Push2/Pull2 flush in Physical and Relative, canonical ring holes and QA-only bounds; existing section-view extraction tests remain independent |
+| Process-controller UI boundary and atomicity | `process-controller-extraction.spec.js`: one QA instance; front/back Push2/Pull2; undo; exact-depth through-etch and over-depth rejection; doping routing; injected failure of doping consumption after successful solid splitting leaves physical state, undo and persistence revision untouched; diagnostics absent normally |
 
 Tests importing the application reuse its actual script URL (including version
 query) so they do not instantiate a second application under an unversioned URL.
