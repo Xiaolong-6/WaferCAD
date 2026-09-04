@@ -28,6 +28,8 @@ Only synthetic fixtures under `tests/fixtures` are used. No commercial layout is
 | Extracted Three topology and refill | Unchanged `pattern-refill-topology.spec.js`: real GDS upload/commit, Push2/Pull2 flush in Physical and Relative, canonical ring holes and QA-only bounds; existing section-view extraction tests remain independent |
 | Process-controller UI boundary and atomicity | `process-controller-extraction.spec.js`: one QA instance; front/back Push2/Pull2; undo; exact-depth through-etch and over-depth rejection; doping routing; injected failure of doping consumption after successful solid splitting leaves physical state, undo and persistence revision untouched; diagnostics absent normally |
 
+Snapshot-controller extraction is covered by `snapshot-controller-extraction.spec.js`: one UI controller, exact device/camera restoration, active auto-save preserving identity and thumbnail, shared device references surviving deletion, active-delete semantics, independent process undo, project replacement, and absence of diagnostics outside QA.
+
 Tests importing the application reuse its actual script URL (including version
 query) so they do not instantiate a second application under an unversioned URL.
 

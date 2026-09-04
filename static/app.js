@@ -4,13 +4,14 @@ import {clipPolygonsToWafer,composeMaskRegions,partitionTopSurface,resolveMaskRe
 import {ensureLayerVisuals,layerVisual,mappedCutBounds,materialColor,physicalLayerOptions,relativeThickness,substrateVisualHeight} from './js/layer-model.js';
 import {createLegendController} from './js/legend-controller.js';
 import {CURRENT_PROJECT_VERSION,validateAndMigrateProject} from './js/project-schema.js';
-import {captureDevice,internDevice,internThumbnail,pruneSnapshotDevices,resolveSnapshotDevice,resolveSnapshotThumbnail} from './js/snapshot-store.js';
+import {captureDevice} from './js/snapshot-store.js';
 import {committedProjectionIsCurrent,effectiveLayerPolygons,normalizeGds,patternLayerIsEligible,transformedGdsBounds,transformedLayerPolygon} from './js/layout-model.js';
 import {ensureLayerFilledPolygons} from './js/pattern-fill.js';
 import {clearSvg,makeSvg} from './js/svg.js';
 import {createSectionView} from './js/views/section-view.js';
 import {createThreeView} from './js/views/three-view.js';
 import {createProcessController} from './js/controllers/process-controller.js';
+import {createSnapshotController} from './js/controllers/snapshot-controller.js';
 // Compatibility for existing numerical invariant tests; implementation lives in the controller.
 export {availableMaterialDepth} from './js/controllers/process-controller.js';
 
@@ -313,6 +314,15 @@ const processController=createProcessController({
 });
 if((new URLSearchParams(location.search).get('qa')||'').includes('refill'))window.wafercadRefillDiagnostics=()=>({operation:state._lastOperationDebug||null,renderBounds:clone(state._solidRenderBounds||[]),section:sectionView.debugEntries()});
 
+const snapshotController=createSnapshotController({
+  captureCurrentDevice:currentDeviceSnapshot,restoreDevice:restoreDeviceSnapshot,
+  captureCamera:()=>threeView.captureCamera(),restoreCamera:camera=>threeView.restoreCamera(camera),
+  captureThumbnail:captureSnapshotThumb,
+  onSnapshotsChanged:()=>{renderSnapshots();persistSharedState();},
+  onSnapshotActivated:({hasCamera})=>{if(!hasCamera)renderAll();renderSnapshots();},
+  reportStatus:status,qa:(new URLSearchParams(location.search).get('qa')||'').includes('snapshot-controller'),
+});
+
 function isTopFaceSelection(){return $('selectionMode')?.value==='top';}
 function isPatternsSelection(){const v=$('selectionMode')?.value; return v==='imprinted' || v==='patterns';}
 function topSelectionCount(){return state._topFaceSelection.selectedSolidIds.size;}
@@ -521,44 +531,24 @@ function renderSnapshots(){
   const track=$('snapshotTrack'); const strip=$('snapshotStrip');
   if(!track) return;
   track.innerHTML='';
-  if(!state.snapshots.length){
+  const snapshots=snapshotController.listSnapshots();
+  if(!snapshots.length){
     const n=document.createElement('div');n.className='snapshot-empty';n.textContent='No snapshots yet — click + Snapshot in the top bar to capture the current 3D perspective.';
     track.appendChild(n);
     return;
   }
-  for(const [snapshotIndex,s] of state.snapshots.entries()){
-    const card=document.createElement('div');card.className='snapshot-card'+(s.id===state.activeSnapshotId?' active':'');
+  for(const [snapshotIndex,s] of snapshots.entries()){
+    const card=document.createElement('div');card.className='snapshot-card'+(s.active?' active':'');
     card.title=`${s.name} — click to restore`;
-    const thumbnail=resolveSnapshotThumbnail(s),thumb=thumbnail?document.createElement('img'):makeSnapshotPlaceholder(snapshotIndex);if(thumbnail)thumb.className='snapshot-thumb';
+    const thumbnail=s.thumbnail,thumb=thumbnail?document.createElement('img'):makeSnapshotPlaceholder(snapshotIndex);if(thumbnail)thumb.className='snapshot-thumb';
     if(thumbnail){thumb.src=thumbnail;thumb.alt=s.name;thumb.onerror=()=>{thumb.replaceWith(makeSnapshotPlaceholder(snapshotIndex));};}
     const info=document.createElement('div');info.className='snapshot-info';
     const name=document.createElement('div');name.className='snapshot-name';name.textContent=s.name;
-    const device=resolveSnapshotDevice(s);const meta=document.createElement('div');meta.className='snapshot-meta';meta.textContent=`${device.solids.length} solids · ${device.cuts.length} cuts`;
+    const meta=document.createElement('div');meta.className='snapshot-meta';meta.textContent=`${s.solids} solids · ${s.cuts} cuts`;
     info.append(name,meta);
     const del=document.createElement('button');del.type='button';del.className='snapshot-delete';del.title='Delete snapshot';del.textContent='×';
-    del.addEventListener('click',(e)=>{ e.stopPropagation(); deleteSnapshot(s.id); });
-    card.addEventListener('click',()=>{
-      if(s.id===state.activeSnapshotId) return;
-      // Auto-save current active snapshot before switching — re-shoot covering current archive + camera
-      const active=state.snapshots.find(x=>x.id===state.activeSnapshotId);
-      if(active){
-        try{
-          active.deviceRef=internDevice(currentDeviceSnapshot());
-          delete active.device;
-          const newThumb=captureSnapshotThumb();
-          if(newThumb){active.thumbRef=internThumbnail(newThumb);delete active.thumb;}
-          const newCam=threeView.captureCamera();
-          if(newCam) active.camera=newCam;
-          active.updated=new Date().toISOString();
-        }catch(e){ console.warn('auto-save snapshot failed',e); }
-      }
-      state.activeSnapshotId=s.id;
-      restoreDeviceSnapshot(resolveSnapshotDevice(s));
-      if(s.camera) threeView.restoreCamera(s.camera);
-      else renderAll();
-      renderSnapshots();
-      status(active?`Auto-saved previous state, switched to ${s.name}`:`Restored snapshot: ${s.name}`);
-    });
+    del.addEventListener('click',(e)=>{ e.stopPropagation(); snapshotController.delete(s.id); });
+    card.addEventListener('click',()=>snapshotController.activate(s.id));
     card.append(thumb,info,del);
     track.appendChild(card);
   }
@@ -569,22 +559,6 @@ function captureSnapshotThumb(){
   try{
     return threeView.captureImage();
   }catch(e){ console.warn('snapshot thumb failed',e); return null; }
-}
-function deleteSnapshot(id){
-  const idx=state.snapshots.findIndex(s=>s.id===id);
-  if(idx===-1) return;
-  const name=state.snapshots[idx].name;
-  state.snapshots.splice(idx,1);
-  pruneSnapshotDevices();
-  if(state.activeSnapshotId===id) state.activeSnapshotId=state.snapshots.length? state.snapshots[state.snapshots.length-1].id : null;
-  renderSnapshots();persistSharedState();
-  status(`Deleted snapshot: ${name}`);
-}
-function saveNamedSnapshot(name){
-  const thumb=captureSnapshotThumb();
-  const cam=threeView.captureCamera();
-  const s={id:uid('snap'),name,created:new Date().toISOString(),deviceRef:internDevice(currentDeviceSnapshot()),thumbRef:internThumbnail(thumb),camera:cam};
-  state.snapshots.push(s);state.activeSnapshotId=s.id;renderSnapshots();persistSharedState();status(`Snapshot saved: ${name}`);
 }
 function openSnapshotNameDialog(purpose='snapshot'){
   if(!state.wafer){status('Create or open a wafer before saving a snapshot.');return;}
@@ -751,7 +725,7 @@ function bindUi(){
     ev.preventDefault();
     const name=$('snapshotNameInput').value.trim(),error=$('snapshotNameError');
     if(!name){error.textContent='Snapshot name cannot be empty.';error.classList.remove('hidden');return;}
-    saveNamedSnapshot(name);$('snapshotNameDialog').close('default');snapshotNamePurpose='snapshot';
+    snapshotController.create(name);$('snapshotNameDialog').close('default');snapshotNamePurpose='snapshot';
     if(purpose==='new-wafer')requestAnimationFrame(()=>{loadWaferForm();$('waferDialog').showModal();});
   });
   $('flipFaceBtn').addEventListener('click',flipActiveFace);
