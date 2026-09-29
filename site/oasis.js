@@ -137,10 +137,7 @@ function readPointList(reader, implicitClosed) {
   }
 
   if (implicitClosed) {
-    const total = deltas.reduce(
-      ([x, y], [dx, dy]) => [x + dx, y + dy],
-      [0, 0],
-    );
+    const total = deltas.reduce(([x, y], [dx, dy]) => [x + dx, y + dy], [0, 0]);
     if (type === 0) deltas.push([-total[0], 0], [0, -total[1]]);
     else if (type === 1) deltas.push([0, -total[1]], [-total[0], 0]);
     else deltas.push([-total[0], -total[1]]);
@@ -715,10 +712,7 @@ export async function parseOAS(arrayBuffer) {
               datatype,
               points: Array.from({ length: segments }, (_, i) => {
                 const angle = (i * 2 * Math.PI) / segments;
-                return [
-                  cx + dx + Math.cos(angle) * radius,
-                  cy + dy + Math.sin(angle) * radius,
-                ];
+                return [cx + dx + Math.cos(angle) * radius, cy + dy + Math.sin(angle) * radius];
               }),
             }),
             repetition,
@@ -751,9 +745,7 @@ export async function parseOAS(arrayBuffer) {
           const compressed = input.take(compressedSize);
 
           if (compressionType !== 0) {
-            throw new Error(
-              'Unsupported OASIS CBLOCK compression type ' + compressionType + '.',
-            );
+            throw new Error('Unsupported OASIS CBLOCK compression type ' + compressionType + '.');
           }
 
           const expanded = await inflateRaw(compressed);
@@ -772,9 +764,7 @@ export async function parseOAS(arrayBuffer) {
 
         throw new Error('Unsupported OASIS record ' + id + '.');
       } catch (error) {
-        throw new Error(
-          'OASIS record ' + id + ' at byte ' + recordOffset + ': ' + error.message,
-        );
+        throw new Error('OASIS record ' + id + ' at byte ' + recordOffset + ': ' + error.message);
       }
     }
     return false;
