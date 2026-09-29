@@ -46,36 +46,18 @@ jobs:
       - name: Run quality checks
         run: npm run check
 
-  deploy:
+  deploy-main:
+    if: github.event_name != 'pull_request'
     needs: quality
-    if: >-
-      always() &&
-      (
-        needs.quality.result == 'success' ||
-        (github.event_name == 'pull_request' && github.event.action == 'closed')
-      ) &&
-      (
-        github.event_name != 'pull_request' ||
-        github.event.pull_request.head.repo.full_name == github.repository
-      )
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pages: write
       id-token: write
-      issues: write
-      pull-requests: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
-      - name: Checkout preview candidate
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
-        uses: actions/checkout@v6
-        with:
-          path: candidate
-
       - name: Checkout production main
         uses: actions/checkout@v6
         with:
@@ -87,39 +69,11 @@ jobs:
         with:
           ref: pages-preview-state
           path: preview-state
-          fetch-depth: 0
-
-      - name: Update PR preview state
-        if: github.event_name == 'pull_request'
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_ACTION: ${{ github.event.action }}
-        run: |
-          preview_dir="preview-state/previews/pr-${PR_NUMBER}"
-          rm -rf "${preview_dir}"
-
-          if [ "${PR_ACTION}" != "closed" ]; then
-            mkdir -p "${preview_dir}"
-            cp -a candidate/site/. "${preview_dir}/"
-          fi
-
-          cd preview-state
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "Preview state unchanged."
-          else
-            git commit -m "Update PR #${PR_NUMBER} preview"
-            git push origin HEAD:pages-preview-state
-          fi
 
       - name: Assemble production and previews
         run: |
-          rm -rf publish
           mkdir -p publish
           cp -a production/site/. publish/
-
           if [ -d preview-state/previews ]; then
             mkdir -p publish/pr-preview
             cp -a preview-state/previews/. publish/pr-preview/
@@ -137,12 +91,81 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Publish preview link on PR
-        if: github.event_name == 'pull_request'
+  deploy-preview:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+      issues: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout preview candidate
+        uses: actions/checkout@v6
+        with:
+          path: candidate
+
+      - name: Checkout production main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: production
+
+      - name: Checkout preview state
+        uses: actions/checkout@v6
+        with:
+          ref: pages-preview-state
+          path: preview-state
+          fetch-depth: 0
+
+      - name: Update preview state
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          preview_dir="preview-state/previews/pr-${PR_NUMBER}"
+          rm -rf "${preview_dir}"
+          mkdir -p "${preview_dir}"
+          cp -a candidate/site/. "${preview_dir}/"
+
+          cd preview-state
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Update PR #${PR_NUMBER} preview"
+            git push origin HEAD:pages-preview-state
+          fi
+
+      - name: Assemble production and previews
+        run: |
+          mkdir -p publish
+          cp -a production/site/. publish/
+          mkdir -p publish/pr-preview
+          cp -a preview-state/previews/. publish/pr-preview/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: publish
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Publish preview link
         uses: actions/github-script@v8
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-          PR_ACTION: ${{ github.event.action }}
         with:
           script: |
             const marker = '<!-- wafercad-pr-preview -->';
@@ -150,16 +173,11 @@ jobs:
               ? process.env.PAGE_URL
               : process.env.PAGE_URL + '/';
             const previewUrl = root + 'pr-preview/pr-' + context.issue.number + '/';
-            const closed = process.env.PR_ACTION === 'closed';
-            const body = closed
-              ? `${marker}
-### WaferCAD PR Preview
-Preview removed because this pull request is closed.`
-              : `${marker}
-### WaferCAD PR Preview
-[Open live preview](${previewUrl})
-
-Updated for commit \`${context.payload.pull_request.head.sha.slice(0, 7)}\`.`;
+            const body = marker + '\n### WaferCAD PR Preview\n'
+              + '[Open live preview](' + previewUrl + ')\n\n'
+              + 'Updated for commit `'
+              + context.payload.pull_request.head.sha.slice(0, 7)
+              + '`.';
 
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
@@ -183,6 +201,97 @@ Updated for commit \`${context.payload.pull_request.head.sha.slice(0, 7)}\`.`;
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  remove-preview:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+      issues: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout production main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: production
+
+      - name: Checkout preview state
+        uses: actions/checkout@v6
+        with:
+          ref: pages-preview-state
+          path: preview-state
+          fetch-depth: 0
+
+      - name: Remove preview state
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          rm -rf "preview-state/previews/pr-${PR_NUMBER}"
+
+          cd preview-state
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Remove PR #${PR_NUMBER} preview"
+            git push origin HEAD:pages-preview-state
+          fi
+
+      - name: Assemble production and previews
+        run: |
+          mkdir -p publish
+          cp -a production/site/. publish/
+          if [ -d preview-state/previews ]; then
+            mkdir -p publish/pr-preview
+            cp -a preview-state/previews/. publish/pr-preview/
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: publish
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Mark preview removed
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- wafercad-pr-preview -->';
+            const body = marker
+              + '\n### WaferCAD PR Preview\nPreview removed because this pull request is closed.';
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              typeof comment.body === 'string' && comment.body.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
                 body,
               });
             }
