@@ -1,4 +1,4 @@
-name: Deploy WaferCAD v2 to Pages
+name: Deploy WaferCAD to Pages
 
 on:
   push:
