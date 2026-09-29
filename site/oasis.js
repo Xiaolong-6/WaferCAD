@@ -1,6 +1,166 @@
 const MAGIC = '%SEMI-OASIS\r\n';
 const MAGIC_BYTES = new TextEncoder().encode(MAGIC);
 const ASCII = new TextDecoder('ascii');
+const MAX_EXPANDED_ELEMENTS_PER_CELL = 120000;
+
+const CTRAPEZOID_COEFFICIENTS = [
+  [
+    [0, 0, 0, 0],
+    [0, 0, 0, 1],
+    [1, -1, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 0, 1],
+    [1, 0, 0, 1],
+    [1, -1, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 1, 0, 1],
+    [1, 0, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
+    [1, 0, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 1, 0, 1],
+    [1, -1, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
+    [1, 0, 0, 1],
+    [1, -1, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 1, 0, 1],
+    [1, 0, 0, 1],
+    [1, -1, 0, 0],
+  ],
+  [
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
+    [1, -1, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 0, 1],
+    [1, 0, -1, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, -1, 1],
+    [1, 0, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 0, 1],
+    [1, 0, 0, 1],
+    [1, 0, 1, 0],
+  ],
+  [
+    [0, 0, 1, 0],
+    [0, 0, 0, 1],
+    [1, 0, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 0, 1],
+    [1, 0, -1, 1],
+    [1, 0, 1, 0],
+  ],
+  [
+    [0, 0, 1, 0],
+    [0, 0, -1, 1],
+    [1, 0, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, -1, 1],
+    [1, 0, 0, 1],
+    [1, 0, 1, 0],
+  ],
+  [
+    [0, 0, 1, 0],
+    [0, 0, 0, 1],
+    [1, 0, -1, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 1, 0],
+    [1, 0, 0, 0],
+    [0, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 1, 0],
+    [1, 0, 1, 0],
+    [0, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [1, 0, 1, 0],
+    [1, 0, 0, 0],
+    [0, 0, 0, 0],
+  ],
+  [
+    [0, 0, 1, 0],
+    [1, 0, 1, 0],
+    [1, 0, 0, 0],
+    [0, 0, 1, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 1, 0, 1],
+    [0, 2, 0, 0],
+    [0, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 1],
+    [0, 2, 0, 1],
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 2, 0],
+    [1, 0, 1, 0],
+    [0, 0, 0, 0],
+  ],
+  [
+    [1, 0, 0, 0],
+    [0, 0, 1, 0],
+    [1, 0, 2, 0],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 0, 1],
+    [1, 0, 0, 1],
+    [1, 0, 0, 0],
+  ],
+  [
+    [0, 0, 0, 0],
+    [0, 0, 1, 0],
+    [1, 0, 1, 0],
+    [1, 0, 0, 0],
+  ],
+];
 
 class OasisReader {
   constructor(bytes) {
@@ -74,6 +234,16 @@ function requireModal(value, name) {
   return value;
 }
 
+function validateNameString(value) {
+  if (!value.length) throw new Error('Invalid OASIS n-string.');
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    const lower = index === 0 ? 0x21 : 0x20;
+    if (code < lower || code > 0x7e) throw new Error('Invalid OASIS n-string.');
+  }
+  return value;
+}
+
 function decodeSigned(raw) {
   const magnitude = Math.floor(raw / 2);
   return raw % 2 ? -magnitude : magnitude;
@@ -91,6 +261,18 @@ function decodeOctangular(raw) {
     [-1, 1],
     [-1, -1],
     [1, -1],
+  ];
+  return [directions[direction][0] * magnitude, directions[direction][1] * magnitude];
+}
+
+function decodeManhattan(raw) {
+  const direction = raw % 4;
+  const magnitude = Math.floor(raw / 4);
+  const directions = [
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, -1],
   ];
   return [directions[direction][0] * magnitude, directions[direction][1] * magnitude];
 }
@@ -113,12 +295,7 @@ function readPointList(reader, implicitClosed) {
       deltas.push(horizontal ? [value, 0] : [0, value]);
     }
   } else if (type === 2) {
-    for (let i = 0; i < count; i++) {
-      const raw = reader.uint();
-      const vertical = raw % 2 === 1;
-      const value = decodeSigned(Math.floor(raw / 2));
-      deltas.push(vertical ? [0, value] : [value, 0]);
-    }
+    for (let i = 0; i < count; i++) deltas.push(decodeManhattan(reader.uint()));
   } else if (type === 3) {
     for (let i = 0; i < count; i++) deltas.push(decodeOctangular(reader.uint()));
   } else if (type === 4) {
@@ -150,48 +327,38 @@ function readRepetition(reader, previous) {
   if (type === 0) return requireModal(previous, 'repetition');
 
   if (type === 1) {
+    const cols = reader.uint() + 2;
+    const rows = reader.uint() + 2;
+    const dx = reader.uint();
+    const dy = reader.uint();
     return {
       kind: 'matrix',
-      cols: reader.uint() + 2,
-      rows: reader.uint() + 2,
-      a: [reader.uint(), 0],
-      b: [0, reader.uint()],
+      cols: dx === 0 ? 1 : cols,
+      rows: dy === 0 ? 1 : rows,
+      a: [dx, 0],
+      b: [0, dy],
     };
   }
   if (type === 2) {
+    const cols = reader.uint() + 2;
+    const dx = reader.uint();
     return {
       kind: 'matrix',
-      cols: reader.uint() + 2,
+      cols: dx === 0 ? 1 : cols,
       rows: 1,
-      a: [reader.uint(), 0],
+      a: [dx, 0],
       b: [0, 0],
     };
   }
   if (type === 3) {
+    const rows = reader.uint() + 2;
+    const dy = reader.uint();
     return {
       kind: 'matrix',
       cols: 1,
-      rows: reader.uint() + 2,
+      rows: dy === 0 ? 1 : rows,
       a: [0, 0],
-      b: [0, reader.uint()],
-    };
-  }
-  if (type === 8) {
-    return {
-      kind: 'matrix',
-      cols: reader.uint() + 2,
-      rows: reader.uint() + 2,
-      a: readDelta(reader),
-      b: readDelta(reader),
-    };
-  }
-  if (type === 9) {
-    return {
-      kind: 'matrix',
-      cols: reader.uint() + 2,
-      rows: 1,
-      a: readDelta(reader),
-      b: [0, 0],
+      b: [0, dy],
     };
   }
 
@@ -202,9 +369,34 @@ function readRepetition(reader, previous) {
     const deltas = [];
     for (let i = 0; i < count; i++) {
       const value = reader.uint() * grid;
-      deltas.push(vertical ? [0, value] : [value, 0]);
+      if (value !== 0) deltas.push(vertical ? [0, value] : [value, 0]);
     }
     return { kind: 'arbitrary', deltas };
+  }
+
+  if (type === 8) {
+    const cols = reader.uint() + 2;
+    const rows = reader.uint() + 2;
+    const a = readDelta(reader);
+    const b = readDelta(reader);
+    return {
+      kind: 'matrix',
+      cols: a[0] === 0 && a[1] === 0 ? 1 : cols,
+      rows: b[0] === 0 && b[1] === 0 ? 1 : rows,
+      a,
+      b,
+    };
+  }
+  if (type === 9) {
+    const cols = reader.uint() + 2;
+    const a = readDelta(reader);
+    return {
+      kind: 'matrix',
+      cols: a[0] === 0 && a[1] === 0 ? 1 : cols,
+      rows: 1,
+      a,
+      b: [0, 0],
+    };
   }
 
   if (type === 10 || type === 11) {
@@ -213,7 +405,8 @@ function readRepetition(reader, previous) {
     const deltas = [];
     for (let i = 0; i < count; i++) {
       const [x, y] = readDelta(reader);
-      deltas.push([x * grid, y * grid]);
+      const delta = [x * grid, y * grid];
+      if (delta[0] !== 0 || delta[1] !== 0) deltas.push(delta);
     }
     return { kind: 'arbitrary', deltas };
   }
@@ -221,30 +414,31 @@ function readRepetition(reader, previous) {
   throw new Error('Unsupported OASIS repetition type ' + type + '.');
 }
 
-function repetitionOffsets(repetition) {
-  if (!repetition) return [[0, 0]];
+function* repetitionOffsets(repetition) {
+  if (!repetition) {
+    yield [0, 0];
+    return;
+  }
   if (repetition.kind === 'matrix') {
-    const out = [];
     for (let row = 0; row < repetition.rows; row++) {
       for (let col = 0; col < repetition.cols; col++) {
-        out.push([
+        yield [
           col * repetition.a[0] + row * repetition.b[0],
           col * repetition.a[1] + row * repetition.b[1],
-        ]);
+        ];
       }
     }
-    return out;
+    return;
   }
 
-  const out = [[0, 0]];
+  yield [0, 0];
   let x = 0;
   let y = 0;
   for (const [dx, dy] of repetition.deltas) {
     x += dx;
     y += dy;
-    out.push([x, y]);
+    yield [x, y];
   }
-  return out;
 }
 
 function readInterval(reader) {
@@ -311,6 +505,7 @@ function newModal() {
     halfWidth: null,
     pointList: null,
     radius: null,
+    ctrapezoidType: null,
     repetition: null,
     placementCellName: null,
     placementCellRef: null,
@@ -343,8 +538,43 @@ function samePoint(a, b) {
 
 function addRepeated(cell, createElement, repetition, scale) {
   for (const [dx, dy] of repetitionOffsets(repetition)) {
+    if (cell.elements.length >= MAX_EXPANDED_ELEMENTS_PER_CELL) {
+      throw new Error(
+        'OASIS cell expands beyond the safe limit of ' +
+          MAX_EXPANDED_ELEMENTS_PER_CELL +
+          ' elements.',
+      );
+    }
     cell.elements.push(createElement(dx * scale, dy * scale));
   }
+}
+
+function trapezoidPoints(width, height, deltaA, deltaB, vertical) {
+  if (vertical) {
+    return [
+      [0, Math.max(deltaA, 0)],
+      [0, height + Math.min(deltaB, 0)],
+      [width, height - Math.max(deltaB, 0)],
+      [width, -Math.min(deltaA, 0)],
+    ];
+  }
+  return [
+    [Math.max(deltaA, 0), height],
+    [width + Math.min(deltaB, 0), height],
+    [width - Math.max(deltaB, 0), 0],
+    [-Math.min(deltaA, 0), 0],
+  ];
+}
+
+function ctrapezoidPoints(type, width, height) {
+  const coefficients = CTRAPEZOID_COEFFICIENTS[type];
+  if (!coefficients) throw new Error('Invalid OASIS CTRAPEZOID type ' + type + '.');
+  const points = coefficients.map(([xw, xh, yw, yh]) => [
+    xw * width + xh * height,
+    yw * width + yh * height,
+  ]);
+  if (samePoint(points[0], points.at(-1))) points.pop();
+  return points;
 }
 
 async function inflateRaw(bytes) {
@@ -385,7 +615,12 @@ export async function parseOAS(arrayBuffer) {
   reader.take(MAGIC_BYTES.length);
 
   const cellNames = new Map();
+  const textStrings = new Map();
+  const referencedCellNameIds = new Set();
+  const referencedTextStringIds = new Set();
   const cellsInOrder = [];
+  let cellNameMode = null;
+  let textStringMode = null;
   let currentCell = null;
   let modal = newModal();
   let unit = null;
@@ -437,13 +672,30 @@ export async function parseOAS(arrayBuffer) {
         }
 
         if (id === 3 || id === 4) {
-          const name = input.string();
+          const mode = id === 3 ? 'implicit' : 'explicit';
+          if (cellNameMode && cellNameMode !== mode) {
+            throw new Error('Explicit and implicit CELLNAME modes cannot be mixed.');
+          }
+          cellNameMode = mode;
+          const name = validateNameString(input.string());
           const ref = id === 3 ? cellNames.size : input.uint();
           cellNames.set(ref, name);
           continue;
         }
 
-        if (id >= 5 && id <= 10) {
+        if (id === 5 || id === 6) {
+          const mode = id === 5 ? 'implicit' : 'explicit';
+          if (textStringMode && textStringMode !== mode) {
+            throw new Error('Explicit and implicit TEXTSTRING modes cannot be mixed.');
+          }
+          textStringMode = mode;
+          const value = input.string();
+          const ref = id === 5 ? textStrings.size : input.uint();
+          textStrings.set(ref, value);
+          continue;
+        }
+
+        if (id >= 7 && id <= 10) {
           input.string();
           if (id % 2 === 0) input.uint();
           continue;
@@ -457,12 +709,14 @@ export async function parseOAS(arrayBuffer) {
         }
 
         if (id === 13) {
-          beginCell('', input.uint());
+          const ref = input.uint();
+          referencedCellNameIds.add(ref);
+          beginCell('', ref);
           continue;
         }
 
         if (id === 14) {
-          beginCell(input.string());
+          beginCell(validateNameString(input.string()));
           continue;
         }
 
@@ -483,9 +737,10 @@ export async function parseOAS(arrayBuffer) {
           if (info & 0x80) {
             if (info & 0x40) {
               modal.placementCellRef = input.uint();
+              referencedCellNameIds.add(modal.placementCellRef);
               modal.placementCellName = null;
             } else {
-              modal.placementCellName = input.string();
+              modal.placementCellName = validateNameString(input.string());
               modal.placementCellRef = null;
             }
           }
@@ -535,13 +790,23 @@ export async function parseOAS(arrayBuffer) {
           requireCell(id);
           const info = input.byte();
           if (info & 0x40) {
-            modal.textString = info & 0x20 ? { ref: input.uint() } : input.string();
+            if (info & 0x20) {
+              const ref = input.uint();
+              referencedTextStringIds.add(ref);
+              modal.textString = { ref };
+            } else {
+              modal.textString = input.string();
+            }
           }
           if (info & 0x01) modal.textLayer = input.uint();
           if (info & 0x02) modal.textType = input.uint();
           if (info & 0x10) updateCoord(modal, 'textX', input.sint());
           if (info & 0x08) updateCoord(modal, 'textY', input.sint());
           if (info & 0x04) modal.repetition = readRepetition(input, modal.repetition);
+
+          requireModal(modal.textString, 'text-string');
+          requireModal(modal.textLayer, 'textlayer');
+          requireModal(modal.textType, 'texttype');
           continue;
         }
 
@@ -677,8 +942,94 @@ export async function parseOAS(arrayBuffer) {
           continue;
         }
 
-        if (id >= 23 && id <= 26) {
-          throw new Error('OASIS trapezoid record ' + id + ' is not supported yet.');
+        if (id >= 23 && id <= 25) {
+          const cell = requireCell(id);
+          const info = input.byte();
+          if (info & 0x01) modal.layer = input.uint();
+          if (info & 0x02) modal.datatype = input.uint();
+          if (info & 0x40) modal.width = input.uint();
+          if (info & 0x20) modal.height = input.uint();
+
+          const deltaA = id === 23 || id === 24 ? input.sint() : 0;
+          const deltaB = id === 23 || id === 25 ? input.sint() : 0;
+
+          if (info & 0x10) updateCoord(modal, 'geomX', input.sint());
+          if (info & 0x08) updateCoord(modal, 'geomY', input.sint());
+
+          let repetition = null;
+          if (info & 0x04) {
+            repetition = readRepetition(input, modal.repetition);
+            modal.repetition = repetition;
+          }
+
+          const layer = requireModal(modal.layer, 'layer');
+          const datatype = requireModal(modal.datatype, 'datatype');
+          const scale = 1 / requireModal(unit, 'unit');
+          const width = requireModal(modal.width, 'width');
+          const height = requireModal(modal.height, 'height');
+          const points = trapezoidPoints(width, height, deltaA, deltaB, !!(info & 0x80)).map(
+            ([x, y]) => [(modal.geomX + x) * scale, (modal.geomY + y) * scale],
+          );
+
+          addRepeated(
+            cell,
+            (dx, dy) => ({
+              kind: 'polygon',
+              layer,
+              datatype,
+              points: points.map(([x, y]) => [x + dx, y + dy]),
+            }),
+            repetition,
+            scale,
+          );
+          continue;
+        }
+
+        if (id === 26) {
+          const cell = requireCell(id);
+          const info = input.byte();
+          if (info & 0x01) modal.layer = input.uint();
+          if (info & 0x02) modal.datatype = input.uint();
+          if (info & 0x80) modal.ctrapezoidType = input.uint();
+          if (info & 0x40) modal.width = input.uint();
+          if (info & 0x20) modal.height = input.uint();
+          if (info & 0x10) updateCoord(modal, 'geomX', input.sint());
+          if (info & 0x08) updateCoord(modal, 'geomY', input.sint());
+
+          let repetition = null;
+          if (info & 0x04) {
+            repetition = readRepetition(input, modal.repetition);
+            modal.repetition = repetition;
+          }
+
+          const layer = requireModal(modal.layer, 'layer');
+          const datatype = requireModal(modal.datatype, 'datatype');
+          const scale = 1 / requireModal(unit, 'unit');
+          const type = requireModal(modal.ctrapezoidType, 'ctrapezoid-type');
+          const needsWidth = type <= 19 || type >= 24;
+          const needsHeight = type <= 15 || (type >= 20 && type <= 24);
+          const width = needsWidth ? requireModal(modal.width, 'width') : 0;
+          const height = needsHeight ? requireModal(modal.height, 'height') : 0;
+          const localPoints = ctrapezoidPoints(type, width, height);
+          modal.width = Math.max(...localPoints.map(([x]) => x), 0);
+          modal.height = Math.max(...localPoints.map(([, y]) => y), 0);
+          const points = localPoints.map(([x, y]) => [
+            (modal.geomX + x) * scale,
+            (modal.geomY + y) * scale,
+          ]);
+
+          addRepeated(
+            cell,
+            (dx, dy) => ({
+              kind: 'polygon',
+              layer,
+              datatype,
+              points: points.map(([x, y]) => [x + dx, y + dy]),
+            }),
+            repetition,
+            scale,
+          );
+          continue;
         }
 
         if (id === 27) {
@@ -734,8 +1085,24 @@ export async function parseOAS(arrayBuffer) {
           continue;
         }
 
-        if (id === 32 || id === 33) {
-          throw new Error('OASIS extension record ' + id + ' is not supported.');
+        if (id === 32) {
+          requireCell(id);
+          input.uint();
+          input.string();
+          continue;
+        }
+
+        if (id === 33) {
+          requireCell(id);
+          const info = input.byte();
+          input.uint();
+          if (info & 0x01) modal.layer = input.uint();
+          if (info & 0x02) modal.datatype = input.uint();
+          input.string();
+          if (info & 0x10) updateCoord(modal, 'geomX', input.sint());
+          if (info & 0x08) updateCoord(modal, 'geomY', input.sint());
+          if (info & 0x04) modal.repetition = readRepetition(input, modal.repetition);
+          continue;
         }
 
         if (id === 34) {
@@ -772,7 +1139,13 @@ export async function parseOAS(arrayBuffer) {
 
   await parseRecords(reader);
   if (unit == null) throw new Error('OASIS START record was not found.');
-  if (!cellsInOrder.length) throw new Error('No cells were found in this OASIS file.');
+
+  for (const ref of referencedCellNameIds) {
+    if (!cellNames.has(ref)) throw new Error('No cell name defined for OASIS cell id ' + ref + '.');
+  }
+  for (const ref of referencedTextStringIds) {
+    if (!textStrings.has(ref)) throw new Error('No text string defined for OASIS id ' + ref + '.');
+  }
 
   for (const cell of cellsInOrder) {
     if (!cell.name) cell.name = cellNames.get(cell.nameRef) || 'CELL_' + cell.nameRef;

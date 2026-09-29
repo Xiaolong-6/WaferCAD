@@ -1,3 +1,5 @@
+const MAX_FLATTENED_OBJECTS = 120000;
+
 const REC = {
   UNITS: 0x03,
   ENDLIB: 0x04,
@@ -214,16 +216,26 @@ export function parseGDS(arrayBuffer) {
 export function flattenGDS(parsed, rootName) {
   const out = [],
     linework = [];
-  let recursionGuard = 0;
+  let visitedInstances = 0;
+
+  function consumeBudget(count = 1) {
+    visitedInstances += count;
+    if (visitedInstances > MAX_FLATTENED_OBJECTS) {
+      throw new Error(
+        'Layout expands beyond the safe flatten limit of ' + MAX_FLATTENED_OBJECTS + ' objects.',
+      );
+    }
+  }
+
   function visit(name, matrix, stack = []) {
     if (stack.includes(name) || stack.length > 32) return;
     const cell = parsed.cells.get(name);
     if (!cell) return;
-    recursionGuard++;
-    if (recursionGuard > 200000) throw new Error('GDS hierarchy is too large to flatten safely.');
+    consumeBudget();
     for (const e of cell.elements) {
       if (e.kind === 'polygon') {
-        if (e.points.length >= 3)
+        if (e.points.length >= 3) {
+          consumeBudget();
           out.push({
             kind: 'polygon',
             sourceCell: name,
@@ -231,6 +243,7 @@ export function flattenGDS(parsed, rootName) {
             datatype: e.datatype,
             points: e.points.map((p) => affinePoint(matrix, p)),
           });
+        }
       } else if (e.kind === 'path') {
         const pts = e.points.map((p) => affinePoint(matrix, p));
         const sx = Math.hypot(matrix[0], matrix[1]),
@@ -238,6 +251,7 @@ export function flattenGDS(parsed, rootName) {
           scale = (sx + sy) / 2,
           width = e.width * scale;
         const target = width > 0 ? out : linework;
+        consumeBudget();
         target.push({
           kind: 'path',
           sourceCell: name,
@@ -255,6 +269,17 @@ export function flattenGDS(parsed, rootName) {
           rows = Math.max(1, e.rows);
         const cv = [(p[1][0] - p[0][0]) / cols, (p[1][1] - p[0][1]) / cols],
           rv = [(p[2][0] - p[0][0]) / rows, (p[2][1] - p[0][1]) / rows];
+        const instanceCount = rows * cols;
+        if (
+          !Number.isSafeInteger(instanceCount) ||
+          visitedInstances + instanceCount > MAX_FLATTENED_OBJECTS
+        ) {
+          throw new Error(
+            'Layout expands beyond the safe flatten limit of ' +
+              MAX_FLATTENED_OBJECTS +
+              ' objects.',
+          );
+        }
         for (let r = 0; r < rows; r++)
           for (let c = 0; c < cols; c++)
             visit(
@@ -278,7 +303,7 @@ export function flattenGDS(parsed, rootName) {
     combos.get(key).count++;
   }
   return {
-    root: rootName,
+    root: rootName || '',
     elements: out,
     linework,
     bounds,
