@@ -460,7 +460,7 @@ function bindUi(){
   });
   $('baseWidth').oninput=()=>{if(document.querySelector('#substrateShape button.active')?.dataset.shape==='circle')$('baseHeight').value=$('baseWidth').value};
   $('applyBaseBtn').onclick=()=>{
-    const shape=document.querySelector('#substrateShape button.active').dataset.shape,width=Number($('baseWidth').value),height=shape==='circle'?width:Number($('baseHeight').value),thickness=Number($('baseThickness').value);
+    const shape=document.querySelector('#substrateShape button.active').dataset.shape,width=xyFromDisplay(Number($('baseWidth').value)),height=shape==='circle'?width:xyFromDisplay(Number($('baseHeight').value)),thickness=Number($('baseThickness').value);
     if(width<=0||height<=0||thickness<=0)return status('Base dimensions must be positive.');
     if(hasProcessEdits()&&!window.confirm('Rebuilding the base will remove the current structure and all applied operations. You can undo this change afterwards. Continue?')){syncBaseControls();return}
     baseRevertSnapshot=stateSnapshot();saveHistory();model=createModel({shape,width,height,thickness});section={a:[-width*.42,0],b:[width*.42,0]};
@@ -482,7 +482,11 @@ function bindUi(){
     e.target.value='';
   };
   for(const id of ['maskOffsetX','maskOffsetY','maskScale','maskRotation'])$(id).oninput=()=>{
-    maskTransform={x:Number($('maskOffsetX').value)||0,y:Number($('maskOffsetY').value)||0,scale:Math.max(1e-8,Number($('maskScale').value)||1),rotation:Number($('maskRotation').value)||0};renderMask();
+    maskTransform={x:xyFromDisplay(Number($('maskOffsetX').value)||0),y:xyFromDisplay(Number($('maskOffsetY').value)||0),scale:Math.max(1e-8,Number($('maskScale').value)||1),rotation:Number($('maskRotation').value)||0};renderMask();
+  };
+  $('xyUnitSelect').onchange=()=>{
+    xyDisplayUnit=$('xyUnitSelect').value in XY_UNITS?$('xyUnitSelect').value:'um';
+    syncBaseControls();syncTransformInputs();renderMask();renderMain();renderSection();status(`XY display unit: ${xyUnit().label}. Geometry is unchanged.`);
   };
 
   document.querySelectorAll('.roi-tool').forEach(b=>b.onclick=()=>{roiTool=b.dataset.tool;roiDraft=null;document.querySelectorAll('.roi-tool').forEach(x=>x.classList.toggle('active',x===b));status('3D focus: drag in Mask to draw the render region.')});
@@ -499,10 +503,10 @@ function bindUi(){
 
   $('newProjectBtn').onclick=()=>{
     model=createModel();layout=emptyLayout();selectedLayerKeys=new Set();activeCell=null;expandedCells=new Set();hoveredLayerKey=null;roi=null;history=[];future=[];baseRevertSnapshot=null;activeFace='front';
-    section={a:[-42,0],b:[42,0]};planViews.mask={zoom:1,panX:0,panY:0};planViews.main={zoom:1,panX:0,panY:0};syncBaseControls();renderAll();fit3d();status('New empty project.');
+    section={a:[-model.width*.42,0],b:[model.width*.42,0]};planViews.mask={zoom:1,panX:0,panY:0};planViews.main={zoom:1,panX:0,panY:0};syncBaseControls();renderAll();fit3d();status('New empty project.');
   };
   $('saveProjectBtn').onclick=()=>{
-    ensureHierarchy();const data={format:'WaferCAD-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy,units:layout.units},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews};
+    ensureHierarchy();const data={format:'WaferCAD-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy,units:layout.units},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews,display:{xyUnit:xyDisplayUnit,structurePalette:activeStructurePalette,customStructurePalette}};
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);
   };
   $('openProjectInput').onchange=async e=>{
@@ -511,6 +515,7 @@ function bindUi(){
       const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-vector'||!isVectorModel(p.model))throw new Error('This file uses the legacy preview geometry format. Recreate it with the vector build.');
       model=p.model;layout=p.layout;ensureHierarchy();selectedLayerKeys=new Set(p.selectedLayerKeys||[]);activeCell=p.activeCell||layout.root||null;expandedCells=new Set(activeCell?[layout.root||activeCell]:[]);
       hoveredLayerKey=null;maskTransform=p.maskTransform||maskTransform;activeFace=p.activeFace||'front';roi=p.roi||null;section=p.section||section;
+      if(p.display?.xyUnit in XY_UNITS)xyDisplayUnit=p.display.xyUnit;if(p.display?.structurePalette&&STRUCTURE_PALETTES[p.display.structurePalette])activeStructurePalette=p.display.structurePalette;customStructurePalette=Array.isArray(p.display?.customStructurePalette)?p.display.customStructurePalette:null;
       if(p.planViews){Object.assign(planViews.mask,p.planViews.mask||{});Object.assign(planViews.main,p.planViews.main||{})}
       parsedGds=null;history=[];future=[];baseRevertSnapshot=null;syncBaseControls();syncTransformInputs();renderAll();fit3d();status(`Opened ${f.name}.`);
     }catch(err){status(`Open failed: ${err.message}`)}
@@ -520,7 +525,7 @@ function bindUi(){
   const mc=$('maskCanvas');let drag=null;
   mc.addEventListener('wheel',e=>{e.preventDefault();zoomPlanView('mask',mc,e.deltaY<0?1.15:1/1.15,e.clientX,e.clientY)},{passive:false});
   mc.addEventListener('pointermove',e=>{
-    const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h,'mask'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);$('maskCoords').textContent=`x ${p[0].toFixed(1)} µm · y ${p[1].toFixed(1)} µm`;
+    const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h,'mask'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);$('maskCoords').textContent=`x ${xyText(p[0])} · y ${xyText(p[1])}`;
     if(drag&&roiTool){roiDraft=roiTool==='rect'?{type:'rect',a:drag,b:p}:{type:'circle',c:drag,r:Math.hypot(p[0]-drag[0],p[1]-drag[1])};renderMask()}
   });
   mc.addEventListener('pointerdown',e=>{if(!roiTool)return;const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h,'mask');drag=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);mc.setPointerCapture(e.pointerId)});
@@ -530,7 +535,7 @@ function bindUi(){
   main.addEventListener('wheel',e=>{e.preventDefault();zoomPlanView('main',main,e.deltaY<0?1.15:1/1.15,e.clientX,e.clientY,activeFace==='back')},{passive:false});
   main.addEventListener('pointerdown',e=>{const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h,'main'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');section={a:p,b:p};secDrag=true;main.setPointerCapture(e.pointerId);renderMain();renderSection()});
   main.addEventListener('pointermove',e=>{
-    const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h,'main'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');$('mainCoords').textContent=`x ${p[0].toFixed(1)} µm · y ${p[1].toFixed(1)} µm`;
+    const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h,'main'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');$('mainCoords').textContent=`x ${xyText(p[0])} · y ${xyText(p[1])}`;
     if(!secDrag)return;section.b=p;renderMain();renderSection();
   });
   main.addEventListener('pointerup',()=>secDrag=false);
