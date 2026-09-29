@@ -80,7 +80,7 @@ Z Δ is a relative thickness.
 
 ## 7. Manage layers
 
-The 3D legend is also the layer manager.
+The Section A–B layer legend is also the layer manager.
 
 Each row lets you edit the layer name. Color is intentionally a secondary visual setting: choose from the active curated palette by clicking the layer swatch. The legend header provides several preset palettes and a Random action that generates a harmonious palette. Arbitrary color-picker input is not exposed.
 
