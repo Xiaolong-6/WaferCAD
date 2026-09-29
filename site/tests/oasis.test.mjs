@@ -176,3 +176,34 @@ test('OASIS LAYERNAME singular intervals do not desynchronize following records'
   assert.equal(element.datatype, 2);
   assert.deepEqual(element.points[2], [1, 1]);
 });
+
+test('OASIS g-delta directions decode southwest and southeast correctly', async () => {
+  const southwest = (1000 << 4) | (6 << 1);
+  const southeast = (1000 << 4) | (7 << 1);
+  const input = bytes(
+    header(),
+    uint(14),
+    oasisString('TOP'),
+    uint(22),
+    Uint8Array.of(0x7b),
+    uint(4),
+    uint(0),
+    uint(50),
+    uint(4),
+    uint(2),
+    uint(southwest),
+    uint(southeast),
+    sint(10000),
+    sint(10000),
+    uint(2),
+  );
+
+  const parsed = await parseOAS(input.buffer);
+  const element = parsed.cells.get('TOP').elements[0];
+
+  assert.deepEqual(element.points, [
+    [10, 10],
+    [9, 9],
+    [10, 8],
+  ]);
+});
