@@ -26,7 +26,9 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import { downloadProject, readProjectFile } from './project-io.js';
+import { validateProjectFile } from './project-schema.js';
 import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
+import { createSnapshotManager } from './workspace-snapshots.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -1143,9 +1145,9 @@ function applyOp() {
   );
 }
 
-function buildProjectSnapshot() {
+function buildProjectSnapshot(includeSnapshots = false) {
   ensureHierarchy();
-  return {
+  const project = {
     format: 'WaferCAD-vector',
     model,
     layout: {
@@ -1171,6 +1173,8 @@ function buildProjectSnapshot() {
       customStructurePalette,
     },
   };
+  if (includeSnapshots) project.snapshots = snapshotManager.exportRecords();
+  return project;
 }
 
 function loadProjectSnapshot(project) {
@@ -1206,6 +1210,80 @@ function loadProjectSnapshot(project) {
   history = [];
   future = [];
   baseRevertSnapshot = null;
+}
+
+function isValidSnapshotState(state) {
+  try {
+    validateProjectFile(state);
+    return state.snapshots == null;
+  } catch {
+    return false;
+  }
+}
+
+const snapshotManager = createSnapshotManager({
+  capture: () => buildProjectSnapshot(false),
+  restore: (state) => loadProjectSnapshot(state),
+  validateState: isValidSnapshotState,
+});
+
+function renderSnapshots() {
+  const host = $('snapshotList');
+  const records = snapshotManager.list();
+  $('snapshotCount').textContent = String(records.length);
+  host.innerHTML = '';
+
+  if (!records.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-list';
+    empty.textContent = 'No snapshots';
+    host.append(empty);
+    return;
+  }
+
+  for (const record of records) {
+    const row = document.createElement('div');
+    row.className = 'snapshot-row';
+
+    const name = document.createElement('input');
+    name.className = 'snapshot-name';
+    name.value = record.name;
+    name.title = record.createdAt;
+    name.onchange = () => {
+      if (!snapshotManager.rename(record.id, name.value)) name.value = record.name;
+      renderSnapshots();
+    };
+
+    const restoreButton = document.createElement('button');
+    restoreButton.type = 'button';
+    restoreButton.className = 'snapshot-action';
+    restoreButton.textContent = 'Restore';
+    restoreButton.onclick = () => {
+      if (!snapshotManager.restore(record.id)) {
+        status('Snapshot restore failed validation.');
+        return;
+      }
+      syncBaseControls();
+      syncTransformInputs();
+      renderAll();
+      fit3d();
+      status(`Restored snapshot "${record.name}".`);
+    };
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'snapshot-delete';
+    deleteButton.textContent = '×';
+    deleteButton.title = 'Delete snapshot';
+    deleteButton.onclick = () => {
+      snapshotManager.remove(record.id);
+      renderSnapshots();
+      status(`Deleted snapshot "${record.name}".`);
+    };
+
+    row.append(name, restoreButton, deleteButton);
+    host.append(row);
+  }
 }
 
 function bindUi() {
@@ -1390,6 +1468,11 @@ function bindUi() {
     renderMain();
     renderSection();
   };
+  $('saveSnapshotBtn').onclick = () => {
+    const saved = snapshotManager.create();
+    renderSnapshots();
+    status(`Saved snapshot "${saved.name}".`);
+  };
 
   $('newProjectBtn').onclick = () => {
     model = createModel();
@@ -1403,17 +1486,19 @@ function bindUi() {
     future = [];
     baseRevertSnapshot = null;
     activeFace = 'front';
+    snapshotManager.clear();
     section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] };
     planViews.mask = { zoom: 1, panX: 0, panY: 0 };
     planViews.main = { zoom: 1, panX: 0, panY: 0 };
     syncBaseControls();
     renderAll();
+    renderSnapshots();
     fit3d();
     status('New empty project.');
   };
   $('saveProjectBtn').onclick = () => {
     try {
-      downloadProject(buildProjectSnapshot());
+      downloadProject(buildProjectSnapshot(true));
       status('Project saved.');
     } catch (err) {
       console.error(err);
@@ -1428,9 +1513,11 @@ function bindUi() {
     try {
       const project = await readProjectFile(file);
       loadProjectSnapshot(project);
+      snapshotManager.importRecords(project.snapshots || []);
       syncBaseControls();
       syncTransformInputs();
       renderAll();
+      renderSnapshots();
       fit3d();
       status(`Opened ${file.name}.`);
     } catch (err) {
@@ -1526,6 +1613,7 @@ function bindUi() {
 }
 
 bindUi();
+renderSnapshots();
 initThree();
 syncBaseControls();
 updateOperationUI();
