@@ -429,13 +429,13 @@ function bindUi(){
     section={a:[-42,0],b:[42,0]};planViews.mask={zoom:1,panX:0,panY:0};planViews.main={zoom:1,panX:0,panY:0};syncBaseControls();renderAll();fit3d();status('New empty project.');
   };
   $('saveProjectBtn').onclick=()=>{
-    ensureHierarchy();const data={format:'WaferCAD-v2-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy,units:layout.units},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews};
+    ensureHierarchy();const data={format:'WaferCAD-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy,units:layout.units},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews};
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);
   };
   $('openProjectInput').onchange=async e=>{
     const f=e.target.files[0];if(!f)return;
     try{
-      const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-v2-vector'||!isVectorModel(p.model))throw new Error('This file uses the legacy preview geometry format. Recreate it with the vector build.');
+      const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-vector'||!isVectorModel(p.model))throw new Error('This file uses the legacy preview geometry format. Recreate it with the vector build.');
       model=p.model;layout=p.layout;ensureHierarchy();selectedLayerKeys=new Set(p.selectedLayerKeys||[]);activeCell=p.activeCell||layout.root||null;expandedCells=new Set(activeCell?[layout.root||activeCell]:[]);
       hoveredLayerKey=null;maskTransform=p.maskTransform||maskTransform;activeFace=p.activeFace||'front';roi=p.roi||null;section=p.section||section;
       if(p.planViews){Object.assign(planViews.mask,p.planViews.mask||{});Object.assign(planViews.main,p.planViews.main||{})}
