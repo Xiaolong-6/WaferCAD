@@ -7,7 +7,7 @@ function baseGeometry(shape,width,height){
   return shape==='circle'?circleMulti(width,height,192):rectMulti(width,height);
 }
 
-export function createModel({shape='circle',width=100,height=100,thickness=12}={}){
+export function createModel({shape='circle',width=100000,height=100000,thickness=12}={}){
   const boundary=baseGeometry(shape,width,height);
   return {
     kernel:'vector-2.5d-v1',shape,width,height,thickness,boundary,units:{xy:'µm',z:'relative'},
