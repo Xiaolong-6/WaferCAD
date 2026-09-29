@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseGDS,flattenGDS,makeDemoLayout} from './gds.js';
 import {
-  applyOperation,cloneModel,createModel,fullFaceGeometry,isVectorModel,layerById,
+  applyOperation,cloneModel,createModel,fullFaceGeometry,layerById,
   modelBoundsZ,recolorLayer,renameLayer,surfacePatches,surfaceSegment,surfaceZ
 } from './model.js';
 import {
   bufferPolyline,circleMulti,difference,intersection,isEmpty,lineIntervalsInMulti,
   rectMulti,transformMulti,unionGeometries
 } from './vector-geometry.js';
+import {downloadProject,readProjectFile} from './project-io.js';
 
 const $=id=>document.getElementById(id);
 const MASK_PALETTE=['#4F86C6','#4FAF9F','#E6A23C','#D96C5F','#8A72BE','#57A6C7','#6C8E5E','#C5678B'];
@@ -453,6 +454,71 @@ function applyOp(){
   renderAll();status(`${type==='etch'?'Etched':type==='grow'?`Grew ${layerById(model,targetLayerId)?.name||'layer'}`:`Added ${name}`} on the ${activeFace}.`);
 }
 
+function buildProjectSnapshot(){
+  ensureHierarchy();
+  return {
+    format:'WaferCAD-vector',
+    model,
+    layout:{
+      name:layout.name,
+      root:layout.root,
+      elements:layout.elements,
+      linework:layout.linework,
+      bounds:layout.bounds,
+      combos:layout.combos,
+      hierarchy:layout.hierarchy,
+      units:layout.units
+    },
+    selectedLayerKeys:[...selectedLayerKeys],
+    activeCell,
+    maskTransform,
+    activeFace,
+    roi,
+    section,
+    planViews,
+    display:{
+      xyUnit:xyDisplayUnit,
+      structurePalette:activeStructurePalette,
+      customStructurePalette
+    }
+  };
+}
+
+function loadProjectSnapshot(project){
+  model=project.model;
+  if(model.processRevision==null){
+    model.processRevision=Math.max(0,(model.revision||1)-1);
+  }
+
+  layout=project.layout;
+  ensureHierarchy();
+  selectedLayerKeys=new Set(project.selectedLayerKeys);
+  activeCell=project.activeCell||layout.root||null;
+  expandedCells=new Set(activeCell?[layout.root||activeCell]:[]);
+  hoveredLayerKey=null;
+  maskTransform=project.maskTransform;
+  activeFace=project.activeFace;
+  roi=project.roi;
+  section=project.section;
+
+  if(project.display?.xyUnit in XY_UNITS){
+    xyDisplayUnit=project.display.xyUnit;
+  }
+  if(project.display?.structurePalette&&STRUCTURE_PALETTES[project.display.structurePalette]){
+    activeStructurePalette=project.display.structurePalette;
+  }
+  customStructurePalette=Array.isArray(project.display?.customStructurePalette)
+    ? project.display.customStructurePalette
+    : null;
+
+  Object.assign(planViews.mask,project.planViews.mask);
+  Object.assign(planViews.main,project.planViews.main);
+  parsedGds=null;
+  history=[];
+  future=[];
+  baseRevertSnapshot=null;
+}
+
 function bindUi(){
   document.querySelectorAll('#substrateShape button').forEach(b=>b.onclick=()=>{
     document.querySelectorAll('#substrateShape button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
@@ -508,20 +574,33 @@ function bindUi(){
     section={a:[-model.width*.42,0],b:[model.width*.42,0]};planViews.mask={zoom:1,panX:0,panY:0};planViews.main={zoom:1,panX:0,panY:0};syncBaseControls();renderAll();fit3d();status('New empty project.');
   };
   $('saveProjectBtn').onclick=()=>{
-    ensureHierarchy();const data={format:'WaferCAD-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy,units:layout.units},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews,display:{xyUnit:xyDisplayUnit,structurePalette:activeStructurePalette,customStructurePalette}};
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);
-  };
-  $('openProjectInput').onchange=async e=>{
-    const f=e.target.files[0];if(!f)return;
     try{
-      const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-vector'||!isVectorModel(p.model))throw new Error('This file uses the legacy preview geometry format. Recreate it with the vector build.');
-      model=p.model;if(model.processRevision==null)model.processRevision=Math.max(0,(model.revision||1)-1);layout=p.layout;ensureHierarchy();selectedLayerKeys=new Set(p.selectedLayerKeys||[]);activeCell=p.activeCell||layout.root||null;expandedCells=new Set(activeCell?[layout.root||activeCell]:[]);
-      hoveredLayerKey=null;maskTransform=p.maskTransform||maskTransform;activeFace=p.activeFace||'front';roi=p.roi||null;section=p.section||section;
-      if(p.display?.xyUnit in XY_UNITS)xyDisplayUnit=p.display.xyUnit;if(p.display?.structurePalette&&STRUCTURE_PALETTES[p.display.structurePalette])activeStructurePalette=p.display.structurePalette;customStructurePalette=Array.isArray(p.display?.customStructurePalette)?p.display.customStructurePalette:null;
-      if(p.planViews){Object.assign(planViews.mask,p.planViews.mask||{});Object.assign(planViews.main,p.planViews.main||{})}
-      parsedGds=null;history=[];future=[];baseRevertSnapshot=null;syncBaseControls();syncTransformInputs();renderAll();fit3d();status(`Opened ${f.name}.`);
-    }catch(err){status(`Open failed: ${err.message}`)}
-    e.target.value='';
+      downloadProject(buildProjectSnapshot());
+      status('Project saved.');
+    }catch(err){
+      console.error(err);
+      status(`Save failed: ${err.message}`);
+    }
+  };
+
+  $('openProjectInput').onchange=async e=>{
+    const file=e.target.files[0];
+    if(!file)return;
+
+    try{
+      const project=await readProjectFile(file);
+      loadProjectSnapshot(project);
+      syncBaseControls();
+      syncTransformInputs();
+      renderAll();
+      fit3d();
+      status(`Opened ${file.name}.`);
+    }catch(err){
+      console.error(err);
+      status(`Open failed: ${err.message}`);
+    }finally{
+      e.target.value='';
+    }
   };
 
   const mc=$('maskCanvas');let drag=null;
