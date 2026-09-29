@@ -366,6 +366,7 @@ function applyOp(){
   const params={type,name,targetLayerId,thickness,face:activeFace,area};if(type!=='etch')params.growth=$('growthMode').value;
   const result=applyOperation(model,params);
   if(!result.changed){restoreSnapshot(history.pop());syncUndo();return status(result.error||'The operation did not change the model.')}
+  if(type==='add')$('layerName').value=`Layer ${model.layers.length}`;
   renderAll();status(`${type==='etch'?'Etched':type==='grow'?`Grew ${layerById(model,targetLayerId)?.name||'layer'}`:`Added ${name}`} on the ${activeFace}.`);
 }
 
@@ -382,7 +383,7 @@ function bindUi(){
     baseRevertSnapshot=stateSnapshot();saveHistory();model=createModel({shape,width,height,thickness});section={a:[-width*.42,0],b:[width*.42,0]};
     renderAll();fit3d();status('Base applied. Use Revert or Undo to restore the previous structure.');
   };
-  $('revertBaseBtn').onclick=()=>{if(!baseRevertSnapshot)return;const previous=baseRevertSnapshot;baseRevertSnapshot=null;future.push(stateSnapshot());restoreSnapshot(previous);syncBaseControls();renderAll();fit3d();status('Reverted the last base change.')};
+  $('revertBaseBtn').onclick=()=>{if(!baseRevertSnapshot)return;const previous=baseRevertSnapshot;baseRevertSnapshot=null;future.push(stateSnapshot());if(history.length)history.pop();restoreSnapshot(previous);syncBaseControls();renderAll();fit3d();status('Reverted the last base change.')};
 
   $('demoMaskBtn').onclick=()=>{
     parsedGds=null;layout=makeDemoLayout();activeCell=layout.root||'TOP';expandedCells=new Set([activeCell]);hoveredLayerKey=null;
