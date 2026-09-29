@@ -45,9 +45,33 @@ test('flattenGDS rejects cyclic SREF hierarchies explicitly', () => {
   assert.throws(() => flattenGDS(parsed, 'A'), /Recursive GDS\/OASIS hierarchy/);
 });
 
-test('flattenGDS rejects missing referenced cells explicitly', () => {
-  const parsed = parsedWith([['A', { name: 'A', elements: [sref('MISSING')] }]]);
-  assert.throws(() => flattenGDS(parsed, 'A'), /Referenced layout cell "MISSING" is missing/);
+test('flattenGDS reports missing referenced cells without hiding the rest of the layout', () => {
+  const parsed = parsedWith([
+    [
+      'A',
+      {
+        name: 'A',
+        elements: [
+          sref('MISSING'),
+          {
+            kind: 'polygon',
+            layer: 1,
+            datatype: 0,
+            points: [
+              [0, 0],
+              [1, 0],
+              [0, 1],
+            ],
+          },
+        ],
+      },
+    ],
+  ]);
+  const flat = flattenGDS(parsed, 'A');
+  assert.equal(flat.elements.length, 1);
+  assert.deepEqual(flat.warnings, [
+    'Referenced layout cell "MISSING" is missing; that instance was skipped.',
+  ]);
 });
 
 test('flattenGDS enforces the hierarchy depth guard', () => {
