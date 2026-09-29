@@ -7,6 +7,7 @@ globalThis.polygonClipping=require('./vendor/polygon-clipping.umd.js');
 const vg=await import('./vector-geometry.js');
 const modelApi=await import('./model.js');
 const {parseGDS,flattenGDS,makeDemoLayout}=await import('./gds.js');
+const {validateProjectFile}=await import('./project-schema.js');
 const {applyOperation,createModel,layerById,recolorLayer,renameLayer,surfaceSegment}=modelApi;
 const {difference,intersection,isEmpty,pointInMulti,rectMulti}=vg;
 
@@ -61,9 +62,6 @@ const demo=makeDemoLayout();
 assert.equal(demo.linework.length,1);
 assert.ok(!demo.combos.some(x=>x.layer===99));
 
-console.log('WaferCAD vector self-test: OK');
-
-
 function gdsReal8(value){
   const out=new Uint8Array(8);if(value===0)return out;
   let x=Math.abs(value),exp=0;
@@ -107,5 +105,44 @@ assert.ok(Math.abs(parsed.units.dbuToMicron-0.001)<1e-12);
 assert.ok(Math.abs(flat.bounds.width-10)<1e-9);
 assert.ok(Math.abs(flat.bounds.height-20)<1e-9);
 assert.deepEqual(flat.elements[0].points[2],[10,20]);
+
+const validProject={
+  format:'WaferCAD-vector',
+  model:createModel({shape:'rect',width:20,height:20,thickness:10}),
+  layout:{
+    name:'Empty',
+    root:'',
+    elements:[],
+    linework:[],
+    bounds:{minX:-10,minY:-10,maxX:10,maxY:10,width:20,height:20},
+    combos:[],
+    hierarchy:{},
+    units:{xy:'µm',dbuToMicron:1,hasPhysicalUnits:true}
+  },
+  selectedLayerKeys:[],
+  activeCell:null,
+  maskTransform:{x:0,y:0,scale:1,rotation:0},
+  activeFace:'front',
+  roi:null,
+  section:{a:[-5,0],b:[5,0]},
+  planViews:{
+    mask:{zoom:1,panX:0,panY:0},
+    main:{zoom:1,panX:0,panY:0}
+  },
+  display:{xyUnit:'um',structurePalette:'balanced',customStructurePalette:null}
+};
+assert.equal(validateProjectFile(validProject),validProject);
+
+const badStack=structuredClone(validProject);
+badStack.model.regions[0].stack[0].z1=badStack.model.regions[0].stack[0].z0;
+assert.throws(()=>validateProjectFile(badStack),/z1 > z0/);
+
+const badLayerReference=structuredClone(validProject);
+badLayerReference.model.regions[0].stack[0].layerId='missing-layer';
+assert.throws(()=>validateProjectFile(badLayerReference),/unknown layer/);
+
+const badLayout=structuredClone(validProject);
+badLayout.layout=null;
+assert.throws(()=>validateProjectFile(badLayout),/layout must be an object/);
 
 console.log('WaferCAD self-test: OK');
