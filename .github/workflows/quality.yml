@@ -8,6 +8,7 @@ on:
       - "fix/**"
       - "rewrite/**"
       - "merge/**"
+      - "feat/issue-12-mask-focus-editor"
   workflow_dispatch:
 
 permissions:
