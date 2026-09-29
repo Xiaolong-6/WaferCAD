@@ -213,7 +213,6 @@ test('OASIS CBLOCK budget rejects unsafe expansion before decompression', () => 
   assert.throws(() => assertOasisBlockSize(11, 10), /CBLOCK expands beyond/);
 });
 
-
 test('OASIS CBLOCK rejects expansion beyond the declared uncompressed size', async () => {
   const body = bytes(
     uint(20),
