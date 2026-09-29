@@ -10,7 +10,7 @@ function baseGeometry(shape,width,height){
 export function createModel({shape='circle',width=100,height=100,thickness=12}={}){
   const boundary=baseGeometry(shape,width,height);
   return {
-    kernel:'vector-2.5d-v1',shape,width,height,thickness,boundary,
+    kernel:'vector-2.5d-v1',shape,width,height,thickness,boundary,units:{xy:'µm',z:'relative'},
     layers:[{id:'base',name:'Base',color:BASE_COLOR}],
     regions:[{id:'region-1',geom:cloneGeom(boundary),stack:[{layerId:'base',z0:-thickness/2,z1:thickness/2}]}],
     nextLayerId:1,nextRegionId:2,revision:1
