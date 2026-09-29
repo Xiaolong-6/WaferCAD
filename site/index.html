@@ -60,11 +60,53 @@
           <div class="view-head mask-view-head">
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
-              <div class="focus-tools" title="Limit 3D rendering only">
-                <button class="roi-tool mini-btn" data-tool="rect">Rect</button>
-                <button class="roi-tool mini-btn" data-tool="circle">Circle</button>
-                <button id="clearRoiBtn" class="mini-btn">Clear</button>
-              </div>
+              <details id="focusEditor" class="focus-editor">
+                <summary class="mini-btn" title="Edit the 3D focus region">Focus</summary>
+                <div class="focus-popover">
+                  <div class="focus-popover-actions">
+                    <button class="roi-tool mini-btn" data-tool="rect" type="button">Rect</button>
+                    <button class="roi-tool mini-btn" data-tool="circle" type="button">
+                      Circle
+                    </button>
+                    <button id="clearRoiBtn" class="mini-btn" type="button">Clear</button>
+                  </div>
+                  <div id="roiEditor" class="roi-editor" hidden>
+                    <div class="roi-editor-head">
+                      <strong id="roiShapeLabel">Focus</strong><span id="roiUnitLabel">µm</span>
+                    </div>
+                    <div id="roiRectFields" class="roi-two-fields">
+                      <label
+                        ><span>Width</span
+                        ><input id="roiWidth" type="number" min="0" step="any"
+                      /></label>
+                      <label
+                        ><span>Height</span
+                        ><input id="roiHeight" type="number" min="0" step="any"
+                      /></label>
+                    </div>
+                    <div id="roiCircleFields" hidden>
+                      <label class="roi-field"
+                        ><span>Radius</span
+                        ><input id="roiRadius" type="number" min="0" step="any"
+                      /></label>
+                    </div>
+                    <label class="roi-field"
+                      ><span>Reference</span
+                      ><select id="roiAnchorSelect">
+                        <option value="center">Center / origin</option>
+                        <option value="top-left">Top-left</option>
+                        <option value="bottom-left">Bottom-left</option>
+                        <option value="top-right">Top-right</option>
+                        <option value="bottom-right">Bottom-right</option>
+                      </select></label
+                    >
+                    <div class="roi-two-fields">
+                      <label><span>X</span><input id="roiX" type="number" step="any" /></label>
+                      <label><span>Y</span><input id="roiY" type="number" step="any" /></label>
+                    </div>
+                  </div>
+                </div>
+              </details>
               <div class="zoom-tools" title="Mask view zoom">
                 <button id="maskZoomOut" class="mini-btn">−</button>
                 <button id="maskZoomIn" class="mini-btn">+</button>
