@@ -485,8 +485,10 @@ function bindUi(){
     maskTransform={x:xyFromDisplay(Number($('maskOffsetX').value)||0),y:xyFromDisplay(Number($('maskOffsetY').value)||0),scale:Math.max(1e-8,Number($('maskScale').value)||1),rotation:Number($('maskRotation').value)||0};renderMask();
   };
   $('xyUnitSelect').onchange=()=>{
+    const oldUnit=xyUnit(),draftWidth=(Number($('baseWidth').value)||0)*oldUnit.toMicron,draftHeight=(Number($('baseHeight').value)||0)*oldUnit.toMicron;
     xyDisplayUnit=$('xyUnitSelect').value in XY_UNITS?$('xyUnitSelect').value:'um';
-    syncBaseControls();syncTransformInputs();renderMask();renderMain();renderSection();status(`XY display unit: ${xyUnit().label}. Geometry is unchanged.`);
+    $('baseWidth').value=formatXY(draftWidth);$('baseHeight').value=formatXY(draftHeight);$('baseWidthUnit').textContent=xyUnit().label;$('baseHeightUnit').textContent=xyUnit().label;
+    syncTransformInputs();renderAll();status(`XY display unit: ${xyUnit().label}. Geometry is unchanged.`);
   };
 
   document.querySelectorAll('.roi-tool').forEach(b=>b.onclick=()=>{roiTool=b.dataset.tool;roiDraft=null;document.querySelectorAll('.roi-tool').forEach(x=>x.classList.toggle('active',x===b));status('3D focus: drag in Mask to draw the render region.')});
