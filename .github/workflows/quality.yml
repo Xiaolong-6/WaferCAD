@@ -8,7 +8,6 @@ on:
       - "fix/**"
       - "rewrite/**"
       - "merge/**"
-      - "feat/issue-12-mask-focus-editor"
   workflow_dispatch:
 
 permissions:
@@ -31,11 +30,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
-
-      - name: Prettier preview
-        run: |
-          npx prettier --write site/index.html site/roi-editor.js
-          git diff -- site/index.html site/roi-editor.js
 
       - name: Format check
         run: npm run format:check
