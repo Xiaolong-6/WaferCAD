@@ -1,72 +1,138 @@
-# Architecture — v0.3 (modular frontend)
+# Architecture
 
-## Domain vs renderer
+## Scope
 
-The central invariant is:
+WaferCAD is a static browser application. There is no runtime backend, desktop client, or server-side geometry service in the active architecture.
 
-```text
-physical editor state != Three.js scene
-```
+The product is centered on four synchronized views: Mask, 3D, Main, and Section A–B.
 
-The current physical state is 2.5D polygonal geometry in micrometres plus `Three.js` derived views. `displayZ` at `×1` is now true isotropic (`z*waferXYScale()`), higher values are exaggeration.
+## Core geometry
 
-## Components
+The canonical model is a **vector 2.5D region stack**.
 
-### `app.py`
+Each model contains:
 
-Small FastAPI host + GDS adapter + geometry kernel (`gdstk`).
+- a vector base boundary in XY;
+- non-overlapping XY polygon regions;
+- an ordered Z stack for each region;
+- stable layer IDs with editable display name and color.
 
-Endpoints: `/api/gds/inspect` (any cell as active, per-cell breakdown, hierarchy), `/api/geometry/*` (`intersection`, `mask-regions` with `invert` as `S\mask` vs `S∩mask`, `isotropic-offset`, `split-by-mask`, `fill-holes` with bridge removal, `substrate-thickness` via planar partition).
-
-`gdstk` objects are converted immediately to neutral JSON polygons so the rest of the project does not depend on `gdstk` types. Hierarchy is preserved for browsing but the editor still consumes a flattened view of the active cell.
-
-### `static/app.js` + `static/js/*`
-
-`static/app.js` is now a thin orchestrator; domain logic lives in `static/js/` (ES modules, imported via importmap). Split occurred at v0.3 when the single-file vertical slice exceeded maintainability.
-
-- `static/js/core.js` — state plus the revisioned `commitState()` transaction and IndexedDB repository. Structured state and the source layout Blob are stored separately; Web Storage is marker-only and legacy payloads are migrated on restore.
-- `static/js/geometry.js` — `normalizeWafer`, `waferOutline` (circle/rect/custom + `Main flat/Notch` at `-Y` auto-sized per SEMI M1 via `waferFlatLengthMm/waferNotchDepthMm`), `waferBounds/viewAspectBounds/waferXYScale`, `bboxPolys/polygonArea/orient/isSimplePolygon/pointInPoly/centroid/detectBorderOnly/polyBbox/bboxIntersects/isPolyInViewport/linePolyIntervals/lineCircleInterval`.
-- `static/js/geometry-api.js` — thin `fetch` wrappers for clipping, mask composition, offsets, material splits and the exact planar top-surface partition.
-- `static/js/layer-model.js` — `materialColor/validColor/validLayerScale/nextLayerName/ensureLayerVisuals/layerVisual/solidLayerDescriptors/outerLayerPosition/relativeThickness/displayZ/mappedSolidBounds/mappedDopingBounds/mappedCutBounds/substrateVisualHeight/pieceThicknessRange/substrateThicknessRange/layerLegendEntries`. `Physical` uses `z*waferXYScale()*physicalZExag` (state.zExag, 8). `Relative` uses `relativeThickness(t_um)=1+log10(t_um*1000)` (zero→0, MIN 0.25) per complete layer × `relativeZScale` (state.relativeZScale, 1) × per-layer scale, logarithmic between layers and linear within, anchored at the local supporting surface (substrate top or the visual top/bottom of the supporting solid(s) found by footprint overlap at the exact Z). Coplanar different layers at same elevation both start at substrate top; mixed-height pieces of the same layer keep the same visual thickness with offset from their local support. Substrate total height `H=relativeThickness(T)*relativeZScale` is mapped with a front/back-symmetric surface-detail `F(d)=(H/2)·ln(1+d/1µm)/ln(1+(T/2)/1µm)` so 1 µm/2 µm trenches are clearly visible. One source of truth: `computeVisualBoundsForPiece`/`substrateVisualZ`/`mappedCutBounds` feed both Three.js and Cross Section.
-- `static/js/layout-model.js` — `normalizeGds`, `transformPoint` (`scale→mirror→rotate→offset` about layout origin), `effectiveLayerPolygons/transformedLayerPolygon/transformedGdsBounds/patternSelectedLayers/patternRawMaskPolygons/patternHasBlockedBorder`.
-- `static/js/legend-controller.js` — `createLegendController` (figure legend render, `refreshExactThickness` → `POST /api/geometry/substrate-thickness` with `atoms/exact`, edit/delete dialogs, delegated click `z-index 30`).
-- `static/js/svg.js` — `NS/makeSvg/clearSvg`.
-- `static/app.js` — application wiring, dialogs/input adapters, workspace/GDS integration, project/session restore, snapshot-card DOM and high-level refresh/persistence callbacks. Owns the shared top-surface partition and substrate Boolean caches without duplicating them in views; delegates Top display/interaction and wafer/process/snapshot workflows.
-- `static/js/views/top-view.js` — `createTopView` owns SVG projection, scale bar, visible surfaces/selection overlays, physical front/back coordinate mirroring, pan/zoom, A/B handles and coordinate inputs. API: `bind`, `render`, `fitWafer`, `fitLayout`, `destroy`, `diagnostics`. Binding is idempotent; terminal destruction removes owned static/global listeners and pending drag RAF. Surface atoms and cache refresh are injected. Slice callbacks preserve the existing cadence: drag updates Section, release updates Three, explicit coordinates update both and persist. No process mutation, second cache or view-to-view imports.
-- `static/js/controllers/wafer-controller.js` — `createWaferController` owns synchronous validation/normalization, new/replacement wafer state, default slice, active-face selection reset and the device portion of session reset. API: `createWafer`, `flipActiveFace`, `reset`, `initializeSlice`, `diagnostics`. Replacement resets physical geometry/undo/selections/projection, but retains snapshots and imported layout as before. Dialog close/refresh, default section configuration, camera animation and persistence are injected. The existing UI replaces rather than offering a separate non-destructive wafer edit mode; none is invented here.
-- `static/js/controllers/snapshot-controller.js` — synchronous `create`, `activate`, `delete`, `autoSaveActive`, `listSnapshots`, `diagnostics`. Reads live shared snapshot state rather than caching arrays. Injected device/camera/thumbnail callbacks keep DOM, Three internals and persistence outside. Switching auto-saves the previous record, sets the target ID, restores the device (including existing app refresh/persist), then restores camera and cards. Creation does not auto-save the previous record. Deleting the active record points its ID to the last remaining snapshot without restoring geometry; pruning occurs on deletion only, using unchanged snapshot-store reference rules. No rename/duplicate feature is added. QA counters are opt-in and not persisted.
-- `static/js/controllers/process-controller.js` — `createProcessController` owns Push/Pull, conformal/isotropic operations, doping, exact material-depth validation, staged material consumption, process undo and worker cancellation. API: `applyPushPull(options)` (including doping mode), `stop`, `undo`, `recordUndo`, `diagnostics`. UI status/activity, selection clearing, surface-cache invalidation and post-process refresh/persistence are injected callbacks; there are no DOM or view imports. Required asynchronous geometry completes before undo/physical mutation; post-commit QA surface diagnostics are explicitly optional. Generic geometry algorithms remain in their existing modules. `availableMaterialDepth` retains its exact geometry-ID matching and is re-exported by app.js for existing callers.
-- `static/js/views/section-view.js` — owns Cross Section rendering, navigation and controls; independent of the Three view.
-- `static/js/views/three-view.js` — `createThreeView` owns the scene, camera, controls, meshes, resize observer and RAF lifecycle. Uses the existing import map and shared layer-model mapping; never owns physical process state or Boolean computation. `init` is idempotent, `destroy` is terminal and cancels both RAFs, removes its visibility listener, disconnects the observer and disposes owned resources (including axis textures only at destruction). Snapshot controllers use `captureCamera`/`restoreCamera` and `captureImage`; the saved camera schema is unchanged. Module-instance orchestration adds no window globals. Refill bounding boxes remain QA-only.
-- `static/js/project-schema.js` — validates project JSON, rejects future/invalid input and migrates versions 1–8 to v9 (legacy `log`→`relative` with `relativeZScale=1` sensible default, `zLogK` retired, `baseThickness` added, separate `zExag`/`relativeZScale`).
-- `static/js/snapshot-store.js` — content-addresses immutable device geometry and thumbnails; snapshot cards contain references rather than full copies.
-- `static/js/core.js` — revisioned in-memory state and the serialized IndexedDB repository boundary.
-- `static/js/legend-controller.js` — exact-thickness requests are keyed by a geometry revision and discard stale responses.
-
-Previous monolithic `static/app.js` is preserved in git history (`515cd33` and earlier).
-
-Architecture extraction is complete for this scope. App wires independent views/controllers to shared modules; controllers do not import views, views do not import one another, and geometry/model modules do not import app/controllers/views. Remaining shared-state coupling, app-owned derived caches and generic/project UI are intentional boundaries. Surface Texture and the performance backlog remain separate feature work.
-
-## Geometry units
-
-All internal physical coordinates are µm.
-
-For GDS:
+A region is conceptually:
 
 ```text
-raw GDS coordinate × library_unit [m] × 1e6 → µm
+Region
+├─ geom: MultiPolygon in XY
+└─ stack
+   ├─ { layerId, z0, z1 }
+   └─ ...
 ```
 
-Display `Physical ×1` is isotropic (`z*waferXYScale()`). `Relative thickness` is automatic (`relativeThickness` per complete layer × `zExag` × per-layer `scale`), clamped to 0.25. Both are visualization only.
+XY is physical geometry in micrometres. Z is relative.
 
-## Why 2.5D first
+The model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. This is sufficient for the current Add, Grow, Etch, Direct, and Conformal workflows without introducing a full arbitrary-solid B-rep kernel.
 
-Most initial wafer-process geometry can be represented as planar footprints with vertical extent. This gives:
+## Modules
 
-- simple GDS mapping;
-- exact layer-aware top views (with viewport culling);
-- fast cross sections (exact substrate partition for thickness);
-- deterministic snapshots with 3D camera;
-- easy Three.js extrusion (slab + holes).
+### `site/app.js`
 
-It is not intended to solve arbitrary free-form 3D CAD. When stacked Boolean exceeds the 2.5D slab model, evaluate a mature BRep kernel before expanding ad-hoc logic.
+Owns application state, UI orchestration, viewport interaction, undo/redo, project persistence, and synchronization between the four views.
+
+### `site/model.js`
+
+Owns the region-stack model and geometry semantics:
+
+- base creation;
+- stable layer IDs;
+- Add;
+- Grow;
+- Etch;
+- Direct/Conformal behavior;
+- front/back surface access;
+- layer rename/color metadata.
+
+### `site/vector-geometry.js`
+
+Owns polygon operations:
+
+- union;
+- intersection;
+- difference;
+- buffer;
+- point-in-polygon;
+- line/polygon intersection intervals;
+- basic vector primitives.
+
+Polygon Boolean operations are provided by the vendored `polygon-clipping` library.
+
+### `site/gds.js`
+
+Parses GDSII directly in the browser:
+
+- cell hierarchy;
+- SREF/AREF;
+- layer/datatype;
+- boundaries;
+- width-bearing paths;
+- magnification/rotation/reflection;
+- GDS `UNITS`.
+
+Coordinates and widths are converted from database units to micrometres on import.
+
+## Cells and Layers
+
+Cells and Layers are deliberately decoupled.
+
+The cell tree represents hierarchy and defines the active subtree. The Layers list is global across the imported layout and contains unique `layer/datatype` pairs.
+
+An operable mask is the union of selected global layers that occur inside the active cell/subtree.
+
+Zero-width linework is not promoted to mask area.
+
+## Operation areas
+
+Every operation receives one vector area:
+
+- **Selected mask** — selected mask geometry clipped to the base;
+- **Invert mask** — base minus selected mask;
+- **Whole face** — full base boundary.
+
+The operation engine does not infer these from the view.
+
+## Direct and Conformal
+
+Direct growth preserves the selected XY footprint.
+
+Conformal growth expands the selected footprint by the requested relative thickness and applies a sidewall band to adjacent exposed regions. This remains a geometric approximation suitable for the current vertical-stack model.
+
+Etch performs vertical subtraction and does not accept a growth mode.
+
+## Views
+
+### Mask
+
+Renders imported vector layout over the base. View zoom/pan never changes mask geometry or alignment scale.
+
+### Main
+
+Renders top/bottom surface patches directly from region polygons. Step boundaries come from exact region geometry.
+
+### 3D
+
+Extrudes vector polygons between each segment's `z0` and `z1`. The optional focus region clips rendering only; it does not change the model.
+
+### Section A–B
+
+Intersects the A–B line with every region polygon, then draws each region stack over the resulting line intervals.
+
+## Units
+
+- XY: µm
+- Z: relative
+
+The two systems are intentionally independent.
+
+## Persistence
+
+Projects are JSON files with format identifier `WaferCAD-vector`.
+
+The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, and view state.

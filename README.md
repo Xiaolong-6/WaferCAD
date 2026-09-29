@@ -1,35 +1,68 @@
-# WaferCAD v2 preview
+# WaferCAD
 
-WaferCAD is a browser-only vector 2.5D geometry editor for mask-driven structure construction.
+WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-driven layered structures.
 
-The live v2 application is in `site/` and is deployed to GitHub Pages. It uses four synchronized views:
+The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
-- **Mask** — browser-side GDSII hierarchy browsing with global layer/datatype selection and a 3D-only focus region.
-- **3D** — vector extrusion of the current structure, optionally clipped to the focus region.
-- **Main view** — front/back vector surface map with an editable A–B section line.
-- **Section A–B** — exact line/polygon cross-section from the same vector region-stack model.
+- **Mask** — GDSII hierarchy, global layer/datatype selection, alignment, and a render-only 3D focus region.
+- **3D** — vector extrusion of the current structure with an editable layer legend.
+- **Main** — front/back surface view with XY axes and an editable A–B section line.
+- **Section A–B** — cross-section generated from the same vector geometry model.
 
-The geometry kernel stores non-overlapping XY polygon regions with Z stacks. The XY model is not rasterized. Rectangle and circular bases, front/back operations, Selected / Invert / Whole-face areas, Add new layer, Grow current layer, vertical Etch/Subtract, and Direct / Conformal growth are supported. Thickness values are relative rather than tied to a physical unit.
+## Geometry model
 
-Each structure layer has a stable internal ID plus user-editable name and color. The 3D legend is the layer-management surface; renaming or recoloring a layer updates all synchronized views without changing geometry references.
+XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Add, Grow, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
 
-GDSII is parsed directly in the browser. Filled boundaries and width-bearing paths are operable; zero-width linework is not. Cells are shown hierarchically, while Layers is a global unique `layer/datatype` list. OASIS is not supported in this preview.
+- **XY** uses physical micrometre coordinates. Imported GDSII database units are converted from the file's `UNITS` record.
+- **Z** is intentionally relative. Thickness and Z values are not assigned a physical unit.
+- Layers use stable internal IDs. Their visible names and colors can be edited from the 3D legend without changing geometry references.
 
-Base changes are reversible. If the current structure already contains operations, rebuilding the base requires confirmation and can be restored with Revert or Undo.
+## Mask model
 
-## Legacy implementation
+Cells and Layers are separate concepts:
 
-The pre-v2 FastAPI/gdstk application and its documentation remain in the repository only as implementation/history reference. New v2 development should not preserve its API or architecture unless a concept is independently useful.
+- **Cells** follows the GDS hierarchy.
+- **Layers** is a global unique `layer/datatype` list.
+- Selecting a cell defines the active hierarchy scope.
+- Layers that do not exist in the active cell/subtree remain visible but are visually de-emphasized.
+- Zero-width linework may be displayed but is not treated as an operable mask area.
+
+## Operations
+
+Operations can target the front or back face and use one of three areas:
+
+- Selected mask
+- Invert mask
+- Whole face
+
+Available actions:
+
+- Add new layer
+- Grow current layer
+- Etch / subtract
+
+Add and Grow support Direct and Conformal modes. Etch is vertical subtraction and has no growth mode.
+
+## Safety
+
+Rebuilding the base is treated as a reversible operation. If a processed structure already exists, WaferCAD asks for confirmation. The previous structure can be restored with Revert or Undo.
+
+## Repository layout
+
+- `site/` — deployed browser application
+- `docs/` — current architecture, usage, and development documentation
+- `legacy/` — archived pre-rewrite implementation and documentation; not used by the current application
+- `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Local preview
-
-Serve the `site/` directory with any static HTTP server, for example:
 
 ```bash
 python -m http.server 8000 --directory site
 ```
 
-Run the geometry smoke tests with:
+Then open `http://localhost:8000`.
+
+Run the dependency-free geometry smoke test with:
 
 ```bash
 node site/selftest.mjs
