@@ -611,10 +611,84 @@ button:hover,
   border-color: var(--line);
   background: #f7f9fa;
 }
-.focus-tools .roi-tool.active {
+.focus-tools .roi-tool.active,
+.focus-popover-actions .roi-tool.active {
   border-color: #aebbc9;
   background: var(--accent-soft);
   color: var(--accent-dark);
+}
+.focus-editor {
+  position: relative;
+}
+.focus-editor > summary {
+  display: flex;
+  align-items: center;
+  height: 21px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.focus-editor > summary::-webkit-details-marker {
+  display: none;
+}
+.focus-editor[open] > summary {
+  border-color: #aebbc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+.focus-popover {
+  position: absolute;
+  z-index: 7;
+  top: 25px;
+  right: 0;
+  width: 228px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(42, 53, 64, 0.12);
+}
+.focus-popover-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.roi-editor {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line2);
+}
+.roi-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: #5f6b77;
+  font-size: 9px;
+}
+.roi-editor-head strong {
+  color: #46515d;
+  font-size: 9.5px;
+}
+.roi-two-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.roi-field,
+.roi-two-fields label {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 4px;
+  color: #65717d;
+  font-size: 9px;
+}
+.roi-editor input,
+.roi-editor select {
+  min-width: 0;
+  height: 23px;
+  padding: 2px 4px;
+  font-size: 9.5px;
 }
 .three-opacity-control {
   position: relative;
@@ -825,6 +899,21 @@ canvas {
   padding: 0 8px;
   color: #697582;
   font-size: 9.5px;
+}
+.status-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.statusbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.statusbar a:hover,
+.statusbar a:focus-visible {
+  color: #3f4d5a;
+  text-decoration: underline;
 }
 
 @media (max-width: 1120px) {
@@ -1118,5 +1207,13 @@ canvas {
   .mini-btn {
     padding-left: 4px;
     padding-right: 4px;
+  }
+
+  .focus-popover {
+    width: 150px;
+  }
+
+  .roi-two-fields {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
