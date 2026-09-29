@@ -228,9 +228,14 @@ export function flattenGDS(parsed, rootName) {
   }
 
   function visit(name, matrix, stack = []) {
-    if (stack.includes(name) || stack.length > 32) return;
+    if (stack.includes(name)) {
+      throw new Error(`Recursive GDS/OASIS hierarchy detected at cell "${name}".`);
+    }
+    if (stack.length > 32) {
+      throw new Error('Layout hierarchy exceeds the safe depth limit of 32 references.');
+    }
     const cell = parsed.cells.get(name);
-    if (!cell) return;
+    if (!cell) throw new Error(`Referenced layout cell "${name}" is missing.`);
     consumeBudget();
     for (const e of cell.elements) {
       if (e.kind === 'polygon') {
