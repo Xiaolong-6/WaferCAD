@@ -8,6 +8,7 @@ on:
       - "fix/**"
       - "rewrite/**"
       - "merge/**"
+      - "feat/issue-10-exposed-layer-delete"
   workflow_dispatch:
 
 permissions:
