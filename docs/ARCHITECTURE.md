@@ -64,6 +64,14 @@ Owns polygon operations:
 
 Polygon Boolean operations are provided by the vendored `polygon-clipping` library.
 
+### `site/units.js`
+
+Owns the canonical XY display-unit conversions. Internal XY remains µm; nm/µm/mm changes are presentation/input conversions only.
+
+### `site/workspace-snapshots.js`
+
+Owns named immutable workspace checkpoints independently of the DOM and renderers. It receives capture/restore callbacks from `app.js`, so snapshot storage does not duplicate editor logic. Snapshots have timestamp defaults, can be renamed/restored/deleted, and intentionally contain no thumbnails.
+
 ### `site/gds.js`
 
 Parses GDSII directly in the browser:
@@ -136,7 +144,7 @@ Changing the global XY display unit never rescales geometry. Base dimensions, al
 
 Projects are JSON files with format identifier `WaferCAD-vector`.
 
-The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, view state, XY display unit, and structure palette preference.
+The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, view state, XY display unit, structure palette preference, and named snapshots. Snapshot state never recursively contains the snapshot list.
 
 ## Project-file boundary
 
@@ -151,6 +159,7 @@ Validation includes:
 - ordered, non-overlapping Z stack segments with `z1 > z0`;
 - layout elements, bounds, layer combinations, and hierarchy;
 - mask transform, active face, ROI, A–B section, plan views, and display settings;
-- conservative limits on file size and collection sizes.
+- conservative limits on file size and collection sizes;
+- named snapshot records, including non-recursive validated workspace state.
 
 This is a trust boundary: renderers and operation code may assume an opened project has passed these checks.
