@@ -1,13 +1,13 @@
 export const GRID_N=96;
-export const COLORS=['#6b5ca5','#278a90','#b06a4e','#4f7cac','#8d6f4f','#8f5f8b','#5b8a63','#b08b3e','#526f8f','#9a5b63'];
+export const COLORS=['#6f6a8f','#557f83','#8a6f68','#667f99','#847760','#7c687b','#657b68','#8b7d58','#60768a','#85696d'];
 
-export function createModel({shape='rect',width=100,height=80,thickness=12}={}){
+export function createModel({shape='circle',width=100,height=100,thickness=12}={}){
   const cols=GRID_N,rows=GRID_N,dx=width/cols,dy=height/rows,columns=new Array(cols*rows);
   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
     const x=-width/2+(i+.5)*dx,y=-height/2+(j+.5)*dy,inside=shape==='circle'?((x/(width/2))**2+(y/(height/2))**2<=1):true;
-    columns[j*cols+i]=inside?[{name:'Base',z0:-thickness/2,z1:thickness/2,color:'#aab3bd'}]:[];
+    columns[j*cols+i]=inside?[{name:'Base',z0:-thickness/2,z1:thickness/2,color:'#b7bdc5'}]:[];
   }
-  return {shape,width,height,thickness,cols,rows,dx,dy,columns,layers:[{name:'Base',color:'#aab3bd'}],revision:1};
+  return {shape,width,height,thickness,cols,rows,dx,dy,columns,layers:[{name:'Base',color:'#b7bdc5'}],revision:1};
 }
 export function cloneModel(m){return structuredClone(m)}
 export function cellCenter(m,i,j){return [-m.width/2+(i+.5)*m.dx,-m.height/2+(j+.5)*m.dy]}
