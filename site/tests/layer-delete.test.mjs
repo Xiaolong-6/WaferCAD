@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { createLayer, createModel, deleteExposedLayer, isLayerExposed } from '../model.js';
+const vendorSource = readFileSync(
+  new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
+const commonJsModule = { exports: {} };
+new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
+globalThis.polygonClipping = commonJsModule.exports;
+
+const { createLayer, createModel, deleteExposedLayer, isLayerExposed } =
+  await import('../model.js');
 
 test('only layers exposed at a stack boundary can be deleted', () => {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 10 });
