@@ -30,17 +30,31 @@ function uniqueLibraryRoot(parsed) {
   return parsed;
 }
 
+function isGzip(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  return bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+}
+
+async function gunzip(arrayBuffer) {
+  if (typeof DecompressionStream !== 'function') {
+    throw new Error('Gzip-compressed layouts are not supported by this browser.');
+  }
+  const stream = new Blob([arrayBuffer]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Response(stream).arrayBuffer();
+}
+
 export async function parseLayoutFile(arrayBuffer, filename = '') {
-  const oasisByMagic = isOASIS(arrayBuffer);
-  const oasisByName = /\.(?:oas|oasis)$/i.test(filename);
+  const sourceBuffer = isGzip(arrayBuffer) ? await gunzip(arrayBuffer) : arrayBuffer;
+  const oasisByMagic = isOASIS(sourceBuffer);
+  const oasisByName = /\.(?:oas|oasis)(?:\.gz)?$/i.test(filename);
 
   let parsed;
   let format;
   if (oasisByMagic || oasisByName) {
-    parsed = await parseOAS(arrayBuffer);
+    parsed = await parseOAS(sourceBuffer);
     format = 'OASIS';
   } else {
-    parsed = parseGDS(arrayBuffer);
+    parsed = parseGDS(sourceBuffer);
     format = 'GDSII';
   }
 
