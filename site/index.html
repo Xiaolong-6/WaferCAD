@@ -39,9 +39,9 @@
             <button data-shape="circle" class="active">Circle</button>
           </div>
           <div class="three-fields">
-            <label><span>W</span><input id="baseWidth" type="number" value="100" min="4" step="1"></label>
-            <label><span>H</span><input id="baseHeight" type="number" value="100" min="4" step="1" disabled></label>
-            <label><span>T</span><input id="baseThickness" type="number" value="12" min="0.2" step="0.2"></label>
+            <label><span>W µm</span><input id="baseWidth" type="number" value="100" min="4" step="1"></label>
+            <label><span>H µm</span><input id="baseHeight" type="number" value="100" min="4" step="1" disabled></label>
+            <label><span>Z rel.</span><input id="baseThickness" type="number" value="12" min="0.2" step="0.2"></label>
           </div>
           <div class="button-row base-actions">
             <button id="applyBaseBtn">Apply base</button>
@@ -101,7 +101,7 @@
           <option value="direct">Direct</option>
           <option value="conformal">Conformal</option>
         </select></label>
-        <label class="field-row"><span>Thickness</span><input id="operationThickness" type="number" value="3" min="0.1" step="0.1"></label>
+        <label class="field-row"><span>Z Δ</span><input id="operationThickness" type="number" value="3" min="0.1" step="0.1"></label>
         <button id="applyOperationBtn" class="primary wide apply-btn">Apply</button>
         <p id="operationNote" class="hint compact-hint">Direct footprint · Conformal includes sidewalls.</p>
       </section>
