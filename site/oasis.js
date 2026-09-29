@@ -234,6 +234,16 @@ function requireModal(value, name) {
   return value;
 }
 
+function validateNameString(value) {
+  if (!value.length) throw new Error('Invalid OASIS n-string.');
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    const lower = index === 0 ? 0x21 : 0x20;
+    if (code < lower || code > 0x7e) throw new Error('Invalid OASIS n-string.');
+  }
+  return value;
+}
+
 function decodeSigned(raw) {
   const magnitude = Math.floor(raw / 2);
   return raw % 2 ? -magnitude : magnitude;
@@ -605,7 +615,12 @@ export async function parseOAS(arrayBuffer) {
   reader.take(MAGIC_BYTES.length);
 
   const cellNames = new Map();
+  const textStrings = new Map();
+  const referencedCellNameIds = new Set();
+  const referencedTextStringIds = new Set();
   const cellsInOrder = [];
+  let cellNameMode = null;
+  let textStringMode = null;
   let currentCell = null;
   let modal = newModal();
   let unit = null;
@@ -657,13 +672,30 @@ export async function parseOAS(arrayBuffer) {
         }
 
         if (id === 3 || id === 4) {
-          const name = input.string();
+          const mode = id === 3 ? 'implicit' : 'explicit';
+          if (cellNameMode && cellNameMode !== mode) {
+            throw new Error('Explicit and implicit CELLNAME modes cannot be mixed.');
+          }
+          cellNameMode = mode;
+          const name = validateNameString(input.string());
           const ref = id === 3 ? cellNames.size : input.uint();
           cellNames.set(ref, name);
           continue;
         }
 
-        if (id >= 5 && id <= 10) {
+        if (id === 5 || id === 6) {
+          const mode = id === 5 ? 'implicit' : 'explicit';
+          if (textStringMode && textStringMode !== mode) {
+            throw new Error('Explicit and implicit TEXTSTRING modes cannot be mixed.');
+          }
+          textStringMode = mode;
+          const value = input.string();
+          const ref = id === 5 ? textStrings.size : input.uint();
+          textStrings.set(ref, value);
+          continue;
+        }
+
+        if (id >= 7 && id <= 10) {
           input.string();
           if (id % 2 === 0) input.uint();
           continue;
@@ -677,12 +709,14 @@ export async function parseOAS(arrayBuffer) {
         }
 
         if (id === 13) {
-          beginCell('', input.uint());
+          const ref = input.uint();
+          referencedCellNameIds.add(ref);
+          beginCell('', ref);
           continue;
         }
 
         if (id === 14) {
-          beginCell(input.string());
+          beginCell(validateNameString(input.string()));
           continue;
         }
 
@@ -703,9 +737,10 @@ export async function parseOAS(arrayBuffer) {
           if (info & 0x80) {
             if (info & 0x40) {
               modal.placementCellRef = input.uint();
+              referencedCellNameIds.add(modal.placementCellRef);
               modal.placementCellName = null;
             } else {
-              modal.placementCellName = input.string();
+              modal.placementCellName = validateNameString(input.string());
               modal.placementCellRef = null;
             }
           }
@@ -755,13 +790,23 @@ export async function parseOAS(arrayBuffer) {
           requireCell(id);
           const info = input.byte();
           if (info & 0x40) {
-            modal.textString = info & 0x20 ? { ref: input.uint() } : input.string();
+            if (info & 0x20) {
+              const ref = input.uint();
+              referencedTextStringIds.add(ref);
+              modal.textString = { ref };
+            } else {
+              modal.textString = input.string();
+            }
           }
           if (info & 0x01) modal.textLayer = input.uint();
           if (info & 0x02) modal.textType = input.uint();
           if (info & 0x10) updateCoord(modal, 'textX', input.sint());
           if (info & 0x08) updateCoord(modal, 'textY', input.sint());
           if (info & 0x04) modal.repetition = readRepetition(input, modal.repetition);
+
+          requireModal(modal.textString, 'text-string');
+          requireModal(modal.textLayer, 'textlayer');
+          requireModal(modal.textType, 'texttype');
           continue;
         }
 
@@ -960,9 +1005,11 @@ export async function parseOAS(arrayBuffer) {
           const layer = requireModal(modal.layer, 'layer');
           const datatype = requireModal(modal.datatype, 'datatype');
           const scale = 1 / requireModal(unit, 'unit');
-          const width = requireModal(modal.width, 'width');
-          const height = requireModal(modal.height, 'height');
           const type = requireModal(modal.ctrapezoidType, 'ctrapezoid-type');
+          const needsWidth = type <= 19 || type >= 24;
+          const needsHeight = type <= 15 || (type >= 20 && type <= 24);
+          const width = needsWidth ? requireModal(modal.width, 'width') : 0;
+          const height = needsHeight ? requireModal(modal.height, 'height') : 0;
           const localPoints = ctrapezoidPoints(type, width, height);
           modal.width = Math.max(...localPoints.map(([x]) => x), 0);
           modal.height = Math.max(...localPoints.map(([, y]) => y), 0);
@@ -1092,6 +1139,13 @@ export async function parseOAS(arrayBuffer) {
 
   await parseRecords(reader);
   if (unit == null) throw new Error('OASIS START record was not found.');
+
+  for (const ref of referencedCellNameIds) {
+    if (!cellNames.has(ref)) throw new Error('No cell name defined for OASIS cell id ' + ref + '.');
+  }
+  for (const ref of referencedTextStringIds) {
+    if (!textStrings.has(ref)) throw new Error('No text string defined for OASIS id ' + ref + '.');
+  }
 
   for (const cell of cellsInOrder) {
     if (!cell.name) cell.name = cellNames.get(cell.nameRef) || 'CELL_' + cell.nameRef;
