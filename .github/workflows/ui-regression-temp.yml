@@ -26,6 +26,11 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.55.0
           npx playwright install --with-deps chromium
 
+      - name: Format smoke script
+        run: |
+          npx prettier --write scripts/ui-regression-smoke.mjs
+          git diff -- scripts/ui-regression-smoke.mjs
+
       - name: Start WaferCAD
         run: |
           python3 -m http.server 4173 --directory site > /tmp/wafercad-http.log 2>&1 &
