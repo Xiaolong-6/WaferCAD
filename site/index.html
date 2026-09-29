@@ -24,6 +24,12 @@
       <label class="button toolbar-btn">Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden></label>
       <button id="saveProjectBtn" class="toolbar-btn">Save</button>
       <span class="toolbar-separator"></span>
+      <label class="unit-control" title="Display unit only. Geometry is stored internally in µm."><span>XY</span><select id="xyUnitSelect" aria-label="XY display unit">
+        <option value="nm">nm</option>
+        <option value="um" selected>µm</option>
+        <option value="mm">mm</option>
+      </select></label>
+      <span class="toolbar-separator"></span>
       <button id="undoBtn" class="toolbar-btn" disabled>Undo</button>
       <button id="redoBtn" class="toolbar-btn" disabled>Redo</button>
     </nav>
@@ -32,15 +38,15 @@
   <div class="app-shell">
     <aside class="sidebar">
       <details class="control-section sidebar-group">
-        <summary class="section-head"><span>Base</span><span id="baseSummary" class="muted">100 × 100 × 12</span></summary>
+        <summary class="section-head"><span>Base</span><span id="baseSummary" class="muted">100000 × 100000 µm · Z 12 rel.</span></summary>
         <div class="control-body">
           <div class="segmented" id="substrateShape">
             <button data-shape="rect">Rectangle</button>
             <button data-shape="circle" class="active">Circle</button>
           </div>
           <div class="three-fields">
-            <label><span>W µm</span><input id="baseWidth" type="number" value="100" min="4" step="1"></label>
-            <label><span>H µm</span><input id="baseHeight" type="number" value="100" min="4" step="1" disabled></label>
+            <label><span>W <b id="baseWidthUnit">µm</b></span><input id="baseWidth" type="number" value="100000" min="0" step="any"></label>
+            <label><span>H <b id="baseHeightUnit">µm</b></span><input id="baseHeight" type="number" value="100000" min="0" step="any" disabled></label>
             <label><span>Z rel.</span><input id="baseThickness" type="number" value="12" min="0.2" step="0.2"></label>
           </div>
           <div class="button-row base-actions">
@@ -70,8 +76,8 @@
           <details class="subgroup">
             <summary>Advanced · alignment</summary>
             <div class="four-fields">
-              <label><span>X</span><input id="maskOffsetX" type="number" value="0" step="1"></label>
-              <label><span>Y</span><input id="maskOffsetY" type="number" value="0" step="1"></label>
+              <label><span>X <b id="maskOffsetXUnit">µm</b></span><input id="maskOffsetX" type="number" value="0" step="any"></label>
+              <label><span>Y <b id="maskOffsetYUnit">µm</b></span><input id="maskOffsetY" type="number" value="0" step="any"></label>
               <label><span>S</span><input id="maskScale" type="number" value="1" step="0.05"></label>
               <label><span>R°</span><input id="maskRotation" type="number" value="0" step="1"></label>
             </div>
