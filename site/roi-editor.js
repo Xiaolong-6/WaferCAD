@@ -133,3 +133,62 @@ export function roiContainsPoint(roi, point) {
   if (shape.type === 'circle') return Math.hypot(x - shape.c[0], y - shape.c[1]) <= shape.r;
   return x >= shape.a[0] && x <= shape.b[0] && y >= shape.a[1] && y <= shape.b[1];
 }
+
+
+export function roiHandlePoints(roi) {
+  const shape = normalizeRoi(roi);
+  if (!shape) return {};
+  if (shape.type === 'circle') {
+    const [cx, cy] = shape.c;
+    const r = shape.r;
+    return {
+      'top-left': [cx - r, cy + r],
+      'top-right': [cx + r, cy + r],
+      'bottom-left': [cx - r, cy - r],
+      'bottom-right': [cx + r, cy - r],
+    };
+  }
+  return {
+    'top-left': [shape.a[0], shape.b[1]],
+    'top-right': [shape.b[0], shape.b[1]],
+    'bottom-left': [shape.a[0], shape.a[1]],
+    'bottom-right': [shape.b[0], shape.a[1]],
+  };
+}
+
+export function resizeRoiFromHandle(roi, handle, point) {
+  const shape = normalizeRoi(roi);
+  if (!shape || !Array.isArray(point) || !finitePoint(Number(point[0]), Number(point[1])))
+    return shape;
+
+  const opposite = {
+    'top-left': 'bottom-right',
+    'top-right': 'bottom-left',
+    'bottom-left': 'top-right',
+    'bottom-right': 'top-left',
+  }[handle];
+  if (!opposite) return shape;
+
+  const fixed = roiHandlePoints(shape)[opposite];
+  if (!fixed) return shape;
+
+  const px = Number(point[0]);
+  const py = Number(point[1]);
+
+  if (shape.type === 'rect') {
+    if (Math.abs(px - fixed[0]) <= 1e-12 || Math.abs(py - fixed[1]) <= 1e-12) return shape;
+    return normalizeRoi({ type: 'rect', a: fixed, b: [px, py] });
+  }
+
+  const side = Math.max(Math.abs(px - fixed[0]), Math.abs(py - fixed[1]));
+  if (!(side > 1e-12)) return shape;
+
+  const signX = handle.includes('left') ? -1 : 1;
+  const signY = handle.includes('top') ? 1 : -1;
+  const dragged = [fixed[0] + signX * side, fixed[1] + signY * side];
+  return {
+    type: 'circle',
+    c: [(fixed[0] + dragged[0]) / 2, (fixed[1] + dragged[1]) / 2],
+    r: side / 2,
+  };
+}
