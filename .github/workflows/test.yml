@@ -6,6 +6,12 @@ on:
       - 'site/**'
       - '.github/workflows/test.yml'
       - '.github/workflows/pages.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/test.yml'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -21,6 +27,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - name: Check application module syntax
+        run: node --check site/app.js
       - name: Run existing vector self-test
         run: node site/selftest.mjs
       - name: Run regression tests
