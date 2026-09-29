@@ -449,7 +449,7 @@ function applyOp(){
   const params={type,name,targetLayerId,thickness,face:activeFace,area};if(type!=='etch')params.growth=$('growthMode').value;
   const result=applyOperation(model,params);
   if(!result.changed){restoreSnapshot(history.pop());syncUndo();return status(result.error||'The operation did not change the model.')}
-  if(type==='add')$('layerName').value=`Layer ${model.layers.length}`;
+  if(type==='add'&&result.layerId){const layers=model.layers.filter(layer=>layer.id!=='base'),idx=layers.findIndex(layer=>layer.id===result.layerId),palette=structurePalette();if(idx>=0)recolorLayer(model,result.layerId,palette[idx%palette.length]);$('layerName').value=`Layer ${model.layers.length}`;}
   renderAll();status(`${type==='etch'?'Etched':type==='grow'?`Grew ${layerById(model,targetLayerId)?.name||'layer'}`:`Added ${name}`} on the ${activeFace}.`);
 }
 
