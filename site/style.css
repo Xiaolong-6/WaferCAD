@@ -823,7 +823,63 @@ canvas {
 }
 
 #mainPanel {
+  position: relative;
   grid-area: main;
+}
+
+.section-coords-panel {
+  position: absolute;
+  z-index: 3;
+  top: 34px;
+  right: 6px;
+  width: 188px;
+  padding: 5px 6px 6px;
+  border: 1px solid rgba(142, 154, 166, 0.55);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(3px);
+}
+
+.section-coords-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  color: #5f6b77;
+  font-size: 9px;
+}
+
+.section-coords-head strong {
+  color: #46515d;
+  font-size: 9.5px;
+}
+
+.section-coords-grid {
+  display: grid;
+  grid-template-columns: 14px repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 3px;
+  color: #687481;
+  font-size: 8.5px;
+  text-align: center;
+}
+
+.section-coords-grid input {
+  min-width: 0;
+  height: 21px;
+  padding: 2px 4px;
+  font-size: 9px;
+  text-align: right;
+}
+
+#sectionEditBtn.active {
+  border-color: #aebbc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+#mainCanvas.section-editing {
+  cursor: crosshair;
 }
 
 #maskPanel {
