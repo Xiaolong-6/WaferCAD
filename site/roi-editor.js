@@ -57,10 +57,7 @@ export function rectRoiFromAnchor(width, height, anchor, x, y) {
   y = Number(y);
   if (!(width > 0) || !(height > 0) || !finitePoint(x, y)) return null;
   const key = validAnchor(anchor);
-  let x0,
-    x1,
-    y0,
-    y1;
+  let x0, x1, y0, y1;
   if (key === 'top-left') {
     x0 = x;
     x1 = x + width;
@@ -119,8 +116,7 @@ export function translateRoi(roi, dx, dy) {
   dx = Number(dx);
   dy = Number(dy);
   if (!shape || !finitePoint(dx, dy)) return shape;
-  if (shape.type === 'circle')
-    return { ...shape, c: [shape.c[0] + dx, shape.c[1] + dy] };
+  if (shape.type === 'circle') return { ...shape, c: [shape.c[0] + dx, shape.c[1] + dy] };
   return {
     ...shape,
     a: [shape.a[0] + dx, shape.a[1] + dy],
@@ -134,7 +130,6 @@ export function roiContainsPoint(roi, point) {
   const x = Number(point[0]),
     y = Number(point[1]);
   if (!finitePoint(x, y)) return false;
-  if (shape.type === 'circle')
-    return Math.hypot(x - shape.c[0], y - shape.c[1]) <= shape.r;
+  if (shape.type === 'circle') return Math.hypot(x - shape.c[0], y - shape.c[1]) <= shape.r;
   return x >= shape.a[0] && x <= shape.b[0] && y >= shape.a[1] && y <= shape.b[1];
 }
