@@ -83,6 +83,7 @@ await page.waitForFunction(
   null,
   { timeout: 30000 },
 );
+await page.locator('[data-tool-tab="mask"]').click();
 
 const allFiles = (await walk(root)).sort();
 const files = allFiles.filter((file) => coreDirs.has(relativeFile(file).split('/')[0]));
@@ -175,6 +176,7 @@ for (const sample of sampleOptions) {
 
 let operation = { status: 'pass', error: null };
 try {
+  await page.locator('[data-tool-tab="mask"]').click();
   await markPending(page);
   await page.locator('#sampleMaskSelect').selectOption('oas-rectangles');
   await waitForImport(page);
