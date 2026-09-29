@@ -147,7 +147,6 @@ test('project serializer enforces the same size ceiling used by Open', () => {
   assert.doesNotThrow(() => serializeProject(validProject(), 64 * 1024 * 1024));
 });
 
-
 test('project validator rejects regions outside the declared base boundary', () => {
   const source = validProject();
   source.model.regions[0].geom[0][0] = source.model.regions[0].geom[0][0].map(([x, y]) => [
