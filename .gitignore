@@ -7,7 +7,7 @@ Thumbs.db
 *.tmp
 *.log
 
-# Optional local tooling
+# Local development tooling
 node_modules/
 .venv/
 __pycache__/
