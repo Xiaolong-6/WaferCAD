@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light">
   <title>WaferCAD</title>
   <link rel="stylesheet" href="./style.css">
+  <script src="./vendor/polygon-clipping.umd.js"></script>
   <script type="importmap">
   {
     "imports": {
@@ -105,10 +106,6 @@
         <p id="operationNote" class="hint compact-hint">Direct footprint · Conformal includes sidewalls.</p>
       </section>
 
-      <details class="control-section sidebar-group">
-        <summary class="section-head"><span>Structure</span><span id="structureCount" class="muted"></span></summary>
-        <div class="control-body"><div id="structureList" class="structure-list"></div></div>
-      </details>
     </aside>
 
     <main class="workspace">
@@ -135,7 +132,7 @@
 
       <section class="view-panel" id="threePanel">
         <div class="view-head"><div><strong>3D</strong><span id="threeStats"></span></div><button id="fit3dBtn" class="mini-btn">Fit</button></div>
-        <div id="threeHost"></div>
+        <div id="threeHost"><div id="threeLegend" class="three-legend"></div></div>
       </section>
 
       <section class="view-panel" id="mainPanel">
