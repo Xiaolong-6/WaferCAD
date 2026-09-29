@@ -14,13 +14,28 @@ python -m http.server 8000 --directory site
 
 Open `http://localhost:8000`.
 
-## Geometry smoke test
+## Development checks
+
+Install the development-only tooling:
 
 ```bash
-node site/selftest.mjs
+npm install
 ```
 
-The smoke test covers the vector geometry contracts for Add, Grow, Etch, Conformal growth, Invert geometry, layer metadata editing, circular boundaries, and mask linework filtering.
+Run the full check:
+
+```bash
+npm run check
+```
+
+Available commands:
+
+- `npm run lint` — ESLint over the active JavaScript only; `legacy/` and vendored code are excluded.
+- `npm run format` — Prettier rewrite for the active application and current documentation.
+- `npm run format:check` — CI formatting gate for new/refactored project-IO/schema code and current docs.
+- `npm test` — dependency-free geometry, GDS-unit, and project-schema smoke tests.
+
+The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced.
 
 ## Deployment
 
@@ -48,3 +63,10 @@ There is no build step.
 ## Legacy code
 
 Everything under `legacy/` is archival reference. It is not part of the deployment or active test surface. Do not reintroduce legacy APIs merely for compatibility.
+
+
+## Source style
+
+Prettier 3.9.9 and ESLint 10.11.0 are development dependencies. New code should not add multi-statement compressed handlers. Large event handlers should be moved into named functions or focused modules instead of continuing the earlier single-file compression style.
+
+The formatter ignores `legacy/` and `site/vendor/`. Vendored code must not be reformatted locally.
