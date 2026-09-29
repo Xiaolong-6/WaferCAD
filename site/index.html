@@ -68,12 +68,15 @@
       </details>
 
       <details class="control-section sidebar-group">
-        <summary class="section-head"><span>3D focus</span><button id="clearRoiBtn" class="link-btn" type="button">Clear</button></summary>
+        <summary class="section-head"><span>3D focus</span><span class="muted">render only</span></summary>
         <div class="control-body" title="Draw in the Mask view. The focus region limits 3D rendering only; model geometry remains complete.">
-          <div class="tool-grid">
-            <button class="roi-tool" data-tool="rect">Rect</button>
-            <button class="roi-tool" data-tool="circle">Circle</button>
-            <button class="roi-tool" data-tool="polygon">Polygon</button>
+          <div class="focus-actions">
+            <div class="tool-grid">
+              <button class="roi-tool" data-tool="rect">Rect</button>
+              <button class="roi-tool" data-tool="circle">Circle</button>
+              <button class="roi-tool" data-tool="polygon">Polygon</button>
+            </div>
+            <button id="clearRoiBtn" class="link-btn" type="button">Clear</button>
           </div>
           <p id="roiHint" class="hint compact-hint">Draw in Mask view · display only</p>
         </div>
