@@ -6,7 +6,7 @@
     "test": "node site/selftest.mjs",
     "lint": "eslint site/*.js site/*.mjs",
     "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"docs/**/*.md\" \"*.md\" \"*.json\" \"*.yml\"",
-    "format:check": "prettier --check \"site/project-*.js\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\" \"docs/**/*.md\" \"README.md\" \"legacy/README.md\"",
+    "format:check": "prettier --check \"site/**/*.{js,mjs,css,html}\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\" \".github/workflows/*.yml\"",
     "check": "npm run lint && npm run format:check && npm test"
   },
   "devDependencies": {
