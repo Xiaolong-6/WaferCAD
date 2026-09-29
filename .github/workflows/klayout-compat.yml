@@ -11,9 +11,30 @@ on:
         options:
           - core
           - all
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "site/gds.js"
+      - "site/oasis.js"
+      - "site/layout-io.js"
+      - "site/sample-layouts.js"
+      - "site/samples/klayout/**"
+      - "scripts/klayout-compat.mjs"
+      - "scripts/klayout-ui-compat.mjs"
+      - ".github/workflows/klayout-compat.yml"
   push:
     branches:
-      - "fix/klayout-gds-oasis-compat"
+      - main
+    paths:
+      - "site/gds.js"
+      - "site/oasis.js"
+      - "site/layout-io.js"
+      - "site/sample-layouts.js"
+      - "site/samples/klayout/**"
+      - "scripts/klayout-compat.mjs"
+      - "scripts/klayout-ui-compat.mjs"
+      - ".github/workflows/klayout-compat.yml"
 
 permissions:
   contents: read
@@ -62,7 +83,7 @@ jobs:
 
       - name: Install project and browser test dependencies
         run: |
-          npm install --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
           npm install --no-save --package-lock=false playwright@1.55.0
           npx playwright install --with-deps chromium
 
