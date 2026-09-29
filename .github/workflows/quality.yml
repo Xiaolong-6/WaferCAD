@@ -33,7 +33,12 @@ jobs:
         run: npm run lint
 
       - name: Prettier preview
-        run: |\n          npx prettier --write site/index.html site/tests/issue-13-settings-ui.test.mjs\ngit diff -- site/index.html site/tests/issue-13-settings-ui.test.mjs\n\n      - name: Format check\n        run: npm run format:check
+        run: |
+          npx prettier --write site/index.html site/tests/issue-13-settings-ui.test.mjs
+          git diff -- site/index.html site/tests/issue-13-settings-ui.test.mjs
+
+      - name: Format check
+        run: npm run format:check
 
       - name: Geometry and project-format tests
         run: npm test
