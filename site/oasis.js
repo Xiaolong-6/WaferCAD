@@ -2,6 +2,21 @@ const MAGIC = '%SEMI-OASIS\r\n';
 const MAGIC_BYTES = new TextEncoder().encode(MAGIC);
 const ASCII = new TextDecoder('ascii');
 const MAX_EXPANDED_ELEMENTS_PER_CELL = 120000;
+export const MAX_OASIS_CBLOCK_BYTES = 128 * 1024 * 1024;
+
+export function assertOasisBlockSize(
+  byteLength,
+  maxBytes = MAX_OASIS_CBLOCK_BYTES,
+) {
+  if (!Number.isSafeInteger(byteLength) || byteLength < 0) {
+    throw new Error('OASIS CBLOCK uncompressed size is invalid.');
+  }
+  if (byteLength > maxBytes) {
+    throw new Error(
+      `OASIS CBLOCK expands beyond the ${Math.round(maxBytes / (1024 * 1024))} MB safety limit.`,
+    );
+  }
+}
 
 const CTRAPEZOID_COEFFICIENTS = [
   [
@@ -1108,6 +1123,7 @@ export async function parseOAS(arrayBuffer) {
         if (id === 34) {
           const compressionType = input.uint();
           const uncompressedSize = input.uint();
+          assertOasisBlockSize(uncompressedSize);
           const compressedSize = input.uint();
           const compressed = input.take(compressedSize);
 
