@@ -486,7 +486,7 @@ function renderMaskList() {
 }
 
 function renderLayerLegend() {
-  const host = $('threeLegend');
+  const host = $('layerLegend');
   host.innerHTML = '';
   const head = document.createElement('div');
   head.className = 'legend-head';
