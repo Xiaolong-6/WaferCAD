@@ -8,6 +8,7 @@ on:
       - "fix/**"
       - "rewrite/**"
       - "merge/**"
+      - "feat/issue-11-3d-inspection-controls"
   workflow_dispatch:
 
 permissions:
