@@ -474,7 +474,7 @@ function applyRoiEditor() {
   }
   if (!next) {
     syncRoiEditor();
-    return status('Focus geometry requires finite coordinates and positive dimensions.');
+    return status('ROI geometry requires finite coordinates and positive dimensions.');
   }
   roi = next;
   renderAll();
@@ -1319,7 +1319,7 @@ function renderThree() {
       group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
     }
   }
-  $('threeStats').textContent = roi ? 'focus region' : 'full model';
+  $('threeStats').textContent = roi ? 'ROI' : 'full model';
 }
 function animate() {
   requestAnimationFrame(animate);
