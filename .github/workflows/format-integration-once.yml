@@ -1,4 +1,5 @@
 name: Format integration once
+# rerun after formatter glob fix
 
 on:
   push:
