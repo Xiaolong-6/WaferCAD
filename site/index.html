@@ -1,170 +1,227 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>WaferCAD</title>
-  <link rel="stylesheet" href="./style.css">
-  <script src="./vendor/polygon-clipping.umd.js"></script>
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
-    }
-  }
-  </script>
-</head>
-<body>
-  <header class="topbar">
-    <div class="brand"><strong>WaferCAD</strong></div>
-    <nav class="top-actions" aria-label="Project">
-      <button id="newProjectBtn" class="toolbar-btn">New</button>
-      <label class="button toolbar-btn">Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden></label>
-      <button id="saveProjectBtn" class="toolbar-btn">Save</button>
-      <span class="toolbar-separator"></span>
-      <label class="unit-control" title="Display unit only. Geometry is stored internally in µm."><span>XY</span><select id="xyUnitSelect" aria-label="XY display unit">
-        <option value="nm">nm</option>
-        <option value="um" selected>µm</option>
-        <option value="mm">mm</option>
-      </select></label>
-      <span class="toolbar-separator"></span>
-      <button id="undoBtn" class="toolbar-btn" disabled>Undo</button>
-      <button id="redoBtn" class="toolbar-btn" disabled>Redo</button>
-    </nav>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>WaferCAD</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="./vendor/polygon-clipping.umd.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><strong>WaferCAD</strong></div>
+      <nav class="top-actions" aria-label="Project">
+        <button id="newProjectBtn" class="toolbar-btn">New</button>
+        <label class="button toolbar-btn"
+          >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
+        /></label>
+        <button id="saveProjectBtn" class="toolbar-btn">Save</button>
+        <span class="toolbar-separator"></span>
+        <label class="unit-control" title="Display unit only. Geometry is stored internally in µm."
+          ><span>XY</span
+          ><select id="xyUnitSelect" aria-label="XY display unit">
+            <option value="nm">nm</option>
+            <option value="um" selected>µm</option>
+            <option value="mm">mm</option>
+          </select></label
+        >
+        <span class="toolbar-separator"></span>
+        <button id="undoBtn" class="toolbar-btn" disabled>Undo</button>
+        <button id="redoBtn" class="toolbar-btn" disabled>Redo</button>
+      </nav>
+    </header>
 
-  <div class="app-shell">
-    <aside class="sidebar">
-      <details class="control-section sidebar-group">
-        <summary class="section-head"><span>Base</span><span id="baseSummary" class="muted">100000 × 100000 µm · Z 12 rel.</span></summary>
-        <div class="control-body">
-          <div class="segmented" id="substrateShape">
-            <button data-shape="rect">Rectangle</button>
-            <button data-shape="circle" class="active">Circle</button>
-          </div>
-          <div class="three-fields">
-            <label><span>W <b id="baseWidthUnit">µm</b></span><input id="baseWidth" type="number" value="100000" min="0" step="any"></label>
-            <label><span>H <b id="baseHeightUnit">µm</b></span><input id="baseHeight" type="number" value="100000" min="0" step="any" disabled></label>
-            <label><span>Z rel.</span><input id="baseThickness" type="number" value="12" min="0.2" step="0.2"></label>
-          </div>
-          <div class="button-row base-actions">
-            <button id="applyBaseBtn">Apply base</button>
-            <button id="revertBaseBtn" class="quiet" disabled>Revert</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="control-section sidebar-group" open>
-        <summary class="section-head"><span>Mask</span><span id="maskSummary" class="muted">No mask</span></summary>
-        <div class="control-body">
-          <div class="button-row">
-            <label class="button primary compact-btn import-btn">Import GDS<input id="gdsInput" type="file" accept=".gds,.gdsii" hidden></label>
-            <button id="demoMaskBtn" class="compact-btn">Demo</button>
-          </div>
-          <div class="mask-browser">
-            <section class="mask-browser-pane">
-              <div class="pane-title">Cells</div>
-              <div id="cellTree" class="cell-tree"></div>
-            </section>
-            <section class="mask-browser-pane">
-              <div class="pane-title">Layers</div>
-              <div id="maskLayerList" class="layer-list"></div>
-            </section>
-          </div>
-          <details class="subgroup">
-            <summary>Advanced · alignment</summary>
-            <div class="four-fields">
-              <label><span>X <b id="maskOffsetXUnit">µm</b></span><input id="maskOffsetX" type="number" value="0" step="any"></label>
-              <label><span>Y <b id="maskOffsetYUnit">µm</b></span><input id="maskOffsetY" type="number" value="0" step="any"></label>
-              <label><span>S</span><input id="maskScale" type="number" value="1" step="0.05"></label>
-              <label><span>R°</span><input id="maskRotation" type="number" value="0" step="1"></label>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <details class="control-section sidebar-group">
+          <summary class="section-head">
+            <span>Base</span
+            ><span id="baseSummary" class="muted">100000 × 100000 µm · Z 12 rel.</span>
+          </summary>
+          <div class="control-body">
+            <div class="segmented" id="substrateShape">
+              <button data-shape="rect">Rectangle</button>
+              <button data-shape="circle" class="active">Circle</button>
             </div>
-          </details>
-        </div>
-      </details>
-
-      <section class="control-section operation-section">
-        <div class="section-head"><span>Operation</span><span id="activeFacePill" class="face-pill">Front</span></div>
-        <div class="segmented" id="faceSelect">
-          <button data-face="front" class="active">Front</button>
-          <button data-face="back">Back</button>
-        </div>
-        <label class="field-row"><span>Action</span><select id="operationType">
-          <option value="add">Add new layer</option>
-          <option value="grow">Grow current layer</option>
-          <option value="etch">Etch / subtract</option>
-        </select></label>
-        <label id="layerNameRow" class="field-row"><span>Name</span><input id="layerName" value="Layer 1"></label>
-        <label id="targetLayerRow" class="field-row hidden"><span>Layer</span><select id="targetLayer"></select></label>
-        <label class="field-row"><span>Area</span><select id="operationArea">
-          <option value="mask">Selected mask</option>
-          <option value="invert">Invert mask</option>
-          <option value="full">Whole face</option>
-        </select></label>
-        <label id="growthModeRow" class="field-row"><span>Growth</span><select id="growthMode">
-          <option value="direct">Direct</option>
-          <option value="conformal">Conformal</option>
-        </select></label>
-        <label class="field-row"><span>Z Δ</span><input id="operationThickness" type="number" value="3" min="0.1" step="0.1"></label>
-        <button id="applyOperationBtn" class="primary wide apply-btn">Apply</button>
-        <p id="operationNote" class="hint compact-hint">Direct footprint · Conformal includes sidewalls.</p>
-      </section>
-
-    </aside>
-
-    <main class="workspace">
-      <section class="view-panel" id="maskPanel">
-        <div class="view-head mask-view-head">
-          <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
-          <div class="view-tools">
-            <div class="focus-tools" title="Limit 3D rendering only">
-              <button class="roi-tool mini-btn" data-tool="rect">Rect</button>
-              <button class="roi-tool mini-btn" data-tool="circle">Circle</button>
-              <button id="clearRoiBtn" class="mini-btn">Clear</button>
+            <div class="three-fields">
+              <label
+                ><span>W <b id="baseWidthUnit">µm</b></span
+                ><input id="baseWidth" type="number" value="100000" min="0" step="any"
+              /></label>
+              <label
+                ><span>H <b id="baseHeightUnit">µm</b></span
+                ><input id="baseHeight" type="number" value="100000" min="0" step="any" disabled
+              /></label>
+              <label
+                ><span>Z rel.</span
+                ><input id="baseThickness" type="number" value="12" min="0.2" step="0.2"
+              /></label>
             </div>
-            <div class="zoom-tools" title="Mask view zoom">
-              <button id="maskZoomOut" class="mini-btn">−</button>
-              <button id="maskZoomIn" class="mini-btn">+</button>
-              <button id="maskZoomFit" class="mini-btn">Fit</button>
+            <div class="button-row base-actions">
+              <button id="applyBaseBtn">Apply base</button>
+              <button id="revertBaseBtn" class="quiet" disabled>Revert</button>
             </div>
-            <div id="maskCoords" class="readout"></div>
           </div>
-        </div>
-        <canvas id="maskCanvas"></canvas>
-        <div class="view-foot"><span id="maskSelectionSummary"></span></div>
-      </section>
+        </details>
 
-      <section class="view-panel" id="threePanel">
-        <div class="view-head"><div><strong>3D</strong><span id="threeStats"></span></div><button id="fit3dBtn" class="mini-btn">Fit</button></div>
-        <div id="threeHost"><div id="threeLegend" class="three-legend"></div></div>
-      </section>
-
-      <section class="view-panel" id="mainPanel">
-        <div class="view-head">
-          <div><strong>Main</strong><span id="mainFaceLabel">front surface</span></div>
-          <div class="view-tools">
-            <div class="zoom-tools" title="Main view zoom">
-              <button id="mainZoomOut" class="mini-btn">−</button>
-              <button id="mainZoomIn" class="mini-btn">+</button>
-              <button id="mainZoomFit" class="mini-btn">Fit</button>
+        <details class="control-section sidebar-group" open>
+          <summary class="section-head">
+            <span>Mask</span><span id="maskSummary" class="muted">No mask</span>
+          </summary>
+          <div class="control-body">
+            <div class="button-row">
+              <label class="button primary compact-btn import-btn"
+                >Import GDS<input id="gdsInput" type="file" accept=".gds,.gdsii" hidden
+              /></label>
+              <button id="demoMaskBtn" class="compact-btn">Demo</button>
             </div>
-            <div id="mainCoords" class="readout"></div>
-            <button id="resetSectionBtn" class="mini-btn">Reset A–B</button>
+            <div class="mask-browser">
+              <section class="mask-browser-pane">
+                <div class="pane-title">Cells</div>
+                <div id="cellTree" class="cell-tree"></div>
+              </section>
+              <section class="mask-browser-pane">
+                <div class="pane-title">Layers</div>
+                <div id="maskLayerList" class="layer-list"></div>
+              </section>
+            </div>
+            <details class="subgroup">
+              <summary>Advanced · alignment</summary>
+              <div class="four-fields">
+                <label
+                  ><span>X <b id="maskOffsetXUnit">µm</b></span
+                  ><input id="maskOffsetX" type="number" value="0" step="any"
+                /></label>
+                <label
+                  ><span>Y <b id="maskOffsetYUnit">µm</b></span
+                  ><input id="maskOffsetY" type="number" value="0" step="any"
+                /></label>
+                <label
+                  ><span>S</span><input id="maskScale" type="number" value="1" step="0.05"
+                /></label>
+                <label
+                  ><span>R°</span><input id="maskRotation" type="number" value="0" step="1"
+                /></label>
+              </div>
+            </details>
           </div>
-        </div>
-        <canvas id="mainCanvas"></canvas>
-      </section>
+        </details>
 
-      <section class="view-panel" id="sectionPanel">
-        <div class="view-head"><div><strong>Section A–B</strong><span id="sectionMeta"></span></div><span id="sectionRange" class="readout"></span></div>
-        <canvas id="sectionCanvas"></canvas>
-      </section>
-    </main>
-  </div>
+        <section class="control-section operation-section">
+          <div class="section-head">
+            <span>Operation</span><span id="activeFacePill" class="face-pill">Front</span>
+          </div>
+          <div class="segmented" id="faceSelect">
+            <button data-face="front" class="active">Front</button>
+            <button data-face="back">Back</button>
+          </div>
+          <label class="field-row"
+            ><span>Action</span
+            ><select id="operationType">
+              <option value="add">Add new layer</option>
+              <option value="grow">Grow current layer</option>
+              <option value="etch">Etch / subtract</option>
+            </select></label
+          >
+          <label id="layerNameRow" class="field-row"
+            ><span>Name</span><input id="layerName" value="Layer 1"
+          /></label>
+          <label id="targetLayerRow" class="field-row hidden"
+            ><span>Layer</span
+            ><select id="targetLayer"></select
+          ></label>
+          <label class="field-row"
+            ><span>Area</span
+            ><select id="operationArea">
+              <option value="mask">Selected mask</option>
+              <option value="invert">Invert mask</option>
+              <option value="full">Whole face</option>
+            </select></label
+          >
+          <label id="growthModeRow" class="field-row"
+            ><span>Growth</span
+            ><select id="growthMode">
+              <option value="direct">Direct</option>
+              <option value="conformal">Conformal</option>
+            </select></label
+          >
+          <label class="field-row"
+            ><span>Z Δ</span
+            ><input id="operationThickness" type="number" value="3" min="0.1" step="0.1"
+          /></label>
+          <button id="applyOperationBtn" class="primary wide apply-btn">Apply</button>
+          <p id="operationNote" class="hint compact-hint">
+            Direct footprint · Conformal includes sidewalls.
+          </p>
+        </section>
+      </aside>
 
-  <footer class="statusbar"><span id="statusText">Ready.</span><span>browser-only</span></footer>
-  <script type="module" src="./app.js"></script>
-</body>
+      <main class="workspace">
+        <section class="view-panel" id="maskPanel">
+          <div class="view-head mask-view-head">
+            <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
+            <div class="view-tools">
+              <div class="focus-tools" title="Limit 3D rendering only">
+                <button class="roi-tool mini-btn" data-tool="rect">Rect</button>
+                <button class="roi-tool mini-btn" data-tool="circle">Circle</button>
+                <button id="clearRoiBtn" class="mini-btn">Clear</button>
+              </div>
+              <div class="zoom-tools" title="Mask view zoom">
+                <button id="maskZoomOut" class="mini-btn">−</button>
+                <button id="maskZoomIn" class="mini-btn">+</button>
+                <button id="maskZoomFit" class="mini-btn">Fit</button>
+              </div>
+              <div id="maskCoords" class="readout"></div>
+            </div>
+          </div>
+          <canvas id="maskCanvas"></canvas>
+          <div class="view-foot"><span id="maskSelectionSummary"></span></div>
+        </section>
+
+        <section class="view-panel" id="threePanel">
+          <div class="view-head">
+            <div><strong>3D</strong><span id="threeStats"></span></div>
+            <button id="fit3dBtn" class="mini-btn">Fit</button>
+          </div>
+          <div id="threeHost"><div id="threeLegend" class="three-legend"></div></div>
+        </section>
+
+        <section class="view-panel" id="mainPanel">
+          <div class="view-head">
+            <div><strong>Main</strong><span id="mainFaceLabel">front surface</span></div>
+            <div class="view-tools">
+              <div class="zoom-tools" title="Main view zoom">
+                <button id="mainZoomOut" class="mini-btn">−</button>
+                <button id="mainZoomIn" class="mini-btn">+</button>
+                <button id="mainZoomFit" class="mini-btn">Fit</button>
+              </div>
+              <div id="mainCoords" class="readout"></div>
+              <button id="resetSectionBtn" class="mini-btn">Reset A–B</button>
+            </div>
+          </div>
+          <canvas id="mainCanvas"></canvas>
+        </section>
+
+        <section class="view-panel" id="sectionPanel">
+          <div class="view-head">
+            <div><strong>Section A–B</strong><span id="sectionMeta"></span></div>
+            <span id="sectionRange" class="readout"></span>
+          </div>
+          <canvas id="sectionCanvas"></canvas>
+        </section>
+      </main>
+    </div>
+
+    <footer class="statusbar"><span id="statusText">Ready.</span><span>browser-only</span></footer>
+    <script type="module" src="./app.js"></script>
+  </body>
 </html>

@@ -71,7 +71,6 @@ npm run check
 
 `npm run check` runs ESLint, the current Prettier gate, and the geometry/project-format self-tests. Use `npm run format` to format the active application and current documentation.
 
-
 ## Project-file safety
 
 Project JSON is validated before it can replace the current editor state. Validation covers the vector model, polygon structure, Z stacks, layer references, mask layout, hierarchy, transforms, section/view state, display settings, and conservative size limits. Invalid or damaged files fail during Open rather than later during rendering.

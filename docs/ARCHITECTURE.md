@@ -138,7 +138,6 @@ Projects are JSON files with format identifier `WaferCAD-vector`.
 
 The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, view state, XY display unit, and structure palette preference.
 
-
 ## Project-file boundary
 
 `site/project-io.js` is the browser file-IO boundary. `site/project-schema.js` validates parsed JSON before any project object is assigned to live application state.
