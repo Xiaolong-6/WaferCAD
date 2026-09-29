@@ -32,6 +32,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Prettier preview
+        run: npx prettier site/tests/layer-delete.test.mjs
+
       - name: Format check
         run: npm run format:check
 
