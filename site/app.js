@@ -6,7 +6,9 @@ import {
   applyOperation,
   cloneModel,
   createModel,
+  deleteExposedLayer,
   fullFaceGeometry,
+  isLayerExposed,
   layerById,
   modelBoundsZ,
   recolorLayer,
@@ -135,6 +137,7 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   roiDraft = null,
   roiAnchor = 'center';
 let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
+  sectionEditEnabled = false,
   history = [],
   future = [],
   baseRevertSnapshot = null;
@@ -175,6 +178,38 @@ function formatXY(value, digits = 3) {
 }
 function xyText(value) {
   return `${formatXY(value)} ${xyUnit().label}`;
+}
+function syncSectionInputs() {
+  const unit = $('sectionCoordUnit');
+  if (!unit) return;
+  unit.textContent = xyUnit().label;
+  $('sectionAx').value = formatXY(section.a[0]);
+  $('sectionAy').value = formatXY(section.a[1]);
+  $('sectionBx').value = formatXY(section.b[0]);
+  $('sectionBy').value = formatXY(section.b[1]);
+}
+function updateSectionFromInputs() {
+  const values = ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map((id) =>
+    Number($(id).value),
+  );
+  if (values.some((value) => !Number.isFinite(value))) {
+    syncSectionInputs();
+    return status('A–B coordinates must be finite numbers.');
+  }
+  section = {
+    a: [xyFromDisplay(values[0]), xyFromDisplay(values[1])],
+    b: [xyFromDisplay(values[2]), xyFromDisplay(values[3])],
+  };
+  renderMain();
+  renderSection();
+}
+function setSectionEditEnabled(enabled) {
+  sectionEditEnabled = Boolean(enabled);
+  const button = $('sectionEditBtn');
+  button.classList.toggle('active', sectionEditEnabled);
+  button.setAttribute('aria-pressed', String(sectionEditEnabled));
+  $('mainCanvas').classList.toggle('section-editing', sectionEditEnabled);
+  status(sectionEditEnabled ? 'A–B endpoint dragging enabled.' : 'A–B endpoint dragging locked.');
 }
 function structurePalette() {
   return (
@@ -640,6 +675,28 @@ function renderLayerLegend() {
       renderThree();
     };
     main.append(color, name);
+    if (isLayerExposed(model, layer.id)) {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'legend-delete';
+      remove.textContent = '×';
+      remove.title = `Delete exposed layer "${layer.name}"`;
+      remove.setAttribute('aria-label', `Delete exposed layer ${layer.name}`);
+      remove.onclick = () => {
+        if (!window.confirm(`Delete exposed layer "${layer.name}"? This can be undone.`)) return;
+        saveHistory();
+        if (!deleteExposedLayer(model, layer.id)) {
+          history.pop();
+          syncUndo();
+          return status('Layer is no longer fully exposed and cannot be deleted.');
+        }
+        if (openLayerPaletteId === layer.id) openLayerPaletteId = null;
+        renderAll();
+        updateOperationUI();
+        status(`Deleted exposed layer "${layer.name}".`);
+      };
+      main.append(remove);
+    }
     row.append(main);
     if (openLayerPaletteId === layer.id) {
       const grid = document.createElement('div');
@@ -966,6 +1023,7 @@ function renderMain() {
     ctx.fillText(label, p[0] + 6, p[1] - 6);
   }
   drawPlanAxes(ctx, v, w, h, back);
+  syncSectionInputs();
 }
 function renderSection() {
   const c = $('sectionCanvas'),
@@ -1020,7 +1078,9 @@ let renderer,
   controls,
   group,
   axesHelper,
-  threeReady = false;
+  threeReady = false,
+  threeOpacity = 1,
+  threeShowBorders = false;
 function zVisualScale() {
   return Math.max(model.width, model.height) / 100;
 }
@@ -1115,8 +1175,20 @@ function renderThree() {
         roughness: 0.78,
         metalness: 0.015,
         side: THREE.DoubleSide,
+        transparent: threeOpacity < 0.999,
+        opacity: threeOpacity,
+        depthWrite: threeOpacity >= 0.999,
       });
     group.add(new THREE.Mesh(geometry, material));
+    if (threeShowBorders) {
+      const edgeGeometry = new THREE.EdgesGeometry(geometry, 20);
+      const edgeMaterial = new THREE.LineBasicMaterial({
+        color: 0x111820,
+        transparent: true,
+        opacity: 0.9,
+      });
+      group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
+    }
   }
   $('threeStats').textContent = roi ? 'focus region' : 'full model';
 }
@@ -1558,6 +1630,15 @@ function bindUi() {
   $('growthMode').onchange = updateOperationUI;
   $('applyOperationBtn').onclick = applyOp;
   $('fit3dBtn').onclick = fit3d;
+  $('threeOpacityRange').oninput = () => {
+    threeOpacity = Math.max(0.1, Math.min(1, Number($('threeOpacityRange').value) || 1));
+    $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
+    renderThree();
+  };
+  $('threeBorders').onchange = () => {
+    threeShowBorders = $('threeBorders').checked;
+    renderThree();
+  };
   $('maskZoomOut').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1 / 1.25);
   $('maskZoomIn').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1.25);
   $('maskZoomFit').onclick = () => resetPlanView('mask');
@@ -1566,6 +1647,9 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
+  $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
+  for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
+    $(id).onchange = updateSectionFromInputs;
 
   $('undoBtn').onclick = () => {
     if (!history.length) return;
@@ -1727,7 +1811,7 @@ function bindUi() {
   });
 
   const main = $('mainCanvas');
-  let secDrag = false;
+  let secDrag = null;
   main.addEventListener(
     'wheel',
     (e) => {
@@ -1743,16 +1827,24 @@ function bindUi() {
     },
     { passive: false },
   );
+  main.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    resetPlanView('main');
+  });
   main.addEventListener('pointerdown', (e) => {
+    if (!sectionEditEnabled || e.button !== 0) return;
     const r = main.getBoundingClientRect(),
       { w, h } = setupCanvas(main),
       v = viewport(w, h, 'main'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
-    section = { a: p, b: p };
-    secDrag = true;
+      x = e.clientX - r.left,
+      y = e.clientY - r.top,
+      a = worldToCanvas(section.a, v, activeFace === 'back'),
+      b = worldToCanvas(section.b, v, activeFace === 'back'),
+      distanceA = Math.hypot(x - a[0], y - a[1]),
+      distanceB = Math.hypot(x - b[0], y - b[1]);
+    if (Math.min(distanceA, distanceB) > 14) return;
+    secDrag = distanceA <= distanceB ? 'a' : 'b';
     main.setPointerCapture(e.pointerId);
-    renderMain();
-    renderSection();
   });
   main.addEventListener('pointermove', (e) => {
     const r = main.getBoundingClientRect(),
@@ -1761,11 +1853,16 @@ function bindUi() {
       p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
     $('mainCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
     if (!secDrag) return;
-    section.b = p;
+    section[secDrag] = p;
     renderMain();
     renderSection();
   });
-  main.addEventListener('pointerup', () => (secDrag = false));
+  const finishSectionDrag = (e) => {
+    if (secDrag && main.hasPointerCapture(e.pointerId)) main.releasePointerCapture(e.pointerId);
+    secDrag = null;
+  };
+  main.addEventListener('pointerup', finishSectionDrag);
+  main.addEventListener('pointercancel', finishSectionDrag);
   window.addEventListener('resize', () => renderAll());
 }
 
