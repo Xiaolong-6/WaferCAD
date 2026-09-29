@@ -94,8 +94,16 @@ Drag A–B in Main to define the section line. Section A–B updates from the sa
 
 Use the global XY unit selector in the top toolbar to switch nm / µm / mm. This only converts display and XY input values; geometry is unchanged. Z values remain relative.
 
-## 9. Save and open
+## 9. Snapshots
 
-Use **Save** to export the current project as JSON.
+Use **Save snapshot** in the left sidebar to capture the current workspace immediately.
 
-Use **Open** to restore a project written by the current vector format.
+A new snapshot uses the current local timestamp as its default name. Rename it directly in the row if needed. **Restore** replaces the current workspace with the checkpoint; **×** deletes only that snapshot.
+
+Snapshots are immutable workspace checkpoints and have no thumbnail dependency. Restoring and then continuing to edit does not mutate the saved checkpoint.
+
+## 10. Save and open
+
+Use **Save** to export the current project as JSON. Snapshot records are included.
+
+Use **Open** to restore a project written by the current vector format. Project and snapshot payloads are validated before they can replace live editor state.
