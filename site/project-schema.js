@@ -269,7 +269,7 @@ function validatePlanViews(planViews) {
   assertObject(planViews, 'planViews');
   for (const key of ['mask', 'main']) {
     const view = assertObject(planViews[key], `planViews.${key}`);
-    assertFinite(view.zoom, `planViews.${key}.zoom`, { min: 1e-6, max: 1e6 });
+    assertFinite(view.zoom, `planViews.${key}.zoom`, { min: 1e-6, max: 1e8 });
     assertFinite(view.panX, `planViews.${key}.panX`);
     assertFinite(view.panY, `planViews.${key}.panY`);
   }
