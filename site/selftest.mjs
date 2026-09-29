@@ -99,3 +99,5 @@ assert.ok(Math.abs(parsed.units.dbuToMicron-0.001)<1e-12);
 assert.ok(Math.abs(flat.bounds.width-10)<1e-9);
 assert.ok(Math.abs(flat.bounds.height-20)<1e-9);
 assert.deepEqual(flat.elements[0].points[2],[10,20]);
+
+console.log('WaferCAD self-test: OK');
