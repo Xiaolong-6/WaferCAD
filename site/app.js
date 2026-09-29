@@ -1073,7 +1073,23 @@ function drawRoi(ctx, v) {
   }
   ctx.fill();
   ctx.stroke();
+
+  if (!roiDraft && roi) {
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+    for (const point of Object.values(roiHandlePoints(roi))) {
+      const q = worldToCanvas(point, v);
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#d65361';
+      ctx.fillRect(q[0] - 3.5, q[1] - 3.5, 7, 7);
+      ctx.strokeRect(q[0] - 3.5, q[1] - 3.5, 7, 7);
+    }
+  }
   ctx.restore();
+}
+
+function roiResizeCursor(handle) {
+  return handle === 'top-left' || handle === 'bottom-right' ? 'nwse-resize' : 'nesw-resize';
 }
 function renderMask() {
   const c = $('maskCanvas'),
@@ -1851,9 +1867,31 @@ function bindUi() {
     const r = mc.getBoundingClientRect(),
       { w, h } = setupCanvas(mc),
       v = viewport(w, h, 'mask'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
+      screen = [e.clientX - r.left, e.clientY - r.top],
+      p = canvasToWorld(screen[0], screen[1], v);
     $('maskCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-    if (!drag) return;
+
+    if (!drag) {
+      if (roiTool) {
+        mc.style.cursor = 'crosshair';
+        return;
+      }
+      if (!roi) {
+        mc.style.cursor = 'default';
+        return;
+      }
+      const handles = Object.fromEntries(
+        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [name, worldToCanvas(point, v)]),
+      );
+      const handle = nearestNamedPoint(screen, handles, 10);
+      mc.style.cursor = handle
+        ? roiResizeCursor(handle)
+        : roiContainsPoint(roi, p)
+          ? 'move'
+          : 'default';
+      return;
+    }
+
     if (drag.mode === 'create') {
       roiDraft =
         roiTool === 'rect'
@@ -1866,6 +1904,14 @@ function bindUi() {
       renderMask();
       return;
     }
+
+    if (drag.mode === 'resize') {
+      roi = resizeRoiFromHandle(drag.original, drag.handle, p);
+      syncRoiEditor();
+      renderMask();
+      return;
+    }
+
     roi = translateRoi(drag.original, p[0] - drag.start[0], p[1] - drag.start[1]);
     syncRoiEditor();
     renderMask();
@@ -1875,11 +1921,23 @@ function bindUi() {
     const r = mc.getBoundingClientRect(),
       { w, h } = setupCanvas(mc),
       v = viewport(w, h, 'mask'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
-    if (roiTool) drag = { mode: 'create', start: p };
-    else if (roi && roiContainsPoint(roi, p))
-      drag = { mode: 'move', start: p, original: structuredClone(roi) };
-    else return;
+      screen = [e.clientX - r.left, e.clientY - r.top],
+      p = canvasToWorld(screen[0], screen[1], v);
+    if (roiTool) {
+      drag = { mode: 'create', start: p };
+    } else if (roi) {
+      const handles = Object.fromEntries(
+        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [name, worldToCanvas(point, v)]),
+      );
+      const handle = nearestNamedPoint(screen, handles, 10);
+      if (handle)
+        drag = { mode: 'resize', handle, start: p, original: structuredClone(roi) };
+      else if (roiContainsPoint(roi, p))
+        drag = { mode: 'move', start: p, original: structuredClone(roi) };
+      else return;
+    } else {
+      return;
+    }
     mc.setPointerCapture(e.pointerId);
   });
   const finishRoiDrag = (e) => {
@@ -1895,7 +1953,7 @@ function bindUi() {
         roi = next;
         roiAnchor = 'center';
         clearRoiDrawingMode();
-        status('ROI created. Drag it to reposition or edit values from Focus.');
+        status('ROI created. Drag it to move, use corner handles to resize, or edit values from ROI.');
       }
       roiDraft = null;
     }
@@ -1937,23 +1995,40 @@ function bindUi() {
     const r = main.getBoundingClientRect(),
       { w, h } = setupCanvas(main),
       v = viewport(w, h, 'main'),
-      x = e.clientX - r.left,
-      y = e.clientY - r.top,
-      a = worldToCanvas(section.a, v, activeFace === 'back'),
-      b = worldToCanvas(section.b, v, activeFace === 'back'),
-      distanceA = Math.hypot(x - a[0], y - a[1]),
-      distanceB = Math.hypot(x - b[0], y - b[1]);
-    if (Math.min(distanceA, distanceB) > 14) return;
-    secDrag = distanceA <= distanceB ? 'a' : 'b';
+      pointer = [e.clientX - r.left, e.clientY - r.top],
+      handles = {
+        a: worldToCanvas(section.a, v, activeFace === 'back'),
+        b: worldToCanvas(section.b, v, activeFace === 'back'),
+      };
+    const handle = nearestNamedPoint(pointer, handles, 18);
+    if (!handle) return;
+    secDrag = handle;
+    main.style.cursor = 'grabbing';
     main.setPointerCapture(e.pointerId);
   });
   main.addEventListener('pointermove', (e) => {
     const r = main.getBoundingClientRect(),
       { w, h } = setupCanvas(main),
       v = viewport(w, h, 'main'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
+      pointer = [e.clientX - r.left, e.clientY - r.top],
+      p = canvasToWorld(pointer[0], pointer[1], v, activeFace === 'back');
     $('mainCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-    if (!secDrag) return;
+
+    if (!secDrag) {
+      if (sectionEditEnabled) {
+        const handle = nearestNamedPoint(
+          pointer,
+          {
+            a: worldToCanvas(section.a, v, activeFace === 'back'),
+            b: worldToCanvas(section.b, v, activeFace === 'back'),
+          },
+          18,
+        );
+        main.style.cursor = handle ? 'grab' : 'crosshair';
+      }
+      return;
+    }
+
     section[secDrag] = p;
     renderMain();
     renderSection();
@@ -1961,6 +2036,7 @@ function bindUi() {
   const finishSectionDrag = (e) => {
     if (secDrag && main.hasPointerCapture(e.pointerId)) main.releasePointerCapture(e.pointerId);
     secDrag = null;
+    main.style.cursor = sectionEditEnabled ? 'crosshair' : '';
   };
   main.addEventListener('pointerup', finishSectionDrag);
   main.addEventListener('pointercancel', finishSectionDrag);
