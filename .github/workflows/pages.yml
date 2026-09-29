@@ -5,35 +5,184 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'package.json'
+      - 'eslint.config.js'
+      - '.prettierignore'
+      - '.prettierrc.json'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - 'site/**'
+      - 'package.json'
+      - 'eslint.config.js'
+      - '.prettierignore'
+      - '.prettierrc.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: wafercad-pages
+  cancel-in-progress: false
 
 jobs:
+  quality:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install development tools
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run quality checks
+        run: npm run check
+
   deploy:
+    needs: quality
+    if: >-
+      always() &&
+      (
+        needs.quality.result == 'success' ||
+        (github.event_name == 'pull_request' && github.event.action == 'closed')
+      ) &&
+      (
+        github.event_name != 'pull_request' ||
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+      issues: write
+      pull-requests: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout preview candidate
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         uses: actions/checkout@v6
-      - name: Run geometry self-test
-        run: node site/selftest.mjs
+        with:
+          path: candidate
+
+      - name: Checkout production main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: production
+
+      - name: Checkout preview state
+        uses: actions/checkout@v6
+        with:
+          ref: pages-preview-state
+          path: preview-state
+          fetch-depth: 0
+
+      - name: Update PR preview state
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_ACTION: ${{ github.event.action }}
+        run: |
+          preview_dir="preview-state/previews/pr-${PR_NUMBER}"
+          rm -rf "${preview_dir}"
+
+          if [ "${PR_ACTION}" != "closed" ]; then
+            mkdir -p "${preview_dir}"
+            cp -a candidate/site/. "${preview_dir}/"
+          fi
+
+          cd preview-state
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Preview state unchanged."
+          else
+            git commit -m "Update PR #${PR_NUMBER} preview"
+            git push origin HEAD:pages-preview-state
+          fi
+
+      - name: Assemble production and previews
+        run: |
+          rm -rf publish
+          mkdir -p publish
+          cp -a production/site/. publish/
+
+          if [ -d preview-state/previews ]; then
+            mkdir -p publish/pr-preview
+            cp -a preview-state/previews/. publish/pr-preview/
+          fi
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Upload static site
+
+      - name: Upload combined Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: site
+          path: publish
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Publish preview link on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          PR_ACTION: ${{ github.event.action }}
+        with:
+          script: |
+            const marker = '<!-- wafercad-pr-preview -->';
+            const root = process.env.PAGE_URL.endsWith('/')
+              ? process.env.PAGE_URL
+              : process.env.PAGE_URL + '/';
+            const previewUrl = root + 'pr-preview/pr-' + context.issue.number + '/';
+            const closed = process.env.PR_ACTION === 'closed';
+            const body = closed
+              ? `${marker}
+### WaferCAD PR Preview
+Preview removed because this pull request is closed.`
+              : `${marker}
+### WaferCAD PR Preview
+[Open live preview](${previewUrl})
+
+Updated for commit \`${context.payload.pull_request.head.sha.slice(0, 7)}\`.`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              typeof comment.body === 'string' && comment.body.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
