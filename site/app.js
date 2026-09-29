@@ -523,11 +523,14 @@ function applyImportedLayout(imported, displayName) {
 
   const units = layout.units?.xy || 'µm';
   const emptyNote =
-    layout.elements.length || layout.linework.length
-      ? ''
-      : ' This is a valid layout with no renderable mask geometry.';
+      layout.elements.length || layout.linework.length
+        ? ''
+        : ' This is a valid layout with no renderable mask geometry.',
+    warningNote = layout.warnings?.length
+      ? ` ${layout.warnings.length} unresolved cell reference${layout.warnings.length === 1 ? '' : 's'} skipped.`
+      : '';
   status(
-    `${displayName} (${imported.format}): XY imported in ${units} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.${emptyNote}`,
+    `${displayName} (${imported.format}): XY imported in ${units} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.${emptyNote}${warningNote}`,
   );
 }
 
