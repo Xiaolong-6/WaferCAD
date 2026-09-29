@@ -103,7 +103,6 @@ test('parseLayoutFile preserves multiple independent GDS top cells under a virtu
   );
 });
 
-
 test('layout byte budget rejects oversized inputs before parsing', () => {
   assert.doesNotThrow(() => assertLayoutByteLength(10, 10, 'Fixture'));
   assert.throws(() => assertLayoutByteLength(11, 10, 'Fixture'), /safety limit/);
