@@ -589,7 +589,8 @@ button:hover,
 }
 .view-tools,
 .focus-tools,
-.zoom-tools {
+.zoom-tools,
+.three-view-tools {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -614,6 +615,65 @@ button:hover,
   border-color: #aebbc9;
   background: var(--accent-soft);
   color: var(--accent-dark);
+}
+.three-opacity-control {
+  position: relative;
+}
+.three-opacity-control > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  padding: 0;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.three-opacity-control > summary::-webkit-details-marker {
+  display: none;
+}
+.three-opacity-control[open] > summary {
+  border-color: #aebbc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+.three-opacity-popover {
+  position: absolute;
+  z-index: 6;
+  top: 25px;
+  right: 0;
+  width: 150px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(42, 53, 64, 0.12);
+}
+.three-opacity-popover label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: #596572;
+  font-size: 9.5px;
+}
+.three-opacity-popover input {
+  width: 100%;
+}
+.three-border-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 21px;
+  padding: 0 4px;
+  color: #596572;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.three-border-toggle input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
 }
 canvas {
   display: block;
@@ -692,7 +752,7 @@ canvas {
 }
 .legend-row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   gap: 4px;
   align-items: center;
   min-height: 23px;
@@ -721,6 +781,21 @@ canvas {
 .legend-name:focus {
   background: #fff !important;
   border-color: #d7dde4 !important;
+}
+.legend-delete {
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: #8b5c63;
+  font-size: 14px;
+  line-height: 1;
+}
+.legend-delete:hover {
+  border-color: #d7b6bb;
+  background: #fff5f6;
+  color: #a34150;
 }
 .legend-palette-grid {
   display: grid;
@@ -808,7 +883,63 @@ canvas {
 }
 
 #mainPanel {
+  position: relative;
   grid-area: main;
+}
+
+.section-coords-panel {
+  position: absolute;
+  z-index: 3;
+  top: 34px;
+  right: 6px;
+  width: 188px;
+  padding: 5px 6px 6px;
+  border: 1px solid rgba(142, 154, 166, 0.55);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(3px);
+}
+
+.section-coords-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  color: #5f6b77;
+  font-size: 9px;
+}
+
+.section-coords-head strong {
+  color: #46515d;
+  font-size: 9.5px;
+}
+
+.section-coords-grid {
+  display: grid;
+  grid-template-columns: 14px repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 3px;
+  color: #687481;
+  font-size: 8.5px;
+  text-align: center;
+}
+
+.section-coords-grid input {
+  min-width: 0;
+  height: 21px;
+  padding: 2px 4px;
+  font-size: 9px;
+  text-align: right;
+}
+
+#sectionEditBtn.active {
+  border-color: #aebbc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+#mainCanvas.section-editing {
+  cursor: crosshair;
 }
 
 #maskPanel {

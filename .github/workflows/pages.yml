@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'scripts/stamp-pages-assets.mjs'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -30,6 +31,8 @@ jobs:
         run: node site/selftest.mjs
       - name: Write build commit
         run: printf '{"commit":"%s"}\n' "$GITHUB_SHA" > site/build-info.json
+      - name: Version browser module imports
+        run: node scripts/stamp-pages-assets.mjs "$GITHUB_SHA"
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site

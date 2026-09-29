@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <title>WaferCAD</title>
-    <link rel="stylesheet" href="./style.css" />
-    <script src="./vendor/polygon-clipping.umd.js"></script>
     <script type="importmap">
       {
         "imports": {
@@ -51,11 +49,34 @@
                 <button id="mainZoomIn" class="mini-btn">+</button>
                 <button id="mainZoomFit" class="mini-btn">Fit</button>
               </div>
+              <button
+                id="sectionEditBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Enable A–B endpoint dragging"
+              >
+                A–B
+              </button>
               <div id="mainCoords" class="readout"></div>
               <button id="resetSectionBtn" class="mini-btn">Reset A–B</button>
             </div>
           </div>
           <canvas id="mainCanvas"></canvas>
+          <div class="section-coords-panel" aria-label="A–B coordinates">
+            <div class="section-coords-head">
+              <strong>A–B</strong><span id="sectionCoordUnit">µm</span>
+            </div>
+            <div class="section-coords-grid">
+              <span></span><span>X</span><span>Y</span>
+              <strong>A</strong>
+              <input id="sectionAx" type="number" step="any" aria-label="A X coordinate" />
+              <input id="sectionAy" type="number" step="any" aria-label="A Y coordinate" />
+              <strong>B</strong>
+              <input id="sectionBx" type="number" step="any" aria-label="B X coordinate" />
+              <input id="sectionBy" type="number" step="any" aria-label="B Y coordinate" />
+            </div>
+          </div>
         </section>
 
         <section class="view-panel" id="maskPanel">
@@ -82,7 +103,35 @@
         <section class="view-panel" id="threePanel">
           <div class="view-head">
             <div><strong>3D</strong><span id="threeStats"></span></div>
-            <button id="fit3dBtn" class="mini-btn">Fit</button>
+            <div class="three-view-tools">
+              <details class="three-opacity-control">
+                <summary
+                  class="mini-btn three-opacity-button"
+                  aria-label="Adjust all layer transparency"
+                  title="Adjust all layer transparency"
+                >
+                  ◐
+                </summary>
+                <div class="three-opacity-popover">
+                  <label for="threeOpacityRange"
+                    ><span>Opacity</span><output id="threeOpacityValue">100%</output></label
+                  >
+                  <input
+                    id="threeOpacityRange"
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.05"
+                    value="1"
+                  />
+                </div>
+              </details>
+              <label class="three-border-toggle" title="Outline visible layer interfaces in black">
+                <input id="threeBorders" type="checkbox" />
+                <span>Border</span>
+              </label>
+              <button id="fit3dBtn" class="mini-btn">Fit</button>
+            </div>
           </div>
           <div id="threeHost"></div>
         </section>
@@ -329,6 +378,40 @@
     <footer class="statusbar">
       <span id="statusText">Ready.</span><span id="buildCommit">commit local</span>
     </footer>
-    <script type="module" src="./app.js"></script>
+    <script>
+      (async () => {
+        let version = String(Date.now());
+        try {
+          const response = await fetch('./build-info.json', { cache: 'no-store' });
+          if (response.ok) {
+            const info = await response.json();
+            if (info.commit) version = String(info.commit);
+          }
+        } catch {}
+
+        const suffix = `?v=${encodeURIComponent(version)}`;
+        const stylesheet = document.createElement('link');
+        stylesheet.rel = 'stylesheet';
+        stylesheet.href = `./style.css${suffix}`;
+        document.head.append(stylesheet);
+
+        await new Promise((resolve, reject) => {
+          const vendor = document.createElement('script');
+          vendor.src = `./vendor/polygon-clipping.umd.js${suffix}`;
+          vendor.onload = resolve;
+          vendor.onerror = () => reject(new Error('Failed to load polygon-clipping.'));
+          document.head.append(vendor);
+        });
+
+        const app = document.createElement('script');
+        app.type = 'module';
+        app.src = `./app.js${suffix}`;
+        document.body.append(app);
+      })().catch((error) => {
+        const host = document.getElementById('statusText');
+        if (host) host.textContent = `Startup failed: ${error.message}`;
+        console.error(error);
+      });
+    </script>
   </body>
 </html>

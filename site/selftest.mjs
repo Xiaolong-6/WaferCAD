@@ -129,6 +129,30 @@ const conformalFlat = regionAt(conformalStep, [4, 0]).stack.find(
 assert.equal(conformalFlat.z0, 5);
 assert.equal(conformalFlat.z1, 6);
 
+const conformalGrowStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const conformalGrowSeed = applyOperation(conformalGrowStep, {
+  type: 'add',
+  name: 'Grow seed',
+  thickness: 2,
+  face: 'front',
+  area: rectMulti(4, 20),
+  growth: 'direct',
+});
+applyOperation(conformalGrowStep, {
+  type: 'grow',
+  targetLayerId: conformalGrowSeed.layerId,
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(20, 20),
+  growth: 'conformal',
+});
+const conformalGrowSide = regionAt(conformalGrowStep, [2.5, 0]).stack.find(
+  (segment) => segment.layerId === conformalGrowSeed.layerId,
+);
+assert.equal(conformalGrowSide.z0, 5);
+assert.equal(conformalGrowSide.z1, 8);
+assert.equal(surfaceSegment(regionAt(conformalGrowStep, [0, 0]).stack).z1, 8);
+
 assert.equal(renameLayer(conformal, c.layerId, 'Contact'), true);
 assert.equal(layerById(conformal, c.layerId).name, 'Contact');
 assert.equal(recolorLayer(conformal, c.layerId, '#55aacc'), true);
