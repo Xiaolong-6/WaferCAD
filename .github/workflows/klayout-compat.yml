@@ -1,0 +1,49 @@
+name: KLayout format compatibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Corpus scope
+        required: true
+        default: all
+        type: choice
+        options:
+          - core
+          - all
+  push:
+    branches:
+      - "fix/klayout-gds-oasis-compat"
+
+permissions:
+  contents: read
+
+jobs:
+  parser-sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout WaferCAD
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Checkout pinned KLayout testdata
+        uses: actions/checkout@v6
+        with:
+          repository: KLayout/klayout
+          ref: 5fa733e1680212e4ceda532ca5fa6ea707c654de
+          path: _klayout
+          sparse-checkout: testdata
+
+      - name: Sweep parser and flatten pipeline
+        run: node scripts/klayout-compat.mjs --root _klayout/testdata --scope "${{ inputs.scope || 'all' }}" --report klayout-compat.json
+
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: klayout-compat
+          path: klayout-compat.json
