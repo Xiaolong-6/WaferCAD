@@ -15,12 +15,21 @@ test('only layers exposed at a stack boundary can be deleted', () => {
 
   assert.equal(isLayerExposed(model, first.id), false);
   assert.equal(deleteExposedLayer(model, first.id), false);
-  assert.equal(model.layers.some((layer) => layer.id === first.id), true);
+  assert.equal(
+    model.layers.some((layer) => layer.id === first.id),
+    true,
+  );
 
   assert.equal(isLayerExposed(model, second.id), true);
   assert.equal(deleteExposedLayer(model, second.id), true);
-  assert.equal(model.layers.some((layer) => layer.id === second.id), false);
-  assert.deepEqual(model.regions[0].stack.map((segment) => segment.layerId), ['base', first.id]);
+  assert.equal(
+    model.layers.some((layer) => layer.id === second.id),
+    false,
+  );
+  assert.deepEqual(
+    model.regions[0].stack.map((segment) => segment.layerId),
+    ['base', first.id],
+  );
 });
 
 test('a layer exposed on the back face is also deletable', () => {
@@ -30,5 +39,8 @@ test('a layer exposed on the back face is also deletable', () => {
 
   assert.equal(isLayerExposed(model, back.id), true);
   assert.equal(deleteExposedLayer(model, back.id), true);
-  assert.deepEqual(model.regions[0].stack.map((segment) => segment.layerId), ['base']);
+  assert.deepEqual(
+    model.regions[0].stack.map((segment) => segment.layerId),
+    ['base'],
+  );
 });
