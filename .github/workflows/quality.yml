@@ -31,11 +31,6 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Prettier preview
-        run: |
-          npx prettier --write site/app.js site/index.html site/roi-editor.js site/style.css site/tests/roi-editor.test.mjs
-          git diff -- site/app.js site/index.html site/roi-editor.js site/style.css site/tests/roi-editor.test.mjs
-
       - name: Format check
         run: npm run format:check
 
