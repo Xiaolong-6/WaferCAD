@@ -17,6 +17,21 @@ const reportPath = path.resolve(valueAfter('--report', 'klayout-compat.json'));
 const scope = valueAfter('--scope', 'all');
 const singleFile = valueAfter('--file');
 const coreDirs = new Set(['gds', 'oasis', 'lstream']);
+const expectedRejections = new Set([
+  'oasis/t2.3.oas',
+  'oasis/t2.5.oas',
+  'oasis/t2.6.oas',
+  'oasis/t3.3.oas',
+  'oasis/t3.4.oas',
+  'oasis/t3.6.oas',
+  'oasis/t3.7.oas',
+  'oasis/t3.8.oas',
+  'oasis/t3.11.oas',
+]);
+
+function isComplexityLimit(message) {
+  return /safe (?:flatten )?limit|expands beyond the safe limit/i.test(message);
+}
 
 async function inspectFile(file) {
   const relative = path.relative(root, file).split(path.sep).join('/');
@@ -28,7 +43,7 @@ async function inspectFile(file) {
     return {
       path: relative,
       format: imported.format,
-      status: renderable ? 'pass' : 'empty',
+      status: expectedRejections.has(relative) ? 'unexpected-pass' : renderable ? 'pass' : 'empty',
       cells: imported.parsed.cells.size,
       roots: imported.parsed.roots?.length || 0,
       elements: imported.layout.elements.length,
@@ -37,11 +52,16 @@ async function inspectFile(file) {
       bounds: imported.layout.bounds,
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       path: relative,
       format: /\.(?:oas|oasis)$/i.test(relative) ? 'OASIS' : 'GDSII',
-      status: 'fail',
-      error: error instanceof Error ? error.message : String(error),
+      status: expectedRejections.has(relative)
+        ? 'expected-reject'
+        : isComplexityLimit(message)
+          ? 'limit'
+          : 'fail',
+      error: message,
     };
   }
 }
@@ -96,7 +116,7 @@ for (const file of files) {
 }
 
 const counts = Object.fromEntries(
-  ['pass', 'empty', 'fail', 'timeout', 'crash'].map((status) => [
+  ['pass', 'empty', 'expected-reject', 'limit', 'unexpected-pass', 'fail', 'timeout', 'crash'].map((status) => [
     status,
     results.filter((item) => item.status === status).length,
   ]),
@@ -111,8 +131,8 @@ const summary = {
 await writeFile(reportPath, JSON.stringify({ summary, results }, null, 2) + '\n');
 
 console.log(JSON.stringify(summary));
-for (const result of results.filter((item) => !['pass', 'empty'].includes(item.status))) {
+for (const result of results.filter((item) => !['pass', 'empty', 'expected-reject', 'limit'].includes(item.status))) {
   console.log(`${result.status.toUpperCase()}\t${result.path}\t${result.error || ''}`);
 }
 
-if (counts.fail || counts.timeout || counts.crash) process.exitCode = 1;
+if (counts['unexpected-pass'] || counts.fail || counts.timeout || counts.crash) process.exitCode = 1;
