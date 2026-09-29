@@ -377,14 +377,15 @@ function renderSection(){
   }
   ctx.strokeStyle='#8995a1';ctx.lineWidth=.8;ctx.strokeRect(left,top,iw,ih);ctx.fillStyle='#707b86';ctx.font='8px system-ui';
   ctx.fillText(z1.toFixed(1),3,top+7);ctx.fillText(z0.toFixed(1),3,top+ih);ctx.fillText('A',left,top+ih+15);ctx.fillText('B',left+iw-7,top+ih+15);
-  $('sectionMeta').textContent=`${Math.hypot(section.b[0]-section.a[0],section.b[1]-section.a[1]).toFixed(1)} span`;
+  $('sectionMeta').textContent=`${xyText(Math.hypot(section.b[0]-section.a[0],section.b[1]-section.a[1]))} span`;
   $('sectionRange').textContent=`Z (relative) ${lo.toFixed(1)} → ${hi.toFixed(1)}`;
 }
 
 let renderer,scene,camera,controls,group,axesHelper,threeReady=false;
+function zVisualScale(){return Math.max(model.width,model.height)/100}
 function initThree(){
   const host=$('threeHost');renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xf5f7f9);
-  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(34,1,.1,1600);camera.up.set(0,0,1);camera.position.set(115,-125,95);
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(34,1,1,1e9);camera.up.set(0,0,1);camera.position.set(115,-125,95);
   controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,0);controls.enableDamping=true;
   scene.add(new THREE.HemisphereLight(0xffffff,0x7b8794,2.25));const d=new THREE.DirectionalLight(0xffffff,2.2);d.position.set(80,-70,130);scene.add(d);
   group=new THREE.Group();scene.add(group);axesHelper=new THREE.AxesHelper(12);scene.add(axesHelper);host.prepend(renderer.domElement);
@@ -403,7 +404,7 @@ function shapeFromPolygon(poly){
   return shape;
 }
 function renderThree(){
-  if(!threeReady)return;disposeGroup();const clip=roiGeometry(),groups=new Map();
+  if(!threeReady)return;disposeGroup();group.scale.z=zVisualScale();const clip=roiGeometry(),groups=new Map();
   for(const region of model.regions){
     const geom=clip?intersection(region.geom,clip):region.geom;if(isEmpty(geom))continue;
     for(const seg of region.stack){
@@ -421,16 +422,17 @@ function renderThree(){
   $('threeStats').textContent=roi?'focus region':'full model';
 }
 function animate(){requestAnimationFrame(animate);if(renderer){controls.update();renderer.render(scene,camera)}}
-function fit3d(){const [lo,hi]=modelBoundsZ(model),size=Math.max(model.width,model.height,hi-lo);camera.position.set(size*1.05,-size*1.15,size*.82);controls.target.set(0,0,(lo+hi)/2);controls.update();axesHelper.scale.setScalar(Math.max(.6,size/100))}
+function fit3d(){const [lo,hi]=modelBoundsZ(model),zs=zVisualScale(),zSpan=(hi-lo)*zs,size=Math.max(model.width,model.height,zSpan);camera.near=Math.max(.1,size/10000);camera.far=Math.max(1e6,size*50);camera.updateProjectionMatrix();camera.position.set(size*1.05,-size*1.15,size*.82);controls.target.set(0,0,(lo+hi)/2*zs);controls.update();axesHelper.scale.setScalar(Math.max(.6,size/100))}
 
 function renderAll(){
   renderCellTree();renderMaskList();renderLayerLegend();renderMask();renderMain();renderSection();renderThree();
   $('mainFaceLabel').textContent=`${activeFace} surface`;$('activeFacePill').textContent=activeFace[0].toUpperCase()+activeFace.slice(1);
   $('maskSummary').textContent=layout.name||'No mask';$('maskCellLabel').textContent=activeCell||'—';
-  $('baseSummary').textContent=`${Number(model.width.toFixed(2))} × ${Number(model.height.toFixed(2))} µm · Z ${Number(model.thickness.toFixed(2))} rel.`;syncUndo();
+  $('baseSummary').textContent=`${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${Number(model.thickness.toFixed(2))} rel.`;syncUndo();
 }
 function syncBaseControls(){
-  $('baseWidth').value=Number(model.width.toFixed(3));$('baseHeight').value=Number(model.height.toFixed(3));$('baseThickness').value=Number(model.thickness.toFixed(3));$('baseHeight').disabled=model.shape==='circle';
+  $('baseWidth').value=formatXY(model.width);$('baseHeight').value=formatXY(model.height);$('baseThickness').value=Number(model.thickness.toFixed(3));$('baseHeight').disabled=model.shape==='circle';
+  $('baseWidthUnit').textContent=xyUnit().label;$('baseHeightUnit').textContent=xyUnit().label;$('xyUnitSelect').value=xyDisplayUnit;
   document.querySelectorAll('#substrateShape button').forEach(b=>b.classList.toggle('active',b.dataset.shape===model.shape));
 }
 function updateOperationUI(){
