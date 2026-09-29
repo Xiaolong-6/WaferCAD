@@ -253,11 +253,11 @@ function repetitionOffsets(repetition) {
 function readInterval(reader) {
   const type = reader.uint();
   if (type === 0) return;
-  if (type >= 1 && type <= 3) {
+  if (type === 1 || type === 2 || type === 4) {
     reader.uint();
     return;
   }
-  if (type === 4) {
+  if (type === 3) {
     reader.uint();
     reader.uint();
     return;
