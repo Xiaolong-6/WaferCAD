@@ -212,3 +212,34 @@ test('OASIS CBLOCK budget rejects unsafe expansion before decompression', () => 
   assert.doesNotThrow(() => assertOasisBlockSize(10, 10));
   assert.throws(() => assertOasisBlockSize(11, 10), /CBLOCK expands beyond/);
 });
+
+
+test('OASIS CBLOCK rejects expansion beyond the declared uncompressed size', async () => {
+  const body = bytes(
+    uint(20),
+    Uint8Array.of(0x7b),
+    uint(7),
+    uint(0),
+    uint(1000),
+    uint(1000),
+    sint(0),
+    sint(0),
+  );
+  const compressed = new Uint8Array(deflateRawSync(body));
+  const input = bytes(
+    header(),
+    uint(14),
+    oasisString('TOP'),
+    uint(34),
+    uint(0),
+    uint(body.length - 1),
+    uint(compressed.length),
+    compressed,
+    uint(2),
+  );
+
+  await assert.rejects(
+    () => parseOAS(input.buffer),
+    /expanded beyond its declared size|CBLOCK size mismatch/,
+  );
+});
