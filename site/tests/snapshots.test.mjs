@@ -59,5 +59,8 @@ test('snapshot import rejects invalid and duplicate records', () => {
   ]);
 
   assert.equal(count, 1);
-  assert.deepEqual(manager.list().map((item) => item.id), ['a']);
+  assert.deepEqual(
+    manager.list().map((item) => item.id),
+    ['a'],
+  );
 });

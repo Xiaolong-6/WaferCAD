@@ -17,8 +17,7 @@ export function createSnapshotManager({
   restore,
   validateState = () => true,
   now = () => new Date(),
-  idFactory = () =>
-    `snapshot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+  idFactory = () => `snapshot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
 } = {}) {
   if (typeof capture !== 'function') throw new TypeError('capture must be a function');
   if (typeof restore !== 'function') throw new TypeError('restore must be a function');

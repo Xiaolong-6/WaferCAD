@@ -12,14 +12,36 @@ function validProject() {
       width: 200,
       height: 100,
       thickness: 8,
-      boundary: [[[[ -100, -50 ], [100, -50], [100, 50], [-100, 50], [-100, -50]]]],
+      boundary: [
+        [
+          [
+            [-100, -50],
+            [100, -50],
+            [100, 50],
+            [-100, 50],
+            [-100, -50],
+          ],
+        ],
+      ],
       units: { xy: 'µm', z: 'relative' },
       layers: [{ id: 'base', name: 'Base', color: '#C3CBD4' }],
-      regions: [{
-        id: 'region-1',
-        geom: [[[[ -100, -50 ], [100, -50], [100, 50], [-100, 50], [-100, -50]]]],
-        stack: [{ layerId: 'base', z0: -4, z1: 4 }],
-      }],
+      regions: [
+        {
+          id: 'region-1',
+          geom: [
+            [
+              [
+                [-100, -50],
+                [100, -50],
+                [100, 50],
+                [-100, 50],
+                [-100, -50],
+              ],
+            ],
+          ],
+          stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+        },
+      ],
       nextLayerId: 1,
       nextRegionId: 2,
       revision: 1,
@@ -74,16 +96,17 @@ test('project validator rejects malformed layout structure', () => {
   assert.throws(() => validateProjectFile(source), /layout\.elements must be an array/);
 });
 
-
 test('project validator accepts non-recursive snapshot records', () => {
   const source = validProject();
   const snapshotState = validProject();
-  source.snapshots = [{
-    id: 'snapshot-1',
-    name: 'Before etch',
-    createdAt: '2026-09-29T12:00:00.000Z',
-    state: snapshotState,
-  }];
+  source.snapshots = [
+    {
+      id: 'snapshot-1',
+      name: 'Before etch',
+      createdAt: '2026-09-29T12:00:00.000Z',
+      state: snapshotState,
+    },
+  ];
   assert.equal(validateProjectFile(source), source);
 });
 
@@ -91,11 +114,13 @@ test('project validator rejects recursive snapshot payloads', () => {
   const source = validProject();
   const snapshotState = validProject();
   snapshotState.snapshots = [];
-  source.snapshots = [{
-    id: 'snapshot-1',
-    name: 'Recursive',
-    createdAt: '2026-09-29T12:00:00.000Z',
-    state: snapshotState,
-  }];
+  source.snapshots = [
+    {
+      id: 'snapshot-1',
+      name: 'Recursive',
+      createdAt: '2026-09-29T12:00:00.000Z',
+      state: snapshotState,
+    },
+  ];
   assert.throws(() => validateProjectFile(source), /must not be nested/);
 });

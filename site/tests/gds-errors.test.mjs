@@ -58,7 +58,18 @@ test('flattenGDS enforces the hierarchy depth guard', () => {
     const name = `C${i}`;
     const elements =
       i === 34
-        ? [{ kind: 'polygon', layer: 1, datatype: 0, points: [[0, 0], [1, 0], [0, 1]] }]
+        ? [
+            {
+              kind: 'polygon',
+              layer: 1,
+              datatype: 0,
+              points: [
+                [0, 0],
+                [1, 0],
+                [0, 1],
+              ],
+            },
+          ]
         : [sref(`C${i + 1}`)];
     cells.push([name, { name, elements }]);
   }
