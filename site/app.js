@@ -34,11 +34,19 @@ import {
   circleRoiFromAnchor,
   normalizeRoi,
   rectRoiFromAnchor,
+  resizeRoiFromHandle,
   roiAnchorPoint,
   roiContainsPoint,
+  roiHandlePoints,
   translateRoi,
 } from './roi-editor.js';
 import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
+import {
+  availableSelectedLayers,
+  minimumSegmentLength,
+  nearestNamedPoint,
+  zoomLimitForFeature,
+} from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 
 const $ = (id) => document.getElementById(id);
@@ -142,6 +150,10 @@ let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   future = [],
   baseRevertSnapshot = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
+const featureSizeCache = {
+  mask: { layout: null, scale: null, value: null },
+  main: { model: null, revision: null, value: null },
+};
 
 function status(msg) {
   $('statusText').textContent = msg;
@@ -216,6 +228,14 @@ function setSectionEditEnabled(enabled) {
   button.setAttribute('aria-pressed', String(sectionEditEnabled));
   $('mainCanvas').classList.toggle('section-editing', sectionEditEnabled);
   status(sectionEditEnabled ? 'A–B endpoint dragging enabled.' : 'A–B endpoint dragging locked.');
+}
+function setSectionPanelVisible(visible) {
+  const panel = $('sectionCoordsPanel');
+  const button = $('sectionControlsBtn');
+  panel.hidden = !visible;
+  button.classList.toggle('active', visible);
+  button.setAttribute('aria-expanded', String(visible));
+  if (!visible && sectionEditEnabled) setSectionEditEnabled(false);
 }
 function structurePalette() {
   return (
