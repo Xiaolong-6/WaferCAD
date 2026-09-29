@@ -201,7 +201,14 @@
                       accept=".gds,.gdsii,.oas,.oasis"
                       hidden
                   /></label>
-                  <button id="demoMaskBtn" class="compact-btn">Demo</button>
+                  <select
+                    id="sampleMaskSelect"
+                    class="compact-select"
+                    aria-label="Import bundled KLayout sample"
+                    title="Import a KLayout compatibility sample"
+                  >
+                    <option value="">KLayout samples…</option>
+                  </select>
                 </div>
                 <div class="mask-browser">
                   <section class="mask-browser-pane">
