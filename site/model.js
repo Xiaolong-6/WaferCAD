@@ -198,28 +198,44 @@ function splitByArea(model, area, mutator) {
   model.regions = mergeRegions(model, next);
 }
 
-function selectedSurfaceExtreme(model, area, face) {
-  let value = face === 'front' ? -Infinity : Infinity;
+function conformalSourcePatches(model, active, face, type, targetLayerId) {
+  const groups = new Map();
+
   for (const region of model.regions) {
-    if (isEmpty(intersection(region.geom, area))) continue;
-    const z = surfaceZ(region.stack, face);
-    if (z == null) continue;
-    value = face === 'front' ? Math.max(value, z) : Math.min(value, z);
+    const segment = surfaceSegment(region.stack, face);
+    if (!segment || (type === 'grow' && segment.layerId !== targetLayerId)) continue;
+
+    const geom = intersection(region.geom, active);
+    if (isEmpty(geom)) continue;
+
+    const z = face === 'front' ? segment.z1 : segment.z0;
+    const key = z.toFixed(9);
+    if (!groups.has(key)) groups.set(key, { z, geoms: [] });
+    groups.get(key).geoms.push(geom);
   }
-  return Number.isFinite(value) ? value : null;
+
+  return [...groups.values()]
+    .map(({ z, geoms }) => ({ z, geom: unionGeometries(geoms) }))
+    .sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
 }
 
-function conformalSidewallStack(stack, layerId, targetLayerId, amount, face, extreme, type) {
+function conformalSidewallStack(stack, layerId, targetLayerId, amount, face, sourceZ, type) {
   const local = surfaceZ(stack, face);
-  if (local == null || extreme == null) return stack;
+  if (local == null || sourceZ == null) return stack;
   if (type === 'grow' && surfaceSegment(stack, face)?.layerId !== targetLayerId) return stack;
+
+  const coatingLayerId = targetLayerId || layerId;
+  if (!coatingLayerId) return stack;
+
   const out = stack.map((seg) => ({ ...seg }));
   if (face === 'front') {
-    const z1 = Math.max(local + amount, extreme + amount);
-    out.push({ layerId: targetLayerId || layerId, z0: local, z1 });
+    const z1 = sourceZ + amount;
+    if (local >= z1 - 1e-9) return out;
+    out.push({ layerId: coatingLayerId, z0: local, z1 });
   } else {
-    const z0 = Math.min(local - amount, extreme - amount);
-    out.unshift({ layerId: targetLayerId || layerId, z0, z1: local });
+    const z0 = sourceZ - amount;
+    if (local <= z0 + 1e-9) return out;
+    out.unshift({ layerId: coatingLayerId, z0, z1: local });
   }
   return normalizeStack(out);
 }
@@ -239,15 +255,19 @@ export function applyOperation(
   if (type === 'etch') {
     splitByArea(model, active, (stack) => mutateStack(stack, { type, amount, face }));
   } else if (growth === 'conformal') {
-    const expanded = intersection(bufferMulti(active, amount, 32), model.boundary);
-    const ring = difference(expanded, active),
-      extreme = selectedSurfaceExtreme(model, active, face);
+    const sources = conformalSourcePatches(model, active, face, type, targetLayerId);
+
     splitByArea(model, active, (stack) =>
       mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
     );
-    if (!isEmpty(ring)) {
-      splitByArea(model, ring, (stack) =>
-        conformalSidewallStack(stack, layer?.id, targetLayerId, amount, face, extreme, type),
+
+    for (const source of sources) {
+      const expanded = intersection(bufferMulti(source.geom, amount, 32), model.boundary);
+      const sidewallBand = difference(expanded, source.geom);
+      if (isEmpty(sidewallBand)) continue;
+
+      splitByArea(model, sidewallBand, (stack) =>
+        conformalSidewallStack(stack, layer?.id, targetLayerId, amount, face, source.z, type),
       );
     }
   } else {
