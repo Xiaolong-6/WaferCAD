@@ -107,7 +107,7 @@ button:hover,
   display: flex;
   align-items: center;
   padding: 0 8px 0 10px;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 .brand strong {
   font-size: 15px;
@@ -693,20 +693,36 @@ button:hover,
 .three-opacity-control {
   position: relative;
 }
-.three-opacity-control > summary {
-  display: flex;
+.three-control {
+  height: 21px;
+  min-width: 48px;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #4f5b67;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 23px;
-  padding: 0;
-  list-style: none;
+  font-size: 9.5px;
+  line-height: 1.2;
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
+}
+button.three-control:hover,
+.three-control:hover {
+  border-color: var(--line);
+  background: #f7f9fa;
+}
+.three-opacity-control > summary {
+  list-style: none;
 }
 .three-opacity-control > summary::-webkit-details-marker {
   display: none;
 }
-.three-opacity-control[open] > summary {
+.three-opacity-control[open] > summary,
+.three-border-toggle:has(input:checked) {
   border-color: #aebbc9;
   background: var(--accent-soft);
   color: var(--accent-dark);
@@ -735,19 +751,14 @@ button:hover,
   width: 100%;
 }
 .three-border-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 21px;
-  padding: 0 4px;
-  color: #596572;
-  font-size: 9px;
-  white-space: nowrap;
+  position: relative;
 }
 .three-border-toggle input {
-  width: 12px;
-  height: 12px;
-  margin: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 canvas {
   display: block;
@@ -989,11 +1000,15 @@ canvas {
   backdrop-filter: blur(3px);
 }
 
+.section-coords-panel[hidden] {
+  display: none !important;
+}
+
 .section-coords-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   color: #5f6b77;
   font-size: 9px;
 }
@@ -1001,6 +1016,31 @@ canvas {
 .section-coords-head strong {
   color: #46515d;
   font-size: 9.5px;
+}
+
+.section-coords-head-actions,
+.section-coords-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.section-collapse-btn {
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: #687481;
+  font-size: 11px;
+}
+
+.section-coords-actions {
+  margin-bottom: 4px;
+}
+
+.section-coords-actions .mini-btn {
+  flex: 1;
 }
 
 .section-coords-grid {
@@ -1021,6 +1061,7 @@ canvas {
   text-align: right;
 }
 
+#sectionControlsBtn.active,
 #sectionEditBtn.active {
   border-color: #aebbc9;
   background: var(--accent-soft);
@@ -1216,4 +1257,51 @@ canvas {
   .roi-two-fields {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+
+.operation-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.operation-actions .apply-btn {
+  width: 100%;
+  margin-top: 0;
+}
+
+.operation-actions .compact-btn {
+  height: 28px;
+}
+
+.operation-actions .compact-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.active-face-row {
+  margin-top: 0 !important;
+}
+
+.active-face-row button {
+  width: 100%;
+  height: 27px;
+}
+
+.settings-project-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding-bottom: 6px !important;
+}
+
+.settings-project-actions > * {
+  width: 100%;
+}
+
+.roi-handle-cursor {
+  cursor: move;
 }
