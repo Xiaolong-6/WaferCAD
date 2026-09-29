@@ -72,7 +72,14 @@ for (const file of files) {
   try {
     const { stdout } = await execFileAsync(
       process.execPath,
-      ['--max-old-space-size=512', new URL(import.meta.url).pathname, '--root', root, '--file', file],
+      [
+        '--max-old-space-size=512',
+        new URL(import.meta.url).pathname,
+        '--root',
+        root,
+        '--file',
+        file,
+      ],
       { timeout: 20000, maxBuffer: 1024 * 1024 },
     );
     results.push(JSON.parse(stdout.trim()));

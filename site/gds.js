@@ -270,9 +270,14 @@ export function flattenGDS(parsed, rootName) {
         const cv = [(p[1][0] - p[0][0]) / cols, (p[1][1] - p[0][1]) / cols],
           rv = [(p[2][0] - p[0][0]) / rows, (p[2][1] - p[0][1]) / rows];
         const instanceCount = rows * cols;
-        if (!Number.isSafeInteger(instanceCount) || visitedInstances + instanceCount > MAX_FLATTENED_OBJECTS) {
+        if (
+          !Number.isSafeInteger(instanceCount) ||
+          visitedInstances + instanceCount > MAX_FLATTENED_OBJECTS
+        ) {
           throw new Error(
-            'Layout expands beyond the safe flatten limit of ' + MAX_FLATTENED_OBJECTS + ' objects.',
+            'Layout expands beyond the safe flatten limit of ' +
+              MAX_FLATTENED_OBJECTS +
+              ' objects.',
           );
         }
         for (let r = 0; r < rows; r++)
