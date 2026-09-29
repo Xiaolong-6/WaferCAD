@@ -155,23 +155,29 @@ let renderer,scene,camera,controls,group,threeReady=false;
 function initThree(){const host=$('threeHost');renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xf4f6f8);scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(34,1,.1,1500);camera.up.set(0,0,1);camera.position.set(115,-125,95);controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,0);controls.enableDamping=true;scene.add(new THREE.HemisphereLight(0xffffff,0x607080,2.6));const d=new THREE.DirectionalLight(0xffffff,2);d.position.set(80,-60,130);scene.add(d);group=new THREE.Group();scene.add(group);host.append(renderer.domElement);new ResizeObserver(()=>resizeThree()).observe(host);threeReady=true;resizeThree();animate();}
 function resizeThree(){if(!renderer)return;const r=$('threeHost').getBoundingClientRect();renderer.setSize(Math.max(2,r.width),Math.max(2,r.height),false);camera.aspect=Math.max(2,r.width)/Math.max(2,r.height);camera.updateProjectionMatrix()}
 function disposeGroup(){while(group.children.length){const o=group.children.pop();o.geometry?.dispose();o.material?.dispose()}}
-function baseIsPristine(){
-  const z0=-model.thickness/2,z1=model.thickness/2;
-  for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){
-    const p=cellCenter(model,i,j),expected=model.shape==='circle'?((p[0]/(model.width/2))**2+(p[1]/(model.height/2))**2<=1):true,col=model.columns[j*model.cols+i],base=col.find(seg=>seg.name==='Base');
-    if(expected&&(!base||Math.abs(base.z0-z0)>1e-7||Math.abs(base.z1-z1)>1e-7))return false;
-    if(!expected&&base)return false;
+function cellInsideBase(p){return model.shape==='circle'?((p[0]/(model.width/2))**2+(p[1]/(model.height/2))**2<=1):true}
+function fullUniformLayers(){
+  const result=new Map();
+  for(const layer of model.layers){
+    let z0=null,z1=null,ok=true,seen=false;
+    for(let j=0;j<model.rows&&ok;j++)for(let i=0;i<model.cols;i++){
+      const p=cellCenter(model,i,j);if(!cellInsideBase(p))continue;
+      const matches=model.columns[j*model.cols+i].filter(seg=>seg.name===layer.name);
+      if(matches.length!==1){ok=false;break}
+      const seg=matches[0];if(!seen){z0=seg.z0;z1=seg.z1;seen=true}else if(Math.abs(seg.z0-z0)>1e-7||Math.abs(seg.z1-z1)>1e-7){ok=false;break}
+    }
+    if(ok&&seen)result.set(layer.name,{name:layer.name,color:layer.color,z0,z1});
   }
-  return true;
+  return result;
 }
-function addSmoothBase(){
-  const color=model.layers.find(l=>l.name==='Base')?.color||'#b7bdc5',material=new THREE.MeshStandardMaterial({color,roughness:.9,metalness:0});
-  let geometry,mesh;
-  if(model.shape==='circle'){geometry=new THREE.CylinderGeometry(model.width/2,model.width/2,model.thickness,128,1,false);mesh=new THREE.Mesh(geometry,material);mesh.rotation.x=Math.PI/2}
-  else{geometry=new THREE.BoxGeometry(model.width,model.height,model.thickness);mesh=new THREE.Mesh(geometry,material)}
-  mesh.position.z=0;group.add(mesh);
+function addSmoothLayer(item){
+  const material=new THREE.MeshStandardMaterial({color:item.color,roughness:.88,metalness:.01}),thickness=Math.max(.0001,item.z1-item.z0);
+  let mesh;
+  if(model.shape==='circle'){mesh=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1,128,1,false),material);mesh.rotation.x=Math.PI/2;mesh.scale.set(model.width,thickness,model.height)}
+  else{mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),material);mesh.scale.set(model.width,model.height,thickness)}
+  mesh.position.z=(item.z0+item.z1)/2;group.add(mesh);
 }
-function renderThree(){if(!threeReady)return;disposeGroup();const smoothBase=!roi&&baseIsPristine();if(smoothBase)addSmoothBase();const by=new Map();for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){const p=cellCenter(model,i,j);if(!pointInRoi(p))continue;for(const s of model.columns[j*model.cols+i]){if(smoothBase&&s.name==='Base')continue;const key=`${s.name}|${s.color}`;if(!by.has(key))by.set(key,{color:s.color,items:[]});by.get(key).items.push({p,s})}}
+function renderThree(){if(!threeReady)return;disposeGroup();const analytic=roi?new Map():fullUniformLayers();for(const item of analytic.values())addSmoothLayer(item);const by=new Map();for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){const p=cellCenter(model,i,j);if(!pointInRoi(p))continue;for(const seg of model.columns[j*model.cols+i]){if(analytic.has(seg.name))continue;const key=`${seg.name}|${seg.color}`;if(!by.has(key))by.set(key,{color:seg.color,items:[]});by.get(key).items.push({p,s:seg})}}
   const geom=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();for(const g of by.values()){const mesh=new THREE.InstancedMesh(geom.clone(),new THREE.MeshStandardMaterial({color:g.color,roughness:.86,metalness:.02}),g.items.length);g.items.forEach(({p,s},idx)=>{dummy.position.set(p[0],p[1],(s.z0+s.z1)/2);dummy.scale.set(model.dx*1.012,model.dy*1.012,Math.max(.01,s.z1-s.z0));dummy.updateMatrix();mesh.setMatrixAt(idx,dummy.matrix)});mesh.instanceMatrix.needsUpdate=true;group.add(mesh)}
   $('threeStats').textContent=roi?'focus region':'full model';
 }
