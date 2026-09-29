@@ -6,7 +6,9 @@ import {
   applyOperation,
   cloneModel,
   createModel,
+  deleteExposedLayer,
   fullFaceGeometry,
+  isLayerExposed,
   layerById,
   modelBoundsZ,
   recolorLayer,
@@ -585,6 +587,28 @@ function renderLayerLegend() {
       renderThree();
     };
     main.append(color, name);
+    if (isLayerExposed(model, layer.id)) {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'legend-delete';
+      remove.textContent = '×';
+      remove.title = `Delete exposed layer "${layer.name}"`;
+      remove.setAttribute('aria-label', `Delete exposed layer ${layer.name}`);
+      remove.onclick = () => {
+        if (!window.confirm(`Delete exposed layer "${layer.name}"? This can be undone.`)) return;
+        saveHistory();
+        if (!deleteExposedLayer(model, layer.id)) {
+          history.pop();
+          syncUndo();
+          return status('Layer is no longer fully exposed and cannot be deleted.');
+        }
+        if (openLayerPaletteId === layer.id) openLayerPaletteId = null;
+        renderAll();
+        updateOperationUI();
+        status(`Deleted exposed layer "${layer.name}".`);
+      };
+      main.append(remove);
+    }
     row.append(main);
     if (openLayerPaletteId === layer.id) {
       const grid = document.createElement('div');

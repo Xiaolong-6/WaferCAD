@@ -692,7 +692,7 @@ canvas {
 }
 .legend-row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   gap: 4px;
   align-items: center;
   min-height: 23px;
@@ -721,6 +721,21 @@ canvas {
 .legend-name:focus {
   background: #fff !important;
   border-color: #d7dde4 !important;
+}
+.legend-delete {
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: #8b5c63;
+  font-size: 14px;
+  line-height: 1;
+}
+.legend-delete:hover {
+  border-color: #d7b6bb;
+  background: #fff5f6;
+  color: #a34150;
 }
 .legend-palette-grid {
   display: grid;
