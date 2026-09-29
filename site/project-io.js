@@ -1,10 +1,22 @@
 import { validateProjectFile } from './project-schema.js';
 
-const MAX_PROJECT_FILE_BYTES = 64 * 1024 * 1024;
+export const MAX_PROJECT_FILE_BYTES = 64 * 1024 * 1024;
+
+export function serializeProject(project, maxBytes = MAX_PROJECT_FILE_BYTES) {
+  validateProjectFile(project);
+  const text = JSON.stringify(project);
+  const bytes = new TextEncoder().encode(text).byteLength;
+  if (bytes > maxBytes) {
+    throw new Error(
+      `Project file would be larger than the ${Math.round(maxBytes / (1024 * 1024))} MB safety limit.`,
+    );
+  }
+  return text;
+}
 
 export function downloadProject(project, filename = 'wafercad-project.json') {
-  validateProjectFile(project);
-  const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
+  const text = serializeProject(project);
+  const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
