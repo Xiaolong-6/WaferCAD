@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseGDS,flattenGDS,makeDemoLayout} from './gds.js';
+import {parseProjectText,serializeProject} from './project-state.js';
+import {XY_UNITS,formatXY as formatXYValue,fromMicron,toMicron} from './units.js';
 import {
-  applyOperation,cloneModel,createModel,fullFaceGeometry,isVectorModel,layerById,
+  applyOperation,cloneModel,createModel,fullFaceGeometry,layerById,
   modelBoundsZ,recolorLayer,renameLayer,surfacePatches,surfaceSegment,surfaceZ
 } from './model.js';
 import {
@@ -12,11 +14,6 @@ import {
 
 const $=id=>document.getElementById(id);
 const MASK_PALETTE=['#4F86C6','#4FAF9F','#E6A23C','#D96C5F','#8A72BE','#57A6C7','#6C8E5E','#C5678B'];
-const XY_UNITS={
-  nm:{label:'nm',fromMicron:1000,toMicron:.001},
-  um:{label:'µm',fromMicron:1,toMicron:1},
-  mm:{label:'mm',fromMicron:.001,toMicron:1000}
-};
 const STRUCTURE_PALETTES={
   balanced:['#6C8EBF','#82B6A6','#D6A85F','#C97B84','#8A7CB8','#6FA9B8','#A98B6C','#7FA178','#B7799C','#7590AA'],
   airy:['#76A9DC','#86C7B5','#E8C97A','#E5A0A8','#A99AD6','#8BC6D2','#C8AA82','#9ABD91','#D29ABD','#91A9C2'],
@@ -37,16 +34,9 @@ const planViews={mask:{zoom:1,panX:0,panY:0},main:{zoom:1,panX:0,panY:0}};
 
 function status(msg){$('statusText').textContent=msg}
 function xyUnit(){return XY_UNITS[xyDisplayUnit]||XY_UNITS.um}
-function xyToDisplay(value){return value*xyUnit().fromMicron}
-function xyFromDisplay(value){return value*xyUnit().toMicron}
-function formatXY(value,digits=3){
-  const v=xyToDisplay(value),a=Math.abs(v);
-  if(a===0)return '0';
-  if(a>=10000)return Number(v.toFixed(0)).toLocaleString('en-US',{useGrouping:false});
-  if(a>=100)return Number(v.toFixed(1)).toString();
-  if(a>=1)return Number(v.toFixed(2)).toString();
-  return Number(v.toPrecision(digits)).toString();
-}
+function xyToDisplay(value){return fromMicron(value,xyDisplayUnit)}
+function xyFromDisplay(value){return toMicron(value,xyDisplayUnit)}
+function formatXY(value,digits=3){return formatXYValue(value,xyDisplayUnit,digits)}
 function xyText(value){return `${formatXY(value)} ${xyUnit().label}`}
 function structurePalette(){return customStructurePalette||STRUCTURE_PALETTES[activeStructurePalette]||STRUCTURE_PALETTES.balanced}
 function hslHex(h,s,l){
@@ -508,13 +498,13 @@ function bindUi(){
     section={a:[-model.width*.42,0],b:[model.width*.42,0]};planViews.mask={zoom:1,panX:0,panY:0};planViews.main={zoom:1,panX:0,panY:0};syncBaseControls();renderAll();fit3d();status('New empty project.');
   };
   $('saveProjectBtn').onclick=()=>{
-    ensureHierarchy();const data={format:'WaferCAD-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy,units:layout.units},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews,display:{xyUnit:xyDisplayUnit,structurePalette:activeStructurePalette,customStructurePalette}};
+    ensureHierarchy();const data=serializeProject({model,layout,selectedLayerKeys,activeCell,maskTransform,activeFace,roi,section,planViews,display:{xyUnit:xyDisplayUnit,structurePalette:activeStructurePalette,customStructurePalette}});
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);
   };
   $('openProjectInput').onchange=async e=>{
     const f=e.target.files[0];if(!f)return;
     try{
-      const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-vector'||!isVectorModel(p.model))throw new Error('This file uses the legacy preview geometry format. Recreate it with the vector build.');
+      const p=parseProjectText(await f.text());
       model=p.model;if(model.processRevision==null)model.processRevision=Math.max(0,(model.revision||1)-1);layout=p.layout;ensureHierarchy();selectedLayerKeys=new Set(p.selectedLayerKeys||[]);activeCell=p.activeCell||layout.root||null;expandedCells=new Set(activeCell?[layout.root||activeCell]:[]);
       hoveredLayerKey=null;maskTransform=p.maskTransform||maskTransform;activeFace=p.activeFace||'front';roi=p.roi||null;section=p.section||section;
       if(p.display?.xyUnit in XY_UNITS)xyDisplayUnit=p.display.xyUnit;if(p.display?.structurePalette&&STRUCTURE_PALETTES[p.display.structurePalette])activeStructurePalette=p.display.structurePalette;customStructurePalette=Array.isArray(p.display?.customStructurePalette)?p.display.customStructurePalette:null;

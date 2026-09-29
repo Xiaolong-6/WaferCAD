@@ -1,0 +1,27 @@
+name: Test WaferCAD
+
+on:
+  pull_request:
+    paths:
+      - 'site/**'
+      - '.github/workflows/test.yml'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Run existing vector self-test
+        run: node site/selftest.mjs
+      - name: Run regression tests
+        run: node --test site/tests/*.test.mjs
