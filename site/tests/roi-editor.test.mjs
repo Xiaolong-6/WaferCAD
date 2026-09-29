@@ -43,7 +43,6 @@ test('ROI normalization, hit testing, and translation are deterministic', () => 
   });
 });
 
-
 test('ROI exposes four corner handles and resizes from a fixed opposite corner', () => {
   const rect = rectRoiFromAnchor(20, 10, 'center', 0, 0);
   assert.deepEqual(Object.keys(roiHandlePoints(rect)).sort(), [
