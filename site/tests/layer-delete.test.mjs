@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  createLayer,
-  createModel,
-  deleteExposedLayer,
-  isLayerExposed,
-} from '../model.js';
+import { createLayer, createModel, deleteExposedLayer, isLayerExposed } from '../model.js';
 
 test('only layers exposed at a stack boundary can be deleted', () => {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 10 });
@@ -25,10 +20,7 @@ test('only layers exposed at a stack boundary can be deleted', () => {
   assert.equal(isLayerExposed(model, second.id), true);
   assert.equal(deleteExposedLayer(model, second.id), true);
   assert.equal(model.layers.some((layer) => layer.id === second.id), false);
-  assert.deepEqual(
-    model.regions[0].stack.map((segment) => segment.layerId),
-    ['base', first.id],
-  );
+  assert.deepEqual(model.regions[0].stack.map((segment) => segment.layerId), ['base', first.id]);
 });
 
 test('a layer exposed on the back face is also deletable', () => {
@@ -38,8 +30,5 @@ test('a layer exposed on the back face is also deletable', () => {
 
   assert.equal(isLayerExposed(model, back.id), true);
   assert.equal(deleteExposedLayer(model, back.id), true);
-  assert.deepEqual(
-    model.regions[0].stack.map((segment) => segment.layerId),
-    ['base'],
-  );
+  assert.deepEqual(model.regions[0].stack.map((segment) => segment.layerId), ['base']);
 });
