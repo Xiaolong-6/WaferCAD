@@ -3,7 +3,7 @@ import { deflateRawSync } from 'node:zlib';
 import test from 'node:test';
 
 import { parseLayoutFile } from '../layout-io.js';
-import { isOASIS, parseOAS } from '../oasis.js';
+import { assertOasisBlockSize, isOASIS, parseOAS } from '../oasis.js';
 
 function uint(value) {
   const out = [];
@@ -206,4 +206,10 @@ test('OASIS g-delta directions decode southwest and southeast correctly', async 
     [9, 9],
     [10, 8],
   ]);
+});
+
+
+test('OASIS CBLOCK budget rejects unsafe expansion before decompression', () => {
+  assert.doesNotThrow(() => assertOasisBlockSize(10, 10));
+  assert.throws(() => assertOasisBlockSize(11, 10), /CBLOCK expands beyond/);
 });
