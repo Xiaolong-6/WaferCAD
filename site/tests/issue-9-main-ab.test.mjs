@@ -5,11 +5,15 @@ import test from 'node:test';
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 
-test('Main exposes locked A–B editing, numeric coordinates, and double-click Fit', () => {
+test('Main exposes explicit A–B controls, locked dragging, and double-click Fit', () => {
+  assert.match(html, /id="sectionControlsBtn"/);
+  assert.match(html, /id="sectionCoordsPanel"[^>]*hidden/s);
+  assert.match(html, /id="sectionPanelClose"/);
   assert.match(html, /id="sectionEditBtn"/);
+  assert.match(html, /id="resetSectionBtn"/);
   assert.match(html, /id="sectionAx"/);
   assert.match(html, /id="sectionBy"/);
   assert.match(app, /sectionEditEnabled = false/);
   assert.match(app, /main\.addEventListener\('dblclick'/);
-  assert.match(app, /Math\.min\(distanceA, distanceB\) > 14/);
+  assert.match(app, /nearestNamedPoint\(pointer, handles, 18\)/);
 });
