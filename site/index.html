@@ -18,7 +18,9 @@
     <header class="topbar">
       <div class="brand"><strong>WaferCAD</strong></div>
       <nav class="top-actions" aria-label="Project">
-        <button id="newProjectBtn" class="toolbar-btn" title="Start a new empty project">New</button>
+        <button id="newProjectBtn" class="toolbar-btn" title="Start a new empty project">
+          New
+        </button>
         <label class="button toolbar-btn" title="Open a WaferCAD project"
           >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
         /></label>
@@ -40,8 +42,22 @@
             <div><strong>Main</strong><span id="mainFaceLabel">front surface</span></div>
             <div class="view-tools">
               <div class="zoom-tools" title="Main view zoom">
-                <button id="mainZoomOut" class="mini-btn" title="Zoom out Main" aria-label="Zoom out Main">−</button>
-                <button id="mainZoomIn" class="mini-btn" title="Zoom in Main" aria-label="Zoom in Main">+</button>
+                <button
+                  id="mainZoomOut"
+                  class="mini-btn"
+                  title="Zoom out Main"
+                  aria-label="Zoom out Main"
+                >
+                  −
+                </button>
+                <button
+                  id="mainZoomIn"
+                  class="mini-btn"
+                  title="Zoom in Main"
+                  aria-label="Zoom in Main"
+                >
+                  +
+                </button>
                 <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
               </div>
               <div id="mainCoords" class="readout"></div>
@@ -81,8 +97,22 @@
                 </button>
               </div>
               <div class="zoom-tools" title="Mask view zoom">
-                <button id="maskZoomOut" class="mini-btn" title="Zoom out Mask" aria-label="Zoom out Mask">−</button>
-                <button id="maskZoomIn" class="mini-btn" title="Zoom in Mask" aria-label="Zoom in Mask">+</button>
+                <button
+                  id="maskZoomOut"
+                  class="mini-btn"
+                  title="Zoom out Mask"
+                  aria-label="Zoom out Mask"
+                >
+                  −
+                </button>
+                <button
+                  id="maskZoomIn"
+                  class="mini-btn"
+                  title="Zoom in Mask"
+                  aria-label="Zoom in Mask"
+                >
+                  +
+                </button>
                 <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
               </div>
               <div id="maskCoords" class="readout"></div>
@@ -177,7 +207,9 @@
               <div class="control-body">
                 <div class="segmented" id="substrateShape">
                   <button data-shape="rect" title="Use a rectangular base">Rectangle</button>
-                  <button data-shape="circle" class="active" title="Use a circular base">Circle</button>
+                  <button data-shape="circle" class="active" title="Use a circular base">
+                    Circle
+                  </button>
                 </div>
                 <div class="three-fields">
                   <label
