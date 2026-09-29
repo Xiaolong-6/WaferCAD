@@ -159,7 +159,7 @@ function stateSnapshot(){return {model:cloneModel(model),section:structuredClone
 function restoreSnapshot(snapshot){model=cloneModel(snapshot.model);section=structuredClone(snapshot.section||section)}
 function saveHistory(){history.push(stateSnapshot());if(history.length>40)history.shift();future=[];syncUndo()}
 function syncUndo(){$('undoBtn').disabled=!history.length;$('redoBtn').disabled=!future.length;$('revertBaseBtn').disabled=!baseRevertSnapshot}
-function hasProcessEdits(){return model.revision>1||model.layers.length>1}
+function hasProcessEdits(){return (model.processRevision||0)>0}
 
 function fitImportedLayout(){
   maskTransform={scale:1,rotation:0,x:0,y:0};
@@ -513,7 +513,7 @@ function bindUi(){
     const f=e.target.files[0];if(!f)return;
     try{
       const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-vector'||!isVectorModel(p.model))throw new Error('This file uses the legacy preview geometry format. Recreate it with the vector build.');
-      model=p.model;layout=p.layout;ensureHierarchy();selectedLayerKeys=new Set(p.selectedLayerKeys||[]);activeCell=p.activeCell||layout.root||null;expandedCells=new Set(activeCell?[layout.root||activeCell]:[]);
+      model=p.model;if(model.processRevision==null)model.processRevision=Math.max(0,(model.revision||1)-1);layout=p.layout;ensureHierarchy();selectedLayerKeys=new Set(p.selectedLayerKeys||[]);activeCell=p.activeCell||layout.root||null;expandedCells=new Set(activeCell?[layout.root||activeCell]:[]);
       hoveredLayerKey=null;maskTransform=p.maskTransform||maskTransform;activeFace=p.activeFace||'front';roi=p.roi||null;section=p.section||section;
       if(p.display?.xyUnit in XY_UNITS)xyDisplayUnit=p.display.xyUnit;if(p.display?.structurePalette&&STRUCTURE_PALETTES[p.display.structurePalette])activeStructurePalette=p.display.structurePalette;customStructurePalette=Array.isArray(p.display?.customStructurePalette)?p.display.customStructurePalette:null;
       if(p.planViews){Object.assign(planViews.mask,p.planViews.mask||{});Object.assign(planViews.main,p.planViews.main||{})}
