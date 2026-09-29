@@ -1259,7 +1259,6 @@ canvas {
   }
 }
 
-
 .operation-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
