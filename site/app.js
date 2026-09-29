@@ -386,6 +386,20 @@ function globalLayers() {
   return [...map.values()].sort((a, b) => a.layer - b.layer || a.datatype - b.datatype);
 }
 
+function syncMaskCellLabel(layers = globalLayers(), scope = activeScopeCells()) {
+  if (!activeCell) {
+    $('maskCellLabel').textContent = '—';
+    return;
+  }
+  const selected = availableSelectedLayers(layers, selectedLayerKeys, scope);
+  $('maskCellLabel').textContent =
+    selected.length === 1
+      ? `${activeCell} · ${selected[0].layer}/${selected[0].datatype}`
+      : selected.length
+        ? `${activeCell} · ${selected.length} layers`
+        : `${activeCell} · no active layer`;
+}
+
 function selectedMaskGeometry() {
   const geoms = [];
   for (const e of layout.elements || []) {
@@ -547,7 +561,6 @@ function setActiveCell(name) {
   renderCellTree();
   renderMaskList();
   renderMask();
-  $('maskCellLabel').textContent = activeCell || '—';
 }
 function renderCellTree() {
   ensureHierarchy();
@@ -650,14 +663,7 @@ function renderMaskList() {
     row.append(cb, sw, text, count);
     host.append(row);
   }
-  const selected = layers.filter((item) => selectedLayerKeys.has(item.key));
-  $('maskSelectionSummary').textContent = !activeCell
-    ? 'No cell selected'
-    : selected.length === 1
-      ? `Cell: ${activeCell} · Layer: ${selected[0].layer}/${selected[0].datatype}`
-      : selected.length
-        ? `Cell: ${activeCell} · ${selected.length} layers selected`
-        : `Cell: ${activeCell} · no layer selected`;
+  syncMaskCellLabel(layers, scope);
 }
 
 function renderLayerLegend() {
@@ -1291,7 +1297,7 @@ function renderAll() {
   $('mainFaceLabel').textContent = `${activeFace} surface`;
   $('activeFacePill').textContent = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('maskSummary').textContent = layout.name || 'No mask';
-  $('maskCellLabel').textContent = activeCell || '—';
+  syncMaskCellLabel();
   $('baseSummary').textContent =
     `${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${Number(model.thickness.toFixed(2))} rel.`;
   syncUndo();
