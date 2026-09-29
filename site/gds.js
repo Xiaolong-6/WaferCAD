@@ -100,12 +100,12 @@ export function flattenGDS(parsed,rootName){
 
 export function makeDemoLayout(){
   const elements=[
-    {kind:'polygon',sourceCell:'TOP',layer:1,datatype:0,points:[[-38,-20],[-8,-20],[-8,20],[-38,20]]},
-    {kind:'polygon',sourceCell:'TOP',layer:1,datatype:0,points:[[8,-20],[38,-20],[38,20],[8,20]]},
-    {kind:'polygon',sourceCell:'CONTACTS',layer:2,datatype:0,points:[[-31,-10],[-20,-10],[-20,10],[-31,10]]},
-    {kind:'polygon',sourceCell:'CONTACTS',layer:2,datatype:0,points:[[20,-10],[31,-10],[31,10],[20,10]]},
-    {kind:'polygon',sourceCell:'WINDOW',layer:5,datatype:0,points:[[-10,-7],[10,-7],[10,7],[-10,7]]},
-    {kind:'path',sourceCell:'GUIDES',layer:99,datatype:0,points:[[-45,0],[45,0]],width:0}
+    {kind:'polygon',sourceCell:'TOP',layer:1,datatype:0,points:[[-38000,-20000],[-8000,-20000],[-8000,20000],[-38000,20000]]},
+    {kind:'polygon',sourceCell:'TOP',layer:1,datatype:0,points:[[8000,-20000],[38000,-20000],[38000,20000],[8000,20000]]},
+    {kind:'polygon',sourceCell:'CONTACTS',layer:2,datatype:0,points:[[-31000,-10000],[-20000,-10000],[-20000,10000],[-31000,10000]]},
+    {kind:'polygon',sourceCell:'CONTACTS',layer:2,datatype:0,points:[[20000,-10000],[31000,-10000],[31000,10000],[20000,10000]]},
+    {kind:'polygon',sourceCell:'WINDOW',layer:5,datatype:0,points:[[-10000,-7000],[10000,-7000],[10000,7000],[-10000,7000]]},
+    {kind:'path',sourceCell:'GUIDES',layer:99,datatype:0,points:[[-45000,0],[45000,0]],width:0}
   ];
   const operable=elements.filter(e=>e.kind==='polygon'||e.width>0),linework=elements.filter(e=>e.kind==='path'&&!(e.width>0)),bounds=boundsOf(elements);
   const combos=new Map();for(const e of operable){const key=`${e.sourceCell}|${e.layer}|${e.datatype}`;if(!combos.has(key))combos.set(key,{key,cell:e.sourceCell,layer:e.layer,datatype:e.datatype,count:0});combos.get(key).count++;}
