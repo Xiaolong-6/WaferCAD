@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>WaferCAD</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><strong>WaferCAD</strong><span class="tag">v2 preview</span></div>
+    <nav class="top-actions">
+      <button id="newProjectBtn" class="quiet">New</button>
+      <label class="button quiet">Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden></label>
+      <button id="saveProjectBtn" class="quiet">Save</button>
+      <button id="undoBtn" class="quiet" disabled>Undo</button>
+      <button id="redoBtn" class="quiet" disabled>Redo</button>
+    </nav>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <section class="control-section">
+        <div class="section-head"><h2>Base</h2><span id="gridBadge" class="badge">96×96</span></div>
+        <div class="segmented" id="substrateShape">
+          <button data-shape="rect" class="active">Rectangle</button>
+          <button data-shape="circle">Circle</button>
+        </div>
+        <div class="two-col">
+          <label>Width<input id="baseWidth" type="number" value="100" min="4" step="1"></label>
+          <label>Height<input id="baseHeight" type="number" value="80" min="4" step="1"></label>
+        </div>
+        <label>Thickness<input id="baseThickness" type="number" value="12" min="0.2" step="0.2"></label>
+        <button id="applyBaseBtn">Create / reset base</button>
+      </section>
+
+      <section class="control-section">
+        <div class="section-head"><h2>Mask</h2><span id="maskSummary" class="muted">Demo</span></div>
+        <div class="button-row">
+          <label class="button primary">Import GDS<input id="gdsInput" type="file" accept=".gds,.gdsii" hidden></label>
+          <button id="demoMaskBtn" class="quiet">Demo</button>
+        </div>
+        <label>Root cell<select id="rootCellSelect"></select></label>
+        <div id="maskLayerList" class="layer-list"></div>
+        <details>
+          <summary>Alignment</summary>
+          <div class="two-col compact">
+            <label>X<input id="maskOffsetX" type="number" value="0" step="1"></label>
+            <label>Y<input id="maskOffsetY" type="number" value="0" step="1"></label>
+            <label>Scale<input id="maskScale" type="number" value="1" step="0.05"></label>
+            <label>Rotate<input id="maskRotation" type="number" value="0" step="1"></label>
+          </div>
+        </details>
+      </section>
+
+      <section class="control-section">
+        <div class="section-head"><h2>3D focus</h2><button id="clearRoiBtn" class="link-btn">Clear</button></div>
+        <div class="tool-grid">
+          <button class="roi-tool" data-tool="rect">Rectangle</button>
+          <button class="roi-tool" data-tool="circle">Circle</button>
+          <button class="roi-tool" data-tool="polygon">Polygon</button>
+        </div>
+        <p id="roiHint" class="hint">Draw in the Mask view. The focus region only limits 3D rendering; model geometry stays complete.</p>
+      </section>
+
+      <section class="control-section operation-section">
+        <div class="section-head"><h2>Operation</h2><span id="activeFacePill" class="face-pill">Front</span></div>
+        <div class="segmented" id="faceSelect">
+          <button data-face="front" class="active">Front</button>
+          <button data-face="back">Back</button>
+        </div>
+        <label>Action<select id="operationType">
+          <option value="add">Add new layer</option>
+          <option value="grow">Grow current layer</option>
+          <option value="etch">Etch / subtract</option>
+        </select></label>
+        <label id="layerNameRow">Layer name<input id="layerName" value="Layer 2"></label>
+        <label id="targetLayerRow" class="hidden">Current layer<select id="targetLayer"></select></label>
+        <label>Area<select id="operationArea">
+          <option value="mask">Selected mask</option>
+          <option value="full">Whole face</option>
+        </select></label>
+        <label id="growthModeRow">Growth<select id="growthMode">
+          <option value="direct">Direct</option>
+          <option value="conformal">Conformal</option>
+        </select></label>
+        <label>Thickness<input id="operationThickness" type="number" value="3" min="0.1" step="0.1"></label>
+        <button id="applyOperationBtn" class="primary wide">Apply operation</button>
+        <p id="operationNote" class="hint">Direct follows the selected footprint. Conformal also expands across exposed sidewalls.</p>
+      </section>
+
+      <section class="control-section">
+        <div class="section-head"><h2>Structure</h2><span id="structureCount" class="muted"></span></div>
+        <div id="structureList" class="structure-list"></div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <section class="view-panel" id="maskPanel">
+        <div class="view-head"><div><strong>Mask</strong><span>layout + 3D focus</span></div><div id="maskCoords" class="readout"></div></div>
+        <canvas id="maskCanvas"></canvas>
+        <div class="view-foot"><span>Filled boundaries and width-bearing paths are operable.</span><span id="maskSelectionSummary"></span></div>
+      </section>
+
+      <section class="view-panel" id="threePanel">
+        <div class="view-head"><div><strong>3D</strong><span>rotate · zoom · pan</span></div><button id="fit3dBtn" class="small quiet">Fit</button></div>
+        <div id="threeHost"></div>
+        <div class="view-foot"><span id="threeStats"></span><span>Focus affects rendering only.</span></div>
+      </section>
+
+      <section class="view-panel" id="mainPanel">
+        <div class="view-head"><div><strong>Main view</strong><span id="mainFaceLabel">front surface</span></div><button id="resetSectionBtn" class="small quiet">Reset section</button></div>
+        <canvas id="mainCanvas"></canvas>
+        <div class="view-foot"><span>Step edges are emphasized.</span><span>Drag A → B to define the section.</span></div>
+      </section>
+
+      <section class="view-panel" id="sectionPanel">
+        <div class="view-head"><div><strong>Section A–B</strong><span id="sectionMeta"></span></div></div>
+        <canvas id="sectionCanvas"></canvas>
+        <div class="view-foot"><span id="sectionRange"></span><span>Relative geometry</span></div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="statusbar"><span id="statusText">Ready.</span><span>Static browser build · no server</span></footer>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

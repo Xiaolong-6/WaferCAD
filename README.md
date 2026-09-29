@@ -1,132 +1,32 @@
-# WaferCAD MVP
+# WaferCAD v2 preview
 
-A minimal local-first **2.5D wafer CAD editor** for building wafer/device geometry as a sequence of saved states. Header-persistent dock (`Main | Pattern Editor`) shares the same `state` without page reload; `New wafer` and `+ Snapshot` are floating in the 3D view.
+WaferCAD is being rebuilt as a browser-only 2.5D geometry editor for mask-driven structure construction.
 
-This is intentionally **not** a TCAD simulator and **not** yet a process-flow engine. The interaction is SketchUp's push/pull extended with semiconductor-mask geometry imported from GDSII or OASIS.
+The live v2 application is in `site/` and is deployed to GitHub Pages. It uses four synchronized views:
 
-## What works in this MVP
+- **Mask** — GDSII hierarchy/layer selection plus a 3D-only focus region.
+- **3D** — interactive rendering of the current structure, optionally clipped to the focus region.
+- **Main view** — front/back surface map with emphasized step edges and an editable A–B section line.
+- **Section A–B** — live cross-section generated from the same structure model as the 3D view.
 
-- Create a circular (with optional `Main flat` or `Notch` at `-Y` auto-sized per SEMI M1), rectangular, or coordinate-defined polygon wafer with independently selectable lateral/thickness units. `New wafer` is a floating button in the 3D view (header stays, `view3d-float`).
-- **Physical Mask Composer:** every filled GDS boundary remains independently selectable, then selected boundaries are unioned before process geometry so overlaps and stitch boundaries never become model edges. Pattern Editor shows `Mask` and `Wafer Projection` side by side with linked pan/zoom: Mask exposes selection and polarity, while Wafer Projection shows only the wafer and a borderless solid-purple UV exposure. `Commit projection to Main` freezes the resolved exposure geometry, and every process operation consumes only that committed projection.
-- Import GDSII or OASIS and identify **each layer/datatype pair separately** using `gdstk`; browse the full cell hierarchy and choose any cell or `All cells` aggregate. `All cells` collects `depth=0` polygons from every cell (solves per-cell-per-layer files).
-- Main `Top view` renders the physical model plus the committed substrate projection only; raw GDS/mask geometry is confined to Pattern Editor's Mask view.
-- Assign project-local aliases by clicking a layer name (dotted underline) in the old `Main` panel (now deprecated, layers live in the dock). Legacy project tone/fill fields remain loadable, while new mask work uses optical components and one explicit physical polarity.
-- Line-like layers with no physical area remain guarded. Filled GDS boundaries and width-bearing paths are treated as physical geometry; independent components are never silently discarded by an area heuristic.
-- Align the active cell to the wafer with `X/Y` offset, `Rotation` and global `Scale` (default 1, about layout origin) — live preview in dock, persisted via `state.gds.transform` and `persistSharedState`.
-- Clip every push/pull/conformal/isotropic operation to the exact wafer outline (including flat/notch and non-convex customs).
-- Flip between front and back processing faces (`Face: Front/Back` in the Geometry panel); backside Pull grows below `z=-thickness` and Push etches upward.
-- Geometry operation panel order: `Distance → Mode → Material → Face → Selection → Apply/Undo` at the bottom. `Selection` defaults to `Full faces`; `Patterns` resolves all selected layers/components as one physical exposure field before Pull, Push, Conformal, Etch, or Doping.
-- `Apply operation` reports the current geometry stage and elapsed time. During cancellable Boolean work it becomes a red `Stop · Ns` control; Stop terminates the isolated geometry process and never commits an unfinished result. Equal-height material islands are grouped and spatially pruned before exact surface partitioning to keep large masks responsive.
-- Operations:
-  - **Pull up**: extruded solid with material.
-  - **Push down / Isotropic etch**: layer-by-layer consumption of the stack in depth order via `split-by-mask`, then substrate cut; fully consumed layers and their dopings are removed.
-  - **Conformal grow / Isotropic etch**: round `gdstk.offset` plus same Z distance (2.5D isotropic approximation).
-  - **Planar top-surface partition**: every process mask is split by all current solid and cut footprints before Z assignment. Pull, Push, isotropic etch, exposed-face selection and doping therefore operate on one material and one surface height per atomic XY region.
-- Doping, Undo (50 steps), whole-face fallback, and per-layer/global Z display (true `×1` is isotropic, `Z display` is exaggeration) remain.
-- Linked views: interactive 3D (with `Show axes`), Top (wheel zoom + drag pan on empty, `Fit wafer/layout`), and live `A–B` section (wheel zoom / drag pan / double-click reset). Top `Mask veil` is literal linear opacity: `0%` hides the mask completely and `100%` makes the veil and committed projection opaque. Z display can use `Physical` linear spacing (true ×1 is isotropic) or `Relative thickness`, which is logarithmic between physical layers (`relativeThickness(t_um)=1+log10(t_um*1000)`, 1 nm=1…500 µm≈6.7, clamp 0.25, zero→0) and linear within each layer, anchored at the local supporting surface so coplanar different layers are not stacked and mixed-height pieces of the same layer retain the same visual thickness. A 50 nm remaining part of a 100 nm layer occupies half its visual height. The substrate uses a separate surface-detail mapping that keeps total height compressed but exaggerates shallow depths near either surface (front/back symmetric, e.g., 1 µm and 2 µm trenches in 500 µm are clearly visible). Doping follows its local target piece. Cross section can also create a labeled display break by retaining independent Front/Back thicknesses or specifying the exact physical Z interval. Both display tools leave saved geometry, thicknesses, labels, and operations in physical coordinates.
-- `Figure legend` is ordered as a physical stack (`Front top → substrate → Back bottom`), labels material layers as Front/Back and Top/Bottom, shows per-layer thickness (exact planar partition for substrate, `atoms` count), and allows renaming/color/Z-scale. It exposes a guarded delete action only for the current physical Front top or Back bottom material layer; substrate and interior layers cannot be deleted, and deletion participates in Undo.
-- `Snapshots` as a Google-Maps-style horizontal strip below `3D`: `+ Snapshot` (floating) opens an in-app naming dialog and captures the current 3D perspective (`camera position/target` + thumb), new cards appear on the right, hover `×` to delete, click to restore (auto-saves the previous snapshot covering the current archive), and `New wafer` offers snapshot-save. Snapshots store camera and are part of project JSON.
-- **Persistence:** every mutation flows through the revisioned `commitState()` transaction. Complete structured state and the original GDS/OAS `Blob` are queued to IndexedDB; Web Storage contains only a tiny recovery marker/timestamp. Failures are visible in the status bar and emit `wafercad:persistence-error` instead of being swallowed. Refresh remains a clean reset with explicit `Restore / Reset`; legacy Web Storage sessions migrate once into IndexedDB.
-- **Navigation:** `Main | Pattern Editor` tabs in header keep the header persistent; content toggles via `#mainWorkspace` / `#patternsWorkspace` (`grid-row:2` shared, `hidden` toggled, `patRender` on show). `/patterns` redirects `302 → /`.
+The first preview supports rectangle/circle bases, front/back processing, mask or whole-face operations, Add new layer, Grow current layer, vertical Etch/Subtract, Direct growth and a grid-based Conformal approximation that includes sidewall footprint expansion. Thickness values are deliberately relative rather than tied to a physical unit.
 
-## Run
+GDSII is parsed directly in the browser. Filled boundaries and width-bearing paths are operable; zero-width linework is not. OASIS is not supported in this first preview.
 
-Python 3.10+ is recommended.
+## Legacy implementation
+
+The pre-v2 FastAPI/gdstk application and its documentation remain in the repository only as implementation/history reference. New v2 development should not preserve its API or architecture unless a concept is independently useful.
+
+## Local preview
+
+Serve the `site/` directory with any static HTTP server, for example:
 
 ```bash
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS/Linux
-source .venv/bin/activate
-
-pip install -c constraints.txt -r requirements.txt
-npm install
-python run.py
+python -m http.server 8000 --directory site
 ```
 
-Open:
-
-```text
-http://127.0.0.1:8765
-```
-
-## Multi-computer development
-
-Use the private Git repository as the source of truth and clone it into a local
-folder that is not managed by OneDrive on each computer. Recreate `.venv` and
-`node_modules` independently on every computer using the commands above; do not
-synchronize either environment directory. Pull before starting work, commit and
-push completed changes, and avoid editing the same branch simultaneously on two
-computers.
-
-## Test
+Run the dependency-free geometry smoke tests with:
 
 ```bash
-pip install -c constraints.txt -r requirements-dev.txt
-python -m pytest
-npm run test:ui
+node site/selftest.mjs
 ```
-
-The test suite generates and checks in a small synthetic `BASE → TOP` layout in
-both GDSII and OASIS formats. It contains only two rectangles on layer/datatype
-pairs `1/0` and `10/5`; no confidential layout data is used.
-
-The UI suite launches the installed Google Chrome in headless mode, starts the
-FastAPI service when necessary, and exercises the complete create/import/
-geometry/undo/snapshot/save/open workflow **via the Pattern Editor dock** (`Mask` selection → `Wafer Projection` → `Commit projection to Main` → process operation). Use `npm run test:ui:headed` to watch
-the same test in a visible Chrome window.
-
-Three.js is pinned in `package-lock.json` and served locally by the FastAPI application, so the 3D view does not require a CDN connection. `polygon-clipping` is vendored as `static/vendor/polygon-clipping.umd.js` for offline preview.
-
-Project JSON v9 is validated before state mutation. Versions 1–8 migrate to the current schema (legacy `log` mapping becomes `relative`, old layers gain `baseThickness`); unsupported future versions, non-finite geometry and invalid wafer dimensions are rejected. Snapshot geometry and thumbnails are content-addressed in separate stores so identical device states are not copied once per snapshot.
-
-The reproducible requirement-to-test map is in [docs/VERIFICATION.md](docs/VERIFICATION.md).
-
-## Boron-implanted black-silicon photodiode example
-
-`tools/build_bsi_photodiode_project.py` converts the five-layer detector mask into a reproducible WaferCAD project following the geometry reported in ACS Photonics 10 (2023) 1735–1743. The black-silicon nanostructure is intentionally represented as a shallow planar push-down on layer `1/0`; the generated project records this and the assumed rear-junction depth in `processModel.assumptions`.
-
-```powershell
-.venv\Scripts\python.exe tools\build_bsi_photodiode_project.py `
-  "C:\path\to\B-doped_detectors_masks_final_flattened.OAS" `
-  "user_projects\boron-implanted-bsi-photodiode.wafercad.json" `
-  --bsi-depth 0.5
-```
-
-The output contains six process snapshots, retains the mask layer aliases, and opens with the substrate bulk Z interval skipped in Cross section. `user_projects/` stays local and is intentionally ignored by Git.
-
-With the local service running, open the generated result directly—no file picker required:
-
-```text
-http://127.0.0.1:8765/?project=boron-implanted-bsi-photodiode.wafercad.json
-```
-
-## Basic workflow
-
-1. Create/open a wafer (for circles optionally add a SEMI-sized `Main flat` or `Notch` at `-Y`) — use the floating `New wafer` in 3D.
-2. Import a `.gds`, `.gdsii`, `.oas`, or `.oasis` file; pick a `Cell` or the local-geometry aggregate, enable layers, then select filled boundaries directly or use Lasso to save complete boundaries as a named pattern. Choose whether polygons transmit or block light.
-3. Use the parallel `Mask` and `Wafer Projection` panels to set `Scale`/`X/Y`/`Rotation` and verify the substrate-clipped exposure. Their pan and zoom stay synchronized, and all plan views include a live scale bar. Click `Commit projection to Main` when the purple UV area is correct.
-4. In `Main` choose `Face: Front/Back`, then `Full faces` (click blue top regions) or `Patterns` (layers checked in dock).
-5. Enter a distance and choose `Pull`, `Push`, `Conformal grow`, `Isotropic etch`, or `Doping` (`Face` + `Selection` decide the mask; empty selection uses the whole face).
-6. Inspect `3D` (true `×1`), `Top` (with `Mask veil` opacity) and `A–B` section (wheel/drag/double-click). For a thick substrate, enable `Skip Z` and enter the Front/Back thickness to keep; switch to `Z coordinates` when an exact hidden interval is preferred.
-7. Click `+ Snapshot` (floating) to capture the current `3D` perspective; find it in the strip below `3D`, switch by clicking cards (previous state is auto-saved).
-8. New wafer prompts to snapshot-save the current state first. Refresh shows an empty project but offers `Restore` for the previous session.
-
-## Important limitations
-
-This is an architectural/interaction MVP, not a finished CAD kernel.
-
-- Push/Isotropic etch consume the geometric stack in depth order, but do not yet model chemistry-dependent selectivity, etch stops, loading, redeposition or different rates per material.
-- Pull-up uses a 2.5D polygon extrusion. Conformal grow/isotropic etch use a round lateral offset plus the same Z distance; a true 3D sidewall shell, sloped profile, loading effect and transport model are not implemented.
-- Curved sidewalls and true 3D conformal shells remain outside the 2.5D model, but stacked planar topography is partitioned exactly in XY before every operation; no centroid surface-height estimate is used.
-- The composer is a binary geometric projection model; diffraction, partial coherence, focus, aerial-image thresholds, resist chemistry, and process bias are not yet simulated.
-- No automatic process semantics (oxidation, deposition, lithography, etc.) yet.
-- With `Physical` mapping, `×1` display Z is true isotropic; higher values are `Physical ×` exaggeration. `Relative thickness` is logarithmic between layers (`1+log10(t_nm)`, zero→0) and linear within each layer, anchored at the local supporting surface so different layers at the same elevation are not stacked. `Relative` has its own `Display scale` (default 1, vs Physical 8) with a centralized normalization so substrates are not taller than wafer diameter.
-- Thin films: 100 nm→3, 50 nm remaining→1.5. Substrate 500 µm→≈6.7 uses a front/back-symmetric surface-detail `F(d)=(H/2)·ln(1+d/d0)/ln(1+(T/2)/d0)` (d0=1 µm) that makes 1 µm and 2 µm trenches clearly visible while bulk stays compressed. Stored Z remains unchanged.
-- Cross-section `Skip Z` is a schematic display break only. It does not remove substrate, alter physical coordinates, or affect operations.
-- Per-layer and global Z scaling are visualization settings only; they never change stored physical thicknesses.
-- Large layout files are capped at 20,000 flattened polygons; Mask view can still be heavy when many optical components are fully zoomed out.
-- Pattern Editor's `Lasso` is a rectangular `Shift+drag` in Mask view; saving creates a virtual `pattern:*` layer from complete optical components rather than clipping fragments to the lasso rectangle.
-
-See `HANDOFF.md` before extending the project.
