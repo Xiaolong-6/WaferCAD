@@ -792,3 +792,200 @@ canvas {
   background: #f8fafb;
   color: #5f6d7a;
 }
+
+/* Tabbed workspace layout */
+.app-shell {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: minmax(240px, 1fr) minmax(240px, 1fr);
+  grid-template-areas:
+    'main main mask mask three three'
+    'tools tools section section section section';
+}
+
+#mainPanel {
+  grid-area: main;
+}
+
+#maskPanel {
+  grid-area: mask;
+}
+
+#threePanel {
+  grid-area: three;
+}
+
+#toolPanel {
+  grid-area: tools;
+}
+
+#sectionPanel {
+  grid-area: section;
+}
+
+.tool-panel {
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.tool-tabs {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--line2);
+  background: #fff;
+  scrollbar-width: thin;
+}
+
+.tool-tab {
+  flex: 1 0 auto;
+  min-width: 0;
+  height: 29px;
+  border: 0;
+  border-right: 1px solid var(--line2);
+  border-radius: 0;
+  background: transparent;
+  padding: 3px 9px;
+  color: #65717d;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tool-tab:last-child {
+  border-right: 0;
+}
+
+.tool-tab:hover {
+  border-color: var(--line2);
+  background: #f7f9fb;
+}
+
+.tool-tab.active {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.tool-tab .badge {
+  margin-left: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+}
+
+.tool-tab-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tool-tab-panel {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-bottom: 0;
+  padding: 7px 8px 8px;
+  background: #fff;
+}
+
+.tool-tab-panel[hidden] {
+  display: none !important;
+}
+
+.tool-tab-panel.operation-section {
+  padding: 7px 8px 8px;
+  background: #fdfcff;
+}
+
+.tool-context {
+  min-height: 23px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px 4px;
+  border-bottom: 1px solid var(--line2);
+  margin-bottom: 4px;
+  color: #5e6976;
+  font-size: 10px;
+}
+
+.tool-context .muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-tab-panel .control-body {
+  padding: 2px 0 0;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(240px, 1fr));
+    grid-template-areas:
+      'tools three'
+      'main mask'
+      'section section';
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .tool-tab {
+    flex: 0 0 auto;
+    padding-left: 7px;
+    padding-right: 7px;
+    font-size: 9.5px;
+  }
+
+  .tool-tab-panel {
+    padding: 6px;
+  }
+}
+
+@media (max-width: 600px) {
+  .workspace {
+    padding: 2px;
+    gap: 2px;
+    grid-template-rows: repeat(3, minmax(220px, 1fr));
+  }
+
+  .section-body {
+    grid-template-columns: minmax(0, 1fr) 118px;
+  }
+
+  .layer-legend {
+    padding: 4px;
+  }
+
+  .view-head {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .view-head span,
+  .view-foot {
+    font-size: 8.5px;
+  }
+
+  .mini-btn {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
