@@ -47,3 +47,57 @@ jobs:
         with:
           name: klayout-compat
           path: klayout-compat.json
+
+  ui-import-sweep:
+    needs: parser-sweep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout WaferCAD
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install project and browser test dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Checkout pinned KLayout core format testdata
+        uses: actions/checkout@v6
+        with:
+          repository: KLayout/klayout
+          ref: 5fa733e1680212e4ceda532ca5fa6ea707c654de
+          path: _klayout
+          sparse-checkout: |
+            testdata/gds
+            testdata/oasis
+            testdata/lstream
+
+      - name: Start WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-http.log
+          exit 1
+
+      - name: Sweep actual browser import path
+        run: node scripts/klayout-ui-compat.mjs --root _klayout/testdata --url http://127.0.0.1:4173 --report klayout-ui-compat.json --failure-dir ui-failures
+
+      - name: Upload UI compatibility report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: klayout-ui-compat
+          path: |
+            klayout-ui-compat.json
+            ui-failures
+          if-no-files-found: ignore
