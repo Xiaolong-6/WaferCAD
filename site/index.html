@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <title>WaferCAD</title>
-    <link rel="stylesheet" href="./style.css" />
-    <script src="./vendor/polygon-clipping.umd.js"></script>
     <script type="importmap">
       {
         "imports": {
@@ -322,6 +320,40 @@
     <footer class="statusbar">
       <span id="statusText">Ready.</span><span id="buildCommit">commit local</span>
     </footer>
-    <script type="module" src="./app.js"></script>
+    <script>
+      (async () => {
+        let version = String(Date.now());
+        try {
+          const response = await fetch('./build-info.json', { cache: 'no-store' });
+          if (response.ok) {
+            const info = await response.json();
+            if (info.commit) version = String(info.commit);
+          }
+        } catch {}
+
+        const suffix = `?v=${encodeURIComponent(version)}`;
+        const stylesheet = document.createElement('link');
+        stylesheet.rel = 'stylesheet';
+        stylesheet.href = `./style.css${suffix}`;
+        document.head.append(stylesheet);
+
+        await new Promise((resolve, reject) => {
+          const vendor = document.createElement('script');
+          vendor.src = `./vendor/polygon-clipping.umd.js${suffix}`;
+          vendor.onload = resolve;
+          vendor.onerror = () => reject(new Error('Failed to load polygon-clipping.'));
+          document.head.append(vendor);
+        });
+
+        const app = document.createElement('script');
+        app.type = 'module';
+        app.src = `./app.js${suffix}`;
+        document.body.append(app);
+      })().catch((error) => {
+        const host = document.getElementById('statusText');
+        if (host) host.textContent = `Startup failed: ${error.message}`;
+        console.error(error);
+      });
+    </script>
   </body>
 </html>

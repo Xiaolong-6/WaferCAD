@@ -222,8 +222,6 @@ function conformalSourcePatches(model, active, face, type, targetLayerId) {
 function conformalSidewallStack(stack, layerId, targetLayerId, amount, face, sourceZ, type) {
   const local = surfaceZ(stack, face);
   if (local == null || sourceZ == null) return stack;
-  if (type === 'grow' && surfaceSegment(stack, face)?.layerId !== targetLayerId) return stack;
-
   const coatingLayerId = targetLayerId || layerId;
   if (!coatingLayerId) return stack;
 
