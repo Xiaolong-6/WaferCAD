@@ -146,10 +146,16 @@ async function loadBuildCommit() {
     const commit = String(info.commit || '').trim();
     if (!commit) throw new Error('build commit missing');
     host.textContent = `commit ${commit.slice(0, 7)}`;
-    host.title = commit;
+    host.href = `https://github.com/Xiaolong-6/WaferCAD/commit/${commit}`;
+    host.target = '_blank';
+    host.rel = 'noreferrer';
+    host.title = `Open commit ${commit}`;
   } catch {
     host.textContent = 'commit local';
-    host.removeAttribute('title');
+    host.removeAttribute('href');
+    host.removeAttribute('target');
+    host.removeAttribute('rel');
+    host.title = 'Local build; no deployed commit is available';
   }
 }
 function xyUnit() {

@@ -751,6 +751,21 @@ canvas {
   color: #697582;
   font-size: 9.5px;
 }
+.status-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.statusbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.statusbar a:hover,
+.statusbar a:focus-visible {
+  color: #3f4d5a;
+  text-decoration: underline;
+}
 
 @media (max-width: 1120px) {
   .app-shell {

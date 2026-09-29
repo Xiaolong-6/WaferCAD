@@ -18,23 +18,18 @@
     <header class="topbar">
       <div class="brand"><strong>WaferCAD</strong></div>
       <nav class="top-actions" aria-label="Project">
-        <button id="newProjectBtn" class="toolbar-btn">New</button>
-        <label class="button toolbar-btn"
+        <button id="newProjectBtn" class="toolbar-btn" title="Start a new empty project">New</button>
+        <label class="button toolbar-btn" title="Open a WaferCAD project"
           >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
         /></label>
-        <button id="saveProjectBtn" class="toolbar-btn">Save</button>
+        <button id="saveProjectBtn" class="toolbar-btn" title="Save this project">Save</button>
         <span class="toolbar-separator"></span>
-        <label class="unit-control" title="Display unit only. Geometry is stored internally in µm."
-          ><span>XY</span
-          ><select id="xyUnitSelect" aria-label="XY display unit">
-            <option value="nm">nm</option>
-            <option value="um" selected>µm</option>
-            <option value="mm">mm</option>
-          </select></label
-        >
-        <span class="toolbar-separator"></span>
-        <button id="undoBtn" class="toolbar-btn" disabled>Undo</button>
-        <button id="redoBtn" class="toolbar-btn" disabled>Redo</button>
+        <button id="undoBtn" class="toolbar-btn" title="Undo the last structure change" disabled>
+          Undo
+        </button>
+        <button id="redoBtn" class="toolbar-btn" title="Redo the last undone change" disabled>
+          Redo
+        </button>
       </nav>
     </header>
 
@@ -45,12 +40,18 @@
             <div><strong>Main</strong><span id="mainFaceLabel">front surface</span></div>
             <div class="view-tools">
               <div class="zoom-tools" title="Main view zoom">
-                <button id="mainZoomOut" class="mini-btn">−</button>
-                <button id="mainZoomIn" class="mini-btn">+</button>
-                <button id="mainZoomFit" class="mini-btn">Fit</button>
+                <button id="mainZoomOut" class="mini-btn" title="Zoom out Main" aria-label="Zoom out Main">−</button>
+                <button id="mainZoomIn" class="mini-btn" title="Zoom in Main" aria-label="Zoom in Main">+</button>
+                <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
               </div>
               <div id="mainCoords" class="readout"></div>
-              <button id="resetSectionBtn" class="mini-btn">Reset A–B</button>
+              <button
+                id="resetSectionBtn"
+                class="mini-btn"
+                title="Reset A–B to the default horizontal section"
+              >
+                Reset A–B
+              </button>
             </div>
           </div>
           <canvas id="mainCanvas"></canvas>
@@ -61,14 +62,28 @@
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
               <div class="focus-tools" title="Limit 3D rendering only">
-                <button class="roi-tool mini-btn" data-tool="rect">Rect</button>
-                <button class="roi-tool mini-btn" data-tool="circle">Circle</button>
-                <button id="clearRoiBtn" class="mini-btn">Clear</button>
+                <button
+                  class="roi-tool mini-btn"
+                  data-tool="rect"
+                  title="Draw a rectangular 3D focus region"
+                >
+                  Rect
+                </button>
+                <button
+                  class="roi-tool mini-btn"
+                  data-tool="circle"
+                  title="Draw a circular 3D focus region"
+                >
+                  Circle
+                </button>
+                <button id="clearRoiBtn" class="mini-btn" title="Clear the 3D focus region">
+                  Clear
+                </button>
               </div>
               <div class="zoom-tools" title="Mask view zoom">
-                <button id="maskZoomOut" class="mini-btn">−</button>
-                <button id="maskZoomIn" class="mini-btn">+</button>
-                <button id="maskZoomFit" class="mini-btn">Fit</button>
+                <button id="maskZoomOut" class="mini-btn" title="Zoom out Mask" aria-label="Zoom out Mask">−</button>
+                <button id="maskZoomIn" class="mini-btn" title="Zoom in Mask" aria-label="Zoom in Mask">+</button>
+                <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
               </div>
               <div id="maskCoords" class="readout"></div>
             </div>
@@ -80,7 +95,7 @@
         <section class="view-panel" id="threePanel">
           <div class="view-head">
             <div><strong>3D</strong><span id="threeStats"></span></div>
-            <button id="fit3dBtn" class="mini-btn">Fit</button>
+            <button id="fit3dBtn" class="mini-btn" title="Fit the 3D model">Fit</button>
           </div>
           <div id="threeHost"></div>
         </section>
@@ -134,6 +149,18 @@
             >
               Snapshots <span id="snapshotCount" class="badge">0</span>
             </button>
+            <button
+              id="settingsTab"
+              class="tool-tab"
+              type="button"
+              role="tab"
+              aria-controls="settingsTools"
+              aria-selected="false"
+              tabindex="-1"
+              data-tool-tab="settings"
+            >
+              Settings
+            </button>
           </div>
 
           <div class="tool-tab-content">
@@ -149,8 +176,8 @@
               </div>
               <div class="control-body">
                 <div class="segmented" id="substrateShape">
-                  <button data-shape="rect">Rectangle</button>
-                  <button data-shape="circle" class="active">Circle</button>
+                  <button data-shape="rect" title="Use a rectangular base">Rectangle</button>
+                  <button data-shape="circle" class="active" title="Use a circular base">Circle</button>
                 </div>
                 <div class="three-fields">
                   <label
@@ -192,14 +219,18 @@
               </div>
               <div class="control-body">
                 <div class="button-row">
-                  <label class="button primary compact-btn import-btn"
+                  <label
+                    class="button primary compact-btn import-btn"
+                    title="Import a GDSII or OASIS layout"
                     >Import layout<input
                       id="gdsInput"
                       type="file"
                       accept=".gds,.gdsii,.oas,.oasis"
                       hidden
                   /></label>
-                  <button id="demoMaskBtn" class="compact-btn">Demo</button>
+                  <button id="demoMaskBtn" class="compact-btn" title="Load the built-in demo mask">
+                    Demo
+                  </button>
                 </div>
                 <div class="mask-browser">
                   <section class="mask-browser-pane">
@@ -297,8 +328,38 @@
               hidden
             >
               <div class="control-body snapshot-panel">
-                <button id="saveSnapshotBtn" class="wide compact-btn">Save snapshot</button>
+                <button
+                  id="saveSnapshotBtn"
+                  class="wide compact-btn"
+                  title="Save the current workspace state"
+                >
+                  Save snapshot
+                </button>
                 <div id="snapshotList" class="snapshot-list"></div>
+              </div>
+            </section>
+
+            <section
+              id="settingsTools"
+              class="tool-tab-panel control-section"
+              role="tabpanel"
+              aria-labelledby="settingsTab"
+              data-tab-panel="settings"
+              hidden
+            >
+              <div class="tool-context"><span>Display</span></div>
+              <div class="control-body">
+                <label
+                  class="field-row"
+                  title="Display unit only; geometry remains stored internally in µm"
+                >
+                  <span>XY unit</span>
+                  <select id="xyUnitSelect" aria-label="XY display unit">
+                    <option value="nm">nm</option>
+                    <option value="um" selected>µm</option>
+                    <option value="mm">mm</option>
+                  </select>
+                </label>
               </div>
             </section>
           </div>
@@ -318,7 +379,18 @@
     </div>
 
     <footer class="statusbar">
-      <span id="statusText">Ready.</span><span id="buildCommit">commit local</span>
+      <span id="statusText">Ready.</span>
+      <span class="status-links">
+        <a
+          href="https://github.com/Xiaolong-6/WaferCAD"
+          target="_blank"
+          rel="noreferrer"
+          title="Open the WaferCAD repository on GitHub"
+          >GitHub</a
+        >
+        <span aria-hidden="true">·</span>
+        <a id="buildCommit" title="Open the deployed commit on GitHub">commit local</a>
+      </span>
     </footer>
     <script>
       (async () => {
