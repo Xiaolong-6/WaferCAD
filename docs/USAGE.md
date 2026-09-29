@@ -6,8 +6,8 @@ The default base is circular.
 
 Set:
 
-- W in µm;
-- H in µm for rectangular bases;
+- W in the currently selected global XY display unit;
+- H in the same display unit for rectangular bases;
 - Z as a relative thickness.
 
 Use **Apply base** to create or rebuild it.
@@ -18,7 +18,7 @@ If the structure already contains operations, WaferCAD asks for confirmation. Us
 
 Use **Import GDS**.
 
-WaferCAD reads the GDSII `UNITS` record and converts XY coordinates to µm. Imported geometry remains at native scale. The application does not resize the mask to fit the base.
+WaferCAD reads the GDSII `UNITS` record and converts XY coordinates to internal µm. Imported geometry remains at native scale. The application does not resize the mask to fit the base.
 
 Use Alignment only when an actual geometric transform is required.
 
@@ -42,8 +42,8 @@ The Mask view shows:
 - base outline;
 - imported mask geometry;
 - selected layers;
-- XY axes in µm;
-- live XY cursor coordinates.
+- XY axes in the selected global display unit;
+- live XY cursor coordinates in the same unit.
 
 Use the wheel or − / + / Fit controls to change the view. View fitting does not alter geometry.
 
@@ -82,12 +82,9 @@ Z Δ is a relative thickness.
 
 The 3D legend is also the layer manager.
 
-Each row lets you:
+Each row lets you edit the layer name. Color is intentionally a secondary visual setting: choose from the active curated palette by clicking the layer swatch. The legend header provides several preset palettes and a Random action that generates a harmonious palette. Arbitrary color-picker input is not exposed.
 
-- edit the layer name;
-- change its color.
-
-Layer identity is stored separately from the visible name, so renaming does not break Grow, Etch, Undo, or saved projects.
+Layer identity is stored separately from the visible name, so renaming or recoloring does not break Grow, Etch, Undo, or saved projects.
 
 ## 8. Inspect Main and Section
 
@@ -95,7 +92,7 @@ Main can display the front or back surface.
 
 Drag A–B in Main to define the section line. Section A–B updates from the same vector model.
 
-XY is shown in µm. Z values are labeled as relative.
+Use the global XY unit selector in the top toolbar to switch nm / µm / mm. This only converts display and XY input values; geometry is unchanged. Z values remain relative.
 
 ## 9. Save and open
 
