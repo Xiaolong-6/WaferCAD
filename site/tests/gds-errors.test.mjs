@@ -76,3 +76,17 @@ test('flattenGDS enforces the hierarchy depth guard', () => {
   const flat = flattenGDS(parsedWith(cells, 'C0'), 'C0');
   assert.equal(flat.elements.length, 0);
 });
+
+
+test('parseGDS stops at ENDLIB and ignores trailing zero padding', () => {
+  const bytes = new Uint8Array([
+    0, 4, 0x05, 0,
+    0, 8, 0x06, 0x06, 0x54, 0x4f, 0x50, 0,
+    0, 4, 0x07, 0,
+    0, 4, 0x04, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+  ]);
+  const parsed = parseGDS(bytes.buffer);
+  assert.equal(parsed.root, 'TOP');
+  assert.equal(parsed.cells.size, 1);
+});

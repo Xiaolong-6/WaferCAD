@@ -1,5 +1,6 @@
 const REC = {
   UNITS: 0x03,
+  ENDLIB: 0x04,
   BGNSTR: 0x05,
   STRNAME: 0x06,
   ENDSTR: 0x07,
@@ -117,6 +118,7 @@ export function parseGDS(arrayBuffer) {
       start = pos + 4,
       end = pos + len,
       data = u8.slice(start, end);
+    if (type === REC.ENDLIB) break;
     if (type === REC.UNITS && data.length >= 16) {
       userUnitsPerDbu = real8(data.slice(0, 8));
       metersPerDbu = real8(data.slice(8, 16));
