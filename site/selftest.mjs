@@ -153,6 +153,38 @@ assert.equal(conformalGrowSide.z0, 5);
 assert.equal(conformalGrowSide.z1, 8);
 assert.equal(surfaceSegment(regionAt(conformalGrowStep, [0, 0]).stack).z1, 8);
 
+const buriedGrow = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const buriedSeed = applyOperation(buriedGrow, {
+  type: 'add',
+  name: 'Seed',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(20, 20),
+  growth: 'direct',
+});
+applyOperation(buriedGrow, {
+  type: 'add',
+  name: 'Cap',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(20, 20),
+  growth: 'direct',
+});
+const buriedRevision = buriedGrow.revision;
+const buriedProcessRevision = buriedGrow.processRevision;
+const buriedResult = applyOperation(buriedGrow, {
+  type: 'grow',
+  targetLayerId: buriedSeed.layerId,
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(20, 20),
+  growth: 'direct',
+});
+assert.equal(buriedResult.changed, false);
+assert.match(buriedResult.error, /not exposed/);
+assert.equal(buriedGrow.revision, buriedRevision);
+assert.equal(buriedGrow.processRevision, buriedProcessRevision);
+
 assert.equal(renameLayer(conformal, c.layerId, 'Contact'), true);
 assert.equal(layerById(conformal, c.layerId).name, 'Contact');
 assert.equal(recolorLayer(conformal, c.layerId, '#55aacc'), true);
