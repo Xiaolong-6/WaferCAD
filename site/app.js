@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { makeDemoLayout } from './gds.js';
 import { parseLayoutFile } from './layout-io.js';
+import { KLAYOUT_SAMPLES, sampleById } from './sample-layouts.js';
 import {
   applyOperation,
   cloneModel,
@@ -376,6 +376,46 @@ function fitImportedLayout() {
   maskTransform = { scale: 1, rotation: 0, x: 0, y: 0 };
   planViews.mask = { zoom: 1, panX: 0, panY: 0 };
   syncTransformInputs();
+}
+
+function applyImportedLayout(imported, displayName) {
+  parsedLayout = imported.parsed;
+  layout = imported.layout;
+  layout.name = displayName || layout.name;
+  layout.hierarchy = hierarchyFromParsed(parsedLayout);
+  activeCell = parsedLayout.root || null;
+  expandedCells = new Set(activeCell ? [activeCell] : []);
+  hoveredLayerKey = null;
+  selectedLayerKeys = new Set(globalLayers().map((item) => item.key));
+  fitImportedLayout();
+  planViews.mask = { zoom: 1, panX: 0, panY: 0 };
+  renderAll();
+
+  const units = layout.units?.xy || 'µm';
+  const emptyNote =
+    layout.elements.length || layout.linework.length
+      ? ''
+      : ' This is a valid layout with no renderable mask geometry.';
+  status(
+    `${displayName} (${imported.format}): XY imported in ${units} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.${emptyNote}`,
+  );
+}
+
+async function importLayoutBuffer(arrayBuffer, filename, displayName = filename) {
+  const imported = await parseLayoutFile(arrayBuffer, filename);
+  applyImportedLayout(imported, displayName);
+  return imported;
+}
+
+function populateSampleLayouts() {
+  const select = $('sampleMaskSelect');
+  if (!select) return;
+  for (const sample of KLAYOUT_SAMPLES) {
+    const option = document.createElement('option');
+    option.value = sample.id;
+    option.textContent = sample.label;
+    select.append(option);
+  }
 }
 function syncTransformInputs() {
   $('maskOffsetX').value = formatXY(maskTransform.x);
@@ -1399,38 +1439,28 @@ function bindUi() {
     status('Reverted the last base change.');
   };
 
-  $('demoMaskBtn').onclick = () => {
-    parsedLayout = null;
-    layout = makeDemoLayout();
-    activeCell = layout.root || 'TOP';
-    expandedCells = new Set([activeCell]);
-    hoveredLayerKey = null;
-    selectedLayerKeys = new Set(globalLayers().map((x) => x.key));
-    maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
-    resetPlanView('mask');
-    syncTransformInputs();
-    renderAll();
-    status('Demo mask loaded.');
+  $('sampleMaskSelect').onchange = async (event) => {
+    const sample = sampleById(event.target.value);
+    if (!sample) return;
+    try {
+      status(`Reading ${sample.label}…`);
+      const response = await fetch(sample.path);
+      if (!response.ok) throw new Error(`sample request failed (${response.status})`);
+      await importLayoutBuffer(await response.arrayBuffer(), sample.path, sample.label);
+    } catch (err) {
+      console.error(err);
+      status(`Layout import failed: ${err.message}`);
+    } finally {
+      event.target.value = '';
+    }
   };
+
   $('gdsInput').onchange = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
     try {
       status(`Reading ${f.name}…`);
-      const imported = await parseLayoutFile(await f.arrayBuffer(), f.name);
-      parsedLayout = imported.parsed;
-      layout = imported.layout;
-      layout.hierarchy = hierarchyFromParsed(parsedLayout);
-      activeCell = parsedLayout.root;
-      expandedCells = new Set([activeCell]);
-      hoveredLayerKey = null;
-      selectedLayerKeys = new Set(globalLayers().map((x) => x.key));
-      fitImportedLayout();
-      planViews.mask = { zoom: 1, panX: 0, panY: 0 };
-      renderAll();
-      status(
-        `${f.name} (${imported.format}): XY imported in ${layout.units?.xy || 'µm'} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.`,
-      );
+      await importLayoutBuffer(await f.arrayBuffer(), f.name, f.name);
     } catch (err) {
       console.error(err);
       status(`Layout import failed: ${err.message}`);
@@ -1670,6 +1700,7 @@ function bindUi() {
   window.addEventListener('resize', () => renderAll());
 }
 
+populateSampleLayouts();
 bindUi();
 loadBuildCommit();
 renderSnapshots();
