@@ -33,7 +33,7 @@ Available commands:
 - `npm run lint` — ESLint over the active JavaScript only; `legacy/` and vendored code are excluded.
 - `npm run format` — Prettier rewrite for the active application and current documentation.
 - `npm run format:check` — CI formatting gate for new/refactored project-IO/schema code and current docs.
-- `npm test` — dependency-free geometry, GDS-unit, and project-schema smoke tests.
+- `npm test` — vector/GDS/project-schema smoke tests plus focused regression tests for XY units, GDS error handling, project files, and snapshots.
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced.
 
@@ -59,6 +59,7 @@ There is no build step.
 12. Structure colors come from curated or generated harmonious palettes; arbitrary color-picker input is intentionally hidden.
 13. Etch has no growth mode.
 14. Base rebuilds remain reversible.
+15. Snapshots are independent immutable workspace state; snapshot records must not recursively contain snapshots.
 
 ## Legacy code
 
