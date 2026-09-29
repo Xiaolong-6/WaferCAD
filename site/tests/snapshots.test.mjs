@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createSnapshotManager, defaultSnapshotName } from '../workspace-snapshots.js';
+import {
+  createSnapshotManager,
+  defaultSnapshotName,
+  MAX_SNAPSHOTS,
+} from '../workspace-snapshots.js';
 
 test('snapshot default name uses local timestamp', () => {
   const fixedTime = new Date(2026, 8, 29, 14, 36, 8);
@@ -63,4 +67,18 @@ test('snapshot import rejects invalid and duplicate records', () => {
     manager.list().map((item) => item.id),
     ['a'],
   );
+});
+
+test('snapshot manager never creates more records than the project schema can persist', () => {
+  let id = 0;
+  const manager = createSnapshotManager({
+    capture: () => ({ value: 1 }),
+    restore: () => {},
+    validateState: () => true,
+    idFactory: () => `snapshot-${++id}`,
+  });
+
+  for (let i = 0; i < MAX_SNAPSHOTS; i++) manager.create();
+  assert.equal(manager.list().length, MAX_SNAPSHOTS);
+  assert.throws(() => manager.create(), /Snapshot limit of 100 reached/);
 });

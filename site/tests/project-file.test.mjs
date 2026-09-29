@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { serializeProject } from '../project-io.js';
 import { validateProjectFile } from '../project-schema.js';
 
 function validProject() {
@@ -123,4 +124,16 @@ test('project validator rejects recursive snapshot payloads', () => {
     },
   ];
   assert.throws(() => validateProjectFile(source), /must not be nested/);
+});
+
+test('project validator accepts the runtime nanometre zoom ceiling', () => {
+  const source = validProject();
+  source.planViews.mask.zoom = 1e8;
+  source.planViews.main.zoom = 1e8;
+  assert.equal(validateProjectFile(source), source);
+});
+
+test('project serializer enforces the same size ceiling used by Open', () => {
+  assert.throws(() => serializeProject(validProject(), 1024), /larger than the 0 MB safety limit/);
+  assert.doesNotThrow(() => serializeProject(validProject(), 64 * 1024 * 1024));
 });
