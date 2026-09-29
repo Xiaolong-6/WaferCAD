@@ -202,7 +202,7 @@
             <div><strong>3D</strong><span id="threeStats"></span></div>
             <button id="fit3dBtn" class="mini-btn">Fit</button>
           </div>
-          <div id="threeHost"><div id="threeLegend" class="three-legend"></div></div>
+          <div id="threeHost"></div>
         </section>
 
         <section class="view-panel" id="mainPanel">
@@ -226,7 +226,10 @@
             <div><strong>Section A–B</strong><span id="sectionMeta"></span></div>
             <span id="sectionRange" class="readout"></span>
           </div>
-          <canvas id="sectionCanvas"></canvas>
+          <div class="section-body">
+            <canvas id="sectionCanvas"></canvas>
+            <aside id="layerLegend" class="layer-legend" aria-label="Structure layers"></aside>
+          </div>
         </section>
       </main>
     </div>
