@@ -1023,7 +1023,9 @@ let renderer,
   controls,
   group,
   axesHelper,
-  threeReady = false;
+  threeReady = false,
+  threeOpacity = 1,
+  threeShowBorders = false;
 function zVisualScale() {
   return Math.max(model.width, model.height) / 100;
 }
@@ -1118,8 +1120,20 @@ function renderThree() {
         roughness: 0.78,
         metalness: 0.015,
         side: THREE.DoubleSide,
+        transparent: threeOpacity < 0.999,
+        opacity: threeOpacity,
+        depthWrite: threeOpacity >= 0.999,
       });
     group.add(new THREE.Mesh(geometry, material));
+    if (threeShowBorders) {
+      const edgeGeometry = new THREE.EdgesGeometry(geometry, 20);
+      const edgeMaterial = new THREE.LineBasicMaterial({
+        color: 0x111820,
+        transparent: true,
+        opacity: 0.9,
+      });
+      group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
+    }
   }
   $('threeStats').textContent = roi ? 'focus region' : 'full model';
 }
@@ -1552,6 +1566,15 @@ function bindUi() {
   $('growthMode').onchange = updateOperationUI;
   $('applyOperationBtn').onclick = applyOp;
   $('fit3dBtn').onclick = fit3d;
+  $('threeOpacityRange').oninput = () => {
+    threeOpacity = Math.max(0.1, Math.min(1, Number($('threeOpacityRange').value) || 1));
+    $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
+    renderThree();
+  };
+  $('threeBorders').onchange = () => {
+    threeShowBorders = $('threeBorders').checked;
+    renderThree();
+  };
   $('maskZoomOut').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1 / 1.25);
   $('maskZoomIn').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1.25);
   $('maskZoomFit').onclick = () => resetPlanView('mask');
