@@ -8,6 +8,7 @@ on:
       - "fix/**"
       - "rewrite/**"
       - "merge/**"
+      - "feat/issue-13-settings-tooltips"
   workflow_dispatch:
 
 permissions:
