@@ -89,8 +89,8 @@ function decodeOctangular(raw) {
     [0, -1],
     [1, 1],
     [-1, 1],
-    [1, -1],
     [-1, -1],
+    [1, -1],
   ];
   return [directions[direction][0] * magnitude, directions[direction][1] * magnitude];
 }
