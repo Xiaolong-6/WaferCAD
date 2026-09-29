@@ -17,22 +17,6 @@
   <body>
     <header class="topbar">
       <div class="brand"><strong>WaferCAD</strong></div>
-      <nav class="top-actions" aria-label="Project">
-        <button id="newProjectBtn" class="toolbar-btn" title="Start a new empty project">
-          New
-        </button>
-        <label class="button toolbar-btn" title="Open a WaferCAD project"
-          >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
-        /></label>
-        <button id="saveProjectBtn" class="toolbar-btn" title="Save this project">Save</button>
-        <span class="toolbar-separator"></span>
-        <button id="undoBtn" class="toolbar-btn" title="Undo the last structure change" disabled>
-          Undo
-        </button>
-        <button id="redoBtn" class="toolbar-btn" title="Redo the last undone change" disabled>
-          Redo
-        </button>
-      </nav>
     </header>
 
     <div class="app-shell">
@@ -61,28 +45,58 @@
                 <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
               </div>
               <button
-                id="sectionEditBtn"
+                id="sectionControlsBtn"
                 class="mini-btn"
                 type="button"
-                aria-pressed="false"
-                title="Enable A–B endpoint dragging"
+                aria-expanded="false"
+                aria-controls="sectionCoordsPanel"
+                title="Open A–B controls"
               >
                 A–B
               </button>
               <div id="mainCoords" class="readout"></div>
-              <button
-                id="resetSectionBtn"
-                class="mini-btn"
-                title="Reset A–B to the default horizontal section"
-              >
-                Reset A–B
-              </button>
             </div>
           </div>
           <canvas id="mainCanvas"></canvas>
-          <div class="section-coords-panel" aria-label="A–B coordinates">
+          <div
+            id="sectionCoordsPanel"
+            class="section-coords-panel"
+            aria-label="A–B coordinates"
+            hidden
+          >
             <div class="section-coords-head">
-              <strong>A–B</strong><span id="sectionCoordUnit">µm</span>
+              <strong>A–B</strong>
+              <div class="section-coords-head-actions">
+                <span id="sectionCoordUnit">µm</span>
+                <button
+                  id="sectionPanelClose"
+                  class="section-collapse-btn"
+                  type="button"
+                  aria-label="Collapse A–B controls"
+                  title="Collapse A–B controls"
+                >
+                  ⌃
+                </button>
+              </div>
+            </div>
+            <div class="section-coords-actions">
+              <button
+                id="sectionEditBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Enable dragging of A and B endpoints"
+              >
+                Drag A/B
+              </button>
+              <button
+                id="resetSectionBtn"
+                class="mini-btn"
+                type="button"
+                title="Reset A–B to the default horizontal section"
+              >
+                Reset
+              </button>
             </div>
             <div class="section-coords-grid">
               <span></span><span>X</span><span>Y</span>
@@ -101,7 +115,7 @@
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
               <details id="focusEditor" class="focus-editor">
-                <summary class="mini-btn" title="Edit the 3D focus region">Focus</summary>
+                <summary class="mini-btn" title="Edit the 3D region of interest">ROI</summary>
                 <div class="focus-popover">
                   <div class="focus-popover-actions">
                     <button
@@ -131,7 +145,7 @@
                   </div>
                   <div id="roiEditor" class="roi-editor" hidden>
                     <div class="roi-editor-head">
-                      <strong id="roiShapeLabel">Focus</strong><span id="roiUnitLabel">µm</span>
+                      <strong id="roiShapeLabel">ROI</strong><span id="roiUnitLabel">µm</span>
                     </div>
                     <div id="roiRectFields" class="roi-two-fields">
                       <label
@@ -186,7 +200,6 @@
             </div>
           </div>
           <canvas id="maskCanvas"></canvas>
-          <div class="view-foot"><span id="maskSelectionSummary"></span></div>
         </section>
 
         <section class="view-panel" id="threePanel">
@@ -195,11 +208,11 @@
             <div class="three-view-tools">
               <details class="three-opacity-control">
                 <summary
-                  class="mini-btn three-opacity-button"
+                  class="three-control"
                   aria-label="Adjust all layer transparency"
                   title="Adjust all layer transparency"
                 >
-                  ◐
+                  Opacity
                 </summary>
                 <div class="three-opacity-popover">
                   <label for="threeOpacityRange"
@@ -215,11 +228,15 @@
                   />
                 </div>
               </details>
-              <label class="three-border-toggle" title="Outline visible layer interfaces in black">
+              <label
+                id="threeBorderControl"
+                class="three-control three-border-toggle"
+                title="Outline visible layer interfaces in black"
+              >
                 <input id="threeBorders" type="checkbox" />
                 <span>Border</span>
               </label>
-              <button id="fit3dBtn" class="mini-btn" title="Fit the 3D model">Fit</button>
+              <button id="fit3dBtn" class="three-control" title="Fit the 3D model">Fit</button>
             </div>
           </div>
           <div id="threeHost"></div>
@@ -404,12 +421,16 @@
               data-tab-panel="operation"
               hidden
             >
-              <div class="tool-context">
-                <span>Active face</span><span id="activeFacePill" class="face-pill">Front</span>
-              </div>
-              <div class="segmented" id="faceSelect">
-                <button data-face="front" class="active">Front</button>
-                <button data-face="back">Back</button>
+              <div class="field-row active-face-row">
+                <span>Active face</span>
+                <button
+                  id="faceToggleBtn"
+                  class="compact-btn"
+                  type="button"
+                  title="Switch active process face"
+                >
+                  Front
+                </button>
               </div>
               <label class="field-row"
                 ><span>Action</span
@@ -445,7 +466,25 @@
                 ><span>Z Δ</span
                 ><input id="operationThickness" type="number" value="3" min="0.1" step="0.1"
               /></label>
-              <button id="applyOperationBtn" class="primary wide apply-btn">Apply</button>
+              <div class="operation-actions">
+                <button id="applyOperationBtn" class="primary apply-btn">Apply</button>
+                <button
+                  id="undoBtn"
+                  class="compact-btn"
+                  title="Undo the last structure change"
+                  disabled
+                >
+                  Undo
+                </button>
+                <button
+                  id="redoBtn"
+                  class="compact-btn"
+                  title="Redo the last undone change"
+                  disabled
+                >
+                  Redo
+                </button>
+              </div>
               <p id="operationNote" class="hint compact-hint">
                 Direct footprint · Conformal includes sidewalls.
               </p>
@@ -479,6 +518,16 @@
               data-tab-panel="settings"
               hidden
             >
+              <div class="tool-context"><span>Project</span></div>
+              <div class="control-body settings-project-actions">
+                <button id="newProjectBtn" class="compact-btn" title="Start a new empty project">
+                  New
+                </button>
+                <label class="button compact-btn" title="Open a WaferCAD project"
+                  >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
+                /></label>
+                <button id="saveProjectBtn" class="compact-btn" title="Save this project">Save</button>
+              </div>
               <div class="tool-context"><span>Display</span></div>
               <div class="control-body">
                 <label
