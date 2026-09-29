@@ -30,6 +30,14 @@ import {
 } from './vector-geometry.js';
 import { downloadProject, readProjectFile } from './project-io.js';
 import { validateProjectFile } from './project-schema.js';
+import {
+  circleRoiFromAnchor,
+  normalizeRoi,
+  rectRoiFromAnchor,
+  roiAnchorPoint,
+  roiContainsPoint,
+  translateRoi,
+} from './roi-editor.js';
 import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 
@@ -126,7 +134,8 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   activeFace = 'front',
   roi = null,
   roiTool = null,
-  roiDraft = null;
+  roiDraft = null,
+  roiAnchor = 'center';
 let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionEditEnabled = false,
   history = [],
@@ -383,6 +392,52 @@ function roiGeometry() {
   }
   if (roi.type === 'circle') return circleMulti(roi.r * 2, roi.r * 2, 96, roi.c[0], roi.c[1]);
   return null;
+}
+function clearRoiDrawingMode() {
+  roiTool = null;
+  roiDraft = null;
+  document.querySelectorAll('.roi-tool').forEach((button) => button.classList.remove('active'));
+}
+function syncRoiEditor() {
+  const editor = $('roiEditor');
+  if (!editor) return;
+  editor.hidden = !roi;
+  if (!roi) return;
+  const point = roiAnchorPoint(roi, roiAnchor);
+  if (!point) return;
+  $('roiShapeLabel').textContent = roi.type === 'rect' ? 'Rectangle' : 'Circle';
+  $('roiUnitLabel').textContent = xyUnit().label;
+  $('roiAnchorSelect').value = roiAnchor;
+  $('roiX').value = formatXY(point[0]);
+  $('roiY').value = formatXY(point[1]);
+  $('roiRectFields').hidden = roi.type !== 'rect';
+  $('roiCircleFields').hidden = roi.type !== 'circle';
+  if (roi.type === 'rect') {
+    $('roiWidth').value = formatXY(roi.b[0] - roi.a[0]);
+    $('roiHeight').value = formatXY(roi.b[1] - roi.a[1]);
+  } else {
+    $('roiRadius').value = formatXY(roi.r);
+  }
+}
+function applyRoiEditor() {
+  if (!roi) return;
+  const x = xyFromDisplay(Number($('roiX').value)),
+    y = xyFromDisplay(Number($('roiY').value));
+  let next = null;
+  if (roi.type === 'rect') {
+    const width = xyFromDisplay(Number($('roiWidth').value)),
+      height = xyFromDisplay(Number($('roiHeight').value));
+    next = rectRoiFromAnchor(width, height, roiAnchor, x, y);
+  } else {
+    const radius = xyFromDisplay(Number($('roiRadius').value));
+    next = circleRoiFromAnchor(radius, roiAnchor, x, y);
+  }
+  if (!next) {
+    syncRoiEditor();
+    return status('Focus geometry requires finite coordinates and positive dimensions.');
+  }
+  roi = next;
+  renderAll();
 }
 
 function stateSnapshot() {
@@ -1166,6 +1221,7 @@ function renderAll() {
   renderMain();
   renderSection();
   renderThree();
+  syncRoiEditor();
   $('mainFaceLabel').textContent = `${activeFace} surface`;
   $('activeFacePill').textContent = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('maskSummary').textContent = layout.name || 'No mask';
@@ -1282,7 +1338,8 @@ function loadProjectSnapshot(project) {
   hoveredLayerKey = null;
   maskTransform = project.maskTransform;
   activeFace = project.activeFace;
-  roi = project.roi;
+  roi = project.roi ? normalizeRoi(project.roi) : null;
+  roiAnchor = 'center';
   section = project.section;
 
   if (project.display?.xyUnit in XY_UNITS) {
@@ -1541,16 +1598,23 @@ function bindUi() {
         document
           .querySelectorAll('.roi-tool')
           .forEach((x) => x.classList.toggle('active', x === b));
-        status('3D focus: drag in Mask to draw the render region.');
+        $('focusEditor').open = false;
+        status('3D focus: drag once in Mask to create the region.');
       }),
   );
   $('clearRoiBtn').onclick = () => {
     roi = null;
-    roiDraft = null;
-    roiTool = null;
-    document.querySelectorAll('.roi-tool').forEach((x) => x.classList.remove('active'));
+    roiAnchor = 'center';
+    clearRoiDrawingMode();
     renderAll();
+    status('3D focus cleared.');
   };
+  $('roiAnchorSelect').onchange = () => {
+    roiAnchor = $('roiAnchorSelect').value;
+    syncRoiEditor();
+  };
+  for (const id of ['roiWidth', 'roiHeight', 'roiRadius', 'roiX', 'roiY'])
+    $(id).onchange = applyRoiEditor;
   document.querySelectorAll('#faceSelect button').forEach(
     (b) =>
       (b.onclick = () => {
@@ -1624,6 +1688,8 @@ function bindUi() {
     expandedCells = new Set();
     hoveredLayerKey = null;
     roi = null;
+    roiAnchor = 'center';
+    clearRoiDrawingMode();
     history = [];
     future = [];
     baseRevertSnapshot = null;
@@ -1686,29 +1752,62 @@ function bindUi() {
       v = viewport(w, h, 'mask'),
       p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
     $('maskCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-    if (drag && roiTool) {
+    if (!drag) return;
+    if (drag.mode === 'create') {
       roiDraft =
         roiTool === 'rect'
-          ? { type: 'rect', a: drag, b: p }
-          : { type: 'circle', c: drag, r: Math.hypot(p[0] - drag[0], p[1] - drag[1]) };
+          ? normalizeRoi({ type: 'rect', a: drag.start, b: p })
+          : normalizeRoi({
+              type: 'circle',
+              c: drag.start,
+              r: Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]),
+            });
       renderMask();
+      return;
     }
+    roi = translateRoi(drag.original, p[0] - drag.start[0], p[1] - drag.start[1]);
+    syncRoiEditor();
+    renderMask();
   });
   mc.addEventListener('pointerdown', (e) => {
-    if (!roiTool) return;
+    if (e.button !== 0) return;
     const r = mc.getBoundingClientRect(),
       { w, h } = setupCanvas(mc),
-      v = viewport(w, h, 'mask');
-    drag = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
+      v = viewport(w, h, 'mask'),
+      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
+    if (roiTool) drag = { mode: 'create', start: p };
+    else if (roi && roiContainsPoint(roi, p))
+      drag = { mode: 'move', start: p, original: structuredClone(roi) };
+    else return;
     mc.setPointerCapture(e.pointerId);
   });
-  mc.addEventListener('pointerup', () => {
-    if (roiDraft) {
-      roi = roiDraft;
+  const finishRoiDrag = (e) => {
+    if (!drag) return;
+    if (drag.mode === 'create' && roiDraft) {
+      const next = normalizeRoi(roiDraft);
+      const valid =
+        next &&
+        (next.type === 'circle'
+          ? next.r > 1e-9
+          : next.b[0] - next.a[0] > 1e-9 && next.b[1] - next.a[1] > 1e-9);
+      if (valid) {
+        roi = next;
+        roiAnchor = 'center';
+        clearRoiDrawingMode();
+        status('3D focus created. Drag it to reposition or edit values from Focus.');
+      }
       roiDraft = null;
-      renderAll();
     }
+    if (mc.hasPointerCapture(e.pointerId)) mc.releasePointerCapture(e.pointerId);
     drag = null;
+    renderAll();
+  };
+  mc.addEventListener('pointerup', finishRoiDrag);
+  mc.addEventListener('pointercancel', (e) => {
+    roiDraft = null;
+    drag = null;
+    if (mc.hasPointerCapture(e.pointerId)) mc.releasePointerCapture(e.pointerId);
+    renderMask();
   });
 
   const main = $('mainCanvas');
