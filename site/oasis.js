@@ -4,10 +4,7 @@ const ASCII = new TextDecoder('ascii');
 const MAX_EXPANDED_ELEMENTS_PER_CELL = 120000;
 export const MAX_OASIS_CBLOCK_BYTES = 128 * 1024 * 1024;
 
-export function assertOasisBlockSize(
-  byteLength,
-  maxBytes = MAX_OASIS_CBLOCK_BYTES,
-) {
+export function assertOasisBlockSize(byteLength, maxBytes = MAX_OASIS_CBLOCK_BYTES) {
   if (!Number.isSafeInteger(byteLength) || byteLength < 0) {
     throw new Error('OASIS CBLOCK uncompressed size is invalid.');
   }
