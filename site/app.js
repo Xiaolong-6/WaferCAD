@@ -1789,9 +1789,14 @@ function bindUi() {
     renderSection();
   };
   $('saveSnapshotBtn').onclick = () => {
-    const saved = snapshotManager.create();
-    renderSnapshots();
-    status(`Saved snapshot "${saved.name}".`);
+    try {
+      const saved = snapshotManager.create();
+      renderSnapshots();
+      status(`Saved snapshot "${saved.name}".`);
+    } catch (err) {
+      console.error(err);
+      status(`Snapshot failed: ${err.message}`);
+    }
   };
 
   $('newProjectBtn').onclick = () => {
