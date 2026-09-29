@@ -147,3 +147,33 @@ test('OASIS parser rejects a false .oas payload by signature', async () => {
   assert.equal(isOASIS(input.buffer), false);
   await assert.rejects(() => parseOAS(input.buffer), /Invalid OASIS file signature/);
 });
+
+
+test('OASIS LAYERNAME singular intervals do not desynchronize following records', async () => {
+  const input = bytes(
+    header(),
+    uint(11),
+    oasisString('metal'),
+    uint(3),
+    uint(7),
+    uint(3),
+    uint(2),
+    uint(14),
+    oasisString('TOP'),
+    uint(20),
+    Uint8Array.of(0x7b),
+    uint(7),
+    uint(2),
+    uint(1000),
+    uint(1000),
+    sint(0),
+    sint(0),
+    uint(2),
+  );
+
+  const parsed = await parseOAS(input.buffer);
+  const element = parsed.cells.get('TOP').elements[0];
+  assert.equal(element.layer, 7);
+  assert.equal(element.datatype, 2);
+  assert.deepEqual(element.points[2], [1, 1]);
+});
