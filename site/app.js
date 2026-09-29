@@ -155,8 +155,24 @@ let renderer,scene,camera,controls,group,threeReady=false;
 function initThree(){const host=$('threeHost');renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xf4f6f8);scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(34,1,.1,1500);camera.up.set(0,0,1);camera.position.set(115,-125,95);controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,0);controls.enableDamping=true;scene.add(new THREE.HemisphereLight(0xffffff,0x607080,2.6));const d=new THREE.DirectionalLight(0xffffff,2);d.position.set(80,-60,130);scene.add(d);group=new THREE.Group();scene.add(group);host.append(renderer.domElement);new ResizeObserver(()=>resizeThree()).observe(host);threeReady=true;resizeThree();animate();}
 function resizeThree(){if(!renderer)return;const r=$('threeHost').getBoundingClientRect();renderer.setSize(Math.max(2,r.width),Math.max(2,r.height),false);camera.aspect=Math.max(2,r.width)/Math.max(2,r.height);camera.updateProjectionMatrix()}
 function disposeGroup(){while(group.children.length){const o=group.children.pop();o.geometry?.dispose();o.material?.dispose()}}
-function renderThree(){if(!threeReady)return;disposeGroup();const by=new Map();let rendered=0;for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){const p=cellCenter(model,i,j);if(!pointInRoi(p))continue;for(const s of model.columns[j*model.cols+i]){const key=`${s.name}|${s.color}`;if(!by.has(key))by.set(key,{color:s.color,items:[]});by.get(key).items.push({p,s});rendered++}}
-  const geom=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();for(const g of by.values()){const mesh=new THREE.InstancedMesh(geom.clone(),new THREE.MeshStandardMaterial({color:g.color,roughness:.82,metalness:.03}),g.items.length);g.items.forEach(({p,s},idx)=>{dummy.position.set(p[0],p[1],(s.z0+s.z1)/2);dummy.scale.set(model.dx*1.015,model.dy*1.015,Math.max(.01,s.z1-s.z0));dummy.updateMatrix();mesh.setMatrixAt(idx,dummy.matrix)});mesh.instanceMatrix.needsUpdate=true;group.add(mesh)}
+function baseIsPristine(){
+  const z0=-model.thickness/2,z1=model.thickness/2;
+  for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){
+    const p=cellCenter(model,i,j),expected=model.shape==='circle'?((p[0]/(model.width/2))**2+(p[1]/(model.height/2))**2<=1):true,col=model.columns[j*model.cols+i],base=col.find(seg=>seg.name==='Base');
+    if(expected&&(!base||Math.abs(base.z0-z0)>1e-7||Math.abs(base.z1-z1)>1e-7))return false;
+    if(!expected&&base)return false;
+  }
+  return true;
+}
+function addSmoothBase(){
+  const color=model.layers.find(l=>l.name==='Base')?.color||'#b7bdc5',material=new THREE.MeshStandardMaterial({color,roughness:.9,metalness:0});
+  let geometry,mesh;
+  if(model.shape==='circle'){geometry=new THREE.CylinderGeometry(model.width/2,model.width/2,model.thickness,128,1,false);mesh=new THREE.Mesh(geometry,material);mesh.rotation.x=Math.PI/2}
+  else{geometry=new THREE.BoxGeometry(model.width,model.height,model.thickness);mesh=new THREE.Mesh(geometry,material)}
+  mesh.position.z=0;group.add(mesh);
+}
+function renderThree(){if(!threeReady)return;disposeGroup();const smoothBase=!roi&&baseIsPristine();if(smoothBase)addSmoothBase();const by=new Map();for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){const p=cellCenter(model,i,j);if(!pointInRoi(p))continue;for(const s of model.columns[j*model.cols+i]){if(smoothBase&&s.name==='Base')continue;const key=`${s.name}|${s.color}`;if(!by.has(key))by.set(key,{color:s.color,items:[]});by.get(key).items.push({p,s})}}
+  const geom=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();for(const g of by.values()){const mesh=new THREE.InstancedMesh(geom.clone(),new THREE.MeshStandardMaterial({color:g.color,roughness:.86,metalness:.02}),g.items.length);g.items.forEach(({p,s},idx)=>{dummy.position.set(p[0],p[1],(s.z0+s.z1)/2);dummy.scale.set(model.dx*1.012,model.dy*1.012,Math.max(.01,s.z1-s.z0));dummy.updateMatrix();mesh.setMatrixAt(idx,dummy.matrix)});mesh.instanceMatrix.needsUpdate=true;group.add(mesh)}
   $('threeStats').textContent=roi?'focus region':'full model';
 }
 function animate(){requestAnimationFrame(animate);if(renderer){controls.update();renderer.render(scene,camera)}}
