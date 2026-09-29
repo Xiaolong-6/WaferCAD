@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { flattenGDS, parseGDS } from '../gds.js';
-import { parseLayoutFile } from '../layout-io.js';
+import { assertLayoutByteLength, parseLayoutFile } from '../layout-io.js';
 
 function parsedWith(cells, root = 'A') {
   return {
@@ -37,20 +37,17 @@ test('parseGDS rejects records shorter than the header', () => {
   assert.throws(() => parseGDS(bytes.buffer), /Invalid GDS record at byte 0/);
 });
 
-test('flattenGDS terminates cyclic SREF hierarchies', () => {
+test('flattenGDS rejects cyclic SREF hierarchies explicitly', () => {
   const parsed = parsedWith([
     ['A', { name: 'A', elements: [sref('B')] }],
     ['B', { name: 'B', elements: [sref('A')] }],
   ]);
-  const flat = flattenGDS(parsed, 'A');
-  assert.deepEqual(flat.elements, []);
-  assert.deepEqual(flat.linework, []);
+  assert.throws(() => flattenGDS(parsed, 'A'), /Recursive GDS\/OASIS hierarchy/);
 });
 
-test('flattenGDS safely ignores missing referenced cells', () => {
+test('flattenGDS rejects missing referenced cells explicitly', () => {
   const parsed = parsedWith([['A', { name: 'A', elements: [sref('MISSING')] }]]);
-  assert.doesNotThrow(() => flattenGDS(parsed, 'A'));
-  assert.equal(flattenGDS(parsed, 'A').elements.length, 0);
+  assert.throws(() => flattenGDS(parsed, 'A'), /Referenced layout cell "MISSING" is missing/);
 });
 
 test('flattenGDS enforces the hierarchy depth guard', () => {
@@ -74,8 +71,10 @@ test('flattenGDS enforces the hierarchy depth guard', () => {
         : [sref(`C${i + 1}`)];
     cells.push([name, { name, elements }]);
   }
-  const flat = flattenGDS(parsedWith(cells, 'C0'), 'C0');
-  assert.equal(flat.elements.length, 0);
+  assert.throws(
+    () => flattenGDS(parsedWith(cells, 'C0'), 'C0'),
+    /hierarchy exceeds the safe depth limit/,
+  );
 });
 
 test('parseGDS stops at ENDLIB and ignores trailing zero padding', () => {
@@ -102,4 +101,10 @@ test('parseLayoutFile preserves multiple independent GDS top cells under a virtu
     parsed.cells.get('Library').elements.map((element) => element.name),
     ['A', 'B'],
   );
+});
+
+
+test('layout byte budget rejects oversized inputs before parsing', () => {
+  assert.doesNotThrow(() => assertLayoutByteLength(10, 10, 'Fixture'));
+  assert.throws(() => assertLayoutByteLength(11, 10, 'Fixture'), /safety limit/);
 });
