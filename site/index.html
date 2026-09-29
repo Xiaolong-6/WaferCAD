@@ -80,7 +80,35 @@
         <section class="view-panel" id="threePanel">
           <div class="view-head">
             <div><strong>3D</strong><span id="threeStats"></span></div>
-            <button id="fit3dBtn" class="mini-btn">Fit</button>
+            <div class="three-view-tools">
+              <details class="three-opacity-control">
+                <summary
+                  class="mini-btn three-opacity-button"
+                  aria-label="Adjust all layer transparency"
+                  title="Adjust all layer transparency"
+                >
+                  ◐
+                </summary>
+                <div class="three-opacity-popover">
+                  <label for="threeOpacityRange"
+                    ><span>Opacity</span><output id="threeOpacityValue">100%</output></label
+                  >
+                  <input
+                    id="threeOpacityRange"
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.05"
+                    value="1"
+                  />
+                </div>
+              </details>
+              <label class="three-border-toggle" title="Outline visible layer interfaces in black">
+                <input id="threeBorders" type="checkbox" />
+                <span>Border</span>
+              </label>
+              <button id="fit3dBtn" class="mini-btn">Fit</button>
+            </div>
           </div>
           <div id="threeHost"></div>
         </section>
