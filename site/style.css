@@ -505,6 +505,38 @@ button:hover,
   font-size: 9.5px;
 }
 
+.snapshot-panel {
+  display: grid;
+  gap: 4px;
+}
+.snapshot-list {
+  display: grid;
+  gap: 2px;
+}
+.snapshot-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 22px;
+  gap: 3px;
+  align-items: center;
+}
+.snapshot-name {
+  height: 23px !important;
+  min-width: 0;
+  padding: 2px 5px !important;
+  font-size: 9.5px !important;
+}
+.snapshot-action,
+.snapshot-delete {
+  height: 23px;
+  padding: 2px 5px;
+  font-size: 9px;
+}
+.snapshot-delete {
+  width: 22px;
+  padding: 0;
+  color: #8a5b62;
+}
+
 .workspace {
   padding: 4px;
   display: grid;
