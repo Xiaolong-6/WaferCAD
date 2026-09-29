@@ -5,7 +5,7 @@
   "scripts": {
     "test": "node site/selftest.mjs && node --test site/tests/*.test.mjs",
     "lint": "eslint \"site/**/*.{js,mjs}\"",
-    "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"docs/**/*.md\" \"*.md\" \"*.json\" \"*.yml\"",
+    "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"docs/**/*.md\" \"*.md\" \"*.json\"",
     "format:check": "prettier --check \"site/**/*.{js,mjs,css,html}\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
     "check": "npm run lint && npm run format:check && npm test"
   },
