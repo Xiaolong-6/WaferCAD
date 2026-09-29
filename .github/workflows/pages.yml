@@ -28,6 +28,8 @@ jobs:
         uses: actions/checkout@v6
       - name: Run geometry self-test
         run: node site/selftest.mjs
+      - name: Write build commit
+        run: printf '{"commit":"%s"}\n' "$GITHUB_SHA" > site/build-info.json
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site

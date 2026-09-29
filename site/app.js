@@ -133,6 +133,24 @@ const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 
 function status(msg) {
   $('statusText').textContent = msg;
 }
+
+async function loadBuildCommit() {
+  const host = $('buildCommit');
+  if (!host) return;
+
+  try {
+    const response = await fetch('./build-info.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error('build info unavailable');
+    const info = await response.json();
+    const commit = String(info.commit || '').trim();
+    if (!commit) throw new Error('build commit missing');
+    host.textContent = `commit ${commit.slice(0, 7)}`;
+    host.title = commit;
+  } catch {
+    host.textContent = 'commit local';
+    host.removeAttribute('title');
+  }
+}
 function xyUnit() {
   return unitMeta(xyDisplayUnit);
 }
@@ -1286,7 +1304,47 @@ function renderSnapshots() {
   }
 }
 
+function activateToolTab(tabName, focus = false) {
+  const buttons = [...document.querySelectorAll('[data-tool-tab]')],
+    panels = [...document.querySelectorAll('[data-tab-panel]')];
+
+  for (const button of buttons) {
+    const active = button.dataset.toolTab === tabName;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+    if (active && focus) button.focus();
+  }
+
+  for (const panel of panels) panel.hidden = panel.dataset.tabPanel !== tabName;
+}
+
+function bindToolTabs() {
+  const buttons = [...document.querySelectorAll('[data-tool-tab]')];
+  if (!buttons.length) return;
+
+  buttons.forEach((button, index) => {
+    button.onclick = () => activateToolTab(button.dataset.toolTab);
+    button.onkeydown = (event) => {
+      let nextIndex = null;
+      if (event.key === 'ArrowLeft') nextIndex = (index - 1 + buttons.length) % buttons.length;
+      else if (event.key === 'ArrowRight') nextIndex = (index + 1) % buttons.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = buttons.length - 1;
+      if (nextIndex == null) return;
+      event.preventDefault();
+      activateToolTab(buttons[nextIndex].dataset.toolTab, true);
+    };
+  });
+
+  const initial =
+    buttons.find((button) => button.classList.contains('active'))?.dataset.toolTab ||
+    buttons[0].dataset.toolTab;
+  activateToolTab(initial);
+}
+
 function bindUi() {
+  bindToolTabs();
   document.querySelectorAll('#substrateShape button').forEach(
     (b) =>
       (b.onclick = () => {
@@ -1613,6 +1671,7 @@ function bindUi() {
 }
 
 bindUi();
+loadBuildCommit();
 renderSnapshots();
 initThree();
 syncBaseControls();
