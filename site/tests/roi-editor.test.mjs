@@ -5,8 +5,10 @@ import {
   circleRoiFromAnchor,
   normalizeRoi,
   rectRoiFromAnchor,
+  resizeRoiFromHandle,
   roiAnchorPoint,
   roiContainsPoint,
+  roiHandlePoints,
   translateRoi,
 } from '../roi-editor.js';
 
@@ -39,4 +41,22 @@ test('ROI normalization, hit testing, and translation are deterministic', () => 
     a: [-3, -1],
     b: [7, 7],
   });
+});
+
+test('ROI exposes four corner handles and resizes from a fixed opposite corner', () => {
+  const rect = rectRoiFromAnchor(20, 10, 'center', 0, 0);
+  assert.deepEqual(Object.keys(roiHandlePoints(rect)).sort(), [
+    'bottom-left',
+    'bottom-right',
+    'top-left',
+    'top-right',
+  ]);
+  const resizedRect = resizeRoiFromHandle(rect, 'top-left', [-20, 10]);
+  assert.deepEqual(roiHandlePoints(resizedRect)['bottom-right'], [10, -5]);
+  assert.deepEqual(roiHandlePoints(resizedRect)['top-left'], [-20, 10]);
+
+  const circle = circleRoiFromAnchor(5, 'center', 0, 0);
+  const resizedCircle = resizeRoiFromHandle(circle, 'top-left', [-9, 8]);
+  assert.deepEqual(roiHandlePoints(resizedCircle)['bottom-right'], [5, -5]);
+  assert.equal(resizedCircle.r, 7);
 });

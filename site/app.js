@@ -34,11 +34,19 @@ import {
   circleRoiFromAnchor,
   normalizeRoi,
   rectRoiFromAnchor,
+  resizeRoiFromHandle,
   roiAnchorPoint,
   roiContainsPoint,
+  roiHandlePoints,
   translateRoi,
 } from './roi-editor.js';
 import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
+import {
+  availableSelectedLayers,
+  minimumSegmentLength,
+  nearestNamedPoint,
+  zoomLimitForFeature,
+} from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 
 const $ = (id) => document.getElementById(id);
@@ -142,6 +150,10 @@ let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   future = [],
   baseRevertSnapshot = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
+const featureSizeCache = {
+  mask: { layout: null, scale: null, value: null },
+  main: { model: null, revision: null, value: null },
+};
 
 function status(msg) {
   $('statusText').textContent = msg;
@@ -216,6 +228,14 @@ function setSectionEditEnabled(enabled) {
   button.setAttribute('aria-pressed', String(sectionEditEnabled));
   $('mainCanvas').classList.toggle('section-editing', sectionEditEnabled);
   status(sectionEditEnabled ? 'A–B endpoint dragging enabled.' : 'A–B endpoint dragging locked.');
+}
+function setSectionPanelVisible(visible) {
+  const panel = $('sectionCoordsPanel');
+  const button = $('sectionControlsBtn');
+  panel.hidden = !visible;
+  button.classList.toggle('active', visible);
+  button.setAttribute('aria-expanded', String(visible));
+  if (!visible && sectionEditEnabled) setSectionEditEnabled(false);
 }
 function structurePalette() {
   return (
@@ -366,6 +386,20 @@ function globalLayers() {
   return [...map.values()].sort((a, b) => a.layer - b.layer || a.datatype - b.datatype);
 }
 
+function syncMaskCellLabel(layers = globalLayers(), scope = activeScopeCells()) {
+  if (!activeCell) {
+    $('maskCellLabel').textContent = '—';
+    return;
+  }
+  const selected = availableSelectedLayers(layers, selectedLayerKeys, scope);
+  $('maskCellLabel').textContent =
+    selected.length === 1
+      ? `${activeCell} · ${selected[0].layer}/${selected[0].datatype}`
+      : selected.length
+        ? `${activeCell} · ${selected.length} layers`
+        : `${activeCell} · no active layer`;
+}
+
 function selectedMaskGeometry() {
   const geoms = [];
   for (const e of layout.elements || []) {
@@ -440,7 +474,7 @@ function applyRoiEditor() {
   }
   if (!next) {
     syncRoiEditor();
-    return status('Focus geometry requires finite coordinates and positive dimensions.');
+    return status('ROI geometry requires finite coordinates and positive dimensions.');
   }
   roi = next;
   renderAll();
@@ -527,7 +561,6 @@ function setActiveCell(name) {
   renderCellTree();
   renderMaskList();
   renderMask();
-  $('maskCellLabel').textContent = activeCell || '—';
 }
 function renderCellTree() {
   ensureHierarchy();
@@ -630,14 +663,7 @@ function renderMaskList() {
     row.append(cb, sw, text, count);
     host.append(row);
   }
-  const selected = layers.filter((item) => selectedLayerKeys.has(item.key));
-  $('maskSelectionSummary').textContent = !activeCell
-    ? 'No cell selected'
-    : selected.length === 1
-      ? `Cell: ${activeCell} · Layer: ${selected[0].layer}/${selected[0].datatype}`
-      : selected.length
-        ? `Cell: ${activeCell} · ${selected.length} layers selected`
-        : `Cell: ${activeCell} · no layer selected`;
+  syncMaskCellLabel(layers, scope);
 }
 
 function renderLayerLegend() {
@@ -845,6 +871,44 @@ function viewport(w, h, kind = 'mask') {
     cy: h / 2 + centerY * scale + view.panY,
   };
 }
+
+function maskMinimumFeatureSize() {
+  const scale = Math.abs(maskTransform.scale) || 1;
+  if (featureSizeCache.mask.layout === layout && featureSizeCache.mask.scale === scale)
+    return featureSizeCache.mask.value;
+
+  const pointGroups = [];
+  const widths = [];
+  for (const element of [...(layout.elements || []), ...(layout.linework || [])]) {
+    if (Array.isArray(element.points)) pointGroups.push(element.points);
+    if (element.width > 0) widths.push(element.width);
+  }
+  const raw = minimumSegmentLength(pointGroups, widths);
+  const value = raw == null ? null : raw * scale;
+  featureSizeCache.mask = { layout, scale, value };
+  return value;
+}
+
+function mainMinimumFeatureSize() {
+  if (featureSizeCache.main.model === model && featureSizeCache.main.revision === model.revision)
+    return featureSizeCache.main.value;
+
+  const pointGroups = [];
+  for (const region of model.regions || [])
+    for (const polygon of region.geom || [])
+      for (const ring of polygon || []) pointGroups.push(ring);
+  const value = minimumSegmentLength(pointGroups, [model.width, model.height]);
+  featureSizeCache.main = { model, revision: model.revision, value };
+  return value;
+}
+
+function maximumPlanZoom(kind, w, h) {
+  const state = planViews[kind];
+  const current = viewport(w, h, kind);
+  const baseScale = current.s / Math.max(state.zoom, 1e-12);
+  const feature = kind === 'mask' ? maskMinimumFeatureSize() : mainMinimumFeatureSize();
+  return zoomLimitForFeature(baseScale, feature);
+}
 function worldToCanvas(p, v, back = false) {
   const x = back ? -p[0] : p[0];
   return [v.cx + x * v.s, v.cy - p[1] * v.s];
@@ -866,7 +930,7 @@ function zoomPlanView(kind, canvas, factor, clientX = null, clientY = null, back
     py = clientY == null ? h / 2 : clientY - r.top;
   const before = viewport(w, h, kind),
     anchor = canvasToWorld(px, py, before, back);
-  state.zoom = Math.max(0.3, Math.min(12, state.zoom * factor));
+  state.zoom = Math.max(0.3, Math.min(maximumPlanZoom(kind, w, h), state.zoom * factor));
   const after = viewport(w, h, kind),
     mapped = worldToCanvas(anchor, after, back);
   state.panX += px - mapped[0];
@@ -1006,7 +1070,23 @@ function drawRoi(ctx, v) {
   }
   ctx.fill();
   ctx.stroke();
+
+  if (!roiDraft && roi) {
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+    for (const point of Object.values(roiHandlePoints(roi))) {
+      const q = worldToCanvas(point, v);
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#d65361';
+      ctx.fillRect(q[0] - 3.5, q[1] - 3.5, 7, 7);
+      ctx.strokeRect(q[0] - 3.5, q[1] - 3.5, 7, 7);
+    }
+  }
   ctx.restore();
+}
+
+function roiResizeCursor(handle) {
+  return handle === 'top-left' || handle === 'bottom-right' ? 'nwse-resize' : 'nesw-resize';
 }
 function renderMask() {
   const c = $('maskCanvas'),
@@ -1236,7 +1316,7 @@ function renderThree() {
       group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
     }
   }
-  $('threeStats').textContent = roi ? 'focus region' : 'full model';
+  $('threeStats').textContent = roi ? 'ROI' : 'full model';
 }
 function animate() {
   requestAnimationFrame(animate);
@@ -1269,9 +1349,11 @@ function renderAll() {
   renderThree();
   syncRoiEditor();
   $('mainFaceLabel').textContent = `${activeFace} surface`;
-  $('activeFacePill').textContent = activeFace[0].toUpperCase() + activeFace.slice(1);
+  const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
+  $('faceToggleBtn').textContent = faceLabel;
+  $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
   $('maskSummary').textContent = layout.name || 'No mask';
-  $('maskCellLabel').textContent = activeCell || '—';
+  syncMaskCellLabel();
   $('baseSummary').textContent =
     `${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${Number(model.thickness.toFixed(2))} rel.`;
   syncUndo();
@@ -1635,7 +1717,7 @@ function bindUi() {
           .querySelectorAll('.roi-tool')
           .forEach((x) => x.classList.toggle('active', x === b));
         $('focusEditor').open = false;
-        status('3D focus: drag once in Mask to create the region.');
+        status('ROI: drag once in Mask to create the region.');
       }),
   );
   $('clearRoiBtn').onclick = () => {
@@ -1643,7 +1725,7 @@ function bindUi() {
     roiAnchor = 'center';
     clearRoiDrawingMode();
     renderAll();
-    status('3D focus cleared.');
+    status('ROI cleared.');
   };
   $('roiAnchorSelect').onchange = () => {
     roiAnchor = $('roiAnchorSelect').value;
@@ -1651,16 +1733,10 @@ function bindUi() {
   };
   for (const id of ['roiWidth', 'roiHeight', 'roiRadius', 'roiX', 'roiY'])
     $(id).onchange = applyRoiEditor;
-  document.querySelectorAll('#faceSelect button').forEach(
-    (b) =>
-      (b.onclick = () => {
-        activeFace = b.dataset.face;
-        document
-          .querySelectorAll('#faceSelect button')
-          .forEach((x) => x.classList.toggle('active', x === b));
-        renderAll();
-      }),
-  );
+  $('faceToggleBtn').onclick = () => {
+    activeFace = activeFace === 'front' ? 'back' : 'front';
+    renderAll();
+  };
 
   $('operationType').onchange = updateOperationUI;
   $('growthMode').onchange = updateOperationUI;
@@ -1683,6 +1759,8 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
+  $('sectionControlsBtn').onclick = () => setSectionPanelVisible(true);
+  $('sectionPanelClose').onclick = () => setSectionPanelVisible(false);
   $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
   for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
     $(id).onchange = updateSectionFromInputs;
@@ -1778,7 +1856,7 @@ function bindUi() {
     'wheel',
     (e) => {
       e.preventDefault();
-      zoomPlanView('mask', mc, e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+      zoomPlanView('mask', mc, e.deltaY < 0 ? 1.35 : 1 / 1.35, e.clientX, e.clientY);
     },
     { passive: false },
   );
@@ -1786,9 +1864,34 @@ function bindUi() {
     const r = mc.getBoundingClientRect(),
       { w, h } = setupCanvas(mc),
       v = viewport(w, h, 'mask'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
+      screen = [e.clientX - r.left, e.clientY - r.top],
+      p = canvasToWorld(screen[0], screen[1], v);
     $('maskCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-    if (!drag) return;
+
+    if (!drag) {
+      if (roiTool) {
+        mc.style.cursor = 'crosshair';
+        return;
+      }
+      if (!roi) {
+        mc.style.cursor = 'default';
+        return;
+      }
+      const handles = Object.fromEntries(
+        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
+          name,
+          worldToCanvas(point, v),
+        ]),
+      );
+      const handle = nearestNamedPoint(screen, handles, 10);
+      mc.style.cursor = handle
+        ? roiResizeCursor(handle)
+        : roiContainsPoint(roi, p)
+          ? 'move'
+          : 'default';
+      return;
+    }
+
     if (drag.mode === 'create') {
       roiDraft =
         roiTool === 'rect'
@@ -1801,6 +1904,14 @@ function bindUi() {
       renderMask();
       return;
     }
+
+    if (drag.mode === 'resize') {
+      roi = resizeRoiFromHandle(drag.original, drag.handle, p);
+      syncRoiEditor();
+      renderMask();
+      return;
+    }
+
     roi = translateRoi(drag.original, p[0] - drag.start[0], p[1] - drag.start[1]);
     syncRoiEditor();
     renderMask();
@@ -1810,11 +1921,25 @@ function bindUi() {
     const r = mc.getBoundingClientRect(),
       { w, h } = setupCanvas(mc),
       v = viewport(w, h, 'mask'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
-    if (roiTool) drag = { mode: 'create', start: p };
-    else if (roi && roiContainsPoint(roi, p))
-      drag = { mode: 'move', start: p, original: structuredClone(roi) };
-    else return;
+      screen = [e.clientX - r.left, e.clientY - r.top],
+      p = canvasToWorld(screen[0], screen[1], v);
+    if (roiTool) {
+      drag = { mode: 'create', start: p };
+    } else if (roi) {
+      const handles = Object.fromEntries(
+        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
+          name,
+          worldToCanvas(point, v),
+        ]),
+      );
+      const handle = nearestNamedPoint(screen, handles, 10);
+      if (handle) drag = { mode: 'resize', handle, start: p, original: structuredClone(roi) };
+      else if (roiContainsPoint(roi, p))
+        drag = { mode: 'move', start: p, original: structuredClone(roi) };
+      else return;
+    } else {
+      return;
+    }
     mc.setPointerCapture(e.pointerId);
   });
   const finishRoiDrag = (e) => {
@@ -1830,7 +1955,9 @@ function bindUi() {
         roi = next;
         roiAnchor = 'center';
         clearRoiDrawingMode();
-        status('3D focus created. Drag it to reposition or edit values from Focus.');
+        status(
+          'ROI created. Drag it to move, use corner handles to resize, or edit values from ROI.',
+        );
       }
       roiDraft = null;
     }
@@ -1855,7 +1982,7 @@ function bindUi() {
       zoomPlanView(
         'main',
         main,
-        e.deltaY < 0 ? 1.15 : 1 / 1.15,
+        e.deltaY < 0 ? 1.35 : 1 / 1.35,
         e.clientX,
         e.clientY,
         activeFace === 'back',
@@ -1872,23 +1999,40 @@ function bindUi() {
     const r = main.getBoundingClientRect(),
       { w, h } = setupCanvas(main),
       v = viewport(w, h, 'main'),
-      x = e.clientX - r.left,
-      y = e.clientY - r.top,
-      a = worldToCanvas(section.a, v, activeFace === 'back'),
-      b = worldToCanvas(section.b, v, activeFace === 'back'),
-      distanceA = Math.hypot(x - a[0], y - a[1]),
-      distanceB = Math.hypot(x - b[0], y - b[1]);
-    if (Math.min(distanceA, distanceB) > 14) return;
-    secDrag = distanceA <= distanceB ? 'a' : 'b';
+      pointer = [e.clientX - r.left, e.clientY - r.top],
+      handles = {
+        a: worldToCanvas(section.a, v, activeFace === 'back'),
+        b: worldToCanvas(section.b, v, activeFace === 'back'),
+      };
+    const handle = nearestNamedPoint(pointer, handles, 18);
+    if (!handle) return;
+    secDrag = handle;
+    main.style.cursor = 'grabbing';
     main.setPointerCapture(e.pointerId);
   });
   main.addEventListener('pointermove', (e) => {
     const r = main.getBoundingClientRect(),
       { w, h } = setupCanvas(main),
       v = viewport(w, h, 'main'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
+      pointer = [e.clientX - r.left, e.clientY - r.top],
+      p = canvasToWorld(pointer[0], pointer[1], v, activeFace === 'back');
     $('mainCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-    if (!secDrag) return;
+
+    if (!secDrag) {
+      if (sectionEditEnabled) {
+        const handle = nearestNamedPoint(
+          pointer,
+          {
+            a: worldToCanvas(section.a, v, activeFace === 'back'),
+            b: worldToCanvas(section.b, v, activeFace === 'back'),
+          },
+          18,
+        );
+        main.style.cursor = handle ? 'grab' : 'crosshair';
+      }
+      return;
+    }
+
     section[secDrag] = p;
     renderMain();
     renderSection();
@@ -1896,6 +2040,7 @@ function bindUi() {
   const finishSectionDrag = (e) => {
     if (secDrag && main.hasPointerCapture(e.pointerId)) main.releasePointerCapture(e.pointerId);
     secDrag = null;
+    main.style.cursor = sectionEditEnabled ? 'crosshair' : '';
   };
   main.addEventListener('pointerup', finishSectionDrag);
   main.addEventListener('pointercancel', finishSectionDrag);
