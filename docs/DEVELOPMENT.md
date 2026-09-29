@@ -31,17 +31,19 @@ There is no build step.
 ## Current design contracts
 
 1. XY geometry remains vector.
-2. GDS XY is converted to µm from the file's `UNITS` record.
-3. Z stays relative.
-4. View zoom/pan must never modify geometry.
-5. Mask alignment transform is explicit and defaults to identity.
-6. Cells define hierarchy scope; Layers is global.
-7. Zero-width linework is not an operable mask.
-8. The 3D focus region is render-only.
-9. All four views derive from the same region-stack model.
-10. Layers are referenced by stable internal ID, not by user-visible name.
-11. Etch has no growth mode.
-12. Base rebuilds remain reversible.
+2. GDS XY is converted to canonical µm from the file's `UNITS` record.
+3. The global XY display unit converts only presentation/input values; it must never rescale stored geometry.
+4. Z stays relative.
+5. View zoom/pan must never modify geometry.
+6. Mask alignment transform is explicit and defaults to identity.
+7. Cells define hierarchy scope; Layers is global.
+8. Zero-width linework is not an operable mask.
+9. The 3D focus region is render-only.
+10. All four views derive from the same region-stack model.
+11. Layers are referenced by stable internal ID, not by user-visible name.
+12. Structure colors come from curated or generated harmonious palettes; arbitrary color-picker input is intentionally hidden.
+13. Etch has no growth mode.
+14. Base rebuilds remain reversible.
 
 ## Legacy code
 
