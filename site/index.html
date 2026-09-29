@@ -31,7 +31,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <details class="control-section sidebar-group">
-        <summary class="section-head"><span>Base</span><span id="gridBadge" class="badge">96×96</span></summary>
+        <summary class="section-head"><span>Base</span><span id="baseSummary" class="muted">100 × 80 × 12</span></summary>
         <div class="control-body">
           <div class="segmented" id="substrateShape">
             <button data-shape="rect" class="active">Rectangle</button>
@@ -50,13 +50,21 @@
         <summary class="section-head"><span>Mask</span><span id="maskSummary" class="muted">Demo</span></summary>
         <div class="control-body">
           <div class="button-row">
-            <label class="button primary compact-btn">Import GDS<input id="gdsInput" type="file" accept=".gds,.gdsii" hidden></label>
+            <label class="button primary compact-btn import-btn">Import GDS<input id="gdsInput" type="file" accept=".gds,.gdsii" hidden></label>
             <button id="demoMaskBtn" class="compact-btn">Demo</button>
           </div>
-          <label class="field-row"><span>Root</span><select id="rootCellSelect"></select></label>
-          <div id="maskLayerList" class="layer-list"></div>
+          <div class="mask-browser">
+            <section class="mask-browser-pane">
+              <div class="pane-title">Cells</div>
+              <div id="cellTree" class="cell-tree"></div>
+            </section>
+            <section class="mask-browser-pane">
+              <div class="pane-title">Layers</div>
+              <div id="maskLayerList" class="layer-list"></div>
+            </section>
+          </div>
           <details class="subgroup">
-            <summary>Alignment</summary>
+            <summary>Advanced · alignment</summary>
             <div class="four-fields">
               <label><span>X</span><input id="maskOffsetX" type="number" value="0" step="1"></label>
               <label><span>Y</span><input id="maskOffsetY" type="number" value="0" step="1"></label>
@@ -64,21 +72,6 @@
               <label><span>R°</span><input id="maskRotation" type="number" value="0" step="1"></label>
             </div>
           </details>
-        </div>
-      </details>
-
-      <details class="control-section sidebar-group">
-        <summary class="section-head"><span>3D focus</span><span class="muted">render only</span></summary>
-        <div class="control-body" title="Draw in the Mask view. The focus region limits 3D rendering only; model geometry remains complete.">
-          <div class="focus-actions">
-            <div class="tool-grid">
-              <button class="roi-tool" data-tool="rect">Rect</button>
-              <button class="roi-tool" data-tool="circle">Circle</button>
-              <button class="roi-tool" data-tool="polygon">Polygon</button>
-            </div>
-            <button id="clearRoiBtn" class="link-btn" type="button">Clear</button>
-          </div>
-          <p id="roiHint" class="hint compact-hint">Draw in Mask view · display only</p>
         </div>
       </details>
 
@@ -116,7 +109,18 @@
 
     <main class="workspace">
       <section class="view-panel" id="maskPanel">
-        <div class="view-head"><div><strong>Mask</strong><span>layout · focus</span></div><div id="maskCoords" class="readout"></div></div>
+        <div class="view-head mask-view-head">
+          <div><strong>Mask</strong><span id="maskCellLabel">TOP</span></div>
+          <div class="view-tools">
+            <div class="focus-tools" title="Limit 3D rendering only">
+              <button class="roi-tool mini-btn" data-tool="rect">Rect</button>
+              <button class="roi-tool mini-btn" data-tool="circle">Circle</button>
+              <button class="roi-tool mini-btn" data-tool="polygon">Poly</button>
+              <button id="clearRoiBtn" class="mini-btn">Clear</button>
+            </div>
+            <div id="maskCoords" class="readout"></div>
+          </div>
+        </div>
         <canvas id="maskCanvas"></canvas>
         <div class="view-foot"><span id="maskSelectionSummary"></span></div>
       </section>
