@@ -134,7 +134,6 @@ export function roiContainsPoint(roi, point) {
   return x >= shape.a[0] && x <= shape.b[0] && y >= shape.a[1] && y <= shape.b[1];
 }
 
-
 export function roiHandlePoints(roi) {
   const shape = normalizeRoi(roi);
   if (!shape) return {};
