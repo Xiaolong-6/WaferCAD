@@ -61,7 +61,8 @@ assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
 // 3D inspection controls should operate without runtime errors.
 await page.locator('.three-opacity-control > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
-await page.locator('#threeBorders').check();
+await page.locator('#threeBorderControl').click();
+assert.equal(await page.locator('#threeBorders').isChecked(), true);
 await page.locator('#fit3dBtn').click();
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
