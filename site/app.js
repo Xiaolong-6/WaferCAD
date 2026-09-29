@@ -7,7 +7,7 @@ const $=id=>document.getElementById(id);
 const MASK_PALETTE=['#58758a','#69877f','#8c7669','#746f91','#7f8466','#8a6d78','#5f7f8e','#8a806b'];
 function emptyLayout(){return {name:'No mask',root:'',elements:[],linework:[],bounds:{minX:-50,minY:-50,maxX:50,maxY:50,width:100,height:100},combos:[],hierarchy:{}}}
 let model=createModel(),layout=emptyLayout(),parsedGds=null,selectedLayerKeys=new Set();
-let activeCell=null,expandedCells=new Set(),hoveredLayerKey=null;
+let activeCell=null,expandedCells=new Set(),hoveredLayerKey=null,scopeCacheCell=null,scopeCacheHierarchy=null,scopeCache=new Set();
 let maskTransform={x:0,y:0,scale:1,rotation:0},activeFace='front',roi=null,roiTool=null,roiDraft=null;
 let section={a:[-42,0],b:[42,0]},history=[],future=[];
 const planViews={mask:{zoom:1,panX:0,panY:0},main:{zoom:1,panX:0,panY:0}};
@@ -23,7 +23,7 @@ function descendantCells(name){
   function walk(n){if(!n||out.has(n))return;out.add(n);for(const child of cellChildren(n))walk(child.name)}
   walk(name);return out;
 }
-function activeScopeCells(){return activeCell?descendantCells(activeCell):new Set()}
+function activeScopeCells(){if(scopeCacheCell===activeCell&&scopeCacheHierarchy===layout.hierarchy)return scopeCache;scopeCacheCell=activeCell;scopeCacheHierarchy=layout.hierarchy;scopeCache=activeCell?descendantCells(activeCell):new Set();return scopeCache}
 function selectedElement(e){return activeScopeCells().has(e.sourceCell)&&selectedLayerKeys.has(layerKey(e.layer,e.datatype))}
 function pointInMaskWorld(p){const q=invMaskPoint(p);for(const e of layout.elements){if(!selectedElement(e))continue;if(e.kind==='polygon'&&pointInPoly(q,e.points))return true;if(e.kind==='path'&&e.width>0){for(let i=1;i<e.points.length;i++)if(distSeg(q,e.points[i-1],e.points[i])<=e.width/2)return true;}}return false}
 function rasterMask(){const a=new Uint8Array(model.columns.length);for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){const idx=j*model.cols+i;if(model.columns[idx].length&&pointInMaskWorld(cellCenter(model,i,j)))a[idx]=1;}return a}
