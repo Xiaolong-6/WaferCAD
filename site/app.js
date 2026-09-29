@@ -14,7 +14,7 @@ const $=id=>document.getElementById(id);
 const MASK_PALETTE=['#4F86C6','#4FAF9F','#E6A23C','#D96C5F','#8A72BE','#57A6C7','#6C8E5E','#C5678B'];
 
 function emptyLayout(){
-  return {name:'No mask',root:'',elements:[],linework:[],bounds:{minX:-50,minY:-50,maxX:50,maxY:50,width:100,height:100},combos:[],hierarchy:{}};
+  return {name:'No mask',root:'',elements:[],linework:[],bounds:{minX:-50,minY:-50,maxX:50,maxY:50,width:100,height:100},combos:[],hierarchy:{},units:{xy:'µm',dbuToMicron:1,hasPhysicalUnits:true}};
 }
 
 let model=createModel(),layout=emptyLayout(),parsedGds=null,selectedLayerKeys=new Set();
@@ -120,8 +120,8 @@ function syncUndo(){$('undoBtn').disabled=!history.length;$('redoBtn').disabled=
 function hasProcessEdits(){return model.revision>1||model.layers.length>1}
 
 function fitImportedLayout(){
-  const b=layout.bounds,s=.78*Math.min(model.width/Math.max(b.width,1e-9),model.height/Math.max(b.height,1e-9));
-  maskTransform={scale:Number.isFinite(s)?s:1,rotation:0,x:-((b.minX+b.maxX)/2)*s,y:-((b.minY+b.maxY)/2)*s};
+  maskTransform={scale:1,rotation:0,x:0,y:0};
+  planViews.mask={zoom:1,panX:0,panY:0};
   syncTransformInputs();
 }
 function syncTransformInputs(){
@@ -196,9 +196,19 @@ function setupCanvas(canvas){
   if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
   const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return {ctx,w:r.width,h:r.height};
 }
+function maskWorldBounds(){
+  const base={minX:-model.width/2,maxX:model.width/2,minY:-model.height/2,maxY:model.height/2};
+  if(!(layout.elements?.length||layout.linework?.length))return {...base,width:model.width,height:model.height};
+  const b=layout.bounds,corners=[[b.minX,b.minY],[b.minX,b.maxY],[b.maxX,b.minY],[b.maxX,b.maxY]].map(maskPoint);
+  let minX=base.minX,maxX=base.maxX,minY=base.minY,maxY=base.maxY;
+  for(const [x,y] of corners){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
+  return {minX,maxX,minY,maxY,width:Math.max(1e-9,maxX-minX),height:Math.max(1e-9,maxY-minY)};
+}
 function viewport(w,h,kind='mask'){
-  const margin=34,view=planViews[kind],base=Math.min((w-margin*2)/model.width,(h-margin*2)/model.height);
-  return {s:base*view.zoom,cx:w/2+view.panX,cy:h/2+view.panY};
+  const margin=34,view=planViews[kind],b=kind==='mask'?maskWorldBounds():{minX:-model.width/2,maxX:model.width/2,minY:-model.height/2,maxY:model.height/2,width:model.width,height:model.height};
+  const base=Math.min((w-margin*2)/Math.max(b.width,1e-9),(h-margin*2)/Math.max(b.height,1e-9)),scale=base*view.zoom;
+  const centerX=(b.minX+b.maxX)/2,centerY=(b.minY+b.maxY)/2;
+  return {s:scale,cx:w/2-centerX*scale+view.panX,cy:h/2+centerY*scale+view.panY};
 }
 function worldToCanvas(p,v,back=false){const x=back?-p[0]:p[0];return [v.cx+x*v.s,v.cy-p[1]*v.s]}
 function canvasToWorld(x,y,v,back=false){let wx=(x-v.cx)/v.s;if(back)wx=-wx;return [wx,(v.cy-y)/v.s]}
@@ -230,8 +240,8 @@ function drawPlanAxes(ctx,v,w,h,back=false){
     const p=worldToCanvas([0,y],v,back);if(p[1]<top-1||p[1]>bottom+1)continue;
     ctx.beginPath();ctx.moveTo(left,p[1]);ctx.lineTo(left+3,p[1]);ctx.stroke();ctx.fillText(Math.abs(y)<1e-9?'0':Number(y.toPrecision(3)),left-3,p[1]);
   }
-  ctx.font='700 8px system-ui';ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText('X',right,bottom-3);
-  ctx.textAlign='left';ctx.fillText('Y',left+3,top+8);ctx.restore();
+  ctx.font='700 7.5px system-ui';ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText('X (µm)',right,bottom-3);
+  ctx.textAlign='left';ctx.fillText('Y (µm)',left+3,top+8);ctx.restore();
 }
 function canvasPathMulti(ctx,geom,v,back=false){
   ctx.beginPath();
@@ -297,7 +307,7 @@ function renderSection(){
   ctx.strokeStyle='#8995a1';ctx.lineWidth=.8;ctx.strokeRect(left,top,iw,ih);ctx.fillStyle='#707b86';ctx.font='8px system-ui';
   ctx.fillText(z1.toFixed(1),3,top+7);ctx.fillText(z0.toFixed(1),3,top+ih);ctx.fillText('A',left,top+ih+15);ctx.fillText('B',left+iw-7,top+ih+15);
   $('sectionMeta').textContent=`${Math.hypot(section.b[0]-section.a[0],section.b[1]-section.a[1]).toFixed(1)} span`;
-  $('sectionRange').textContent=`Z ${lo.toFixed(1)} → ${hi.toFixed(1)}`;
+  $('sectionRange').textContent=`Z (relative) ${lo.toFixed(1)} → ${hi.toFixed(1)}`;
 }
 
 let renderer,scene,camera,controls,group,axesHelper,threeReady=false;
@@ -346,7 +356,7 @@ function renderAll(){
   renderCellTree();renderMaskList();renderLayerLegend();renderMask();renderMain();renderSection();renderThree();
   $('mainFaceLabel').textContent=`${activeFace} surface`;$('activeFacePill').textContent=activeFace[0].toUpperCase()+activeFace.slice(1);
   $('maskSummary').textContent=layout.name||'No mask';$('maskCellLabel').textContent=activeCell||'—';
-  $('baseSummary').textContent=`${Number(model.width.toFixed(2))} × ${Number(model.height.toFixed(2))} × ${Number(model.thickness.toFixed(2))}`;syncUndo();
+  $('baseSummary').textContent=`${Number(model.width.toFixed(2))} × ${Number(model.height.toFixed(2))} µm · Z ${Number(model.thickness.toFixed(2))} rel.`;syncUndo();
 }
 function syncBaseControls(){
   $('baseWidth').value=Number(model.width.toFixed(3));$('baseHeight').value=Number(model.height.toFixed(3));$('baseThickness').value=Number(model.thickness.toFixed(3));$('baseHeight').disabled=model.shape==='circle';
@@ -392,9 +402,9 @@ function bindUi(){
   $('gdsInput').onchange=async e=>{
     const f=e.target.files[0];if(!f)return;
     try{
-      status(`Reading ${f.name}…`);parsedGds=parseGDS(await f.arrayBuffer());layout=flattenGDS(parsedGds,parsedGds.root);layout.name=f.name;layout.hierarchy=hierarchyFromParsed(parsedGds);
+      status(`Reading ${f.name}…`);parsedGds=parseGDS(await f.arrayBuffer());layout=flattenGDS(parsedGds,parsedGds.root);layout.name=f.name;layout.hierarchy=hierarchyFromParsed(parsedGds);layout.units=parsedGds.units||layout.units;
       activeCell=parsedGds.root;expandedCells=new Set([activeCell]);hoveredLayerKey=null;selectedLayerKeys=new Set(globalLayers().map(x=>x.key));fitImportedLayout();planViews.mask={zoom:1,panX:0,panY:0};renderAll();
-      status(`${f.name}: ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.`);
+      status(`${f.name}: XY imported in ${layout.units?.xy||'µm'} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.`);
     }catch(err){console.error(err);status(`GDS import failed: ${err.message}`)}
     e.target.value='';
   };
@@ -419,7 +429,7 @@ function bindUi(){
     section={a:[-42,0],b:[42,0]};planViews.mask={zoom:1,panX:0,panY:0};planViews.main={zoom:1,panX:0,panY:0};syncBaseControls();renderAll();fit3d();status('New empty project.');
   };
   $('saveProjectBtn').onclick=()=>{
-    ensureHierarchy();const data={format:'WaferCAD-v2-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews};
+    ensureHierarchy();const data={format:'WaferCAD-v2-vector',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy,units:layout.units},selectedLayerKeys:[...selectedLayerKeys],activeCell,maskTransform,activeFace,roi,section,planViews};
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href);
   };
   $('openProjectInput').onchange=async e=>{
@@ -437,7 +447,7 @@ function bindUi(){
   const mc=$('maskCanvas');let drag=null;
   mc.addEventListener('wheel',e=>{e.preventDefault();zoomPlanView('mask',mc,e.deltaY<0?1.15:1/1.15,e.clientX,e.clientY)},{passive:false});
   mc.addEventListener('pointermove',e=>{
-    const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h,'mask'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);$('maskCoords').textContent=`x ${p[0].toFixed(1)} · y ${p[1].toFixed(1)}`;
+    const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h,'mask'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);$('maskCoords').textContent=`x ${p[0].toFixed(1)} µm · y ${p[1].toFixed(1)} µm`;
     if(drag&&roiTool){roiDraft=roiTool==='rect'?{type:'rect',a:drag,b:p}:{type:'circle',c:drag,r:Math.hypot(p[0]-drag[0],p[1]-drag[1])};renderMask()}
   });
   mc.addEventListener('pointerdown',e=>{if(!roiTool)return;const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h,'mask');drag=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);mc.setPointerCapture(e.pointerId)});
@@ -447,7 +457,7 @@ function bindUi(){
   main.addEventListener('wheel',e=>{e.preventDefault();zoomPlanView('main',main,e.deltaY<0?1.15:1/1.15,e.clientX,e.clientY,activeFace==='back')},{passive:false});
   main.addEventListener('pointerdown',e=>{const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h,'main'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');section={a:p,b:p};secDrag=true;main.setPointerCapture(e.pointerId);renderMain();renderSection()});
   main.addEventListener('pointermove',e=>{
-    const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h,'main'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');$('mainCoords').textContent=`x ${p[0].toFixed(1)} · y ${p[1].toFixed(1)}`;
+    const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h,'main'),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');$('mainCoords').textContent=`x ${p[0].toFixed(1)} µm · y ${p[1].toFixed(1)} µm`;
     if(!secDrag)return;section.b=p;renderMain();renderSection();
   });
   main.addEventListener('pointerup',()=>secDrag=false);
