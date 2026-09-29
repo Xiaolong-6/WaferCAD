@@ -33,7 +33,12 @@ jobs:
         run: npm run lint
 
       - name: Prettier preview
-        run: |\n          npx prettier --write site/index.html site/roi-editor.js\ngit diff -- site/index.html site/roi-editor.js\n\n      - name: Format check\n        run: npm run format:check
+        run: |
+          npx prettier --write site/index.html site/roi-editor.js
+          git diff -- site/index.html site/roi-editor.js
+
+      - name: Format check
+        run: npm run format:check
 
       - name: Geometry and project-format tests
         run: npm test
