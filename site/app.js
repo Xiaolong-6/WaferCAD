@@ -871,6 +871,47 @@ function viewport(w, h, kind = 'mask') {
     cy: h / 2 + centerY * scale + view.panY,
   };
 }
+
+function maskMinimumFeatureSize() {
+  const scale = Math.abs(maskTransform.scale) || 1;
+  if (featureSizeCache.mask.layout === layout && featureSizeCache.mask.scale === scale)
+    return featureSizeCache.mask.value;
+
+  const pointGroups = [];
+  const widths = [];
+  for (const element of [...(layout.elements || []), ...(layout.linework || [])]) {
+    if (Array.isArray(element.points)) pointGroups.push(element.points);
+    if (element.width > 0) widths.push(element.width);
+  }
+  const raw = minimumSegmentLength(pointGroups, widths);
+  const value = raw == null ? null : raw * scale;
+  featureSizeCache.mask = { layout, scale, value };
+  return value;
+}
+
+function mainMinimumFeatureSize() {
+  if (
+    featureSizeCache.main.model === model &&
+    featureSizeCache.main.revision === model.revision
+  )
+    return featureSizeCache.main.value;
+
+  const pointGroups = [];
+  for (const region of model.regions || [])
+    for (const polygon of region.geom || [])
+      for (const ring of polygon || []) pointGroups.push(ring);
+  const value = minimumSegmentLength(pointGroups, [model.width, model.height]);
+  featureSizeCache.main = { model, revision: model.revision, value };
+  return value;
+}
+
+function maximumPlanZoom(kind, w, h) {
+  const state = planViews[kind];
+  const current = viewport(w, h, kind);
+  const baseScale = current.s / Math.max(state.zoom, 1e-12);
+  const feature = kind === 'mask' ? maskMinimumFeatureSize() : mainMinimumFeatureSize();
+  return zoomLimitForFeature(baseScale, feature);
+}
 function worldToCanvas(p, v, back = false) {
   const x = back ? -p[0] : p[0];
   return [v.cx + x * v.s, v.cy - p[1] * v.s];
@@ -892,7 +933,7 @@ function zoomPlanView(kind, canvas, factor, clientX = null, clientY = null, back
     py = clientY == null ? h / 2 : clientY - r.top;
   const before = viewport(w, h, kind),
     anchor = canvasToWorld(px, py, before, back);
-  state.zoom = Math.max(0.3, Math.min(12, state.zoom * factor));
+  state.zoom = Math.max(0.3, Math.min(maximumPlanZoom(kind, w, h), state.zoom * factor));
   const after = viewport(w, h, kind),
     mapped = worldToCanvas(anchor, after, back);
   state.panX += px - mapped[0];
@@ -1295,7 +1336,9 @@ function renderAll() {
   renderThree();
   syncRoiEditor();
   $('mainFaceLabel').textContent = `${activeFace} surface`;
-  $('activeFacePill').textContent = activeFace[0].toUpperCase() + activeFace.slice(1);
+  const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
+  $('faceToggleBtn').textContent = faceLabel;
+  $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
   $('maskSummary').textContent = layout.name || 'No mask';
   syncMaskCellLabel();
   $('baseSummary').textContent =
@@ -1661,7 +1704,7 @@ function bindUi() {
           .querySelectorAll('.roi-tool')
           .forEach((x) => x.classList.toggle('active', x === b));
         $('focusEditor').open = false;
-        status('3D focus: drag once in Mask to create the region.');
+        status('ROI: drag once in Mask to create the region.');
       }),
   );
   $('clearRoiBtn').onclick = () => {
@@ -1669,7 +1712,7 @@ function bindUi() {
     roiAnchor = 'center';
     clearRoiDrawingMode();
     renderAll();
-    status('3D focus cleared.');
+    status('ROI cleared.');
   };
   $('roiAnchorSelect').onchange = () => {
     roiAnchor = $('roiAnchorSelect').value;
@@ -1677,16 +1720,10 @@ function bindUi() {
   };
   for (const id of ['roiWidth', 'roiHeight', 'roiRadius', 'roiX', 'roiY'])
     $(id).onchange = applyRoiEditor;
-  document.querySelectorAll('#faceSelect button').forEach(
-    (b) =>
-      (b.onclick = () => {
-        activeFace = b.dataset.face;
-        document
-          .querySelectorAll('#faceSelect button')
-          .forEach((x) => x.classList.toggle('active', x === b));
-        renderAll();
-      }),
-  );
+  $('faceToggleBtn').onclick = () => {
+    activeFace = activeFace === 'front' ? 'back' : 'front';
+    renderAll();
+  };
 
   $('operationType').onchange = updateOperationUI;
   $('growthMode').onchange = updateOperationUI;
@@ -1709,6 +1746,8 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
+  $('sectionControlsBtn').onclick = () => setSectionPanelVisible(true);
+  $('sectionPanelClose').onclick = () => setSectionPanelVisible(false);
   $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
   for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
     $(id).onchange = updateSectionFromInputs;
@@ -1804,7 +1843,7 @@ function bindUi() {
     'wheel',
     (e) => {
       e.preventDefault();
-      zoomPlanView('mask', mc, e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+      zoomPlanView('mask', mc, e.deltaY < 0 ? 1.35 : 1 / 1.35, e.clientX, e.clientY);
     },
     { passive: false },
   );
@@ -1856,7 +1895,7 @@ function bindUi() {
         roi = next;
         roiAnchor = 'center';
         clearRoiDrawingMode();
-        status('3D focus created. Drag it to reposition or edit values from Focus.');
+        status('ROI created. Drag it to reposition or edit values from Focus.');
       }
       roiDraft = null;
     }
@@ -1881,7 +1920,7 @@ function bindUi() {
       zoomPlanView(
         'main',
         main,
-        e.deltaY < 0 ? 1.15 : 1 / 1.15,
+        e.deltaY < 0 ? 1.35 : 1 / 1.35,
         e.clientX,
         e.clientY,
         activeFace === 'back',
