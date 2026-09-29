@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { parseGDS, flattenGDS, makeDemoLayout } from './gds.js';
+import { makeDemoLayout } from './gds.js';
+import { parseLayoutFile } from './layout-io.js';
 import {
   applyOperation,
   cloneModel,
@@ -107,7 +108,7 @@ function emptyLayout() {
 
 let model = createModel(),
   layout = emptyLayout(),
-  parsedGds = null,
+  parsedLayout = null,
   selectedLayerKeys = new Set();
 let xyDisplayUnit = 'um',
   activeStructurePalette = 'balanced',
@@ -1224,7 +1225,7 @@ function loadProjectSnapshot(project) {
 
   Object.assign(planViews.mask, project.planViews.mask);
   Object.assign(planViews.main, project.planViews.main);
-  parsedGds = null;
+  parsedLayout = null;
   history = [];
   future = [];
   baseRevertSnapshot = null;
@@ -1399,7 +1400,7 @@ function bindUi() {
   };
 
   $('demoMaskBtn').onclick = () => {
-    parsedGds = null;
+    parsedLayout = null;
     layout = makeDemoLayout();
     activeCell = layout.root || 'TOP';
     expandedCells = new Set([activeCell]);
@@ -1416,12 +1417,11 @@ function bindUi() {
     if (!f) return;
     try {
       status(`Reading ${f.name}…`);
-      parsedGds = parseGDS(await f.arrayBuffer());
-      layout = flattenGDS(parsedGds, parsedGds.root);
-      layout.name = f.name;
-      layout.hierarchy = hierarchyFromParsed(parsedGds);
-      layout.units = parsedGds.units || layout.units;
-      activeCell = parsedGds.root;
+      const imported = await parseLayoutFile(await f.arrayBuffer(), f.name);
+      parsedLayout = imported.parsed;
+      layout = imported.layout;
+      layout.hierarchy = hierarchyFromParsed(parsedLayout);
+      activeCell = parsedLayout.root;
       expandedCells = new Set([activeCell]);
       hoveredLayerKey = null;
       selectedLayerKeys = new Set(globalLayers().map((x) => x.key));
@@ -1429,11 +1429,11 @@ function bindUi() {
       planViews.mask = { zoom: 1, panX: 0, panY: 0 };
       renderAll();
       status(
-        `${f.name}: XY imported in ${layout.units?.xy || 'µm'} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.`,
+        `${f.name} (${imported.format}): XY imported in ${layout.units?.xy || 'µm'} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.`,
       );
     } catch (err) {
       console.error(err);
-      status(`GDS import failed: ${err.message}`);
+      status(`Layout import failed: ${err.message}`);
     }
     e.target.value = '';
   };

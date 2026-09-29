@@ -4,7 +4,7 @@ WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-d
 
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
-- **Mask** — GDSII hierarchy, global layer/datatype selection, alignment, and a render-only 3D focus region.
+- **Mask** — GDSII/OASIS hierarchy, global layer/datatype selection, alignment, and a render-only 3D focus region.
 - **3D** — vector extrusion of the current structure with an editable layer legend.
 - **Main** — front/back surface view with XY axes and an editable A–B section line.
 - **Section A–B** — cross-section generated from the same vector geometry model.
@@ -13,7 +13,7 @@ The application is deployed as a static GitHub Pages site. It has four synchroni
 
 XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Add, Grow, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
 
-- **XY** is stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record. The global display unit can be switched between nm, µm, and mm without changing geometry.
+- **XY** is stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display unit can be switched between nm, µm, and mm without changing geometry.
 - **Z** is intentionally relative. Thickness and Z values are not assigned a physical unit.
 - Layers use stable internal IDs. Their names are editable; colors come from curated structure palettes or a generated harmonious palette.
 
@@ -21,7 +21,9 @@ XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a 
 
 Cells and Layers are separate concepts:
 
-- **Cells** follows the GDS hierarchy.
+WaferCAD accepts `.gds`, `.gdsii`, `.oas`, and `.oasis` mask files. OASIS import supports the common cell/placement, rectangle, polygon, path, circle, modal-coordinate, repetition, and CBLOCK records used by the browser editor; unsupported extension geometry is rejected explicitly instead of being silently misread.
+
+- **Cells** follows the imported GDSII/OASIS hierarchy.
 - **Layers** is a global unique `layer/datatype` list.
 - Selecting a cell defines the active hierarchy scope.
 - Layers that do not exist in the active cell/subtree remain visible but are visually de-emphasized.
