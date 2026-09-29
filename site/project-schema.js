@@ -9,6 +9,7 @@ const LIMITS = {
   hierarchyCells: 200000,
   selectedLayerKeys: 50000,
   paletteColors: 64,
+  snapshots: 100,
 };
 
 function fail(path, message) {
@@ -297,7 +298,27 @@ function validateDisplay(display) {
   }
 }
 
-export function validateProjectFile(project) {
+function validateSnapshotRecords(snapshots) {
+  if (snapshots == null) return;
+  const records = assertArray(snapshots, 'snapshots', LIMITS.snapshots);
+  const ids = new Set();
+
+  records.forEach((record, index) => {
+    const path = `snapshots[${index}]`;
+    assertObject(record, path);
+    const id = assertString(record.id, `${path}.id`, { max: 128 });
+    if (ids.has(id)) fail(`${path}.id`, 'must be unique.');
+    ids.add(id);
+    assertString(record.name, `${path}.name`, { max: 256 });
+    const createdAt = assertString(record.createdAt, `${path}.createdAt`, { max: 64 });
+    if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
+    assertObject(record.state, `${path}.state`);
+    if (record.state.snapshots != null) fail(`${path}.state.snapshots`, 'must not be nested.');
+    validateProjectCore(record.state, false);
+  });
+}
+
+function validateProjectCore(project, allowSnapshots) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
 
@@ -323,6 +344,12 @@ export function validateProjectFile(project) {
   validateSection(project.section);
   validatePlanViews(project.planViews);
   validateDisplay(project.display);
+  if (allowSnapshots) validateSnapshotRecords(project.snapshots);
+  else if (project.snapshots != null) fail('snapshots', 'must not be nested.');
 
   return project;
+}
+
+export function validateProjectFile(project) {
+  return validateProjectCore(project, true);
 }
