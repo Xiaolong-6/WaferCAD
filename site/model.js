@@ -92,6 +92,34 @@ export function recolorLayer(model, id, color) {
   return true;
 }
 
+export function isLayerExposed(model, id) {
+  if (id === 'base' || !layerById(model, id)) return false;
+  let found = false;
+  for (const region of model.regions) {
+    const stack = region.stack || [];
+    for (let index = 0; index < stack.length; index++) {
+      if (stack[index].layerId !== id) continue;
+      found = true;
+      if (index !== 0 && index !== stack.length - 1) return false;
+    }
+  }
+  return found;
+}
+
+export function deleteExposedLayer(model, id) {
+  if (!isLayerExposed(model, id)) return false;
+  const next = [];
+  for (const region of model.regions) {
+    const stack = normalizeStack(region.stack.filter((segment) => segment.layerId !== id));
+    if (stack.length) next.push({ id: region.id, geom: cloneGeom(region.geom), stack });
+  }
+  model.regions = mergeRegions(model, next);
+  model.layers = model.layers.filter((layer) => layer.id !== id);
+  model.revision++;
+  model.processRevision = (model.processRevision || 0) + 1;
+  return true;
+}
+
 export function surfaceSegment(stack, face = 'front') {
   if (!stack?.length) return null;
   return face === 'front' ? stack.at(-1) : stack[0];

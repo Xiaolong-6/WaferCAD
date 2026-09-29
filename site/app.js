@@ -6,7 +6,9 @@ import {
   applyOperation,
   cloneModel,
   createModel,
+  deleteExposedLayer,
   fullFaceGeometry,
+  isLayerExposed,
   layerById,
   modelBoundsZ,
   recolorLayer,
@@ -28,6 +30,14 @@ import {
 } from './vector-geometry.js';
 import { downloadProject, readProjectFile } from './project-io.js';
 import { validateProjectFile } from './project-schema.js';
+import {
+  circleRoiFromAnchor,
+  normalizeRoi,
+  rectRoiFromAnchor,
+  roiAnchorPoint,
+  roiContainsPoint,
+  translateRoi,
+} from './roi-editor.js';
 import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 
@@ -124,8 +134,10 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   activeFace = 'front',
   roi = null,
   roiTool = null,
-  roiDraft = null;
+  roiDraft = null,
+  roiAnchor = 'center';
 let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
+  sectionEditEnabled = false,
   history = [],
   future = [],
   baseRevertSnapshot = null;
@@ -172,6 +184,38 @@ function formatXY(value, digits = 3) {
 }
 function xyText(value) {
   return `${formatXY(value)} ${xyUnit().label}`;
+}
+function syncSectionInputs() {
+  const unit = $('sectionCoordUnit');
+  if (!unit) return;
+  unit.textContent = xyUnit().label;
+  $('sectionAx').value = formatXY(section.a[0]);
+  $('sectionAy').value = formatXY(section.a[1]);
+  $('sectionBx').value = formatXY(section.b[0]);
+  $('sectionBy').value = formatXY(section.b[1]);
+}
+function updateSectionFromInputs() {
+  const values = ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map((id) =>
+    Number($(id).value),
+  );
+  if (values.some((value) => !Number.isFinite(value))) {
+    syncSectionInputs();
+    return status('A–B coordinates must be finite numbers.');
+  }
+  section = {
+    a: [xyFromDisplay(values[0]), xyFromDisplay(values[1])],
+    b: [xyFromDisplay(values[2]), xyFromDisplay(values[3])],
+  };
+  renderMain();
+  renderSection();
+}
+function setSectionEditEnabled(enabled) {
+  sectionEditEnabled = Boolean(enabled);
+  const button = $('sectionEditBtn');
+  button.classList.toggle('active', sectionEditEnabled);
+  button.setAttribute('aria-pressed', String(sectionEditEnabled));
+  $('mainCanvas').classList.toggle('section-editing', sectionEditEnabled);
+  status(sectionEditEnabled ? 'A–B endpoint dragging enabled.' : 'A–B endpoint dragging locked.');
 }
 function structurePalette() {
   return (
@@ -354,6 +398,52 @@ function roiGeometry() {
   }
   if (roi.type === 'circle') return circleMulti(roi.r * 2, roi.r * 2, 96, roi.c[0], roi.c[1]);
   return null;
+}
+function clearRoiDrawingMode() {
+  roiTool = null;
+  roiDraft = null;
+  document.querySelectorAll('.roi-tool').forEach((button) => button.classList.remove('active'));
+}
+function syncRoiEditor() {
+  const editor = $('roiEditor');
+  if (!editor) return;
+  editor.hidden = !roi;
+  if (!roi) return;
+  const point = roiAnchorPoint(roi, roiAnchor);
+  if (!point) return;
+  $('roiShapeLabel').textContent = roi.type === 'rect' ? 'Rectangle' : 'Circle';
+  $('roiUnitLabel').textContent = xyUnit().label;
+  $('roiAnchorSelect').value = roiAnchor;
+  $('roiX').value = formatXY(point[0]);
+  $('roiY').value = formatXY(point[1]);
+  $('roiRectFields').hidden = roi.type !== 'rect';
+  $('roiCircleFields').hidden = roi.type !== 'circle';
+  if (roi.type === 'rect') {
+    $('roiWidth').value = formatXY(roi.b[0] - roi.a[0]);
+    $('roiHeight').value = formatXY(roi.b[1] - roi.a[1]);
+  } else {
+    $('roiRadius').value = formatXY(roi.r);
+  }
+}
+function applyRoiEditor() {
+  if (!roi) return;
+  const x = xyFromDisplay(Number($('roiX').value)),
+    y = xyFromDisplay(Number($('roiY').value));
+  let next = null;
+  if (roi.type === 'rect') {
+    const width = xyFromDisplay(Number($('roiWidth').value)),
+      height = xyFromDisplay(Number($('roiHeight').value));
+    next = rectRoiFromAnchor(width, height, roiAnchor, x, y);
+  } else {
+    const radius = xyFromDisplay(Number($('roiRadius').value));
+    next = circleRoiFromAnchor(radius, roiAnchor, x, y);
+  }
+  if (!next) {
+    syncRoiEditor();
+    return status('Focus geometry requires finite coordinates and positive dimensions.');
+  }
+  roi = next;
+  renderAll();
 }
 
 function stateSnapshot() {
@@ -591,6 +681,28 @@ function renderLayerLegend() {
       renderThree();
     };
     main.append(color, name);
+    if (isLayerExposed(model, layer.id)) {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'legend-delete';
+      remove.textContent = '×';
+      remove.title = `Delete exposed layer "${layer.name}"`;
+      remove.setAttribute('aria-label', `Delete exposed layer ${layer.name}`);
+      remove.onclick = () => {
+        if (!window.confirm(`Delete exposed layer "${layer.name}"? This can be undone.`)) return;
+        saveHistory();
+        if (!deleteExposedLayer(model, layer.id)) {
+          history.pop();
+          syncUndo();
+          return status('Layer is no longer fully exposed and cannot be deleted.');
+        }
+        if (openLayerPaletteId === layer.id) openLayerPaletteId = null;
+        renderAll();
+        updateOperationUI();
+        status(`Deleted exposed layer "${layer.name}".`);
+      };
+      main.append(remove);
+    }
     row.append(main);
     if (openLayerPaletteId === layer.id) {
       const grid = document.createElement('div');
@@ -917,6 +1029,7 @@ function renderMain() {
     ctx.fillText(label, p[0] + 6, p[1] - 6);
   }
   drawPlanAxes(ctx, v, w, h, back);
+  syncSectionInputs();
 }
 function renderSection() {
   const c = $('sectionCanvas'),
@@ -971,7 +1084,9 @@ let renderer,
   controls,
   group,
   axesHelper,
-  threeReady = false;
+  threeReady = false,
+  threeOpacity = 1,
+  threeShowBorders = false;
 function zVisualScale() {
   return Math.max(model.width, model.height) / 100;
 }
@@ -1066,8 +1181,20 @@ function renderThree() {
         roughness: 0.78,
         metalness: 0.015,
         side: THREE.DoubleSide,
+        transparent: threeOpacity < 0.999,
+        opacity: threeOpacity,
+        depthWrite: threeOpacity >= 0.999,
       });
     group.add(new THREE.Mesh(geometry, material));
+    if (threeShowBorders) {
+      const edgeGeometry = new THREE.EdgesGeometry(geometry, 20);
+      const edgeMaterial = new THREE.LineBasicMaterial({
+        color: 0x111820,
+        transparent: true,
+        opacity: 0.9,
+      });
+      group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
+    }
   }
   $('threeStats').textContent = roi ? 'focus region' : 'full model';
 }
@@ -1100,6 +1227,7 @@ function renderAll() {
   renderMain();
   renderSection();
   renderThree();
+  syncRoiEditor();
   $('mainFaceLabel').textContent = `${activeFace} surface`;
   $('activeFacePill').textContent = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('maskSummary').textContent = layout.name || 'No mask';
@@ -1216,7 +1344,8 @@ function loadProjectSnapshot(project) {
   hoveredLayerKey = null;
   maskTransform = project.maskTransform;
   activeFace = project.activeFace;
-  roi = project.roi;
+  roi = project.roi ? normalizeRoi(project.roi) : null;
+  roiAnchor = 'center';
   section = project.section;
 
   if (project.display?.xyUnit in XY_UNITS) {
@@ -1475,16 +1604,23 @@ function bindUi() {
         document
           .querySelectorAll('.roi-tool')
           .forEach((x) => x.classList.toggle('active', x === b));
-        status('3D focus: drag in Mask to draw the render region.');
+        $('focusEditor').open = false;
+        status('3D focus: drag once in Mask to create the region.');
       }),
   );
   $('clearRoiBtn').onclick = () => {
     roi = null;
-    roiDraft = null;
-    roiTool = null;
-    document.querySelectorAll('.roi-tool').forEach((x) => x.classList.remove('active'));
+    roiAnchor = 'center';
+    clearRoiDrawingMode();
     renderAll();
+    status('3D focus cleared.');
   };
+  $('roiAnchorSelect').onchange = () => {
+    roiAnchor = $('roiAnchorSelect').value;
+    syncRoiEditor();
+  };
+  for (const id of ['roiWidth', 'roiHeight', 'roiRadius', 'roiX', 'roiY'])
+    $(id).onchange = applyRoiEditor;
   document.querySelectorAll('#faceSelect button').forEach(
     (b) =>
       (b.onclick = () => {
@@ -1500,6 +1636,15 @@ function bindUi() {
   $('growthMode').onchange = updateOperationUI;
   $('applyOperationBtn').onclick = applyOp;
   $('fit3dBtn').onclick = fit3d;
+  $('threeOpacityRange').oninput = () => {
+    threeOpacity = Math.max(0.1, Math.min(1, Number($('threeOpacityRange').value) || 1));
+    $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
+    renderThree();
+  };
+  $('threeBorders').onchange = () => {
+    threeShowBorders = $('threeBorders').checked;
+    renderThree();
+  };
   $('maskZoomOut').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1 / 1.25);
   $('maskZoomIn').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1.25);
   $('maskZoomFit').onclick = () => resetPlanView('mask');
@@ -1508,6 +1653,9 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
+  $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
+  for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
+    $(id).onchange = updateSectionFromInputs;
 
   $('undoBtn').onclick = () => {
     if (!history.length) return;
@@ -1546,6 +1694,8 @@ function bindUi() {
     expandedCells = new Set();
     hoveredLayerKey = null;
     roi = null;
+    roiAnchor = 'center';
+    clearRoiDrawingMode();
     history = [];
     future = [];
     baseRevertSnapshot = null;
@@ -1608,33 +1758,66 @@ function bindUi() {
       v = viewport(w, h, 'mask'),
       p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
     $('maskCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-    if (drag && roiTool) {
+    if (!drag) return;
+    if (drag.mode === 'create') {
       roiDraft =
         roiTool === 'rect'
-          ? { type: 'rect', a: drag, b: p }
-          : { type: 'circle', c: drag, r: Math.hypot(p[0] - drag[0], p[1] - drag[1]) };
+          ? normalizeRoi({ type: 'rect', a: drag.start, b: p })
+          : normalizeRoi({
+              type: 'circle',
+              c: drag.start,
+              r: Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]),
+            });
       renderMask();
+      return;
     }
+    roi = translateRoi(drag.original, p[0] - drag.start[0], p[1] - drag.start[1]);
+    syncRoiEditor();
+    renderMask();
   });
   mc.addEventListener('pointerdown', (e) => {
-    if (!roiTool) return;
+    if (e.button !== 0) return;
     const r = mc.getBoundingClientRect(),
       { w, h } = setupCanvas(mc),
-      v = viewport(w, h, 'mask');
-    drag = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
+      v = viewport(w, h, 'mask'),
+      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v);
+    if (roiTool) drag = { mode: 'create', start: p };
+    else if (roi && roiContainsPoint(roi, p))
+      drag = { mode: 'move', start: p, original: structuredClone(roi) };
+    else return;
     mc.setPointerCapture(e.pointerId);
   });
-  mc.addEventListener('pointerup', () => {
-    if (roiDraft) {
-      roi = roiDraft;
+  const finishRoiDrag = (e) => {
+    if (!drag) return;
+    if (drag.mode === 'create' && roiDraft) {
+      const next = normalizeRoi(roiDraft);
+      const valid =
+        next &&
+        (next.type === 'circle'
+          ? next.r > 1e-9
+          : next.b[0] - next.a[0] > 1e-9 && next.b[1] - next.a[1] > 1e-9);
+      if (valid) {
+        roi = next;
+        roiAnchor = 'center';
+        clearRoiDrawingMode();
+        status('3D focus created. Drag it to reposition or edit values from Focus.');
+      }
       roiDraft = null;
-      renderAll();
     }
+    if (mc.hasPointerCapture(e.pointerId)) mc.releasePointerCapture(e.pointerId);
     drag = null;
+    renderAll();
+  };
+  mc.addEventListener('pointerup', finishRoiDrag);
+  mc.addEventListener('pointercancel', (e) => {
+    roiDraft = null;
+    drag = null;
+    if (mc.hasPointerCapture(e.pointerId)) mc.releasePointerCapture(e.pointerId);
+    renderMask();
   });
 
   const main = $('mainCanvas');
-  let secDrag = false;
+  let secDrag = null;
   main.addEventListener(
     'wheel',
     (e) => {
@@ -1650,16 +1833,24 @@ function bindUi() {
     },
     { passive: false },
   );
+  main.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    resetPlanView('main');
+  });
   main.addEventListener('pointerdown', (e) => {
+    if (!sectionEditEnabled || e.button !== 0) return;
     const r = main.getBoundingClientRect(),
       { w, h } = setupCanvas(main),
       v = viewport(w, h, 'main'),
-      p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
-    section = { a: p, b: p };
-    secDrag = true;
+      x = e.clientX - r.left,
+      y = e.clientY - r.top,
+      a = worldToCanvas(section.a, v, activeFace === 'back'),
+      b = worldToCanvas(section.b, v, activeFace === 'back'),
+      distanceA = Math.hypot(x - a[0], y - a[1]),
+      distanceB = Math.hypot(x - b[0], y - b[1]);
+    if (Math.min(distanceA, distanceB) > 14) return;
+    secDrag = distanceA <= distanceB ? 'a' : 'b';
     main.setPointerCapture(e.pointerId);
-    renderMain();
-    renderSection();
   });
   main.addEventListener('pointermove', (e) => {
     const r = main.getBoundingClientRect(),
@@ -1668,11 +1859,16 @@ function bindUi() {
       p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
     $('mainCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
     if (!secDrag) return;
-    section.b = p;
+    section[secDrag] = p;
     renderMain();
     renderSection();
   });
-  main.addEventListener('pointerup', () => (secDrag = false));
+  const finishSectionDrag = (e) => {
+    if (secDrag && main.hasPointerCapture(e.pointerId)) main.releasePointerCapture(e.pointerId);
+    secDrag = null;
+  };
+  main.addEventListener('pointerup', finishSectionDrag);
+  main.addEventListener('pointercancel', finishSectionDrag);
   window.addEventListener('resize', () => renderAll());
 }
 

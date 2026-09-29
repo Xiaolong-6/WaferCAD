@@ -60,6 +60,15 @@
                 </button>
                 <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
               </div>
+              <button
+                id="sectionEditBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Enable A–B endpoint dragging"
+              >
+                A–B
+              </button>
               <div id="mainCoords" class="readout"></div>
               <button
                 id="resetSectionBtn"
@@ -71,31 +80,89 @@
             </div>
           </div>
           <canvas id="mainCanvas"></canvas>
+          <div class="section-coords-panel" aria-label="A–B coordinates">
+            <div class="section-coords-head">
+              <strong>A–B</strong><span id="sectionCoordUnit">µm</span>
+            </div>
+            <div class="section-coords-grid">
+              <span></span><span>X</span><span>Y</span>
+              <strong>A</strong>
+              <input id="sectionAx" type="number" step="any" aria-label="A X coordinate" />
+              <input id="sectionAy" type="number" step="any" aria-label="A Y coordinate" />
+              <strong>B</strong>
+              <input id="sectionBx" type="number" step="any" aria-label="B X coordinate" />
+              <input id="sectionBy" type="number" step="any" aria-label="B Y coordinate" />
+            </div>
+          </div>
         </section>
 
         <section class="view-panel" id="maskPanel">
           <div class="view-head mask-view-head">
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
-              <div class="focus-tools" title="Limit 3D rendering only">
-                <button
-                  class="roi-tool mini-btn"
-                  data-tool="rect"
-                  title="Draw a rectangular 3D focus region"
-                >
-                  Rect
-                </button>
-                <button
-                  class="roi-tool mini-btn"
-                  data-tool="circle"
-                  title="Draw a circular 3D focus region"
-                >
-                  Circle
-                </button>
-                <button id="clearRoiBtn" class="mini-btn" title="Clear the 3D focus region">
-                  Clear
-                </button>
-              </div>
+              <details id="focusEditor" class="focus-editor">
+                <summary class="mini-btn" title="Edit the 3D focus region">Focus</summary>
+                <div class="focus-popover">
+                  <div class="focus-popover-actions">
+                    <button
+                      class="roi-tool mini-btn"
+                      data-tool="rect"
+                      type="button"
+                      title="Draw a rectangular 3D focus region"
+                    >
+                      Rect
+                    </button>
+                    <button
+                      class="roi-tool mini-btn"
+                      data-tool="circle"
+                      type="button"
+                      title="Draw a circular 3D focus region"
+                    >
+                      Circle
+                    </button>
+                    <button
+                      id="clearRoiBtn"
+                      class="mini-btn"
+                      type="button"
+                      title="Clear the 3D focus region"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div id="roiEditor" class="roi-editor" hidden>
+                    <div class="roi-editor-head">
+                      <strong id="roiShapeLabel">Focus</strong><span id="roiUnitLabel">µm</span>
+                    </div>
+                    <div id="roiRectFields" class="roi-two-fields">
+                      <label
+                        ><span>Width</span><input id="roiWidth" type="number" min="0" step="any"
+                      /></label>
+                      <label
+                        ><span>Height</span><input id="roiHeight" type="number" min="0" step="any"
+                      /></label>
+                    </div>
+                    <div id="roiCircleFields" hidden>
+                      <label class="roi-field"
+                        ><span>Radius</span><input id="roiRadius" type="number" min="0" step="any"
+                      /></label>
+                    </div>
+                    <label class="roi-field"
+                      ><span>Reference</span
+                      ><select id="roiAnchorSelect">
+                        <option value="center">Center / origin</option>
+                        <option value="top-left">Top-left</option>
+                        <option value="bottom-left">Bottom-left</option>
+                        <option value="top-right">Top-right</option>
+                        <option value="bottom-right">Bottom-right</option>
+                      </select></label
+                    >
+                    <div class="roi-two-fields">
+                      <label><span>X</span><input id="roiX" type="number" step="any" /></label>
+                      <label><span>Y</span><input id="roiY" type="number" step="any" /></label>
+                    </div>
+                  </div>
+                </div>
+              </details>
               <div class="zoom-tools" title="Mask view zoom">
                 <button
                   id="maskZoomOut"
@@ -125,7 +192,35 @@
         <section class="view-panel" id="threePanel">
           <div class="view-head">
             <div><strong>3D</strong><span id="threeStats"></span></div>
-            <button id="fit3dBtn" class="mini-btn" title="Fit the 3D model">Fit</button>
+            <div class="three-view-tools">
+              <details class="three-opacity-control">
+                <summary
+                  class="mini-btn three-opacity-button"
+                  aria-label="Adjust all layer transparency"
+                  title="Adjust all layer transparency"
+                >
+                  ◐
+                </summary>
+                <div class="three-opacity-popover">
+                  <label for="threeOpacityRange"
+                    ><span>Opacity</span><output id="threeOpacityValue">100%</output></label
+                  >
+                  <input
+                    id="threeOpacityRange"
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.05"
+                    value="1"
+                  />
+                </div>
+              </details>
+              <label class="three-border-toggle" title="Outline visible layer interfaces in black">
+                <input id="threeBorders" type="checkbox" />
+                <span>Border</span>
+              </label>
+              <button id="fit3dBtn" class="mini-btn" title="Fit the 3D model">Fit</button>
+            </div>
           </div>
           <div id="threeHost"></div>
         </section>
