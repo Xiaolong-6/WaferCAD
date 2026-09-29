@@ -1,6 +1,6 @@
 import {bufferMulti,circleMulti,cloneGeom,difference,intersection,isEmpty,rectMulti,unionGeometries} from './vector-geometry.js';
 
-export const COLORS=['#4F86C6','#4FAF9F','#E6A23C','#D96C5F','#57A6C7','#8A72BE','#D88B43','#6C8E5E','#C5678B','#6D84A6'];
+export const COLORS=['#6C8EBF','#82B6A6','#D6A85F','#C97B84','#8A7CB8','#6FA9B8','#A98B6C','#7FA178','#B7799C','#7590AA'];
 export const BASE_COLOR='#C3CBD4';
 
 function baseGeometry(shape,width,height){
@@ -13,7 +13,7 @@ export function createModel({shape='circle',width=100000,height=100000,thickness
     kernel:'vector-2.5d-v1',shape,width,height,thickness,boundary,units:{xy:'µm',z:'relative'},
     layers:[{id:'base',name:'Base',color:BASE_COLOR}],
     regions:[{id:'region-1',geom:cloneGeom(boundary),stack:[{layerId:'base',z0:-thickness/2,z1:thickness/2}]}],
-    nextLayerId:1,nextRegionId:2,revision:1
+    nextLayerId:1,nextRegionId:2,revision:1,processRevision:0
   };
 }
 
@@ -162,7 +162,7 @@ export function applyOperation(model,{type,name,targetLayerId,thickness,face='fr
     splitByArea(model,active,stack=>mutateStack(stack,{type,layerId:layer?.id,targetLayerId,amount,face}));
   }
   model.regions=mergeRegions(model,model.regions);
-  model.revision++;
+  model.revision++;model.processRevision=(model.processRevision||0)+1;
   return {changed:true,layerId:layer?.id||targetLayerId||null};
 }
 
