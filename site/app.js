@@ -26,6 +26,7 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import { downloadProject, readProjectFile } from './project-io.js';
+import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -38,11 +39,6 @@ const MASK_PALETTE = [
   '#6C8E5E',
   '#C5678B',
 ];
-const XY_UNITS = {
-  nm: { label: 'nm', fromMicron: 1000, toMicron: 0.001 },
-  um: { label: 'µm', fromMicron: 1, toMicron: 1 },
-  mm: { label: 'mm', fromMicron: 0.001, toMicron: 1000 },
-};
 const STRUCTURE_PALETTES = {
   balanced: [
     '#6C8EBF',
@@ -136,22 +132,16 @@ function status(msg) {
   $('statusText').textContent = msg;
 }
 function xyUnit() {
-  return XY_UNITS[xyDisplayUnit] || XY_UNITS.um;
+  return unitMeta(xyDisplayUnit);
 }
 function xyToDisplay(value) {
-  return value * xyUnit().fromMicron;
+  return fromMicron(value, xyDisplayUnit);
 }
 function xyFromDisplay(value) {
-  return value * xyUnit().toMicron;
+  return toMicron(value, xyDisplayUnit);
 }
 function formatXY(value, digits = 3) {
-  const v = xyToDisplay(value),
-    a = Math.abs(v);
-  if (a === 0) return '0';
-  if (a >= 10000) return Number(v.toFixed(0)).toLocaleString('en-US', { useGrouping: false });
-  if (a >= 100) return Number(v.toFixed(1)).toString();
-  if (a >= 1) return Number(v.toFixed(2)).toString();
-  return Number(v.toPrecision(digits)).toString();
+  return formatXYValue(value, xyDisplayUnit, digits);
 }
 function xyText(value) {
   return `${formatXY(value)} ${xyUnit().label}`;
