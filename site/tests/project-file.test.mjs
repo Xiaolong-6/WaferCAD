@@ -134,8 +134,6 @@ test('project validator accepts the runtime nanometre zoom ceiling', () => {
 });
 
 test('project serializer enforces the same size ceiling used by Open', () => {
-  const source = validProject();
-  source.layout.name = 'x'.repeat(2048);
-  assert.throws(() => serializeProject(source, 1024), /larger than the 0 MB safety limit/);
+  assert.throws(() => serializeProject(validProject(), 1024), /larger than the 0 MB safety limit/);
   assert.doesNotThrow(() => serializeProject(validProject(), 64 * 1024 * 1024));
 });
