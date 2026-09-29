@@ -137,3 +137,21 @@ Changing the global XY display unit never rescales geometry. Base dimensions, al
 Projects are JSON files with format identifier `WaferCAD-vector`.
 
 The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, view state, XY display unit, and structure palette preference.
+
+
+## Project-file boundary
+
+`site/project-io.js` is the browser file-IO boundary. `site/project-schema.js` validates parsed JSON before any project object is assigned to live application state.
+
+Validation includes:
+
+- supported format and vector-kernel identifier;
+- finite/positive model dimensions;
+- polygon/ring/point shape and project-wide geometry budgets;
+- unique layer/region IDs and valid stack layer references;
+- ordered, non-overlapping Z stack segments with `z1 > z0`;
+- layout elements, bounds, layer combinations, and hierarchy;
+- mask transform, active face, ROI, A–B section, plan views, and display settings;
+- conservative limits on file size and collection sizes.
+
+This is a trust boundary: renderers and operation code may assume an opened project has passed these checks.
