@@ -167,10 +167,10 @@ function fitImportedLayout(){
   syncTransformInputs();
 }
 function syncTransformInputs(){
-  $('maskOffsetX').value=maskTransform.x.toFixed(3);$('maskOffsetY').value=maskTransform.y.toFixed(3);
+  $('maskOffsetX').value=formatXY(maskTransform.x);$('maskOffsetY').value=formatXY(maskTransform.y);
+  $('maskOffsetXUnit').textContent=xyUnit().label;$('maskOffsetYUnit').textContent=xyUnit().label;
   $('maskScale').value=maskTransform.scale.toPrecision(5);$('maskRotation').value=maskTransform.rotation;
 }
-
 function setActiveCell(name){activeCell=name||null;scopeCacheCell=null;renderCellTree();renderMaskList();renderMask();$('maskCellLabel').textContent=activeCell||'—'}
 function renderCellTree(){
   ensureHierarchy();
@@ -297,21 +297,22 @@ function drawPlanAxes(ctx,v,w,h,back=false){
   const left=28,bottom=h-17,right=w-7,top=7;
   const xa=canvasToWorld(left,bottom,v,back),xb=canvasToWorld(right,bottom,v,back),ya=canvasToWorld(left,bottom,v,back),yb=canvasToWorld(left,top,v,back);
   const xmin=Math.min(xa[0],xb[0]),xmax=Math.max(xa[0],xb[0]),ymin=Math.min(ya[1],yb[1]),ymax=Math.max(ya[1],yb[1]);
-  const xs=niceStep(xmax-xmin),ys=niceStep(ymax-ymin);
+  const dxmin=xyToDisplay(xmin),dxmax=xyToDisplay(xmax),dymin=xyToDisplay(ymin),dymax=xyToDisplay(ymax);
+  const xs=niceStep(dxmax-dxmin),ys=niceStep(dymax-dymin);
   ctx.save();ctx.strokeStyle='rgba(70,82,95,.24)';ctx.fillStyle='#78838f';ctx.lineWidth=.7;ctx.font='7.5px system-ui';
   ctx.beginPath();ctx.moveTo(left,bottom);ctx.lineTo(right,bottom);ctx.moveTo(left,bottom);ctx.lineTo(left,top);ctx.stroke();
   ctx.textAlign='center';ctx.textBaseline='top';
-  for(let x=Math.ceil(xmin/xs)*xs;x<=xmax+xs*.001;x+=xs){
-    const p=worldToCanvas([x,0],v,back);if(p[0]<left-1||p[0]>right+1)continue;
-    ctx.beginPath();ctx.moveTo(p[0],bottom);ctx.lineTo(p[0],bottom-3);ctx.stroke();ctx.fillText(Math.abs(x)<1e-9?'0':Number(x.toPrecision(3)),p[0],bottom+1);
+  for(let xd=Math.ceil(dxmin/xs)*xs;xd<=dxmax+xs*.001;xd+=xs){
+    const x=xyFromDisplay(xd),p=worldToCanvas([x,0],v,back);if(p[0]<left-1||p[0]>right+1)continue;
+    ctx.beginPath();ctx.moveTo(p[0],bottom);ctx.lineTo(p[0],bottom-3);ctx.stroke();ctx.fillText(Math.abs(xd)<1e-12?'0':formatXY(x),p[0],bottom+1);
   }
   ctx.textAlign='right';ctx.textBaseline='middle';
-  for(let y=Math.ceil(ymin/ys)*ys;y<=ymax+ys*.001;y+=ys){
-    const p=worldToCanvas([0,y],v,back);if(p[1]<top-1||p[1]>bottom+1)continue;
-    ctx.beginPath();ctx.moveTo(left,p[1]);ctx.lineTo(left+3,p[1]);ctx.stroke();ctx.fillText(Math.abs(y)<1e-9?'0':Number(y.toPrecision(3)),left-3,p[1]);
+  for(let yd=Math.ceil(dymin/ys)*ys;yd<=dymax+ys*.001;yd+=ys){
+    const y=xyFromDisplay(yd),p=worldToCanvas([0,y],v,back);if(p[1]<top-1||p[1]>bottom+1)continue;
+    ctx.beginPath();ctx.moveTo(left,p[1]);ctx.lineTo(left+3,p[1]);ctx.stroke();ctx.fillText(Math.abs(yd)<1e-12?'0':formatXY(y),left-3,p[1]);
   }
-  ctx.font='700 7.5px system-ui';ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText('X (µm)',right,bottom-3);
-  ctx.textAlign='left';ctx.fillText('Y (µm)',left+3,top+8);ctx.restore();
+  ctx.font='700 7.5px system-ui';ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText(`X (${xyUnit().label})`,right,bottom-3);
+  ctx.textAlign='left';ctx.fillText(`Y (${xyUnit().label})`,left+3,top+8);ctx.restore();
 }
 function canvasPathMulti(ctx,geom,v,back=false){
   ctx.beginPath();
