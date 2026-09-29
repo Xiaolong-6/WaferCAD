@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 
-const require = createRequire(import.meta.url);
-globalThis.polygonClipping = require('./vendor/polygon-clipping.umd.js');
+const vendorSource = readFileSync(
+  new URL('./vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
+const commonJsModule = { exports: {} };
+new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
+globalThis.polygonClipping = commonJsModule.exports;
 
 const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
