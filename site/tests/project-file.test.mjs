@@ -73,3 +73,29 @@ test('project validator rejects malformed layout structure', () => {
   source.layout.elements = {};
   assert.throws(() => validateProjectFile(source), /layout\.elements must be an array/);
 });
+
+
+test('project validator accepts non-recursive snapshot records', () => {
+  const source = validProject();
+  const snapshotState = validProject();
+  source.snapshots = [{
+    id: 'snapshot-1',
+    name: 'Before etch',
+    createdAt: '2026-09-29T12:00:00.000Z',
+    state: snapshotState,
+  }];
+  assert.equal(validateProjectFile(source), source);
+});
+
+test('project validator rejects recursive snapshot payloads', () => {
+  const source = validProject();
+  const snapshotState = validProject();
+  snapshotState.snapshots = [];
+  source.snapshots = [{
+    id: 'snapshot-1',
+    name: 'Recursive',
+    createdAt: '2026-09-29T12:00:00.000Z',
+    state: snapshotState,
+  }];
+  assert.throws(() => validateProjectFile(source), /must not be nested/);
+});
