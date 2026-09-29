@@ -11,9 +11,30 @@ on:
         options:
           - core
           - all
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "site/gds.js"
+      - "site/oasis.js"
+      - "site/layout-io.js"
+      - "site/sample-layouts.js"
+      - "site/samples/klayout/**"
+      - "scripts/klayout-compat.mjs"
+      - "scripts/klayout-ui-compat.mjs"
+      - ".github/workflows/klayout-compat.yml"
   push:
     branches:
-      - "fix/klayout-gds-oasis-compat"
+      - main
+    paths:
+      - "site/gds.js"
+      - "site/oasis.js"
+      - "site/layout-io.js"
+      - "site/sample-layouts.js"
+      - "site/samples/klayout/**"
+      - "scripts/klayout-compat.mjs"
+      - "scripts/klayout-ui-compat.mjs"
+      - ".github/workflows/klayout-compat.yml"
 
 permissions:
   contents: read
