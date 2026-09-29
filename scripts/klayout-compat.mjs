@@ -116,10 +116,9 @@ for (const file of files) {
 }
 
 const counts = Object.fromEntries(
-  ['pass', 'empty', 'expected-reject', 'limit', 'unexpected-pass', 'fail', 'timeout', 'crash'].map((status) => [
-    status,
-    results.filter((item) => item.status === status).length,
-  ]),
+  ['pass', 'empty', 'expected-reject', 'limit', 'unexpected-pass', 'fail', 'timeout', 'crash'].map(
+    (status) => [status, results.filter((item) => item.status === status).length],
+  ),
 );
 const summary = {
   corpus: 'KLayout/klayout testdata',
@@ -131,8 +130,11 @@ const summary = {
 await writeFile(reportPath, JSON.stringify({ summary, results }, null, 2) + '\n');
 
 console.log(JSON.stringify(summary));
-for (const result of results.filter((item) => !['pass', 'empty', 'expected-reject', 'limit'].includes(item.status))) {
+for (const result of results.filter(
+  (item) => !['pass', 'empty', 'expected-reject', 'limit'].includes(item.status),
+)) {
   console.log(`${result.status.toUpperCase()}\t${result.path}\t${result.error || ''}`);
 }
 
-if (counts['unexpected-pass'] || counts.fail || counts.timeout || counts.crash) process.exitCode = 1;
+if (counts['unexpected-pass'] || counts.fail || counts.timeout || counts.crash)
+  process.exitCode = 1;

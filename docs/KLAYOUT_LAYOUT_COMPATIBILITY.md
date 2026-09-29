@@ -40,28 +40,28 @@ At the pinned KLayout revision:
 
 ### Full parser/flatten corpus
 
-| Result | Count |
-| --- | ---: |
-| Total files | 1138 |
-| PASS | 1079 |
-| Valid but no renderable mask geometry | 29 |
-| Upstream-defined expected rejection | 9 |
-| Browser-safe complexity limit | 21 |
-| Unexpected failure | 0 |
-| Timeout | 0 |
-| Crash / OOM | 0 |
+| Result                                | Count |
+| ------------------------------------- | ----: |
+| Total files                           |  1138 |
+| PASS                                  |  1079 |
+| Valid but no renderable mask geometry |    29 |
+| Upstream-defined expected rejection   |     9 |
+| Browser-safe complexity limit         |    21 |
+| Unexpected failure                    |     0 |
+| Timeout                               |     0 |
+| Crash / OOM                           |     0 |
 
 ### Real browser UI import
 
 The core format directories contain 144 layout files.
 
-| Result | Count |
-| --- | ---: |
-| Normal UI imports | 134 |
-| Upstream-defined expected rejection | 9 |
-| Browser-safe complexity limit | 1 |
-| Unexpected UI failure | 0 |
-| Browser `pageerror` | 0 |
+| Result                              | Count |
+| ----------------------------------- | ----: |
+| Normal UI imports                   |   134 |
+| Upstream-defined expected rejection |     9 |
+| Browser-safe complexity limit       |     1 |
+| Unexpected UI failure               |     0 |
+| Browser `pageerror`                 |     0 |
 
 In addition:
 

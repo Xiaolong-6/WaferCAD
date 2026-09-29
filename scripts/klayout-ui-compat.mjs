@@ -45,10 +45,14 @@ function relativeFile(file) {
 }
 
 async function waitForImport(page) {
-  await page.waitForFunction(() => {
-    const text = document.getElementById('statusText')?.textContent || '';
-    return text !== '__UI_IMPORT_PENDING__' && !text.startsWith('Reading ');
-  }, null, { timeout: 15000 });
+  await page.waitForFunction(
+    () => {
+      const text = document.getElementById('statusText')?.textContent || '';
+      return text !== '__UI_IMPORT_PENDING__' && !text.startsWith('Reading ');
+    },
+    null,
+    { timeout: 15000 },
+  );
 }
 
 async function markPending(page) {
@@ -137,11 +141,13 @@ for (const file of files) {
 }
 
 const sampleResults = [];
-const sampleOptions = await page.locator('#sampleMaskSelect option').evaluateAll((options) =>
-  options
-    .map((option) => ({ value: option.value, label: option.textContent || '' }))
-    .filter((option) => option.value),
-);
+const sampleOptions = await page
+  .locator('#sampleMaskSelect option')
+  .evaluateAll((options) =>
+    options
+      .map((option) => ({ value: option.value, label: option.textContent || '' }))
+      .filter((option) => option.value),
+  );
 
 for (const sample of sampleOptions) {
   const priorErrors = pageErrors.length;
@@ -189,7 +195,10 @@ try {
   await page.locator('#operationThickness').fill('1');
   await page.locator('#applyOperationBtn').click();
   await page.waitForFunction(
-    () => (document.getElementById('statusText')?.textContent || '').startsWith('Added UI import probe'),
+    () =>
+      (document.getElementById('statusText')?.textContent || '').startsWith(
+        'Added UI import probe',
+      ),
     null,
     { timeout: 10000 },
   );
