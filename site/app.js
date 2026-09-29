@@ -12,18 +12,60 @@ import {
 
 const $=id=>document.getElementById(id);
 const MASK_PALETTE=['#4F86C6','#4FAF9F','#E6A23C','#D96C5F','#8A72BE','#57A6C7','#6C8E5E','#C5678B'];
+const XY_UNITS={
+  nm:{label:'nm',fromMicron:1000,toMicron:.001},
+  um:{label:'µm',fromMicron:1,toMicron:1},
+  mm:{label:'mm',fromMicron:.001,toMicron:1000}
+};
+const STRUCTURE_PALETTES={
+  balanced:['#6C8EBF','#82B6A6','#D6A85F','#C97B84','#8A7CB8','#6FA9B8','#A98B6C','#7FA178','#B7799C','#7590AA'],
+  airy:['#76A9DC','#86C7B5','#E8C97A','#E5A0A8','#A99AD6','#8BC6D2','#C8AA82','#9ABD91','#D29ABD','#91A9C2'],
+  warm:['#C77C62','#D49A62','#C9AD68','#A8A36D','#B98273','#C48A9D','#9D8175','#D1A279','#B78D64','#A76F6F'],
+  cool:['#5F88B5','#5FA4A5','#7294C6','#7186A7','#7E81B2','#6E9C91','#779FB8','#8A8DB8','#6397A9','#7B94A6']
+};
 
 function emptyLayout(){
   return {name:'No mask',root:'',elements:[],linework:[],bounds:{minX:-50,minY:-50,maxX:50,maxY:50,width:100,height:100},combos:[],hierarchy:{},units:{xy:'µm',dbuToMicron:1,hasPhysicalUnits:true}};
 }
 
 let model=createModel(),layout=emptyLayout(),parsedGds=null,selectedLayerKeys=new Set();
+let xyDisplayUnit='um',activeStructurePalette='balanced',customStructurePalette=null,openLayerPaletteId=null;
 let activeCell=null,expandedCells=new Set(),hoveredLayerKey=null,scopeCacheCell=null,scopeCacheHierarchy=null,scopeCache=new Set();
 let maskTransform={x:0,y:0,scale:1,rotation:0},activeFace='front',roi=null,roiTool=null,roiDraft=null;
-let section={a:[-42,0],b:[42,0]},history=[],future=[],baseRevertSnapshot=null;
+let section={a:[-model.width*.42,0],b:[model.width*.42,0]},history=[],future=[],baseRevertSnapshot=null;
 const planViews={mask:{zoom:1,panX:0,panY:0},main:{zoom:1,panX:0,panY:0}};
 
 function status(msg){$('statusText').textContent=msg}
+function xyUnit(){return XY_UNITS[xyDisplayUnit]||XY_UNITS.um}
+function xyToDisplay(value){return value*xyUnit().fromMicron}
+function xyFromDisplay(value){return value*xyUnit().toMicron}
+function formatXY(value,digits=3){
+  const v=xyToDisplay(value),a=Math.abs(v);
+  if(a===0)return '0';
+  if(a>=10000)return Number(v.toFixed(0)).toLocaleString('en-US',{useGrouping:false});
+  if(a>=100)return Number(v.toFixed(1)).toString();
+  if(a>=1)return Number(v.toFixed(2)).toString();
+  return Number(v.toPrecision(digits)).toString();
+}
+function xyText(value){return `${formatXY(value)} ${xyUnit().label}`}
+function structurePalette(){return customStructurePalette||STRUCTURE_PALETTES[activeStructurePalette]||STRUCTURE_PALETTES.balanced}
+function hslHex(h,s,l){
+  s/=100;l/=100;const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let r=0,g=0,b=0;
+  if(h<60)[r,g,b]=[c,x,0];else if(h<120)[r,g,b]=[x,c,0];else if(h<180)[r,g,b]=[0,c,x];else if(h<240)[r,g,b]=[0,x,c];else if(h<300)[r,g,b]=[x,0,c];else[r,g,b]=[c,0,x];
+  return '#'+[r,g,b].map(v=>Math.round((v+m)*255).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function randomHarmoniousPalette(count=10){
+  const seed=Math.random()*360,out=[];
+  for(let i=0;i<count;i++)out.push(hslHex((seed+i*137.508)%360,48+(i%3)*4,61+(i%2)*5));
+  return out;
+}
+function applyStructurePalette(palette){
+  let i=0;
+  for(const layer of model.layers){
+    if(layer.id==='base')continue;
+    recolorLayer(model,layer.id,palette[i%palette.length]);i++;
+  }
+}
 function invMaskPoint([x,y]){
   const a=-maskTransform.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a),dx=x-maskTransform.x,dy=y-maskTransform.y;
   return [(dx*c-dy*s)/maskTransform.scale,(dx*s+dy*c)/maskTransform.scale];
@@ -177,20 +219,48 @@ function renderMaskList(){
 
 function renderLayerLegend(){
   const host=$('threeLegend');host.innerHTML='';
-  const title=document.createElement('div');title.className='legend-title';title.textContent='Layers';host.append(title);
+  const head=document.createElement('div');head.className='legend-head';
+  const title=document.createElement('div');title.className='legend-title';title.textContent='Layers';
+  const tools=document.createElement('div');tools.className='legend-tools';
+  const paletteSelect=document.createElement('select');paletteSelect.className='legend-palette-select';paletteSelect.title='Structure color palette';
+  for(const [key,label] of [['balanced','Balanced'],['airy','Airy'],['warm','Warm'],['cool','Cool']])paletteSelect.add(new Option(label,key));
+  if(customStructurePalette)paletteSelect.add(new Option('Random','random'));
+  paletteSelect.value=customStructurePalette?'random':activeStructurePalette;
+  paletteSelect.onchange=()=>{
+    customStructurePalette=null;activeStructurePalette=paletteSelect.value;openLayerPaletteId=null;
+    applyStructurePalette(structurePalette());renderLayerLegend();renderMain();renderSection();renderThree();
+  };
+  const randomBtn=document.createElement('button');randomBtn.type='button';randomBtn.className='legend-random';randomBtn.textContent='Random';randomBtn.title='Generate and apply a harmonious palette';
+  randomBtn.onclick=()=>{
+    customStructurePalette=randomHarmoniousPalette();openLayerPaletteId=null;
+    applyStructurePalette(customStructurePalette);renderLayerLegend();renderMain();renderSection();renderThree();
+  };
+  tools.append(paletteSelect,randomBtn);head.append(title,tools);host.append(head);
+
   const target=$('targetLayer'),previous=target.value;target.innerHTML='';
+  const palette=structurePalette();
   for(const layer of model.layers){
-    const row=document.createElement('div');row.className='legend-row';
-    const color=document.createElement('input');color.type='color';color.className='legend-color';color.value=layer.color;color.title='Change layer color';
-    color.onchange=()=>{recolorLayer(model,layer.id,color.value);renderMain();renderSection();renderThree();renderLayerLegend()};
+    const row=document.createElement('div');row.className='legend-row-wrap';
+    const main=document.createElement('div');main.className='legend-row';
+    const color=document.createElement('button');color.type='button';color.className='legend-color-chip';color.style.background=layer.color;color.title='Choose from the active palette';
+    color.onclick=()=>{openLayerPaletteId=openLayerPaletteId===layer.id?null:layer.id;renderLayerLegend()};
     const name=document.createElement('input');name.type='text';name.className='legend-name';name.value=layer.name;name.title='Rename layer';
     name.onchange=()=>{if(!renameLayer(model,layer.id,name.value))name.value=layer.name;renderLayerLegend();renderMain();renderSection();renderThree()};
-    row.append(color,name);host.append(row);
+    main.append(color,name);row.append(main);
+    if(openLayerPaletteId===layer.id){
+      const grid=document.createElement('div');grid.className='legend-palette-grid';
+      for(const value of palette){
+        const chip=document.createElement('button');chip.type='button';chip.className='legend-palette-chip';chip.style.background=value;chip.title=value;
+        chip.onclick=()=>{recolorLayer(model,layer.id,value);openLayerPaletteId=null;renderLayerLegend();renderMain();renderSection();renderThree()};
+        grid.append(chip);
+      }
+      row.append(grid);
+    }
+    host.append(row);
     if(layer.id!=='base')target.add(new Option(layer.name,layer.id));
   }
   if([...target.options].some(o=>o.value===previous))target.value=previous;
 }
-
 function setupCanvas(canvas){
   const dpr=Math.min(devicePixelRatio||1,2),r=canvas.getBoundingClientRect(),w=Math.max(2,Math.round(r.width*dpr)),h=Math.max(2,Math.round(r.height*dpr));
   if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
