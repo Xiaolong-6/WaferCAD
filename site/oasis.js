@@ -817,6 +817,7 @@ export async function parseOAS(arrayBuffer) {
     version,
     cells,
     cellOrder,
+    roots,
     root: roots.at(-1) || cellOrder.at(-1),
     units: {
       xy: 'µm',

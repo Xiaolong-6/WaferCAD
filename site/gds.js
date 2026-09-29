@@ -199,6 +199,7 @@ export function parseGDS(arrayBuffer) {
   return {
     cells,
     cellOrder,
+    roots,
     root,
     units: {
       xy: hasPhysicalUnits ? 'µm' : 'DBU',

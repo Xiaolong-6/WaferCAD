@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { flattenGDS, parseGDS } from '../gds.js';
+import { parseLayoutFile } from '../layout-io.js';
 
 function parsedWith(cells, root = 'A') {
   return {
@@ -89,4 +90,26 @@ test('parseGDS stops at ENDLIB and ignores trailing zero padding', () => {
   const parsed = parseGDS(bytes.buffer);
   assert.equal(parsed.root, 'TOP');
   assert.equal(parsed.cells.size, 1);
+});
+
+
+test('parseLayoutFile preserves multiple independent GDS top cells under a virtual root', async () => {
+  const bytes = new Uint8Array([
+    0, 4, 0x05, 0,
+    0, 6, 0x06, 0x06, 0x41, 0,
+    0, 4, 0x07, 0,
+    0, 4, 0x05, 0,
+    0, 6, 0x06, 0x06, 0x42, 0,
+    0, 4, 0x07, 0,
+    0, 4, 0x04, 0,
+  ]);
+
+  const { format, parsed } = await parseLayoutFile(bytes.buffer, 'multi-root.gds');
+  assert.equal(format, 'GDSII');
+  assert.deepEqual(parsed.roots, ['A', 'B']);
+  assert.equal(parsed.root, 'Library');
+  assert.deepEqual(
+    parsed.cells.get('Library').elements.map((element) => element.name),
+    ['A', 'B'],
+  );
 });
