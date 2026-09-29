@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { serializeProject } from '../project-io.js';
 import { validateProjectFile } from '../project-schema.js';
+
+const vendorSource = readFileSync(
+  new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
+const commonJsModule = { exports: {} };
+new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
+globalThis.polygonClipping = commonJsModule.exports;
 
 function validProject() {
   return {
@@ -136,4 +145,28 @@ test('project validator accepts the runtime nanometre zoom ceiling', () => {
 test('project serializer enforces the same size ceiling used by Open', () => {
   assert.throws(() => serializeProject(validProject(), 1024), /larger than the 0 MB safety limit/);
   assert.doesNotThrow(() => serializeProject(validProject(), 64 * 1024 * 1024));
+});
+
+
+test('project validator rejects regions outside the declared base boundary', () => {
+  const source = validProject();
+  source.model.regions[0].geom[0][0] = source.model.regions[0].geom[0][0].map(([x, y]) => [
+    x + 500,
+    y,
+  ]);
+  assert.throws(() => validateProjectFile(source), /extends outside model\.boundary/);
+});
+
+test('project validator rejects overlapping region geometry', () => {
+  const source = validProject();
+  const duplicate = structuredClone(source.model.regions[0]);
+  duplicate.id = 'region-2';
+  source.model.regions.push(duplicate);
+  assert.throws(() => validateProjectFile(source), /overlaps model\.regions/);
+});
+
+test('project validator rejects base metadata that disagrees with boundary bounds', () => {
+  const source = validProject();
+  source.model.width = 201;
+  assert.throws(() => validateProjectFile(source), /bounds do not match model width\/height/);
 });
