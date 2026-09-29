@@ -27,7 +27,7 @@ Region
    └─ ...
 ```
 
-XY is physical geometry in micrometres. Z is relative.
+XY is physical geometry stored internally in micrometres. The UI has a global display-unit layer (nm / µm / mm) that converts only presentation and XY input values. Z is relative.
 
 The model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. This is sufficient for the current Add, Grow, Etch, Direct, and Conformal workflows without introducing a full arbitrary-solid B-rep kernel.
 
@@ -118,7 +118,7 @@ Renders top/bottom surface patches directly from region polygons. Step boundarie
 
 ### 3D
 
-Extrudes vector polygons between each segment's `z0` and `z1`. The optional focus region clips rendering only; it does not change the model.
+Extrudes vector polygons between each segment's `z0` and `z1`. XY stays in physical geometry coordinates, while relative Z is mapped through a separate visual scale for 3D display. The optional focus region clips rendering only; it does not change the model.
 
 ### Section A–B
 
@@ -126,13 +126,14 @@ Intersects the A–B line with every region polygon, then draws each region stac
 
 ## Units
 
-- XY: µm
+- XY canonical storage: µm
+- XY display: nm, µm, or mm
 - Z: relative
 
-The two systems are intentionally independent.
+Changing the global XY display unit never rescales geometry. Base dimensions, alignment offsets, XY axes, cursor readouts, and A–B span all use the selected display unit. XY and Z remain intentionally independent.
 
 ## Persistence
 
 Projects are JSON files with format identifier `WaferCAD-vector`.
 
-The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, and view state.
+The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, view state, XY display unit, and structure palette preference.
