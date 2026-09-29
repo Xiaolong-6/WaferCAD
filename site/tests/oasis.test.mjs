@@ -208,7 +208,6 @@ test('OASIS g-delta directions decode southwest and southeast correctly', async 
   ]);
 });
 
-
 test('OASIS CBLOCK budget rejects unsafe expansion before decompression', () => {
   assert.doesNotThrow(() => assertOasisBlockSize(10, 10));
   assert.throws(() => assertOasisBlockSize(11, 10), /CBLOCK expands beyond/);
