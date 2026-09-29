@@ -133,6 +133,24 @@ const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 
 function status(msg) {
   $('statusText').textContent = msg;
 }
+
+async function loadBuildCommit() {
+  const host = $('buildCommit');
+  if (!host) return;
+
+  try {
+    const response = await fetch('./build-info.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error('build info unavailable');
+    const info = await response.json();
+    const commit = String(info.commit || '').trim();
+    if (!commit) throw new Error('build commit missing');
+    host.textContent = `commit ${commit.slice(0, 7)}`;
+    host.title = commit;
+  } catch {
+    host.textContent = 'commit local';
+    host.removeAttribute('title');
+  }
+}
 function xyUnit() {
   return unitMeta(xyDisplayUnit);
 }
@@ -1653,6 +1671,7 @@ function bindUi() {
 }
 
 bindUi();
+loadBuildCommit();
 renderSnapshots();
 initThree();
 syncBaseControls();
