@@ -51,7 +51,7 @@ Rebuilding the base is treated as a reversible operation. If a processed structu
 
 - `site/` — deployed browser application
 - `docs/` — current architecture, usage, and development documentation
-- `legacy/` — archived pre-rewrite implementation and documentation; not used by the current application
+- `legacy/` — selected archived implementation/reference material; not used by the current application
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Local preview
@@ -62,8 +62,18 @@ python -m http.server 8000 --directory site
 
 Then open `http://localhost:8000`.
 
-Run the dependency-free geometry smoke test with:
+For development checks:
 
 ```bash
-node site/selftest.mjs
+npm install
+npm run check
 ```
+
+`npm run check` runs ESLint, the current Prettier gate, and the geometry/project-format self-tests. Use `npm run format` to format the active application and current documentation.
+
+
+## Project-file safety
+
+Project JSON is validated before it can replace the current editor state. Validation covers the vector model, polygon structure, Z stacks, layer references, mask layout, hierarchy, transforms, section/view state, display settings, and conservative size limits. Invalid or damaged files fail during Open rather than later during rendering.
+
+See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
