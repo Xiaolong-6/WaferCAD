@@ -78,6 +78,57 @@ const c = applyOperation(conformal, {
 });
 assert.equal(surfaceSegment(regionAt(conformal, [2.5, 0]).stack).layerId, c.layerId);
 
+const directStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(directStep, {
+  type: 'add',
+  name: 'Ridge',
+  thickness: 2,
+  face: 'front',
+  area: rectMulti(4, 20),
+  growth: 'direct',
+});
+const directBlanket = applyOperation(directStep, {
+  type: 'add',
+  name: 'Direct blanket',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(20, 20),
+  growth: 'direct',
+});
+const directSide = regionAt(directStep, [2.5, 0]).stack.find(
+  (segment) => segment.layerId === directBlanket.layerId,
+);
+assert.equal(directSide.z0, 5);
+assert.equal(directSide.z1, 6);
+
+const conformalStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(conformalStep, {
+  type: 'add',
+  name: 'Ridge',
+  thickness: 2,
+  face: 'front',
+  area: rectMulti(4, 20),
+  growth: 'direct',
+});
+const conformalBlanket = applyOperation(conformalStep, {
+  type: 'add',
+  name: 'Conformal blanket',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(20, 20),
+  growth: 'conformal',
+});
+const conformalSide = regionAt(conformalStep, [2.5, 0]).stack.find(
+  (segment) => segment.layerId === conformalBlanket.layerId,
+);
+assert.equal(conformalSide.z0, 5);
+assert.equal(conformalSide.z1, 8);
+const conformalFlat = regionAt(conformalStep, [4, 0]).stack.find(
+  (segment) => segment.layerId === conformalBlanket.layerId,
+);
+assert.equal(conformalFlat.z0, 5);
+assert.equal(conformalFlat.z1, 6);
+
 assert.equal(renameLayer(conformal, c.layerId, 'Contact'), true);
 assert.equal(layerById(conformal, c.layerId).name, 'Contact');
 assert.equal(recolorLayer(conformal, c.layerId, '#55aacc'), true);
