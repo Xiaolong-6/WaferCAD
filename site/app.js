@@ -890,10 +890,7 @@ function maskMinimumFeatureSize() {
 }
 
 function mainMinimumFeatureSize() {
-  if (
-    featureSizeCache.main.model === model &&
-    featureSizeCache.main.revision === model.revision
-  )
+  if (featureSizeCache.main.model === model && featureSizeCache.main.revision === model.revision)
     return featureSizeCache.main.value;
 
   const pointGroups = [];
@@ -1881,7 +1878,10 @@ function bindUi() {
         return;
       }
       const handles = Object.fromEntries(
-        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [name, worldToCanvas(point, v)]),
+        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
+          name,
+          worldToCanvas(point, v),
+        ]),
       );
       const handle = nearestNamedPoint(screen, handles, 10);
       mc.style.cursor = handle
@@ -1927,11 +1927,13 @@ function bindUi() {
       drag = { mode: 'create', start: p };
     } else if (roi) {
       const handles = Object.fromEntries(
-        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [name, worldToCanvas(point, v)]),
+        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
+          name,
+          worldToCanvas(point, v),
+        ]),
       );
       const handle = nearestNamedPoint(screen, handles, 10);
-      if (handle)
-        drag = { mode: 'resize', handle, start: p, original: structuredClone(roi) };
+      if (handle) drag = { mode: 'resize', handle, start: p, original: structuredClone(roi) };
       else if (roiContainsPoint(roi, p))
         drag = { mode: 'move', start: p, original: structuredClone(roi) };
       else return;
@@ -1953,7 +1955,9 @@ function bindUi() {
         roi = next;
         roiAnchor = 'center';
         clearRoiDrawingMode();
-        status('ROI created. Drag it to move, use corner handles to resize, or edit values from ROI.');
+        status(
+          'ROI created. Drag it to move, use corner handles to resize, or edit values from ROI.',
+        );
       }
       roiDraft = null;
     }
