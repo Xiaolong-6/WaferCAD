@@ -14,6 +14,13 @@ function regionAt(model,point){
   return model.regions.find(region=>pointInMulti(point,region.geom))||null;
 }
 
+const defaults=createModel();
+assert.equal(defaults.width,100000);
+assert.equal(defaults.height,100000);
+assert.equal(defaults.units.xy,'µm');
+assert.equal(defaults.units.z,'relative');
+assert.equal(defaults.processRevision,0);
+
 const m=createModel({shape:'rect',width:20,height:20,thickness:10});
 const area=rectMulti(4,4);
 const add=applyOperation(m,{type:'add',name:'Film',thickness:2,face:'front',area,growth:'direct'});
@@ -40,6 +47,7 @@ assert.equal(renameLayer(conformal,c.layerId,'Contact'),true);
 assert.equal(layerById(conformal,c.layerId).name,'Contact');
 assert.equal(recolorLayer(conformal,c.layerId,'#55aacc'),true);
 assert.equal(layerById(conformal,c.layerId).color,'#55aacc');
+assert.ok(conformal.processRevision>0);
 
 const full=rectMulti(20,20),inside=intersection(full,area),outside=difference(full,area);
 assert.equal(isEmpty(inside),false);assert.equal(pointInMulti([0,0],outside),false);assert.equal(pointInMulti([7,0],outside),true);
