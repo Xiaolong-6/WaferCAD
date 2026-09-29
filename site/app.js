@@ -4,17 +4,27 @@ import {parseGDS,flattenGDS,makeDemoLayout} from './gds.js';
 import {GRID_N,createModel,cloneModel,cellCenter,cellIndex,topSegment,surfaceZ,applyOperation,fullFaceMask,modelBoundsZ} from './model.js';
 
 const $=id=>document.getElementById(id);
-let model=createModel(),layout=makeDemoLayout(),parsedGds=null,selectedKeys=new Set(['TOP|1|0']);
-let activeCell='TOP',expandedCells=new Set(['TOP']),hoveredMaskKey=null;
+const MASK_PALETTE=['#58758a','#69877f','#8c7669','#746f91','#7f8466','#8a6d78','#5f7f8e','#8a806b'];
+function emptyLayout(){return {name:'No mask',root:'',elements:[],linework:[],bounds:{minX:-50,minY:-50,maxX:50,maxY:50,width:100,height:100},combos:[],hierarchy:{}}}
+let model=createModel(),layout=emptyLayout(),parsedGds=null,selectedLayerKeys=new Set();
+let activeCell=null,expandedCells=new Set(),hoveredLayerKey=null;
 let maskTransform={x:0,y:0,scale:1,rotation:0},activeFace='front',roi=null,roiTool=null,roiDraft=null;
 let section={a:[-42,0],b:[42,0]},history=[],future=[];
+const planViews={mask:{zoom:1,panX:0,panY:0},main:{zoom:1,panX:0,panY:0}};
 
 function status(msg){$('statusText').textContent=msg}
 function pointInPoly([x,y],pts){let inside=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const [xi,yi]=pts[i],[xj,yj]=pts[j];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi+1e-20)+xi))inside=!inside;}return inside}
 function distSeg(p,a,b){const vx=b[0]-a[0],vy=b[1]-a[1],wx=p[0]-a[0],wy=p[1]-a[1],d=vx*vx+vy*vy,t=d?Math.max(0,Math.min(1,(wx*vx+wy*vy)/d)):0;return Math.hypot(p[0]-(a[0]+t*vx),p[1]-(a[1]+t*vy))}
 function invMaskPoint([x,y]){const a=-maskTransform.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a),dx=x-maskTransform.x,dy=y-maskTransform.y;return [(dx*c-dy*s)/maskTransform.scale,(dx*s+dy*c)/maskTransform.scale]}
 function maskPoint([x,y]){const a=maskTransform.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a),sx=x*maskTransform.scale,sy=y*maskTransform.scale;return [sx*c-sy*s+maskTransform.x,sx*s+sy*c+maskTransform.y]}
-function selectedElement(e){return selectedKeys.has(`${e.sourceCell}|${e.layer}|${e.datatype}`)}
+function layerKey(layer,datatype){return `${layer}|${datatype}`}
+function descendantCells(name){
+  const out=new Set();
+  function walk(n){if(!n||out.has(n))return;out.add(n);for(const child of cellChildren(n))walk(child.name)}
+  walk(name);return out;
+}
+function activeScopeCells(){return activeCell?descendantCells(activeCell):new Set()}
+function selectedElement(e){return activeScopeCells().has(e.sourceCell)&&selectedLayerKeys.has(layerKey(e.layer,e.datatype))}
 function pointInMaskWorld(p){const q=invMaskPoint(p);for(const e of layout.elements){if(!selectedElement(e))continue;if(e.kind==='polygon'&&pointInPoly(q,e.points))return true;if(e.kind==='path'&&e.width>0){for(let i=1;i<e.points.length;i++)if(distSeg(q,e.points[i-1],e.points[i])<=e.width/2)return true;}}return false}
 function rasterMask(){const a=new Uint8Array(model.columns.length);for(let j=0;j<model.rows;j++)for(let i=0;i<model.cols;i++){const idx=j*model.cols+i;if(model.columns[idx].length&&pointInMaskWorld(cellCenter(model,i,j)))a[idx]=1;}return a}
 function pointInRoi(p){if(!roi)return true;if(roi.type==='rect')return p[0]>=Math.min(roi.a[0],roi.b[0])&&p[0]<=Math.max(roi.a[0],roi.b[0])&&p[1]>=Math.min(roi.a[1],roi.b[1])&&p[1]<=Math.max(roi.a[1],roi.b[1]);if(roi.type==='circle')return Math.hypot(p[0]-roi.c[0],p[1]-roi.c[1])<=roi.r;return roi.type==='polygon'?pointInPoly(p,roi.points):true}
@@ -22,7 +32,16 @@ function saveHistory(){history.push(cloneModel(model));if(history.length>40)hist
 function syncUndo(){$('undoBtn').disabled=!history.length;$('redoBtn').disabled=!future.length}
 function fitImportedLayout(){const b=layout.bounds,s=.78*Math.min(model.width/b.width,model.height/b.height);maskTransform={scale:Number.isFinite(s)?s:1,rotation:0,x:-((b.minX+b.maxX)/2)*s,y:-((b.minY+b.maxY)/2)*s};syncTransformInputs()}
 function syncTransformInputs(){$('maskOffsetX').value=maskTransform.x.toFixed(3);$('maskOffsetY').value=maskTransform.y.toFixed(3);$('maskScale').value=maskTransform.scale.toPrecision(5);$('maskRotation').value=maskTransform.rotation}
-function layerColor(key,alpha=1){let h=0;for(const ch of key)h=(h*31+ch.charCodeAt(0))>>>0;return `hsl(${h%360} 48% 52% / ${alpha})`}
+function layerColor(key,alpha=1){let h=0;for(const ch of key)h=(h*31+ch.charCodeAt(0))>>>0;const hex=MASK_PALETTE[h%MASK_PALETTE.length];if(alpha>=.999)return hex;const n=parseInt(hex.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${alpha})`}
+function globalLayers(){
+  const map=new Map();
+  for(const combo of layout.combos||[]){
+    const key=layerKey(combo.layer,combo.datatype);
+    if(!map.has(key))map.set(key,{key,layer:combo.layer,datatype:combo.datatype,count:0,cells:new Set()});
+    const item=map.get(key);item.count+=combo.count;item.cells.add(combo.cell);
+  }
+  return [...map.values()].sort((a,b)=>a.layer-b.layer||a.datatype-b.datatype);
+}
 function hierarchyFromParsed(parsed){
   const hierarchy={};
   for(const name of parsed.cellOrder){
@@ -37,20 +56,21 @@ function hierarchyFromParsed(parsed){
   return hierarchy;
 }
 function ensureHierarchy(){
-  if(layout.hierarchy)return;
-  const root=layout.root||'TOP',cells=new Set([root]);
+  if(layout.hierarchy&&Object.keys(layout.hierarchy).length)return;
+  const root=layout.root||'',cells=new Set(root?[root]:[]);
   for(const c of layout.combos||[])cells.add(c.cell);
   for(const e of layout.linework||[])if(e.sourceCell)cells.add(e.sourceCell);
   layout.hierarchy={};
   for(const name of cells)layout.hierarchy[name]=[];
-  layout.hierarchy[root]=[...cells].filter(name=>name!==root).map(name=>({name,count:1}));
+  if(root)layout.hierarchy[root]=[...cells].filter(name=>name!==root).map(name=>({name,count:1}));
 }
 function cellChildren(name){ensureHierarchy();return layout.hierarchy?.[name]||[]}
-function setActiveCell(name){activeCell=name;renderCellTree();renderMaskList();$('maskCellLabel').textContent=name}
+function setActiveCell(name){activeCell=name||null;renderCellTree();renderMaskList();renderMask();$('maskCellLabel').textContent=activeCell||'—'}
 function renderCellTree(){
   ensureHierarchy();
   const host=$('cellTree');host.innerHTML='';
-  const root=layout.root||Object.keys(layout.hierarchy||{})[0]||activeCell||'TOP';
+  const root=layout.root||Object.keys(layout.hierarchy||{})[0]||'';
+  if(!root){const empty=document.createElement('div');empty.className='empty-list';empty.textContent='No mask loaded';host.append(empty);activeCell=null;return}
   if(!activeCell||!(activeCell in (layout.hierarchy||{})))activeCell=root;
   function node(name,depth,path){
     const children=cellChildren(name),row=document.createElement('div');row.className='cell-row'+(name===activeCell?' active':'')+(depth===0?' root':'');row.style.setProperty('--depth',depth);
@@ -72,19 +92,21 @@ function renderCellTree(){
 }
 function renderMaskList(){
   const host=$('maskLayerList');host.innerHTML='';
-  const combos=(layout.combos||[]).filter(combo=>combo.cell===activeCell);
-  if(!combos.length){const empty=document.createElement('div');empty.className='empty-list';empty.textContent='No area layers';host.append(empty)}
-  for(const combo of combos){
-    const row=document.createElement('label');row.className='layer-row'+(selectedKeys.has(combo.key)?' selected':'');
-    row.onmouseenter=()=>{hoveredMaskKey=combo.key;renderMask()};row.onmouseleave=()=>{if(hoveredMaskKey===combo.key)hoveredMaskKey=null;renderMask()};
-    const cb=document.createElement('input');cb.type='checkbox';cb.checked=selectedKeys.has(combo.key);cb.onchange=()=>{cb.checked?selectedKeys.add(combo.key):selectedKeys.delete(combo.key);renderAll()};
-    const sw=document.createElement('span');sw.className='layer-swatch';sw.style.background=layerColor(combo.key);
-    const text=document.createElement('span');text.className='layer-name';text.textContent=`${combo.layer}/${combo.datatype}`;
-    const count=document.createElement('span');count.className='layer-count';count.textContent=combo.count;
+  const layers=globalLayers(),scope=activeScopeCells();
+  if(!layers.length){const empty=document.createElement('div');empty.className='empty-list';empty.textContent='No area layers';host.append(empty)}
+  for(const item of layers){
+    const available=[...item.cells].some(cell=>scope.has(cell));
+    const row=document.createElement('label');row.className='layer-row'+(selectedLayerKeys.has(item.key)?' selected':'')+(available?'':' unavailable');
+    row.onmouseenter=()=>{hoveredLayerKey=item.key;renderMask()};row.onmouseleave=()=>{if(hoveredLayerKey===item.key)hoveredLayerKey=null;renderMask()};
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=selectedLayerKeys.has(item.key);cb.onchange=()=>{cb.checked?selectedLayerKeys.add(item.key):selectedLayerKeys.delete(item.key);renderAll()};
+    const sw=document.createElement('span');sw.className='layer-swatch';sw.style.background=layerColor(item.key);
+    const text=document.createElement('span');text.className='layer-name';text.textContent=`${item.layer}/${item.datatype}`;
+    const count=document.createElement('span');count.className='layer-count';count.textContent=item.count;
+    row.title=available?`Layer ${item.layer}/${item.datatype} in selected cell hierarchy`:`Layer ${item.layer}/${item.datatype} is not present in ${activeCell||'this cell'}`;
     row.append(cb,sw,text,count);host.append(row);
   }
-  const selected=(layout.combos||[]).filter(c=>selectedKeys.has(c.key));
-  $('maskSelectionSummary').textContent=selected.length===1?`Selected: ${selected[0].cell} · ${selected[0].layer}/${selected[0].datatype}`:selected.length?`Selected: ${selected.length} cell/layer combinations`:'No mask layer selected';
+  const selected=layers.filter(item=>selectedLayerKeys.has(item.key));
+  $('maskSelectionSummary').textContent=!activeCell?'No cell selected':selected.length===1?`Cell: ${activeCell} · Layer: ${selected[0].layer}/${selected[0].datatype}`:selected.length?`Cell: ${activeCell} · ${selected.length} layers selected`:`Cell: ${activeCell} · no layer selected`;
 }
 function renderStructure(){const host=$('structureList');host.innerHTML='';for(const l of model.layers){const r=document.createElement('div');r.className='structure-row';const sw=document.createElement('span');sw.className='structure-swatch';sw.style.background=l.color;const t=document.createElement('div');t.innerHTML=`<strong>${l.name}</strong>${l.name==='Base'?'':'<br><small>editable layer</small>'}`;r.append(sw,t);host.append(r)}$('structureCount').textContent=`${model.layers.length} layers`;const sel=$('targetLayer');sel.innerHTML='';for(const l of model.layers.filter(x=>x.name!=='Base'))sel.add(new Option(l.name,l.name));}
 
@@ -93,7 +115,7 @@ function viewport(w,h){const margin=18,s=Math.min((w-margin*2)/model.width,(h-ma
 function worldToCanvas(p,v,back=false){const x=back?-p[0]:p[0];return [v.cx+x*v.s,v.cy-p[1]*v.s]}
 function canvasToWorld(x,y,v,back=false){let wx=(x-v.cx)/v.s;if(back)wx=-wx;return [wx,(v.cy-y)/v.s]}
 function drawBaseOutline(ctx,v){ctx.save();ctx.strokeStyle='#9aa4af';ctx.lineWidth=1.3;ctx.fillStyle='#f1f3f5';ctx.beginPath();if(model.shape==='circle')ctx.ellipse(v.cx,v.cy,model.width*v.s/2,model.height*v.s/2,0,0,Math.PI*2);else ctx.rect(v.cx-model.width*v.s/2,v.cy-model.height*v.s/2,model.width*v.s,model.height*v.s);ctx.fill();ctx.stroke();ctx.restore()}
-function traceElement(ctx,e,v,selected){const key=`${e.sourceCell}|${e.layer}|${e.datatype}`,hovered=hoveredMaskKey===key;ctx.beginPath();if(e.kind==='polygon'){e.points.map(maskPoint).forEach((p,i)=>{const [x,y]=worldToCanvas(p,v);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.fillStyle=selected?layerColor(key,hovered?.78:.58):hovered?layerColor(key,.32):'#aeb6c022';ctx.fill();ctx.strokeStyle=selected||hovered?layerColor(key,.98):'#aeb6c088';ctx.lineWidth=hovered?2:selected?1.2:.7;ctx.stroke()}else{const pts=e.points.map(maskPoint);pts.forEach((p,i)=>{const [x,y]=worldToCanvas(p,v);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.strokeStyle=selected?layerColor(key,.95):'#aeb6c0';ctx.lineWidth=Math.max(1,e.width*maskTransform.scale*v.s);ctx.stroke()}}
+function traceElement(ctx,e,v,selected){const key=layerKey(e.layer,e.datatype),hovered=hoveredLayerKey===key;ctx.beginPath();if(e.kind==='polygon'){e.points.map(maskPoint).forEach((p,i)=>{const [x,y]=worldToCanvas(p,v);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.fillStyle=selected?layerColor(key,hovered?.78:.58):hovered?layerColor(key,.32):'#aeb6c022';ctx.fill();ctx.strokeStyle=selected||hovered?layerColor(key,.98):'#aeb6c088';ctx.lineWidth=hovered?2:selected?1.2:.7;ctx.stroke()}else{const pts=e.points.map(maskPoint);pts.forEach((p,i)=>{const [x,y]=worldToCanvas(p,v);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.strokeStyle=selected?layerColor(key,.95):'#aeb6c0';ctx.lineWidth=Math.max(1,e.width*maskTransform.scale*v.s);ctx.stroke()}}
 function drawRoi(ctx,v){if(!roi&&!roiDraft)return;const r=roiDraft||roi;ctx.save();ctx.strokeStyle='#e05252';ctx.fillStyle='rgba(224,82,82,.07)';ctx.setLineDash([6,4]);ctx.lineWidth=1.5;ctx.beginPath();if(r.type==='rect'){const a=worldToCanvas(r.a,v),b=worldToCanvas(r.b,v);ctx.rect(a[0],a[1],b[0]-a[0],b[1]-a[1])}else if(r.type==='circle'){const c=worldToCanvas(r.c,v);ctx.arc(c[0],c[1],r.r*v.s,0,Math.PI*2)}else if(r.type==='polygon'&&r.points.length){r.points.forEach((p,i)=>{const q=worldToCanvas(p,v);i?ctx.lineTo(...q):ctx.moveTo(...q)});if(r.closed)ctx.closePath()}ctx.fill();ctx.stroke();ctx.restore()}
 function renderMask(){const c=$('maskCanvas'),{ctx,w,h}=setupCanvas(c),v=viewport(w,h);ctx.clearRect(0,0,w,h);drawBaseOutline(ctx,v);for(const e of layout.linework||[])traceElement(ctx,e,v,false);for(const e of layout.elements)traceElement(ctx,e,v,selectedElement(e));drawRoi(ctx,v)}
 function renderMain(){
@@ -127,17 +149,17 @@ function applyOp(){const type=$('operationType').value,thickness=Number($('opera
 function bindUi(){
   document.querySelectorAll('#substrateShape button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#substrateShape button').forEach(x=>x.classList.remove('active'));b.classList.add('active');if(b.dataset.shape==='circle')$('baseHeight').value=$('baseWidth').value});
   $('applyBaseBtn').onclick=()=>{const shape=document.querySelector('#substrateShape button.active').dataset.shape,width=Number($('baseWidth').value),height=shape==='circle'?width:Number($('baseHeight').value),thickness=Number($('baseThickness').value);if(width<=0||height<=0||thickness<=0)return status('Base dimensions must be positive.');model=createModel({shape,width,height,thickness});history=[];future=[];section={a:[-width*.42,0],b:[width*.42,0]};renderAll();fit3d();status('Base recreated.')};
-  $('demoMaskBtn').onclick=()=>{parsedGds=null;layout=makeDemoLayout();selectedKeys=new Set(['TOP|1|0']);activeCell=layout.root||'TOP';expandedCells=new Set([activeCell]);hoveredMaskKey=null;maskTransform={x:0,y:0,scale:1,rotation:0};syncTransformInputs();renderAll();status('Demo mask loaded.')};
-  $('gdsInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{status(`Reading ${f.name}…`);parsedGds=parseGDS(await f.arrayBuffer());layout=flattenGDS(parsedGds,parsedGds.root);layout.name=f.name;layout.hierarchy=hierarchyFromParsed(parsedGds);activeCell=parsedGds.root;expandedCells=new Set([activeCell]);hoveredMaskKey=null;selectedKeys=new Set(layout.combos.map(x=>x.key));fitImportedLayout();renderAll();status(`${f.name}: ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.`)}catch(err){console.error(err);status(`GDS import failed: ${err.message}`)}e.target.value=''};
+  $('demoMaskBtn').onclick=()=>{parsedGds=null;layout=makeDemoLayout();selectedKeys=new Set(['TOP|1|0']);activeCell=layout.root||'TOP';expandedCells=new Set([activeCell]);hoveredLayerKey=null;maskTransform={x:0,y:0,scale:1,rotation:0};syncTransformInputs();renderAll();status('Demo mask loaded.')};
+  $('gdsInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{status(`Reading ${f.name}…`);parsedGds=parseGDS(await f.arrayBuffer());layout=flattenGDS(parsedGds,parsedGds.root);layout.name=f.name;layout.hierarchy=hierarchyFromParsed(parsedGds);activeCell=parsedGds.root;expandedCells=new Set([activeCell]);hoveredLayerKey=null;selectedKeys=new Set(layout.combos.map(x=>x.key));fitImportedLayout();renderAll();status(`${f.name}: ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.`)}catch(err){console.error(err);status(`GDS import failed: ${err.message}`)}e.target.value=''};
   for(const id of ['maskOffsetX','maskOffsetY','maskScale','maskRotation'])$(id).oninput=()=>{maskTransform={x:Number($('maskOffsetX').value)||0,y:Number($('maskOffsetY').value)||0,scale:Math.max(1e-8,Number($('maskScale').value)||1),rotation:Number($('maskRotation').value)||0};renderMask();renderMain();renderSection();};
   document.querySelectorAll('.roi-tool').forEach(b=>b.onclick=()=>{roiTool=b.dataset.tool;roiDraft=null;document.querySelectorAll('.roi-tool').forEach(x=>x.classList.toggle('active',x===b));status(roiTool==='polygon'?'3D focus: click points in Mask; double-click to close.':'3D focus: drag in Mask to draw the render region.')});$('clearRoiBtn').onclick=()=>{roi=null;roiDraft=null;roiTool=null;document.querySelectorAll('.roi-tool').forEach(x=>x.classList.remove('active'));renderAll()};
   document.querySelectorAll('#faceSelect button').forEach(b=>b.onclick=()=>{activeFace=b.dataset.face;document.querySelectorAll('#faceSelect button').forEach(x=>x.classList.toggle('active',x===b));renderAll()});
   $('operationType').onchange=updateOperationUI;$('growthMode').onchange=updateOperationUI;$('applyOperationBtn').onclick=applyOp;$('fit3dBtn').onclick=fit3d;
   $('undoBtn').onclick=()=>{if(!history.length)return;future.push(cloneModel(model));model=history.pop();renderAll();status('Undid operation.')};$('redoBtn').onclick=()=>{if(!future.length)return;history.push(cloneModel(model));model=future.pop();renderAll();status('Redid operation.')};
   $('resetSectionBtn').onclick=()=>{section={a:[-model.width*.42,0],b:[model.width*.42,0]};renderMain();renderSection()};
-  $('newProjectBtn').onclick=()=>{model=createModel();layout=makeDemoLayout();selectedKeys=new Set(['TOP|1|0']);activeCell=layout.root||'TOP';expandedCells=new Set([activeCell]);hoveredMaskKey=null;roi=null;history=[];future=[];activeFace='front';section={a:[-42,0],b:[42,0]};renderAll();fit3d();status('New project.')};
+  $('newProjectBtn').onclick=()=>{model=createModel();layout=makeDemoLayout();selectedKeys=new Set(['TOP|1|0']);activeCell=layout.root||'TOP';expandedCells=new Set([activeCell]);hoveredLayerKey=null;roi=null;history=[];future=[];activeFace='front';section={a:[-42,0],b:[42,0]};renderAll();fit3d();status('New project.')};
   $('saveProjectBtn').onclick=()=>{ensureHierarchy();const data={format:'WaferCAD-v2-preview',model,layout:{name:layout.name,root:layout.root,elements:layout.elements,linework:layout.linework,bounds:layout.bounds,combos:layout.combos,hierarchy:layout.hierarchy},selectedKeys:[...selectedKeys],activeCell,maskTransform,activeFace,roi,section};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='wafercad-project.json';a.click();URL.revokeObjectURL(a.href)};
-  $('openProjectInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-v2-preview')throw new Error('Unsupported project format.');model=p.model;layout=p.layout;selectedKeys=new Set(p.selectedKeys||[]);ensureHierarchy();activeCell=p.activeCell||layout.root||layout.combos?.[0]?.cell||'TOP';expandedCells=new Set([layout.root||activeCell]);hoveredMaskKey=null;maskTransform=p.maskTransform||maskTransform;activeFace=p.activeFace||'front';roi=p.roi||null;section=p.section||section;parsedGds=null;history=[];future=[];syncTransformInputs();renderAll();fit3d();status(`Opened ${f.name}.`)}catch(err){status(`Open failed: ${err.message}`)}e.target.value=''};
+  $('openProjectInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const p=JSON.parse(await f.text());if(p.format!=='WaferCAD-v2-preview')throw new Error('Unsupported project format.');model=p.model;layout=p.layout;selectedKeys=new Set(p.selectedKeys||[]);ensureHierarchy();activeCell=p.activeCell||layout.root||layout.combos?.[0]?.cell||'TOP';expandedCells=new Set([layout.root||activeCell]);hoveredLayerKey=null;maskTransform=p.maskTransform||maskTransform;activeFace=p.activeFace||'front';roi=p.roi||null;section=p.section||section;parsedGds=null;history=[];future=[];syncTransformInputs();renderAll();fit3d();status(`Opened ${f.name}.`)}catch(err){status(`Open failed: ${err.message}`)}e.target.value=''};
 
   const mc=$('maskCanvas');let drag=null;mc.addEventListener('pointermove',e=>{const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);$('maskCoords').textContent=`x ${p[0].toFixed(1)} · y ${p[1].toFixed(1)}`;if(drag&&roiTool){roiDraft=roiTool==='rect'?{type:'rect',a:drag,b:p}:{type:'circle',c:drag,r:Math.hypot(p[0]-drag[0],p[1]-drag[1])};renderMask()}});mc.addEventListener('pointerdown',e=>{if(!roiTool||roiTool==='polygon')return;const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h);drag=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);mc.setPointerCapture(e.pointerId)});mc.addEventListener('pointerup',()=>{if(roiDraft){roi=roiDraft;roiDraft=null;renderAll()}drag=null});mc.addEventListener('click',e=>{if(roiTool!=='polygon')return;const r=mc.getBoundingClientRect(),{w,h}=setupCanvas(mc),v=viewport(w,h),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v);if(!roiDraft||roiDraft.type!=='polygon')roiDraft={type:'polygon',points:[],closed:false};roiDraft.points.push(p);renderMask()});mc.addEventListener('dblclick',e=>{if(roiTool!=='polygon'||!roiDraft||roiDraft.points.length<3)return;e.preventDefault();roi={...roiDraft,closed:true};roiDraft=null;renderAll()});
   const main=$('mainCanvas');let secDrag=false;main.addEventListener('pointerdown',e=>{const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h),p=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');section={a:p,b:p};secDrag=true;main.setPointerCapture(e.pointerId);renderMain();renderSection()});main.addEventListener('pointermove',e=>{if(!secDrag)return;const r=main.getBoundingClientRect(),{w,h}=setupCanvas(main),v=viewport(w,h);section.b=canvasToWorld(e.clientX-r.left,e.clientY-r.top,v,activeFace==='back');renderMain();renderSection()});main.addEventListener('pointerup',()=>secDrag=false);
