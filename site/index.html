@@ -42,7 +42,10 @@
             <label><span>H</span><input id="baseHeight" type="number" value="100" min="4" step="1" disabled></label>
             <label><span>T</span><input id="baseThickness" type="number" value="12" min="0.2" step="0.2"></label>
           </div>
-          <button id="applyBaseBtn" class="wide">Create / reset base</button>
+          <div class="button-row base-actions">
+            <button id="applyBaseBtn">Apply base</button>
+            <button id="revertBaseBtn" class="quiet" disabled>Revert</button>
+          </div>
         </div>
       </details>
 
@@ -90,6 +93,7 @@
         <label id="targetLayerRow" class="field-row hidden"><span>Layer</span><select id="targetLayer"></select></label>
         <label class="field-row"><span>Area</span><select id="operationArea">
           <option value="mask">Selected mask</option>
+          <option value="invert">Invert mask</option>
           <option value="full">Whole face</option>
         </select></label>
         <label id="growthModeRow" class="field-row"><span>Growth</span><select id="growthMode">
