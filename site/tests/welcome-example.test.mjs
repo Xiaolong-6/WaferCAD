@@ -29,9 +29,8 @@ test('Visualization welcome example is a valid interactive WaferCAD project', ()
   assert.equal(validateProjectFile(project), project);
   assert.equal(project.model.layers.length, 7);
   assert.deepEqual(project.selectedLayerKeys, ['4|0']);
-  assert.ok(
-    project.model.regions.some((region) =>
-      region.stack.some((segment) => segment.role === 'conformal-sidewall'),
-    ),
+  assert.deepEqual(
+    project.model.layers.map((layer) => layer.name),
+    ['Substrate', 'SiO2', 'Perovskite', 'ETL', 'ITO', 'Metal', 'Back metal'],
   );
 });
