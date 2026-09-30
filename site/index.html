@@ -44,6 +44,18 @@
                 </button>
                 <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
               </div>
+              <button id="mainExportSvgBtn" class="mini-btn" type="button" title="Export Main as SVG">
+                SVG
+              </button>
+              <button
+                id="mainMaxBtn"
+                class="mini-btn view-max-btn"
+                type="button"
+                data-view-panel="mainPanel"
+                title="Maximize Main in the current page"
+              >
+                Max
+              </button>
               <button
                 id="sectionControlsBtn"
                 class="mini-btn"
@@ -205,6 +217,18 @@
                   </div>
                 </div>
               </details>
+              <button id="maskExportSvgBtn" class="mini-btn" type="button" title="Export Mask as SVG">
+                SVG
+              </button>
+              <button
+                id="maskMaxBtn"
+                class="mini-btn view-max-btn"
+                type="button"
+                data-view-panel="maskPanel"
+                title="Maximize Mask in the current page"
+              >
+                Max
+              </button>
               <div class="zoom-tools" title="Mask view zoom">
                 <button
                   id="maskZoomOut"
@@ -264,6 +288,21 @@
                 <input id="threeBorders" type="checkbox" />
                 <span>Border</span>
               </label>
+              <button id="threeExportModelBtn" class="three-control" title="Export physical 3D model as GLB">
+                GLB
+              </button>
+              <button id="threeExportPngBtn" class="three-control" title="Export a high-resolution 3D PNG">
+                PNG
+              </button>
+              <button
+                id="threeMaxBtn"
+                class="three-control view-max-btn"
+                type="button"
+                data-view-panel="threePanel"
+                title="Maximize 3D in the current page"
+              >
+                Max
+              </button>
               <button id="fit3dBtn" class="three-control" title="Fit the 3D model">Fit</button>
             </div>
           </div>
@@ -580,6 +619,23 @@
           <div class="view-head">
             <div><strong>Section A–B</strong><span id="sectionMeta"></span></div>
             <div class="section-view-tools">
+              <button
+                id="sectionExportSvgBtn"
+                class="mini-btn"
+                type="button"
+                title="Export Section A–B as SVG"
+              >
+                SVG
+              </button>
+              <button
+                id="sectionMaxBtn"
+                class="mini-btn view-max-btn"
+                type="button"
+                data-view-panel="sectionPanel"
+                title="Maximize Section A–B in the current page"
+              >
+                Max
+              </button>
               <button
                 id="sectionScaleModeBtn"
                 class="mini-btn"
