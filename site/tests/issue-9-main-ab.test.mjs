@@ -8,6 +8,10 @@ const sectionControls = await readFile(
   new URL('../controllers/section-controls-controller.js', import.meta.url),
   'utf8',
 );
+const mainCanvas = await readFile(
+  new URL('../controllers/main-canvas-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('Main exposes explicit A–B controls, locked dragging, and double-click Fit', () => {
   assert.match(html, /id="sectionControlsBtn"/);
@@ -22,7 +26,7 @@ test('Main exposes explicit A–B controls, locked dragging, and double-click Fi
   assert.match(html, /id="sectionAx"/);
   assert.match(html, /id="sectionBy"/);
   assert.match(app, /sectionEditEnabled = false/);
-  assert.match(app, /main\.addEventListener\('dblclick'/);
-  assert.match(app, /createSectionEditor/);
+  assert.match(mainCanvas, /main\.addEventListener\('dblclick'/);
+  assert.match(mainCanvas, /createSectionEditor/);
   assert.match(html, /id="sectionEndpointHandles"/);
 });
