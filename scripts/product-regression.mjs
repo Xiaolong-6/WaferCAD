@@ -192,6 +192,7 @@ async function checkAB(page, name) {
   close(back[0], moved[0] - 8 / scale);
   await page.locator('#faceToggleBtn').click();
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
+  assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
   await page.locator('#mainZoomIn').click();
   assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
   await dragHandle(page, 'a', 4, 0);
@@ -216,7 +217,7 @@ async function checkAB(page, name) {
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
   assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
-  await page.locator('#sectionPanelClose').click();
+  await page.locator('#sectionControlsBtn').click();
 }
 
 async function loadProject(page, project, name) {
@@ -276,11 +277,13 @@ async function checkROI(page, name) {
   await checkPopover(page, '.focus-popover', '#maskPanel');
   const width = Number(await page.locator('#roiWidth').inputValue());
   const height = Number(await page.locator('#roiHeight').inputValue());
-  close(width, 12.345);
+  assert.equal(width, 12);
+  assert.equal(height, 11);
   const center = [
     Number(await page.locator('#roiX').inputValue()),
     Number(await page.locator('#roiY').inputValue()),
   ];
+  assert.deepEqual(center, [-1, 1]);
   for (const reference of ['top-left', 'bottom-left', 'top-right', 'bottom-right', 'center']) {
     await page.locator('#roiAnchorSelect').selectOption(reference);
     close(Number(await page.locator('#roiWidth').inputValue()), width);
@@ -299,8 +302,14 @@ async function checkROI(page, name) {
   await page.mouse.move(x - 9 + 2, y - 7 + 2, { steps: 5 });
   await page.mouse.up();
   await page.locator('#focusEditor > summary').click();
-  close(Number(await page.locator('#roiWidth').inputValue()), width + (9 / scale) * 1000, 1e-6);
-  close(Number(await page.locator('#roiHeight').inputValue()), height + (7 / scale) * 1000, 1e-6);
+  assert.equal(
+    Number(await page.locator('#roiWidth').inputValue()),
+    Math.round(12.345 + (9 / scale) * 1000),
+  );
+  assert.equal(
+    Number(await page.locator('#roiHeight').inputValue()),
+    Math.round(11.356 + (7 / scale) * 1000),
+  );
   await page.locator('.focus-popover').evaluate((element) => {
     element.scrollTop = 0;
   });
@@ -320,7 +329,19 @@ async function checkROI(page, name) {
   await page.mouse.move(hx - 10, hy - 10, { steps: 5 });
   await page.mouse.up();
   await page.locator('#focusEditor > summary').click();
-  close(Number(await page.locator('#roiRadius').inputValue()), 5 + (5 / circleScale) * 1000, 1e-6);
+  assert.equal(
+    Number(await page.locator('#roiRadius').inputValue()),
+    Math.round(5 + (5 / circleScale) * 1000),
+  );
+  await page.locator('#focusEditor > summary').click();
+
+  project.roi = { type: 'sector', c: [0, 0], r: 0.01, startDeg: 300, endDeg: 60 };
+  await loadProject(page, project, `${name}-sector`);
+  await page.locator('#focusEditor > summary').click();
+  assert.equal((await page.locator('#roiShapeLabel').textContent()).trim(), 'Sector');
+  assert.equal(await page.locator('#roiRadius').inputValue(), '10');
+  assert.equal(await page.locator('#roiStartAngle').inputValue(), '300');
+  assert.equal(await page.locator('#roiEndAngle').inputValue(), '60');
   await page.locator('#focusEditor > summary').click();
   await checkLayout(page);
 }
