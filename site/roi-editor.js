@@ -27,10 +27,7 @@ export function sectorBoundaryPoints(roi, segments = 96) {
   const points = [[...shape.c]];
   for (let i = 0; i <= steps; i++) {
     const angle = ((shape.startDeg + (sweep * i) / steps) * Math.PI) / 180;
-    points.push([
-      shape.c[0] + Math.cos(angle) * shape.r,
-      shape.c[1] + Math.sin(angle) * shape.r,
-    ]);
+    points.push([shape.c[0] + Math.cos(angle) * shape.r, shape.c[1] + Math.sin(angle) * shape.r]);
   }
   points.push([...shape.c]);
   return points;
@@ -186,7 +183,7 @@ export function roiContainsPoint(roi, point) {
     const sweep = sectorSweepDegrees(shape.startDeg, shape.endDeg);
     if (!(sweep > 0)) return false;
     const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-    const delta = ((angle - shape.startDeg) % 360 + 360) % 360;
+    const delta = (((angle - shape.startDeg) % 360) + 360) % 360;
     return delta <= sweep + 1e-9;
   }
   return x >= shape.a[0] && x <= shape.b[0] && y >= shape.a[1] && y <= shape.b[1];
