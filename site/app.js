@@ -219,6 +219,7 @@ const maskBrowser = createMaskBrowserController({
 });
 const {
   hierarchyFromParsed,
+  ensureHierarchy,
   activeScopeCells,
   selectedElement,
   globalLayers,
@@ -308,7 +309,7 @@ const layerLegendController = createLayerLegendController({
   updateOperationUI,
   status,
 });
-const { renderLayerLegend } = layerLegendController;
+const { renderLayerLegend, colorNewLayer } = layerLegendController;
 
 function selectedMaskGeometry() {
   const geoms = [];
@@ -1020,10 +1021,7 @@ function applyOp() {
     return status(result.error || 'The operation did not change the model.');
   }
   if (type === 'add' && result.layerId) {
-    const layers = model.layers.filter((layer) => layer.id !== 'base'),
-      idx = layers.findIndex((layer) => layer.id === result.layerId),
-      palette = structurePalette();
-    if (idx >= 0) recolorLayer(model, result.layerId, palette[idx % palette.length]);
+    colorNewLayer(result.layerId);
     $('layerName').value = `Layer ${model.nextLayerId}`;
   }
   renderAll();
