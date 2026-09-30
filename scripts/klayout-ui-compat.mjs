@@ -87,6 +87,9 @@ await page.waitForFunction(
   null,
   { timeout: 30000 },
 );
+if (await page.locator('#welcomeScreen').isVisible()) {
+  await page.locator('#welcomeEmptyBtn').click();
+}
 await page.locator('[data-tool-tab="mask"]').click();
 
 const allFiles = (await walk(root)).sort();
