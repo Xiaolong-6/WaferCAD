@@ -31,9 +31,7 @@ jobs:
         run: npm run lint
 
       - name: Format check
-        run: |
-          npm run format
-          git diff -- scripts/ui-smoke.mjs
+        run: npm run format:check
 
       - name: Geometry and project-format tests
         run: npm test
