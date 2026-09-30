@@ -202,8 +202,8 @@ export function createPlanViewController({
     context.save();
     context.font = '7.5px system-ui';
     const yLabelWidth = Math.max(
-      ...[7, height - 17].map((y) =>
-        context.measureText(formatXY(canvasToWorld(0, y, view, back)[1])).width,
+      ...[7, height - 17].map(
+        (y) => context.measureText(formatXY(canvasToWorld(0, y, view, back)[1])).width,
       ),
     );
     context.restore();
@@ -232,10 +232,7 @@ export function createPlanViewController({
         context.measureText(formatXY(xmax)).width,
         16,
       ),
-      xStep = niceStep(
-        displayXMax - displayXMin,
-        Math.max(2, (right - left) / (labelWidth + 14)),
-      ),
+      xStep = niceStep(displayXMax - displayXMin, Math.max(2, (right - left) / (labelWidth + 14))),
       yStep = niceStep(displayYMax - displayYMin, Math.max(2, (bottom - top) / 30));
     context.restore();
 
