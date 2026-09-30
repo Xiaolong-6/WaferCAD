@@ -1356,6 +1356,7 @@ function scheduleThreeFrame() {
   });
 }
 function fit3d() {
+  if (!threeReady || !camera || !controls || !axesHelper) return;
   const [lo, hi] = modelBoundsZ(model),
     zs = zVisualScale(),
     zSpan = (hi - lo) * zs,
