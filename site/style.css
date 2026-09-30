@@ -646,9 +646,16 @@ button:hover,
   box-shadow: 0 4px 12px rgba(42, 53, 64, 0.12);
 }
 .focus-popover-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 3px;
+}
+
+.focus-popover-actions .mini-btn {
+  min-width: 0;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .roi-editor {
   margin-top: 5px;
@@ -1324,18 +1331,18 @@ canvas {
 .section-endpoint {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 32px;
-  height: 32px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  border: 2px solid #fff;
+  border: 1.5px solid #fff;
   border-radius: 50%;
   background: #bd3b53;
   color: #fff;
-  font-size: 12px;
+  font-size: 9.5px;
   font-weight: 700;
   box-shadow:
-    0 0 0 2px #bd3b53,
-    0 2px 6px #0002;
+    0 0 0 1.5px #bd3b53,
+    0 1px 4px #0002;
   pointer-events: auto;
   touch-action: none;
   cursor: grab;
@@ -1344,7 +1351,7 @@ canvas {
 .section-endpoint:hover,
 .section-endpoint:focus-visible {
   background: #9e2941;
-  box-shadow: 0 0 0 5px #bd3b5333;
+  box-shadow: 0 0 0 3px #bd3b5333;
   outline: 2px solid #bd3b53;
 }
 .section-endpoint.dragging {
@@ -1470,9 +1477,9 @@ canvas {
 }
 @media (pointer: coarse) {
   .section-endpoint {
-    width: 44px;
-    height: 44px;
-    font-size: 14px;
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
   }
 }
 
