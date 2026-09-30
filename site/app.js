@@ -159,6 +159,27 @@ function status(msg) {
   $('statusText').textContent = msg;
 }
 
+const loadedBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
+let announcedBuildUpdate = '';
+
+async function checkForBuildUpdate() {
+  if (!/^[0-9a-f]{7,64}$/i.test(loadedBuildVersion)) return;
+  try {
+    const response = await fetch('./build-info.json', { cache: 'no-store' });
+    if (!response.ok) return;
+    const info = await response.json();
+    const current = String(info.commit || '').trim();
+    if (!current || current === loadedBuildVersion || current === announcedBuildUpdate) return;
+    announcedBuildUpdate = current;
+    const host = $('buildCommit');
+    if (host) {
+      host.textContent = `commit ${loadedBuildVersion.slice(0, 7)} · update`;
+      host.title = `Loaded ${loadedBuildVersion.slice(0, 7)}; deployed ${current.slice(0, 7)}. Save, then reload.`;
+    }
+    status(`Update ${current.slice(0, 7)} available. Save the project, then reload the page.`);
+  } catch {}
+}
+
 async function loadBuildCommit() {
   const host = $('buildCommit');
   if (!host) return;
@@ -1324,11 +1345,13 @@ function applyOp() {
       idx = layers.findIndex((layer) => layer.id === result.layerId),
       palette = structurePalette();
     if (idx >= 0) recolorLayer(model, result.layerId, palette[idx % palette.length]);
-    $('layerName').value = `Layer ${model.layers.length}`;
+    $('layerName').value = `Layer ${model.nextLayerId}`;
   }
   renderAll();
+  const growthLabel =
+    type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Direct';
   status(
-    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Grew ${layerById(model, targetLayerId)?.name || 'layer'}` : `Added ${name}`} on the ${activeFace}.`,
+    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Grew ${layerById(model, targetLayerId)?.name || 'layer'}` : `Added ${name}`}${growthLabel} on the ${activeFace}.`,
   );
 }
 
@@ -1980,6 +2003,10 @@ function bindUi() {
 populateSampleLayouts();
 bindUi();
 loadBuildCommit();
+window.addEventListener('focus', checkForBuildUpdate);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkForBuildUpdate();
+});
 renderSnapshots();
 initThree();
 syncBaseControls();
