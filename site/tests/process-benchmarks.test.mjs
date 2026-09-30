@@ -171,6 +171,57 @@ test('wafer-scale circular trench receives a visible conformal sidewall band', (
   assert.deepEqual(layerAt(5500), { layerId: coat.layerId, z0: 6, z1: 7 });
 });
 
+test('layered circular trench keeps conformal sidewalls after a later direct blanket', () => {
+  const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Layer 1',
+    thickness: 2,
+    area: model.boundary,
+    growth: 'direct',
+  });
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 2,
+    area: circleMulti(10000),
+  });
+  const conformal = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  const direct = applyOperation(model, {
+    type: 'add',
+    name: 'Direct',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'direct',
+  });
+  const at = (x, layerId) => stackAt(model, x).find((s) => s.layerId === layerId);
+  assert.deepEqual(at(4500, conformal.layerId), {
+    layerId: conformal.layerId,
+    z0: 6,
+    z1: 9,
+  });
+  assert.deepEqual(at(4500, direct.layerId), {
+    layerId: direct.layerId,
+    z0: 9,
+    z1: 10,
+  });
+  assert.deepEqual(at(0, conformal.layerId), {
+    layerId: conformal.layerId,
+    z0: 6,
+    z1: 7,
+  });
+  assert.deepEqual(at(5500, conformal.layerId), {
+    layerId: conformal.layerId,
+    z0: 8,
+    z1: 9,
+  });
+});
+
 test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const seed = applyOperation(model, { type: 'add', thickness: 2, area: rectMulti(4, 4) });
