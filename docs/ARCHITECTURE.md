@@ -35,7 +35,7 @@ The model is intentionally 2.5D: XY footprints are vector polygons and vertical 
 
 ### `site/app.js`
 
-Owns application state, UI orchestration, viewport interaction, undo/redo, project persistence, and synchronization between the four views.
+Owns application state, UI orchestration, 2D viewport interaction, undo/redo, project persistence, and synchronization between the views. The 3D renderer is delegated to a focused controller rather than implemented inline.
 
 ### `site/model.js`
 
@@ -49,6 +49,10 @@ Owns the region-stack model and geometry semantics:
 - Direct/Conformal behavior;
 - front/back surface access;
 - layer rename/color metadata.
+
+### `site/three-view.js`
+
+Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, and graceful degradation when the external 3D dependency is unavailable.
 
 ### `site/vector-geometry.js`
 
