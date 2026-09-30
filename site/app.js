@@ -1205,7 +1205,7 @@ function renderSection() {
     { ctx, w, h } = setupCanvas(c);
   ctx.clearRect(0, 0, w, h);
   const [lo, hi] = modelBoundsZ(model),
-    pad = Math.max(1.5, (hi - lo) * 0.08),
+    pad = Math.max(1e-9, (hi - lo) * 0.08),
     z0 = lo - pad,
     z1 = hi + pad,
     left = 27,
@@ -1258,13 +1258,13 @@ function renderSection() {
   ctx.strokeRect(left, top, iw, ih);
   ctx.fillStyle = '#707b86';
   ctx.font = '8px system-ui';
-  ctx.fillText(z1.toFixed(1), 3, top + 7);
-  ctx.fillText(z0.toFixed(1), 3, top + ih);
+  ctx.fillText(formatXY(z1), 3, top + 7);
+  ctx.fillText(formatXY(z0), 3, top + ih);
   ctx.fillText('A', left, top + ih + 15);
   ctx.fillText('B', left + iw - 7, top + ih + 15);
   $('sectionMeta').textContent =
     `${xyText(Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]))} span`;
-  $('sectionRange').textContent = `Z (relative) ${lo.toFixed(1)} → ${hi.toFixed(1)}`;
+  $('sectionRange').textContent = `Z (${xyUnit().label}) ${formatXY(lo)} → ${formatXY(hi)}`;
 }
 
 let threeView = null,
@@ -1306,16 +1306,18 @@ function renderAll() {
   $('maskSummary').textContent = layout.name || 'No mask';
   syncMaskCellLabel();
   $('baseSummary').textContent =
-    `${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${Number(model.thickness.toFixed(2))} rel.`;
+    `${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${formatXY(model.thickness)} ${xyUnit().label}`;
   syncUndo();
 }
 function syncBaseControls() {
   $('baseWidth').value = formatXY(model.width);
   $('baseHeight').value = formatXY(model.height);
-  $('baseThickness').value = Number(model.thickness.toFixed(3));
+  $('baseThickness').value = formatXY(model.thickness);
   $('baseHeight').disabled = model.shape === 'circle';
   $('baseWidthUnit').textContent = xyUnit().label;
   $('baseHeightUnit').textContent = xyUnit().label;
+  $('baseThicknessUnit').textContent = xyUnit().label;
+  $('operationThicknessUnit').textContent = xyUnit().label;
   $('xyUnitSelect').value = xyDisplayUnit;
   document
     .querySelectorAll('#substrateShape button')
@@ -1335,7 +1337,7 @@ function updateOperationUI() {
 }
 function applyOp() {
   const type = $('operationType').value,
-    thickness = Number($('operationThickness').value);
+    thickness = xyFromDisplay(Number($('operationThickness').value));
   if (!(thickness > 0)) return status('Thickness must be greater than zero.');
   const areaMode = $('operationArea').value,
     area = operationAreaGeometry(areaMode);
@@ -1586,7 +1588,7 @@ function bindUi() {
     const shape = document.querySelector('#substrateShape button.active').dataset.shape,
       width = xyFromDisplay(Number($('baseWidth').value)),
       height = shape === 'circle' ? width : xyFromDisplay(Number($('baseHeight').value)),
-      thickness = Number($('baseThickness').value);
+      thickness = xyFromDisplay(Number($('baseThickness').value));
     if (width <= 0 || height <= 0 || thickness <= 0)
       return status('Base dimensions must be positive.');
     if (
@@ -1661,15 +1663,21 @@ function bindUi() {
   $('xyUnitSelect').onchange = () => {
     const oldUnit = xyUnit(),
       draftWidth = (Number($('baseWidth').value) || 0) * oldUnit.toMicron,
-      draftHeight = (Number($('baseHeight').value) || 0) * oldUnit.toMicron;
+      draftHeight = (Number($('baseHeight').value) || 0) * oldUnit.toMicron,
+      draftThickness = (Number($('baseThickness').value) || 0) * oldUnit.toMicron,
+      draftOperation = (Number($('operationThickness').value) || 0) * oldUnit.toMicron;
     xyDisplayUnit = $('xyUnitSelect').value in XY_UNITS ? $('xyUnitSelect').value : 'um';
     $('baseWidth').value = formatXY(draftWidth);
     $('baseHeight').value = formatXY(draftHeight);
+    $('baseThickness').value = formatXY(draftThickness);
+    $('operationThickness').value = formatXY(draftOperation);
     $('baseWidthUnit').textContent = xyUnit().label;
     $('baseHeightUnit').textContent = xyUnit().label;
+    $('baseThicknessUnit').textContent = xyUnit().label;
+    $('operationThicknessUnit').textContent = xyUnit().label;
     syncTransformInputs();
     renderAll();
-    status(`XY display unit: ${xyUnit().label}. Geometry is unchanged.`);
+    status(`XYZ display/input unit: ${xyUnit().label}. Geometry is unchanged.`);
   };
 
   document.querySelectorAll('.roi-tool').forEach(
