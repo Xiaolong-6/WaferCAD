@@ -31,9 +31,7 @@ jobs:
         run: npm run lint
 
       - name: Format check
-        run: |
-          npm run format
-          git diff -- site/app.js site/index.html site/roi-editor.js site/style.css site/tests/project-file.test.mjs site/tests/roi-editor.test.mjs site/tests/units.test.mjs site/units.js scripts/ui-smoke.mjs
+        run: npm run format:check
 
       - name: Geometry and project-format tests
         run: npm test
