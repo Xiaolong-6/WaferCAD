@@ -180,8 +180,8 @@ async function checkAB(page, name) {
     });
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     const touchMoved = await coords(page);
-    close(touchMoved[0], beforeTouch[0] + 6 / scale, 1e-5);
-    close(touchMoved[1], beforeTouch[1] + 4 / scale, 1e-5);
+    close(touchMoved[0], nmRoundedMicron(beforeTouch[0] + 6 / scale));
+    close(touchMoved[1], nmRoundedMicron(beforeTouch[1] + 4 / scale));
     moved[0] = touchMoved[0];
     moved[1] = touchMoved[1];
     await session.detach();
@@ -190,14 +190,14 @@ async function checkAB(page, name) {
   await page.locator('#faceToggleBtn').click();
   await dragHandle(page, 'a', 8, 0);
   const back = await coords(page);
-  close(back[0], moved[0] - 8 / scale);
+  close(back[0], nmRoundedMicron(moved[0] - 8 / scale));
   await page.locator('#faceToggleBtn').click();
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
   assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
   await page.locator('#mainZoomIn').click();
   assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
   await dragHandle(page, 'a', 4, 0);
-  back[0] += 4 / (scale * 1.25);
+  back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
   close((await coords(page))[0], back[0]);
   await page.locator('#mainZoomFit').click();
   await page.locator('#settingsTab').click();
@@ -212,7 +212,7 @@ async function checkAB(page, name) {
   }
   await page.locator('[data-endpoint=a]').focus();
   await page.keyboard.press('ArrowRight');
-  close((await coords(page))[0], back[0] + 1 / scale);
+  close((await coords(page))[0], nmRoundedMicron(back[0] + 1 / scale));
   await capture(page, `${name}-ab-edit`);
   await checkLayout(page);
   await page.keyboard.press('Escape');
