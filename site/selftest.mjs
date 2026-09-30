@@ -25,7 +25,7 @@ const defaults = createModel();
 assert.equal(defaults.width, 100000);
 assert.equal(defaults.height, 100000);
 assert.equal(defaults.units.xy, 'µm');
-assert.equal(defaults.units.z, 'relative');
+assert.equal(defaults.units.z, 'µm');
 assert.equal(defaults.processRevision, 0);
 
 const m = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
