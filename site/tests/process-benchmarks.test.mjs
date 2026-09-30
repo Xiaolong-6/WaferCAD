@@ -164,9 +164,7 @@ test('partial-area Conformal keeps its footprint-edge buffer', () => {
   });
   assert.equal(coat.changed, true);
   assert.deepEqual(
-    stackAt(model, 2 + conformalCarrierXYScale(model) / 2).find(
-      (s) => s.layerId === coat.layerId,
-    ),
+    stackAt(model, 2 + conformalCarrierXYScale(model) / 2).find((s) => s.layerId === coat.layerId),
     { layerId: coat.layerId, z0: 5, z1: 6, role: 'conformal-sidewall' },
   );
   assert.equal(
