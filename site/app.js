@@ -57,6 +57,7 @@ import {
   zoomLimitForFeature,
 } from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
+import { createVisualizationExample, createVisualizationLayout } from './welcome-example.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -168,6 +169,105 @@ const featureSizeCache = {
 
 function status(msg) {
   $('statusText').textContent = msg;
+}
+
+const WELCOME_STORAGE_KEY = 'wafercad.welcome.seen.v1';
+let welcomePreviewLayout = null;
+
+function rememberWelcomeSeen() {
+  try {
+    localStorage.setItem(WELCOME_STORAGE_KEY, '1');
+  } catch {}
+}
+
+function welcomeWasSeen() {
+  try {
+    return localStorage.getItem(WELCOME_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function drawWelcomePreview() {
+  const canvas = $('welcomePreview');
+  if (!canvas || canvas.hidden || !canvas.isConnected) return;
+
+  const rect = canvas.getBoundingClientRect();
+  if (!(rect.width > 0 && rect.height > 0)) return;
+
+  welcomePreviewLayout ||= createVisualizationLayout();
+  const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.round(rect.width * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.fillStyle = '#f7f9fb';
+  ctx.fillRect(0, 0, rect.width, rect.height);
+
+  const bounds = welcomePreviewLayout.bounds;
+  const scale = Math.min(
+    (rect.width * 0.84) / Math.max(bounds.width, 1),
+    (rect.height * 0.84) / Math.max(bounds.height, 1),
+  );
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const layerStyle = {
+    1: ['rgba(92, 112, 137, 0.10)', 'rgba(92, 112, 137, 0.26)'],
+    2: ['rgba(203, 119, 108, 0.46)', 'rgba(173, 91, 80, 0.66)'],
+    3: ['rgba(123, 213, 160, 0.42)', 'rgba(77, 169, 116, 0.66)'],
+    4: ['rgba(104, 178, 207, 0.46)', 'rgba(67, 139, 168, 0.70)'],
+  };
+
+  const point = ([x, y]) => [cx + x * scale, cy - y * scale];
+  for (const element of welcomePreviewLayout.elements) {
+    if (!element.points?.length) continue;
+    const style = layerStyle[element.layer] || layerStyle[1];
+    ctx.beginPath();
+    element.points.forEach((p, index) => {
+      const [x, y] = point(p);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+
+    if (element.sourceCell === '50mm') {
+      ctx.strokeStyle = '#87939f';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      continue;
+    }
+
+    ctx.fillStyle = style[0];
+    ctx.strokeStyle = style[1];
+    ctx.lineWidth = element.layer === 1 ? 0.45 : 0.7;
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function setWelcomeVisible(visible, { remember = false } = {}) {
+  const screen = $('welcomeScreen');
+  if (!screen) return;
+  if (remember) rememberWelcomeSeen();
+  screen.hidden = !visible;
+  document.body.classList.toggle('welcome-open', visible);
+  screen.setAttribute('aria-hidden', String(!visible));
+  if (visible) requestAnimationFrame(drawWelcomePreview);
+  else
+    requestAnimationFrame(() => {
+      renderAll();
+      fit3d();
+    });
+}
+
+function enterWorkspace() {
+  setWelcomeVisible(false, { remember: true });
+}
+
+function initializeWelcome() {
+  const params = new URLSearchParams(globalThis.location?.search || '');
+  setWelcomeVisible(params.has('welcome') || !welcomeWasSeen());
 }
 
 const loadedBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
@@ -1927,6 +2027,33 @@ function bindToolTabs() {
 
 function bindUi() {
   bindToolTabs();
+
+  $('welcomeHomeBtn').onclick = () => setWelcomeVisible(true);
+  $('welcomeImportBtn').onclick = () => $('gdsInput').click();
+  $('welcomeProjectBtn').onclick = () => $('openProjectInput').click();
+  $('welcomeEmptyBtn').onclick = () => {
+    $('newProjectBtn').click();
+    enterWorkspace();
+  };
+  $('welcomeExampleBtn').onclick = () => {
+    try {
+      status('Building example…');
+      const project = createVisualizationExample();
+      loadProjectSnapshot(project);
+      snapshotManager.importRecords(project.snapshots || []);
+      syncBaseControls();
+      syncTransformInputs();
+      renderAll();
+      renderSnapshots();
+      fit3d();
+      enterWorkspace();
+      status('Opened Visualization example.');
+    } catch (err) {
+      console.error(err);
+      status(`Example failed: ${err.message}`);
+    }
+  };
+
   document.querySelectorAll('#substrateShape button').forEach(
     (b) =>
       (b.onclick = () => {
@@ -2004,6 +2131,7 @@ function bindUi() {
       assertLayoutByteLength(f.size);
       status(`Reading ${f.name}…`);
       await importLayoutBuffer(await f.arrayBuffer(), f.name, f.name);
+      enterWorkspace();
     } catch (err) {
       console.error(err);
       status(`Layout import failed: ${err.message}`);
@@ -2246,6 +2374,7 @@ function bindUi() {
       renderAll();
       renderSnapshots();
       fit3d();
+      enterWorkspace();
       status(`Opened ${file.name}.`);
     } catch (err) {
       console.error(err);
@@ -2450,7 +2579,10 @@ function bindUi() {
   });
   for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas'])
     canvasResizeObserver.observe($(id));
-  window.addEventListener('resize', () => renderAll());
+  window.addEventListener('resize', () => {
+    renderAll();
+    if (!$('welcomeScreen').hidden) drawWelcomePreview();
+  });
 }
 
 populateSampleLayouts();
@@ -2467,4 +2599,5 @@ updateOperationUI();
 syncTransformInputs();
 renderAll();
 fit3d();
+initializeWelcome();
 status('Ready. Create a base or import a layout.');
