@@ -270,11 +270,20 @@ for (const [button, filename] of [
   assert.equal(download.suggestedFilename(), filename);
 }
 await page.locator('#mainMaxBtn').click();
-assert.equal(await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')), true);
-assert.equal(await page.locator('#mainPanel').evaluate((el) => el.classList.contains('is-maximized')), true);
+assert.equal(
+  await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
+  true,
+);
+assert.equal(
+  await page.locator('#mainPanel').evaluate((el) => el.classList.contains('is-maximized')),
+  true,
+);
 assert.equal((await page.locator('#mainMaxBtn').textContent()).trim(), 'Restore');
 await page.locator('#mainMaxBtn').click();
-assert.equal(await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')), false);
+assert.equal(
+  await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
+  false,
+);
 
 // 3D inspection controls should operate without runtime errors.
 await page.locator('.three-opacity-control > summary').click();
