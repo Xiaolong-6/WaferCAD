@@ -164,6 +164,8 @@ test('wafer-scale circular trench receives a visible conformal sidewall band', (
     area: model.boundary,
     growth: 'conformal',
   });
+  assert.equal(coat.changed, true);
+  assert.ok(coat.layerId);
   const layerAt = (x) => stackAt(model, x).find((s) => s.layerId === coat.layerId);
   assert.equal(relativeZToXYScale(model), 1000);
   assert.deepEqual(layerAt(4500), { layerId: coat.layerId, z0: 4, z1: 7 });
@@ -192,6 +194,8 @@ test('layered circular trench keeps conformal sidewalls after a later direct bla
     area: model.boundary,
     growth: 'conformal',
   });
+  assert.equal(conformal.changed, true);
+  assert.ok(conformal.layerId);
   const direct = applyOperation(model, {
     type: 'add',
     name: 'Direct',
@@ -248,6 +252,8 @@ test('multi-hole layered wafer keeps conformal sidewalls around every etched ope
     area: model.boundary,
     growth: 'conformal',
   });
+  assert.equal(conformal.changed, true);
+  assert.ok(conformal.layerId);
   const at = (x, y = 0) => stackAt(model, x, y).find((s) => s.layerId === conformal.layerId);
   assert.deepEqual(at(1500), { layerId: conformal.layerId, z0: 6, z1: 9 });
   assert.deepEqual(at(0), { layerId: conformal.layerId, z0: 6, z1: 7 });
