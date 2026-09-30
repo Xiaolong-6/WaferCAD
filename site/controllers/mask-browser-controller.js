@@ -268,6 +268,7 @@ export function createMaskBrowserController({
 
   return {
     hierarchyFromParsed,
+    ensureHierarchy,
     invalidateScope,
     activeScopeCells,
     selectedElement,
