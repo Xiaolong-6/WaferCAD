@@ -38,9 +38,7 @@ test('build controller renders deployed commit and announces a newer build', asy
   await controller.checkForBuildUpdate();
   assert.equal(host.textContent, 'commit abcdef1 · update');
   assert.match(host.title, /deployed fedcba9/);
-  assert.deepEqual(messages, [
-    'Update fedcba9 available. Save the project, then reload the page.',
-  ]);
+  assert.deepEqual(messages, ['Update fedcba9 available. Save the project, then reload the page.']);
 });
 
 test('startup controller consumes a staged layout and clears the startup query', async () => {
@@ -81,8 +79,5 @@ test('startup controller opens the example without touching staged files', async
 
   await controller.initializeWorkspaceStart();
 
-  assert.deepEqual(calls, [
-    ['history', null, '', './app.html'],
-    ['example'],
-  ]);
+  assert.deepEqual(calls, [['history', null, '', './app.html'], ['example']]);
 });
