@@ -230,6 +230,25 @@ function splitByArea(model, area, mutator) {
   model.regions = mergeRegions(model, next);
 }
 
+function pointOnBoundary(boundary, point, tolerance = 0.05) {
+  for (const poly of boundary)
+    for (const ring of poly)
+      for (let i = 1; i < ring.length; i++) {
+        const [ax, ay] = ring[i - 1],
+          [bx, by] = ring[i],
+          dx = bx - ax,
+          dy = by - ay,
+          len2 = dx * dx + dy * dy || 1,
+          t = Math.max(
+            0,
+            Math.min(1, ((point[0] - ax) * dx + (point[1] - ay) * dy) / len2),
+          );
+        if (Math.hypot(point[0] - (ax + t * dx), point[1] - (ay + t * dy)) < tolerance)
+          return true;
+      }
+  return false;
+}
+
 function conformalSourcePatches(model, active, face, type, targetLayerId) {
   const groups = new Map();
 
@@ -306,8 +325,19 @@ function applyOperationImpl(
     const coversWholeBoundary = isEmpty(difference(model.boundary, active));
     const sidewallSources =
       type === 'add' && coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources;
+    const keepSidewallSegment = coversWholeBoundary
+      ? (a, b) =>
+          !(
+            pointOnBoundary(model.boundary, a) &&
+            pointOnBoundary(model.boundary, b) &&
+            pointOnBoundary(model.boundary, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])
+          )
+      : null;
     for (const source of sidewallSources) {
-      const expanded = intersection(bufferMulti(source.geom, lateralAmount, 32), model.boundary);
+      const expanded = intersection(
+        bufferMulti(source.geom, lateralAmount, 32, keepSidewallSegment),
+        model.boundary,
+      );
       const sidewallBand = difference(expanded, source.geom);
       if (isEmpty(sidewallBand)) continue;
 
