@@ -1640,8 +1640,7 @@ body.view-maximized .view-panel.is-maximized .section-body {
   z-index: 100;
   overflow: auto;
   background:
-    radial-gradient(circle at 80% 18%, rgba(93, 112, 137, 0.09), transparent 30%),
-    var(--bg);
+    radial-gradient(circle at 80% 18%, rgba(93, 112, 137, 0.09), transparent 30%), var(--bg);
 }
 
 .welcome-screen[hidden] {
