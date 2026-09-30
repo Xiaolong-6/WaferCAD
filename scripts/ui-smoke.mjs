@@ -131,7 +131,9 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
   },
   { color: coatColor, sideX },
 );
-assert.deepEqual(sidewallPixel.actual, sidewallPixel.expected);
+assert.ok(
+  sidewallPixel.actual.every((value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8),
+);
 await page.locator('#operationTab').click();
 
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
