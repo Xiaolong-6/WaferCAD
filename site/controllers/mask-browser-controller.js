@@ -81,7 +81,8 @@ export function createMaskBrowserController({
   function activeScopeCells() {
     const layout = getLayout(),
       activeCell = getActiveCell();
-    if (scopeCacheCell === activeCell && scopeCacheHierarchy === layout.hierarchy) return scopeCache;
+    if (scopeCacheCell === activeCell && scopeCacheHierarchy === layout.hierarchy)
+      return scopeCache;
     scopeCacheCell = activeCell;
     scopeCacheHierarchy = layout.hierarchy;
     scopeCache = activeCell ? descendantCells(activeCell) : new Set();
@@ -163,9 +164,7 @@ export function createMaskBrowserController({
       const children = cellChildren(name),
         row = root.createElement('div');
       row.className =
-        'cell-row' +
-        (name === getActiveCell() ? ' active' : '') +
-        (depth === 0 ? ' root' : '');
+        'cell-row' + (name === getActiveCell() ? ' active' : '') + (depth === 0 ? ' root' : '');
       row.style.setProperty('--depth', depth);
 
       const caret = root.createElement('button');
@@ -241,9 +240,7 @@ export function createMaskBrowserController({
       checkbox.type = 'checkbox';
       checkbox.checked = selectedLayerKeys.has(item.key);
       checkbox.onchange = () => {
-        checkbox.checked
-          ? selectedLayerKeys.add(item.key)
-          : selectedLayerKeys.delete(item.key);
+        checkbox.checked ? selectedLayerKeys.add(item.key) : selectedLayerKeys.delete(item.key);
         renderAll();
       };
 
