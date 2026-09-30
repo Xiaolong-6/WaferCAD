@@ -233,8 +233,7 @@ test('multi-hole layered wafer keeps conformal sidewalls around every etched ope
   });
   const holes = [];
   const centers = [-32000, -24000, -16000, -8000, 0, 8000, 16000, 24000, 32000];
-  for (const x of centers)
-    for (const y of centers) holes.push(circleMulti(3500, 3500, 48, x, y));
+  for (const x of centers) for (const y of centers) holes.push(circleMulti(3500, 3500, 48, x, y));
   assert.equal(holes.length, 81);
   const etched = unionGeometries(holes);
   applyOperation(model, {
