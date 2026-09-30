@@ -80,7 +80,10 @@ await degraded.waitForFunction(
   null,
   { timeout: 30000 },
 );
-assert.equal((await degraded.locator('#threeStats').textContent()).trim(), 'dependency unavailable');
+assert.equal(
+  (await degraded.locator('#threeStats').textContent()).trim(),
+  'dependency unavailable',
+);
 assert.equal(await degraded.locator('#mainCanvas').count(), 1);
 assert.equal(await degraded.locator('#maskCanvas').count(), 1);
 assert.deepEqual(degradedErrors, []);
