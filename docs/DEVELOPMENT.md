@@ -19,7 +19,7 @@ Open `http://localhost:8000`.
 Install the development-only tooling:
 
 ```bash
-npm install
+npm ci
 ```
 
 Run the full check:
@@ -53,7 +53,7 @@ There is no build step.
 6. Mask alignment transform is explicit and defaults to identity.
 7. Cells define hierarchy scope; Layers is global.
 8. Zero-width linework is not an operable mask.
-9. The 3D focus region is render-only.
+9. The 3D ROI is render-only.
 10. All four views derive from the same region-stack model.
 11. Layers are referenced by stable internal ID, not by user-visible name.
 12. Structure colors come from curated or generated harmonious palettes; arbitrary color-picker input is intentionally hidden.
@@ -70,3 +70,8 @@ Everything under `legacy/` is archival reference. It is not part of the deployme
 Prettier 3.9.9 and ESLint 10.11.0 are development dependencies. New code should not add multi-statement compressed handlers. Large event handlers should be moved into named functions or focused modules instead of continuing the earlier single-file compression style.
 
 The formatter ignores `legacy/` and `site/vendor/`. Vendored code must not be reformatted locally.
+
+
+## CI gates
+
+Pull requests run the fast **Quality** gate and the permanent Chromium **UI smoke**. Parser/import changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
