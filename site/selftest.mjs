@@ -76,7 +76,7 @@ const c = applyOperation(conformal, {
   area,
   growth: 'conformal',
 });
-assert.equal(surfaceSegment(regionAt(conformal, [2.5, 0]).stack).layerId, c.layerId);
+assert.equal(surfaceSegment(regionAt(conformal, [2.2, 0]).stack).layerId, c.layerId);
 
 const directStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(directStep, {
@@ -118,7 +118,7 @@ const conformalBlanket = applyOperation(conformalStep, {
   area: rectMulti(20, 20),
   growth: 'conformal',
 });
-const conformalSide = regionAt(conformalStep, [2.5, 0]).stack.find(
+const conformalSide = regionAt(conformalStep, [2.1, 0]).stack.find(
   (segment) => segment.layerId === conformalBlanket.layerId,
 );
 assert.equal(conformalSide.z0, 5);
@@ -146,7 +146,7 @@ applyOperation(conformalGrowStep, {
   area: rectMulti(20, 20),
   growth: 'conformal',
 });
-const conformalGrowSide = regionAt(conformalGrowStep, [2.5, 0]).stack.find(
+const conformalGrowSide = regionAt(conformalGrowStep, [2.1, 0]).stack.find(
   (segment) => segment.layerId === conformalGrowSeed.layerId,
 );
 assert.equal(conformalGrowSide.z0, 5);
