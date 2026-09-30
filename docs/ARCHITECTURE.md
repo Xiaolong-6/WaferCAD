@@ -54,6 +54,14 @@ Owns the region-stack model and geometry semantics:
 
 Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, and graceful degradation when the external 3D dependency is unavailable.
 
+### `site/section-editor.js`
+
+Owns explicit A/B handle interaction, fixed CSS-pixel targets, grab offsets, pointer capture/cancellation and keyboard editing. Application callbacks supply canonical coordinates and the current viewport/face transform.
+
+### `site/model-view-geometry.js`
+
+Derives Section material contours, same-material/same-height Main surface groups, and 3D material boundaries from the canonical region-stack model. Exact-Z slabs union each material footprint; only footprint differences produce horizontal faces and border lines. Computation partitions are not visible interfaces. ROI clipping leaves the model unchanged.
+
 ### `site/vector-geometry.js`
 
 Owns polygon operations:
@@ -116,7 +124,7 @@ Direct growth preserves the selected XY footprint.
 
 Conformal growth expands the selected footprint by the requested relative thickness and applies a sidewall band to adjacent exposed regions. This remains a geometric approximation suitable for the current vertical-stack model.
 
-Etch performs vertical subtraction and does not accept a growth mode.
+Etch performs vertical subtraction and does not accept a growth mode. The numeric coupling between relative Z and µm lateral buffering, supported fixtures, and through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
 
 ## Views
 

@@ -12,7 +12,7 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(html, /id="threeBorders"[^>]*checked/);
   assert.match(app, /threeOpacity = 1/);
   assert.match(app, /threeShowBorders = false/);
-  assert.match(threeView, /new THREE\.EdgesGeometry\(geometry, 20\)/);
+  assert.match(threeView, /solidBorders\(item\)/);
   assert.match(threeView, /depthWrite: opacity >= 0\.999/);
   assert.match(app, /createThreeView/);
 });

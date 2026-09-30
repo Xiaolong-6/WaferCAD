@@ -1,5 +1,5 @@
 import { layerById, modelBoundsZ } from './model.js';
-import { intersection, isEmpty } from './vector-geometry.js';
+import { materialSolids, solidBorders } from './model-view-geometry.js';
 
 let THREE = null;
 let OrbitControls = null;
@@ -64,27 +64,55 @@ export function createThreeView({
     }
   }
 
-  function shapeFromPolygon(poly) {
-    if (!poly?.length) return null;
-    const outer = poly[0].slice(0, -1);
-    if (outer.length < 3) return null;
-
-    const shape = new THREE.Shape();
-    shape.moveTo(outer[0][0], outer[0][1]);
-    for (let i = 1; i < outer.length; i++) shape.lineTo(outer[i][0], outer[i][1]);
-    shape.closePath();
-
-    for (let r = 1; r < poly.length; r++) {
-      const points = poly[r].slice(0, -1);
-      if (points.length < 3) continue;
-      const hole = new THREE.Path();
-      hole.moveTo(points[0][0], points[0][1]);
-      for (let i = 1; i < points.length; i++) hole.lineTo(points[i][0], points[i][1]);
-      hole.closePath();
-      shape.holes.push(hole);
-    }
-
-    return shape;
+  function geometryFromSolid({ slabs, caps }) {
+    const positions = [],
+      normals = [];
+    const triangle = (a, b, c, normal) => {
+      positions.push(...a, ...b, ...c);
+      normals.push(...normal, ...normal, ...normal);
+    };
+    for (const { z, normal, polys } of caps)
+      for (const poly of polys) {
+        const rings = poly.map((ring) =>
+          ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)),
+        );
+        const points = rings.flat();
+        for (const indices of THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1))) {
+          let [a, b, c] = indices.map((i) => [points[i].x, points[i].y, z]);
+          const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+          if (cross * normal < 0) [b, c] = [c, b];
+          triangle(a, b, c, [0, 0, normal]);
+        }
+      }
+    for (const { z0, z1, polys } of slabs)
+      for (const poly of polys)
+        for (let r = 0; r < poly.length; r++) {
+          const ring = poly[r].slice(0, -1);
+          const signedArea = ring.reduce((sum, p, i) => {
+            const q = ring[(i + 1) % ring.length];
+            return sum + p[0] * q[1] - p[1] * q[0];
+          }, 0);
+          if (signedArea > 0 !== (r === 0)) ring.reverse();
+          for (let i = 0; i < ring.length; i++) {
+            const p = ring[i],
+              q = ring[(i + 1) % ring.length];
+            const dx = q[0] - p[0],
+              dy = q[1] - p[1],
+              length = Math.hypot(dx, dy);
+            if (!length) continue;
+            const normal = [dy / length, -dx / length, 0];
+            const a = [...p, z0],
+              b = [...q, z0],
+              c = [...q, z1],
+              d = [...p, z1];
+            triangle(a, b, c, normal);
+            triangle(a, c, d, normal);
+          }
+        }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return geometry;
   }
 
   function init() {
@@ -145,39 +173,12 @@ export function createThreeView({
     group.scale.z = zVisualScale(model);
 
     const clip = getClipGeometry(),
-      groups = new Map(),
       inspection = getInspection() || {},
       opacity = Math.max(0.1, Math.min(1, Number(inspection.opacity) || 1)),
       borders = Boolean(inspection.borders);
 
-    for (const region of model.regions) {
-      const geom = clip ? intersection(region.geom, clip) : region.geom;
-      if (isEmpty(geom)) continue;
-      for (const segment of region.stack) {
-        const key = `${segment.layerId}|${segment.z0.toFixed(8)}|${segment.z1.toFixed(8)}`;
-        if (!groups.has(key)) {
-          groups.set(key, {
-            layerId: segment.layerId,
-            z0: segment.z0,
-            z1: segment.z1,
-            polys: [],
-          });
-        }
-        groups.get(key).polys.push(...geom);
-      }
-    }
-
-    for (const item of groups.values()) {
-      const shapes = item.polys.map(shapeFromPolygon).filter(Boolean);
-      if (!shapes.length) continue;
-
-      const geometry = new THREE.ExtrudeGeometry(shapes, {
-        depth: item.z1 - item.z0,
-        bevelEnabled: false,
-        steps: 1,
-        curveSegments: 2,
-      });
-      geometry.translate(0, 0, item.z0);
+    for (const item of materialSolids(model, clip)) {
+      const geometry = geometryFromSolid(item);
 
       const layer = layerById(model, item.layerId);
       const material = new THREE.MeshStandardMaterial({
@@ -192,7 +193,11 @@ export function createThreeView({
       group.add(new THREE.Mesh(geometry, material));
 
       if (borders) {
-        const edgeGeometry = new THREE.EdgesGeometry(geometry, 20);
+        const edgeGeometry = new THREE.BufferGeometry();
+        edgeGeometry.setAttribute(
+          'position',
+          new THREE.Float32BufferAttribute(solidBorders(item).flat(2), 3),
+        );
         const edgeMaterial = new THREE.LineBasicMaterial({
           color: 0x111820,
           transparent: true,
@@ -219,8 +224,17 @@ export function createThreeView({
     camera.near = Math.max(0.1, size / 10000);
     camera.far = Math.max(1e6, size * 50);
     camera.updateProjectionMatrix();
-    camera.position.set(size * 1.05, -size * 1.15, size * 0.82);
+    const halfFov = (camera.fov * Math.PI) / 360;
+    const limitingAngle = Math.min(halfFov, Math.atan(Math.tan(halfFov) * camera.aspect));
+    const radius = Math.hypot(model.width / 2, model.height / 2, zSpan / 2);
+    const distance = (radius / Math.sin(limitingAngle)) * 1.1;
     controls.target.set(0, 0, ((lo + hi) / 2) * zScale);
+    camera.position.copy(
+      new THREE.Vector3(1.05, -1.15, 0.82)
+        .normalize()
+        .multiplyScalar(distance)
+        .add(controls.target),
+    );
     controls.update();
     axesHelper.scale.setScalar(Math.max(0.6, size / 100));
     scheduleFrame();

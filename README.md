@@ -78,3 +78,7 @@ npm run check
 Project JSON is versioned and migrated before it can replace the current editor state. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Save and Open share the same 64 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
+
+### Product verification
+
+[Interaction and visual regression](docs/PRODUCT_REVIEW.md) covers wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser review artifacts. [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Direct/Conformal/Etch semantics and their limits.

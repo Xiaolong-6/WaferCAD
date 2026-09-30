@@ -1309,3 +1309,220 @@ canvas {
   font-size: 10px;
   background: #f5f7f9;
 }
+
+/* Explicit A/B handles sit above the canvas and stay the same screen size. */
+.section-endpoint-handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.section-endpoint-handles[hidden],
+.section-endpoint[hidden] {
+  display: none !important;
+}
+.section-endpoint {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #bd3b53;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 2px #bd3b53,
+    0 2px 6px #0002;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.section-endpoint:hover,
+.section-endpoint:focus-visible {
+  background: #9e2941;
+  box-shadow: 0 0 0 5px #bd3b5333;
+  outline: 2px solid #bd3b53;
+}
+.section-endpoint.dragging {
+  cursor: grabbing;
+  background: #9e2941;
+}
+.section-coords-panel {
+  max-width: calc(100% - 12px);
+}
+.view-head {
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.view-panel {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.view-head > div {
+  align-items: center;
+}
+.view-head .view-tools,
+.view-head .three-view-tools {
+  flex-shrink: 0;
+}
+#mainPanel,
+#maskPanel {
+  position: relative;
+}
+.view-head .readout {
+  position: absolute;
+  right: 8px;
+  bottom: 26px;
+  z-index: 1;
+  padding: 2px 3px;
+  border-radius: 3px;
+  background: #ffffffdd;
+  pointer-events: none;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.view-head .readout:empty {
+  display: none;
+}
+#sectionPanel .view-head .readout {
+  position: static;
+  padding: 0;
+  background: transparent;
+}
+
+.view-head > div:first-child > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  #mainPanel:has(#sectionCoordsPanel:not([hidden])) {
+    grid-template-rows: auto minmax(160px, 1fr) auto;
+  }
+  .section-coords-panel {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin: 4px;
+    background: #fff;
+  }
+  .workspace:has(#sectionCoordsPanel:not([hidden])) {
+    grid-template-rows: minmax(260px, 1fr) minmax(340px, 1.2fr) minmax(240px, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .view-head > div:first-child {
+    width: 100%;
+  }
+  .view-head {
+    min-height: 49px;
+    align-content: center;
+  }
+  .view-head .view-tools,
+  .view-head .three-view-tools {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .view-head .mini-btn,
+  .three-control {
+    white-space: nowrap;
+  }
+  .tool-tab-panel .three-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tool-tab-panel .three-fields > label {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: center;
+  }
+  .tool-tabs {
+    overflow-x: auto;
+  }
+  .section-body {
+    grid-template-columns: minmax(0, 1fr) 130px;
+  }
+  .legend-head {
+    flex-wrap: wrap;
+  }
+  .legend-tools {
+    flex-wrap: wrap;
+  }
+}
+@media (pointer: coarse) {
+  .section-endpoint {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .focus-popover {
+    width: 180px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .roi-two-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.section-endpoint:hover {
+  z-index: 1;
+}
+.section-endpoint:focus {
+  z-index: 2;
+}
+.section-endpoint.dragging {
+  z-index: 3;
+}
+
+@media (min-width: 901px) {
+  .tool-tab {
+    flex: 1 1 auto;
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+}
+@media (max-width: 600px) {
+  .tool-panel {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .tool-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+  }
+  .tool-tab {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  #snapshotsTab {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 600px) {
+  #threePanel {
+    position: relative;
+  }
+  .focus-editor,
+  .three-opacity-control {
+    position: static;
+  }
+  .focus-popover {
+    top: 51px;
+    right: 4px;
+    width: calc(100% - 8px);
+  }
+  .three-opacity-popover {
+    top: 51px;
+    right: 4px;
+  }
+}

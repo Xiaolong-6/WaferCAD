@@ -11,7 +11,6 @@ import {
   modelBoundsZ,
   recolorLayer,
   renameLayer,
-  surfacePatches,
   surfaceSegment,
   surfaceZ,
 } from './model.js';
@@ -21,7 +20,6 @@ import {
   difference,
   intersection,
   isEmpty,
-  lineIntervalsInMulti,
   rectMulti,
   transformMulti,
   unionGeometries,
@@ -29,6 +27,8 @@ import {
 import { downloadProject, readProjectFile } from './project-io.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
 import { createThreeView } from './three-view.js';
+import { createSectionEditor } from './section-editor.js';
+import { sectionContours, surfaceGroups } from './model-view-geometry.js';
 import {
   circleRoiFromAnchor,
   normalizeRoi,
@@ -145,6 +145,7 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   roiAnchor = 'center';
 let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionEditEnabled = false,
+  sectionEditor = null,
   history = [],
   future = [],
   baseRevertSnapshot = null;
@@ -200,12 +201,13 @@ function syncSectionInputs() {
   const unit = $('sectionCoordUnit');
   if (!unit) return;
   unit.textContent = xyUnit().label;
-  $('sectionAx').value = formatXY(section.a[0]);
-  $('sectionAy').value = formatXY(section.a[1]);
-  $('sectionBx').value = formatXY(section.b[0]);
-  $('sectionBy').value = formatXY(section.b[1]);
+  $('sectionAx').value = String(xyToDisplay(section.a[0]));
+  $('sectionAy').value = String(xyToDisplay(section.a[1]));
+  $('sectionBx').value = String(xyToDisplay(section.b[0]));
+  $('sectionBy').value = String(xyToDisplay(section.b[1]));
 }
 function updateSectionFromInputs() {
+  sectionEditor?.cancel();
   const values = ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map((id) =>
     Number($(id).value),
   );
@@ -226,6 +228,10 @@ function setSectionEditEnabled(enabled) {
   button.classList.toggle('active', sectionEditEnabled);
   button.setAttribute('aria-pressed', String(sectionEditEnabled));
   $('mainCanvas').classList.toggle('section-editing', sectionEditEnabled);
+  button.textContent = sectionEditEnabled ? 'Done' : 'Drag A/B';
+  button.title = sectionEditEnabled ? 'Finish editing A and B' : 'Edit existing A and B endpoints';
+  sectionEditor?.setEnabled(sectionEditEnabled);
+  renderMain();
   status(sectionEditEnabled ? 'A–B endpoint dragging enabled.' : 'A–B endpoint dragging locked.');
 }
 function setSectionPanelVisible(visible) {
@@ -235,6 +241,7 @@ function setSectionPanelVisible(visible) {
   button.classList.toggle('active', visible);
   button.setAttribute('aria-expanded', String(visible));
   if (!visible && sectionEditEnabled) setSectionEditEnabled(false);
+  renderMain();
 }
 function structurePalette() {
   return (
@@ -447,15 +454,15 @@ function syncRoiEditor() {
   $('roiShapeLabel').textContent = roi.type === 'rect' ? 'Rectangle' : 'Circle';
   $('roiUnitLabel').textContent = xyUnit().label;
   $('roiAnchorSelect').value = roiAnchor;
-  $('roiX').value = formatXY(point[0]);
-  $('roiY').value = formatXY(point[1]);
+  $('roiX').value = String(xyToDisplay(point[0]));
+  $('roiY').value = String(xyToDisplay(point[1]));
   $('roiRectFields').hidden = roi.type !== 'rect';
   $('roiCircleFields').hidden = roi.type !== 'circle';
   if (roi.type === 'rect') {
-    $('roiWidth').value = formatXY(roi.b[0] - roi.a[0]);
-    $('roiHeight').value = formatXY(roi.b[1] - roi.a[1]);
+    $('roiWidth').value = String(xyToDisplay(roi.b[0] - roi.a[0]));
+    $('roiHeight').value = String(xyToDisplay(roi.b[1] - roi.a[1]));
   } else {
-    $('roiRadius').value = formatXY(roi.r);
+    $('roiRadius').value = String(xyToDisplay(roi.r));
   }
 }
 function applyRoiEditor() {
@@ -939,14 +946,20 @@ function zoomPlanView(kind, canvas, factor, clientX = null, clientY = null, back
   state.panY += py - mapped[1];
   kind === 'mask' ? renderMask() : renderMain();
 }
-function niceStep(range) {
-  const raw = Math.max(1e-9, range / 6),
+function niceStep(range, count = 6) {
+  const raw = Math.max(1e-9, range / Math.max(1, count)),
     p = 10 ** Math.floor(Math.log10(raw)),
     n = raw / p;
   return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * p;
 }
 function drawPlanAxes(ctx, v, w, h, back = false) {
-  const left = 28,
+  ctx.save();
+  ctx.font = '7.5px system-ui';
+  const yLabelWidth = Math.max(
+    ...[7, h - 17].map((y) => ctx.measureText(formatXY(canvasToWorld(0, y, v, back)[1])).width),
+  );
+  ctx.restore();
+  const left = Math.max(28, Math.ceil(yLabelWidth + 6)),
     bottom = h - 17,
     right = w - 7,
     top = 7;
@@ -962,8 +975,16 @@ function drawPlanAxes(ctx, v, w, h, back = false) {
     dxmax = xyToDisplay(xmax),
     dymin = xyToDisplay(ymin),
     dymax = xyToDisplay(ymax);
-  const xs = niceStep(dxmax - dxmin),
-    ys = niceStep(dymax - dymin);
+  ctx.save();
+  ctx.font = '7.5px system-ui';
+  const labelWidth = Math.max(
+    ctx.measureText(formatXY(xmin)).width,
+    ctx.measureText(formatXY(xmax)).width,
+    16,
+  );
+  const xs = niceStep(dxmax - dxmin, Math.max(2, (right - left) / (labelWidth + 14))),
+    ys = niceStep(dymax - dymin, Math.max(2, (bottom - top) / 30));
+  ctx.restore();
   ctx.save();
   ctx.strokeStyle = 'rgba(70,82,95,.24)';
   ctx.fillStyle = '#78838f';
@@ -985,7 +1006,9 @@ function drawPlanAxes(ctx, v, w, h, back = false) {
     ctx.moveTo(p[0], bottom);
     ctx.lineTo(p[0], bottom - 3);
     ctx.stroke();
-    ctx.fillText(Math.abs(xd) < 1e-12 ? '0' : formatXY(x), p[0], bottom + 1);
+    const label = Math.abs(xd) < 1e-12 ? '0' : formatXY(x);
+    const halfWidth = ctx.measureText(label).width / 2;
+    if (p[0] - halfWidth >= 1 && p[0] + halfWidth <= w - 1) ctx.fillText(label, p[0], bottom + 1);
   }
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
@@ -1080,8 +1103,8 @@ function drawRoi(ctx, v) {
       const q = worldToCanvas(point, v);
       ctx.fillStyle = '#fff';
       ctx.strokeStyle = '#d65361';
-      ctx.fillRect(q[0] - 3.5, q[1] - 3.5, 7, 7);
-      ctx.strokeRect(q[0] - 3.5, q[1] - 3.5, 7, 7);
+      ctx.fillRect(q[0] - 5, q[1] - 5, 10, 10);
+      ctx.strokeRect(q[0] - 5, q[1] - 5, 10, 10);
     }
   }
   ctx.restore();
@@ -1113,9 +1136,10 @@ function renderMain() {
     { ctx, w, h } = setupCanvas(c),
     v = viewport(w, h, 'main'),
     back = activeFace === 'back';
+  $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
   ctx.clearRect(0, 0, w, h);
   drawBaseOutline(ctx, v);
-  const patches = surfacePatches(model, activeFace);
+  const patches = surfaceGroups(model, activeFace);
   for (const patch of patches) {
     const layer = layerById(model, patch.layerId);
     if (!layer) continue;
@@ -1143,6 +1167,7 @@ function renderMain() {
     [a, 'A'],
     [b, 'B'],
   ]) {
+    if (sectionEditEnabled) continue;
     ctx.fillStyle = '#cc5062';
     ctx.beginPath();
     ctx.arc(p[0], p[1], 4.5, 0, Math.PI * 2);
@@ -1152,6 +1177,7 @@ function renderMain() {
   }
   drawPlanAxes(ctx, v, w, h, back);
   syncSectionInputs();
+  sectionEditor?.update();
 }
 function renderSection() {
   const c = $('sectionCanvas'),
@@ -1169,22 +1195,24 @@ function renderSection() {
     ih = h - top - bottom;
   ctx.fillStyle = '#fbfcfd';
   ctx.fillRect(0, 0, w, h);
-  for (const region of model.regions) {
-    const intervals = lineIntervalsInMulti(section.a, section.b, region.geom);
-    for (const [t0, t1] of intervals)
-      for (const seg of region.stack) {
-        const layer = layerById(model, seg.layerId);
-        if (!layer) continue;
-        const x0 = left + t0 * iw,
-          x1 = left + t1 * iw,
-          yy0 = top + ((z1 - seg.z1) / (z1 - z0)) * ih,
-          yy1 = top + ((z1 - seg.z0) / (z1 - z0)) * ih;
-        ctx.fillStyle = layer.color;
-        ctx.fillRect(x0, yy0, Math.max(0.7, x1 - x0), yy1 - yy0);
-        ctx.strokeStyle = 'rgba(40,50,60,.18)';
-        ctx.lineWidth = 0.55;
-        ctx.strokeRect(x0, yy0, Math.max(0.7, x1 - x0), yy1 - yy0);
+  for (const contour of sectionContours(model, section.a, section.b)) {
+    const layer = layerById(model, contour.layerId);
+    if (!layer) continue;
+    ctx.beginPath();
+    for (const poly of contour.polys)
+      for (const ring of poly) {
+        ring.forEach(([t, z], i) => {
+          const point = [left + t * iw, top + ((z1 - z) / (z1 - z0)) * ih];
+          if (i === 0) ctx.moveTo(...point);
+          else ctx.lineTo(...point);
+        });
+        ctx.closePath();
       }
+    ctx.fillStyle = layer.color;
+    ctx.fill('evenodd');
+    ctx.strokeStyle = 'rgba(40,50,60,.18)';
+    ctx.lineWidth = 0.55;
+    ctx.stroke();
   }
   ctx.strokeStyle = '#8995a1';
   ctx.lineWidth = 0.8;
@@ -1341,6 +1369,7 @@ function buildProjectSnapshot(includeSnapshots = false) {
 }
 
 function loadProjectSnapshot(project) {
+  setSectionEditEnabled(false);
   model = project.model;
   if (model.processRevision == null) {
     model.processRevision = Math.max(0, (model.revision || 1) - 1);
@@ -1678,6 +1707,7 @@ function bindUi() {
     status('Redid operation.');
   };
   $('resetSectionBtn').onclick = () => {
+    sectionEditor?.cancel();
     section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] };
     renderMain();
     renderSection();
@@ -1694,6 +1724,7 @@ function bindUi() {
   };
 
   $('newProjectBtn').onclick = () => {
+    setSectionEditEnabled(false);
     model = createModel();
     layout = emptyLayout();
     selectedLayerKeys = new Set();
@@ -1782,7 +1813,7 @@ function bindUi() {
           worldToCanvas(point, v),
         ]),
       );
-      const handle = nearestNamedPoint(screen, handles, 10);
+      const handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
       mc.style.cursor = handle
         ? roiResizeCursor(handle)
         : roiContainsPoint(roi, p)
@@ -1805,7 +1836,10 @@ function bindUi() {
     }
 
     if (drag.mode === 'resize') {
-      roi = resizeRoiFromHandle(drag.original, drag.handle, p);
+      roi = resizeRoiFromHandle(drag.original, drag.handle, [
+        p[0] - drag.offset[0],
+        p[1] - drag.offset[1],
+      ]);
       syncRoiEditor();
       renderMask();
       return;
@@ -1831,9 +1865,17 @@ function bindUi() {
           worldToCanvas(point, v),
         ]),
       );
-      const handle = nearestNamedPoint(screen, handles, 10);
-      if (handle) drag = { mode: 'resize', handle, start: p, original: structuredClone(roi) };
-      else if (roiContainsPoint(roi, p))
+      const handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
+      if (handle) {
+        const corner = roiHandlePoints(roi)[handle];
+        drag = {
+          mode: 'resize',
+          handle,
+          start: p,
+          original: structuredClone(roi),
+          offset: [p[0] - corner[0], p[1] - corner[1]],
+        };
+      } else if (roiContainsPoint(roi, p))
         drag = { mode: 'move', start: p, original: structuredClone(roi) };
       else return;
     } else {
@@ -1866,6 +1908,8 @@ function bindUi() {
   };
   mc.addEventListener('pointerup', finishRoiDrag);
   mc.addEventListener('pointercancel', (e) => {
+    if (drag?.original) roi = drag.original;
+    syncRoiEditor();
     roiDraft = null;
     drag = null;
     if (mc.hasPointerCapture(e.pointerId)) mc.releasePointerCapture(e.pointerId);
@@ -1873,7 +1917,31 @@ function bindUi() {
   });
 
   const main = $('mainCanvas');
-  let secDrag = null;
+  sectionEditor = createSectionEditor({
+    canvas: main,
+    host: $('sectionEndpointHandles'),
+    getSection: () => section,
+    getFrame: () => {
+      const rect = main.getBoundingClientRect();
+      const panel = $('mainPanel').getBoundingClientRect();
+      const v = viewport(rect.width, rect.height, 'main');
+      const back = activeFace === 'back';
+      return {
+        left: rect.left - panel.left - $('mainPanel').clientLeft,
+        top: rect.top - panel.top - $('mainPanel').clientTop,
+        width: rect.width,
+        height: rect.height,
+        toScreen: (point) => worldToCanvas(point, v, back),
+        toWorld: (point) => canvasToWorld(point[0], point[1], v, back),
+      };
+    },
+    onChange: (next) => {
+      section = next;
+      renderMain();
+      renderSection();
+    },
+    onExit: () => setSectionEditEnabled(false),
+  });
   main.addEventListener(
     'wheel',
     (e) => {
@@ -1893,56 +1961,19 @@ function bindUi() {
     e.preventDefault();
     resetPlanView('main');
   });
-  main.addEventListener('pointerdown', (e) => {
-    if (!sectionEditEnabled || e.button !== 0) return;
-    const r = main.getBoundingClientRect(),
-      { w, h } = setupCanvas(main),
-      v = viewport(w, h, 'main'),
-      pointer = [e.clientX - r.left, e.clientY - r.top],
-      handles = {
-        a: worldToCanvas(section.a, v, activeFace === 'back'),
-        b: worldToCanvas(section.b, v, activeFace === 'back'),
-      };
-    const handle = nearestNamedPoint(pointer, handles, 18);
-    if (!handle) return;
-    secDrag = handle;
-    main.style.cursor = 'grabbing';
-    main.setPointerCapture(e.pointerId);
-  });
   main.addEventListener('pointermove', (e) => {
-    const r = main.getBoundingClientRect(),
-      { w, h } = setupCanvas(main),
-      v = viewport(w, h, 'main'),
-      pointer = [e.clientX - r.left, e.clientY - r.top],
-      p = canvasToWorld(pointer[0], pointer[1], v, activeFace === 'back');
+    const r = main.getBoundingClientRect();
+    const v = viewport(r.width, r.height, 'main');
+    const p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
     $('mainCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-
-    if (!secDrag) {
-      if (sectionEditEnabled) {
-        const handle = nearestNamedPoint(
-          pointer,
-          {
-            a: worldToCanvas(section.a, v, activeFace === 'back'),
-            b: worldToCanvas(section.b, v, activeFace === 'back'),
-          },
-          18,
-        );
-        main.style.cursor = handle ? 'grab' : 'crosshair';
-      }
-      return;
-    }
-
-    section[secDrag] = p;
+  });
+  const canvasResizeObserver = new ResizeObserver(() => {
     renderMain();
+    renderMask();
     renderSection();
   });
-  const finishSectionDrag = (e) => {
-    if (secDrag && main.hasPointerCapture(e.pointerId)) main.releasePointerCapture(e.pointerId);
-    secDrag = null;
-    main.style.cursor = sectionEditEnabled ? 'crosshair' : '';
-  };
-  main.addEventListener('pointerup', finishSectionDrag);
-  main.addEventListener('pointercancel', finishSectionDrag);
+  for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas'])
+    canvasResizeObserver.observe($(id));
   window.addEventListener('resize', () => renderAll());
 }
 
