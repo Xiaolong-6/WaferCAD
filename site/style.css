@@ -1548,7 +1548,6 @@ canvas {
   }
 }
 
-
 /* In-page inspection mode: one view occupies the workspace while the top bar
    and status bar remain available. */
 body.view-maximized .workspace > * {
