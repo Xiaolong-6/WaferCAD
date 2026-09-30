@@ -50,7 +50,7 @@
                 type="button"
                 aria-expanded="false"
                 aria-controls="sectionCoordsPanel"
-                title="Open A–B controls"
+                title="Toggle A–B controls"
               >
                 A–B
               </button>
@@ -86,18 +86,7 @@
           >
             <div class="section-coords-head">
               <strong>A–B</strong>
-              <div class="section-coords-head-actions">
-                <span id="sectionCoordUnit">µm</span>
-                <button
-                  id="sectionPanelClose"
-                  class="section-collapse-btn"
-                  type="button"
-                  aria-label="Collapse A–B controls"
-                  title="Collapse A–B controls"
-                >
-                  ⌃
-                </button>
-              </div>
+              <span id="sectionCoordUnit">µm</span>
             </div>
             <div class="section-coords-actions">
               <button
@@ -155,6 +144,14 @@
                       Circle
                     </button>
                     <button
+                      class="roi-tool mini-btn"
+                      data-tool="sector"
+                      type="button"
+                      title="Draw a sector 3D ROI, then edit its angle range"
+                    >
+                      Sector
+                    </button>
+                    <button
                       id="clearRoiBtn"
                       class="mini-btn"
                       type="button"
@@ -179,6 +176,17 @@
                       <label class="roi-field"
                         ><span>Radius</span><input id="roiRadius" type="number" min="0" step="any"
                       /></label>
+                    </div>
+                    <div id="roiSectorFields" hidden>
+                      <div class="roi-two-fields">
+                        <label
+                          ><span>Start °</span
+                          ><input id="roiStartAngle" type="number" step="0.001"
+                        /></label>
+                        <label
+                          ><span>End °</span><input id="roiEndAngle" type="number" step="0.001"
+                        /></label>
+                      </div>
                     </div>
                     <label class="roi-field"
                       ><span>Reference</span
