@@ -26,8 +26,12 @@ export function sectorBoundaryPoints(roi, segments = 96) {
   const steps = Math.max(2, Math.ceil((Math.max(8, segments) * sweep) / 360));
   const points = [[...shape.c]];
   for (let i = 0; i <= steps; i++) {
-    const angle = ((shape.startDeg + (sweep * i) / steps) * Math.PI) / 180;
-    points.push([shape.c[0] + Math.cos(angle) * shape.r, shape.c[1] + Math.sin(angle) * shape.r]);
+    const angle = ((shape.startDeg + (sweep * i) / steps) * Math.PI) / 180,
+      rawCos = Math.cos(angle),
+      rawSin = Math.sin(angle),
+      cos = Math.abs(rawCos) < 1e-12 ? 0 : Math.abs(Math.abs(rawCos) - 1) < 1e-12 ? Math.sign(rawCos) : rawCos,
+      sin = Math.abs(rawSin) < 1e-12 ? 0 : Math.abs(Math.abs(rawSin) - 1) < 1e-12 ? Math.sign(rawSin) : rawSin;
+    points.push([shape.c[0] + cos * shape.r, shape.c[1] + sin * shape.r]);
   }
   points.push([...shape.c]);
   return points;
