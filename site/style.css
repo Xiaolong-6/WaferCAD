@@ -699,8 +699,8 @@ button:hover,
 }
 .three-control {
   height: 21px;
-  min-width: 48px;
-  padding: 1px 6px;
+  min-width: 0;
+  padding: 1px 4px;
   border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
