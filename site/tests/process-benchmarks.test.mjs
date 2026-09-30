@@ -47,11 +47,7 @@ for (const face of ['front', 'back']) {
       const conformal = await processBenchmark(kind, 'conformal', face);
       const lateral = relativeZToXYScale(conformal.model);
       const sideX =
-        kind === 'step'
-          ? lateral / 2
-          : kind === 'trench'
-            ? 2 - lateral / 2
-            : 2 + lateral / 2;
+        kind === 'step' ? lateral / 2 : kind === 'trench' ? 2 - lateral / 2 : 2 + lateral / 2;
       const lower = kind === 'trench' ? 3 : 5;
       const upper = kind === 'trench' ? 5 : 7;
       assert.ok(Math.abs(volume(direct.model, direct.layerId) - 400) < 1e-8);
