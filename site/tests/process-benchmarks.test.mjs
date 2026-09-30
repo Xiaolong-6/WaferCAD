@@ -260,6 +260,35 @@ test('multi-hole layered wafer keeps conformal sidewalls around every etched ope
   assert.deepEqual(at(2250), { layerId: conformal.layerId, z0: 8, z1: 9 });
 });
 
+test('Conformal geometry failure rolls back the model atomically', () => {
+  const model = createModel({ shape: 'rect', width: 100, height: 100, thickness: 10 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Step',
+    thickness: 2,
+    area: rectMulti(50, 100, -25, 0),
+  });
+  const before = structuredClone(model);
+  const originalUnion = globalThis.polygonClipping.union;
+  globalThis.polygonClipping.union = () => {
+    throw new Error('forced conformal geometry failure');
+  };
+  try {
+    const result = applyOperation(model, {
+      type: 'add',
+      name: 'Must roll back',
+      thickness: 1,
+      area: model.boundary,
+      growth: 'conformal',
+    });
+    assert.equal(result.changed, false);
+    assert.match(result.error, /Conformal geometry failed safely/);
+    assert.deepEqual(model, before);
+  } finally {
+    globalThis.polygonClipping.union = originalUnion;
+  }
+});
+
 test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const seed = applyOperation(model, { type: 'add', thickness: 2, area: rectMulti(4, 4) });
