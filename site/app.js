@@ -55,6 +55,7 @@ import {
   STRUCTURE_PALETTES,
 } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
+import { createSectionControlsController } from './controllers/section-controls-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -120,6 +121,30 @@ const { checkForBuildUpdate, loadBuildCommit } = createBuildController({
   status,
 });
 
+const sectionControls = createSectionControlsController({
+  getSection: () => section,
+  setSection: (value) => {
+    section = value;
+  },
+  getSectionEditor: () => sectionEditor,
+  getSectionEditEnabled: () => sectionEditEnabled,
+  setSectionEditEnabledValue: (value) => {
+    sectionEditEnabled = value;
+  },
+  getModel: () => model,
+  xyUnitLabel: () => xyUnit().label,
+  formatLengthField,
+  manualMicron,
+  renderMain,
+  renderSection,
+  status,
+});
+const {
+  syncInputs: syncSectionInputs,
+  setEditEnabled: setSectionEditEnabled,
+  setPanelVisible: setSectionPanelVisible,
+} = sectionControls;
+
 function xyUnit() {
   return unitMeta(xyDisplayUnit);
 }
@@ -146,53 +171,6 @@ function formatNumericField(value, digits = 6) {
   if (!Number.isFinite(number)) return '';
   const rounded = Number(number.toFixed(digits));
   return Object.is(rounded, -0) ? '0' : String(rounded);
-}
-function syncSectionInputs() {
-  const unit = $('sectionCoordUnit');
-  if (!unit) return;
-  unit.textContent = xyUnit().label;
-  $('sectionAx').value = formatLengthField(section.a[0]);
-  $('sectionAy').value = formatLengthField(section.a[1]);
-  $('sectionBx').value = formatLengthField(section.b[0]);
-  $('sectionBy').value = formatLengthField(section.b[1]);
-}
-function updateSectionFromInputs() {
-  sectionEditor?.cancel();
-  const values = ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map((id) =>
-    Number($(id).value),
-  );
-  if (values.some((value) => !Number.isFinite(value))) {
-    syncSectionInputs();
-    return status('A–B coordinates must be finite numbers.');
-  }
-  section = {
-    a: [manualMicron(values[0]), manualMicron(values[1])],
-    b: [manualMicron(values[2]), manualMicron(values[3])],
-  };
-  renderMain();
-  renderSection();
-}
-function setSectionEditEnabled(enabled) {
-  sectionEditEnabled = Boolean(enabled);
-  const button = $('sectionEditBtn');
-  button.classList.toggle('active', sectionEditEnabled);
-  button.setAttribute('aria-pressed', String(sectionEditEnabled));
-  $('mainCanvas').classList.toggle('section-editing', sectionEditEnabled);
-  button.textContent = sectionEditEnabled ? 'Done' : 'Drag A/B';
-  button.title = sectionEditEnabled ? 'Finish editing A and B' : 'Edit existing A and B endpoints';
-  sectionEditor?.setEnabled(sectionEditEnabled);
-  renderMain();
-  status(sectionEditEnabled ? 'A–B endpoint dragging enabled.' : 'A–B endpoint dragging locked.');
-}
-function setSectionPanelVisible(visible) {
-  const panel = $('sectionCoordsPanel');
-  const button = $('sectionControlsBtn');
-  panel.hidden = !visible;
-  button.classList.toggle('active', visible);
-  button.setAttribute('aria-expanded', String(visible));
-  button.title = visible ? 'Close A–B controls' : 'Open A–B controls';
-  if (!visible && sectionEditEnabled) setSectionEditEnabled(false);
-  renderMain();
 }
 function invMaskPoint([x, y]) {
   const a = (-maskTransform.rotation * Math.PI) / 180,
@@ -1187,6 +1165,7 @@ function bindUi() {
   bindToolTabs();
   viewMaximizeController.bind();
   roiController.bind();
+  sectionControls.bind();
 
   document.querySelectorAll('#substrateShape button').forEach(
     (b) =>
@@ -1370,11 +1349,6 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
-  $('sectionControlsBtn').onclick = () => setSectionPanelVisible($('sectionCoordsPanel').hidden);
-  $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
-  for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
-    $(id).onchange = updateSectionFromInputs;
-
   $('undoBtn').onclick = () => {
     if (!history.length) return;
     future.push(stateSnapshot());
@@ -1392,12 +1366,6 @@ function bindUi() {
     syncBaseControls();
     renderAll();
     status('Redid operation.');
-  };
-  $('resetSectionBtn').onclick = () => {
-    sectionEditor?.cancel();
-    section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] };
-    renderMain();
-    renderSection();
   };
   $('saveSnapshotBtn').onclick = () => {
     try {
