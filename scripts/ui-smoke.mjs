@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { applyOperation, createModel } = await import('../site/model.js');
+const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 const launchOptions = {
@@ -37,6 +43,67 @@ assert.equal((await face.textContent()).trim(), 'Front');
 await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
+
+// Exercise Conformal through the real UI path, then save and inspect the canonical model.
+const conformalFixture = createModel({
+  shape: 'circle',
+  width: 100000,
+  height: 100000,
+  thickness: 12,
+});
+applyOperation(conformalFixture, {
+  type: 'etch',
+  thickness: 2,
+  area: circleMulti(10000),
+});
+const conformalProject = projectForBenchmark({
+  model: conformalFixture,
+  section: { a: [-7000, 0], b: [7000, 0] },
+});
+await page.locator('#settingsTab').click();
+await page.locator('#openProjectInput').setInputFiles({
+  name: 'ui-conformal-round-trench.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(conformalProject)),
+});
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
+);
+await page.locator('#operationTab').click();
+await page.locator('#operationType').selectOption('add');
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#growthMode').selectOption('conformal');
+await page.locator('#operationThickness').fill('1');
+await page.locator('#layerName').fill('UI conformal');
+assert.equal(await page.locator('#growthMode').inputValue(), 'conformal');
+assert.match(await page.locator('#operationNote').textContent(), /Conformal/);
+await page.locator('#applyOperationBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /Added UI conformal/);
+
+await page.locator('#settingsTab').click();
+const downloadPromise = page.waitForEvent('download');
+await page.locator('#saveProjectBtn').click();
+const download = await downloadPromise;
+const savedPath = await download.path();
+assert.ok(savedPath);
+const saved = JSON.parse(await readFile(savedPath, 'utf8'));
+const coatId = saved.model.layers.find((layer) => layer.name === 'UI conformal')?.id;
+assert.ok(coatId);
+const stackAtSaved = (x) =>
+  saved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
+assert.deepEqual(
+  stackAtSaved(4500).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 7 },
+);
+assert.deepEqual(
+  stackAtSaved(0).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 5 },
+);
+assert.deepEqual(
+  stackAtSaved(5500).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 6, z1: 7 },
+);
+await page.locator('#operationTab').click();
 
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
 const abPanel = page.locator('#sectionCoordsPanel');
