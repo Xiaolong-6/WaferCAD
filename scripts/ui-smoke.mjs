@@ -71,7 +71,9 @@ await browser.close();
 
 // Core editor must still boot when the external Three.js CDN is unavailable.
 const degradedBrowser = await chromium.launch({ headless: true });
-const degradedContext = await degradedBrowser.newContext({ viewport: { width: 1100, height: 760 } });
+const degradedContext = await degradedBrowser.newContext({
+  viewport: { width: 1100, height: 760 },
+});
 await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => route.abort());
 const degraded = await degradedContext.newPage();
 const degradedErrors = [];
