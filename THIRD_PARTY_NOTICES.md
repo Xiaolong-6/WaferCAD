@@ -17,4 +17,4 @@ The bundle is vendored because WaferCAD is deployed as a static site with no bui
 - Upstream: https://github.com/mrdoob/three.js
 - Package: https://www.npmjs.com/package/three
 
-Three.js is loaded as an ES module from jsDelivr by `site/index.html`.
+Three.js is loaded as an ES module from jsDelivr by the workspace page, `site/app.html`.
