@@ -571,7 +571,18 @@
         <section class="view-panel" id="sectionPanel">
           <div class="view-head">
             <div><strong>Section A–B</strong><span id="sectionMeta"></span></div>
-            <span id="sectionRange" class="readout"></span>
+            <div class="section-view-tools">
+              <button
+                id="sectionScaleModeBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Auto: fit X and Z independently. Click for physical 1:1 X:Z scale."
+              >
+                Auto
+              </button>
+              <span id="sectionRange" class="readout"></span>
+            </div>
           </div>
           <div class="section-body">
             <canvas id="sectionCanvas"></canvas>
