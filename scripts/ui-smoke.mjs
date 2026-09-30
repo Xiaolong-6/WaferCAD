@@ -25,6 +25,10 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 
+// Settings owns project controls and XY units.
+await page.locator('#settingsTab').click();
+await page.locator('#settingsTools:not([hidden])').waitFor();
+
 // XYZ unit switching converts physical Z drafts as well as X/Y drafts.
 await page.locator('#xyUnitSelect').selectOption('nm');
 assert.equal(await page.locator('#baseThicknessUnit').textContent(), 'nm');
@@ -34,10 +38,6 @@ assert.equal(Number(await page.locator('#operationThickness').inputValue()), 300
 await page.locator('#xyUnitSelect').selectOption('um');
 assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12);
 assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3);
-
-// Settings owns project controls and XY units.
-await page.locator('#settingsTab').click();
-await page.locator('#settingsTools:not([hidden])').waitFor();
 for (const id of ['newProjectBtn', 'openProjectInput', 'saveProjectBtn', 'xyUnitSelect']) {
   assert.equal(await page.locator(`#settingsTools #${id}`).count(), 1);
 }
