@@ -1,4 +1,4 @@
-import { assertLayoutByteLength, parseLayoutFile } from './layout-io.js';
+import { parseLayoutFile } from './layout-io.js';
 import { KLAYOUT_SAMPLES, sampleById } from './sample-layouts.js';
 import {
   applyOperation,
@@ -20,7 +20,7 @@ import {
   transformMulti,
   unionGeometries,
 } from './vector-geometry.js';
-import { downloadProject, readProjectFile } from './project-io.js';
+import { downloadProject } from './project-io.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
 import { createThreeView } from './three-view.js';
 import { createSectionEditor } from './section-editor.js';
@@ -42,7 +42,6 @@ import {
 } from './units.js';
 import { minimumSegmentLength, zoomLimitForFeature } from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
-import { createVisualizationExample } from './welcome-example.js';
 import { takeStartupFile } from './startup-file.js';
 import { createBuildController } from './controllers/build-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
@@ -55,6 +54,7 @@ import {
   createLayerLegendController,
   STRUCTURE_PALETTES,
 } from './controllers/layer-legend-controller.js';
+import { createProjectController } from './controllers/project-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -1152,117 +1152,18 @@ const snapshotManager = createSnapshotManager({
   validateState: isValidSnapshotState,
 });
 
-function renderSnapshots() {
-  const host = $('snapshotList');
-  const records = snapshotManager.list();
-  $('snapshotCount').textContent = String(records.length);
-  host.innerHTML = '';
-
-  if (!records.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-list';
-    empty.textContent = 'No snapshots';
-    host.append(empty);
-    return;
-  }
-
-  for (const record of records) {
-    const row = document.createElement('div');
-    row.className = 'snapshot-row';
-
-    const name = document.createElement('input');
-    name.className = 'snapshot-name';
-    name.value = record.name;
-    name.title = record.createdAt;
-    name.onchange = () => {
-      if (!snapshotManager.rename(record.id, name.value)) name.value = record.name;
-      renderSnapshots();
-    };
-
-    const restoreButton = document.createElement('button');
-    restoreButton.type = 'button';
-    restoreButton.className = 'snapshot-action';
-    restoreButton.textContent = 'Restore';
-    restoreButton.onclick = () => {
-      if (!snapshotManager.restore(record.id)) {
-        status('Snapshot restore failed validation.');
-        return;
-      }
-      syncBaseControls();
-      syncTransformInputs();
-      renderAll();
-      fit3d();
-      status(`Restored snapshot "${record.name}".`);
-    };
-
-    const deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.className = 'snapshot-delete';
-    deleteButton.textContent = '×';
-    deleteButton.title = 'Delete snapshot';
-    deleteButton.onclick = () => {
-      snapshotManager.remove(record.id);
-      renderSnapshots();
-      status(`Deleted snapshot "${record.name}".`);
-    };
-
-    row.append(name, restoreButton, deleteButton);
-    host.append(row);
-  }
-}
-
-async function openLayoutFile(file) {
-  try {
-    assertLayoutByteLength(file.size);
-    status(`Reading ${file.name}…`);
-    await importLayoutBuffer(await file.arrayBuffer(), file.name, file.name);
-    status(`Opened ${file.name}.`);
-    return true;
-  } catch (error) {
-    console.error(error);
-    status(`Layout import failed: ${error.message}`);
-    return false;
-  }
-}
-
-async function openProjectFile(file) {
-  try {
-    const project = await readProjectFile(file);
-    loadProjectSnapshot(project);
-    snapshotManager.importRecords(project.snapshots || []);
-    syncBaseControls();
-    syncTransformInputs();
-    renderAll();
-    renderSnapshots();
-    fit3d();
-    status(`Opened ${file.name}.`);
-    return true;
-  } catch (error) {
-    console.error(error);
-    status(`Open failed: ${error.message}`);
-    return false;
-  }
-}
-
-function openVisualizationExample() {
-  try {
-    status('Building example…');
-    const project = createVisualizationExample();
-    loadProjectSnapshot(project);
-    snapshotManager.importRecords(project.snapshots || []);
-    syncBaseControls();
-    syncTransformInputs();
-    renderAll();
-    renderSnapshots();
-    fit3d();
-    status('Opened Visualization example.');
-    return true;
-  } catch (error) {
-    console.error(error);
-    status(`Example failed: ${error.message}`);
-    return false;
-  }
-}
+const projectController = createProjectController({
+  importLayoutBuffer,
+  loadProjectSnapshot,
+  snapshotManager,
+  syncBaseControls,
+  syncTransformInputs,
+  renderAll,
+  fit3d,
+  status,
+});
+const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
+  projectController;
 
 const { initializeWorkspaceStart } = createStartupController({
   takeStartupFile,
