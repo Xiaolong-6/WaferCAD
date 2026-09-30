@@ -615,7 +615,7 @@ button:hover,
   color: var(--accent-dark);
 }
 .focus-editor {
-  position: relative;
+  position: static;
 }
 .focus-editor > summary {
   display: flex;
@@ -636,9 +636,9 @@ button:hover,
 .focus-popover {
   position: absolute;
   z-index: 7;
-  top: 25px;
-  right: 0;
-  width: 228px;
+  top: 29px;
+  right: 6px;
+  width: min(228px, calc(100% - 12px));
   padding: 6px;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -929,13 +929,6 @@ canvas {
 .statusbar a:focus-visible {
   color: #3f4d5a;
   text-decoration: underline;
-}
-
-@media (max-width: 1200px) {
-  .focus-popover {
-    right: auto;
-    left: 0;
-  }
 }
 
 @media (max-width: 1120px) {
