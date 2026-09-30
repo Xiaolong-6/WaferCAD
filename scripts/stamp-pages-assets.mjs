@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import process from 'node:process';
 
 const commit = String(process.argv[2] || '').trim();
@@ -6,7 +6,9 @@ if (!/^[0-9a-f]{7,64}$/i.test(commit)) {
   throw new Error('Usage: node scripts/stamp-pages-assets.mjs <commit>');
 }
 
-const files = ['site/app.js', 'site/model.js', 'site/layout-io.js', 'site/project-io.js'];
+const files = (await readdir('site', { withFileTypes: true }))
+  .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+  .map((entry) => `site/${entry.name}`);
 const suffix = `?v=${commit}`;
 
 for (const filename of files) {

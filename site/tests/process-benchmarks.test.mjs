@@ -4,7 +4,8 @@ import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benc
 
 await loadGeometryKernel();
 const { applyOperation, createModel, relativeZToXYScale, surfaceZ } = await import('../model.js');
-const { pointInMulti, rectMulti, intersection, isEmpty } = await import('../vector-geometry.js');
+const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty } =
+  await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
 function stackAt(model, x, y = 0) {
@@ -147,6 +148,27 @@ test('Conformal sidewall width follows the shared relative-Z display scale', () 
     stackAt(model, 1500).find((s) => s.layerId === coat.layerId),
     { layerId: coat.layerId, z0: 5, z1: 6 },
   );
+});
+
+test('wafer-scale circular trench receives a visible conformal sidewall band', () => {
+  const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 2,
+    area: circleMulti(10000),
+  });
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal coat',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  const layerAt = (x) => stackAt(model, x).find((s) => s.layerId === coat.layerId);
+  assert.equal(relativeZToXYScale(model), 1000);
+  assert.deepEqual(layerAt(4500), { layerId: coat.layerId, z0: 4, z1: 7 });
+  assert.deepEqual(layerAt(0), { layerId: coat.layerId, z0: 4, z1: 5 });
+  assert.deepEqual(layerAt(5500), { layerId: coat.layerId, z0: 6, z1: 7 });
 });
 
 test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {

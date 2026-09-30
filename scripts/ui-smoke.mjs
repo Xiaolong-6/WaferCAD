@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { applyOperation, createModel } = await import('../site/model.js');
+const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 const launchOptions = {
@@ -38,6 +44,94 @@ await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
 
+// Exercise Conformal through the real UI path, then save and inspect the canonical model.
+const conformalFixture = createModel({
+  shape: 'circle',
+  width: 100000,
+  height: 100000,
+  thickness: 12,
+});
+applyOperation(conformalFixture, {
+  type: 'etch',
+  thickness: 2,
+  area: circleMulti(10000),
+});
+const conformalProject = projectForBenchmark({
+  model: conformalFixture,
+  section: { a: [-7000, 0], b: [7000, 0] },
+});
+await page.locator('#settingsTab').click();
+await page.locator('#openProjectInput').setInputFiles({
+  name: 'ui-conformal-round-trench.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(conformalProject)),
+});
+await page.waitForFunction(() =>
+  (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
+);
+await page.locator('#operationTab').click();
+await page.locator('#operationType').selectOption('add');
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#growthMode').selectOption('conformal');
+await page.locator('#operationThickness').fill('1');
+await page.locator('#layerName').fill('UI conformal');
+assert.equal(await page.locator('#growthMode').inputValue(), 'conformal');
+assert.match(await page.locator('#operationNote').textContent(), /Conformal/);
+await page.locator('#applyOperationBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /Added UI conformal/);
+
+await page.locator('#settingsTab').click();
+const downloadPromise = page.waitForEvent('download');
+await page.locator('#saveProjectBtn').click();
+const download = await downloadPromise;
+const savedPath = await download.path();
+assert.ok(savedPath);
+const saved = JSON.parse(await readFile(savedPath, 'utf8'));
+const coatId = saved.model.layers.find((layer) => layer.name === 'UI conformal')?.id;
+assert.ok(coatId);
+const stackAtSaved = (x) =>
+  saved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
+assert.deepEqual(
+  stackAtSaved(4500).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 7 },
+);
+assert.deepEqual(
+  stackAtSaved(0).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 5 },
+);
+assert.deepEqual(
+  stackAtSaved(5500).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 6, z1: 7 },
+);
+const coatColor = saved.model.layers.find((layer) => layer.id === coatId).color;
+const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
+  (canvas, { color }) => {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
+    const left = 27;
+    const right = 10;
+    const top = 10;
+    const bottom = 22;
+    const iw = rect.width - left - right;
+    const ih = rect.height - top - bottom;
+    const t = (4500 + 7000) / 14000;
+    const z0 = -7.5;
+    const z1 = 8.5;
+    const x = Math.round((left + t * iw) * dpr);
+    const y = Math.round((top + ((z1 - 6) / (z1 - z0)) * ih) * dpr);
+    const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
+    const expected = [
+      Number.parseInt(color.slice(1, 3), 16),
+      Number.parseInt(color.slice(3, 5), 16),
+      Number.parseInt(color.slice(5, 7), 16),
+    ];
+    return { actual, expected };
+  },
+  { color: coatColor },
+);
+assert.deepEqual(sidewallPixel.actual, sidewallPixel.expected);
+await page.locator('#operationTab').click();
+
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
 const abPanel = page.locator('#sectionCoordsPanel');
 assert.equal(await abPanel.isHidden(), true);
@@ -68,8 +162,9 @@ assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
 // 3D inspection controls should operate without runtime errors.
 await page.locator('.three-opacity-control > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
+const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
-assert.equal(await page.locator('#threeBorders').isChecked(), true);
+assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
 await page.locator('#fit3dBtn').click();
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
