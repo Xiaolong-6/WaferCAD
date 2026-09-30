@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 2;
+export const CURRENT_PROJECT_VERSION = 3;
 
 const LIMITS = {
   layers: 10000,
@@ -226,7 +226,7 @@ function validateModel(model, budget) {
 
   const units = assertObject(model.units, 'model.units');
   if (units.xy !== 'µm') fail('model.units.xy', 'must be µm.');
-  if (units.z !== 'relative') fail('model.units.z', 'must be relative.');
+  if (units.z !== 'µm') fail('model.units.z', 'must be µm.');
 
   validateMultiPolygon(model.boundary, 'model.boundary', budget);
   if (model.boundary.length === 0) fail('model.boundary', 'must not be empty.');
@@ -483,6 +483,12 @@ function migrateProjectCore(project) {
       if (project.display.threeOpacity == null) project.display.threeOpacity = 1;
       if (project.display.threeShowBorders == null) project.display.threeShowBorders = false;
     }
+  }
+  if (version < 3 && isObject(project.model) && isObject(project.model.units)) {
+    // Legacy relative-Z projects already used the same numeric Z amount as µm
+    // for Conformal lateral offsets. Preserve those numbers and make the unit
+    // contract explicit instead of inventing a non-recoverable scale factor.
+    if (project.model.units.z === 'relative') project.model.units.z = 'µm';
   }
   project.version = CURRENT_PROJECT_VERSION;
   return project;
