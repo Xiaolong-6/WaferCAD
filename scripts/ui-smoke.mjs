@@ -25,7 +25,10 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
-assert.match(await page.locator('#welcomeScreen').textContent(), /Mask[\s\S]*Process[\s\S]*Inspect/);
+assert.match(
+  await page.locator('#welcomeScreen').textContent(),
+  /Mask[\s\S]*Process[\s\S]*Inspect/,
+);
 await page.locator('#welcomeEmptyBtn').click();
 assert.equal(await page.locator('#welcomeScreen').isHidden(), true);
 
