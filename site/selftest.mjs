@@ -13,8 +13,15 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
-const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
-  modelApi;
+const {
+  applyOperation,
+  conformalCarrierXYScale,
+  createModel,
+  layerById,
+  recolorLayer,
+  renameLayer,
+  surfaceSegment,
+} = modelApi;
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
 
 function regionAt(model, point) {
@@ -146,11 +153,15 @@ applyOperation(conformalGrowStep, {
   area: rectMulti(20, 20),
   growth: 'conformal',
 });
-const conformalGrowSide = regionAt(conformalGrowStep, [2.1, 0]).stack.find(
+const conformalGrowSide = regionAt(conformalGrowStep, [
+  2 + conformalCarrierXYScale(conformalGrowStep) / 2,
+  0,
+]).stack.find(
   (segment) => segment.layerId === conformalGrowSeed.layerId,
 );
 assert.equal(conformalGrowSide.z0, 5);
 assert.equal(conformalGrowSide.z1, 8);
+assert.equal(conformalGrowSide.role, 'conformal-sidewall');
 assert.equal(surfaceSegment(regionAt(conformalGrowStep, [0, 0]).stack).z1, 8);
 
 const buriedGrow = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
