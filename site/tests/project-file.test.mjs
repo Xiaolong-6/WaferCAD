@@ -37,7 +37,7 @@ function validProject() {
           ],
         ],
       ],
-      units: { xy: 'µm', z: 'relative' },
+      units: { xy: 'µm', z: 'µm' },
       layers: [{ id: 'base', name: 'Base', color: '#C3CBD4' }],
       regions: [
         {
@@ -185,13 +185,16 @@ test('legacy project migration adds current version and inspect-state defaults',
       state: snapshotState,
     },
   ];
-  delete source.version;
+  source.version = 2;
+  source.model.units.z = 'relative';
   delete source.roiAnchor;
   delete source.display.threeOpacity;
   delete source.display.threeShowBorders;
-  delete snapshotState.version;
+  snapshotState.version = 2;
+  snapshotState.model.units.z = 'relative';
   delete snapshotState.roiAnchor;
 
+  const beforeZ = source.model.regions[0].stack[0].z1;
   const migrated = migrateProjectFile(source);
   assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
   assert.equal(migrated.roiAnchor, 'center');
@@ -199,6 +202,9 @@ test('legacy project migration adds current version and inspect-state defaults',
   assert.equal(migrated.display.threeShowBorders, false);
   assert.equal(migrated.snapshots[0].state.version, CURRENT_PROJECT_VERSION);
   assert.equal(migrated.snapshots[0].state.roiAnchor, 'center');
+  assert.equal(migrated.model.units.z, 'µm');
+  assert.equal(migrated.snapshots[0].state.model.units.z, 'µm');
+  assert.equal(migrated.model.regions[0].stack[0].z1, beforeZ);
   assert.equal(validateProjectFile(migrated), migrated);
 });
 
