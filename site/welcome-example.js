@@ -208,14 +208,12 @@ export function createVisualizationExample() {
     name: 'Perovskite',
     thickness: 100,
     area: wafer,
-    growth: 'conformal',
     color: '#7BD5A0',
   });
   addLayer(model, {
     name: 'ETL',
     thickness: 100,
     area: wafer,
-    growth: 'conformal',
     color: '#B164D3',
   });
   addLayer(model, {
