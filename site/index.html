@@ -107,6 +107,16 @@
           <div class="view-head">
             <div><strong>Main</strong><span id="mainFaceLabel">front surface</span></div>
             <div class="view-tools">
+              <button
+                id="sectionControlsBtn"
+                class="mini-btn"
+                type="button"
+                aria-expanded="false"
+                aria-controls="sectionCoordsPanel"
+                title="Toggle A–B controls"
+              >
+                A–B
+              </button>
               <div class="zoom-tools" title="Main view zoom">
                 <button
                   id="mainZoomOut"
@@ -142,16 +152,6 @@
                 title="Maximize Main in the current page"
               >
                 Max
-              </button>
-              <button
-                id="sectionControlsBtn"
-                class="mini-btn"
-                type="button"
-                aria-expanded="false"
-                aria-controls="sectionCoordsPanel"
-                title="Toggle A–B controls"
-              >
-                A–B
               </button>
               <div id="mainCoords" class="readout"></div>
             </div>
@@ -303,23 +303,6 @@
                   </div>
                 </div>
               </details>
-              <button
-                id="maskExportSvgBtn"
-                class="mini-btn"
-                type="button"
-                title="Export Mask as SVG"
-              >
-                SVG
-              </button>
-              <button
-                id="maskMaxBtn"
-                class="mini-btn view-max-btn"
-                type="button"
-                data-view-panel="maskPanel"
-                title="Maximize Mask in the current page"
-              >
-                Max
-              </button>
               <div class="zoom-tools" title="Mask view zoom">
                 <button
                   id="maskZoomOut"
@@ -339,6 +322,23 @@
                 </button>
                 <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
               </div>
+              <button
+                id="maskExportSvgBtn"
+                class="mini-btn"
+                type="button"
+                title="Export Mask as SVG"
+              >
+                SVG
+              </button>
+              <button
+                id="maskMaxBtn"
+                class="mini-btn view-max-btn"
+                type="button"
+                data-view-panel="maskPanel"
+                title="Maximize Mask in the current page"
+              >
+                Max
+              </button>
               <div id="maskCoords" class="readout"></div>
             </div>
           </div>
@@ -348,7 +348,7 @@
         <section class="view-panel" id="threePanel">
           <div class="view-head">
             <div><strong>3D</strong><span id="threeStats"></span></div>
-            <div class="three-view-tools">
+            <div class="view-tools three-view-tools">
               <details class="three-opacity-control">
                 <summary
                   class="three-control"
@@ -379,6 +379,7 @@
                 <input id="threeBorders" type="checkbox" />
                 <span>Border</span>
               </label>
+              <button id="fit3dBtn" class="three-control" title="Fit the 3D model">Fit</button>
               <button
                 id="threeExportModelBtn"
                 class="three-control"
@@ -402,7 +403,6 @@
               >
                 Max
               </button>
-              <button id="fit3dBtn" class="three-control" title="Fit the 3D model">Fit</button>
             </div>
           </div>
           <div id="threeHost"></div>
@@ -717,7 +717,16 @@
         <section class="view-panel" id="sectionPanel">
           <div class="view-head">
             <div><strong>Section A–B</strong><span id="sectionMeta"></span></div>
-            <div class="section-view-tools">
+            <div class="view-tools section-view-tools">
+              <button
+                id="sectionScaleModeBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Auto: fit X and Z independently. Click for physical 1:1 X:Z scale."
+              >
+                Auto
+              </button>
               <button
                 id="sectionExportSvgBtn"
                 class="mini-btn"
@@ -734,15 +743,6 @@
                 title="Maximize Section A–B in the current page"
               >
                 Max
-              </button>
-              <button
-                id="sectionScaleModeBtn"
-                class="mini-btn"
-                type="button"
-                aria-pressed="false"
-                title="Auto: fit X and Z independently. Click for physical 1:1 X:Z scale."
-              >
-                Auto
               </button>
               <span id="sectionRange" class="readout"></span>
             </div>
