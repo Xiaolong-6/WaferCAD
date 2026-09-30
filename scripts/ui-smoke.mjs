@@ -70,3 +70,22 @@ assert.deepEqual(errors, []);
 
 await browser.close();
 console.log('WaferCAD UI smoke: OK');
+
+
+// Core editor must still boot when the external Three.js CDN is unavailable.
+const degradedContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => route.abort());
+const degraded = await degradedContext.newPage();
+const degradedErrors = [];
+degraded.on('pageerror', (error) => degradedErrors.push(error.message));
+await degraded.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+await degraded.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal((await degraded.locator('#threeStats').textContent()).trim(), 'dependency unavailable');
+assert.equal(await degraded.locator('#mainCanvas').count(), 1);
+assert.equal(await degraded.locator('#maskCanvas').count(), 1);
+assert.deepEqual(degradedErrors, []);
+await degradedContext.close();
