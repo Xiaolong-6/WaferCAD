@@ -10,7 +10,7 @@ Direct adds the requested Z amount on the local exposed face inside the operatio
 
 Conformal first applies the same vertical change, then buffers each pre-operation source patch in XY. A sidewall band fills from the adjacent local surface to the source surface plus the requested amount on Front, or the source surface minus the amount on Back. Higher source patches take precedence. The band is clipped to the base boundary and may extend outside the selected mask footprint.
 
-The XY buffer uses the **same numeric amount** as relative Z: an amount of 1 means 1 relative Z unit and a 1 µm lateral buffer. There is no physical XY/Z thickness calibration. The 3D renderer separately scales relative Z by `max(base width, base height) / 100`; neither Section nor canonical geometry applies this visual scale. Consequently, a displayed sidewall width cannot be interpreted as a measured normal film thickness.
+The XY buffer uses the same relative-Z-to-XY scale as the 3D renderer: `max(base width, base height) / 100` µm per relative Z unit. For example, a 100000 µm base maps a Z Δ of 1 to a 1000 µm lateral conformal band. This is a display-consistent geometric scale, not a physical process calibration, so the sidewall width must not be interpreted as measured normal film thickness.
 
 Etch removes material vertically from the active face, crossing layer boundaries as necessary. It is not material-selective and has no lateral or conformal mode.
 
@@ -20,17 +20,19 @@ All fixtures use a 20 × 20 µm rectangular base, Z thickness 10 (`−5 … +5`)
 
 | Fixture         | Initial feature                         | Direct coating at probe | Conformal coating at probe | Front probe |
 | --------------- | --------------------------------------- | ----------------------- | -------------------------- | ----------- |
-| Step            | Left half raised to Z = 7               | Z = 5 … 6               | Z = 5 … 8                  | `(0.5, 0)`  |
-| Trench          | Central 4 µm strip etched to Z = 3      | Z = 3 … 4               | Z = 3 … 6                  | `(1.5, 0)`  |
-| Isolated island | Central 4 × 4 µm island raised to Z = 7 | Z = 5 … 6               | Z = 5 … 8                  | `(2.5, 0)`  |
+| Step            | Left half raised to Z = 7               | Z = 5 … 6               | Z = 5 … 8                  | `(0.1, 0)`  |
+| Trench          | Central 4 µm strip etched to Z = 3      | Z = 3 … 4               | Z = 3 … 6                  | `(1.9, 0)`  |
+| Isolated island | Central 4 × 4 µm island raised to Z = 7 | Z = 5 … 6               | Z = 5 … 8                  | `(2.1, 0)`  |
 
 Back fixtures mirror these intervals about Z = 0. Tests also check the upper face, far field, both island side directions, and the rounded corner outside the buffer.
 
-The Direct blanket volume is 400 µm² × relative Z in each fixture. Expected Conformal volumes are:
+The Direct blanket volume is 400 µm² × relative Z in each fixture. For the 20 × 20 µm fixture, the shared lateral scale is 0.2 µm per relative Z unit. Expected Conformal volumes are:
 
-- Step: 440, from a 1 × 20 µm sidewall strip with 2 extra Z units.
-- Trench: 480, from two such strips.
-- Island: `400 + 2 × (16 + π)`, within 0.05 of the polygonal circular-buffer approximation.
+- Step: 408, from a 0.2 × 20 µm sidewall strip with 2 extra Z units.
+- Trench: 416, from two such strips.
+- Island: `400 + 2 × (16 × 0.2 + π × 0.2²)`, within 0.05 of the polygonal circular-buffer approximation.
+
+A separate 100000 × 100000 µm regression locks the wafer-scale case: Z Δ = 1 must produce a 1000 µm lateral sidewall band. This specifically prevents the former bug where the sidewall existed mathematically as a 1 µm strip but disappeared at normal wafer-scale Section/3D views.
 
 Tests etch 1.5 units through a 2 × 2 µm area and verify a volume reduction of 6, including removal across material interfaces. Browser review projects additionally show a 6 × 8 µm etched area in the 3D and Section views.
 
