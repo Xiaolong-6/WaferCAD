@@ -270,7 +270,7 @@ function conformalSidewallStack(stack, layerId, targetLayerId, amount, face, sou
   return normalizeStack(out);
 }
 
-export function applyOperation(
+function applyOperationImpl(
   model,
   { type, name, targetLayerId, thickness, face = 'front', area, growth = 'direct' },
 ) {
@@ -321,6 +321,21 @@ export function applyOperation(
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };
+}
+
+export function applyOperation(model, params) {
+  const rollback = params?.growth === 'conformal' ? cloneModel(model) : null;
+  try {
+    return applyOperationImpl(model, params);
+  } catch (error) {
+    if (!rollback) throw error;
+    for (const key of Object.keys(model)) delete model[key];
+    Object.assign(model, rollback);
+    return {
+      changed: false,
+      error: `Conformal geometry failed safely: ${error?.message || 'unknown geometry error'}`,
+    };
+  }
 }
 
 export function modelBoundsZ(model) {

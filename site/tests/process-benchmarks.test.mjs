@@ -4,7 +4,7 @@ import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benc
 
 await loadGeometryKernel();
 const { applyOperation, createModel, relativeZToXYScale, surfaceZ } = await import('../model.js');
-const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty } =
+const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
   await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
@@ -164,11 +164,129 @@ test('wafer-scale circular trench receives a visible conformal sidewall band', (
     area: model.boundary,
     growth: 'conformal',
   });
+  assert.equal(coat.changed, true);
+  assert.ok(coat.layerId);
   const layerAt = (x) => stackAt(model, x).find((s) => s.layerId === coat.layerId);
   assert.equal(relativeZToXYScale(model), 1000);
   assert.deepEqual(layerAt(4500), { layerId: coat.layerId, z0: 4, z1: 7 });
   assert.deepEqual(layerAt(0), { layerId: coat.layerId, z0: 4, z1: 5 });
   assert.deepEqual(layerAt(5500), { layerId: coat.layerId, z0: 6, z1: 7 });
+});
+
+test('layered circular trench keeps conformal sidewalls after a later direct blanket', () => {
+  const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Layer 1',
+    thickness: 2,
+    area: model.boundary,
+    growth: 'direct',
+  });
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 2,
+    area: circleMulti(10000),
+  });
+  const conformal = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(conformal.changed, true);
+  assert.ok(conformal.layerId);
+  const direct = applyOperation(model, {
+    type: 'add',
+    name: 'Direct',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'direct',
+  });
+  const at = (x, layerId) => stackAt(model, x).find((s) => s.layerId === layerId);
+  assert.deepEqual(at(4500, conformal.layerId), {
+    layerId: conformal.layerId,
+    z0: 6,
+    z1: 9,
+  });
+  assert.deepEqual(at(4500, direct.layerId), {
+    layerId: direct.layerId,
+    z0: 9,
+    z1: 10,
+  });
+  assert.deepEqual(at(0, conformal.layerId), {
+    layerId: conformal.layerId,
+    z0: 6,
+    z1: 7,
+  });
+  assert.deepEqual(at(5500, conformal.layerId), {
+    layerId: conformal.layerId,
+    z0: 8,
+    z1: 9,
+  });
+});
+
+test('multi-hole layered wafer keeps conformal sidewalls around every etched opening', () => {
+  const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Layer 1',
+    thickness: 2,
+    area: model.boundary,
+    growth: 'direct',
+  });
+  const holes = [];
+  const centers = [-32000, -24000, -16000, -8000, 0, 8000, 16000, 24000, 32000];
+  for (const x of centers) for (const y of centers) holes.push(circleMulti(3500, 3500, 48, x, y));
+  assert.equal(holes.length, 81);
+  const etched = unionGeometries(holes);
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 2,
+    area: etched,
+  });
+  const conformal = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(conformal.changed, true);
+  assert.ok(conformal.layerId);
+  const at = (x, y = 0) => stackAt(model, x, y).find((s) => s.layerId === conformal.layerId);
+  assert.deepEqual(at(1500), { layerId: conformal.layerId, z0: 6, z1: 9 });
+  assert.deepEqual(at(0), { layerId: conformal.layerId, z0: 6, z1: 7 });
+  assert.deepEqual(at(2250), { layerId: conformal.layerId, z0: 8, z1: 9 });
+});
+
+test('Conformal geometry failure rolls back the model atomically', () => {
+  const model = createModel({ shape: 'rect', width: 100, height: 100, thickness: 10 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Step',
+    thickness: 2,
+    area: rectMulti(50, 100, -25, 0),
+  });
+  const before = structuredClone(model);
+  const originalUnion = globalThis.polygonClipping.union;
+  globalThis.polygonClipping.union = () => {
+    throw new Error('forced conformal geometry failure');
+  };
+  try {
+    const result = applyOperation(model, {
+      type: 'add',
+      name: 'Must roll back',
+      thickness: 1,
+      area: model.boundary,
+      growth: 'conformal',
+    });
+    assert.equal(result.changed, false);
+    assert.match(result.error, /Conformal geometry failed safely/);
+    assert.deepEqual(model, before);
+  } finally {
+    globalThis.polygonClipping.union = originalUnion;
+  }
 });
 
 test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {

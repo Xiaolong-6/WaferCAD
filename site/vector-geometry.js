@@ -63,6 +63,19 @@ export function unionGeometries(geometries) {
   return list.length ? normalizeMulti(pc.union(...list)) : [];
 }
 
+function unionGeometriesPairwise(geometries) {
+  let level = (geometries || []).map(normalizeMulti).filter((g) => g.length);
+  while (level.length > 1) {
+    const next = [];
+    for (let i = 0; i < level.length; i += 2) {
+      if (i + 1 >= level.length) next.push(level[i]);
+      else next.push(normalizeMulti(pc.union(level[i], level[i + 1])));
+    }
+    level = next;
+  }
+  return level[0] || [];
+}
+
 export function intersection(a, b) {
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
@@ -132,15 +145,22 @@ function segmentBand(a, b, radius) {
     dy = b[1] - a[1],
     len = Math.hypot(dx, dy);
   if (len < EPS) return circleAt(a, radius);
-  const nx = (-dy / len) * radius,
-    ny = (dx / len) * radius;
+  const ux = dx / len,
+    uy = dy / len,
+    nx = -uy * radius,
+    ny = ux * radius,
+    overlap = Math.max(EPS * 10, radius * 1e-6),
+    ax = a[0] - ux * overlap,
+    ay = a[1] - uy * overlap,
+    bx = b[0] + ux * overlap,
+    by = b[1] + uy * overlap;
   return [
     [
       closeRing([
-        [a[0] + nx, a[1] + ny],
-        [b[0] + nx, b[1] + ny],
-        [b[0] - nx, b[1] - ny],
-        [a[0] - nx, a[1] - ny],
+        [ax + nx, ay + ny],
+        [bx + nx, by + ny],
+        [bx - nx, by - ny],
+        [ax - nx, ay - ny],
       ]),
     ],
   ];
@@ -156,7 +176,7 @@ export function bufferPolyline(points, radius, segments = 28, closed = false) {
     if (Math.hypot(a[0] - b[0], a[1] - b[1]) > EPS) parts.push(segmentBand(b, a, radius));
   }
   for (const p of points) parts.push(circleAt(p, radius, segments));
-  return unionGeometries(parts);
+  return unionGeometriesPairwise(parts);
 }
 
 export function bufferMulti(geom, radius, segments = 28) {
