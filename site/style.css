@@ -1232,14 +1232,14 @@ canvas {
   }
 
   .three-view-tools {
-    gap: 1px;
+    gap: 0;
   }
 
   .three-control {
     min-width: 0;
-    padding-left: 2px;
-    padding-right: 2px;
-    font-size: 8px;
+    padding-left: 1px;
+    padding-right: 1px;
+    font-size: 7.5px;
   }
 
   .three-border-toggle input {
