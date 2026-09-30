@@ -8,6 +8,34 @@ function finitePoint(x, y) {
   return Number.isFinite(x) && Number.isFinite(y);
 }
 
+export function sectorSweepDegrees(startDeg, endDeg) {
+  const start = Number(startDeg),
+    end = Number(endDeg);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  const raw = end - start;
+  if (Math.abs(raw) < 1e-12) return 360;
+  const wrapped = ((raw % 360) + 360) % 360;
+  return wrapped < 1e-12 ? 360 : wrapped;
+}
+
+export function sectorBoundaryPoints(roi, segments = 96) {
+  const shape = normalizeRoi(roi);
+  if (!shape || shape.type !== 'sector') return [];
+  const sweep = sectorSweepDegrees(shape.startDeg, shape.endDeg);
+  if (!(sweep > 0)) return [];
+  const steps = Math.max(2, Math.ceil((Math.max(8, segments) * sweep) / 360));
+  const points = [[...shape.c]];
+  for (let i = 0; i <= steps; i++) {
+    const angle = ((shape.startDeg + (sweep * i) / steps) * Math.PI) / 180;
+    points.push([
+      shape.c[0] + Math.cos(angle) * shape.r,
+      shape.c[1] + Math.sin(angle) * shape.r,
+    ]);
+  }
+  points.push([...shape.c]);
+  return points;
+}
+
 export function normalizeRoi(roi) {
   if (!roi || typeof roi !== 'object') return null;
   if (roi.type === 'rect' && Array.isArray(roi.a) && Array.isArray(roi.b)) {
@@ -18,11 +46,17 @@ export function normalizeRoi(roi) {
     if (![x0, x1, y0, y1].every(Number.isFinite)) return null;
     return { type: 'rect', a: [x0, y0], b: [x1, y1] };
   }
-  if (roi.type === 'circle' && Array.isArray(roi.c)) {
+  if ((roi.type === 'circle' || roi.type === 'sector') && Array.isArray(roi.c)) {
     const x = Number(roi.c[0]),
       y = Number(roi.c[1]),
       radius = Math.abs(Number(roi.r));
     if (!finitePoint(x, y) || !Number.isFinite(radius)) return null;
+    if (roi.type === 'sector') {
+      const startDeg = Number(roi.startDeg),
+        endDeg = Number(roi.endDeg);
+      if (!Number.isFinite(startDeg) || !Number.isFinite(endDeg)) return null;
+      return { type: 'sector', c: [x, y], r: radius, startDeg, endDeg };
+    }
     return { type: 'circle', c: [x, y], r: radius };
   }
   return null;
@@ -32,7 +66,7 @@ export function roiAnchorPoint(roi, anchor = 'center') {
   const shape = normalizeRoi(roi);
   if (!shape) return null;
   const key = validAnchor(anchor);
-  if (shape.type === 'circle') {
+  if (shape.type === 'circle' || shape.type === 'sector') {
     const [cx, cy] = shape.c,
       r = shape.r;
     if (key === 'top-left') return [cx - r, cy + r];
@@ -87,7 +121,7 @@ export function rectRoiFromAnchor(width, height, anchor, x, y) {
   return { type: 'rect', a: [x0, y0], b: [x1, y1] };
 }
 
-export function circleRoiFromAnchor(radius, anchor, x, y) {
+function radialCenterFromAnchor(radius, anchor, x, y) {
   radius = Number(radius);
   x = Number(x);
   y = Number(y);
@@ -108,7 +142,20 @@ export function circleRoiFromAnchor(radius, anchor, x, y) {
     cx -= radius;
     cy += radius;
   }
-  return { type: 'circle', c: [cx, cy], r: radius };
+  return [cx, cy];
+}
+
+export function circleRoiFromAnchor(radius, anchor, x, y) {
+  const center = radialCenterFromAnchor(radius, anchor, x, y);
+  return center ? { type: 'circle', c: center, r: Number(radius) } : null;
+}
+
+export function sectorRoiFromAnchor(radius, startDeg, endDeg, anchor, x, y) {
+  const center = radialCenterFromAnchor(radius, anchor, x, y),
+    start = Number(startDeg),
+    end = Number(endDeg);
+  if (!center || !Number.isFinite(start) || !Number.isFinite(end)) return null;
+  return { type: 'sector', c: center, r: Number(radius), startDeg: start, endDeg: end };
 }
 
 export function translateRoi(roi, dx, dy) {
@@ -116,7 +163,8 @@ export function translateRoi(roi, dx, dy) {
   dx = Number(dx);
   dy = Number(dy);
   if (!shape || !finitePoint(dx, dy)) return shape;
-  if (shape.type === 'circle') return { ...shape, c: [shape.c[0] + dx, shape.c[1] + dy] };
+  if (shape.type === 'circle' || shape.type === 'sector')
+    return { ...shape, c: [shape.c[0] + dx, shape.c[1] + dy] };
   return {
     ...shape,
     a: [shape.a[0] + dx, shape.a[1] + dy],
@@ -131,13 +179,23 @@ export function roiContainsPoint(roi, point) {
     y = Number(point[1]);
   if (!finitePoint(x, y)) return false;
   if (shape.type === 'circle') return Math.hypot(x - shape.c[0], y - shape.c[1]) <= shape.r;
+  if (shape.type === 'sector') {
+    const dx = x - shape.c[0],
+      dy = y - shape.c[1];
+    if (Math.hypot(dx, dy) > shape.r) return false;
+    const sweep = sectorSweepDegrees(shape.startDeg, shape.endDeg);
+    if (!(sweep > 0)) return false;
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    const delta = ((angle - shape.startDeg) % 360 + 360) % 360;
+    return delta <= sweep + 1e-9;
+  }
   return x >= shape.a[0] && x <= shape.b[0] && y >= shape.a[1] && y <= shape.b[1];
 }
 
 export function roiHandlePoints(roi) {
   const shape = normalizeRoi(roi);
   if (!shape) return {};
-  if (shape.type === 'circle') {
+  if (shape.type === 'circle' || shape.type === 'sector') {
     const [cx, cy] = shape.c;
     const r = shape.r;
     return {
@@ -186,7 +244,7 @@ export function resizeRoiFromHandle(roi, handle, point) {
   const signY = Math.sign(py - fixed[1]) || (handle.includes('top') ? 1 : -1);
   const dragged = [fixed[0] + signX * side, fixed[1] + signY * side];
   return {
-    type: 'circle',
+    ...shape,
     c: [(fixed[0] + dragged[0]) / 2, (fixed[1] + dragged[1]) / 2],
     r: side / 2,
   };
