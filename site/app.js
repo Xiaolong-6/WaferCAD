@@ -20,15 +20,9 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import { downloadProject } from './project-io.js';
-import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
 import { createThreeView } from './three-view.js';
 import { sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
-import {
-  normalizeRoi,
-  sectorAngleHandlePoints,
-  sectorBoundaryPoints,
-  roiHandlePoints,
-} from './roi-editor.js';
+import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from './roi-editor.js';
 import {
   formatLengthInput,
   formatXY as formatXYValue,
@@ -36,7 +30,6 @@ import {
   roundMicronToNanometre,
   toMicron,
   unitMeta,
-  XY_UNITS,
 } from './units.js';
 import { minimumSegmentLength, zoomLimitForFeature } from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
@@ -48,16 +41,14 @@ import { createViewMaximizeController } from './controllers/view-maximize-contro
 import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
 import { createExportController } from './controllers/export-controller.js';
 import { createRoiController } from './controllers/roi-controller.js';
-import {
-  createLayerLegendController,
-  STRUCTURE_PALETTES,
-} from './controllers/layer-legend-controller.js';
+import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
 import { createBaseControlsController } from './controllers/base-controls-controller.js';
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
+import { createProjectStateController } from './controllers/project-state-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -1016,23 +1007,12 @@ function applyOp() {
   );
 }
 
-function buildProjectSnapshot(includeSnapshots = false) {
-  ensureHierarchy();
-  const project = {
-    format: 'WaferCAD-vector',
-    version: CURRENT_PROJECT_VERSION,
+const projectStateController = createProjectStateController({
+  ensureHierarchy,
+  getState: () => ({
     model,
-    layout: {
-      name: layout.name,
-      root: layout.root,
-      elements: layout.elements,
-      linework: layout.linework,
-      bounds: layout.bounds,
-      combos: layout.combos,
-      hierarchy: layout.hierarchy,
-      units: layout.units,
-    },
-    selectedLayerKeys: [...selectedLayerKeys],
+    layout,
+    selectedLayerKeys,
     activeCell,
     maskTransform,
     activeFace,
@@ -1040,68 +1020,46 @@ function buildProjectSnapshot(includeSnapshots = false) {
     roiAnchor,
     section,
     planViews,
-    display: {
-      xyUnit: xyDisplayUnit,
-      structurePalette: activeStructurePalette,
-      customStructurePalette,
-      threeOpacity,
-      threeShowBorders,
-    },
-  };
-  if (includeSnapshots) project.snapshots = snapshotManager.exportRecords();
-  return project;
-}
-
-function loadProjectSnapshot(project) {
-  setSectionEditEnabled(false);
-  model = project.model;
-  if (model.processRevision == null) {
-    model.processRevision = Math.max(0, (model.revision || 1) - 1);
-  }
-
-  layout = project.layout;
-  ensureHierarchy();
-  selectedLayerKeys = new Set(project.selectedLayerKeys);
-  activeCell = project.activeCell || layout.root || null;
-  expandedCells = new Set(activeCell ? [layout.root || activeCell] : []);
-  hoveredLayerKey = null;
-  maskTransform = project.maskTransform;
-  activeFace = project.activeFace;
-  roi = project.roi ? normalizeRoi(project.roi) : null;
-  roiAnchor = project.roiAnchor || 'center';
-  section = project.section;
-
-  if (project.display?.xyUnit in XY_UNITS) {
-    xyDisplayUnit = project.display.xyUnit;
-  }
-  if (project.display?.structurePalette && STRUCTURE_PALETTES[project.display.structurePalette]) {
-    activeStructurePalette = project.display.structurePalette;
-  }
-  customStructurePalette = Array.isArray(project.display?.customStructurePalette)
-    ? project.display.customStructurePalette
-    : null;
-  threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1));
-  threeShowBorders = Boolean(project.display?.threeShowBorders);
-  $('threeOpacityRange').value = String(threeOpacity);
-  $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
-  $('threeBorders').checked = threeShowBorders;
-
-  Object.assign(planViews.mask, project.planViews.mask);
-  Object.assign(planViews.main, project.planViews.main);
-  parsedLayout = null;
-  history = [];
-  future = [];
-  baseRevertSnapshot = null;
-}
-
-function isValidSnapshotState(state) {
-  try {
-    validateProjectFile(state);
-    return state.snapshots == null;
-  } catch {
-    return false;
-  }
-}
+    xyDisplayUnit,
+    activeStructurePalette,
+    customStructurePalette,
+    threeOpacity,
+    threeShowBorders,
+  }),
+  applyState: (next) => {
+    model = next.model;
+    layout = next.layout;
+    selectedLayerKeys = next.selectedLayerKeys;
+    activeCell = next.activeCell;
+    expandedCells = next.expandedCells;
+    hoveredLayerKey = next.hoveredLayerKey;
+    maskTransform = next.maskTransform;
+    activeFace = next.activeFace;
+    roi = next.roi;
+    roiAnchor = next.roiAnchor;
+    section = next.section;
+    if (next.xyDisplayUnit) xyDisplayUnit = next.xyDisplayUnit;
+    if (next.activeStructurePalette) activeStructurePalette = next.activeStructurePalette;
+    customStructurePalette = next.customStructurePalette;
+    threeOpacity = next.threeOpacity;
+    threeShowBorders = next.threeShowBorders;
+    Object.assign(planViews.mask, next.planViews.mask);
+    Object.assign(planViews.main, next.planViews.main);
+    parsedLayout = null;
+    history = [];
+    future = [];
+    baseRevertSnapshot = null;
+  },
+  getSnapshotRecords: () => snapshotManager.exportRecords(),
+  syncThreeControls: ({ threeOpacity: opacity, threeShowBorders: borders }) => {
+    $('threeOpacityRange').value = String(opacity);
+    $('threeOpacityValue').value = `${Math.round(opacity * 100)}%`;
+    $('threeBorders').checked = borders;
+  },
+  setSectionEditEnabled,
+});
+const { buildProjectSnapshot, loadProjectSnapshot, isValidSnapshotState } =
+  projectStateController;
 
 const snapshotManager = createSnapshotManager({
   capture: () => buildProjectSnapshot(false),
