@@ -185,12 +185,12 @@ test('legacy project migration adds current version and inspect-state defaults',
       state: snapshotState,
     },
   ];
-  source.version = 2;
+  source.version = 1;
   source.model.units.z = 'relative';
   delete source.roiAnchor;
   delete source.display.threeOpacity;
   delete source.display.threeShowBorders;
-  snapshotState.version = 2;
+  snapshotState.version = 1;
   snapshotState.model.units.z = 'relative';
   delete snapshotState.roiAnchor;
 
