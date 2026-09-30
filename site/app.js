@@ -2103,4 +2103,4 @@ updateOperationUI();
 syncTransformInputs();
 renderAll();
 fit3d();
-status('Ready. Create a base or import a GDS file.');
+status('Ready. Create a base or import a layout.');
