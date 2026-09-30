@@ -2434,11 +2434,7 @@ function bindUi() {
                 ]),
               )
             : {},
-        angleHandle = nearestNamedPoint(
-          screen,
-          angleHandles,
-          e.pointerType === 'touch' ? 24 : 14,
-        ),
+        angleHandle = nearestNamedPoint(screen, angleHandles, e.pointerType === 'touch' ? 24 : 14),
         handles = Object.fromEntries(
           Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
             name,
@@ -2510,11 +2506,7 @@ function bindUi() {
                 ]),
               )
             : {},
-        angleHandle = nearestNamedPoint(
-          screen,
-          angleHandles,
-          e.pointerType === 'touch' ? 24 : 14,
-        ),
+        angleHandle = nearestNamedPoint(screen, angleHandles, e.pointerType === 'touch' ? 24 : 14),
         handles = Object.fromEntries(
           Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
             name,

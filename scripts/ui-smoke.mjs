@@ -277,16 +277,11 @@ assert.equal(await page.locator('#roiEndAngle').inputValue(), '90');
 // Drag the yellow Start-angle handle from 0° to 270° and verify the numeric
 // editor follows the canvas interaction.
 await page.locator('#focusEditor > summary').click();
-await page.mouse.move(
-  sectorBox.x + sectorBox.width * 0.62,
-  sectorBox.y + sectorBox.height * 0.5,
-);
+await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sectorBox.height * 0.5);
 await page.mouse.down();
-await page.mouse.move(
-  sectorBox.x + sectorBox.width * 0.5,
-  sectorBox.y + sectorBox.height * 0.62,
-  { steps: 5 },
-);
+await page.mouse.move(sectorBox.x + sectorBox.width * 0.5, sectorBox.y + sectorBox.height * 0.62, {
+  steps: 5,
+});
 await page.mouse.up();
 await page.locator('#focusEditor').evaluate((details) => {
   details.open = true;
