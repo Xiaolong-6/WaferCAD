@@ -3,8 +3,7 @@ import test from 'node:test';
 import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel, relativeZToXYScale, surfaceZ } =
-  await import('../model.js');
+const { applyOperation, createModel, relativeZToXYScale, surfaceZ } = await import('../model.js');
 const { pointInMulti, rectMulti, intersection, isEmpty } = await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
