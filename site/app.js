@@ -1304,9 +1304,7 @@ function renderSection() {
       : 'Physical 1:1: X and Z use the same px/µm. Click for Auto fit.';
 
   const scaleLabel =
-    sectionScaleMode === 'auto'
-      ? `Z ×${Number(zExaggeration.toPrecision(3))}`
-      : '1:1';
+    sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
   $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
   $('sectionRange').textContent = `Z (${xyUnit().label}) ${formatXY(lo)} → ${formatXY(hi)}`;
 }
