@@ -30,6 +30,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Prettier preview
+        run: |
+          npx prettier --write site/tests/issue-11-3d-controls.test.mjs site/tests/project-file.test.mjs scripts/ui-smoke.mjs docs/DEVELOPMENT.md
+          git diff -- site/tests/issue-11-3d-controls.test.mjs site/tests/project-file.test.mjs scripts/ui-smoke.mjs docs/DEVELOPMENT.md
+
       - name: Format check
         run: npm run format:check
 
