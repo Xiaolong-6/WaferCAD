@@ -33,8 +33,10 @@ import {
   circleRoiFromAnchor,
   normalizeRoi,
   rectRoiFromAnchor,
+  sectorAngleHandlePoints,
   sectorBoundaryPoints,
   sectorRoiFromAnchor,
+  setSectorAngleFromPoint,
   resizeRoiFromHandle,
   roiAnchorPoint,
   roiContainsPoint,
@@ -1279,6 +1281,18 @@ function drawRoi(ctx, v) {
       ctx.fillRect(q[0] - 5, q[1] - 5, 10, 10);
       ctx.strokeRect(q[0] - 5, q[1] - 5, 10, 10);
     }
+    if (roi.type === 'sector') {
+      for (const point of Object.values(sectorAngleHandlePoints(roi))) {
+        const q = worldToCanvas(point, v);
+        ctx.beginPath();
+        ctx.arc(q[0], q[1], 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#f5c04a';
+        ctx.strokeStyle = '#8f6500';
+        ctx.lineWidth = 1;
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
   }
   ctx.restore();
 }
@@ -2411,18 +2425,34 @@ function bindUi() {
         mc.style.cursor = 'default';
         return;
       }
-      const handles = Object.fromEntries(
-        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
-          name,
-          worldToCanvas(point, v),
-        ]),
-      );
-      const handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
-      mc.style.cursor = handle
-        ? roiResizeCursor(handle)
-        : roiContainsPoint(roi, p)
-          ? 'move'
-          : 'default';
+      const angleHandles =
+          roi.type === 'sector'
+            ? Object.fromEntries(
+                Object.entries(sectorAngleHandlePoints(roi)).map(([name, point]) => [
+                  name,
+                  worldToCanvas(point, v),
+                ]),
+              )
+            : {},
+        angleHandle = nearestNamedPoint(
+          screen,
+          angleHandles,
+          e.pointerType === 'touch' ? 24 : 14,
+        ),
+        handles = Object.fromEntries(
+          Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
+            name,
+            worldToCanvas(point, v),
+          ]),
+        ),
+        handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
+      mc.style.cursor = angleHandle
+        ? 'grab'
+        : handle
+          ? roiResizeCursor(handle)
+          : roiContainsPoint(roi, p)
+            ? 'move'
+            : 'default';
       return;
     }
 
@@ -2436,6 +2466,13 @@ function bindUi() {
               r: Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]),
               ...(roiTool === 'sector' ? { startDeg: 0, endDeg: 90 } : {}),
             });
+      renderMask();
+      return;
+    }
+
+    if (drag.mode === 'angle') {
+      roi = setSectorAngleFromPoint(drag.original, drag.handle, p);
+      syncRoiEditor();
       renderMask();
       return;
     }
@@ -2464,14 +2501,34 @@ function bindUi() {
     if (roiTool) {
       drag = { mode: 'create', start: p };
     } else if (roi) {
-      const handles = Object.fromEntries(
-        Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
-          name,
-          worldToCanvas(point, v),
-        ]),
-      );
-      const handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
-      if (handle) {
+      const angleHandles =
+          roi.type === 'sector'
+            ? Object.fromEntries(
+                Object.entries(sectorAngleHandlePoints(roi)).map(([name, point]) => [
+                  name,
+                  worldToCanvas(point, v),
+                ]),
+              )
+            : {},
+        angleHandle = nearestNamedPoint(
+          screen,
+          angleHandles,
+          e.pointerType === 'touch' ? 24 : 14,
+        ),
+        handles = Object.fromEntries(
+          Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
+            name,
+            worldToCanvas(point, v),
+          ]),
+        ),
+        handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
+      if (angleHandle) {
+        drag = {
+          mode: 'angle',
+          handle: angleHandle,
+          original: structuredClone(roi),
+        };
+      } else if (handle) {
         const corner = roiHandlePoints(roi)[handle];
         drag = {
           mode: 'resize',
