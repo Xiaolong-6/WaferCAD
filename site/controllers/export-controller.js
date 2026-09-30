@@ -153,10 +153,7 @@ export function createExportController({
       if (!Array.isArray(element.points) || element.points.length < 2) continue;
       const points = element.points.map(maskPoint).map(map);
       const d = points
-        .map(
-          (point, index) =>
-            `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
-        )
+        .map((point, index) => `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`)
         .join('');
       const selected = selectedElement(element);
       body += `<path d="${d}" fill="none" stroke="${
@@ -172,8 +169,7 @@ export function createExportController({
       const d =
         points
           .map(
-            (point, index) =>
-              `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
+            (point, index) => `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
           )
           .join('') + 'Z';
       const key = layerKey(element.layer, element.datatype),
@@ -233,10 +229,7 @@ export function createExportController({
       plotTop = top + (innerHeight - plotHeight) / 2;
     }
 
-    const map = ([t, z]) => [
-      plotLeft + t * plotWidth,
-      plotTop + ((z1 - z) / zSpan) * plotHeight,
-    ];
+    const map = ([t, z]) => [plotLeft + t * plotWidth, plotTop + ((z1 - z) / zSpan) * plotHeight];
     let body = '';
 
     for (const contour of sectionContours(model, section.a, section.b)) {
@@ -267,9 +260,7 @@ export function createExportController({
 
     body += `<rect x="${svgNumber(plotLeft)}" y="${svgNumber(plotTop)}" width="${svgNumber(
       plotWidth,
-    )}" height="${svgNumber(
-      plotHeight,
-    )}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
+    )}" height="${svgNumber(plotHeight)}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
     body += `<text x="3" y="${svgNumber(
       plotTop + 7,
     )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">${formatXY(
