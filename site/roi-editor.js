@@ -18,6 +18,25 @@ export function sectorSweepDegrees(startDeg, endDeg) {
   return wrapped < 1e-12 ? 360 : wrapped;
 }
 
+function radialPoint(center, radius, angleDeg) {
+  const angle = (Number(angleDeg) * Math.PI) / 180,
+    rawCos = Math.cos(angle),
+    rawSin = Math.sin(angle),
+    cos =
+      Math.abs(rawCos) < 1e-12
+        ? 0
+        : Math.abs(Math.abs(rawCos) - 1) < 1e-12
+          ? Math.sign(rawCos)
+          : rawCos,
+    sin =
+      Math.abs(rawSin) < 1e-12
+        ? 0
+        : Math.abs(Math.abs(rawSin) - 1) < 1e-12
+          ? Math.sign(rawSin)
+          : rawSin;
+  return [center[0] + cos * radius, center[1] + sin * radius];
+}
+
 export function sectorBoundaryPoints(roi, segments = 96) {
   const shape = normalizeRoi(roi);
   if (!shape || shape.type !== 'sector') return [];
@@ -25,26 +44,41 @@ export function sectorBoundaryPoints(roi, segments = 96) {
   if (!(sweep > 0)) return [];
   const steps = Math.max(2, Math.ceil((Math.max(8, segments) * sweep) / 360));
   const points = [[...shape.c]];
-  for (let i = 0; i <= steps; i++) {
-    const angle = ((shape.startDeg + (sweep * i) / steps) * Math.PI) / 180,
-      rawCos = Math.cos(angle),
-      rawSin = Math.sin(angle),
-      cos =
-        Math.abs(rawCos) < 1e-12
-          ? 0
-          : Math.abs(Math.abs(rawCos) - 1) < 1e-12
-            ? Math.sign(rawCos)
-            : rawCos,
-      sin =
-        Math.abs(rawSin) < 1e-12
-          ? 0
-          : Math.abs(Math.abs(rawSin) - 1) < 1e-12
-            ? Math.sign(rawSin)
-            : rawSin;
-    points.push([shape.c[0] + cos * shape.r, shape.c[1] + sin * shape.r]);
-  }
+  for (let i = 0; i <= steps; i++)
+    points.push(radialPoint(shape.c, shape.r, shape.startDeg + (sweep * i) / steps));
   points.push([...shape.c]);
   return points;
+}
+
+export function sectorAngleHandlePoints(roi) {
+  const shape = normalizeRoi(roi);
+  if (!shape || shape.type !== 'sector') return {};
+  return {
+    start: radialPoint(shape.c, shape.r, shape.startDeg),
+    end: radialPoint(shape.c, shape.r, shape.endDeg),
+  };
+}
+
+export function setSectorAngleFromPoint(roi, handle, point) {
+  const shape = normalizeRoi(roi);
+  if (
+    !shape ||
+    shape.type !== 'sector' ||
+    !['start', 'end'].includes(handle) ||
+    !Array.isArray(point)
+  )
+    return shape;
+
+  const dx = Number(point[0]) - shape.c[0],
+    dy = Number(point[1]) - shape.c[1];
+  if (!finitePoint(dx, dy) || Math.hypot(dx, dy) <= 1e-12) return shape;
+
+  const raw = (Math.atan2(dy, dx) * 180) / Math.PI,
+    angle = ((raw % 360) + 360) % 360;
+  return {
+    ...shape,
+    ...(handle === 'start' ? { startDeg: angle } : { endDeg: angle }),
+  };
 }
 
 export function normalizeRoi(roi) {
