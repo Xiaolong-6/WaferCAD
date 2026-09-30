@@ -144,6 +144,7 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   roiDraft = null,
   roiAnchor = 'center';
 let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
+  sectionScaleMode = 'auto',
   sectionEditEnabled = false,
   sectionEditor = null,
   history = [],
@@ -1204,16 +1205,48 @@ function renderSection() {
   const c = $('sectionCanvas'),
     { ctx, w, h } = setupCanvas(c);
   ctx.clearRect(0, 0, w, h);
+
   const [lo, hi] = modelBoundsZ(model),
     pad = Math.max(1e-9, (hi - lo) * 0.08),
     z0 = lo - pad,
     z1 = hi + pad,
+    zSpan = Math.max(z1 - z0, 1e-12),
+    sectionSpan = Math.max(
+      Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]),
+      1e-12,
+    ),
     left = 27,
     right = 10,
     top = 10,
     bottom = 22,
     iw = w - left - right,
-    ih = h - top - bottom;
+    ih = h - top - bottom,
+    autoXScale = iw / sectionSpan,
+    autoZScale = ih / zSpan;
+
+  let plotLeft = left,
+    plotTop = top,
+    plotWidth = iw,
+    plotHeight = ih;
+
+  if (sectionScaleMode === 'physical') {
+    const scale = Math.min(autoXScale, autoZScale);
+    plotWidth = sectionSpan * scale;
+    plotHeight = zSpan * scale;
+    plotLeft = left + (iw - plotWidth) / 2;
+    plotTop = top + (ih - plotHeight) / 2;
+  }
+
+  const xScale = plotWidth / sectionSpan,
+    zScale = plotHeight / zSpan,
+    zExaggeration = zScale / xScale,
+    mapT = (t) => plotLeft + t * plotWidth,
+    mapZ = (z) => plotTop + ((z1 - z) / zSpan) * plotHeight;
+
+  c.dataset.scaleMode = sectionScaleMode;
+  c.dataset.xPxPerUm = String(xScale);
+  c.dataset.zPxPerUm = String(zScale);
+
   ctx.fillStyle = '#fbfcfd';
   ctx.fillRect(0, 0, w, h);
   for (const contour of sectionContours(model, section.a, section.b)) {
@@ -1223,7 +1256,7 @@ function renderSection() {
     for (const poly of contour.polys)
       for (const ring of poly) {
         ring.forEach(([t, z], i) => {
-          const point = [left + t * iw, top + ((z1 - z) / (z1 - z0)) * ih];
+          const point = [mapT(t), mapZ(z)];
           if (i === 0) ctx.moveTo(...point);
           else ctx.lineTo(...point);
         });
@@ -1233,37 +1266,48 @@ function renderSection() {
     ctx.fill('evenodd');
   }
 
-  // A physical sidewall can be far narrower than one screen pixel at wafer-scale
-  // Section zoom. Repaint only the tagged sidewall with the SAME material fill
-  // and no outline, so it stays legible while remaining visually continuous
-  // with the Direct-grown part of that layer.
+  // Auto mode keeps sub-pixel physical sidewalls legible. Physical 1:1 mode
+  // disables this screen-space widening so X and Z use the same px/µm scale.
   for (const slice of sectionSlices(model, section.a, section.b)) {
     if (slice.role !== 'conformal-sidewall') continue;
     const layer = layerById(model, slice.layerId);
     if (!layer) continue;
-    const x0 = left + slice.t0 * iw,
-      x1 = left + slice.t1 * iw,
+    const x0 = mapT(slice.t0),
+      x1 = mapT(slice.t1),
       center = (x0 + x1) / 2,
-      minWidth = 3,
+      minWidth = sectionScaleMode === 'auto' ? 3 : 0,
       sx0 = Math.min(x0, center - minWidth / 2),
       sx1 = Math.max(x1, center + minWidth / 2),
-      sy0 = top + ((z1 - slice.z1) / (z1 - z0)) * ih,
-      sy1 = top + ((z1 - slice.z0) / (z1 - z0)) * ih;
+      sy0 = mapZ(slice.z1),
+      sy1 = mapZ(slice.z0);
     ctx.fillStyle = layer.color;
     ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
   }
 
   ctx.strokeStyle = '#8995a1';
   ctx.lineWidth = 0.8;
-  ctx.strokeRect(left, top, iw, ih);
+  ctx.strokeRect(plotLeft, plotTop, plotWidth, plotHeight);
   ctx.fillStyle = '#707b86';
   ctx.font = '8px system-ui';
-  ctx.fillText(formatXY(z1), 3, top + 7);
-  ctx.fillText(formatXY(z0), 3, top + ih);
-  ctx.fillText('A', left, top + ih + 15);
-  ctx.fillText('B', left + iw - 7, top + ih + 15);
-  $('sectionMeta').textContent =
-    `${xyText(Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]))} span`;
+  ctx.fillText(formatXY(z1), 3, plotTop + 7);
+  ctx.fillText(formatXY(z0), 3, plotTop + plotHeight);
+  ctx.fillText('A', plotLeft, Math.min(h - 5, plotTop + plotHeight + 15));
+  ctx.fillText('B', plotLeft + plotWidth - 7, Math.min(h - 5, plotTop + plotHeight + 15));
+
+  const scaleButton = $('sectionScaleModeBtn');
+  scaleButton.textContent = sectionScaleMode === 'auto' ? 'Auto' : '1:1';
+  scaleButton.classList.toggle('active', sectionScaleMode === 'physical');
+  scaleButton.setAttribute('aria-pressed', String(sectionScaleMode === 'physical'));
+  scaleButton.title =
+    sectionScaleMode === 'auto'
+      ? 'Auto: X and Z fit independently. Click for physical 1:1 X:Z scale.'
+      : 'Physical 1:1: X and Z use the same px/µm. Click for Auto fit.';
+
+  const scaleLabel =
+    sectionScaleMode === 'auto'
+      ? `Z ×${Number(zExaggeration.toPrecision(3))}`
+      : '1:1';
+  $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
   $('sectionRange').textContent = `Z (${xyUnit().label}) ${formatXY(lo)} → ${formatXY(hi)}`;
 }
 
@@ -1714,6 +1758,15 @@ function bindUi() {
   $('growthMode').onchange = updateOperationUI;
   $('applyOperationBtn').onclick = applyOp;
   $('fit3dBtn').onclick = fit3d;
+  $('sectionScaleModeBtn').onclick = () => {
+    sectionScaleMode = sectionScaleMode === 'auto' ? 'physical' : 'auto';
+    renderSection();
+    status(
+      sectionScaleMode === 'auto'
+        ? 'Section scale: Auto fit (X and Z independently).'
+        : 'Section scale: physical 1:1 X:Z.',
+    );
+  };
   $('threeOpacityRange').oninput = () => {
     threeOpacity = Math.max(0.1, Math.min(1, Number($('threeOpacityRange').value) || 1));
     $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
