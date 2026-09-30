@@ -555,9 +555,6 @@ button:hover,
   grid-template-rows: 28px minmax(0, 1fr);
   overflow: hidden;
 }
-.view-panel#maskPanel {
-  grid-template-rows: 28px minmax(0, 1fr) 19px;
-}
 .view-head,
 .view-foot {
   display: flex;
@@ -1303,4 +1300,12 @@ canvas {
 
 .roi-handle-cursor {
   cursor: move;
+}
+
+.three-unavailable {
+  display: grid;
+  place-items: center;
+  color: #75818d;
+  font-size: 10px;
+  background: #f5f7f9;
 }
