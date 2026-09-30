@@ -1,4 +1,4 @@
-import { layerById, modelBoundsZ } from './model.js';
+import { layerById, modelBoundsZ, relativeZToXYScale } from './model.js';
 import { materialSolids, solidBorders } from './model-view-geometry.js';
 
 let THREE = null;
@@ -32,10 +32,6 @@ export function createThreeView({
   let ready = false;
   let frame = null;
   let interacting = false;
-
-  function zVisualScale(model) {
-    return Math.max(model.width, model.height) / 100;
-  }
 
   function scheduleFrame() {
     if (!renderer || frame != null) return;
@@ -170,7 +166,7 @@ export function createThreeView({
     if (!model) return;
 
     disposeGroup();
-    group.scale.z = zVisualScale(model);
+    group.scale.z = relativeZToXYScale(model);
 
     const clip = getClipGeometry(),
       inspection = getInspection() || {},
@@ -217,7 +213,7 @@ export function createThreeView({
     if (!model) return;
 
     const [lo, hi] = modelBoundsZ(model),
-      zScale = zVisualScale(model),
+      zScale = relativeZToXYScale(model),
       zSpan = (hi - lo) * zScale,
       size = Math.max(model.width, model.height, zSpan);
 
