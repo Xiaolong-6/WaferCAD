@@ -186,8 +186,10 @@ export function createThreeView({
         opacity,
         depthWrite: opacity >= 0.999,
       });
-      group.add(new THREE.Mesh(geometry, material));
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.renderOrder = opacity < 0.999 ? 1 : 0;
 
+      let edges = null;
       if (borders) {
         const edgeGeometry = new THREE.BufferGeometry();
         edgeGeometry.setAttribute(
@@ -198,9 +200,20 @@ export function createThreeView({
           color: 0x111820,
           transparent: true,
           opacity: 0.9,
+          depthWrite: false,
         });
-        group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
+        edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        // With transparent solids, render borders first and let every material
+        // layer alpha-blend over the border segments it covers. Hidden borders
+        // therefore respond continuously to Opacity instead of staying equally
+        // dark at every setting. Opaque solids keep the normal depth-tested
+        // mesh-then-border order.
+        edges.renderOrder = opacity < 0.999 ? 0 : 1;
       }
+
+      if (edges && opacity < 0.999) group.add(edges);
+      group.add(mesh);
+      if (edges && opacity >= 0.999) group.add(edges);
     }
 
     stats.textContent = clip ? 'ROI' : 'full model';
