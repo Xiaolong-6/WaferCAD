@@ -39,16 +39,16 @@ The project-IO/schema path is intentionally separated from `app.js`: project fil
 
 ## Deployment
 
-`.github/workflows/pages.yml` deploys `site/` to GitHub Pages when `main` changes.
+`.github/workflows/pages.yml` deploys `site/` to GitHub Pages when `main` changes. The deploy job repeats the Quality checks and Chromium/product regression before publishing, so a failing editor build is not released.
 
-There is no build step.
+There is no application build step.
 
 ## Current design contracts
 
 1. XY geometry remains vector.
 2. GDS XY is converted to canonical µm from the file's `UNITS` record.
-3. The global XY display unit converts only presentation/input values; it must never rescale stored geometry.
-4. Z stays relative.
+3. The global XYZ display/input unit converts presentation values only; it must never rescale stored geometry.
+4. X, Y and Z are stored as physical micrometre coordinates; view-only Z exaggeration must never feed back into process geometry.
 5. View zoom/pan must never modify geometry.
 6. Mask alignment transform is explicit and defaults to identity.
 7. Cells define hierarchy scope; Layers is global.
