@@ -165,7 +165,7 @@ test('Conformal Grow only starts from exposed target, and ROI clips render geome
     growth: 'conformal',
   });
   assert.deepEqual(
-    stackAt(model, 2.5).find((s) => s.layerId === seed.layerId),
+    stackAt(model, 2 + relativeZToXYScale(model) / 2).find((s) => s.layerId === seed.layerId),
     { layerId: seed.layerId, z0: 5, z1: 8 },
   );
   assert.equal(stackAt(model, 5).length, 1);
