@@ -234,7 +234,7 @@ await page.mouse.down();
 await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6, { steps: 4 });
 await page.mouse.up();
 await page.waitForTimeout(50);
-assert.deepEqual(errors, [], 'Sector ROI creation must not raise a browser error.');
+assert.deepEqual(errors, [], 'Rectangle ROI creation must not raise a browser error.');
 assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
 await page.locator('#focusEditor').evaluate((details) => {
   details.open = true;
@@ -256,7 +256,12 @@ await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sector
   steps: 4,
 });
 await page.mouse.up();
-await page.locator('#focusEditor > summary').click();
+await page.waitForTimeout(50);
+assert.deepEqual(errors, [], 'Sector ROI creation must not raise a browser error.');
+assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
+await page.locator('#focusEditor').evaluate((details) => {
+  details.open = true;
+});
 await page.locator('#roiEditor:not([hidden])').waitFor();
 assert.equal((await page.locator('#roiShapeLabel').textContent()).trim(), 'Sector');
 assert.equal(await page.locator('#roiStartAngle').inputValue(), '0');
