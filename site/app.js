@@ -51,6 +51,7 @@ import {
   createEmptyLayout,
   createProjectStateController,
 } from './controllers/project-state-controller.js';
+import { createPlanViewController } from './controllers/plan-view-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
