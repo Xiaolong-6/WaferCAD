@@ -4,14 +4,8 @@ import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benc
 
 await loadGeometryKernel();
 const { applyOperation, createModel, relativeZToXYScale, surfaceZ } = await import('../model.js');
-const {
-  circleMulti,
-  pointInMulti,
-  rectMulti,
-  intersection,
-  isEmpty,
-  unionGeometries,
-} = await import('../vector-geometry.js');
+const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
+  await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
 function stackAt(model, x, y = 0) {
@@ -254,8 +248,7 @@ test('multi-hole layered wafer keeps conformal sidewalls around every etched ope
     area: model.boundary,
     growth: 'conformal',
   });
-  const at = (x, y = 0) =>
-    stackAt(model, x, y).find((s) => s.layerId === conformal.layerId);
+  const at = (x, y = 0) => stackAt(model, x, y).find((s) => s.layerId === conformal.layerId);
   assert.deepEqual(at(1500), { layerId: conformal.layerId, z0: 6, z1: 9 });
   assert.deepEqual(at(0), { layerId: conformal.layerId, z0: 6, z1: 7 });
   assert.deepEqual(at(2500), { layerId: conformal.layerId, z0: 8, z1: 9 });
