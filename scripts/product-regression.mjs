@@ -232,6 +232,31 @@ async function loadProject(page, project, name) {
   );
 }
 
+async function checkSectionSeams(page, project) {
+  const { modelBoundsZ } = await import('../site/model.js');
+  const [lo, hi] = modelBoundsZ(project.model);
+  const pad = Math.max(1.5, (hi - lo) * 0.08);
+  // Z=0 is uninterrupted substrate in every benchmark, including after etching.
+  // Inspect actual canvas pixels across the old column boundaries at each DPR.
+  const colors = await page.evaluate(
+    ({ lo, hi, pad }) => {
+      const canvas = document.querySelector('#sectionCanvas');
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const width = canvas.width / dpr,
+        height = canvas.height / dpr;
+      const row = Math.round((10 + ((hi + pad) / (hi - lo + 2 * pad)) * (height - 32)) * dpr);
+      const start = Math.ceil((27 + (width - 37) * 0.1) * dpr);
+      const end = Math.floor((27 + (width - 37) * 0.9) * dpr);
+      const pixels = canvas.getContext('2d').getImageData(start, row, end - start, 1).data;
+      const unique = new Set();
+      for (let i = 0; i < pixels.length; i += 4) unique.add([...pixels.slice(i, i + 4)].join(','));
+      return [...unique];
+    },
+    { lo, hi, pad },
+  );
+  assert.equal(colors.length, 1, `false Section seams: ${colors.join(' / ')}`);
+}
+
 async function checkROI(page, name) {
   const benchmark = await processBenchmark('island', 'conformal');
   const project = projectForBenchmark(benchmark);
@@ -363,6 +388,7 @@ try {
         );
         await loadProject(page, project, `${kind}-${growth}`);
         await capture(page, `${name}-${kind}-${growth}`);
+        await checkSectionSeams(page, project);
         await checkLayout(page);
         if (name === 'phone') {
           await page.locator('#sectionCanvas').scrollIntoViewIfNeeded();
@@ -381,6 +407,7 @@ try {
           await page.mouse.up();
           await page.waitForTimeout(400);
           await capture(page, `${name}-${kind}-${growth}-back`);
+          await checkSectionSeams(page, back);
         }
         const etched = structuredClone(project);
         const { applyOperation } = await import('../site/model.js');
@@ -397,6 +424,7 @@ try {
         );
         await loadProject(page, etched, `${kind}-${growth}-etch`);
         await capture(page, `${name}-${kind}-${growth}-etch`);
+        await checkSectionSeams(page, etched);
         await checkLayout(page);
         if (name === 'phone') {
           await page.locator('#sectionCanvas').scrollIntoViewIfNeeded();

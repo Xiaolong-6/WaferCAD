@@ -11,7 +11,6 @@ import {
   modelBoundsZ,
   recolorLayer,
   renameLayer,
-  surfacePatches,
   surfaceSegment,
   surfaceZ,
 } from './model.js';
@@ -29,7 +28,7 @@ import { downloadProject, readProjectFile } from './project-io.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
 import { createThreeView } from './three-view.js';
 import { createSectionEditor } from './section-editor.js';
-import { sectionSlices } from './model-view-geometry.js';
+import { sectionContours, surfaceGroups } from './model-view-geometry.js';
 import {
   circleRoiFromAnchor,
   normalizeRoi,
@@ -1140,7 +1139,7 @@ function renderMain() {
   $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
   ctx.clearRect(0, 0, w, h);
   drawBaseOutline(ctx, v);
-  const patches = surfacePatches(model, activeFace);
+  const patches = surfaceGroups(model, activeFace);
   for (const patch of patches) {
     const layer = layerById(model, patch.layerId);
     if (!layer) continue;
@@ -1196,18 +1195,24 @@ function renderSection() {
     ih = h - top - bottom;
   ctx.fillStyle = '#fbfcfd';
   ctx.fillRect(0, 0, w, h);
-  for (const seg of sectionSlices(model, section.a, section.b)) {
-    const layer = layerById(model, seg.layerId);
+  for (const contour of sectionContours(model, section.a, section.b)) {
+    const layer = layerById(model, contour.layerId);
     if (!layer) continue;
-    const x0 = left + seg.t0 * iw,
-      x1 = left + seg.t1 * iw,
-      yy0 = top + ((z1 - seg.z1) / (z1 - z0)) * ih,
-      yy1 = top + ((z1 - seg.z0) / (z1 - z0)) * ih;
+    ctx.beginPath();
+    for (const poly of contour.polys)
+      for (const ring of poly) {
+        ring.forEach(([t, z], i) => {
+          const point = [left + t * iw, top + ((z1 - z) / (z1 - z0)) * ih];
+          if (i === 0) ctx.moveTo(...point);
+          else ctx.lineTo(...point);
+        });
+        ctx.closePath();
+      }
     ctx.fillStyle = layer.color;
-    ctx.fillRect(x0, yy0, Math.max(0.7, x1 - x0), yy1 - yy0);
+    ctx.fill('evenodd');
     ctx.strokeStyle = 'rgba(40,50,60,.18)';
     ctx.lineWidth = 0.55;
-    ctx.strokeRect(x0, yy0, Math.max(0.7, x1 - x0), yy1 - yy0);
+    ctx.stroke();
   }
   ctx.strokeStyle = '#8995a1';
   ctx.lineWidth = 0.8;

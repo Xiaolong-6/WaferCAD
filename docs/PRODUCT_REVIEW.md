@@ -49,9 +49,9 @@ CI uploads this review with the tested static application as an artifact. Screen
 
 ## Completed review, 2026-09-30
 
-The final local run passed Quality (63 tests plus the self-test), the original UI smoke including CDN failure, and the product regression with 94 captures and no page errors. All capture groups were visually inspected, with full-size inspection of the A/B, mobile controls, ROI, and scientific comparison cases.
+The final local run passed Quality (71 tests plus the self-test), the original UI smoke including CDN failure, and the product regression with 94 captures and no page errors. All capture groups were visually inspected, with full-size inspection of the A/B, mobile controls, ROI, and scientific comparison cases.
 
-Visual findings fixed during the review were covered endpoints, clipped header controls, cramped mobile base inputs and tabs, clipped ROI/opacity popovers, canvas stretching after layout changes, overlapping/clipped axis labels, and an undersized 3D camera fit. Process checks additionally identified rounded Z grouping in the 3D renderer; exact interval grouping now preserves distinct surfaces.
+Visual findings fixed during the review were covered endpoints, clipped header controls, cramped mobile base inputs and tabs, clipped ROI/opacity popovers, canvas stretching after layout changes, overlapping/clipped axis labels, and an undersized 3D camera fit. Process checks additionally identified rounded Z grouping in the 3D renderer; exact interval grouping now preserves distinct surfaces. A reported Section screenshot also exposed artificial vertical lines inside continuous substrate and coating. Main and Section now draw unioned visible contours; 3D builds each material boundary without internal prism faces or edges. Actual substrate pixels are checked across former seams, with geometry tests preserving true interfaces, steps, holes and disconnected islands.
 
 Representative final captures:
 

@@ -38,7 +38,9 @@ Tests etch 1.5 units through a 2 × 2 µm area and verify a volume reduction of 
 
 `site/tests/process-benchmarks.test.mjs` checks both faces, material intervals, non-overlapping region partitions, stack ordering, coating volumes, etch volume, exposed-target Grow, ROI render-only behavior, and independent Section/3D interval agreement.
 
-`site/model-view-geometry.js` derives Section slices and 3D extrusion groups from the canonical model. Exact Z values form group identities; the former eight-decimal grouping could combine distinct Z intervals. Adjacent polygons with the same material and Z interval are unioned before extrusion to avoid artificial internal seams.
+`site/model-view-geometry.js` derives Section slices and 3D extrusion groups from the canonical model. Exact Z values form group identities; the former eight-decimal grouping could combine distinct Z intervals. The renderer additionally sweeps exact Z slabs per material and unions the footprint at each interval. Horizontal faces come only from differences between adjacent footprints; border lines come from those faces and genuine side corners. This removes internal surfaces and prism edges even when adjacent columns have different Z intervals. Section unions rectangles by material, while Main unions patches by material and surface height, preserving actual steps and material interfaces.
+
+`site/tests/material-boundaries.test.mjs` verifies partition-independent outlines, material identity throughout each cross-section, absence of internal 3D caps, coating volume, holes, separated islands, and render-only ROI clipping. The browser regression samples a continuous substrate row across former Section seams at each viewport/DPR.
 
 `scripts/product-regression.mjs` opens the generated projects through the real project-file input, renders them with Chromium and Three.js, and saves Front/Back, Direct/Conformal, and Etch screenshots. The report includes reopenable `.wafercad` fixtures.
 

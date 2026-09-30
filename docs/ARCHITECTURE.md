@@ -60,7 +60,7 @@ Owns explicit A/B handle interaction, fixed CSS-pixel targets, grab offsets, poi
 
 ### `site/model-view-geometry.js`
 
-Derives pure Section slices and exact-Z 3D extrusion groups from the canonical region-stack model. Same-interval polygons are unioned to remove internal extrusion seams; ROI clipping leaves the model unchanged.
+Derives Section material contours, same-material/same-height Main surface groups, and 3D material boundaries from the canonical region-stack model. Exact-Z slabs union each material footprint; only footprint differences produce horizontal faces and border lines. Computation partitions are not visible interfaces. ROI clipping leaves the model unchanged.
 
 ### `site/vector-geometry.js`
 
