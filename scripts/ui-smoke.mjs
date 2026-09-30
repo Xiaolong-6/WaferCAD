@@ -19,18 +19,60 @@ const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 
 await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
-await page.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
-  null,
-  { timeout: 30000 },
-);
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
+assert.equal(await page.locator('.app-shell').count(), 0);
 assert.match(
   await page.locator('#welcomeScreen').textContent(),
   /Mask[\s\S]*Process[\s\S]*Inspect/,
 );
 await page.locator('#welcomeEmptyBtn').click();
-assert.equal(await page.locator('#welcomeScreen').isHidden(), true);
+await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await page.waitForLoadState('networkidle');
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await page.locator('#welcomeScreen').count(), 0);
+assert.equal(await page.locator('.app-shell').count(), 1);
+
+// Navigation semantics are checked in isolated pages so Back/Reload cannot
+// perturb the long-lived editor page used by the rest of this smoke suite.
+const navigationPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const navigationErrors = [];
+navigationPage.on('pageerror', (error) => navigationErrors.push(error.message));
+await navigationPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await navigationPage.locator('#welcomeEmptyBtn').click();
+await navigationPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await navigationPage.waitForLoadState('networkidle');
+await navigationPage.goBack({ waitUntil: 'networkidle' });
+assert.equal(await navigationPage.locator('#welcomeScreen').isVisible(), true);
+assert.equal(await navigationPage.locator('.app-shell').count(), 0);
+assert.deepEqual(navigationErrors, []);
+await navigationPage.close();
+
+const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const refreshErrors = [];
+refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));
+await refreshPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await refreshPage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  null,
+  { timeout: 30000 },
+);
+await refreshPage.reload({ waitUntil: 'networkidle' });
+await refreshPage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await refreshPage.locator('#welcomeScreen').count(), 0);
+assert.equal(await refreshPage.locator('.app-shell').count(), 1);
+assert.deepEqual(refreshErrors, []);
+await refreshPage.close();
 
 // Settings owns project controls and XY units.
 await page.locator('#settingsTab').click();
@@ -368,7 +410,10 @@ await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => {
 const degraded = await degradedContext.newPage();
 const degradedErrors = [];
 degraded.on('pageerror', (error) => degradedErrors.push(error.message));
-await degraded.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+await degraded.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'domcontentloaded',
+  timeout: 30000,
+});
 await degraded.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
@@ -376,9 +421,6 @@ await degraded.waitForFunction(
   null,
   { timeout: 30000 },
 );
-if (await degraded.locator('#welcomeScreen').isVisible()) {
-  await degraded.locator('#welcomeEmptyBtn').click();
-}
 assert.ok(blockedThreeRequests > 0);
 assert.equal(
   (await degraded.locator('#threeStats').textContent()).trim(),
