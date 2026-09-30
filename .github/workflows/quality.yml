@@ -31,7 +31,12 @@ jobs:
         run: npm run lint
 
       - name: Format check
-        run: npm run format:check
+        run: |
+          if ! npm run format:check; then
+            npx prettier --write site/app.js site/controllers/export-controller.js site/controllers/layer-legend-controller.js site/controllers/mask-browser-controller.js
+            git diff -- site/app.js site/controllers/export-controller.js site/controllers/layer-legend-controller.js site/controllers/mask-browser-controller.js
+            exit 1
+          fi
 
       - name: Geometry and project-format tests
         run: npm test
