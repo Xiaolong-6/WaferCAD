@@ -31,12 +31,7 @@ jobs:
         run: npm run lint
 
       - name: Format check
-        run: |
-          if ! npm run format:check; then
-            npx prettier --write site/controllers/view-maximize-controller.js site/style.css site/tests/controllers.test.mjs
-            git diff -- site/controllers/view-maximize-controller.js site/style.css site/tests/controllers.test.mjs
-            exit 1
-          fi
+        run: npm run format:check
 
       - name: Geometry and project-format tests
         run: npm test
