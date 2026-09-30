@@ -24,10 +24,7 @@ test('footer exposes repository and exact deployed commit links', () => {
   const repoLink = html.indexOf('href="https://github.com/Xiaolong-6/WaferCAD"');
   const commitLink = html.indexOf('id="buildCommit"');
   assert.ok(repoLink >= 0 && commitLink > repoLink);
-  assert.match(
-    buildController,
-    /repositoryUrl = 'https:\/\/github\.com\/Xiaolong-6\/WaferCAD'/,
-  );
+  assert.match(buildController, /repositoryUrl = 'https:\/\/github\.com\/Xiaolong-6\/WaferCAD'/);
   assert.match(buildController, /host\.href = `\$\{repositoryUrl\}\/commit\/\$\{commit\}`/);
 });
 
