@@ -241,6 +241,7 @@ await page.locator('#focusEditor > summary').click();
 
 // Sector ROI starts as a circle-derived 0°→90° wedge and supports wrapped ranges.
 await page.locator('#focusEditor > summary').click();
+await page.locator('#clearRoiBtn').click();
 await page.locator('.roi-tool[data-tool="sector"]').click();
 await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
 await page.mouse.down();
@@ -255,6 +256,7 @@ await page.locator('#roiStartAngle').fill('300');
 await page.locator('#roiStartAngle').press('Tab');
 await page.locator('#roiEndAngle').fill('60');
 await page.locator('#roiEndAngle').press('Tab');
+await page.locator('#focusEditor > summary').click();
 
 // SVG exports and in-page maximize controls are wired for all 2D views.
 for (const [button, filename] of [
