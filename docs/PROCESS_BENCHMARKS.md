@@ -4,13 +4,13 @@ These benchmarks verify the current geometric contract. They do not validate a d
 
 ## Coordinates and model scope
 
-XY is stored in µm. Z is relative. The model consists of non-overlapping XY regions with ordered material intervals in Z. It represents vertical steps and trenches, without arbitrary overhangs or a full solid surface solver.
+X, Y and Z are stored in µm. The model consists of non-overlapping XY regions with ordered physical material intervals in Z. It represents vertical steps and trenches, without arbitrary overhangs or a full solid surface solver.
 
 Direct adds the requested Z amount on the local exposed face inside the operation footprint. Grow requires the target material to be exposed on that face.
 
-Conformal is evaluated in two stages. Stage 1 performs the same vertical change as Direct inside the selected Mask / Invert / Whole-face area. Stage 2 re-reads the newly exposed coating surface, finds its step boundaries, offsets those boundaries outward in XY by the requested Z Δ numeric amount, and fills the vertical interval back to the adjacent lower surface on Front (or higher surface on Back). The sidewall uses the same layer id as Stage 1, so normalization merges both pieces into one coating.
+Conformal is evaluated in two stages. Stage 1 performs the same physical Z-thickness change as Direct inside the selected Mask / Invert / Whole-face area. Stage 2 re-reads the newly exposed coating surface, finds its step boundaries, offsets those boundaries outward in XY by the same physical thickness, and fills the vertical interval back to the adjacent lower surface on Front (or higher surface on Back). The sidewall uses the same layer id as Stage 1, so normalization merges both pieces into one coating.
 
-The lateral offset uses the same numeric amount as Z Δ in the current 2.5D model: Z Δ = 1 produces a 1 µm XY normal offset. Z is still labelled relative, so this is an explicit geometric convention rather than a calibrated physical thickness. The 3D renderer's much larger Z exaggeration is display-only and is never fed back into process geometry. Section may give tagged sidewall intervals a minimum screen-space width for legibility without changing the saved geometry.
+The lateral offset equals the physical Z thickness: Z = 1 µm produces a 1 µm XY normal offset. Section and 3D may exaggerate Z for visibility, but that display scaling is never fed back into process geometry.
 
 Etch removes material vertically from the active face, crossing layer boundaries as necessary. It is not material-selective and has no lateral or conformal mode.
 
@@ -26,17 +26,17 @@ All fixtures use a 20 × 20 µm rectangular base, Z thickness 10 (`−5 … +5`)
 
 Back fixtures mirror these intervals about Z = 0. Tests also check the upper face, far field, both island side directions, and the rounded corner outside the buffer.
 
-The Direct blanket volume is 400 µm² × relative Z in each fixture. With Z Δ = 1, the lateral normal offset is also 1 µm. Expected Conformal volumes are:
+The Direct blanket volume is 400 µm² × Z thickness in each fixture. With Z = 1 µm, the lateral normal offset is also 1 µm. Expected Conformal volumes are:
 
 - Step: 440.
 - Trench: 480.
 - Island: `400 + 2 × (16 + π)`, within 0.05 of the polygonal circular-buffer approximation.
 
-A separate 100000 × 100000 µm regression verifies that the same Z Δ = 1 still produces only a 1 µm XY offset on a wafer-scale model. This prevents the earlier failure mode where the renderer's Z exaggeration produced ~1000 µm-wide rings around ordinary mask openings.
+A separate 100000 × 100000 µm regression verifies that the same Z = 1 µm still produces only a 1 µm XY offset on a wafer-scale model. This prevents the earlier failure mode where the renderer's Z exaggeration produced ~1000 µm-wide rings around ordinary mask openings.
 
 A multi-opening wafer fixture also etches an array of circular openings through a blanket layer before applying Conformal. This protects the dense/repeated-mask path: boundary buffering must complete for many closed rings and must leave a sidewall coating around each opening. The fixture was added after repeated circular mask geometry exposed a polygon-clipping degeneracy in the former capsule-union buffer construction.
 
-Tests etch 1.5 units through a 2 × 2 µm area and verify a volume reduction of 6, including removal across material interfaces. Browser review projects additionally show a 6 × 8 µm etched area in the 3D and Section views.
+Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 µm³, including removal across material interfaces. Browser review projects additionally show a 6 × 8 µm etched area in the 3D and Section views.
 
 ## Permanent verification
 
