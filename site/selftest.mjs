@@ -13,14 +13,8 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
-const {
-  applyOperation,
-  createModel,
-  layerById,
-  recolorLayer,
-  renameLayer,
-  surfaceSegment,
-} = modelApi;
+const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
+  modelApi;
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
 
 function regionAt(model, point) {
