@@ -71,11 +71,9 @@ export function createProjectStateController({
       model.processRevision = Math.max(0, (model.revision || 1) - 1);
     }
 
-    const xyDisplayUnit =
-        project.display?.xyUnit in XY_UNITS ? project.display.xyUnit : undefined,
+    const xyDisplayUnit = project.display?.xyUnit in XY_UNITS ? project.display.xyUnit : undefined,
       activeStructurePalette =
-        project.display?.structurePalette &&
-        STRUCTURE_PALETTES[project.display.structurePalette]
+        project.display?.structurePalette && STRUCTURE_PALETTES[project.display.structurePalette]
           ? project.display.structurePalette
           : undefined,
       threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1)),
@@ -87,7 +85,9 @@ export function createProjectStateController({
       selectedLayerKeys: new Set(project.selectedLayerKeys),
       activeCell: project.activeCell || project.layout.root || null,
       expandedCells: new Set(
-        project.activeCell || project.layout.root ? [project.layout.root || project.activeCell] : [],
+        project.activeCell || project.layout.root
+          ? [project.layout.root || project.activeCell]
+          : [],
       ),
       hoveredLayerKey: null,
       maskTransform: project.maskTransform,
