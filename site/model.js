@@ -304,8 +304,7 @@ function applyOperationImpl(
 
     const lateralAmount = amount * relativeZToXYScale(model);
     const coversWholeBoundary = isEmpty(difference(model.boundary, active));
-    const sidewallSources =
-      coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources;
+    const sidewallSources = coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources;
     for (const source of sidewallSources) {
       const expanded = intersection(bufferMulti(source.geom, lateralAmount, 32), model.boundary);
       const sidewallBand = difference(expanded, source.geom);
