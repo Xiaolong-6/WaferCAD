@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { convertXY, formatXY, fromMicron, toMicron, XY_UNITS } from '../units.js';
+import {
+  convertXY,
+  formatLengthInput,
+  formatXY,
+  fromMicron,
+  roundMicronToNanometre,
+  toMicron,
+  XY_UNITS,
+} from '../units.js';
 
 test('XY unit table keeps canonical micron scale', () => {
   assert.equal(XY_UNITS.nm.toMicron, 0.001);
