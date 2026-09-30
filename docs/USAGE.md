@@ -49,13 +49,13 @@ Use the wheel or − / + / Fit controls to change the view. View fitting does no
 
 ## 5. Limit 3D rendering with an ROI
 
-Open **ROI** in the Mask view, then choose **Rect** or **Circle** and drag once to create the region.
+Open **ROI** in the Mask view, then choose **Rect**, **Circle**, or **Sector** and drag once to create the region. Sector is circle-based: after drawing the radius, enter **Start °** and **End °** to define the angular range. Wrapped ranges are supported, for example 300° → 60°.
 
-After creation, drag inside the ROI to reposition it or use the four corner handles to resize it. The ROI editor also exposes width/height or radius, a reference point, and X/Y coordinates for exact input.
+After creation, drag inside the ROI to reposition it or use the four corner handles to resize it. The ROI editor exposes width/height or radius, a reference point, X/Y coordinates, and sector angles for exact input.
 
-Changing Reference changes the coordinate readout without moving or resizing the ROI. Circle corner resize keeps a circular shape and follows the pointer across the fixed corner.
+Changing Reference changes the coordinate readout without moving or resizing the ROI. Circle and Sector corner resize keep a circular radius and follow the pointer across the fixed corner.
 
-The ROI affects 3D rendering only. The full model is preserved.
+The ROI affects 3D rendering only. The full model is preserved. If a ROI is active, **GLB** exports the currently clipped 3D content; clearing ROI exports the full model.
 
 ## 6. Apply an operation
 
@@ -94,13 +94,17 @@ Layer identity is stored separately from the visible name, so renaming or recolo
 
 Main can display the front or back surface.
 
-Use **A–B** to open the coordinate panel. Click **Drag A/B** to highlight the existing A/B handles, then drag either endpoint directly. **Done** locks the endpoints; the panel remains open until its collapse button is used. On narrow screens the controls appear below Main.
+Use **A–B** to toggle the coordinate panel. Click **Drag A/B** to highlight the existing A/B handles, then drag either endpoint directly. **Done** locks the endpoints; click the same **A–B** button again to close the panel. On narrow screens the controls appear below Main.
 
 Coordinates and Section update while dragging. Grab offsets are preserved, and dragging can continue outside the canvas. Escape cancels the current drag; when idle it exits edit mode. A focused handle also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
 
 Double-click Main to fit the view. **Fit** in 3D frames the full model for the current panel aspect ratio.
 
-Use **Settings → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm.
+Each scientific view has **Max**. It expands Main, Mask, 3D, or Section to the available browser workspace without opening a new window; the button changes to **Restore**, and Escape also restores the normal layout.
+
+Main, Mask, and Section A–B provide **SVG** export. The 3D view provides **GLB** and **PNG**: GLB contains physical geometry in glTF metre units (WaferCAD µm are converted by 1e-6), while PNG captures the current 3D camera at 3× resolution.
+
+Use **Settings → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm); imported geometry and internal calculation results are not globally quantized.
 
 ## 9. Snapshots
 
