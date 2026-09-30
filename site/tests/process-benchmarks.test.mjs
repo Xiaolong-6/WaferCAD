@@ -232,9 +232,10 @@ test('multi-hole layered wafer keeps conformal sidewalls around every etched ope
     growth: 'direct',
   });
   const holes = [];
-  for (const x of [-30000, -15000, 0, 15000, 30000])
-    for (const y of [-30000, -15000, 0, 15000, 30000])
-      if (Math.hypot(x, y) < 42000) holes.push(circleMulti(4000, 4000, 48, x, y));
+  const centers = [-32000, -24000, -16000, -8000, 0, 8000, 16000, 24000, 32000];
+  for (const x of centers)
+    for (const y of centers) holes.push(circleMulti(3500, 3500, 48, x, y));
+  assert.equal(holes.length, 81);
   const etched = unionGeometries(holes);
   applyOperation(model, {
     type: 'etch',
@@ -251,7 +252,7 @@ test('multi-hole layered wafer keeps conformal sidewalls around every etched ope
   const at = (x, y = 0) => stackAt(model, x, y).find((s) => s.layerId === conformal.layerId);
   assert.deepEqual(at(1500), { layerId: conformal.layerId, z0: 6, z1: 9 });
   assert.deepEqual(at(0), { layerId: conformal.layerId, z0: 6, z1: 7 });
-  assert.deepEqual(at(2500), { layerId: conformal.layerId, z0: 8, z1: 9 });
+  assert.deepEqual(at(2250), { layerId: conformal.layerId, z0: 8, z1: 9 });
 });
 
 test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
