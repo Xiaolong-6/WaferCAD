@@ -215,8 +215,16 @@ export function parseGDS(arrayBuffer) {
 
 export function flattenGDS(parsed, rootName) {
   const out = [],
-    linework = [];
+    linework = [],
+    warnings = [];
+  const warningSet = new Set();
   let visitedInstances = 0;
+
+  function warn(message) {
+    if (warningSet.has(message)) return;
+    warningSet.add(message);
+    warnings.push(message);
+  }
 
   function consumeBudget(count = 1) {
     visitedInstances += count;
@@ -228,9 +236,17 @@ export function flattenGDS(parsed, rootName) {
   }
 
   function visit(name, matrix, stack = []) {
-    if (stack.includes(name) || stack.length > 32) return;
+    if (stack.includes(name)) {
+      throw new Error(`Recursive GDS/OASIS hierarchy detected at cell "${name}".`);
+    }
+    if (stack.length > 32) {
+      throw new Error('Layout hierarchy exceeds the safe depth limit of 32 references.');
+    }
     const cell = parsed.cells.get(name);
-    if (!cell) return;
+    if (!cell) {
+      warn(`Referenced layout cell "${name}" is missing; that instance was skipped.`);
+      return;
+    }
     consumeBudget();
     for (const e of cell.elements) {
       if (e.kind === 'polygon') {
@@ -311,6 +327,7 @@ export function flattenGDS(parsed, rootName) {
       (a, b) => a.cell.localeCompare(b.cell) || a.layer - b.layer || a.datatype - b.datatype,
     ),
     units: parsed.units || { xy: 'DBU', dbuToMicron: 1, hasPhysicalUnits: false },
+    warnings,
   };
 }
 

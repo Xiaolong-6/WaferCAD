@@ -117,6 +117,103 @@ function validateStack(stack, path, layerIds) {
   });
 }
 
+function geometryKernel() {
+  const kernel = globalThis.polygonClipping;
+  if (!kernel) throw new Error('Project geometry validation requires polygon-clipping.');
+  return kernel;
+}
+
+function ringArea(ring) {
+  let sum = 0;
+  for (let i = 1; i < ring.length; i++) {
+    const a = ring[i - 1];
+    const b = ring[i];
+    sum += a[0] * b[1] - b[0] * a[1];
+  }
+  return sum / 2;
+}
+
+function multiArea(geom) {
+  let total = 0;
+  for (const polygon of geom || []) {
+    if (!polygon.length) continue;
+    let area = Math.abs(ringArea(polygon[0]));
+    for (let i = 1; i < polygon.length; i++) area -= Math.abs(ringArea(polygon[i]));
+    total += Math.max(0, area);
+  }
+  return total;
+}
+
+function geometryBounds(geom) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const polygon of geom || [])
+    for (const ring of polygon || [])
+      for (const [x, y] of ring) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+function validateModelGeometry(model) {
+  const pc = geometryKernel();
+  const boundaryBounds = geometryBounds(model.boundary);
+  const dimensionTolerance = Math.max(1e-9, model.width, model.height) * 1e-9;
+
+  if (
+    Math.abs(boundaryBounds.width - model.width) > dimensionTolerance ||
+    Math.abs(boundaryBounds.height - model.height) > dimensionTolerance
+  ) {
+    fail('model.boundary', 'bounds do not match model width/height.');
+  }
+  if (model.shape === 'circle' && Math.abs(model.width - model.height) > dimensionTolerance) {
+    fail('model.height', 'must equal width for a circular base.');
+  }
+
+  const areaTolerance = Math.max(1e-18, model.width * model.height * 1e-15);
+  const entries = model.regions
+    .map((region, index) => ({ region, index, bounds: geometryBounds(region.geom) }))
+    .sort((a, b) => a.bounds.minX - b.bounds.minX);
+  const active = [];
+
+  try {
+    for (const current of entries) {
+      const outside = pc.difference(current.region.geom, model.boundary);
+      if (multiArea(outside) > areaTolerance) {
+        fail(`model.regions[${current.index}].geom`, 'extends outside model.boundary.');
+      }
+
+      for (let i = active.length - 1; i >= 0; i--) {
+        if (active[i].bounds.maxX <= current.bounds.minX) active.splice(i, 1);
+      }
+      for (const previous of active) {
+        if (
+          previous.bounds.maxY <= current.bounds.minY ||
+          current.bounds.maxY <= previous.bounds.minY
+        ) {
+          continue;
+        }
+        const overlap = pc.intersection(previous.region.geom, current.region.geom);
+        if (multiArea(overlap) > areaTolerance) {
+          fail(
+            `model.regions[${current.index}].geom`,
+            `overlaps model.regions[${previous.index}].geom.`,
+          );
+        }
+      }
+      active.push(current);
+    }
+  } catch (error) {
+    if (String(error?.message || '').startsWith('Invalid project:')) throw error;
+    fail('model geometry', `cannot be validated: ${error.message}`);
+  }
+}
+
 function validateModel(model, budget) {
   assertObject(model, 'model');
   if (model.kernel !== 'vector-2.5d-v1') fail('model.kernel', 'is not supported.');
@@ -130,6 +227,7 @@ function validateModel(model, budget) {
   if (units.z !== 'relative') fail('model.units.z', 'must be relative.');
 
   validateMultiPolygon(model.boundary, 'model.boundary', budget);
+  if (model.boundary.length === 0) fail('model.boundary', 'must not be empty.');
 
   const layers = assertArray(model.layers, 'model.layers', LIMITS.layers);
   if (layers.length === 0) fail('model.layers', 'must contain at least one layer.');
@@ -146,8 +244,12 @@ function validateModel(model, budget) {
     if (regionIds.has(id)) fail(`${path}.id`, 'must be unique.');
     regionIds.add(id);
     validateMultiPolygon(region.geom, `${path}.geom`, budget);
+    if (region.geom.length === 0) fail(`${path}.geom`, 'must not be empty.');
     validateStack(region.stack, `${path}.stack`, layerIds);
+    if (region.stack.length === 0) fail(`${path}.stack`, 'must not be empty.');
   });
+
+  validateModelGeometry(model);
 
   assertInteger(model.nextLayerId, 'model.nextLayerId', { min: 1 });
   assertInteger(model.nextRegionId, 'model.nextRegionId', { min: 1 });

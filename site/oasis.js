@@ -2,6 +2,18 @@ const MAGIC = '%SEMI-OASIS\r\n';
 const MAGIC_BYTES = new TextEncoder().encode(MAGIC);
 const ASCII = new TextDecoder('ascii');
 const MAX_EXPANDED_ELEMENTS_PER_CELL = 120000;
+export const MAX_OASIS_CBLOCK_BYTES = 128 * 1024 * 1024;
+
+export function assertOasisBlockSize(byteLength, maxBytes = MAX_OASIS_CBLOCK_BYTES) {
+  if (!Number.isSafeInteger(byteLength) || byteLength < 0) {
+    throw new Error('OASIS CBLOCK uncompressed size is invalid.');
+  }
+  if (byteLength > maxBytes) {
+    throw new Error(
+      `OASIS CBLOCK expands beyond the ${Math.round(maxBytes / (1024 * 1024))} MB safety limit.`,
+    );
+  }
+}
 
 const CTRAPEZOID_COEFFICIENTS = [
   [
@@ -577,14 +589,42 @@ function ctrapezoidPoints(type, width, height) {
   return points;
 }
 
-async function inflateRaw(bytes) {
+async function inflateRaw(bytes, expectedSize) {
   if (typeof DecompressionStream !== 'function') {
     throw new Error('Compressed OASIS blocks are not supported by this browser.');
   }
 
   async function inflate(format) {
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(format));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+    const reader = stream.getReader();
+    const chunks = [];
+    let total = 0;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        assertOasisBlockSize(total);
+        if (total > expectedSize) {
+          throw new Error(
+            `OASIS CBLOCK expanded beyond its declared size of ${expectedSize} bytes.`,
+          );
+        }
+        chunks.push(value);
+      }
+    } catch (error) {
+      await reader.cancel(error).catch(() => {});
+      throw error;
+    }
+
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      out.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return out;
   }
 
   try {
@@ -1108,6 +1148,7 @@ export async function parseOAS(arrayBuffer) {
         if (id === 34) {
           const compressionType = input.uint();
           const uncompressedSize = input.uint();
+          assertOasisBlockSize(uncompressedSize);
           const compressedSize = input.uint();
           const compressed = input.take(compressedSize);
 
@@ -1115,7 +1156,7 @@ export async function parseOAS(arrayBuffer) {
             throw new Error('Unsupported OASIS CBLOCK compression type ' + compressionType + '.');
           }
 
-          const expanded = await inflateRaw(compressed);
+          const expanded = await inflateRaw(compressed, uncompressedSize);
           if (expanded.length !== uncompressedSize) {
             throw new Error(
               'OASIS CBLOCK size mismatch: expected ' +

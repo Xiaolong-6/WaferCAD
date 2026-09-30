@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { parseLayoutFile } from './layout-io.js';
+import { assertLayoutByteLength, parseLayoutFile } from './layout-io.js';
 import { KLAYOUT_SAMPLES, sampleById } from './sample-layouts.js';
 import {
   applyOperation,
@@ -523,11 +523,14 @@ function applyImportedLayout(imported, displayName) {
 
   const units = layout.units?.xy || 'µm';
   const emptyNote =
-    layout.elements.length || layout.linework.length
-      ? ''
-      : ' This is a valid layout with no renderable mask geometry.';
+      layout.elements.length || layout.linework.length
+        ? ''
+        : ' This is a valid layout with no renderable mask geometry.',
+    warningNote = layout.warnings?.length
+      ? ` ${layout.warnings.length} unresolved cell reference${layout.warnings.length === 1 ? '' : 's'} skipped.`
+      : '';
   status(
-    `${displayName} (${imported.format}): XY imported in ${units} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.${emptyNote}`,
+    `${displayName} (${imported.format}): XY imported in ${units} at native scale; ${layout.elements.length} area objects; ${layout.linework.length} zero-width line objects ignored for operations.${emptyNote}${warningNote}`,
   );
 }
 
@@ -1676,6 +1679,7 @@ function bindUi() {
     const f = e.target.files[0];
     if (!f) return;
     try {
+      assertLayoutByteLength(f.size);
       status(`Reading ${f.name}…`);
       await importLayoutBuffer(await f.arrayBuffer(), f.name, f.name);
     } catch (err) {

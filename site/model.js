@@ -278,10 +278,21 @@ export function applyOperation(
   if (type === 'grow' && !layerById(model, targetLayerId))
     return { changed: false, error: 'Target layer is unavailable.' };
 
+  let growSources = null;
+  if (type === 'grow') {
+    growSources = conformalSourcePatches(model, active, face, type, targetLayerId);
+    if (!growSources.length) {
+      return {
+        changed: false,
+        error: 'Target layer is not exposed in the selected area on the active face.',
+      };
+    }
+  }
+
   if (type === 'etch') {
     splitByArea(model, active, (stack) => mutateStack(stack, { type, amount, face }));
   } else if (growth === 'conformal') {
-    const sources = conformalSourcePatches(model, active, face, type, targetLayerId);
+    const sources = growSources || conformalSourcePatches(model, active, face, type, targetLayerId);
 
     splitByArea(model, active, (stack) =>
       mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
