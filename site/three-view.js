@@ -1,5 +1,5 @@
 import { layerById, modelBoundsZ } from './model.js';
-import { intersection, isEmpty } from './vector-geometry.js';
+import { extrusionGroups } from './model-view-geometry.js';
 
 let THREE = null;
 let OrbitControls = null;
@@ -145,29 +145,11 @@ export function createThreeView({
     group.scale.z = zVisualScale(model);
 
     const clip = getClipGeometry(),
-      groups = new Map(),
       inspection = getInspection() || {},
       opacity = Math.max(0.1, Math.min(1, Number(inspection.opacity) || 1)),
       borders = Boolean(inspection.borders);
 
-    for (const region of model.regions) {
-      const geom = clip ? intersection(region.geom, clip) : region.geom;
-      if (isEmpty(geom)) continue;
-      for (const segment of region.stack) {
-        const key = `${segment.layerId}|${segment.z0.toFixed(8)}|${segment.z1.toFixed(8)}`;
-        if (!groups.has(key)) {
-          groups.set(key, {
-            layerId: segment.layerId,
-            z0: segment.z0,
-            z1: segment.z1,
-            polys: [],
-          });
-        }
-        groups.get(key).polys.push(...geom);
-      }
-    }
-
-    for (const item of groups.values()) {
+    for (const item of extrusionGroups(model, clip)) {
       const shapes = item.polys.map(shapeFromPolygon).filter(Boolean);
       if (!shapes.length) continue;
 
@@ -219,8 +201,17 @@ export function createThreeView({
     camera.near = Math.max(0.1, size / 10000);
     camera.far = Math.max(1e6, size * 50);
     camera.updateProjectionMatrix();
-    camera.position.set(size * 1.05, -size * 1.15, size * 0.82);
+    const halfFov = (camera.fov * Math.PI) / 360;
+    const limitingAngle = Math.min(halfFov, Math.atan(Math.tan(halfFov) * camera.aspect));
+    const radius = Math.hypot(model.width / 2, model.height / 2, zSpan / 2);
+    const distance = (radius / Math.sin(limitingAngle)) * 1.1;
     controls.target.set(0, 0, ((lo + hi) / 2) * zScale);
+    camera.position.copy(
+      new THREE.Vector3(1.05, -1.15, 0.82)
+        .normalize()
+        .multiplyScalar(distance)
+        .add(controls.target),
+    );
     controls.update();
     axesHelper.scale.setScalar(Math.max(0.6, size / 100));
     scheduleFrame();

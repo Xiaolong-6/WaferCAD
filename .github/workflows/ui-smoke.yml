@@ -7,6 +7,8 @@ on:
     paths:
       - "site/**"
       - "scripts/ui-smoke.mjs"
+      - "scripts/product-regression.mjs"
+      - "scripts/process-benchmarks.mjs"
       - ".github/workflows/ui-smoke.yml"
   push:
     branches:
@@ -14,6 +16,8 @@ on:
     paths:
       - "site/**"
       - "scripts/ui-smoke.mjs"
+      - "scripts/product-regression.mjs"
+      - "scripts/process-benchmarks.mjs"
       - ".github/workflows/ui-smoke.yml"
   workflow_dispatch:
 
@@ -35,7 +39,7 @@ jobs:
       - name: Install browser test dependencies
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
-          npm install --no-save --package-lock=false playwright@1.55.0
+          npm install --no-save --package-lock=false playwright@1.55.0 three@0.179.1
           npx playwright install --with-deps chromium
 
       - name: Start WaferCAD
@@ -52,3 +56,23 @@ jobs:
 
       - name: Run browser interaction smoke
         run: node scripts/ui-smoke.mjs
+
+      - name: Run product interaction and visual regression
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/product-regression.mjs
+
+      - name: Package tested preview
+        if: always()
+        run: |
+          mkdir -p test-results/product-review/preview
+          cp -R site/. test-results/product-review/preview/
+          node -e 'require("node:fs").writeFileSync("test-results/product-review/preview/build-info.json", JSON.stringify({commit:process.env.GITHUB_SHA}))'
+
+      - name: Upload product review and preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wafercad-product-review-${{ github.sha }}
+          path: test-results/product-review
+          retention-days: 14

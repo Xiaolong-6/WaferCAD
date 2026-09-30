@@ -1,0 +1,172 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { applyOperation, createModel, surfaceZ } = await import('../model.js');
+const { pointInMulti, rectMulti, intersection, isEmpty } = await import('../vector-geometry.js');
+const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
+
+function stackAt(model, x, y = 0) {
+  return model.regions.find((r) => pointInMulti([x, y], r.geom))?.stack || [];
+}
+function coatAt(benchmark, x, y = 0) {
+  return stackAt(benchmark.model, x, y).find((s) => s.layerId === benchmark.layerId);
+}
+
+function area(geom) {
+  const ringArea = (ring) =>
+    Math.abs(
+      ring
+        .slice(1)
+        .reduce((sum, point, i) => sum + ring[i][0] * point[1] - point[0] * ring[i][1], 0) / 2,
+    );
+  return geom.reduce(
+    (sum, poly) =>
+      sum + ringArea(poly[0]) - poly.slice(1).reduce((holes, ring) => holes + ringArea(ring), 0),
+    0,
+  );
+}
+
+function volume(model, layerId = null) {
+  return extrusionGroups(model)
+    .filter((s) => !layerId || s.layerId === layerId)
+    .reduce((sum, s) => sum + area(s.polys) * (s.z1 - s.z0), 0);
+}
+function assertCoat(benchmark, x, expected, face, y = 0) {
+  const segment = coatAt(benchmark, x, y);
+  assert.ok(segment);
+  const actual = face === 'front' ? [segment.z0, segment.z1] : [-segment.z1, -segment.z0];
+  assert.deepEqual(actual, expected);
+}
+
+for (const face of ['front', 'back']) {
+  for (const kind of ['step', 'trench', 'island']) {
+    test(`${kind} ${face}: Direct/Conformal top, sidewall and far field`, async () => {
+      const direct = await processBenchmark(kind, 'direct', face);
+      const conformal = await processBenchmark(kind, 'conformal', face);
+      const sideX = kind === 'step' ? 0.5 : kind === 'trench' ? 1.5 : 2.5;
+      const lower = kind === 'trench' ? 3 : 5;
+      const upper = kind === 'trench' ? 5 : 7;
+      assert.ok(Math.abs(volume(direct.model, direct.layerId) - 400) < 1e-8);
+      const conformalVolume =
+        kind === 'step' ? 440 : kind === 'trench' ? 480 : 400 + 2 * (16 + Math.PI);
+      assert.ok(Math.abs(volume(conformal.model, conformal.layerId) - conformalVolume) < 0.05);
+      assertCoat(direct, sideX, [lower, lower + 1], face);
+      assertCoat(conformal, sideX, [lower, upper + 1], face);
+      assertCoat(
+        conformal,
+        kind === 'step' ? 3 : kind === 'trench' ? 0 : 5,
+        [lower, lower + 1],
+        face,
+      );
+      assertCoat(
+        conformal,
+        kind === 'step' ? -3 : kind === 'trench' ? 5 : 0,
+        [upper, upper + 1],
+        face,
+      );
+      if (kind === 'island') {
+        assertCoat(conformal, 0, [5, 8], face, 2.5);
+        // The corner buffer is round, not the expanded bounding box.
+        assertCoat(conformal, 2.8, [5, 6], face, 2.8);
+      }
+      for (const benchmark of [direct, conformal]) {
+        const { model, section } = benchmark;
+        // Partition and stack invariants guard against overlapping materials.
+        for (let i = 0; i < model.regions.length; i++) {
+          const region = model.regions[i];
+          for (let j = i + 1; j < model.regions.length; j++)
+            assert.equal(isEmpty(intersection(region.geom, model.regions[j].geom)), true);
+          for (let j = 1; j < region.stack.length; j++)
+            assert.ok(region.stack[j].z0 >= region.stack[j - 1].z1 - 1e-9);
+        }
+        const slices = sectionSlices(model, section.a, section.b);
+        const extrusions = extrusionGroups(model);
+        // Independently compare material intervals rendered by Section and 3D.
+        for (const x of [-8, -3, -1.5, 0, 0.5, 1.5, 2.5, 5, 8]) {
+          const t = (x + 9) / 18;
+          const fromSection = slices
+            .filter((s) => t > s.t0 && t < s.t1)
+            .map((s) => [s.layerId, s.z0, s.z1])
+            .sort();
+          const from3D = extrusions
+            .filter((s) => pointInMulti([x, 0], s.polys))
+            .map((s) => [s.layerId, s.z0, s.z1])
+            .sort();
+          // Avoid exact region boundaries in this point-sampling comparison.
+          if (!slices.some((s) => Math.abs(t - s.t0) < 1e-9 || Math.abs(t - s.t1) < 1e-9))
+            assert.deepEqual(fromSection, from3D);
+        }
+        // A directional etch must remove the coating and underlying material in order.
+        const before = surfaceZ(stackAt(model, sideX), face);
+        const beforeVolume = volume(model);
+        applyOperation(model, {
+          type: 'etch',
+          thickness: 1.5,
+          face,
+          area: rectMulti(2, 2, sideX, 0),
+        });
+        assert.equal(
+          surfaceZ(stackAt(model, sideX), face),
+          before + (face === 'front' ? -1.5 : 1.5),
+        );
+        assert.ok(Math.abs(volume(model) - (beforeVolume - 6)) < 1e-7);
+      }
+    });
+  }
+}
+
+test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const seed = applyOperation(model, { type: 'add', thickness: 2, area: rectMulti(4, 4) });
+  applyOperation(model, {
+    type: 'grow',
+    targetLayerId: seed.layerId,
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.deepEqual(
+    stackAt(model, 2.5).find((s) => s.layerId === seed.layerId),
+    { layerId: seed.layerId, z0: 5, z1: 8 },
+  );
+  assert.equal(stackAt(model, 5).length, 1);
+  const before = structuredClone(model);
+  assert.ok(extrusionGroups(model, rectMulti(2, 2)).length);
+  assert.deepEqual(model, before);
+  applyOperation(model, { type: 'add', thickness: 1, area: model.boundary });
+  const buried = structuredClone(model);
+  assert.equal(
+    applyOperation(model, {
+      type: 'grow',
+      targetLayerId: seed.layerId,
+      thickness: 1,
+      area: model.boundary,
+      growth: 'conformal',
+    }).changed,
+    false,
+  );
+  assert.deepEqual(model, buried);
+});
+
+test('3D groups retain distinct Z intervals below the old eight-decimal grouping threshold', () => {
+  const model = createModel({ shape: 'rect', width: 2, height: 2, thickness: 10 });
+  model.regions = [
+    { geom: rectMulti(1, 2, -0.5, 0), stack: [{ layerId: 'base', z0: -5, z1: 5.000000001 }] },
+    { geom: rectMulti(1, 2, 0.5, 0), stack: [{ layerId: 'base', z0: -5, z1: 5.000000002 }] },
+  ];
+  const groups = extrusionGroups(model);
+  assert.equal(groups.length, 2);
+  assert.deepEqual(
+    groups.map((s) => s.z1),
+    [5.000000001, 5.000000002],
+  );
+});
+
+test('through-trench void remains empty: current Conformal needs an adjacent material stack', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  applyOperation(model, { type: 'etch', thickness: 10, area: rectMulti(4, 20) });
+  applyOperation(model, { type: 'add', thickness: 1, area: model.boundary, growth: 'conformal' });
+  assert.deepEqual(stackAt(model, 1.5), []);
+});

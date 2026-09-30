@@ -60,3 +60,35 @@ test('ROI exposes four corner handles and resizes from a fixed opposite corner',
   assert.deepEqual(roiHandlePoints(resizedCircle)['bottom-right'], [5, -5]);
   assert.equal(resizedCircle.r, 7);
 });
+
+test('circle resize follows the pointer when it crosses the opposite corner', () => {
+  const roi = circleRoiFromAnchor(0.005, 'center', 0, 0);
+  const fixed = roiHandlePoints(roi)['bottom-right'];
+  const next = resizeRoiFromHandle(roi, 'top-left', [0.009, -0.01]);
+  roiHandlePoints(next)['top-left'].forEach((value, i) =>
+    assert.ok(Math.abs(value - fixed[i]) < 1e-15),
+  );
+  assert.equal(next.r, 0.0025);
+  roiHandlePoints(next)['bottom-right'].forEach((value, i) =>
+    assert.ok(Math.abs(value - [0.01, -0.01][i]) < 1e-15),
+  );
+});
+
+test('nm-scale geometry survives every reference-point round trip', () => {
+  for (const type of ['rect', 'circle']) {
+    const shape =
+      type === 'rect'
+        ? rectRoiFromAnchor(0.012345, 0.008765, 'center', 0.025123, -0.017456)
+        : circleRoiFromAnchor(0.004321, 'center', 0.025123, -0.017456);
+    for (const anchor of anchors) {
+      const [x, y] = roiAnchorPoint(shape, anchor);
+      const next =
+        type === 'rect'
+          ? rectRoiFromAnchor(shape.b[0] - shape.a[0], shape.b[1] - shape.a[1], anchor, x, y)
+          : circleRoiFromAnchor(shape.r, anchor, x, y);
+      const expected = type === 'rect' ? [...shape.a, ...shape.b] : [...shape.c, shape.r];
+      const actual = type === 'rect' ? [...next.a, ...next.b] : [...next.c, next.r];
+      actual.forEach((value, i) => assert.ok(Math.abs(value - expected[i]) < 1e-15));
+    }
+  }
+});

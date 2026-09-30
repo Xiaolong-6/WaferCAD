@@ -74,3 +74,9 @@ The formatter ignores `legacy/` and `site/vendor/`. Vendored code must not be re
 ## CI gates
 
 Pull requests run the fast **Quality** gate and the permanent Chromium **UI smoke**. Parser/import changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
+
+## Product and process regression
+
+See [Product review](PRODUCT_REVIEW.md) for the Chromium screenshot/interaction matrix, generated review artifacts, and reproduction commands. The permanent UI smoke job also runs this suite with real WebGL using the pinned Three.js package.
+
+See [Process benchmarks](PROCESS_BENCHMARKS.md) for analytic step/trench/island geometry, both faces, Direct/Conformal/Grow/Etch checks, and explicit approximation boundaries. These tests run under `npm test`.

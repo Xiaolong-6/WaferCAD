@@ -15,5 +15,6 @@ test('Main exposes explicit A–B controls, locked dragging, and double-click Fi
   assert.match(html, /id="sectionBy"/);
   assert.match(app, /sectionEditEnabled = false/);
   assert.match(app, /main\.addEventListener\('dblclick'/);
-  assert.match(app, /nearestNamedPoint\(pointer, handles, 18\)/);
+  assert.match(app, /createSectionEditor/);
+  assert.match(html, /id="sectionEndpointHandles"/);
 });

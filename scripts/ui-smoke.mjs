@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
-const browser = await chromium.launch({ headless: true });
+const launchOptions = {
+  headless: true,
+  ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
+};
+const browser = await chromium.launch(launchOptions);
 const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
 const errors = [];
 
@@ -34,11 +38,14 @@ await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
 
-// A-B panel can be opened/collapsed. Endpoint dragging is intentionally not a CI gate yet.
+// A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
 const abPanel = page.locator('#sectionCoordsPanel');
 assert.equal(await abPanel.isHidden(), true);
 await page.locator('#sectionControlsBtn').click();
 assert.equal(await abPanel.isVisible(), true);
+await page.locator('#sectionEditBtn').click();
+assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
+assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
 await page.locator('#sectionPanelClose').click();
 assert.equal(await abPanel.isHidden(), true);
 
@@ -70,7 +77,7 @@ assert.deepEqual(errors, []);
 await browser.close();
 
 // Core editor must still boot when the external Three.js CDN is unavailable.
-const degradedBrowser = await chromium.launch({ headless: true });
+const degradedBrowser = await chromium.launch(launchOptions);
 const degradedContext = await degradedBrowser.newContext({
   viewport: { width: 1100, height: 760 },
 });

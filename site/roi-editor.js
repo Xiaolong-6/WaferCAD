@@ -182,8 +182,8 @@ export function resizeRoiFromHandle(roi, handle, point) {
   const side = Math.max(Math.abs(px - fixed[0]), Math.abs(py - fixed[1]));
   if (!(side > 1e-12)) return shape;
 
-  const signX = handle.includes('left') ? -1 : 1;
-  const signY = handle.includes('top') ? 1 : -1;
+  const signX = Math.sign(px - fixed[0]) || (handle.includes('left') ? -1 : 1);
+  const signY = Math.sign(py - fixed[1]) || (handle.includes('top') ? 1 : -1);
   const dragged = [fixed[0] + signX * side, fixed[1] + signY * side];
   return {
     type: 'circle',

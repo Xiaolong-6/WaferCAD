@@ -53,6 +53,8 @@ Open **ROI** in the Mask view, then choose **Rect** or **Circle** and drag once 
 
 After creation, drag inside the ROI to reposition it or use the four corner handles to resize it. The ROI editor also exposes width/height or radius, a reference point, and X/Y coordinates for exact input.
 
+Changing Reference changes the coordinate readout without moving or resizing the ROI. Circle corner resize keeps a circular shape and follows the pointer across the fixed corner.
+
 The ROI affects 3D rendering only. The full model is preserved.
 
 ## 6. Apply an operation
@@ -78,7 +80,7 @@ For Add and Grow, choose:
 
 Etch has no growth setting.
 
-Z Δ is a relative thickness.
+Z Δ is a relative thickness. Conformal is a 2.5D geometric approximation; lateral buffer width uses the same numeric amount in µm. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md) before interpreting it as a physical film thickness.
 
 ## 7. Manage layers
 
@@ -92,7 +94,11 @@ Layer identity is stored separately from the visible name, so renaming or recolo
 
 Main can display the front or back surface.
 
-Use the **A–B** button to open the coordinate panel and edit the existing A and B endpoints numerically. Section A–B updates from the same vector model. Double-click Main to fit the view.
+Use **A–B** to open the coordinate panel. Click **Drag A/B** to highlight the existing A/B handles, then drag either endpoint directly. **Done** locks the endpoints; the panel remains open until its collapse button is used. On narrow screens the controls appear below Main.
+
+Coordinates and Section update while dragging. Grab offsets are preserved, and dragging can continue outside the canvas. Escape cancels the current drag; when idle it exits edit mode. A focused handle also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
+
+Double-click Main to fit the view. **Fit** in 3D frames the full model for the current panel aspect ratio.
 
 Use **Settings → XY unit** to switch nm / µm / mm. This only converts display and XY input values; geometry is unchanged. Z values remain relative.
 
