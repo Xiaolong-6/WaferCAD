@@ -10,7 +10,7 @@ Direct adds the requested Z amount on the local exposed face inside the operatio
 
 Conformal first applies the same vertical change, then buffers each pre-operation source patch in XY. A sidewall band fills from the adjacent local surface to the source surface plus the requested amount on Front, or the source surface minus the amount on Back. Higher source patches take precedence. The band is clipped to the base boundary and may extend outside the selected mask footprint.
 
-The XY buffer uses the same relative-Z-to-XY scale as the 3D renderer: `max(base width, base height) / 100` µm per relative Z unit. For example, a 100000 µm base maps a Z Δ of 1 to a 1000 µm lateral conformal band. This is a display-consistent geometric scale, not a physical process calibration, so the sidewall width must not be interpreted as measured normal film thickness.
+The canonical XY sidewall uses a deliberately thin carrier strip rather than the 3D display scale. Its width per relative Z unit is clamped to 0.001–0.5 µm from `max(base width, base height) × 1e-5`. The carrier exists so the 2.5D region model can retain a vertical coating without turning a wafer-scale Z exaggeration into millimetre-wide plan-view rings. It is not a physical film-thickness calibration. Section renders carrier-tagged sidewalls with a small minimum screen width so they remain visible without changing canonical XY geometry.
 
 Etch removes material vertically from the active face, crossing layer boundaries as necessary. It is not material-selective and has no lateral or conformal mode.
 
@@ -26,13 +26,13 @@ All fixtures use a 20 × 20 µm rectangular base, Z thickness 10 (`−5 … +5`)
 
 Back fixtures mirror these intervals about Z = 0. Tests also check the upper face, far field, both island side directions, and the rounded corner outside the buffer.
 
-The Direct blanket volume is 400 µm² × relative Z in each fixture. For the 20 × 20 µm fixture, the shared lateral scale is 0.2 µm per relative Z unit. Expected Conformal volumes are:
+The Direct blanket volume is 400 µm² × relative Z in each fixture. For the 20 × 20 µm fixture, the canonical carrier is 0.001 µm per relative Z unit. Expected Conformal volumes use that carrier width:
 
-- Step: 408, from a 0.2 × 20 µm sidewall strip with 2 extra Z units.
-- Trench: 416, from two such strips.
-- Island: `400 + 2 × (16 × 0.2 + π × 0.2²)`, within 0.05 of the polygonal circular-buffer approximation.
+- Step: `400 + 40 × carrier`.
+- Trench: `400 + 80 × carrier`.
+- Island: `400 + 2 × (16 × carrier + π × carrier²)`, within 0.05 of the polygonal circular-buffer approximation.
 
-A separate 100000 × 100000 µm regression locks the wafer-scale case: Z Δ = 1 must produce a 1000 µm lateral sidewall band. This specifically prevents the former bug where the sidewall existed mathematically as a 1 µm strip but disappeared at normal wafer-scale Section/3D views.
+A separate 100000 × 100000 µm regression locks the wafer-scale case at the 0.5 µm carrier ceiling and verifies the vertical sidewall interval. This prevents the earlier failure mode where using the renderer's Z exaggeration as real XY geometry produced ~1000 µm-wide rings around ordinary mask openings.
 
 A multi-opening wafer fixture also etches an array of circular openings through a blanket layer before applying Conformal. This protects the dense/repeated-mask path: boundary buffering must complete for many closed rings and must leave a sidewall coating around each opening. The fixture was added after repeated circular mask geometry exposed a polygon-clipping degeneracy in the former capsule-union buffer construction.
 

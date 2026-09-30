@@ -122,7 +122,7 @@ The operation engine does not infer these from the view.
 
 Direct growth preserves the selected XY footprint.
 
-Conformal growth expands the selected footprint and applies a sidewall band to adjacent exposed regions. Because Z is relative while XY is stored in µm, lateral thickness is derived through the shared display scale `max(base width, base height) / 100` µm per relative Z unit. The 3D renderer uses the same mapping, so a conformal film no longer becomes effectively zero-width beside wafer-scale features. This remains a geometric approximation suitable for the current vertical-stack model.
+Conformal growth applies the vertical change and adds a thin tagged XY carrier along eligible step boundaries. Z remains relative and the canonical carrier is intentionally decoupled from the renderer's Z exaggeration; otherwise wafer-scale models turn one relative Z unit into millimetre-wide plan-view rings. The carrier is bounded to 0.001–0.5 µm per relative Z unit and is a topological representation, not a process calibration. Section gives tagged sidewalls a minimum screen-space width for legibility.
 
 Etch performs vertical subtraction and does not accept a growth mode. The relative-Z/XY mapping, supported fixtures, and through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
 
@@ -138,7 +138,7 @@ Renders top/bottom surface patches directly from region polygons. Step boundarie
 
 ### 3D
 
-Extrudes vector polygons between each segment's `z0` and `z1`. XY stays in physical geometry coordinates, while relative Z is mapped by the shared `relativeZToXYScale()` helper used by Conformal sidewall growth. The optional ROI clips rendering only; it does not change the model.
+Extrudes vector polygons between each segment's `z0` and `z1`. XY stays in physical geometry coordinates. Relative Z is exaggerated only by the renderer through `relativeZToXYScale()`; Conformal canonical geometry uses its separate thin carrier scale. The optional ROI clips rendering only; it does not change the model.
 
 The renderer is event-driven: it renders on model/view changes and while OrbitControls damping is settling rather than running an unconditional 60 fps loop. Three.js is loaded as an optional external dependency; if it is unavailable, the rest of WaferCAD remains usable and only the 3D view is degraded.
 
@@ -152,7 +152,7 @@ Intersects the A–B line with every region polygon, then draws each region stac
 - XY display: nm, µm, or mm
 - Z: relative
 
-Changing the global XY display unit never rescales geometry. Base dimensions, alignment offsets, XY axes, cursor readouts, and A–B span all use the selected display unit. Z remains dimensionless; only Conformal sidewall geometry and 3D visualization map relative Z into XY distance through the shared base-size scale.
+Changing the global XY display unit never rescales geometry. Base dimensions, alignment offsets, XY axes, cursor readouts, and A–B span all use the selected display unit. Z remains dimensionless. 3D visualization maps relative Z with its display scale, while Conformal uses a separate bounded carrier width so display exaggeration cannot alter process footprints.
 
 ## Persistence
 

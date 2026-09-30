@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel } = await import('../site/model.js');
+const { applyOperation, conformalCarrierXYScale, createModel } = await import('../site/model.js');
 const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
@@ -91,21 +91,23 @@ const coatId = saved.model.layers.find((layer) => layer.name === 'UI conformal')
 assert.ok(coatId);
 const stackAtSaved = (x) =>
   saved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
+const carrier = conformalCarrierXYScale(saved.model);
+const sideX = 5000 - carrier / 2;
 assert.deepEqual(
-  stackAtSaved(4500).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 4, z1: 7 },
+  stackAtSaved(sideX).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 7, role: 'conformal-sidewall' },
 );
 assert.deepEqual(
   stackAtSaved(0).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 4, z1: 5 },
 );
 assert.deepEqual(
-  stackAtSaved(5500).find((segment) => segment.layerId === coatId),
+  stackAtSaved(5000 + carrier).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 6, z1: 7 },
 );
 const coatColor = saved.model.layers.find((layer) => layer.id === coatId).color;
 const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
-  (canvas, { color }) => {
+  (canvas, { color, sideX }) => {
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const left = 27;
@@ -114,7 +116,7 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
     const bottom = 22;
     const iw = rect.width - left - right;
     const ih = rect.height - top - bottom;
-    const t = (4500 + 7000) / 14000;
+    const t = (sideX + 7000) / 14000;
     const z0 = -7.5;
     const z1 = 8.5;
     const x = Math.round((left + t * iw) * dpr);
@@ -127,9 +129,13 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
     ];
     return { actual, expected };
   },
-  { color: coatColor },
+  { color: coatColor, sideX },
 );
-assert.deepEqual(sidewallPixel.actual, sidewallPixel.expected);
+assert.ok(
+  sidewallPixel.actual.every(
+    (value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8,
+  ),
+);
 await page.locator('#operationTab').click();
 
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.

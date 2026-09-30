@@ -66,15 +66,21 @@ export function relativeZToXYScale(model) {
   return Math.max(model.width, model.height) / 100;
 }
 
+export function conformalCarrierXYScale(model) {
+  const span = Math.max(Number(model?.width) || 0, Number(model?.height) || 0);
+  return Math.min(0.5, Math.max(0.001, span * 1e-5));
+}
+
 export function layerById(model, id) {
   return model.layers.find((layer) => layer.id === id) || null;
 }
 export function createLayer(model, name) {
-  const id = `layer-${model.nextLayerId++}`;
+  const ordinal = model.nextLayerId++;
+  const id = `layer-${ordinal}`;
   const layer = {
     id,
-    name: (name || `Layer ${model.nextLayerId}`).trim(),
-    color: COLORS[(model.nextLayerId - 2) % COLORS.length],
+    name: (name || `Layer ${ordinal}`).trim(),
+    color: COLORS[(ordinal - 1) % COLORS.length],
   };
   model.layers.push(layer);
   return layer;
@@ -140,15 +146,18 @@ export function normalizeStack(stack) {
   const out = [];
   for (const seg of sorted) {
     const prev = out.at(-1);
-    if (prev && prev.layerId === seg.layerId && Math.abs(prev.z1 - seg.z0) < 1e-8) prev.z1 = seg.z1;
-    else out.push(seg);
+    if (prev && prev.layerId === seg.layerId && Math.abs(prev.z1 - seg.z0) < 1e-8) {
+      prev.z1 = seg.z1;
+      if (prev.role === 'conformal-sidewall' || seg.role === 'conformal-sidewall')
+        prev.role = 'conformal-sidewall';
+    } else out.push(seg);
   }
   return out;
 }
 
 function stackKey(stack) {
   return (stack || [])
-    .map((seg) => `${seg.layerId}:${seg.z0.toFixed(9)}:${seg.z1.toFixed(9)}`)
+    .map((seg) => `${seg.layerId}:${seg.z0.toFixed(9)}:${seg.z1.toFixed(9)}:${seg.role || ''}`)
     .join('|');
 }
 function mergeRegions(model, regions) {
@@ -276,11 +285,11 @@ function conformalSidewallStack(stack, layerId, targetLayerId, amount, face, sou
   if (face === 'front') {
     const z1 = sourceZ + amount;
     if (local >= z1 - 1e-9) return out;
-    out.push({ layerId: coatingLayerId, z0: local, z1 });
+    out.push({ layerId: coatingLayerId, z0: local, z1, role: 'conformal-sidewall' });
   } else {
     const z0 = sourceZ - amount;
     if (local <= z0 + 1e-9) return out;
-    out.unshift({ layerId: coatingLayerId, z0, z1: local });
+    out.unshift({ layerId: coatingLayerId, z0, z1: local, role: 'conformal-sidewall' });
   }
   return normalizeStack(out);
 }
@@ -317,7 +326,7 @@ function applyOperationImpl(
       mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
     );
 
-    const lateralAmount = amount * relativeZToXYScale(model);
+    const lateralAmount = amount * conformalCarrierXYScale(model);
     const coversWholeBoundary = isEmpty(difference(model.boundary, active));
     const sidewallSources =
       type === 'add' && coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources;
