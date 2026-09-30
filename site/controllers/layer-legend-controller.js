@@ -129,6 +129,13 @@ export function createLayerLegendController({
     }
   }
 
+  function colorNewLayer(layerId) {
+    const layers = getModel().layers.filter((layer) => layer.id !== 'base'),
+      index = layers.findIndex((layer) => layer.id === layerId),
+      palette = structurePalette();
+    if (index >= 0) recolorLayer(getModel(), layerId, palette[index % palette.length]);
+  }
+
   function renderLayerLegend() {
     const host = $('layerLegend'),
       model = getModel();
@@ -280,5 +287,5 @@ export function createLayerLegendController({
     if ([...target.options].some((option) => option.value === previous)) target.value = previous;
   }
 
-  return { renderLayerLegend, structurePalette, applyStructurePalette };
+  return { renderLayerLegend, structurePalette, applyStructurePalette, colorNewLayer };
 }
