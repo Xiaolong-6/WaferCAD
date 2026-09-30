@@ -112,6 +112,14 @@
         stylesheet.href = `./style.css${suffix}`;
         document.head.append(stylesheet);
 
+        await new Promise((resolve, reject) => {
+          const vendor = document.createElement('script');
+          vendor.src = `./vendor/polygon-clipping.umd.js${suffix}`;
+          vendor.onload = resolve;
+          vendor.onerror = () => reject(new Error('Failed to load polygon-clipping.'));
+          document.head.append(vendor);
+        });
+
         const welcome = document.createElement('script');
         welcome.type = 'module';
         welcome.src = `./welcome.js${suffix}`;
