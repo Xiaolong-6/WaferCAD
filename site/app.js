@@ -61,6 +61,10 @@ import {
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { createVisualizationExample } from './welcome-example.js';
 import { takeStartupFile } from './startup-file.js';
+import { createBuildController } from './controllers/build-controller.js';
+import { createStartupController } from './controllers/startup-controller.js';
+import { bindToolTabs } from './controllers/tool-tabs-controller.js';
+import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -175,49 +179,11 @@ function status(msg) {
 }
 
 const loadedBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
-let announcedBuildUpdate = '';
+const { checkForBuildUpdate, loadBuildCommit } = createBuildController({
+  buildVersion: loadedBuildVersion,
+  status,
+});
 
-async function checkForBuildUpdate() {
-  if (!/^[0-9a-f]{7,64}$/i.test(loadedBuildVersion)) return;
-  try {
-    const response = await fetch('./build-info.json', { cache: 'no-store' });
-    if (!response.ok) return;
-    const info = await response.json();
-    const current = String(info.commit || '').trim();
-    if (!current || current === loadedBuildVersion || current === announcedBuildUpdate) return;
-    announcedBuildUpdate = current;
-    const host = $('buildCommit');
-    if (host) {
-      host.textContent = `commit ${loadedBuildVersion.slice(0, 7)} · update`;
-      host.title = `Loaded ${loadedBuildVersion.slice(0, 7)}; deployed ${current.slice(0, 7)}. Save, then reload.`;
-    }
-    status(`Update ${current.slice(0, 7)} available. Save the project, then reload the page.`);
-  } catch {}
-}
-
-async function loadBuildCommit() {
-  const host = $('buildCommit');
-  if (!host) return;
-
-  try {
-    const response = await fetch('./build-info.json', { cache: 'no-store' });
-    if (!response.ok) throw new Error('build info unavailable');
-    const info = await response.json();
-    const commit = String(info.commit || '').trim();
-    if (!commit) throw new Error('build commit missing');
-    host.textContent = `commit ${commit.slice(0, 7)}`;
-    host.href = `https://github.com/Xiaolong-6/WaferCAD/commit/${commit}`;
-    host.target = '_blank';
-    host.rel = 'noreferrer';
-    host.title = `Open commit ${commit}`;
-  } catch {
-    host.textContent = 'commit local';
-    host.removeAttribute('href');
-    host.removeAttribute('target');
-    host.removeAttribute('rel');
-    host.title = 'Local build; no deployed commit is available';
-  }
-}
 function xyUnit() {
   return unitMeta(xyDisplayUnit);
 }
@@ -1455,36 +1421,6 @@ function exportSectionSvg() {
   status('Exported Section A–B as SVG.');
 }
 
-let maximizedPanelId = null;
-function setMaximizedView(panelId) {
-  const previous = maximizedPanelId,
-    next = previous === panelId ? null : panelId;
-  document
-    .querySelectorAll('.view-panel.is-maximized')
-    .forEach((panel) => panel.classList.remove('is-maximized'));
-  maximizedPanelId = next;
-  document.body.classList.toggle('view-maximized', Boolean(next));
-  if (next) $(next)?.classList.add('is-maximized');
-
-  document.querySelectorAll('.view-max-btn').forEach((button) => {
-    const active = Boolean(next) && button.dataset.viewPanel === next;
-    button.classList.toggle('active', active);
-    button.textContent = active ? 'Restore' : 'Max';
-    button.title = active
-      ? 'Restore the workspace layout'
-      : `Maximize ${$(button.dataset.viewPanel)?.querySelector('strong')?.textContent || 'view'} in the current page`;
-  });
-
-  requestAnimationFrame(() => {
-    renderMain();
-    renderMask();
-    renderSection();
-    renderThree();
-    sectionEditor?.update();
-    if (next === 'threePanel' || previous === 'threePanel') requestAnimationFrame(fit3d);
-  });
-  status(next ? 'View maximized. Press Restore or Escape to return.' : 'Workspace restored.');
-}
 function renderMain() {
   const c = $('mainCanvas'),
     { ctx, w, h } = setupCanvas(c),
@@ -1902,45 +1838,6 @@ function renderSnapshots() {
   }
 }
 
-function activateToolTab(tabName, focus = false) {
-  const buttons = [...document.querySelectorAll('[data-tool-tab]')],
-    panels = [...document.querySelectorAll('[data-tab-panel]')];
-
-  for (const button of buttons) {
-    const active = button.dataset.toolTab === tabName;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-selected', String(active));
-    button.tabIndex = active ? 0 : -1;
-    if (active && focus) button.focus();
-  }
-
-  for (const panel of panels) panel.hidden = panel.dataset.tabPanel !== tabName;
-}
-
-function bindToolTabs() {
-  const buttons = [...document.querySelectorAll('[data-tool-tab]')];
-  if (!buttons.length) return;
-
-  buttons.forEach((button, index) => {
-    button.onclick = () => activateToolTab(button.dataset.toolTab);
-    button.onkeydown = (event) => {
-      let nextIndex = null;
-      if (event.key === 'ArrowLeft') nextIndex = (index - 1 + buttons.length) % buttons.length;
-      else if (event.key === 'ArrowRight') nextIndex = (index + 1) % buttons.length;
-      else if (event.key === 'Home') nextIndex = 0;
-      else if (event.key === 'End') nextIndex = buttons.length - 1;
-      if (nextIndex == null) return;
-      event.preventDefault();
-      activateToolTab(buttons[nextIndex].dataset.toolTab, true);
-    };
-  });
-
-  const initial =
-    buttons.find((button) => button.classList.contains('active'))?.dataset.toolTab ||
-    buttons[0].dataset.toolTab;
-  activateToolTab(initial);
-}
-
 async function openLayoutFile(file) {
   try {
     assertLayoutByteLength(file.size);
@@ -1994,38 +1891,27 @@ function openVisualizationExample() {
   }
 }
 
-async function initializeWorkspaceStart() {
-  const params = new URLSearchParams(globalThis.location?.search || ''),
-    start = params.get('start');
-  if (!start) return;
+const { initializeWorkspaceStart } = createStartupController({
+  takeStartupFile,
+  openLayoutFile,
+  openProjectFile,
+  openVisualizationExample,
+  status,
+});
 
-  try {
-    history.replaceState(null, '', './app.html');
-  } catch {}
-
-  if (start === 'example') {
-    openVisualizationExample();
-    return;
-  }
-  if (start === 'staged') {
-    try {
-      const staged = await takeStartupFile();
-      if (!staged) {
-        status('No pending welcome-page file was found. Use Import layout or Open project.');
-        return;
-      }
-      if (staged.kind === 'layout') await openLayoutFile(staged.file);
-      else if (staged.kind === 'project') await openProjectFile(staged.file);
-      else status('The pending welcome-page file type is unsupported.');
-    } catch (error) {
-      console.error(error);
-      status(`Could not open the welcome-page file: ${error.message}`);
-    }
-  }
-}
+const viewMaximizeController = createViewMaximizeController({
+  status,
+  renderMain,
+  renderMask,
+  renderSection,
+  renderThree,
+  fit3d,
+  updateSectionEditor: () => sectionEditor?.update(),
+});
 
 function bindUi() {
   bindToolTabs();
+  viewMaximizeController.bind();
 
   document.querySelectorAll('#substrateShape button').forEach(
     (b) =>
@@ -2216,15 +2102,6 @@ function bindUi() {
       status(`3D screenshot failed: ${error.message}`);
     }
   };
-  document
-    .querySelectorAll('.view-max-btn')
-    .forEach((button) => (button.onclick = () => setMaximizedView(button.dataset.viewPanel)));
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && maximizedPanelId) {
-      event.preventDefault();
-      setMaximizedView(maximizedPanelId);
-    }
-  });
   $('sectionScaleModeBtn').onclick = () => {
     sectionScaleMode = sectionScaleMode === 'auto' ? 'physical' : 'auto';
     renderSection();
