@@ -356,7 +356,7 @@ function hasProcessEdits() {
 function fitImportedLayout() {
   maskTransform = { scale: 1, rotation: 0, x: 0, y: 0 };
   planViews.mask = { zoom: 1, panX: 0, panY: 0 };
-  maskImportController.maskImportController.syncTransformInputs();
+  maskImportController.syncTransformInputs();
 }
 
 function applyImportedLayout(imported, displayName) {
@@ -1251,7 +1251,7 @@ renderSnapshots();
 initThree();
 syncBaseControls();
 updateOperationUI();
-syncTransformInputs();
+maskImportController.syncTransformInputs();
 renderAll();
 fit3d();
 status('Ready. Create a base or import a layout.');
