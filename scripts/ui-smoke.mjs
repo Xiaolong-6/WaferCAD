@@ -7,6 +7,19 @@ await loadGeometryKernel();
 const { applyOperation, createModel, modelBoundsZ } = await import('../site/model.js');
 const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
+const welcomeLayoutBuffer = await readFile(
+  new URL('../site/samples/klayout/oas-rectangles.oas', import.meta.url),
+);
+const welcomeProject = projectForBenchmark({
+  model: createModel({
+    shape: 'rect',
+    width: 4321,
+    height: 3210,
+    thickness: 7,
+  }),
+  section: { a: [-1000, 0], b: [1000, 0] },
+});
+
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 const launchOptions = {
   headless: true,
@@ -73,6 +86,50 @@ assert.equal(await refreshPage.locator('#welcomeScreen').count(), 0);
 assert.equal(await refreshPage.locator('.app-shell').count(), 1);
 assert.deepEqual(refreshErrors, []);
 await refreshPage.close();
+
+// Welcome-page layout import must survive the IndexedDB handoff and open in the workspace.
+const layoutHandoffPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const layoutHandoffErrors = [];
+layoutHandoffPage.on('pageerror', (error) => layoutHandoffErrors.push(error.message));
+await layoutHandoffPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await layoutHandoffPage.locator('#welcomeLayoutInput').setInputFiles({
+  name: 'welcome-layout.oas',
+  mimeType: 'application/octet-stream',
+  buffer: welcomeLayoutBuffer,
+});
+await layoutHandoffPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await layoutHandoffPage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened welcome-layout.oas.',
+  null,
+  { timeout: 30000 },
+);
+assert.ok(await layoutHandoffPage.locator('#maskLayerList .layer-row').count());
+assert.deepEqual(layoutHandoffErrors, []);
+await layoutHandoffPage.close();
+
+// Welcome-page project opening uses the same staged-file path and restores physical geometry.
+const projectHandoffPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const projectHandoffErrors = [];
+projectHandoffPage.on('pageerror', (error) => projectHandoffErrors.push(error.message));
+await projectHandoffPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await projectHandoffPage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'welcome-project.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await projectHandoffPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await projectHandoffPage.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened welcome-project.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(Number(await projectHandoffPage.locator('#baseWidth').inputValue()), 4321);
+assert.equal(Number(await projectHandoffPage.locator('#baseHeight').inputValue()), 3210);
+assert.equal(Number(await projectHandoffPage.locator('#baseThickness').inputValue()), 7);
+assert.deepEqual(projectHandoffErrors, []);
+await projectHandoffPage.close();
 
 // Settings owns project controls and XY units.
 await page.locator('#settingsTab').click();
