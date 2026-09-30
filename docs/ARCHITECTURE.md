@@ -52,7 +52,7 @@ Owns the region-stack model and geometry semantics:
 
 ### `site/three-view.js`
 
-Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, and graceful degradation when the external 3D dependency is unavailable.
+Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, physical GLB export, high-resolution PNG capture, and graceful degradation when the external 3D dependency is unavailable. GLB export scales canonical µm coordinates by 1e-6 so downstream glTF software receives metres.
 
 ### `site/section-editor.js`
 
@@ -78,7 +78,7 @@ Polygon Boolean operations are provided by the vendored `polygon-clipping` libra
 
 ### `site/units.js`
 
-Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only.
+Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only. User-entered/displayed length fields use a 1 nm quantization boundary; imported geometry and internal vector operations retain their native precision.
 
 ### `site/workspace-snapshots.js`
 
@@ -140,11 +140,11 @@ Renders top/bottom surface patches directly from region polygons. Step boundarie
 
 Extrudes vector polygons between each segment's physical-`µm` `z0` and `z1`. 3D uses `zDisplayScale()` only to exaggerate Z visually; process geometry remains in physical coordinates. The optional ROI clips rendering only; it does not change the model.
 
-The renderer is event-driven: it renders on model/view changes and while OrbitControls damping is settling rather than running an unconditional 60 fps loop. Three.js is loaded as an optional external dependency; if it is unavailable, the rest of WaferCAD remains usable and only the 3D view is degraded.
+The renderer is event-driven: it renders on model/view changes and while OrbitControls damping is settling rather than running an unconditional 60 fps loop. For transparent inspection, border line segments render before transparent meshes and do not write depth, so material opacity continuously controls how strongly occluded borders show through. Opaque mode keeps normal depth-tested borders. Three.js is loaded as an optional external dependency; if it is unavailable, the rest of WaferCAD remains usable and only the 3D view is degraded.
 
 ### Section A–B
 
-Intersects the A–B line with every region polygon, then draws each region stack over the resulting line intervals.
+Intersects the A–B line with every region polygon, then draws each region stack over the resulting line intervals. Main, Mask, and Section have vector SVG exporters that reuse the same canonical geometry/view transforms. All four scientific views support an in-page maximize/restore inspection state; this state is display-only and is not persisted in the project.
 
 ## Units
 
@@ -157,7 +157,7 @@ Changing the global display/input unit never rescales geometry. Base dimensions,
 
 Projects are JSON files with format identifier `WaferCAD-vector` plus an explicit format version.
 
-The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, ROI and its reference point, section line, plan-view state, XY display unit, structure palette preference, 3D opacity/border state, and named snapshots. Snapshot state never recursively contains the snapshot list.
+The current project format (v4) stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, Rect/Circle/Sector ROI and its reference point, section line, plan-view state, XYZ display unit, structure palette preference, 3D opacity/border state, and named snapshots. Snapshot state never recursively contains the snapshot list.
 
 `site/project-schema.js` owns migration into the current version before validation. Legacy files without an explicit version are migrated with deterministic defaults rather than inheriting unrelated session state.
 

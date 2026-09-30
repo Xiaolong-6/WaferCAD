@@ -33,13 +33,23 @@ import {
   circleRoiFromAnchor,
   normalizeRoi,
   rectRoiFromAnchor,
+  sectorBoundaryPoints,
+  sectorRoiFromAnchor,
   resizeRoiFromHandle,
   roiAnchorPoint,
   roiContainsPoint,
   roiHandlePoints,
   translateRoi,
 } from './roi-editor.js';
-import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
+import {
+  formatLengthInput,
+  formatXY as formatXYValue,
+  fromMicron,
+  roundMicronToNanometre,
+  toMicron,
+  unitMeta,
+  XY_UNITS,
+} from './units.js';
 import {
   availableSelectedLayers,
   minimumSegmentLength,
@@ -219,14 +229,26 @@ function formatXY(value, digits = 3) {
 function xyText(value) {
   return `${formatXY(value)} ${xyUnit().label}`;
 }
+function manualMicron(value) {
+  return roundMicronToNanometre(xyFromDisplay(Number(value)));
+}
+function formatLengthField(valueMicron) {
+  return formatLengthInput(valueMicron, xyDisplayUnit);
+}
+function formatNumericField(value, digits = 6) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  const rounded = Number(number.toFixed(digits));
+  return Object.is(rounded, -0) ? '0' : String(rounded);
+}
 function syncSectionInputs() {
   const unit = $('sectionCoordUnit');
   if (!unit) return;
   unit.textContent = xyUnit().label;
-  $('sectionAx').value = String(xyToDisplay(section.a[0]));
-  $('sectionAy').value = String(xyToDisplay(section.a[1]));
-  $('sectionBx').value = String(xyToDisplay(section.b[0]));
-  $('sectionBy').value = String(xyToDisplay(section.b[1]));
+  $('sectionAx').value = formatLengthField(section.a[0]);
+  $('sectionAy').value = formatLengthField(section.a[1]);
+  $('sectionBx').value = formatLengthField(section.b[0]);
+  $('sectionBy').value = formatLengthField(section.b[1]);
 }
 function updateSectionFromInputs() {
   sectionEditor?.cancel();
@@ -238,8 +260,8 @@ function updateSectionFromInputs() {
     return status('A–B coordinates must be finite numbers.');
   }
   section = {
-    a: [xyFromDisplay(values[0]), xyFromDisplay(values[1])],
-    b: [xyFromDisplay(values[2]), xyFromDisplay(values[3])],
+    a: [manualMicron(values[0]), manualMicron(values[1])],
+    b: [manualMicron(values[2]), manualMicron(values[3])],
   };
   renderMain();
   renderSection();
@@ -262,6 +284,7 @@ function setSectionPanelVisible(visible) {
   panel.hidden = !visible;
   button.classList.toggle('active', visible);
   button.setAttribute('aria-expanded', String(visible));
+  button.title = visible ? 'Close A–B controls' : 'Open A–B controls';
   if (!visible && sectionEditEnabled) setSectionEditEnabled(false);
   renderMain();
 }
@@ -459,6 +482,10 @@ function roiGeometry() {
     return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
   }
   if (roi.type === 'circle') return circleMulti(roi.r * 2, roi.r * 2, 96, roi.c[0], roi.c[1]);
+  if (roi.type === 'sector') {
+    const ring = sectorBoundaryPoints(roi, 96);
+    return ring.length ? [[ring]] : null;
+  }
   return null;
 }
 function clearRoiDrawingMode() {
@@ -473,32 +500,48 @@ function syncRoiEditor() {
   if (!roi) return;
   const point = roiAnchorPoint(roi, roiAnchor);
   if (!point) return;
-  $('roiShapeLabel').textContent = roi.type === 'rect' ? 'Rectangle' : 'Circle';
+  $('roiShapeLabel').textContent =
+    roi.type === 'rect' ? 'Rectangle' : roi.type === 'sector' ? 'Sector' : 'Circle';
   $('roiUnitLabel').textContent = xyUnit().label;
   $('roiAnchorSelect').value = roiAnchor;
-  $('roiX').value = String(xyToDisplay(point[0]));
-  $('roiY').value = String(xyToDisplay(point[1]));
+  $('roiX').value = formatLengthField(point[0]);
+  $('roiY').value = formatLengthField(point[1]);
   $('roiRectFields').hidden = roi.type !== 'rect';
-  $('roiCircleFields').hidden = roi.type !== 'circle';
+  $('roiCircleFields').hidden = !['circle', 'sector'].includes(roi.type);
+  $('roiSectorFields').hidden = roi.type !== 'sector';
   if (roi.type === 'rect') {
-    $('roiWidth').value = String(xyToDisplay(roi.b[0] - roi.a[0]));
-    $('roiHeight').value = String(xyToDisplay(roi.b[1] - roi.a[1]));
+    $('roiWidth').value = formatLengthField(roi.b[0] - roi.a[0]);
+    $('roiHeight').value = formatLengthField(roi.b[1] - roi.a[1]);
   } else {
-    $('roiRadius').value = String(xyToDisplay(roi.r));
+    $('roiRadius').value = formatLengthField(roi.r);
+    if (roi.type === 'sector') {
+      $('roiStartAngle').value = formatNumericField(roi.startDeg, 3);
+      $('roiEndAngle').value = formatNumericField(roi.endDeg, 3);
+    }
   }
 }
 function applyRoiEditor() {
   if (!roi) return;
-  const x = xyFromDisplay(Number($('roiX').value)),
-    y = xyFromDisplay(Number($('roiY').value));
+  const x = manualMicron($('roiX').value),
+    y = manualMicron($('roiY').value);
   let next = null;
   if (roi.type === 'rect') {
-    const width = xyFromDisplay(Number($('roiWidth').value)),
-      height = xyFromDisplay(Number($('roiHeight').value));
+    const width = manualMicron($('roiWidth').value),
+      height = manualMicron($('roiHeight').value);
     next = rectRoiFromAnchor(width, height, roiAnchor, x, y);
   } else {
-    const radius = xyFromDisplay(Number($('roiRadius').value));
-    next = circleRoiFromAnchor(radius, roiAnchor, x, y);
+    const radius = manualMicron($('roiRadius').value);
+    next =
+      roi.type === 'sector'
+        ? sectorRoiFromAnchor(
+            radius,
+            Number($('roiStartAngle').value),
+            Number($('roiEndAngle').value),
+            roiAnchor,
+            x,
+            y,
+          )
+        : circleRoiFromAnchor(radius, roiAnchor, x, y);
   }
   if (!next) {
     syncRoiEditor();
@@ -579,12 +622,12 @@ function populateSampleLayouts() {
   }
 }
 function syncTransformInputs() {
-  $('maskOffsetX').value = formatXY(maskTransform.x);
-  $('maskOffsetY').value = formatXY(maskTransform.y);
+  $('maskOffsetX').value = formatLengthField(maskTransform.x);
+  $('maskOffsetY').value = formatLengthField(maskTransform.y);
   $('maskOffsetXUnit').textContent = xyUnit().label;
   $('maskOffsetYUnit').textContent = xyUnit().label;
-  $('maskScale').value = maskTransform.scale.toPrecision(5);
-  $('maskRotation').value = maskTransform.rotation;
+  $('maskScale').value = formatNumericField(maskTransform.scale, 6);
+  $('maskRotation').value = formatNumericField(maskTransform.rotation, 3);
 }
 function setActiveCell(name) {
   activeCell = name || null;
@@ -1114,6 +1157,14 @@ function drawRoi(ctx, v) {
   } else if (r.type === 'circle') {
     const c = worldToCanvas(r.c, v);
     ctx.arc(c[0], c[1], r.r * v.s, 0, Math.PI * 2);
+  } else if (r.type === 'sector') {
+    sectorBoundaryPoints(r, 96)
+      .map((point) => worldToCanvas(point, v))
+      .forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point[0], point[1]);
+        else ctx.lineTo(point[0], point[1]);
+      });
+    ctx.closePath();
   }
   ctx.fill();
   ctx.stroke();
@@ -1152,6 +1203,271 @@ function shadeColor(hex, delta) {
     g = Math.max(0, Math.min(255, ((n >> 8) & 255) + delta)),
     b = Math.max(0, Math.min(255, (n & 255) + delta));
   return `rgb(${r},${g},${b})`;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadText(text, filename, type = 'image/svg+xml') {
+  downloadBlob(new Blob([text], { type }), filename);
+}
+
+function svgNumber(value) {
+  return Number(Number(value).toFixed(3));
+}
+
+function svgPathFromMulti(geom, mapPoint) {
+  let d = '';
+  for (const poly of geom || [])
+    for (const ring of poly || []) {
+      ring.forEach((point, index) => {
+        const mapped = mapPoint(point);
+        d += `${index ? 'L' : 'M'}${svgNumber(mapped[0])} ${svgNumber(mapped[1])}`;
+      });
+      d += 'Z';
+    }
+  return d;
+}
+
+function svgDocument(width, height, body) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgNumber(width)}" height="${svgNumber(
+    height,
+  )}" viewBox="0 0 ${svgNumber(width)} ${svgNumber(height)}"><rect width="100%" height="100%" fill="#fbfcfd"/>${body}</svg>`;
+}
+
+function exportMainSvg() {
+  const canvas = $('mainCanvas'),
+    rect = canvas.getBoundingClientRect(),
+    w = Math.max(2, rect.width),
+    h = Math.max(2, rect.height),
+    v = viewport(w, h, 'main'),
+    back = activeFace === 'back',
+    map = (point) => worldToCanvas(point, v, back);
+  let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
+
+  for (const patch of surfaceGroups(model, activeFace)) {
+    const layer = layerById(model, patch.layerId);
+    if (!layer) continue;
+    const shade = Math.max(-12, Math.min(14, patch.z * 0.8));
+    body += `<path d="${svgPathFromMulti(patch.geom, map)}" fill="${shadeColor(
+      layer.color,
+      shade,
+    )}" fill-rule="evenodd" stroke="rgba(36,46,56,.24)" stroke-width=".65"/>`;
+  }
+  body += `<path d="${svgPathFromMulti(model.boundary, map)}" fill="none" stroke="#87939f" stroke-width="1"/>`;
+
+  const a = map(section.a),
+    b = map(section.b);
+  body += `<line x1="${svgNumber(a[0])}" y1="${svgNumber(a[1])}" x2="${svgNumber(
+    b[0],
+  )}" y2="${svgNumber(b[1])}" stroke="#cc5062" stroke-width="2.3"/>`;
+  for (const [point, label] of [
+    [a, 'A'],
+    [b, 'B'],
+  ])
+    body += `<circle cx="${svgNumber(point[0])}" cy="${svgNumber(
+      point[1],
+    )}" r="4.5" fill="#cc5062"/><text x="${svgNumber(point[0] + 6)}" y="${svgNumber(
+      point[1] - 6,
+    )}" font-family="system-ui,sans-serif" font-size="9" font-weight="700" fill="#cc5062">${label}</text>`;
+
+  downloadText(svgDocument(w, h, body), 'wafercad-main.svg');
+  status('Exported Main as SVG.');
+}
+
+function svgRoiPath(shape, v) {
+  if (!shape) return '';
+  if (shape.type === 'rect') {
+    const a = worldToCanvas(shape.a, v),
+      b = worldToCanvas(shape.b, v);
+    return `M${svgNumber(a[0])} ${svgNumber(a[1])}L${svgNumber(b[0])} ${svgNumber(
+      a[1],
+    )}L${svgNumber(b[0])} ${svgNumber(b[1])}L${svgNumber(a[0])} ${svgNumber(b[1])}Z`;
+  }
+  if (shape.type === 'circle') {
+    const center = worldToCanvas(shape.c, v),
+      radius = shape.r * v.s;
+    return `M${svgNumber(center[0] + radius)} ${svgNumber(center[1])}A${svgNumber(
+      radius,
+    )} ${svgNumber(radius)} 0 1 0 ${svgNumber(center[0] - radius)} ${svgNumber(
+      center[1],
+    )}A${svgNumber(radius)} ${svgNumber(radius)} 0 1 0 ${svgNumber(
+      center[0] + radius,
+    )} ${svgNumber(center[1])}Z`;
+  }
+  if (shape.type === 'sector') {
+    const points = sectorBoundaryPoints(shape, 96);
+    return (
+      points
+        .map((point, index) => {
+          const q = worldToCanvas(point, v);
+          return `${index ? 'L' : 'M'}${svgNumber(q[0])} ${svgNumber(q[1])}`;
+        })
+        .join('') + 'Z'
+    );
+  }
+  return '';
+}
+
+function exportMaskSvg() {
+  const canvas = $('maskCanvas'),
+    rect = canvas.getBoundingClientRect(),
+    w = Math.max(2, rect.width),
+    h = Math.max(2, rect.height),
+    v = viewport(w, h, 'mask'),
+    map = (point) => worldToCanvas(point, v);
+  let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
+
+  for (const element of layout.linework || []) {
+    if (!Array.isArray(element.points) || element.points.length < 2) continue;
+    const points = element.points.map(maskPoint).map(map);
+    const d = points
+      .map((point, index) => `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`)
+      .join('');
+    const selected = selectedElement(element);
+    body += `<path d="${d}" fill="none" stroke="${
+      selected ? layerColor(layerKey(element.layer, element.datatype), 0.95) : '#aab3bd'
+    }" stroke-width="${svgNumber(Math.max(0.8, element.width * maskTransform.scale * v.s))}"/>`;
+  }
+
+  for (const element of layout.elements || []) {
+    if (element.kind !== 'polygon' || !Array.isArray(element.points)) continue;
+    const points = element.points.map(maskPoint).map(map);
+    const d =
+      points
+        .map((point, index) => `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`)
+        .join('') + 'Z';
+    const key = layerKey(element.layer, element.datatype),
+      selected = selectedElement(element);
+    body += `<path d="${d}" fill="${
+      selected ? layerColor(key, 0.58) : 'rgba(155,166,178,.10)'
+    }" stroke="${selected ? layerColor(key, 0.98) : 'rgba(148,159,171,.52)'}" stroke-width="${
+      selected ? 1 : 0.6
+    }"/>`;
+  }
+
+  if (roi) {
+    body += `<path d="${svgRoiPath(roi, v)}" fill="rgba(214,83,97,.05)" stroke="#d65361" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+  }
+  downloadText(svgDocument(w, h, body), 'wafercad-mask.svg');
+  status('Exported Mask as SVG.');
+}
+
+function exportSectionSvg() {
+  const canvas = $('sectionCanvas'),
+    rect = canvas.getBoundingClientRect(),
+    w = Math.max(2, rect.width),
+    h = Math.max(2, rect.height),
+    [lo, hi] = modelBoundsZ(model),
+    pad = Math.max(1e-9, (hi - lo) * 0.08),
+    z0 = lo - pad,
+    z1 = hi + pad,
+    zSpan = Math.max(z1 - z0, 1e-12),
+    sectionSpan = Math.max(
+      Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]),
+      1e-12,
+    ),
+    left = 27,
+    right = 10,
+    top = 10,
+    bottom = 22,
+    iw = w - left - right,
+    ih = h - top - bottom,
+    autoXScale = iw / sectionSpan,
+    autoZScale = ih / zSpan;
+  let plotLeft = left,
+    plotTop = top,
+    plotWidth = iw,
+    plotHeight = ih;
+  if (sectionScaleMode === 'physical') {
+    const scale = Math.min(autoXScale, autoZScale);
+    plotWidth = sectionSpan * scale;
+    plotHeight = zSpan * scale;
+    plotLeft = left + (iw - plotWidth) / 2;
+    plotTop = top + (ih - plotHeight) / 2;
+  }
+  const map = ([t, z]) => [plotLeft + t * plotWidth, plotTop + ((z1 - z) / zSpan) * plotHeight];
+  let body = '';
+  for (const contour of sectionContours(model, section.a, section.b)) {
+    const layer = layerById(model, contour.layerId);
+    if (!layer) continue;
+    body += `<path d="${svgPathFromMulti(contour.polys, map)}" fill="${layer.color}" fill-rule="evenodd"/>`;
+  }
+
+  for (const slice of sectionSlices(model, section.a, section.b)) {
+    if (slice.role !== 'conformal-sidewall') continue;
+    const layer = layerById(model, slice.layerId);
+    if (!layer) continue;
+    const x0 = plotLeft + slice.t0 * plotWidth,
+      x1 = plotLeft + slice.t1 * plotWidth,
+      center = (x0 + x1) / 2,
+      minWidth = sectionScaleMode === 'auto' ? 3 : 0,
+      sx0 = Math.min(x0, center - minWidth / 2),
+      sx1 = Math.max(x1, center + minWidth / 2),
+      sy0 = map([0, slice.z1])[1],
+      sy1 = map([0, slice.z0])[1];
+    body += `<rect x="${svgNumber(sx0)}" y="${svgNumber(sy0)}" width="${svgNumber(
+      Math.max(minWidth, sx1 - sx0),
+    )}" height="${svgNumber(sy1 - sy0)}" fill="${layer.color}"/>`;
+  }
+  body += `<rect x="${svgNumber(plotLeft)}" y="${svgNumber(plotTop)}" width="${svgNumber(
+    plotWidth,
+  )}" height="${svgNumber(plotHeight)}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
+  body += `<text x="3" y="${svgNumber(plotTop + 7)}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">${formatXY(
+    z1,
+  )}</text><text x="3" y="${svgNumber(
+    plotTop + plotHeight,
+  )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">${formatXY(
+    z0,
+  )}</text><text x="${svgNumber(plotLeft)}" y="${svgNumber(
+    Math.min(h - 5, plotTop + plotHeight + 15),
+  )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">A</text><text x="${svgNumber(
+    plotLeft + plotWidth - 7,
+  )}" y="${svgNumber(
+    Math.min(h - 5, plotTop + plotHeight + 15),
+  )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">B</text>`;
+
+  downloadText(svgDocument(w, h, body), 'wafercad-section-ab.svg');
+  status('Exported Section A–B as SVG.');
+}
+
+let maximizedPanelId = null;
+function setMaximizedView(panelId) {
+  const previous = maximizedPanelId,
+    next = previous === panelId ? null : panelId;
+  document
+    .querySelectorAll('.view-panel.is-maximized')
+    .forEach((panel) => panel.classList.remove('is-maximized'));
+  maximizedPanelId = next;
+  document.body.classList.toggle('view-maximized', Boolean(next));
+  if (next) $(next)?.classList.add('is-maximized');
+
+  document.querySelectorAll('.view-max-btn').forEach((button) => {
+    const active = Boolean(next) && button.dataset.viewPanel === next;
+    button.classList.toggle('active', active);
+    button.textContent = active ? 'Restore' : 'Max';
+    button.title = active
+      ? 'Restore the workspace layout'
+      : `Maximize ${$(button.dataset.viewPanel)?.querySelector('strong')?.textContent || 'view'} in the current page`;
+  });
+
+  requestAnimationFrame(() => {
+    renderMain();
+    renderMask();
+    renderSection();
+    renderThree();
+    sectionEditor?.update();
+    if (next === 'threePanel' || previous === 'threePanel') requestAnimationFrame(fit3d);
+  });
+  status(next ? 'View maximized. Press Restore or Escape to return.' : 'Workspace restored.');
 }
 function renderMain() {
   const c = $('mainCanvas'),
@@ -1352,9 +1668,9 @@ function renderAll() {
   syncUndo();
 }
 function syncBaseControls() {
-  $('baseWidth').value = formatXY(model.width);
-  $('baseHeight').value = formatXY(model.height);
-  $('baseThickness').value = formatXY(model.thickness);
+  $('baseWidth').value = formatLengthField(model.width);
+  $('baseHeight').value = formatLengthField(model.height);
+  $('baseThickness').value = formatLengthField(model.thickness);
   $('baseHeight').disabled = model.shape === 'circle';
   $('baseWidthUnit').textContent = xyUnit().label;
   $('baseHeightUnit').textContent = xyUnit().label;
@@ -1379,7 +1695,8 @@ function updateOperationUI() {
 }
 function applyOp() {
   const type = $('operationType').value,
-    thickness = xyFromDisplay(Number($('operationThickness').value));
+    thickness = manualMicron($('operationThickness').value);
+  $('operationThickness').value = formatLengthField(thickness);
   if (!(thickness > 0)) return status('Thickness must be greater than zero.');
   const areaMode = $('operationArea').value,
     area = operationAreaGeometry(areaMode);
@@ -1628,9 +1945,9 @@ function bindUi() {
   };
   $('applyBaseBtn').onclick = () => {
     const shape = document.querySelector('#substrateShape button.active').dataset.shape,
-      width = xyFromDisplay(Number($('baseWidth').value)),
-      height = shape === 'circle' ? width : xyFromDisplay(Number($('baseHeight').value)),
-      thickness = xyFromDisplay(Number($('baseThickness').value));
+      width = manualMicron($('baseWidth').value),
+      height = shape === 'circle' ? width : manualMicron($('baseHeight').value),
+      thickness = manualMicron($('baseThickness').value);
     if (width <= 0 || height <= 0 || thickness <= 0)
       return status('Base dimensions must be positive.');
     if (
@@ -1646,6 +1963,7 @@ function bindUi() {
     saveHistory();
     model = createModel({ shape, width, height, thickness });
     section = { a: [-width * 0.42, 0], b: [width * 0.42, 0] };
+    syncBaseControls();
     renderAll();
     fit3d();
     status('Base applied. Use Revert or Undo to restore the previous structure.');
@@ -1695,8 +2013,8 @@ function bindUi() {
   for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'])
     $(id).oninput = () => {
       maskTransform = {
-        x: xyFromDisplay(Number($('maskOffsetX').value) || 0),
-        y: xyFromDisplay(Number($('maskOffsetY').value) || 0),
+        x: manualMicron($('maskOffsetX').value || 0),
+        y: manualMicron($('maskOffsetY').value || 0),
         scale: Math.max(1e-8, Number($('maskScale').value) || 1),
         rotation: Number($('maskRotation').value) || 0,
       };
@@ -1709,10 +2027,10 @@ function bindUi() {
       draftThickness = (Number($('baseThickness').value) || 0) * oldUnit.toMicron,
       draftOperation = (Number($('operationThickness').value) || 0) * oldUnit.toMicron;
     xyDisplayUnit = $('xyUnitSelect').value in XY_UNITS ? $('xyUnitSelect').value : 'um';
-    $('baseWidth').value = formatXY(draftWidth);
-    $('baseHeight').value = formatXY(draftHeight);
-    $('baseThickness').value = formatXY(draftThickness);
-    $('operationThickness').value = formatXY(draftOperation);
+    $('baseWidth').value = formatLengthField(draftWidth);
+    $('baseHeight').value = formatLengthField(draftHeight);
+    $('baseThickness').value = formatLengthField(draftThickness);
+    $('operationThickness').value = formatLengthField(draftOperation);
     $('baseWidthUnit').textContent = xyUnit().label;
     $('baseHeightUnit').textContent = xyUnit().label;
     $('baseThicknessUnit').textContent = xyUnit().label;
@@ -1745,8 +2063,32 @@ function bindUi() {
     roiAnchor = $('roiAnchorSelect').value;
     syncRoiEditor();
   };
-  for (const id of ['roiWidth', 'roiHeight', 'roiRadius', 'roiX', 'roiY'])
+  for (const id of [
+    'roiWidth',
+    'roiHeight',
+    'roiRadius',
+    'roiStartAngle',
+    'roiEndAngle',
+    'roiX',
+    'roiY',
+  ])
     $(id).onchange = applyRoiEditor;
+  for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'])
+    $(id).addEventListener('change', syncTransformInputs);
+  for (const id of ['baseWidth', 'baseHeight', 'baseThickness'])
+    $(id).addEventListener('change', () => {
+      const value = manualMicron($(id).value);
+      if (Number.isFinite(value)) $(id).value = formatLengthField(value);
+      if (
+        id === 'baseWidth' &&
+        document.querySelector('#substrateShape button.active')?.dataset.shape === 'circle'
+      )
+        $('baseHeight').value = $('baseWidth').value;
+    });
+  $('operationThickness').addEventListener('change', () => {
+    const value = manualMicron($('operationThickness').value);
+    if (Number.isFinite(value)) $('operationThickness').value = formatLengthField(value);
+  });
   $('faceToggleBtn').onclick = () => {
     activeFace = activeFace === 'front' ? 'back' : 'front';
     renderAll();
@@ -1756,6 +2098,40 @@ function bindUi() {
   $('growthMode').onchange = updateOperationUI;
   $('applyOperationBtn').onclick = applyOp;
   $('fit3dBtn').onclick = fit3d;
+  $('mainExportSvgBtn').onclick = exportMainSvg;
+  $('maskExportSvgBtn').onclick = exportMaskSvg;
+  $('sectionExportSvgBtn').onclick = exportSectionSvg;
+  $('threeExportModelBtn').onclick = async () => {
+    try {
+      const blob = await threeView?.exportGlb();
+      if (!blob) throw new Error('3D export is unavailable.');
+      downloadBlob(blob, 'wafercad-model.glb');
+      status(`Exported ${roi ? 'ROI' : 'full'} 3D model as GLB (physical metres).`);
+    } catch (error) {
+      console.error(error);
+      status(`3D model export failed: ${error.message}`);
+    }
+  };
+  $('threeExportPngBtn').onclick = async () => {
+    try {
+      const blob = await threeView?.capturePng(3);
+      if (!blob) throw new Error('3D screenshot is unavailable.');
+      downloadBlob(blob, 'wafercad-3d-3x.png');
+      status('Exported 3× high-resolution 3D PNG.');
+    } catch (error) {
+      console.error(error);
+      status(`3D screenshot failed: ${error.message}`);
+    }
+  };
+  document
+    .querySelectorAll('.view-max-btn')
+    .forEach((button) => (button.onclick = () => setMaximizedView(button.dataset.viewPanel)));
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && maximizedPanelId) {
+      event.preventDefault();
+      setMaximizedView(maximizedPanelId);
+    }
+  });
   $('sectionScaleModeBtn').onclick = () => {
     sectionScaleMode = sectionScaleMode === 'auto' ? 'physical' : 'auto';
     renderSection();
@@ -1782,8 +2158,7 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
-  $('sectionControlsBtn').onclick = () => setSectionPanelVisible(true);
-  $('sectionPanelClose').onclick = () => setSectionPanelVisible(false);
+  $('sectionControlsBtn').onclick = () => setSectionPanelVisible($('sectionCoordsPanel').hidden);
   $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
   for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
     $(id).onchange = updateSectionFromInputs;
@@ -1927,9 +2302,10 @@ function bindUi() {
         roiTool === 'rect'
           ? normalizeRoi({ type: 'rect', a: drag.start, b: p })
           : normalizeRoi({
-              type: 'circle',
+              type: roiTool === 'sector' ? 'sector' : 'circle',
               c: drag.start,
               r: Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]),
+              ...(roiTool === 'sector' ? { startDeg: 0, endDeg: 90 } : {}),
             });
       renderMask();
       return;
@@ -1989,7 +2365,7 @@ function bindUi() {
       const next = normalizeRoi(roiDraft);
       const valid =
         next &&
-        (next.type === 'circle'
+        (next.type === 'circle' || next.type === 'sector'
           ? next.r > 1e-9
           : next.b[0] - next.a[0] > 1e-9 && next.b[1] - next.a[1] > 1e-9);
       if (valid) {

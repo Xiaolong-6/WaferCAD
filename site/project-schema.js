@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 3;
+export const CURRENT_PROJECT_VERSION = 4;
 
 const LIMITS = {
   layers: 10000,
@@ -355,12 +355,16 @@ function validateRoi(roi) {
     assertPoint(roi.b, 'roi.b');
     return;
   }
-  if (roi.type === 'circle') {
+  if (roi.type === 'circle' || roi.type === 'sector') {
     assertPoint(roi.c, 'roi.c');
     assertFinite(roi.r, 'roi.r', { min: 0 });
+    if (roi.type === 'sector') {
+      assertFinite(roi.startDeg, 'roi.startDeg');
+      assertFinite(roi.endDeg, 'roi.endDeg');
+    }
     return;
   }
-  fail('roi.type', 'must be rect or circle.');
+  fail('roi.type', 'must be rect, circle, or sector.');
 }
 
 function validateSection(section) {

@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { convertXY, formatXY, fromMicron, toMicron, XY_UNITS } from '../units.js';
+import {
+  convertXY,
+  formatLengthInput,
+  formatXY,
+  fromMicron,
+  roundMicronToNanometre,
+  toMicron,
+  XY_UNITS,
+} from '../units.js';
 
 test('XY unit table keeps canonical micron scale', () => {
   assert.equal(XY_UNITS.nm.toMicron, 0.001);
@@ -36,4 +44,12 @@ test('formatXY preserves the display contract', () => {
 test('unknown units fall back to microns', () => {
   assert.equal(toMicron(12, 'unknown'), 12);
   assert.equal(fromMicron(12, 'unknown'), 12);
+});
+
+test('manual length inputs round and display only to 1 nm precision', () => {
+  assert.equal(roundMicronToNanometre(1.23456), 1.235);
+  assert.equal(roundMicronToNanometre(-0.00049), 0);
+  assert.equal(formatLengthInput(1.23456, 'um'), '1.235');
+  assert.equal(formatLengthInput(1.23456, 'nm'), '1235');
+  assert.equal(formatLengthInput(1234.56789, 'mm'), '1.234568');
 });

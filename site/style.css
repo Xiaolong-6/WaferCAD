@@ -615,7 +615,7 @@ button:hover,
   color: var(--accent-dark);
 }
 .focus-editor {
-  position: relative;
+  position: static;
 }
 .focus-editor > summary {
   display: flex;
@@ -636,9 +636,9 @@ button:hover,
 .focus-popover {
   position: absolute;
   z-index: 7;
-  top: 25px;
-  right: 0;
-  width: 228px;
+  top: 29px;
+  right: 6px;
+  width: min(228px, calc(100% - 12px));
   padding: 6px;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -646,9 +646,16 @@ button:hover,
   box-shadow: 0 4px 12px rgba(42, 53, 64, 0.12);
 }
 .focus-popover-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 3px;
+}
+
+.focus-popover-actions .mini-btn {
+  min-width: 0;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .roi-editor {
   margin-top: 5px;
@@ -692,8 +699,8 @@ button:hover,
 }
 .three-control {
   height: 21px;
-  min-width: 48px;
-  padding: 1px 6px;
+  min-width: 0;
+  padding: 1px 4px;
   border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
@@ -728,7 +735,7 @@ button.three-control:hover,
   position: absolute;
   z-index: 6;
   top: 25px;
-  right: 0;
+  left: 0;
   width: 150px;
   padding: 7px 8px;
   border: 1px solid var(--line);
@@ -1205,6 +1212,23 @@ canvas {
     overflow-x: hidden;
   }
 
+  #threePanel .view-head {
+    align-content: center;
+  }
+
+  #threePanel .three-view-tools {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 1px;
+  }
+
+  #threePanel .three-control {
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 8px;
+  }
+
   .tool-tab {
     flex: 0 0 auto;
     padding-left: 7px;
@@ -1222,6 +1246,23 @@ canvas {
     padding: 2px;
     gap: 2px;
     grid-template-rows: repeat(3, minmax(220px, 1fr));
+  }
+
+  .three-view-tools {
+    gap: 0;
+  }
+
+  .three-control {
+    min-width: 0;
+    padding-left: 1px;
+    padding-right: 1px;
+    font-size: 7.5px;
+  }
+
+  .three-border-toggle input {
+    width: 11px;
+    height: 11px;
+    margin: 0 1px 0 0;
   }
 
   .section-body {
@@ -1324,18 +1365,18 @@ canvas {
 .section-endpoint {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 32px;
-  height: 32px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  border: 2px solid #fff;
+  border: 1.5px solid #fff;
   border-radius: 50%;
   background: #bd3b53;
   color: #fff;
-  font-size: 12px;
+  font-size: 9.5px;
   font-weight: 700;
   box-shadow:
-    0 0 0 2px #bd3b53,
-    0 2px 6px #0002;
+    0 0 0 1.5px #bd3b53,
+    0 1px 4px #0002;
   pointer-events: auto;
   touch-action: none;
   cursor: grab;
@@ -1344,7 +1385,7 @@ canvas {
 .section-endpoint:hover,
 .section-endpoint:focus-visible {
   background: #9e2941;
-  box-shadow: 0 0 0 5px #bd3b5333;
+  box-shadow: 0 0 0 3px #bd3b5333;
   outline: 2px solid #bd3b53;
 }
 .section-endpoint.dragging {
@@ -1470,9 +1511,9 @@ canvas {
 }
 @media (pointer: coarse) {
   .section-endpoint {
-    width: 44px;
-    height: 44px;
-    font-size: 14px;
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
   }
 }
 
@@ -1539,4 +1580,37 @@ canvas {
     top: 51px;
     right: 4px;
   }
+}
+
+/* In-page inspection mode: one view occupies the workspace while the top bar
+   and status bar remain available. */
+body.view-maximized .workspace > * {
+  visibility: hidden;
+}
+
+body.view-maximized .view-panel.is-maximized {
+  visibility: visible;
+  position: fixed !important;
+  inset: 38px 2px 22px 2px;
+  z-index: 30;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(32, 42, 51, 0.16);
+}
+
+body.view-maximized .view-panel.is-maximized .view-head {
+  min-height: 30px;
+}
+
+body.view-maximized .view-panel.is-maximized .section-body {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 210px);
+}
+
+.view-max-btn.active {
+  border-color: #aebbc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
 }

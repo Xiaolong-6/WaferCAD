@@ -120,7 +120,7 @@ export function createThreeView({
       return false;
     }
 
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
     renderer.setClearColor(0xf5f7f9);
 
@@ -186,8 +186,10 @@ export function createThreeView({
         opacity,
         depthWrite: opacity >= 0.999,
       });
-      group.add(new THREE.Mesh(geometry, material));
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.renderOrder = opacity < 0.999 ? 1 : 0;
 
+      let edges = null;
       if (borders) {
         const edgeGeometry = new THREE.BufferGeometry();
         edgeGeometry.setAttribute(
@@ -198,9 +200,20 @@ export function createThreeView({
           color: 0x111820,
           transparent: true,
           opacity: 0.9,
+          depthWrite: false,
         });
-        group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
+        edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        // With transparent solids, render borders first and let every material
+        // layer alpha-blend over the border segments it covers. Hidden borders
+        // therefore respond continuously to Opacity instead of staying equally
+        // dark at every setting. Opaque solids keep the normal depth-tested
+        // mesh-then-border order.
+        edges.renderOrder = opacity < 0.999 ? 0 : 1;
       }
+
+      if (edges && opacity < 0.999) group.add(edges);
+      group.add(mesh);
+      if (edges && opacity >= 0.999) group.add(edges);
     }
 
     stats.textContent = clip ? 'ROI' : 'full model';
@@ -236,10 +249,82 @@ export function createThreeView({
     scheduleFrame();
   }
 
+  async function exportGlb() {
+    if (!ready || !THREE) throw new Error('3D view is unavailable.');
+    const model = getModel();
+    if (!model) throw new Error('No model to export.');
+
+    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+    const exportGroup = new THREE.Group();
+    exportGroup.name = 'WaferCAD';
+    // glTF uses metres. Canonical WaferCAD geometry is stored in micrometres.
+    exportGroup.scale.setScalar(1e-6);
+
+    const clip = getClipGeometry();
+    for (const item of materialSolids(model, clip)) {
+      const geometry = geometryFromSolid(item);
+      const layer = layerById(model, item.layerId);
+      const material = new THREE.MeshStandardMaterial({
+        color: layer?.color || '#999',
+        roughness: 0.78,
+        metalness: 0.015,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = layer?.name || item.layerId || 'Layer';
+      exportGroup.add(mesh);
+    }
+
+    try {
+      const exporter = new GLTFExporter();
+      const result = await new Promise((resolve, reject) =>
+        exporter.parse(exportGroup, resolve, reject, {
+          binary: true,
+          onlyVisible: true,
+          trs: false,
+        }),
+      );
+      return new Blob([result], { type: 'model/gltf-binary' });
+    } finally {
+      for (const object of exportGroup.children) {
+        object.geometry?.dispose();
+        object.material?.dispose();
+      }
+    }
+  }
+
+  async function capturePng(scale = 3) {
+    if (!ready || !renderer || !scene || !camera) throw new Error('3D view is unavailable.');
+    const rect = host.getBoundingClientRect(),
+      oldPixelRatio = renderer.getPixelRatio(),
+      multiplier = Math.max(1, Math.min(4, Number(scale) || 3));
+
+    renderer.setPixelRatio(multiplier);
+    renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
+    renderer.render(scene, camera);
+    try {
+      const blob = await new Promise((resolve, reject) =>
+        renderer.domElement.toBlob(
+          (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),
+          'image/png',
+        ),
+      );
+      return blob;
+    } finally {
+      renderer.setPixelRatio(oldPixelRatio);
+      renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
+      camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
+      camera.updateProjectionMatrix();
+      scheduleFrame();
+    }
+  }
+
   return {
     init,
     render,
     fit,
+    exportGlb,
+    capturePng,
     get ready() {
       return ready;
     },

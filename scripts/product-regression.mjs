@@ -142,6 +142,7 @@ async function dragHandle(page, endpoint, dx, dy, cancel = false) {
 }
 
 async function checkAB(page, name) {
+  const nmRoundedMicron = (value) => Math.round(value * 1000) / 1000;
   await page.locator('#sectionControlsBtn').click();
   assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
   await page.locator('#sectionEditBtn').click();
@@ -152,15 +153,15 @@ async function checkAB(page, name) {
   const scale = Math.min((canvas.width - 68) / 100000, (canvas.height - 68) / 100000);
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
-  close(after[0], before[0] + 16 / scale);
-  close(after[1], before[1] + 8 / scale);
+  close(after[0], nmRoundedMicron(before[0] + 16 / scale));
+  close(after[1], nmRoundedMicron(before[1] + 8 / scale));
   close(after[2], before[2]);
   close(after[3], before[3]);
   assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
   await dragHandle(page, 'b', -10, 9);
   const moved = await coords(page);
-  close(moved[2], before[2] - 10 / scale);
-  close(moved[3], before[3] - 9 / scale);
+  close(moved[2], nmRoundedMicron(before[2] - 10 / scale));
+  close(moved[3], nmRoundedMicron(before[3] - 9 / scale));
   await dragHandle(page, 'a', 12, 6, true);
   assert.deepEqual(await coords(page), moved, 'Escape cancels only the in-progress drag');
   if (name === 'phone') {
@@ -179,8 +180,8 @@ async function checkAB(page, name) {
     });
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     const touchMoved = await coords(page);
-    close(touchMoved[0], beforeTouch[0] + 6 / scale, 1e-5);
-    close(touchMoved[1], beforeTouch[1] + 4 / scale, 1e-5);
+    close(touchMoved[0], nmRoundedMicron(beforeTouch[0] + 6 / scale));
+    close(touchMoved[1], nmRoundedMicron(beforeTouch[1] + 4 / scale));
     moved[0] = touchMoved[0];
     moved[1] = touchMoved[1];
     await session.detach();
@@ -189,13 +190,14 @@ async function checkAB(page, name) {
   await page.locator('#faceToggleBtn').click();
   await dragHandle(page, 'a', 8, 0);
   const back = await coords(page);
-  close(back[0], moved[0] - 8 / scale);
+  close(back[0], nmRoundedMicron(moved[0] - 8 / scale));
   await page.locator('#faceToggleBtn').click();
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
+  assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
   await page.locator('#mainZoomIn').click();
   assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
   await dragHandle(page, 'a', 4, 0);
-  back[0] += 4 / (scale * 1.25);
+  back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
   close((await coords(page))[0], back[0]);
   await page.locator('#mainZoomFit').click();
   await page.locator('#settingsTab').click();
@@ -210,13 +212,13 @@ async function checkAB(page, name) {
   }
   await page.locator('[data-endpoint=a]').focus();
   await page.keyboard.press('ArrowRight');
-  close((await coords(page))[0], back[0] + 1 / scale);
+  close((await coords(page))[0], nmRoundedMicron(back[0] + 1 / scale));
   await capture(page, `${name}-ab-edit`);
   await checkLayout(page);
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
   assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
-  await page.locator('#sectionPanelClose').click();
+  await page.locator('#sectionControlsBtn').click();
 }
 
 async function loadProject(page, project, name) {
@@ -276,11 +278,13 @@ async function checkROI(page, name) {
   await checkPopover(page, '.focus-popover', '#maskPanel');
   const width = Number(await page.locator('#roiWidth').inputValue());
   const height = Number(await page.locator('#roiHeight').inputValue());
-  close(width, 12.345);
+  assert.equal(width, 12);
+  assert.equal(height, 11);
   const center = [
     Number(await page.locator('#roiX').inputValue()),
     Number(await page.locator('#roiY').inputValue()),
   ];
+  assert.deepEqual(center, [-1, 1]);
   for (const reference of ['top-left', 'bottom-left', 'top-right', 'bottom-right', 'center']) {
     await page.locator('#roiAnchorSelect').selectOption(reference);
     close(Number(await page.locator('#roiWidth').inputValue()), width);
@@ -299,8 +303,14 @@ async function checkROI(page, name) {
   await page.mouse.move(x - 9 + 2, y - 7 + 2, { steps: 5 });
   await page.mouse.up();
   await page.locator('#focusEditor > summary').click();
-  close(Number(await page.locator('#roiWidth').inputValue()), width + (9 / scale) * 1000, 1e-6);
-  close(Number(await page.locator('#roiHeight').inputValue()), height + (7 / scale) * 1000, 1e-6);
+  assert.equal(
+    Number(await page.locator('#roiWidth').inputValue()),
+    Math.round(12.345 + (9 / scale) * 1000),
+  );
+  assert.equal(
+    Number(await page.locator('#roiHeight').inputValue()),
+    Math.round(11.356 + (7 / scale) * 1000),
+  );
   await page.locator('.focus-popover').evaluate((element) => {
     element.scrollTop = 0;
   });
@@ -320,7 +330,19 @@ async function checkROI(page, name) {
   await page.mouse.move(hx - 10, hy - 10, { steps: 5 });
   await page.mouse.up();
   await page.locator('#focusEditor > summary').click();
-  close(Number(await page.locator('#roiRadius').inputValue()), 5 + (5 / circleScale) * 1000, 1e-6);
+  assert.equal(
+    Number(await page.locator('#roiRadius').inputValue()),
+    Math.round(5 + (5 / circleScale) * 1000),
+  );
+  await page.locator('#focusEditor > summary').click();
+
+  project.roi = { type: 'sector', c: [0, 0], r: 0.01, startDeg: 300, endDeg: 60 };
+  await loadProject(page, project, `${name}-sector`);
+  await page.locator('#focusEditor > summary').click();
+  assert.equal((await page.locator('#roiShapeLabel').textContent()).trim(), 'Sector');
+  assert.equal(await page.locator('#roiRadius').inputValue(), '10');
+  assert.equal(await page.locator('#roiStartAngle').inputValue(), '300');
+  assert.equal(await page.locator('#roiEndAngle').inputValue(), '60');
   await page.locator('#focusEditor > summary').click();
   await checkLayout(page);
 }

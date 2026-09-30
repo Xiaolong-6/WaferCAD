@@ -213,8 +213,14 @@ assert.equal(await abPanel.isVisible(), true);
 await page.locator('#sectionEditBtn').click();
 assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
 assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
-await page.locator('#sectionPanelClose').click();
+assert.ok((await page.locator('[data-endpoint=a]').boundingBox()).width <= 24);
+await page.locator('#sectionControlsBtn').click();
 assert.equal(await abPanel.isHidden(), true);
+await page.locator('#sectionControlsBtn').click();
+await page.locator('#sectionAx').fill('1.23456');
+await page.locator('#sectionAx').press('Tab');
+assert.equal(await page.locator('#sectionAx').inputValue(), '1.235');
+await page.locator('#sectionControlsBtn').click();
 
 // ROI creation must remain one-shot and editable.
 const mask = page.locator('#maskCanvas');
@@ -227,10 +233,84 @@ await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.4);
 await page.mouse.down();
 await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6, { steps: 4 });
 await page.mouse.up();
-await page.locator('#focusEditor > summary').click();
+await page.waitForTimeout(50);
+assert.deepEqual(errors, [], 'Rectangle ROI creation must not raise a browser error.');
+assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
+await page.locator('#focusEditor').evaluate((details) => {
+  details.open = true;
+});
 await page.locator('#roiEditor:not([hidden])').waitFor();
 assert.ok(Number(await page.locator('#roiWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
+await page.locator('#focusEditor > summary').click();
+
+// Sector ROI starts as a circle-derived 0°→90° wedge and supports wrapped ranges.
+await page.locator('#focusEditor > summary').click();
+await page.locator('#clearRoiBtn').click();
+await page.locator('.roi-tool[data-tool="sector"]').click();
+const sectorBox = await mask.boundingBox();
+assert.ok(sectorBox);
+await page.mouse.move(sectorBox.x + sectorBox.width * 0.5, sectorBox.y + sectorBox.height * 0.5);
+await page.mouse.down();
+await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sectorBox.height * 0.5, {
+  steps: 4,
+});
+await page.mouse.up();
+await page.waitForTimeout(50);
+assert.deepEqual(errors, [], 'Sector ROI creation must not raise a browser error.');
+assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
+await page.locator('#focusEditor').evaluate((details) => {
+  details.open = true;
+});
+await page.locator('#roiEditor:not([hidden])').waitFor();
+assert.equal((await page.locator('#roiShapeLabel').textContent()).trim(), 'Sector');
+assert.equal(await page.locator('#roiStartAngle').inputValue(), '0');
+assert.equal(await page.locator('#roiEndAngle').inputValue(), '90');
+await page.locator('#roiStartAngle').fill('300');
+await page.locator('#roiStartAngle').press('Tab');
+await page.locator('#roiEndAngle').fill('60');
+await page.locator('#roiEndAngle').press('Tab');
+await page.locator('#focusEditor > summary').click();
+
+// SVG exports and in-page maximize controls are wired for all 2D views.
+for (const [button, filename] of [
+  ['#mainExportSvgBtn', 'wafercad-main.svg'],
+  ['#maskExportSvgBtn', 'wafercad-mask.svg'],
+  ['#sectionExportSvgBtn', 'wafercad-section-ab.svg'],
+]) {
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator(button).click();
+  const download = await downloadPromise;
+  assert.equal(download.suggestedFilename(), filename);
+}
+for (const [buttonId, panelId] of [
+  ['mainMaxBtn', 'mainPanel'],
+  ['maskMaxBtn', 'maskPanel'],
+  ['threeMaxBtn', 'threePanel'],
+  ['sectionMaxBtn', 'sectionPanel'],
+]) {
+  await page.locator(`#${buttonId}`).click();
+  assert.equal(
+    await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
+    true,
+  );
+  assert.equal(
+    await page.locator(`#${panelId}`).evaluate((el) => el.classList.contains('is-maximized')),
+    true,
+  );
+  assert.equal((await page.locator(`#${buttonId}`).textContent()).trim(), 'Restore');
+  await page.locator(`#${buttonId}`).click();
+  assert.equal(
+    await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
+    false,
+  );
+}
+await page.locator('#sectionMaxBtn').click();
+await page.keyboard.press('Escape');
+assert.equal(
+  await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
+  false,
+);
 
 // 3D inspection controls should operate without runtime errors.
 await page.locator('.three-opacity-control > summary').click();
@@ -239,6 +319,13 @@ const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
 await page.locator('#fit3dBtn').click();
+
+const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+await page.locator('#threeExportModelBtn').click();
+assert.equal((await glbDownloadPromise).suggestedFilename(), 'wafercad-model.glb');
+const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+await page.locator('#threeExportPngBtn').click();
+assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png');
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
 assert.deepEqual(errors, []);
