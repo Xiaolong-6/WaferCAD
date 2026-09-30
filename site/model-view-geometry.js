@@ -7,7 +7,7 @@ import {
 } from './vector-geometry.js';
 import { surfacePatches } from './model.js';
 
-// Both views consume canonical XY and relative Z; visual Z scaling is renderer-only.
+// All views consume canonical physical XYZ geometry; visual Z scaling is renderer-only.
 export function extrusionGroups(model, clip = null) {
   const groups = new Map();
   for (const region of model.regions) {
