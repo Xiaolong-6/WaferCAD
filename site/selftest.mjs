@@ -15,7 +15,6 @@ const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
 const {
   applyOperation,
-  conformalCarrierXYScale,
   createModel,
   layerById,
   recolorLayer,
@@ -84,7 +83,7 @@ const c = applyOperation(conformal, {
   growth: 'conformal',
 });
 assert.equal(
-  surfaceSegment(regionAt(conformal, [2 + conformalCarrierXYScale(conformal) / 2, 0]).stack)
+  surfaceSegment(regionAt(conformal, [2.5, 0]).stack)
     .layerId,
   c.layerId,
 );
@@ -130,7 +129,7 @@ const conformalBlanket = applyOperation(conformalStep, {
   growth: 'conformal',
 });
 const conformalSide = regionAt(conformalStep, [
-  2 + conformalCarrierXYScale(conformalStep) / 2,
+  2.5,
   0,
 ]).stack.find((segment) => segment.layerId === conformalBlanket.layerId);
 assert.equal(conformalSide.z0, 5);
@@ -159,7 +158,7 @@ applyOperation(conformalGrowStep, {
   growth: 'conformal',
 });
 const conformalGrowSide = regionAt(conformalGrowStep, [
-  2 + conformalCarrierXYScale(conformalGrowStep) / 2,
+  2.5,
   0,
 ]).stack.find((segment) => segment.layerId === conformalGrowSeed.layerId);
 assert.equal(conformalGrowSide.z0, 5);
