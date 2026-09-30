@@ -74,16 +74,23 @@ const degradedBrowser = await chromium.launch({ headless: true });
 const degradedContext = await degradedBrowser.newContext({
   viewport: { width: 1100, height: 760 },
 });
-await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => route.abort());
+let blockedThreeRequests = 0;
+await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => {
+  blockedThreeRequests++;
+  return route.fulfill({ status: 503, body: '' });
+});
 const degraded = await degradedContext.newPage();
 const degradedErrors = [];
 degraded.on('pageerror', (error) => degradedErrors.push(error.message));
 await degraded.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await degraded.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Ready. Create a base or import a layout.',
   null,
   { timeout: 30000 },
 );
+assert.ok(blockedThreeRequests > 0);
 assert.equal(
   (await degraded.locator('#threeStats').textContent()).trim(),
   'dependency unavailable',
