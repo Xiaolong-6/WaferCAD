@@ -179,13 +179,28 @@ export function bufferPolyline(points, radius, segments = 28, closed = false) {
   return unionGeometriesPairwise(parts);
 }
 
-export function bufferMulti(geom, radius, segments = 28) {
+export function bufferMulti(geom, radius, segments = 28, keepSegment = null) {
   const base = normalizeMulti(geom);
   if (!(radius > EPS) || !base.length) return cloneGeom(base);
   const parts = [base];
   for (const poly of base)
     for (const ring of poly) {
-      parts.push(bufferPolyline(ring.slice(0, -1), radius, segments, true));
+      if (!keepSegment) {
+        parts.push(bufferPolyline(ring.slice(0, -1), radius, segments, true));
+        continue;
+      }
+      const bands = [];
+      const ends = new Map();
+      for (let i = 1; i < ring.length; i++) {
+        const a = ring[i - 1],
+          b = ring[i];
+        if (!keepSegment(a, b)) continue;
+        bands.push(segmentBand(a, b, radius));
+        ends.set(`${a[0]},${a[1]}`, a);
+        ends.set(`${b[0]},${b[1]}`, b);
+      }
+      for (const point of ends.values()) bands.push(circleAt(point, radius, segments));
+      if (bands.length) parts.push(unionGeometriesPairwise(bands));
     }
   return unionGeometries(parts);
 }
