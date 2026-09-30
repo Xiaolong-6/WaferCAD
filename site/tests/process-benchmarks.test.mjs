@@ -150,6 +150,26 @@ test('Conformal sidewall width follows the shared relative-Z display scale', () 
   );
 });
 
+test('partial-area Conformal keeps its footprint-edge buffer', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Partial conformal',
+    thickness: 1,
+    area: rectMulti(4, 4),
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+  assert.deepEqual(
+    stackAt(model, 2.1).find((s) => s.layerId === coat.layerId),
+    { layerId: coat.layerId, z0: 5, z1: 6 },
+  );
+  assert.equal(
+    stackAt(model, 3).find((s) => s.layerId === coat.layerId),
+    undefined,
+  );
+});
+
 test('wafer-scale circular trench receives a visible conformal sidewall band', () => {
   const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
   applyOperation(model, {
