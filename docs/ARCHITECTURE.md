@@ -128,6 +128,8 @@ Etch performs vertical subtraction and does not accept a growth mode. The numeri
 
 ## Views
 
+Workspace layout responds to both width and orientation. Width ≤ 900 px or portrait (height ≥ width) uses Tools/3D, Main/Mask, Section in three rows, with A–B controls docked below Main. Wider landscape viewports use Main/Mask/3D above Tools/Section. The same rules apply to mouse-driven desktops and touch devices.
+
 ### Mask
 
 Renders imported vector layout over the base. View zoom/pan never changes mask geometry or alignment scale.

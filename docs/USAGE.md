@@ -94,7 +94,7 @@ Layer identity is stored separately from the visible name, so renaming or recolo
 
 Main can display the front or back surface.
 
-Use **A–B** to open the coordinate panel. Click **Drag A/B** to highlight the existing A/B handles, then drag either endpoint directly. **Done** locks the endpoints; the panel remains open until its collapse button is used. On narrow screens the controls appear below Main.
+Use **A–B** to open the coordinate panel. Click **Drag A/B** to highlight the existing A/B handles, then drag either endpoint directly. **Done** locks the endpoints; the panel remains open until its collapse button is used. On narrow screens and in portrait desktop windows the controls appear below Main. These viewports use three rows: Tools/3D, Main/Mask, Section; wider landscape windows use two rows.
 
 Coordinates and Section update while dragging. Grab offsets are preserved, and dragging can continue outside the canvas. Escape cancels the current drag; when idle it exits edit mode. A focused handle also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
 

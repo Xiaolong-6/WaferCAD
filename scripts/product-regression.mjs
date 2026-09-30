@@ -71,6 +71,32 @@ async function checkLayout(page) {
   const problems = await page.evaluate(() => {
     const issues = [];
     if (document.documentElement.scrollWidth > innerWidth) issues.push('page horizontal overflow');
+    const box = (id) => document.getElementById(id).getBoundingClientRect();
+    const main = box('mainPanel'),
+      mask = box('maskPanel'),
+      three = box('threePanel'),
+      tools = box('toolPanel'),
+      section = box('sectionPanel');
+    const sameRow = (a, b) => Math.abs(a.top - b.top) <= 1;
+    const below = (a, b) => a.top >= b.bottom - 1;
+    if (innerWidth <= 900 || innerHeight >= innerWidth) {
+      if (
+        !sameRow(tools, three) ||
+        !sameRow(main, mask) ||
+        !below(main, tools) ||
+        !below(section, main)
+      )
+        issues.push('portrait/narrow workspace must use Tools/3D, Main/Mask, Section rows');
+      const controls = document.querySelector('#sectionCoordsPanel');
+      if (!controls.hidden && getComputedStyle(controls).position !== 'static')
+        issues.push('compact A/B controls must dock below Main');
+    } else if (
+      !sameRow(main, mask) ||
+      !sameRow(mask, three) ||
+      !sameRow(tools, section) ||
+      !below(tools, main)
+    )
+      issues.push('landscape workspace must use Main/Mask/3D above Tools/Section');
     for (const panel of document.querySelectorAll('.view-panel')) {
       const head = panel.querySelector('.view-head').getBoundingClientRect();
       for (const element of panel.querySelectorAll(
@@ -329,6 +355,7 @@ try {
   for (const [name, viewport, touch] of [
     ['wide', { width: 1440, height: 900 }, false],
     ['medium', { width: 1000, height: 800 }, false],
+    ['portrait', { width: 1073, height: 1785 }, false],
     ['phone', { width: 390, height: 844 }, true],
   ]) {
     const { page, context } = await open(viewport, touch);
@@ -445,6 +472,34 @@ try {
     await checkLayout(page);
     await context.close();
   }
+  // A mouse-driven desktop window must switch layout as its aspect changes,
+  // without losing section coordinates or leaving canvases at their old sizes.
+  {
+    const { page, context } = await open({ width: 1000, height: 800 });
+    await loadProject(
+      page,
+      projectForBenchmark(await processBenchmark('trench', 'conformal')),
+      'portrait-resize',
+    );
+    await page.locator('#sectionControlsBtn').click();
+    await page.locator('#sectionEditBtn').click();
+    const before = await coords(page);
+    for (const [width, height] of [
+      [1000, 999],
+      [1000, 1000],
+      [1000, 1001],
+      [1073, 1785],
+      [1440, 2560],
+      [1440, 900],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await capture(page, `desktop-resize-${width}-${height}`);
+      await checkLayout(page);
+      assert.deepEqual(await coords(page), before);
+      assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
+    }
+    await context.close();
+  }
   assert.deepEqual(errors, []);
   await writeFile(join(output, 'report.json'), JSON.stringify({ cases, errors }, null, 2));
   const cards = cases
@@ -455,7 +510,7 @@ try {
     .join('');
   await writeFile(
     join(output, 'index.html'),
-    `<!doctype html><meta charset="utf-8"><title>WaferCAD product review</title><style>body{font:14px system-ui;margin:24px;background:#f4f6f8}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}figure{margin:0;background:white;padding:10px}img{width:100%;height:280px;object-fit:contain}figcaption{margin-top:8px}</style><h1>WaferCAD product review</h1><p>${cases.length} captures · actual Chromium/WebGL · 1440 / 1000 / 390 px plus breakpoint edges. Open each image to inspect full resolution.</p><main>${cards}</main>`,
+    `<!doctype html><meta charset="utf-8"><title>WaferCAD product review</title><style>body{font:14px system-ui;margin:24px;background:#f4f6f8}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}figure{margin:0;background:white;padding:10px}img{width:100%;height:280px;object-fit:contain}figcaption{margin-top:8px}</style><h1>WaferCAD product review</h1><p>${cases.length} captures · actual Chromium/WebGL · 1440 / 1000 / 390 px, desktop portrait and orientation/breakpoint edges. Open each image to inspect full resolution.</p><main>${cards}</main>`,
   );
   console.log(`WaferCAD product regression: OK (${cases.length} captures)`);
 } finally {

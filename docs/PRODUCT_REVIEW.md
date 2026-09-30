@@ -4,7 +4,7 @@
 
 The product regression covers Main, Mask, 3D, Section, all five tool tabs, KLayout transform/hierarchy GDS and compressed OASIS imports, snapshots, and process benchmark projects.
 
-Primary viewports are 1440 × 900, 1000 × 800, and 390 × 844. The phone context also uses device pixel ratio 2 and real Chromium touch events. Breakpoint checks cover widths 600, 601, 900, and 901.
+Primary viewports are 1440 × 900, 1000 × 800, 1073 × 1785 (mouse-driven desktop portrait), and 390 × 844. The phone context also uses device pixel ratio 2 and real Chromium touch events. Breakpoint checks cover widths 600, 601, 900, and 901. Desktop resize checks cross the orientation boundary at 1000 × 999/1000/1001, then test 1073 × 1785, 1440 × 2560 and a return to 1440 × 900.
 
 ## Interaction contract
 
@@ -18,7 +18,7 @@ Primary viewports are 1440 × 900, 1000 × 800, and 390 × 844. The phone contex
 
 ## Layout and renderer changes
 
-At widths up to 900, A–B coordinates dock below Main so they cannot cover the endpoints. The established three-row narrow layout remains: Tools/3D, Main/Mask, Section.
+At widths up to 900 or in portrait orientation (viewport height ≥ width), the workspace uses three rows: Tools/3D, Main/Mask, Section. This applies to desktop windows as well as phones. A–B coordinates dock below Main so they cannot cover the endpoints. Landscape windows wider than 900 retain the two-row layout. The choice follows the current CSS viewport, not device type or touch capability; resizing switches layout without resetting coordinates or edit mode.
 
 Narrow tool headers wrap deliberately; mobile base fields use full input rows, all five mobile tabs remain visible in two rows, and the legend header wraps its controls. The ROI popover has a bounded scroll area. Plan-axis tick spacing responds to the available screen width and actual label width.
 
@@ -43,18 +43,20 @@ WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/product-regression.mjs
 
 The local Three.js package serves the same pinned CDN module URLs during the test; it changes no application source or import map. This makes the test repeatable while exercising actual WebGL. The separate UI smoke retains a test for the CDN-unavailable fallback.
 
-Open `test-results/product-review/index.html` to inspect screenshots and reopen a generated `.wafercad` fixture in WaferCAD. Assertions cover actual coordinate changes, touch dragging, cancellation, Back mirroring, unit conversions, snapshot restoration, ROI dimensions, header and ROI/opacity popover containment, minimum canvas sizes, backing-buffer dimensions, and absence of page errors.
+Open `test-results/product-review/index.html` to inspect screenshots and reopen a generated `.wafercad` fixture in WaferCAD. Assertions cover actual panel row arrangement, orientation changes, coordinate preservation after resize, touch dragging, cancellation, Back mirroring, unit conversions, snapshot restoration, ROI dimensions, header and ROI/opacity popover containment, minimum canvas sizes, backing-buffer dimensions, and absence of page errors.
 
 CI uploads this review with the tested static application as an artifact. Screenshots require human inspection: passing DOM assertions alone does not establish visual quality. This suite is not a large-layout performance benchmark.
 
 ## Completed review, 2026-09-30
 
-The final local run passed Quality (71 tests plus the self-test), the original UI smoke including CDN failure, and the product regression with 94 captures and no page errors. All capture groups were visually inspected, with full-size inspection of the A/B, mobile controls, ROI, and scientific comparison cases.
+The final local run passed Quality (71 tests plus the self-test), the original UI smoke including CDN failure, and the product regression with 124 captures and no page errors. All capture groups were visually inspected, with full-size inspection of the A/B, mobile controls, ROI, and scientific comparison cases.
 
 Visual findings fixed during the review were covered endpoints, clipped header controls, cramped mobile base inputs and tabs, clipped ROI/opacity popovers, canvas stretching after layout changes, overlapping/clipped axis labels, and an undersized 3D camera fit. Process checks additionally identified rounded Z grouping in the 3D renderer; exact interval grouping now preserves distinct surfaces. A reported Section screenshot also exposed artificial vertical lines inside continuous substrate and coating. Main and Section now draw unioned visible contours; 3D builds each material boundary without internal prism faces or edges. Actual substrate pixels are checked across former seams, with geometry tests preserving true interfaces, steps, holes and disconnected islands.
 
 Representative final captures:
 
+- [Desktop portrait layout](review/desktop-portrait.png)
+- [Desktop portrait with A/B controls](review/desktop-portrait-ab.png)
 - [Wide A/B editing](review/ab-wide.png)
 - [Phone A/B editing](review/ab-phone.png)
 - [Phone nm-scale ROI editor](review/roi-phone.png)
