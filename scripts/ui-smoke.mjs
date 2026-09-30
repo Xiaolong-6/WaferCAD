@@ -121,13 +121,18 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
     const z1 = 8.5;
     const x = Math.round((left + t * iw) * dpr);
     const y = Math.round((top + ((z1 - 6) / (z1 - z0)) * ih) * dpr);
-    const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
+    const ctx = canvas.getContext('2d');
+    const actual = [...ctx.getImageData(x, y, 1, 1).data.slice(0, 3)];
     const expected = [
       Number.parseInt(color.slice(1, 3), 16),
       Number.parseInt(color.slice(3, 5), 16),
       Number.parseInt(color.slice(5, 7), 16),
     ];
-    return { actual, expected };
+    const row = [];
+    for (let dx = -4; dx <= 4; dx++) {
+      row.push([...ctx.getImageData(x + dx * dpr, y, 1, 1).data.slice(0, 3)]);
+    }
+    return { actual, expected, row };
   },
   { color: coatColor, sideX },
 );
@@ -136,6 +141,10 @@ assert.ok(
     (value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8,
   ),
 );
+const visibleSidewallPixels = sidewallPixel.row.filter((pixel) =>
+  pixel.every((value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 18),
+).length;
+assert.ok(visibleSidewallPixels >= 5);
 await page.locator('#operationTab').click();
 
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
