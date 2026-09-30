@@ -8,7 +8,7 @@ Set:
 
 - W in the currently selected global XY display unit;
 - H in the same display unit for rectangular bases;
-- Z as a relative thickness.
+- Z as a physical thickness in the selected display/input unit.
 
 Use **Apply base** to create or rebuild it.
 
@@ -80,7 +80,7 @@ For Add and Grow, choose:
 
 Etch has no growth setting.
 
-Z Δ is a relative thickness. Conformal is a 2.5D geometric approximation evaluated as Direct growth first, followed by an outward normal sidewall offset. The current convention uses the same numeric value for that XY offset in µm (for example Z Δ = 0.5 gives a 0.5 µm lateral offset). The 3D Z exaggeration is display-only. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
+Z is physical and stored internally in µm. Add/Grow use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Direct growth first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section and 3D can stretch Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
 
 ## 7. Manage layers
 
@@ -100,7 +100,7 @@ Coordinates and Section update while dragging. Grab offsets are preserved, and d
 
 Double-click Main to fit the view. **Fit** in 3D frames the full model for the current panel aspect ratio.
 
-Use **Settings → XY unit** to switch nm / µm / mm. This only converts display and XY input values; geometry is unchanged. Z values remain relative.
+Use **Settings → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm.
 
 ## 9. Snapshots
 

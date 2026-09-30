@@ -27,7 +27,7 @@ Region
    └─ ...
 ```
 
-XY is physical geometry stored internally in micrometres. The UI has a global display-unit layer (nm / µm / mm) that converts only presentation and XY input values. Z is relative.
+X, Y and Z are physical geometry stored internally in micrometres. The UI has one global display/input-unit layer (nm / µm / mm) for all three axes.
 
 The model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. This is sufficient for the current Add, Grow, Etch, Direct, and Conformal workflows without introducing a full arbitrary-solid B-rep kernel.
 
@@ -78,7 +78,7 @@ Polygon Boolean operations are provided by the vendored `polygon-clipping` libra
 
 ### `site/units.js`
 
-Owns the canonical XY display-unit conversions. Internal XY remains µm; nm/µm/mm changes are presentation/input conversions only.
+Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only.
 
 ### `site/workspace-snapshots.js`
 
@@ -122,9 +122,9 @@ The operation engine does not infer these from the view.
 
 Direct growth preserves the selected XY footprint.
 
-Conformal growth is two-stage: first run the same vertical mutation as Direct in the selected area, then inspect the newly exposed coating surface and offset its step boundaries outward by the same numeric amount as Z Δ. The generated sidewall interval is assigned to the same layer id and merged with the Direct-grown material. This makes Mask, Invert and Whole-face semantics identical in Stage 1 and derives sidewalls from the actual post-growth topology rather than from a pre-operation approximation.
+Conformal growth is two-stage: first run the same physical Z-thickness mutation as Direct in the selected area, then inspect the newly exposed coating surface and offset its step boundaries outward by the same physical distance. The generated sidewall interval is assigned to the same layer id and merged with the Direct-grown material. This makes Mask, Invert and Whole-face semantics identical in Stage 1 and derives sidewalls from the actual post-growth topology rather than from a pre-operation approximation.
 
-Etch performs vertical subtraction and does not accept a growth mode. The relative-Z/XY mapping, supported fixtures, and through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
+Etch performs physical vertical subtraction and does not accept a growth mode. Supported fixtures and the through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
 
 ## Views
 
@@ -138,7 +138,7 @@ Renders top/bottom surface patches directly from region polygons. Step boundarie
 
 ### 3D
 
-Extrudes vector polygons between each segment's `z0` and `z1`. XY stays in physical geometry coordinates. Relative Z is exaggerated only by the renderer through `relativeZToXYScale()`; Conformal process geometry never uses that display exaggeration. The optional ROI clips rendering only; it does not change the model.
+Extrudes vector polygons between each segment's physical-`µm` `z0` and `z1`. 3D uses `zDisplayScale()` only to exaggerate Z visually; process geometry remains in physical coordinates. The optional ROI clips rendering only; it does not change the model.
 
 The renderer is event-driven: it renders on model/view changes and while OrbitControls damping is settling rather than running an unconditional 60 fps loop. Three.js is loaded as an optional external dependency; if it is unavailable, the rest of WaferCAD remains usable and only the 3D view is degraded.
 
@@ -148,11 +148,10 @@ Intersects the A–B line with every region polygon, then draws each region stac
 
 ## Units
 
-- XY canonical storage: µm
-- XY display: nm, µm, or mm
-- Z: relative
+- XYZ canonical storage: µm
+- XYZ display/input: nm, µm, or mm
 
-Changing the global XY display unit never rescales geometry. Base dimensions, alignment offsets, XY axes, cursor readouts, and A–B span all use the selected display unit. Z remains dimensionless. Conformal currently uses Z Δ's numeric value as the XY normal-offset distance in µm, while 3D Z exaggeration remains display-only.
+Changing the global display/input unit never rescales geometry. Base dimensions, alignment offsets, axes, cursor readouts, A–B span, base Z thickness, operation Z thickness/depth, and Section Z labels all use the selected unit. Section fits X and Z independently; 3D applies an adaptive display-only Z exaggeration.
 
 ## Persistence
 

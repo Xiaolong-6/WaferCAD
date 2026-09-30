@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel } = await import('../site/model.js');
+const { applyOperation, createModel, modelBoundsZ } = await import('../site/model.js');
 const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
@@ -28,6 +28,16 @@ await page.waitForFunction(
 // Settings owns project controls and XY units.
 await page.locator('#settingsTab').click();
 await page.locator('#settingsTools:not([hidden])').waitFor();
+
+// XYZ unit switching converts physical Z drafts as well as X/Y drafts.
+await page.locator('#xyUnitSelect').selectOption('nm');
+assert.equal(await page.locator('#baseThicknessUnit').textContent(), 'nm');
+assert.equal(await page.locator('#operationThicknessUnit').textContent(), 'nm');
+assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12000);
+assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3000);
+await page.locator('#xyUnitSelect').selectOption('um');
+assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12);
+assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3);
 for (const id of ['newProjectBtn', 'openProjectInput', 'saveProjectBtn', 'xyUnitSelect']) {
   assert.equal(await page.locator(`#settingsTools #${id}`).count(), 1);
 }
@@ -105,8 +115,12 @@ assert.deepEqual(
   { layerId: coatId, z0: 6, z1: 7 },
 );
 const coatColor = saved.model.layers.find((layer) => layer.id === coatId).color;
+const [savedLo, savedHi] = modelBoundsZ(saved.model);
+const savedPad = Math.max(1e-9, (savedHi - savedLo) * 0.08);
+const sectionZ0 = savedLo - savedPad;
+const sectionZ1 = savedHi + savedPad;
 const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
-  (canvas, { color, sideX }) => {
+  (canvas, { color, sideX, sectionZ0, sectionZ1 }) => {
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const left = 27;
@@ -116,10 +130,8 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
     const iw = rect.width - left - right;
     const ih = rect.height - top - bottom;
     const t = (sideX + 7000) / 14000;
-    const z0 = -7.5;
-    const z1 = 8.5;
     const x = Math.round((left + t * iw) * dpr);
-    const y = Math.round((top + ((z1 - 6) / (z1 - z0)) * ih) * dpr);
+    const y = Math.round((top + ((sectionZ1 - 6) / (sectionZ1 - sectionZ0)) * ih) * dpr);
     const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
     const expected = [
       Number.parseInt(color.slice(1, 3), 16),
@@ -128,7 +140,7 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
     ];
     return { actual, expected };
   },
-  { color: coatColor, sideX },
+  { color: coatColor, sideX, sectionZ0, sectionZ1 },
 );
 assert.ok(
   sidewallPixel.actual.every(
@@ -141,7 +153,7 @@ assert.ok(
 // where the process model is partitioned but the visible material is identical.
 const baseColor = saved.model.layers.find((layer) => layer.id === 'base').color;
 const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
-  (canvas, { color }) => {
+  (canvas, { color, sectionZ0, sectionZ1 }) => {
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const left = 27;
@@ -150,11 +162,9 @@ const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
     const bottom = 22;
     const iw = rect.width - left - right;
     const ih = rect.height - top - bottom;
-    const z0 = -7.5;
-    const z1 = 8.5;
     const t = (5000 + 7000) / 14000;
     const x = Math.round((left + t * iw) * dpr);
-    const y = Math.round((top + ((z1 - 0) / (z1 - z0)) * ih) * dpr);
+    const y = Math.round((top + ((sectionZ1 - 0) / (sectionZ1 - sectionZ0)) * ih) * dpr);
     const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
     const expected = [
       Number.parseInt(color.slice(1, 3), 16),
@@ -163,7 +173,7 @@ const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
     ];
     return { actual, expected };
   },
-  { color: baseColor },
+  { color: baseColor, sectionZ0, sectionZ1 },
 );
 assert.ok(
   baseSeamPixel.actual.every(
