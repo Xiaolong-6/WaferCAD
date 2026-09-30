@@ -1,5 +1,4 @@
 import { parseLayoutFile } from './layout-io.js';
-import { KLAYOUT_SAMPLES, sampleById } from './sample-layouts.js';
 import {
   applyOperation,
   cloneModel,
@@ -23,7 +22,6 @@ import {
 import { downloadProject } from './project-io.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
 import { createThreeView } from './three-view.js';
-import { createSectionEditor } from './section-editor.js';
 import { sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
 import {
   normalizeRoi,
@@ -56,6 +54,10 @@ import {
 } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
+import { createBaseControlsController } from './controllers/base-controls-controller.js';
+import { createMaskImportController } from './controllers/mask-import-controller.js';
+import { createMainCanvasController } from './controllers/main-canvas-controller.js';
+import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -373,7 +375,7 @@ function hasProcessEdits() {
 function fitImportedLayout() {
   maskTransform = { scale: 1, rotation: 0, x: 0, y: 0 };
   planViews.mask = { zoom: 1, panX: 0, panY: 0 };
-  syncTransformInputs();
+  maskImportController.maskImportController.syncTransformInputs();
 }
 
 function applyImportedLayout(imported, displayName) {
@@ -408,24 +410,6 @@ async function importLayoutBuffer(arrayBuffer, filename, displayName = filename)
   return imported;
 }
 
-function populateSampleLayouts() {
-  const select = $('sampleMaskSelect');
-  if (!select) return;
-  for (const sample of KLAYOUT_SAMPLES) {
-    const option = document.createElement('option');
-    option.value = sample.id;
-    option.textContent = sample.label;
-    select.append(option);
-  }
-}
-function syncTransformInputs() {
-  $('maskOffsetX').value = formatLengthField(maskTransform.x);
-  $('maskOffsetY').value = formatLengthField(maskTransform.y);
-  $('maskOffsetXUnit').textContent = xyUnit().label;
-  $('maskOffsetYUnit').textContent = xyUnit().label;
-  $('maskScale').value = formatNumericField(maskTransform.scale, 6);
-  $('maskRotation').value = formatNumericField(maskTransform.rotation, 3);
-}
 function setupCanvas(canvas) {
   const dpr = Math.min(devicePixelRatio || 1, 2),
     r = canvas.getBoundingClientRect(),
@@ -1130,13 +1114,127 @@ const projectController = createProjectController({
   loadProjectSnapshot,
   snapshotManager,
   syncBaseControls,
-  syncTransformInputs,
+  syncTransformInputs: () => maskImportController.syncTransformInputs(),
   renderAll,
   fit3d,
   status,
 });
 const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
   projectController;
+
+const maskImportController = createMaskImportController({
+  getMaskTransform: () => maskTransform,
+  setMaskTransform: (value) => {
+    maskTransform = value;
+  },
+  manualMicron,
+  formatLengthField,
+  formatNumericField,
+  xyUnitLabel: () => xyUnit().label,
+  importLayoutBuffer,
+  openLayoutFile,
+  renderMask,
+  status,
+});
+
+const baseControls = createBaseControlsController({
+  getModel: () => model,
+  setModel: (value) => {
+    model = value;
+  },
+  setSection: (value) => {
+    section = value;
+  },
+  getBaseRevertSnapshot: () => baseRevertSnapshot,
+  setBaseRevertSnapshot: (value) => {
+    baseRevertSnapshot = value;
+  },
+  getHistory: () => history,
+  getFuture: () => future,
+  stateSnapshot,
+  restoreSnapshot,
+  saveHistory,
+  hasProcessEdits,
+  manualMicron,
+  formatLengthField,
+  syncBaseControls,
+  renderAll,
+  fit3d,
+  status,
+});
+
+const workspaceActions = createWorkspaceActionsController({
+  getXyUnit: xyUnit,
+  setXyDisplayUnit: (value) => {
+    xyDisplayUnit = value;
+  },
+  formatLengthField,
+  manualMicron,
+  syncTransformInputs: () => maskImportController.syncTransformInputs(),
+  renderAll,
+  status,
+  getActiveFace: () => activeFace,
+  setActiveFace: (value) => {
+    activeFace = value;
+  },
+  updateOperationUI,
+  applyOperation: applyOp,
+  fit3d,
+  exportMainSvg,
+  exportMaskSvg,
+  exportSectionSvg,
+  getThreeView: () => threeView,
+  downloadBlob,
+  getRoi: () => roi,
+  getSectionScaleMode: () => sectionScaleMode,
+  setSectionScaleMode: (value) => {
+    sectionScaleMode = value;
+  },
+  renderSection,
+  getThreeOpacity: () => threeOpacity,
+  setThreeOpacity: (value) => {
+    threeOpacity = value;
+  },
+  getThreeShowBorders: () => threeShowBorders,
+  setThreeShowBorders: (value) => {
+    threeShowBorders = value;
+  },
+  renderThree,
+  zoomPlanView,
+  resetPlanView,
+  getHistory: () => history,
+  getFuture: () => future,
+  stateSnapshot,
+  restoreSnapshot,
+  setBaseRevertSnapshot: (value) => {
+    baseRevertSnapshot = value;
+  },
+  syncBaseControls,
+  snapshotManager,
+  renderSnapshots,
+});
+
+const mainCanvasController = createMainCanvasController({
+  getSection: () => section,
+  setSection: (value) => {
+    section = value;
+  },
+  getActiveFace: () => activeFace,
+  setSectionEditEnabled,
+  setSectionEditor: (value) => {
+    sectionEditor = value;
+  },
+  viewport,
+  worldToCanvas,
+  canvasToWorld,
+  zoomPlanView,
+  resetPlanView,
+  xyText,
+  renderMain,
+  renderMask,
+  renderSection,
+  renderAll,
+});
 
 const { initializeWorkspaceStart } = createStartupController({
   takeStartupFile,
@@ -1161,217 +1259,10 @@ function bindUi() {
   viewMaximizeController.bind();
   roiController.bind();
   sectionControls.bind();
-
-  document.querySelectorAll('#substrateShape button').forEach(
-    (b) =>
-      (b.onclick = () => {
-        document
-          .querySelectorAll('#substrateShape button')
-          .forEach((x) => x.classList.remove('active'));
-        b.classList.add('active');
-        const circle = b.dataset.shape === 'circle';
-        $('baseHeight').disabled = circle;
-        if (circle) $('baseHeight').value = $('baseWidth').value;
-      }),
-  );
-  $('baseWidth').oninput = () => {
-    if (document.querySelector('#substrateShape button.active')?.dataset.shape === 'circle')
-      $('baseHeight').value = $('baseWidth').value;
-  };
-  $('applyBaseBtn').onclick = () => {
-    const shape = document.querySelector('#substrateShape button.active').dataset.shape,
-      width = manualMicron($('baseWidth').value),
-      height = shape === 'circle' ? width : manualMicron($('baseHeight').value),
-      thickness = manualMicron($('baseThickness').value);
-    if (width <= 0 || height <= 0 || thickness <= 0)
-      return status('Base dimensions must be positive.');
-    if (
-      hasProcessEdits() &&
-      !window.confirm(
-        'Rebuilding the base will remove the current structure and all applied operations. You can undo this change afterwards. Continue?',
-      )
-    ) {
-      syncBaseControls();
-      return;
-    }
-    baseRevertSnapshot = stateSnapshot();
-    saveHistory();
-    model = createModel({ shape, width, height, thickness });
-    section = { a: [-width * 0.42, 0], b: [width * 0.42, 0] };
-    syncBaseControls();
-    renderAll();
-    fit3d();
-    status('Base applied. Use Revert or Undo to restore the previous structure.');
-  };
-  $('revertBaseBtn').onclick = () => {
-    if (!baseRevertSnapshot) return;
-    const previous = baseRevertSnapshot;
-    baseRevertSnapshot = null;
-    future.push(stateSnapshot());
-    if (history.length) history.pop();
-    restoreSnapshot(previous);
-    syncBaseControls();
-    renderAll();
-    fit3d();
-    status('Reverted the last base change.');
-  };
-
-  $('sampleMaskSelect').onchange = async (event) => {
-    const sample = sampleById(event.target.value);
-    if (!sample) return;
-    try {
-      status(`Reading ${sample.label}…`);
-      const response = await fetch(sample.path);
-      if (!response.ok) throw new Error(`sample request failed (${response.status})`);
-      await importLayoutBuffer(await response.arrayBuffer(), sample.path, sample.label);
-    } catch (err) {
-      console.error(err);
-      status(`Layout import failed: ${err.message}`);
-    } finally {
-      event.target.value = '';
-    }
-  };
-
-  $('gdsInput').onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    await openLayoutFile(file);
-    e.target.value = '';
-  };
-  for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'])
-    $(id).oninput = () => {
-      maskTransform = {
-        x: manualMicron($('maskOffsetX').value || 0),
-        y: manualMicron($('maskOffsetY').value || 0),
-        scale: Math.max(1e-8, Number($('maskScale').value) || 1),
-        rotation: Number($('maskRotation').value) || 0,
-      };
-      renderMask();
-    };
-  $('xyUnitSelect').onchange = () => {
-    const oldUnit = xyUnit(),
-      draftWidth = (Number($('baseWidth').value) || 0) * oldUnit.toMicron,
-      draftHeight = (Number($('baseHeight').value) || 0) * oldUnit.toMicron,
-      draftThickness = (Number($('baseThickness').value) || 0) * oldUnit.toMicron,
-      draftOperation = (Number($('operationThickness').value) || 0) * oldUnit.toMicron;
-    xyDisplayUnit = $('xyUnitSelect').value in XY_UNITS ? $('xyUnitSelect').value : 'um';
-    $('baseWidth').value = formatLengthField(draftWidth);
-    $('baseHeight').value = formatLengthField(draftHeight);
-    $('baseThickness').value = formatLengthField(draftThickness);
-    $('operationThickness').value = formatLengthField(draftOperation);
-    $('baseWidthUnit').textContent = xyUnit().label;
-    $('baseHeightUnit').textContent = xyUnit().label;
-    $('baseThicknessUnit').textContent = xyUnit().label;
-    $('operationThicknessUnit').textContent = xyUnit().label;
-    syncTransformInputs();
-    renderAll();
-    status(`XYZ display/input unit: ${xyUnit().label}. Geometry is unchanged.`);
-  };
-
-  for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'])
-    $(id).addEventListener('change', syncTransformInputs);
-  for (const id of ['baseWidth', 'baseHeight', 'baseThickness'])
-    $(id).addEventListener('change', () => {
-      const value = manualMicron($(id).value);
-      if (Number.isFinite(value)) $(id).value = formatLengthField(value);
-      if (
-        id === 'baseWidth' &&
-        document.querySelector('#substrateShape button.active')?.dataset.shape === 'circle'
-      )
-        $('baseHeight').value = $('baseWidth').value;
-    });
-  $('operationThickness').addEventListener('change', () => {
-    const value = manualMicron($('operationThickness').value);
-    if (Number.isFinite(value)) $('operationThickness').value = formatLengthField(value);
-  });
-  $('faceToggleBtn').onclick = () => {
-    activeFace = activeFace === 'front' ? 'back' : 'front';
-    renderAll();
-  };
-
-  $('operationType').onchange = updateOperationUI;
-  $('growthMode').onchange = updateOperationUI;
-  $('applyOperationBtn').onclick = applyOp;
-  $('fit3dBtn').onclick = fit3d;
-  $('mainExportSvgBtn').onclick = exportMainSvg;
-  $('maskExportSvgBtn').onclick = exportMaskSvg;
-  $('sectionExportSvgBtn').onclick = exportSectionSvg;
-  $('threeExportModelBtn').onclick = async () => {
-    try {
-      const blob = await threeView?.exportGlb();
-      if (!blob) throw new Error('3D export is unavailable.');
-      downloadBlob(blob, 'wafercad-model.glb');
-      status(`Exported ${roi ? 'ROI' : 'full'} 3D model as GLB (physical metres).`);
-    } catch (error) {
-      console.error(error);
-      status(`3D model export failed: ${error.message}`);
-    }
-  };
-  $('threeExportPngBtn').onclick = async () => {
-    try {
-      const blob = await threeView?.capturePng(3);
-      if (!blob) throw new Error('3D screenshot is unavailable.');
-      downloadBlob(blob, 'wafercad-3d-3x.png');
-      status('Exported 3× high-resolution 3D PNG.');
-    } catch (error) {
-      console.error(error);
-      status(`3D screenshot failed: ${error.message}`);
-    }
-  };
-  $('sectionScaleModeBtn').onclick = () => {
-    sectionScaleMode = sectionScaleMode === 'auto' ? 'physical' : 'auto';
-    renderSection();
-    status(
-      sectionScaleMode === 'auto'
-        ? 'Section scale: Auto fit (X and Z independently).'
-        : 'Section scale: physical 1:1 X:Z.',
-    );
-  };
-  $('threeOpacityRange').oninput = () => {
-    threeOpacity = Math.max(0.1, Math.min(1, Number($('threeOpacityRange').value) || 1));
-    $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
-    renderThree();
-  };
-  $('threeBorders').onchange = () => {
-    threeShowBorders = $('threeBorders').checked;
-    renderThree();
-  };
-  $('maskZoomOut').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1 / 1.25);
-  $('maskZoomIn').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1.25);
-  $('maskZoomFit').onclick = () => resetPlanView('mask');
-  $('mainZoomOut').onclick = () =>
-    zoomPlanView('main', $('mainCanvas'), 1 / 1.25, null, null, activeFace === 'back');
-  $('mainZoomIn').onclick = () =>
-    zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
-  $('mainZoomFit').onclick = () => resetPlanView('main');
-  $('undoBtn').onclick = () => {
-    if (!history.length) return;
-    future.push(stateSnapshot());
-    restoreSnapshot(history.pop());
-    baseRevertSnapshot = null;
-    syncBaseControls();
-    renderAll();
-    status('Undid operation.');
-  };
-  $('redoBtn').onclick = () => {
-    if (!future.length) return;
-    history.push(stateSnapshot());
-    restoreSnapshot(future.pop());
-    baseRevertSnapshot = null;
-    syncBaseControls();
-    renderAll();
-    status('Redid operation.');
-  };
-  $('saveSnapshotBtn').onclick = () => {
-    try {
-      const saved = snapshotManager.create();
-      renderSnapshots();
-      status(`Saved snapshot "${saved.name}".`);
-    } catch (err) {
-      console.error(err);
-      status(`Snapshot failed: ${err.message}`);
-    }
-  };
+  baseControls.bind();
+  maskImportController.bind();
+  workspaceActions.bind();
+  mainCanvasController.bind();
 
   $('newProjectBtn').onclick = () => {
     setSectionEditEnabled(false);
@@ -1398,85 +1289,25 @@ function bindUi() {
     fit3d();
     status('New empty project.');
   };
+
   $('saveProjectBtn').onclick = () => {
     try {
       downloadProject(buildProjectSnapshot(true));
       status('Project saved.');
-    } catch (err) {
-      console.error(err);
-      status(`Save failed: ${err.message}`);
+    } catch (error) {
+      console.error(error);
+      status(`Save failed: ${error.message}`);
     }
   };
 
-  $('openProjectInput').onchange = async (e) => {
-    const file = e.target.files[0];
+  $('openProjectInput').onchange = async (event) => {
+    const file = event.target.files[0];
     if (!file) return;
     await openProjectFile(file);
-    e.target.value = '';
+    event.target.value = '';
   };
-
-  const main = $('mainCanvas');
-  sectionEditor = createSectionEditor({
-    canvas: main,
-    host: $('sectionEndpointHandles'),
-    getSection: () => section,
-    getFrame: () => {
-      const rect = main.getBoundingClientRect();
-      const panel = $('mainPanel').getBoundingClientRect();
-      const v = viewport(rect.width, rect.height, 'main');
-      const back = activeFace === 'back';
-      return {
-        left: rect.left - panel.left - $('mainPanel').clientLeft,
-        top: rect.top - panel.top - $('mainPanel').clientTop,
-        width: rect.width,
-        height: rect.height,
-        toScreen: (point) => worldToCanvas(point, v, back),
-        toWorld: (point) => canvasToWorld(point[0], point[1], v, back),
-      };
-    },
-    onChange: (next) => {
-      section = next;
-      renderMain();
-      renderSection();
-    },
-    onExit: () => setSectionEditEnabled(false),
-  });
-  main.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      zoomPlanView(
-        'main',
-        main,
-        e.deltaY < 0 ? 1.35 : 1 / 1.35,
-        e.clientX,
-        e.clientY,
-        activeFace === 'back',
-      );
-    },
-    { passive: false },
-  );
-  main.addEventListener('dblclick', (e) => {
-    e.preventDefault();
-    resetPlanView('main');
-  });
-  main.addEventListener('pointermove', (e) => {
-    const r = main.getBoundingClientRect();
-    const v = viewport(r.width, r.height, 'main');
-    const p = canvasToWorld(e.clientX - r.left, e.clientY - r.top, v, activeFace === 'back');
-    $('mainCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-  });
-  const canvasResizeObserver = new ResizeObserver(() => {
-    renderMain();
-    renderMask();
-    renderSection();
-  });
-  for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas'])
-    canvasResizeObserver.observe($(id));
-  window.addEventListener('resize', renderAll);
 }
 
-populateSampleLayouts();
 bindUi();
 loadBuildCommit();
 window.addEventListener('focus', checkForBuildUpdate);
