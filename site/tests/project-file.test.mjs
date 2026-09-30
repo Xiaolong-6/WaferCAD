@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { serializeProject } from '../project-io.js';
-import { validateProjectFile } from '../project-schema.js';
+import {
+  CURRENT_PROJECT_VERSION,
+  migrateProjectFile,
+  validateProjectFile,
+} from '../project-schema.js';
 
 const vendorSource = readFileSync(
   new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
@@ -168,4 +172,48 @@ test('project validator rejects base metadata that disagrees with boundary bound
   const source = validProject();
   source.model.width = 201;
   assert.throws(() => validateProjectFile(source), /bounds do not match model width\/height/);
+});
+
+
+test('legacy project migration adds current version and inspect-state defaults', () => {
+  const source = validProject();
+  const snapshotState = validProject();
+  source.snapshots = [
+    {
+      id: 'legacy-snapshot',
+      name: 'Legacy',
+      createdAt: '2026-09-29T12:00:00.000Z',
+      state: snapshotState,
+    },
+  ];
+  delete source.version;
+  delete source.roiAnchor;
+  delete source.display.threeOpacity;
+  delete source.display.threeShowBorders;
+  delete snapshotState.version;
+  delete snapshotState.roiAnchor;
+
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.roiAnchor, 'center');
+  assert.equal(migrated.display.threeOpacity, 1);
+  assert.equal(migrated.display.threeShowBorders, false);
+  assert.equal(migrated.snapshots[0].state.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.snapshots[0].state.roiAnchor, 'center');
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('project validator rejects future format versions', () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION + 1;
+  assert.throws(() => validateProjectFile(source), /version must be between/);
+});
+
+test('project validator accepts persisted ROI reference and 3D inspect state', () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.roiAnchor = 'top-left';
+  source.display.threeOpacity = 0.45;
+  source.display.threeShowBorders = true;
+  assert.equal(validateProjectFile(source), source);
 });
