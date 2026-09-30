@@ -1290,9 +1290,7 @@ function svgRoiPath(shape, v) {
       b = worldToCanvas(shape.b, v);
     return `M${svgNumber(a[0])} ${svgNumber(a[1])}L${svgNumber(b[0])} ${svgNumber(
       a[1],
-    )}L${svgNumber(b[0])} ${svgNumber(b[1])}L${svgNumber(a[0])} ${svgNumber(
-      b[1],
-    )}Z`;
+    )}L${svgNumber(b[0])} ${svgNumber(b[1])}L${svgNumber(a[0])} ${svgNumber(b[1])}Z`;
   }
   if (shape.type === 'circle') {
     const center = worldToCanvas(shape.c, v),
@@ -1307,12 +1305,14 @@ function svgRoiPath(shape, v) {
   }
   if (shape.type === 'sector') {
     const points = sectorBoundaryPoints(shape, 96);
-    return points
-      .map((point, index) => {
-        const q = worldToCanvas(point, v);
-        return `${index ? 'L' : 'M'}${svgNumber(q[0])} ${svgNumber(q[1])}`;
-      })
-      .join('') + 'Z';
+    return (
+      points
+        .map((point, index) => {
+          const q = worldToCanvas(point, v);
+          return `${index ? 'L' : 'M'}${svgNumber(q[0])} ${svgNumber(q[1])}`;
+        })
+        .join('') + 'Z'
+    );
   }
   return '';
 }
@@ -1442,9 +1442,9 @@ function exportSectionSvg() {
 let maximizedPanelId = null;
 function setMaximizedView(panelId) {
   const next = maximizedPanelId === panelId ? null : panelId;
-  document.querySelectorAll('.view-panel.is-maximized').forEach((panel) =>
-    panel.classList.remove('is-maximized'),
-  );
+  document
+    .querySelectorAll('.view-panel.is-maximized')
+    .forEach((panel) => panel.classList.remove('is-maximized'));
   maximizedPanelId = next;
   document.body.classList.toggle('view-maximized', Boolean(next));
   if (next) $(next)?.classList.add('is-maximized');
@@ -2157,8 +2157,7 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
-  $('sectionControlsBtn').onclick = () =>
-    setSectionPanelVisible($('sectionCoordsPanel').hidden);
+  $('sectionControlsBtn').onclick = () => setSectionPanelVisible($('sectionCoordsPanel').hidden);
   $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
   for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
     $(id).onchange = updateSectionFromInputs;
