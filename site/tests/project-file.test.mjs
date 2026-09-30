@@ -222,3 +222,17 @@ test('project validator accepts persisted ROI reference and 3D inspect state', (
   source.display.threeShowBorders = true;
   assert.equal(validateProjectFile(source), source);
 });
+
+
+test('project validator accepts persisted sector ROI', () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.roi = {
+    type: 'sector',
+    c: [12.345, -6.789],
+    r: 25,
+    startDeg: 315,
+    endDeg: 45,
+  };
+  assert.equal(validateProjectFile(source), source);
+});
