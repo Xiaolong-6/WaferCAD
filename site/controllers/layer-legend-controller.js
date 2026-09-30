@@ -1,9 +1,4 @@
-import {
-  deleteExposedLayer,
-  isLayerExposed,
-  recolorLayer,
-  renameLayer,
-} from '../model.js';
+import { deleteExposedLayer, isLayerExposed, recolorLayer, renameLayer } from '../model.js';
 
 const STRUCTURE_PALETTES = {
   balanced: [
@@ -88,13 +83,7 @@ function randomHarmoniousPalette(count = 10) {
   const seed = Math.random() * 360,
     out = [];
   for (let index = 0; index < count; index++) {
-    out.push(
-      hslHex(
-        (seed + index * 137.508) % 360,
-        48 + (index % 3) * 4,
-        61 + (index % 2) * 5,
-      ),
-    );
+    out.push(hslHex((seed + index * 137.508) % 360, 48 + (index % 3) * 4, 61 + (index % 2) * 5));
   }
   return out;
 }
