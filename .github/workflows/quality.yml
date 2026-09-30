@@ -31,7 +31,12 @@ jobs:
         run: npm run lint
 
       - name: Format check
-        run: npm run format:check
+        run: |
+          if ! npm run format:check; then
+            npx prettier --write site/controllers/plan-view-controller.js
+            git diff -- site/controllers/plan-view-controller.js
+            exit 1
+          fi
 
       - name: Geometry and project-format tests
         run: npm test
