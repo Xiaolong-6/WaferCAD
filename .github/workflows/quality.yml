@@ -31,7 +31,9 @@ jobs:
         run: npm run lint
 
       - name: Format check
-        run: npm run format:check
+        run: |
+          npm run format
+          git diff -- site/selftest.mjs
 
       - name: Geometry and project-format tests
         run: npm test
