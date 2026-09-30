@@ -1231,6 +1231,23 @@ canvas {
     grid-template-rows: repeat(3, minmax(220px, 1fr));
   }
 
+  .three-view-tools {
+    gap: 1px;
+  }
+
+  .three-control {
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 8px;
+  }
+
+  .three-border-toggle input {
+    width: 11px;
+    height: 11px;
+    margin: 0 1px 0 0;
+  }
+
   .section-body {
     grid-template-columns: minmax(0, 1fr) 118px;
   }
