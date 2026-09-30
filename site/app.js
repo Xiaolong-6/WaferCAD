@@ -33,13 +33,23 @@ import {
   circleRoiFromAnchor,
   normalizeRoi,
   rectRoiFromAnchor,
+  sectorBoundaryPoints,
+  sectorRoiFromAnchor,
   resizeRoiFromHandle,
   roiAnchorPoint,
   roiContainsPoint,
   roiHandlePoints,
   translateRoi,
 } from './roi-editor.js';
-import { formatXY as formatXYValue, fromMicron, toMicron, unitMeta, XY_UNITS } from './units.js';
+import {
+  formatLengthInput,
+  formatXY as formatXYValue,
+  fromMicron,
+  roundMicronToNanometre,
+  toMicron,
+  unitMeta,
+  XY_UNITS,
+} from './units.js';
 import {
   availableSelectedLayers,
   minimumSegmentLength,
@@ -219,14 +229,26 @@ function formatXY(value, digits = 3) {
 function xyText(value) {
   return `${formatXY(value)} ${xyUnit().label}`;
 }
+function manualMicron(value) {
+  return roundMicronToNanometre(xyFromDisplay(Number(value)));
+}
+function formatLengthField(valueMicron) {
+  return formatLengthInput(valueMicron, xyDisplayUnit);
+}
+function formatNumericField(value, digits = 6) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  const rounded = Number(number.toFixed(digits));
+  return Object.is(rounded, -0) ? '0' : String(rounded);
+}
 function syncSectionInputs() {
   const unit = $('sectionCoordUnit');
   if (!unit) return;
   unit.textContent = xyUnit().label;
-  $('sectionAx').value = String(xyToDisplay(section.a[0]));
-  $('sectionAy').value = String(xyToDisplay(section.a[1]));
-  $('sectionBx').value = String(xyToDisplay(section.b[0]));
-  $('sectionBy').value = String(xyToDisplay(section.b[1]));
+  $('sectionAx').value = formatLengthField(section.a[0]);
+  $('sectionAy').value = formatLengthField(section.a[1]);
+  $('sectionBx').value = formatLengthField(section.b[0]);
+  $('sectionBy').value = formatLengthField(section.b[1]);
 }
 function updateSectionFromInputs() {
   sectionEditor?.cancel();
@@ -238,8 +260,8 @@ function updateSectionFromInputs() {
     return status('A–B coordinates must be finite numbers.');
   }
   section = {
-    a: [xyFromDisplay(values[0]), xyFromDisplay(values[1])],
-    b: [xyFromDisplay(values[2]), xyFromDisplay(values[3])],
+    a: [manualMicron(values[0]), manualMicron(values[1])],
+    b: [manualMicron(values[2]), manualMicron(values[3])],
   };
   renderMain();
   renderSection();
@@ -262,6 +284,7 @@ function setSectionPanelVisible(visible) {
   panel.hidden = !visible;
   button.classList.toggle('active', visible);
   button.setAttribute('aria-expanded', String(visible));
+  button.title = visible ? 'Close A–B controls' : 'Open A–B controls';
   if (!visible && sectionEditEnabled) setSectionEditEnabled(false);
   renderMain();
 }
@@ -459,6 +482,10 @@ function roiGeometry() {
     return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
   }
   if (roi.type === 'circle') return circleMulti(roi.r * 2, roi.r * 2, 96, roi.c[0], roi.c[1]);
+  if (roi.type === 'sector') {
+    const ring = sectorBoundaryPoints(roi, 96);
+    return ring.length ? [[ring]] : null;
+  }
   return null;
 }
 function clearRoiDrawingMode() {
@@ -473,32 +500,48 @@ function syncRoiEditor() {
   if (!roi) return;
   const point = roiAnchorPoint(roi, roiAnchor);
   if (!point) return;
-  $('roiShapeLabel').textContent = roi.type === 'rect' ? 'Rectangle' : 'Circle';
+  $('roiShapeLabel').textContent =
+    roi.type === 'rect' ? 'Rectangle' : roi.type === 'sector' ? 'Sector' : 'Circle';
   $('roiUnitLabel').textContent = xyUnit().label;
   $('roiAnchorSelect').value = roiAnchor;
-  $('roiX').value = String(xyToDisplay(point[0]));
-  $('roiY').value = String(xyToDisplay(point[1]));
+  $('roiX').value = formatLengthField(point[0]);
+  $('roiY').value = formatLengthField(point[1]);
   $('roiRectFields').hidden = roi.type !== 'rect';
-  $('roiCircleFields').hidden = roi.type !== 'circle';
+  $('roiCircleFields').hidden = !['circle', 'sector'].includes(roi.type);
+  $('roiSectorFields').hidden = roi.type !== 'sector';
   if (roi.type === 'rect') {
-    $('roiWidth').value = String(xyToDisplay(roi.b[0] - roi.a[0]));
-    $('roiHeight').value = String(xyToDisplay(roi.b[1] - roi.a[1]));
+    $('roiWidth').value = formatLengthField(roi.b[0] - roi.a[0]);
+    $('roiHeight').value = formatLengthField(roi.b[1] - roi.a[1]);
   } else {
-    $('roiRadius').value = String(xyToDisplay(roi.r));
+    $('roiRadius').value = formatLengthField(roi.r);
+    if (roi.type === 'sector') {
+      $('roiStartAngle').value = formatNumericField(roi.startDeg, 3);
+      $('roiEndAngle').value = formatNumericField(roi.endDeg, 3);
+    }
   }
 }
 function applyRoiEditor() {
   if (!roi) return;
-  const x = xyFromDisplay(Number($('roiX').value)),
-    y = xyFromDisplay(Number($('roiY').value));
+  const x = manualMicron($('roiX').value),
+    y = manualMicron($('roiY').value);
   let next = null;
   if (roi.type === 'rect') {
-    const width = xyFromDisplay(Number($('roiWidth').value)),
-      height = xyFromDisplay(Number($('roiHeight').value));
+    const width = manualMicron($('roiWidth').value),
+      height = manualMicron($('roiHeight').value);
     next = rectRoiFromAnchor(width, height, roiAnchor, x, y);
   } else {
-    const radius = xyFromDisplay(Number($('roiRadius').value));
-    next = circleRoiFromAnchor(radius, roiAnchor, x, y);
+    const radius = manualMicron($('roiRadius').value);
+    next =
+      roi.type === 'sector'
+        ? sectorRoiFromAnchor(
+            radius,
+            Number($('roiStartAngle').value),
+            Number($('roiEndAngle').value),
+            roiAnchor,
+            x,
+            y,
+          )
+        : circleRoiFromAnchor(radius, roiAnchor, x, y);
   }
   if (!next) {
     syncRoiEditor();
@@ -579,12 +622,12 @@ function populateSampleLayouts() {
   }
 }
 function syncTransformInputs() {
-  $('maskOffsetX').value = formatXY(maskTransform.x);
-  $('maskOffsetY').value = formatXY(maskTransform.y);
+  $('maskOffsetX').value = formatLengthField(maskTransform.x);
+  $('maskOffsetY').value = formatLengthField(maskTransform.y);
   $('maskOffsetXUnit').textContent = xyUnit().label;
   $('maskOffsetYUnit').textContent = xyUnit().label;
-  $('maskScale').value = maskTransform.scale.toPrecision(5);
-  $('maskRotation').value = maskTransform.rotation;
+  $('maskScale').value = formatNumericField(maskTransform.scale, 6);
+  $('maskRotation').value = formatNumericField(maskTransform.rotation, 3);
 }
 function setActiveCell(name) {
   activeCell = name || null;
@@ -1114,6 +1157,14 @@ function drawRoi(ctx, v) {
   } else if (r.type === 'circle') {
     const c = worldToCanvas(r.c, v);
     ctx.arc(c[0], c[1], r.r * v.s, 0, Math.PI * 2);
+  } else if (r.type === 'sector') {
+    sectorBoundaryPoints(r, 96)
+      .map((point) => worldToCanvas(point, v))
+      .forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point[0], point[1]);
+        else ctx.lineTo(point[0], point[1]);
+      });
+    ctx.closePath();
   }
   ctx.fill();
   ctx.stroke();
@@ -1352,9 +1403,9 @@ function renderAll() {
   syncUndo();
 }
 function syncBaseControls() {
-  $('baseWidth').value = formatXY(model.width);
-  $('baseHeight').value = formatXY(model.height);
-  $('baseThickness').value = formatXY(model.thickness);
+  $('baseWidth').value = formatLengthField(model.width);
+  $('baseHeight').value = formatLengthField(model.height);
+  $('baseThickness').value = formatLengthField(model.thickness);
   $('baseHeight').disabled = model.shape === 'circle';
   $('baseWidthUnit').textContent = xyUnit().label;
   $('baseHeightUnit').textContent = xyUnit().label;
@@ -1379,7 +1430,8 @@ function updateOperationUI() {
 }
 function applyOp() {
   const type = $('operationType').value,
-    thickness = xyFromDisplay(Number($('operationThickness').value));
+    thickness = manualMicron($('operationThickness').value);
+  $('operationThickness').value = formatLengthField(thickness);
   if (!(thickness > 0)) return status('Thickness must be greater than zero.');
   const areaMode = $('operationArea').value,
     area = operationAreaGeometry(areaMode);
@@ -1628,9 +1680,9 @@ function bindUi() {
   };
   $('applyBaseBtn').onclick = () => {
     const shape = document.querySelector('#substrateShape button.active').dataset.shape,
-      width = xyFromDisplay(Number($('baseWidth').value)),
-      height = shape === 'circle' ? width : xyFromDisplay(Number($('baseHeight').value)),
-      thickness = xyFromDisplay(Number($('baseThickness').value));
+      width = manualMicron($('baseWidth').value),
+      height = shape === 'circle' ? width : manualMicron($('baseHeight').value),
+      thickness = manualMicron($('baseThickness').value);
     if (width <= 0 || height <= 0 || thickness <= 0)
       return status('Base dimensions must be positive.');
     if (
@@ -1646,6 +1698,7 @@ function bindUi() {
     saveHistory();
     model = createModel({ shape, width, height, thickness });
     section = { a: [-width * 0.42, 0], b: [width * 0.42, 0] };
+    syncBaseControls();
     renderAll();
     fit3d();
     status('Base applied. Use Revert or Undo to restore the previous structure.');
@@ -1695,8 +1748,8 @@ function bindUi() {
   for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'])
     $(id).oninput = () => {
       maskTransform = {
-        x: xyFromDisplay(Number($('maskOffsetX').value) || 0),
-        y: xyFromDisplay(Number($('maskOffsetY').value) || 0),
+        x: manualMicron($('maskOffsetX').value || 0),
+        y: manualMicron($('maskOffsetY').value || 0),
         scale: Math.max(1e-8, Number($('maskScale').value) || 1),
         rotation: Number($('maskRotation').value) || 0,
       };
@@ -1709,10 +1762,10 @@ function bindUi() {
       draftThickness = (Number($('baseThickness').value) || 0) * oldUnit.toMicron,
       draftOperation = (Number($('operationThickness').value) || 0) * oldUnit.toMicron;
     xyDisplayUnit = $('xyUnitSelect').value in XY_UNITS ? $('xyUnitSelect').value : 'um';
-    $('baseWidth').value = formatXY(draftWidth);
-    $('baseHeight').value = formatXY(draftHeight);
-    $('baseThickness').value = formatXY(draftThickness);
-    $('operationThickness').value = formatXY(draftOperation);
+    $('baseWidth').value = formatLengthField(draftWidth);
+    $('baseHeight').value = formatLengthField(draftHeight);
+    $('baseThickness').value = formatLengthField(draftThickness);
+    $('operationThickness').value = formatLengthField(draftOperation);
     $('baseWidthUnit').textContent = xyUnit().label;
     $('baseHeightUnit').textContent = xyUnit().label;
     $('baseThicknessUnit').textContent = xyUnit().label;
@@ -1745,8 +1798,32 @@ function bindUi() {
     roiAnchor = $('roiAnchorSelect').value;
     syncRoiEditor();
   };
-  for (const id of ['roiWidth', 'roiHeight', 'roiRadius', 'roiX', 'roiY'])
+  for (const id of [
+    'roiWidth',
+    'roiHeight',
+    'roiRadius',
+    'roiStartAngle',
+    'roiEndAngle',
+    'roiX',
+    'roiY',
+  ])
     $(id).onchange = applyRoiEditor;
+  for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'])
+    $(id).addEventListener('change', syncTransformInputs);
+  for (const id of ['baseWidth', 'baseHeight', 'baseThickness'])
+    $(id).addEventListener('change', () => {
+      const value = manualMicron($(id).value);
+      if (Number.isFinite(value)) $(id).value = formatLengthField(value);
+      if (
+        id === 'baseWidth' &&
+        document.querySelector('#substrateShape button.active')?.dataset.shape === 'circle'
+      )
+        $('baseHeight').value = $('baseWidth').value;
+    });
+  $('operationThickness').addEventListener('change', () => {
+    const value = manualMicron($('operationThickness').value);
+    if (Number.isFinite(value)) $('operationThickness').value = formatLengthField(value);
+  });
   $('faceToggleBtn').onclick = () => {
     activeFace = activeFace === 'front' ? 'back' : 'front';
     renderAll();
@@ -1782,8 +1859,8 @@ function bindUi() {
   $('mainZoomIn').onclick = () =>
     zoomPlanView('main', $('mainCanvas'), 1.25, null, null, activeFace === 'back');
   $('mainZoomFit').onclick = () => resetPlanView('main');
-  $('sectionControlsBtn').onclick = () => setSectionPanelVisible(true);
-  $('sectionPanelClose').onclick = () => setSectionPanelVisible(false);
+  $('sectionControlsBtn').onclick = () =>
+    setSectionPanelVisible($('sectionCoordsPanel').hidden);
   $('sectionEditBtn').onclick = () => setSectionEditEnabled(!sectionEditEnabled);
   for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
     $(id).onchange = updateSectionFromInputs;
@@ -1927,9 +2004,10 @@ function bindUi() {
         roiTool === 'rect'
           ? normalizeRoi({ type: 'rect', a: drag.start, b: p })
           : normalizeRoi({
-              type: 'circle',
+              type: roiTool === 'sector' ? 'sector' : 'circle',
               c: drag.start,
               r: Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]),
+              ...(roiTool === 'sector' ? { startDeg: 0, endDeg: 90 } : {}),
             });
       renderMask();
       return;
@@ -1989,7 +2067,7 @@ function bindUi() {
       const next = normalizeRoi(roiDraft);
       const valid =
         next &&
-        (next.type === 'circle'
+        (next.type === 'circle' || next.type === 'sector'
           ? next.r > 1e-9
           : next.b[0] - next.a[0] > 1e-9 && next.b[1] - next.a[1] > 1e-9);
       if (valid) {
