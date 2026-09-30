@@ -66,8 +66,8 @@ await page.locator('#openProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from(JSON.stringify(conformalProject)),
 });
-await page.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
+await page.waitForFunction(() =>
+  (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
 );
 await page.locator('#operationTab').click();
 await page.locator('#operationType').selectOption('add');
