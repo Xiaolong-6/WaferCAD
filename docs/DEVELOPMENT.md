@@ -37,6 +37,8 @@ Available commands:
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced.
 
+UI orchestration that does not own geometry lives under `site/controllers/`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, and similar DOM coordination out of the main editor module when they can be expressed through narrow callbacks.
+
 ## Deployment
 
 `.github/workflows/pages.yml` deploys `site/` to GitHub Pages when `main` changes. The deploy job repeats the Quality checks and Chromium/product regression before publishing, so a failing editor build is not released.
@@ -67,7 +69,7 @@ Everything under `legacy/` is archival reference. It is not part of the deployme
 
 ## Source style
 
-Prettier 3.9.9 and ESLint 10.11.0 are development dependencies. New code should not add multi-statement compressed handlers. Large event handlers should be moved into named functions or focused modules instead of continuing the earlier single-file compression style.
+Prettier 3.9.9 and ESLint 10.11.0 are development dependencies. New code should not add multi-statement compressed handlers. Large event handlers should be moved into named functions or focused modules instead of continuing the earlier single-file compression style. Controller extraction must preserve the canonical model/view contracts; do not move geometry semantics merely to reduce file size.
 
 The formatter ignores `legacy/` and `site/vendor/`. Vendored code must not be reformatted locally.
 
