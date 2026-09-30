@@ -1212,6 +1212,23 @@ canvas {
     overflow-x: hidden;
   }
 
+  #threePanel .view-head {
+    align-content: center;
+  }
+
+  #threePanel .three-view-tools {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 1px;
+  }
+
+  #threePanel .three-control {
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 8px;
+  }
+
   .tool-tab {
     flex: 0 0 auto;
     padding-left: 7px;
