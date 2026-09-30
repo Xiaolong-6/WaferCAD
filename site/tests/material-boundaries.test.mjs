@@ -3,7 +3,7 @@ import test from 'node:test';
 import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { createModel, relativeZToXYScale } = await import('../model.js');
+const { conformalCarrierXYScale, createModel } = await import('../model.js');
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } =
   await import('../vector-geometry.js');
 const { materialSolids, sectionContours, solidBorders, surfaceGroups } =
@@ -94,7 +94,7 @@ for (const face of ['front', 'back']) {
       const volume = solids
         .find((s) => s.layerId === layerId)
         .slabs.reduce((sum, s) => sum + area(s.polys) * (s.z1 - s.z0), 0);
-      const lateral = relativeZToXYScale(model);
+      const lateral = conformalCarrierXYScale(model);
       const expectedVolume =
         kind === 'step'
           ? 400 + 40 * lateral
