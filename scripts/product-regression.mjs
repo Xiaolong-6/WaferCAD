@@ -47,6 +47,9 @@ async function open(viewport, touch = false) {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(process.env.WAFERCAD_URL || 'http://127.0.0.1:4173');
   await page.waitForFunction(() => document.querySelector('#sectionControlsBtn').onclick !== null);
+  if (await page.locator('#welcomeScreen').isVisible()) {
+    await page.locator('#welcomeEmptyBtn').click();
+  }
   assert.equal(
     await page.locator('#threeHost canvas').count(),
     1,
