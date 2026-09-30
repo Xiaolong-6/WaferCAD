@@ -6,9 +6,11 @@ import {
   normalizeRoi,
   rectRoiFromAnchor,
   resizeRoiFromHandle,
+  sectorAngleHandlePoints,
   sectorBoundaryPoints,
   sectorRoiFromAnchor,
   sectorSweepDegrees,
+  setSectorAngleFromPoint,
   roiAnchorPoint,
   roiContainsPoint,
   roiHandlePoints,
@@ -122,6 +124,26 @@ test('sector ROI supports wrapped angle ranges, hit testing, anchors, and resize
   assert.equal(resized.startDeg, 300);
   assert.equal(resized.endDeg, 60);
   assert.ok(resized.r > sector.r);
+});
+
+test('sector angle handles sit on the arc and update start/end angles', () => {
+  const sector = sectorRoiFromAnchor(10, 0, 90, 'center', 2, -3);
+  assert.deepEqual(sectorAngleHandlePoints(sector), {
+    start: [12, -3],
+    end: [2, 7],
+  });
+
+  const startMoved = setSectorAngleFromPoint(sector, 'start', [2, -13]);
+  assert.equal(startMoved.startDeg, 270);
+  assert.equal(startMoved.endDeg, 90);
+  assert.deepEqual(startMoved.c, sector.c);
+  assert.equal(startMoved.r, sector.r);
+
+  const endMoved = setSectorAngleFromPoint(startMoved, 'end', [-8, -3]);
+  assert.equal(endMoved.startDeg, 270);
+  assert.equal(endMoved.endDeg, 180);
+
+  assert.deepEqual(setSectorAngleFromPoint(sector, 'start', sector.c), sector);
 });
 
 test('sector angle equality represents a full circle sweep', () => {
