@@ -283,17 +283,30 @@ for (const [button, filename] of [
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), filename);
 }
-await page.locator('#mainMaxBtn').click();
-assert.equal(
-  await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
-  true,
-);
-assert.equal(
-  await page.locator('#mainPanel').evaluate((el) => el.classList.contains('is-maximized')),
-  true,
-);
-assert.equal((await page.locator('#mainMaxBtn').textContent()).trim(), 'Restore');
-await page.locator('#mainMaxBtn').click();
+for (const [buttonId, panelId] of [
+  ['mainMaxBtn', 'mainPanel'],
+  ['maskMaxBtn', 'maskPanel'],
+  ['threeMaxBtn', 'threePanel'],
+  ['sectionMaxBtn', 'sectionPanel'],
+]) {
+  await page.locator(`#${buttonId}`).click();
+  assert.equal(
+    await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
+    true,
+  );
+  assert.equal(
+    await page.locator(`#${panelId}`).evaluate((el) => el.classList.contains('is-maximized')),
+    true,
+  );
+  assert.equal((await page.locator(`#${buttonId}`).textContent()).trim(), 'Restore');
+  await page.locator(`#${buttonId}`).click();
+  assert.equal(
+    await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
+    false,
+  );
+}
+await page.locator('#sectionMaxBtn').click();
+await page.keyboard.press('Escape');
 assert.equal(
   await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
   false,
