@@ -637,7 +637,7 @@ button:hover,
   position: absolute;
   z-index: 7;
   top: 25px;
-  left: 0;
+  right: 0;
   width: 228px;
   padding: 6px;
   border: 1px solid var(--line);
@@ -929,6 +929,13 @@ canvas {
 .statusbar a:focus-visible {
   color: #3f4d5a;
   text-decoration: underline;
+}
+
+@media (max-width: 1200px) {
+  .focus-popover {
+    right: auto;
+    left: 0;
+  }
 }
 
 @media (max-width: 1120px) {
