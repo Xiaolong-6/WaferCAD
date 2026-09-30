@@ -67,9 +67,11 @@ await page.locator('#fit3dBtn').click();
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
 assert.deepEqual(errors, []);
+await browser.close();
 
 // Core editor must still boot when the external Three.js CDN is unavailable.
-const degradedContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const degradedBrowser = await chromium.launch({ headless: true });
+const degradedContext = await degradedBrowser.newContext({ viewport: { width: 1100, height: 760 } });
 await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => route.abort());
 const degraded = await degradedContext.newPage();
 const degradedErrors = [];
@@ -88,6 +90,6 @@ assert.equal(await degraded.locator('#mainCanvas').count(), 1);
 assert.equal(await degraded.locator('#maskCanvas').count(), 1);
 assert.deepEqual(degradedErrors, []);
 await degradedContext.close();
+await degradedBrowser.close();
 
-await browser.close();
 console.log('WaferCAD UI smoke: OK');
