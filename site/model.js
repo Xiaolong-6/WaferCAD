@@ -62,6 +62,10 @@ export const isVectorModel = (model) =>
   model?.kernel === 'vector-2.5d-v1' && Array.isArray(model.regions);
 export const fullFaceGeometry = (model) => cloneGeom(model.boundary);
 
+export function relativeZToXYScale(model) {
+  return Math.max(model.width, model.height) / 100;
+}
+
 export function layerById(model, id) {
   return model.layers.find((layer) => layer.id === id) || null;
 }
@@ -298,8 +302,9 @@ export function applyOperation(
       mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
     );
 
+    const lateralAmount = amount * relativeZToXYScale(model);
     for (const source of sources) {
-      const expanded = intersection(bufferMulti(source.geom, amount, 32), model.boundary);
+      const expanded = intersection(bufferMulti(source.geom, lateralAmount, 32), model.boundary);
       const sidewallBand = difference(expanded, source.geom);
       if (isEmpty(sidewallBand)) continue;
 
