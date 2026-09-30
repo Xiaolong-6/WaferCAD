@@ -26,9 +26,10 @@ export function createViewMaximizeController({
       button.textContent = active ? 'Restore' : 'Max';
       button.title = active
         ? 'Restore the workspace layout'
-        : `Maximize ${root
-            .getElementById(button.dataset.viewPanel)
-            ?.querySelector('strong')?.textContent || 'view'} in the current page`;
+        : `Maximize ${
+            root.getElementById(button.dataset.viewPanel)?.querySelector('strong')?.textContent ||
+            'view'
+          } in the current page`;
     });
 
     requestAnimationFrame(() => {
