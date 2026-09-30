@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, conformalCarrierXYScale, createModel } = await import('../site/model.js');
+const { applyOperation, createModel } = await import('../site/model.js');
 const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
@@ -91,8 +91,7 @@ const coatId = saved.model.layers.find((layer) => layer.name === 'UI conformal')
 assert.ok(coatId);
 const stackAtSaved = (x) =>
   saved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
-const carrier = conformalCarrierXYScale(saved.model);
-const sideX = 5000 - carrier / 2;
+const sideX = 4999.5;
 assert.deepEqual(
   stackAtSaved(sideX).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 4, z1: 7, role: 'conformal-sidewall' },
@@ -102,7 +101,7 @@ assert.deepEqual(
   { layerId: coatId, z0: 4, z1: 5 },
 );
 assert.deepEqual(
-  stackAtSaved(5000 + carrier).find((segment) => segment.layerId === coatId),
+  stackAtSaved(5001).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 6, z1: 7 },
 );
 const coatColor = saved.model.layers.find((layer) => layer.id === coatId).color;

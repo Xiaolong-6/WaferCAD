@@ -66,11 +66,6 @@ export function relativeZToXYScale(model) {
   return Math.max(model.width, model.height) / 100;
 }
 
-export function conformalCarrierXYScale(model) {
-  const span = Math.max(Number(model?.width) || 0, Number(model?.height) || 0);
-  return Math.min(0.5, Math.max(0.001, span * 1e-5));
-}
-
 export function layerById(model, id) {
   return model.layers.find((layer) => layer.id === id) || null;
 }
@@ -254,12 +249,12 @@ function pointOnBoundary(boundary, point, tolerance = 0.05) {
   return false;
 }
 
-function conformalSourcePatches(model, active, face, type, targetLayerId) {
+function exposedLayerPatches(model, active, face, layerId) {
   const groups = new Map();
 
   for (const region of model.regions) {
     const segment = surfaceSegment(region.stack, face);
-    if (!segment || (type === 'grow' && segment.layerId !== targetLayerId)) continue;
+    if (!segment || segment.layerId !== layerId) continue;
 
     const geom = intersection(region.geom, active);
     if (isEmpty(geom)) continue;
@@ -275,21 +270,17 @@ function conformalSourcePatches(model, active, face, type, targetLayerId) {
     .sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
 }
 
-function conformalSidewallStack(stack, layerId, targetLayerId, amount, face, sourceZ, type) {
+function conformalSidewallStack(stack, layerId, face, sourceZ) {
   const local = surfaceZ(stack, face);
-  if (local == null || sourceZ == null) return stack;
-  const coatingLayerId = targetLayerId || layerId;
-  if (!coatingLayerId) return stack;
+  if (local == null || sourceZ == null || !layerId) return stack;
 
   const out = stack.map((seg) => ({ ...seg }));
   if (face === 'front') {
-    const z1 = sourceZ + amount;
-    if (local >= z1 - 1e-9) return out;
-    out.push({ layerId: coatingLayerId, z0: local, z1, role: 'conformal-sidewall' });
+    if (local >= sourceZ - 1e-9) return out;
+    out.push({ layerId, z0: local, z1: sourceZ, role: 'conformal-sidewall' });
   } else {
-    const z0 = sourceZ - amount;
-    if (local <= z0 + 1e-9) return out;
-    out.unshift({ layerId: coatingLayerId, z0, z1: local, role: 'conformal-sidewall' });
+    if (local <= sourceZ + 1e-9) return out;
+    out.unshift({ layerId, z0: sourceZ, z1: local, role: 'conformal-sidewall' });
   }
   return normalizeStack(out);
 }
@@ -306,10 +297,9 @@ function applyOperationImpl(
   if (type === 'grow' && !layerById(model, targetLayerId))
     return { changed: false, error: 'Target layer is unavailable.' };
 
-  let growSources = null;
   if (type === 'grow') {
-    growSources = conformalSourcePatches(model, active, face, type, targetLayerId);
-    if (!growSources.length) {
+    const exposed = exposedLayerPatches(model, active, face, targetLayerId);
+    if (!exposed.length) {
       return {
         changed: false,
         error: 'Target layer is not exposed in the selected area on the active face.',
@@ -320,13 +310,18 @@ function applyOperationImpl(
   if (type === 'etch') {
     splitByArea(model, active, (stack) => mutateStack(stack, { type, amount, face }));
   } else if (growth === 'conformal') {
-    const sources = growSources || conformalSourcePatches(model, active, face, type, targetLayerId);
-
+    // Stage 1: perform the same vertical change as Direct inside the selected
+    // mask/invert/full-face area.
     splitByArea(model, active, (stack) =>
       mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
     );
 
-    const lateralAmount = amount * conformalCarrierXYScale(model);
+    // Stage 2: inspect the newly grown exposed surface, find its step edges,
+    // offset those edges outward by the same numeric distance as Z Δ, and fill
+    // the vertical interval back to the neighboring surface. This merges with
+    // the Direct-grown material because it uses the same layer id.
+    const coatingLayerId = layer?.id || targetLayerId;
+    const sources = exposedLayerPatches(model, active, face, coatingLayerId);
     const coversWholeBoundary = isEmpty(difference(model.boundary, active));
     const sidewallSources =
       type === 'add' && coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources;
@@ -338,16 +333,17 @@ function applyOperationImpl(
             pointOnBoundary(model.boundary, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])
           )
       : null;
+
     for (const source of sidewallSources) {
       const expanded = intersection(
-        bufferMulti(source.geom, lateralAmount, 32, keepSidewallSegment),
+        bufferMulti(source.geom, amount, 32, keepSidewallSegment),
         model.boundary,
       );
       const sidewallBand = difference(expanded, source.geom);
       if (isEmpty(sidewallBand)) continue;
 
       splitByArea(model, sidewallBand, (stack) =>
-        conformalSidewallStack(stack, layer?.id, targetLayerId, amount, face, source.z, type),
+        conformalSidewallStack(stack, coatingLayerId, face, source.z),
       );
     }
   } else {

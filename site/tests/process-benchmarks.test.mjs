@@ -3,8 +3,7 @@ import test from 'node:test';
 import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, conformalCarrierXYScale, createModel, surfaceZ } =
-  await import('../model.js');
+const { applyOperation, createModel, surfaceZ } = await import('../model.js');
 const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
   await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
@@ -47,7 +46,7 @@ for (const face of ['front', 'back']) {
     test(`${kind} ${face}: Direct/Conformal top, sidewall and far field`, async () => {
       const direct = await processBenchmark(kind, 'direct', face);
       const conformal = await processBenchmark(kind, 'conformal', face);
-      const lateral = conformalCarrierXYScale(conformal.model);
+      const lateral = 1;
       const sideX =
         kind === 'step' ? lateral / 2 : kind === 'trench' ? 2 - lateral / 2 : 2 + lateral / 2;
       const lower = kind === 'trench' ? 3 : 5;
@@ -125,7 +124,7 @@ for (const face of ['front', 'back']) {
   }
 }
 
-test('Conformal sidewall uses a thin canonical XY carrier independent of wafer display scale', () => {
+test('Conformal sidewall offsets outward by the requested distance after Direct growth', () => {
   const model = createModel({ shape: 'rect', width: 100000, height: 100000, thickness: 10 });
   applyOperation(model, {
     type: 'add',
@@ -140,9 +139,7 @@ test('Conformal sidewall uses a thin canonical XY carrier independent of wafer d
     area: model.boundary,
     growth: 'conformal',
   });
-  const carrier = conformalCarrierXYScale(model);
-  assert.equal(carrier, 0.5);
-  const sidewall = stackAt(model, carrier / 2).find((s) => s.layerId === coat.layerId);
+  const sidewall = stackAt(model, 0.5).find((s) => s.layerId === coat.layerId);
   assert.deepEqual(
     { layerId: sidewall.layerId, z0: sidewall.z0, z1: sidewall.z1, role: sidewall.role },
     { layerId: coat.layerId, z0: 5, z1: 8, role: 'conformal-sidewall' },
@@ -164,7 +161,7 @@ test('partial-area Conformal keeps its footprint-edge buffer', () => {
   });
   assert.equal(coat.changed, true);
   assert.deepEqual(
-    stackAt(model, 2 + conformalCarrierXYScale(model) / 2).find((s) => s.layerId === coat.layerId),
+    stackAt(model, 2.5).find((s) => s.layerId === coat.layerId),
     { layerId: coat.layerId, z0: 5, z1: 6, role: 'conformal-sidewall' },
   );
   assert.equal(
@@ -190,16 +187,14 @@ test('wafer-scale circular trench receives a visible conformal sidewall band', (
   assert.equal(coat.changed, true);
   assert.ok(coat.layerId);
   const layerAt = (x) => stackAt(model, x).find((s) => s.layerId === coat.layerId);
-  const carrier = conformalCarrierXYScale(model);
-  assert.equal(carrier, 0.5);
-  assert.deepEqual(layerAt(5000 - carrier / 2), {
+  assert.deepEqual(layerAt(4999.5), {
     layerId: coat.layerId,
     z0: 4,
     z1: 7,
     role: 'conformal-sidewall',
   });
   assert.deepEqual(layerAt(0), { layerId: coat.layerId, z0: 4, z1: 5 });
-  assert.deepEqual(layerAt(5000 + carrier), { layerId: coat.layerId, z0: 6, z1: 7 });
+  assert.deepEqual(layerAt(5001), { layerId: coat.layerId, z0: 6, z1: 7 });
 });
 
 test('layered circular trench keeps conformal sidewalls after a later direct blanket', () => {
@@ -233,8 +228,7 @@ test('layered circular trench keeps conformal sidewalls after a later direct bla
     growth: 'direct',
   });
   const at = (x, layerId) => stackAt(model, x).find((s) => s.layerId === layerId);
-  const carrier = conformalCarrierXYScale(model);
-  const sideX = 5000 - carrier / 2;
+  const sideX = 4999.5;
   assert.deepEqual(at(sideX, conformal.layerId), {
     layerId: conformal.layerId,
     z0: 6,
@@ -251,7 +245,7 @@ test('layered circular trench keeps conformal sidewalls after a later direct bla
     z0: 6,
     z1: 7,
   });
-  assert.deepEqual(at(5000 + carrier, conformal.layerId), {
+  assert.deepEqual(at(5001, conformal.layerId), {
     layerId: conformal.layerId,
     z0: 8,
     z1: 9,
@@ -287,15 +281,14 @@ test('multi-hole layered wafer keeps conformal sidewalls around every etched ope
   assert.equal(conformal.changed, true);
   assert.ok(conformal.layerId);
   const at = (x, y = 0) => stackAt(model, x, y).find((s) => s.layerId === conformal.layerId);
-  const carrier = conformalCarrierXYScale(model);
-  assert.deepEqual(at(1750 - carrier / 2), {
+  assert.deepEqual(at(1749.5), {
     layerId: conformal.layerId,
     z0: 6,
     z1: 9,
     role: 'conformal-sidewall',
   });
   assert.deepEqual(at(0), { layerId: conformal.layerId, z0: 6, z1: 7 });
-  assert.deepEqual(at(1750 + carrier), { layerId: conformal.layerId, z0: 8, z1: 9 });
+  assert.deepEqual(at(1751), { layerId: conformal.layerId, z0: 8, z1: 9 });
 });
 
 test('Conformal geometry failure rolls back the model atomically', () => {
@@ -338,7 +331,7 @@ test('Conformal Grow only starts from exposed target, and ROI clips render geome
     growth: 'conformal',
   });
   assert.deepEqual(
-    stackAt(model, 2 + conformalCarrierXYScale(model) / 2).find((s) => s.layerId === seed.layerId),
+    stackAt(model, 2.5).find((s) => s.layerId === seed.layerId),
     { layerId: seed.layerId, z0: 5, z1: 8, role: 'conformal-sidewall' },
   );
   assert.equal(stackAt(model, 5).length, 1);

@@ -8,9 +8,9 @@ XY is stored in µm. Z is relative. The model consists of non-overlapping XY reg
 
 Direct adds the requested Z amount on the local exposed face inside the operation footprint. Grow requires the target material to be exposed on that face.
 
-Conformal first applies the same vertical change, then buffers each pre-operation source patch in XY. A sidewall band fills from the adjacent local surface to the source surface plus the requested amount on Front, or the source surface minus the amount on Back. Higher source patches take precedence. The band is clipped to the base boundary and may extend outside the selected mask footprint.
+Conformal is evaluated in two stages. Stage 1 performs the same vertical change as Direct inside the selected Mask / Invert / Whole-face area. Stage 2 re-reads the newly exposed coating surface, finds its step boundaries, offsets those boundaries outward in XY by the requested Z Δ numeric amount, and fills the vertical interval back to the adjacent lower surface on Front (or higher surface on Back). The sidewall uses the same layer id as Stage 1, so normalization merges both pieces into one coating.
 
-The canonical XY sidewall uses a deliberately thin carrier strip rather than the 3D display scale. Its width per relative Z unit is clamped to 0.001–0.5 µm from `max(base width, base height) × 1e-5`. The carrier exists so the 2.5D region model can retain a vertical coating without turning a wafer-scale Z exaggeration into millimetre-wide plan-view rings. It is not a physical film-thickness calibration. Section renders carrier-tagged sidewalls with a small minimum screen width so they remain visible without changing canonical XY geometry.
+The lateral offset uses the same numeric amount as Z Δ in the current 2.5D model: Z Δ = 1 produces a 1 µm XY normal offset. Z is still labelled relative, so this is an explicit geometric convention rather than a calibrated physical thickness. The 3D renderer's much larger Z exaggeration is display-only and is never fed back into process geometry. Section may give tagged sidewall intervals a minimum screen-space width for legibility without changing the saved geometry.
 
 Etch removes material vertically from the active face, crossing layer boundaries as necessary. It is not material-selective and has no lateral or conformal mode.
 
@@ -26,13 +26,13 @@ All fixtures use a 20 × 20 µm rectangular base, Z thickness 10 (`−5 … +5`)
 
 Back fixtures mirror these intervals about Z = 0. Tests also check the upper face, far field, both island side directions, and the rounded corner outside the buffer.
 
-The Direct blanket volume is 400 µm² × relative Z in each fixture. For the 20 × 20 µm fixture, the canonical carrier is 0.001 µm per relative Z unit. Expected Conformal volumes use that carrier width:
+The Direct blanket volume is 400 µm² × relative Z in each fixture. With Z Δ = 1, the lateral normal offset is also 1 µm. Expected Conformal volumes are:
 
-- Step: `400 + 40 × carrier`.
-- Trench: `400 + 80 × carrier`.
-- Island: `400 + 2 × (16 × carrier + π × carrier²)`, within 0.05 of the polygonal circular-buffer approximation.
+- Step: 440.
+- Trench: 480.
+- Island: `400 + 2 × (16 + π)`, within 0.05 of the polygonal circular-buffer approximation.
 
-A separate 100000 × 100000 µm regression locks the wafer-scale case at the 0.5 µm carrier ceiling and verifies the vertical sidewall interval. This prevents the earlier failure mode where using the renderer's Z exaggeration as real XY geometry produced ~1000 µm-wide rings around ordinary mask openings.
+A separate 100000 × 100000 µm regression verifies that the same Z Δ = 1 still produces only a 1 µm XY offset on a wafer-scale model. This prevents the earlier failure mode where the renderer's Z exaggeration produced ~1000 µm-wide rings around ordinary mask openings.
 
 A multi-opening wafer fixture also etches an array of circular openings through a blanket layer before applying Conformal. This protects the dense/repeated-mask path: boundary buffering must complete for many closed rings and must leave a sidewall coating around each opening. The fixture was added after repeated circular mask geometry exposed a polygon-clipping degeneracy in the former capsule-union buffer construction.
 
