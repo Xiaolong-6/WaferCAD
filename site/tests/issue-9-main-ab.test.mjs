@@ -8,7 +8,8 @@ const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 test('Main exposes explicit A–B controls, locked dragging, and double-click Fit', () => {
   assert.match(html, /id="sectionControlsBtn"/);
   assert.match(html, /id="sectionCoordsPanel"[^>]*hidden/s);
-  assert.match(html, /id="sectionPanelClose"/);
+  assert.doesNotMatch(html, /id="sectionPanelClose"/);
+  assert.match(app, /setSectionPanelVisible\(\$\('sectionCoordsPanel'\)\.hidden\)/);
   assert.match(html, /id="sectionEditBtn"/);
   assert.match(html, /id="resetSectionBtn"/);
   assert.match(html, /id="sectionAx"/);
