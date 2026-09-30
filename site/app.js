@@ -28,7 +28,7 @@ import { downloadProject, readProjectFile } from './project-io.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
 import { createThreeView } from './three-view.js';
 import { createSectionEditor } from './section-editor.js';
-import { sectionContours, surfaceGroups } from './model-view-geometry.js';
+import { sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
 import {
   circleRoiFromAnchor,
   normalizeRoi,
@@ -1232,6 +1232,27 @@ function renderSection() {
     ctx.fillStyle = layer.color;
     ctx.fill('evenodd');
   }
+
+  // A physical sidewall can be far narrower than one screen pixel at wafer-scale
+  // Section zoom. Repaint only the tagged sidewall with the SAME material fill
+  // and no outline, so it stays legible while remaining visually continuous
+  // with the Direct-grown part of that layer.
+  for (const slice of sectionSlices(model, section.a, section.b)) {
+    if (slice.role !== 'conformal-sidewall') continue;
+    const layer = layerById(model, slice.layerId);
+    if (!layer) continue;
+    const x0 = left + slice.t0 * iw,
+      x1 = left + slice.t1 * iw,
+      center = (x0 + x1) / 2,
+      minWidth = 3,
+      sx0 = Math.min(x0, center - minWidth / 2),
+      sx1 = Math.max(x1, center + minWidth / 2),
+      sy0 = top + ((z1 - slice.z1) / (z1 - z0)) * ih,
+      sy1 = top + ((z1 - slice.z0) / (z1 - z0)) * ih;
+    ctx.fillStyle = layer.color;
+    ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
+  }
+
   ctx.strokeStyle = '#8995a1';
   ctx.lineWidth = 0.8;
   ctx.strokeRect(left, top, iw, ih);
