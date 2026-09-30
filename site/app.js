@@ -48,7 +48,10 @@ import { createBaseControlsController } from './controllers/base-controls-contro
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
-import { createProjectStateController } from './controllers/project-state-controller.js';
+import {
+  createEmptyLayout,
+  createProjectStateController,
+} from './controllers/project-state-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -61,21 +64,8 @@ const MASK_PALETTE = [
   '#6C8E5E',
   '#C5678B',
 ];
-function emptyLayout() {
-  return {
-    name: 'No mask',
-    root: '',
-    elements: [],
-    linework: [],
-    bounds: { minX: -50, minY: -50, maxX: 50, maxY: 50, width: 100, height: 100 },
-    combos: [],
-    hierarchy: {},
-    units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
-  };
-}
-
 let model = createModel(),
-  layout = emptyLayout(),
+  layout = createEmptyLayout(),
   parsedLayout = null,
   selectedLayerKeys = new Set();
 let xyDisplayUnit = 'um',
@@ -1058,8 +1048,12 @@ const projectStateController = createProjectStateController({
   },
   setSectionEditEnabled,
 });
-const { buildProjectSnapshot, loadProjectSnapshot, isValidSnapshotState } =
-  projectStateController;
+const {
+  buildProjectSnapshot,
+  loadProjectSnapshot,
+  resetProjectState,
+  isValidSnapshotState,
+} = projectStateController;
 
 const snapshotManager = createSnapshotManager({
   capture: () => buildProjectSnapshot(false),
@@ -1223,24 +1217,9 @@ function bindUi() {
   mainCanvasController.bind();
 
   $('newProjectBtn').onclick = () => {
-    setSectionEditEnabled(false);
-    model = createModel();
-    layout = emptyLayout();
-    selectedLayerKeys = new Set();
-    activeCell = null;
-    expandedCells = new Set();
-    hoveredLayerKey = null;
-    roi = null;
-    roiAnchor = 'center';
+    resetProjectState();
     clearRoiDrawingMode();
-    history = [];
-    future = [];
-    baseRevertSnapshot = null;
-    activeFace = 'front';
     snapshotManager.clear();
-    section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] };
-    planViews.mask = { zoom: 1, panX: 0, panY: 0 };
-    planViews.main = { zoom: 1, panX: 0, panY: 0 };
     syncBaseControls();
     renderAll();
     renderSnapshots();
