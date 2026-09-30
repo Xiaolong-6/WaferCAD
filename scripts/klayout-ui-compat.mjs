@@ -81,15 +81,15 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
 
-await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
 await page.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
   null,
   { timeout: 30000 },
 );
-if (await page.locator('#welcomeScreen').isVisible()) {
-  await page.locator('#welcomeEmptyBtn').click();
-}
 await page.locator('[data-tool-tab="mask"]').click();
 
 const allFiles = (await walk(root)).sort();
