@@ -46,7 +46,6 @@ test('unknown units fall back to microns', () => {
   assert.equal(fromMicron(12, 'unknown'), 12);
 });
 
-
 test('manual length inputs round and display only to 1 nm precision', () => {
   assert.equal(roundMicronToNanometre(1.23456), 1.235);
   assert.equal(roundMicronToNanometre(-0.00049), 0);
