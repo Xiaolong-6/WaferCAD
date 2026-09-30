@@ -27,6 +27,7 @@ assert.match(
 );
 await page.locator('#welcomeEmptyBtn').click();
 await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await page.waitForLoadState('networkidle');
 await page.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
   null,
@@ -34,6 +35,26 @@ await page.waitForFunction(
 );
 assert.equal(await page.locator('#welcomeScreen').count(), 0);
 assert.equal(await page.locator('.app-shell').count(), 1);
+
+// Browser Back returns to the standalone welcome page; Forward and refresh stay
+// on the standalone workspace page.
+await page.goBack({ waitUntil: 'networkidle' });
+assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
+assert.equal(await page.locator('.app-shell').count(), 0);
+await page.goForward({ waitUntil: 'networkidle' });
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await page.locator('#welcomeScreen').count(), 0);
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await page.locator('#welcomeScreen').count(), 0);
 
 // Settings owns project controls and XY units.
 await page.locator('#settingsTab').click();
