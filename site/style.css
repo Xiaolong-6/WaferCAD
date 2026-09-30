@@ -1507,3 +1507,22 @@ canvas {
     grid-column: span 2;
   }
 }
+
+@media (max-width: 600px) {
+  #threePanel {
+    position: relative;
+  }
+  .focus-editor,
+  .three-opacity-control {
+    position: static;
+  }
+  .focus-popover {
+    top: 51px;
+    right: 4px;
+    width: calc(100% - 8px);
+  }
+  .three-opacity-popover {
+    top: 51px;
+    right: 4px;
+  }
+}

@@ -104,6 +104,20 @@ async function checkLayout(page) {
   assert.deepEqual(problems, []);
 }
 
+async function checkPopover(page, selector, panelId) {
+  const popup = await page.locator(selector).boundingBox();
+  const panel = await page.locator(panelId).boundingBox();
+  assert.ok(popup && panel);
+  assert.ok(
+    popup.x >= panel.x && popup.x + popup.width <= panel.x + panel.width,
+    `${selector}: horizontally clipped`,
+  );
+  assert.ok(
+    popup.y >= panel.y && popup.y + popup.height <= panel.y + panel.height,
+    `${selector}: vertically clipped`,
+  );
+}
+
 async function coords(page) {
   return Promise.all(
     ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map(async (id) =>
@@ -234,6 +248,7 @@ async function checkROI(page, name) {
   project.planViews.mask.zoom = 4;
   await loadProject(page, project, `${name}-nm-roi`);
   await page.locator('#focusEditor > summary').click();
+  await checkPopover(page, '.focus-popover', '#maskPanel');
   const width = Number(await page.locator('#roiWidth').inputValue());
   const height = Number(await page.locator('#roiHeight').inputValue());
   close(width, 12.345);
@@ -261,6 +276,10 @@ async function checkROI(page, name) {
   await page.locator('#focusEditor > summary').click();
   close(Number(await page.locator('#roiWidth').inputValue()), width + (9 / scale) * 1000, 1e-6);
   close(Number(await page.locator('#roiHeight').inputValue()), height + (7 / scale) * 1000, 1e-6);
+  await page.locator('.focus-popover').evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await checkPopover(page, '.focus-popover', '#maskPanel');
   await capture(page, `${name}-nm-roi-editor`);
   await page.locator('#focusEditor > summary').click();
 
@@ -291,6 +310,9 @@ try {
     await capture(page, `${name}-empty`);
     await checkLayout(page);
     await checkAB(page, name);
+    await page.locator('.three-opacity-control > summary').click();
+    await checkPopover(page, '.three-opacity-popover', '#threePanel');
+    await page.locator('.three-opacity-control > summary').click();
     for (const tab of ['base', 'mask', 'operation', 'snapshots', 'settings']) {
       await page.locator(`#${tab}Tab`).click();
       await capture(page, `${name}-tab-${tab}`);

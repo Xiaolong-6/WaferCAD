@@ -43,7 +43,7 @@ WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/product-regression.mjs
 
 The local Three.js package serves the same pinned CDN module URLs during the test; it changes no application source or import map. This makes the test repeatable while exercising actual WebGL. The separate UI smoke retains a test for the CDN-unavailable fallback.
 
-Open `test-results/product-review/index.html` to inspect screenshots and reopen a generated `.wafercad` fixture in WaferCAD. Assertions cover actual coordinate changes, touch dragging, cancellation, Back mirroring, unit conversions, snapshot restoration, ROI dimensions, header containment, minimum canvas sizes, backing-buffer dimensions, and absence of page errors.
+Open `test-results/product-review/index.html` to inspect screenshots and reopen a generated `.wafercad` fixture in WaferCAD. Assertions cover actual coordinate changes, touch dragging, cancellation, Back mirroring, unit conversions, snapshot restoration, ROI dimensions, header and ROI/opacity popover containment, minimum canvas sizes, backing-buffer dimensions, and absence of page errors.
 
 CI uploads this review with the tested static application as an artifact. Screenshots require human inspection: passing DOM assertions alone does not establish visual quality. This suite is not a large-layout performance benchmark.
 
@@ -51,12 +51,13 @@ CI uploads this review with the tested static application as an artifact. Screen
 
 The final local run passed Quality (63 tests plus the self-test), the original UI smoke including CDN failure, and the product regression with 94 captures and no page errors. All capture groups were visually inspected, with full-size inspection of the A/B, mobile controls, ROI, and scientific comparison cases.
 
-Visual findings fixed during the review were covered endpoints, clipped header controls, cramped mobile base inputs and tabs, canvas stretching after layout changes, overlapping/clipped axis labels, and an undersized 3D camera fit. Process checks additionally identified rounded Z grouping in the 3D renderer; exact interval grouping now preserves distinct surfaces.
+Visual findings fixed during the review were covered endpoints, clipped header controls, cramped mobile base inputs and tabs, clipped ROI/opacity popovers, canvas stretching after layout changes, overlapping/clipped axis labels, and an undersized 3D camera fit. Process checks additionally identified rounded Z grouping in the 3D renderer; exact interval grouping now preserves distinct surfaces.
 
 Representative final captures:
 
 - [Wide A/B editing](review/ab-wide.png)
 - [Phone A/B editing](review/ab-phone.png)
+- [Phone nm-scale ROI editor](review/roi-phone.png)
 - [Front Conformal trench](review/trench-front.png)
 - [Back Conformal island, viewed from below](review/island-back.png)
 
