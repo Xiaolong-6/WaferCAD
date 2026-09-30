@@ -142,6 +142,7 @@ async function dragHandle(page, endpoint, dx, dy, cancel = false) {
 }
 
 async function checkAB(page, name) {
+  const nmRoundedMicron = (value) => Math.round(value * 1000) / 1000;
   await page.locator('#sectionControlsBtn').click();
   assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
   await page.locator('#sectionEditBtn').click();
@@ -152,15 +153,15 @@ async function checkAB(page, name) {
   const scale = Math.min((canvas.width - 68) / 100000, (canvas.height - 68) / 100000);
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
-  close(after[0], before[0] + 16 / scale);
-  close(after[1], before[1] + 8 / scale);
+  close(after[0], nmRoundedMicron(before[0] + 16 / scale));
+  close(after[1], nmRoundedMicron(before[1] + 8 / scale));
   close(after[2], before[2]);
   close(after[3], before[3]);
   assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
   await dragHandle(page, 'b', -10, 9);
   const moved = await coords(page);
-  close(moved[2], before[2] - 10 / scale);
-  close(moved[3], before[3] - 9 / scale);
+  close(moved[2], nmRoundedMicron(before[2] - 10 / scale));
+  close(moved[3], nmRoundedMicron(before[3] - 9 / scale));
   await dragHandle(page, 'a', 12, 6, true);
   assert.deepEqual(await coords(page), moved, 'Escape cancels only the in-progress drag');
   if (name === 'phone') {
