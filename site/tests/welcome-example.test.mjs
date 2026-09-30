@@ -31,6 +31,6 @@ test('Visualization welcome example is a valid interactive WaferCAD project', ()
   assert.deepEqual(project.selectedLayerKeys, ['4|0']);
   assert.deepEqual(
     project.model.layers.map((layer) => layer.name),
-    ['Substrate', 'SiO2', 'Perovskite', 'ETL', 'ITO', 'Metal', 'Back metal'],
+    ['Base', 'SiO2', 'Perovskite', 'ETL', 'ITO', 'Metal', 'Back metal'],
   );
 });
