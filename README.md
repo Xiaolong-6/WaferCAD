@@ -13,8 +13,8 @@ The application is deployed as a static GitHub Pages site. It has four synchroni
 
 XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Add, Grow, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
 
-- **XY** is stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display unit can be switched between nm, µm, and mm without changing geometry.
-- **Z** is intentionally relative. Thickness and Z values are not assigned a physical unit.
+- **X, Y and Z** are stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display/input unit can be switched between nm, µm, and mm without changing geometry.
+- Section and 3D may stretch Z for visibility; that display scaling never changes the saved physical Z coordinates.
 - Layers use stable internal IDs. Their names are editable; colors come from curated structure palettes or a generated harmonious palette.
 
 ## Mask model
