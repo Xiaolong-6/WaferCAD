@@ -80,7 +80,7 @@ For Add and Grow, choose:
 
 Etch has no growth setting.
 
-Z is physical and stored internally in µm. Add/Grow use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Direct growth first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section and 3D can stretch Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
+Z is physical and stored internally in µm. Add/Grow use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Direct growth first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
 
 ## 7. Manage layers
 

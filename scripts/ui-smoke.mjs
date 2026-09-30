@@ -180,6 +180,29 @@ assert.ok(
     (value, index) => Math.abs(value - baseSeamPixel.expected[index]) <= 8,
   ),
 );
+
+// Section defaults to readable Auto fit but offers a true physical 1:1 check.
+const sectionScaleButton = page.locator('#sectionScaleModeBtn');
+assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
+assert.match(await page.locator('#sectionMeta').textContent(), /Z ×/);
+const autoScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
+  x: Number(canvas.dataset.xPxPerUm),
+  z: Number(canvas.dataset.zPxPerUm),
+}));
+assert.ok(autoScales.x > 0 && autoScales.z > 0);
+await sectionScaleButton.click();
+assert.equal((await sectionScaleButton.textContent()).trim(), '1:1');
+assert.match(await page.locator('#sectionMeta').textContent(), /1:1/);
+const physicalScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
+  mode: canvas.dataset.scaleMode,
+  x: Number(canvas.dataset.xPxPerUm),
+  z: Number(canvas.dataset.zPxPerUm),
+}));
+assert.equal(physicalScales.mode, 'physical');
+assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
+await sectionScaleButton.click();
+assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
+
 await page.locator('#operationTab').click();
 
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.

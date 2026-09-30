@@ -151,7 +151,7 @@ Intersects the A–B line with every region polygon, then draws each region stac
 - XYZ canonical storage: µm
 - XYZ display/input: nm, µm, or mm
 
-Changing the global display/input unit never rescales geometry. Base dimensions, alignment offsets, axes, cursor readouts, A–B span, base Z thickness, operation Z thickness/depth, and Section Z labels all use the selected unit. Section fits X and Z independently; 3D applies an adaptive display-only Z exaggeration.
+Changing the global display/input unit never rescales geometry. Base dimensions, alignment offsets, axes, cursor readouts, A–B span, base Z thickness, operation Z thickness/depth, and Section Z labels all use the selected unit. Section has two display-only modes: **Auto** fits X and Z independently and reports the resulting Z exaggeration, while **1:1** uses one shared px/µm scale and disables screen-space sidewall widening. 3D applies its own adaptive display-only Z exaggeration.
 
 ## Persistence
 

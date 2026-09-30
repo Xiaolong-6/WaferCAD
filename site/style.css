@@ -1396,6 +1396,20 @@ canvas {
   background: transparent;
 }
 
+.section-view-tools {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+#sectionScaleModeBtn.active {
+  border-color: #aebbc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
 .view-head > div:first-child > span {
   overflow: hidden;
   text-overflow: ellipsis;
