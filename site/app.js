@@ -30,18 +30,10 @@ import { createThreeView } from './three-view.js';
 import { createSectionEditor } from './section-editor.js';
 import { sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
 import {
-  circleRoiFromAnchor,
   normalizeRoi,
-  rectRoiFromAnchor,
   sectorAngleHandlePoints,
   sectorBoundaryPoints,
-  sectorRoiFromAnchor,
-  setSectorAngleFromPoint,
-  resizeRoiFromHandle,
-  roiAnchorPoint,
-  roiContainsPoint,
   roiHandlePoints,
-  translateRoi,
 } from './roi-editor.js';
 import {
   formatLengthInput,
@@ -52,7 +44,7 @@ import {
   unitMeta,
   XY_UNITS,
 } from './units.js';
-import { minimumSegmentLength, nearestNamedPoint, zoomLimitForFeature } from './view-interactions.js';
+import { minimumSegmentLength, zoomLimitForFeature } from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { createVisualizationExample } from './welcome-example.js';
 import { takeStartupFile } from './startup-file.js';
@@ -62,6 +54,7 @@ import { bindToolTabs } from './controllers/tool-tabs-controller.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
 import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
 import { createExportController } from './controllers/export-controller.js';
+import { createRoiController } from './controllers/roi-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -378,6 +371,42 @@ const exportController = createExportController({
 });
 const { downloadBlob, exportMainSvg, exportMaskSvg, exportSectionSvg } = exportController;
 
+const roiController = createRoiController({
+  getRoi: () => roi,
+  setRoi: (value) => {
+    roi = value;
+  },
+  getRoiTool: () => roiTool,
+  setRoiTool: (value) => {
+    roiTool = value;
+  },
+  getRoiDraft: () => roiDraft,
+  setRoiDraft: (value) => {
+    roiDraft = value;
+  },
+  getRoiAnchor: () => roiAnchor,
+  setRoiAnchor: (value) => {
+    roiAnchor = value;
+  },
+  xyUnitLabel: () => xyUnit().label,
+  formatLengthField,
+  formatNumericField,
+  manualMicron,
+  xyText,
+  setupCanvas,
+  viewport,
+  canvasToWorld,
+  worldToCanvas,
+  zoomPlanView,
+  renderMask,
+  renderAll,
+  status,
+});
+const {
+  clearDrawingMode: clearRoiDrawingMode,
+  syncEditor: syncRoiEditor,
+} = roiController;
+
 function selectedMaskGeometry() {
   const geoms = [];
   for (const e of layout.elements || []) {
@@ -415,69 +444,6 @@ function roiGeometry() {
   }
   return null;
 }
-function clearRoiDrawingMode() {
-  roiTool = null;
-  roiDraft = null;
-  document.querySelectorAll('.roi-tool').forEach((button) => button.classList.remove('active'));
-}
-function syncRoiEditor() {
-  const editor = $('roiEditor');
-  if (!editor) return;
-  editor.hidden = !roi;
-  if (!roi) return;
-  const point = roiAnchorPoint(roi, roiAnchor);
-  if (!point) return;
-  $('roiShapeLabel').textContent =
-    roi.type === 'rect' ? 'Rectangle' : roi.type === 'sector' ? 'Sector' : 'Circle';
-  $('roiUnitLabel').textContent = xyUnit().label;
-  $('roiAnchorSelect').value = roiAnchor;
-  $('roiX').value = formatLengthField(point[0]);
-  $('roiY').value = formatLengthField(point[1]);
-  $('roiRectFields').hidden = roi.type !== 'rect';
-  $('roiCircleFields').hidden = !['circle', 'sector'].includes(roi.type);
-  $('roiSectorFields').hidden = roi.type !== 'sector';
-  if (roi.type === 'rect') {
-    $('roiWidth').value = formatLengthField(roi.b[0] - roi.a[0]);
-    $('roiHeight').value = formatLengthField(roi.b[1] - roi.a[1]);
-  } else {
-    $('roiRadius').value = formatLengthField(roi.r);
-    if (roi.type === 'sector') {
-      $('roiStartAngle').value = formatNumericField(roi.startDeg, 3);
-      $('roiEndAngle').value = formatNumericField(roi.endDeg, 3);
-    }
-  }
-}
-function applyRoiEditor() {
-  if (!roi) return;
-  const x = manualMicron($('roiX').value),
-    y = manualMicron($('roiY').value);
-  let next = null;
-  if (roi.type === 'rect') {
-    const width = manualMicron($('roiWidth').value),
-      height = manualMicron($('roiHeight').value);
-    next = rectRoiFromAnchor(width, height, roiAnchor, x, y);
-  } else {
-    const radius = manualMicron($('roiRadius').value);
-    next =
-      roi.type === 'sector'
-        ? sectorRoiFromAnchor(
-            radius,
-            Number($('roiStartAngle').value),
-            Number($('roiEndAngle').value),
-            roiAnchor,
-            x,
-            y,
-          )
-        : circleRoiFromAnchor(radius, roiAnchor, x, y);
-  }
-  if (!next) {
-    syncRoiEditor();
-    return status('ROI geometry requires finite coordinates and positive dimensions.');
-  }
-  roi = next;
-  renderAll();
-}
-
 function stateSnapshot() {
   return { model: cloneModel(model), section: structuredClone(section) };
 }
@@ -1011,9 +977,6 @@ function drawRoi(ctx, v) {
   ctx.restore();
 }
 
-function roiResizeCursor(handle) {
-  return handle === 'top-left' || handle === 'bottom-right' ? 'nwse-resize' : 'nesw-resize';
-}
 function renderMask() {
   const c = $('maskCanvas'),
     { ctx, w, h } = setupCanvas(c),
@@ -1524,6 +1487,7 @@ const viewMaximizeController = createViewMaximizeController({
 function bindUi() {
   bindToolTabs();
   viewMaximizeController.bind();
+  roiController.bind();
 
   document.querySelectorAll('#substrateShape button').forEach(
     (b) =>
@@ -1631,39 +1595,6 @@ function bindUi() {
     status(`XYZ display/input unit: ${xyUnit().label}. Geometry is unchanged.`);
   };
 
-  document.querySelectorAll('.roi-tool').forEach(
-    (b) =>
-      (b.onclick = () => {
-        roiTool = b.dataset.tool;
-        roiDraft = null;
-        document
-          .querySelectorAll('.roi-tool')
-          .forEach((x) => x.classList.toggle('active', x === b));
-        $('focusEditor').open = false;
-        status('ROI: drag once in Mask to create the region.');
-      }),
-  );
-  $('clearRoiBtn').onclick = () => {
-    roi = null;
-    roiAnchor = 'center';
-    clearRoiDrawingMode();
-    renderAll();
-    status('ROI cleared.');
-  };
-  $('roiAnchorSelect').onchange = () => {
-    roiAnchor = $('roiAnchorSelect').value;
-    syncRoiEditor();
-  };
-  for (const id of [
-    'roiWidth',
-    'roiHeight',
-    'roiRadius',
-    'roiStartAngle',
-    'roiEndAngle',
-    'roiX',
-    'roiY',
-  ])
-    $(id).onchange = applyRoiEditor;
   for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'])
     $(id).addEventListener('change', syncTransformInputs);
   for (const id of ['baseWidth', 'baseHeight', 'baseThickness'])
@@ -1821,178 +1752,6 @@ function bindUi() {
     await openProjectFile(file);
     e.target.value = '';
   };
-
-  const mc = $('maskCanvas');
-  let drag = null;
-  mc.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      zoomPlanView('mask', mc, e.deltaY < 0 ? 1.35 : 1 / 1.35, e.clientX, e.clientY);
-    },
-    { passive: false },
-  );
-  mc.addEventListener('pointermove', (e) => {
-    const r = mc.getBoundingClientRect(),
-      { w, h } = setupCanvas(mc),
-      v = viewport(w, h, 'mask'),
-      screen = [e.clientX - r.left, e.clientY - r.top],
-      p = canvasToWorld(screen[0], screen[1], v);
-    $('maskCoords').textContent = `x ${xyText(p[0])} · y ${xyText(p[1])}`;
-
-    if (!drag) {
-      if (roiTool) {
-        mc.style.cursor = 'crosshair';
-        return;
-      }
-      if (!roi) {
-        mc.style.cursor = 'default';
-        return;
-      }
-      const angleHandles =
-          roi.type === 'sector'
-            ? Object.fromEntries(
-                Object.entries(sectorAngleHandlePoints(roi)).map(([name, point]) => [
-                  name,
-                  worldToCanvas(point, v),
-                ]),
-              )
-            : {},
-        angleHandle = nearestNamedPoint(screen, angleHandles, e.pointerType === 'touch' ? 24 : 14),
-        handles = Object.fromEntries(
-          Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
-            name,
-            worldToCanvas(point, v),
-          ]),
-        ),
-        handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
-      mc.style.cursor = angleHandle
-        ? 'grab'
-        : handle
-          ? roiResizeCursor(handle)
-          : roiContainsPoint(roi, p)
-            ? 'move'
-            : 'default';
-      return;
-    }
-
-    if (drag.mode === 'create') {
-      roiDraft =
-        roiTool === 'rect'
-          ? normalizeRoi({ type: 'rect', a: drag.start, b: p })
-          : normalizeRoi({
-              type: roiTool === 'sector' ? 'sector' : 'circle',
-              c: drag.start,
-              r: Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]),
-              ...(roiTool === 'sector' ? { startDeg: 0, endDeg: 90 } : {}),
-            });
-      renderMask();
-      return;
-    }
-
-    if (drag.mode === 'angle') {
-      roi = setSectorAngleFromPoint(drag.original, drag.handle, p);
-      syncRoiEditor();
-      renderMask();
-      return;
-    }
-
-    if (drag.mode === 'resize') {
-      roi = resizeRoiFromHandle(drag.original, drag.handle, [
-        p[0] - drag.offset[0],
-        p[1] - drag.offset[1],
-      ]);
-      syncRoiEditor();
-      renderMask();
-      return;
-    }
-
-    roi = translateRoi(drag.original, p[0] - drag.start[0], p[1] - drag.start[1]);
-    syncRoiEditor();
-    renderMask();
-  });
-  mc.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    const r = mc.getBoundingClientRect(),
-      { w, h } = setupCanvas(mc),
-      v = viewport(w, h, 'mask'),
-      screen = [e.clientX - r.left, e.clientY - r.top],
-      p = canvasToWorld(screen[0], screen[1], v);
-    if (roiTool) {
-      drag = { mode: 'create', start: p };
-    } else if (roi) {
-      const angleHandles =
-          roi.type === 'sector'
-            ? Object.fromEntries(
-                Object.entries(sectorAngleHandlePoints(roi)).map(([name, point]) => [
-                  name,
-                  worldToCanvas(point, v),
-                ]),
-              )
-            : {},
-        angleHandle = nearestNamedPoint(screen, angleHandles, e.pointerType === 'touch' ? 24 : 14),
-        handles = Object.fromEntries(
-          Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
-            name,
-            worldToCanvas(point, v),
-          ]),
-        ),
-        handle = nearestNamedPoint(screen, handles, e.pointerType === 'touch' ? 24 : 14);
-      if (angleHandle) {
-        drag = {
-          mode: 'angle',
-          handle: angleHandle,
-          original: structuredClone(roi),
-        };
-      } else if (handle) {
-        const corner = roiHandlePoints(roi)[handle];
-        drag = {
-          mode: 'resize',
-          handle,
-          start: p,
-          original: structuredClone(roi),
-          offset: [p[0] - corner[0], p[1] - corner[1]],
-        };
-      } else if (roiContainsPoint(roi, p))
-        drag = { mode: 'move', start: p, original: structuredClone(roi) };
-      else return;
-    } else {
-      return;
-    }
-    mc.setPointerCapture(e.pointerId);
-  });
-  const finishRoiDrag = (e) => {
-    if (!drag) return;
-    if (drag.mode === 'create' && roiDraft) {
-      const next = normalizeRoi(roiDraft);
-      const valid =
-        next &&
-        (next.type === 'circle' || next.type === 'sector'
-          ? next.r > 1e-9
-          : next.b[0] - next.a[0] > 1e-9 && next.b[1] - next.a[1] > 1e-9);
-      if (valid) {
-        roi = next;
-        roiAnchor = 'center';
-        clearRoiDrawingMode();
-        status(
-          'ROI created. Drag it to move, use corner handles to resize, or edit values from ROI.',
-        );
-      }
-      roiDraft = null;
-    }
-    if (mc.hasPointerCapture(e.pointerId)) mc.releasePointerCapture(e.pointerId);
-    drag = null;
-    renderAll();
-  };
-  mc.addEventListener('pointerup', finishRoiDrag);
-  mc.addEventListener('pointercancel', (e) => {
-    if (drag?.original) roi = drag.original;
-    syncRoiEditor();
-    roiDraft = null;
-    drag = null;
-    if (mc.hasPointerCapture(e.pointerId)) mc.releasePointerCapture(e.pointerId);
-    renderMask();
-  });
 
   const main = $('mainCanvas');
   sectionEditor = createSectionEditor({
