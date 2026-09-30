@@ -243,9 +243,15 @@ await page.locator('#focusEditor > summary').click();
 await page.locator('#focusEditor > summary').click();
 await page.locator('#clearRoiBtn').click();
 await page.locator('.roi-tool[data-tool="sector"]').click();
-await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+const sectorBox = await mask.boundingBox();
+assert.ok(sectorBox);
+await page.mouse.move(sectorBox.x + sectorBox.width * 0.5, sectorBox.y + sectorBox.height * 0.5);
 await page.mouse.down();
-await page.mouse.move(box.x + box.width * 0.62, box.y + box.height * 0.5, { steps: 4 });
+await page.mouse.move(
+  sectorBox.x + sectorBox.width * 0.62,
+  sectorBox.y + sectorBox.height * 0.5,
+  { steps: 4 },
+);
 await page.mouse.up();
 await page.locator('#focusEditor > summary').click();
 await page.locator('#roiEditor:not([hidden])').waitFor();
