@@ -80,7 +80,7 @@ For Add and Grow, choose:
 
 Etch has no growth setting.
 
-Z Δ is a relative thickness. Conformal is a 2.5D geometric approximation. Its lateral sidewall width uses the same relative-Z-to-XY scale as the 3D view: `max(base width, base height) / 100` µm per relative Z unit. This keeps top and sidewall thickness visually consistent on wafer-scale layouts, but it is still not a calibrated physical film thickness. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
+Z Δ is a relative thickness. Conformal is a 2.5D geometric approximation evaluated as Direct growth first, followed by an outward normal sidewall offset. The current convention uses the same numeric value for that XY offset in µm (for example Z Δ = 0.5 gives a 0.5 µm lateral offset). The 3D Z exaggeration is display-only. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
 
 ## 7. Manage layers
 
