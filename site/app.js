@@ -1246,16 +1246,22 @@ function renderSection() {
     const x0 = left + slice.t0 * iw,
       x1 = left + slice.t1 * iw,
       center = (x0 + x1) / 2,
-      minWidth = 2.5,
+      minWidth = 6,
       sx0 = Math.min(x0, center - minWidth / 2),
       sx1 = Math.max(x1, center + minWidth / 2),
       sy0 = top + ((z1 - slice.z1) / (z1 - z0)) * ih,
       sy1 = top + ((z1 - slice.z0) / (z1 - z0)) * ih;
     ctx.fillStyle = layer.color;
     ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
-    ctx.strokeStyle = 'rgba(40,50,60,.28)';
-    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = 'rgba(30,40,50,.46)';
+    ctx.lineWidth = 1;
     ctx.strokeRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
+    ctx.beginPath();
+    ctx.moveTo(center, sy0);
+    ctx.lineTo(center, sy1);
+    ctx.strokeStyle = 'rgba(30,40,50,.62)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
   }
   ctx.strokeStyle = '#8995a1';
   ctx.lineWidth = 0.8;
