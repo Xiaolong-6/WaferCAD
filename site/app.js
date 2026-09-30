@@ -1,11 +1,3 @@
-let THREE = null;
-let OrbitControls = null;
-try {
-  THREE = await import('three');
-  ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
-} catch (error) {
-  console.warn('3D dependencies unavailable; continuing without the 3D view.', error);
-}
 import { assertLayoutByteLength, parseLayoutFile } from './layout-io.js';
 import { KLAYOUT_SAMPLES, sampleById } from './sample-layouts.js';
 import {
@@ -36,6 +28,7 @@ import {
 } from './vector-geometry.js';
 import { downloadProject, readProjectFile } from './project-io.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
+import { createThreeView } from './three-view.js';
 import {
   circleRoiFromAnchor,
   normalizeRoi,
@@ -1207,168 +1200,27 @@ function renderSection() {
   $('sectionRange').textContent = `Z (relative) ${lo.toFixed(1)} → ${hi.toFixed(1)}`;
 }
 
-let renderer,
-  scene,
-  camera,
-  controls,
-  group,
-  axesHelper,
-  threeReady = false,
+let threeView = null,
   threeOpacity = 1,
-  threeShowBorders = false,
-  threeFrame = null,
-  threeInteracting = false;
-function zVisualScale() {
-  return Math.max(model.width, model.height) / 100;
-}
+  threeShowBorders = false;
+
 function initThree() {
-  const host = $('threeHost');
-  if (!THREE || !OrbitControls) {
-    host.classList.add('three-unavailable');
-    host.textContent = '3D unavailable';
-    $('threeStats').textContent = 'dependency unavailable';
-    return;
-  }
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setClearColor(0xf5f7f9);
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
-  camera.up.set(0, 0, 1);
-  camera.position.set(115, -125, 95);
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 0, 0);
-  controls.enableDamping = true;
-  controls.addEventListener('start', () => {
-    threeInteracting = true;
-    scheduleThreeFrame();
+  threeView = createThreeView({
+    host: $('threeHost'),
+    stats: $('threeStats'),
+    getModel: () => model,
+    getClipGeometry: roiGeometry,
+    getInspection: () => ({ opacity: threeOpacity, borders: threeShowBorders }),
   });
-  controls.addEventListener('change', scheduleThreeFrame);
-  controls.addEventListener('end', () => {
-    threeInteracting = false;
-    scheduleThreeFrame();
-  });
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
-  const d = new THREE.DirectionalLight(0xffffff, 2.2);
-  d.position.set(80, -70, 130);
-  scene.add(d);
-  group = new THREE.Group();
-  scene.add(group);
-  axesHelper = new THREE.AxesHelper(12);
-  scene.add(axesHelper);
-  host.prepend(renderer.domElement);
-  new ResizeObserver(() => resizeThree()).observe(host);
-  threeReady = true;
-  resizeThree();
-  scheduleThreeFrame();
+  threeView.init();
 }
-function resizeThree() {
-  if (!renderer) return;
-  const r = $('threeHost').getBoundingClientRect();
-  renderer.setSize(Math.max(2, r.width), Math.max(2, r.height), false);
-  camera.aspect = Math.max(2, r.width) / Math.max(2, r.height);
-  camera.updateProjectionMatrix();
-  scheduleThreeFrame();
-}
-function disposeGroup() {
-  while (group.children.length) {
-    const o = group.children.pop();
-    o.geometry?.dispose();
-    o.material?.dispose();
-  }
-}
-function shapeFromPolygon(poly) {
-  if (!poly?.length) return null;
-  const outer = poly[0].slice(0, -1);
-  if (outer.length < 3) return null;
-  const shape = new THREE.Shape();
-  shape.moveTo(outer[0][0], outer[0][1]);
-  for (let i = 1; i < outer.length; i++) shape.lineTo(outer[i][0], outer[i][1]);
-  shape.closePath();
-  for (let r = 1; r < poly.length; r++) {
-    const pts = poly[r].slice(0, -1);
-    if (pts.length < 3) continue;
-    const hole = new THREE.Path();
-    hole.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) hole.lineTo(pts[i][0], pts[i][1]);
-    hole.closePath();
-    shape.holes.push(hole);
-  }
-  return shape;
-}
+
 function renderThree() {
-  if (!threeReady) return;
-  disposeGroup();
-  group.scale.z = zVisualScale();
-  const clip = roiGeometry(),
-    groups = new Map();
-  for (const region of model.regions) {
-    const geom = clip ? intersection(region.geom, clip) : region.geom;
-    if (isEmpty(geom)) continue;
-    for (const seg of region.stack) {
-      const key = `${seg.layerId}|${seg.z0.toFixed(8)}|${seg.z1.toFixed(8)}`;
-      if (!groups.has(key))
-        groups.set(key, { layerId: seg.layerId, z0: seg.z0, z1: seg.z1, polys: [] });
-      groups.get(key).polys.push(...geom);
-    }
-  }
-  for (const item of groups.values()) {
-    const shapes = item.polys.map(shapeFromPolygon).filter(Boolean);
-    if (!shapes.length) continue;
-    const geometry = new THREE.ExtrudeGeometry(shapes, {
-      depth: item.z1 - item.z0,
-      bevelEnabled: false,
-      steps: 1,
-      curveSegments: 2,
-    });
-    geometry.translate(0, 0, item.z0);
-    const layer = layerById(model, item.layerId),
-      material = new THREE.MeshStandardMaterial({
-        color: layer?.color || '#999',
-        roughness: 0.78,
-        metalness: 0.015,
-        side: THREE.DoubleSide,
-        transparent: threeOpacity < 0.999,
-        opacity: threeOpacity,
-        depthWrite: threeOpacity >= 0.999,
-      });
-    group.add(new THREE.Mesh(geometry, material));
-    if (threeShowBorders) {
-      const edgeGeometry = new THREE.EdgesGeometry(geometry, 20);
-      const edgeMaterial = new THREE.LineBasicMaterial({
-        color: 0x111820,
-        transparent: true,
-        opacity: 0.9,
-      });
-      group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
-    }
-  }
-  $('threeStats').textContent = roi ? 'ROI' : 'full model';
-  scheduleThreeFrame();
+  threeView?.render();
 }
-function scheduleThreeFrame() {
-  if (!renderer || threeFrame != null) return;
-  threeFrame = requestAnimationFrame(() => {
-    threeFrame = null;
-    const changed = controls?.update?.() || false;
-    renderer.render(scene, camera);
-    if (threeInteracting || changed) scheduleThreeFrame();
-  });
-}
+
 function fit3d() {
-  if (!threeReady || !camera || !controls || !axesHelper) return;
-  const [lo, hi] = modelBoundsZ(model),
-    zs = zVisualScale(),
-    zSpan = (hi - lo) * zs,
-    size = Math.max(model.width, model.height, zSpan);
-  camera.near = Math.max(0.1, size / 10000);
-  camera.far = Math.max(1e6, size * 50);
-  camera.updateProjectionMatrix();
-  camera.position.set(size * 1.05, -size * 1.15, size * 0.82);
-  controls.target.set(0, 0, ((lo + hi) / 2) * zs);
-  controls.update();
-  axesHelper.scale.setScalar(Math.max(0.6, size / 100));
-  scheduleThreeFrame();
+  threeView?.fit();
 }
 
 function renderAll() {
