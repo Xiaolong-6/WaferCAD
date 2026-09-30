@@ -1137,7 +1137,7 @@ canvas {
     margin: 0 1px 0 0;
   }
 
-   .layer-legend {
+  .layer-legend {
     padding: 4px;
   }
 
@@ -1155,8 +1155,7 @@ canvas {
     padding-left: 4px;
     padding-right: 4px;
   }
-
- }
+}
 
 .operation-actions {
   display: grid;
