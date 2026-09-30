@@ -1441,7 +1441,8 @@ function exportSectionSvg() {
 
 let maximizedPanelId = null;
 function setMaximizedView(panelId) {
-  const next = maximizedPanelId === panelId ? null : panelId;
+  const previous = maximizedPanelId,
+    next = previous === panelId ? null : panelId;
   document
     .querySelectorAll('.view-panel.is-maximized')
     .forEach((panel) => panel.classList.remove('is-maximized'));
@@ -1464,7 +1465,7 @@ function setMaximizedView(panelId) {
     renderSection();
     renderThree();
     sectionEditor?.update();
-    if (next === 'threePanel') fit3d();
+    if (next === 'threePanel' || previous === 'threePanel') requestAnimationFrame(fit3d);
   });
   status(next ? 'View maximized. Press Restore or Escape to return.' : 'Workspace restored.');
 }
