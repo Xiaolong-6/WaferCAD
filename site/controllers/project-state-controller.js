@@ -1,7 +1,21 @@
+import { createModel } from '../model.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from '../project-schema.js';
 import { normalizeRoi } from '../roi-editor.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
+
+export function createEmptyLayout() {
+  return {
+    name: 'No mask',
+    root: '',
+    elements: [],
+    linework: [],
+    bounds: { minX: -50, minY: -50, maxX: 50, maxY: 50, width: 100, height: 100 },
+    combos: [],
+    hierarchy: {},
+    units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
+  };
+}
 
 export function createProjectStateController({
   ensureHierarchy,
@@ -95,6 +109,34 @@ export function createProjectStateController({
     syncThreeControls({ threeOpacity, threeShowBorders });
   }
 
+  function resetProjectState() {
+    setSectionEditEnabled(false);
+    const previous = getState(),
+      model = createModel();
+    applyState({
+      model,
+      layout: createEmptyLayout(),
+      selectedLayerKeys: new Set(),
+      activeCell: null,
+      expandedCells: new Set(),
+      hoveredLayerKey: null,
+      maskTransform: previous.maskTransform,
+      activeFace: 'front',
+      roi: null,
+      roiAnchor: 'center',
+      section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
+      xyDisplayUnit: previous.xyDisplayUnit,
+      activeStructurePalette: previous.activeStructurePalette,
+      customStructurePalette: previous.customStructurePalette,
+      threeOpacity: previous.threeOpacity,
+      threeShowBorders: previous.threeShowBorders,
+      planViews: {
+        mask: { zoom: 1, panX: 0, panY: 0 },
+        main: { zoom: 1, panX: 0, panY: 0 },
+      },
+    });
+  }
+
   function isValidSnapshotState(state) {
     try {
       validateProjectFile(state);
@@ -104,5 +146,10 @@ export function createProjectStateController({
     }
   }
 
-  return { buildProjectSnapshot, loadProjectSnapshot, isValidSnapshotState };
+  return {
+    buildProjectSnapshot,
+    loadProjectSnapshot,
+    resetProjectState,
+    isValidSnapshotState,
+  };
 }
