@@ -280,10 +280,7 @@ const roiController = createRoiController({
   renderAll,
   status,
 });
-const {
-  clearDrawingMode: clearRoiDrawingMode,
-  syncEditor: syncRoiEditor,
-} = roiController;
+const { clearDrawingMode: clearRoiDrawingMode, syncEditor: syncRoiEditor } = roiController;
 
 const layerLegendController = createLayerLegendController({
   getModel: () => model,
