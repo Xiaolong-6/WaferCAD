@@ -735,7 +735,7 @@ button.three-control:hover,
   position: absolute;
   z-index: 6;
   top: 25px;
-  right: 0;
+  left: 0;
   width: 150px;
   padding: 7px 8px;
   border: 1px solid var(--line);
