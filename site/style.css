@@ -1547,3 +1547,37 @@ canvas {
     right: 4px;
   }
 }
+
+
+/* In-page inspection mode: one view occupies the workspace while the top bar
+   and status bar remain available. */
+body.view-maximized .workspace > * {
+  visibility: hidden;
+}
+
+body.view-maximized .view-panel.is-maximized {
+  visibility: visible;
+  position: fixed !important;
+  inset: 38px 2px 22px 2px;
+  z-index: 30;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(32, 42, 51, 0.16);
+}
+
+body.view-maximized .view-panel.is-maximized .view-head {
+  min-height: 30px;
+}
+
+body.view-maximized .view-panel.is-maximized .section-body {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 210px);
+}
+
+.view-max-btn.active {
+  border-color: #aebbc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
