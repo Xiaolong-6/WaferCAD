@@ -29,3 +29,22 @@ export function formatXY(valueMicron, unit = 'um', digits = 3) {
   if (abs >= 1) return Number(value.toFixed(2)).toString();
   return Number(value.toPrecision(digits)).toString();
 }
+
+
+export function roundMicronToNanometre(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return number;
+  const rounded = Math.round(number * 1000) / 1000;
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+export function formatLengthInput(valueMicron, unit = 'um') {
+  const roundedMicron = roundMicronToNanometre(valueMicron);
+  if (!Number.isFinite(roundedMicron)) return '';
+  const value = fromMicron(roundedMicron, unit);
+  const decimals = unit === 'nm' ? 0 : unit === 'mm' ? 6 : 3;
+  return value
+    .toFixed(decimals)
+    .replace(/\.0+$/, '')
+    .replace(/(\.\d*?)0+$/, '$1');
+}
