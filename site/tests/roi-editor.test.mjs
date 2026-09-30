@@ -96,7 +96,6 @@ test('nm-scale geometry survives every reference-point round trip', () => {
   }
 });
 
-
 test('sector ROI supports wrapped angle ranges, hit testing, anchors, and resize', () => {
   const sector = sectorRoiFromAnchor(10, 300, 60, 'center', 0, 0);
   assert.equal(sectorSweepDegrees(sector.startDeg, sector.endDeg), 120);
