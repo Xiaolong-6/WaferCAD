@@ -41,7 +41,7 @@ export function createModel({
     height,
     thickness,
     boundary,
-    units: { xy: 'µm', z: 'relative' },
+    units: { xy: 'µm', z: 'µm' },
     layers: [{ id: 'base', name: 'Base', color: BASE_COLOR }],
     regions: [
       {
@@ -62,8 +62,11 @@ export const isVectorModel = (model) =>
   model?.kernel === 'vector-2.5d-v1' && Array.isArray(model.regions);
 export const fullFaceGeometry = (model) => cloneGeom(model.boundary);
 
-export function relativeZToXYScale(model) {
-  return Math.max(model.width, model.height) / 100;
+export function zDisplayScale(model) {
+  const [lo, hi] = modelBoundsZ(model);
+  const zSpan = Math.max(hi - lo, 1e-12);
+  const xySpan = Math.max(model.width, model.height, 1e-12);
+  return (xySpan * 0.12) / zSpan;
 }
 
 export function layerById(model, id) {
@@ -317,7 +320,7 @@ function applyOperationImpl(
     );
 
     // Stage 2: inspect the newly grown exposed surface, find its step edges,
-    // offset those edges outward by the same numeric distance as Z Δ, and fill
+    // offset those edges outward by the same physical distance as the Z thickness, and fill
     // the vertical interval back to the neighboring surface. This merges with
     // the Direct-grown material because it uses the same layer id.
     const coatingLayerId = layer?.id || targetLayerId;
