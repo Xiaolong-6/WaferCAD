@@ -132,7 +132,9 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
   { color: coatColor, sideX },
 );
 assert.ok(
-  sidewallPixel.actual.every((value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8),
+  sidewallPixel.actual.every(
+    (value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8,
+  ),
 );
 await page.locator('#operationTab').click();
 
