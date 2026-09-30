@@ -44,7 +44,7 @@ export async function processBenchmark(kind, growth, face = 'front') {
 export function projectForBenchmark({ model, section }) {
   return {
     format: 'WaferCAD-vector',
-    version: 3,
+    version: 4,
     model,
     layout: {
       name: 'Benchmark',
