@@ -34,6 +34,8 @@ The Direct blanket volume is 400 µm² × relative Z in each fixture. For the 20
 
 A separate 100000 × 100000 µm regression locks the wafer-scale case: Z Δ = 1 must produce a 1000 µm lateral sidewall band. This specifically prevents the former bug where the sidewall existed mathematically as a 1 µm strip but disappeared at normal wafer-scale Section/3D views.
 
+A multi-opening wafer fixture also etches an array of circular openings through a blanket layer before applying Conformal. This protects the dense/repeated-mask path: boundary buffering must complete for many closed rings and must leave a sidewall coating around each opening. The fixture was added after repeated circular mask geometry exposed a polygon-clipping degeneracy in the former capsule-union buffer construction.
+
 Tests etch 1.5 units through a 2 × 2 µm area and verify a volume reduction of 6, including removal across material interfaces. Browser review projects additionally show a 6 × 8 µm etched area in the 3D and Section views.
 
 ## Permanent verification
