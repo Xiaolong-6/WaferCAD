@@ -30,7 +30,6 @@ export function formatXY(valueMicron, unit = 'um', digits = 3) {
   return Number(value.toPrecision(digits)).toString();
 }
 
-
 export function roundMicronToNanometre(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return number;
