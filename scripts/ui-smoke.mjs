@@ -24,6 +24,13 @@ await page.waitForFunction(
   null,
   { timeout: 30000 },
 );
+assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
+assert.match(
+  await page.locator('#welcomeScreen').textContent(),
+  /Mask[\s\S]*Process[\s\S]*Inspect/,
+);
+await page.locator('#welcomeEmptyBtn').click();
+assert.equal(await page.locator('#welcomeScreen').isHidden(), true);
 
 // Settings owns project controls and XY units.
 await page.locator('#settingsTab').click();
@@ -352,6 +359,9 @@ await degraded.waitForFunction(
   null,
   { timeout: 30000 },
 );
+if (await degraded.locator('#welcomeScreen').isVisible()) {
+  await degraded.locator('#welcomeEmptyBtn').click();
+}
 assert.ok(blockedThreeRequests > 0);
 assert.equal(
   (await degraded.locator('#threeStats').textContent()).trim(),
