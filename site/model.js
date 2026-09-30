@@ -239,12 +239,8 @@ function pointOnBoundary(boundary, point, tolerance = 0.05) {
           dx = bx - ax,
           dy = by - ay,
           len2 = dx * dx + dy * dy || 1,
-          t = Math.max(
-            0,
-            Math.min(1, ((point[0] - ax) * dx + (point[1] - ay) * dy) / len2),
-          );
-        if (Math.hypot(point[0] - (ax + t * dx), point[1] - (ay + t * dy)) < tolerance)
-          return true;
+          t = Math.max(0, Math.min(1, ((point[0] - ax) * dx + (point[1] - ay) * dy) / len2));
+        if (Math.hypot(point[0] - (ax + t * dx), point[1] - (ay + t * dy)) < tolerance) return true;
       }
   return false;
 }
