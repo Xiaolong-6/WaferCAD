@@ -4,8 +4,14 @@ import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benc
 
 await loadGeometryKernel();
 const { applyOperation, createModel, relativeZToXYScale, surfaceZ } = await import('../model.js');
-const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
-  await import('../vector-geometry.js');
+const {
+  circleMulti,
+  pointInMulti,
+  rectMulti,
+  intersection,
+  isEmpty,
+  unionGeometries,
+} = await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
 function stackAt(model, x, y = 0) {
