@@ -103,6 +103,33 @@ assert.deepEqual(
   stackAtSaved(5500).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 6, z1: 7 },
 );
+const coatColor = saved.model.layers.find((layer) => layer.id === coatId).color;
+const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
+  (canvas, { color }) => {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
+    const left = 27;
+    const right = 10;
+    const top = 10;
+    const bottom = 22;
+    const iw = rect.width - left - right;
+    const ih = rect.height - top - bottom;
+    const t = (4500 + 7000) / 14000;
+    const z0 = -7.5;
+    const z1 = 8.5;
+    const x = Math.round((left + t * iw) * dpr);
+    const y = Math.round((top + ((z1 - 6) / (z1 - z0)) * ih) * dpr);
+    const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
+    const expected = [
+      Number.parseInt(color.slice(1, 3), 16),
+      Number.parseInt(color.slice(3, 5), 16),
+      Number.parseInt(color.slice(5, 7), 16),
+    ];
+    return { actual, expected };
+  },
+  { color: coatColor },
+);
+assert.deepEqual(sidewallPixel.actual, sidewallPixel.expected);
 await page.locator('#operationTab').click();
 
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
@@ -135,8 +162,9 @@ assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
 // 3D inspection controls should operate without runtime errors.
 await page.locator('.three-opacity-control > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
+const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
-assert.equal(await page.locator('#threeBorders').isChecked(), true);
+assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
 await page.locator('#fit3dBtn').click();
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
