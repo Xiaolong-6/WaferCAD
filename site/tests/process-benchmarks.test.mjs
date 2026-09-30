@@ -4,7 +4,7 @@ import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benc
 
 await loadGeometryKernel();
 const { applyOperation, createModel, relativeZToXYScale, surfaceZ } = await import('../model.js');
-const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty } =
+const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
   await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
@@ -220,6 +220,39 @@ test('layered circular trench keeps conformal sidewalls after a later direct bla
     z0: 8,
     z1: 9,
   });
+});
+
+test('multi-hole layered wafer keeps conformal sidewalls around every etched opening', () => {
+  const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Layer 1',
+    thickness: 2,
+    area: model.boundary,
+    growth: 'direct',
+  });
+  const holes = [];
+  for (const x of [-30000, -15000, 0, 15000, 30000])
+    for (const y of [-30000, -15000, 0, 15000, 30000])
+      if (Math.hypot(x, y) < 42000) holes.push(circleMulti(4000, 4000, 48, x, y));
+  const etched = unionGeometries(holes);
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 2,
+    area: etched,
+  });
+  const conformal = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  const at = (x, y = 0) =>
+    stackAt(model, x, y).find((s) => s.layerId === conformal.layerId);
+  assert.deepEqual(at(1500), { layerId: conformal.layerId, z0: 6, z1: 9 });
+  assert.deepEqual(at(0), { layerId: conformal.layerId, z0: 6, z1: 7 });
+  assert.deepEqual(at(2500), { layerId: conformal.layerId, z0: 8, z1: 9 });
 });
 
 test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
