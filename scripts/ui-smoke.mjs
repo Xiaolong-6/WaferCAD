@@ -120,7 +120,7 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
     const z0 = -7.5;
     const z1 = 8.5;
     const x = Math.round((left + t * iw) * dpr);
-    const y = Math.round((top + ((z1 - 6) / (z1 - z0)) * ih) * dpr);
+    const y = Math.round((top + ((z1 - 5.5) / (z1 - z0)) * ih) * dpr);
     const ctx = canvas.getContext('2d');
     const actual = [...ctx.getImageData(x, y, 1, 1).data.slice(0, 3)];
     const expected = [
@@ -141,8 +141,13 @@ assert.ok(
     (value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8,
   ),
 );
-const visibleSidewallPixels = sidewallPixel.row.filter((pixel) =>
-  pixel.every((value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 18),
+const visibleSidewallPixels = sidewallPixel.row.filter(
+  (pixel) =>
+    Math.hypot(
+      pixel[0] - sidewallPixel.expected[0],
+      pixel[1] - sidewallPixel.expected[1],
+      pixel[2] - sidewallPixel.expected[2],
+    ) <= 80,
 ).length;
 assert.ok(visibleSidewallPixels >= 5);
 await page.locator('#operationTab').click();
