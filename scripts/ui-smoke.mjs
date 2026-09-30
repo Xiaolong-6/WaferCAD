@@ -236,7 +236,9 @@ await page.mouse.up();
 await page.waitForTimeout(50);
 assert.deepEqual(errors, [], 'Sector ROI creation must not raise a browser error.');
 assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
-await page.locator('#focusEditor > summary').click();
+await page.locator('#focusEditor').evaluate((details) => {
+  details.open = true;
+});
 await page.locator('#roiEditor:not([hidden])').waitFor();
 assert.ok(Number(await page.locator('#roiWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
@@ -250,11 +252,9 @@ const sectorBox = await mask.boundingBox();
 assert.ok(sectorBox);
 await page.mouse.move(sectorBox.x + sectorBox.width * 0.5, sectorBox.y + sectorBox.height * 0.5);
 await page.mouse.down();
-await page.mouse.move(
-  sectorBox.x + sectorBox.width * 0.62,
-  sectorBox.y + sectorBox.height * 0.5,
-  { steps: 4 },
-);
+await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sectorBox.height * 0.5, {
+  steps: 4,
+});
 await page.mouse.up();
 await page.locator('#focusEditor > summary').click();
 await page.locator('#roiEditor:not([hidden])').waitFor();
