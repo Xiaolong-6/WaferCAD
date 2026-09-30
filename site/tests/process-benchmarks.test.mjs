@@ -3,7 +3,8 @@ import test from 'node:test';
 import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel, surfaceZ } = await import('../model.js');
+const { applyOperation, createModel, relativeZToXYScale, surfaceZ } =
+  await import('../model.js');
 const { pointInMulti, rectMulti, intersection, isEmpty } = await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
@@ -45,12 +46,22 @@ for (const face of ['front', 'back']) {
     test(`${kind} ${face}: Direct/Conformal top, sidewall and far field`, async () => {
       const direct = await processBenchmark(kind, 'direct', face);
       const conformal = await processBenchmark(kind, 'conformal', face);
-      const sideX = kind === 'step' ? 0.5 : kind === 'trench' ? 1.5 : 2.5;
+      const lateral = relativeZToXYScale(conformal.model);
+      const sideX =
+        kind === 'step'
+          ? lateral / 2
+          : kind === 'trench'
+            ? 2 - lateral / 2
+            : 2 + lateral / 2;
       const lower = kind === 'trench' ? 3 : 5;
       const upper = kind === 'trench' ? 5 : 7;
       assert.ok(Math.abs(volume(direct.model, direct.layerId) - 400) < 1e-8);
       const conformalVolume =
-        kind === 'step' ? 440 : kind === 'trench' ? 480 : 400 + 2 * (16 + Math.PI);
+        kind === 'step'
+          ? 400 + 40 * lateral
+          : kind === 'trench'
+            ? 400 + 80 * lateral
+            : 400 + 2 * (16 * lateral + Math.PI * lateral ** 2);
       assert.ok(Math.abs(volume(conformal.model, conformal.layerId) - conformalVolume) < 0.05);
       assertCoat(direct, sideX, [lower, lower + 1], face);
       assertCoat(conformal, sideX, [lower, upper + 1], face);
@@ -67,9 +78,9 @@ for (const face of ['front', 'back']) {
         face,
       );
       if (kind === 'island') {
-        assertCoat(conformal, 0, [5, 8], face, 2.5);
+        assertCoat(conformal, 0, [5, 8], face, 2 + lateral / 2);
         // The corner buffer is round, not the expanded bounding box.
-        assertCoat(conformal, 2.8, [5, 6], face, 2.8);
+        assertCoat(conformal, 2 + lateral * 0.9, [5, 6], face, 2 + lateral * 0.9);
       }
       for (const benchmark of [direct, conformal]) {
         const { model, section } = benchmark;
@@ -116,6 +127,32 @@ for (const face of ['front', 'back']) {
     });
   }
 }
+
+test('Conformal sidewall width follows the shared relative-Z display scale', () => {
+  const model = createModel({ shape: 'rect', width: 100000, height: 100000, thickness: 10 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Step',
+    thickness: 2,
+    area: rectMulti(50000, 100000, -25000, 0),
+  });
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal coat',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(relativeZToXYScale(model), 1000);
+  assert.deepEqual(
+    stackAt(model, 500).find((s) => s.layerId === coat.layerId),
+    { layerId: coat.layerId, z0: 5, z1: 8 },
+  );
+  assert.deepEqual(
+    stackAt(model, 1500).find((s) => s.layerId === coat.layerId),
+    { layerId: coat.layerId, z0: 5, z1: 6 },
+  );
+});
 
 test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
