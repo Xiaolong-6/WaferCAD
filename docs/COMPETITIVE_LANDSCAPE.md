@@ -32,6 +32,7 @@ As of this research snapshot, the application combines capabilities that are oft
 - Selected-mask, inverted-mask, and whole-face operation areas.
 - Direct Grow, Conformal Grow, and vertical Etch.
 - Synchronized Main, Mask, 3D, and arbitrary Section A-B views.
+- SVG export for Main/Mask/Section and physical GLB plus high-resolution PNG export from 3D.
 - Project save/open, undo/revert, and named snapshots.
 - Browser-only deployment with no native application or TCAD installation required.
 
@@ -699,10 +700,11 @@ These extend geometric expressiveness while preserving the project's lightweight
 
 ### Interoperability stage
 
-Potential future exports could target:
+WaferCAD now exports final triangulated 3D geometry as GLB, with canonical µm coordinates converted to glTF metres. That is a geometry handoff, not a process-physics model.
+
+Potential future exports could additionally target:
 
 - simplified layer-stack/process metadata;
-- final triangulated/mesh geometry;
 - simulator-oriented structure formats where practical;
 - cross-section coordinate/material tables.
 
