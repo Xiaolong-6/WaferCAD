@@ -135,6 +135,41 @@ assert.ok(
     (value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8,
   ),
 );
+
+// Region partitions inside one material must never show up as Section seams.
+// Probe the trench wall x-position deep inside the continuous Base material,
+// where the process model is partitioned but the visible material is identical.
+const baseColor = saved.model.layers.find((layer) => layer.id === 'base').color;
+const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
+  (canvas, { color }) => {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
+    const left = 27;
+    const right = 10;
+    const top = 10;
+    const bottom = 22;
+    const iw = rect.width - left - right;
+    const ih = rect.height - top - bottom;
+    const z0 = -7.5;
+    const z1 = 8.5;
+    const t = (5000 + 7000) / 14000;
+    const x = Math.round((left + t * iw) * dpr);
+    const y = Math.round((top + ((z1 - 0) / (z1 - z0)) * ih) * dpr);
+    const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
+    const expected = [
+      Number.parseInt(color.slice(1, 3), 16),
+      Number.parseInt(color.slice(3, 5), 16),
+      Number.parseInt(color.slice(5, 7), 16),
+    ];
+    return { actual, expected };
+  },
+  { color: baseColor },
+);
+assert.ok(
+  baseSeamPixel.actual.every(
+    (value, index) => Math.abs(value - baseSeamPixel.expected[index]) <= 8,
+  ),
+);
 await page.locator('#operationTab').click();
 
 // A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
