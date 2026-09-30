@@ -174,7 +174,6 @@ test('project validator rejects base metadata that disagrees with boundary bound
   assert.throws(() => validateProjectFile(source), /bounds do not match model width\/height/);
 });
 
-
 test('legacy project migration adds current version and inspect-state defaults', () => {
   const source = validProject();
   const snapshotState = validProject();
