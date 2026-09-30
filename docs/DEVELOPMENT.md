@@ -71,7 +71,6 @@ Prettier 3.9.9 and ESLint 10.11.0 are development dependencies. New code should 
 
 The formatter ignores `legacy/` and `site/vendor/`. Vendored code must not be reformatted locally.
 
-
 ## CI gates
 
 Pull requests run the fast **Quality** gate and the permanent Chromium **UI smoke**. Parser/import changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
