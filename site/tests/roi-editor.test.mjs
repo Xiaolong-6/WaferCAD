@@ -6,6 +6,9 @@ import {
   normalizeRoi,
   rectRoiFromAnchor,
   resizeRoiFromHandle,
+  sectorBoundaryPoints,
+  sectorRoiFromAnchor,
+  sectorSweepDegrees,
   roiAnchorPoint,
   roiContainsPoint,
   roiHandlePoints,
@@ -91,4 +94,36 @@ test('nm-scale geometry survives every reference-point round trip', () => {
       actual.forEach((value, i) => assert.ok(Math.abs(value - expected[i]) < 1e-15));
     }
   }
+});
+
+
+test('sector ROI supports wrapped angle ranges, hit testing, anchors, and resize', () => {
+  const sector = sectorRoiFromAnchor(10, 300, 60, 'center', 0, 0);
+  assert.equal(sectorSweepDegrees(sector.startDeg, sector.endDeg), 120);
+  assert.equal(roiContainsPoint(sector, [8, 0]), true);
+  assert.equal(roiContainsPoint(sector, [-8, 0]), false);
+  assert.equal(roiContainsPoint(sector, [0, 11]), false);
+  assert.deepEqual(roiAnchorPoint(sector, 'top-left'), [-10, 10]);
+
+  const points = sectorBoundaryPoints(sector, 36);
+  assert.deepEqual(points[0], [0, 0]);
+  assert.deepEqual(points.at(-1), [0, 0]);
+  assert.ok(points.length >= 14);
+
+  const moved = translateRoi(sector, 2, -3);
+  assert.deepEqual(moved.c, [2, -3]);
+  assert.equal(moved.startDeg, 300);
+  assert.equal(moved.endDeg, 60);
+
+  const resized = resizeRoiFromHandle(sector, 'top-left', [-14, 14]);
+  assert.equal(resized.type, 'sector');
+  assert.equal(resized.startDeg, 300);
+  assert.equal(resized.endDeg, 60);
+  assert.ok(resized.r > sector.r);
+});
+
+test('sector angle equality represents a full circle sweep', () => {
+  assert.equal(sectorSweepDegrees(45, 45), 360);
+  const sector = sectorRoiFromAnchor(5, 45, 45, 'center', 0, 0);
+  assert.equal(roiContainsPoint(sector, [-4, 0]), true);
 });
