@@ -10,9 +10,8 @@ const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
 
-const { createVisualizationExample, createVisualizationLayout } = await import(
-  '../welcome-example.js'
-);
+const { createVisualizationExample, createVisualizationLayout } =
+  await import('../welcome-example.js');
 const { validateProjectFile } = await import('../project-schema.js');
 
 test('Visualization welcome example preserves the uploaded mask structure', () => {
