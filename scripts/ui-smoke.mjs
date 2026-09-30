@@ -131,9 +131,7 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
     const ih = rect.height - top - bottom;
     const t = (sideX + 7000) / 14000;
     const x = Math.round((left + t * iw) * dpr);
-    const y = Math.round(
-      (top + ((sectionZ1 - 6) / (sectionZ1 - sectionZ0)) * ih) * dpr,
-    );
+    const y = Math.round((top + ((sectionZ1 - 6) / (sectionZ1 - sectionZ0)) * ih) * dpr);
     const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
     const expected = [
       Number.parseInt(color.slice(1, 3), 16),
@@ -166,9 +164,7 @@ const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
     const ih = rect.height - top - bottom;
     const t = (5000 + 7000) / 14000;
     const x = Math.round((left + t * iw) * dpr);
-    const y = Math.round(
-      (top + ((sectionZ1 - 0) / (sectionZ1 - sectionZ0)) * ih) * dpr,
-    );
+    const y = Math.round((top + ((sectionZ1 - 0) / (sectionZ1 - sectionZ0)) * ih) * dpr);
     const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
     const expected = [
       Number.parseInt(color.slice(1, 3), 16),
