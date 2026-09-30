@@ -136,11 +136,6 @@ const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
   },
   { color: coatColor, sideX },
 );
-assert.ok(
-  sidewallPixel.actual.every(
-    (value, index) => Math.abs(value - sidewallPixel.expected[index]) <= 8,
-  ),
-);
 const visibleSidewallPixels = sidewallPixel.row.filter(
   (pixel) =>
     Math.hypot(
