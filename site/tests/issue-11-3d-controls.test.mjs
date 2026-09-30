@@ -14,3 +14,10 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(app, /new THREE\.EdgesGeometry\(geometry, 20\)/);
   assert.match(app, /depthWrite: threeOpacity >= 0\.999/);
 });
+
+test('3D renderer is event-driven and has a dependency-isolated fallback', () => {
+  assert.doesNotMatch(app, /requestAnimationFrame\(animate\)/);
+  assert.match(app, /function scheduleThreeFrame\(\)/);
+  assert.match(app, /3D dependencies unavailable; continuing without the 3D view/);
+  assert.match(app, /host\.classList\.add\('three-unavailable'\)/);
+});

@@ -1,4 +1,4 @@
-import { validateProjectFile } from './project-schema.js';
+import { migrateProjectFile, validateProjectFile } from './project-schema.js';
 
 export const MAX_PROJECT_FILE_BYTES = 64 * 1024 * 1024;
 
@@ -38,5 +38,5 @@ export async function readProjectFile(file) {
     throw new Error('Project file is not valid JSON.');
   }
 
-  return validateProjectFile(parsed);
+  return validateProjectFile(migrateProjectFile(parsed));
 }

@@ -4,9 +4,9 @@ WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-d
 
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
-- **Mask** — GDSII/OASIS hierarchy, global layer/datatype selection, alignment, and a render-only 3D focus region.
-- **3D** — vector extrusion of the current structure with an editable layer legend.
-- **Main** — front/back surface view with XY axes and an editable A–B section line.
+- **Mask** — GDSII/OASIS hierarchy, global layer/datatype selection, alignment, and a render-only 3D ROI.
+- **3D** — vector extrusion of the current structure with global opacity and optional interface borders.
+- **Main** — front/back surface view with XY axes and an A–B coordinate editor.
 - **Section A–B** — cross-section generated from the same vector geometry model.
 
 ## Geometry model
@@ -67,7 +67,7 @@ Then open `http://localhost:8000`.
 For development checks:
 
 ```bash
-npm install
+npm ci
 npm run check
 ```
 
@@ -75,6 +75,6 @@ npm run check
 
 ## Project-file safety
 
-Project JSON is validated before it can replace the current editor state. Validation covers the vector model, polygon structure, Z stacks, layer references, mask layout, hierarchy, transforms, section/view state, display settings, and conservative size limits. Invalid or damaged files fail during Open rather than later during rendering.
+Project JSON is versioned and migrated before it can replace the current editor state. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Save and Open share the same 64 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.

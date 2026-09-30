@@ -1,3 +1,5 @@
+export const CURRENT_PROJECT_VERSION = 2;
+
 const LIMITS = {
   layers: 10000,
   regions: 200000,
@@ -398,6 +400,12 @@ function validateDisplay(display) {
       }
     });
   }
+  if (display.threeOpacity != null) {
+    assertFinite(display.threeOpacity, 'display.threeOpacity', { min: 0.1, max: 1 });
+  }
+  if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
+    fail('display.threeShowBorders', 'must be boolean.');
+  }
 }
 
 function validateSnapshotRecords(snapshots) {
@@ -423,6 +431,9 @@ function validateSnapshotRecords(snapshots) {
 function validateProjectCore(project, allowSnapshots) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
+  if (project.version != null) {
+    assertInteger(project.version, 'version', { min: 1, max: CURRENT_PROJECT_VERSION });
+  }
 
   const budget = { polygons: 0, rings: 0, points: 0 };
   validateModel(project.model, budget);
@@ -443,6 +454,12 @@ function validateProjectCore(project, allowSnapshots) {
   validateMaskTransform(project.maskTransform);
   if (!['front', 'back'].includes(project.activeFace)) fail('activeFace', 'must be front or back.');
   validateRoi(project.roi);
+  if (
+    project.roiAnchor != null &&
+    !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.roiAnchor)
+  ) {
+    fail('roiAnchor', 'must be a supported ROI reference point.');
+  }
   validateSection(project.section);
   validatePlanViews(project.planViews);
   validateDisplay(project.display);
@@ -450,6 +467,36 @@ function validateProjectCore(project, allowSnapshots) {
   else if (project.snapshots != null) fail('snapshots', 'must not be nested.');
 
   return project;
+}
+
+function migrateProjectCore(project) {
+  if (!isObject(project)) return project;
+  const version = project.version == null ? 1 : project.version;
+  if (!Number.isInteger(version) || version < 1 || version > CURRENT_PROJECT_VERSION) {
+    fail('version', `must be between 1 and ${CURRENT_PROJECT_VERSION}.`);
+  }
+
+  if (version < 2) {
+    if (project.roiAnchor == null) project.roiAnchor = 'center';
+    if (project.display == null) project.display = {};
+    if (isObject(project.display)) {
+      if (project.display.threeOpacity == null) project.display.threeOpacity = 1;
+      if (project.display.threeShowBorders == null) project.display.threeShowBorders = false;
+    }
+  }
+  project.version = CURRENT_PROJECT_VERSION;
+  return project;
+}
+
+export function migrateProjectFile(project) {
+  const migrated = structuredClone(project);
+  migrateProjectCore(migrated);
+  if (Array.isArray(migrated.snapshots)) {
+    for (const record of migrated.snapshots) {
+      if (isObject(record) && isObject(record.state)) migrateProjectCore(record.state);
+    }
+  }
+  return migrated;
 }
 
 export function validateProjectFile(project) {

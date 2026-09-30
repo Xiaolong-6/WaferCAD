@@ -1,5 +1,11 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+let THREE = null;
+let OrbitControls = null;
+try {
+  THREE = await import('three');
+  ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+} catch (error) {
+  console.warn('3D dependencies unavailable; continuing without the 3D view.', error);
+}
 import { assertLayoutByteLength, parseLayoutFile } from './layout-io.js';
 import { KLAYOUT_SAMPLES, sampleById } from './sample-layouts.js';
 import {
@@ -29,7 +35,7 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import { downloadProject, readProjectFile } from './project-io.js';
-import { validateProjectFile } from './project-schema.js';
+import { CURRENT_PROJECT_VERSION, validateProjectFile } from './project-schema.js';
 import {
   circleRoiFromAnchor,
   normalizeRoi,
@@ -1209,12 +1215,20 @@ let renderer,
   axesHelper,
   threeReady = false,
   threeOpacity = 1,
-  threeShowBorders = false;
+  threeShowBorders = false,
+  threeFrame = null,
+  threeInteracting = false;
 function zVisualScale() {
   return Math.max(model.width, model.height) / 100;
 }
 function initThree() {
   const host = $('threeHost');
+  if (!THREE || !OrbitControls) {
+    host.classList.add('three-unavailable');
+    host.textContent = '3D unavailable';
+    $('threeStats').textContent = 'dependency unavailable';
+    return;
+  }
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setClearColor(0xf5f7f9);
@@ -1225,6 +1239,15 @@ function initThree() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0, 0);
   controls.enableDamping = true;
+  controls.addEventListener('start', () => {
+    threeInteracting = true;
+    scheduleThreeFrame();
+  });
+  controls.addEventListener('change', scheduleThreeFrame);
+  controls.addEventListener('end', () => {
+    threeInteracting = false;
+    scheduleThreeFrame();
+  });
   scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
   const d = new THREE.DirectionalLight(0xffffff, 2.2);
   d.position.set(80, -70, 130);
@@ -1237,7 +1260,7 @@ function initThree() {
   new ResizeObserver(() => resizeThree()).observe(host);
   threeReady = true;
   resizeThree();
-  animate();
+  scheduleThreeFrame();
 }
 function resizeThree() {
   if (!renderer) return;
@@ -1245,6 +1268,7 @@ function resizeThree() {
   renderer.setSize(Math.max(2, r.width), Math.max(2, r.height), false);
   camera.aspect = Math.max(2, r.width) / Math.max(2, r.height);
   camera.updateProjectionMatrix();
+  scheduleThreeFrame();
 }
 function disposeGroup() {
   while (group.children.length) {
@@ -1320,15 +1344,19 @@ function renderThree() {
     }
   }
   $('threeStats').textContent = roi ? 'ROI' : 'full model';
+  scheduleThreeFrame();
 }
-function animate() {
-  requestAnimationFrame(animate);
-  if (renderer) {
-    controls.update();
+function scheduleThreeFrame() {
+  if (!renderer || threeFrame != null) return;
+  threeFrame = requestAnimationFrame(() => {
+    threeFrame = null;
+    const changed = controls?.update?.() || false;
     renderer.render(scene, camera);
-  }
+    if (threeInteracting || changed) scheduleThreeFrame();
+  });
 }
 function fit3d() {
+  if (!threeReady || !camera || !controls || !axesHelper) return;
   const [lo, hi] = modelBoundsZ(model),
     zs = zVisualScale(),
     zSpan = (hi - lo) * zs,
@@ -1340,6 +1368,7 @@ function fit3d() {
   controls.target.set(0, 0, ((lo + hi) / 2) * zs);
   controls.update();
   axesHelper.scale.setScalar(Math.max(0.6, size / 100));
+  scheduleThreeFrame();
 }
 
 function renderAll() {
@@ -1427,6 +1456,7 @@ function buildProjectSnapshot(includeSnapshots = false) {
   ensureHierarchy();
   const project = {
     format: 'WaferCAD-vector',
+    version: CURRENT_PROJECT_VERSION,
     model,
     layout: {
       name: layout.name,
@@ -1443,12 +1473,15 @@ function buildProjectSnapshot(includeSnapshots = false) {
     maskTransform,
     activeFace,
     roi,
+    roiAnchor,
     section,
     planViews,
     display: {
       xyUnit: xyDisplayUnit,
       structurePalette: activeStructurePalette,
       customStructurePalette,
+      threeOpacity,
+      threeShowBorders,
     },
   };
   if (includeSnapshots) project.snapshots = snapshotManager.exportRecords();
@@ -1470,7 +1503,7 @@ function loadProjectSnapshot(project) {
   maskTransform = project.maskTransform;
   activeFace = project.activeFace;
   roi = project.roi ? normalizeRoi(project.roi) : null;
-  roiAnchor = 'center';
+  roiAnchor = project.roiAnchor || 'center';
   section = project.section;
 
   if (project.display?.xyUnit in XY_UNITS) {
@@ -1482,6 +1515,11 @@ function loadProjectSnapshot(project) {
   customStructurePalette = Array.isArray(project.display?.customStructurePalette)
     ? project.display.customStructurePalette
     : null;
+  threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1));
+  threeShowBorders = Boolean(project.display?.threeShowBorders);
+  $('threeOpacityRange').value = String(threeOpacity);
+  $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
+  $('threeBorders').checked = threeShowBorders;
 
   Object.assign(planViews.mask, project.planViews.mask);
   Object.assign(planViews.main, project.planViews.main);
@@ -2066,4 +2104,4 @@ updateOperationUI();
 syncTransformInputs();
 renderAll();
 fit3d();
-status('Ready. Create a base or import a GDS file.');
+status('Ready. Create a base or import a layout.');

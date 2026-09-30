@@ -126,7 +126,9 @@ Renders top/bottom surface patches directly from region polygons. Step boundarie
 
 ### 3D
 
-Extrudes vector polygons between each segment's `z0` and `z1`. XY stays in physical geometry coordinates, while relative Z is mapped through a separate visual scale for 3D display. The optional focus region clips rendering only; it does not change the model.
+Extrudes vector polygons between each segment's `z0` and `z1`. XY stays in physical geometry coordinates, while relative Z is mapped through a separate visual scale for 3D display. The optional ROI clips rendering only; it does not change the model.
+
+The renderer is event-driven: it renders on model/view changes and while OrbitControls damping is settling rather than running an unconditional 60 fps loop. Three.js is loaded as an optional external dependency; if it is unavailable, the rest of WaferCAD remains usable and only the 3D view is degraded.
 
 ### Section A–B
 
@@ -142,9 +144,11 @@ Changing the global XY display unit never rescales geometry. Base dimensions, al
 
 ## Persistence
 
-Projects are JSON files with format identifier `WaferCAD-vector`.
+Projects are JSON files with format identifier `WaferCAD-vector` plus an explicit format version.
 
-The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, focus region, section line, view state, XY display unit, structure palette preference, and named snapshots. Snapshot state never recursively contains the snapshot list.
+The current project format stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, ROI and its reference point, section line, plan-view state, XY display unit, structure palette preference, 3D opacity/border state, and named snapshots. Snapshot state never recursively contains the snapshot list.
+
+`site/project-schema.js` owns migration into the current version before validation. Legacy files without an explicit version are migrated with deterministic defaults rather than inheriting unrelated session state.
 
 ## Project-file boundary
 
@@ -158,8 +162,9 @@ Validation includes:
 - unique layer/region IDs and valid stack layer references;
 - ordered, non-overlapping Z stack segments with `z1 > z0`;
 - layout elements, bounds, layer combinations, and hierarchy;
-- mask transform, active face, ROI, A–B section, plan views, and display settings;
-- conservative limits on file size and collection sizes;
+- mask transform, active face, ROI/reference point, A–B section, plan views, and display/3D inspect settings;
+- region containment/non-overlap and base-boundary consistency;
+- conservative limits on file size, decompression size, and collection sizes;
 - named snapshot records, including non-recursive validated workspace state.
 
 This is a trust boundary: renderers and operation code may assume an opened project has passed these checks.

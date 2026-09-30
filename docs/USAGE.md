@@ -16,9 +16,9 @@ If the structure already contains operations, WaferCAD asks for confirmation. Us
 
 ## 2. Import a mask
 
-Use **Import GDS**.
+Use **Import layout** for GDSII or OASIS files.
 
-WaferCAD reads the GDSII `UNITS` record and converts XY coordinates to internal µm. Imported geometry remains at native scale. The application does not resize the mask to fit the base.
+WaferCAD reads physical database-unit metadata from the source format and converts XY coordinates to internal µm. Imported geometry remains at native scale. The application does not resize the mask to fit the base.
 
 Use Alignment only when an actual geometric transform is required.
 
@@ -47,11 +47,13 @@ The Mask view shows:
 
 Use the wheel or − / + / Fit controls to change the view. View fitting does not alter geometry.
 
-## 5. Limit 3D rendering
+## 5. Limit 3D rendering with an ROI
 
-Use **Rect** or **Circle** in the Mask toolbar to draw a 3D focus region.
+Open **ROI** in the Mask view, then choose **Rect** or **Circle** and drag once to create the region.
 
-The focus region affects rendering only. The full model is preserved.
+After creation, drag inside the ROI to reposition it or use the four corner handles to resize it. The ROI editor also exposes width/height or radius, a reference point, and X/Y coordinates for exact input.
+
+The ROI affects 3D rendering only. The full model is preserved.
 
 ## 6. Apply an operation
 
@@ -90,20 +92,20 @@ Layer identity is stored separately from the visible name, so renaming or recolo
 
 Main can display the front or back surface.
 
-Drag A–B in Main to define the section line. Section A–B updates from the same vector model.
+Use the **A–B** button to open the coordinate panel and edit the existing A and B endpoints numerically. Section A–B updates from the same vector model. Double-click Main to fit the view.
 
-Use the global XY unit selector in the top toolbar to switch nm / µm / mm. This only converts display and XY input values; geometry is unchanged. Z values remain relative.
+Use **Settings → XY unit** to switch nm / µm / mm. This only converts display and XY input values; geometry is unchanged. Z values remain relative.
 
 ## 9. Snapshots
 
-Use **Save snapshot** in the left sidebar to capture the current workspace immediately.
+Open the **Snapshots** tab and use **Save snapshot** to capture the current workspace immediately.
 
 A new snapshot uses the current local timestamp as its default name. Rename it directly in the row if needed. **Restore** replaces the current workspace with the checkpoint; **×** deletes only that snapshot.
 
-Snapshots are immutable workspace checkpoints and have no thumbnail dependency. Restoring and then continuing to edit does not mutate the saved checkpoint.
+Snapshots are immutable workspace checkpoints and have no thumbnail dependency. Restoring and then continuing to edit does not mutate the saved checkpoint. A project stores at most 100 snapshots so every UI-reachable state remains persistable.
 
 ## 10. Save and open
 
-Use **Save** to export the current project as JSON. Snapshot records are included.
+Use **Settings → Save** to export the current project as JSON. Snapshot records are included.
 
-Use **Open** to restore a project written by the current vector format. Project and snapshot payloads are validated before they can replace live editor state.
+Use **Settings → Open** to restore a project. Older supported project files are migrated to the current format version before validation. Save and Open enforce the same 64 MB safety limit.
