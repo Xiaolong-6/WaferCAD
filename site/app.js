@@ -52,12 +52,7 @@ import {
   unitMeta,
   XY_UNITS,
 } from './units.js';
-import {
-  availableSelectedLayers,
-  minimumSegmentLength,
-  nearestNamedPoint,
-  zoomLimitForFeature,
-} from './view-interactions.js';
+import { minimumSegmentLength, nearestNamedPoint, zoomLimitForFeature } from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { createVisualizationExample } from './welcome-example.js';
 import { takeStartupFile } from './startup-file.js';
@@ -65,6 +60,7 @@ import { createBuildController } from './controllers/build-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
 import { bindToolTabs } from './controllers/tool-tabs-controller.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
+import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -151,10 +147,7 @@ let xyDisplayUnit = 'um',
   openLayerPaletteId = null;
 let activeCell = null,
   expandedCells = new Set(),
-  hoveredLayerKey = null,
-  scopeCacheCell = null,
-  scopeCacheHierarchy = null,
-  scopeCache = new Set();
+  hoveredLayerKey = null;
 let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   activeFace = 'front',
   roi = null,
@@ -335,91 +328,33 @@ function layerColor(key, alpha = 1) {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
-function hierarchyFromParsed(parsed) {
-  const hierarchy = {};
-  for (const name of parsed.cellOrder) {
-    const counts = new Map(),
-      cell = parsed.cells.get(name);
-    for (const e of cell?.elements || []) {
-      if (e.kind !== 'sref' && e.kind !== 'aref') continue;
-      const n = e.kind === 'aref' ? Math.max(1, e.cols || 1) * Math.max(1, e.rows || 1) : 1;
-      counts.set(e.name, (counts.get(e.name) || 0) + n);
-    }
-    hierarchy[name] = [...counts].map(([child, count]) => ({ name: child, count }));
-  }
-  return hierarchy;
-}
-function ensureHierarchy() {
-  if (layout.hierarchy && Object.keys(layout.hierarchy).length) return;
-  const root = layout.root || '',
-    cells = new Set(root ? [root] : []);
-  for (const c of layout.combos || []) cells.add(c.cell);
-  for (const e of layout.linework || []) if (e.sourceCell) cells.add(e.sourceCell);
-  layout.hierarchy = {};
-  for (const name of cells) layout.hierarchy[name] = [];
-  if (root)
-    layout.hierarchy[root] = [...cells]
-      .filter((name) => name !== root)
-      .map((name) => ({ name, count: 1 }));
-}
-function cellChildren(name) {
-  ensureHierarchy();
-  return layout.hierarchy?.[name] || [];
-}
-function descendantCells(name) {
-  const out = new Set();
-  function walk(n) {
-    if (!n || out.has(n)) return;
-    out.add(n);
-    for (const child of cellChildren(n)) walk(child.name);
-  }
-  walk(name);
-  return out;
-}
-function activeScopeCells() {
-  if (scopeCacheCell === activeCell && scopeCacheHierarchy === layout.hierarchy) return scopeCache;
-  scopeCacheCell = activeCell;
-  scopeCacheHierarchy = layout.hierarchy;
-  scopeCache = activeCell ? descendantCells(activeCell) : new Set();
-  return scopeCache;
-}
-function selectedElement(e) {
-  return (
-    activeScopeCells().has(e.sourceCell) && selectedLayerKeys.has(layerKey(e.layer, e.datatype))
-  );
-}
-function globalLayers() {
-  const map = new Map();
-  for (const combo of layout.combos || []) {
-    const key = layerKey(combo.layer, combo.datatype);
-    if (!map.has(key))
-      map.set(key, {
-        key,
-        layer: combo.layer,
-        datatype: combo.datatype,
-        count: 0,
-        cells: new Set(),
-      });
-    const item = map.get(key);
-    item.count += combo.count;
-    item.cells.add(combo.cell);
-  }
-  return [...map.values()].sort((a, b) => a.layer - b.layer || a.datatype - b.datatype);
-}
-
-function syncMaskCellLabel(layers = globalLayers(), scope = activeScopeCells()) {
-  if (!activeCell) {
-    $('maskCellLabel').textContent = '—';
-    return;
-  }
-  const selected = availableSelectedLayers(layers, selectedLayerKeys, scope);
-  $('maskCellLabel').textContent =
-    selected.length === 1
-      ? `${activeCell} · ${selected[0].layer}/${selected[0].datatype}`
-      : selected.length
-        ? `${activeCell} · ${selected.length} layers`
-        : `${activeCell} · no active layer`;
-}
+const maskBrowser = createMaskBrowserController({
+  getLayout: () => layout,
+  getActiveCell: () => activeCell,
+  setActiveCellValue: (value) => {
+    activeCell = value;
+  },
+  getExpandedCells: () => expandedCells,
+  getSelectedLayerKeys: () => selectedLayerKeys,
+  getHoveredLayerKey: () => hoveredLayerKey,
+  setHoveredLayerKey: (value) => {
+    hoveredLayerKey = value;
+  },
+  layerKey,
+  layerColor,
+  renderMask,
+  renderAll,
+});
+const {
+  hierarchyFromParsed,
+  activeScopeCells,
+  selectedElement,
+  globalLayers,
+  syncMaskCellLabel,
+  setActiveCell,
+  renderCellTree,
+  renderMaskList,
+} = maskBrowser;
 
 function selectedMaskGeometry() {
   const geoms = [];
@@ -599,117 +534,6 @@ function syncTransformInputs() {
   $('maskScale').value = formatNumericField(maskTransform.scale, 6);
   $('maskRotation').value = formatNumericField(maskTransform.rotation, 3);
 }
-function setActiveCell(name) {
-  activeCell = name || null;
-  scopeCacheCell = null;
-  renderCellTree();
-  renderMaskList();
-  renderMask();
-}
-function renderCellTree() {
-  ensureHierarchy();
-  const host = $('cellTree');
-  host.innerHTML = '';
-  const root = layout.root || Object.keys(layout.hierarchy || {})[0] || '';
-  if (!root) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-list';
-    empty.textContent = 'No mask loaded';
-    host.append(empty);
-    activeCell = null;
-    return;
-  }
-  if (!activeCell || !(activeCell in (layout.hierarchy || {}))) activeCell = root;
-  function node(name, depth, path) {
-    const children = cellChildren(name),
-      row = document.createElement('div');
-    row.className =
-      'cell-row' + (name === activeCell ? ' active' : '') + (depth === 0 ? ' root' : '');
-    row.style.setProperty('--depth', depth);
-    const caret = document.createElement('button');
-    caret.className = 'cell-caret';
-    caret.type = 'button';
-    caret.textContent = children.length ? (expandedCells.has(name) ? '▾' : '▸') : '';
-    caret.disabled = !children.length;
-    caret.onclick = (e) => {
-      e.stopPropagation();
-      expandedCells.has(name) ? expandedCells.delete(name) : expandedCells.add(name);
-      renderCellTree();
-    };
-    const label = document.createElement('button');
-    label.className = 'cell-name';
-    label.type = 'button';
-    label.textContent = name;
-    label.onclick = () => setActiveCell(name);
-    row.append(caret, label);
-    host.append(row);
-    if (children.length && expandedCells.has(name)) {
-      for (const child of children) {
-        if (path.includes(child.name)) continue;
-        const before = host.children.length;
-        node(child.name, depth + 1, [...path, name]);
-        if (child.count > 1 && host.children[before]) {
-          const count = document.createElement('span');
-          count.className = 'cell-count';
-          count.textContent = `×${child.count}`;
-          host.children[before].append(count);
-        }
-      }
-    }
-  }
-  node(root, 0, []);
-}
-function renderMaskList() {
-  const host = $('maskLayerList');
-  host.innerHTML = '';
-  const layers = globalLayers(),
-    scope = activeScopeCells();
-  if (!layers.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-list';
-    empty.textContent = 'No area layers';
-    host.append(empty);
-  }
-  for (const item of layers) {
-    const available = [...item.cells].some((cell) => scope.has(cell));
-    const row = document.createElement('label');
-    row.className =
-      'layer-row' +
-      (selectedLayerKeys.has(item.key) ? ' selected' : '') +
-      (available ? '' : ' unavailable');
-    row.onmouseenter = () => {
-      hoveredLayerKey = item.key;
-      renderMask();
-    };
-    row.onmouseleave = () => {
-      if (hoveredLayerKey === item.key) hoveredLayerKey = null;
-      renderMask();
-    };
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = selectedLayerKeys.has(item.key);
-    cb.onchange = () => {
-      cb.checked ? selectedLayerKeys.add(item.key) : selectedLayerKeys.delete(item.key);
-      renderAll();
-    };
-    const sw = document.createElement('span');
-    sw.className = 'layer-swatch';
-    sw.style.background = layerColor(item.key);
-    const text = document.createElement('span');
-    text.className = 'layer-name';
-    text.textContent = `${item.layer}/${item.datatype}`;
-    const count = document.createElement('span');
-    count.className = 'layer-count';
-    count.textContent = item.count;
-    row.title = available
-      ? `Layer ${item.layer}/${item.datatype} in selected cell hierarchy`
-      : `Layer ${item.layer}/${item.datatype} is not present in ${activeCell || 'this cell'}`;
-    row.append(cb, sw, text, count);
-    host.append(row);
-  }
-  syncMaskCellLabel(layers, scope);
-}
-
 function renderLayerLegend() {
   const host = $('layerLegend');
   host.innerHTML = '';
