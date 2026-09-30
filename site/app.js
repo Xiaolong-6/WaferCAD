@@ -31,7 +31,6 @@ import {
   toMicron,
   unitMeta,
 } from './units.js';
-import { minimumSegmentLength, zoomLimitForFeature } from './view-interactions.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import { createBuildController } from './controllers/build-controller.js';
@@ -89,11 +88,6 @@ let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   future = [],
   baseRevertSnapshot = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
-const featureSizeCache = {
-  mask: { layout: null, scale: null, value: null },
-  main: { model: null, revision: null, value: null },
-};
-
 function status(msg) {
   $('statusText').textContent = msg;
 }
@@ -182,6 +176,29 @@ function layerColor(key, alpha = 1) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
+
+const planView = createPlanViewController({
+  getModel: () => model,
+  getLayout: () => layout,
+  getMaskTransform: () => maskTransform,
+  getPlanViews: () => planViews,
+  maskPoint,
+  formatXY,
+  xyToDisplay,
+  xyFromDisplay,
+  xyUnitLabel: () => xyUnit().label,
+  renderMask,
+  renderMain,
+});
+const {
+  setupCanvas,
+  viewport,
+  worldToCanvas,
+  canvasToWorld,
+  resetPlanView,
+  zoomPlanView,
+  drawPlanAxes,
+} = planView;
 
 const maskBrowser = createMaskBrowserController({
   getLayout: () => layout,
@@ -355,7 +372,7 @@ function hasProcessEdits() {
 
 function fitImportedLayout() {
   maskTransform = { scale: 1, rotation: 0, x: 0, y: 0 };
-  planViews.mask = { zoom: 1, panX: 0, panY: 0 };
+  Object.assign(planViews.mask, { zoom: 1, panX: 0, panY: 0 });
   maskImportController.syncTransformInputs();
 }
 
@@ -391,231 +408,6 @@ async function importLayoutBuffer(arrayBuffer, filename, displayName = filename)
   return imported;
 }
 
-function setupCanvas(canvas) {
-  const dpr = Math.min(devicePixelRatio || 1, 2),
-    r = canvas.getBoundingClientRect(),
-    w = Math.max(2, Math.round(r.width * dpr)),
-    h = Math.max(2, Math.round(r.height * dpr));
-  if (canvas.width !== w || canvas.height !== h) {
-    canvas.width = w;
-    canvas.height = h;
-  }
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { ctx, w: r.width, h: r.height };
-}
-function maskWorldBounds() {
-  const base = {
-    minX: -model.width / 2,
-    maxX: model.width / 2,
-    minY: -model.height / 2,
-    maxY: model.height / 2,
-  };
-  if (!(layout.elements?.length || layout.linework?.length))
-    return { ...base, width: model.width, height: model.height };
-  const b = layout.bounds,
-    corners = [
-      [b.minX, b.minY],
-      [b.minX, b.maxY],
-      [b.maxX, b.minY],
-      [b.maxX, b.maxY],
-    ].map(maskPoint);
-  let minX = base.minX,
-    maxX = base.maxX,
-    minY = base.minY,
-    maxY = base.maxY;
-  for (const [x, y] of corners) {
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minY = Math.min(minY, y);
-    maxY = Math.max(maxY, y);
-  }
-  return {
-    minX,
-    maxX,
-    minY,
-    maxY,
-    width: Math.max(1e-9, maxX - minX),
-    height: Math.max(1e-9, maxY - minY),
-  };
-}
-function viewport(w, h, kind = 'mask') {
-  const margin = 34,
-    view = planViews[kind],
-    b =
-      kind === 'mask'
-        ? maskWorldBounds()
-        : {
-            minX: -model.width / 2,
-            maxX: model.width / 2,
-            minY: -model.height / 2,
-            maxY: model.height / 2,
-            width: model.width,
-            height: model.height,
-          };
-  const base = Math.min(
-      (w - margin * 2) / Math.max(b.width, 1e-9),
-      (h - margin * 2) / Math.max(b.height, 1e-9),
-    ),
-    scale = base * view.zoom;
-  const centerX = (b.minX + b.maxX) / 2,
-    centerY = (b.minY + b.maxY) / 2;
-  return {
-    s: scale,
-    cx: w / 2 - centerX * scale + view.panX,
-    cy: h / 2 + centerY * scale + view.panY,
-  };
-}
-
-function maskMinimumFeatureSize() {
-  const scale = Math.abs(maskTransform.scale) || 1;
-  if (featureSizeCache.mask.layout === layout && featureSizeCache.mask.scale === scale)
-    return featureSizeCache.mask.value;
-
-  const pointGroups = [];
-  const widths = [];
-  for (const element of [...(layout.elements || []), ...(layout.linework || [])]) {
-    if (Array.isArray(element.points)) pointGroups.push(element.points);
-    if (element.width > 0) widths.push(element.width);
-  }
-  const raw = minimumSegmentLength(pointGroups, widths);
-  const value = raw == null ? null : raw * scale;
-  featureSizeCache.mask = { layout, scale, value };
-  return value;
-}
-
-function mainMinimumFeatureSize() {
-  if (featureSizeCache.main.model === model && featureSizeCache.main.revision === model.revision)
-    return featureSizeCache.main.value;
-
-  const pointGroups = [];
-  for (const region of model.regions || [])
-    for (const polygon of region.geom || [])
-      for (const ring of polygon || []) pointGroups.push(ring);
-  const value = minimumSegmentLength(pointGroups, [model.width, model.height]);
-  featureSizeCache.main = { model, revision: model.revision, value };
-  return value;
-}
-
-function maximumPlanZoom(kind, w, h) {
-  const state = planViews[kind];
-  const current = viewport(w, h, kind);
-  const baseScale = current.s / Math.max(state.zoom, 1e-12);
-  const feature = kind === 'mask' ? maskMinimumFeatureSize() : mainMinimumFeatureSize();
-  return zoomLimitForFeature(baseScale, feature);
-}
-function worldToCanvas(p, v, back = false) {
-  const x = back ? -p[0] : p[0];
-  return [v.cx + x * v.s, v.cy - p[1] * v.s];
-}
-function canvasToWorld(x, y, v, back = false) {
-  let wx = (x - v.cx) / v.s;
-  if (back) wx = -wx;
-  return [wx, (v.cy - y) / v.s];
-}
-function resetPlanView(kind) {
-  planViews[kind] = { zoom: 1, panX: 0, panY: 0 };
-  kind === 'mask' ? renderMask() : renderMain();
-}
-function zoomPlanView(kind, canvas, factor, clientX = null, clientY = null, back = false) {
-  const state = planViews[kind],
-    r = canvas.getBoundingClientRect(),
-    { w, h } = setupCanvas(canvas);
-  const px = clientX == null ? w / 2 : clientX - r.left,
-    py = clientY == null ? h / 2 : clientY - r.top;
-  const before = viewport(w, h, kind),
-    anchor = canvasToWorld(px, py, before, back);
-  state.zoom = Math.max(0.3, Math.min(maximumPlanZoom(kind, w, h), state.zoom * factor));
-  const after = viewport(w, h, kind),
-    mapped = worldToCanvas(anchor, after, back);
-  state.panX += px - mapped[0];
-  state.panY += py - mapped[1];
-  kind === 'mask' ? renderMask() : renderMain();
-}
-function niceStep(range, count = 6) {
-  const raw = Math.max(1e-9, range / Math.max(1, count)),
-    p = 10 ** Math.floor(Math.log10(raw)),
-    n = raw / p;
-  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * p;
-}
-function drawPlanAxes(ctx, v, w, h, back = false) {
-  ctx.save();
-  ctx.font = '7.5px system-ui';
-  const yLabelWidth = Math.max(
-    ...[7, h - 17].map((y) => ctx.measureText(formatXY(canvasToWorld(0, y, v, back)[1])).width),
-  );
-  ctx.restore();
-  const left = Math.max(28, Math.ceil(yLabelWidth + 6)),
-    bottom = h - 17,
-    right = w - 7,
-    top = 7;
-  const xa = canvasToWorld(left, bottom, v, back),
-    xb = canvasToWorld(right, bottom, v, back),
-    ya = canvasToWorld(left, bottom, v, back),
-    yb = canvasToWorld(left, top, v, back);
-  const xmin = Math.min(xa[0], xb[0]),
-    xmax = Math.max(xa[0], xb[0]),
-    ymin = Math.min(ya[1], yb[1]),
-    ymax = Math.max(ya[1], yb[1]);
-  const dxmin = xyToDisplay(xmin),
-    dxmax = xyToDisplay(xmax),
-    dymin = xyToDisplay(ymin),
-    dymax = xyToDisplay(ymax);
-  ctx.save();
-  ctx.font = '7.5px system-ui';
-  const labelWidth = Math.max(
-    ctx.measureText(formatXY(xmin)).width,
-    ctx.measureText(formatXY(xmax)).width,
-    16,
-  );
-  const xs = niceStep(dxmax - dxmin, Math.max(2, (right - left) / (labelWidth + 14))),
-    ys = niceStep(dymax - dymin, Math.max(2, (bottom - top) / 30));
-  ctx.restore();
-  ctx.save();
-  ctx.strokeStyle = 'rgba(70,82,95,.24)';
-  ctx.fillStyle = '#78838f';
-  ctx.lineWidth = 0.7;
-  ctx.font = '7.5px system-ui';
-  ctx.beginPath();
-  ctx.moveTo(left, bottom);
-  ctx.lineTo(right, bottom);
-  ctx.moveTo(left, bottom);
-  ctx.lineTo(left, top);
-  ctx.stroke();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  for (let xd = Math.ceil(dxmin / xs) * xs; xd <= dxmax + xs * 0.001; xd += xs) {
-    const x = xyFromDisplay(xd),
-      p = worldToCanvas([x, 0], v, back);
-    if (p[0] < left - 1 || p[0] > right + 1) continue;
-    ctx.beginPath();
-    ctx.moveTo(p[0], bottom);
-    ctx.lineTo(p[0], bottom - 3);
-    ctx.stroke();
-    const label = Math.abs(xd) < 1e-12 ? '0' : formatXY(x);
-    const halfWidth = ctx.measureText(label).width / 2;
-    if (p[0] - halfWidth >= 1 && p[0] + halfWidth <= w - 1) ctx.fillText(label, p[0], bottom + 1);
-  }
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  for (let yd = Math.ceil(dymin / ys) * ys; yd <= dymax + ys * 0.001; yd += ys) {
-    const y = xyFromDisplay(yd),
-      p = worldToCanvas([0, y], v, back);
-    if (p[1] < top - 1 || p[1] > bottom + 1) continue;
-    ctx.beginPath();
-    ctx.moveTo(left, p[1]);
-    ctx.lineTo(left + 3, p[1]);
-    ctx.stroke();
-    ctx.fillText(Math.abs(yd) < 1e-12 ? '0' : formatXY(y), left - 3, p[1]);
-  }
-  ctx.font = '700 7.5px system-ui';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(`X (${xyUnit().label})`, right, bottom - 3);
-  ctx.textAlign = 'left';
-  ctx.fillText(`Y (${xyUnit().label})`, left + 3, top + 8);
-  ctx.restore();
-}
 function canvasPathMulti(ctx, geom, v, back = false) {
   ctx.beginPath();
   for (const poly of geom || [])
