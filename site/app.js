@@ -1048,12 +1048,8 @@ const projectStateController = createProjectStateController({
   },
   setSectionEditEnabled,
 });
-const {
-  buildProjectSnapshot,
-  loadProjectSnapshot,
-  resetProjectState,
-  isValidSnapshotState,
-} = projectStateController;
+const { buildProjectSnapshot, loadProjectSnapshot, resetProjectState, isValidSnapshotState } =
+  projectStateController;
 
 const snapshotManager = createSnapshotManager({
   capture: () => buildProjectSnapshot(false),
