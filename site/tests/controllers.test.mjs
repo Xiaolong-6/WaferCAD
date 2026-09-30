@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBuildController } from '../controllers/build-controller.js';
-import { createStartupController } from '../controllers/startup-controller.js';
 import { createPlanViewController } from '../controllers/plan-view-controller.js';
+import { createStartupController } from '../controllers/startup-controller.js';
 
 function buildHost() {
   return {
@@ -82,7 +82,6 @@ test('startup controller opens the example without touching staged files', async
 
   assert.deepEqual(calls, [['history', null, '', './app.html'], ['example']]);
 });
-
 
 test('plan view controller preserves coordinate round-trips and resets in place', () => {
   const model = {
