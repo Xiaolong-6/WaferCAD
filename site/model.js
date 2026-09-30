@@ -157,10 +157,7 @@ export function normalizeStack(stack) {
 
 function stackKey(stack) {
   return (stack || [])
-    .map(
-      (seg) =>
-        `${seg.layerId}:${seg.z0.toFixed(9)}:${seg.z1.toFixed(9)}:${seg.role || ''}`,
-    )
+    .map((seg) => `${seg.layerId}:${seg.z0.toFixed(9)}:${seg.z1.toFixed(9)}:${seg.role || ''}`)
     .join('|');
 }
 function mergeRegions(model, regions) {
