@@ -15,8 +15,83 @@
     </script>
   </head>
   <body>
+    <section id="welcomeScreen" class="welcome-screen" hidden aria-label="Welcome to WaferCAD">
+      <div class="welcome-shell">
+        <div class="welcome-copy">
+          <div class="welcome-kicker">Local-first 2.5D wafer CAD</div>
+          <h1>WaferCAD</h1>
+          <p class="welcome-lead">
+            Import mask layouts, build wafer process steps, and inspect the resulting geometry in
+            2D, 3D, and cross-section views.
+          </p>
+          <div class="welcome-actions">
+            <button id="welcomeImportBtn" class="welcome-action primary" type="button">
+              Open GDS / OAS
+            </button>
+            <button id="welcomeExampleBtn" class="welcome-action" type="button">
+              Open Example
+            </button>
+          </div>
+          <div class="welcome-secondary-actions">
+            <button id="welcomeProjectBtn" class="link-btn" type="button">
+              Open WaferCAD project
+            </button>
+            <span aria-hidden="true">·</span>
+            <button id="welcomeEmptyBtn" class="link-btn" type="button">Start empty</button>
+          </div>
+
+          <div class="welcome-features" aria-label="WaferCAD capabilities">
+            <article>
+              <span class="welcome-feature-index">01</span>
+              <strong>Mask</strong>
+              <p>Import GDSII / OASIS, browse cells and layers, align the layout, and define ROI.</p>
+            </article>
+            <article>
+              <span class="welcome-feature-index">02</span>
+              <strong>Process</strong>
+              <p>Build the stack with direct or conformal growth, etch operations, and snapshots.</p>
+            </article>
+            <article>
+              <span class="welcome-feature-index">03</span>
+              <strong>Inspect</strong>
+              <p>Compare Main, Mask, interactive 3D, and Section A–B views in one workspace.</p>
+            </article>
+          </div>
+
+          <p class="welcome-local-note">Runs locally in your browser · No installation required</p>
+        </div>
+
+        <aside class="welcome-preview-card" aria-label="Visualization example preview">
+          <div class="welcome-preview-head">
+            <div>
+              <span>Example</span>
+              <strong>50 mm visualization mask</strong>
+            </div>
+            <span>GDS-style hierarchy</span>
+          </div>
+          <canvas id="welcomePreview" aria-label="Preview of the bundled visualization example"></canvas>
+          <div class="welcome-preview-foot">
+            <span>Opening</span>
+            <span>ITO</span>
+            <span>Metal</span>
+            <span>66 sites</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
     <header class="topbar">
-      <div class="brand"><strong>WaferCAD</strong></div>
+      <div class="brand">
+        <button
+          id="welcomeHomeBtn"
+          class="brand-home"
+          type="button"
+          title="Open WaferCAD welcome"
+          aria-label="Open WaferCAD welcome"
+        >
+          WaferCAD
+        </button>
+      </div>
     </header>
 
     <div class="app-shell">
