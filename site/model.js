@@ -146,14 +146,11 @@ export function normalizeStack(stack) {
   const out = [];
   for (const seg of sorted) {
     const prev = out.at(-1);
-    if (
-      prev &&
-      prev.layerId === seg.layerId &&
-      (prev.role || '') === (seg.role || '') &&
-      Math.abs(prev.z1 - seg.z0) < 1e-8
-    )
+    if (prev && prev.layerId === seg.layerId && Math.abs(prev.z1 - seg.z0) < 1e-8) {
       prev.z1 = seg.z1;
-    else out.push(seg);
+      if (prev.role === 'conformal-sidewall' || seg.role === 'conformal-sidewall')
+        prev.role = 'conformal-sidewall';
+    } else out.push(seg);
   }
   return out;
 }
