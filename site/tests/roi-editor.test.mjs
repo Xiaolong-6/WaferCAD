@@ -108,6 +108,9 @@ test('sector ROI supports wrapped angle ranges, hit testing, anchors, and resize
   assert.deepEqual(points[0], [0, 0]);
   assert.deepEqual(points.at(-1), [0, 0]);
   assert.ok(points.length >= 14);
+  const quadrant = sectorBoundaryPoints(sectorRoiFromAnchor(10, 0, 90, 'center', 0, 0), 36);
+  assert.deepEqual(quadrant[1], [10, 0]);
+  assert.deepEqual(quadrant.at(-2), [0, 10]);
 
   const moved = translateRoi(sector, 2, -3);
   assert.deepEqual(moved.c, [2, -3]);
