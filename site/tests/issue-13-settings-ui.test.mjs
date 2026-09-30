@@ -5,7 +5,7 @@ import test from 'node:test';
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 
-test('Settings is the final workspace tab and owns the XY unit selector', () => {
+test('Settings is the final workspace tab and owns the XYZ unit selector', () => {
   assert.ok(html.indexOf('id="settingsTab"') > html.indexOf('id="snapshotsTab"'));
   assert.ok(html.indexOf('id="settingsTools"') > html.indexOf('id="snapshotsTools"'));
   const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
