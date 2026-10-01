@@ -1914,3 +1914,409 @@ body.welcome-open {
     margin-left: 67px;
   }
 }
+
+
+/* Workstation visual system
+   Visual-only hierarchy for the editor. Keep density and geometry/layout intact. */
+:root {
+  --bg: #edf1f4;
+  --panel: #ffffff;
+  --panel-subtle: #f8fafb;
+  --canvas-bg: #fbfcfd;
+  --line: #cfd6de;
+  --line2: #e6eaee;
+  --line-strong: #b8c2cc;
+  --text: #1f2933;
+  --muted: #687480;
+  --accent: #526b84;
+  --accent-soft: #edf3f8;
+  --accent-dark: #3e556d;
+  --control-bg: #f9fafb;
+  --control-hover: #f1f4f7;
+  --focus-ring: rgba(82, 107, 132, 0.16);
+  --shadow-panel: 0 1px 2px rgba(31, 41, 51, 0.035);
+  --shadow-popover: 0 8px 22px rgba(31, 41, 51, 0.12);
+}
+
+button,
+.button {
+  border-color: var(--line);
+  border-radius: 3px;
+  background: var(--control-bg);
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+button:hover,
+.button:hover {
+  border-color: var(--line-strong);
+  background: var(--control-hover);
+}
+
+button:focus-visible,
+.button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.primary:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.quiet {
+  border-color: transparent;
+  background: transparent;
+  color: #65727e;
+}
+.quiet:hover {
+  border-color: var(--line2);
+  background: var(--control-hover);
+}
+
+.topbar {
+  background: #f8fafb;
+  border-bottom-color: var(--line2);
+}
+.brand-home {
+  color: #25313d;
+  font-weight: 720;
+}
+
+.workspace {
+  background: var(--bg);
+}
+
+.view-panel,
+.tool-panel {
+  border-color: #d5dbe2;
+  border-radius: 3px;
+  box-shadow: var(--shadow-panel);
+}
+
+.view-head {
+  border-bottom-color: var(--line2);
+  background: #f8fafb;
+}
+.view-head strong {
+  color: #26323d;
+  font-weight: 720;
+  letter-spacing: -0.05px;
+}
+.view-head span,
+.view-foot {
+  color: #72808c;
+}
+.view-foot {
+  border-top-color: var(--line2);
+  background: #fafbfc;
+}
+
+.view-tools,
+.three-view-tools {
+  gap: 2px;
+}
+.focus-tools,
+.zoom-tools {
+  padding-right: 2px;
+  margin-right: 1px;
+  border-right: 0;
+}
+
+/* One toolbar language across Main / Mask / 3D / Section. */
+.view-head .mini-btn,
+.view-head .three-control,
+.view-head .focus-editor > summary {
+  height: 21px;
+  min-width: 0;
+  padding: 1px 5px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: #55626e;
+  font-size: 9.5px;
+  font-weight: 520;
+  line-height: 1.2;
+  box-shadow: none;
+}
+
+.view-head button.mini-btn:hover,
+.view-head button.three-control:hover,
+.view-head .three-control:hover,
+.view-head .focus-editor > summary:hover {
+  border-color: transparent;
+  background: #eaf0f4;
+  color: #334352;
+}
+
+.view-head .focus-editor[open] > summary,
+.view-head .three-opacity-control[open] > summary,
+.view-head .three-border-toggle:has(input:checked),
+#sectionControlsBtn.active,
+#sectionScaleModeBtn.active,
+.view-max-btn.active {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  box-shadow: inset 0 0 0 1px #bdc9d5;
+}
+
+.view-head .readout {
+  color: #788591;
+  font-weight: 500;
+}
+
+.three-opacity-popover,
+.focus-popover,
+.section-coords-panel {
+  border-color: #cbd3db;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--shadow-popover);
+}
+
+.three-opacity-popover input[type='range'],
+.mask-opacity-popover input[type='range'] {
+  accent-color: var(--accent);
+}
+
+.view-panel canvas {
+  background: var(--canvas-bg);
+}
+#threeHost {
+  background: #f3f5f7;
+}
+
+/* Function panel hierarchy: tabs > context > controls > actions. */
+.tool-tabs {
+  border-bottom-color: var(--line2);
+  background: #f7f9fa;
+}
+.tool-tab {
+  border-right: 0;
+  background: transparent;
+  color: #687581;
+  font-weight: 620;
+}
+.tool-tab:hover {
+  border-color: transparent;
+  background: #f0f3f6;
+  color: #43515f;
+}
+.tool-tab.active {
+  background: #fff;
+  color: #31465a;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.tool-tab .badge {
+  background: #e8edf2;
+  color: #5e6d7a;
+}
+
+.tool-tab-panel,
+.tool-tab-panel.operation-section {
+  background: #fff;
+}
+.tool-context {
+  min-height: 23px;
+  padding-bottom: 3px;
+  border-bottom: 0;
+  margin-bottom: 5px;
+  color: #74808b;
+  font-size: 9.5px;
+}
+
+.control-section input,
+.control-section select,
+.roi-editor input,
+.roi-editor select,
+.section-coords-grid input,
+.legend-palette-select {
+  border-color: #ccd4dc;
+  border-radius: 3px;
+  background: #fbfcfd;
+  color: #26323d;
+  box-shadow: inset 0 1px 0 rgba(31, 41, 51, 0.015);
+}
+.control-section input:hover,
+.control-section select:hover,
+.roi-editor input:hover,
+.roi-editor select:hover,
+.section-coords-grid input:hover,
+.legend-palette-select:hover {
+  border-color: var(--line-strong);
+}
+.control-section input:focus,
+.control-section select:focus,
+.roi-editor input:focus,
+.roi-editor select:focus,
+.section-coords-grid input:focus,
+.legend-palette-select:focus {
+  border-color: #8498ab;
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.field-row {
+  color: #4f5c68;
+}
+.three-fields label,
+.four-fields label,
+.roi-field,
+.roi-two-fields label {
+  color: #6c7884;
+}
+
+.segmented {
+  border-color: transparent;
+  border-radius: 4px;
+  background: #eef2f5;
+  padding: 2px;
+}
+.segmented button {
+  border-radius: 3px;
+  color: #5f6c78;
+}
+.segmented button:hover {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.55);
+}
+.segmented button.active {
+  background: #fff;
+  color: #334b62;
+  box-shadow:
+    0 1px 2px rgba(31, 41, 51, 0.08),
+    inset 0 0 0 1px rgba(184, 194, 204, 0.5);
+}
+
+.mask-browser-pane {
+  border-color: var(--line2);
+  border-radius: 3px;
+  background: #fcfdfe;
+}
+.pane-title {
+  border-bottom-color: var(--line2);
+  background: #f6f8fa;
+  color: #53606c;
+  font-weight: 680;
+}
+.cell-row:hover,
+.layer-row:hover {
+  background: #f1f4f7;
+}
+.cell-row.active,
+.layer-row.selected {
+  background: #eaf0f5;
+  color: #34495e;
+}
+
+.subgroup {
+  border-top-color: var(--line2);
+}
+.subgroup > summary {
+  color: #697682;
+}
+.subgroup > summary:hover {
+  color: #445563;
+}
+
+.operation-actions .apply-btn,
+#applyBaseBtn,
+.import-btn {
+  font-weight: 650;
+}
+.operation-actions .compact-btn {
+  border-color: transparent;
+  background: #f5f7f9;
+  color: #65727e;
+}
+.operation-actions .compact-btn:hover:not(:disabled) {
+  border-color: var(--line2);
+  background: #edf1f4;
+}
+
+.snapshot-row {
+  border: 0;
+  border-bottom: 1px solid var(--line2);
+  border-radius: 0;
+  background: transparent;
+}
+.snapshot-row:last-child {
+  border-bottom: 0;
+}
+.snapshot-name {
+  background: transparent !important;
+}
+.snapshot-action {
+  border-color: transparent;
+  background: #f5f7f9;
+}
+.snapshot-delete,
+.legend-delete {
+  border-color: transparent;
+  background: transparent;
+}
+.snapshot-delete:hover,
+.legend-delete:hover {
+  border-color: transparent;
+  background: #f9eeee;
+}
+
+.layer-legend {
+  border-left-color: var(--line2);
+  background: #fbfcfd;
+}
+.legend-head {
+  border-bottom: 1px solid var(--line2);
+}
+.legend-row-wrap {
+  border-top-color: rgba(226, 231, 236, 0.78);
+}
+.legend-palette-select,
+.legend-random {
+  background: #f8fafb;
+}
+
+.statusbar {
+  border-top-color: var(--line2);
+  background: #f7f9fa;
+  color: #6c7985;
+}
+.status-links {
+  color: #74818d;
+}
+
+.feedback-toast {
+  border-color: #d1d8df;
+  border-radius: 4px;
+  box-shadow: 0 7px 20px rgba(31, 41, 51, 0.12);
+}
+
+/* Keep semantic feedback noticeable without turning the status bar into a banner. */
+.statusbar[data-level='success'] {
+  background: #f4faf6;
+  border-top-color: #bfd8c7;
+}
+.statusbar[data-level='info'],
+.statusbar[data-level='progress'] {
+  background: #f2f6fa;
+  border-top-color: #c3d0dc;
+}
+.statusbar[data-level='warning'] {
+  background: #fff8e9;
+  border-top-color: #dfca91;
+}
+.statusbar[data-level='error'] {
+  background: #fff2f3;
+  border-top-color: #dfb5bb;
+}
