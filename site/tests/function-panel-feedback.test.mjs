@@ -196,6 +196,7 @@ test('all view headers expose one Export menu and Mask export filters Cells Laye
   assert.match(html, /id="maskExportCells"[^>]*multiple/);
   assert.match(html, /id="maskExportLayers"[^>]*multiple/);
   assert.match(app, /syncMaskExportOptions/);
+  assert.match(exportController, /element\.sourceCell \|\| layout\.root \|\| 'ROOT'/);
   assert.match(workspaceActions, /\.export-control/);
   assert.match(workspaceActions, /syncMaskExportOptions\(\)/);
 });
