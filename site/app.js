@@ -574,23 +574,36 @@ function drawRoi(ctx, v) {
   ctx.restore();
 }
 
+function strokeClosedGeometry(ctx, geom, v, back = false) {
+  ctx.beginPath();
+  for (const polygon of geom || []) {
+    for (const ring of polygon || []) {
+      ring.forEach((point, index) => {
+        const q = worldToCanvas(point, v, back);
+        if (index === 0) ctx.moveTo(q[0], q[1]);
+        else ctx.lineTo(q[0], q[1]);
+      });
+      if (ring?.length) ctx.closePath();
+    }
+  }
+  ctx.stroke();
+}
+
 function drawMaskStructureReference(ctx, v) {
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(59, 70, 82, .56)';
+  ctx.lineWidth = 0.85;
 
   for (const patch of surfaceGroups(model, activeFace)) {
-    canvasPathMulti(ctx, patch.geom, v, false);
-    ctx.strokeStyle = 'rgba(59, 70, 82, .56)';
-    ctx.lineWidth = 0.85;
-    ctx.stroke();
+    strokeClosedGeometry(ctx, patch.geom, v, false);
   }
 
   ctx.setLineDash([5, 4]);
-  canvasPathMulti(ctx, model.boundary, v, false);
   ctx.strokeStyle = 'rgba(125, 137, 149, .58)';
   ctx.lineWidth = 0.9;
-  ctx.stroke();
+  strokeClosedGeometry(ctx, model.boundary, v, false);
   ctx.restore();
 }
 
