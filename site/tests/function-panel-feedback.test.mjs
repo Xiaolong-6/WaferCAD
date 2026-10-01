@@ -39,3 +39,13 @@ test('Process UI is driven by material presence and exposed Extend targets', () 
   assert.match(app, /All material has been removed/);
   assert.match(app, /Base fully removed/);
 });
+
+
+test('Mask alignment view overlays neutral structure outlines beneath adjustable mask opacity', () => {
+  assert.match(html, /id="maskOpacityRange"/);
+  assert.match(html, /id="maskOpacityValue"/);
+  assert.match(app, /function drawMaskStructureReference\(/);
+  assert.match(app, /maskStructurePatches\(\)/);
+  assert.match(app, /ctx\.globalAlpha = maskOpacity/);
+  assert.match(app, /drawMaskStructureReference\(ctx, v\)/);
+});
