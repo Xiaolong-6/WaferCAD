@@ -879,7 +879,7 @@ function updateOperationUI() {
   $('applyOperationBtn').disabled = !materialExists;
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('processSummary').textContent = materialExists
-    ? `${faceLabel} · ${t === 'add' ? 'Add layer' : t === 'grow' ? 'Grow layer' : 'Etch'}`
+    ? `${faceLabel} · ${t === 'add' ? 'Deposit layer' : t === 'grow' ? 'Extend layer' : 'Etch'}`
     : 'No material · recreate Base';
 
   if (!materialExists) {
@@ -892,10 +892,10 @@ function updateOperationUI() {
     t === 'etch'
       ? 'Etch removes material vertically and may create through-holes.'
       : t === 'grow' && !$('targetLayer').options.length
-        ? 'No exposed layer is available in the selected area on this face.'
+        ? 'No exposed layer is available to extend in the selected area on this face.'
         : $('growthMode').value === 'conformal'
-          ? 'Conformal expands across exposed steps and includes sidewalls.'
-          : 'Direct follows the selected footprint.';
+          ? 'Conformal coverage follows exposed steps and includes sidewalls.'
+          : 'Directional coverage follows the selected footprint.';
 }
 
 function applyOp() {
@@ -921,7 +921,7 @@ function applyOp() {
   const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
   if (type === 'grow' && !targetLayerId)
-    return status('No exposed target layer is available for Grow.', 'warning');
+    return status('No exposed target layer is available to Extend.', 'warning');
 
   const beforeBase = baseCoverageState(model);
   saveHistory();
@@ -960,7 +960,7 @@ function applyOp() {
   const growthLabel =
     type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Direct';
   status(
-    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Grew ${layerById(model, targetLayerId)?.name || 'layer'}` : `Added ${name}`}${growthLabel} on the ${activeFace}.`,
+    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}` : `Deposited ${name}`}${growthLabel} on the ${activeFace}.`,
     'success',
   );
 }
