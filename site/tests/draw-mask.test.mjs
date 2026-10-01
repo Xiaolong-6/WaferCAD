@@ -10,12 +10,13 @@ const {
   drawMaskGeometry,
   drawShapeContainsPoint,
   drawShapeGeometry,
+  drawSectorSweepDegrees,
   normalizeDrawMask,
   resizeDrawShape,
   translateDrawShape,
 } = await import('../draw-mask-geometry.js');
 
-test('Draw mask normalizes Rect, Circle and Polygon geometry', () => {
+test('Draw mask normalizes Rect, Circle, Polygon, Ring and Ring Sector geometry', () => {
   const mask = normalizeDrawMask({
     nextShapeId: 4,
     shapes: [
@@ -30,6 +31,16 @@ test('Draw mask normalizes Rect, Circle and Polygon geometry', () => {
           [0, 4],
         ],
       },
+      { id: 'shape-4', type: 'ring', c: [0, 0], innerR: 2, outerR: 5 },
+      {
+        id: 'shape-5',
+        type: 'ring-sector',
+        c: [0, 0],
+        innerR: 1,
+        outerR: 6,
+        startDeg: 300,
+        endDeg: 60,
+      },
     ],
   });
 
@@ -37,10 +48,11 @@ test('Draw mask normalizes Rect, Circle and Polygon geometry', () => {
   assert.deepEqual(mask.shapes[0].b, [5, 4]);
   assert.equal(mask.shapes[1].r, 3);
   assert.equal(mask.shapes[2].points.length, 3);
-  assert.equal(mask.nextShapeId, 4);
-  assert.ok(drawShapeGeometry(mask.shapes[0]).length);
-  assert.ok(drawShapeGeometry(mask.shapes[1]).length);
-  assert.ok(drawShapeGeometry(mask.shapes[2]).length);
+  assert.equal(mask.shapes[3].innerR, 2);
+  assert.equal(mask.shapes[3].outerR, 5);
+  assert.equal(drawSectorSweepDegrees(mask.shapes[4].startDeg, mask.shapes[4].endDeg), 120);
+  assert.equal(mask.nextShapeId, 6);
+  for (const shape of mask.shapes) assert.ok(drawShapeGeometry(shape).length);
 });
 
 test('Draw mask unions overlapping temporary shapes', () => {
@@ -93,4 +105,53 @@ test('Draw shape IDs are monotonic and survive normalization', () => {
     shapes: [{ id: 'shape-7', type: 'circle', c: [0, 0], r: 1 }],
   });
   assert.equal(normalized.nextShapeId, 8);
+});
+
+
+test('Ring geometry contains the annulus but excludes its hole', () => {
+  const ring = { id: 'shape-1', type: 'ring', c: [0, 0], innerR: 2, outerR: 5 };
+  assert.equal(drawShapeContainsPoint(ring, [3, 0]), true);
+  assert.equal(drawShapeContainsPoint(ring, [1, 0]), false);
+  assert.equal(drawShapeContainsPoint(ring, [6, 0]), false);
+});
+
+test('Ring Sector supports wrapped angles and direct radius/angle editing', () => {
+  const sector = {
+    id: 'shape-1',
+    type: 'ring-sector',
+    c: [0, 0],
+    innerR: 2,
+    outerR: 5,
+    startDeg: 300,
+    endDeg: 60,
+  };
+  assert.equal(drawShapeContainsPoint(sector, [3, 0]), true);
+  assert.equal(drawShapeContainsPoint(sector, [-3, 0]), false);
+
+  const outer = resizeDrawShape(sector, 'outer', [8, 0]);
+  assert.equal(outer.outerR, 8);
+
+  const inner = resizeDrawShape(outer, 'inner', [1, 0]);
+  assert.equal(inner.innerR, 1);
+
+  const start = resizeDrawShape(inner, 'start', [0, -8]);
+  assert.ok(Math.abs(start.startDeg - 270) < 1e-9);
+
+  const end = resizeDrawShape(start, 'end', [0, 8]);
+  assert.ok(Math.abs(end.endDeg - 90) < 1e-9);
+});
+
+test('A full 360 degree Ring Sector falls back to Ring geometry', () => {
+  const sector = {
+    id: 'shape-1',
+    type: 'ring-sector',
+    c: [0, 0],
+    innerR: 1,
+    outerR: 4,
+    startDeg: 0,
+    endDeg: 360,
+  };
+  assert.equal(drawSectorSweepDegrees(0, 360), 360);
+  assert.equal(drawShapeContainsPoint(sector, [2, 0]), true);
+  assert.equal(drawShapeContainsPoint(sector, [0.5, 0]), false);
 });
