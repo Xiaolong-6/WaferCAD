@@ -102,6 +102,8 @@ Coordinates and Section update while dragging. Grab offsets are preserved, and d
 
 Double-click Main to fit the view. **Fit** in 3D frames the active ROI when one exists, otherwise it frames the full model.
 
+On desktop landscape layouts, the workspace is arranged as **Mask / 3D / Function** on the first row and **Main / Section** on the second row. The original panel proportions are retained. At widths up to 900 px, the existing three-row layout remains **Function/3D**, **Main/Mask**, then **Section**.
+
 Each scientific view has **Max**. It expands Main, Mask, 3D, or Section to the available browser workspace without opening a new window; the button changes to **Restore**, and Escape also restores the normal layout.
 
 Main, Mask, and Section A–B provide **SVG** export. The 3D view provides **GLB** and **PNG**: GLB contains physical geometry in glTF metre units (WaferCAD µm are converted by 1e-6), while PNG captures the current 3D camera at 3× resolution.
