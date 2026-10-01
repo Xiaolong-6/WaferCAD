@@ -1105,6 +1105,7 @@ const projectStateController = createProjectStateController({
     history = [];
     future = [];
     baseRevertSnapshot = null;
+    drawMaskController?.resetInteraction();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
   syncThreeControls: ({
