@@ -1,5 +1,6 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
-import { materialSolids, solidBorders } from './model-view-geometry.js';
+import { appearanceSurfaceGroups, materialSolids, solidBorders } from './model-view-geometry.js';
+import { roughLod, roughTextureValue } from './surface-rendering.js';
 
 let THREE = null;
 let OrbitControls = null;
@@ -32,12 +33,30 @@ export function createThreeView({
   let ready = false;
   let frame = null;
   let interacting = false;
+  let roughMeshes = [];
+
+  function updateRoughLod() {
+    if (!camera || !renderer || !controls || !roughMeshes.length) return;
+    const distance = Math.max(1e-9, camera.position.distanceTo(controls.target)),
+      height = Math.max(2, renderer.domElement.clientHeight || host.clientHeight || 2),
+      pxPerUm = height / (2 * distance * Math.tan((camera.fov * Math.PI) / 360));
+    for (const entry of roughMeshes) {
+      const featurePixels = entry.appearance.featureSize * pxPerUm,
+        lod = roughLod(featurePixels),
+        ratio = entry.appearance.amplitude / Math.max(entry.appearance.featureSize, 1e-9);
+      entry.material.color.copy(entry.farColor).lerp(entry.nearColor, 0.35 * lod.detail);
+      entry.material.roughness = 1 - 0.18 * lod.detail;
+      entry.material.bumpScale =
+        Math.min(3, ratio * 0.7) * (0.15 * lod.detail + 0.85 * lod.micro);
+    }
+  }
 
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
       frame = null;
       const changed = controls?.update?.() || false;
+      updateRoughLod();
       renderer.render(scene, camera);
       if (interacting || changed) scheduleFrame();
     });
@@ -56,8 +75,41 @@ export function createThreeView({
     while (group?.children.length) {
       const object = group.children.pop();
       object.geometry?.dispose();
+      object.material?.bumpMap?.dispose();
       object.material?.dispose();
     }
+    roughMeshes = [];
+  }
+
+  function roughTexture(seed, size = 32) {
+    const data = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++)
+      for (let x = 0; x < size; x++) {
+        const value = Math.round(255 * roughTextureValue(seed, x, y)),
+          offset = (y * size + x) * 4;
+        data[offset] = value;
+        data[offset + 1] = value;
+        data[offset + 2] = value;
+        data[offset + 3] = 255;
+      }
+    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  function addPlanarUv(geometry, featureSize) {
+    const positions = geometry.getAttribute('position'),
+      period = Math.max(1e-9, featureSize * 8),
+      uv = new Float32Array(positions.count * 2);
+    for (let index = 0; index < positions.count; index++) {
+      uv[index * 2] = positions.getX(index) / period;
+      uv[index * 2 + 1] = positions.getY(index) / period;
+    }
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   }
 
   function xyBounds(geometry) {
@@ -241,6 +293,45 @@ export function createThreeView({
         group.add(edges);
       }
     }
+
+    for (const patch of appearanceSurfaceGroups(model, clip)) {
+      const normal = patch.face === 'front' ? 1 : -1,
+        geometry = geometryFromSolid({
+          slabs: [],
+          caps: [{ z: patch.z, normal, polys: patch.polys }],
+        });
+      addPlanarUv(geometry, patch.appearance.featureSize);
+      const layer = layerById(model, patch.layerId),
+        farColor = new THREE.Color(0x24282c),
+        nearColor = new THREE.Color(layer?.color || '#666').multiplyScalar(0.5),
+        material = new THREE.MeshStandardMaterial({
+          color: farColor,
+          roughness: 1,
+          metalness: 0,
+          bumpMap: roughTexture(patch.appearance.seed),
+          bumpScale: 0,
+          side: THREE.DoubleSide,
+          transparent: opacity < 0.999,
+          opacity,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2,
+        });
+      if (opacity < 0.999) material.forceSinglePass = true;
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.userData.surfaceAppearance = { ...patch.appearance };
+      mesh.renderOrder = 500;
+      group.add(mesh);
+      roughMeshes.push({
+        mesh,
+        material,
+        appearance: { ...patch.appearance },
+        farColor,
+        nearColor,
+      });
+    }
+    updateRoughLod();
 
     stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     scheduleFrame();

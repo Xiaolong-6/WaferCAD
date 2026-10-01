@@ -25,6 +25,7 @@ export function createDrawMaskController({
   formatLengthField,
   manualMicron,
   renderMask,
+  isInteractionBlocked = () => false,
   syncSourceSummary = () => {},
   onMaskChanged = () => {},
   status,
@@ -600,7 +601,7 @@ export function createDrawMaskController({
     canvas.addEventListener(
       'pointermove',
       (event) => {
-        if (getMode() !== 'draw') return;
+        if (getMode() !== 'draw' || (isInteractionBlocked() && !drag)) return;
         const { view, screen, point } = worldPoint(event, canvas);
         $('maskCoords').textContent = `x ${xyText(point[0])} · y ${xyText(point[1])}`;
 
@@ -668,9 +669,14 @@ export function createDrawMaskController({
                   view,
                   event.pointerType === 'touch' ? 18 : 9,
                 )
-              : null;
+              : null,
+            hit = hitShape(point);
           if (handle) canvas.style.cursor = 'nwse-resize';
-          else canvas.style.cursor = hitShape(point) ? 'move' : 'default';
+          else if (hit) canvas.style.cursor = 'move';
+          else {
+            canvas.style.cursor = 'default';
+            return;
+          }
         } else {
           canvas.style.cursor = 'crosshair';
         }
@@ -684,19 +690,34 @@ export function createDrawMaskController({
     canvas.addEventListener(
       'pointerdown',
       (event) => {
-        if (getMode() !== 'draw' || event.button !== 0) return;
+        if (getMode() !== 'draw' || event.button !== 0 || isInteractionBlocked()) return;
         const { view, screen, point } = worldPoint(event, canvas);
 
         if (tool === 'polygon') {
           if (!polygonDraft) polygonDraft = [];
-          polygonDraft.push(point);
-          polygonHover = point;
-          if (event.detail >= 2) {
-            ignoreNextDoubleClick = true;
+
+          const firstPoint = polygonDraft[0],
+            firstScreen = firstPoint ? worldToCanvas(firstPoint, view) : null,
+            closeRadius = event.pointerType === 'touch' ? 22 : 10,
+            closesAtStart =
+              polygonDraft.length >= 3 &&
+              firstScreen &&
+              Math.hypot(screen[0] - firstScreen[0], screen[1] - firstScreen[1]) <=
+                closeRadius;
+
+          if (closesAtStart) {
+            ignoreNextDoubleClick = event.detail >= 2;
             finishPolygon();
           } else {
-            syncUi();
-            renderMask();
+            polygonDraft.push(point);
+            polygonHover = point;
+            if (event.detail >= 2) {
+              ignoreNextDoubleClick = true;
+              finishPolygon();
+            } else {
+              syncUi();
+              renderMask();
+            }
           }
           event.preventDefault();
           event.stopImmediatePropagation();
@@ -768,8 +789,6 @@ export function createDrawMaskController({
               };
             } else {
               renderMask();
-              event.preventDefault();
-              event.stopImmediatePropagation();
               return;
             }
           }
@@ -799,8 +818,7 @@ export function createDrawMaskController({
           onMaskChanged();
           if (
             (completed.mode === 'move' || completed.mode === 'resize') &&
-            !completed.moved &&
-            completed.original.type !== 'polygon'
+            !completed.moved
           ) {
             openEditor(selectedShape());
           }
@@ -834,7 +852,7 @@ export function createDrawMaskController({
     canvas.addEventListener(
       'dblclick',
       (event) => {
-        if (getMode() !== 'draw') return;
+        if (getMode() !== 'draw' || isInteractionBlocked()) return;
         if (ignoreNextDoubleClick) {
           ignoreNextDoubleClick = false;
           event.preventDefault();

@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { createBuildController } from '../controllers/build-controller.js';
-import { createPlanViewController } from '../controllers/plan-view-controller.js';
-import { createStartupController } from '../controllers/startup-controller.js';
+const vendorSource = readFileSync(
+  new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
+const commonJsModule = { exports: {} };
+new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
+globalThis.polygonClipping = commonJsModule.exports;
+
+const { createBuildController } = await import('../controllers/build-controller.js');
+const { createPlanViewController } = await import('../controllers/plan-view-controller.js');
+const { createStartupController } = await import('../controllers/startup-controller.js');
 
 function buildHost() {
   return {

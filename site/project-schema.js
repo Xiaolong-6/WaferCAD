@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 6;
+export const CURRENT_PROJECT_VERSION = 7;
 
 const LIMITS = {
   layers: 10000,
@@ -103,6 +103,17 @@ function validateLayer(layer, index, ids) {
   }
 }
 
+function validateSurfaceAppearance(appearance, path) {
+  assertObject(appearance, path);
+  if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
+  assertFinite(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
+  assertFinite(appearance.amplitude, `${path}.amplitude`, { min: 1e-12 });
+  assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
+  if (appearance.geometryMode !== 'ideal') {
+    fail(`${path}.geometryMode`, 'must be ideal for the current geometry kernel.');
+  }
+}
+
 function validateStack(stack, path, layerIds) {
   assertArray(stack, path, LIMITS.stackDepth);
   let previousZ1 = -Infinity;
@@ -116,6 +127,12 @@ function validateStack(stack, path, layerIds) {
     const z1 = assertFinite(segment.z1, `${segmentPath}.z1`);
     if (!(z1 > z0)) fail(segmentPath, 'must satisfy z1 > z0.');
     if (z0 < previousZ1 - 1e-9) fail(segmentPath, 'overlaps the previous stack segment.');
+    if (segment.frontSurface != null) {
+      validateSurfaceAppearance(segment.frontSurface, `${segmentPath}.frontSurface`);
+    }
+    if (segment.backSurface != null) {
+      validateSurfaceAppearance(segment.backSurface, `${segmentPath}.backSurface`);
+    }
     previousZ1 = z1;
   });
 }
@@ -530,6 +547,27 @@ function validateProjectCore(
   if (project.drawMask != null) validateDrawMask(project.drawMask);
   if (!['front', 'back'].includes(project.activeFace)) fail('activeFace', 'must be front or back.');
   validateRoi(project.roi);
+  validateRoi(project.maskRoi);
+  if (
+    project.maskRoi != null &&
+    !['rect', 'circle'].includes(project.maskRoi.type)
+  ) {
+    fail('maskRoi.type', 'must be rect or circle.');
+  }
+  if (project.maskRoi?.type === 'rect') {
+    const width = Math.abs(project.maskRoi.b[0] - project.maskRoi.a[0]),
+      height = Math.abs(project.maskRoi.b[1] - project.maskRoi.a[1]),
+      tolerance = Math.max(1e-12, width, height) * 1e-9;
+    if (Math.abs(width - height) > tolerance) {
+      fail('maskRoi', 'rect geometry must be square.');
+    }
+  }
+  if (
+    project.maskRoiAnchor != null &&
+    !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.maskRoiAnchor)
+  ) {
+    fail('maskRoiAnchor', 'must be a supported ROI reference point.');
+  }
   if (
     project.roiAnchor != null &&
     !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.roiAnchor)
@@ -569,6 +607,10 @@ function migrateProjectCore(project) {
   if (version < 6) {
     if (!['file', 'draw'].includes(project.maskSourceMode)) project.maskSourceMode = 'file';
     if (!isObject(project.drawMask)) project.drawMask = { nextShapeId: 1, shapes: [] };
+  }
+  if (version < 7) {
+    if (project.maskRoi == null) project.maskRoi = null;
+    if (project.maskRoiAnchor == null) project.maskRoiAnchor = 'center';
   }
   project.version = CURRENT_PROJECT_VERSION;
   return project;

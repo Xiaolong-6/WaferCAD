@@ -294,7 +294,7 @@ async function checkROI(page, name) {
   project.planViews.main.zoom = 4;
   await loadProject(page, project, `${name}-nm-roi`);
   await page.locator('#focusEditor > summary').click();
-  await checkPopover(page, '.focus-popover', '#mainPanel');
+  await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');
   const width = Number(await page.locator('#roiWidth').inputValue());
   const height = Number(await page.locator('#roiHeight').inputValue());
   assert.equal(width, 12);
@@ -330,10 +330,10 @@ async function checkROI(page, name) {
     Number(await page.locator('#roiHeight').inputValue()),
     Math.round(11.356 + (7 / scale) * 1000),
   );
-  await page.locator('.focus-popover').evaluate((element) => {
+  await page.locator('#focusEditor .focus-popover').evaluate((element) => {
     element.scrollTop = 0;
   });
-  await checkPopover(page, '.focus-popover', '#mainPanel');
+  await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');
   await capture(page, `${name}-nm-roi-editor`);
   await page.locator('#focusEditor > summary').click();
 

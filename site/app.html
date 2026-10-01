@@ -145,14 +145,12 @@
                 </button>
                 <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
               </div>
-              <button
-                id="mainExportSvgBtn"
-                class="mini-btn"
-                type="button"
-                title="Export Main as SVG"
-              >
-                SVG
-              </button>
+              <details class="export-control">
+                <summary class="mini-btn" title="Export Main">Export</summary>
+                <div class="export-popover">
+                  <button id="mainExportSvgBtn" class="mini-btn" type="button">SVG</button>
+                </div>
+              </details>
               <button
                 id="mainMaxBtn"
                 class="mini-btn view-max-btn"
@@ -221,6 +219,42 @@
               >
                 File
               </button>
+              <details id="maskRoiEditor" class="focus-editor mask-roi-control">
+                <summary class="mini-btn" title="Limit Mask processing/export to a Rect or Circle ROI">ROI</summary>
+                <div class="focus-popover mask-roi-popover">
+                  <div class="focus-popover-actions">
+                    <button class="mask-roi-tool mini-btn" data-tool="rect" type="button">Square</button>
+                    <button class="mask-roi-tool mini-btn" data-tool="circle" type="button">Circle</button>
+                    <button id="clearMaskRoiBtn" class="mini-btn" type="button">Clear</button>
+                  </div>
+                  <div id="maskRoiFields" class="roi-editor" hidden>
+                    <div class="roi-editor-head">
+                      <strong id="maskRoiShapeLabel">Mask ROI</strong>
+                      <span id="maskRoiUnitLabel">µm</span>
+                    </div>
+                    <div id="maskRoiRectFields">
+                      <label class="roi-field"><span>Size</span><input id="maskRoiSize" type="number" min="0" step="any" /></label>
+                    </div>
+                    <div id="maskRoiCircleFields" hidden>
+                      <label class="roi-field"><span>Radius</span><input id="maskRoiRadius" type="number" min="0" step="any" /></label>
+                    </div>
+                    <label class="roi-field">
+                      <span>Reference</span>
+                      <select id="maskRoiAnchorSelect">
+                        <option value="center">Center / origin</option>
+                        <option value="top-left">Top-left</option>
+                        <option value="bottom-left">Bottom-left</option>
+                        <option value="top-right">Top-right</option>
+                        <option value="bottom-right">Bottom-right</option>
+                      </select>
+                    </label>
+                    <div class="roi-two-fields">
+                      <label><span>X</span><input id="maskRoiX" type="number" step="any" /></label>
+                      <label><span>Y</span><input id="maskRoiY" type="number" step="any" /></label>
+                    </div>
+                  </div>
+                </div>
+              </details>
               <details class="three-opacity-control mask-opacity-control">
                 <summary
                   class="mini-btn"
@@ -262,14 +296,23 @@
                 </button>
                 <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
               </div>
-              <button
-                id="maskExportSvgBtn"
-                class="mini-btn"
-                type="button"
-                title="Export Mask as SVG"
-              >
-                SVG
-              </button>
+              <details id="maskExportControl" class="export-control">
+                <summary class="mini-btn" title="Export current Mask">Export</summary>
+                <div class="export-popover mask-export-popover">
+                  <div id="maskExportFilterGroup">
+                    <label class="export-field">
+                      <span>Cells</span>
+                      <select id="maskExportCells" multiple size="5" aria-label="Cells to export"></select>
+                    </label>
+                    <label class="export-field">
+                      <span>Layers</span>
+                      <select id="maskExportLayers" multiple size="5" aria-label="Layers to export"></select>
+                    </label>
+                  </div>
+                  <p id="maskExportDrawNote" class="export-note" hidden>Draw source exports all drawn shapes.</p>
+                  <button id="maskExportSvgBtn" class="mini-btn" type="button">Export SVG</button>
+                </div>
+              </details>
               <button
                 id="maskMaxBtn"
                 class="mini-btn view-max-btn"
@@ -291,7 +334,7 @@
               class="mini-btn draw-mask-tool"
               data-draw-tool="polygon"
               type="button"
-              title="Click vertices; double-click the final point to finish"
+              title="Click vertices; click the first point, double-click, or press Enter to finish"
             >
               Polygon
             </button>
@@ -364,20 +407,13 @@
                 <span>Border</span>
               </label>
               <button id="fit3dBtn" class="mini-btn three-control" title="Fit the 3D model">Fit</button>
-              <button
-                id="threeExportModelBtn"
-                class="mini-btn three-control"
-                title="Export physical 3D model as GLB"
-              >
-                GLB
-              </button>
-              <button
-                id="threeExportPngBtn"
-                class="mini-btn three-control"
-                title="Export the current 3D camera as a 3× high-resolution PNG"
-              >
-                PNG
-              </button>
+              <details class="export-control">
+                <summary class="mini-btn three-control" title="Export 3D">Export</summary>
+                <div class="export-popover">
+                  <button id="threeExportModelBtn" class="mini-btn three-control" type="button">GLB</button>
+                  <button id="threeExportPngBtn" class="mini-btn three-control" type="button">PNG 3×</button>
+                </div>
+              </details>
               <button
                 id="threeMaxBtn"
                 class="three-control view-max-btn"
@@ -627,6 +663,21 @@
                     <option value="conformal">Conformal</option>
                   </select></label
                 >
+                <label id="etchSurfaceRow" class="field-row hidden"
+                  ><span>Surface</span
+                  ><select id="etchSurfaceMode">
+                    <option value="smooth">Smooth</option>
+                    <option value="rough">Rough</option>
+                  </select></label
+                >
+                <label id="roughFeatureRow" class="field-row hidden"
+                  ><span>Feature <b id="roughFeatureUnit">µm</b></span
+                  ><input id="roughFeatureSize" type="number" value="0.5" min="0" step="any"
+                /></label>
+                <label id="roughHeightRow" class="field-row hidden"
+                  ><span>Height <b id="roughHeightUnit">µm</b></span
+                  ><input id="roughAmplitude" type="number" value="1" min="0" step="any"
+                /></label>
                 <label class="field-row"
                   ><span><b id="processThicknessLabel">Z</b> <b id="operationThicknessUnit">µm</b></span
                   ><input id="operationThickness" type="number" value="3" min="0" step="any"
@@ -742,14 +793,12 @@
               >
                 Auto
               </button>
-              <button
-                id="sectionExportSvgBtn"
-                class="mini-btn"
-                type="button"
-                title="Export Section A–B as SVG"
-              >
-                SVG
-              </button>
+              <details class="export-control">
+                <summary class="mini-btn" title="Export Section A–B">Export</summary>
+                <div class="export-popover">
+                  <button id="sectionExportSvgBtn" class="mini-btn" type="button">SVG</button>
+                </div>
+              </details>
               <button
                 id="sectionMaxBtn"
                 class="mini-btn view-max-btn"
@@ -768,6 +817,14 @@
           </div>
         </section>
       </main>
+    </div>
+    <div id="processTaskDialog" class="process-task-dialog" role="dialog" aria-live="polite" hidden>
+      <div class="process-task-head">
+        <strong id="processTaskTitle">Applying process…</strong>
+        <span id="processTaskElapsed">0.0 s</span>
+      </div>
+      <div id="processTaskStage" class="process-task-stage">Preparing worker…</div>
+      <button id="processTaskAbortBtn" class="compact-btn" type="button">Abort</button>
     </div>
     <footer id="statusBar" class="statusbar" data-level="passive" role="status">
       <span id="statusText">Ready.</span>

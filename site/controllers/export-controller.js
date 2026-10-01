@@ -2,6 +2,13 @@ import { layerById, modelBoundsZ } from '../model.js';
 import { sectionContours, sectionSlices, surfaceGroups } from '../model-view-geometry.js';
 import { sectorBoundaryPoints } from '../roi-editor.js';
 import { drawMaskGeometry } from '../draw-mask-geometry.js';
+import {
+  bufferPolyline,
+  circleMulti,
+  intersection,
+  isEmpty,
+  rectMulti,
+} from '../vector-geometry.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -148,64 +155,202 @@ export function createExportController({
     return '';
   }
 
+  function maskRoiGeometry(maskRoi) {
+    if (!maskRoi) return null;
+    if (maskRoi.type === 'rect') {
+      const x0 = Math.min(maskRoi.a[0], maskRoi.b[0]),
+        x1 = Math.max(maskRoi.a[0], maskRoi.b[0]),
+        y0 = Math.min(maskRoi.a[1], maskRoi.b[1]),
+        y1 = Math.max(maskRoi.a[1], maskRoi.b[1]);
+      return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
+    }
+    if (maskRoi.type === 'circle') {
+      return circleMulti(maskRoi.r * 2, maskRoi.r * 2, 128, maskRoi.c[0], maskRoi.c[1]);
+    }
+    return null;
+  }
+
+  function maskRoiBounds(maskRoi) {
+    if (!maskRoi) return null;
+    if (maskRoi.type === 'rect') {
+      return {
+        minX: Math.min(maskRoi.a[0], maskRoi.b[0]),
+        maxX: Math.max(maskRoi.a[0], maskRoi.b[0]),
+        minY: Math.min(maskRoi.a[1], maskRoi.b[1]),
+        maxY: Math.max(maskRoi.a[1], maskRoi.b[1]),
+      };
+    }
+    return {
+      minX: maskRoi.c[0] - maskRoi.r,
+      maxX: maskRoi.c[0] + maskRoi.r,
+      minY: maskRoi.c[1] - maskRoi.r,
+      maxY: maskRoi.c[1] + maskRoi.r,
+    };
+  }
+
+  function maskView(width, height, maskRoi) {
+    const bounds = maskRoiBounds(maskRoi);
+    if (!bounds) return viewport(width, height, 'mask');
+    const spanX = Math.max(1e-12, bounds.maxX - bounds.minX),
+      spanY = Math.max(1e-12, bounds.maxY - bounds.minY),
+      margin = 4,
+      scale = Math.min((width - margin * 2) / spanX, (height - margin * 2) / spanY),
+      centerX = (bounds.minX + bounds.maxX) / 2,
+      centerY = (bounds.minY + bounds.maxY) / 2;
+    return {
+      s: scale,
+      cx: width / 2 - centerX * scale,
+      cy: height / 2 + centerY * scale,
+    };
+  }
+
+  function selectedOptions(id) {
+    return new Set([...($(id)?.selectedOptions || [])].map((option) => option.value));
+  }
+
+  function syncMaskExportOptions() {
+    const { layout, maskSourceMode, activeCell, selectedLayerKeys } = getState(),
+      cellsSelect = $('maskExportCells'),
+      layersSelect = $('maskExportLayers'),
+      filterGroup = $('maskExportFilterGroup'),
+      drawNote = $('maskExportDrawNote');
+    if (!cellsSelect || !layersSelect) return;
+    const draw = maskSourceMode === 'draw';
+    filterGroup.hidden = draw;
+    drawNote.hidden = !draw;
+    if (draw) return;
+
+    const oldCells = selectedOptions('maskExportCells'),
+      oldLayers = selectedOptions('maskExportLayers'),
+      cells = new Set(),
+      layers = new Map();
+    for (const element of [...(layout.elements || []), ...(layout.linework || [])]) {
+      cells.add(element.sourceCell || layout.root || 'ROOT');
+      layers.set(layerKey(element.layer, element.datatype), `${element.layer}/${element.datatype}`);
+    }
+
+    cellsSelect.replaceChildren();
+    for (const name of [...cells].sort((a, b) => a.localeCompare(b))) {
+      const option = root.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      option.selected = oldCells.size ? oldCells.has(name) : activeCell ? name === activeCell : true;
+      cellsSelect.append(option);
+    }
+    if (![...cellsSelect.options].some((option) => option.selected)) {
+      [...cellsSelect.options].forEach((option) => {
+        option.selected = true;
+      });
+    }
+
+    layersSelect.replaceChildren();
+    for (const [key, label] of [...layers.entries()].sort((a, b) => a[1].localeCompare(b[1]))) {
+      const option = root.createElement('option');
+      option.value = key;
+      option.textContent = label;
+      option.selected = oldLayers.size
+        ? oldLayers.has(key)
+        : Array.isArray(selectedLayerKeys)
+          ? selectedLayerKeys.includes(key)
+          : selectedLayerKeys?.has?.(key) ?? true;
+      layersSelect.append(option);
+    }
+    if (![...layersSelect.options].some((option) => option.selected)) {
+      [...layersSelect.options].forEach((option) => {
+        option.selected = true;
+      });
+    }
+  }
+
   function exportMaskSvg() {
-    const { model, layout, maskTransform, maskSourceMode, drawMask } = getState();
-    const canvas = $('maskCanvas'),
+    const { layout, maskTransform, maskSourceMode, drawMask, maskRoi } = getState(),
+      canvas = $('maskCanvas'),
       rect = canvas.getBoundingClientRect(),
       width = Math.max(2, rect.width),
       height = Math.max(2, rect.height),
-      view = viewport(width, height, 'mask'),
-      map = (point) => worldToCanvas(point, view);
-    let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
+      roiGeom = maskRoiGeometry(maskRoi),
+      view = maskView(width, height, maskRoi),
+      map = (point) => worldToCanvas(point, view),
+      cells = selectedOptions('maskExportCells'),
+      layers = selectedOptions('maskExportLayers');
+    let body = '';
 
     if (maskSourceMode === 'draw') {
-      const geometry = drawMaskGeometry(drawMask);
-      if (geometry.length) {
+      let geometry = drawMaskGeometry(drawMask);
+      if (roiGeom) geometry = intersection(geometry, roiGeom);
+      if (!isEmpty(geometry)) {
         body += `<path d="${svgPathFromMulti(
           geometry,
           map,
-        )}" fill="rgba(72,105,135,.28)" stroke="#526b84" stroke-width="1.1" fill-rule="evenodd"/>`;
+        )}" fill="rgba(72,105,135,.36)" stroke="#526b84" stroke-width="1.1" fill-rule="evenodd"/>`;
       }
     } else {
-      for (const element of layout.linework || []) {
-        if (!Array.isArray(element.points) || element.points.length < 2) continue;
-        const points = element.points.map(maskPoint).map(map);
-        const d = points
-          .map(
-            (point, index) =>
-              `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
-          )
-          .join('');
-        const selected = selectedElement(element);
-        body += `<path d="${d}" fill="none" stroke="${
-          selected ? layerColor(layerKey(element.layer, element.datatype), 0.95) : '#aab3bd'
-        }" stroke-width="${svgNumber(
-          Math.max(0.8, element.width * maskTransform.scale * view.s),
-        )}"/>`;
+      if (!cells.size || !layers.size) {
+        status('Select at least one Cell and one Layer before exporting Mask.', 'warning');
+        return;
       }
-
       for (const element of layout.elements || []) {
-        if (element.kind !== 'polygon' || !Array.isArray(element.points)) continue;
-        const points = element.points.map(maskPoint).map(map);
-        const d =
-          points
-            .map(
-              (point, index) =>
+        const key = layerKey(element.layer, element.datatype);
+        if (
+          !Array.isArray(element.points) ||
+          !cells.has(element.sourceCell || layout.root || 'ROOT') ||
+          !layers.has(key)
+        ) continue;
+
+        let geometry =
+          element.kind === 'polygon'
+            ? [[element.points.map(maskPoint)]]
+            : element.kind === 'path' && Number(element.width) > 0
+              ? bufferPolyline(
+                  element.points.map(maskPoint),
+                  (Number(element.width) * Math.abs(maskTransform.scale || 1)) / 2,
+                  28,
+                  false,
+                )
+              : [];
+        if (roiGeom && !isEmpty(geometry)) geometry = intersection(geometry, roiGeom);
+        if (isEmpty(geometry)) continue;
+        body += `<path d="${svgPathFromMulti(geometry, map)}" fill="${layerColor(
+          key,
+          0.58,
+        )}" stroke="${layerColor(key, 0.98)}" stroke-width="1" fill-rule="evenodd"/>`;
+      }
+      if (!roiGeom) {
+        for (const element of layout.linework || []) {
+          const key = layerKey(element.layer, element.datatype);
+          if (
+            !Array.isArray(element.points) ||
+            element.points.length < 2 ||
+            !cells.has(element.sourceCell || layout.root || 'ROOT') ||
+            !layers.has(key)
+          ) continue;
+          const points = element.points.map(maskPoint).map(map),
+            d = points
+              .map((point, index) =>
                 `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
-            )
-            .join('') + 'Z';
-        const key = layerKey(element.layer, element.datatype),
-          selected = selectedElement(element);
-        body += `<path d="${d}" fill="${
-          selected ? layerColor(key, 0.58) : 'rgba(155,166,178,.10)'
-        }" stroke="${
-          selected ? layerColor(key, 0.98) : 'rgba(148,159,171,.52)'
-        }" stroke-width="${selected ? 1 : 0.6}"/>`;
+              )
+              .join('');
+          body += `<path d="${d}" fill="none" stroke="${layerColor(
+            key,
+            0.95,
+          )}" stroke-width="${svgNumber(
+            Math.max(0.8, element.width * maskTransform.scale * view.s),
+          )}"/>`;
+        }
       }
     }
 
+    if (!body) {
+      status('Nothing from the selected Mask source overlaps the export region.', 'warning');
+      return;
+    }
     downloadText(svgDocument(width, height, body), 'wafercad-mask.svg');
-    status(`Exported ${maskSourceMode === 'draw' ? 'Draw' : 'File'} Mask as SVG.`);
+    status(
+      `Exported ${maskSourceMode === 'draw' ? 'Draw' : 'File'} Mask as SVG${
+        maskRoi ? ' cropped to Mask ROI' : ''
+      }.`,
+      'success',
+    );
   }
 
   function exportSectionSvg() {
@@ -297,5 +442,5 @@ export function createExportController({
     status('Exported Section A–B as SVG.');
   }
 
-  return { downloadBlob, exportMainSvg, exportMaskSvg, exportSectionSvg };
+  return { downloadBlob, exportMainSvg, exportMaskSvg, exportSectionSvg, syncMaskExportOptions };
 }

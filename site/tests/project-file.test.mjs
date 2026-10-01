@@ -379,3 +379,65 @@ test('project validator accepts persisted sector ROI', () => {
   };
   assert.equal(validateProjectFile(source), source);
 });
+
+
+test('project v7 persists and quantizes independent Mask ROI', async () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.maskRoi = {
+    type: 'rect',
+    a: [-10.000049, -10.000049],
+    b: [10.000051, 10.000051],
+  };
+  source.maskRoiAnchor = 'top-left';
+
+  const text = serializeProject(source);
+  const stored = JSON.parse(text);
+  assert.equal(stored.maskRoi.a[0], -10);
+  assert.equal(stored.maskRoi.a[1], -10);
+  assert.equal(stored.maskRoi.b[0], 10.0001);
+  assert.equal(stored.maskRoi.b[1], 10.0001);
+  assert.equal(stored.maskRoiAnchor, 'top-left');
+
+  const loaded = await readProjectFile({
+    size: new Blob([text]).size,
+    text: async () => text,
+  });
+  assert.deepEqual(loaded.maskRoi, stored.maskRoi);
+  assert.equal(loaded.maskRoiAnchor, 'top-left');
+  assert.equal(validateProjectFile(loaded), loaded);
+});
+
+test('Mask ROI accepts only Square-compatible rect geometry or circle types', () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.maskRoi = { type: 'circle', c: [0, 0], r: 5 };
+  assert.equal(validateProjectFile(source), source);
+
+  source.maskRoi = { type: 'rect', a: [-5, -5], b: [5, 5] };
+  assert.equal(validateProjectFile(source), source);
+
+  source.maskRoi = { type: 'rect', a: [-5, -4], b: [5, 4] };
+  assert.throws(() => validateProjectFile(source), /must be square/);
+
+  source.maskRoi = {
+    type: 'sector',
+    c: [0, 0],
+    r: 5,
+    startDeg: 0,
+    endDeg: 90,
+  };
+  assert.throws(() => validateProjectFile(source), /maskRoi\.type/);
+});
+
+test('v6 migration defaults independent Mask ROI state', () => {
+  const source = validProject();
+  source.version = 6;
+  delete source.maskRoi;
+  delete source.maskRoiAnchor;
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.maskRoi, null);
+  assert.equal(migrated.maskRoiAnchor, 'center');
+  assert.equal(validateProjectFile(migrated), migrated);
+});

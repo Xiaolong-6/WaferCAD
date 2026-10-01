@@ -194,6 +194,34 @@ export function surfaceSegment(stack, face = 'front') {
   if (!stack?.length) return null;
   return face === 'front' ? stack.at(-1) : stack[0];
 }
+function surfaceField(face = 'front') {
+  return face === 'back' ? 'backSurface' : 'frontSurface';
+}
+export function surfaceAppearance(segment, face = 'front') {
+  return segment?.[surfaceField(face)] || null;
+}
+function cloneAppearance(appearance) {
+  return appearance ? { ...appearance } : null;
+}
+function normalizedRoughSurface(surface, processRevision = 0) {
+  if (surface?.kind !== 'rough') return null;
+  const featureSize = Math.max(1e-6, Number(surface.featureSize) || 0.5),
+    amplitude = Math.max(1e-6, Number(surface.amplitude) || featureSize),
+    seed = Number.isInteger(surface.seed)
+      ? Math.max(0, surface.seed)
+      : ((Math.max(1, processRevision) * 2654435761) >>> 0);
+  return { kind: 'rough', featureSize, amplitude, seed, geometryMode: 'ideal' };
+}
+function withSurfaceAppearance(stack, face, appearance) {
+  if (!stack?.length) return stack;
+  const out = stack.map((segment) => ({ ...segment })),
+    segment = surfaceSegment(out, face),
+    field = surfaceField(face);
+  if (!segment) return out;
+  if (appearance) segment[field] = cloneAppearance(appearance);
+  else delete segment[field];
+  return out;
+}
 export function surfaceZ(stack, face = 'front') {
   const seg = surfaceSegment(stack, face);
   return seg ? (face === 'front' ? seg.z1 : seg.z0) : null;
@@ -208,6 +236,8 @@ export function normalizeStack(stack) {
     const prev = out.at(-1);
     if (prev && prev.layerId === seg.layerId && Math.abs(prev.z1 - seg.z0) < 1e-8) {
       prev.z1 = seg.z1;
+      if (seg.frontSurface) prev.frontSurface = cloneAppearance(seg.frontSurface);
+      else delete prev.frontSurface;
       if (prev.role === 'conformal-sidewall' || seg.role === 'conformal-sidewall')
         prev.role = 'conformal-sidewall';
     } else out.push(seg);
@@ -217,7 +247,16 @@ export function normalizeStack(stack) {
 
 function stackKey(stack) {
   return (stack || [])
-    .map((seg) => `${seg.layerId}:${seg.z0.toFixed(9)}:${seg.z1.toFixed(9)}:${seg.role || ''}`)
+    .map((seg) =>
+      [
+        seg.layerId,
+        seg.z0.toFixed(9),
+        seg.z1.toFixed(9),
+        seg.role || '',
+        seg.backSurface ? JSON.stringify(seg.backSurface) : '',
+        seg.frontSurface ? JSON.stringify(seg.frontSurface) : '',
+      ].join(':'),
+    )
     .join('|');
 }
 function mergeRegions(model, regions) {
@@ -238,7 +277,7 @@ function mergeRegions(model, regions) {
   return out;
 }
 
-function trimStack(stack, amount, face) {
+function trimStack(stack, amount, face, appearance = null) {
   let left = amount,
     out = stack.map((seg) => ({ ...seg }));
   while (left > 1e-9 && out.length) {
@@ -254,15 +293,21 @@ function trimStack(stack, amount, face) {
       left = 0;
     }
   }
-  return normalizeStack(out);
+  return withSurfaceAppearance(normalizeStack(out), face, appearance);
 }
 
 function addLayerToSurface(stack, layerId, amount, face) {
-  const z = surfaceZ(stack, face);
+  const z = surfaceZ(stack, face),
+    inherited = cloneAppearance(surfaceAppearance(surfaceSegment(stack, face), face));
   if (z == null) return stack;
-  const out = stack.map((seg) => ({ ...seg }));
-  if (face === 'front') out.push({ layerId, z0: z, z1: z + amount });
-  else out.unshift({ layerId, z0: z - amount, z1: z });
+  const out = stack.map((seg) => ({ ...seg })),
+    added =
+      face === 'front'
+        ? { layerId, z0: z, z1: z + amount }
+        : { layerId, z0: z - amount, z1: z };
+  if (inherited) added[surfaceField(face)] = inherited;
+  if (face === 'front') out.push(added);
+  else out.unshift(added);
   return normalizeStack(out);
 }
 
@@ -275,8 +320,8 @@ function growSurfaceLayer(stack, targetLayerId, amount, face) {
   return normalizeStack(out);
 }
 
-function mutateStack(stack, { type, layerId, targetLayerId, amount, face }) {
-  if (type === 'etch') return trimStack(stack, amount, face);
+function mutateStack(stack, { type, layerId, targetLayerId, amount, face, appearance }) {
+  if (type === 'etch') return trimStack(stack, amount, face, appearance);
   if (type === 'grow') return growSurfaceLayer(stack, targetLayerId, amount, face);
   return addLayerToSurface(stack, layerId, amount, face);
 }
@@ -352,9 +397,11 @@ function conformalSidewallStack(stack, layerId, face, sourceZ) {
 
 function applyOperationImpl(
   model,
-  { type, name, targetLayerId, thickness, face = 'front', area, growth = 'direct' },
+  { type, name, targetLayerId, thickness, face = 'front', area, growth = 'direct', surface },
 ) {
-  const amount = Math.max(1e-5, Number(thickness) || 0);
+  const amount = Math.max(1e-5, Number(thickness) || 0),
+    appearance =
+      type === 'etch' ? normalizedRoughSurface(surface, (model.processRevision || 0) + 1) : null;
   let active = intersection(area, model.boundary);
   if (isEmpty(active)) return { changed: false };
   if (!hasMaterial(model)) {
@@ -385,7 +432,9 @@ function applyOperationImpl(
   }
 
   if (type === 'etch') {
-    splitByArea(model, active, (stack) => mutateStack(stack, { type, amount, face }));
+    splitByArea(model, active, (stack) =>
+      mutateStack(stack, { type, amount, face, appearance }),
+    );
   } else if (growth === 'conformal') {
     // Stage 1: perform the same vertical change as Direct inside the selected
     // mask/invert/full-face area.
@@ -469,6 +518,8 @@ export function surfacePatches(model, face = 'front') {
       geom: region.geom,
       layerId: seg.layerId,
       z: face === 'front' ? seg.z1 : seg.z0,
+      face,
+      appearance: cloneAppearance(surfaceAppearance(seg, face)),
       stack: region.stack,
     });
   }

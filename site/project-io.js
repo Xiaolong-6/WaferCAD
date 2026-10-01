@@ -58,6 +58,11 @@ function quantizeModel(model) {
     for (const segment of region.stack || []) {
       segment.z0 = quantizeLength(segment.z0);
       segment.z1 = quantizeLength(segment.z1);
+      for (const appearance of [segment.frontSurface, segment.backSurface]) {
+        if (!isObject(appearance)) continue;
+        appearance.featureSize = quantizeLength(appearance.featureSize);
+        appearance.amplitude = quantizeLength(appearance.amplitude);
+      }
     }
   }
   model.thickness = quantizeLength(model.thickness);
@@ -102,6 +107,13 @@ function quantizeProjectLengths(project) {
     if (Array.isArray(project.roi.b)) quantizePoint(project.roi.b);
     if (Array.isArray(project.roi.c)) quantizePoint(project.roi.c);
     if (project.roi.r != null) project.roi.r = quantizeLength(project.roi.r);
+  }
+
+  if (isObject(project.maskRoi)) {
+    if (Array.isArray(project.maskRoi.a)) quantizePoint(project.maskRoi.a);
+    if (Array.isArray(project.maskRoi.b)) quantizePoint(project.maskRoi.b);
+    if (Array.isArray(project.maskRoi.c)) quantizePoint(project.maskRoi.c);
+    if (project.maskRoi.r != null) project.maskRoi.r = quantizeLength(project.maskRoi.r);
   }
 
   if (isObject(project.drawMask)) {

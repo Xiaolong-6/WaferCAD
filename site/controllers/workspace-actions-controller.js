@@ -17,6 +17,7 @@ export function createWorkspaceActionsController({
   exportMainSvg,
   exportMaskSvg,
   exportSectionSvg,
+  syncMaskExportOptions = () => {},
   getThreeView,
   downloadBlob,
   getRoi,
@@ -51,6 +52,8 @@ export function createWorkspaceActionsController({
         draftHeight = (Number($('baseHeight').value) || 0) * oldUnit.toMicron,
         draftThickness = (Number($('baseThickness').value) || 0) * oldUnit.toMicron,
         draftOperation = (Number($('operationThickness').value) || 0) * oldUnit.toMicron,
+        draftRoughFeature = (Number($('roughFeatureSize').value) || 0) * oldUnit.toMicron,
+        draftRoughAmplitude = (Number($('roughAmplitude').value) || 0) * oldUnit.toMicron,
         requested = $('xyUnitSelect').value;
       setXyDisplayUnit(requested in XY_UNITS ? requested : 'um');
 
@@ -58,19 +61,25 @@ export function createWorkspaceActionsController({
       $('baseHeight').value = formatLengthField(draftHeight);
       $('baseThickness').value = formatLengthField(draftThickness);
       $('operationThickness').value = formatLengthField(draftOperation);
+      $('roughFeatureSize').value = formatLengthField(draftRoughFeature);
+      $('roughAmplitude').value = formatLengthField(draftRoughAmplitude);
       $('baseWidthUnit').textContent = getXyUnit().label;
       $('baseHeightUnit').textContent = getXyUnit().label;
       $('baseThicknessUnit').textContent = getXyUnit().label;
       $('operationThicknessUnit').textContent = getXyUnit().label;
+      $('roughFeatureUnit').textContent = getXyUnit().label;
+      $('roughHeightUnit').textContent = getXyUnit().label;
       syncTransformInputs();
       renderAll();
       status(`XYZ display/input unit: ${getXyUnit().label}. Geometry is unchanged.`);
     };
 
-    $('operationThickness').addEventListener('change', () => {
-      const value = manualMicron($('operationThickness').value);
-      if (Number.isFinite(value)) $('operationThickness').value = formatLengthField(value);
-    });
+    for (const id of ['operationThickness', 'roughFeatureSize', 'roughAmplitude']) {
+      $(id).addEventListener('change', () => {
+        const value = manualMicron($(id).value);
+        if (Number.isFinite(value)) $(id).value = formatLengthField(value);
+      });
+    }
   }
 
   function bindViewControls() {
@@ -127,14 +136,43 @@ export function createWorkspaceActionsController({
     $('operationType').onchange = updateOperationUI;
     $('operationArea').onchange = updateOperationUI;
     $('growthMode').onchange = updateOperationUI;
+    $('etchSurfaceMode').onchange = updateOperationUI;
     $('applyOperationBtn').onclick = applyOperation;
     $('fit3dBtn').onclick = fit3d;
   }
 
   function bindExports() {
-    $('mainExportSvgBtn').onclick = exportMainSvg;
-    $('maskExportSvgBtn').onclick = exportMaskSvg;
-    $('sectionExportSvgBtn').onclick = exportSectionSvg;
+    const closeExport = (id) => {
+      const details = $(id)?.closest('details');
+      if (details) details.open = false;
+    };
+
+    $('maskExportControl')
+      ?.querySelector(':scope > summary')
+      ?.addEventListener('click', syncMaskExportOptions);
+
+    root.querySelectorAll('.export-control').forEach((details) => {
+      details.addEventListener('toggle', () => {
+        if (!details.open) return;
+        for (const sibling of details.closest('.view-head')?.querySelectorAll('details') || []) {
+          if (sibling !== details) sibling.open = false;
+        }
+        if (details.id === 'maskExportControl') syncMaskExportOptions();
+      });
+    });
+
+    $('mainExportSvgBtn').onclick = () => {
+      exportMainSvg();
+      closeExport('mainExportSvgBtn');
+    };
+    $('maskExportSvgBtn').onclick = () => {
+      exportMaskSvg();
+      closeExport('maskExportSvgBtn');
+    };
+    $('sectionExportSvgBtn').onclick = () => {
+      exportSectionSvg();
+      closeExport('sectionExportSvgBtn');
+    };
 
     $('threeExportModelBtn').onclick = async () => {
       try {
@@ -144,7 +182,9 @@ export function createWorkspaceActionsController({
         status(`Exported ${getRoi() ? 'ROI' : 'full'} 3D model as GLB (physical metres).`);
       } catch (error) {
         console.error(error);
-        status(`3D model export failed: ${error.message}`);
+        status(`3D model export failed: ${error.message}`, 'error');
+      } finally {
+        closeExport('threeExportModelBtn');
       }
     };
 
@@ -156,7 +196,9 @@ export function createWorkspaceActionsController({
         status('Exported 3× high-resolution 3D PNG.');
       } catch (error) {
         console.error(error);
-        status(`3D screenshot failed: ${error.message}`);
+        status(`3D screenshot failed: ${error.message}`, 'error');
+      } finally {
+        closeExport('threeExportPngBtn');
       }
     };
   }

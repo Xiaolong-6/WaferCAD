@@ -140,11 +140,17 @@ await page.locator('#settingsTools:not([hidden])').waitFor();
 await page.locator('#xyUnitSelect').selectOption('nm');
 assert.equal(await page.locator('#baseThicknessUnit').textContent(), 'nm');
 assert.equal(await page.locator('#operationThicknessUnit').textContent(), 'nm');
+assert.equal(await page.locator('#roughFeatureUnit').textContent(), 'nm');
+assert.equal(await page.locator('#roughHeightUnit').textContent(), 'nm');
 assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12000);
 assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3000);
+assert.equal(Number(await page.locator('#roughFeatureSize').inputValue()), 500);
+assert.equal(Number(await page.locator('#roughAmplitude').inputValue()), 1000);
 await page.locator('#xyUnitSelect').selectOption('um');
 assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12);
 assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3);
+assert.equal(Number(await page.locator('#roughFeatureSize').inputValue()), 0.5);
+assert.equal(Number(await page.locator('#roughAmplitude').inputValue()), 1);
 for (const id of [
   'projectNameInput',
   'newProjectBtn',
@@ -166,6 +172,44 @@ assert.equal((await face.textContent()).trim(), 'Front');
 await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
+
+// Rough etch is render-only metadata; the ideal process geometry stays canonical.
+await page.locator('[data-process-mode="etch"]').click();
+assert.equal(await page.locator('#etchSurfaceRow').isVisible(), true);
+assert.equal(await page.locator('#roughFeatureRow').isVisible(), false);
+await page.locator('#etchSurfaceMode').selectOption('rough');
+assert.equal(await page.locator('#roughFeatureRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightRow').isVisible(), true);
+assert.match(await page.locator('#operationNote').textContent(), /render-only/);
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#operationThickness').fill('1');
+await page.locator('#roughFeatureSize').fill('0.4');
+await page.locator('#roughAmplitude').fill('0.8');
+await page.locator('#applyOperationBtn').click();
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+await page.waitForFunction(() =>
+  /Etched/.test(document.getElementById('statusText')?.textContent || ''),
+);
+
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI rough project');
+const roughDownloadPromise = page.waitForEvent('download');
+await page.locator('#saveProjectBtn').click();
+const roughDownload = await roughDownloadPromise;
+const roughSavedPath = await roughDownload.path();
+assert.ok(roughSavedPath);
+const roughSaved = JSON.parse(await readFile(roughSavedPath, 'utf8'));
+const roughSegments = roughSaved.model.regions.flatMap((region) => region.stack);
+assert.ok(
+  roughSegments.some(
+    (segment) =>
+      segment.frontSurface?.kind === 'rough' &&
+      segment.frontSurface.geometryMode === 'ideal' &&
+      Math.abs(segment.frontSurface.featureSize - 0.4) < 1e-12 &&
+      Math.abs(segment.frontSurface.amplitude - 0.8) < 1e-12,
+  ),
+);
+await page.locator('#operationTab').click();
 
 // Extend targets follow the exposed surface and include Base when it is exposed.
 await page.locator('[data-process-mode="grow"]').click();
@@ -207,7 +251,13 @@ await page.locator('#layerName').fill('UI conformal');
 assert.equal(await page.locator('#growthMode').inputValue(), 'conformal');
 assert.match(await page.locator('#operationNote').textContent(), /Conformal/);
 await page.locator('#applyOperationBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /Deposited UI conformal/);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
+await page.waitForFunction(() =>
+  /Deposited UI conformal/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI conformal project');
@@ -444,6 +494,19 @@ await page.locator('#maskCanvas').dblclick();
 assert.deepEqual(errors, [], 'Mask double-click Fit must not raise a browser error.');
 
 // File / Draw keeps imported and temporary mask sources separate.
+// Load a real File Mask on this long-lived editor page before validating filtered File export.
+await page.locator('#gdsInput').setInputFiles({
+  name: 'ui-mask-export.oas',
+  mimeType: 'application/octet-stream',
+  buffer: welcomeLayoutBuffer,
+});
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened ui-mask-export.oas.',
+  null,
+  { timeout: 30000 },
+);
+assert.ok(await page.locator('#maskLayerList .layer-row').count());
+
 const sourceToggle = page.locator('#maskSourceToggleBtn');
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 await sourceToggle.click();
@@ -473,6 +536,21 @@ await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Rectangle');
 assert.ok(Number(await page.locator('#drawShapeWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#drawShapeHeight').inputValue()) > 0);
+
+// Dragging a selected shape keeps the editor open and live-syncs its numeric fields.
+const rectCxBeforeDrag = Number(await page.locator('#drawShapeCx').inputValue());
+// Avoid the preceding selection click being interpreted as the first click of a double-click.
+await page.waitForTimeout(600);
+await page.mouse.move(drawBox.x + drawBox.width * 0.47, drawBox.y + drawBox.height * 0.5);
+await page.mouse.down();
+await page.mouse.move(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5, {
+  steps: 4,
+});
+const rectCxDuringDrag = Number(await page.locator('#drawShapeCx').inputValue());
+assert.notEqual(rectCxDuringDrag, rectCxBeforeDrag);
+await page.mouse.up();
+assert.equal(await page.locator('#drawShapeEditor').isVisible(), true);
+
 await page.locator('#drawShapeCx').fill('250');
 await page.locator('#drawShapeCy').fill('-125');
 await page.locator('#drawShapeWidth').fill('800');
@@ -481,16 +559,21 @@ await page.locator('#drawShapeEditorApply').click();
 assert.match(await page.locator('#statusText').textContent(), /Rectangle parameters updated/);
 await page.locator('#drawShapeEditorClose').click();
 
-// Polygon finishes on double-click and automatically closes to the first point.
+// Polygon can finish by clicking its first point; double-click and Enter remain supported.
+const polygonStart = {
+  x: drawBox.x + drawBox.width * 0.3,
+  y: drawBox.y + drawBox.height * 0.3,
+};
 await page.locator('.draw-mask-tool[data-draw-tool="polygon"]').click();
-await page.mouse.click(drawBox.x + drawBox.width * 0.3, drawBox.y + drawBox.height * 0.3);
+await page.mouse.click(polygonStart.x, polygonStart.y);
 await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.3);
-await page.mouse.dblclick(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.38);
+await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.38);
+await page.mouse.click(polygonStart.x, polygonStart.y);
 await page.waitForTimeout(30);
 assert.match(await page.locator('#drawMaskHint').textContent(), /^2 shapes/);
 
-// Existing Polygon uses a KLayout-style one-coordinate-pair-per-line editor.
-await page.mouse.dblclick(drawBox.x + drawBox.width * 0.36, drawBox.y + drawBox.height * 0.33);
+// Existing Polygon opens the same parameter editor on a normal click.
+await page.mouse.click(drawBox.x + drawBox.width * 0.36, drawBox.y + drawBox.height * 0.33);
 await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Polygon');
 const polygonRows = (await page.locator('#drawShapePoints').inputValue())
@@ -545,7 +628,12 @@ await page.locator('#operationArea').selectOption('mask');
 await page.locator('#operationThickness').fill('0.2');
 await page.locator('#layerName').fill('Draw probe');
 await page.locator('#applyOperationBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /^Deposited Draw probe/);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
+await page.waitForFunction(() =>
+  /^Deposited Draw probe/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
 
 // Switching sources never destroys either source.
 await sourceToggle.click();
@@ -560,17 +648,50 @@ assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 
-// SVG exports and in-page maximize controls are wired for all 2D views.
-for (const [button, filename] of [
-  ['#mainExportSvgBtn', 'wafercad-main.svg'],
-  ['#maskExportSvgBtn', 'wafercad-mask.svg'],
-  ['#sectionExportSvgBtn', 'wafercad-section-ab.svg'],
+// Mask owns a separate Square/Circle ROI used by Process and Mask export.
+await page.locator('#maskRoiEditor > summary').click();
+await page.locator('.mask-roi-tool[data-tool="rect"]').click();
+const maskRoiCanvas = await page.locator('#maskCanvas').boundingBox();
+assert.ok(maskRoiCanvas);
+await page.mouse.move(
+  maskRoiCanvas.x + maskRoiCanvas.width * 0.38,
+  maskRoiCanvas.y + maskRoiCanvas.height * 0.38,
+);
+await page.mouse.down();
+await page.mouse.move(
+  maskRoiCanvas.x + maskRoiCanvas.width * 0.62,
+  maskRoiCanvas.y + maskRoiCanvas.height * 0.58,
+  { steps: 4 },
+);
+await page.mouse.up();
+await page.locator('#maskRoiEditor > summary').click();
+assert.equal(await page.locator('#maskRoiFields').isVisible(), true);
+assert.equal((await page.locator('#maskRoiShapeLabel').textContent()).trim(), 'Square');
+assert.ok(Number(await page.locator('#maskRoiSize').inputValue()) > 0);
+await page.locator('#maskRoiEditor > summary').click();
+
+// Each view exposes one Export menu; format-specific actions live inside it.
+for (const [panel, button, filename] of [
+  ['#mainPanel', '#mainExportSvgBtn', 'wafercad-main.svg'],
+  ['#maskPanel', '#maskExportSvgBtn', 'wafercad-mask.svg'],
+  ['#sectionPanel', '#sectionExportSvgBtn', 'wafercad-section-ab.svg'],
 ]) {
+  await page.locator(`${panel} .export-control > summary`).click();
+  if (panel === '#maskPanel') {
+    assert.ok((await page.locator('#maskExportCells option:checked').count()) > 0);
+    assert.ok((await page.locator('#maskExportLayers option:checked').count()) > 0);
+  }
   const downloadPromise = page.waitForEvent('download');
   await page.locator(button).click();
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), filename);
 }
+const headerToolAlignment = await page.locator('.view-head .view-tools').evaluateAll((groups) =>
+  groups.map((group) => getComputedStyle(group).alignItems),
+);
+assert.ok(headerToolAlignment.length >= 4);
+assert.ok(headerToolAlignment.every((value) => value === 'center'));
+
 for (const [buttonId, panelId] of [
   ['mainMaxBtn', 'mainPanel'],
   ['maskMaxBtn', 'maskPanel'],
@@ -608,9 +729,11 @@ await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
 await page.locator('#fit3dBtn').click();
 
+await page.locator('#threePanel .export-control > summary').click();
 const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
 assert.equal((await glbDownloadPromise).suggestedFilename(), 'wafercad-model.glb');
+await page.locator('#threePanel .export-control > summary').click();
 const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportPngBtn').click();
 assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png');

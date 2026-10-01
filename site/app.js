@@ -1,6 +1,5 @@
 import { parseLayoutFile } from './layout-io.js';
 import {
-  applyOperation,
   baseCoverageState,
   cloneModel,
   createModel,
@@ -34,6 +33,7 @@ import {
   toMicron,
   unitMeta,
 } from './units.js';
+import { roughLod, roughNoise1D } from './surface-rendering.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import {
@@ -49,6 +49,8 @@ import { createViewMaximizeController } from './controllers/view-maximize-contro
 import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
 import { createExportController } from './controllers/export-controller.js';
 import { createRoiController } from './controllers/roi-controller.js';
+import { createMaskRoiController } from './controllers/mask-roi-controller.js';
+import { createProcessTaskController } from './controllers/process-task-controller.js';
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
@@ -57,7 +59,11 @@ import { createMaskImportController } from './controllers/mask-import-controller
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
-import { createEmptyDrawMask, drawMaskGeometry } from './draw-mask-geometry.js';
+import {
+  createEmptyDrawMask,
+  drawMaskGeometry,
+  drawShapeContainsPoint,
+} from './draw-mask-geometry.js';
 import {
   createEmptyLayout,
   createProjectStateController,
@@ -89,6 +95,10 @@ let activeCell = null,
 let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   maskSourceMode = 'file',
   drawMask = createEmptyDrawMask(),
+  maskRoi = null,
+  maskRoiTool = null,
+  maskRoiDraft = null,
+  maskRoiAnchor = 'center',
   activeFace = 'front',
   roi = null,
   roiTool = null,
@@ -102,7 +112,9 @@ let projectName = 'Untitled',
   history = [],
   future = [],
   baseRevertSnapshot = null,
-  drawMaskController = null;
+  drawMaskController = null,
+  maskRoiController = null,
+  processTaskController = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
 const feedback = createFeedbackController();
 
@@ -307,11 +319,14 @@ const exportController = createExportController({
   getState: () => ({
     model,
     layout,
+    activeCell,
+    selectedLayerKeys,
     activeFace,
     section,
     maskTransform,
     maskSourceMode,
     drawMask,
+    maskRoi,
     roi,
     sectionScaleMode,
   }),
@@ -324,7 +339,13 @@ const exportController = createExportController({
   formatXY,
   status,
 });
-const { downloadBlob, exportMainSvg, exportMaskSvg, exportSectionSvg } = exportController;
+const {
+  downloadBlob,
+  exportMainSvg,
+  exportMaskSvg,
+  exportSectionSvg,
+  syncMaskExportOptions,
+} = exportController;
 
 const roiController = createRoiController({
   getRoi: () => roi,
@@ -362,6 +383,41 @@ const roiController = createRoiController({
   status,
 });
 const { clearDrawingMode: clearRoiDrawingMode, syncEditor: syncRoiEditor } = roiController;
+
+maskRoiController = createMaskRoiController({
+  getRoi: () => maskRoi,
+  setRoi: (value) => {
+    maskRoi = value;
+  },
+  getTool: () => maskRoiTool,
+  setTool: (value) => {
+    maskRoiTool = value;
+  },
+  getDraft: () => maskRoiDraft,
+  setDraft: (value) => {
+    maskRoiDraft = value;
+  },
+  getAnchor: () => maskRoiAnchor,
+  setAnchor: (value) => {
+    maskRoiAnchor = value;
+  },
+  xyUnitLabel: () => xyUnit().label,
+  formatLengthField,
+  manualMicron,
+  setupCanvas,
+  viewport,
+  canvasToWorld,
+  worldToCanvas,
+  renderMask,
+  canMoveBody: (point) =>
+    maskSourceMode !== 'draw' ||
+    !drawMask.shapes.some((shape) => drawShapeContainsPoint(shape, point)),
+  onChanged: () => {
+    updateOperationUI();
+    scheduleWorkspacePersistence();
+  },
+  status,
+});
 
 const layerLegendController = createLayerLegendController({
   getModel: () => model,
@@ -412,11 +468,33 @@ function activeMaskGeometry() {
   return isEmpty(selected) ? [] : intersection(selected, model.boundary);
 }
 
+function maskRoiGeometry() {
+  if (!maskRoi) return null;
+  if (maskRoi.type === 'rect') {
+    const x0 = Math.min(maskRoi.a[0], maskRoi.b[0]),
+      x1 = Math.max(maskRoi.a[0], maskRoi.b[0]),
+      y0 = Math.min(maskRoi.a[1], maskRoi.b[1]),
+      y1 = Math.max(maskRoi.a[1], maskRoi.b[1]);
+    return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
+  }
+  if (maskRoi.type === 'circle') {
+    return circleMulti(maskRoi.r * 2, maskRoi.r * 2, 96, maskRoi.c[0], maskRoi.c[1]);
+  }
+  return null;
+}
+
 function operationAreaGeometry(mode) {
-  if (mode === 'full') return fullFaceGeometry(model);
-  const selected = activeMaskGeometry();
-  if (isEmpty(selected)) return [];
-  return mode === 'invert' ? difference(model.boundary, selected) : selected;
+  let area;
+  if (mode === 'full') {
+    area = fullFaceGeometry(model);
+  } else {
+    const selected = activeMaskGeometry();
+    if (isEmpty(selected)) return [];
+    area = mode === 'invert' ? difference(model.boundary, selected) : selected;
+  }
+
+  const limiter = maskRoiGeometry();
+  return limiter ? intersection(area, limiter) : area;
 }
 function roiGeometry() {
   if (!roi) return null;
@@ -698,6 +776,7 @@ function renderMask() {
     ctx.restore();
   }
 
+  maskRoiController?.render(ctx, v);
   drawPlanAxes(ctx, v, w, h, false);
   scheduleWorkspacePersistence();
 }
@@ -833,6 +912,44 @@ function renderSection() {
     ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
   }
 
+  for (const slice of sectionSlices(model, section.a, section.b)) {
+    for (const [face, appearance, z] of [
+      ['front', slice.frontSurface, slice.z1],
+      ['back', slice.backSurface, slice.z0],
+    ]) {
+      if (appearance?.kind !== 'rough') continue;
+      const featurePixels = appearance.featureSize * xScale,
+        lod = roughLod(featurePixels),
+        normal = face === 'front' ? 1 : -1,
+        widthPixels = Math.abs(mapT(slice.t1) - mapT(slice.t0)),
+        sampleStepPixels = Math.max(2, featurePixels * 0.45),
+        samples = Math.max(2, Math.min(480, Math.ceil(widthPixels / sampleStepPixels))),
+        physicalAmplitudePixels = appearance.amplitude * zScale * 0.5,
+        mediumAmplitudePixels =
+          Math.min(1.2, physicalAmplitudePixels) * lod.detail * (1 - lod.micro),
+        amplitudePixels = physicalAmplitudePixels * lod.micro + mediumAmplitudePixels;
+
+      ctx.beginPath();
+      for (let index = 0; index <= samples; index++) {
+        const fraction = index / samples,
+          t = slice.t0 + (slice.t1 - slice.t0) * fraction,
+          distance = t * sectionSpan,
+          noise = roughNoise1D(distance, appearance),
+          x = mapT(t),
+          y = mapZ(z) - normal * noise * amplitudePixels;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = '#2f3439';
+      ctx.lineWidth = 3 - 1.4 * lod.detail;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+    }
+  }
+
   ctx.strokeStyle = '#8995a1';
   ctx.lineWidth = 0.8;
   ctx.strokeRect(plotLeft, plotTop, plotWidth, plotHeight);
@@ -925,6 +1042,7 @@ function renderAll() {
   syncMaskSourceSummary();
   syncProjectNameInput();
   drawMaskController?.syncUi();
+  maskRoiController?.syncEditor();
   $('baseSummary').textContent = baseSummaryText();
   updateOperationUI();
   syncUndo();
@@ -933,11 +1051,15 @@ function syncBaseControls() {
   $('baseWidth').value = formatLengthField(model.width);
   $('baseHeight').value = formatLengthField(model.height);
   $('baseThickness').value = formatLengthField(model.thickness);
+  $('roughFeatureSize').value = formatLengthField(0.5);
+  $('roughAmplitude').value = formatLengthField(1);
   $('baseHeight').disabled = model.shape === 'circle';
   $('baseWidthUnit').textContent = xyUnit().label;
   $('baseHeightUnit').textContent = xyUnit().label;
   $('baseThicknessUnit').textContent = xyUnit().label;
   $('operationThicknessUnit').textContent = xyUnit().label;
+  $('roughFeatureUnit').textContent = xyUnit().label;
+  $('roughHeightUnit').textContent = xyUnit().label;
   $('xyUnitSelect').value = xyDisplayUnit;
   $('applyBaseBtn').textContent =
     baseCoverageState(model) === 'removed' ? 'Recreate base' : 'Apply base';
@@ -972,12 +1094,16 @@ function updateOperationUI() {
   $('layerNameRow').classList.toggle('hidden', t !== 'add');
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
   $('growthModeRow').classList.toggle('hidden', t === 'etch');
+  $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
+  const roughEtch = t === 'etch' && $('etchSurfaceMode').value === 'rough';
+  $('roughFeatureRow').classList.toggle('hidden', !roughEtch);
+  $('roughHeightRow').classList.toggle('hidden', !roughEtch);
   $('processThicknessLabel').textContent = t === 'etch' ? 'Depth' : 'Z';
 
   if (t === 'grow') updateGrowTargets();
 
   const materialExists = hasMaterial(model);
-  $('applyOperationBtn').disabled = !materialExists;
+  $('applyOperationBtn').disabled = !materialExists || Boolean(processTaskController?.isBusy());
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('processSummary').textContent =
     `${faceLabel} · ${t === 'add' ? 'Deposit layer' : t === 'grow' ? 'Extend layer' : 'Etch'}`;
@@ -987,46 +1113,86 @@ function updateOperationUI() {
 
   $('operationNote').textContent =
     t === 'etch'
-      ? 'Etch removes material vertically and may create through-holes.'
+      ? roughEtch
+        ? 'Roughness is render-only: process geometry remains an ideal surface.'
+        : 'Etch removes material vertically and may create through-holes.'
       : $('growthMode').value === 'conformal'
         ? 'Conformal coverage follows exposed steps and includes sidewalls.'
         : 'Directional coverage follows the selected footprint.';
 }
 
-function applyOp() {
+async function applyOp() {
+  if (processTaskController?.isBusy()) {
+    status('An operation is already running. Abort it before starting another.', 'warning');
+    return;
+  }
+
   const type = $('operationType').value,
     thickness = manualMicron($('operationThickness').value);
   $('operationThickness').value = formatLengthField(thickness);
   if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
 
-  const areaMode = $('operationArea').value,
-    area = operationAreaGeometry(areaMode);
-  if (isEmpty(area))
-    return status(
-      areaMode === 'full'
-        ? 'The process domain has no editable area.'
-        : maskSourceMode === 'draw'
-          ? 'Draw at least one mask shape that overlaps the process domain first.'
-          : 'Select a mask layer that overlaps the process domain first.',
-      'warning',
-    );
+  const areaMode = $('operationArea').value;
 
   const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
-  if (type === 'grow' && !targetLayerId)
+  if (type === 'grow' && !targetLayerId) {
     return status('No exposed target layer is available to Extend.', 'warning');
+  }
 
-  const beforeBase = baseCoverageState(model);
+  let roughSurface = null;
+  if (type === 'etch' && $('etchSurfaceMode').value === 'rough') {
+    const featureSize = manualMicron($('roughFeatureSize').value),
+      amplitude = manualMicron($('roughAmplitude').value);
+    $('roughFeatureSize').value = formatLengthField(featureSize);
+    $('roughAmplitude').value = formatLengthField(amplitude);
+    if (!(featureSize > 0) || !(amplitude > 0)) {
+      return status('Rough feature size and height must be greater than zero.', 'error');
+    }
+    roughSurface = { kind: 'rough', featureSize, amplitude, geometryMode: 'ideal' };
+  }
+
+  const beforeBase = baseCoverageState(model),
+    params = { type, name, targetLayerId, thickness, face: activeFace };
+  if (type === 'etch') params.surface = roughSurface;
+  else params.growth = $('growthMode').value;
+
+  const taskLabel =
+    type === 'etch'
+      ? 'Etching structure…'
+      : type === 'grow'
+        ? 'Extending layer…'
+        : `Depositing ${name}…`;
+
+  const areaRequest = {
+    mode: areaMode,
+    maskSourceMode,
+    maskRoi: maskRoi ? structuredClone(maskRoi) : null,
+    ...(maskSourceMode === 'draw'
+      ? { drawMask: structuredClone(drawMask) }
+      : {
+          maskTransform: { ...maskTransform },
+          elements: (layout.elements || [])
+            .filter(selectedElement)
+            .map((element) => ({
+              kind: element.kind,
+              width: element.width,
+              points: element.points,
+            })),
+        }),
+  };
+
+  const task = await processTaskController.run(model, params, taskLabel, areaRequest);
+  if (task?.aborted || task?.error || task?.busy) return;
+
+  const result = task.result;
+  if (!result?.changed) {
+    return status(result?.error || 'The operation did not change the model.', 'warning');
+  }
+
   saveHistory();
   baseRevertSnapshot = null;
-  const params = { type, name, targetLayerId, thickness, face: activeFace, area };
-  if (type !== 'etch') params.growth = $('growthMode').value;
-  const result = applyOperation(model, params);
-  if (!result.changed) {
-    restoreSnapshot(history.pop());
-    syncUndo();
-    return status(result.error || 'The operation did not change the model.', 'warning');
-  }
+  model = task.model;
 
   if (type === 'add' && result.layerId) {
     colorNewLayer(result.layerId);
@@ -1053,7 +1219,13 @@ function applyOp() {
   const growthLabel =
     type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Directional';
   status(
-    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}` : `Deposited ${name}`}${growthLabel} on the ${activeFace}.`,
+    `${
+      type === 'etch'
+        ? 'Etched'
+        : type === 'grow'
+          ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
+          : `Deposited ${name}`
+    }${growthLabel} on the ${activeFace}${maskRoi ? ' within Mask ROI' : ''}.`,
     'success',
   );
 }
@@ -1069,6 +1241,8 @@ const projectStateController = createProjectStateController({
     maskTransform,
     maskSourceMode,
     drawMask,
+    maskRoi,
+    maskRoiAnchor,
     activeFace,
     roi,
     roiAnchor,
@@ -1092,6 +1266,10 @@ const projectStateController = createProjectStateController({
     maskTransform = next.maskTransform;
     maskSourceMode = next.maskSourceMode || 'file';
     drawMask = structuredClone(next.drawMask || createEmptyDrawMask());
+    maskRoi = next.maskRoi || null;
+    maskRoiAnchor = next.maskRoiAnchor || 'center';
+    maskRoiTool = null;
+    maskRoiDraft = null;
     activeFace = next.activeFace;
     roi = next.roi;
     roiAnchor = next.roiAnchor;
@@ -1111,6 +1289,7 @@ const projectStateController = createProjectStateController({
     future = [];
     baseRevertSnapshot = null;
     drawMaskController?.resetInteraction();
+    maskRoiController?.clearDrawingMode();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
   syncThreeControls: ({
@@ -1182,9 +1361,19 @@ drawMaskController = createDrawMaskController({
   formatLengthField,
   manualMicron,
   renderMask,
+  isInteractionBlocked: () => Boolean(maskRoiTool),
   syncSourceSummary: syncMaskSourceSummary,
   onMaskChanged: updateOperationUI,
   status,
+});
+
+processTaskController = createProcessTaskController({
+  status,
+  setApplyDisabled: (disabled) => {
+    const button = $('applyOperationBtn');
+    button.disabled = disabled || !hasMaterial(model);
+    button.classList.toggle('process-busy', disabled);
+  },
 });
 
 const baseControls = createBaseControlsController({
@@ -1233,6 +1422,7 @@ const workspaceActions = createWorkspaceActionsController({
   exportMainSvg,
   exportMaskSvg,
   exportSectionSvg,
+  syncMaskExportOptions,
   getThreeView: () => threeView,
   downloadBlob,
   getRoi: () => roi,
@@ -1316,9 +1506,11 @@ function bindUi() {
   bindToolTabs();
   viewMaximizeController.bind();
   roiController.bind();
+  processTaskController.bind();
   sectionControls.bind();
   baseControls.bind();
   maskImportController.bind();
+  maskRoiController.bind();
   drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
@@ -1338,6 +1530,7 @@ function bindUi() {
     void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
     resetProjectState();
     clearRoiDrawingMode();
+    maskRoiController.clearDrawingMode();
     snapshotManager.clear();
     syncBaseControls();
     renderAll();
