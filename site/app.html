@@ -212,6 +212,25 @@
           <div class="view-head mask-view-head">
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
+              <div id="maskSourceMode" class="segmented mask-source-mode" aria-label="Mask source">
+                <button
+                  id="maskSourceFileBtn"
+                  type="button"
+                  class="active"
+                  aria-pressed="true"
+                  title="Use imported GDSII/OASIS mask"
+                >
+                  File
+                </button>
+                <button
+                  id="maskSourceDrawBtn"
+                  type="button"
+                  aria-pressed="false"
+                  title="Use project-local drawn mask"
+                >
+                  Draw
+                </button>
+              </div>
               <details class="three-opacity-control mask-opacity-control">
                 <summary
                   class="mini-btn"
@@ -274,6 +293,16 @@
             </div>
           </div>
           <canvas id="maskCanvas"></canvas>
+          <div id="drawMaskToolbar" class="draw-mask-toolbar" hidden>
+            <button class="mini-btn draw-mask-tool active" data-draw-tool="" type="button">Select</button>
+            <button class="mini-btn draw-mask-tool" data-draw-tool="rect" type="button">Rect</button>
+            <button class="mini-btn draw-mask-tool" data-draw-tool="circle" type="button">Circle</button>
+            <button class="mini-btn draw-mask-tool" data-draw-tool="polygon" type="button">Polygon</button>
+            <span class="draw-mask-divider"></span>
+            <button id="drawMaskDeleteBtn" class="mini-btn" type="button" disabled>Delete</button>
+            <button id="drawMaskClearBtn" class="mini-btn" type="button" disabled>Clear</button>
+            <span id="drawMaskHint" class="draw-mask-hint">0 shapes</span>
+          </div>
         </section>
 
         <section class="view-panel" id="threePanel">
