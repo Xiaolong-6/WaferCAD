@@ -116,6 +116,10 @@ Snapshots are immutable workspace checkpoints and have no thumbnail dependency. 
 
 ## 10. Save and open
 
-Use **Settings → Save** to export the current project as JSON. Snapshot records are included. Repeated snapshot mask/layout and unchanged model assets are stored once and referenced from each checkpoint, so large masks do not multiply the file size for every snapshot.
+Settings includes an editable **Project name**. Save uses that name as the default `.wafercad` filename. **New** and **Open** both warn before replacing the current workspace.
+
+Use **Settings → Save** to export the current project. Snapshot records are included. Repeated snapshot mask/layout and unchanged model assets are stored once and referenced from each checkpoint, so large masks do not multiply the file size for every snapshot.
+
+The active workspace is also autosaved locally in IndexedDB. Reloading `app.html` restores the most recent local workspace; an explicit project/example launched from the welcome page takes priority over that local restore.
 
 Use **Settings → Open** to restore a project. Older supported project files are migrated to the current format version before validation. Save and Open enforce the same 256 MB safety limit.
