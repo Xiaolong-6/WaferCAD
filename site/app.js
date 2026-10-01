@@ -1132,18 +1132,7 @@ async function applyOp() {
   $('operationThickness').value = formatLengthField(thickness);
   if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
 
-  const areaMode = $('operationArea').value,
-    area = operationAreaGeometry(areaMode);
-  if (isEmpty(area)) {
-    const message = maskRoi
-      ? 'The selected process area does not overlap the Mask ROI.'
-      : areaMode === 'full'
-        ? 'The process domain has no editable area.'
-        : maskSourceMode === 'draw'
-          ? 'Draw at least one mask shape that overlaps the process domain first.'
-          : 'Select a mask layer that overlaps the process domain first.';
-    return status(message, 'warning');
-  }
+  const areaMode = $('operationArea').value;
 
   const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
@@ -1164,7 +1153,7 @@ async function applyOp() {
   }
 
   const beforeBase = baseCoverageState(model),
-    params = { type, name, targetLayerId, thickness, face: activeFace, area };
+    params = { type, name, targetLayerId, thickness, face: activeFace };
   if (type === 'etch') params.surface = roughSurface;
   else params.growth = $('growthMode').value;
 
@@ -1175,7 +1164,25 @@ async function applyOp() {
         ? 'Extending layer…'
         : `Depositing ${name}…`;
 
-  const task = await processTaskController.run(model, params, taskLabel);
+  const areaRequest = {
+    mode: areaMode,
+    maskSourceMode,
+    maskRoi: maskRoi ? structuredClone(maskRoi) : null,
+    ...(maskSourceMode === 'draw'
+      ? { drawMask: structuredClone(drawMask) }
+      : {
+          maskTransform: { ...maskTransform },
+          elements: (layout.elements || [])
+            .filter(selectedElement)
+            .map((element) => ({
+              kind: element.kind,
+              width: element.width,
+              points: element.points,
+            })),
+        }),
+  };
+
+  const task = await processTaskController.run(model, params, taskLabel, areaRequest);
   if (task?.aborted || task?.error || task?.busy) return;
 
   const result = task.result;
