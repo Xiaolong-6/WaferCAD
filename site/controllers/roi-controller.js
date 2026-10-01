@@ -34,6 +34,8 @@ export function createRoiController({
   canvasToWorld,
   worldToCanvas,
   zoomPlanView,
+  resetPlanView,
+  closeSliceControls = () => {},
   renderMain,
   renderAll,
   status,
@@ -144,6 +146,10 @@ export function createRoiController({
   }
 
   function bindControls() {
+    $('focusEditor').addEventListener('toggle', () => {
+      if ($('focusEditor').open) closeSliceControls();
+    });
+
     root.querySelectorAll('.roi-tool').forEach((button) => {
       button.onclick = () => {
         setRoiTool(button.dataset.tool);
@@ -152,6 +158,7 @@ export function createRoiController({
           .querySelectorAll('.roi-tool')
           .forEach((item) => item.classList.toggle('active', item === button));
         $('focusEditor').open = false;
+        renderMain();
         status('ROI: drag once in Main to create the region.');
       };
     });
@@ -200,6 +207,11 @@ export function createRoiController({
       { passive: false },
     );
 
+    canvas.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      resetPlanView('mask');
+    });
+
     canvas.addEventListener('pointermove', (event) => {
       const rect = canvas.getBoundingClientRect(),
         { w, h } = setupCanvas(canvas),
@@ -215,6 +227,7 @@ export function createRoiController({
     let drag = null;
 
     canvas.addEventListener('pointermove', (event) => {
+      if (event.defaultPrevented && !drag) return;
       const rect = canvas.getBoundingClientRect(),
         { w, h } = setupCanvas(canvas),
         view = viewport(w, h, 'main'),
@@ -288,7 +301,7 @@ export function createRoiController({
     });
 
     canvas.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || event.defaultPrevented) return;
       const rect = canvas.getBoundingClientRect(),
         { w, h } = setupCanvas(canvas),
         view = viewport(w, h, 'main'),
@@ -326,6 +339,7 @@ export function createRoiController({
         return;
       }
 
+      event.preventDefault();
       canvas.setPointerCapture(event.pointerId);
     });
 
