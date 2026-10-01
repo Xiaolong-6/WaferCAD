@@ -253,6 +253,8 @@ const planView = createPlanViewController({
   getModel: () => model,
   getLayout: () => layout,
   getMaskTransform: () => maskTransform,
+  getMaskSourceMode: () => maskSourceMode,
+  getDrawMask: () => drawMask,
   getPlanViews: () => planViews,
   maskPoint,
   formatXY,
