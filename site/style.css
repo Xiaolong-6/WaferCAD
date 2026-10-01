@@ -1162,11 +1162,16 @@ canvas {
   height: 27px;
 }
 
+.project-name-row {
+  margin-top: 0 !important;
+}
+
 .settings-project-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
-  padding-bottom: 6px !important;
+  margin-top: 5px;
+  padding-bottom: 2px !important;
 }
 
 .settings-project-actions > * {
