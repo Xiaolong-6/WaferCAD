@@ -35,7 +35,8 @@ export function createDrawMaskController({
     drag = null,
     draft = null,
     polygonDraft = null,
-    polygonHover = null;
+    polygonHover = null,
+    ignoreNextDoubleClick = false;
 
   function currentMask() {
     return normalizeDrawMask(getDrawMask());
@@ -644,8 +645,13 @@ export function createDrawMaskController({
           if (!polygonDraft) polygonDraft = [];
           polygonDraft.push(point);
           polygonHover = point;
-          syncUi();
-          renderMask();
+          if (event.detail >= 2) {
+            ignoreNextDoubleClick = true;
+            finishPolygon();
+          } else {
+            syncUi();
+            renderMask();
+          }
           event.preventDefault();
           event.stopImmediatePropagation();
           return;
@@ -692,6 +698,12 @@ export function createDrawMaskController({
             selectedId = hit?.id || null;
             closeEditor();
             syncUi();
+            if (hit && event.detail >= 2) {
+              openEditor(hit);
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return;
+            }
             if (hit) {
               drag = {
                 mode: 'move',
@@ -766,6 +778,12 @@ export function createDrawMaskController({
       'dblclick',
       (event) => {
         if (getMode() !== 'draw') return;
+        if (ignoreNextDoubleClick) {
+          ignoreNextDoubleClick = false;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return;
+        }
         if (tool === 'polygon') {
           event.preventDefault();
           event.stopImmediatePropagation();
