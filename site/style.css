@@ -2300,6 +2300,27 @@ summary:focus-visible {
 
 
 /* Unified scientific header controls */
+.view-head > .view-tools,
+.view-head > .three-view-tools,
+.view-head > .section-view-tools {
+  align-items: center;
+  align-self: stretch;
+  height: 100%;
+}
+
+.view-head .view-tools > button,
+.view-head .view-tools > details,
+.view-head .view-tools > label,
+.view-head .three-view-tools > button,
+.view-head .three-view-tools > details,
+.view-head .three-view-tools > label,
+.view-head .section-view-tools > button,
+.view-head .section-view-tools > details,
+.view-head .section-view-tools > label {
+  margin-block: 0;
+  vertical-align: middle;
+}
+
 .view-head .mini-btn,
 .view-head .three-control,
 .view-head .focus-editor > summary,
@@ -2308,16 +2329,23 @@ summary:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  appearance: none;
   height: 21px;
+  min-height: 21px;
   min-width: 0;
-  padding: 1px 5px;
+  margin: 0;
+  padding: 0 5px;
   border: 1px solid #d5dde4;
   border-radius: 3px;
   background: #f8fafb;
   color: #4f5d69;
+  font-family: inherit;
   font-size: 9.5px;
   font-weight: 520;
-  line-height: 1.2;
+  line-height: 19px;
+  white-space: nowrap;
+  vertical-align: middle;
   box-shadow: none;
 }
 
