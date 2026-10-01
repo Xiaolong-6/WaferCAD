@@ -26,6 +26,10 @@ const processTaskController = await readFile(
   new URL('../controllers/process-task-controller.js', import.meta.url),
   'utf8',
 );
+const exportController = await readFile(
+  new URL('../controllers/export-controller.js', import.meta.url),
+  'utf8',
+);
 const workspaceActions = await readFile(
   new URL('../controllers/workspace-actions-controller.js', import.meta.url),
   'utf8',
