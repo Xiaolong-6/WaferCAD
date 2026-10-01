@@ -103,6 +103,17 @@ function validateLayer(layer, index, ids) {
   }
 }
 
+function validateSurfaceAppearance(appearance, path) {
+  assertObject(appearance, path);
+  if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
+  assertFinite(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
+  assertFinite(appearance.amplitude, `${path}.amplitude`, { min: 1e-12 });
+  assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
+  if (appearance.geometryMode !== 'ideal') {
+    fail(`${path}.geometryMode`, 'must be ideal for the current geometry kernel.');
+  }
+}
+
 function validateStack(stack, path, layerIds) {
   assertArray(stack, path, LIMITS.stackDepth);
   let previousZ1 = -Infinity;
@@ -116,6 +127,12 @@ function validateStack(stack, path, layerIds) {
     const z1 = assertFinite(segment.z1, `${segmentPath}.z1`);
     if (!(z1 > z0)) fail(segmentPath, 'must satisfy z1 > z0.');
     if (z0 < previousZ1 - 1e-9) fail(segmentPath, 'overlaps the previous stack segment.');
+    if (segment.frontSurface != null) {
+      validateSurfaceAppearance(segment.frontSurface, `${segmentPath}.frontSurface`);
+    }
+    if (segment.backSurface != null) {
+      validateSurfaceAppearance(segment.backSurface, `${segmentPath}.backSurface`);
+    }
     previousZ1 = z1;
   });
 }
