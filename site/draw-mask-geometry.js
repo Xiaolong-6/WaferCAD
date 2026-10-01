@@ -51,7 +51,9 @@ export function normalizeDrawShape(shape) {
 }
 
 export function normalizeDrawMask(drawMask) {
-  const shapes = (drawMask?.shapes || []).map(normalizeDrawShape).filter(Boolean);
+  const shapes = (Array.isArray(drawMask?.shapes) ? drawMask.shapes : [])
+    .map(normalizeDrawShape)
+    .filter(Boolean);
   const maxId = shapes.reduce((max, shape) => {
     const match = /^shape-(\d+)$/.exec(shape.id);
     return match ? Math.max(max, Number(match[1])) : max;
