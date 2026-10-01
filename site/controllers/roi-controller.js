@@ -24,6 +24,7 @@ export function createRoiController({
   getRoiAnchor,
   setRoiAnchor,
   getActiveFace,
+  isInteractionBlocked = () => false,
   xyUnitLabel,
   formatLengthField,
   formatNumericField,
@@ -230,7 +231,7 @@ export function createRoiController({
     let drag = null;
 
     canvas.addEventListener('pointermove', (event) => {
-      if (event.defaultPrevented && !drag) return;
+      if ((event.defaultPrevented || isInteractionBlocked()) && !drag) return;
       const rect = canvas.getBoundingClientRect(),
         { w, h } = setupCanvas(canvas),
         view = viewport(w, h, 'main'),
@@ -304,7 +305,7 @@ export function createRoiController({
     });
 
     canvas.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 || event.defaultPrevented) return;
+      if (event.button !== 0 || event.defaultPrevented || isInteractionBlocked()) return;
       const rect = canvas.getBoundingClientRect(),
         { w, h } = setupCanvas(canvas),
         view = viewport(w, h, 'main'),
