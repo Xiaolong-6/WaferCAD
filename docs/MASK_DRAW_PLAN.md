@@ -1,5 +1,22 @@
 # Mask File / Draw plan
 
+## Implementation status
+
+The v1 architecture in this document is implemented on the feature branch:
+
+- File/Draw source toggle;
+- Rect/Circle/Polygon Draw geometry;
+- one-shot creation with direct move/resize/vertex editing afterwards;
+- Delete/Clear actions;
+- File and Draw state preserved independently;
+- Draw state persisted in project v6, snapshots, and autosave;
+- active source feeds Process Selected mask / Invert mask;
+- active source exports through Mask SVG;
+- Mask Fit/zoom uses the active source;
+- Draw geometry remains separate from imported GDS/OAS data.
+
+Numeric per-shape fields and Draw-to-GDS/OAS export remain future extensions.
+
 ## Goal
 
 Add a **File / Draw** source switch to the Mask view without changing the meaning of imported GDSII/OASIS data.
