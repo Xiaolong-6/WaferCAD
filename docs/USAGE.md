@@ -51,7 +51,7 @@ Use the wheel or − / + / Fit controls to change the view. View fitting and vis
 
 ## 5. Limit 3D rendering with an ROI
 
-Open **ROI** in the Mask view, then choose **Rect**, **Circle**, or **Sector** and drag once to create the region. Sector is circle-based: after drawing the radius, enter **Start °** and **End °** to define the angular range. Wrapped ranges are supported, for example 300° → 60°.
+Open **ROI** in the Main view, then choose **Rect**, **Circle**, or **Sector** and drag once to create the region. Sector is circle-based: after drawing the radius, enter **Start °** and **End °** to define the angular range. Wrapped ranges are supported, for example 300° → 60°.
 
 After creation, drag inside the ROI to reposition it or use the four corner handles to resize it. The ROI editor exposes width/height or radius, a reference point, X/Y coordinates, and sector angles for exact input.
 
@@ -96,13 +96,13 @@ Layer identity is stored separately from the visible name, so renaming or recolo
 
 Main can display the front or back surface.
 
-Use **Slice** to toggle the A–B coordinate panel and endpoint editing together. Opening Slice shows the panel and immediately makes the existing A/B handles draggable; closing Slice hides the panel and locks both handles. On narrow screens the controls appear below Main.
+Existing Slice geometry is always editable in **Main**: drag A or B directly, or drag the A–B line itself to translate the whole slice. The **Slice** button opens the A–B coordinate panel and starts one-shot creation mode; drag anywhere in Main to create a replacement A→B line, then creation mode ends automatically while the existing slice remains editable. Closing the panel does not lock the slice. A focused endpoint also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
 
-Coordinates and Section update while dragging. Grab offsets are preserved, and dragging can continue outside the canvas. Escape cancels an in-progress drag; when idle it closes Slice and locks the endpoints. A focused handle also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
+The **ROI** control also lives in Main. Existing ROI geometry remains movable/resizable with the ROI popover closed. Open ROI only to choose Rect/Circle/Sector or edit exact values. Drawing a new ROI is one-shot. Slice and ROI popovers are mutually exclusive so only one Main geometry editor is expanded at a time.
 
-Double-click Main to fit the view. **Fit** in 3D frames the active ROI when one exists, otherwise it frames the full model.
+Double-click **Main** or **Mask** to fit that 2D view. **Fit** in 3D frames the active ROI when one exists, otherwise it frames the full model.
 
-On desktop landscape layouts, the workspace is arranged as **Mask / 3D / Function** on the first row and **Main / Section** on the second row. The original panel proportions are retained. At widths up to 900 px, the existing three-row layout remains **Function/3D**, **Main/Mask**, then **Section**.
+On desktop landscape layouts, the workspace is arranged as **Main / Mask / Function** on the first row and **3D / Section** on the second row. The original panel proportions are retained. At widths up to 900 px, the existing three-row layout remains **Function/3D**, **Main/Mask**, then **Section**.
 
 Each scientific view has **Max**. It expands Main, Mask, 3D, or Section to the available browser workspace without opening a new window; the button changes to **Restore**, and Escape also restores the normal layout.
 
