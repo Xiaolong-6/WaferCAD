@@ -64,18 +64,21 @@ Start with a deliberately small set of primitives:
 - Rectangle;
 - Circle;
 - Polygon;
+- Ring;
+- Ring Sector;
 - Select / Move;
 - Delete;
 - Clear Draw Mask.
 
-Rectangle and Circle use drag-to-create. Polygon uses click-to-place vertices and Enter/double-click to finish; Escape cancels the in-progress polygon.
+Rectangle, Circle, Ring and Ring Sector use drag-to-create. Polygon uses click-to-place vertices and double-click to finish and close automatically; Enter also finishes, and Escape cancels the in-progress polygon.
 
 Existing drawn shapes are directly editable while no creation tool is active:
 
 - drag body to move;
-- drag handles to resize Rect/Circle;
-- drag Polygon vertices;
-- numeric editor for exact dimensions / position of the selected shape.
+- drag handles to resize Rect/Circle/Ring/Ring Sector;
+- drag Polygon vertices and Ring Sector angle handles;
+- exact parameter editor for Rect/Circle/Ring/Ring Sector;
+- KLayout-style multiline `x, y` coordinate editor for Polygon vertices.
 
 Use the same interaction doctrine as Main ROI/Slice: creation mode is temporary; existing geometry is editable by default.
 
