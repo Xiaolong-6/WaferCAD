@@ -39,13 +39,15 @@ Selecting a layer selects that `layer/datatype` across the active subtree.
 
 The Mask view shows:
 
-- base outline;
-- imported mask geometry;
+- the current active-face structure as a neutral outline-only topography reference;
+- imported mask geometry above that reference;
 - selected layers;
 - XY axes in the selected global display unit;
 - live XY cursor coordinates in the same unit.
 
-Use the wheel or − / + / Fit controls to change the view. View fitting does not alter geometry.
+Use **Opacity** in the Mask header to fade the imported layout while aligning it against the current structure. The opacity affects only the mask overlay; the structure reference, ROI, and axes remain unchanged. The setting is stored with the project and snapshots.
+
+Use the wheel or − / + / Fit controls to change the view. View fitting and visual opacity do not alter geometry.
 
 ## 5. Limit 3D rendering with an ROI
 
