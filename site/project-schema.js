@@ -404,6 +404,9 @@ function validateDisplay(display) {
       }
     });
   }
+  if (display.maskOpacity != null) {
+    assertFinite(display.maskOpacity, 'display.maskOpacity', { min: 0, max: 1 });
+  }
   if (display.threeOpacity != null) {
     assertFinite(display.threeOpacity, 'display.threeOpacity', { min: 0.1, max: 1 });
   }
