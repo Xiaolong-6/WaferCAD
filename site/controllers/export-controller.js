@@ -2,7 +2,13 @@ import { layerById, modelBoundsZ } from '../model.js';
 import { sectionContours, sectionSlices, surfaceGroups } from '../model-view-geometry.js';
 import { sectorBoundaryPoints } from '../roi-editor.js';
 import { drawMaskGeometry } from '../draw-mask-geometry.js';
-import { circleMulti, intersection, isEmpty, rectMulti } from '../vector-geometry.js';
+import {
+  bufferPolyline,
+  circleMulti,
+  intersection,
+  isEmpty,
+  rectMulti,
+} from '../vector-geometry.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -225,7 +231,7 @@ export function createExportController({
 
     cellsSelect.replaceChildren();
     for (const name of [...cells].sort((a, b) => a.localeCompare(b))) {
-      const option = document.createElement('option');
+      const option = root.createElement('option');
       option.value = name;
       option.textContent = name;
       option.selected = oldCells.size ? oldCells.has(name) : activeCell ? name === activeCell : true;
@@ -239,7 +245,7 @@ export function createExportController({
 
     layersSelect.replaceChildren();
     for (const [key, label] of [...layers.entries()].sort((a, b) => a[1].localeCompare(b[1]))) {
-      const option = document.createElement('option');
+      const option = root.createElement('option');
       option.value = key;
       option.textContent = label;
       option.selected = oldLayers.size
@@ -286,13 +292,23 @@ export function createExportController({
       for (const element of layout.elements || []) {
         const key = layerKey(element.layer, element.datatype);
         if (
-          element.kind !== 'polygon' ||
           !Array.isArray(element.points) ||
           !cells.has(element.sourceCell) ||
           !layers.has(key)
         ) continue;
-        let geometry = [[element.points.map(maskPoint)]];
-        if (roiGeom) geometry = intersection(geometry, roiGeom);
+
+        let geometry =
+          element.kind === 'polygon'
+            ? [[element.points.map(maskPoint)]]
+            : element.kind === 'path' && Number(element.width) > 0
+              ? bufferPolyline(
+                  element.points.map(maskPoint),
+                  (Number(element.width) * Math.abs(maskTransform.scale || 1)) / 2,
+                  28,
+                  false,
+                )
+              : [];
+        if (roiGeom && !isEmpty(geometry)) geometry = intersection(geometry, roiGeom);
         if (isEmpty(geometry)) continue;
         body += `<path d="${svgPathFromMulti(geometry, map)}" fill="${layerColor(
           key,
@@ -328,13 +344,6 @@ export function createExportController({
       status('Nothing from the selected Mask source overlaps the export region.', 'warning');
       return;
     }
-    if (maskRoi) {
-      body += `<path d="${svgRoiPath(
-        maskRoi,
-        view,
-      )}" fill="none" stroke="#9a5b23" stroke-width=".8" stroke-dasharray="4 3"/>`;
-    }
-
     downloadText(svgDocument(width, height, body), 'wafercad-mask.svg');
     status(
       `Exported ${maskSourceMode === 'draw' ? 'Draw' : 'File'} Mask as SVG${
