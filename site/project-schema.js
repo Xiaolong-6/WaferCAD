@@ -506,10 +506,10 @@ function validateProjectCore(
     assertString(project.activeCell, 'activeCell', { max: 512 });
   }
   validateMaskTransform(project.maskTransform);
-  if (project.maskSourceMode == null || !['file', 'draw'].includes(project.maskSourceMode)) {
+  if (project.maskSourceMode != null && !['file', 'draw'].includes(project.maskSourceMode)) {
     fail('maskSourceMode', 'must be file or draw.');
   }
-  validateDrawMask(project.drawMask);
+  if (project.drawMask != null) validateDrawMask(project.drawMask);
   if (!['front', 'back'].includes(project.activeFace)) fail('activeFace', 'must be front or back.');
   validateRoi(project.roi);
   if (
