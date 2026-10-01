@@ -448,9 +448,12 @@ button:hover,
 }
 .view-head > div {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   min-width: 0;
+}
+.view-head > div:first-child {
+  align-items: baseline;
 }
 .view-head strong {
   font-size: 11.5px;
