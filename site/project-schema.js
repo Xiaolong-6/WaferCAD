@@ -108,7 +108,7 @@ function validateSurfaceAppearance(appearance, path) {
   if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
   assertFinite(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
   assertFinite(appearance.amplitude, `${path}.amplitude`, { min: 1e-12 });
-  assertInteger(appearance.seed, `${path}.seed`, { min: 0 });
+  assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
   if (appearance.geometryMode !== 'ideal')
     fail(`${path}.geometryMode`, 'must be ideal for the current geometry kernel.');
 }
