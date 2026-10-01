@@ -28,6 +28,7 @@ export function createMaskRoiController({
   canvasToWorld,
   worldToCanvas,
   renderMask,
+  canMoveBody = () => true,
   onChanged = () => {},
   status,
 }) {
@@ -49,7 +50,7 @@ export function createMaskRoiController({
     const point = roiAnchorPoint(roi, getAnchor());
     if (!point) return;
 
-    $('maskRoiShapeLabel').textContent = roi.type === 'rect' ? 'Rectangle' : 'Circle';
+    $('maskRoiShapeLabel').textContent = roi.type === 'rect' ? 'Square' : 'Circle';
     $('maskRoiUnitLabel').textContent = xyUnitLabel();
     $('maskRoiAnchorSelect').value = getAnchor();
     $('maskRoiX').value = formatLengthField(point[0]);
@@ -57,8 +58,9 @@ export function createMaskRoiController({
     $('maskRoiRectFields').hidden = roi.type !== 'rect';
     $('maskRoiCircleFields').hidden = roi.type !== 'circle';
     if (roi.type === 'rect') {
-      $('maskRoiWidth').value = formatLengthField(roi.b[0] - roi.a[0]);
-      $('maskRoiHeight').value = formatLengthField(roi.b[1] - roi.a[1]);
+      $('maskRoiSize').value = formatLengthField(
+        Math.max(roi.b[0] - roi.a[0], roi.b[1] - roi.a[1]),
+      );
     } else {
       $('maskRoiRadius').value = formatLengthField(roi.r);
     }
@@ -73,8 +75,8 @@ export function createMaskRoiController({
       next =
         roi.type === 'rect'
           ? rectRoiFromAnchor(
-              manualMicron($('maskRoiWidth').value),
-              manualMicron($('maskRoiHeight').value),
+              manualMicron($('maskRoiSize').value),
+              manualMicron($('maskRoiSize').value),
               anchor,
               x,
               y,
@@ -183,8 +185,7 @@ export function createMaskRoiController({
     };
 
     for (const id of [
-      'maskRoiWidth',
-      'maskRoiHeight',
+      'maskRoiSize',
       'maskRoiRadius',
       'maskRoiX',
       'maskRoiY',
@@ -223,7 +224,7 @@ export function createMaskRoiController({
           if (handle) {
             canvas.style.cursor = resizeCursor(handle);
             event.stopImmediatePropagation();
-          } else if (roiContainsPoint(roi, point)) {
+          } else if (roiContainsPoint(roi, point) && canMoveBody(point)) {
             canvas.style.cursor = 'move';
             event.stopImmediatePropagation();
           }
@@ -234,9 +235,16 @@ export function createMaskRoiController({
         event.stopImmediatePropagation();
 
         if (drag.mode === 'create') {
+          const dx = point[0] - drag.start[0],
+            dy = point[1] - drag.start[1],
+            side = Math.max(Math.abs(dx), Math.abs(dy)),
+            squarePoint = [
+              drag.start[0] + (Math.sign(dx) || 1) * side,
+              drag.start[1] + (Math.sign(dy) || 1) * side,
+            ];
           setDraft(
             getTool() === 'rect'
-              ? normalizeRoi({ type: 'rect', a: drag.start, b: point })
+              ? normalizeRoi({ type: 'rect', a: drag.start, b: squarePoint })
               : normalizeRoi({
                   type: 'circle',
                   c: drag.start,
@@ -248,12 +256,31 @@ export function createMaskRoiController({
         }
 
         if (drag.mode === 'resize') {
-          setRoi(
-            resizeRoiFromHandle(drag.original, drag.handle, [
+          const adjusted = [
               point[0] - drag.offset[0],
               point[1] - drag.offset[1],
-            ]),
-          );
+            ],
+            original = drag.original;
+          if (original.type === 'rect') {
+            const opposite = {
+                'top-left': 'bottom-right',
+                'top-right': 'bottom-left',
+                'bottom-left': 'top-right',
+                'bottom-right': 'top-left',
+              }[drag.handle],
+              fixed = roiHandlePoints(original)[opposite],
+              side = Math.max(
+                Math.abs(adjusted[0] - fixed[0]),
+                Math.abs(adjusted[1] - fixed[1]),
+              ),
+              squarePoint = [
+                fixed[0] + (Math.sign(adjusted[0] - fixed[0]) || 1) * side,
+                fixed[1] + (Math.sign(adjusted[1] - fixed[1]) || 1) * side,
+              ];
+            setRoi(normalizeRoi({ type: 'rect', a: fixed, b: squarePoint }));
+          } else {
+            setRoi(resizeRoiFromHandle(original, drag.handle, adjusted));
+          }
           syncEditor();
           renderMask();
           return;
@@ -301,7 +328,7 @@ export function createMaskRoiController({
               original: structuredClone(roi),
               offset: [point[0] - corner[0], point[1] - corner[1]],
             };
-          } else if (roiContainsPoint(roi, point)) {
+          } else if (roiContainsPoint(roi, point) && canMoveBody(point)) {
             drag = {
               mode: 'move',
               pointerId: event.pointerId,
