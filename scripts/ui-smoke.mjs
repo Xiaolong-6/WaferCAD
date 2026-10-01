@@ -207,7 +207,7 @@ await page.locator('#layerName').fill('UI conformal');
 assert.equal(await page.locator('#growthMode').inputValue(), 'conformal');
 assert.match(await page.locator('#operationNote').textContent(), /Conformal/);
 await page.locator('#applyOperationBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /Added UI conformal/);
+assert.match(await page.locator('#statusText').textContent(), /Deposited UI conformal/);
 
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI conformal project');
