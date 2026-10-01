@@ -29,7 +29,7 @@ Region
 
 X, Y and Z are physical geometry stored internally in micrometres. The UI has one global display/input-unit layer (nm / µm / mm) for all three axes.
 
-The model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. This is sufficient for the current Add, Grow, Etch, Direct, and Conformal workflows without introducing a full arbitrary-solid B-rep kernel.
+The model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. This is sufficient for the current Deposit, Extend, Etch, Directional, and Conformal workflows without introducing a full arbitrary-solid B-rep kernel.
 
 ## Modules
 
@@ -46,7 +46,7 @@ Owns the region-stack model and geometry semantics:
 - Deposit (`add` internally);
 - Extend (`grow` internally);
 - Etch;
-- Direct/Conformal behavior;
+- Directional/Conformal coverage behavior;
 - front/back surface access;
 - layer rename/color metadata.
 
@@ -118,11 +118,11 @@ Every operation receives one vector area:
 
 The operation engine does not infer these from the view.
 
-## Direct and Conformal
+## Directional and Conformal
 
 Directional coverage preserves the selected XY footprint.
 
-Conformal coverage is two-stage: first run the same physical Z-thickness mutation as Direct in the selected area, then inspect the newly exposed coating surface and offset its step boundaries outward by the same physical distance. The generated sidewall interval is assigned to the same layer id and merged with the Direct-grown material. This makes Mask, Invert and Whole-face semantics identical in Stage 1 and derives sidewalls from the actual post-growth topology rather than from a pre-operation approximation.
+Conformal coverage is two-stage: first run the same physical Z-thickness mutation as Directional coverage in the selected area, then inspect the newly exposed coating surface and offset its step boundaries outward by the same physical distance. The generated sidewall interval is assigned to the same layer id and merged with the directionally covered material. This makes Mask, Invert and Whole-face semantics identical in Stage 1 and derives sidewalls from the actual post-growth topology rather than from a pre-operation approximation.
 
 Etch performs physical vertical subtraction and does not accept a coverage mode. Supported fixtures and the through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
 
