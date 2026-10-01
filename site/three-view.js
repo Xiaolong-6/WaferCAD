@@ -1,4 +1,4 @@
-import { layerById, modelBoundsZ, zDisplayScale } from './model.js';
+import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
 import { materialSolids, solidBorders } from './model-view-geometry.js';
 
 let THREE = null;
@@ -237,7 +237,7 @@ export function createThreeView({
       }
     }
 
-    stats.textContent = clip ? 'ROI' : 'full model';
+    stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     scheduleFrame();
   }
 
