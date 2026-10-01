@@ -1,6 +1,5 @@
 import { parseLayoutFile } from './layout-io.js';
 import {
-  applyOperation,
   baseCoverageState,
   cloneModel,
   createModel,
@@ -49,6 +48,8 @@ import { createViewMaximizeController } from './controllers/view-maximize-contro
 import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
 import { createExportController } from './controllers/export-controller.js';
 import { createRoiController } from './controllers/roi-controller.js';
+import { createMaskRoiController } from './controllers/mask-roi-controller.js';
+import { createProcessTaskController } from './controllers/process-task-controller.js';
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
@@ -89,6 +90,10 @@ let activeCell = null,
 let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   maskSourceMode = 'file',
   drawMask = createEmptyDrawMask(),
+  maskRoi = null,
+  maskRoiTool = null,
+  maskRoiDraft = null,
+  maskRoiAnchor = 'center',
   activeFace = 'front',
   roi = null,
   roiTool = null,
@@ -102,7 +107,9 @@ let projectName = 'Untitled',
   history = [],
   future = [],
   baseRevertSnapshot = null,
-  drawMaskController = null;
+  drawMaskController = null,
+  maskRoiController = null,
+  processTaskController = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
 const feedback = createFeedbackController();
 
@@ -312,6 +319,7 @@ const exportController = createExportController({
     maskTransform,
     maskSourceMode,
     drawMask,
+    maskRoi,
     roi,
     sectionScaleMode,
   }),
@@ -363,6 +371,38 @@ const roiController = createRoiController({
 });
 const { clearDrawingMode: clearRoiDrawingMode, syncEditor: syncRoiEditor } = roiController;
 
+maskRoiController = createMaskRoiController({
+  getRoi: () => maskRoi,
+  setRoi: (value) => {
+    maskRoi = value;
+  },
+  getTool: () => maskRoiTool,
+  setTool: (value) => {
+    maskRoiTool = value;
+  },
+  getDraft: () => maskRoiDraft,
+  setDraft: (value) => {
+    maskRoiDraft = value;
+  },
+  getAnchor: () => maskRoiAnchor,
+  setAnchor: (value) => {
+    maskRoiAnchor = value;
+  },
+  xyUnitLabel: () => xyUnit().label,
+  formatLengthField,
+  manualMicron,
+  setupCanvas,
+  viewport,
+  canvasToWorld,
+  worldToCanvas,
+  renderMask,
+  onChanged: () => {
+    updateOperationUI();
+    scheduleWorkspacePersistence();
+  },
+  status,
+});
+
 const layerLegendController = createLayerLegendController({
   getModel: () => model,
   getActiveStructurePalette: () => activeStructurePalette,
@@ -412,11 +452,33 @@ function activeMaskGeometry() {
   return isEmpty(selected) ? [] : intersection(selected, model.boundary);
 }
 
+function maskRoiGeometry() {
+  if (!maskRoi) return null;
+  if (maskRoi.type === 'rect') {
+    const x0 = Math.min(maskRoi.a[0], maskRoi.b[0]),
+      x1 = Math.max(maskRoi.a[0], maskRoi.b[0]),
+      y0 = Math.min(maskRoi.a[1], maskRoi.b[1]),
+      y1 = Math.max(maskRoi.a[1], maskRoi.b[1]);
+    return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
+  }
+  if (maskRoi.type === 'circle') {
+    return circleMulti(maskRoi.r * 2, maskRoi.r * 2, 96, maskRoi.c[0], maskRoi.c[1]);
+  }
+  return null;
+}
+
 function operationAreaGeometry(mode) {
-  if (mode === 'full') return fullFaceGeometry(model);
-  const selected = activeMaskGeometry();
-  if (isEmpty(selected)) return [];
-  return mode === 'invert' ? difference(model.boundary, selected) : selected;
+  let area;
+  if (mode === 'full') {
+    area = fullFaceGeometry(model);
+  } else {
+    const selected = activeMaskGeometry();
+    if (isEmpty(selected)) return [];
+    area = mode === 'invert' ? difference(model.boundary, selected) : selected;
+  }
+
+  const limiter = maskRoiGeometry();
+  return limiter ? intersection(area, limiter) : area;
 }
 function roiGeometry() {
   if (!roi) return null;
@@ -698,6 +760,7 @@ function renderMask() {
     ctx.restore();
   }
 
+  maskRoiController?.render(ctx, v);
   drawPlanAxes(ctx, v, w, h, false);
   scheduleWorkspacePersistence();
 }
@@ -1069,6 +1132,8 @@ const projectStateController = createProjectStateController({
     maskTransform,
     maskSourceMode,
     drawMask,
+    maskRoi,
+    maskRoiAnchor,
     activeFace,
     roi,
     roiAnchor,
@@ -1092,6 +1157,10 @@ const projectStateController = createProjectStateController({
     maskTransform = next.maskTransform;
     maskSourceMode = next.maskSourceMode || 'file';
     drawMask = structuredClone(next.drawMask || createEmptyDrawMask());
+    maskRoi = next.maskRoi || null;
+    maskRoiAnchor = next.maskRoiAnchor || 'center';
+    maskRoiTool = null;
+    maskRoiDraft = null;
     activeFace = next.activeFace;
     roi = next.roi;
     roiAnchor = next.roiAnchor;
@@ -1185,6 +1254,15 @@ drawMaskController = createDrawMaskController({
   syncSourceSummary: syncMaskSourceSummary,
   onMaskChanged: updateOperationUI,
   status,
+});
+
+processTaskController = createProcessTaskController({
+  status,
+  setApplyDisabled: (disabled) => {
+    const button = $('applyOperationBtn');
+    button.disabled = disabled || !hasMaterial(model);
+    button.classList.toggle('process-busy', disabled);
+  },
 });
 
 const baseControls = createBaseControlsController({
@@ -1316,6 +1394,8 @@ function bindUi() {
   bindToolTabs();
   viewMaximizeController.bind();
   roiController.bind();
+  maskRoiController.bind();
+  processTaskController.bind();
   sectionControls.bind();
   baseControls.bind();
   maskImportController.bind();
@@ -1338,6 +1418,7 @@ function bindUi() {
     void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
     resetProjectState();
     clearRoiDrawingMode();
+    maskRoiController.clearDrawingMode();
     snapshotManager.clear();
     syncBaseControls();
     renderAll();
