@@ -2,7 +2,7 @@ name: Deploy WaferCAD to Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/mask-file-draw]
     paths:
       - 'site/**'
       - 'scripts/stamp-pages-assets.mjs'
