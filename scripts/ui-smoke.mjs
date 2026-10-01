@@ -486,6 +486,8 @@ await page.locator('#maskCanvas').dblclick();
 assert.deepEqual(errors, [], 'Mask double-click Fit must not raise a browser error.');
 
 // File / Draw keeps imported and temporary mask sources separate.
+await page.locator('#maskTab').click();
+await page.locator('#maskTools:not([hidden])').waitFor();
 const sourceToggle = page.locator('#maskSourceToggleBtn');
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 await sourceToggle.click();
