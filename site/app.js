@@ -1040,7 +1040,7 @@ function updateOperationUI() {
   if (t === 'grow') updateGrowTargets();
 
   const materialExists = hasMaterial(model);
-  $('applyOperationBtn').disabled = !materialExists;
+  $('applyOperationBtn').disabled = !materialExists || Boolean(processTaskController?.isBusy());
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('processSummary').textContent =
     `${faceLabel} · ${t === 'add' ? 'Deposit layer' : t === 'grow' ? 'Extend layer' : 'Etch'}`;
@@ -1056,7 +1056,12 @@ function updateOperationUI() {
         : 'Directional coverage follows the selected footprint.';
 }
 
-function applyOp() {
+async function applyOp() {
+  if (processTaskController?.isBusy()) {
+    status('An operation is already running. Abort it before starting another.', 'warning');
+    return;
+  }
+
   const type = $('operationType').value,
     thickness = manualMicron($('operationThickness').value);
   $('operationThickness').value = formatLengthField(thickness);
@@ -1064,32 +1069,45 @@ function applyOp() {
 
   const areaMode = $('operationArea').value,
     area = operationAreaGeometry(areaMode);
-  if (isEmpty(area))
-    return status(
-      areaMode === 'full'
+  if (isEmpty(area)) {
+    const message = maskRoi
+      ? 'The selected process area does not overlap the Mask ROI.'
+      : areaMode === 'full'
         ? 'The process domain has no editable area.'
         : maskSourceMode === 'draw'
           ? 'Draw at least one mask shape that overlaps the process domain first.'
-          : 'Select a mask layer that overlaps the process domain first.',
-      'warning',
-    );
+          : 'Select a mask layer that overlaps the process domain first.';
+    return status(message, 'warning');
+  }
 
   const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
-  if (type === 'grow' && !targetLayerId)
+  if (type === 'grow' && !targetLayerId) {
     return status('No exposed target layer is available to Extend.', 'warning');
+  }
 
-  const beforeBase = baseCoverageState(model);
+  const beforeBase = baseCoverageState(model),
+    params = { type, name, targetLayerId, thickness, face: activeFace, area };
+  if (type !== 'etch') params.growth = $('growthMode').value;
+
+  const taskLabel =
+    type === 'etch'
+      ? 'Etching structure…'
+      : type === 'grow'
+        ? 'Extending layer…'
+        : `Depositing ${name}…`;
+
+  const task = await processTaskController.run(model, params, taskLabel);
+  if (task?.aborted || task?.error || task?.busy) return;
+
+  const result = task.result;
+  if (!result?.changed) {
+    return status(result?.error || 'The operation did not change the model.', 'warning');
+  }
+
   saveHistory();
   baseRevertSnapshot = null;
-  const params = { type, name, targetLayerId, thickness, face: activeFace, area };
-  if (type !== 'etch') params.growth = $('growthMode').value;
-  const result = applyOperation(model, params);
-  if (!result.changed) {
-    restoreSnapshot(history.pop());
-    syncUndo();
-    return status(result.error || 'The operation did not change the model.', 'warning');
-  }
+  model = task.model;
 
   if (type === 'add' && result.layerId) {
     colorNewLayer(result.layerId);
@@ -1116,7 +1134,13 @@ function applyOp() {
   const growthLabel =
     type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Directional';
   status(
-    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}` : `Deposited ${name}`}${growthLabel} on the ${activeFace}.`,
+    `${
+      type === 'etch'
+        ? 'Etched'
+        : type === 'grow'
+          ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
+          : `Deposited ${name}`
+    }${growthLabel} on the ${activeFace}${maskRoi ? ' within Mask ROI' : ''}.`,
     'success',
   );
 }
