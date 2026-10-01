@@ -145,8 +145,7 @@ async function dragHandle(page, endpoint, dx, dy, cancel = false) {
 async function checkAB(page, name) {
   const nmRoundedMicron = (value) => Math.round(value * 1000) / 1000;
   await page.locator('#sectionControlsBtn').click();
-  assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
-  await page.locator('#sectionEditBtn').click();
+  assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
   const before = await coords(page);
   const a = await page.locator('[data-endpoint=a]').boundingBox();
   const b = await page.locator('[data-endpoint=b]').boundingBox();
@@ -218,8 +217,7 @@ async function checkAB(page, name) {
   await checkLayout(page);
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
-  assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
-  await page.locator('#sectionControlsBtn').click();
+  assert.equal(await page.locator('#sectionCoordsPanel').isHidden(), true);
 }
 
 async function loadProject(page, project, name) {
