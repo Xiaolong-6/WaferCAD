@@ -591,7 +591,21 @@ function maskStructurePatches() {
   ) {
     return maskStructureCache.patches;
   }
-  const patches = surfaceGroups(model, activeFace);
+
+  // Collapse same-height surface groups across materials. The Mask reference
+  // is topography-only: material/color boundaries at the same Z are omitted.
+  const byHeight = new Map();
+  for (const patch of surfaceGroups(model, activeFace)) {
+    const key = String(patch.z);
+    const geoms = byHeight.get(key) || [];
+    geoms.push(patch.geom);
+    byHeight.set(key, geoms);
+  }
+  const patches = [...byHeight.entries()].map(([z, geoms]) => ({
+    z: Number(z),
+    geom: unionGeometries(geoms),
+  }));
+
   maskStructureCache = {
     model,
     revision: model.revision,
@@ -624,14 +638,15 @@ function drawMaskStructureReference(ctx, v) {
   ctx.strokeStyle = 'rgba(59, 70, 82, .56)';
   ctx.lineWidth = 0.85;
 
+  const back = activeFace === 'back';
   for (const patch of maskStructurePatches()) {
-    strokeClosedGeometry(ctx, patch.geom, v, false);
+    strokeClosedGeometry(ctx, patch.geom, v, back);
   }
 
   ctx.setLineDash([5, 4]);
   ctx.strokeStyle = 'rgba(125, 137, 149, .58)';
   ctx.lineWidth = 0.9;
-  strokeClosedGeometry(ctx, model.boundary, v, false);
+  strokeClosedGeometry(ctx, model.boundary, v, back);
   ctx.restore();
 }
 
