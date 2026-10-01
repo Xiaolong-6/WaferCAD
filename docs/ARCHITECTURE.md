@@ -130,7 +130,7 @@ Etch performs physical vertical subtraction and does not accept a coverage mode.
 
 ### Mask
 
-Renders the imported vector layout over an outline-only reference derived from the current active-face surface topography. Same-height material boundaries are collapsed so the reference communicates process steps rather than material color. Mask opacity is display-only and persisted with project/snapshot state. View zoom/pan and opacity never change mask geometry or alignment scale.
+Renders the imported vector layout over an outline-only reference derived from the current active-face surface topography. Mask owns layout alignment and presentation; 3D ROI geometry is edited in Main rather than Mask. Same-height material boundaries are collapsed so the reference communicates process steps rather than material color. Mask opacity is display-only and persisted with project/snapshot state. View zoom/pan and opacity never change mask geometry or alignment scale.
 
 ### Main
 
@@ -155,7 +155,7 @@ Changing the global display/input unit never rescales geometry. Base dimensions,
 
 ## Workspace layout
 
-The editor uses CSS Grid without changing the underlying DOM/view ownership. At widths above 900 px, the landscape grid is **Mask / 3D / Function** on row one and **Main / Section** on row two. The six-column allocation remains 2/2/2 on the first row and 2/4 on the second row, so reordering does not resize the panels.
+The editor uses CSS Grid without changing the underlying DOM/view ownership. At widths above 900 px, the landscape grid is **Main / Mask / Function** on row one and **3D / Section** on row two. The six-column allocation remains 2/2/2 on the first row and 2/4 on the second row, so reordering does not resize the panels.
 
 At widths up to 900 px, the existing narrow layout is preserved: **Function/3D**, **Main/Mask**, then **Section**. Layout changes are presentation-only and do not alter view state, geometry, or project serialization.
 
