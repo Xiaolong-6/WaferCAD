@@ -68,11 +68,27 @@ export function hasMaterial(model) {
   );
 }
 
-export function materialGeometry(model) {
-  const geoms = (model?.regions || [])
-    .filter((region) => !isEmpty(region.geom) && (region.stack || []).length)
-    .map((region) => region.geom);
-  return geoms.length ? unionGeometries(geoms) : [];
+function ringArea(ring) {
+  let sum = 0;
+  for (let index = 1; index < (ring || []).length; index++) {
+    const a = ring[index - 1],
+      b = ring[index];
+    sum += a[0] * b[1] - b[0] * a[1];
+  }
+  return sum / 2;
+}
+
+export function geometryArea(geometry) {
+  let total = 0;
+  for (const polygon of geometry || []) {
+    if (!polygon.length) continue;
+    let area = Math.abs(ringArea(polygon[0]));
+    for (let index = 1; index < polygon.length; index++) {
+      area -= Math.abs(ringArea(polygon[index]));
+    }
+    total += Math.max(0, area);
+  }
+  return total;
 }
 
 export function layerPresent(model, layerId) {
@@ -83,19 +99,18 @@ export function layerPresent(model, layerId) {
   );
 }
 
-export function layerFootprint(model, layerId) {
-  const geoms = (model?.regions || [])
-    .filter((region) =>
-      (region.stack || []).some((segment) => segment.layerId === layerId),
-    )
-    .map((region) => region.geom);
-  return geoms.length ? unionGeometries(geoms) : [];
-}
-
 export function baseCoverageState(model) {
-  const footprint = layerFootprint(model, 'base');
-  if (isEmpty(footprint)) return 'removed';
-  return isEmpty(difference(model.boundary, footprint)) ? 'full' : 'partial';
+  let baseArea = 0;
+  for (const region of model?.regions || []) {
+    if ((region.stack || []).some((segment) => segment.layerId === 'base')) {
+      baseArea += geometryArea(region.geom);
+    }
+  }
+  if (baseArea <= 1e-12) return 'removed';
+
+  const domainArea = geometryArea(model.boundary),
+    tolerance = Math.max(1e-9, domainArea * 1e-9);
+  return baseArea >= domainArea - tolerance ? 'full' : 'partial';
 }
 
 export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
@@ -348,7 +363,10 @@ function applyOperationImpl(
       error: 'No material remains. Recreate the Base before applying another process.',
     };
   }
-  if (isEmpty(intersection(active, materialGeometry(model)))) {
+  const touchesMaterial = model.regions.some(
+    (region) => !isEmpty(intersection(active, region.geom)),
+  );
+  if (!touchesMaterial) {
     return { changed: false, error: 'The selected area contains no material.' };
   }
   let layer = null;
