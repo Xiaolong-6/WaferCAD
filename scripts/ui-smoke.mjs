@@ -464,6 +464,77 @@ await page.mouse.up();
 await page.waitForTimeout(30);
 assert.match(await page.locator('#drawMaskHint').textContent(), /^1 shape/);
 
+// Rectangle/Circle-style shapes open their exact parameter editor on a normal click.
+await page.mouse.click(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5);
+await page.locator('#drawShapeEditor:not([hidden])').waitFor();
+assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Rectangle');
+assert.ok(Number(await page.locator('#drawShapeWidth').inputValue()) > 0);
+assert.ok(Number(await page.locator('#drawShapeHeight').inputValue()) > 0);
+await page.locator('#drawShapeCx').fill('250');
+await page.locator('#drawShapeCy').fill('-125');
+await page.locator('#drawShapeWidth').fill('800');
+await page.locator('#drawShapeHeight').fill('600');
+await page.locator('#drawShapeEditorApply').click();
+assert.match(await page.locator('#statusText').textContent(), /Rectangle parameters updated/);
+await page.locator('#drawShapeEditorClose').click();
+
+// Polygon finishes on double-click and automatically closes to the first point.
+await page.locator('.draw-mask-tool[data-draw-tool="polygon"]').click();
+await page.mouse.click(drawBox.x + drawBox.width * 0.3, drawBox.y + drawBox.height * 0.3);
+await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.3);
+await page.mouse.dblclick(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.38);
+await page.waitForTimeout(30);
+assert.match(await page.locator('#drawMaskHint').textContent(), /^2 shapes/);
+
+// Existing Polygon uses a KLayout-style one-coordinate-pair-per-line editor.
+await page.mouse.dblclick(drawBox.x + drawBox.width * 0.36, drawBox.y + drawBox.height * 0.33);
+await page.locator('#drawShapeEditor:not([hidden])').waitFor();
+assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Polygon');
+const polygonRows = (await page.locator('#drawShapePoints').inputValue())
+  .split(/\r?\n/)
+  .filter(Boolean);
+assert.equal(polygonRows.length, 3);
+assert.ok(polygonRows.every((row) => row.includes(',')));
+await page.locator('#drawShapeEditorClose').click();
+
+// Ring is center + inner/outer radius and remains directly editable afterwards.
+await page.locator('.draw-mask-tool[data-draw-tool="ring"]').click();
+await page.mouse.move(drawBox.x + drawBox.width * 0.65, drawBox.y + drawBox.height * 0.42);
+await page.mouse.down();
+await page.mouse.move(drawBox.x + drawBox.width * 0.73, drawBox.y + drawBox.height * 0.42, {
+  steps: 4,
+});
+await page.mouse.up();
+await page.mouse.click(drawBox.x + drawBox.width * 0.71, drawBox.y + drawBox.height * 0.42);
+await page.locator('#drawShapeEditor:not([hidden])').waitFor();
+assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Ring');
+assert.ok(Number(await page.locator('#drawShapeOuterRadius').inputValue()) > 0);
+assert.ok(
+  Number(await page.locator('#drawShapeOuterRadius').inputValue()) >
+    Number(await page.locator('#drawShapeInnerRadius').inputValue()),
+);
+await page.locator('#drawShapeEditorClose').click();
+
+// Ring Sector adds start/end angles on top of the annular parameters.
+await page.locator('.draw-mask-tool[data-draw-tool="ring-sector"]').click();
+await page.mouse.move(drawBox.x + drawBox.width * 0.66, drawBox.y + drawBox.height * 0.68);
+await page.mouse.down();
+await page.mouse.move(drawBox.x + drawBox.width * 0.75, drawBox.y + drawBox.height * 0.68, {
+  steps: 4,
+});
+await page.mouse.up();
+await page.mouse.click(drawBox.x + drawBox.width * 0.71, drawBox.y + drawBox.height * 0.64);
+await page.locator('#drawShapeEditor:not([hidden])').waitFor();
+assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Ring Sector');
+assert.equal(await page.locator('#drawShapeStartDeg').inputValue(), '0');
+assert.equal(await page.locator('#drawShapeEndDeg').inputValue(), '90');
+await page.locator('#drawShapeStartDeg').fill('300');
+await page.locator('#drawShapeEndDeg').fill('60');
+await page.locator('#drawShapeEditorApply').click();
+assert.match(await page.locator('#statusText').textContent(), /Ring Sector parameters updated/);
+await page.locator('#drawShapeEditorClose').click();
+assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
+
 // The active Draw source feeds Process Selected mask.
 await page.locator('#operationTab').click();
 await page.locator('[data-process-mode="add"]').click();
@@ -479,7 +550,7 @@ assert.equal((await sourceToggle.textContent()).trim(), 'File');
 assert.equal(await page.locator('#maskFileControls').isVisible(), true);
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
-assert.match(await page.locator('#drawMaskHint').textContent(), /^1 shape/);
+assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 
