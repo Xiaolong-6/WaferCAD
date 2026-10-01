@@ -20,6 +20,7 @@ export function createDrawMaskController({
   worldToCanvas,
   xyText,
   renderMask,
+  onMaskChanged = () => {},
   status,
 }) {
   const $ = (id) => root.getElementById(id);
@@ -56,6 +57,7 @@ export function createDrawMaskController({
     setMask(mask);
     syncUi();
     renderMask();
+    onMaskChanged();
     status('Deleted drawn mask shape.', 'success');
   }
 
@@ -79,6 +81,7 @@ export function createDrawMaskController({
     setMode(mode);
     syncUi();
     renderMask();
+    onMaskChanged();
     status(mode === 'draw' ? 'Mask source: Draw.' : 'Mask source: File.');
   }
 
@@ -172,6 +175,7 @@ export function createDrawMaskController({
       mask.shapes.push(shape);
       selectedId = shape.id;
       setMask(mask);
+      onMaskChanged();
       status('Drawn polygon created.', 'success');
     }
     polygonDraft = null;
@@ -191,6 +195,7 @@ export function createDrawMaskController({
       mask.shapes.push(shape);
       selectedId = shape.id;
       setMask(mask);
+      onMaskChanged();
       status(
         shape.type === 'rect' ? 'Drawn rectangle created.' : 'Drawn circle created.',
         'success',
@@ -303,6 +308,7 @@ export function createDrawMaskController({
       setTool(null);
       syncUi();
       renderMask();
+      onMaskChanged();
       status('Cleared drawn mask.', 'success');
     };
 
@@ -433,6 +439,7 @@ export function createDrawMaskController({
           drag = null;
           syncUi();
           renderMask();
+          onMaskChanged();
         }
         if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
         event.preventDefault();
