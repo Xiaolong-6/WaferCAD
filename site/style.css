@@ -854,8 +854,8 @@ canvas {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-rows: minmax(240px, 1fr) minmax(240px, 1fr);
   grid-template-areas:
-    'main main mask mask three three'
-    'tools tools section section section section';
+    'mask mask three three tools tools'
+    'main main section section section section';
 }
 
 #mainPanel {
