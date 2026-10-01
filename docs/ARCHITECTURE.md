@@ -130,7 +130,7 @@ Etch performs physical vertical subtraction and does not accept a coverage mode.
 
 ### Mask
 
-Renders the imported vector layout over an outline-only reference derived from the current active-face surface topography. Mask owns layout alignment and presentation; 3D ROI geometry is edited in Main rather than Mask. Same-height material boundaries are collapsed so the reference communicates process steps rather than material color. Mask opacity is display-only and persisted with project/snapshot state. View zoom/pan and opacity never change mask geometry or alignment scale.
+Mask is a source-neutral workstation view. **File** mode renders the imported vector layout over an outline-only reference derived from current active-face surface topography; **Draw** mode renders project-local Rectangle/Circle/Polygon geometry in canonical wafer/world coordinates. Same-height material boundaries are collapsed so the reference communicates process steps rather than material color. Imported layout data and Draw geometry are stored separately. A single active-mask geometry boundary feeds Process Selected/Invert operations, while Mask opacity remains display-only. 3D ROI geometry is edited in Main rather than Mask.
 
 ### Main
 
@@ -163,7 +163,7 @@ At widths up to 900 px, the existing narrow layout is preserved: **Function/3D**
 
 Projects are JSON files with format identifier `WaferCAD-vector` plus an explicit format version.
 
-The current project format (v5) stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, Rect/Circle/Sector ROI and its reference point, section line, plan-view state, XYZ display unit, structure palette preference, 3D opacity/border state, and named snapshots. Snapshot state never recursively contains the snapshot list. On disk, repeated snapshot layouts and unchanged models are interned into shared assets; physical coordinates and lengths are normalized to 0.1 nm at the persistence boundary while runtime geometry keeps its working precision.
+The current project format (v6) stores the vector model, imported layout data, selected global layers, active cell, mask alignment, active mask source (File/Draw), project-local Draw mask geometry, active face, Rect/Circle/Sector ROI and its reference point, section line, plan-view state, XYZ display unit, structure palette preference, 3D opacity/border state, and named snapshots. Snapshot state never recursively contains the snapshot list. On disk, repeated snapshot layouts and unchanged models are interned into shared assets; physical coordinates and lengths are normalized to 0.1 nm at the persistence boundary while runtime geometry keeps its working precision.
 
 `site/project-schema.js` owns migration into the current version before validation. Legacy files without an explicit version are migrated with deterministic defaults rather than inheriting unrelated session state.
 
