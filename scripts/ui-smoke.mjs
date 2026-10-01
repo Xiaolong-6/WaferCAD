@@ -443,6 +443,46 @@ await page.locator('#focusEditor > summary').click();
 await page.locator('#maskCanvas').dblclick();
 assert.deepEqual(errors, [], 'Mask double-click Fit must not raise a browser error.');
 
+// File / Draw keeps imported and temporary mask sources separate.
+const sourceToggle = page.locator('#maskSourceToggleBtn');
+assert.equal((await sourceToggle.textContent()).trim(), 'File');
+await sourceToggle.click();
+assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
+assert.equal(await page.locator('#drawMaskToolbar').isVisible(), true);
+assert.equal(await page.locator('#maskFileControls').isHidden(), true);
+assert.equal(await page.locator('#maskDrawInfo').isVisible(), true);
+
+const drawBox = await page.locator('#maskCanvas').boundingBox();
+assert.ok(drawBox);
+await page.locator('.draw-mask-tool[data-draw-tool="rect"]').click();
+await page.mouse.move(drawBox.x + drawBox.width * 0.43, drawBox.y + drawBox.height * 0.43);
+await page.mouse.down();
+await page.mouse.move(drawBox.x + drawBox.width * 0.57, drawBox.y + drawBox.height * 0.57, {
+  steps: 4,
+});
+await page.mouse.up();
+await page.waitForTimeout(30);
+assert.match(await page.locator('#drawMaskHint').textContent(), /^1 shape/);
+
+// The active Draw source feeds Process Selected mask.
+await page.locator('#operationTab').click();
+await page.locator('[data-process-mode="add"]').click();
+await page.locator('#operationArea').selectOption('mask');
+await page.locator('#operationThickness').fill('0.2');
+await page.locator('#layerName').fill('Draw probe');
+await page.locator('#applyOperationBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /^Deposited Draw probe/);
+
+// Switching sources never destroys either source.
+await sourceToggle.click();
+assert.equal((await sourceToggle.textContent()).trim(), 'File');
+assert.equal(await page.locator('#maskFileControls').isVisible(), true);
+await sourceToggle.click();
+assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
+assert.match(await page.locator('#drawMaskHint').textContent(), /^1 shape/);
+await sourceToggle.click();
+assert.equal((await sourceToggle.textContent()).trim(), 'File');
+
 // SVG exports and in-page maximize controls are wired for all 2D views.
 for (const [button, filename] of [
   ['#mainExportSvgBtn', 'wafercad-main.svg'],
