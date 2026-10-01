@@ -168,6 +168,11 @@ const sectionControls = createSectionControlsController({
   setSectionEditEnabledValue: (value) => {
     sectionEditEnabled = value;
   },
+  closeRoiControls: () => {
+    const editor = $('focusEditor');
+    if (editor) editor.open = false;
+    clearRoiDrawingMode();
+  },
   getModel: () => model,
   xyUnitLabel: () => xyUnit().label,
   formatLengthField,
@@ -180,6 +185,8 @@ const {
   syncInputs: syncSectionInputs,
   setEditEnabled: setSectionEditEnabled,
   setPanelVisible: setSectionPanelVisible,
+  completeCreate: completeSectionCreate,
+  cancelCreate: cancelSectionCreate,
 } = sectionControls;
 
 function xyUnit() {
@@ -327,6 +334,7 @@ const roiController = createRoiController({
   setRoiAnchor: (value) => {
     roiAnchor = value;
   },
+  getActiveFace: () => activeFace,
   xyUnitLabel: () => xyUnit().label,
   formatLengthField,
   formatNumericField,
@@ -337,7 +345,9 @@ const roiController = createRoiController({
   canvasToWorld,
   worldToCanvas,
   zoomPlanView,
-  renderMask,
+  resetPlanView,
+  closeSliceControls: () => setSectionPanelVisible(false, { create: false }),
+  renderMain,
   renderAll,
   status,
 });
@@ -520,7 +530,7 @@ function traceElement(ctx, e, v, selected) {
     ctx.stroke();
   }
 }
-function drawRoi(ctx, v) {
+function drawRoi(ctx, v, back = false) {
   if (!roi && !roiDraft) return;
   const r = roiDraft || roi;
   ctx.save();
@@ -530,15 +540,15 @@ function drawRoi(ctx, v) {
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   if (r.type === 'rect') {
-    const a = worldToCanvas(r.a, v),
-      b = worldToCanvas(r.b, v);
+    const a = worldToCanvas(r.a, v, back),
+      b = worldToCanvas(r.b, v, back);
     ctx.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
   } else if (r.type === 'circle') {
-    const c = worldToCanvas(r.c, v);
+    const c = worldToCanvas(r.c, v, back);
     ctx.arc(c[0], c[1], r.r * v.s, 0, Math.PI * 2);
   } else if (r.type === 'sector') {
     sectorBoundaryPoints(r, 96)
-      .map((point) => worldToCanvas(point, v))
+      .map((point) => worldToCanvas(point, v, back))
       .forEach((point, index) => {
         if (index === 0) ctx.moveTo(point[0], point[1]);
         else ctx.lineTo(point[0], point[1]);
@@ -552,7 +562,7 @@ function drawRoi(ctx, v) {
     ctx.setLineDash([]);
     ctx.lineWidth = 1;
     for (const point of Object.values(roiHandlePoints(roi))) {
-      const q = worldToCanvas(point, v);
+      const q = worldToCanvas(point, v, back);
       ctx.fillStyle = '#fff';
       ctx.strokeStyle = '#d65361';
       ctx.fillRect(q[0] - 5, q[1] - 5, 10, 10);
@@ -560,7 +570,7 @@ function drawRoi(ctx, v) {
     }
     if (roi.type === 'sector') {
       for (const point of Object.values(sectorAngleHandlePoints(roi))) {
-        const q = worldToCanvas(point, v);
+        const q = worldToCanvas(point, v, back);
         ctx.beginPath();
         ctx.arc(q[0], q[1], 4.5, 0, Math.PI * 2);
         ctx.fillStyle = '#f5c04a';
@@ -667,7 +677,6 @@ function renderMask() {
   for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
   ctx.restore();
 
-  drawRoi(ctx, v);
   drawPlanAxes(ctx, v, w, h, false);
   scheduleWorkspacePersistence();
 }
@@ -706,6 +715,7 @@ function renderMain() {
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.restore();
+  drawRoi(ctx, v, back);
   const a = worldToCanvas(section.a, v, back),
     b = worldToCanvas(section.b, v, back);
   ctx.strokeStyle = '#cc5062';
@@ -714,18 +724,6 @@ function renderMain() {
   ctx.moveTo(...a);
   ctx.lineTo(...b);
   ctx.stroke();
-  for (const [p, label] of [
-    [a, 'A'],
-    [b, 'B'],
-  ]) {
-    if (sectionEditEnabled) continue;
-    ctx.fillStyle = '#cc5062';
-    ctx.beginPath();
-    ctx.arc(p[0], p[1], 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.font = '700 9px system-ui';
-    ctx.fillText(label, p[0] + 6, p[1] - 6);
-  }
   drawPlanAxes(ctx, v, w, h, back);
   syncSectionInputs();
   sectionEditor?.update();
@@ -1216,7 +1214,10 @@ const mainCanvasController = createMainCanvasController({
     section = value;
   },
   getActiveFace: () => activeFace,
-  setSectionEditEnabled,
+  getSectionCreateMode: () => sectionEditEnabled,
+  isRoiDrawing: () => Boolean(roiTool),
+  completeSectionCreate,
+  cancelSectionCreate,
   setSectionEditor: (value) => {
     sectionEditor = value;
   },
