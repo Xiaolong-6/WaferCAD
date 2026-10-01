@@ -526,9 +526,11 @@ assert.ok(Number(await page.locator('#drawShapeHeight').inputValue()) > 0);
 
 // Dragging a selected shape keeps the editor open and live-syncs its numeric fields.
 const rectCxBeforeDrag = Number(await page.locator('#drawShapeCx').inputValue());
-await page.mouse.move(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5);
+// Avoid the preceding selection click being interpreted as the first click of a double-click.
+await page.waitForTimeout(600);
+await page.mouse.move(drawBox.x + drawBox.width * 0.47, drawBox.y + drawBox.height * 0.5);
 await page.mouse.down();
-await page.mouse.move(drawBox.x + drawBox.width * 0.53, drawBox.y + drawBox.height * 0.5, {
+await page.mouse.move(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5, {
   steps: 4,
 });
 const rectCxDuringDrag = Number(await page.locator('#drawShapeCx').inputValue());
