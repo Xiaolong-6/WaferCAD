@@ -558,7 +558,7 @@ function drawRoi(ctx, v, back = false) {
   ctx.fill();
   ctx.stroke();
 
-  if (!roiDraft && roi) {
+  if (!roiDraft && roi && !sectionEditEnabled && !roiTool) {
     ctx.setLineDash([]);
     ctx.lineWidth = 1;
     for (const point of Object.values(roiHandlePoints(roi))) {
