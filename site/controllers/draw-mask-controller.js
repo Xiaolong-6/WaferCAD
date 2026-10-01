@@ -20,6 +20,7 @@ export function createDrawMaskController({
   worldToCanvas,
   xyText,
   renderMask,
+  syncSourceSummary = () => {},
   onMaskChanged = () => {},
   status,
 }) {
@@ -115,6 +116,7 @@ export function createDrawMaskController({
     if (draw && $('maskCellLabel')) {
       $('maskCellLabel').textContent = `${mask.shapes.length} drawn`;
     }
+    syncSourceSummary();
   }
 
   function screenPoint(event, canvas) {
