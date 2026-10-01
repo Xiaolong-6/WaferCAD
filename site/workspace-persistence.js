@@ -54,8 +54,9 @@ export async function loadWorkspaceState() {
   const database = await openDatabase();
   try {
     const transaction = database.transaction(STORE_NAME, 'readonly');
+    const done = transactionDone(transaction);
     const record = await requestResult(transaction.objectStore(STORE_NAME).get(RECORD_KEY));
-    await transactionDone(transaction);
+    await done;
     if (!record?.project) return null;
     return validateProjectFile(migrateProjectFile(record.project));
   } finally {
