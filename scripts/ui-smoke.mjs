@@ -207,7 +207,13 @@ await page.locator('#layerName').fill('UI conformal');
 assert.equal(await page.locator('#growthMode').inputValue(), 'conformal');
 assert.match(await page.locator('#operationNote').textContent(), /Conformal/);
 await page.locator('#applyOperationBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /Deposited UI conformal/);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
+await page.waitForFunction(() =>
+  /Deposited UI conformal/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI conformal project');
@@ -545,7 +551,12 @@ await page.locator('#operationArea').selectOption('mask');
 await page.locator('#operationThickness').fill('0.2');
 await page.locator('#layerName').fill('Draw probe');
 await page.locator('#applyOperationBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /^Deposited Draw probe/);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
+await page.waitForFunction(() =>
+  /^Deposited Draw probe/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
 
 // Switching sources never destroys either source.
 await sourceToggle.click();
@@ -560,12 +571,39 @@ assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 
-// SVG exports and in-page maximize controls are wired for all 2D views.
-for (const [button, filename] of [
-  ['#mainExportSvgBtn', 'wafercad-main.svg'],
-  ['#maskExportSvgBtn', 'wafercad-mask.svg'],
-  ['#sectionExportSvgBtn', 'wafercad-section-ab.svg'],
+// Mask owns a separate Square/Circle ROI used by Process and Mask export.
+await page.locator('#maskRoiEditor > summary').click();
+await page.locator('.mask-roi-tool[data-tool="rect"]').click();
+const maskRoiCanvas = await page.locator('#maskCanvas').boundingBox();
+assert.ok(maskRoiCanvas);
+await page.mouse.move(
+  maskRoiCanvas.x + maskRoiCanvas.width * 0.38,
+  maskRoiCanvas.y + maskRoiCanvas.height * 0.38,
+);
+await page.mouse.down();
+await page.mouse.move(
+  maskRoiCanvas.x + maskRoiCanvas.width * 0.62,
+  maskRoiCanvas.y + maskRoiCanvas.height * 0.58,
+  { steps: 4 },
+);
+await page.mouse.up();
+await page.locator('#maskRoiEditor > summary').click();
+assert.equal(await page.locator('#maskRoiFields').isVisible(), true);
+assert.equal((await page.locator('#maskRoiShapeLabel').textContent()).trim(), 'Square');
+assert.ok(Number(await page.locator('#maskRoiSize').inputValue()) > 0);
+await page.locator('#maskRoiEditor > summary').click();
+
+// Each view exposes one Export menu; format-specific actions live inside it.
+for (const [panel, button, filename] of [
+  ['#mainPanel', '#mainExportSvgBtn', 'wafercad-main.svg'],
+  ['#maskPanel', '#maskExportSvgBtn', 'wafercad-mask.svg'],
+  ['#sectionPanel', '#sectionExportSvgBtn', 'wafercad-section-ab.svg'],
 ]) {
+  await page.locator(`${panel} .export-control > summary`).click();
+  if (panel === '#maskPanel') {
+    assert.ok((await page.locator('#maskExportCells option:checked').count()) > 0);
+    assert.ok((await page.locator('#maskExportLayers option:checked').count()) > 0);
+  }
   const downloadPromise = page.waitForEvent('download');
   await page.locator(button).click();
   const download = await downloadPromise;
@@ -608,9 +646,11 @@ await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
 await page.locator('#fit3dBtn').click();
 
+await page.locator('#threePanel .export-control > summary').click();
 const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
 assert.equal((await glbDownloadPromise).suggestedFilename(), 'wafercad-model.glb');
+await page.locator('#threePanel .export-control > summary').click();
 const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportPngBtn').click();
 assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png');
