@@ -393,7 +393,20 @@ function validateDrawMask(drawMask) {
       validatePointArray(shape.points, `${path}.points`, { min: 3, budget: { points: 0 } });
       return;
     }
-    fail(`${path}.type`, 'must be rect, circle, or polygon.');
+    if (shape.type === 'ring' || shape.type === 'ring-sector') {
+      assertPoint(shape.c, `${path}.c`);
+      assertFinite(shape.innerR, `${path}.innerR`, { min: 0 });
+      assertFinite(shape.outerR, `${path}.outerR`, { min: 0 });
+      if (!(shape.outerR > shape.innerR)) {
+        fail(`${path}.outerR`, 'must be greater than innerR.');
+      }
+      if (shape.type === 'ring-sector') {
+        assertFinite(shape.startDeg, `${path}.startDeg`);
+        assertFinite(shape.endDeg, `${path}.endDeg`);
+      }
+      return;
+    }
+    fail(`${path}.type`, 'must be rect, circle, polygon, ring, or ring-sector.');
   });
 }
 
