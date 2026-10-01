@@ -154,7 +154,7 @@ export function createExportController({
       width = Math.max(2, rect.width),
       height = Math.max(2, rect.height),
       view = viewport(width, height, 'mask'),
-      map = (point) => worldToCanvas(point, view, back);
+      map = (point) => worldToCanvas(point, view);
     let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
 
     for (const element of layout.linework || []) {
