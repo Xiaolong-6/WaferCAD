@@ -308,6 +308,8 @@ const exportController = createExportController({
     activeFace,
     section,
     maskTransform,
+    maskSourceMode,
+    drawMask,
     roi,
     sectionScaleMode,
   }),
