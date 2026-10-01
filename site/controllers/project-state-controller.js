@@ -56,10 +56,14 @@ export function createProjectStateController({
         customStructurePalette: state.customStructurePalette,
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
+        sectionScaleMode: state.sectionScaleMode,
       },
     };
 
-    if (includeSnapshots) project.snapshots = getSnapshotRecords();
+    if (includeSnapshots) {
+      project.name = state.projectName;
+      project.snapshots = getSnapshotRecords();
+    }
     return project;
   }
 
@@ -77,7 +81,10 @@ export function createProjectStateController({
           ? project.display.structurePalette
           : undefined,
       threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1)),
-      threeShowBorders = Boolean(project.display?.threeShowBorders);
+      threeShowBorders = Boolean(project.display?.threeShowBorders),
+      sectionScaleMode = ['auto', 'physical'].includes(project.display?.sectionScaleMode)
+        ? project.display.sectionScaleMode
+        : 'auto';
 
     applyState({
       model,
@@ -102,6 +109,8 @@ export function createProjectStateController({
         : null,
       threeOpacity,
       threeShowBorders,
+      sectionScaleMode,
+      ...(project.name ? { projectName: project.name } : {}),
       planViews: project.planViews,
     });
 
@@ -125,6 +134,8 @@ export function createProjectStateController({
       roi: null,
       roiAnchor: 'center',
       section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
+      projectName: 'Untitled',
+      sectionScaleMode: 'auto',
       xyDisplayUnit: previous.xyDisplayUnit,
       activeStructurePalette: previous.activeStructurePalette,
       customStructurePalette: previous.customStructurePalette,
