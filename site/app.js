@@ -958,7 +958,7 @@ function applyOp() {
   }
 
   const growthLabel =
-    type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Direct';
+    type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Directional';
   status(
     `${type === 'etch' ? 'Etched' : type === 'grow' ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}` : `Deposited ${name}`}${growthLabel} on the ${activeFace}.`,
     'success',
