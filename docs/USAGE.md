@@ -73,14 +73,14 @@ Choose an area:
 - Invert mask;
 - Whole face.
 
-For Add and Grow, choose:
+For Deposit and Extend, choose:
 
-- Direct;
+- Directional;
 - Conformal.
 
 Etch has no coverage setting.
 
-Z is physical and stored internally in µm. Add/Grow use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Direct growth first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
+Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
 
 ## 7. Manage layers
 
@@ -88,7 +88,7 @@ The Section A–B layer legend is also the layer manager.
 
 Each row lets you edit the layer name. Color is intentionally a secondary visual setting: choose from the active curated palette by clicking the layer swatch. The legend header provides several preset palettes and a Random action that generates a harmonious palette. Arbitrary color-picker input is not exposed.
 
-Layer identity is stored separately from the visible name, so renaming or recoloring does not break Grow, Etch, Undo, or saved projects.
+Layer identity is stored separately from the visible name, so renaming or recoloring does not break Extend, Etch, Undo, or saved projects.
 
 ## 8. Inspect Main and Section
 
