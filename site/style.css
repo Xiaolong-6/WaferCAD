@@ -1840,6 +1840,22 @@ body.welcome-open {
   border-top-color: #bfd0df;
   color: #435f78;
 }
+.statusbar[data-level='progress'] {
+  background: #f3f7fb;
+  border-top-color: #b7cadd;
+  color: #435f78;
+}
+.statusbar[data-level='progress'] #statusText::before {
+  content: '◌';
+  display: inline-block;
+  margin-right: 5px;
+  animation: wafercad-status-spin 0.9s linear infinite;
+}
+@keyframes wafercad-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .statusbar[data-level='warning'] {
   background: #fff8e8;
   border-top-color: #ead39b;
@@ -1876,7 +1892,8 @@ body.welcome-open {
   border-left-color: #5f9f73;
   background: #f8fcf9;
 }
-.feedback-toast.info {
+.feedback-toast.info,
+.feedback-toast.progress {
   border-left-color: #6f8ca8;
   background: #f7fafd;
 }
