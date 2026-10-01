@@ -4,7 +4,7 @@ WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-d
 
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
-- **Mask** — GDSII/OASIS hierarchy, global layer/datatype selection, alignment, an adjustable-opacity mask overlay above the current active-face topography outline, and Rect/Circle/Sector render-only 3D ROI.
+- **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon), with adjustable opacity above the current active-face topography outline.
 - **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, physical GLB export, and 3× PNG capture.
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
@@ -75,7 +75,7 @@ npm run check
 
 ## Project-file safety
 
-Project JSON is versioned and migrated before it can replace the current editor state. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Project v5 deduplicates repeated snapshot layout/model assets and normalizes persisted physical lengths to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
+Project JSON is versioned and migrated before it can replace the current editor state. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Project v6 adds persisted File/Draw mask-source state and project-local drawn mask geometry, while retaining shared snapshot layout/model assets and 0.1 nm persistence normalization. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
 
