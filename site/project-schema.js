@@ -432,7 +432,11 @@ function validateSnapshotRecords(snapshots, shared) {
   });
 }
 
-function validateProjectCore(project, allowSnapshots, shared = { models: new WeakSet(), layouts: new WeakSet() }) {
+function validateProjectCore(
+  project,
+  allowSnapshots,
+  shared = { models: new WeakSet(), layouts: new WeakSet() },
+) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
   if (project.version != null) {
