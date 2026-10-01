@@ -5,8 +5,9 @@
 The v1 architecture in this document is implemented on the feature branch:
 
 - File/Draw source toggle;
-- Rect/Circle/Polygon Draw geometry;
-- one-shot creation with direct move/resize/vertex editing afterwards;
+- Rect/Circle/Polygon/Ring/Ring Sector Draw geometry;
+- one-shot creation with direct move/resize/vertex/angle editing afterwards;
+- exact per-shape parameter popover, including multiline Polygon coordinates;
 - Delete/Clear actions;
 - File and Draw state preserved independently;
 - Draw state persisted in project v6, snapshots, and autosave;
@@ -15,7 +16,7 @@ The v1 architecture in this document is implemented on the feature branch:
 - Mask Fit/zoom uses the active source;
 - Draw geometry remains separate from imported GDS/OAS data.
 
-Numeric per-shape fields and Draw-to-GDS/OAS export remain future extensions.
+Draw-to-GDS/OAS export remains a future extension.
 
 ## Goal
 
