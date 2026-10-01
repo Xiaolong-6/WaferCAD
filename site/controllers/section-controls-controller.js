@@ -4,6 +4,7 @@ export function createSectionControlsController({
   setSection,
   getSectionEditor,
   setSectionEditEnabledValue,
+  closeRoiControls = () => {},
   xyUnitLabel,
   formatLengthField,
   manualMicron,
@@ -42,31 +43,71 @@ export function createSectionControlsController({
     renderSection();
   }
 
-  function setEditEnabled(enabled) {
+  function setCreateMode(enabled) {
     const active = Boolean(enabled);
-    const panel = $('sectionCoordsPanel'),
-      button = $('sectionControlsBtn');
     setSectionEditEnabledValue(active);
-    panel.hidden = !active;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-expanded', String(active));
-    button.title = active ? 'Close Slice controls' : 'Open Slice controls';
     $('mainCanvas').classList.toggle('section-editing', active);
-    getSectionEditor()?.setEnabled(active);
-    renderMain();
-    status(active ? 'A–B endpoint dragging enabled.' : 'A–B endpoint dragging locked.');
+    getSectionEditor()?.update();
   }
 
-  function setPanelVisible(visible) {
-    setEditEnabled(visible);
+  function syncPanelState() {
+    const panel = $('sectionCoordsPanel'),
+      button = $('sectionControlsBtn'),
+      visible = !panel.hidden;
+    button.classList.toggle('active', visible);
+    button.setAttribute('aria-expanded', String(visible));
+    button.title = visible ? 'Close Slice controls' : 'Create or edit Slice';
+  }
+
+  function setPanelVisible(visible, { create = visible } = {}) {
+    const panel = $('sectionCoordsPanel');
+    if (visible) closeRoiControls();
+    panel.hidden = !visible;
+    setCreateMode(visible && create);
+    syncPanelState();
+    renderMain();
+  }
+
+  function setEditEnabled(enabled) {
+    // Compatibility entry point used by project load/reset. Existing Slice
+    // geometry remains editable even when the creation mode is off.
+    if (enabled) setPanelVisible(true, { create: true });
+    else setPanelVisible(false, { create: false });
+  }
+
+  function completeCreate() {
+    setCreateMode(false);
+    syncPanelState();
+    renderMain();
+    renderSection();
+    status('Slice created. Drag A/B or the line itself to adjust it.');
+  }
+
+  function cancelCreate() {
+    setCreateMode(false);
+    syncPanelState();
+    renderMain();
   }
 
   function bind() {
-    $('sectionControlsBtn').onclick = () => setPanelVisible($('sectionCoordsPanel').hidden);
+    $('sectionControlsBtn').onclick = () => {
+      const panel = $('sectionCoordsPanel');
+      setPanelVisible(panel.hidden, { create: panel.hidden });
+    };
     for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy']) {
       $(id).onchange = updateFromInputs;
     }
+    syncPanelState();
   }
 
-  return { bind, syncInputs, updateFromInputs, setEditEnabled, setPanelVisible };
+  return {
+    bind,
+    syncInputs,
+    updateFromInputs,
+    setEditEnabled,
+    setPanelVisible,
+    setCreateMode,
+    completeCreate,
+    cancelCreate,
+  };
 }
