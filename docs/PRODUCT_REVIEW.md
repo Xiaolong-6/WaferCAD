@@ -26,6 +26,12 @@ Narrow tool headers wrap deliberately; mobile base fields use full input rows, a
 
 Canvas ResizeObservers redraw after panel layout changes. This prevents stretched Mask/Section images when opening the mobile coordinate controls. 3D Fit uses the camera aspect ratio, field of view and bounding radius to keep the full model inside the panel.
 
+## Main geometry interaction
+
+Main geometry editing is intentionally tool-light: existing Slice and ROI objects remain directly editable even when their parameter popovers are closed. Slice endpoints and the whole A–B line are draggable; ROI bodies and handles remain draggable/resizable. Slice and ROI buttons start one-shot creation or expose exact numeric controls rather than acting as edit locks. Their popovers are mutually exclusive.
+
+Mask no longer owns ROI interaction. Main and Mask both support double-click Fit. The desktop landscape order is Main / Mask / Function above 3D / Section; narrow layouts remain unchanged.
+
 ## Workstation visual hierarchy
 
 The editor uses a compact engineering/CAD workstation visual system. Information density and panel geometry stay unchanged; hierarchy comes from surface treatment rather than added whitespace.
