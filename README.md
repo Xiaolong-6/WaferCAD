@@ -39,11 +39,11 @@ Operations can target the front or back face and use one of three areas:
 
 Available actions:
 
-- Add new layer
-- Grow current layer
+- Deposit new layer
+- Extend existing layer
 - Etch / subtract
 
-Add and Grow support Direct and Conformal modes. Etch is vertical subtraction and has no growth mode.
+Deposit and Extend support Directional and Conformal coverage. Etch is vertical subtraction and has no coverage mode.
 
 ## Safety
 
