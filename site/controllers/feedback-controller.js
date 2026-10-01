@@ -9,6 +9,7 @@ export function createFeedbackController({ root = document } = {}) {
     if (/failed|invalid|must be|unavailable|requires|cannot|error/i.test(text)) return 'error';
     if (/warning|no material|removed|select .* first|not exposed|did not change|skipped/i.test(text))
       return 'warning';
+    if (/reading|preparing|loading|importing|resolving/i.test(text)) return 'progress';
     if (/saved|opened|restored|exported|added|grew|etched|deleted|applied|imported/i.test(text))
       return 'success';
     return 'passive';
@@ -35,7 +36,13 @@ export function createFeedbackController({ root = document } = {}) {
     toastHost.append(toast);
 
     const timeout =
-      resolved === 'error' ? 0 : resolved === 'warning' ? 5200 : resolved === 'info' ? 3600 : 2800;
+      resolved === 'error' || resolved === 'progress'
+        ? 0
+        : resolved === 'warning'
+          ? 5200
+          : resolved === 'info'
+            ? 3600
+            : 2800;
     if (timeout) {
       toastTimer = setTimeout(() => {
         toast.remove();
