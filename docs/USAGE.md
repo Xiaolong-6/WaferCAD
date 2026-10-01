@@ -135,4 +135,4 @@ The **Base** is a physical material in the vector stack, while `model.boundary` 
 
 **Process → Extend** lists only layers exposed on the active face in the selected process area. **Base** is a valid Extend target whenever it is exposed. Buried layers are not offered as Extend targets.
 
-Workspace feedback is typed: passive information stays in the status bar, successful actions and warnings use transient notices, errors remain visible, and field-level process validation appears next to the relevant control.
+Workspace feedback is centralized in the bottom status bar. Passive, progress, success, warning, and error states use distinct status-bar treatments so the same runtime message is not repeated in the Process panel or a toast.

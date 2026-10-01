@@ -449,7 +449,7 @@ assert.equal(
 );
 
 // 3D inspection controls should operate without runtime errors.
-await page.locator('.three-opacity-control > summary').click();
+await page.locator('#threePanel .three-opacity-control > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
 const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();

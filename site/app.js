@@ -915,20 +915,6 @@ function syncBaseControls() {
     .querySelectorAll('#substrateShape button')
     .forEach((b) => b.classList.toggle('active', b.dataset.shape === model.shape));
 }
-function clearOperationValidation() {
-  const host = $('operationValidation');
-  if (!host) return;
-  host.textContent = '';
-  host.hidden = true;
-}
-
-function operationValidation(message) {
-  const host = $('operationValidation');
-  if (!host) return;
-  host.textContent = message;
-  host.hidden = !message;
-}
-
 function updateGrowTargets() {
   const select = $('targetLayer');
   if (!select) return;
@@ -963,35 +949,25 @@ function updateOperationUI() {
   const materialExists = hasMaterial(model);
   $('applyOperationBtn').disabled = !materialExists;
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
-  $('processSummary').textContent = materialExists
-    ? `${faceLabel} · ${t === 'add' ? 'Deposit layer' : t === 'grow' ? 'Extend layer' : 'Etch'}`
-    : 'No material · recreate Base';
+  $('processSummary').textContent =
+    `${faceLabel} · ${t === 'add' ? 'Deposit layer' : t === 'grow' ? 'Extend layer' : 'Etch'}`;
 
-  if (!materialExists) {
-    $('operationNote').textContent =
-      'No material remains. Recreate the Base before applying another process.';
-    return;
-  }
+  $('operationNote').hidden = !materialExists;
+  if (!materialExists) return;
 
   $('operationNote').textContent =
     t === 'etch'
       ? 'Etch removes material vertically and may create through-holes.'
-      : t === 'grow' && !$('targetLayer').options.length
-        ? 'No exposed layer is available to extend in the selected area on this face.'
-        : $('growthMode').value === 'conformal'
-          ? 'Conformal coverage follows exposed steps and includes sidewalls.'
-          : 'Directional coverage follows the selected footprint.';
+      : $('growthMode').value === 'conformal'
+        ? 'Conformal coverage follows exposed steps and includes sidewalls.'
+        : 'Directional coverage follows the selected footprint.';
 }
 
 function applyOp() {
-  clearOperationValidation();
   const type = $('operationType').value,
     thickness = manualMicron($('operationThickness').value);
   $('operationThickness').value = formatLengthField(thickness);
-  if (!(thickness > 0)) {
-    operationValidation('Enter a thickness/depth greater than zero.');
-    return status('Thickness must be greater than zero.', 'error');
-  }
+  if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
 
   const areaMode = $('operationArea').value,
     area = operationAreaGeometry(areaMode);

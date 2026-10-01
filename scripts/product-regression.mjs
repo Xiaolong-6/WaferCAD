@@ -357,9 +357,9 @@ try {
     await capture(page, `${name}-empty`);
     await checkLayout(page);
     await checkAB(page, name);
-    await page.locator('.three-opacity-control > summary').click();
-    await checkPopover(page, '.three-opacity-popover', '#threePanel');
-    await page.locator('.three-opacity-control > summary').click();
+    await page.locator('#threePanel .three-opacity-control > summary').click();
+    await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
+    await page.locator('#threePanel .three-opacity-control > summary').click();
     for (const tab of ['base', 'mask', 'operation', 'snapshots', 'settings']) {
       await page.locator(`#${tab}Tab`).click();
       await capture(page, `${name}-tab-${tab}`);

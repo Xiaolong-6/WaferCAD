@@ -1785,12 +1785,6 @@ body.welcome-open {
   font-size: 11px;
 }
 
-.field-message {
-  margin: 2px 0 5px 77px;
-  color: #a33e4b;
-  font-size: 9.5px;
-  line-height: 1.25;
-}
 
 #applyOperationBtn:disabled {
   opacity: 0.45;
@@ -1867,44 +1861,6 @@ body.welcome-open {
   color: #923746;
 }
 
-.feedback-toasts {
-  position: fixed;
-  z-index: 30;
-  left: 10px;
-  bottom: 28px;
-  display: grid;
-  gap: 5px;
-  width: min(420px, calc(100vw - 20px));
-  pointer-events: none;
-}
-.feedback-toast {
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-left-width: 3px;
-  border-radius: 5px;
-  background: #fff;
-  box-shadow: 0 5px 16px rgba(38, 48, 58, 0.12);
-  color: #43505c;
-  font-size: 10.5px;
-  line-height: 1.35;
-}
-.feedback-toast.success {
-  border-left-color: #5f9f73;
-  background: #f8fcf9;
-}
-.feedback-toast.info,
-.feedback-toast.progress {
-  border-left-color: #6f8ca8;
-  background: #f7fafd;
-}
-.feedback-toast.warning {
-  border-left-color: #c89a38;
-  background: #fffaf0;
-}
-.feedback-toast.error {
-  border-left-color: #bd5665;
-  background: #fff6f7;
-}
 
 @media (max-width: 900px) {
   .tool-tab-panel .field-row {
@@ -2296,11 +2252,6 @@ summary:focus-visible {
   color: #74818d;
 }
 
-.feedback-toast {
-  border-color: #d1d8df;
-  border-radius: 4px;
-  box-shadow: 0 7px 20px rgba(31, 41, 51, 0.12);
-}
 
 /* Keep semantic feedback noticeable without turning the status bar into a banner. */
 .statusbar[data-level='success'] {

@@ -25,17 +25,18 @@ test('function panel uses Process and Project labels with segmented process mode
   assert.match(html, /<span>Coverage<\/span\s*>/);
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
-  assert.match(html, /id="operationValidation"/);
 });
 
-test('typed feedback exposes passive, progress, success, warning and error states', () => {
+test('typed feedback is centralized in the status bar', () => {
   assert.match(html, /id="statusBar"[^>]*data-level="passive"/);
-  assert.match(html, /id="feedbackToasts"/);
+  assert.doesNotMatch(html, /id="feedbackToasts"/);
+  assert.doesNotMatch(html, /id="operationValidation"/);
   assert.match(feedback, /return 'progress'/);
   assert.match(feedback, /return 'warning'/);
   assert.match(feedback, /return 'success'/);
   assert.match(feedback, /return 'error'/);
   assert.match(feedback, /return 'passive'/);
+  assert.doesNotMatch(feedback, /createElement\('div'\)/);
 });
 
 test('Process UI is driven by material presence and exposed Extend targets', () => {

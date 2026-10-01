@@ -92,7 +92,7 @@ WaferCAD should read as a compact engineering/CAD workstation rather than a coll
 - fields and selects share the same compact control height, radius and focus ring;
 - primary actions use the steel-blue accent; secondary/quiet actions remain neutral;
 - tool tabs should not introduce per-tab boxed borders;
-- semantic feedback colors are reserved for success, information/progress, warning and error states.
+- runtime feedback is centralized in the bottom status bar; semantic colors are reserved for success, information/progress, warning and error states. Do not duplicate the same message in panel hints or toast overlays.
 
 Do not create a one-off visual language for a new panel or control when an existing workstation control pattern fits.
 
