@@ -225,7 +225,7 @@ export function createExportController({
       cells = new Set(),
       layers = new Map();
     for (const element of [...(layout.elements || []), ...(layout.linework || [])]) {
-      if (element.sourceCell) cells.add(element.sourceCell);
+      cells.add(element.sourceCell || layout.root || 'ROOT');
       layers.set(layerKey(element.layer, element.datatype), `${element.layer}/${element.datatype}`);
     }
 
@@ -293,7 +293,7 @@ export function createExportController({
         const key = layerKey(element.layer, element.datatype);
         if (
           !Array.isArray(element.points) ||
-          !cells.has(element.sourceCell) ||
+          !cells.has(element.sourceCell || layout.root || 'ROOT') ||
           !layers.has(key)
         ) continue;
 
@@ -321,7 +321,7 @@ export function createExportController({
           if (
             !Array.isArray(element.points) ||
             element.points.length < 2 ||
-            !cells.has(element.sourceCell) ||
+            !cells.has(element.sourceCell || layout.root || 'ROOT') ||
             !layers.has(key)
           ) continue;
           const points = element.points.map(maskPoint).map(map),
