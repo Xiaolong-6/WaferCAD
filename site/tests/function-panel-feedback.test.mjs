@@ -15,6 +15,10 @@ test('function panel uses Process and Project labels with segmented process mode
   for (const mode of ['add', 'grow', 'etch']) {
     assert.match(html, new RegExp(`data-process-mode="${mode}"`));
   }
+  assert.match(html, />\s*Deposit\s*<\/button>/);
+  assert.match(html, />\s*Extend\s*<\/button>/);
+  assert.match(html, /<span>Coverage<\/span>/);
+  assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
   assert.match(html, /id="operationValidation"/);
 });
@@ -29,7 +33,7 @@ test('typed feedback exposes passive, progress, success, warning and error state
   assert.match(feedback, /return 'passive'/);
 });
 
-test('Process UI is driven by material presence and exposed grow targets', () => {
+test('Process UI is driven by material presence and exposed Extend targets', () => {
   assert.match(app, /baseCoverageState\(model\)/);
   assert.match(app, /exposedLayerIds\(model, area, activeFace\)/);
   assert.match(app, /All material has been removed/);
