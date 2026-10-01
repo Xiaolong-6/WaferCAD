@@ -193,7 +193,7 @@ await page.waitForFunction(() =>
   (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
 );
 await page.locator('#operationTab').click();
-await page.locator('#operationType').selectOption('add');
+await page.locator('[data-process-mode="add"]').click();
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#growthMode').selectOption('conformal');
 await page.locator('#operationThickness').fill('1');
