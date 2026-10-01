@@ -403,6 +403,11 @@ function validateDrawMask(drawMask) {
       if (shape.type === 'ring-sector') {
         assertFinite(shape.startDeg, `${path}.startDeg`);
         assertFinite(shape.endDeg, `${path}.endDeg`);
+        const rawSweep = shape.endDeg - shape.startDeg,
+          sweep = ((rawSweep % 360) + 360) % 360;
+        if (!(sweep > 1e-12 || Math.abs(rawSweep) >= 360 - 1e-9)) {
+          fail(`${path}.endDeg`, 'must define a non-zero angular sweep.');
+        }
       }
       return;
     }
