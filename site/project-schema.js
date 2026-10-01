@@ -410,6 +410,12 @@ function validateDisplay(display) {
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
   }
+  if (
+    display.sectionScaleMode != null &&
+    !['auto', 'physical'].includes(display.sectionScaleMode)
+  ) {
+    fail('display.sectionScaleMode', 'must be auto or physical.');
+  }
 }
 
 function validateSnapshotRecords(snapshots, shared) {
@@ -439,6 +445,7 @@ function validateProjectCore(
 ) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
+  if (project.name != null) assertString(project.name, 'name', { max: 256 });
   if (project.version != null) {
     assertInteger(project.version, 'version', { min: 1, max: CURRENT_PROJECT_VERSION });
   }
