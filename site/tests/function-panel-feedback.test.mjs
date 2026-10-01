@@ -22,7 +22,7 @@ test('function panel uses Process and Project labels with segmented process mode
   }
   assert.match(html, />\s*Deposit\s*<\/button>/);
   assert.match(html, />\s*Extend\s*<\/button>/);
-  assert.match(html, /<span>Coverage<\/span>/);
+  assert.match(html, /<span>Coverage<\/span\s*>/);
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
   assert.match(html, /id="operationValidation"/);
