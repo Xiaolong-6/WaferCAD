@@ -140,11 +140,17 @@ await page.locator('#settingsTools:not([hidden])').waitFor();
 await page.locator('#xyUnitSelect').selectOption('nm');
 assert.equal(await page.locator('#baseThicknessUnit').textContent(), 'nm');
 assert.equal(await page.locator('#operationThicknessUnit').textContent(), 'nm');
+assert.equal(await page.locator('#roughFeatureUnit').textContent(), 'nm');
+assert.equal(await page.locator('#roughHeightUnit').textContent(), 'nm');
 assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12000);
 assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3000);
+assert.equal(Number(await page.locator('#roughFeatureSize').inputValue()), 500);
+assert.equal(Number(await page.locator('#roughAmplitude').inputValue()), 1000);
 await page.locator('#xyUnitSelect').selectOption('um');
 assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12);
 assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3);
+assert.equal(Number(await page.locator('#roughFeatureSize').inputValue()), 0.5);
+assert.equal(Number(await page.locator('#roughAmplitude').inputValue()), 1);
 for (const id of [
   'projectNameInput',
   'newProjectBtn',
@@ -166,6 +172,42 @@ assert.equal((await face.textContent()).trim(), 'Front');
 await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
+
+// Rough etch is a render-only surface attribute exposed through the real UI path.
+await page.locator('[data-process-mode="etch"]').click();
+assert.equal(await page.locator('#etchSurfaceRow').isVisible(), true);
+assert.equal(await page.locator('#roughFeatureRow').isVisible(), false);
+await page.locator('#etchSurfaceMode').selectOption('rough');
+assert.equal(await page.locator('#roughFeatureRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightRow').isVisible(), true);
+assert.match(await page.locator('#operationNote').textContent(), /render-only/);
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#operationThickness').fill('1');
+await page.locator('#roughFeatureSize').fill('0.4');
+await page.locator('#roughAmplitude').fill('0.8');
+await page.locator('#applyOperationBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /Etched/);
+
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI rough project');
+const roughDownloadPromise = page.waitForEvent('download');
+await page.locator('#saveProjectBtn').click();
+const roughDownload = await roughDownloadPromise;
+const roughSavedPath = await roughDownload.path();
+assert.ok(roughSavedPath);
+const roughSaved = JSON.parse(await readFile(roughSavedPath, 'utf8'));
+const roughSegments = roughSaved.model.regions.flatMap((region) => region.stack);
+assert.ok(
+  roughSegments.some(
+    (segment) =>
+      segment.frontSurface?.kind === 'rough' &&
+      segment.frontSurface.geometryMode === 'ideal' &&
+      Math.abs(segment.frontSurface.featureSize - 0.4) < 1e-12 &&
+      Math.abs(segment.frontSurface.amplitude - 0.8) < 1e-12,
+  ),
+);
+
+await page.locator('#operationTab').click();
 
 // Extend targets follow the exposed surface and include Base when it is exposed.
 await page.locator('[data-process-mode="grow"]').click();
