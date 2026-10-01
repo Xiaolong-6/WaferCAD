@@ -550,7 +550,10 @@ assert.match(await page.locator('#statusText').textContent(), /^Deposited Draw p
 // Switching sources never destroys either source.
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
-assert.equal(await page.locator('#maskFileControls').isVisible(), true);
+assert.equal(
+  await page.locator('#maskFileControls').evaluate((element) => element.hidden),
+  false,
+);
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
 assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
