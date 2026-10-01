@@ -39,8 +39,8 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.55.0 three@0.179.1
           npx playwright install --with-deps chromium
 
-      - name: Run quality gate
-        run: npm run check
+      - name: Run CI quality gate
+        run: npm run check:ci
 
       - name: Start release candidate
         run: |
