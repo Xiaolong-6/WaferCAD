@@ -91,6 +91,12 @@ export function createProjectController({
   async function openProjectFile(file) {
     try {
       const project = await readProjectFile(file);
+      if (!project.name) {
+        project.name =
+          String(file.name || '')
+            .replace(/\.(?:wafercad|json)$/i, '')
+            .trim() || 'Untitled';
+      }
       loadProjectSnapshot(project);
       snapshotManager.importRecords(project.snapshots || []);
       syncBaseControls();
@@ -111,6 +117,7 @@ export function createProjectController({
     try {
       status('Building example…');
       const project = createVisualizationExample();
+      if (!project.name) project.name = 'Visualization example';
       loadProjectSnapshot(project);
       snapshotManager.importRecords(project.snapshots || []);
       syncBaseControls();
