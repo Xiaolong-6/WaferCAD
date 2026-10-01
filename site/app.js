@@ -1155,6 +1155,7 @@ const maskImportController = createMaskImportController({
   importLayoutBuffer,
   openLayoutFile,
   renderMask,
+  onMaskChanged: updateOperationUI,
   status,
 });
 
