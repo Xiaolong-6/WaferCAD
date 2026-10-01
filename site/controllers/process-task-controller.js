@@ -45,7 +45,7 @@ export function createProcessTaskController({
     task.resolve({ aborted: true });
   }
 
-  function run(model, params, label = 'Applying process…') {
+  function run(model, params, label = 'Applying process…', areaRequest = null) {
     if (active) return Promise.resolve({ busy: true });
 
     return new Promise((resolve) => {
@@ -112,7 +112,7 @@ export function createProcessTaskController({
         resolve({ error: message, aborted: false });
       };
 
-      worker.postMessage({ id, model, params });
+      worker.postMessage({ id, model, params, areaRequest });
     });
   }
 
