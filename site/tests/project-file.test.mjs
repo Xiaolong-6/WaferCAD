@@ -279,6 +279,60 @@ test('legacy project migration adds current version and inspect-state defaults',
   assert.equal(validateProjectFile(migrated), migrated);
 });
 
+test('project storage preserves Draw mask source and 0.1 nm geometry precision', async () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.maskSourceMode = 'draw';
+  source.drawMask = {
+    nextShapeId: 4,
+    shapes: [
+      {
+        id: 'shape-1',
+        type: 'rect',
+        a: [1.23456789, -2.34567891],
+        b: [4.56789123, 5.67891234],
+      },
+      { id: 'shape-2', type: 'circle', c: [7.000049, -8.000049], r: 0.12345678 },
+      {
+        id: 'shape-3',
+        type: 'polygon',
+        points: [
+          [0.000049, 0.000051],
+          [2.000049, 0.000051],
+          [0.000049, 2.000051],
+        ],
+      },
+    ],
+  };
+
+  const text = serializeProject(source);
+  const stored = JSON.parse(text);
+  assert.equal(stored.maskSourceMode, 'draw');
+  assert.equal(stored.drawMask.shapes[0].a[0], 1.2346);
+  assert.equal(stored.drawMask.shapes[1].r, 0.1235);
+  assert.deepEqual(stored.drawMask.shapes[2].points[0], [0, 0.0001]);
+
+  const loaded = await readProjectFile({
+    size: new Blob([text]).size,
+    text: async () => text,
+  });
+  assert.equal(loaded.maskSourceMode, 'draw');
+  assert.equal(loaded.drawMask.shapes.length, 3);
+  assert.equal(validateProjectFile(loaded), loaded);
+});
+
+test('v5 migration defaults Mask source to File and preserves future Draw compatibility', () => {
+  const source = validProject();
+  source.version = 5;
+  delete source.maskSourceMode;
+  delete source.drawMask;
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.maskSourceMode, 'file');
+  assert.deepEqual(migrated.drawMask, { nextShapeId: 1, shapes: [] });
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
 test('project validator rejects future format versions', () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION + 1;
