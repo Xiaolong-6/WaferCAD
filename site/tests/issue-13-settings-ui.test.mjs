@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+const persistence = await readFile(new URL('../workspace-persistence.js', import.meta.url), 'utf8');
 const buildController = await readFile(
   new URL('../controllers/build-controller.js', import.meta.url),
   'utf8',
@@ -18,6 +20,21 @@ test('Settings is the final workspace tab and owns the XYZ unit selector', () =>
     html.indexOf('</section>', html.indexOf('id="settingsTools"')),
   );
   assert.match(settings, /id="xyUnitSelect"/);
+  assert.match(settings, /id="projectNameInput"/);
+});
+
+test('project replacement controls warn and Save uses the project name', () => {
+  assert.match(app, /New project will replace the current workspace/);
+  assert.match(app, /Open project will replace the current workspace/);
+  assert.match(app, /downloadProject\(buildProjectSnapshot\(true\), projectExportFilename\(\)\)/);
+  assert.match(app, /\.wafercad/);
+});
+
+test('workspace state is restored locally after app reload', () => {
+  assert.match(app, /loadWorkspaceState\(\)/);
+  assert.match(app, /saveWorkspaceState\(project\)/);
+  assert.match(persistence, /indexedDB\.open\(DB_NAME, 1\)/);
+  assert.match(persistence, /validateProjectFile\(migrateProjectFile\(record\.project\)\)/);
 });
 
 test('footer exposes repository and exact deployed commit links', () => {

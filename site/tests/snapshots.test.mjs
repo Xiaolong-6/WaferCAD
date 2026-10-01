@@ -82,3 +82,43 @@ test('snapshot manager never creates more records than the project schema can pe
   assert.equal(manager.list().length, MAX_SNAPSHOTS);
   assert.throws(() => manager.create(), /Snapshot limit of 100 reached/);
 });
+
+
+test('snapshot manager shares unchanged large model and layout assets internally', () => {
+  const model = { revision: 7, processRevision: 3, payload: { heavy: [1, 2, 3] } };
+  const elements = [{ kind: 'polygon', points: [[0, 0], [1, 0], [1, 1]] }];
+  const layout = {
+    name: 'large-mask.gds',
+    root: 'TOP',
+    elements,
+    linework: [],
+    combos: [],
+    hierarchy: { TOP: [] },
+    units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
+  };
+  const live = { model, layout, view: { zoom: 1 } };
+  let id = 0;
+  const manager = createSnapshotManager({
+    capture: () => ({
+      ...live,
+      layout: {
+        ...layout,
+        elements: layout.elements,
+        linework: layout.linework,
+        combos: layout.combos,
+        hierarchy: layout.hierarchy,
+        units: layout.units,
+      },
+    }),
+    restore: () => {},
+    validateState: () => true,
+    idFactory: () => `snapshot-${++id}`,
+  });
+
+  manager.create('one');
+  manager.create('two');
+  const exported = manager.exportRecords();
+
+  assert.strictEqual(exported[0].state.layout, exported[1].state.layout);
+  assert.strictEqual(exported[0].state.model, exported[1].state.model);
+});

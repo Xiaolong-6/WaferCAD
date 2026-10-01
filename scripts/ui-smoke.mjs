@@ -30,6 +30,7 @@ const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
 const errors = [];
 
 page.on('pageerror', (error) => errors.push(error.message));
+page.on('dialog', (dialog) => void dialog.accept());
 
 await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
@@ -144,7 +145,13 @@ assert.equal(Number(await page.locator('#operationThickness').inputValue()), 300
 await page.locator('#xyUnitSelect').selectOption('um');
 assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12);
 assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3);
-for (const id of ['newProjectBtn', 'openProjectInput', 'saveProjectBtn', 'xyUnitSelect']) {
+for (const id of [
+  'projectNameInput',
+  'newProjectBtn',
+  'openProjectInput',
+  'saveProjectBtn',
+  'xyUnitSelect',
+]) {
   assert.equal(await page.locator(`#settingsTools #${id}`).count(), 1);
 }
 
@@ -197,9 +204,11 @@ await page.locator('#applyOperationBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /Added UI conformal/);
 
 await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI conformal project');
 const downloadPromise = page.waitForEvent('download');
 await page.locator('#saveProjectBtn').click();
 const download = await downloadPromise;
+assert.equal(download.suggestedFilename(), 'UI conformal project.wafercad');
 const savedPath = await download.path();
 assert.ok(savedPath);
 const saved = JSON.parse(await readFile(savedPath, 'utf8'));
@@ -311,22 +320,20 @@ assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
 await page.locator('#operationTab').click();
 
-// A-B panel and explicit editing state; coordinate drag checks live in product-regression.mjs.
+// Slice toggles the coordinate panel and A/B endpoint editing as one state.
 const abPanel = page.locator('#sectionCoordsPanel');
 assert.equal(await abPanel.isHidden(), true);
 await page.locator('#sectionControlsBtn').click();
 assert.equal(await abPanel.isVisible(), true);
-await page.locator('#sectionEditBtn').click();
 assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
 assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
 assert.ok((await page.locator('[data-endpoint=a]').boundingBox()).width <= 24);
-await page.locator('#sectionControlsBtn').click();
-assert.equal(await abPanel.isHidden(), true);
-await page.locator('#sectionControlsBtn').click();
 await page.locator('#sectionAx').fill('1.23456');
 await page.locator('#sectionAx').press('Tab');
 assert.equal(await page.locator('#sectionAx').inputValue(), '1.235');
 await page.locator('#sectionControlsBtn').click();
+assert.equal(await abPanel.isHidden(), true);
+assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
 
 // ROI creation must remain one-shot and editable.
 const mask = page.locator('#maskCanvas');
@@ -451,6 +458,19 @@ await page.locator('#threeExportPngBtn').click();
 assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png');
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
+
+// The active workspace is restored after a normal app.html refresh.
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('Refresh restore check');
+await page.waitForTimeout(1000);
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
+
 assert.deepEqual(errors, []);
 await browser.close();
 

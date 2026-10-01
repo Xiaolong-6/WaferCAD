@@ -94,17 +94,17 @@ Layer identity is stored separately from the visible name, so renaming or recolo
 
 Main can display the front or back surface.
 
-Use **A–B** to toggle the coordinate panel. Click **Drag A/B** to highlight the existing A/B handles, then drag either endpoint directly. **Done** locks the endpoints; click the same **A–B** button again to close the panel. On narrow screens the controls appear below Main.
+Use **Slice** to toggle the A–B coordinate panel and endpoint editing together. Opening Slice shows the panel and immediately makes the existing A/B handles draggable; closing Slice hides the panel and locks both handles. On narrow screens the controls appear below Main.
 
-Coordinates and Section update while dragging. Grab offsets are preserved, and dragging can continue outside the canvas. Escape cancels the current drag; when idle it exits edit mode. A focused handle also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
+Coordinates and Section update while dragging. Grab offsets are preserved, and dragging can continue outside the canvas. Escape cancels an in-progress drag; when idle it closes Slice and locks the endpoints. A focused handle also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
 
-Double-click Main to fit the view. **Fit** in 3D frames the full model for the current panel aspect ratio.
+Double-click Main to fit the view. **Fit** in 3D frames the active ROI when one exists, otherwise it frames the full model.
 
 Each scientific view has **Max**. It expands Main, Mask, 3D, or Section to the available browser workspace without opening a new window; the button changes to **Restore**, and Escape also restores the normal layout.
 
 Main, Mask, and Section A–B provide **SVG** export. The 3D view provides **GLB** and **PNG**: GLB contains physical geometry in glTF metre units (WaferCAD µm are converted by 1e-6), while PNG captures the current 3D camera at 3× resolution.
 
-Use **Settings → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm); imported geometry and internal calculation results are not globally quantized.
+Use **Settings → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm). Internal calculations retain their working precision; project export normalizes persisted physical lengths and coordinates to **0.1 nm** (0.0001 µm) so floating-point tails such as `24999.999999999996` are not stored.
 
 ## 9. Snapshots
 
@@ -116,6 +116,10 @@ Snapshots are immutable workspace checkpoints and have no thumbnail dependency. 
 
 ## 10. Save and open
 
-Use **Settings → Save** to export the current project as JSON. Snapshot records are included.
+Settings includes an editable **Project name**. Save uses that name as the default `.wafercad` filename. **New** and **Open** both warn before replacing the current workspace.
 
-Use **Settings → Open** to restore a project. Older supported project files are migrated to the current format version before validation. Save and Open enforce the same 64 MB safety limit.
+Use **Settings → Save** to export the current project. Snapshot records are included. Repeated snapshot mask/layout and unchanged model assets are stored once and referenced from each checkpoint, so large masks do not multiply the file size for every snapshot.
+
+The active workspace is also autosaved locally in IndexedDB. Reloading `app.html` restores the most recent local workspace; an explicit project/example launched from the welcome page takes priority over that local restore.
+
+Use **Settings → Open** to restore a project. Older supported project files are migrated to the current format version before validation. Save and Open enforce the same 256 MB safety limit.

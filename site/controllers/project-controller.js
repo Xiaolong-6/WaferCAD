@@ -12,6 +12,7 @@ export function createProjectController({
   renderAll,
   fit3d,
   status,
+  onProjectChanged = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -26,6 +27,7 @@ export function createProjectController({
       empty.className = 'empty-list';
       empty.textContent = 'No snapshots';
       host.append(empty);
+      onProjectChanged();
       return;
     }
 
@@ -72,6 +74,7 @@ export function createProjectController({
       row.append(name, restoreButton, deleteButton);
       host.append(row);
     }
+    onProjectChanged();
   }
 
   async function openLayoutFile(file) {
@@ -91,6 +94,12 @@ export function createProjectController({
   async function openProjectFile(file) {
     try {
       const project = await readProjectFile(file);
+      if (!project.name) {
+        project.name =
+          String(file.name || '')
+            .replace(/\.(?:wafercad|json)$/i, '')
+            .trim() || 'Untitled';
+      }
       loadProjectSnapshot(project);
       snapshotManager.importRecords(project.snapshots || []);
       syncBaseControls();
@@ -111,6 +120,7 @@ export function createProjectController({
     try {
       status('Building example…');
       const project = createVisualizationExample();
+      if (!project.name) project.name = 'Visualization example';
       loadProjectSnapshot(project);
       snapshotManager.importRecords(project.snapshots || []);
       syncBaseControls();

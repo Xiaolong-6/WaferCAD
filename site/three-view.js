@@ -60,6 +60,26 @@ export function createThreeView({
     }
   }
 
+  function xyBounds(geometry) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const polygon of geometry || []) {
+      for (const ring of polygon || []) {
+        for (const point of ring || []) {
+          minX = Math.min(minX, point[0]);
+          minY = Math.min(minY, point[1]);
+          maxX = Math.max(maxX, point[0]);
+          maxY = Math.max(maxY, point[1]);
+        }
+      }
+    }
+    return [minX, minY, maxX, maxY].every(Number.isFinite)
+      ? { minX, minY, maxX, maxY }
+      : null;
+  }
+
   function geometryFromSolid({ slabs, caps }) {
     const positions = [],
       normals = [];
@@ -173,7 +193,9 @@ export function createThreeView({
       opacity = Math.max(0.1, Math.min(1, Number(inspection.opacity) || 1)),
       borders = Boolean(inspection.borders);
 
-    for (const item of materialSolids(model, clip)) {
+    const solids = materialSolids(model, clip);
+    for (let index = 0; index < solids.length; index++) {
+      const item = solids[index];
       const geometry = geometryFromSolid(item);
 
       const layer = layerById(model, item.layerId);
@@ -185,11 +207,15 @@ export function createThreeView({
         transparent: opacity < 0.999,
         opacity,
         depthWrite: opacity >= 0.999,
+        polygonOffset: true,
+        polygonOffsetFactor: -Math.min(16, (index + 1) * 0.5),
+        polygonOffsetUnits: -Math.min(16, index + 1),
       });
+      if (opacity < 0.999) material.forceSinglePass = true;
       const mesh = new THREE.Mesh(geometry, material);
       mesh.renderOrder = opacity < 0.999 ? 1 : 0;
+      group.add(mesh);
 
-      let edges = null;
       if (borders) {
         const edgeGeometry = new THREE.BufferGeometry();
         edgeGeometry.setAttribute(
@@ -199,21 +225,16 @@ export function createThreeView({
         const edgeMaterial = new THREE.LineBasicMaterial({
           color: 0x111820,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.92,
+          depthTest: opacity >= 0.999,
           depthWrite: false,
         });
-        edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-        // With transparent solids, render borders first and let every material
-        // layer alpha-blend over the border segments it covers. Hidden borders
-        // therefore respond continuously to Opacity instead of staying equally
-        // dark at every setting. Opaque solids keep the normal depth-tested
-        // mesh-then-border order.
-        edges.renderOrder = opacity < 0.999 ? 0 : 1;
+        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        // Transparent surfaces do not write depth. Drawing their borders last
+        // keeps the visible ROI/layer outline from being alpha-blended away.
+        edges.renderOrder = 1000 + index;
+        group.add(edges);
       }
-
-      if (edges && opacity < 0.999) group.add(edges);
-      group.add(mesh);
-      if (edges && opacity >= 0.999) group.add(edges);
     }
 
     stats.textContent = clip ? 'ROI' : 'full model';
@@ -228,16 +249,38 @@ export function createThreeView({
     const [lo, hi] = modelBoundsZ(model),
       zScale = zDisplayScale(model),
       zSpan = (hi - lo) * zScale,
-      size = Math.max(model.width, model.height, zSpan);
+      clipBounds = xyBounds(getClipGeometry()),
+      modelBounds = {
+        minX: -model.width / 2,
+        minY: -model.height / 2,
+        maxX: model.width / 2,
+        maxY: model.height / 2,
+      },
+      visibleBounds = clipBounds
+        ? {
+            minX: Math.max(modelBounds.minX, clipBounds.minX),
+            minY: Math.max(modelBounds.minY, clipBounds.minY),
+            maxX: Math.min(modelBounds.maxX, clipBounds.maxX),
+            maxY: Math.min(modelBounds.maxY, clipBounds.maxY),
+          }
+        : modelBounds,
+      validVisibleBounds =
+        visibleBounds.maxX > visibleBounds.minX && visibleBounds.maxY > visibleBounds.minY,
+      fitBounds = validVisibleBounds ? visibleBounds : modelBounds,
+      spanX = fitBounds.maxX - fitBounds.minX,
+      spanY = fitBounds.maxY - fitBounds.minY,
+      centerX = (fitBounds.minX + fitBounds.maxX) / 2,
+      centerY = (fitBounds.minY + fitBounds.maxY) / 2,
+      size = Math.max(spanX, spanY, zSpan);
 
-    camera.near = Math.max(0.1, size / 10000);
-    camera.far = Math.max(1e6, size * 50);
-    camera.updateProjectionMatrix();
     const halfFov = (camera.fov * Math.PI) / 360;
     const limitingAngle = Math.min(halfFov, Math.atan(Math.tan(halfFov) * camera.aspect));
-    const radius = Math.hypot(model.width / 2, model.height / 2, zSpan / 2);
-    const distance = (radius / Math.sin(limitingAngle)) * 1.1;
-    controls.target.set(0, 0, ((lo + hi) / 2) * zScale);
+    const radius = Math.max(1e-9, Math.hypot(spanX / 2, spanY / 2, zSpan / 2));
+    const distance = (radius / Math.sin(limitingAngle)) * 1.12;
+    camera.near = Math.max(1e-6, radius / 200);
+    camera.far = Math.max(camera.near * 1000, distance + radius * 20);
+    camera.updateProjectionMatrix();
+    controls.target.set(centerX, centerY, ((lo + hi) / 2) * zScale);
     camera.position.copy(
       new THREE.Vector3(1.05, -1.15, 0.82)
         .normalize()

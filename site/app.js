@@ -33,6 +33,11 @@ import {
 } from './units.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
+import {
+  clearWorkspaceState,
+  loadWorkspaceState,
+  saveWorkspaceState,
+} from './workspace-persistence.js';
 import { createBuildController } from './controllers/build-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
 import { bindToolTabs } from './controllers/tool-tabs-controller.js';
@@ -81,7 +86,8 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   roiTool = null,
   roiDraft = null,
   roiAnchor = 'center';
-let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
+let projectName = 'Untitled',
+  section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionScaleMode = 'auto',
   sectionEditEnabled = false,
   sectionEditor = null,
@@ -91,6 +97,53 @@ let section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
 function status(msg) {
   $('statusText').textContent = msg;
+}
+
+function normalizedProjectName(value = projectName) {
+  return String(value ?? '').trim().slice(0, 256) || 'Untitled';
+}
+
+function projectExportFilename() {
+  const stem = normalizedProjectName()
+    .replace(/[<>:"|?*\u0000-\u001f]/g, '-')
+    .replace(/[\\/]/g, '-')
+    .replace(/[. ]+$/g, '')
+    .trim();
+  return `${stem || 'Untitled'}.wafercad`;
+}
+
+function syncProjectNameInput() {
+  const input = $('projectNameInput');
+  if (input && document.activeElement !== input) input.value = normalizedProjectName();
+}
+
+let workspacePersistenceReady = false,
+  workspacePersistenceTimer = null,
+  workspacePersistenceWrite = Promise.resolve();
+
+function persistWorkspaceNow() {
+  if (!workspacePersistenceReady) return Promise.resolve(false);
+  if (workspacePersistenceTimer != null) {
+    clearTimeout(workspacePersistenceTimer);
+    workspacePersistenceTimer = null;
+  }
+  const project = buildProjectSnapshot(true);
+  workspacePersistenceWrite = workspacePersistenceWrite
+    .catch(() => {})
+    .then(() => saveWorkspaceState(project));
+  workspacePersistenceWrite.catch((error) => {
+    console.warn('Workspace autosave failed.', error);
+  });
+  return workspacePersistenceWrite;
+}
+
+function scheduleWorkspacePersistence() {
+  if (!workspacePersistenceReady) return;
+  if (workspacePersistenceTimer != null) clearTimeout(workspacePersistenceTimer);
+  workspacePersistenceTimer = setTimeout(() => {
+    workspacePersistenceTimer = null;
+    void persistWorkspaceNow();
+  }, 800);
 }
 
 const loadedBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
@@ -519,6 +572,7 @@ function renderMask() {
   for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
   drawRoi(ctx, v);
   drawPlanAxes(ctx, v, w, h, false);
+  scheduleWorkspacePersistence();
 }
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -575,6 +629,7 @@ function renderMain() {
   drawPlanAxes(ctx, v, w, h, back);
   syncSectionInputs();
   sectionEditor?.update();
+  scheduleWorkspacePersistence();
 }
 function renderSection() {
   const c = $('sectionCanvas'),
@@ -682,6 +737,7 @@ function renderSection() {
     sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
   $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
   $('sectionRange').textContent = `Z (${xyUnit().label}) ${formatXY(lo)} → ${formatXY(hi)}`;
+  scheduleWorkspacePersistence();
 }
 
 let threeView = null,
@@ -701,6 +757,7 @@ function initThree() {
 
 function renderThree() {
   threeView?.render();
+  scheduleWorkspacePersistence();
 }
 
 function fit3d() {
@@ -721,6 +778,7 @@ function renderAll() {
   $('faceToggleBtn').textContent = faceLabel;
   $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
   $('maskSummary').textContent = layout.name || 'No mask';
+  syncProjectNameInput();
   syncMaskCellLabel();
   $('baseSummary').textContent =
     `${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${formatXY(model.thickness)} ${xyUnit().label}`;
@@ -795,6 +853,7 @@ const projectStateController = createProjectStateController({
   getState: () => ({
     model,
     layout,
+    projectName: normalizedProjectName(),
     selectedLayerKeys,
     activeCell,
     maskTransform,
@@ -802,6 +861,7 @@ const projectStateController = createProjectStateController({
     roi,
     roiAnchor,
     section,
+    sectionScaleMode,
     planViews,
     xyDisplayUnit,
     activeStructurePalette,
@@ -821,6 +881,8 @@ const projectStateController = createProjectStateController({
     roi = next.roi;
     roiAnchor = next.roiAnchor;
     section = next.section;
+    if (next.projectName) projectName = next.projectName;
+    if (next.sectionScaleMode) sectionScaleMode = next.sectionScaleMode;
     if (next.xyDisplayUnit) xyDisplayUnit = next.xyDisplayUnit;
     if (next.activeStructurePalette) activeStructurePalette = next.activeStructurePalette;
     customStructurePalette = next.customStructurePalette;
@@ -859,6 +921,7 @@ const projectController = createProjectController({
   renderAll,
   fit3d,
   status,
+  onProjectChanged: scheduleWorkspacePersistence,
 });
 const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
   projectController;
@@ -1005,7 +1068,19 @@ function bindUi() {
   workspaceActions.bind();
   mainCanvasController.bind();
 
+  $('projectNameInput').oninput = (event) => {
+    projectName = String(event.target.value ?? '').slice(0, 256);
+    scheduleWorkspacePersistence();
+  };
+  $('projectNameInput').onchange = () => {
+    projectName = normalizedProjectName();
+    $('projectNameInput').value = projectName;
+    scheduleWorkspacePersistence();
+  };
+
   $('newProjectBtn').onclick = () => {
+    if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
+    void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
     resetProjectState();
     clearRoiDrawingMode();
     snapshotManager.clear();
@@ -1018,8 +1093,10 @@ function bindUi() {
 
   $('saveProjectBtn').onclick = () => {
     try {
-      downloadProject(buildProjectSnapshot(true));
-      status('Project saved.');
+      projectName = normalizedProjectName();
+      syncProjectNameInput();
+      downloadProject(buildProjectSnapshot(true), projectExportFilename());
+      status(`Project saved as ${projectExportFilename()}.`);
     } catch (error) {
       console.error(error);
       status(`Save failed: ${error.message}`);
@@ -1029,16 +1106,52 @@ function bindUi() {
   $('openProjectInput').onchange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    if (!globalThis.confirm('Open project will replace the current workspace. Continue?')) {
+      event.target.value = '';
+      return;
+    }
     await openProjectFile(file);
     event.target.value = '';
   };
 }
 
+async function initializePersistedWorkspace() {
+  const hasExplicitStart = new URLSearchParams(globalThis.location?.search || '').has('start');
+
+  try {
+    if (hasExplicitStart) {
+      await initializeWorkspaceStart();
+    } else {
+      const saved = await loadWorkspaceState();
+      if (saved) {
+        loadProjectSnapshot(saved);
+        snapshotManager.importRecords(saved.snapshots || []);
+        syncBaseControls();
+        maskImportController.syncTransformInputs();
+        renderAll();
+        renderSnapshots();
+        fit3d();
+        status(`Restored local workspace "${normalizedProjectName()}".`);
+      }
+    }
+  } catch (error) {
+    console.warn('Workspace restore failed.', error);
+    status(`Local workspace restore failed: ${error.message}`);
+  } finally {
+    workspacePersistenceReady = true;
+    scheduleWorkspacePersistence();
+  }
+}
+
 bindUi();
 loadBuildCommit();
 window.addEventListener('focus', checkForBuildUpdate);
+window.addEventListener('pagehide', () => {
+  void persistWorkspaceNow();
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkForBuildUpdate();
+  else void persistWorkspaceNow();
 });
 renderSnapshots();
 initThree();
@@ -1048,4 +1161,4 @@ maskImportController.syncTransformInputs();
 renderAll();
 fit3d();
 status('Ready. Create a base or import a layout.');
-initializeWorkspaceStart();
+void initializePersistedWorkspace();

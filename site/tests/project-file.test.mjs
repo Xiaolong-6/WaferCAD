@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { serializeProject } from '../project-io.js';
+import {
+  MAX_PROJECT_FILE_BYTES,
+  PROJECT_LENGTH_QUANTUM_UM,
+  readProjectFile,
+  serializeProject,
+} from '../project-io.js';
 import {
   CURRENT_PROJECT_VERSION,
   migrateProjectFile,
@@ -148,7 +153,73 @@ test('project validator accepts the runtime nanometre zoom ceiling', () => {
 
 test('project serializer enforces the same size ceiling used by Open', () => {
   assert.throws(() => serializeProject(validProject(), 1024), /larger than the 0 MB safety limit/);
-  assert.doesNotThrow(() => serializeProject(validProject(), 64 * 1024 * 1024));
+  assert.doesNotThrow(() => serializeProject(validProject(), MAX_PROJECT_FILE_BYTES));
+});
+
+test('project storage compacts repeated snapshot assets and rounds physical lengths to 0.1 nm', async () => {
+  const source = validProject();
+  source.section.a[0] = 24999.999999999996;
+  source.snapshots = [
+    {
+      id: 'snapshot-1',
+      name: 'Same mask and model',
+      createdAt: '2026-10-01T09:00:00.000Z',
+      state: validProject(),
+    },
+    {
+      id: 'snapshot-2',
+      name: 'Same assets again',
+      createdAt: '2026-10-01T09:01:00.000Z',
+      state: validProject(),
+    },
+  ];
+
+  const naive = JSON.stringify(source);
+  const text = serializeProject(source);
+  const stored = JSON.parse(text);
+
+  assert.equal(PROJECT_LENGTH_QUANTUM_UM, 0.0001);
+  assert.equal(stored.section.a[0], 25000);
+  assert.equal(stored.storage.encoding, 'shared-assets-v1');
+  assert.equal(stored.snapshots[0].state.layout, undefined);
+  assert.equal(stored.snapshots[0].state.layoutRef, 'project');
+  assert.equal(stored.snapshots[0].state.model, undefined);
+  assert.equal(stored.snapshots[0].state.modelRef, 'project');
+  assert.ok(text.length < naive.length);
+
+  const loaded = await readProjectFile({
+    size: new Blob([text]).size,
+    text: async () => text,
+  });
+  assert.equal(loaded.section.a[0], 25000);
+  assert.strictEqual(loaded.snapshots[0].state.layout, loaded.layout);
+  assert.strictEqual(loaded.snapshots[0].state.model, loaded.model);
+  assert.equal(validateProjectFile(loaded), loaded);
+});
+
+test('project storage keeps distinct snapshot masks as shared assets', async () => {
+  const source = validProject();
+  const snapshotState = validProject();
+  snapshotState.layout.name = 'other-mask.gds';
+  source.snapshots = [
+    {
+      id: 'snapshot-other-mask',
+      name: 'Other mask',
+      createdAt: '2026-10-01T09:02:00.000Z',
+      state: snapshotState,
+    },
+  ];
+
+  const text = serializeProject(source);
+  const stored = JSON.parse(text);
+  assert.equal(stored.sharedLayouts.length, 1);
+  assert.equal(stored.snapshots[0].state.layoutRef, 0);
+
+  const loaded = await readProjectFile({
+    size: new Blob([text]).size,
+    text: async () => text,
+  });
+  assert.equal(loaded.snapshots[0].state.layout.name, 'other-mask.gds');
 });
 
 test('project validator rejects regions outside the declared base boundary', () => {

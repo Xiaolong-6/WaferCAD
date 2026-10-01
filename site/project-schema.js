@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 4;
+export const CURRENT_PROJECT_VERSION = 5;
 
 const LIMITS = {
   layers: 10000,
@@ -410,9 +410,15 @@ function validateDisplay(display) {
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
   }
+  if (
+    display.sectionScaleMode != null &&
+    !['auto', 'physical'].includes(display.sectionScaleMode)
+  ) {
+    fail('display.sectionScaleMode', 'must be auto or physical.');
+  }
 }
 
-function validateSnapshotRecords(snapshots) {
+function validateSnapshotRecords(snapshots, shared) {
   if (snapshots == null) return;
   const records = assertArray(snapshots, 'snapshots', LIMITS.snapshots);
   const ids = new Set();
@@ -428,20 +434,31 @@ function validateSnapshotRecords(snapshots) {
     if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
     assertObject(record.state, `${path}.state`);
     if (record.state.snapshots != null) fail(`${path}.state.snapshots`, 'must not be nested.');
-    validateProjectCore(record.state, false);
+    validateProjectCore(record.state, false, shared);
   });
 }
 
-function validateProjectCore(project, allowSnapshots) {
+function validateProjectCore(
+  project,
+  allowSnapshots,
+  shared = { models: new WeakSet(), layouts: new WeakSet() },
+) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
+  if (project.name != null) assertString(project.name, 'name', { max: 256 });
   if (project.version != null) {
     assertInteger(project.version, 'version', { min: 1, max: CURRENT_PROJECT_VERSION });
   }
 
   const budget = { polygons: 0, rings: 0, points: 0 };
-  validateModel(project.model, budget);
-  validateLayout(project.layout, budget);
+  if (!shared.models.has(project.model)) {
+    validateModel(project.model, budget);
+    shared.models.add(project.model);
+  }
+  if (!shared.layouts.has(project.layout)) {
+    validateLayout(project.layout, budget);
+    shared.layouts.add(project.layout);
+  }
 
   const selectedLayerKeys = assertArray(
     project.selectedLayerKeys,
@@ -467,7 +484,7 @@ function validateProjectCore(project, allowSnapshots) {
   validateSection(project.section);
   validatePlanViews(project.planViews);
   validateDisplay(project.display);
-  if (allowSnapshots) validateSnapshotRecords(project.snapshots);
+  if (allowSnapshots) validateSnapshotRecords(project.snapshots, shared);
   else if (project.snapshots != null) fail('snapshots', 'must not be nested.');
 
   return project;
@@ -510,5 +527,5 @@ export function migrateProjectFile(project) {
 }
 
 export function validateProjectFile(project) {
-  return validateProjectCore(project, true);
+  return validateProjectCore(project, true, { models: new WeakSet(), layouts: new WeakSet() });
 }

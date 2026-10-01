@@ -75,7 +75,7 @@ npm run check
 
 ## Project-file safety
 
-Project JSON is versioned and migrated before it can replace the current editor state. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Save and Open share the same 64 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
+Project JSON is versioned and migrated before it can replace the current editor state. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Project v5 deduplicates repeated snapshot layout/model assets and normalizes persisted physical lengths to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
 
