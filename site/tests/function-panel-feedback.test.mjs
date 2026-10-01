@@ -13,6 +13,11 @@ const projectState = await readFile(
   new URL('../controllers/project-state-controller.js', import.meta.url),
   'utf8',
 );
+const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
+const roiController = await readFile(
+  new URL('../controllers/roi-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
@@ -69,7 +74,7 @@ test('Mask alignment opacity is persisted and applies only to the mask overlay',
 test('landscape workspace keeps panel sizes while reordering the five windows', () => {
   assert.match(
     style,
-    /grid-template-areas:\s*'mask mask three three tools tools'\s*'main main section section section section'/,
+    /grid-template-areas:\s*'main main mask mask tools tools'\s*'three three section section section section'/,
   );
   assert.match(
     style,
@@ -96,3 +101,22 @@ test('Mask topography reference is dashed and all scientific header controls sha
   assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
 });
 
+
+
+test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
+  const mainStart = html.indexOf('id="mainPanel"');
+  const maskStart = html.indexOf('id="maskPanel"');
+  const threeStart = html.indexOf('id="threePanel"');
+  assert.ok(mainStart >= 0 && maskStart > mainStart && threeStart > maskStart);
+  assert.ok(html.indexOf('id="focusEditor"') > mainStart);
+  assert.ok(html.indexOf('id="focusEditor"') < maskStart);
+  assert.doesNotMatch(app.slice(app.indexOf('function renderMask()'), app.indexOf('function shadeColor')), /drawRoi/);
+  assert.match(app.slice(app.indexOf('function renderMain()'), app.indexOf('function renderSection()')), /drawRoi\(ctx, v, back\)/);
+  assert.match(roiController, /canvas\.addEventListener\('dblclick'[\s\S]*?resetPlanView\('mask'\)/);
+});
+
+test('3D border stays above opaque surfaces at 100% opacity', () => {
+  assert.match(threeView, /polygonOffsetFactor: Math\.min\(8, \(index \+ 1\) \* 0\.35\)/);
+  assert.match(threeView, /polygonOffsetUnits: Math\.min\(12, index \+ 1\)/);
+  assert.match(threeView, /opacity: 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
+});
