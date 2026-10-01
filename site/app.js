@@ -1000,7 +1000,9 @@ function applyOp() {
     return status(
       areaMode === 'full'
         ? 'The process domain has no editable area.'
-        : 'Select a mask layer that overlaps the process domain first.',
+        : maskSourceMode === 'draw'
+          ? 'Draw at least one mask shape that overlaps the process domain first.'
+          : 'Select a mask layer that overlaps the process domain first.',
       'warning',
     );
 
