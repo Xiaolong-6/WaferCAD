@@ -13,6 +13,7 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
+const { roughLod, roughNoise1D } = await import('./surface-rendering.js');
 const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
   modelApi;
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
@@ -20,6 +21,12 @@ const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
 function regionAt(model, point) {
   return model.regions.find((region) => pointInMulti(point, region.geom)) || null;
 }
+
+assert.equal(roughLod(0).detail, 0);
+assert.equal(roughLod(20).micro, 1);
+const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
+assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
+assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
 
 const defaults = createModel();
 assert.equal(defaults.width, 100000);
@@ -55,6 +62,49 @@ assert.equal(surfaceSegment(regionAt(m, [0, 0]).stack).z1, beforeTop + 1);
 
 applyOperation(m, { type: 'etch', thickness: 4, face: 'front', area });
 assert.equal(surfaceSegment(regionAt(m, [0, 0]).stack).layerId, 'base');
+
+const roughEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const roughResult = applyOperation(roughEtch, {
+  type: 'etch',
+  thickness: 1,
+  face: 'front',
+  area,
+  surface: { kind: 'rough', featureSize: 0.4, amplitude: 0.8, geometryMode: 'ideal' },
+});
+assert.equal(roughResult.changed, true);
+const roughSurface = surfaceSegment(regionAt(roughEtch, [0, 0]).stack);
+assert.equal(roughSurface.z1, 4);
+assert.equal(roughSurface.frontSurface.kind, 'rough');
+assert.equal(roughSurface.frontSurface.featureSize, 0.4);
+assert.equal(roughSurface.frontSurface.amplitude, 0.8);
+assert.equal(roughSurface.frontSurface.geometryMode, 'ideal');
+assert.equal(Number.isInteger(roughSurface.frontSurface.seed), true);
+
+const smoothEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(smoothEtch, { type: 'etch', thickness: 1, face: 'front', area });
+const smoothSurface = surfaceSegment(regionAt(smoothEtch, [0, 0]).stack);
+assert.equal(smoothSurface.z1, roughSurface.z1);
+assert.equal(smoothSurface.frontSurface, undefined);
+
+applyOperation(roughEtch, {
+  type: 'add',
+  name: 'Rough-following film',
+  thickness: 0.5,
+  face: 'front',
+  area,
+  growth: 'direct',
+});
+const inheritedRough = surfaceSegment(regionAt(roughEtch, [0, 0]).stack);
+assert.equal(inheritedRough.frontSurface.kind, 'rough');
+assert.equal(inheritedRough.frontSurface.seed, roughSurface.frontSurface.seed);
+
+applyOperation(roughEtch, {
+  type: 'etch',
+  thickness: 0.1,
+  face: 'front',
+  area,
+});
+assert.equal(surfaceSegment(regionAt(roughEtch, [0, 0]).stack).frontSurface, undefined);
 
 const direct = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const d = applyOperation(direct, {
@@ -324,6 +374,20 @@ const validProject = {
   display: { xyUnit: 'um', structurePalette: 'balanced', customStructurePalette: null },
 };
 assert.equal(validateProjectFile(validProject), validProject);
+
+const roughProject = structuredClone(validProject);
+roughProject.model.regions[0].stack[0].frontSurface = {
+  kind: 'rough',
+  featureSize: 0.4,
+  amplitude: 0.8,
+  seed: 1234,
+  geometryMode: 'ideal',
+};
+assert.equal(validateProjectFile(roughProject), roughProject);
+
+const futureRoughGeometry = structuredClone(roughProject);
+futureRoughGeometry.model.regions[0].stack[0].frontSurface.geometryMode = 'explicit';
+assert.throws(() => validateProjectFile(futureRoughGeometry), /geometryMode/);
 
 const badStack = structuredClone(validProject);
 badStack.model.regions[0].stack[0].z1 = badStack.model.regions[0].stack[0].z0;
