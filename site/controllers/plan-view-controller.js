@@ -1,5 +1,4 @@
 import { minimumSegmentLength, zoomLimitForFeature } from '../view-interactions.js';
-import { drawMaskGeometry } from '../draw-mask-geometry.js';
 
 export function createPlanViewController({
   windowRef = window,
@@ -52,10 +51,36 @@ export function createPlanViewController({
       maxY = base.maxY;
 
     if (getMaskSourceMode() === 'draw') {
-      const geometry = drawMaskGeometry(getDrawMask());
-      for (const polygon of geometry || []) {
-        for (const ring of polygon || []) {
-          for (const [x, y] of ring || []) {
+      for (const shape of getDrawMask()?.shapes || []) {
+        if (shape.type === 'rect' && Array.isArray(shape.a) && Array.isArray(shape.b)) {
+          minX = Math.min(minX, Number(shape.a[0]), Number(shape.b[0]));
+          maxX = Math.max(maxX, Number(shape.a[0]), Number(shape.b[0]));
+          minY = Math.min(minY, Number(shape.a[1]), Number(shape.b[1]));
+          maxY = Math.max(maxY, Number(shape.a[1]), Number(shape.b[1]));
+        } else if (shape.type === 'circle' && Array.isArray(shape.c)) {
+          const radius = Math.abs(Number(shape.r) || 0),
+            cx = Number(shape.c[0]),
+            cy = Number(shape.c[1]);
+          minX = Math.min(minX, cx - radius);
+          maxX = Math.max(maxX, cx + radius);
+          minY = Math.min(minY, cy - radius);
+          maxY = Math.max(maxY, cy + radius);
+        } else if (
+          (shape.type === 'ring' || shape.type === 'ring-sector') &&
+          Array.isArray(shape.c)
+        ) {
+          const radius = Math.abs(Number(shape.outerR) || 0),
+            cx = Number(shape.c[0]),
+            cy = Number(shape.c[1]);
+          minX = Math.min(minX, cx - radius);
+          maxX = Math.max(maxX, cx + radius);
+          minY = Math.min(minY, cy - radius);
+          maxY = Math.max(maxY, cy + radius);
+        } else if (shape.type === 'polygon' && Array.isArray(shape.points)) {
+          for (const point of shape.points) {
+            const x = Number(point?.[0]),
+              y = Number(point?.[1]);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
             minX = Math.min(minX, x);
             maxX = Math.max(maxX, x);
             minY = Math.min(minY, y);
