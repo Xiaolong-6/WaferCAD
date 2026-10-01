@@ -414,6 +414,12 @@ test('Mask ROI accepts only Square-compatible rect geometry or circle types', ()
   source.maskRoi = { type: 'circle', c: [0, 0], r: 5 };
   assert.equal(validateProjectFile(source), source);
 
+  source.maskRoi = { type: 'rect', a: [-5, -5], b: [5, 5] };
+  assert.equal(validateProjectFile(source), source);
+
+  source.maskRoi = { type: 'rect', a: [-5, -4], b: [5, 4] };
+  assert.throws(() => validateProjectFile(source), /must be square/);
+
   source.maskRoi = {
     type: 'sector',
     c: [0, 0],
