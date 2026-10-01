@@ -635,17 +635,18 @@ function drawMaskStructureReference(ctx, v) {
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  ctx.strokeStyle = 'rgba(59, 70, 82, .56)';
-  ctx.lineWidth = 0.85;
+  ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = 'rgba(86, 100, 114, .58)';
+  ctx.lineWidth = 0.8;
 
   const back = activeFace === 'back';
   for (const patch of maskStructurePatches()) {
     strokeClosedGeometry(ctx, patch.geom, v, back);
   }
 
-  ctx.setLineDash([5, 4]);
-  ctx.strokeStyle = 'rgba(125, 137, 149, .58)';
-  ctx.lineWidth = 0.9;
+  ctx.setLineDash([7, 4]);
+  ctx.strokeStyle = 'rgba(139, 150, 161, .56)';
+  ctx.lineWidth = 0.85;
   strokeClosedGeometry(ctx, model.boundary, v, back);
   ctx.restore();
 }

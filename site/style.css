@@ -2296,3 +2296,57 @@ summary:focus-visible {
     margin-right: 0;
   }
 }
+
+
+/* Unified Mask / 3D header controls */
+#maskPanel .view-head .mini-btn,
+#maskPanel .view-head .focus-editor > summary,
+#threePanel .view-head .three-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 21px;
+  min-width: 0;
+  padding: 1px 5px;
+  border: 1px solid #d5dde4;
+  border-radius: 3px;
+  background: #f8fafb;
+  color: #4f5d69;
+  font-size: 9.5px;
+  font-weight: 520;
+  line-height: 1.2;
+  box-shadow: none;
+}
+
+#maskPanel .view-head .mini-btn:hover,
+#maskPanel .view-head .focus-editor > summary:hover,
+#threePanel .view-head .three-control:hover {
+  border-color: #bcc7d1;
+  background: #eef2f5;
+  color: #334352;
+}
+
+#maskPanel .view-head .focus-editor[open] > summary,
+#maskPanel .view-head .three-opacity-control[open] > summary,
+#threePanel .view-head .three-opacity-control[open] > summary,
+#threePanel .view-head .three-border-toggle:has(input:checked) {
+  border-color: #aebcc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  box-shadow: none;
+}
+
+#threePanel .three-border-toggle > span {
+  color: inherit;
+  font-size: inherit;
+}
+
+@media (max-width: 600px) {
+  #maskPanel .view-head .mini-btn,
+  #maskPanel .view-head .focus-editor > summary,
+  #threePanel .view-head .three-control {
+    padding-left: 3px;
+    padding-right: 3px;
+    font-size: 8px;
+  }
+}

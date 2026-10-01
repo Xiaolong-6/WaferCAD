@@ -39,7 +39,7 @@ Selecting a layer selects that `layer/datatype` across the active subtree.
 
 The Mask view shows:
 
-- the current active-face structure as a neutral outline-only topography reference;
+- the current active-face structure as a neutral dashed topography reference;
 - imported mask geometry above that reference;
 - selected layers;
 - XY axes in the selected global display unit;
