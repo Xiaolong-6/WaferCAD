@@ -380,7 +380,7 @@ roughProject.model.regions[0].stack[0].frontSurface = {
   kind: 'rough',
   featureSize: 0.4,
   amplitude: 0.8,
-  seed: 1234,
+  seed: 0xffffffff,
   geometryMode: 'ideal',
 };
 assert.equal(validateProjectFile(roughProject), roughProject);
