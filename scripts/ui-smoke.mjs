@@ -30,6 +30,7 @@ const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
 const errors = [];
 
 page.on('pageerror', (error) => errors.push(error.message));
+page.on('dialog', (dialog) => void dialog.accept());
 
 await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
@@ -144,7 +145,13 @@ assert.equal(Number(await page.locator('#operationThickness').inputValue()), 300
 await page.locator('#xyUnitSelect').selectOption('um');
 assert.equal(Number(await page.locator('#baseThickness').inputValue()), 12);
 assert.equal(Number(await page.locator('#operationThickness').inputValue()), 3);
-for (const id of ['newProjectBtn', 'openProjectInput', 'saveProjectBtn', 'xyUnitSelect']) {
+for (const id of [
+  'projectNameInput',
+  'newProjectBtn',
+  'openProjectInput',
+  'saveProjectBtn',
+  'xyUnitSelect',
+]) {
   assert.equal(await page.locator(`#settingsTools #${id}`).count(), 1);
 }
 
