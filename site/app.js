@@ -105,7 +105,8 @@ function normalizedProjectName(value = projectName) {
 
 function projectExportFilename() {
   const stem = normalizedProjectName()
-    .replace(/[<>:"/\\\\|?*\u0000-\u001f]/g, '-')
+    .replace(/[<>:"|?*\u0000-\u001f]/g, '-')
+    .replace(/[\\/]/g, '-')
     .replace(/[. ]+$/g, '')
     .trim();
   return `${stem || 'Untitled'}.wafercad`;
