@@ -18,7 +18,9 @@ Primary viewports are 1440 × 900, 1000 × 800, and 390 × 844. The phone contex
 
 ## Layout and renderer changes
 
-At widths up to 900, A–B coordinates dock below Main so they cannot cover the endpoints. The established three-row narrow layout remains: Tools/3D, Main/Mask, Section.
+On desktop landscape widths above 900 px, the five workspace panels are arranged as **Mask / 3D / Function** on the first row and **Main / Section** on the second row. Their existing grid proportions are preserved: each first-row panel occupies one third, Main occupies one third of the second row, and Section occupies the remaining two thirds.
+
+At widths up to 900 px, A–B coordinates dock below Main so they cannot cover the endpoints. The established three-row narrow layout remains unchanged: Tools/3D, Main/Mask, Section.
 
 Narrow tool headers wrap deliberately; mobile base fields use full input rows, all five mobile tabs remain visible in two rows, and the legend header wraps its controls. The ROI popover has a bounded scroll area. Plan-axis tick spacing responds to the available screen width and actual label width.
 
