@@ -123,3 +123,12 @@ Use **Settings → Save** to export the current project. Snapshot records are in
 The active workspace is also autosaved locally in IndexedDB. Reloading `app.html` restores the most recent local workspace; an explicit project/example launched from the welcome page takes priority over that local restore.
 
 Use **Settings → Open** to restore a project. Older supported project files are migrated to the current format version before validation. Save and Open enforce the same 256 MB safety limit.
+
+
+### Base lifecycle and Process
+
+The **Base** is a physical material in the vector stack, while `model.boundary` remains the process-domain footprint used for mask alignment and editing. Partial through-etches are valid holes. A whole-face over-etch may remove all material; the workspace remains valid so Undo, snapshots, masks, ROI and project state can still be used. Process operations are disabled until a Base is recreated when no material remains.
+
+**Process → Grow** lists only layers exposed on the active face in the selected process area. **Base** is a valid Grow target whenever it is exposed. Buried layers are not offered as Grow targets.
+
+Workspace feedback is typed: passive information stays in the status bar, successful actions and warnings use transient notices, errors remain visible, and field-level process validation appears next to the relevant control.
