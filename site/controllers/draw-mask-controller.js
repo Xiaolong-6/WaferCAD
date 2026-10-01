@@ -608,6 +608,12 @@ export function createDrawMaskController({
           );
           renderMask();
         } else if (drag?.mode === 'resize') {
+          if (
+            Math.hypot(screen[0] - drag.startScreen[0], screen[1] - drag.startScreen[1]) >
+            3
+          ) {
+            drag.moved = true;
+          }
           replaceShape(drag.original.id, resizeDrawShape(drag.original, drag.handle, point));
           renderMask();
         } else if (tool === 'polygon' && polygonDraft) {
@@ -692,6 +698,8 @@ export function createDrawMaskController({
               pointerId: event.pointerId,
               original: structuredClone(selected),
               handle,
+              startScreen: screen,
+              moved: false,
             };
           } else {
             const hit = hitShape(point);
@@ -738,11 +746,14 @@ export function createDrawMaskController({
           finishCreate();
         } else {
           drag = null;
+          if (completed.mode === 'resize' && !completed.moved) {
+            replaceShape(completed.original.id, completed.original);
+          }
           syncUi();
           renderMask();
           onMaskChanged();
           if (
-            completed.mode === 'move' &&
+            (completed.mode === 'move' || completed.mode === 'resize') &&
             !completed.moved &&
             completed.original.type !== 'polygon'
           ) {
