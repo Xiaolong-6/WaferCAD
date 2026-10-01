@@ -996,6 +996,7 @@ function renderAll() {
   syncMaskSourceSummary();
   syncProjectNameInput();
   drawMaskController?.syncUi();
+  maskRoiController?.syncEditor();
   $('baseSummary').textContent = baseSummaryText();
   updateOperationUI();
   syncUndo();
