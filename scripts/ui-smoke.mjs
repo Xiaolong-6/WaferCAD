@@ -523,6 +523,19 @@ await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Rectangle');
 assert.ok(Number(await page.locator('#drawShapeWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#drawShapeHeight').inputValue()) > 0);
+
+// Dragging a selected shape keeps the editor open and live-syncs its numeric fields.
+const rectCxBeforeDrag = Number(await page.locator('#drawShapeCx').inputValue());
+await page.mouse.move(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5);
+await page.mouse.down();
+await page.mouse.move(drawBox.x + drawBox.width * 0.53, drawBox.y + drawBox.height * 0.5, {
+  steps: 4,
+});
+const rectCxDuringDrag = Number(await page.locator('#drawShapeCx').inputValue());
+assert.notEqual(rectCxDuringDrag, rectCxBeforeDrag);
+await page.mouse.up();
+assert.equal(await page.locator('#drawShapeEditor').isVisible(), true);
+
 await page.locator('#drawShapeCx').fill('250');
 await page.locator('#drawShapeCy').fill('-125');
 await page.locator('#drawShapeWidth').fill('800');
@@ -531,16 +544,21 @@ await page.locator('#drawShapeEditorApply').click();
 assert.match(await page.locator('#statusText').textContent(), /Rectangle parameters updated/);
 await page.locator('#drawShapeEditorClose').click();
 
-// Polygon finishes on double-click and automatically closes to the first point.
+// Polygon can finish by clicking its first point; double-click and Enter remain supported.
+const polygonStart = {
+  x: drawBox.x + drawBox.width * 0.3,
+  y: drawBox.y + drawBox.height * 0.3,
+};
 await page.locator('.draw-mask-tool[data-draw-tool="polygon"]').click();
-await page.mouse.click(drawBox.x + drawBox.width * 0.3, drawBox.y + drawBox.height * 0.3);
+await page.mouse.click(polygonStart.x, polygonStart.y);
 await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.3);
-await page.mouse.dblclick(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.38);
+await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.38);
+await page.mouse.click(polygonStart.x, polygonStart.y);
 await page.waitForTimeout(30);
 assert.match(await page.locator('#drawMaskHint').textContent(), /^2 shapes/);
 
-// Existing Polygon uses a KLayout-style one-coordinate-pair-per-line editor.
-await page.mouse.dblclick(drawBox.x + drawBox.width * 0.36, drawBox.y + drawBox.height * 0.33);
+// Existing Polygon opens the same parameter editor on a normal click.
+await page.mouse.click(drawBox.x + drawBox.width * 0.36, drawBox.y + drawBox.height * 0.33);
 await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Polygon');
 const polygonRows = (await page.locator('#drawShapePoints').inputValue())
@@ -653,6 +671,12 @@ for (const [panel, button, filename] of [
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), filename);
 }
+const headerToolAlignment = await page.locator('.view-head .view-tools').evaluateAll((groups) =>
+  groups.map((group) => getComputedStyle(group).alignItems),
+);
+assert.ok(headerToolAlignment.length >= 4);
+assert.ok(headerToolAlignment.every((value) => value === 'center'));
+
 for (const [buttonId, panelId] of [
   ['mainMaxBtn', 'mainPanel'],
   ['maskMaxBtn', 'maskPanel'],
