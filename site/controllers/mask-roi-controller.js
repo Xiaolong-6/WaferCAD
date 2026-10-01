@@ -109,6 +109,41 @@ export function createMaskRoiController({
     return handle === 'top-left' || handle === 'bottom-right' ? 'nwse-resize' : 'nesw-resize';
   }
 
+  function render(ctx, view) {
+    const shape = getDraft() || getRoi();
+    if (!shape) return;
+
+    ctx.save();
+    ctx.strokeStyle = '#9a5b23';
+    ctx.fillStyle = 'rgba(230, 162, 60, .05)';
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (shape.type === 'rect') {
+      const a = worldToCanvas(shape.a, view),
+        b = worldToCanvas(shape.b, view);
+      ctx.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+    } else {
+      const c = worldToCanvas(shape.c, view);
+      ctx.arc(c[0], c[1], shape.r * view.s, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    if (!getDraft() && getRoi() && !getTool()) {
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1;
+      for (const point of Object.values(roiHandlePoints(getRoi()))) {
+        const q = worldToCanvas(point, view);
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#9a5b23';
+        ctx.fillRect(q[0] - 4.5, q[1] - 4.5, 9, 9);
+        ctx.strokeRect(q[0] - 4.5, q[1] - 4.5, 9, 9);
+      }
+    }
+    ctx.restore();
+  }
+
   function bindControls() {
     $('maskRoiEditor')?.addEventListener('toggle', () => {
       if ($('maskRoiEditor').open) {
@@ -346,5 +381,5 @@ export function createMaskRoiController({
     bindCanvas();
   }
 
-  return { bind, clearDrawingMode, syncEditor };
+  return { bind, clearDrawingMode, syncEditor, render };
 }
