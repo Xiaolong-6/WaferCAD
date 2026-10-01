@@ -86,11 +86,13 @@ test('workstation visual system keeps scientific controls visually unified', () 
   assert.match(style, /\.statusbar\[data-level='warning'\]/);
 });
 
-test('Mask topography reference is dashed and Mask/3D header controls share one style', () => {
+test('Mask topography reference is dashed and all scientific header controls share one style', () => {
   assert.match(app, /ctx\.setLineDash\(\[4, 3\]\)/);
   assert.match(app, /ctx\.setLineDash\(\[7, 4\]\)/);
-  assert.match(style, /\/\* Unified Mask \/ 3D header controls \*\//);
-  assert.match(style, /#maskPanel \.view-head \.mini-btn,[\s\S]*?#threePanel \.view-head \.three-control/);
-  assert.match(style, /#threePanel \.three-border-toggle > span[\s\S]*?color: inherit/);
+  assert.match(style, /\/\* Unified scientific header controls \*\//);
+  assert.match(style, /\.view-head \.mini-btn,[\s\S]*?\.view-head \.three-control/);
+  assert.match(style, /\.view-head \.section-view-tools[\s\S]*?gap: 2px/);
+  assert.match(style, /\.view-head \.three-border-toggle > span[\s\S]*?color: inherit/);
+  assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
 });
 

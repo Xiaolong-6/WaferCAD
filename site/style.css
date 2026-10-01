@@ -2298,10 +2298,12 @@ summary:focus-visible {
 }
 
 
-/* Unified Mask / 3D header controls */
-#maskPanel .view-head .mini-btn,
-#maskPanel .view-head .focus-editor > summary,
-#threePanel .view-head .three-control {
+/* Unified scientific header controls */
+.view-head .mini-btn,
+.view-head .three-control,
+.view-head .focus-editor > summary,
+.view-head .three-opacity-control > summary,
+.view-head .three-border-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2318,33 +2320,50 @@ summary:focus-visible {
   box-shadow: none;
 }
 
-#maskPanel .view-head .mini-btn:hover,
-#maskPanel .view-head .focus-editor > summary:hover,
-#threePanel .view-head .three-control:hover {
+.view-head .mini-btn:hover,
+.view-head .three-control:hover,
+.view-head .focus-editor > summary:hover,
+.view-head .three-opacity-control > summary:hover,
+.view-head .three-border-toggle:hover {
   border-color: #bcc7d1;
   background: #eef2f5;
   color: #334352;
 }
 
-#maskPanel .view-head .focus-editor[open] > summary,
-#maskPanel .view-head .three-opacity-control[open] > summary,
-#threePanel .view-head .three-opacity-control[open] > summary,
-#threePanel .view-head .three-border-toggle:has(input:checked) {
+.view-head .focus-editor[open] > summary,
+.view-head .three-opacity-control[open] > summary,
+.view-head .three-border-toggle:has(input:checked),
+#sectionControlsBtn.active,
+#sectionScaleModeBtn.active,
+.view-max-btn.active {
   border-color: #aebcc9;
   background: var(--accent-soft);
   color: var(--accent-dark);
   box-shadow: none;
 }
 
-#threePanel .three-border-toggle > span {
+.view-head .view-tools,
+.view-head .three-view-tools,
+.view-head .section-view-tools {
+  gap: 2px;
+}
+
+.view-head .zoom-tools,
+.view-head .focus-tools {
+  gap: 2px;
+}
+
+.view-head .three-border-toggle > span {
   color: inherit;
   font-size: inherit;
 }
 
 @media (max-width: 600px) {
-  #maskPanel .view-head .mini-btn,
-  #maskPanel .view-head .focus-editor > summary,
-  #threePanel .view-head .three-control {
+  .view-head .mini-btn,
+  .view-head .three-control,
+  .view-head .focus-editor > summary,
+  .view-head .three-opacity-control > summary,
+  .view-head .three-border-toggle {
     padding-left: 3px;
     padding-right: 3px;
     font-size: 8px;
