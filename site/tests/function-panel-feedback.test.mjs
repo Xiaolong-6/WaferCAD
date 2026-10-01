@@ -8,6 +8,11 @@ const feedback = await readFile(
   new URL('../controllers/feedback-controller.js', import.meta.url),
   'utf8',
 );
+const style = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+const projectState = await readFile(
+  new URL('../controllers/project-state-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
@@ -48,4 +53,25 @@ test('Mask alignment view overlays neutral structure outlines beneath adjustable
   assert.match(app, /maskStructurePatches\(\)/);
   assert.match(app, /ctx\.globalAlpha = maskOpacity/);
   assert.match(app, /drawMaskStructureReference\(ctx, v\)/);
+});
+
+
+test('Mask alignment opacity is persisted and applies only to the mask overlay', () => {
+  assert.match(html, /id="maskOpacityRange"/);
+  assert.match(app, /ctx\.globalAlpha = maskOpacity/);
+  assert.match(app, /drawMaskStructureReference\(ctx, v\)/);
+  assert.match(app, /same-height surface groups across materials/);
+  assert.match(projectState, /maskOpacity: state\.maskOpacity/);
+  assert.match(projectState, /project\.display\?\.maskOpacity == null \? 0\.65/);
+});
+
+test('landscape workspace keeps panel sizes while reordering the five windows', () => {
+  assert.match(
+    style,
+    /grid-template-areas:\s*'mask mask three three tools tools'\s*'main main section section section section'/,
+  );
+  assert.match(
+    style,
+    /@media \(max-width: 900px\)[\s\S]*?'tools three'[\s\S]*?'main mask'[\s\S]*?'section section'/,
+  );
 });
