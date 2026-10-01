@@ -554,6 +554,14 @@ function validateProjectCore(
   ) {
     fail('maskRoi.type', 'must be rect or circle.');
   }
+  if (project.maskRoi?.type === 'rect') {
+    const width = Math.abs(project.maskRoi.b[0] - project.maskRoi.a[0]),
+      height = Math.abs(project.maskRoi.b[1] - project.maskRoi.a[1]),
+      tolerance = Math.max(1e-12, width, height) * 1e-9;
+    if (Math.abs(width - height) > tolerance) {
+      fail('maskRoi', 'rect geometry must be square.');
+    }
+  }
   if (
     project.maskRoiAnchor != null &&
     !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.maskRoiAnchor)
