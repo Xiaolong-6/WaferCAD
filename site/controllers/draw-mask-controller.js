@@ -292,6 +292,16 @@ export function createDrawMaskController({
     ctx.restore();
   }
 
+  function resetInteraction() {
+    tool = null;
+    selectedId = null;
+    drag = null;
+    draft = null;
+    polygonDraft = null;
+    polygonHover = null;
+    syncUi();
+  }
+
   function bind() {
     $('maskSourceToggleBtn').onclick = () =>
       setSourceMode(getMode() === 'draw' ? 'file' : 'draw');
@@ -491,5 +501,6 @@ export function createDrawMaskController({
     syncUi,
     getTool: () => tool,
     getSelectedId: () => selectedId,
+    resetInteraction,
   };
 }
