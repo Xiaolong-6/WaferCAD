@@ -25,6 +25,7 @@ export function createDrawMaskController({
   formatLengthField,
   manualMicron,
   renderMask,
+  isInteractionBlocked = () => false,
   syncSourceSummary = () => {},
   onMaskChanged = () => {},
   status,
@@ -600,7 +601,7 @@ export function createDrawMaskController({
     canvas.addEventListener(
       'pointermove',
       (event) => {
-        if (getMode() !== 'draw') return;
+        if (getMode() !== 'draw' || (isInteractionBlocked() && !drag)) return;
         const { view, screen, point } = worldPoint(event, canvas);
         $('maskCoords').textContent = `x ${xyText(point[0])} · y ${xyText(point[1])}`;
 
@@ -684,7 +685,7 @@ export function createDrawMaskController({
     canvas.addEventListener(
       'pointerdown',
       (event) => {
-        if (getMode() !== 'draw' || event.button !== 0) return;
+        if (getMode() !== 'draw' || event.button !== 0 || isInteractionBlocked()) return;
         const { view, screen, point } = worldPoint(event, canvas);
 
         if (tool === 'polygon') {
