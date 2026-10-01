@@ -518,6 +518,8 @@ await page.locator('#applyOperationBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /^Deposited Draw probe/);
 
 // Switching sources never destroys either source.
+await page.locator('#maskTab').click();
+await page.locator('#maskTools:not([hidden])').waitFor();
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 assert.equal(await page.locator('#maskFileControls').isVisible(), true);
