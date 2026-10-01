@@ -1,9 +1,14 @@
-self.importScripts('./vendor/polygon-clipping.umd.js');
+const versionQuery = self.location.search || '';
+self.importScripts(`./vendor/polygon-clipping.umd.js${versionQuery}`);
 
 let modelModulePromise = null;
 
 function modelModule() {
-  if (!modelModulePromise) modelModulePromise = import('./model.js');
+  if (!modelModulePromise) {
+    const url = new URL('./model.js', self.location.href);
+    url.search = versionQuery;
+    modelModulePromise = import(url.href);
+  }
   return modelModulePromise;
 }
 
