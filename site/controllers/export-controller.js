@@ -64,7 +64,7 @@ export function createExportController({
   }
 
   function exportMainSvg() {
-    const { model, activeFace, section } = getState();
+    const { model, activeFace, section, roi } = getState();
     const canvas = $('mainCanvas'),
       rect = canvas.getBoundingClientRect(),
       width = Math.max(2, rect.width),
@@ -101,21 +101,29 @@ export function createExportController({
       )}" font-family="system-ui,sans-serif" font-size="9" font-weight="700" fill="#cc5062">${label}</text>`;
     }
 
+    if (roi) {
+      body += `<path d="${svgRoiPath(
+        roi,
+        view,
+        back,
+      )}" fill="rgba(214,83,97,.05)" stroke="#d65361" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+    }
+
     downloadText(svgDocument(width, height, body), 'wafercad-main.svg');
     status('Exported Main as SVG.');
   }
 
-  function svgRoiPath(shape, view) {
+  function svgRoiPath(shape, view, back = false) {
     if (!shape) return '';
     if (shape.type === 'rect') {
-      const a = worldToCanvas(shape.a, view),
-        b = worldToCanvas(shape.b, view);
+      const a = worldToCanvas(shape.a, view, back),
+        b = worldToCanvas(shape.b, view, back);
       return `M${svgNumber(a[0])} ${svgNumber(a[1])}L${svgNumber(b[0])} ${svgNumber(
         a[1],
       )}L${svgNumber(b[0])} ${svgNumber(b[1])}L${svgNumber(a[0])} ${svgNumber(b[1])}Z`;
     }
     if (shape.type === 'circle') {
-      const center = worldToCanvas(shape.c, view),
+      const center = worldToCanvas(shape.c, view, back),
         radius = shape.r * view.s;
       return `M${svgNumber(center[0] + radius)} ${svgNumber(center[1])}A${svgNumber(
         radius,
@@ -130,7 +138,7 @@ export function createExportController({
       return (
         points
           .map((point, index) => {
-            const mapped = worldToCanvas(point, view);
+            const mapped = worldToCanvas(point, view, back);
             return `${index ? 'L' : 'M'}${svgNumber(mapped[0])} ${svgNumber(mapped[1])}`;
           })
           .join('') + 'Z'
@@ -140,13 +148,13 @@ export function createExportController({
   }
 
   function exportMaskSvg() {
-    const { model, layout, maskTransform, roi } = getState();
+    const { model, layout, maskTransform } = getState();
     const canvas = $('maskCanvas'),
       rect = canvas.getBoundingClientRect(),
       width = Math.max(2, rect.width),
       height = Math.max(2, rect.height),
       view = viewport(width, height, 'mask'),
-      map = (point) => worldToCanvas(point, view);
+      map = (point) => worldToCanvas(point, view, back);
     let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
 
     for (const element of layout.linework || []) {
@@ -181,12 +189,7 @@ export function createExportController({
       }"/>`;
     }
 
-    if (roi) {
-      body += `<path d="${svgRoiPath(
-        roi,
-        view,
-      )}" fill="rgba(214,83,97,.05)" stroke="#d65361" stroke-width="1.2" stroke-dasharray="5 4"/>`;
-    }
+
 
     downloadText(svgDocument(width, height, body), 'wafercad-mask.svg');
     status('Exported Mask as SVG.');
