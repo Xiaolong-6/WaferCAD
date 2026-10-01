@@ -2304,8 +2304,8 @@ summary:focus-visible {
 .view-head > .three-view-tools,
 .view-head > .section-view-tools {
   align-items: center;
-  align-self: stretch;
-  height: 100%;
+  align-self: center;
+  height: auto;
 }
 
 .view-head .view-tools > button,
