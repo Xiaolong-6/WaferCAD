@@ -110,6 +110,8 @@ function quantizeProjectLengths(project) {
       if (Array.isArray(shape.b)) quantizePoint(shape.b);
       if (Array.isArray(shape.c)) quantizePoint(shape.c);
       if (shape.r != null) shape.r = quantizeLength(shape.r);
+      if (shape.innerR != null) shape.innerR = quantizeLength(shape.innerR);
+      if (shape.outerR != null) shape.outerR = quantizeLength(shape.outerR);
       for (const point of shape.points || []) quantizePoint(point);
     }
   }
