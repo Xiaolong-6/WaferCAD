@@ -850,8 +850,7 @@ function updateGrowTargets() {
   const previous = select.value;
   select.innerHTML = '';
 
-  let area = operationAreaGeometry($('operationArea').value);
-  if (isEmpty(area)) area = model.boundary;
+  const area = operationAreaGeometry($('operationArea').value);
   const exposed = new Set(exposedLayerIds(model, area, activeFace));
   for (const layer of model.layers) {
     if (!exposed.has(layer.id)) continue;
