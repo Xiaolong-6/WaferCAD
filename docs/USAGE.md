@@ -63,8 +63,8 @@ Choose Front or Back.
 
 Choose an action:
 
-- Add new layer;
-- Grow current layer;
+- Deposit new layer;
+- Extend existing layer;
 - Etch / subtract.
 
 Choose an area:
@@ -78,7 +78,7 @@ For Add and Grow, choose:
 - Direct;
 - Conformal.
 
-Etch has no growth setting.
+Etch has no coverage setting.
 
 Z is physical and stored internally in µm. Add/Grow use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Direct growth first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
 
@@ -129,6 +129,6 @@ Use **Settings → Open** to restore a project. Older supported project files ar
 
 The **Base** is a physical material in the vector stack, while `model.boundary` remains the process-domain footprint used for mask alignment and editing. Partial through-etches are valid holes. A whole-face over-etch may remove all material; the workspace remains valid so Undo, snapshots, masks, ROI and project state can still be used. Process operations are disabled until a Base is recreated when no material remains.
 
-**Process → Grow** lists only layers exposed on the active face in the selected process area. **Base** is a valid Grow target whenever it is exposed. Buried layers are not offered as Grow targets.
+**Process → Extend** lists only layers exposed on the active face in the selected process area. **Base** is a valid Extend target whenever it is exposed. Buried layers are not offered as Extend targets.
 
 Workspace feedback is typed: passive information stays in the status bar, successful actions and warnings use transient notices, errors remain visible, and field-level process validation appears next to the relevant control.
