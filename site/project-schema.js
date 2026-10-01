@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 4;
+export const CURRENT_PROJECT_VERSION = 5;
 
 const LIMITS = {
   layers: 10000,
