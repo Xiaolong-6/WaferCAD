@@ -147,6 +147,10 @@ export function createWorkspaceActionsController({
       if (details) details.open = false;
     };
 
+    $('maskExportControl')
+      ?.querySelector(':scope > summary')
+      ?.addEventListener('click', syncMaskExportOptions);
+
     root.querySelectorAll('.export-control').forEach((details) => {
       details.addEventListener('toggle', () => {
         if (!details.open) return;
