@@ -18,11 +18,25 @@ Primary viewports are 1440 × 900, 1000 × 800, and 390 × 844. The phone contex
 
 ## Layout and renderer changes
 
-At widths up to 900, A–B coordinates dock below Main so they cannot cover the endpoints. The established three-row narrow layout remains: Tools/3D, Main/Mask, Section.
+On desktop landscape widths above 900 px, the five workspace panels are arranged as **Mask / 3D / Function** on the first row and **Main / Section** on the second row. Their existing grid proportions are preserved: each first-row panel occupies one third, Main occupies one third of the second row, and Section occupies the remaining two thirds.
+
+At widths up to 900 px, A–B coordinates dock below Main so they cannot cover the endpoints. The established three-row narrow layout remains unchanged: Tools/3D, Main/Mask, Section.
 
 Narrow tool headers wrap deliberately; mobile base fields use full input rows, all five mobile tabs remain visible in two rows, and the legend header wraps its controls. The ROI popover has a bounded scroll area. Plan-axis tick spacing responds to the available screen width and actual label width.
 
 Canvas ResizeObservers redraw after panel layout changes. This prevents stretched Mask/Section images when opening the mobile coordinate controls. 3D Fit uses the camera aspect ratio, field of view and bounding radius to keep the full model inside the panel.
+
+## Workstation visual hierarchy
+
+The editor uses a compact engineering/CAD workstation visual system. Information density and panel geometry stay unchanged; hierarchy comes from surface treatment rather than added whitespace.
+
+- scientific view headers share one compact toolbar language across Main, Mask, 3D and Section;
+- panel borders are subdued and canvas surfaces remain visually dominant;
+- tool tabs use a quiet background plus a single active underline instead of boxed emphasis;
+- inputs, selects, segmented controls, primary actions and quiet actions use one border/radius/focus system;
+- popovers and coordinate editors use the same elevated-surface treatment;
+- passive status remains low weight, while success/info/warning/error states retain distinct semantic feedback;
+- visual styling must not change workspace grid allocation, scientific geometry, or editor behavior.
 
 ## Reproduce the review
 

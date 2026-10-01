@@ -131,6 +131,28 @@
           <div class="view-head mask-view-head">
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
+              <details class="three-opacity-control mask-opacity-control">
+                <summary
+                  class="mini-btn"
+                  aria-label="Adjust mask transparency"
+                  title="Adjust mask transparency for visual alignment"
+                >
+                  Opacity
+                </summary>
+                <div class="three-opacity-popover mask-opacity-popover">
+                  <label for="maskOpacityRange"
+                    ><span>Mask opacity</span><output id="maskOpacityValue">65%</output></label
+                  >
+                  <input
+                    id="maskOpacityRange"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value="0.65"
+                  />
+                </div>
+              </details>
               <details id="focusEditor" class="focus-editor">
                 <summary class="mini-btn" title="Edit the 3D region of interest">ROI</summary>
                 <div class="focus-popover">
@@ -497,7 +519,7 @@
               hidden
             >
               <div class="tool-context">
-                <span id="processSummary">Front · Add layer</span>
+                <span id="processSummary">Front · Deposit layer</span>
               </div>
               <div class="control-body">
                 <div class="field-row active-face-row">
@@ -514,14 +536,14 @@
 
                 <div id="processMode" class="segmented process-mode" aria-label="Process action">
                   <button type="button" class="active" data-process-mode="add" aria-pressed="true">
-                    Add
+                    Deposit
                   </button>
-                  <button type="button" data-process-mode="grow" aria-pressed="false">Grow</button>
+                  <button type="button" data-process-mode="grow" aria-pressed="false">Extend</button>
                   <button type="button" data-process-mode="etch" aria-pressed="false">Etch</button>
                 </div>
                 <select id="operationType" class="visually-hidden" aria-label="Process action">
-                  <option value="add">Add new layer</option>
-                  <option value="grow">Grow current layer</option>
+                  <option value="add">Deposit new layer</option>
+                  <option value="grow">Extend existing layer</option>
                   <option value="etch">Etch / subtract</option>
                 </select>
 
@@ -540,9 +562,9 @@
                   </select></label
                 >
                 <label id="growthModeRow" class="field-row"
-                  ><span>Growth</span
+                  ><span>Coverage</span
                   ><select id="growthMode">
-                    <option value="direct">Direct</option>
+                    <option value="direct">Directional</option>
                     <option value="conformal">Conformal</option>
                   </select></label
                 >
@@ -572,7 +594,7 @@
                   </button>
                 </div>
                 <p id="operationNote" class="hint compact-hint">
-                  Direct follows the selected footprint.
+                  Directional coverage follows the selected footprint.
                 </p>
               </div>
             </section>

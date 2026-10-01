@@ -23,6 +23,9 @@ export function createWorkspaceActionsController({
   getSectionScaleMode,
   setSectionScaleMode,
   renderSection,
+  getMaskOpacity,
+  setMaskOpacity,
+  renderMask,
   getThreeOpacity,
   setThreeOpacity,
   getThreeShowBorders,
@@ -84,6 +87,12 @@ export function createWorkspaceActionsController({
           ? 'Section scale: Auto fit (X and Z independently).'
           : 'Section scale: physical 1:1 X:Z.',
       );
+    };
+
+    $('maskOpacityRange').oninput = () => {
+      setMaskOpacity(Math.max(0, Math.min(1, Number($('maskOpacityRange').value) || 0)));
+      $('maskOpacityValue').value = `${Math.round(getMaskOpacity() * 100)}%`;
+      renderMask();
     };
 
     $('threeOpacityRange').oninput = () => {

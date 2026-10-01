@@ -4,14 +4,14 @@ WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-d
 
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
-- **Mask** — GDSII/OASIS hierarchy, global layer/datatype selection, alignment, and Rect/Circle/Sector render-only 3D ROI.
+- **Mask** — GDSII/OASIS hierarchy, global layer/datatype selection, alignment, an adjustable-opacity mask overlay above the current active-face topography outline, and Rect/Circle/Sector render-only 3D ROI.
 - **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, physical GLB export, and 3× PNG capture.
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
 
 ## Geometry model
 
-XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Add, Grow, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
+XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Deposit, Extend, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
 
 - **X, Y and Z** are stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display/input unit can be switched between nm, µm, and mm without changing geometry.
 - Section and 3D may stretch Z for visibility; that display scaling never changes the saved physical Z coordinates.
@@ -39,11 +39,11 @@ Operations can target the front or back face and use one of three areas:
 
 Available actions:
 
-- Add new layer
-- Grow current layer
+- Deposit new layer
+- Extend existing layer
 - Etch / subtract
 
-Add and Grow support Direct and Conformal modes. Etch is vertical subtraction and has no growth mode.
+Deposit and Extend support Directional and Conformal coverage. Etch is vertical subtraction and has no coverage mode.
 
 ## Safety
 
@@ -81,4 +81,4 @@ See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party 
 
 ### Product verification
 
-[Interaction and visual regression](docs/PRODUCT_REVIEW.md) covers wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser review artifacts. [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Direct/Conformal/Etch semantics and their limits.
+[Interaction and visual regression](docs/PRODUCT_REVIEW.md) covers wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser review artifacts. [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Directional/Conformal/Etch semantics and their limits.

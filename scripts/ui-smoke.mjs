@@ -167,7 +167,7 @@ await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
 
-// Grow targets follow the exposed surface and include Base when it is exposed.
+// Extend targets follow the exposed surface and include Base when it is exposed.
 await page.locator('[data-process-mode="grow"]').click();
 await page.locator('#operationArea').selectOption('full');
 assert.ok(await page.locator('#targetLayer option[value="base"]').count());
@@ -207,7 +207,7 @@ await page.locator('#layerName').fill('UI conformal');
 assert.equal(await page.locator('#growthMode').inputValue(), 'conformal');
 assert.match(await page.locator('#operationNote').textContent(), /Conformal/);
 await page.locator('#applyOperationBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /Added UI conformal/);
+assert.match(await page.locator('#statusText').textContent(), /Deposited UI conformal/);
 
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI conformal project');

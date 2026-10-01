@@ -54,6 +54,7 @@ export function createProjectStateController({
         xyUnit: state.xyDisplayUnit,
         structurePalette: state.activeStructurePalette,
         customStructurePalette: state.customStructurePalette,
+        maskOpacity: state.maskOpacity,
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
         sectionScaleMode: state.sectionScaleMode,
@@ -80,6 +81,13 @@ export function createProjectStateController({
         project.display?.structurePalette && STRUCTURE_PALETTES[project.display.structurePalette]
           ? project.display.structurePalette
           : undefined,
+      maskOpacity = Math.max(
+        0,
+        Math.min(
+          1,
+          project.display?.maskOpacity == null ? 0.65 : Number(project.display.maskOpacity),
+        ),
+      ),
       threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1)),
       threeShowBorders = Boolean(project.display?.threeShowBorders),
       sectionScaleMode = ['auto', 'physical'].includes(project.display?.sectionScaleMode)
@@ -107,6 +115,7 @@ export function createProjectStateController({
       customStructurePalette: Array.isArray(project.display?.customStructurePalette)
         ? project.display.customStructurePalette
         : null,
+      maskOpacity,
       threeOpacity,
       threeShowBorders,
       sectionScaleMode,
@@ -115,7 +124,7 @@ export function createProjectStateController({
     });
 
     ensureHierarchy();
-    syncThreeControls({ threeOpacity, threeShowBorders });
+    syncThreeControls({ maskOpacity, threeOpacity, threeShowBorders });
   }
 
   function resetProjectState() {
@@ -139,6 +148,7 @@ export function createProjectStateController({
       xyDisplayUnit: previous.xyDisplayUnit,
       activeStructurePalette: previous.activeStructurePalette,
       customStructurePalette: previous.customStructurePalette,
+      maskOpacity: previous.maskOpacity,
       threeOpacity: previous.threeOpacity,
       threeShowBorders: previous.threeShowBorders,
       planViews: {

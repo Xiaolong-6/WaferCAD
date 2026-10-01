@@ -574,14 +574,98 @@ function drawRoi(ctx, v) {
   ctx.restore();
 }
 
+let maskStructureCache = {
+  model: null,
+  revision: null,
+  processRevision: null,
+  face: null,
+  patches: [],
+};
+
+function maskStructurePatches() {
+  if (
+    maskStructureCache.model === model &&
+    maskStructureCache.revision === model.revision &&
+    maskStructureCache.processRevision === model.processRevision &&
+    maskStructureCache.face === activeFace
+  ) {
+    return maskStructureCache.patches;
+  }
+
+  // Collapse same-height surface groups across materials. The Mask reference
+  // is topography-only: material/color boundaries at the same Z are omitted.
+  const byHeight = new Map();
+  for (const patch of surfaceGroups(model, activeFace)) {
+    const key = String(patch.z);
+    const geoms = byHeight.get(key) || [];
+    geoms.push(patch.geom);
+    byHeight.set(key, geoms);
+  }
+  const patches = [...byHeight.entries()].map(([z, geoms]) => ({
+    z: Number(z),
+    geom: unionGeometries(geoms),
+  }));
+
+  maskStructureCache = {
+    model,
+    revision: model.revision,
+    processRevision: model.processRevision,
+    face: activeFace,
+    patches,
+  };
+  return patches;
+}
+
+function strokeClosedGeometry(ctx, geom, v, back = false) {
+  ctx.beginPath();
+  for (const polygon of geom || []) {
+    for (const ring of polygon || []) {
+      ring.forEach((point, index) => {
+        const q = worldToCanvas(point, v, back);
+        if (index === 0) ctx.moveTo(q[0], q[1]);
+        else ctx.lineTo(q[0], q[1]);
+      });
+      if (ring?.length) ctx.closePath();
+    }
+  }
+  ctx.stroke();
+}
+
+function drawMaskStructureReference(ctx, v) {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(59, 70, 82, .56)';
+  ctx.lineWidth = 0.85;
+
+  const back = activeFace === 'back';
+  for (const patch of maskStructurePatches()) {
+    strokeClosedGeometry(ctx, patch.geom, v, back);
+  }
+
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = 'rgba(125, 137, 149, .58)';
+  ctx.lineWidth = 0.9;
+  strokeClosedGeometry(ctx, model.boundary, v, back);
+  ctx.restore();
+}
+
 function renderMask() {
   const c = $('maskCanvas'),
     { ctx, w, h } = setupCanvas(c),
     v = viewport(w, h, 'mask');
   ctx.clearRect(0, 0, w, h);
-  drawBaseOutline(ctx, v);
+
+  // Alignment reference: current process surface topology, rendered only as
+  // neutral outlines so it cannot be confused with mask layer colors.
+  drawMaskStructureReference(ctx, v);
+
+  ctx.save();
+  ctx.globalAlpha = maskOpacity;
   for (const e of layout.linework || []) traceElement(ctx, e, v, false);
   for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+  ctx.restore();
+
   drawRoi(ctx, v);
   drawPlanAxes(ctx, v, w, h, false);
   scheduleWorkspacePersistence();
@@ -755,7 +839,8 @@ function renderSection() {
   scheduleWorkspacePersistence();
 }
 
-let threeView = null,
+let maskOpacity = 0.65,
+  threeView = null,
   threeOpacity = 1,
   threeShowBorders = false;
 
@@ -879,7 +964,7 @@ function updateOperationUI() {
   $('applyOperationBtn').disabled = !materialExists;
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('processSummary').textContent = materialExists
-    ? `${faceLabel} · ${t === 'add' ? 'Add layer' : t === 'grow' ? 'Grow layer' : 'Etch'}`
+    ? `${faceLabel} · ${t === 'add' ? 'Deposit layer' : t === 'grow' ? 'Extend layer' : 'Etch'}`
     : 'No material · recreate Base';
 
   if (!materialExists) {
@@ -892,10 +977,10 @@ function updateOperationUI() {
     t === 'etch'
       ? 'Etch removes material vertically and may create through-holes.'
       : t === 'grow' && !$('targetLayer').options.length
-        ? 'No exposed layer is available in the selected area on this face.'
+        ? 'No exposed layer is available to extend in the selected area on this face.'
         : $('growthMode').value === 'conformal'
-          ? 'Conformal expands across exposed steps and includes sidewalls.'
-          : 'Direct follows the selected footprint.';
+          ? 'Conformal coverage follows exposed steps and includes sidewalls.'
+          : 'Directional coverage follows the selected footprint.';
 }
 
 function applyOp() {
@@ -921,7 +1006,7 @@ function applyOp() {
   const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
   if (type === 'grow' && !targetLayerId)
-    return status('No exposed target layer is available for Grow.', 'warning');
+    return status('No exposed target layer is available to Extend.', 'warning');
 
   const beforeBase = baseCoverageState(model);
   saveHistory();
@@ -958,9 +1043,9 @@ function applyOp() {
   }
 
   const growthLabel =
-    type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Direct';
+    type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Directional';
   status(
-    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Grew ${layerById(model, targetLayerId)?.name || 'layer'}` : `Added ${name}`}${growthLabel} on the ${activeFace}.`,
+    `${type === 'etch' ? 'Etched' : type === 'grow' ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}` : `Deposited ${name}`}${growthLabel} on the ${activeFace}.`,
     'success',
   );
 }
@@ -983,6 +1068,7 @@ const projectStateController = createProjectStateController({
     xyDisplayUnit,
     activeStructurePalette,
     customStructurePalette,
+    maskOpacity,
     threeOpacity,
     threeShowBorders,
   }),
@@ -1003,6 +1089,7 @@ const projectStateController = createProjectStateController({
     if (next.xyDisplayUnit) xyDisplayUnit = next.xyDisplayUnit;
     if (next.activeStructurePalette) activeStructurePalette = next.activeStructurePalette;
     customStructurePalette = next.customStructurePalette;
+    maskOpacity = next.maskOpacity;
     threeOpacity = next.threeOpacity;
     threeShowBorders = next.threeShowBorders;
     Object.assign(planViews.mask, next.planViews.mask);
@@ -1013,7 +1100,13 @@ const projectStateController = createProjectStateController({
     baseRevertSnapshot = null;
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
-  syncThreeControls: ({ threeOpacity: opacity, threeShowBorders: borders }) => {
+  syncThreeControls: ({
+    maskOpacity: maskAlpha,
+    threeOpacity: opacity,
+    threeShowBorders: borders,
+  }) => {
+    $('maskOpacityRange').value = String(maskAlpha);
+    $('maskOpacityValue').value = `${Math.round(maskAlpha * 100)}%`;
     $('threeOpacityRange').value = String(opacity);
     $('threeOpacityValue').value = `${Math.round(opacity * 100)}%`;
     $('threeBorders').checked = borders;
@@ -1112,6 +1205,11 @@ const workspaceActions = createWorkspaceActionsController({
     sectionScaleMode = value;
   },
   renderSection,
+  getMaskOpacity: () => maskOpacity,
+  setMaskOpacity: (value) => {
+    maskOpacity = value;
+  },
+  renderMask,
   getThreeOpacity: () => threeOpacity,
   setThreeOpacity: (value) => {
     threeOpacity = value;

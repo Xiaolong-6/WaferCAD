@@ -39,13 +39,15 @@ Selecting a layer selects that `layer/datatype` across the active subtree.
 
 The Mask view shows:
 
-- base outline;
-- imported mask geometry;
+- the current active-face structure as a neutral outline-only topography reference;
+- imported mask geometry above that reference;
 - selected layers;
 - XY axes in the selected global display unit;
 - live XY cursor coordinates in the same unit.
 
-Use the wheel or − / + / Fit controls to change the view. View fitting does not alter geometry.
+Use **Opacity** in the Mask header to fade the imported layout while aligning it against the current structure. The opacity affects only the mask overlay; the structure reference, ROI, and axes remain unchanged. The setting is stored with the project and snapshots.
+
+Use the wheel or − / + / Fit controls to change the view. View fitting and visual opacity do not alter geometry.
 
 ## 5. Limit 3D rendering with an ROI
 
@@ -63,8 +65,8 @@ Choose Front or Back.
 
 Choose an action:
 
-- Add new layer;
-- Grow current layer;
+- Deposit new layer;
+- Extend existing layer;
 - Etch / subtract.
 
 Choose an area:
@@ -73,14 +75,14 @@ Choose an area:
 - Invert mask;
 - Whole face.
 
-For Add and Grow, choose:
+For Deposit and Extend, choose:
 
-- Direct;
+- Directional;
 - Conformal.
 
-Etch has no growth setting.
+Etch has no coverage setting.
 
-Z is physical and stored internally in µm. Add/Grow use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Direct growth first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
+Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
 
 ## 7. Manage layers
 
@@ -88,7 +90,7 @@ The Section A–B layer legend is also the layer manager.
 
 Each row lets you edit the layer name. Color is intentionally a secondary visual setting: choose from the active curated palette by clicking the layer swatch. The legend header provides several preset palettes and a Random action that generates a harmonious palette. Arbitrary color-picker input is not exposed.
 
-Layer identity is stored separately from the visible name, so renaming or recoloring does not break Grow, Etch, Undo, or saved projects.
+Layer identity is stored separately from the visible name, so renaming or recoloring does not break Extend, Etch, Undo, or saved projects.
 
 ## 8. Inspect Main and Section
 
@@ -99,6 +101,8 @@ Use **Slice** to toggle the A–B coordinate panel and endpoint editing together
 Coordinates and Section update while dragging. Grab offsets are preserved, and dragging can continue outside the canvas. Escape cancels an in-progress drag; when idle it closes Slice and locks the endpoints. A focused handle also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
 
 Double-click Main to fit the view. **Fit** in 3D frames the active ROI when one exists, otherwise it frames the full model.
+
+On desktop landscape layouts, the workspace is arranged as **Mask / 3D / Function** on the first row and **Main / Section** on the second row. The original panel proportions are retained. At widths up to 900 px, the existing three-row layout remains **Function/3D**, **Main/Mask**, then **Section**.
 
 Each scientific view has **Max**. It expands Main, Mask, 3D, or Section to the available browser workspace without opening a new window; the button changes to **Restore**, and Escape also restores the normal layout.
 
@@ -129,6 +133,6 @@ Use **Settings → Open** to restore a project. Older supported project files ar
 
 The **Base** is a physical material in the vector stack, while `model.boundary` remains the process-domain footprint used for mask alignment and editing. Partial through-etches are valid holes. A whole-face over-etch may remove all material; the workspace remains valid so Undo, snapshots, masks, ROI and project state can still be used. Process operations are disabled until a Base is recreated when no material remains.
 
-**Process → Grow** lists only layers exposed on the active face in the selected process area. **Base** is a valid Grow target whenever it is exposed. Buried layers are not offered as Grow targets.
+**Process → Extend** lists only layers exposed on the active face in the selected process area. **Base** is a valid Extend target whenever it is exposed. Buried layers are not offered as Extend targets.
 
 Workspace feedback is typed: passive information stays in the status bar, successful actions and warnings use transient notices, errors remain visible, and field-level process validation appears next to the relevant control.
