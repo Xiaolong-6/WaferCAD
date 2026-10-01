@@ -272,10 +272,10 @@ async function checkROI(page, name) {
   });
   project.section = { a: [-0.04, 0], b: [0.04, 0] };
   project.roi = { type: 'rect', a: [-0.007123, -0.004567], b: [0.005222, 0.006789] };
-  project.planViews.mask.zoom = 4;
+  project.planViews.main.zoom = 4;
   await loadProject(page, project, `${name}-nm-roi`);
   await page.locator('#focusEditor > summary').click();
-  await checkPopover(page, '.focus-popover', '#maskPanel');
+  await checkPopover(page, '.focus-popover', '#mainPanel');
   const width = Number(await page.locator('#roiWidth').inputValue());
   const height = Number(await page.locator('#roiHeight').inputValue());
   assert.equal(width, 12);
@@ -293,8 +293,8 @@ async function checkROI(page, name) {
   close(Number(await page.locator('#roiX').inputValue()), center[0]);
   close(Number(await page.locator('#roiY').inputValue()), center[1]);
   await page.locator('#focusEditor > summary').click();
-  await page.locator('#maskCanvas').scrollIntoViewIfNeeded();
-  const box = await page.locator('#maskCanvas').boundingBox();
+  await page.locator('#mainCanvas').scrollIntoViewIfNeeded();
+  const box = await page.locator('#mainCanvas').boundingBox();
   const scale = Math.min((box.width - 68) / 0.1, (box.height - 68) / 0.1) * 4;
   const x = box.x + box.width / 2 - 0.007123 * scale;
   const y = box.y + box.height / 2 - 0.006789 * scale;
@@ -314,14 +314,14 @@ async function checkROI(page, name) {
   await page.locator('.focus-popover').evaluate((element) => {
     element.scrollTop = 0;
   });
-  await checkPopover(page, '.focus-popover', '#maskPanel');
+  await checkPopover(page, '.focus-popover', '#mainPanel');
   await capture(page, `${name}-nm-roi-editor`);
   await page.locator('#focusEditor > summary').click();
 
   project.roi = { type: 'circle', c: [0, 0], r: 0.005 };
   await loadProject(page, project, `${name}-circle`);
-  await page.locator('#maskCanvas').scrollIntoViewIfNeeded();
-  const circleBox = await page.locator('#maskCanvas').boundingBox();
+  await page.locator('#mainCanvas').scrollIntoViewIfNeeded();
+  const circleBox = await page.locator('#mainCanvas').boundingBox();
   const circleScale = Math.min((circleBox.width - 68) / 0.1, (circleBox.height - 68) / 0.1) * 4;
   const hx = circleBox.x + circleBox.width / 2 - 0.005 * circleScale;
   const hy = circleBox.y + circleBox.height / 2 - 0.005 * circleScale;
