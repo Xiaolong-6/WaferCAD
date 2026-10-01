@@ -23,6 +23,7 @@ export function createRoiController({
   setRoiDraft,
   getRoiAnchor,
   setRoiAnchor,
+  getActiveFace,
   xyUnitLabel,
   formatLengthField,
   formatNumericField,
@@ -33,7 +34,7 @@ export function createRoiController({
   canvasToWorld,
   worldToCanvas,
   zoomPlanView,
-  renderMask,
+  renderMain,
   renderAll,
   status,
 }) {
@@ -123,20 +124,20 @@ export function createRoiController({
     return handle === 'top-left' || handle === 'bottom-right' ? 'nwse-resize' : 'nesw-resize';
   }
 
-  function screenHandles(roi, view) {
+  function screenHandles(roi, view, back = false) {
     const angleHandles =
         roi.type === 'sector'
           ? Object.fromEntries(
               Object.entries(sectorAngleHandlePoints(roi)).map(([name, point]) => [
                 name,
-                worldToCanvas(point, view),
+                worldToCanvas(point, view, back),
               ]),
             )
           : {},
       handles = Object.fromEntries(
         Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
           name,
-          worldToCanvas(point, view),
+          worldToCanvas(point, view, back),
         ]),
       );
     return { angleHandles, handles };
@@ -151,7 +152,7 @@ export function createRoiController({
           .querySelectorAll('.roi-tool')
           .forEach((item) => item.classList.toggle('active', item === button));
         $('focusEditor').open = false;
-        status('ROI: drag once in Mask to create the region.');
+        status('ROI: drag once in Main to create the region.');
       };
     });
 
@@ -181,9 +182,8 @@ export function createRoiController({
     }
   }
 
-  function bindMaskCanvas() {
+  function bindMaskViewport() {
     const canvas = $('maskCanvas');
-    let drag = null;
 
     canvas.addEventListener(
       'wheel',
@@ -204,11 +204,24 @@ export function createRoiController({
       const rect = canvas.getBoundingClientRect(),
         { w, h } = setupCanvas(canvas),
         view = viewport(w, h, 'mask'),
-        screen = [event.clientX - rect.left, event.clientY - rect.top],
-        point = canvasToWorld(screen[0], screen[1], view);
+        point = canvasToWorld(event.clientX - rect.left, event.clientY - rect.top, view);
       $('maskCoords').textContent = `x ${xyText(point[0])} · y ${xyText(point[1])}`;
+      canvas.style.cursor = 'default';
+    });
+  }
 
-      const roi = getRoi(),
+  function bindMainCanvas() {
+    const canvas = $('mainCanvas');
+    let drag = null;
+
+    canvas.addEventListener('pointermove', (event) => {
+      const rect = canvas.getBoundingClientRect(),
+        { w, h } = setupCanvas(canvas),
+        view = viewport(w, h, 'main'),
+        back = getActiveFace() === 'back',
+        screen = [event.clientX - rect.left, event.clientY - rect.top],
+        point = canvasToWorld(screen[0], screen[1], view, back),
+        roi = getRoi(),
         roiTool = getRoiTool();
 
       if (!drag) {
@@ -221,7 +234,7 @@ export function createRoiController({
           return;
         }
 
-        const { angleHandles, handles } = screenHandles(roi, view),
+        const { angleHandles, handles } = screenHandles(roi, view, back),
           radius = event.pointerType === 'touch' ? 24 : 14,
           angleHandle = nearestNamedPoint(screen, angleHandles, radius),
           handle = nearestNamedPoint(screen, handles, radius);
@@ -246,14 +259,14 @@ export function createRoiController({
                 ...(roiTool === 'sector' ? { startDeg: 0, endDeg: 90 } : {}),
               }),
         );
-        renderMask();
+        renderMain();
         return;
       }
 
       if (drag.mode === 'angle') {
         setRoi(setSectorAngleFromPoint(drag.original, drag.handle, point));
         syncEditor();
-        renderMask();
+        renderMain();
         return;
       }
 
@@ -265,29 +278,30 @@ export function createRoiController({
           ]),
         );
         syncEditor();
-        renderMask();
+        renderMain();
         return;
       }
 
       setRoi(translateRoi(drag.original, point[0] - drag.start[0], point[1] - drag.start[1]));
       syncEditor();
-      renderMask();
+      renderMain();
     });
 
     canvas.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
       const rect = canvas.getBoundingClientRect(),
         { w, h } = setupCanvas(canvas),
-        view = viewport(w, h, 'mask'),
+        view = viewport(w, h, 'main'),
+        back = getActiveFace() === 'back',
         screen = [event.clientX - rect.left, event.clientY - rect.top],
-        point = canvasToWorld(screen[0], screen[1], view),
+        point = canvasToWorld(screen[0], screen[1], view, back),
         roiTool = getRoiTool(),
         roi = getRoi();
 
       if (roiTool) {
         drag = { mode: 'create', start: point };
       } else if (roi) {
-        const { angleHandles, handles } = screenHandles(roi, view),
+        const { angleHandles, handles } = screenHandles(roi, view, back),
           radius = event.pointerType === 'touch' ? 24 : 14,
           angleHandle = nearestNamedPoint(screen, angleHandles, radius),
           handle = nearestNamedPoint(screen, handles, radius);
@@ -350,13 +364,14 @@ export function createRoiController({
       setRoiDraft(null);
       drag = null;
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
-      renderMask();
+      renderMain();
     });
   }
 
   function bind() {
     bindControls();
-    bindMaskCanvas();
+    bindMaskViewport();
+    bindMainCanvas();
   }
 
   return { bind, clearDrawingMode, syncEditor, applyEditor };
