@@ -56,6 +56,8 @@ import { createBaseControlsController } from './controllers/base-controls-contro
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
+import { createDrawMaskController } from './controllers/draw-mask-controller.js';
+import { createEmptyDrawMask, drawMaskGeometry } from './draw-mask-geometry.js';
 import {
   createEmptyLayout,
   createProjectStateController,
@@ -85,6 +87,8 @@ let activeCell = null,
   expandedCells = new Set(),
   hoveredLayerKey = null;
 let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
+  maskSourceMode = 'file',
+  drawMask = createEmptyDrawMask(),
   activeFace = 'front',
   roi = null,
   roiTool = null,
@@ -97,7 +101,8 @@ let projectName = 'Untitled',
   sectionEditor = null,
   history = [],
   future = [],
-  baseRevertSnapshot = null;
+  baseRevertSnapshot = null,
+  drawMaskController = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
 const feedback = createFeedbackController();
 
@@ -381,7 +386,7 @@ const layerLegendController = createLayerLegendController({
 });
 const { renderLayerLegend, colorNewLayer } = layerLegendController;
 
-function selectedMaskGeometry() {
+function selectedFileMaskGeometry() {
   const geoms = [];
   for (const e of layout.elements || []) {
     if (!selectedElement(e)) continue;
@@ -394,11 +399,17 @@ function selectedMaskGeometry() {
     }
   }
   const merged = unionGeometries(geoms);
-  return isEmpty(merged) ? [] : intersection(merged, model.boundary);
+  return isEmpty(merged) ? [] : merged;
 }
+function activeMaskGeometry() {
+  const selected =
+    maskSourceMode === 'draw' ? drawMaskGeometry(drawMask) : selectedFileMaskGeometry();
+  return isEmpty(selected) ? [] : intersection(selected, model.boundary);
+}
+
 function operationAreaGeometry(mode) {
   if (mode === 'full') return fullFaceGeometry(model);
-  const selected = selectedMaskGeometry();
+  const selected = activeMaskGeometry();
   if (isEmpty(selected)) return [];
   return mode === 'invert' ? difference(model.boundary, selected) : selected;
 }
@@ -455,6 +466,7 @@ function applyImportedLayout(imported, displayName) {
   expandedCells = new Set(activeCell ? [activeCell] : []);
   hoveredLayerKey = null;
   selectedLayerKeys = new Set(globalLayers().map((item) => item.key));
+  maskSourceMode = 'file';
   fitImportedLayout();
   planViews.mask = { zoom: 1, panX: 0, panY: 0 };
   renderAll();
@@ -671,11 +683,15 @@ function renderMask() {
   // neutral outlines so it cannot be confused with mask layer colors.
   drawMaskStructureReference(ctx, v);
 
-  ctx.save();
-  ctx.globalAlpha = maskOpacity;
-  for (const e of layout.linework || []) traceElement(ctx, e, v, false);
-  for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
-  ctx.restore();
+  if (maskSourceMode === 'draw') {
+    drawMaskController?.render(ctx, v, maskOpacity);
+  } else {
+    ctx.save();
+    ctx.globalAlpha = maskOpacity;
+    for (const e of layout.linework || []) traceElement(ctx, e, v, false);
+    for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+    ctx.restore();
+  }
 
   drawPlanAxes(ctx, v, w, h, false);
   scheduleWorkspacePersistence();
@@ -891,9 +907,15 @@ function renderAll() {
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('faceToggleBtn').textContent = faceLabel;
   $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
-  $('maskSummary').textContent = layout.name || 'No mask';
+  $('maskSummary').textContent =
+    maskSourceMode === 'draw' ? `Draw · ${drawMask.shapes.length} shapes` : layout.name || 'No mask';
   syncProjectNameInput();
-  syncMaskCellLabel();
+  if (maskSourceMode === 'draw') {
+    $('maskCellLabel').textContent = `${drawMask.shapes.length} drawn`;
+  } else {
+    syncMaskCellLabel();
+  }
+  drawMaskController?.syncUi();
   $('baseSummary').textContent = baseSummaryText();
   updateOperationUI();
   syncUndo();
@@ -1034,6 +1056,8 @@ const projectStateController = createProjectStateController({
     selectedLayerKeys,
     activeCell,
     maskTransform,
+    maskSourceMode,
+    drawMask,
     activeFace,
     roi,
     roiAnchor,
@@ -1055,6 +1079,8 @@ const projectStateController = createProjectStateController({
     expandedCells = next.expandedCells;
     hoveredLayerKey = next.hoveredLayerKey;
     maskTransform = next.maskTransform;
+    maskSourceMode = next.maskSourceMode || 'file';
+    drawMask = structuredClone(next.drawMask || createEmptyDrawMask());
     activeFace = next.activeFace;
     roi = next.roi;
     roiAnchor = next.roiAnchor;
@@ -1122,6 +1148,24 @@ const maskImportController = createMaskImportController({
   xyUnitLabel: () => xyUnit().label,
   importLayoutBuffer,
   openLayoutFile,
+  renderMask,
+  status,
+});
+
+drawMaskController = createDrawMaskController({
+  getMode: () => maskSourceMode,
+  setMode: (value) => {
+    maskSourceMode = value;
+  },
+  getDrawMask: () => drawMask,
+  setDrawMask: (value) => {
+    drawMask = value;
+  },
+  setupCanvas,
+  viewport,
+  canvasToWorld,
+  worldToCanvas,
+  xyText,
   renderMask,
   status,
 });
@@ -1258,6 +1302,7 @@ function bindUi() {
   sectionControls.bind();
   baseControls.bind();
   maskImportController.bind();
+  drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
 
