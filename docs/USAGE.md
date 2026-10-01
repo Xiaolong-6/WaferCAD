@@ -35,19 +35,35 @@ The Layers list always remains complete. A layer that is absent from the active 
 
 Selecting a layer selects that `layer/datatype` across the active subtree.
 
-## 4. Inspect the Mask view
+## 4. Inspect and author the Mask view
 
-The Mask view shows:
+The Mask header starts in **File** mode. Click **File** to toggle to **Draw**; the same button then reads **Draw**.
 
-- the current active-face structure as a neutral dashed topography reference;
-- imported mask geometry above that reference;
-- selected layers;
-- XY axes in the selected global display unit;
-- live XY cursor coordinates in the same unit.
+**File** mode keeps imported GDSII/OASIS behavior:
 
-Use **Opacity** in the Mask header to fade the imported layout while aligning it against the current structure. The opacity affects only the mask overlay; the structure reference, ROI, and axes remain unchanged. The setting is stored with the project and snapshots.
+- imported vector layout above the neutral dashed active-face structure reference;
+- global layer/datatype selection and hierarchy browsing;
+- X/Y/scale/rotation alignment;
+- Mask Opacity for visual alignment.
 
-Use the wheel or − / + / Fit controls to change the view. View fitting and visual opacity do not alter geometry.
+**Draw** mode keeps the imported file untouched and exposes a project-local temporary-mask toolbar directly over the Mask canvas:
+
+- **Select** — existing shapes remain directly editable;
+- **Rect** — drag once to create a rectangle;
+- **Circle** — drag from center to radius;
+- **Polygon** — click vertices and press Enter to finish;
+- **Delete** — remove the selected shape;
+- **Clear** — clear the Draw mask after confirmation.
+
+Creation tools are one-shot. After creation, the tool returns to Select behavior. Drag a shape body to move it; drag rectangle corners, the circle radius handle, or polygon vertices to resize/edit. Escape cancels an unfinished creation. Delete/Backspace removes the selected shape.
+
+File and Draw state are independent: switching source never unloads the imported layout or deletes drawn shapes. Draw geometry is stored with the project, snapshots, and browser workspace recovery. It is not merged into the imported GDS/OAS source file.
+
+Process **Selected mask** and **Invert mask** always use the currently active source. In Draw mode, all drawn shapes compose by union.
+
+Use **Opacity** to fade whichever source is active. The neutral dashed structure reference, axes, and cursor readout are unaffected.
+
+Double-click Mask or use **Fit** to restore the Mask view. Fit considers the active source while keeping the wafer in view.
 
 ## 5. Limit 3D rendering with an ROI
 
