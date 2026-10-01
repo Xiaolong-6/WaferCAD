@@ -175,13 +175,12 @@ export function createSectionEditor({
         b: [drag.before.b[0] + dx, drag.before.b[1] + dy],
       });
     },
-    true,
   );
 
   canvas.addEventListener(
     'pointerdown',
     (event) => {
-      if (event.button !== 0 || drag || isInteractionBlocked()) return;
+      if (event.button !== 0 || drag || isInteractionBlocked() || event.defaultPrevented) return;
       const frame = getFrame(),
         local = screenPoint(event),
         point = frame.toWorld(local),
@@ -217,7 +216,6 @@ export function createSectionEditor({
       canvas.style.cursor = 'grabbing';
       canvas.setPointerCapture(event.pointerId);
     },
-    true,
   );
 
   canvas.addEventListener(
@@ -240,7 +238,6 @@ export function createSectionEditor({
       finish();
       canvas.style.cursor = 'default';
     },
-    true,
   );
 
   canvas.addEventListener(
@@ -251,7 +248,6 @@ export function createSectionEditor({
       finish(true);
       canvas.style.cursor = 'default';
     },
-    true,
   );
 
   window.addEventListener('keydown', (event) => {
