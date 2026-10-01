@@ -11,7 +11,7 @@ The application is deployed as a static GitHub Pages site. It has four synchroni
 
 ## Geometry model
 
-XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Add, Grow, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
+XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Deposit, Extend, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
 
 - **X, Y and Z** are stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display/input unit can be switched between nm, µm, and mm without changing geometry.
 - Section and 3D may stretch Z for visibility; that display scaling never changes the saved physical Z coordinates.
@@ -81,4 +81,4 @@ See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party 
 
 ### Product verification
 
-[Interaction and visual regression](docs/PRODUCT_REVIEW.md) covers wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser review artifacts. [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Direct/Conformal/Etch semantics and their limits.
+[Interaction and visual regression](docs/PRODUCT_REVIEW.md) covers wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser review artifacts. [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Directional/Conformal/Etch semantics and their limits.
