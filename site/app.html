@@ -352,7 +352,7 @@
               tabindex="-1"
               data-tool-tab="operation"
             >
-              Operation
+              Process
             </button>
             <button
               id="snapshotsTab"
@@ -376,7 +376,7 @@
               tabindex="-1"
               data-tool-tab="settings"
             >
-              Settings
+              Project
             </button>
           </div>
 
@@ -437,7 +437,7 @@
                 <span id="maskSummary" class="muted">No mask</span>
               </div>
               <div class="control-body">
-                <div class="button-row">
+                <div class="button-row mask-import-toolbar">
                   <label
                     class="button primary compact-btn import-btn"
                     title="Import a GDSII or OASIS layout"
@@ -467,7 +467,7 @@
                   </section>
                 </div>
                 <details class="subgroup">
-                  <summary>Advanced · alignment</summary>
+                  <summary>Alignment</summary>
                   <div class="four-fields">
                     <label
                       ><span>X <b id="maskOffsetXUnit">µm</b></span
@@ -496,73 +496,85 @@
               data-tab-panel="operation"
               hidden
             >
-              <div class="field-row active-face-row">
-                <span>Active face</span>
-                <button
-                  id="faceToggleBtn"
-                  class="compact-btn"
-                  type="button"
-                  title="Switch active process face"
-                >
-                  Front
-                </button>
+              <div class="tool-context">
+                <span id="processSummary">Front · Add layer</span>
               </div>
-              <label class="field-row"
-                ><span>Action</span
-                ><select id="operationType">
+              <div class="control-body">
+                <div class="field-row active-face-row">
+                  <span>Active face</span>
+                  <button
+                    id="faceToggleBtn"
+                    class="compact-btn"
+                    type="button"
+                    title="Switch active process face"
+                  >
+                    Front
+                  </button>
+                </div>
+
+                <div id="processMode" class="segmented process-mode" aria-label="Process action">
+                  <button type="button" class="active" data-process-mode="add" aria-pressed="true">
+                    Add
+                  </button>
+                  <button type="button" data-process-mode="grow" aria-pressed="false">Grow</button>
+                  <button type="button" data-process-mode="etch" aria-pressed="false">Etch</button>
+                </div>
+                <select id="operationType" class="visually-hidden" aria-label="Process action">
                   <option value="add">Add new layer</option>
                   <option value="grow">Grow current layer</option>
                   <option value="etch">Etch / subtract</option>
-                </select></label
-              >
-              <label id="layerNameRow" class="field-row"
-                ><span>Name</span><input id="layerName" value="Layer 1"
-              /></label>
-              <label id="targetLayerRow" class="field-row hidden"
-                ><span>Layer</span
-                ><select id="targetLayer"></select
-              ></label>
-              <label class="field-row"
-                ><span>Area</span
-                ><select id="operationArea">
-                  <option value="mask">Selected mask</option>
-                  <option value="invert">Invert mask</option>
-                  <option value="full">Whole face</option>
-                </select></label
-              >
-              <label id="growthModeRow" class="field-row"
-                ><span>Growth</span
-                ><select id="growthMode">
-                  <option value="direct">Direct</option>
-                  <option value="conformal">Conformal</option>
-                </select></label
-              >
-              <label class="field-row"
-                ><span>Z <b id="operationThicknessUnit">µm</b></span
-                ><input id="operationThickness" type="number" value="3" min="0" step="any"
-              /></label>
-              <div class="operation-actions">
-                <button id="applyOperationBtn" class="primary apply-btn">Apply</button>
-                <button
-                  id="undoBtn"
-                  class="compact-btn"
-                  title="Undo the last structure change"
-                  disabled
+                </select>
+
+                <label id="layerNameRow" class="field-row"
+                  ><span>Name</span><input id="layerName" value="Layer 1"
+                /></label>
+                <label id="targetLayerRow" class="field-row hidden"
+                  ><span>Target</span><select id="targetLayer"></select
+                ></label>
+                <label class="field-row"
+                  ><span>Area</span
+                  ><select id="operationArea">
+                    <option value="mask">Selected mask</option>
+                    <option value="invert">Invert mask</option>
+                    <option value="full">Whole face</option>
+                  </select></label
                 >
-                  Undo
-                </button>
-                <button
-                  id="redoBtn"
-                  class="compact-btn"
-                  title="Redo the last undone change"
-                  disabled
+                <label id="growthModeRow" class="field-row"
+                  ><span>Growth</span
+                  ><select id="growthMode">
+                    <option value="direct">Direct</option>
+                    <option value="conformal">Conformal</option>
+                  </select></label
                 >
-                  Redo
-                </button>
+                <label class="field-row"
+                  ><span><b id="processThicknessLabel">Z</b> <b id="operationThicknessUnit">µm</b></span
+                  ><input id="operationThickness" type="number" value="3" min="0" step="any"
+                /></label>
+                <p id="operationValidation" class="field-message" hidden></p>
+
+                <div class="operation-actions">
+                  <button id="applyOperationBtn" class="primary apply-btn">Apply</button>
+                  <button
+                    id="undoBtn"
+                    class="compact-btn"
+                    title="Undo the last structure change"
+                    disabled
+                  >
+                    Undo
+                  </button>
+                  <button
+                    id="redoBtn"
+                    class="compact-btn"
+                    title="Redo the last undone change"
+                    disabled
+                  >
+                    Redo
+                  </button>
+                </div>
+                <p id="operationNote" class="hint compact-hint">
+                  Direct follows the selected footprint.
+                </p>
               </div>
-              <p id="operationNote" class="hint compact-hint">
-                Direct footprint · Conformal includes sidewalls.
-              </p>
             </section>
 
             <section
@@ -573,6 +585,7 @@
               data-tab-panel="snapshots"
               hidden
             >
+              <div class="tool-context"><span>Checkpoints</span></div>
               <div class="control-body snapshot-panel">
                 <button
                   id="saveSnapshotBtn"
@@ -677,7 +690,8 @@
       </main>
     </div>
 
-    <footer class="statusbar">
+    <div id="feedbackToasts" class="feedback-toasts" aria-live="polite" aria-atomic="true"></div>
+    <footer id="statusBar" class="statusbar" data-level="passive" role="status">
       <span id="statusText">Ready.</span>
       <span class="status-links">
         <a
