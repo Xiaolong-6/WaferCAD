@@ -854,8 +854,8 @@ canvas {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-rows: minmax(240px, 1fr) minmax(240px, 1fr);
   grid-template-areas:
-    'mask mask three three tools tools'
-    'main main section section section section';
+    'main main mask mask tools tools'
+    'three three section section section section';
 }
 
 #mainPanel {
@@ -920,6 +920,7 @@ canvas {
 
 #mainCanvas.section-editing {
   cursor: crosshair;
+  touch-action: none;
 }
 
 #maskPanel {
