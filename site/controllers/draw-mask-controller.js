@@ -156,6 +156,44 @@ export function createDrawMaskController({
     }
   }
 
+  function syncOpenEditorValues() {
+    const editor = $('drawShapeEditor'),
+      shape = selectedShape();
+    if (!editor || editor.hidden || !shape) return;
+
+    const setValue = (id, value) => {
+      const field = $(id);
+      if (field && root.activeElement !== field) field.value = value;
+    };
+
+    if (shape.type === 'rect') {
+      setValue('drawShapeCx', formatLengthField((shape.a[0] + shape.b[0]) / 2));
+      setValue('drawShapeCy', formatLengthField((shape.a[1] + shape.b[1]) / 2));
+      setValue('drawShapeWidth', formatLengthField(shape.b[0] - shape.a[0]));
+      setValue('drawShapeHeight', formatLengthField(shape.b[1] - shape.a[1]));
+    } else if (shape.type === 'circle') {
+      setValue('drawShapeCx', formatLengthField(shape.c[0]));
+      setValue('drawShapeCy', formatLengthField(shape.c[1]));
+      setValue('drawShapeRadius', formatLengthField(shape.r));
+    } else if (shape.type === 'polygon') {
+      setValue(
+        'drawShapePoints',
+        shape.points
+          .map(([x, y]) => `${formatLengthField(x)}, ${formatLengthField(y)}`)
+          .join('\n'),
+      );
+    } else {
+      setValue('drawShapeCx', formatLengthField(shape.c[0]));
+      setValue('drawShapeCy', formatLengthField(shape.c[1]));
+      setValue('drawShapeInnerRadius', formatLengthField(shape.innerR));
+      setValue('drawShapeOuterRadius', formatLengthField(shape.outerR));
+      if (shape.type === 'ring-sector') {
+        setValue('drawShapeStartDeg', String(shape.startDeg));
+        setValue('drawShapeEndDeg', String(shape.endDeg));
+      }
+    }
+  }
+
   function openEditor(shape = selectedShape()) {
     if (!shape) return;
     selectedId = shape.id;
@@ -606,6 +644,7 @@ export function createDrawMaskController({
               point[1] - drag.start[1],
             ),
           );
+          syncOpenEditorValues();
           renderMask();
         } else if (drag?.mode === 'resize') {
           if (
@@ -615,6 +654,7 @@ export function createDrawMaskController({
             drag.moved = true;
           }
           replaceShape(drag.original.id, resizeDrawShape(drag.original, drag.handle, point));
+          syncOpenEditorValues();
           renderMask();
         } else if (tool === 'polygon' && polygonDraft) {
           polygonHover = point;
@@ -702,10 +742,15 @@ export function createDrawMaskController({
               moved: false,
             };
           } else {
-            const hit = hitShape(point);
+            const hit = hitShape(point),
+              previousSelectedId = selectedId,
+              keepEditorOpen =
+                Boolean(hit) &&
+                hit.id === previousSelectedId &&
+                !$('drawShapeEditor').hidden;
             selectedId = hit?.id || null;
-            closeEditor();
-            syncUi();
+            if (!keepEditorOpen) closeEditor();
+            syncUi({ preserveEditor: keepEditorOpen });
             if (hit && event.detail >= 2) {
               openEditor(hit);
               event.preventDefault();
@@ -776,6 +821,7 @@ export function createDrawMaskController({
         if (drag.original) replaceShape(drag.original.id, drag.original);
         drag = null;
         draft = null;
+        syncOpenEditorValues();
         renderMask();
         if (canvas.hasPointerCapture(event.pointerId)) {
           canvas.releasePointerCapture(event.pointerId);
