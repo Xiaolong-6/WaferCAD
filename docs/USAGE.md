@@ -51,11 +51,13 @@ The Mask header starts in **File** mode. Click **File** to toggle to **Draw**; t
 - **Select** — existing shapes remain directly editable;
 - **Rect** — drag once to create a rectangle;
 - **Circle** — drag from center to radius;
-- **Polygon** — click vertices and press Enter to finish;
+- **Polygon** — click vertices and double-click the final point to finish and close automatically; Enter also finishes;
+- **Ring** — drag center → outer radius; the default inner radius is half the outer radius;
+- **Ring Sector** — drag center → outer radius; starts at 0°→90° and exposes inner/outer radius plus start/end angle;
 - **Delete** — remove the selected shape;
 - **Clear** — clear the Draw mask after confirmation.
 
-Creation tools are one-shot. After creation, the tool returns to Select behavior. Drag a shape body to move it; drag rectangle corners, the circle radius handle, or polygon vertices to resize/edit. Escape cancels an unfinished creation. Delete/Backspace removes the selected shape.
+Creation tools are one-shot. After creation, the tool returns to Select behavior. Drag a shape body to move it; drag rectangle corners, circle radius, polygon vertices, Ring radii, or Ring Sector radii/angle handles to edit directly. Click Rectangle/Circle/Ring/Ring Sector geometry to open its exact parameter popover; double-click a Polygon to edit all vertices in a KLayout-style multiline `x, y` text field. Escape cancels an unfinished creation. Delete/Backspace removes the selected shape.
 
 File and Draw state are independent: switching source never unloads the imported layout or deletes drawn shapes. Draw geometry is stored with the project, snapshots, and browser workspace recovery. It is not merged into the imported GDS/OAS source file.
 
