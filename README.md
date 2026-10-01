@@ -4,7 +4,7 @@ WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-d
 
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
-- **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon), with adjustable opacity above the current active-face topography outline.
+- **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon/Ring/Ring Sector), with adjustable opacity above the current active-face topography outline.
 - **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, physical GLB export, and 3× PNG capture.
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
