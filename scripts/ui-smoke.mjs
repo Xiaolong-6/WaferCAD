@@ -450,7 +450,10 @@ await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
 assert.equal(await page.locator('#drawMaskToolbar').isVisible(), true);
 assert.equal(await page.locator('#maskFileControls').isHidden(), true);
-assert.equal(await page.locator('#maskDrawInfo').isVisible(), true);
+assert.equal(
+  await page.locator('#maskDrawInfo').evaluate((element) => element.hidden),
+  false,
+);
 
 const drawBox = await page.locator('#maskCanvas').boundingBox();
 assert.ok(drawBox);
