@@ -835,7 +835,7 @@ export function createDrawMaskController({
     canvas.addEventListener(
       'dblclick',
       (event) => {
-        if (getMode() !== 'draw') return;
+        if (getMode() !== 'draw' || isInteractionBlocked()) return;
         if (ignoreNextDoubleClick) {
           ignoreNextDoubleClick = false;
           event.preventDefault();
