@@ -104,6 +104,13 @@ function quantizeProjectLengths(project) {
     if (project.roi.r != null) project.roi.r = quantizeLength(project.roi.r);
   }
 
+  if (isObject(project.maskRoi)) {
+    if (Array.isArray(project.maskRoi.a)) quantizePoint(project.maskRoi.a);
+    if (Array.isArray(project.maskRoi.b)) quantizePoint(project.maskRoi.b);
+    if (Array.isArray(project.maskRoi.c)) quantizePoint(project.maskRoi.c);
+    if (project.maskRoi.r != null) project.maskRoi.r = quantizeLength(project.maskRoi.r);
+  }
+
   if (isObject(project.drawMask)) {
     for (const shape of project.drawMask.shapes || []) {
       if (Array.isArray(shape.a)) quantizePoint(shape.a);
