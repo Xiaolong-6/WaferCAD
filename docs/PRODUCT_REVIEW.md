@@ -26,6 +26,18 @@ Narrow tool headers wrap deliberately; mobile base fields use full input rows, a
 
 Canvas ResizeObservers redraw after panel layout changes. This prevents stretched Mask/Section images when opening the mobile coordinate controls. 3D Fit uses the camera aspect ratio, field of view and bounding radius to keep the full model inside the panel.
 
+## Workstation visual hierarchy
+
+The editor uses a compact engineering/CAD workstation visual system. Information density and panel geometry stay unchanged; hierarchy comes from surface treatment rather than added whitespace.
+
+- scientific view headers share one compact toolbar language across Main, Mask, 3D and Section;
+- panel borders are subdued and canvas surfaces remain visually dominant;
+- tool tabs use a quiet background plus a single active underline instead of boxed emphasis;
+- inputs, selects, segmented controls, primary actions and quiet actions use one border/radius/focus system;
+- popovers and coordinate editors use the same elevated-surface treatment;
+- passive status remains low weight, while success/info/warning/error states retain distinct semantic feedback;
+- visual styling must not change workspace grid allocation, scientific geometry, or editor behavior.
+
 ## Reproduce the review
 
 Install development dependencies, then the browser review dependencies:
