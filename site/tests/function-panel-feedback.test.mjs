@@ -177,7 +177,7 @@ test('Apply runs as a single cancelable task with elapsed time and Abort', () =>
   assert.match(html, /id="processTaskDialog"[^>]*hidden/);
   assert.match(html, /id="processTaskElapsed"/);
   assert.match(html, /id="processTaskAbortBtn"[^>]*>Abort</);
-  assert.match(app, /processTaskController\.run\(model, params, taskLabel\)/);
+  assert.match(app, /processTaskController\.run\(model, params, taskLabel, areaRequest\)/);
   assert.match(app, /processTaskController\?\.isBusy\(\)/);
   assert.match(processTaskController, /new Worker\(/);
   assert.match(processTaskController, /setInterval\(syncDialog, 100\)/);
