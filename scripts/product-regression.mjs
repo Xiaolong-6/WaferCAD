@@ -145,12 +145,30 @@ async function dragHandle(page, endpoint, dx, dy, cancel = false) {
 
 async function checkAB(page, name) {
   const nmRoundedMicron = (value) => Math.round(value * 1000) / 1000;
-  await page.locator('#sectionControlsBtn').click();
+  const mainCanvas = page.locator('#mainCanvas');
+  const canvas = await mainCanvas.boundingBox();
+  assert.ok(canvas);
+
+  // Existing Slice geometry is editable even with the parameter panel closed.
   assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
+  assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
+
+  // Slice opens the parameter panel and starts one-shot replacement creation.
+  await page.locator('#sectionControlsBtn').click();
+  assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
+  assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
+  await page.mouse.move(canvas.x + canvas.width * 0.28, canvas.y + canvas.height * 0.42);
+  await page.mouse.down();
+  await page.mouse.move(canvas.x + canvas.width * 0.72, canvas.y + canvas.height * 0.58, {
+    steps: 5,
+  });
+  await page.mouse.up();
+  assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
+  assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
+
   const before = await coords(page);
   const a = await page.locator('[data-endpoint=a]').boundingBox();
   const b = await page.locator('[data-endpoint=b]').boundingBox();
-  const canvas = await page.locator('#mainCanvas').boundingBox();
   const scale = Math.min((canvas.width - 68) / 100000, (canvas.height - 68) / 100000);
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
@@ -216,9 +234,10 @@ async function checkAB(page, name) {
   close((await coords(page))[0], nmRoundedMicron(back[0] + 1 / scale));
   await capture(page, `${name}-ab-edit`);
   await checkLayout(page);
-  await page.keyboard.press('Escape');
-  assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
+  // Closing Slice hides only the parameter panel; geometry remains directly editable.
+  await page.locator('#sectionControlsBtn').click();
   assert.equal(await page.locator('#sectionCoordsPanel').isHidden(), true);
+  assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
 }
 
 async function loadProject(page, project, name) {
