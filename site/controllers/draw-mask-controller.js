@@ -87,10 +87,14 @@ export function createDrawMaskController({
       mask = currentMask();
     if (selectedId && !mask.shapes.some((shape) => shape.id === selectedId)) selectedId = null;
     const selected = selectedShape();
-    $('maskSourceFileBtn')?.classList.toggle('active', !draw);
-    $('maskSourceDrawBtn')?.classList.toggle('active', draw);
-    $('maskSourceFileBtn')?.setAttribute('aria-pressed', String(!draw));
-    $('maskSourceDrawBtn')?.setAttribute('aria-pressed', String(draw));
+    if ($('maskSourceToggleBtn')) {
+      $('maskSourceToggleBtn').textContent = draw ? 'Draw' : 'File';
+      $('maskSourceToggleBtn').classList.toggle('active', draw);
+      $('maskSourceToggleBtn').setAttribute('aria-pressed', String(draw));
+      $('maskSourceToggleBtn').title = draw
+        ? 'Mask source: Draw. Click to switch to File.'
+        : 'Mask source: File. Click to switch to Draw.';
+    }
     if ($('drawMaskToolbar')) $('drawMaskToolbar').hidden = !draw;
     if ($('maskFileControls')) $('maskFileControls').hidden = draw;
     if ($('maskDrawInfo')) $('maskDrawInfo').hidden = !draw;
@@ -284,8 +288,8 @@ export function createDrawMaskController({
   }
 
   function bind() {
-    $('maskSourceFileBtn').onclick = () => setSourceMode('file');
-    $('maskSourceDrawBtn').onclick = () => setSourceMode('draw');
+    $('maskSourceToggleBtn').onclick = () =>
+      setSourceMode(getMode() === 'draw' ? 'file' : 'draw');
 
     root.querySelectorAll('.draw-mask-tool').forEach((button) => {
       button.onclick = () => setTool(button.dataset.drawTool || null);
