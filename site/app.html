@@ -287,9 +287,30 @@
             <button class="mini-btn draw-mask-tool active" data-draw-tool="" type="button">Select</button>
             <button class="mini-btn draw-mask-tool" data-draw-tool="rect" type="button">Rect</button>
             <button class="mini-btn draw-mask-tool" data-draw-tool="circle" type="button">Circle</button>
-            <button class="mini-btn draw-mask-tool" data-draw-tool="polygon" type="button">Polygon</button>
-            <button class="mini-btn draw-mask-tool" data-draw-tool="ring" type="button">Ring</button>
-            <button class="mini-btn draw-mask-tool" data-draw-tool="ring-sector" type="button">Ring Sector</button>
+            <button
+              class="mini-btn draw-mask-tool"
+              data-draw-tool="polygon"
+              type="button"
+              title="Click vertices; double-click the final point to finish"
+            >
+              Polygon
+            </button>
+            <button
+              class="mini-btn draw-mask-tool"
+              data-draw-tool="ring"
+              type="button"
+              title="Draw an annulus; click it to edit center and radii"
+            >
+              Ring
+            </button>
+            <button
+              class="mini-btn draw-mask-tool"
+              data-draw-tool="ring-sector"
+              type="button"
+              title="Draw an annular sector; click it to edit radii and angles"
+            >
+              Ring Sector
+            </button>
             <span class="draw-mask-divider"></span>
             <button id="drawMaskDeleteBtn" class="mini-btn" type="button" disabled>Delete</button>
             <button id="drawMaskClearBtn" class="mini-btn" type="button" disabled>Clear</button>
