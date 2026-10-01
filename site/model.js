@@ -62,6 +62,53 @@ export const isVectorModel = (model) =>
   model?.kernel === 'vector-2.5d-v1' && Array.isArray(model.regions);
 export const fullFaceGeometry = (model) => cloneGeom(model.boundary);
 
+export function hasMaterial(model) {
+  return Boolean(
+    model?.regions?.some((region) => !isEmpty(region.geom) && (region.stack || []).length > 0),
+  );
+}
+
+export function materialGeometry(model) {
+  const geoms = (model?.regions || [])
+    .filter((region) => !isEmpty(region.geom) && (region.stack || []).length)
+    .map((region) => region.geom);
+  return geoms.length ? unionGeometries(geoms) : [];
+}
+
+export function layerPresent(model, layerId) {
+  return Boolean(
+    model?.regions?.some((region) =>
+      (region.stack || []).some((segment) => segment.layerId === layerId),
+    ),
+  );
+}
+
+export function layerFootprint(model, layerId) {
+  const geoms = (model?.regions || [])
+    .filter((region) =>
+      (region.stack || []).some((segment) => segment.layerId === layerId),
+    )
+    .map((region) => region.geom);
+  return geoms.length ? unionGeometries(geoms) : [];
+}
+
+export function baseCoverageState(model) {
+  const footprint = layerFootprint(model, 'base');
+  if (isEmpty(footprint)) return 'removed';
+  return isEmpty(difference(model.boundary, footprint)) ? 'full' : 'partial';
+}
+
+export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
+  if (!model || isEmpty(area)) return [];
+  const ids = new Set();
+  for (const region of model.regions || []) {
+    if (isEmpty(intersection(region.geom, area))) continue;
+    const segment = surfaceSegment(region.stack, face);
+    if (segment) ids.add(segment.layerId);
+  }
+  return [...ids];
+}
+
 export function zDisplayScale(model) {
   const [lo, hi] = modelBoundsZ(model);
   const zSpan = Math.max(hi - lo, 1e-12);
@@ -295,6 +342,15 @@ function applyOperationImpl(
   const amount = Math.max(1e-5, Number(thickness) || 0);
   let active = intersection(area, model.boundary);
   if (isEmpty(active)) return { changed: false };
+  if (!hasMaterial(model)) {
+    return {
+      changed: false,
+      error: 'No material remains. Recreate the Base before applying another process.',
+    };
+  }
+  if (isEmpty(intersection(active, materialGeometry(model)))) {
+    return { changed: false, error: 'The selected area contains no material.' };
+  }
   let layer = null;
   if (type === 'add') layer = createLayer(model, name);
   if (type === 'grow' && !layerById(model, targetLayerId))
