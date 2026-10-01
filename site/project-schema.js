@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 5;
+export const CURRENT_PROJECT_VERSION = 6;
 
 const LIMITS = {
   layers: 10000,
@@ -12,6 +12,7 @@ const LIMITS = {
   selectedLayerKeys: 50000,
   paletteColors: 64,
   snapshots: 100,
+  drawMaskShapes: 10000,
 };
 
 function fail(path, message) {
@@ -367,6 +368,35 @@ function validateRoi(roi) {
   fail('roi.type', 'must be rect, circle, or sector.');
 }
 
+function validateDrawMask(drawMask) {
+  assertObject(drawMask, 'drawMask');
+  assertInteger(drawMask.nextShapeId, 'drawMask.nextShapeId', { min: 1, max: 1000000000 });
+  const shapes = assertArray(drawMask.shapes, 'drawMask.shapes', LIMITS.drawMaskShapes);
+  const ids = new Set();
+  shapes.forEach((shape, index) => {
+    const path = `drawMask.shapes[${index}]`;
+    assertObject(shape, path);
+    const id = assertString(shape.id, `${path}.id`, { max: 128 });
+    if (ids.has(id)) fail(`${path}.id`, 'must be unique.');
+    ids.add(id);
+    if (shape.type === 'rect') {
+      assertPoint(shape.a, `${path}.a`);
+      assertPoint(shape.b, `${path}.b`);
+      return;
+    }
+    if (shape.type === 'circle') {
+      assertPoint(shape.c, `${path}.c`);
+      assertFinite(shape.r, `${path}.r`, { min: 0 });
+      return;
+    }
+    if (shape.type === 'polygon') {
+      validatePointArray(shape.points, `${path}.points`, { min: 3, budget: { points: 0 } });
+      return;
+    }
+    fail(`${path}.type`, 'must be rect, circle, or polygon.');
+  });
+}
+
 function validateSection(section) {
   assertObject(section, 'section');
   assertPoint(section.a, 'section.a');
@@ -476,6 +506,10 @@ function validateProjectCore(
     assertString(project.activeCell, 'activeCell', { max: 512 });
   }
   validateMaskTransform(project.maskTransform);
+  if (project.maskSourceMode == null || !['file', 'draw'].includes(project.maskSourceMode)) {
+    fail('maskSourceMode', 'must be file or draw.');
+  }
+  validateDrawMask(project.drawMask);
   if (!['front', 'back'].includes(project.activeFace)) fail('activeFace', 'must be front or back.');
   validateRoi(project.roi);
   if (
@@ -513,6 +547,10 @@ function migrateProjectCore(project) {
     // for Conformal lateral offsets. Preserve those numbers and make the unit
     // contract explicit instead of inventing a non-recoverable scale factor.
     if (project.model.units.z === 'relative') project.model.units.z = 'µm';
+  }
+  if (version < 6) {
+    if (!['file', 'draw'].includes(project.maskSourceMode)) project.maskSourceMode = 'file';
+    if (!isObject(project.drawMask)) project.drawMask = { nextShapeId: 1, shapes: [] };
   }
   project.version = CURRENT_PROJECT_VERSION;
   return project;
