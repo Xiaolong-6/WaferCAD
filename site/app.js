@@ -574,14 +574,42 @@ function drawRoi(ctx, v) {
   ctx.restore();
 }
 
+function drawMaskStructureReference(ctx, v) {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  for (const patch of surfaceGroups(model, activeFace)) {
+    canvasPathMulti(ctx, patch.geom, v, false);
+    ctx.strokeStyle = 'rgba(59, 70, 82, .56)';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([5, 4]);
+  canvasPathMulti(ctx, model.boundary, v, false);
+  ctx.strokeStyle = 'rgba(125, 137, 149, .58)';
+  ctx.lineWidth = 0.9;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function renderMask() {
   const c = $('maskCanvas'),
     { ctx, w, h } = setupCanvas(c),
     v = viewport(w, h, 'mask');
   ctx.clearRect(0, 0, w, h);
-  drawBaseOutline(ctx, v);
+
+  // Alignment reference: current process surface topology, rendered only as
+  // neutral outlines so it cannot be confused with mask layer colors.
+  drawMaskStructureReference(ctx, v);
+
+  ctx.save();
+  ctx.globalAlpha = maskOpacity;
   for (const e of layout.linework || []) traceElement(ctx, e, v, false);
   for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+  ctx.restore();
+
   drawRoi(ctx, v);
   drawPlanAxes(ctx, v, w, h, false);
   scheduleWorkspacePersistence();
@@ -755,7 +783,8 @@ function renderSection() {
   scheduleWorkspacePersistence();
 }
 
-let threeView = null,
+let maskOpacity = 0.65,
+  threeView = null,
   threeOpacity = 1,
   threeShowBorders = false;
 
@@ -983,6 +1012,7 @@ const projectStateController = createProjectStateController({
     xyDisplayUnit,
     activeStructurePalette,
     customStructurePalette,
+    maskOpacity,
     threeOpacity,
     threeShowBorders,
   }),
@@ -1003,6 +1033,7 @@ const projectStateController = createProjectStateController({
     if (next.xyDisplayUnit) xyDisplayUnit = next.xyDisplayUnit;
     if (next.activeStructurePalette) activeStructurePalette = next.activeStructurePalette;
     customStructurePalette = next.customStructurePalette;
+    maskOpacity = next.maskOpacity;
     threeOpacity = next.threeOpacity;
     threeShowBorders = next.threeShowBorders;
     Object.assign(planViews.mask, next.planViews.mask);
@@ -1013,7 +1044,13 @@ const projectStateController = createProjectStateController({
     baseRevertSnapshot = null;
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
-  syncThreeControls: ({ threeOpacity: opacity, threeShowBorders: borders }) => {
+  syncThreeControls: ({
+    maskOpacity: maskAlpha,
+    threeOpacity: opacity,
+    threeShowBorders: borders,
+  }) => {
+    $('maskOpacityRange').value = String(maskAlpha);
+    $('maskOpacityValue').value = `${Math.round(maskAlpha * 100)}%`;
     $('threeOpacityRange').value = String(opacity);
     $('threeOpacityValue').value = `${Math.round(opacity * 100)}%`;
     $('threeBorders').checked = borders;
@@ -1112,6 +1149,11 @@ const workspaceActions = createWorkspaceActionsController({
     sectionScaleMode = value;
   },
   renderSection,
+  getMaskOpacity: () => maskOpacity,
+  setMaskOpacity: (value) => {
+    maskOpacity = value;
+  },
+  renderMask,
   getThreeOpacity: () => threeOpacity,
   setThreeOpacity: (value) => {
     threeOpacity = value;
