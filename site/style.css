@@ -2271,3 +2271,28 @@ summary:focus-visible {
   background: #fff2f3;
   border-top-color: #dfb5bb;
 }
+
+
+/* Phone scientific-toolbar compaction.
+   The workstation visual layer is declared after the base responsive rules,
+   so repeat only sizing here to keep every Mask/Main/3D/Section control
+   inside its header without changing the narrow workspace grid. */
+@media (max-width: 600px) {
+  .view-head .mini-btn,
+  .view-head .three-control,
+  .view-head .focus-editor > summary {
+    padding-left: 3px;
+    padding-right: 3px;
+    font-size: 8px;
+  }
+
+  #maskPanel .view-tools,
+  #maskPanel .zoom-tools {
+    gap: 0;
+  }
+
+  #maskPanel .zoom-tools {
+    padding-right: 0;
+    margin-right: 0;
+  }
+}
