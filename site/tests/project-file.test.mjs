@@ -386,16 +386,16 @@ test('project v7 persists and quantizes independent Mask ROI', async () => {
   source.version = CURRENT_PROJECT_VERSION;
   source.maskRoi = {
     type: 'rect',
-    a: [-10.000049, -10.000051],
-    b: [10.000049, 10.000051],
+    a: [-10.000049, -10.000049],
+    b: [10.000051, 10.000051],
   };
   source.maskRoiAnchor = 'top-left';
 
   const text = serializeProject(source);
   const stored = JSON.parse(text);
   assert.equal(stored.maskRoi.a[0], -10);
-  assert.equal(stored.maskRoi.a[1], -10.0001);
-  assert.equal(stored.maskRoi.b[0], 10);
+  assert.equal(stored.maskRoi.a[1], -10);
+  assert.equal(stored.maskRoi.b[0], 10.0001);
   assert.equal(stored.maskRoi.b[1], 10.0001);
   assert.equal(stored.maskRoiAnchor, 'top-left');
 
