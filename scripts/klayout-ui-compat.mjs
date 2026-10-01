@@ -200,7 +200,7 @@ try {
   await page.waitForFunction(
     () =>
       (document.getElementById('statusText')?.textContent || '').startsWith(
-        'Added UI import probe',
+        'Deposited UI import probe',
       ),
     null,
     { timeout: 10000 },
