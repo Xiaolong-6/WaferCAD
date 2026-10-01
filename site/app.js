@@ -1,9 +1,12 @@
 import { parseLayoutFile } from './layout-io.js';
 import {
   applyOperation,
+  baseCoverageState,
   cloneModel,
   createModel,
+  exposedLayerIds,
   fullFaceGeometry,
+  hasMaterial,
   layerById,
   modelBoundsZ,
   surfaceSegment,
@@ -39,6 +42,7 @@ import {
   saveWorkspaceState,
 } from './workspace-persistence.js';
 import { createBuildController } from './controllers/build-controller.js';
+import { createFeedbackController } from './controllers/feedback-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
 import { bindToolTabs } from './controllers/tool-tabs-controller.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
@@ -95,8 +99,10 @@ let projectName = 'Untitled',
   future = [],
   baseRevertSnapshot = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
-function status(msg) {
-  $('statusText').textContent = msg;
+const feedback = createFeedbackController();
+
+function status(message, level = 'auto') {
+  feedback.show(message, level);
 }
 
 function normalizedProjectName(value = projectName) {
@@ -471,13 +477,19 @@ function canvasPathMulti(ctx, geom, v, back = false) {
         i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
       });
 }
-function drawBaseOutline(ctx, v) {
-  canvasPathMulti(ctx, model.boundary, v);
-  ctx.fillStyle = '#f1f4f6';
-  ctx.fill('evenodd');
-  ctx.strokeStyle = '#96a1ad';
+function drawBaseOutline(ctx, v, { fill = true, back = false } = {}) {
+  ctx.save();
+  canvasPathMulti(ctx, model.boundary, v, back);
+  if (fill) {
+    ctx.fillStyle = '#f1f4f6';
+    ctx.fill('evenodd');
+  } else {
+    ctx.setLineDash([5, 4]);
+  }
+  ctx.strokeStyle = fill ? '#96a1ad' : '#aab3bd';
   ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.restore();
 }
 function traceElement(ctx, e, v, selected) {
   const key = layerKey(e.layer, e.datatype),
@@ -589,7 +601,7 @@ function renderMain() {
     back = activeFace === 'back';
   $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
   ctx.clearRect(0, 0, w, h);
-  drawBaseOutline(ctx, v);
+  drawBaseOutline(ctx, v, { fill: false, back });
   const patches = surfaceGroups(model, activeFace);
   for (const patch of patches) {
     const layer = layerById(model, patch.layerId);
@@ -602,10 +614,13 @@ function renderMain() {
     ctx.lineWidth = 0.65;
     ctx.stroke();
   }
+  ctx.save();
+  ctx.setLineDash([5, 4]);
   canvasPathMulti(ctx, model.boundary, v, back);
-  ctx.strokeStyle = '#87939f';
+  ctx.strokeStyle = '#aab3bd';
   ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.restore();
   const a = worldToCanvas(section.a, v, back),
     b = worldToCanvas(section.b, v, back);
   ctx.strokeStyle = '#cc5062';
@@ -764,6 +779,21 @@ function fit3d() {
   threeView?.fit();
 }
 
+function baseSummaryText() {
+  const coverage = baseCoverageState(model);
+  const shape =
+    model.shape === 'circle'
+      ? `Circle · Ø${formatXY(model.width)} ${xyUnit().label}`
+      : `Rectangle · ${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label}`;
+  const state =
+    coverage === 'removed'
+      ? 'Base removed'
+      : coverage === 'partial'
+        ? 'Base partially removed'
+        : 'Base present';
+  return `${shape} · ${state}`;
+}
+
 function renderAll() {
   renderCellTree();
   renderMaskList();
@@ -780,8 +810,8 @@ function renderAll() {
   $('maskSummary').textContent = layout.name || 'No mask';
   syncProjectNameInput();
   syncMaskCellLabel();
-  $('baseSummary').textContent =
-    `${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${formatXY(model.thickness)} ${xyUnit().label}`;
+  $('baseSummary').textContent = baseSummaryText();
+  updateOperationUI();
   syncUndo();
 }
 function syncBaseControls() {
@@ -794,6 +824,8 @@ function syncBaseControls() {
   $('baseThicknessUnit').textContent = xyUnit().label;
   $('operationThicknessUnit').textContent = xyUnit().label;
   $('xyUnitSelect').value = xyDisplayUnit;
+  $('applyBaseBtn').textContent =
+    baseCoverageState(model) === 'removed' ? 'Recreate base' : 'Apply base';
   document
     .querySelectorAll('#substrateShape button')
     .forEach((b) => b.classList.toggle('active', b.dataset.shape === model.shape));
