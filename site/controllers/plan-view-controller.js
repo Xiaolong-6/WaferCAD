@@ -140,6 +140,10 @@ export function createPlanViewController({
           widths.push(Math.abs(Number(shape.r) || 0) * 2);
         } else if (shape.type === 'polygon' && Array.isArray(shape.points)) {
           pointGroups.push([...shape.points, shape.points[0]].filter(Boolean));
+        } else if (shape.type === 'ring' || shape.type === 'ring-sector') {
+          const inner = Math.abs(Number(shape.innerR) || 0),
+            outer = Math.abs(Number(shape.outerR) || 0);
+          if (outer > inner) widths.push(Math.max(outer - inner, outer * 0.02));
         }
       }
       return minimumSegmentLength(pointGroups, widths);
