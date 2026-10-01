@@ -221,19 +221,20 @@ export function drawShapeGeometry(shape, circleSegments = 96) {
 
   if (normalized.type === 'ring') {
     const outer = circleMulti(
-        normalized.outerR * 2,
-        normalized.outerR * 2,
-        circleSegments,
-        normalized.c[0],
-        normalized.c[1],
-      ),
-      inner = circleMulti(
-        normalized.innerR * 2,
-        normalized.innerR * 2,
-        circleSegments,
-        normalized.c[0],
-        normalized.c[1],
-      );
+      normalized.outerR * 2,
+      normalized.outerR * 2,
+      circleSegments,
+      normalized.c[0],
+      normalized.c[1],
+    );
+    if (!(normalized.innerR > EPS)) return outer;
+    const inner = circleMulti(
+      normalized.innerR * 2,
+      normalized.innerR * 2,
+      circleSegments,
+      normalized.c[0],
+      normalized.c[1],
+    );
     return difference(outer, inner);
   }
 
