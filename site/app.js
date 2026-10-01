@@ -1212,6 +1212,7 @@ const projectStateController = createProjectStateController({
     future = [];
     baseRevertSnapshot = null;
     drawMaskController?.resetInteraction();
+    maskRoiController?.clearDrawingMode();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
   syncThreeControls: ({
@@ -1283,6 +1284,7 @@ drawMaskController = createDrawMaskController({
   formatLengthField,
   manualMicron,
   renderMask,
+  isInteractionBlocked: () => Boolean(maskRoiTool),
   syncSourceSummary: syncMaskSourceSummary,
   onMaskChanged: updateOperationUI,
   status,
@@ -1427,12 +1429,12 @@ function bindUi() {
   bindToolTabs();
   viewMaximizeController.bind();
   roiController.bind();
-  maskRoiController.bind();
   processTaskController.bind();
   sectionControls.bind();
   baseControls.bind();
   maskImportController.bind();
   drawMaskController.bind();
+  maskRoiController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
 
