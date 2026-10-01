@@ -13,7 +13,7 @@ const mainCanvas = await readFile(
   'utf8',
 );
 
-test('Main exposes explicit A–B controls, locked dragging, and double-click Fit', () => {
+test('Main Slice control toggles A–B coordinates and endpoint dragging together', () => {
   assert.match(html, /id="sectionControlsBtn"/);
   assert.match(html, /id="sectionCoordsPanel"[^>]*hidden/s);
   assert.doesNotMatch(html, /id="sectionPanelClose"/);
@@ -21,8 +21,10 @@ test('Main exposes explicit A–B controls, locked dragging, and double-click Fi
     sectionControls,
     /sectionControlsBtn'\)\.onclick = \(\) => setPanelVisible\(\$\('sectionCoordsPanel'\)\.hidden\)/,
   );
-  assert.match(html, /id="sectionEditBtn"/);
-  assert.match(html, /id="resetSectionBtn"/);
+  assert.match(html, />\s*Slice\s*<\/button>/);
+  assert.doesNotMatch(html, /id="sectionEditBtn"/);
+  assert.doesNotMatch(html, /id="resetSectionBtn"/);
+  assert.match(sectionControls, /getSectionEditor\(\)\?\.setEnabled\(active\)/);
   assert.match(html, /id="sectionAx"/);
   assert.match(html, /id="sectionBy"/);
   assert.match(app, /sectionEditEnabled = false/);
