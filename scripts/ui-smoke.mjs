@@ -494,6 +494,19 @@ await page.locator('#maskCanvas').dblclick();
 assert.deepEqual(errors, [], 'Mask double-click Fit must not raise a browser error.');
 
 // File / Draw keeps imported and temporary mask sources separate.
+// Load a real File Mask on this long-lived editor page before validating filtered File export.
+await page.locator('#gdsInput').setInputFiles({
+  name: 'ui-mask-export.oas',
+  mimeType: 'application/octet-stream',
+  buffer: welcomeLayoutBuffer,
+});
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened ui-mask-export.oas.',
+  null,
+  { timeout: 30000 },
+);
+assert.ok(await page.locator('#maskLayerList .layer-row').count());
+
 const sourceToggle = page.locator('#maskSourceToggleBtn');
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 await sourceToggle.click();
