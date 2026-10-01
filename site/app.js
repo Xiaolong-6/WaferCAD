@@ -830,34 +830,101 @@ function syncBaseControls() {
     .querySelectorAll('#substrateShape button')
     .forEach((b) => b.classList.toggle('active', b.dataset.shape === model.shape));
 }
+function clearOperationValidation() {
+  const host = $('operationValidation');
+  if (!host) return;
+  host.textContent = '';
+  host.hidden = true;
+}
+
+function operationValidation(message) {
+  const host = $('operationValidation');
+  if (!host) return;
+  host.textContent = message;
+  host.hidden = !message;
+}
+
+function updateGrowTargets() {
+  const select = $('targetLayer');
+  if (!select) return;
+  const previous = select.value;
+  select.innerHTML = '';
+
+  let area = operationAreaGeometry($('operationArea').value);
+  if (isEmpty(area)) area = model.boundary;
+  const exposed = new Set(exposedLayerIds(model, area, activeFace));
+  for (const layer of model.layers) {
+    if (!exposed.has(layer.id)) continue;
+    select.add(new Option(layer.name, layer.id));
+  }
+  if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+  select.disabled = !select.options.length;
+}
+
 function updateOperationUI() {
   const t = $('operationType').value;
+  document.querySelectorAll('[data-process-mode]').forEach((button) => {
+    const active = button.dataset.processMode === t;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
   $('layerNameRow').classList.toggle('hidden', t !== 'add');
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
   $('growthModeRow').classList.toggle('hidden', t === 'etch');
+  $('processThicknessLabel').textContent = t === 'etch' ? 'Depth' : 'Z';
+
+  if (t === 'grow') updateGrowTargets();
+
+  const materialExists = hasMaterial(model);
+  $('applyOperationBtn').disabled = !materialExists;
+  const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
+  $('processSummary').textContent = materialExists
+    ? `${faceLabel} · ${t === 'add' ? 'Add layer' : t === 'grow' ? 'Grow layer' : 'Etch'}`
+    : 'No material · recreate Base';
+
+  if (!materialExists) {
+    $('operationNote').textContent =
+      'No material remains. Recreate the Base before applying another process.';
+    return;
+  }
+
   $('operationNote').textContent =
     t === 'etch'
-      ? 'Etch removes the requested depth vertically through the stack.'
-      : $('growthMode').value === 'conformal'
-        ? 'Conformal expands across the step and includes a vector sidewall band.'
-        : 'Direct follows the selected footprint.';
+      ? 'Etch removes material vertically and may create through-holes.'
+      : t === 'grow' && !$('targetLayer').options.length
+        ? 'No exposed layer is available in the selected area on this face.'
+        : $('growthMode').value === 'conformal'
+          ? 'Conformal expands across exposed steps and includes sidewalls.'
+          : 'Direct follows the selected footprint.';
 }
+
 function applyOp() {
+  clearOperationValidation();
   const type = $('operationType').value,
     thickness = manualMicron($('operationThickness').value);
   $('operationThickness').value = formatLengthField(thickness);
-  if (!(thickness > 0)) return status('Thickness must be greater than zero.');
+  if (!(thickness > 0)) {
+    operationValidation('Enter a thickness/depth greater than zero.');
+    return status('Thickness must be greater than zero.', 'error');
+  }
+
   const areaMode = $('operationArea').value,
     area = operationAreaGeometry(areaMode);
   if (isEmpty(area))
     return status(
       areaMode === 'full'
-        ? 'The base has no editable area.'
-        : 'Select a mask layer that overlaps the base first.',
+        ? 'The process domain has no editable area.'
+        : 'Select a mask layer that overlaps the process domain first.',
+      'warning',
     );
+
   const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
-  if (type === 'grow' && !targetLayerId) return status('Create a layer before growing it.');
+  if (type === 'grow' && !targetLayerId)
+    return status('No exposed target layer is available for Grow.', 'warning');
+
+  const beforeBase = baseCoverageState(model);
   saveHistory();
   baseRevertSnapshot = null;
   const params = { type, name, targetLayerId, thickness, face: activeFace, area };
@@ -866,17 +933,36 @@ function applyOp() {
   if (!result.changed) {
     restoreSnapshot(history.pop());
     syncUndo();
-    return status(result.error || 'The operation did not change the model.');
+    return status(result.error || 'The operation did not change the model.', 'warning');
   }
+
   if (type === 'add' && result.layerId) {
     colorNewLayer(result.layerId);
     $('layerName').value = `Layer ${model.nextLayerId}`;
   }
+
   renderAll();
+
+  if (!hasMaterial(model)) {
+    return status(
+      'All material has been removed. Undo, restore a snapshot, or recreate the Base.',
+      'warning',
+    );
+  }
+
+  const afterBase = baseCoverageState(model);
+  if (type === 'etch' && beforeBase !== 'removed' && afterBase === 'removed') {
+    return status(
+      'Base fully removed. Remaining material, if any, is shown independently.',
+      'warning',
+    );
+  }
+
   const growthLabel =
     type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Direct';
   status(
     `${type === 'etch' ? 'Etched' : type === 'grow' ? `Grew ${layerById(model, targetLayerId)?.name || 'layer'}` : `Added ${name}`}${growthLabel} on the ${activeFace}.`,
+    'success',
   );
 }
 
