@@ -669,9 +669,14 @@ export function createDrawMaskController({
                   view,
                   event.pointerType === 'touch' ? 18 : 9,
                 )
-              : null;
+              : null,
+            hit = hitShape(point);
           if (handle) canvas.style.cursor = 'nwse-resize';
-          else canvas.style.cursor = hitShape(point) ? 'move' : 'default';
+          else if (hit) canvas.style.cursor = 'move';
+          else {
+            canvas.style.cursor = 'default';
+            return;
+          }
         } else {
           canvas.style.cursor = 'crosshair';
         }
@@ -769,8 +774,6 @@ export function createDrawMaskController({
               };
             } else {
               renderMask();
-              event.preventDefault();
-              event.stopImmediatePropagation();
               return;
             }
           }
