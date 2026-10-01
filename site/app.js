@@ -898,6 +898,16 @@ function baseSummaryText() {
   return `${shape} · ${state}`;
 }
 
+function syncMaskSourceSummary() {
+  if (maskSourceMode === 'draw') {
+    $('maskSummary').textContent = `Draw · ${drawMask.shapes.length} shapes`;
+    $('maskCellLabel').textContent = `${drawMask.shapes.length} drawn`;
+  } else {
+    $('maskSummary').textContent = layout.name || 'No mask';
+    syncMaskCellLabel();
+  }
+}
+
 function renderAll() {
   renderCellTree();
   renderMaskList();
@@ -911,14 +921,8 @@ function renderAll() {
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('faceToggleBtn').textContent = faceLabel;
   $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
-  $('maskSummary').textContent =
-    maskSourceMode === 'draw' ? `Draw · ${drawMask.shapes.length} shapes` : layout.name || 'No mask';
+  syncMaskSourceSummary();
   syncProjectNameInput();
-  if (maskSourceMode === 'draw') {
-    $('maskCellLabel').textContent = `${drawMask.shapes.length} drawn`;
-  } else {
-    syncMaskCellLabel();
-  }
   drawMaskController?.syncUi();
   $('baseSummary').textContent = baseSummaryText();
   updateOperationUI();
@@ -1174,6 +1178,7 @@ drawMaskController = createDrawMaskController({
   worldToCanvas,
   xyText,
   renderMask,
+  syncSourceSummary: syncMaskSourceSummary,
   onMaskChanged: updateOperationUI,
   status,
 });
