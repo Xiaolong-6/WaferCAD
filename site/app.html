@@ -288,10 +288,23 @@
             <button class="mini-btn draw-mask-tool" data-draw-tool="rect" type="button">Rect</button>
             <button class="mini-btn draw-mask-tool" data-draw-tool="circle" type="button">Circle</button>
             <button class="mini-btn draw-mask-tool" data-draw-tool="polygon" type="button">Polygon</button>
+            <button class="mini-btn draw-mask-tool" data-draw-tool="ring" type="button">Ring</button>
+            <button class="mini-btn draw-mask-tool" data-draw-tool="ring-sector" type="button">Ring Sector</button>
             <span class="draw-mask-divider"></span>
             <button id="drawMaskDeleteBtn" class="mini-btn" type="button" disabled>Delete</button>
             <button id="drawMaskClearBtn" class="mini-btn" type="button" disabled>Clear</button>
             <span id="drawMaskHint" class="draw-mask-hint">0 shapes</span>
+          </div>
+          <div id="drawShapeEditor" class="draw-shape-editor" hidden>
+            <div class="draw-shape-editor-head">
+              <strong id="drawShapeEditorTitle">Shape</strong>
+              <button id="drawShapeEditorClose" class="quiet" type="button" aria-label="Close shape editor">×</button>
+            </div>
+            <div id="drawShapeEditorBody" class="draw-shape-editor-body"></div>
+            <div class="draw-shape-editor-actions">
+              <button id="drawShapeEditorApply" class="primary compact-btn" type="button">Apply</button>
+              <button id="drawShapeEditorDelete" class="compact-btn" type="button">Delete</button>
+            </div>
           </div>
         </section>
 
