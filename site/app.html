@@ -497,7 +497,7 @@
               hidden
             >
               <div class="tool-context">
-                <span id="processSummary">Front · Add layer</span>
+                <span id="processSummary">Front · Deposit layer</span>
               </div>
               <div class="control-body">
                 <div class="field-row active-face-row">
@@ -516,12 +516,12 @@
                   <button type="button" class="active" data-process-mode="add" aria-pressed="true">
                     Add
                   </button>
-                  <button type="button" data-process-mode="grow" aria-pressed="false">Grow</button>
+                  <button type="button" data-process-mode="grow" aria-pressed="false">Extend</button>
                   <button type="button" data-process-mode="etch" aria-pressed="false">Etch</button>
                 </div>
                 <select id="operationType" class="visually-hidden" aria-label="Process action">
-                  <option value="add">Add new layer</option>
-                  <option value="grow">Grow current layer</option>
+                  <option value="add">Deposit new layer</option>
+                  <option value="grow">Extend existing layer</option>
                   <option value="etch">Etch / subtract</option>
                 </select>
 
@@ -540,9 +540,9 @@
                   </select></label
                 >
                 <label id="growthModeRow" class="field-row"
-                  ><span>Growth</span
+                  ><span>Coverage</span
                   ><select id="growthMode">
-                    <option value="direct">Direct</option>
+                    <option value="direct">Directional</option>
                     <option value="conformal">Conformal</option>
                   </select></label
                 >
