@@ -18,6 +18,18 @@ const roiController = await readFile(
   new URL('../controllers/roi-controller.js', import.meta.url),
   'utf8',
 );
+const maskRoiController = await readFile(
+  new URL('../controllers/mask-roi-controller.js', import.meta.url),
+  'utf8',
+);
+const processTaskController = await readFile(
+  new URL('../controllers/process-task-controller.js', import.meta.url),
+  'utf8',
+);
+const workspaceActions = await readFile(
+  new URL('../controllers/workspace-actions-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
@@ -146,4 +158,44 @@ test('Draw mode and File mode keep separate UI contexts', () => {
   assert.match(style, /\/\* Mask File \/ Draw source \*\//);
   assert.match(style, /\.draw-mask-toolbar/);
   assert.match(style, /\.draw-shape-editor/);
+});
+
+
+test('Mask owns an independent Square/Circle ROI for Process and export', () => {
+  assert.match(html, /id="maskRoiEditor"/);
+  assert.match(html, /data-tool="rect"[^>]*>Square</);
+  assert.match(html, /data-tool="circle"[^>]*>Circle</);
+  assert.match(html, /id="maskRoiSize"/);
+  assert.match(app, /function maskRoiGeometry\(\)/);
+  assert.match(app, /return limiter \? intersection\(area, limiter\) : area/);
+  assert.match(app, /maskRoiController\?\.render\(ctx, v\)/);
+  assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);
+  assert.match(maskRoiController, /canMoveBody\(point\)/);
+});
+
+test('Apply runs as a single cancelable task with elapsed time and Abort', () => {
+  assert.match(html, /id="processTaskDialog"[^>]*hidden/);
+  assert.match(html, /id="processTaskElapsed"/);
+  assert.match(html, /id="processTaskAbortBtn"[^>]*>Abort</);
+  assert.match(app, /processTaskController\.run\(model, params, taskLabel\)/);
+  assert.match(app, /processTaskController\?\.isBusy\(\)/);
+  assert.match(processTaskController, /new Worker\(/);
+  assert.match(processTaskController, /setInterval\(syncDialog, 100\)/);
+  assert.match(processTaskController, /worker\.terminate\(\)/);
+  assert.match(processTaskController, /Operation aborted/);
+});
+
+test('all view headers expose one Export menu and Mask export filters Cells Layers and ROI', () => {
+  for (const panel of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+    const start = html.indexOf(`id="${panel}"`);
+    assert.ok(start >= 0);
+    const next = html.indexOf('<section', start + 20);
+    const slice = html.slice(start, next > start ? next : undefined);
+    assert.match(slice, />Export<\/summary>/);
+  }
+  assert.match(html, /id="maskExportCells"[^>]*multiple/);
+  assert.match(html, /id="maskExportLayers"[^>]*multiple/);
+  assert.match(app, /syncMaskExportOptions/);
+  assert.match(workspaceActions, /\.export-control/);
+  assert.match(workspaceActions, /syncMaskExportOptions\(\)/);
 });
