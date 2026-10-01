@@ -2489,7 +2489,7 @@ summary:focus-visible {
   z-index: 6;
   top: 63px;
   right: 7px;
-  width: min(270px, calc(100% - 14px));
+  width: min(230px, calc(48% - 7px));
   max-height: calc(100% - 72px);
   overflow: auto;
   border: 1px solid #cbd3db;
