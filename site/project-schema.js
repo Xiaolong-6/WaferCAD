@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 6;
+export const CURRENT_PROJECT_VERSION = 7;
 
 const LIMITS = {
   layers: 10000,
@@ -530,6 +530,19 @@ function validateProjectCore(
   if (project.drawMask != null) validateDrawMask(project.drawMask);
   if (!['front', 'back'].includes(project.activeFace)) fail('activeFace', 'must be front or back.');
   validateRoi(project.roi);
+  validateRoi(project.maskRoi);
+  if (
+    project.maskRoi != null &&
+    !['rect', 'circle'].includes(project.maskRoi.type)
+  ) {
+    fail('maskRoi.type', 'must be rect or circle.');
+  }
+  if (
+    project.maskRoiAnchor != null &&
+    !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.maskRoiAnchor)
+  ) {
+    fail('maskRoiAnchor', 'must be a supported ROI reference point.');
+  }
   if (
     project.roiAnchor != null &&
     !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.roiAnchor)
@@ -569,6 +582,10 @@ function migrateProjectCore(project) {
   if (version < 6) {
     if (!['file', 'draw'].includes(project.maskSourceMode)) project.maskSourceMode = 'file';
     if (!isObject(project.drawMask)) project.drawMask = { nextShapeId: 1, shapes: [] };
+  }
+  if (version < 7) {
+    if (project.maskRoi == null) project.maskRoi = null;
+    if (project.maskRoiAnchor == null) project.maskRoiAnchor = 'center';
   }
   project.version = CURRENT_PROJECT_VERSION;
   return project;
