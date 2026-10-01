@@ -122,3 +122,29 @@ test('snapshot manager shares unchanged large model and layout assets internally
   assert.strictEqual(exported[0].state.layout, exported[1].state.layout);
   assert.strictEqual(exported[0].state.model, exported[1].state.model);
 });
+
+
+test('snapshot preserves Draw mask source independently from imported layout assets', () => {
+  let live = {
+    maskSourceMode: 'draw',
+    drawMask: {
+      nextShapeId: 2,
+      shapes: [{ id: 'shape-1', type: 'rect', a: [-1, -1], b: [1, 1] }],
+    },
+  };
+  let restored = null;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      restored = value;
+    },
+    validateState: () => true,
+    idFactory: () => 'draw-snapshot',
+  });
+
+  manager.create('Draw mask');
+  live.drawMask.shapes[0].b[0] = 9;
+  assert.equal(manager.restore('draw-snapshot'), true);
+  assert.equal(restored.maskSourceMode, 'draw');
+  assert.deepEqual(restored.drawMask.shapes[0].b, [1, 1]);
+});
