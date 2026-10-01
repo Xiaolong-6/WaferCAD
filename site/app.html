@@ -223,7 +223,7 @@
                 <summary class="mini-btn" title="Limit Mask processing/export to a Rect or Circle ROI">ROI</summary>
                 <div class="focus-popover mask-roi-popover">
                   <div class="focus-popover-actions">
-                    <button class="mask-roi-tool mini-btn" data-tool="rect" type="button">Rect</button>
+                    <button class="mask-roi-tool mini-btn" data-tool="rect" type="button">Square</button>
                     <button class="mask-roi-tool mini-btn" data-tool="circle" type="button">Circle</button>
                     <button id="clearMaskRoiBtn" class="mini-btn" type="button">Clear</button>
                   </div>
@@ -232,9 +232,8 @@
                       <strong id="maskRoiShapeLabel">Mask ROI</strong>
                       <span id="maskRoiUnitLabel">µm</span>
                     </div>
-                    <div id="maskRoiRectFields" class="roi-two-fields">
-                      <label><span>Width</span><input id="maskRoiWidth" type="number" min="0" step="any" /></label>
-                      <label><span>Height</span><input id="maskRoiHeight" type="number" min="0" step="any" /></label>
+                    <div id="maskRoiRectFields">
+                      <label class="roi-field"><span>Size</span><input id="maskRoiSize" type="number" min="0" step="any" /></label>
                     </div>
                     <div id="maskRoiCircleFields" hidden>
                       <label class="roi-field"><span>Radius</span><input id="maskRoiRadius" type="number" min="0" step="any" /></label>
