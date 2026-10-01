@@ -82,3 +82,17 @@ Pull requests run the fast **Quality** gate and the permanent Chromium **UI smok
 See [Product review](PRODUCT_REVIEW.md) for the Chromium screenshot/interaction matrix, generated review artifacts, and reproduction commands. The permanent UI smoke job also runs this suite with real WebGL using the pinned Three.js package.
 
 See [Process benchmarks](PROCESS_BENCHMARKS.md) for analytic step/trench/island geometry, both faces, Direct/Conformal/Grow/Etch checks, and explicit approximation boundaries. These tests run under `npm test`.
+
+## UI visual system
+
+WaferCAD should read as a compact engineering/CAD workstation rather than a collection of independent web cards. Preserve information density and layout geometry. New UI should reuse the existing visual hierarchy:
+
+- scientific headers use the shared compact toolbar treatment;
+- use borders sparingly; prefer surface contrast, spacing and active-state emphasis;
+- fields and selects share the same compact control height, radius and focus ring;
+- primary actions use the steel-blue accent; secondary/quiet actions remain neutral;
+- tool tabs should not introduce per-tab boxed borders;
+- semantic feedback colors are reserved for success, information/progress, warning and error states.
+
+Do not create a one-off visual language for a new panel or control when an existing workstation control pattern fits.
+
