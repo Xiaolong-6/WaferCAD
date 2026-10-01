@@ -204,9 +204,11 @@ await page.locator('#applyOperationBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /Added UI conformal/);
 
 await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI conformal project');
 const downloadPromise = page.waitForEvent('download');
 await page.locator('#saveProjectBtn').click();
 const download = await downloadPromise;
+assert.equal(download.suggestedFilename(), 'UI conformal project.wafercad');
 const savedPath = await download.path();
 assert.ok(savedPath);
 const saved = JSON.parse(await readFile(savedPath, 'utf8'));
@@ -456,6 +458,19 @@ await page.locator('#threeExportPngBtn').click();
 assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png');
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
+
+// The active workspace is restored after a normal app.html refresh.
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('Refresh restore check');
+await page.waitForTimeout(1000);
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
+
 assert.deepEqual(errors, []);
 await browser.close();
 
