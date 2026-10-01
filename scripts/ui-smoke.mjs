@@ -326,31 +326,63 @@ assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
 await page.locator('#operationTab').click();
 
-// Slice toggles the coordinate panel and A/B endpoint editing as one state.
+// Slice geometry is editable by default; Slice starts one-shot creation.
 const abPanel = page.locator('#sectionCoordsPanel');
+const main = page.locator('#mainCanvas');
+const mainBox = await main.boundingBox();
+assert.ok(mainBox);
 assert.equal(await abPanel.isHidden(), true);
-await page.locator('#sectionControlsBtn').click();
-assert.equal(await abPanel.isVisible(), true);
 assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
 assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
 assert.ok((await page.locator('[data-endpoint=a]').boundingBox()).width <= 24);
+
+await page.locator('#sectionControlsBtn').click();
+assert.equal(await abPanel.isVisible(), true);
+assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
+await page.mouse.move(mainBox.x + mainBox.width * 0.25, mainBox.y + mainBox.height * 0.35);
+await page.mouse.down();
+await page.mouse.move(mainBox.x + mainBox.width * 0.72, mainBox.y + mainBox.height * 0.62, {
+  steps: 5,
+});
+await page.mouse.up();
+await page.waitForTimeout(30);
+assert.match(await page.locator('#statusText').textContent(), /^Slice created\./);
+assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
+assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
+
+// Existing A–B line can be translated directly while the coordinate panel is open.
+const aBefore = Number(await page.locator('#sectionAx').inputValue());
+const bBefore = Number(await page.locator('#sectionBx').inputValue());
+const aHandle = await page.locator('[data-endpoint=a]').boundingBox();
+const bHandle = await page.locator('[data-endpoint=b]').boundingBox();
+const lineX = (aHandle.x + aHandle.width / 2 + bHandle.x + bHandle.width / 2) / 2;
+const lineY = (aHandle.y + aHandle.height / 2 + bHandle.y + bHandle.height / 2) / 2;
+await page.mouse.move(lineX, lineY);
+await page.mouse.down();
+await page.mouse.move(lineX + 12, lineY, { steps: 4 });
+await page.mouse.up();
+assert.notEqual(Number(await page.locator('#sectionAx').inputValue()), aBefore);
+assert.notEqual(Number(await page.locator('#sectionBx').inputValue()), bBefore);
+
 await page.locator('#sectionAx').fill('1.23456');
 await page.locator('#sectionAx').press('Tab');
 assert.equal(await page.locator('#sectionAx').inputValue(), '1.235');
 await page.locator('#sectionControlsBtn').click();
 assert.equal(await abPanel.isHidden(), true);
-assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
+assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
 
-// ROI creation must remain one-shot and editable.
-const mask = page.locator('#maskCanvas');
-const box = await mask.boundingBox();
-assert.ok(box);
+// ROI lives in Main. Opening ROI closes the Slice popover, and creation is one-shot.
+await page.locator('#sectionControlsBtn').click();
+assert.equal(await abPanel.isVisible(), true);
 await page.locator('#focusEditor > summary').click();
+assert.equal(await abPanel.isHidden(), true);
 assert.equal((await page.locator('#focusEditor > summary').textContent()).trim(), 'ROI');
 await page.locator('.roi-tool[data-tool="rect"]').click();
-await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.4);
+await page.mouse.move(mainBox.x + mainBox.width * 0.4, mainBox.y + mainBox.height * 0.4);
 await page.mouse.down();
-await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6, { steps: 4 });
+await page.mouse.move(mainBox.x + mainBox.width * 0.6, mainBox.y + mainBox.height * 0.6, {
+  steps: 4,
+});
 await page.mouse.up();
 await page.waitForTimeout(50);
 assert.deepEqual(errors, [], 'Rectangle ROI creation must not raise a browser error.');
@@ -367,7 +399,7 @@ await page.locator('#focusEditor > summary').click();
 await page.locator('#focusEditor > summary').click();
 await page.locator('#clearRoiBtn').click();
 await page.locator('.roi-tool[data-tool="sector"]').click();
-const sectorBox = await mask.boundingBox();
+const sectorBox = await main.boundingBox();
 assert.ok(sectorBox);
 await page.mouse.move(sectorBox.x + sectorBox.width * 0.5, sectorBox.y + sectorBox.height * 0.5);
 await page.mouse.down();
@@ -386,8 +418,7 @@ assert.equal((await page.locator('#roiShapeLabel').textContent()).trim(), 'Secto
 assert.equal(await page.locator('#roiStartAngle').inputValue(), '0');
 assert.equal(await page.locator('#roiEndAngle').inputValue(), '90');
 
-// Drag the yellow Start-angle handle from 0° to 270° and verify the numeric
-// editor follows the canvas interaction.
+// Drag the yellow Start-angle handle from 0° to 270° and verify the numeric editor follows.
 await page.locator('#focusEditor > summary').click();
 await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sectorBox.height * 0.5);
 await page.mouse.down();
@@ -407,6 +438,10 @@ await page.locator('#roiStartAngle').press('Tab');
 await page.locator('#roiEndAngle').fill('60');
 await page.locator('#roiEndAngle').press('Tab');
 await page.locator('#focusEditor > summary').click();
+
+// Mask now mirrors Main's double-click-to-Fit behavior.
+await page.locator('#maskCanvas').dblclick();
+assert.deepEqual(errors, [], 'Mask double-click Fit must not raise a browser error.');
 
 // SVG exports and in-page maximize controls are wired for all 2D views.
 for (const [button, filename] of [
