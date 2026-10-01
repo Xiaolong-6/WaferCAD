@@ -167,6 +167,12 @@ await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
 
+// Grow targets follow the exposed surface and include Base when it is exposed.
+await page.locator('[data-process-mode="grow"]').click();
+await page.locator('#operationArea').selectOption('full');
+assert.ok(await page.locator('#targetLayer option[value="base"]').count());
+await page.locator('[data-process-mode="add"]').click();
+
 // Exercise Conformal through the real UI path, then save and inspect the canonical model.
 const conformalFixture = createModel({
   shape: 'circle',
