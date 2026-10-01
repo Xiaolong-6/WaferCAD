@@ -1,10 +1,13 @@
 import { minimumSegmentLength, zoomLimitForFeature } from '../view-interactions.js';
+import { drawMaskGeometry } from '../draw-mask-geometry.js';
 
 export function createPlanViewController({
   windowRef = window,
   getModel,
   getLayout,
   getMaskTransform,
+  getMaskSourceMode = () => 'file',
+  getDrawMask = () => ({ nextShapeId: 1, shapes: [] }),
   getPlanViews,
   maskPoint,
   formatXY,
@@ -43,28 +46,38 @@ export function createPlanViewController({
         maxY: model.height / 2,
       };
 
-    if (!(layout.elements?.length || layout.linework?.length)) {
-      return { ...base, width: model.width, height: model.height };
-    }
-
-    const bounds = layout.bounds,
-      corners = [
-        [bounds.minX, bounds.minY],
-        [bounds.minX, bounds.maxY],
-        [bounds.maxX, bounds.minY],
-        [bounds.maxX, bounds.maxY],
-      ].map(maskPoint);
-
     let minX = base.minX,
       maxX = base.maxX,
       minY = base.minY,
       maxY = base.maxY;
 
-    for (const [x, y] of corners) {
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y);
+    if (getMaskSourceMode() === 'draw') {
+      const geometry = drawMaskGeometry(getDrawMask());
+      for (const polygon of geometry || []) {
+        for (const ring of polygon || []) {
+          for (const [x, y] of ring || []) {
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+          }
+        }
+      }
+    } else if (layout.elements?.length || layout.linework?.length) {
+      const bounds = layout.bounds,
+        corners = [
+          [bounds.minX, bounds.minY],
+          [bounds.minX, bounds.maxY],
+          [bounds.maxX, bounds.minY],
+          [bounds.maxX, bounds.maxY],
+        ].map(maskPoint);
+
+      for (const [x, y] of corners) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
     }
 
     return {
@@ -108,6 +121,30 @@ export function createPlanViewController({
   }
 
   function maskMinimumFeatureSize() {
+    if (getMaskSourceMode() === 'draw') {
+      const drawMask = getDrawMask(),
+        pointGroups = [],
+        widths = [];
+      for (const shape of drawMask?.shapes || []) {
+        if (shape.type === 'rect' && Array.isArray(shape.a) && Array.isArray(shape.b)) {
+          const [x0, y0] = shape.a,
+            [x1, y1] = shape.b;
+          pointGroups.push([
+            [x0, y0],
+            [x1, y0],
+            [x1, y1],
+            [x0, y1],
+            [x0, y0],
+          ]);
+        } else if (shape.type === 'circle') {
+          widths.push(Math.abs(Number(shape.r) || 0) * 2);
+        } else if (shape.type === 'polygon' && Array.isArray(shape.points)) {
+          pointGroups.push([...shape.points, shape.points[0]].filter(Boolean));
+        }
+      }
+      return minimumSegmentLength(pointGroups, widths);
+    }
+
     const layout = getLayout(),
       scale = Math.abs(getMaskTransform().scale) || 1;
 
