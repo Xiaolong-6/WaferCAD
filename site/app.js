@@ -574,6 +574,34 @@ function drawRoi(ctx, v) {
   ctx.restore();
 }
 
+let maskStructureCache = {
+  model: null,
+  revision: null,
+  processRevision: null,
+  face: null,
+  patches: [],
+};
+
+function maskStructurePatches() {
+  if (
+    maskStructureCache.model === model &&
+    maskStructureCache.revision === model.revision &&
+    maskStructureCache.processRevision === model.processRevision &&
+    maskStructureCache.face === activeFace
+  ) {
+    return maskStructureCache.patches;
+  }
+  const patches = surfaceGroups(model, activeFace);
+  maskStructureCache = {
+    model,
+    revision: model.revision,
+    processRevision: model.processRevision,
+    face: activeFace,
+    patches,
+  };
+  return patches;
+}
+
 function strokeClosedGeometry(ctx, geom, v, back = false) {
   ctx.beginPath();
   for (const polygon of geom || []) {
@@ -596,7 +624,7 @@ function drawMaskStructureReference(ctx, v) {
   ctx.strokeStyle = 'rgba(59, 70, 82, .56)';
   ctx.lineWidth = 0.85;
 
-  for (const patch of surfaceGroups(model, activeFace)) {
+  for (const patch of maskStructurePatches()) {
     strokeClosedGeometry(ctx, patch.geom, v, false);
   }
 
