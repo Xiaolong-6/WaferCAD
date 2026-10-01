@@ -212,25 +212,15 @@
           <div class="view-head mask-view-head">
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
-              <div id="maskSourceMode" class="segmented mask-source-mode" aria-label="Mask source">
-                <button
-                  id="maskSourceFileBtn"
-                  type="button"
-                  class="active"
-                  aria-pressed="true"
-                  title="Use imported GDSII/OASIS mask"
-                >
-                  File
-                </button>
-                <button
-                  id="maskSourceDrawBtn"
-                  type="button"
-                  aria-pressed="false"
-                  title="Use project-local drawn mask"
-                >
-                  Draw
-                </button>
-              </div>
+              <button
+                id="maskSourceToggleBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Mask source: File. Click to switch to Draw."
+              >
+                File
+              </button>
               <details class="three-opacity-control mask-opacity-control">
                 <summary
                   class="mini-btn"
