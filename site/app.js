@@ -58,7 +58,11 @@ import { createMaskImportController } from './controllers/mask-import-controller
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
-import { createEmptyDrawMask, drawMaskGeometry } from './draw-mask-geometry.js';
+import {
+  createEmptyDrawMask,
+  drawMaskGeometry,
+  drawShapeContainsPoint,
+} from './draw-mask-geometry.js';
 import {
   createEmptyLayout,
   createProjectStateController,
@@ -404,6 +408,9 @@ maskRoiController = createMaskRoiController({
   canvasToWorld,
   worldToCanvas,
   renderMask,
+  canMoveBody: (point) =>
+    maskSourceMode !== 'draw' ||
+    !drawMask.shapes.some((shape) => drawShapeContainsPoint(shape, point)),
   onChanged: () => {
     updateOperationUI();
     scheduleWorkspacePersistence();
@@ -1434,8 +1441,8 @@ function bindUi() {
   sectionControls.bind();
   baseControls.bind();
   maskImportController.bind();
-  drawMaskController.bind();
   maskRoiController.bind();
+  drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
 
