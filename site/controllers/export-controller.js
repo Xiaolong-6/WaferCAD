@@ -71,7 +71,7 @@ export function createExportController({
       height = Math.max(2, rect.height),
       view = viewport(width, height, 'main'),
       back = activeFace === 'back',
-      map = (point) => worldToCanvas(point, view, back);
+      map = (point) => worldToCanvas(point, view);
     let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
 
     for (const patch of surfaceGroups(model, activeFace)) {
