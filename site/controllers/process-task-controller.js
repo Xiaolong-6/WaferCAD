@@ -50,7 +50,10 @@ export function createProcessTaskController({
 
     return new Promise((resolve) => {
       const id = `process-${++sequence}`,
-        worker = new Worker(new URL('../process-worker.js', import.meta.url)),
+        workerUrl = new URL('../process-worker.js', import.meta.url),
+        currentModuleUrl = new URL(import.meta.url);
+      workerUrl.search = currentModuleUrl.search;
+      const worker = new Worker(workerUrl),
         task = {
           id,
           worker,
