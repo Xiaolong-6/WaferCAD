@@ -314,6 +314,8 @@ const exportController = createExportController({
   getState: () => ({
     model,
     layout,
+    activeCell,
+    selectedLayerKeys,
     activeFace,
     section,
     maskTransform,
@@ -332,7 +334,13 @@ const exportController = createExportController({
   formatXY,
   status,
 });
-const { downloadBlob, exportMainSvg, exportMaskSvg, exportSectionSvg } = exportController;
+const {
+  downloadBlob,
+  exportMainSvg,
+  exportMaskSvg,
+  exportSectionSvg,
+  syncMaskExportOptions,
+} = exportController;
 
 const roiController = createRoiController({
   getRoi: () => roi,
