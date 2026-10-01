@@ -17,6 +17,7 @@ export function createWorkspaceActionsController({
   exportMainSvg,
   exportMaskSvg,
   exportSectionSvg,
+  syncMaskExportOptions = () => {},
   getThreeView,
   downloadBlob,
   getRoi,
@@ -132,9 +133,33 @@ export function createWorkspaceActionsController({
   }
 
   function bindExports() {
-    $('mainExportSvgBtn').onclick = exportMainSvg;
-    $('maskExportSvgBtn').onclick = exportMaskSvg;
-    $('sectionExportSvgBtn').onclick = exportSectionSvg;
+    const closeExport = (id) => {
+      const details = $(id)?.closest('details');
+      if (details) details.open = false;
+    };
+
+    root.querySelectorAll('.export-control').forEach((details) => {
+      details.addEventListener('toggle', () => {
+        if (!details.open) return;
+        for (const sibling of details.closest('.view-head')?.querySelectorAll('details') || []) {
+          if (sibling !== details) sibling.open = false;
+        }
+        if (details.id === 'maskExportControl') syncMaskExportOptions();
+      });
+    });
+
+    $('mainExportSvgBtn').onclick = () => {
+      exportMainSvg();
+      closeExport('mainExportSvgBtn');
+    };
+    $('maskExportSvgBtn').onclick = () => {
+      exportMaskSvg();
+      closeExport('maskExportSvgBtn');
+    };
+    $('sectionExportSvgBtn').onclick = () => {
+      exportSectionSvg();
+      closeExport('sectionExportSvgBtn');
+    };
 
     $('threeExportModelBtn').onclick = async () => {
       try {
@@ -144,7 +169,9 @@ export function createWorkspaceActionsController({
         status(`Exported ${getRoi() ? 'ROI' : 'full'} 3D model as GLB (physical metres).`);
       } catch (error) {
         console.error(error);
-        status(`3D model export failed: ${error.message}`);
+        status(`3D model export failed: ${error.message}`, 'error');
+      } finally {
+        closeExport('threeExportModelBtn');
       }
     };
 
@@ -156,7 +183,9 @@ export function createWorkspaceActionsController({
         status('Exported 3× high-resolution 3D PNG.');
       } catch (error) {
         console.error(error);
-        status(`3D screenshot failed: ${error.message}`);
+        status(`3D screenshot failed: ${error.message}`, 'error');
+      } finally {
+        closeExport('threeExportPngBtn');
       }
     };
   }
