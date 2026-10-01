@@ -1,4 +1,10 @@
-import { deleteExposedLayer, isLayerExposed, recolorLayer, renameLayer } from '../model.js';
+import {
+  deleteExposedLayer,
+  isLayerExposed,
+  layerPresent,
+  recolorLayer,
+  renameLayer,
+} from '../model.js';
 
 const STRUCTURE_PALETTES = {
   balanced: [
@@ -195,14 +201,13 @@ export function createLayerLegendController({
     head.append(title, tools);
     host.append(head);
 
-    const target = $('targetLayer'),
-      previous = target.value;
-    target.innerHTML = '';
     const palette = structurePalette();
 
     for (const layer of model.layers) {
       const row = root.createElement('div');
       row.className = 'legend-row-wrap';
+      const present = layerPresent(model, layer.id);
+      row.classList.toggle('layer-absent', !present);
 
       const main = root.createElement('div');
       main.className = 'legend-row';
@@ -211,7 +216,8 @@ export function createLayerLegendController({
       color.type = 'button';
       color.className = 'legend-color-chip';
       color.style.background = layer.color;
-      color.title = 'Choose from the active palette';
+      color.disabled = !present;
+      color.title = present ? 'Choose from the active palette' : 'Layer is not present in the model';
       color.onclick = () => {
         setOpenLayerPaletteId(getOpenLayerPaletteId() === layer.id ? null : layer.id);
         renderLayerLegend();
@@ -221,13 +227,15 @@ export function createLayerLegendController({
       name.type = 'text';
       name.className = 'legend-name';
       name.value = layer.name;
-      name.title = 'Rename layer';
+      name.disabled = !present;
+      name.title = present ? 'Rename layer' : 'Layer is not present in the model';
       name.onchange = () => {
         if (!renameLayer(model, layer.id, name.value)) name.value = layer.name;
         renderLayerLegend();
         renderMain();
         renderSection();
         renderThree();
+        updateOperationUI();
       };
 
       main.append(color, name);
@@ -281,10 +289,7 @@ export function createLayerLegendController({
       }
 
       host.append(row);
-      if (layer.id !== 'base') target.add(new Option(layer.name, layer.id));
     }
-
-    if ([...target.options].some((option) => option.value === previous)) target.value = previous;
   }
 
   return { renderLayerLegend, structurePalette, applyStructurePalette, colorNewLayer };

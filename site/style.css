@@ -1723,3 +1723,194 @@ body.welcome-open {
     min-height: 340px;
   }
 }
+
+
+/* Function panel system */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.tool-tab:focus {
+  outline: none;
+}
+.tool-tab:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid #6f8298;
+  outline-offset: -2px;
+}
+
+.tool-tab-panel .field-row {
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+
+.mask-import-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+}
+.mask-import-toolbar .compact-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.subgroup {
+  margin-top: 5px;
+  border-top: 1px solid var(--line2);
+  padding-top: 3px;
+}
+.subgroup > summary {
+  width: fit-content;
+  color: #65717d;
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.process-mode {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 4px 0 6px;
+}
+.process-mode button {
+  height: 27px;
+  font-size: 11px;
+}
+
+.field-message {
+  margin: 2px 0 5px 77px;
+  color: #a33e4b;
+  font-size: 9.5px;
+  line-height: 1.25;
+}
+
+#applyOperationBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.snapshot-list {
+  gap: 4px;
+}
+.snapshot-row {
+  padding: 2px;
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  background: #fbfcfd;
+}
+.snapshot-name {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+.snapshot-name:focus {
+  border-color: #aeb8c3 !important;
+  background: #fff !important;
+}
+
+.legend-row-wrap.layer-absent {
+  opacity: 0.48;
+}
+.legend-row-wrap.layer-absent .legend-name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+/* Typed feedback */
+.statusbar {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.statusbar[data-level='success'] {
+  background: #f2faf5;
+  border-top-color: #b9dbc4;
+  color: #356947;
+}
+.statusbar[data-level='info'] {
+  background: #f3f7fb;
+  border-top-color: #bfd0df;
+  color: #435f78;
+}
+.statusbar[data-level='progress'] {
+  background: #f3f7fb;
+  border-top-color: #b7cadd;
+  color: #435f78;
+}
+.statusbar[data-level='progress'] #statusText::before {
+  content: '◌';
+  display: inline-block;
+  margin-right: 5px;
+  animation: wafercad-status-spin 0.9s linear infinite;
+}
+@keyframes wafercad-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.statusbar[data-level='warning'] {
+  background: #fff8e8;
+  border-top-color: #ead39b;
+  color: #7a5a16;
+}
+.statusbar[data-level='error'] {
+  background: #fff1f2;
+  border-top-color: #e5b7bd;
+  color: #923746;
+}
+
+.feedback-toasts {
+  position: fixed;
+  z-index: 30;
+  left: 10px;
+  bottom: 28px;
+  display: grid;
+  gap: 5px;
+  width: min(420px, calc(100vw - 20px));
+  pointer-events: none;
+}
+.feedback-toast {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(38, 48, 58, 0.12);
+  color: #43505c;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+.feedback-toast.success {
+  border-left-color: #5f9f73;
+  background: #f8fcf9;
+}
+.feedback-toast.info,
+.feedback-toast.progress {
+  border-left-color: #6f8ca8;
+  background: #f7fafd;
+}
+.feedback-toast.warning {
+  border-left-color: #c89a38;
+  background: #fffaf0;
+}
+.feedback-toast.error {
+  border-left-color: #bd5665;
+  background: #fff6f7;
+}
+
+@media (max-width: 900px) {
+  .tool-tab-panel .field-row {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+  .field-message {
+    margin-left: 67px;
+  }
+}

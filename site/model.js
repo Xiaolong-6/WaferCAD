@@ -62,6 +62,68 @@ export const isVectorModel = (model) =>
   model?.kernel === 'vector-2.5d-v1' && Array.isArray(model.regions);
 export const fullFaceGeometry = (model) => cloneGeom(model.boundary);
 
+export function hasMaterial(model) {
+  return Boolean(
+    model?.regions?.some((region) => !isEmpty(region.geom) && (region.stack || []).length > 0),
+  );
+}
+
+function ringArea(ring) {
+  let sum = 0;
+  for (let index = 1; index < (ring || []).length; index++) {
+    const a = ring[index - 1],
+      b = ring[index];
+    sum += a[0] * b[1] - b[0] * a[1];
+  }
+  return sum / 2;
+}
+
+export function geometryArea(geometry) {
+  let total = 0;
+  for (const polygon of geometry || []) {
+    if (!polygon.length) continue;
+    let area = Math.abs(ringArea(polygon[0]));
+    for (let index = 1; index < polygon.length; index++) {
+      area -= Math.abs(ringArea(polygon[index]));
+    }
+    total += Math.max(0, area);
+  }
+  return total;
+}
+
+export function layerPresent(model, layerId) {
+  return Boolean(
+    model?.regions?.some((region) =>
+      (region.stack || []).some((segment) => segment.layerId === layerId),
+    ),
+  );
+}
+
+export function baseCoverageState(model) {
+  let baseArea = 0;
+  for (const region of model?.regions || []) {
+    if ((region.stack || []).some((segment) => segment.layerId === 'base')) {
+      baseArea += geometryArea(region.geom);
+    }
+  }
+  if (baseArea <= 1e-12) return 'removed';
+
+  const domainArea = geometryArea(model.boundary),
+    tolerance = Math.max(1e-9, domainArea * 1e-9);
+  return baseArea >= domainArea - tolerance ? 'full' : 'partial';
+}
+
+export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
+  if (!model || isEmpty(area)) return [];
+  const ids = new Set();
+  for (const region of model.regions || []) {
+    if (isEmpty(intersection(region.geom, area))) continue;
+    const segment = surfaceSegment(region.stack, face);
+    if (segment) ids.add(segment.layerId);
+  }
+  return [...ids];
+}
+
 export function zDisplayScale(model) {
   const [lo, hi] = modelBoundsZ(model);
   const zSpan = Math.max(hi - lo, 1e-12);
@@ -295,6 +357,18 @@ function applyOperationImpl(
   const amount = Math.max(1e-5, Number(thickness) || 0);
   let active = intersection(area, model.boundary);
   if (isEmpty(active)) return { changed: false };
+  if (!hasMaterial(model)) {
+    return {
+      changed: false,
+      error: 'No material remains. Recreate the Base before applying another process.',
+    };
+  }
+  const touchesMaterial = model.regions.some(
+    (region) => !isEmpty(intersection(active, region.geom)),
+  );
+  if (!touchesMaterial) {
+    return { changed: false, error: 'The selected area contains no material.' };
+  }
   let layer = null;
   if (type === 'add') layer = createLayer(model, name);
   if (type === 'grow' && !layerById(model, targetLayerId))

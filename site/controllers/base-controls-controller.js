@@ -1,4 +1,4 @@
-import { createModel } from '../model.js';
+import { createModel, hasMaterial } from '../model.js';
 
 export function createBaseControlsController({
   root = document,
@@ -68,6 +68,7 @@ export function createBaseControlsController({
     }
 
     if (
+      hasMaterial(getModel()) &&
       hasProcessEdits() &&
       !confirmRebuild(
         'Rebuilding the base will remove the current structure and all applied operations. You can undo this change afterwards. Continue?',
@@ -84,7 +85,11 @@ export function createBaseControlsController({
     syncBaseControls();
     renderAll();
     fit3d();
-    status('Base applied. Use Revert or Undo to restore the previous structure.');
+    status(
+      hasMaterial(getBaseRevertSnapshot()?.model)
+        ? 'Base applied. Use Revert or Undo to restore the previous structure.'
+        : 'Base recreated. Use Undo to restore the previous empty state.',
+    );
   }
 
   function revertBase() {

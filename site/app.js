@@ -1,9 +1,12 @@
 import { parseLayoutFile } from './layout-io.js';
 import {
   applyOperation,
+  baseCoverageState,
   cloneModel,
   createModel,
+  exposedLayerIds,
   fullFaceGeometry,
+  hasMaterial,
   layerById,
   modelBoundsZ,
   surfaceSegment,
@@ -39,6 +42,7 @@ import {
   saveWorkspaceState,
 } from './workspace-persistence.js';
 import { createBuildController } from './controllers/build-controller.js';
+import { createFeedbackController } from './controllers/feedback-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
 import { bindToolTabs } from './controllers/tool-tabs-controller.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
@@ -95,8 +99,10 @@ let projectName = 'Untitled',
   future = [],
   baseRevertSnapshot = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
-function status(msg) {
-  $('statusText').textContent = msg;
+const feedback = createFeedbackController();
+
+function status(message, level = 'auto') {
+  feedback.show(message, level);
 }
 
 function normalizedProjectName(value = projectName) {
@@ -471,13 +477,19 @@ function canvasPathMulti(ctx, geom, v, back = false) {
         i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
       });
 }
-function drawBaseOutline(ctx, v) {
-  canvasPathMulti(ctx, model.boundary, v);
-  ctx.fillStyle = '#f1f4f6';
-  ctx.fill('evenodd');
-  ctx.strokeStyle = '#96a1ad';
+function drawBaseOutline(ctx, v, { fill = true, back = false } = {}) {
+  ctx.save();
+  canvasPathMulti(ctx, model.boundary, v, back);
+  if (fill) {
+    ctx.fillStyle = '#f1f4f6';
+    ctx.fill('evenodd');
+  } else {
+    ctx.setLineDash([5, 4]);
+  }
+  ctx.strokeStyle = fill ? '#96a1ad' : '#aab3bd';
   ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.restore();
 }
 function traceElement(ctx, e, v, selected) {
   const key = layerKey(e.layer, e.datatype),
@@ -589,7 +601,7 @@ function renderMain() {
     back = activeFace === 'back';
   $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
   ctx.clearRect(0, 0, w, h);
-  drawBaseOutline(ctx, v);
+  drawBaseOutline(ctx, v, { fill: false, back });
   const patches = surfaceGroups(model, activeFace);
   for (const patch of patches) {
     const layer = layerById(model, patch.layerId);
@@ -602,10 +614,13 @@ function renderMain() {
     ctx.lineWidth = 0.65;
     ctx.stroke();
   }
+  ctx.save();
+  ctx.setLineDash([5, 4]);
   canvasPathMulti(ctx, model.boundary, v, back);
-  ctx.strokeStyle = '#87939f';
+  ctx.strokeStyle = '#aab3bd';
   ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.restore();
   const a = worldToCanvas(section.a, v, back),
     b = worldToCanvas(section.b, v, back);
   ctx.strokeStyle = '#cc5062';
@@ -764,6 +779,21 @@ function fit3d() {
   threeView?.fit();
 }
 
+function baseSummaryText() {
+  const coverage = baseCoverageState(model);
+  const shape =
+    model.shape === 'circle'
+      ? `Circle · Ø${formatXY(model.width)} ${xyUnit().label}`
+      : `Rectangle · ${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label}`;
+  const state =
+    coverage === 'removed'
+      ? 'Base removed'
+      : coverage === 'partial'
+        ? 'Base partially removed'
+        : 'Base present';
+  return `${shape} · ${state}`;
+}
+
 function renderAll() {
   renderCellTree();
   renderMaskList();
@@ -780,8 +810,8 @@ function renderAll() {
   $('maskSummary').textContent = layout.name || 'No mask';
   syncProjectNameInput();
   syncMaskCellLabel();
-  $('baseSummary').textContent =
-    `${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label} · Z ${formatXY(model.thickness)} ${xyUnit().label}`;
+  $('baseSummary').textContent = baseSummaryText();
+  updateOperationUI();
   syncUndo();
 }
 function syncBaseControls() {
@@ -794,38 +824,106 @@ function syncBaseControls() {
   $('baseThicknessUnit').textContent = xyUnit().label;
   $('operationThicknessUnit').textContent = xyUnit().label;
   $('xyUnitSelect').value = xyDisplayUnit;
+  $('applyBaseBtn').textContent =
+    baseCoverageState(model) === 'removed' ? 'Recreate base' : 'Apply base';
   document
     .querySelectorAll('#substrateShape button')
     .forEach((b) => b.classList.toggle('active', b.dataset.shape === model.shape));
 }
+function clearOperationValidation() {
+  const host = $('operationValidation');
+  if (!host) return;
+  host.textContent = '';
+  host.hidden = true;
+}
+
+function operationValidation(message) {
+  const host = $('operationValidation');
+  if (!host) return;
+  host.textContent = message;
+  host.hidden = !message;
+}
+
+function updateGrowTargets() {
+  const select = $('targetLayer');
+  if (!select) return;
+  const previous = select.value;
+  select.innerHTML = '';
+
+  const area = operationAreaGeometry($('operationArea').value);
+  const exposed = new Set(exposedLayerIds(model, area, activeFace));
+  for (const layer of model.layers) {
+    if (!exposed.has(layer.id)) continue;
+    select.add(new Option(layer.name, layer.id));
+  }
+  if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+  select.disabled = !select.options.length;
+}
+
 function updateOperationUI() {
   const t = $('operationType').value;
+  document.querySelectorAll('[data-process-mode]').forEach((button) => {
+    const active = button.dataset.processMode === t;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
   $('layerNameRow').classList.toggle('hidden', t !== 'add');
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
   $('growthModeRow').classList.toggle('hidden', t === 'etch');
+  $('processThicknessLabel').textContent = t === 'etch' ? 'Depth' : 'Z';
+
+  if (t === 'grow') updateGrowTargets();
+
+  const materialExists = hasMaterial(model);
+  $('applyOperationBtn').disabled = !materialExists;
+  const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
+  $('processSummary').textContent = materialExists
+    ? `${faceLabel} · ${t === 'add' ? 'Add layer' : t === 'grow' ? 'Grow layer' : 'Etch'}`
+    : 'No material · recreate Base';
+
+  if (!materialExists) {
+    $('operationNote').textContent =
+      'No material remains. Recreate the Base before applying another process.';
+    return;
+  }
+
   $('operationNote').textContent =
     t === 'etch'
-      ? 'Etch removes the requested depth vertically through the stack.'
-      : $('growthMode').value === 'conformal'
-        ? 'Conformal expands across the step and includes a vector sidewall band.'
-        : 'Direct follows the selected footprint.';
+      ? 'Etch removes material vertically and may create through-holes.'
+      : t === 'grow' && !$('targetLayer').options.length
+        ? 'No exposed layer is available in the selected area on this face.'
+        : $('growthMode').value === 'conformal'
+          ? 'Conformal expands across exposed steps and includes sidewalls.'
+          : 'Direct follows the selected footprint.';
 }
+
 function applyOp() {
+  clearOperationValidation();
   const type = $('operationType').value,
     thickness = manualMicron($('operationThickness').value);
   $('operationThickness').value = formatLengthField(thickness);
-  if (!(thickness > 0)) return status('Thickness must be greater than zero.');
+  if (!(thickness > 0)) {
+    operationValidation('Enter a thickness/depth greater than zero.');
+    return status('Thickness must be greater than zero.', 'error');
+  }
+
   const areaMode = $('operationArea').value,
     area = operationAreaGeometry(areaMode);
   if (isEmpty(area))
     return status(
       areaMode === 'full'
-        ? 'The base has no editable area.'
-        : 'Select a mask layer that overlaps the base first.',
+        ? 'The process domain has no editable area.'
+        : 'Select a mask layer that overlaps the process domain first.',
+      'warning',
     );
+
   const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
-  if (type === 'grow' && !targetLayerId) return status('Create a layer before growing it.');
+  if (type === 'grow' && !targetLayerId)
+    return status('No exposed target layer is available for Grow.', 'warning');
+
+  const beforeBase = baseCoverageState(model);
   saveHistory();
   baseRevertSnapshot = null;
   const params = { type, name, targetLayerId, thickness, face: activeFace, area };
@@ -834,17 +932,36 @@ function applyOp() {
   if (!result.changed) {
     restoreSnapshot(history.pop());
     syncUndo();
-    return status(result.error || 'The operation did not change the model.');
+    return status(result.error || 'The operation did not change the model.', 'warning');
   }
+
   if (type === 'add' && result.layerId) {
     colorNewLayer(result.layerId);
     $('layerName').value = `Layer ${model.nextLayerId}`;
   }
+
   renderAll();
+
+  if (!hasMaterial(model)) {
+    return status(
+      'All material has been removed. Undo, restore a snapshot, or recreate the Base.',
+      'warning',
+    );
+  }
+
+  const afterBase = baseCoverageState(model);
+  if (type === 'etch' && beforeBase !== 'removed' && afterBase === 'removed') {
+    return status(
+      'Base fully removed. Remaining material, if any, is shown independently.',
+      'warning',
+    );
+  }
+
   const growthLabel =
     type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Direct';
   status(
     `${type === 'etch' ? 'Etched' : type === 'grow' ? `Grew ${layerById(model, targetLayerId)?.name || 'layer'}` : `Added ${name}`}${growthLabel} on the ${activeFace}.`,
+    'success',
   );
 }
 
