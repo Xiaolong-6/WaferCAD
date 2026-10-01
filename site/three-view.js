@@ -208,8 +208,11 @@ export function createThreeView({
         opacity,
         depthWrite: opacity >= 0.999,
         polygonOffset: true,
-        polygonOffsetFactor: -Math.min(16, (index + 1) * 0.5),
-        polygonOffsetUnits: -Math.min(16, index + 1),
+        // Push filled surfaces slightly behind their true geometry. This keeps
+        // the wire overlay visible even at 100% opacity while retaining a
+        // stable bias between coplanar material surfaces.
+        polygonOffsetFactor: Math.min(8, (index + 1) * 0.35),
+        polygonOffsetUnits: Math.min(12, index + 1),
       });
       if (opacity < 0.999) material.forceSinglePass = true;
       const mesh = new THREE.Mesh(geometry, material);
@@ -225,13 +228,15 @@ export function createThreeView({
         const edgeMaterial = new THREE.LineBasicMaterial({
           color: 0x111820,
           transparent: true,
-          opacity: 0.92,
+          opacity: 1,
           depthTest: opacity >= 0.999,
+          depthFunc: THREE.LessEqualDepth,
           depthWrite: false,
         });
         const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-        // Transparent surfaces do not write depth. Drawing their borders last
-        // keeps the visible ROI/layer outline from being alpha-blended away.
+        // Filled opaque surfaces are depth-biased slightly backwards, so these
+        // true-geometry borders remain crisp at 100% opacity. Transparent
+        // surfaces still draw borders last because they do not write depth.
         edges.renderOrder = 1000 + index;
         group.add(edges);
       }
