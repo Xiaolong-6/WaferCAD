@@ -132,7 +132,7 @@ export function createSnapshotManager({
   function restoreById(id) {
     const record = records.find((item) => item.id === id);
     if (!record || !validateState(record.state)) return false;
-    restore(cloneState(record.state));
+    restore(clone(record.state));
     return true;
   }
 
