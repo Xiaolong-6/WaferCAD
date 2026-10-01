@@ -34,6 +34,7 @@ import {
   toMicron,
   unitMeta,
 } from './units.js';
+import { roughLod, roughNoise1D } from './surface-rendering.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import {
@@ -833,6 +834,44 @@ function renderSection() {
     ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
   }
 
+  for (const slice of sectionSlices(model, section.a, section.b)) {
+    for (const [face, appearance, z] of [
+      ['front', slice.frontSurface, slice.z1],
+      ['back', slice.backSurface, slice.z0],
+    ]) {
+      if (appearance?.kind !== 'rough') continue;
+      const featurePixels = appearance.featureSize * xScale,
+        lod = roughLod(featurePixels),
+        normal = face === 'front' ? 1 : -1,
+        widthPixels = Math.abs(mapT(slice.t1) - mapT(slice.t0)),
+        sampleStepPixels = Math.max(2, featurePixels * 0.45),
+        samples = Math.max(2, Math.min(480, Math.ceil(widthPixels / sampleStepPixels))),
+        physicalAmplitudePixels = appearance.amplitude * zScale * 0.5,
+        mediumAmplitudePixels =
+          Math.min(1.2, physicalAmplitudePixels) * lod.detail * (1 - lod.micro),
+        amplitudePixels = physicalAmplitudePixels * lod.micro + mediumAmplitudePixels;
+
+      ctx.beginPath();
+      for (let index = 0; index <= samples; index++) {
+        const fraction = index / samples,
+          t = slice.t0 + (slice.t1 - slice.t0) * fraction,
+          distance = t * sectionSpan,
+          noise = roughNoise1D(distance, appearance),
+          x = mapT(t),
+          y = mapZ(z) - normal * noise * amplitudePixels;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = '#2f3439';
+      ctx.lineWidth = 3 - 1.4 * lod.detail;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+    }
+  }
+
   ctx.strokeStyle = '#8995a1';
   ctx.lineWidth = 0.8;
   ctx.strokeRect(plotLeft, plotTop, plotWidth, plotHeight);
@@ -933,11 +972,15 @@ function syncBaseControls() {
   $('baseWidth').value = formatLengthField(model.width);
   $('baseHeight').value = formatLengthField(model.height);
   $('baseThickness').value = formatLengthField(model.thickness);
+  $('roughFeatureSize').value = formatLengthField(0.5);
+  $('roughAmplitude').value = formatLengthField(1);
   $('baseHeight').disabled = model.shape === 'circle';
   $('baseWidthUnit').textContent = xyUnit().label;
   $('baseHeightUnit').textContent = xyUnit().label;
   $('baseThicknessUnit').textContent = xyUnit().label;
   $('operationThicknessUnit').textContent = xyUnit().label;
+  $('roughFeatureUnit').textContent = xyUnit().label;
+  $('roughHeightUnit').textContent = xyUnit().label;
   $('xyUnitSelect').value = xyDisplayUnit;
   $('applyBaseBtn').textContent =
     baseCoverageState(model) === 'removed' ? 'Recreate base' : 'Apply base';
@@ -972,6 +1015,10 @@ function updateOperationUI() {
   $('layerNameRow').classList.toggle('hidden', t !== 'add');
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
   $('growthModeRow').classList.toggle('hidden', t === 'etch');
+  $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
+  const roughEtch = t === 'etch' && $('etchSurfaceMode').value === 'rough';
+  $('roughFeatureRow').classList.toggle('hidden', !roughEtch);
+  $('roughHeightRow').classList.toggle('hidden', !roughEtch);
   $('processThicknessLabel').textContent = t === 'etch' ? 'Depth' : 'Z';
 
   if (t === 'grow') updateGrowTargets();
@@ -987,7 +1034,9 @@ function updateOperationUI() {
 
   $('operationNote').textContent =
     t === 'etch'
-      ? 'Etch removes material vertically and may create through-holes.'
+      ? roughEtch
+        ? 'Roughness is render-only: process geometry remains an ideal surface.'
+        : 'Etch removes material vertically and may create through-holes.'
       : $('growthMode').value === 'conformal'
         ? 'Conformal coverage follows exposed steps and includes sidewalls.'
         : 'Directional coverage follows the selected footprint.';
@@ -1016,11 +1065,24 @@ function applyOp() {
   if (type === 'grow' && !targetLayerId)
     return status('No exposed target layer is available to Extend.', 'warning');
 
+  let roughSurface = null;
+  if (type === 'etch' && $('etchSurfaceMode').value === 'rough') {
+    const featureSize = manualMicron($('roughFeatureSize').value),
+      amplitude = manualMicron($('roughAmplitude').value);
+    $('roughFeatureSize').value = formatLengthField(featureSize);
+    $('roughAmplitude').value = formatLengthField(amplitude);
+    if (!(featureSize > 0) || !(amplitude > 0)) {
+      return status('Rough feature size and height must be greater than zero.', 'error');
+    }
+    roughSurface = { kind: 'rough', featureSize, amplitude, geometryMode: 'ideal' };
+  }
+
   const beforeBase = baseCoverageState(model);
   saveHistory();
   baseRevertSnapshot = null;
   const params = { type, name, targetLayerId, thickness, face: activeFace, area };
-  if (type !== 'etch') params.growth = $('growthMode').value;
+  if (type === 'etch') params.surface = roughSurface;
+  else params.growth = $('growthMode').value;
   const result = applyOperation(model, params);
   if (!result.changed) {
     restoreSnapshot(history.pop());
