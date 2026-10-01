@@ -78,7 +78,7 @@ Polygon Boolean operations are provided by the vendored `polygon-clipping` libra
 
 ### `site/units.js`
 
-Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only. User-entered/displayed length fields use a 1 nm quantization boundary; imported geometry and internal vector operations retain their native precision.
+Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only. User-entered/displayed length fields use a 1 nm quantization boundary. Imported geometry and internal vector operations retain their working precision; project persistence separately normalizes physical lengths and coordinates to 0.1 nm.
 
 ### `site/workspace-snapshots.js`
 
@@ -157,7 +157,7 @@ Changing the global display/input unit never rescales geometry. Base dimensions,
 
 Projects are JSON files with format identifier `WaferCAD-vector` plus an explicit format version.
 
-The current project format (v4) stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, Rect/Circle/Sector ROI and its reference point, section line, plan-view state, XYZ display unit, structure palette preference, 3D opacity/border state, and named snapshots. Snapshot state never recursively contains the snapshot list.
+The current project format (v5) stores the vector model, layout data, selected global layers, active cell, mask alignment, active face, Rect/Circle/Sector ROI and its reference point, section line, plan-view state, XYZ display unit, structure palette preference, 3D opacity/border state, and named snapshots. Snapshot state never recursively contains the snapshot list. On disk, repeated snapshot layouts and unchanged models are interned into shared assets; physical coordinates and lengths are normalized to 0.1 nm at the persistence boundary while runtime geometry keeps its working precision.
 
 `site/project-schema.js` owns migration into the current version before validation. Legacy files without an explicit version are migrated with deterministic defaults rather than inheriting unrelated session state.
 
