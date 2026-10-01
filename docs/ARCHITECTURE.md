@@ -43,8 +43,8 @@ Owns the region-stack model and geometry semantics:
 
 - base creation;
 - stable layer IDs;
-- Add;
-- Grow;
+- Deposit (`add` internally);
+- Extend (`grow` internally);
 - Etch;
 - Direct/Conformal behavior;
 - front/back surface access;
@@ -120,11 +120,11 @@ The operation engine does not infer these from the view.
 
 ## Direct and Conformal
 
-Direct growth preserves the selected XY footprint.
+Directional coverage preserves the selected XY footprint.
 
-Conformal growth is two-stage: first run the same physical Z-thickness mutation as Direct in the selected area, then inspect the newly exposed coating surface and offset its step boundaries outward by the same physical distance. The generated sidewall interval is assigned to the same layer id and merged with the Direct-grown material. This makes Mask, Invert and Whole-face semantics identical in Stage 1 and derives sidewalls from the actual post-growth topology rather than from a pre-operation approximation.
+Conformal coverage is two-stage: first run the same physical Z-thickness mutation as Direct in the selected area, then inspect the newly exposed coating surface and offset its step boundaries outward by the same physical distance. The generated sidewall interval is assigned to the same layer id and merged with the Direct-grown material. This makes Mask, Invert and Whole-face semantics identical in Stage 1 and derives sidewalls from the actual post-growth topology rather than from a pre-operation approximation.
 
-Etch performs physical vertical subtraction and does not accept a growth mode. Supported fixtures and the through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
+Etch performs physical vertical subtraction and does not accept a coverage mode. Supported fixtures and the through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
 
 ## Views
 
