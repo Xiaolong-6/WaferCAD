@@ -594,16 +594,29 @@
               hidden
             >
               <div class="tool-context"><span>Project</span></div>
-              <div class="control-body settings-project-actions">
-                <button id="newProjectBtn" class="compact-btn" title="Start a new empty project">
-                  New
-                </button>
-                <label class="button compact-btn" title="Open a WaferCAD project"
-                  >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
-                /></label>
-                <button id="saveProjectBtn" class="compact-btn" title="Save this project">
-                  Save
-                </button>
+              <div class="control-body">
+                <label class="field-row project-name-row">
+                  <span>Name</span>
+                  <input
+                    id="projectNameInput"
+                    type="text"
+                    maxlength="256"
+                    value="Untitled"
+                    aria-label="Project name"
+                    title="Project name and default export filename"
+                  />
+                </label>
+                <div class="settings-project-actions">
+                  <button id="newProjectBtn" class="compact-btn" title="Start a new empty project">
+                    New
+                  </button>
+                  <label class="button compact-btn" title="Open a WaferCAD project"
+                    >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
+                  /></label>
+                  <button id="saveProjectBtn" class="compact-btn" title="Save this project">
+                    Save
+                  </button>
+                </div>
               </div>
               <div class="tool-context"><span>Display</span></div>
               <div class="control-body">
