@@ -58,6 +58,11 @@ function quantizeModel(model) {
     for (const segment of region.stack || []) {
       segment.z0 = quantizeLength(segment.z0);
       segment.z1 = quantizeLength(segment.z1);
+      for (const appearance of [segment.frontSurface, segment.backSurface]) {
+        if (!isObject(appearance)) continue;
+        appearance.featureSize = quantizeLength(appearance.featureSize);
+        appearance.amplitude = quantizeLength(appearance.amplitude);
+      }
     }
   }
   model.thickness = quantizeLength(model.thickness);
