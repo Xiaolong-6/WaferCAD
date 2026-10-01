@@ -284,7 +284,7 @@ test('project storage preserves Draw mask source and 0.1 nm geometry precision',
   source.version = CURRENT_PROJECT_VERSION;
   source.maskSourceMode = 'draw';
   source.drawMask = {
-    nextShapeId: 4,
+    nextShapeId: 6,
     shapes: [
       {
         id: 'shape-1',
@@ -302,6 +302,22 @@ test('project storage preserves Draw mask source and 0.1 nm geometry precision',
           [0.000049, 2.000051],
         ],
       },
+      {
+        id: 'shape-4',
+        type: 'ring',
+        c: [1.000049, 2.000051],
+        innerR: 0.12345678,
+        outerR: 0.98765432,
+      },
+      {
+        id: 'shape-5',
+        type: 'ring-sector',
+        c: [-3.000049, 4.000051],
+        innerR: 0.25,
+        outerR: 1.75,
+        startDeg: 300,
+        endDeg: 60,
+      },
     ],
   };
 
@@ -311,13 +327,16 @@ test('project storage preserves Draw mask source and 0.1 nm geometry precision',
   assert.equal(stored.drawMask.shapes[0].a[0], 1.2346);
   assert.equal(stored.drawMask.shapes[1].r, 0.1235);
   assert.deepEqual(stored.drawMask.shapes[2].points[0], [0, 0.0001]);
+  assert.equal(stored.drawMask.shapes[3].innerR, 0.1235);
+  assert.equal(stored.drawMask.shapes[3].outerR, 0.9877);
+  assert.equal(stored.drawMask.shapes[4].startDeg, 300);
 
   const loaded = await readProjectFile({
     size: new Blob([text]).size,
     text: async () => text,
   });
   assert.equal(loaded.maskSourceMode, 'draw');
-  assert.equal(loaded.drawMask.shapes.length, 3);
+  assert.equal(loaded.drawMask.shapes.length, 5);
   assert.equal(validateProjectFile(loaded), loaded);
 });
 
