@@ -75,3 +75,13 @@ test('landscape workspace keeps panel sizes while reordering the five windows', 
     /@media \(max-width: 900px\)[\s\S]*?'tools three'[\s\S]*?'main mask'[\s\S]*?'section section'/,
   );
 });
+
+test('workstation visual system keeps scientific controls visually unified', () => {
+  assert.match(style, /\/\* Workstation visual system/);
+  assert.match(style, /\.view-head \.mini-btn,[\s\S]*?\.view-head \.three-control/);
+  assert.match(style, /\.view-panel,[\s\S]*?\.tool-panel \{/);
+  assert.match(style, /\.tool-tab\.active[\s\S]*?inset 0 -2px 0 var\(--accent\)/);
+  assert.match(style, /\.control-section input,[\s\S]*?\.control-section select/);
+  assert.match(style, /\.statusbar\[data-level='warning'\]/);
+});
+
