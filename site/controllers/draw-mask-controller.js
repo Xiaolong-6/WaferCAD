@@ -84,13 +84,16 @@ export function createDrawMaskController({
 
   function syncUi() {
     const draw = getMode() === 'draw',
-      mask = currentMask(),
-      selected = selectedShape();
+      mask = currentMask();
+    if (selectedId && !mask.shapes.some((shape) => shape.id === selectedId)) selectedId = null;
+    const selected = selectedShape();
     $('maskSourceFileBtn')?.classList.toggle('active', !draw);
     $('maskSourceDrawBtn')?.classList.toggle('active', draw);
     $('maskSourceFileBtn')?.setAttribute('aria-pressed', String(!draw));
     $('maskSourceDrawBtn')?.setAttribute('aria-pressed', String(draw));
     if ($('drawMaskToolbar')) $('drawMaskToolbar').hidden = !draw;
+    if ($('maskFileControls')) $('maskFileControls').hidden = draw;
+    if ($('maskDrawInfo')) $('maskDrawInfo').hidden = !draw;
     root.querySelectorAll('.draw-mask-tool').forEach((button) => {
       const active = (button.dataset.drawTool || null) === tool;
       button.classList.toggle('active', active);
