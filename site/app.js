@@ -1155,7 +1155,6 @@ const maskImportController = createMaskImportController({
   importLayoutBuffer,
   openLayoutFile,
   renderMask,
-  onMaskChanged: updateOperationUI,
   status,
 });
 
@@ -1174,6 +1173,7 @@ drawMaskController = createDrawMaskController({
   worldToCanvas,
   xyText,
   renderMask,
+  onMaskChanged: updateOperationUI,
   status,
 });
 
