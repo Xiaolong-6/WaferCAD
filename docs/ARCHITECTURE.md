@@ -130,7 +130,7 @@ Etch performs physical vertical subtraction and does not accept a coverage mode.
 
 ### Mask
 
-Renders imported vector layout over the base. View zoom/pan never changes mask geometry or alignment scale.
+Renders the imported vector layout over an outline-only reference derived from the current active-face surface topography. Same-height material boundaries are collapsed so the reference communicates process steps rather than material color. Mask opacity is display-only and persisted with project/snapshot state. View zoom/pan and opacity never change mask geometry or alignment scale.
 
 ### Main
 
