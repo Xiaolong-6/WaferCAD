@@ -1,6 +1,7 @@
 import { layerById, modelBoundsZ } from '../model.js';
 import { sectionContours, sectionSlices, surfaceGroups } from '../model-view-geometry.js';
 import { sectorBoundaryPoints } from '../roi-editor.js';
+import { drawMaskGeometry } from '../draw-mask-geometry.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -148,7 +149,7 @@ export function createExportController({
   }
 
   function exportMaskSvg() {
-    const { model, layout, maskTransform } = getState();
+    const { model, layout, maskTransform, maskSourceMode, drawMask } = getState();
     const canvas = $('maskCanvas'),
       rect = canvas.getBoundingClientRect(),
       width = Math.max(2, rect.width),
@@ -157,42 +158,54 @@ export function createExportController({
       map = (point) => worldToCanvas(point, view);
     let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
 
-    for (const element of layout.linework || []) {
-      if (!Array.isArray(element.points) || element.points.length < 2) continue;
-      const points = element.points.map(maskPoint).map(map);
-      const d = points
-        .map((point, index) => `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`)
-        .join('');
-      const selected = selectedElement(element);
-      body += `<path d="${d}" fill="none" stroke="${
-        selected ? layerColor(layerKey(element.layer, element.datatype), 0.95) : '#aab3bd'
-      }" stroke-width="${svgNumber(
-        Math.max(0.8, element.width * maskTransform.scale * view.s),
-      )}"/>`;
-    }
-
-    for (const element of layout.elements || []) {
-      if (element.kind !== 'polygon' || !Array.isArray(element.points)) continue;
-      const points = element.points.map(maskPoint).map(map);
-      const d =
-        points
+    if (maskSourceMode === 'draw') {
+      const geometry = drawMaskGeometry(drawMask);
+      if (geometry.length) {
+        body += `<path d="${svgPathFromMulti(
+          geometry,
+          map,
+        )}" fill="rgba(72,105,135,.28)" stroke="#526b84" stroke-width="1.1" fill-rule="evenodd"/>`;
+      }
+    } else {
+      for (const element of layout.linework || []) {
+        if (!Array.isArray(element.points) || element.points.length < 2) continue;
+        const points = element.points.map(maskPoint).map(map);
+        const d = points
           .map(
-            (point, index) => `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
+            (point, index) =>
+              `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
           )
-          .join('') + 'Z';
-      const key = layerKey(element.layer, element.datatype),
-        selected = selectedElement(element);
-      body += `<path d="${d}" fill="${
-        selected ? layerColor(key, 0.58) : 'rgba(155,166,178,.10)'
-      }" stroke="${selected ? layerColor(key, 0.98) : 'rgba(148,159,171,.52)'}" stroke-width="${
-        selected ? 1 : 0.6
-      }"/>`;
+          .join('');
+        const selected = selectedElement(element);
+        body += `<path d="${d}" fill="none" stroke="${
+          selected ? layerColor(layerKey(element.layer, element.datatype), 0.95) : '#aab3bd'
+        }" stroke-width="${svgNumber(
+          Math.max(0.8, element.width * maskTransform.scale * view.s),
+        )}"/>`;
+      }
+
+      for (const element of layout.elements || []) {
+        if (element.kind !== 'polygon' || !Array.isArray(element.points)) continue;
+        const points = element.points.map(maskPoint).map(map);
+        const d =
+          points
+            .map(
+              (point, index) =>
+                `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
+            )
+            .join('') + 'Z';
+        const key = layerKey(element.layer, element.datatype),
+          selected = selectedElement(element);
+        body += `<path d="${d}" fill="${
+          selected ? layerColor(key, 0.58) : 'rgba(155,166,178,.10)'
+        }" stroke="${
+          selected ? layerColor(key, 0.98) : 'rgba(148,159,171,.52)'
+        }" stroke-width="${selected ? 1 : 0.6}"/>`;
+      }
     }
-
-
 
     downloadText(svgDocument(width, height, body), 'wafercad-mask.svg');
-    status('Exported Mask as SVG.');
+    status(`Exported ${maskSourceMode === 'draw' ? 'Draw' : 'File'} Mask as SVG.`);
   }
 
   function exportSectionSvg() {
