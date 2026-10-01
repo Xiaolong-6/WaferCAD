@@ -5,7 +5,10 @@ export function createMainCanvasController({
   getSection,
   setSection,
   getActiveFace,
-  setSectionEditEnabled,
+  getSectionCreateMode,
+  isRoiDrawing,
+  completeSectionCreate,
+  cancelSectionCreate,
   setSectionEditor,
   viewport,
   worldToCanvas,
@@ -42,12 +45,15 @@ export function createMainCanvasController({
           toWorld: (point) => canvasToWorld(point[0], point[1], view, back),
         };
       },
+      isCreateMode: getSectionCreateMode,
+      isInteractionBlocked: isRoiDrawing,
       onChange: (next) => {
         setSection(next);
         renderMain();
         renderSection();
       },
-      onExit: () => setSectionEditEnabled(false),
+      onCreateDone: completeSectionCreate,
+      onExitCreate: cancelSectionCreate,
     });
     setSectionEditor(editor);
 
