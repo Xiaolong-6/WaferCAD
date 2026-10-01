@@ -6,7 +6,7 @@ These benchmarks verify the current geometric contract. They do not validate a d
 
 X, Y and Z are stored in µm. The model consists of non-overlapping XY regions with ordered physical material intervals in Z. It represents vertical steps and trenches, without arbitrary overhangs or a full solid surface solver.
 
-Direct adds the requested Z amount on the local exposed face inside the operation footprint. Grow requires the target material to be exposed on that face.
+Directional coverage adds the requested Z amount on the local exposed face inside the operation footprint. Extend requires the target material to be exposed on that face.
 
 Conformal is evaluated in two stages. Stage 1 performs the same physical Z-thickness change as Direct inside the selected Mask / Invert / Whole-face area. Stage 2 re-reads the newly exposed coating surface, finds its step boundaries, offsets those boundaries outward in XY by the same physical thickness, and fills the vertical interval back to the adjacent lower surface on Front (or higher surface on Back). The sidewall uses the same layer id as Stage 1, so normalization merges both pieces into one coating.
 
@@ -26,7 +26,7 @@ All fixtures use a 20 × 20 µm rectangular base, Z thickness 10 (`−5 … +5`)
 
 Back fixtures mirror these intervals about Z = 0. Tests also check the upper face, far field, both island side directions, and the rounded corner outside the buffer.
 
-The Direct blanket volume is 400 µm² × Z thickness in each fixture. With Z = 1 µm, the lateral normal offset is also 1 µm. Expected Conformal volumes are:
+The Directional blanket volume is 400 µm² × Z thickness in each fixture. With Z = 1 µm, the lateral normal offset is also 1 µm. Expected Conformal volumes are:
 
 - Step: 440.
 - Trench: 480.
@@ -40,7 +40,7 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 
 ## Permanent verification
 
-`site/tests/process-benchmarks.test.mjs` checks both faces, material intervals, non-overlapping region partitions, stack ordering, coating volumes, etch volume, exposed-target Grow, ROI render-only behavior, and independent Section/3D interval agreement.
+`site/tests/process-benchmarks.test.mjs` checks both faces, material intervals, non-overlapping region partitions, stack ordering, coating volumes, etch volume, exposed-target Extend, ROI render-only behavior, and independent Section/3D interval agreement.
 
 `site/model-view-geometry.js` derives Section slices and 3D extrusion groups from the canonical model. Exact Z values form group identities; the former eight-decimal grouping could combine distinct Z intervals. The renderer additionally sweeps exact Z slabs per material and unions the footprint at each interval. Horizontal faces come only from differences between adjacent footprints; border lines come from those faces and genuine side corners. This removes internal surfaces and prism edges even when adjacent columns have different Z intervals. Section unions rectangles by material, while Main unions patches by material and surface height, preserving actual steps and material interfaces.
 
