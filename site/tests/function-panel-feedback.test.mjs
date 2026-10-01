@@ -120,3 +120,26 @@ test('3D border stays above opaque surfaces at 100% opacity', () => {
   assert.match(threeView, /polygonOffsetUnits: Math\.min\(12, index \+ 1\)/);
   assert.match(threeView, /opacity: 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
 });
+
+
+test('Mask File Draw source is explicit and Draw feeds Process geometry', () => {
+  assert.match(html, /id="maskSourceToggleBtn"/);
+  assert.match(html, />\s*File\s*<\/button>/);
+  assert.match(html, /id="drawMaskToolbar"[^>]*hidden/);
+  assert.match(html, /data-draw-tool="rect"/);
+  assert.match(html, /data-draw-tool="circle"/);
+  assert.match(html, /data-draw-tool="polygon"/);
+  assert.match(app, /maskSourceMode = 'file'/);
+  assert.match(app, /function selectedFileMaskGeometry\(\)/);
+  assert.match(app, /function activeMaskGeometry\(\)/);
+  assert.match(app, /maskSourceMode === 'draw' \? drawMaskGeometry\(drawMask\)/);
+  assert.match(app, /const selected = activeMaskGeometry\(\)/);
+  assert.match(app, /drawMaskController\?\.render\(ctx, v, maskOpacity\)/);
+});
+
+test('Draw mode and File mode keep separate UI contexts', () => {
+  assert.match(html, /id="maskFileControls"/);
+  assert.match(html, /id="maskDrawInfo"[^>]*hidden/);
+  assert.match(style, /\/\* Mask File \/ Draw source \*\//);
+  assert.match(style, /\.draw-mask-toolbar/);
+});
