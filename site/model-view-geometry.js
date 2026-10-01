@@ -49,6 +49,31 @@ export function surfaceGroups(model, face = 'front') {
   }));
 }
 
+export function appearanceSurfaceGroups(model, clip = null) {
+  const groups = new Map();
+  for (const face of ['front', 'back']) {
+    for (const patch of surfacePatches(model, face)) {
+      if (patch.appearance?.kind !== 'rough') continue;
+      const geom = clip ? intersection(patch.geom, clip) : patch.geom;
+      if (isEmpty(geom)) continue;
+      const key = JSON.stringify([
+        patch.layerId, patch.z, face, patch.appearance.featureSize,
+        patch.appearance.amplitude, patch.appearance.seed, patch.appearance.geometryMode,
+      ]);
+      if (!groups.has(key))
+        groups.set(key, {
+          layerId: patch.layerId, z: patch.z, face,
+          appearance: { ...patch.appearance }, geoms: [],
+        });
+      groups.get(key).geoms.push(geom);
+    }
+  }
+  return [...groups.values()].map(({ geoms, ...patch }) => ({
+    ...patch,
+    polys: unionGeometries(geoms),
+  }));
+}
+
 export function sectionContours(model, a, b) {
   const groups = new Map();
   for (const { layerId, t0, t1, z0, z1 } of sectionSlices(model, a, b)) {
