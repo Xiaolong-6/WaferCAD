@@ -2370,3 +2370,110 @@ summary:focus-visible {
     font-size: 8px;
   }
 }
+
+
+/* Mask File / Draw source */
+#maskPanel {
+  position: relative;
+}
+
+.mask-source-mode {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 1px;
+  padding: 1px;
+  border-radius: 3px;
+  background: #edf1f4;
+}
+
+.mask-source-mode button {
+  height: 19px;
+  min-width: 28px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #66737f;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.mask-source-mode button:hover {
+  border: 0;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.mask-source-mode button.active {
+  background: #fff;
+  color: #34495e;
+  box-shadow:
+    0 1px 2px rgba(31, 41, 51, 0.08),
+    inset 0 0 0 1px rgba(184, 194, 204, 0.55);
+}
+
+.draw-mask-toolbar {
+  position: absolute;
+  z-index: 5;
+  top: 34px;
+  left: 7px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: calc(100% - 14px);
+  padding: 4px;
+  border: 1px solid #ccd4dc;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 5px 15px rgba(31, 41, 51, 0.1);
+  backdrop-filter: blur(3px);
+}
+
+.draw-mask-toolbar[hidden] {
+  display: none !important;
+}
+
+.draw-mask-toolbar .mini-btn {
+  height: 21px;
+  padding: 1px 5px;
+  font-size: 9px;
+}
+
+.draw-mask-tool.active {
+  border-color: #aebcc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.draw-mask-divider {
+  width: 1px;
+  height: 15px;
+  background: var(--line2);
+}
+
+.draw-mask-hint {
+  min-width: 46px;
+  overflow: hidden;
+  color: #74818d;
+  font-size: 8.5px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .mask-source-mode button {
+    min-width: 24px;
+    padding: 0 3px;
+    font-size: 8px;
+  }
+
+  .draw-mask-toolbar {
+    right: 6px;
+    left: 6px;
+    overflow-x: auto;
+  }
+
+  .draw-mask-hint {
+    min-width: 40px;
+  }
+}
