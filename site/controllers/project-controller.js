@@ -12,6 +12,7 @@ export function createProjectController({
   renderAll,
   fit3d,
   status,
+  onProjectChanged = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -26,6 +27,7 @@ export function createProjectController({
       empty.className = 'empty-list';
       empty.textContent = 'No snapshots';
       host.append(empty);
+      onProjectChanged();
       return;
     }
 
@@ -72,6 +74,7 @@ export function createProjectController({
       row.append(name, restoreButton, deleteButton);
       host.append(row);
     }
+    onProjectChanged();
   }
 
   async function openLayoutFile(file) {
