@@ -335,6 +335,7 @@ const roiController = createRoiController({
     roiAnchor = value;
   },
   getActiveFace: () => activeFace,
+  isInteractionBlocked: () => sectionEditEnabled,
   xyUnitLabel: () => xyUnit().label,
   formatLengthField,
   formatNumericField,
