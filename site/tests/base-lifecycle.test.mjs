@@ -14,6 +14,8 @@ const {
   surfaceZ,
 } = await import('../model.js');
 const { pointInMulti, rectMulti } = await import('../vector-geometry.js');
+const { serializeProject } = await import('../project-io.js');
+const { createEmptyLayout } = await import('../controllers/project-state-controller.js');
 
 function stackAt(model, x, y = 0) {
   return model.regions.find((region) => pointInMulti([x, y], region.geom))?.stack || [];
@@ -118,4 +120,47 @@ test('buried Base is not offered as a Grow target and cannot grow through a cove
   });
   assert.equal(grow.changed, false);
   assert.match(grow.error, /not exposed/);
+});
+
+
+test('fully etched empty-material state remains a valid persisted project', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 20,
+    face: 'front',
+    area: fullFaceGeometry(model),
+  });
+
+  const project = {
+    format: 'WaferCAD-vector',
+    version: 5,
+    name: 'empty-material',
+    model,
+    layout: createEmptyLayout(),
+    selectedLayerKeys: [],
+    activeCell: null,
+    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    activeFace: 'front',
+    roi: null,
+    roiAnchor: 'center',
+    section: { a: [-5, 0], b: [5, 0] },
+    planViews: {
+      mask: { zoom: 1, panX: 0, panY: 0 },
+      main: { zoom: 1, panX: 0, panY: 0 },
+    },
+    display: {
+      xyUnit: 'um',
+      structurePalette: 'balanced',
+      customStructurePalette: null,
+      threeOpacity: 1,
+      threeShowBorders: false,
+      sectionScaleMode: 'auto',
+    },
+    snapshots: [],
+  };
+
+  const stored = JSON.parse(serializeProject(project));
+  assert.equal(stored.model.regions.length, 0);
+  assert.equal(stored.name, 'empty-material');
 });
