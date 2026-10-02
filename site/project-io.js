@@ -61,7 +61,7 @@ function quantizeModel(model) {
       for (const appearance of [segment.frontSurface, segment.backSurface]) {
         if (!isObject(appearance)) continue;
         appearance.featureSize = quantizeLength(appearance.featureSize);
-        appearance.amplitude = quantizeLength(appearance.amplitude);
+        appearance.meanHeight = quantizeLength(appearance.meanHeight);
         if (appearance.etchDepth != null) appearance.etchDepth = quantizeLength(appearance.etchDepth);
       }
     }
