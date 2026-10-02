@@ -89,11 +89,12 @@ Pyramid morphology is introduced with project format v13. v12 stochastic project
 All views consume the same deterministic `roughProfileOffsetAtPoint(x, y, appearance)` field, regardless of whether the morphology is stochastic or pyramid.
 
 - **Section A–B** samples that field along the section line and remains the visual reference for surface relief.
-- **3D** tessellates exposed non-smooth caps within a bounded triangle budget, displaces their vertices with the same field, and closes material edges back to the ideal process plane. It does not add a separate bump/noise texture.
+- **3D** tessellates non-smooth boundaries within a bounded, view-scope-aware triangle budget, displaces their vertices with the same field, and uses profile-derived vertex normals to avoid large faceted patches in full-model views. ROI rendering keeps a smaller bounded budget because the clipped geometry already concentrates detail. It does not add a separate bump/noise texture.
+- **Inherited interfaces** reuse the same deterministic XY profile on both sides of a material boundary. A conformal display shell therefore has a rough inner interface and a vertically offset rough outer surface instead of exposing an ideal internal plane. Horizontal ideal border lines are omitted where a displaced rough boundary is drawn.
 - **Main** and **Mask** keep their existing colors and add only a subtle neutral darkening over non-smooth surface regions.
 - Implant overlays inherit the active surface appearance so they remain aligned with etched topography.
 
-Surface morphology remains render-only: process operations and canonical physical geometry stay ideal. Physical GLB export therefore continues to use the ideal process solid rather than the display tessellation.
+Surface morphology remains render-only: process operations and canonical physical geometry stay ideal. The conformal visual shell is a shared-profile Z offset, not a true constant-normal-thickness surface and not a deposition-transport model. Physical GLB export therefore continues to use the ideal process solid rather than the display tessellation.
 
 ## Extension point
 

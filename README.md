@@ -1,17 +1,19 @@
 # WaferCAD
 
-WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-driven layered structures.
+WaferCAD is a browser-based **Visual Process CAD** and geometric process emulator for mask-driven micro- and nanofabrication. It is positioned between layout viewers/static 2.5D layer extruders and physics-based process TCAD: the goal is rapid, interactive construction and inspection of process topology without implying predictive fabrication physics.
+
+Its core question is practical: **given this mask and this sequence of process steps, what layered structure should I expect geometrically?** The intended uses are process-flow sketching, device-structure review, teaching, communication, and geometry handoff. WaferCAD is not a replacement for a full layout editor or a calibrated TCAD process simulator.
 
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
 - **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon/Ring/Ring Sector), with adjustable opacity above the current active-face topography outline.
-- **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, geometry-displaced rough/pyramid surfaces, surviving internal Implant overlays, physical GLB export, and 3× PNG capture.
+- **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, geometry-displaced rough/pyramid surfaces, conformal display shells that preserve inherited rough interfaces, surviving internal Implant overlays whose alpha follows the global 3D opacity, physical GLB export, and 3× PNG capture.
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
 
 ## Geometry model
 
-XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Deposit, Extend, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same canonical material geometry. Rough/Pyramid surface morphology is stored as deterministic appearance metadata, while Implant is stored separately as a structural annotation volume.
+XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Deposit, Extend, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same canonical material geometry. Rough/Pyramid surface morphology is stored as deterministic appearance metadata, while Implant is stored separately as a structural annotation volume. These display layers deliberately enrich inspection without redefining the canonical ideal 2.5D process solid.
 
 - **X, Y and Z** are stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display/input unit can be switched between nm, µm, and mm without changing geometry.
 - Section and 3D may stretch Z for visibility; that display scaling never changes the saved physical Z coordinates.

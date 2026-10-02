@@ -11,13 +11,15 @@ It is a product and engineering reference, not a claim of numerical parity with 
 
 The main conclusion is that WaferCAD occupies a useful middle layer between layout viewers / static layer-stack extruders and full semiconductor process TCAD:
 
-**WaferCAD is a browser-based, mask-driven virtual-fabrication editor for rapidly building and inspecting layered micro- and nanofabricated structures.**
+**WaferCAD is a browser-based Visual Process CAD for rapidly turning masks and process steps into an evolving, inspectable 2.5D fabrication geometry.**
 
 A shorter internal description is:
 
-**Visual Process CAD: layout + process steps + evolving 2.5D geometry + synchronized inspection.**
+**Visual Process CAD: layout + process steps + evolving geometry + synchronized Main/Mask/3D/Section inspection.**
 
-WaferCAD should not be described as a general TCAD process simulator unless physics-based process models are actually introduced.
+The product promise is speed and clarity of structural reasoning: a user should be able to answer “what geometry does this process flow produce?” without installing a desktop CAD/TCAD stack. The differentiation is the shared evolving process geometry across all views, rather than static layer extrusion or a cross-section-only recipe.
+
+The boundary is equally important. WaferCAD should not be described as a general TCAD process simulator, a calibrated virtual-fabrication predictor, or a replacement for a full mask-layout editor unless those capabilities are actually introduced.
 
 ---
 
@@ -40,7 +42,7 @@ The present process model is intentionally geometric. Direct changes the exposed
 
 This model can represent useful process topology such as steps, trenches, islands, sidewall coatings, front/back processing, multi-material stacks, render-only surface morphology, and a structural Implant annotation volume. It does not currently solve deposition transport, plasma or chemical kinetics, physical ion-implant transport/concentration, diffusion, activation, oxidation, stress, shadowing, aspect-ratio-dependent coverage, pinch-off, or arbitrary overhang topology.
 
-That boundary is important: WaferCAD is currently a **geometric process emulator**, not a predictive fabrication simulator.
+That boundary is important: WaferCAD is currently a **geometric process emulator and inspection environment**, not a predictive fabrication simulator. Render-only roughness and structural Implant overlays are useful inspection aids, but they must not be marketed as process-physics predictions.
 
 ---
 

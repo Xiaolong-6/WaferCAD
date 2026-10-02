@@ -4,6 +4,8 @@
 
 WaferCAD is a static browser application. There is no runtime backend, desktop client, or server-side geometry service in the active architecture.
 
+Product positioning is **Visual Process CAD / geometric process emulation**. The architecture is optimized for fast mask-to-topography reasoning and synchronized inspection, not for predictive process physics. The canonical model therefore stays vector 2.5D, while higher-detail morphology and Implant visualization are explicit render/annotation layers with documented limits.
+
 The product is centered on four synchronized views: Mask, 3D, Main, and Section A–B.
 
 ## Core geometry
@@ -56,7 +58,7 @@ Owns the region-stack model and geometry semantics:
 
 ### `site/three-view.js`
 
-Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, physical GLB export, high-resolution PNG capture, and graceful degradation when the external 3D dependency is unavailable. Exposed Rough/Pyramid caps are tessellated within a bounded triangle budget and displaced with the same deterministic surface field used by Section; no separate bump/noise texture is added. Implant is rendered as a clipped translucent internal volume plus its current exposed/cut surface. GLB export scales canonical µm coordinates by 1e-6 so downstream glTF software receives metres; render-only morphology and Implant overlays are not promoted into the canonical material solid.
+Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, physical GLB export, high-resolution PNG capture, and graceful degradation when the external 3D dependency is unavailable. Rough/Pyramid caps use scope-aware bounded tessellation plus profile-derived vertex normals, so full-model views receive a larger mesh budget while ROI inspection retains fine relief. Inherited rough interfaces are rendered on both sides of a material boundary with a shared displacement direction, allowing conformal display shells to keep the same micro-profile instead of exposing the ideal process plane. Ideal horizontal border segments are suppressed wherever a displaced rough boundary is rendered. No separate bump/noise texture is added. Implant is rendered as a clipped translucent internal volume plus its current exposed/cut surface; its body/cap contrast is preserved while alpha scales with the global 3D opacity. GLB export scales canonical µm coordinates by 1e-6 so downstream glTF software receives metres; render-only morphology and Implant overlays are not promoted into the canonical material solid.
 
 ### `site/section-editor.js`
 
@@ -64,7 +66,7 @@ Owns explicit A/B handle interaction, fixed CSS-pixel targets, grab offsets, poi
 
 ### `site/model-view-geometry.js`
 
-Derives Section material contours, same-material/same-height Main surface groups, appearance-surface groups, clipped Implant fragments/solids, and 3D material boundaries from the canonical region-stack model. Exact-Z slabs union each material footprint; only footprint differences produce horizontal faces and border lines. Computation partitions are not visible interfaces. ROI clipping leaves the model unchanged.
+Derives Section material contours, same-material/same-height Main surface groups, rough appearance-boundary groups, clipped Implant fragments/solids, and 3D material boundaries from the canonical region-stack model. Rough appearance groups include exposed faces and inherited buried interfaces so adjacent materials can share one visual heightfield without changing the ideal stack. Exact-Z slabs union each material footprint; only footprint differences produce horizontal faces and border lines. Computation partitions are not visible interfaces. ROI clipping leaves the model unchanged.
 
 ### `site/vector-geometry.js`
 
@@ -142,7 +144,7 @@ Renders top/bottom surface patches directly from region polygons. Step boundarie
 
 ### 3D
 
-Extrudes vector polygons between each segment's physical-`µm` `z0` and `z1`. 3D uses `zDisplayScale()` only to exaggerate Z visually; process geometry remains in physical coordinates. Rough/Pyramid exposed caps are geometry-displaced from the shared deterministic morphology field, while Implant volumes are clipped to the currently surviving material geometry and follow current rough cut surfaces. The optional ROI clips rendering only; it does not change the model.
+Extrudes vector polygons between each segment's physical-`µm` `z0` and `z1`. 3D uses `zDisplayScale()` only to exaggerate Z visually; process geometry remains in physical coordinates. Rough/Pyramid boundaries are geometry-displaced from the shared deterministic morphology field. When deposition/growth inherits a rough profile, the renderer reuses that same XY field for the buried interface and the outer surface, producing a vertically offset conformal display shell while leaving canonical process Z intervals ideal. This is a visualization model, not a normal-offset deposition solver. Implant volumes are clipped to the currently surviving material geometry and follow current rough cut surfaces; their opacity also follows the global 3D opacity control. The optional ROI clips rendering only; it does not change the model.
 
 The renderer is event-driven: it renders on model/view changes and while OrbitControls damping is settling rather than running an unconditional 60 fps loop. For transparent inspection, border line segments render before transparent meshes and do not write depth, so material opacity continuously controls how strongly occluded borders show through. Opaque mode keeps normal depth-tested borders. Three.js is loaded as an optional external dependency; if it is unavailable, the rest of WaferCAD remains usable and only the 3D view is degraded.
 
