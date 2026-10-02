@@ -250,23 +250,58 @@ function lineKey(a, b) {
   return pa < pb ? `${pa}|${pb}` : `${pb}|${pa}`;
 }
 
-function ownedBorderLines(solids, caps) {
-  const vertical = new Map();
+function verticalPointKey(point) {
+  return `${Number(point[0]).toPrecision(14)},${Number(point[1]).toPrecision(14)}`;
+}
+
+function ownedVerticalBorders(solids) {
+  const groups = new Map();
 
   for (const item of solids) {
     for (const [a, b] of solidBorders(item)) {
       if (Math.abs(a[2] - b[2]) <= Z_EPSILON) continue;
-      const key = lineKey(a, b);
-      if (!vertical.has(key)) vertical.set(key, []);
-      vertical.get(key).push({ layerId: item.layerId, line: [a, b] });
+      const z0 = Math.min(a[2], b[2]),
+        z1 = Math.max(a[2], b[2]),
+        key = verticalPointKey(a);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({
+        layerId: item.layerId,
+        point: [a[0], a[1]],
+        z0,
+        z1,
+      });
     }
   }
 
   const lines = [];
-  for (const entries of vertical.values()) {
-    const uniqueLayers = new Set(entries.map((entry) => entry.layerId));
-    if (uniqueLayers.size === 1) lines.push(entries[0].line);
+  for (const entries of groups.values()) {
+    const levels = [
+      ...new Set(entries.flatMap((entry) => [entry.z0, entry.z1]).map((z) => zKey(z))),
+    ]
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    for (let index = 0; index < levels.length - 1; index++) {
+      const z0 = levels[index],
+        z1 = levels[index + 1];
+      if (!(z1 > z0 + Z_EPSILON)) continue;
+      const covering = entries.filter(
+          (entry) => entry.z0 <= z0 + Z_EPSILON && entry.z1 >= z1 - Z_EPSILON,
+        ),
+        uniqueLayers = new Set(covering.map((entry) => entry.layerId));
+      if (uniqueLayers.size !== 1 || !covering.length) continue;
+      const [x, y] = covering[0].point;
+      lines.push([
+        [x, y, z0],
+        [x, y, z1],
+      ]);
+    }
   }
+  return lines;
+}
+
+function ownedBorderLines(solids, caps) {
+  const lines = ownedVerticalBorders(solids);
 
   for (const cap of caps) {
     if (cap.appearance || cap.buried) continue;
