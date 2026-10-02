@@ -1215,7 +1215,7 @@ function updateOperationUI() {
   $('operationNote').textContent =
     t === 'etch'
       ? roughEtch
-        ? 'Roughness is render-only: process geometry remains an ideal surface.'
+        ? 'Roughness is render-only; Height is subtractive and cannot exceed Depth.'
         : 'Etch removes material vertically and may create through-holes.'
       : $('growthMode').value === 'conformal'
         ? 'Conformal coverage follows exposed steps and includes sidewalls.'
@@ -1249,6 +1249,9 @@ async function applyOp() {
     $('roughAmplitude').value = formatLengthField(amplitude);
     if (!(featureSize > 0) || !(amplitude > 0)) {
       return status('Rough feature size and height must be greater than zero.', 'error');
+    }
+    if (amplitude > thickness + 1e-9) {
+      return status('Rough Height cannot exceed Etch Depth.', 'error');
     }
     roughSurface = { kind: 'rough', featureSize, amplitude, geometryMode: 'ideal' };
   }
