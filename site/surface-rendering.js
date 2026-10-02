@@ -37,6 +37,25 @@ export function roughNoise1D(distance, appearance) {
   return a + (b - a) * eased;
 }
 
+export function roughProfileOffsetAtPoint(x, y, appearance, featurePixels = Infinity) {
+  const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
+    amplitude = Math.max(0, Number(appearance?.amplitude) || 0),
+    seed = Number(appearance?.seed) >>> 0,
+    angle = ((seed % 3600) / 3600) * Math.PI * 2,
+    coordinate = Number(x) * Math.cos(angle) + Number(y) * Math.sin(angle),
+    primary = roughNoise1D(coordinate, appearance),
+    fine = roughNoise1D(coordinate, {
+      ...appearance,
+      featureSize: feature * 0.48,
+      seed: (seed ^ 0x9e3779b9) >>> 0,
+    }),
+    noise = Math.max(-1, Math.min(1, primary * 0.78 + fine * 0.22)),
+    lod = roughLod(featurePixels),
+    mediumStrength = lod.detail * (1 - lod.micro) * 0.35,
+    strength = lod.micro + mediumStrength;
+  return noise * amplitude * 0.5 * strength;
+}
+
 export function roughTextureValue(seed, x, y) {
   const rowSeed = ((Number(seed) >>> 0) ^ Math.imul(y | 0, 0x85ebca6b)) >>> 0;
   return hashUnit(rowSeed, x | 0);
