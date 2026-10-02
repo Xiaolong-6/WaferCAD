@@ -51,6 +51,8 @@ Static consistency checks confirm that the current branch has:
 - clipped Implant solids in 3D and Section with global 3D opacity coupling;
 - sub-grid seam healing before Conformal true-void detection;
 - ROI-aware Mask GDSII/OASIS serialization with round-trip parser coverage;
+- KLayout compatibility CI is triggered by changes to the Mask binary exporter as well as the import parsers;
+- true through-trench sidewall semantics and the 0.1 nm numerical-crack threshold are aligned between implementation, tests, and process documentation;
 - subtle Main/Mask morphology overlays.
 
 JavaScript syntax checks passed for the touched 3D renderer, view-geometry helper, surface-rendering helper, self-test, and focused 3D-control regression after the final fixes.

@@ -38,6 +38,8 @@ A separate 100000 × 100000 µm regression verifies that the same Z = 1 µm stil
 
 A multi-opening wafer fixture also etches an array of circular openings through a blanket layer before applying Conformal. This protects the dense/repeated-mask path: boundary buffering must complete for many closed rings and must leave a sidewall coating around each opening. The fixture was added after repeated circular mask geometry exposed a polygon-clipping degeneracy in the former capsule-union buffer construction.
 
+A separate rough-step regression injects a sub-grid uncovered slit at a step boundary and verifies that it is healed before Conformal true-void detection. This protects against the failure mode where a numerical partition seam is rendered as a full-depth crack and then receives conformal material down into the model interior. The healing threshold is 0.1 nm, matching the project persistence precision; wider intentional trenches remain geometry.
+
 Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 µm³, including removal across material interfaces. Browser review projects additionally show a 6 × 8 µm etched area in the 3D and Section views.
 
 ## Permanent verification
@@ -52,7 +54,8 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 
 ## Boundaries locked by tests
 
-- A completely through-etched void has no adjacent region stack to extend. Current Conformal does not create freestanding sidewall material in that empty XY region. A regression explicitly preserves this limitation.
+- A completely through-etched trench remains empty at its center, but Conformal may place sidewall material into the empty XY band adjacent to an exposed wall. The coating spans the wall's vertical interval and does not create an unsupported bridge across the void.
+- Uncovered slivers narrower than 0.1 nm are treated as numerical partition cracks and healed before Conformal. Intentional trenches wider than that threshold remain physical voids.
 - Rounded XY corners are polygonal buffer approximations. Z corners remain piecewise vertical/horizontal, without a normal-offset surface solution.
 - There is no simulation of transport, shadowing, sticking probability, aspect-ratio-dependent coverage, pinch-off, undercuts, material-selective etch, dopant transport, activation, or diffusion. Implant remains a geometric annotation, not a concentration solver.
 - XY display-unit changes convert inputs and labels only. They do not recalibrate Z, rescale geometry, or change process results.
