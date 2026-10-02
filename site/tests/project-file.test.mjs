@@ -477,3 +477,65 @@ test('v6 migration defaults independent Mask ROI state', () => {
   assert.equal(migrated.maskRoiAnchor, 'center');
   assert.equal(validateProjectFile(migrated), migrated);
 });
+
+
+test('v9 projects migrate to the experimental implant model without changing material geometry', () => {
+  const source = validProject();
+  source.version = 9;
+  delete source.model.implants;
+  delete source.model.nextImplantId;
+
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.deepEqual(migrated.model.implants, []);
+  assert.equal(migrated.model.nextImplantId, 1);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('project validator accepts a structural implant annotation', () => {
+  const source = migrateProjectFile(validProject());
+  source.model.implants.push({
+    id: 'implant-1',
+    name: 'Test implant',
+    color: '#D65A6F',
+    face: 'front',
+    thickness: 1.2,
+    tilt: 7,
+    border: true,
+    patches: [
+      {
+        geom: structuredClone(source.model.boundary),
+        z: 4,
+        zMin: -4,
+        zMax: 4,
+        layerId: 'base',
+      },
+    ],
+  });
+  source.model.nextImplantId = 2;
+  assert.equal(validateProjectFile(source), source);
+});
+
+test('project validator rejects out-of-contract implant tilt values', () => {
+  const source = migrateProjectFile(validProject());
+  source.model.implants.push({
+    id: 'implant-1',
+    name: 'Bad tilt',
+    color: '#D65A6F',
+    face: 'front',
+    thickness: 1.2,
+    tilt: 95,
+    border: true,
+    patches: [
+      {
+        geom: structuredClone(source.model.boundary),
+        z: 4,
+        zMin: -4,
+        zMax: 4,
+        layerId: 'base',
+      },
+    ],
+  });
+  source.model.nextImplantId = 2;
+  assert.throws(() => validateProjectFile(source), /model\.implants\[0\]\.tilt/);
+});

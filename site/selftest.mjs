@@ -57,6 +57,8 @@ assert.equal(defaults.height, 100000);
 assert.equal(defaults.units.xy, 'µm');
 assert.equal(defaults.units.z, 'µm');
 assert.equal(defaults.processRevision, 0);
+assert.deepEqual(defaults.implants, []);
+assert.equal(defaults.nextImplantId, 1);
 
 const m = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const area = rectMulti(4, 4);
@@ -460,5 +462,26 @@ assert.throws(() => validateProjectFile(badLayerReference), /unknown layer/);
 const badLayout = structuredClone(validProject);
 badLayout.layout = null;
 assert.throws(() => validateProjectFile(badLayout), /layout must be an object/);
+
+const implantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const implantArea = rectMulti(6, 4);
+const implantResult = applyOperation(implantModel, {
+  type: 'implant',
+  name: 'B marker',
+  thickness: 1.25,
+  face: 'front',
+  area: implantArea,
+  color: '#C94F68',
+  tilt: 12,
+  border: true,
+});
+assert.equal(implantResult.changed, true);
+assert.equal(implantModel.implants.length, 1);
+assert.equal(implantModel.implants[0].name, 'B marker');
+assert.equal(implantModel.implants[0].thickness, 1.25);
+assert.equal(implantModel.implants[0].tilt, 12);
+assert.equal(implantModel.implants[0].border, true);
+assert.ok(implantModel.implants[0].patches.length > 0);
+assert.equal(implantModel.regions.length, 1);
 
 console.log('WaferCAD self-test: OK');

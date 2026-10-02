@@ -50,6 +50,8 @@ export function createModel({
         stack: [{ layerId: 'base', z0: -thickness / 2, z1: thickness / 2 }],
       },
     ],
+    implants: [],
+    nextImplantId: 1,
     nextLayerId: 1,
     nextRegionId: 2,
     revision: 1,
@@ -416,7 +418,19 @@ function conformalSidewallStack(stack, layerId, face, sourceZ) {
 
 function applyOperationImpl(
   model,
-  { type, name, targetLayerId, thickness, face = 'front', area, growth = 'direct', surface },
+  {
+    type,
+    name,
+    targetLayerId,
+    thickness,
+    face = 'front',
+    area,
+    growth = 'direct',
+    surface,
+    color,
+    tilt = 0,
+    border = false,
+  },
 ) {
   const amount = Math.max(1e-5, Number(thickness) || 0);
   if (type === 'etch' && surface?.kind === 'rough') {
@@ -457,6 +471,45 @@ function applyOperationImpl(
   if (!touchesMaterial) {
     return { changed: false, error: 'The selected area contains no material.' };
   }
+  if (type === 'implant') {
+    const patches = [];
+    for (const region of model.regions) {
+      const segment = surfaceSegment(region.stack, face),
+        geom = intersection(region.geom, active);
+      if (!segment || isEmpty(geom)) continue;
+      patches.push({
+        geom,
+        z: face === 'front' ? segment.z1 : segment.z0,
+        zMin: region.stack[0]?.z0 ?? segment.z0,
+        zMax: region.stack.at(-1)?.z1 ?? segment.z1,
+        layerId: segment.layerId,
+      });
+    }
+    if (!patches.length) {
+      return { changed: false, error: 'No exposed surface is available for Implant.' };
+    }
+
+    if (!Array.isArray(model.implants)) model.implants = [];
+    if (!Number.isInteger(model.nextImplantId) || model.nextImplantId < 1) {
+      model.nextImplantId = model.implants.length + 1;
+    }
+    const ordinal = model.nextImplantId++,
+      implant = {
+        id: `implant-${ordinal}`,
+        name: String(name || `Implant ${ordinal}`).trim() || `Implant ${ordinal}`,
+        color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#D65A6F',
+        face,
+        thickness: amount,
+        tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
+        border: Boolean(border),
+        patches,
+      };
+    model.implants.push(implant);
+    model.revision++;
+    model.processRevision = (model.processRevision || 0) + 1;
+    return { changed: true, implantId: implant.id };
+  }
+
   let layer = null;
   if (type === 'add') layer = createLayer(model, name);
   if (type === 'grow' && !layerById(model, targetLayerId))

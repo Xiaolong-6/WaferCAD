@@ -66,6 +66,15 @@ function quantizeModel(model) {
       }
     }
   }
+  for (const implant of model.implants || []) {
+    implant.thickness = quantizeLength(implant.thickness);
+    for (const patch of implant.patches || []) {
+      quantizeMultiPolygon(patch.geom);
+      patch.z = quantizeLength(patch.z);
+      patch.zMin = quantizeLength(patch.zMin);
+      patch.zMax = quantizeLength(patch.zMax);
+    }
+  }
   model.thickness = quantizeLength(model.thickness);
   const bounds = multiBounds(model.boundary);
   if (bounds) {

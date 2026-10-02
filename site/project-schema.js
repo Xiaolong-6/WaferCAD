@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 9;
+export const CURRENT_PROJECT_VERSION = 10;
 
 const LIMITS = {
   layers: 10000,
@@ -13,6 +13,8 @@ const LIMITS = {
   paletteColors: 64,
   snapshots: 100,
   drawMaskShapes: 10000,
+  implants: 10000,
+  implantPatches: 200000,
 };
 
 function fail(path, message) {
@@ -278,8 +280,49 @@ function validateModel(model, budget) {
     if (region.stack.length === 0) fail(`${path}.stack`, 'must not be empty.');
   });
 
+  if (model.implants != null) {
+    const implants = assertArray(model.implants, 'model.implants', LIMITS.implants),
+      implantIds = new Set();
+    implants.forEach((implant, implantIndex) => {
+      const path = `model.implants[${implantIndex}]`;
+      assertObject(implant, path);
+      const id = assertString(implant.id, `${path}.id`, { max: 128 });
+      if (implantIds.has(id)) fail(`${path}.id`, 'must be unique.');
+      implantIds.add(id);
+      assertString(implant.name, `${path}.name`, { max: 256 });
+      if (typeof implant.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(implant.color)) {
+        fail(`${path}.color`, 'must be a six-digit hexadecimal color.');
+      }
+      if (!['front', 'back'].includes(implant.face)) {
+        fail(`${path}.face`, 'must be front or back.');
+      }
+      assertFinite(implant.thickness, `${path}.thickness`, { min: 1e-12 });
+      assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
+      if (typeof implant.border !== 'boolean') fail(`${path}.border`, 'must be boolean.');
+
+      const patches = assertArray(implant.patches, `${path}.patches`, LIMITS.implantPatches);
+      patches.forEach((patch, patchIndex) => {
+        const patchPath = `${path}.patches[${patchIndex}]`;
+        assertObject(patch, patchPath);
+        validateMultiPolygon(patch.geom, `${patchPath}.geom`, budget);
+        if (patch.geom.length === 0) fail(`${patchPath}.geom`, 'must not be empty.');
+        assertFinite(patch.z, `${patchPath}.z`);
+        assertFinite(patch.zMin, `${patchPath}.zMin`);
+        assertFinite(patch.zMax, `${patchPath}.zMax`);
+        if (patch.zMax < patch.zMin) fail(patchPath, 'must have zMax >= zMin.');
+        if (patch.z < patch.zMin - 1e-9 || patch.z > patch.zMax + 1e-9) {
+          fail(`${patchPath}.z`, 'must lie within zMin/zMax.');
+        }
+        assertString(patch.layerId, `${patchPath}.layerId`, { max: 128 });
+      });
+    });
+  }
+
   validateModelGeometry(model);
 
+  if (model.nextImplantId != null) {
+    assertInteger(model.nextImplantId, 'model.nextImplantId', { min: 1 });
+  }
   assertInteger(model.nextLayerId, 'model.nextLayerId', { min: 1 });
   assertInteger(model.nextRegionId, 'model.nextRegionId', { min: 1 });
   assertInteger(model.revision, 'model.revision', { min: 0 });
@@ -689,6 +732,12 @@ function migrateProjectCore(project) {
     project.maskRoi = migrateLegacyMaskRoiToLocal(project.maskRoi, project.maskTransform);
   }
   if (version < 9) migrateRoughAppearances(project.model);
+  if (version < 10 && isObject(project.model)) {
+    if (!Array.isArray(project.model.implants)) project.model.implants = [];
+    if (!Number.isInteger(project.model.nextImplantId) || project.model.nextImplantId < 1) {
+      project.model.nextImplantId = project.model.implants.length + 1;
+    }
+  }
   project.version = CURRENT_PROJECT_VERSION;
   return project;
 }

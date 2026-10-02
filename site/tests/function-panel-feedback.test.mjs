@@ -42,11 +42,12 @@ const viewPopoverController = await readFile(
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
   assert.match(html, /id="settingsTab"[\s\S]*?>\s*Project\s*<\/button>/);
-  for (const mode of ['add', 'grow', 'etch']) {
+  for (const mode of ['add', 'grow', 'etch', 'implant']) {
     assert.match(html, new RegExp(`data-process-mode="${mode}"`));
   }
   assert.match(html, />\s*Deposit\s*<\/button>/);
   assert.match(html, />\s*Extend\s*<\/button>/);
+  assert.match(html, /Implant[\s\S]*experimental-tag[\s\S]*EXP/);
   assert.match(html, /<span>Coverage<\/span\s*>/);
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
@@ -228,4 +229,15 @@ test('all view headers expose one Export menu and Mask export filters Cells Laye
   assert.match(exportController, /element\.sourceCell \|\| layout\.root \|\| 'ROOT'/);
   assert.match(workspaceActions, /\.export-control/);
   assert.match(workspaceActions, /syncMaskExportOptions\(\)/);
+});
+
+
+test('experimental Implant exposes structural-only controls and no physics inputs', () => {
+  assert.match(html, /id="implantName"/);
+  assert.match(html, /id="implantColor"[^>]*type="color"/);
+  assert.match(html, /id="implantTilt"/);
+  assert.match(html, /id="implantBorder"/);
+  assert.match(app, /Experimental structural marker only/);
+  assert.match(app, /params\.tilt = tilt/);
+  assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
 });

@@ -239,6 +239,39 @@ assert.ok(
 );
 await page.locator('#operationTab').click();
 
+// Experimental Implant uses the same process area but records a structural annotation only.
+await page.locator('[data-process-mode="implant"]').click();
+assert.equal(await page.locator('#implantNameRow').isVisible(), true);
+assert.equal(await page.locator('#implantTiltRow').isVisible(), true);
+assert.match(await page.locator('#operationNote').textContent(), /Experimental structural marker/);
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#operationThickness').fill('0.6');
+await page.locator('#implantName').fill('UI implant');
+await page.locator('#implantTilt').fill('7');
+await page.locator('#implantBorder').check();
+await page.locator('#applyOperationBtn').click();
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+await page.waitForFunction(() =>
+  /Marked implant UI implant/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
+
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI implant project');
+const implantDownloadPromise = page.waitForEvent('download');
+await page.locator('#saveProjectBtn').click();
+const implantDownload = await implantDownloadPromise;
+const implantSavedPath = await implantDownload.path();
+assert.ok(implantSavedPath);
+const implantSaved = JSON.parse(await readFile(implantSavedPath, 'utf8'));
+assert.equal(implantSaved.model.implants.length, 1);
+assert.equal(implantSaved.model.implants[0].name, 'UI implant');
+assert.equal(implantSaved.model.implants[0].thickness, 0.6);
+assert.equal(implantSaved.model.implants[0].tilt, 7);
+assert.equal(implantSaved.model.implants[0].border, true);
+assert.ok(implantSaved.model.implants[0].patches.length > 0);
+await page.locator('#operationTab').click();
+
 // Extend targets follow the exposed surface and include Base when it is exposed.
 await page.locator('[data-process-mode="grow"]').click();
 await page.locator('#operationArea').selectOption('full');

@@ -1,5 +1,10 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
-import { appearanceSurfaceGroups, materialSolids, solidBorders } from './model-view-geometry.js';
+import {
+  appearanceSurfaceGroups,
+  implantSurfaceGroups,
+  materialSolids,
+  solidBorders,
+} from './model-view-geometry.js';
 import { difference, intersection, isEmpty } from './vector-geometry.js';
 import { roughLod, roughTextureValue } from './surface-rendering.js';
 
@@ -519,6 +524,53 @@ export function createThreeView({
 
     updateRoughLod();
     updateTransparentOrder();
+
+    // Implant is a structural annotation. Keep it above material transparency
+    // surfaces without turning it into a material solid or concentration field.
+    for (const implant of implantSurfaceGroups(model, clip)) {
+      const normal = implant.face === 'front' ? 1 : -1,
+        epsilon = Math.max(1e-5, Math.abs(implant.thickness || 0) * 1e-4),
+        capZ = implant.z + normal * epsilon,
+        solid = { slabs: [], caps: [{ z: capZ, normal, polys: implant.polys }] },
+        geometry = geometryFromSolid(solid),
+        material = new THREE.MeshStandardMaterial({
+          color: implant.color || '#D65A6F',
+          roughness: 0.62,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.48,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -4,
+          polygonOffsetUnits: -4,
+        }),
+        mesh = new THREE.Mesh(geometry, material);
+      mesh.name = implant.name || implant.implantId || 'Implant';
+      mesh.renderOrder = 50000;
+      group.add(mesh);
+
+      if (implant.border) {
+        const edgeGeometry = new THREE.BufferGeometry();
+        edgeGeometry.setAttribute(
+          'position',
+          new THREE.Float32BufferAttribute(solidBorders(solid).flat(2), 3),
+        );
+        const edgeMaterial = new THREE.LineDashedMaterial({
+          color: 0x111820,
+          dashSize: Math.max(0.08, (implant.thickness || 1) * 0.18),
+          gapSize: Math.max(0.05, (implant.thickness || 1) * 0.12),
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false,
+        });
+        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        edges.computeLineDistances();
+        edges.renderOrder = 100001;
+        group.add(edges);
+      }
+    }
+
     stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     scheduleFrame();
   }

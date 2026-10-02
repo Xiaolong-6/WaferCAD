@@ -205,3 +205,55 @@ export function solidBorders({ slabs, caps }, thresholdDegrees = 20) {
       }
   return lines;
 }
+
+
+export function implantSurfaceGroups(model, clip = null) {
+  const groups = [];
+  for (const implant of model?.implants || []) {
+    for (const patch of implant.patches || []) {
+      const polys = clip ? intersection(patch.geom, clip) : patch.geom;
+      if (isEmpty(polys)) continue;
+      groups.push({
+        implantId: implant.id,
+        name: implant.name,
+        color: implant.color,
+        face: implant.face,
+        thickness: implant.thickness,
+        tilt: implant.tilt || 0,
+        border: Boolean(implant.border),
+        z: patch.z,
+        zMin: patch.zMin,
+        zMax: patch.zMax,
+        layerId: patch.layerId,
+        polys,
+      });
+    }
+  }
+  return groups;
+}
+
+export function implantSectionBands(model, a, b) {
+  const bands = [];
+  for (const implant of model?.implants || []) {
+    for (const patch of implant.patches || []) {
+      for (const [t0, t1] of lineIntervalsInMulti(a, b, patch.geom)) {
+        bands.push({
+          implantId: implant.id,
+          name: implant.name,
+          color: implant.color,
+          face: implant.face,
+          thickness: implant.thickness,
+          tilt: implant.tilt || 0,
+          border: Boolean(implant.border),
+          z: patch.z,
+          zMin: patch.zMin,
+          zMax: patch.zMax,
+          layerId: patch.layerId,
+          t0,
+          t1,
+        });
+      }
+    }
+  }
+  return bands;
+}

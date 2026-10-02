@@ -23,7 +23,14 @@ import {
 } from './vector-geometry.js';
 import { downloadProject } from './project-io.js';
 import { createThreeView } from './three-view.js';
-import { sectionColumns, sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
+import {
+  implantSectionBands,
+  implantSurfaceGroups,
+  sectionColumns,
+  sectionContours,
+  sectionSlices,
+  surfaceGroups,
+} from './model-view-geometry.js';
 import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from './roi-editor.js';
 import { maskRoiWorldGeometry } from './mask-roi-geometry.js';
 import {
@@ -872,6 +879,11 @@ function shadeColor(hex, delta) {
     b = Math.max(0, Math.min(255, (n & 255) + delta));
   return `rgb(${r},${g},${b})`;
 }
+function rgbaColor(hex, alpha) {
+  const value = /^#[0-9a-f]{6}$/i.test(hex || '') ? hex : '#D65A6F',
+    n = parseInt(value.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
 
 function renderMain() {
   const c = $('mainCanvas'),
@@ -892,6 +904,20 @@ function renderMain() {
     ctx.strokeStyle = 'rgba(36,46,56,.24)';
     ctx.lineWidth = 0.65;
     ctx.stroke();
+  }
+  for (const implant of implantSurfaceGroups(model)) {
+    if (implant.face !== activeFace) continue;
+    ctx.save();
+    canvasPathMulti(ctx, implant.polys, v, back);
+    ctx.fillStyle = rgbaColor(implant.color, 0.38);
+    ctx.fill('evenodd');
+    if (implant.border) {
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(17,24,32,.9)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.restore();
   }
   ctx.save();
   ctx.setLineDash([5, 4]);
@@ -1123,6 +1149,42 @@ function renderSection() {
     });
   }
 
+  for (const implant of implantSectionBands(model, section.a, section.b)) {
+    const rawDepth = Math.max(0, Number(implant.thickness) || 0),
+      innerZ =
+        implant.face === 'front'
+          ? Math.max(implant.z - rawDepth, Number(implant.zMin))
+          : Math.min(implant.z + rawDepth, Number(implant.zMax)),
+      depth = Math.abs(implant.z - innerZ);
+    if (!(depth > 1e-12)) continue;
+
+    const tiltOffsetX = Math.tan(((Number(implant.tilt) || 0) * Math.PI) / 180) * depth,
+      deltaT = (tiltOffsetX * sectionUnitX) / sectionSpan,
+      outerY = mapZ(implant.z),
+      innerY = mapZ(innerZ),
+      gradient = ctx.createLinearGradient(0, outerY, 0, innerY);
+    gradient.addColorStop(0, rgbaColor(implant.color, 0.72));
+    gradient.addColorStop(0.48, rgbaColor(implant.color, 0.4));
+    gradient.addColorStop(1, rgbaColor(implant.color, 0.04));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(mapT(implant.t0), outerY);
+    ctx.lineTo(mapT(implant.t1), outerY);
+    ctx.lineTo(mapT(implant.t1 + deltaT), innerY);
+    ctx.lineTo(mapT(implant.t0 + deltaT), innerY);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    if (implant.border) {
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = '#111820';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // Auto mode keeps sub-pixel physical sidewalls legible. Draw this last so the
   // visibility aid cannot be erased by rough-surface compositing.
   for (const slice of sectionSlices(model, section.a, section.b)) {
@@ -1288,15 +1350,19 @@ function updateOperationUI() {
   });
 
   $('layerNameRow').classList.toggle('hidden', t !== 'add');
+  $('implantNameRow').classList.toggle('hidden', t !== 'implant');
+  $('implantColorRow').classList.toggle('hidden', t !== 'implant');
+  $('implantTiltRow').classList.toggle('hidden', t !== 'implant');
+  $('implantBorderRow').classList.toggle('hidden', t !== 'implant');
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
-  $('growthModeRow').classList.toggle('hidden', t === 'etch');
+  $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
   $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
   const roughEtch = t === 'etch' && $('etchSurfaceMode').value === 'rough';
   $('roughFeatureRow').classList.toggle('hidden', !roughEtch);
   $('roughFeatureCvRow').classList.toggle('hidden', !roughEtch);
   $('roughHeightRow').classList.toggle('hidden', !roughEtch);
   $('roughHeightCvRow').classList.toggle('hidden', !roughEtch);
-  $('processThicknessLabel').textContent = t === 'etch' ? 'Depth' : 'Z';
+  $('processThicknessLabel').textContent = t === 'etch' || t === 'implant' ? 'Depth' : 'Z';
 
   if (t === 'grow') updateGrowTargets();
 
@@ -1304,19 +1370,29 @@ function updateOperationUI() {
   $('applyOperationBtn').disabled = !materialExists || Boolean(processTaskController?.isBusy());
   const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
   $('processSummary').textContent =
-    `${faceLabel} · ${t === 'add' ? 'Deposit layer' : t === 'grow' ? 'Extend layer' : 'Etch'}`;
+    `${faceLabel} · ${
+      t === 'add'
+        ? 'Deposit layer'
+        : t === 'grow'
+          ? 'Extend layer'
+          : t === 'implant'
+            ? 'Implant · EXP'
+            : 'Etch'
+    }`;
 
   $('operationNote').hidden = !materialExists;
   if (!materialExists) return;
 
   $('operationNote').textContent =
-    t === 'etch'
-      ? roughEtch
-        ? 'Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread.'
-        : 'Etch removes material vertically and may create through-holes.'
-      : $('growthMode').value === 'conformal'
-        ? 'Conformal coverage follows exposed steps and includes sidewalls.'
-        : 'Directional coverage follows the selected footprint.';
+    t === 'implant'
+      ? 'Experimental structural marker only: mask-selected exposed surfaces are rendered with a user-defined depth and optional geometric tilt.'
+      : t === 'etch'
+        ? roughEtch
+          ? 'Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread.'
+          : 'Etch removes material vertically and may create through-holes.'
+        : $('growthMode').value === 'conformal'
+          ? 'Conformal coverage follows exposed steps and includes sidewalls.'
+          : 'Directional coverage follows the selected footprint.';
 }
 
 async function applyOp() {
@@ -1332,7 +1408,10 @@ async function applyOp() {
 
   const areaMode = $('operationArea').value;
 
-  const name = $('layerName').value.trim() || `Layer ${model.layers.length}`,
+  const name =
+      type === 'implant'
+        ? $('implantName').value.trim() || `Implant ${model.nextImplantId || 1}`
+        : $('layerName').value.trim() || `Layer ${model.layers.length}`,
     targetLayerId = $('targetLayer').value;
   if (type === 'grow' && !targetLayerId) {
     return status('No exposed target layer is available to Extend.', 'warning');
@@ -1377,14 +1456,24 @@ async function applyOp() {
   const beforeBase = baseCoverageState(model),
     params = { type, name, targetLayerId, thickness, face: activeFace };
   if (type === 'etch') params.surface = roughSurface;
-  else params.growth = $('growthMode').value;
+  else if (type === 'implant') {
+    const tilt = Number($('implantTilt').value);
+    if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
+      return status('Implant Tilt X must be between -80° and 80°.', 'error');
+    }
+    params.color = $('implantColor').value;
+    params.tilt = tilt;
+    params.border = $('implantBorder').checked;
+  } else params.growth = $('growthMode').value;
 
   const taskLabel =
     type === 'etch'
       ? 'Etching structure…'
       : type === 'grow'
         ? 'Extending layer…'
-        : `Depositing ${name}…`;
+        : type === 'implant'
+          ? `Marking ${name} implant…`
+          : `Depositing ${name}…`;
 
   const areaRequest = {
     mode: areaMode,
@@ -1419,6 +1508,8 @@ async function applyOp() {
   if (type === 'add' && result.layerId) {
     colorNewLayer(result.layerId);
     $('layerName').value = `Layer ${model.nextLayerId}`;
+  } else if (type === 'implant' && result.implantId) {
+    $('implantName').value = `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
   }
 
   renderAll();
@@ -1439,14 +1530,20 @@ async function applyOp() {
   }
 
   const growthLabel =
-    type === 'etch' ? '' : params.growth === 'conformal' ? ' · Conformal' : ' · Directional';
+    type === 'etch' || type === 'implant'
+      ? ''
+      : params.growth === 'conformal'
+        ? ' · Conformal'
+        : ' · Directional';
   status(
     `${
       type === 'etch'
         ? 'Etched'
         : type === 'grow'
           ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
-          : `Deposited ${name}`
+          : type === 'implant'
+            ? `Marked implant ${name} (experimental)`
+            : `Deposited ${name}`
     }${growthLabel} on the ${activeFace}${maskRoi ? ' within Mask ROI' : ''}.`,
     'success',
   );

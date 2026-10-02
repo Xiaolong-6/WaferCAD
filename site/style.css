@@ -1828,7 +1828,7 @@ body.welcome-open {
 }
 
 .process-mode {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 4px 0 6px;
 }
 .process-mode button {
@@ -2822,4 +2822,27 @@ summary:focus-visible {
     top: auto;
     width: auto;
   }
+}
+
+.experimental-tag {
+  font-size: 7px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: #fff0d8;
+  color: #8a5a12;
+  border: 1px solid #efd09a;
+  font-weight: 750;
+}
+.inline-check {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  margin: 0 !important;
+  min-width: 0;
+  color: #53606c;
+}
+.inline-check input {
+  width: auto !important;
+  margin: 0;
 }

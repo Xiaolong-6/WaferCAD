@@ -636,16 +636,33 @@
                   </button>
                   <button type="button" data-process-mode="grow" aria-pressed="false">Extend</button>
                   <button type="button" data-process-mode="etch" aria-pressed="false">Etch</button>
+                  <button type="button" data-process-mode="implant" aria-pressed="false">
+                    Implant <span class="experimental-tag">EXP</span>
+                  </button>
                 </div>
                 <select id="operationType" class="visually-hidden" aria-label="Process action">
                   <option value="add">Deposit new layer</option>
                   <option value="grow">Extend existing layer</option>
                   <option value="etch">Etch / subtract</option>
+                  <option value="implant">Implant (experimental)</option>
                 </select>
 
                 <label id="layerNameRow" class="field-row"
                   ><span>Name</span><input id="layerName" value="Layer 1"
                 /></label>
+                <label id="implantNameRow" class="field-row hidden"
+                  ><span>Name</span><input id="implantName" value="Implant 1"
+                /></label>
+                <label id="implantColorRow" class="field-row hidden"
+                  ><span>Color</span><input id="implantColor" type="color" value="#d65a6f"
+                /></label>
+                <label id="implantTiltRow" class="field-row hidden" title="Signed geometric tilt from the surface normal toward +X">
+                  <span>Tilt X°</span><input id="implantTilt" type="number" value="0" min="-80" max="80" step="1"
+                /></label>
+                <div id="implantBorderRow" class="field-row hidden">
+                  <span>Border</span>
+                  <label class="inline-check"><input id="implantBorder" type="checkbox" checked /> Dashed black</label>
+                </div>
                 <label id="targetLayerRow" class="field-row hidden"
                   ><span>Target</span><select id="targetLayer"></select
                 ></label>
