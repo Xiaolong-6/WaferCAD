@@ -1,4 +1,5 @@
 import {
+  bufferMulti,
   bufferPolyline,
   circleMulti,
   cloneGeom,
@@ -553,12 +554,18 @@ function packDisjointBands(bands, maxBatchSize = 8) {
   return batches.map((batch) => batch.geom);
 }
 
-function uncoveredGeometry(model) {
+const COVERAGE_CRACK_TOLERANCE_UM = 1e-4; // 0.1 nm, the persistence precision.
+
+function uncoveredGeometryRaw(model) {
   let uncovered = cloneGeom(model.boundary);
   try {
-    for (const region of model.regions) {
+    // Union compatible coverage first. Repeatedly subtracting many adjacent
+    // partitions can leave machine-scale slivers between otherwise coincident
+    // mask edges, which later look like real through-voids.
+    const coveredParts = safeUnionParts((model.regions || []).map((region) => region.geom));
+    for (const covered of coveredParts) {
       if (isEmpty(uncovered)) break;
-      uncovered = difference(uncovered, region.geom);
+      uncovered = difference(uncovered, covered);
     }
     return uncovered;
   } catch {
@@ -567,6 +574,50 @@ function uncoveredGeometry(model) {
     // existing exposed material rather than failing the entire deposition.
     return [];
   }
+}
+
+function healNumericalCoverageCracks(model) {
+  const uncovered = uncoveredGeometryRaw(model);
+  if (isEmpty(uncovered)) return false;
+
+  let changed = false;
+  for (const poly of uncovered) {
+    const crack = [poly],
+      bounds = multiBounds(crack),
+      narrow = Math.min(bounds.width, bounds.height) <= COVERAGE_CRACK_TOLERANCE_UM + 1e-12,
+      tiny = geometryArea(crack) <= COVERAGE_CRACK_TOLERANCE_UM ** 2 * 4;
+    if (!narrow && !tiny) continue;
+
+    let halo;
+    try {
+      halo = bufferMulti(crack, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
+    } catch {
+      continue;
+    }
+
+    let bestRegion = null,
+      bestContact = 0;
+    for (const region of model.regions || []) {
+      const contact = geometryArea(intersection(region.geom, halo));
+      if (contact > bestContact) {
+        bestContact = contact;
+        bestRegion = region;
+      }
+    }
+    if (!bestRegion || bestContact <= 0) continue;
+
+    try {
+      bestRegion.geom = unionGeometries([bestRegion.geom, crack]);
+      changed = true;
+    } catch {
+      // A sub-grid repair must never make a valid process operation fail.
+    }
+  }
+  return changed;
+}
+
+function uncoveredGeometry(model) {
+  return uncoveredGeometryRaw(model);
 }
 
 function addVoidConformalSidewall(model, geom, layerId, face, source) {
@@ -590,6 +641,12 @@ function addVoidConformalSidewall(model, geom, layerId, face, source) {
 }
 
 function applyConformalCoating(model, active, layerId, amount, face) {
+  // Repair sub-grid seams before true through-void detection. Otherwise a
+  // numerical slit can be mistaken for a trench and receive a full-depth film.
+  if (healNumericalCoverageCracks(model)) {
+    model.regions = mergeRegions(model, model.regions);
+  }
+
   // Deposit and Extend share one conformal kernel. Extend simply reuses the
   // selected layer id, so contiguous material merges during stack normalization.
   //
@@ -767,6 +824,9 @@ function applyOperationImpl(
     );
   }
   model.regions = mergeRegions(model, model.regions);
+  if (healNumericalCoverageCracks(model)) {
+    model.regions = mergeRegions(model, model.regions);
+  }
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };

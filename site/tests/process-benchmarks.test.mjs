@@ -444,6 +444,64 @@ for (const face of ['front', 'back']) {
   });
 }
 
+test('sub-grid rough-step seam is healed before Conformal can enter the model interior', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
+    gap = 5e-5,
+    halfWidth = 10 - gap / 2;
+  model.regions = [
+    {
+      id: 'left-step',
+      geom: rectMulti(halfWidth, 20, -5 - gap / 4, 0),
+      stack: [{ layerId: 'base', z0: -5, z1: 7 }],
+    },
+    {
+      id: 'right-rough',
+      geom: rectMulti(halfWidth, 20, 5 + gap / 4, 0),
+      stack: [
+        {
+          layerId: 'base',
+          z0: -5,
+          z1: 4,
+          frontSurface: {
+            kind: 'rough',
+            morphology: 'stochastic',
+            polarity: 'inverted',
+            featureSize: 0.5,
+            meanHeight: 0.3,
+            featureCv: 0.1,
+            heightCv: 0.1,
+            seed: 7,
+            profileId: 'rough-step-seam-regression',
+            geometryMode: 'ideal',
+            etchDepth: 1,
+          },
+        },
+      ],
+    },
+  ];
+
+  assert.equal(baseCoverageState(model), 'partial');
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal after rough step',
+    thickness: 0.5,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+  assert.equal(baseCoverageState(model), 'full');
+
+  const deepIntrusions = model.regions.flatMap((region) =>
+    region.stack.filter(
+      (segment) =>
+        segment.layerId === coat.layerId &&
+        segment.role === 'conformal-sidewall' &&
+        segment.z0 <= -5 + 1e-9,
+    ),
+  );
+  assert.equal(deepIntrusions.length, 0);
+});
+
 test('Conformal sidewall keeps the inherited rough profile at the exposed cap', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   applyOperation(model, {
