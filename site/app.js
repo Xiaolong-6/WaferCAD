@@ -25,6 +25,7 @@ import { downloadProject } from './project-io.js';
 import { createThreeView } from './three-view.js';
 import { sectionColumns, sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
 import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from './roi-editor.js';
+import { maskRoiWorldGeometry } from './mask-roi-geometry.js';
 import {
   formatLengthInput,
   formatXY as formatXYValue,
@@ -404,8 +405,13 @@ maskRoiController = createMaskRoiController({
   setAnchor: (value) => {
     maskRoiAnchor = value;
   },
+  getTransform: () =>
+    maskSourceMode === 'file'
+      ? { ...maskTransform }
+      : { x: 0, y: 0, scale: 1, rotation: 0 },
   xyUnitLabel: () => xyUnit().label,
   formatLengthField,
+  formatNumericField,
   manualMicron,
   setupCanvas,
   viewport,
@@ -473,17 +479,11 @@ function activeMaskGeometry() {
 
 function maskRoiGeometry() {
   if (!maskRoi) return null;
-  if (maskRoi.type === 'rect') {
-    const x0 = Math.min(maskRoi.a[0], maskRoi.b[0]),
-      x1 = Math.max(maskRoi.a[0], maskRoi.b[0]),
-      y0 = Math.min(maskRoi.a[1], maskRoi.b[1]),
-      y1 = Math.max(maskRoi.a[1], maskRoi.b[1]);
-    return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
-  }
-  if (maskRoi.type === 'circle') {
-    return circleMulti(maskRoi.r * 2, maskRoi.r * 2, 96, maskRoi.c[0], maskRoi.c[1]);
-  }
-  return null;
+  const transform =
+    maskSourceMode === 'file'
+      ? maskTransform
+      : { x: 0, y: 0, scale: 1, rotation: 0 };
+  return maskRoiWorldGeometry(maskRoi, transform, 96);
 }
 
 function operationAreaGeometry(mode) {
