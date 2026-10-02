@@ -1,6 +1,7 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
 import { implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { difference, intersection, isEmpty } from './vector-geometry.js';
 import {
   adaptiveRoughMeshLod,
   projectedPixelsPerUnit,
@@ -92,7 +93,13 @@ export function createThreeView({
     return Math.max(0, bounds.maxX - bounds.minX) * Math.max(0, bounds.maxY - bounds.minY);
   }
 
-  function lodContextFor(model, clip, polys, z = 0) {
+  function lodContextFor(
+    model,
+    clip,
+    polys,
+    z = 0,
+    { visibleFraction = null, screenPriority = 1, maxDepth = 10 } = {},
+  ) {
     const viewport = currentViewport(),
       patchBounds = xyBounds(polys),
       viewBounds = visibleBounds(model, clip),
@@ -114,9 +121,95 @@ export function createThreeView({
       viewportHeight: viewport.height,
       pixelRatio: viewport.pixelRatio,
       fovDegrees: camera.fov,
-      visibleFraction: Math.max(0, Math.min(1, patchArea / visibleArea)),
+      visibleFraction:
+        visibleFraction == null
+          ? Math.max(0, Math.min(1, patchArea / visibleArea))
+          : Math.max(0, Math.min(1, Number(visibleFraction) || 0)),
       roiFraction: Math.max(0, Math.min(1, visibleArea / modelArea)),
+      screenPriority,
+      maxDepth,
     };
+  }
+
+  function focusGeometry() {
+    const distance = Math.max(1e-9, camera.position.distanceTo(controls.target)),
+      halfHeight = distance * Math.tan((camera.fov * Math.PI) / 360) * 1.8,
+      halfWidth = halfHeight * Math.max(0.2, camera.aspect),
+      forward = new THREE.Vector3(),
+      right = new THREE.Vector3(),
+      viewUp = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    right.crossVectors(forward, camera.up).normalize();
+    viewUp.crossVectors(right, forward).normalize();
+
+    const corners = [];
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        corners.push(
+          controls.target
+            .clone()
+            .addScaledVector(right, halfWidth * sx)
+            .addScaledVector(viewUp, halfHeight * sy),
+        );
+      }
+    }
+    const xs = corners.map((point) => point.x),
+      ys = corners.map((point) => point.y),
+      minX = Math.min(...xs),
+      maxX = Math.max(...xs),
+      minY = Math.min(...ys),
+      maxY = Math.max(...ys);
+    return [
+      [
+        [
+          [minX, minY],
+          [maxX, minY],
+          [maxX, maxY],
+          [minX, maxY],
+          [minX, minY],
+        ],
+      ],
+    ];
+  }
+
+  function roughLodZones(model, clip, polys, z) {
+    const focus = focusGeometry(),
+      focused = intersection(polys, focus);
+    if (isEmpty(focused)) {
+      return [
+        {
+          polys,
+          lodContext: lodContextFor(model, clip, polys, z, {
+            visibleFraction: 0.04,
+            screenPriority: 0.06,
+            maxDepth: 5,
+          }),
+        },
+      ];
+    }
+
+    const zones = [
+        {
+          polys: focused,
+          lodContext: lodContextFor(model, clip, focused, z, {
+            visibleFraction: 1,
+            screenPriority: 1,
+            maxDepth: 10,
+          }),
+        },
+      ],
+      background = difference(polys, focus);
+    if (!isEmpty(background)) {
+      zones.push({
+        polys: background,
+        lodContext: lodContextFor(model, clip, background, z, {
+          visibleFraction: 0.04,
+          screenPriority: 0.06,
+          maxDepth: 5,
+        }),
+      });
+    }
+    return zones;
   }
 
   function adaptiveLodSignature() {
@@ -136,8 +229,11 @@ export function createThreeView({
       azimuthBucket = Math.round(azimuth / (Math.PI / 12)),
       elevationBucket = Math.round(elevation / (Math.PI / 12)),
       widthBucket = Math.round((viewport.width * viewport.pixelRatio) / 160),
-      heightBucket = Math.round((viewport.height * viewport.pixelRatio) / 160);
-    return `${scaleBucket}:${azimuthBucket}:${elevationBucket}:${widthBucket}:${heightBucket}`;
+      heightBucket = Math.round((viewport.height * viewport.pixelRatio) / 160),
+      targetQuantum = Math.max(1e-9, 80 / Math.max(1e-12, pxPerUnit)),
+      targetXBucket = Math.round(controls.target.x / targetQuantum),
+      targetYBucket = Math.round(controls.target.y / targetQuantum);
+    return `${scaleBucket}:${azimuthBucket}:${elevationBucket}:${widthBucket}:${heightBucket}:${targetXBucket}:${targetYBucket}`;
   }
 
   function updateRoughMaterialLod() {
@@ -398,20 +494,15 @@ export function createThreeView({
     appearance,
     closeToIdeal = true,
     lodContext = {},
+    lodZones = null,
     profileNormal = normal,
   }) {
-    const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, polys),
-      lod = adaptiveRoughMeshLod({
-        triangleCount: baseTriangles.length,
-        maxEdge,
-        featureSize: appearance?.featureSize,
-        ...lodContext,
-      }),
-      depth = lod.depth,
-      triangles = subdivideTriangles(baseTriangles, depth),
+    const zones = Array.isArray(lodZones) && lodZones.length ? lodZones : [{ polys, lodContext }],
       positions = [],
       normals = [],
-      roughBorderPositions = [];
+      roughBorderPositions = [],
+      lods = [];
+    let maxDepth = 0;
 
     const pushTriangle = (a, b, c) => {
         const faceNormal = triangleNormal(a, b, c);
@@ -425,20 +516,65 @@ export function createThreeView({
           ...roughPointNormal(b, normal, profileNormal, appearance),
           ...roughPointNormal(c, normal, profileNormal, appearance),
         );
+      },
+      pushSkirt = (zonePolys, depth) => {
+        if (!closeToIdeal) return;
+        const edgeSegments = 2 ** depth;
+        for (const poly of zonePolys || []) {
+          for (const closed of poly || []) {
+            const ring =
+              closed.length > 1 &&
+              closed[0][0] === closed.at(-1)[0] &&
+              closed[0][1] === closed.at(-1)[1]
+                ? closed.slice(0, -1)
+                : closed.slice();
+            for (let index = 0; index < ring.length; index++) {
+              const p = ring[index],
+                q = ring[(index + 1) % ring.length];
+              for (let step = 0; step < edgeSegments; step++) {
+                const t0 = step / edgeSegments,
+                  t1 = (step + 1) / edgeSegments,
+                  p0 = [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0],
+                  p1 = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1],
+                  base0 = [p0[0], p0[1], z],
+                  base1 = [p1[0], p1[1], z],
+                  top0 = roughPoint(base0, z, profileNormal, appearance),
+                  top1 = roughPoint(base1, z, profileNormal, appearance);
+                pushTriangle(base0, base1, top1);
+                pushTriangle(base0, top1, top0);
+              }
+            }
+          }
+        }
       };
 
-    for (const [a, b, c] of triangles) {
-      pushRoughTriangle(
-        roughPoint(a, z, profileNormal, appearance),
-        roughPoint(b, z, profileNormal, appearance),
-        roughPoint(c, z, profileNormal, appearance),
-      );
+    for (const zone of zones) {
+      if (isEmpty(zone.polys)) continue;
+      const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, zone.polys),
+        lod = adaptiveRoughMeshLod({
+          triangleCount: baseTriangles.length,
+          maxEdge,
+          featureSize: appearance?.featureSize,
+          ...(zone.lodContext || lodContext),
+        }),
+        depth = lod.depth,
+        triangles = subdivideTriangles(baseTriangles, depth);
+      lods.push(lod);
+      maxDepth = Math.max(maxDepth, depth);
+
+      for (const [a, b, c] of triangles) {
+        pushRoughTriangle(
+          roughPoint(a, z, profileNormal, appearance),
+          roughPoint(b, z, profileNormal, appearance),
+          roughPoint(c, z, profileNormal, appearance),
+        );
+      }
+      pushSkirt(zone.polys, depth);
     }
 
-    // Close the displaced surface back to the ideal process plane. The same
-    // subdivision depth is used on polygon boundaries, so the skirt meets the
-    // tessellated cap without visible cracks.
-    const edgeSegments = 2 ** depth;
+    // Border ownership follows the physical cap, not the camera-focus split.
+    // Keep artificial LOD seams outside the viewport from becoming visible lines.
+    const borderSegments = 2 ** Math.min(maxDepth, 6);
     for (const poly of polys || []) {
       for (const closed of poly || []) {
         const ring =
@@ -450,19 +586,13 @@ export function createThreeView({
         for (let index = 0; index < ring.length; index++) {
           const p = ring[index],
             q = ring[(index + 1) % ring.length];
-          for (let step = 0; step < edgeSegments; step++) {
-            const t0 = step / edgeSegments,
-              t1 = (step + 1) / edgeSegments,
+          for (let step = 0; step < borderSegments; step++) {
+            const t0 = step / borderSegments,
+              t1 = (step + 1) / borderSegments,
               p0 = [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0],
               p1 = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1],
-              base0 = [p0[0], p0[1], z],
-              base1 = [p1[0], p1[1], z],
-              top0 = roughPoint(base0, z, profileNormal, appearance),
-              top1 = roughPoint(base1, z, profileNormal, appearance);
-            if (closeToIdeal) {
-              pushTriangle(base0, base1, top1);
-              pushTriangle(base0, top1, top0);
-            }
+              top0 = roughPoint([p0[0], p0[1], z], z, profileNormal, appearance),
+              top1 = roughPoint([p1[0], p1[1], z], z, profileNormal, appearance);
             roughBorderPositions.push(...top0, ...top1);
           }
         }
@@ -472,8 +602,8 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geometry.userData.roughSubdivisionDepth = depth;
-    geometry.userData.roughLod = lod;
+    geometry.userData.roughSubdivisionDepth = maxDepth;
+    geometry.userData.roughLod = lods;
     geometry.userData.roughBorderPositions = roughBorderPositions;
     return geometry;
   }
@@ -717,6 +847,7 @@ export function createThreeView({
             closeToIdeal: !cap.buried,
             profileNormal: cap.profileNormal,
             lodContext: lodContextFor(model, clip, cap.polys, cap.z),
+            lodZones: roughLodZones(model, clip, cap.polys, cap.z),
           }),
           material = createSurfaceMaterial(layer, state, cap.appearance);
         addSurfaceMesh(geometry, material, state, cap.appearance, cap.buried ? 12 : 0);
@@ -797,6 +928,7 @@ export function createThreeView({
                   closeToIdeal: false,
                   profileNormal: outerNormal,
                   lodContext: lodContextFor(model, clip, implant.polys, implant.outerZ),
+                  lodZones: roughLodZones(model, clip, implant.polys, implant.outerZ),
                 })
               : geometryFromSolid({
                   slabs: [],
