@@ -1327,6 +1327,18 @@ canvas {
 }
 
 @media (max-width: 600px) {
+  .process-mode button {
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 9.5px;
+    white-space: nowrap;
+  }
+
+  .process-mode .experimental-tag {
+    display: none;
+  }
+
   .param-grid-2 {
     grid-template-columns: minmax(0, 1fr);
     gap: 3px;
