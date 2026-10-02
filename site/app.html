@@ -671,13 +671,33 @@
                     <option value="rough">Rough</option>
                   </select></label
                 >
-                <label id="roughFeatureRow" class="field-row hidden"
-                  ><span>Feature <b id="roughFeatureUnit">µm</b></span
+                <label
+                  id="roughFeatureRow"
+                  class="field-row hidden"
+                  title="Mean lateral XY size of the roughness features"
+                  ><span>Feature XY <b id="roughFeatureUnit">µm</b></span
                   ><input id="roughFeatureSize" type="number" value="0.5" min="0" step="any"
                 /></label>
-                <label id="roughHeightRow" class="field-row hidden"
-                  ><span>Height <b id="roughHeightUnit">µm</b></span
+                <label
+                  id="roughFeatureCvRow"
+                  class="field-row hidden"
+                  title="Coefficient of variation of the lateral feature size"
+                  ><span>Feature CV %</span
+                  ><input id="roughFeatureCv" type="number" value="25" min="0" max="100" step="1"
+                /></label>
+                <label
+                  id="roughHeightRow"
+                  class="field-row hidden"
+                  title="Mean height of rough features measured upward from the deepest etched valley"
+                  ><span>Height mean <b id="roughHeightUnit">µm</b></span
                   ><input id="roughAmplitude" type="number" value="1" min="0" step="any"
+                /></label>
+                <label
+                  id="roughHeightCvRow"
+                  class="field-row hidden"
+                  title="Coefficient of variation of the rough feature height"
+                  ><span>Height CV %</span
+                  ><input id="roughHeightCv" type="number" value="25" min="0" max="100" step="1"
                 /></label>
                 <label class="field-row"
                   ><span><b id="processThicknessLabel">Z</b> <b id="operationThicknessUnit">µm</b></span
