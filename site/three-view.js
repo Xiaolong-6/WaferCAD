@@ -1,6 +1,13 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
 import { implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  canonicalLineInterval,
+  lineIntervalKey,
+  localParameterAtLineT,
+  partitionLineIntervals,
+  pointAtLineT,
+} from './line-intervals.js';
 import { difference, intersection, isEmpty } from './vector-geometry.js';
 import {
   adaptiveRoughMeshLod,
@@ -549,14 +556,7 @@ export function createThreeView({
       zoneResults = [];
     let maxDepth = 0;
 
-    const edgeKey = (p, q) => {
-        const keyPoint = (point) =>
-          `${Number(point[0]).toPrecision(13)},${Number(point[1]).toPrecision(13)}`,
-          a = keyPoint(p),
-          b = keyPoint(q);
-        return a < b ? `${a}|${b}` : `${b}|${a}`;
-      },
-      polygonEdges = (zonePolys) => {
+    const polygonEdges = (zonePolys) => {
         const edges = [];
         for (const poly of zonePolys || []) {
           for (const closed of poly || []) {
@@ -568,14 +568,19 @@ export function createThreeView({
                 : closed.slice();
             for (let index = 0; index < ring.length; index++) {
               const p = ring[index],
-                q = ring[(index + 1) % ring.length];
-              if (Math.hypot(q[0] - p[0], q[1] - p[1]) <= 1e-12) continue;
-              edges.push({ p, q, key: edgeKey(p, q) });
+                q = ring[(index + 1) % ring.length],
+                line = canonicalLineInterval(p, q);
+              if (!line) continue;
+              edges.push({ p, q, line, key: lineIntervalKey(line) });
             }
           }
         }
         return edges;
       },
+      globalTAtLocal = (line, t) =>
+        line.forward
+          ? line.t0 + (line.t1 - line.t0) * t
+          : line.t1 - (line.t1 - line.t0) * t,
       pushTriangle = (a, b, c) => {
         const faceNormal = triangleNormal(a, b, c);
         positions.push(...a, ...b, ...c);
@@ -644,15 +649,28 @@ export function createThreeView({
     zoneResults.forEach((zone, zoneIndex) => {
       for (const edge of zone.edges) {
         if (!edgeOwners.has(edge.key)) edgeOwners.set(edge.key, []);
-        edgeOwners.get(edge.key).push({ zoneIndex, edge });
+        edgeOwners.get(edge.key).push({ zoneIndex, edge, line: edge.line });
       }
     });
 
-    const internalEdges = new Set(
-      [...edgeOwners]
-        .filter(([, owners]) => new Set(owners.map((owner) => owner.zoneIndex)).size > 1)
-        .map(([key]) => key),
-    );
+    const seamSpans = [],
+      seamSpansByKey = new Map();
+    for (const [key, owners] of edgeOwners) {
+      for (const span of partitionLineIntervals(owners)) {
+        const zonesOnSpan = new Set(span.covering.map((owner) => owner.zoneIndex));
+        if (zonesOnSpan.size < 2) continue;
+        const seam = { key, ...span };
+        seamSpans.push(seam);
+        if (!seamSpansByKey.has(key)) seamSpansByKey.set(key, []);
+        seamSpansByKey.get(key).push(seam);
+      }
+    }
+
+    const edgeSeams = (edge) => seamSpansByKey.get(edge.key) || [],
+      isSeamAt = (edge, globalT) =>
+        edgeSeams(edge).some(
+          (span) => globalT >= span.t0 - 1e-10 && globalT <= span.t1 + 1e-10,
+        );
 
     // Close only true physical cap boundaries back to the ideal process plane.
     // Internal camera-LOD boundaries are stitched below and never become skirts.
@@ -660,11 +678,24 @@ export function createThreeView({
       zoneResults.forEach((zone) => {
         const edgeSegments = 2 ** zone.depth;
         for (const edge of zone.edges) {
-          if (internalEdges.has(edge.key)) continue;
-          for (let step = 0; step < edgeSegments; step++) {
-            const t0 = step / edgeSegments,
-              t1 = (step + 1) / edgeSegments,
-              base0 = pointAlongEdge(edge.p, edge.q, t0),
+          const params = new Set(
+            Array.from({ length: edgeSegments + 1 }, (_, index) => index / edgeSegments),
+          );
+          for (const seam of edgeSeams(edge)) {
+            if (seam.t0 > edge.line.t0 + 1e-10 && seam.t0 < edge.line.t1 - 1e-10) {
+              params.add(localParameterAtLineT(edge.line, seam.t0));
+            }
+            if (seam.t1 > edge.line.t0 + 1e-10 && seam.t1 < edge.line.t1 - 1e-10) {
+              params.add(localParameterAtLineT(edge.line, seam.t1));
+            }
+          }
+          const ordered = [...params].sort((a, b) => a - b);
+          for (let index = 0; index < ordered.length - 1; index++) {
+            const t0 = ordered[index],
+              t1 = ordered[index + 1],
+              middleGlobalT = globalTAtLocal(edge.line, (t0 + t1) / 2);
+            if (isSeamAt(edge, middleGlobalT)) continue;
+            const base0 = pointAlongEdge(edge.p, edge.q, t0),
               base1 = pointAlongEdge(edge.p, edge.q, t1),
               top0 = roughAlongEdge(edge.p, edge.q, t0),
               top1 = roughAlongEdge(edge.p, edge.q, t1);
@@ -679,10 +710,10 @@ export function createThreeView({
     // Stitch mismatched LOD boundaries by connecting the fine sampled heightfield
     // to the piecewise-linear coarse edge. This removes T-junction cracks without
     // introducing an ideal-plane curtain at the camera-focus boundary.
-    for (const [key, owners] of edgeOwners) {
-      if (!internalEdges.has(key) || owners.length < 2) continue;
-      const uniqueOwners = owners.filter(
-        (owner, index) => owners.findIndex((entry) => entry.zoneIndex === owner.zoneIndex) === index,
+    for (const seam of seamSpans) {
+      const uniqueOwners = seam.covering.filter(
+        (owner, index) =>
+          seam.covering.findIndex((entry) => entry.zoneIndex === owner.zoneIndex) === index,
       );
       if (uniqueOwners.length < 2) continue;
 
@@ -695,16 +726,28 @@ export function createThreeView({
         coarseDepth = zoneResults[coarse.zoneIndex].depth;
       if (fineDepth <= coarseDepth) continue;
 
-      const p = fine.edge.p,
-        q = fine.edge.q,
-        fineSegments = 2 ** fineDepth;
+      const fineSpan = Math.max(1e-12, fine.edge.line.t1 - fine.edge.line.t0),
+        seamFraction = Math.max(0, Math.min(1, (seam.t1 - seam.t0) / fineSpan)),
+        fineSegments = Math.max(1, Math.ceil(2 ** fineDepth * seamFraction));
       for (let step = 0; step < fineSegments; step++) {
-        const t0 = step / fineSegments,
-          t1 = (step + 1) / fineSegments,
-          fine0 = roughAlongEdge(p, q, t0),
-          fine1 = roughAlongEdge(p, q, t1),
-          coarse0 = coarseApproxAlongEdge(p, q, t0, coarseDepth),
-          coarse1 = coarseApproxAlongEdge(p, q, t1, coarseDepth);
+        const g0 = seam.t0 + ((seam.t1 - seam.t0) * step) / fineSegments,
+          g1 = seam.t0 + ((seam.t1 - seam.t0) * (step + 1)) / fineSegments,
+          xy0 = pointAtLineT(fine.edge.line, g0),
+          xy1 = pointAtLineT(fine.edge.line, g1),
+          fine0 = roughPoint([xy0[0], xy0[1], z], z, profileNormal, appearance),
+          fine1 = roughPoint([xy1[0], xy1[1], z], z, profileNormal, appearance),
+          coarse0 = coarseApproxAlongEdge(
+            coarse.edge.p,
+            coarse.edge.q,
+            localParameterAtLineT(coarse.edge.line, g0),
+            coarseDepth,
+          ),
+          coarse1 = coarseApproxAlongEdge(
+            coarse.edge.p,
+            coarse.edge.q,
+            localParameterAtLineT(coarse.edge.line, g1),
+            coarseDepth,
+          );
         pushTriangle(coarse0, coarse1, fine1);
         pushTriangle(coarse0, fine1, fine0);
       }
@@ -717,7 +760,7 @@ export function createThreeView({
     geometry.userData.roughLod = zoneResults.map((zone) => zone.lod);
     geometry.userData.roughBorderPositions = roughBorderPositions;
     geometry.userData.roughLodZoneCount = zoneResults.length;
-    geometry.userData.roughLodStitchCount = internalEdges.size;
+    geometry.userData.roughLodStitchCount = seamSpans.length;
     geometry.userData.roughSubdivisionTriangleCount = zoneResults.reduce(
       (sum, zone) => sum + zone.lod.estimatedTriangles,
       0,
