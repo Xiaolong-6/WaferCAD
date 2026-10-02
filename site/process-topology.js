@@ -3,6 +3,7 @@ import {
   difference,
   intersection,
   isEmpty,
+  lineIntervalsInMulti,
   multiBounds,
   unionGeometries,
 } from './vector-geometry.js';
@@ -126,6 +127,112 @@ export function visibleSurfaceGroups(model, { face = 'front', clip = null } = {}
   return [...groups.values()].flatMap(({ geoms, ...group }) =>
     safeUnionParts(geoms).map((geom) => ({ ...group, geom })),
   );
+}
+
+export function extrusionGroupsFromTopology(model, clip = null) {
+  const groups = new Map();
+  for (const region of model?.regions || []) {
+    const geom = clippedRegionGeometry(region, clip);
+    if (isEmpty(geom)) continue;
+    for (const segment of region.stack || []) {
+      const key = JSON.stringify([segment.layerId, segment.z0, segment.z1]);
+      if (!groups.has(key)) groups.set(key, { ...segment, geoms: [] });
+      groups.get(key).geoms.push(geom);
+    }
+  }
+  return [...groups.values()].map(({ geoms, ...segment }) => ({
+    ...segment,
+    polys: unionGeometries(geoms),
+  }));
+}
+
+export function sectionColumnsFromTopology(model, a, b) {
+  const columns = [];
+  for (const region of model?.regions || []) {
+    for (const [t0, t1] of lineIntervalsInMulti(a, b, region.geom)) {
+      columns.push({
+        t0,
+        t1,
+        stack: (region.stack || []).map((segment) => ({
+          ...segment,
+          frontSurface: segment.frontSurface ? { ...segment.frontSurface } : undefined,
+          backSurface: segment.backSurface ? { ...segment.backSurface } : undefined,
+        })),
+      });
+    }
+  }
+  return columns;
+}
+
+export function sectionSlicesFromTopology(model, a, b) {
+  const slices = [];
+  for (const column of sectionColumnsFromTopology(model, a, b)) {
+    for (let index = 0; index < column.stack.length; index++) {
+      const segment = column.stack[index],
+        below = column.stack[index - 1] || null,
+        above = column.stack[index + 1] || null;
+      slices.push({
+        ...segment,
+        t0: column.t0,
+        t1: column.t1,
+        below: below ? { ...below } : null,
+        above: above ? { ...above } : null,
+      });
+    }
+  }
+  return slices;
+}
+
+export function materialSolidsFromTopology(model, clip = null) {
+  const layers = new Map();
+  for (const item of extrusionGroupsFromTopology(model, clip)) {
+    if (!layers.has(item.layerId)) layers.set(item.layerId, []);
+    layers.get(item.layerId).push(item);
+  }
+
+  return [...layers].map(([layerId, items]) => {
+    const events = new Map();
+    for (const item of items) {
+      for (const [z, kind] of [
+        [item.z0, 'start'],
+        [item.z1, 'end'],
+      ]) {
+        if (!events.has(z)) events.set(z, { start: [], end: [] });
+        events.get(z)[kind].push(item);
+      }
+    }
+
+    const levels = [...events.keys()].sort((a, b) => a - b),
+      active = new Set(),
+      slabs = [];
+    for (let index = 0; index < levels.length - 1; index++) {
+      const z0 = levels[index],
+        z1 = levels[index + 1],
+        event = events.get(z0);
+      for (const item of event.end) active.delete(item);
+      for (const item of event.start) active.add(item);
+      const polys = unionGeometries([...active].map((item) => item.polys));
+      slabs.push({ z0, z1, polys });
+    }
+
+    const caps = [];
+    for (let index = 0; index < slabs.length; index++) {
+      const slab = slabs[index];
+      for (const [z, normal, neighbor] of [
+        [slab.z0, -1, slabs[index - 1]],
+        [slab.z1, 1, slabs[index + 1]],
+      ]) {
+        const polys = difference(slab.polys, neighbor?.polys || []);
+        if (!isEmpty(polys)) caps.push({ z, normal, polys });
+      }
+    }
+
+    return {
+      layerId,
+      slabs: slabs.filter((slab) => !isEmpty(slab.polys)),
+      caps,
+    };
+  });
 }
 
 export function exposedLayerIdsFromTopology(model, area = model?.boundary, face = 'front') {
