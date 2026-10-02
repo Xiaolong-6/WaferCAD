@@ -9,6 +9,8 @@ import {
 } from './vector-geometry.js';
 
 export const TOPOLOGY_EPSILON_UM = 1e-9;
+export const INTERFACE_EPSILON_UM = 1e-8;
+export const DEFAULT_COVERAGE_CRACK_TOLERANCE_UM = 1e-4;
 
 export function stackSurfaceSegment(stack, face = 'front') {
   if (!stack?.length) return null;
@@ -253,7 +255,7 @@ export function materialInterfaceGroups(model, { clip = null } = {}) {
     for (let index = 0; index < stack.length - 1; index++) {
       const lower = stack[index],
         upper = stack[index + 1];
-      if (Math.abs(lower.z1 - upper.z0) > TOPOLOGY_EPSILON_UM) continue;
+      if (Math.abs(lower.z1 - upper.z0) > INTERFACE_EPSILON_UM) continue;
       const z = (lower.z1 + upper.z0) / 2,
         lowerAppearance = cloneAppearance(lower.frontSurface),
         upperAppearance = cloneAppearance(upper.backSurface),
@@ -338,10 +340,10 @@ export function appearanceSurfaceGroupsFromTopology(model, clip = null) {
         below = stack[index - 1] || null,
         above = stack[index + 1] || null,
         frontBuried = Boolean(
-          above && Math.abs(above.z0 - segment.z1) <= TOPOLOGY_EPSILON_UM,
+          above && Math.abs(above.z0 - segment.z1) <= INTERFACE_EPSILON_UM,
         ),
         backBuried = Boolean(
-          below && Math.abs(below.z1 - segment.z0) <= TOPOLOGY_EPSILON_UM,
+          below && Math.abs(below.z1 - segment.z0) <= INTERFACE_EPSILON_UM,
         ),
         frontAppearance =
           segment.frontSurface?.kind === 'rough'
@@ -428,7 +430,7 @@ export function classifyCoverageVoids(
   model,
   {
     clip = model?.boundary,
-    crackTolerance = 1e-4,
+    crackTolerance = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM,
   } = {},
 ) {
   const all = uncoveredDomain(model, clip),
