@@ -4,7 +4,7 @@
 
 The active product is entirely under `site/`.
 
-Do not add runtime dependencies on the archived Python backend or the archived static client.
+Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
 ## Local run
 
@@ -30,14 +30,14 @@ npm run check
 
 Available commands:
 
-- `npm run lint` — ESLint over the active JavaScript only; `legacy/` and vendored code are excluded.
+- `npm run lint` — ESLint over the active JavaScript only; vendored code is excluded.
 - `npm run format` — Prettier rewrite for the active application and current documentation.
 - `npm run format:check` — CI formatting gate for new/refactored project-IO/schema code and current docs.
 - `npm test` — vector/GDS/project-schema smoke tests plus focused regression tests for XY units, GDS error handling, project files, snapshots, surface morphology, Implant clipping, palette behavior, and material boundaries.
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced.
 
-UI orchestration that does not own geometry lives under `site/controllers/`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, and similar DOM coordination out of the main editor module when they can be expressed through narrow callbacks.
+UI orchestration that does not own geometry lives under `site/controllers/`. Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
 
 ## Deployment
 
@@ -67,15 +67,12 @@ There is no application build step.
 18. Snapshots are independent immutable workspace state; snapshot records must not recursively contain snapshots.
 19. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
-## Legacy code
-
-Everything under `legacy/` is archival reference. It is not part of the deployment or active test surface. Do not reintroduce legacy APIs merely for compatibility.
 
 ## Source style
 
 Prettier 3.9.9 and ESLint 10.11.0 are development dependencies. New code should not add multi-statement compressed handlers. Large event handlers should be moved into named functions or focused modules instead of continuing the earlier single-file compression style. Controller extraction must preserve the canonical model/view contracts; do not move geometry semantics merely to reduce file size.
 
-The formatter ignores `legacy/` and `site/vendor/`. Vendored code must not be reformatted locally.
+The formatter ignores `site/vendor/`. Vendored code must not be reformatted locally.
 
 ## CI gates
 
