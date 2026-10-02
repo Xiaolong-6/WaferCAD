@@ -33,7 +33,7 @@ Region
 
 X, Y and Z are physical geometry stored internally in micrometres. The UI has one global display/input-unit layer (nm / µm / mm) for all three axes.
 
-The model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. This is sufficient for the current Deposit, Extend, Etch, Directional, and Conformal workflows without introducing a full arbitrary-solid B-rep kernel.
+The stored model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. Runtime Process Geometry Kernel v2 derives a unified surface topology from that canonical model, so Process, Section, and 3D agree on exposed faces, buried material interfaces, true voids, numerical cracks, and genuine vertical walls without introducing a full arbitrary-solid B-rep kernel.
 
 ## Modules
 
@@ -61,9 +61,13 @@ Owns Process panel presentation state, exposed Extend target refresh, input norm
 
 Owns the synchronized Canvas 2D drawing path for Mask, Main, and Section A–B. It consumes canonical model/view state through narrow getters and reuses `model-view-geometry.js` plus the shared rough-surface profile field. Keeping rendering here prevents display-only morphology, Implant gradients, viewport drawing, and Section visibility aids from accumulating in the application composition root.
 
+### `site/process-topology.js`
+
+Owns Process Geometry Kernel v2: exposed horizontal faces, buried material interfaces, Rough/Pyramid appearance ownership, true-void vs numerical-crack classification, Conformal material-wall/void-wall targets, Section columns/slices, and the exact-Z slab/cap topology consumed by 3D. It is a pure derived layer over the canonical region-stack model and is never serialized. See [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md).
+
 ### `site/model.js`
 
-Owns the region-stack model and geometry semantics:
+Owns the canonical region-stack model and process mutation semantics. Surface/void/wall classification is delegated to `process-topology.js`:
 
 - base creation;
 - stable layer IDs;
@@ -86,7 +90,7 @@ Owns explicit A/B handle interaction, fixed CSS-pixel targets, grab offsets, poi
 
 ### `site/model-view-geometry.js`
 
-Derives Section material contours, same-material/same-height Main surface groups, rough appearance-boundary groups, clipped Implant fragments/solids, and 3D material boundaries from the canonical region-stack model. Rough appearance groups include exposed faces and inherited buried interfaces so adjacent materials can share one visual heightfield without changing the ideal stack; the derived group metadata marks buried interfaces explicitly for 3D closure decisions. Exact-Z slabs union each material footprint; only footprint differences produce horizontal faces and border lines. Computation partitions are not visible interfaces. ROI clipping leaves the model unchanged.
+Acts as the stable view adapter over Process Geometry Kernel v2. Section columns/slices, Main exposed-surface groups, Rough/Pyramid appearance boundaries, and 3D material slabs/caps come from `process-topology.js`; this module adds view-specific contours, borders, and Implant fragments/solids. Exact-Z slab topology removes internal horizontal faces and computational partitions. ROI clipping remains derived and never mutates the model.
 
 ### `site/vector-geometry.js`
 
@@ -148,7 +152,7 @@ The operation engine does not infer these from the view.
 
 Directional coverage preserves the selected XY footprint.
 
-Conformal coverage uses one shared coating kernel for Deposit and Extend. Stage 1 coats every exposed material surface in the selected area by the requested physical thickness: Deposit uses a newly created layer id, while Extend reuses the selected target layer id so contiguous material merges during stack normalization. Directional Extend remains narrower and only thickens locations where the target layer is already exposed. Conformal Extend still requires the target to be exposed somewhere in the selected area before it can be continued. Stage 2 re-reads the newly coated surface, offsets genuine step boundaries outward by the same physical distance, and fills the vertical sidewall interval with the same layer id.
+Conformal coverage uses one shared coating kernel for Deposit and Extend. Stage 1 coats topology-v2 exposed horizontal faces in the selected area by the requested physical thickness: Deposit uses a newly created layer id, while Extend reuses the selected target layer id so contiguous material merges during stack normalization. Directional Extend remains narrower and only thickens locations where the target layer is already exposed. Conformal Extend still requires the target to be exposed somewhere in the selected area before it can be continued. Stage 2 re-reads the newly coated source faces, constructs local edge bands, and asks topology v2 to classify only genuine `material-wall` and `void-wall` targets. Same-height computational partitions never become walls. Sub-grid `numerical-crack` voids are healed before true-void classification.
 
 Etch performs physical vertical subtraction and does not accept a coverage mode. The optional Surface mode can attach render-only Stochastic Rough or Pyramid morphology to the newly exposed face, with Normal/Inverted polarity. That appearance metadata does not modify the canonical Z stack. Supported material-geometry fixtures and the through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
 
@@ -170,7 +174,7 @@ The renderer is event-driven: it renders on model/view changes and while OrbitCo
 
 ### Section A–B
 
-Intersects the A–B line with every region polygon, then draws each region stack over the resulting line intervals. Rough/Pyramid boundaries sample the same morphology field used by 3D, so the cross-section is the reference profile for displaced surface rendering. Implant appears as a clipped gradient band whose outer boundary follows the current exposed morphology. Main and Section have vector SVG exporters. Mask export additionally supports GDSII and OASIS through `site/layout-export.js`; File/Draw source, Cell/Layer filters, alignment transform, and Mask ROI are resolved before serialization so SVG/GDS/OAS represent the same export intent. All four scientific views support an in-page maximize/restore inspection state; this state is display-only and is not persisted in the project.
+Consumes topology-v2 Section columns/slices, which intersect the A–B line with canonical region polygons and preserve the same material intervals used by 3D slabs/caps. Rough/Pyramid boundaries sample the same morphology field used by 3D, so the cross-section is the reference profile for displaced surface rendering. Implant appears as a clipped gradient band whose outer boundary follows the current exposed morphology. Main and Section have vector SVG exporters. Mask export additionally supports GDSII and OASIS through `site/layout-export.js`; File/Draw source, Cell/Layer filters, alignment transform, and Mask ROI are resolved before serialization so SVG/GDS/OAS represent the same export intent. All four scientific views support an in-page maximize/restore inspection state; this state is display-only and is not persisted in the project.
 
 ## Units
 
