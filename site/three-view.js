@@ -1,7 +1,7 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
 import {
   appearanceSurfaceGroups,
-  implantSurfaceGroups,
+  implantSolids,
   materialSolids,
   solidBorders,
 } from './model-view-geometry.js';
@@ -252,6 +252,25 @@ export function createThreeView({
     const center = new THREE.Vector3();
     geometry.boundingBox?.getCenter(center);
     return center;
+  }
+
+  function shearImplantGeometry(geometry, implant) {
+    const positions = geometry.getAttribute('position'),
+      tangent = Math.tan(((Number(implant.tilt) || 0) * Math.PI) / 180);
+    if (!positions || Math.abs(tangent) < 1e-12) return geometry;
+    for (let index = 0; index < positions.count; index++) {
+      const z = positions.getZ(index),
+        depth = Math.max(
+          0,
+          implant.face === 'front' ? implant.sourceZ - z : z - implant.sourceZ,
+        );
+      positions.setX(index, positions.getX(index) + tangent * depth);
+    }
+    positions.needsUpdate = true;
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    return geometry;
   }
 
   function geometryFromSidewallRing(closed, z0, z1, isHole = false) {
@@ -554,31 +573,58 @@ export function createThreeView({
     updateRoughLod();
     updateTransparentOrder();
 
-    // Implant is a structural annotation. Keep it above material transparency
-    // surfaces without turning it into a material solid or concentration field.
-    for (const implant of implantSurfaceGroups(model, clip)) {
-      const normal = implant.face === 'front' ? 1 : -1,
-        epsilon = Math.max(1e-5, Math.abs(implant.thickness || 0) * 1e-4),
-        capZ = implant.z + normal * epsilon,
-        solid = { slabs: [], caps: [{ z: capZ, normal, polys: implant.polys }] },
-        geometry = geometryFromSolid(solid),
-        material = new THREE.MeshStandardMaterial({
+    // Implant remains a non-material annotation, but it is rendered as the
+    // surviving volume inside the current material geometry. Subsequent etches
+    // therefore remove the overlay instead of leaving a historical surface cap.
+    for (const implant of implantSolids(model, clip)) {
+      const implantState = {
+          opacity: 0.18,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+        },
+        bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
+        bodyMaterial = new THREE.MeshStandardMaterial({
           color: implant.color || '#D65A6F',
-          roughness: 0.62,
+          roughness: 0.7,
           metalness: 0,
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.48,
+          opacity: implantState.opacity,
+          depthTest: false,
           depthWrite: false,
-          polygonOffset: true,
-          polygonOffsetFactor: -4,
-          polygonOffsetUnits: -4,
         }),
-        mesh = new THREE.Mesh(geometry, material);
-      mesh.name = implant.name || implant.implantId || 'Implant';
-      mesh.renderOrder = 50000;
-      group.add(mesh);
+        body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState);
+      if (body) body.name = implant.name || implant.implantId || 'Implant';
 
+      const outerNormal = implant.face === 'front' ? 1 : -1,
+        capGeometry = shearImplantGeometry(
+          geometryFromSolid({
+            slabs: [],
+            caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
+          }),
+          implant,
+        ),
+        capState = {
+          opacity: 0.3,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+        },
+        capMaterial = createSurfaceMaterial(
+          { color: implant.color || '#D65A6F' },
+          capState,
+          implant.surfaceAppearance,
+          1,
+        );
+      addPlanarUv(capGeometry, implant.surfaceAppearance?.featureSize || 1);
+      const cap = addSurfaceMesh(
+        capGeometry,
+        capMaterial,
+        capState,
+        implant.surfaceAppearance,
+      );
+      if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
     }
 
     stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
