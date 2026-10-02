@@ -203,14 +203,21 @@ export function surfaceAppearance(segment, face = 'front') {
 function cloneAppearance(appearance) {
   return appearance ? { ...appearance } : null;
 }
-function normalizedRoughSurface(surface, processRevision = 0) {
+function normalizedRoughSurface(surface, processRevision = 0, etchDepth = null) {
   if (surface?.kind !== 'rough') return null;
   const featureSize = Math.max(1e-6, Number(surface.featureSize) || 0.5),
     amplitude = Math.max(1e-6, Number(surface.amplitude) || featureSize),
     seed = Number.isInteger(surface.seed)
       ? Math.max(0, surface.seed)
       : ((Math.max(1, processRevision) * 2654435761) >>> 0);
-  return { kind: 'rough', featureSize, amplitude, seed, geometryMode: 'ideal' };
+  return {
+    kind: 'rough',
+    featureSize,
+    amplitude,
+    seed,
+    geometryMode: 'ideal',
+    ...(Number.isFinite(etchDepth) ? { etchDepth } : {}),
+  };
 }
 function withSurfaceAppearance(stack, face, appearance) {
   if (!stack?.length) return stack;
@@ -399,9 +406,23 @@ function applyOperationImpl(
   model,
   { type, name, targetLayerId, thickness, face = 'front', area, growth = 'direct', surface },
 ) {
-  const amount = Math.max(1e-5, Number(thickness) || 0),
-    appearance =
-      type === 'etch' ? normalizedRoughSurface(surface, (model.processRevision || 0) + 1) : null;
+  const amount = Math.max(1e-5, Number(thickness) || 0);
+  if (type === 'etch' && surface?.kind === 'rough') {
+    const roughHeight = Number(surface.amplitude);
+    if (!(roughHeight > 0)) {
+      return { changed: false, error: 'Rough Height must be greater than zero.' };
+    }
+    if (roughHeight > amount + 1e-9) {
+      return {
+        changed: false,
+        error: 'Rough Height cannot exceed Etch Depth.',
+      };
+    }
+  }
+  const appearance =
+    type === 'etch'
+      ? normalizedRoughSurface(surface, (model.processRevision || 0) + 1, amount)
+      : null;
   let active = intersection(area, model.boundary);
   if (isEmpty(active)) return { changed: false };
   if (!hasMaterial(model)) {
