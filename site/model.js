@@ -13,6 +13,7 @@ import {
 import {
   classifyCoverageVoids,
   conformalWallTargets,
+  DEFAULT_COVERAGE_CRACK_TOLERANCE_UM,
   exposedLayerIdsFromTopology,
   exposedSurfaceGroups,
   regionSurfaceFaces,
@@ -547,7 +548,7 @@ function packDisjointBands(bands, maxBatchSize = 8) {
   return batches.map((batch) => batch.geom);
 }
 
-const COVERAGE_CRACK_TOLERANCE_UM = 1e-4; // 0.1 nm, the persistence precision.
+const COVERAGE_CRACK_TOLERANCE_UM = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM;
 
 function uncoveredGeometryRaw(model) {
   return uncoveredDomain(model, model.boundary);
