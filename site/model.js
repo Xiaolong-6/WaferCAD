@@ -487,11 +487,18 @@ function conformalRingBands(geom, amount) {
 
 function uncoveredGeometry(model) {
   let uncovered = cloneGeom(model.boundary);
-  for (const region of model.regions) {
-    if (isEmpty(uncovered)) break;
-    uncovered = difference(uncovered, region.geom);
+  try {
+    for (const region of model.regions) {
+      if (isEmpty(uncovered)) break;
+      uncovered = difference(uncovered, region.geom);
+    }
+    return uncovered;
+  } catch {
+    // Void coating is an extension of the core conformal pass. If a pathological
+    // imported partition cannot be subtracted reliably, keep coating all
+    // existing exposed material rather than failing the entire deposition.
+    return [];
   }
-  return uncovered;
 }
 
 function addVoidConformalSidewall(model, geom, layerId, face, source) {
