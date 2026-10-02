@@ -826,9 +826,20 @@
       <div id="processTaskStage" class="process-task-stage">Preparing worker…</div>
       <button id="processTaskAbortBtn" class="compact-btn" type="button">Abort</button>
     </div>
+    <div id="workspaceConflictDialog" class="workspace-conflict" role="dialog" aria-live="assertive" hidden>
+      <div>
+        <strong>This workspace is open in another tab.</strong>
+        <span>This tab is read-only to prevent autosave conflicts.</span>
+      </div>
+      <button id="workspaceTakeOverBtn" class="compact-btn" type="button">Take over</button>
+    </div>
     <footer id="statusBar" class="statusbar" data-level="passive" role="status">
       <span id="statusText">Ready.</span>
       <span class="status-links">
+        <span id="workspaceSaveStatus" title="Local workspace autosave status">Local save starting…</span>
+        <span aria-hidden="true">·</span>
+        <button id="safeReloadBtn" class="status-action" type="button" hidden>Reload safely</button>
+        <span id="safeReloadSeparator" aria-hidden="true" hidden>·</span>
         <a
           href="https://github.com/Xiaolong-6/WaferCAD"
           target="_blank"
