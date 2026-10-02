@@ -38,7 +38,7 @@ As of this research snapshot, the application combines capabilities that are oft
 
 The present process model is intentionally geometric. Direct changes the exposed local face vertically. Conformal currently adds the same vertical thickness as Direct and then extends the coating around newly exposed step boundaries by the physical coating thickness in XY, filling the adjacent vertical sidewall interval. Etch removes material vertically from the selected face.
 
-This model can represent useful process topology such as steps, trenches, islands, sidewall coatings, front/back processing, and multi-material stacks. It does not currently solve deposition transport, plasma or chemical kinetics, implantation, diffusion, oxidation, stress, shadowing, aspect-ratio-dependent coverage, pinch-off, or arbitrary overhang topology.
+This model can represent useful process topology such as steps, trenches, islands, sidewall coatings, front/back processing, multi-material stacks, render-only surface morphology, and a structural Implant annotation volume. It does not currently solve deposition transport, plasma or chemical kinetics, physical ion-implant transport/concentration, diffusion, activation, oxidation, stress, shadowing, aspect-ratio-dependent coverage, pinch-off, or arbitrary overhang topology.
 
 That boundary is important: WaferCAD is currently a **geometric process emulator**, not a predictive fabrication simulator.
 
