@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 8;
+export const CURRENT_PROJECT_VERSION = 9;
 
 const LIMITS = {
   layers: 10000,
@@ -107,12 +107,15 @@ function validateSurfaceAppearance(appearance, path) {
   assertObject(appearance, path);
   if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
   assertFinite(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
-  const amplitude = assertFinite(appearance.amplitude, `${path}.amplitude`, { min: 1e-12 });
+  const meanHeight = assertFinite(appearance.meanHeight, `${path}.meanHeight`, { min: 1e-12 });
+  assertFinite(appearance.featureCv, `${path}.featureCv`, { min: 0, max: 1 });
+  assertFinite(appearance.heightCv, `${path}.heightCv`, { min: 0, max: 1 });
   assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
+  assertString(appearance.profileId, `${path}.profileId`, { max: 128 });
   if (appearance.etchDepth != null) {
     const depth = assertFinite(appearance.etchDepth, `${path}.etchDepth`, { min: 1e-12 });
-    if (amplitude > depth + 1e-9) {
-      fail(`${path}.amplitude`, 'must not exceed etchDepth.');
+    if (meanHeight > depth + 1e-9) {
+      fail(`${path}.meanHeight`, 'must not exceed etchDepth.');
     }
   }
   if (appearance.geometryMode !== 'ideal') {
@@ -628,6 +631,31 @@ function migrateLegacyMaskRoiToLocal(maskRoi, transform) {
   return maskRoi;
 }
 
+function migrateRoughAppearances(model) {
+  if (!isObject(model)) return;
+  for (const region of model.regions || []) {
+    for (const segment of region.stack || []) {
+      for (const field of ['frontSurface', 'backSurface']) {
+        const appearance = segment[field];
+        if (!isObject(appearance) || appearance.kind !== 'rough') continue;
+        const legacyHeight = Number(appearance.meanHeight ?? appearance.amplitude);
+        if (!(appearance.meanHeight > 0) && legacyHeight > 0) appearance.meanHeight = legacyHeight;
+        if (!(appearance.etchDepth > 0)) {
+          appearance.etchDepth = Math.max(1e-12, Number(appearance.meanHeight) || legacyHeight || 1);
+        }
+        if (!Number.isFinite(appearance.featureCv)) appearance.featureCv = 0.25;
+        if (!Number.isFinite(appearance.heightCv)) appearance.heightCv = 0.25;
+        appearance.featureCv = Math.max(0, Math.min(1, appearance.featureCv));
+        appearance.heightCv = Math.max(0, Math.min(1, appearance.heightCv));
+        if (typeof appearance.profileId !== 'string' || !appearance.profileId) {
+          appearance.profileId = `rough-${Number(appearance.seed) >>> 0}`;
+        }
+        delete appearance.amplitude;
+      }
+    }
+  }
+}
+
 function migrateProjectCore(project) {
   if (!isObject(project)) return project;
   const version = project.version == null ? 1 : project.version;
@@ -660,6 +688,7 @@ function migrateProjectCore(project) {
   if (version < 8 && project.maskRoi != null) {
     project.maskRoi = migrateLegacyMaskRoiToLocal(project.maskRoi, project.maskTransform);
   }
+  if (version < 9) migrateRoughAppearances(project.model);
   project.version = CURRENT_PROJECT_VERSION;
   return project;
 }
