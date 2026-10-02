@@ -476,12 +476,13 @@ try {
     if (name === 'wide') {
       const { applyOperation, createModel } = await import('../site/model.js');
       const { rectMulti } = await import('../site/vector-geometry.js');
-      const roughModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 });
+      const roughModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 }),
+        roughArea = rectMulti(10, 12);
       applyOperation(roughModel, {
         type: 'etch',
         thickness: 1.5,
         face: 'front',
-        area: rectMulti(10, 12),
+        area: roughArea,
         surface: {
           kind: 'rough',
           featureSize: 0.45,
@@ -489,12 +490,23 @@ try {
           geometryMode: 'ideal',
         },
       });
+      applyOperation(roughModel, {
+        type: 'add',
+        name: 'Rough coat',
+        thickness: 0.8,
+        face: 'front',
+        area: roughArea,
+        growth: 'direct',
+      });
       const roughProject = projectForBenchmark({
         model: roughModel,
         section: { a: [-9, 0], b: [9, 0] },
       });
-      await loadProject(page, roughProject, 'wide-rough-section');
-      await capture(page, 'wide-rough-section');
+      await loadProject(page, roughProject, 'wide-rough-buried-interface');
+      await capture(page, 'wide-rough-buried-interface');
+      await page.locator('#sectionMaxBtn').click();
+      await capture(page, 'wide-rough-buried-interface-max');
+      await page.locator('#sectionMaxBtn').click();
       await checkLayout(page);
     }
 
