@@ -34,7 +34,11 @@ import {
   toMicron,
   unitMeta,
 } from './units.js';
-import { roughLod, roughProfileOffsetAtPoint } from './surface-rendering.js';
+import {
+  roughLod,
+  roughProfileOffsetAtPoint,
+  roughVisualBoundsZ,
+} from './surface-rendering.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import {
@@ -837,7 +841,8 @@ function renderSection() {
     { ctx, w, h } = setupCanvas(c);
   ctx.clearRect(0, 0, w, h);
 
-  const [lo, hi] = modelBoundsZ(model),
+  const [idealLo, idealHi] = modelBoundsZ(model),
+    [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
     pad = Math.max(1e-9, (hi - lo) * 0.08),
     z0 = lo - pad,
     z1 = hi + pad,
@@ -897,7 +902,12 @@ function renderSection() {
     ctx.fill('evenodd');
   }
 
-  const roughColumns = sectionColumns(model, section.a, section.b);
+  const roughColumns = sectionColumns(model, section.a, section.b),
+    sectionDx = section.b[0] - section.a[0],
+    sectionDy = section.b[1] - section.a[1],
+    sectionUnitX = sectionDx / sectionSpan,
+    sectionUnitY = sectionDy / sectionSpan;
+
   for (const column of roughColumns) {
     if (
       !column.stack.some(
@@ -930,39 +940,50 @@ function renderSection() {
     }
 
     const roughBoundaries = boundaries.filter((boundary) => boundary.appearance),
-      maxDetail = Math.max(
-        0,
-        ...roughBoundaries.map(
-          (boundary) => roughLod(boundary.appearance.featureSize * xScale).detail,
-        ),
-      ),
-      intervalPhysical = Math.max(1e-12, Math.abs(column.t1 - column.t0) * sectionSpan),
-      minFeature = Math.max(
-        1e-9,
-        Math.min(...roughBoundaries.map((boundary) => boundary.appearance.featureSize)),
-      ),
-      sampleStep =
-        maxDetail > 0.02 ? Math.max(minFeature / 6, intervalPhysical / 1100) : intervalPhysical,
-      samples =
-        maxDetail > 0.02
-          ? Math.max(3, Math.min(1100, Math.ceil(intervalPhysical / sampleStep)))
-          : 2,
+      widthPixels = Math.max(1, Math.abs(mapT(column.t1) - mapT(column.t0))),
+      samples = Math.max(3, Math.min(1100, Math.ceil(widthPixels / 1.5))),
+      profileReliefCache = new Map(),
       profiles = boundaries.map(() => []);
+
+    const filteredRelief = (appearance, worldX, worldY) => {
+      const featurePixels = appearance.featureSize * xScale;
+      if (featurePixels >= 2) return roughProfileOffsetAtPoint(worldX, worldY, appearance);
+
+      // Pixel-footprint filtering is a display anti-aliasing step. The physical
+      // rough profile itself is view-independent; shared profileIds therefore
+      // keep buried interfaces and inherited coatings exactly parallel.
+      const halfPixelPhysical = 0.5 / Math.max(xScale, 1e-12);
+      let sum = 0;
+      for (const offset of [-1, -0.5, 0, 0.5, 1]) {
+        sum += roughProfileOffsetAtPoint(
+          worldX + sectionUnitX * halfPixelPhysical * offset,
+          worldY + sectionUnitY * halfPixelPhysical * offset,
+          appearance,
+        );
+      }
+      return sum / 5;
+    };
 
     for (let sample = 0; sample <= samples; sample++) {
       const fraction = sample / samples,
         t = column.t0 + (column.t1 - column.t0) * fraction,
-        worldX = section.a[0] + (section.b[0] - section.a[0]) * t,
-        worldY = section.a[1] + (section.b[1] - section.a[1]) * t;
+        worldX = section.a[0] + sectionDx * t,
+        worldY = section.a[1] + sectionDy * t;
 
       boundaries.forEach((boundary, boundaryIndex) => {
         let profileZ = boundary.z;
         if (boundary.appearance) {
-          const lod = roughLod(boundary.appearance.featureSize * xScale),
-            amplitude = Math.max(0, Number(boundary.appearance.amplitude) || 0),
-            meanRelief = amplitude * 0.5,
-            fullRelief = roughProfileOffsetAtPoint(worldX, worldY, boundary.appearance),
-            relief = meanRelief + (fullRelief - meanRelief) * lod.detail,
+          const profileId =
+              boundary.appearance.profileId ||
+              `legacy-${boundary.appearance.seed}-${boundary.appearance.featureSize}`,
+            cacheKey = `${profileId}:${sample}`;
+          if (!profileReliefCache.has(cacheKey)) {
+            profileReliefCache.set(
+              cacheKey,
+              filteredRelief(boundary.appearance, worldX, worldY),
+            );
+          }
+          const relief = profileReliefCache.get(cacheKey),
             direction = boundary.sourceFace === 'back' ? -1 : 1;
           profileZ += direction * relief;
         }
@@ -971,13 +992,8 @@ function renderSection() {
     }
 
     const x0 = mapT(column.t0),
-      x1 = mapT(column.t1),
-      paintX = Math.min(x0, x1) - 0.65,
-      paintWidth = Math.abs(x1 - x0) + 1.3;
+      x1 = mapT(column.t1);
 
-    // Recompose the whole local stack over the ideal contours. Rough etch relief is
-    // one-sided from the deepest nominal plane, so no background erase is needed;
-    // avoiding that erase also prevents antialiased white seams at column boundaries.
     for (let segmentIndex = 0; segmentIndex < column.stack.length; segmentIndex++) {
       const segment = column.stack[segmentIndex],
         layer = layerById(model, segment.layerId),
@@ -1016,8 +1032,8 @@ function renderSection() {
         else ctx.lineTo(drawX, y);
       });
       ctx.strokeStyle = shadeColor(layer?.color || '#a4adb6', -60);
-      ctx.globalAlpha = 0.58 + lod.detail * 0.18;
-      ctx.lineWidth = 1.05;
+      ctx.globalAlpha = 0.5 + lod.detail * 0.26;
+      ctx.lineWidth = 1.05 + (1 - lod.detail) * 0.75;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
@@ -1145,6 +1161,8 @@ function renderAll() {
 function resetRoughDraftControls() {
   $('roughFeatureSize').value = formatLengthField(0.5);
   $('roughAmplitude').value = formatLengthField(1);
+  $('roughFeatureCv').value = '25';
+  $('roughHeightCv').value = '25';
 }
 
 function syncBaseControls() {
@@ -1195,7 +1213,9 @@ function updateOperationUI() {
   $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
   const roughEtch = t === 'etch' && $('etchSurfaceMode').value === 'rough';
   $('roughFeatureRow').classList.toggle('hidden', !roughEtch);
+  $('roughFeatureCvRow').classList.toggle('hidden', !roughEtch);
   $('roughHeightRow').classList.toggle('hidden', !roughEtch);
+  $('roughHeightCvRow').classList.toggle('hidden', !roughEtch);
   $('processThicknessLabel').textContent = t === 'etch' ? 'Depth' : 'Z';
 
   if (t === 'grow') updateGrowTargets();
@@ -1212,7 +1232,7 @@ function updateOperationUI() {
   $('operationNote').textContent =
     t === 'etch'
       ? roughEtch
-        ? 'Roughness is render-only; Height is subtractive and cannot exceed Depth.'
+        ? 'Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread.'
         : 'Etch removes material vertically and may create through-holes.'
       : $('growthMode').value === 'conformal'
         ? 'Conformal coverage follows exposed steps and includes sidewalls.'
@@ -1241,16 +1261,37 @@ async function applyOp() {
   let roughSurface = null;
   if (type === 'etch' && $('etchSurfaceMode').value === 'rough') {
     const featureSize = manualMicron($('roughFeatureSize').value),
-      amplitude = manualMicron($('roughAmplitude').value);
+      meanHeight = manualMicron($('roughAmplitude').value),
+      featureCvPercent = Number($('roughFeatureCv').value),
+      heightCvPercent = Number($('roughHeightCv').value),
+      featureCv = featureCvPercent / 100,
+      heightCv = heightCvPercent / 100;
     $('roughFeatureSize').value = formatLengthField(featureSize);
-    $('roughAmplitude').value = formatLengthField(amplitude);
-    if (!(featureSize > 0) || !(amplitude > 0)) {
-      return status('Rough feature size and height must be greater than zero.', 'error');
+    $('roughAmplitude').value = formatLengthField(meanHeight);
+    if (!(featureSize > 0) || !(meanHeight > 0)) {
+      return status('Rough mean Feature XY and Height must be greater than zero.', 'error');
     }
-    if (amplitude > thickness + 1e-9) {
-      return status('Rough Height cannot exceed Etch Depth.', 'error');
+    if (meanHeight > thickness + 1e-9) {
+      return status('Rough mean Height cannot exceed Etch Depth.', 'error');
     }
-    roughSurface = { kind: 'rough', featureSize, amplitude, geometryMode: 'ideal' };
+    if (
+      !Number.isFinite(featureCvPercent) ||
+      !Number.isFinite(heightCvPercent) ||
+      featureCvPercent < 0 ||
+      featureCvPercent > 100 ||
+      heightCvPercent < 0 ||
+      heightCvPercent > 100
+    ) {
+      return status('Rough Feature CV and Height CV must be between 0% and 100%.', 'error');
+    }
+    roughSurface = {
+      kind: 'rough',
+      featureSize,
+      meanHeight,
+      featureCv,
+      heightCv,
+      geometryMode: 'ideal',
+    };
   }
 
   const beforeBase = baseCoverageState(model),
