@@ -501,10 +501,37 @@ export function createThreeView({
       positions = [],
       normals = [],
       roughBorderPositions = [],
-      lods = [];
+      zoneResults = [];
     let maxDepth = 0;
 
-    const pushTriangle = (a, b, c) => {
+    const edgeKey = (p, q) => {
+        const keyPoint = (point) =>
+          `${Number(point[0]).toPrecision(13)},${Number(point[1]).toPrecision(13)}`,
+          a = keyPoint(p),
+          b = keyPoint(q);
+        return a < b ? `${a}|${b}` : `${b}|${a}`;
+      },
+      polygonEdges = (zonePolys) => {
+        const edges = [];
+        for (const poly of zonePolys || []) {
+          for (const closed of poly || []) {
+            const ring =
+              closed.length > 1 &&
+              closed[0][0] === closed.at(-1)[0] &&
+              closed[0][1] === closed.at(-1)[1]
+                ? closed.slice(0, -1)
+                : closed.slice();
+            for (let index = 0; index < ring.length; index++) {
+              const p = ring[index],
+                q = ring[(index + 1) % ring.length];
+              if (Math.hypot(q[0] - p[0], q[1] - p[1]) <= 1e-12) continue;
+              edges.push({ p, q, key: edgeKey(p, q) });
+            }
+          }
+        }
+        return edges;
+      },
+      pushTriangle = (a, b, c) => {
         const faceNormal = triangleNormal(a, b, c);
         positions.push(...a, ...b, ...c);
         normals.push(...faceNormal, ...faceNormal, ...faceNormal);
@@ -517,35 +544,25 @@ export function createThreeView({
           ...roughPointNormal(c, normal, profileNormal, appearance),
         );
       },
-      pushSkirt = (zonePolys, depth) => {
-        if (!closeToIdeal) return;
-        const edgeSegments = 2 ** depth;
-        for (const poly of zonePolys || []) {
-          for (const closed of poly || []) {
-            const ring =
-              closed.length > 1 &&
-              closed[0][0] === closed.at(-1)[0] &&
-              closed[0][1] === closed.at(-1)[1]
-                ? closed.slice(0, -1)
-                : closed.slice();
-            for (let index = 0; index < ring.length; index++) {
-              const p = ring[index],
-                q = ring[(index + 1) % ring.length];
-              for (let step = 0; step < edgeSegments; step++) {
-                const t0 = step / edgeSegments,
-                  t1 = (step + 1) / edgeSegments,
-                  p0 = [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0],
-                  p1 = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1],
-                  base0 = [p0[0], p0[1], z],
-                  base1 = [p1[0], p1[1], z],
-                  top0 = roughPoint(base0, z, profileNormal, appearance),
-                  top1 = roughPoint(base1, z, profileNormal, appearance);
-                pushTriangle(base0, base1, top1);
-                pushTriangle(base0, top1, top0);
-              }
-            }
-          }
-        }
+      pointAlongEdge = (p, q, t) => [
+        p[0] + (q[0] - p[0]) * t,
+        p[1] + (q[1] - p[1]) * t,
+        z,
+      ],
+      roughAlongEdge = (p, q, t) =>
+        roughPoint(pointAlongEdge(p, q, t), z, profileNormal, appearance),
+      coarseApproxAlongEdge = (p, q, t, coarseDepth) => {
+        const segments = 2 ** coarseDepth,
+          scaled = Math.max(0, Math.min(segments, t * segments)),
+          index = Math.min(segments - 1, Math.floor(scaled)),
+          local = Math.max(0, Math.min(1, scaled - index)),
+          a = roughAlongEdge(p, q, index / segments),
+          b = roughAlongEdge(p, q, (index + 1) / segments);
+        return [
+          a[0] + (b[0] - a[0]) * local,
+          a[1] + (b[1] - a[1]) * local,
+          a[2] + (b[2] - a[2]) * local,
+        ];
       };
 
     for (const zone of zones) {
@@ -558,9 +575,10 @@ export function createThreeView({
           ...(zone.lodContext || lodContext),
         }),
         depth = lod.depth,
-        triangles = subdivideTriangles(baseTriangles, depth);
-      lods.push(lod);
+        triangles = subdivideTriangles(baseTriangles, depth),
+        edges = polygonEdges(zone.polys);
       maxDepth = Math.max(maxDepth, depth);
+      zoneResults.push({ ...zone, depth, lod, edges });
 
       for (const [a, b, c] of triangles) {
         pushRoughTriangle(
@@ -569,33 +587,75 @@ export function createThreeView({
           roughPoint(c, z, profileNormal, appearance),
         );
       }
-      pushSkirt(zone.polys, depth);
     }
 
-    // Border ownership follows the physical cap, not the camera-focus split.
-    // Keep artificial LOD seams outside the viewport from becoming visible lines.
-    const borderSegments = 2 ** Math.min(maxDepth, 6);
-    for (const poly of polys || []) {
-      for (const closed of poly || []) {
-        const ring =
-          closed.length > 1 &&
-          closed[0][0] === closed.at(-1)[0] &&
-          closed[0][1] === closed.at(-1)[1]
-            ? closed.slice(0, -1)
-            : closed.slice();
-        for (let index = 0; index < ring.length; index++) {
-          const p = ring[index],
-            q = ring[(index + 1) % ring.length];
-          for (let step = 0; step < borderSegments; step++) {
-            const t0 = step / borderSegments,
-              t1 = (step + 1) / borderSegments,
-              p0 = [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0],
-              p1 = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1],
-              top0 = roughPoint([p0[0], p0[1], z], z, profileNormal, appearance),
-              top1 = roughPoint([p1[0], p1[1], z], z, profileNormal, appearance);
+    const edgeOwners = new Map();
+    zoneResults.forEach((zone, zoneIndex) => {
+      for (const edge of zone.edges) {
+        if (!edgeOwners.has(edge.key)) edgeOwners.set(edge.key, []);
+        edgeOwners.get(edge.key).push({ zoneIndex, edge });
+      }
+    });
+
+    const internalEdges = new Set(
+      [...edgeOwners]
+        .filter(([, owners]) => new Set(owners.map((owner) => owner.zoneIndex)).size > 1)
+        .map(([key]) => key),
+    );
+
+    // Close only true physical cap boundaries back to the ideal process plane.
+    // Internal camera-LOD boundaries are stitched below and never become skirts.
+    if (closeToIdeal) {
+      zoneResults.forEach((zone) => {
+        const edgeSegments = 2 ** zone.depth;
+        for (const edge of zone.edges) {
+          if (internalEdges.has(edge.key)) continue;
+          for (let step = 0; step < edgeSegments; step++) {
+            const t0 = step / edgeSegments,
+              t1 = (step + 1) / edgeSegments,
+              base0 = pointAlongEdge(edge.p, edge.q, t0),
+              base1 = pointAlongEdge(edge.p, edge.q, t1),
+              top0 = roughAlongEdge(edge.p, edge.q, t0),
+              top1 = roughAlongEdge(edge.p, edge.q, t1);
+            pushTriangle(base0, base1, top1);
+            pushTriangle(base0, top1, top0);
             roughBorderPositions.push(...top0, ...top1);
           }
         }
+      });
+    }
+
+    // Stitch mismatched LOD boundaries by connecting the fine sampled heightfield
+    // to the piecewise-linear coarse edge. This removes T-junction cracks without
+    // introducing an ideal-plane curtain at the camera-focus boundary.
+    for (const [key, owners] of edgeOwners) {
+      if (!internalEdges.has(key) || owners.length < 2) continue;
+      const uniqueOwners = owners.filter(
+        (owner, index) => owners.findIndex((entry) => entry.zoneIndex === owner.zoneIndex) === index,
+      );
+      if (uniqueOwners.length < 2) continue;
+
+      const sorted = uniqueOwners.sort(
+          (a, b) => zoneResults[b.zoneIndex].depth - zoneResults[a.zoneIndex].depth,
+        ),
+        fine = sorted[0],
+        coarse = sorted.at(-1),
+        fineDepth = zoneResults[fine.zoneIndex].depth,
+        coarseDepth = zoneResults[coarse.zoneIndex].depth;
+      if (fineDepth <= coarseDepth) continue;
+
+      const p = fine.edge.p,
+        q = fine.edge.q,
+        fineSegments = 2 ** fineDepth;
+      for (let step = 0; step < fineSegments; step++) {
+        const t0 = step / fineSegments,
+          t1 = (step + 1) / fineSegments,
+          fine0 = roughAlongEdge(p, q, t0),
+          fine1 = roughAlongEdge(p, q, t1),
+          coarse0 = coarseApproxAlongEdge(p, q, t0, coarseDepth),
+          coarse1 = coarseApproxAlongEdge(p, q, t1, coarseDepth);
+        pushTriangle(coarse0, coarse1, fine1);
+        pushTriangle(coarse0, fine1, fine0);
       }
     }
 
@@ -603,8 +663,10 @@ export function createThreeView({
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geometry.userData.roughSubdivisionDepth = maxDepth;
-    geometry.userData.roughLod = lods;
+    geometry.userData.roughLod = zoneResults.map((zone) => zone.lod);
     geometry.userData.roughBorderPositions = roughBorderPositions;
+    geometry.userData.roughLodZoneCount = zoneResults.length;
+    geometry.userData.roughLodStitchCount = internalEdges.size;
     return geometry;
   }
 
