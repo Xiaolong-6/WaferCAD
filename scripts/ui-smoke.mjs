@@ -191,6 +191,15 @@ await page.waitForFunction(() =>
   /Etched/.test(document.getElementById('statusText')?.textContent || ''),
 );
 
+assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
+assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+await page.locator('#undoBtn').click();
+assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
+assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+await page.locator('#redoBtn').click();
+assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
+assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI rough project');
 const roughDownloadPromise = page.waitForEvent('download');
