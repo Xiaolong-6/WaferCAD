@@ -286,6 +286,43 @@ async function checkSectionSeams(page, project) {
   );
 }
 
+async function sectionMaterialThickness(page, hexColor, xFraction = 0.5) {
+  return page.evaluate(
+    ({ hexColor, xFraction }) => {
+      const canvas = document.querySelector('#sectionCanvas'),
+        dpr = Math.min(devicePixelRatio || 1, 2),
+        cssWidth = canvas.width / dpr,
+        x = Math.round((27 + (cssWidth - 37) * xFraction) * dpr),
+        data = canvas.getContext('2d').getImageData(x, 0, 1, canvas.height).data,
+        target = [
+          parseInt(hexColor.slice(1, 3), 16),
+          parseInt(hexColor.slice(3, 5), 16),
+          parseInt(hexColor.slice(5, 7), 16),
+        ],
+        matches = [];
+      for (let y = 0; y < canvas.height; y++) {
+        const offset = y * 4,
+          distance =
+            Math.abs(data[offset] - target[0]) +
+            Math.abs(data[offset + 1] - target[1]) +
+            Math.abs(data[offset + 2] - target[2]);
+        if (distance <= 12) matches.push(y);
+      }
+      let best = 0,
+        run = 0,
+        previous = -2;
+      for (const y of matches) {
+        run = y === previous + 1 ? run + 1 : 1;
+        best = Math.max(best, run);
+        previous = y;
+      }
+      const zPxPerUm = Number(canvas.dataset.zPxPerUm);
+      return best / dpr / zPxPerUm;
+    },
+    { hexColor, xFraction },
+  );
+}
+
 async function checkROI(page, name) {
   const benchmark = await processBenchmark('island', 'conformal');
   const project = projectForBenchmark(benchmark);
@@ -514,8 +551,25 @@ try {
       });
       await loadProject(page, roughProject, 'wide-rough-buried-interface');
       await checkSectionSeams(page, roughProject);
+      const normalThickness = await sectionMaterialThickness(page, '#6C8EBF'),
+        normalZMax = await page.locator('#sectionCanvas').getAttribute('data-z-max-um');
+      assert.ok(
+        Math.abs(normalThickness - 0.8) < 0.06,
+        `rough coating physical thickness changed: ${normalThickness} µm`,
+      );
+      assert.ok(Number(normalZMax) >= 4.8 - 1e-9, `rough Auto Z max too small: ${normalZMax}`);
       await capture(page, 'wide-rough-buried-interface');
       await page.locator('#sectionMaxBtn').click();
+      await page.waitForTimeout(120);
+      const maxThickness = await sectionMaterialThickness(page, '#6C8EBF');
+      assert.ok(
+        Math.abs(maxThickness - 0.8) < 0.04,
+        `maximized rough coating thickness changed: ${maxThickness} µm`,
+      );
+      assert.ok(
+        Math.abs(maxThickness - normalThickness) < 0.04,
+        `rough coating thickness depends on zoom: ${normalThickness} vs ${maxThickness} µm`,
+      );
       await capture(page, 'wide-rough-buried-interface-max');
       await page.locator('#sectionMaxBtn').click();
       await page.waitForTimeout(120);
