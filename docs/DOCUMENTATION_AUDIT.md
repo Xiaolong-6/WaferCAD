@@ -11,6 +11,8 @@ This audit reconciles the current feature-branch documentation with the merged c
 - **Implant:** remains a non-material structural annotation. Process no longer asks for a pre-Apply color; Apply assigns from the active 20-color structure palette. Layers owns rename/color/visibility. Main uses a light overlay, Section shows the clipped gradient volume, and 3D shows the surviving internal volume plus its current exposed/cut surface. Later Etch clips existing Implant volume.
 - **Palette contract:** curated and Random structure palettes contain 20 colors and include Implant annotations.
 - **Export/persistence:** render-only morphology and Implant overlays do not redefine the canonical material solid used by physical process geometry. Project validation covers morphology and Implant metadata.
+- **Conformal Extend:** uses the same coating kernel as Conformal Deposit with the existing target layer id; Directional Extend retains the narrower exposed-target-only behavior.
+- **Project Save/Export:** Project is the first/default tab. Save creates a local browser Recovery checkpoint; Export downloads the project file; Recovery can be restored or cleared independently of the current autosave.
 
 ## Documents updated
 
