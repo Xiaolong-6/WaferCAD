@@ -2725,6 +2725,7 @@ summary:focus-visible {
 
 /* Unified view popovers: one visual shell across Main / Mask / 3D / Section. */
 .view-popover-surface {
+  box-sizing: border-box;
   border: 1px solid #cbd3db;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.985);
@@ -2768,3 +2769,10 @@ summary:focus-visible {
   background: #f8fafb;
 }
 
+
+@media (max-width: 900px) {
+  .section-coords-panel {
+    top: auto;
+    width: auto;
+  }
+}
