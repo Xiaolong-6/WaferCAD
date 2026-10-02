@@ -272,6 +272,19 @@ assert.equal(await page.locator('#roughHeightRow').isVisible(), true);
 assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
 assert.equal(await page.locator('#roughHeightCvRow').isVisible(), true);
 assert.match(await page.locator('#operationNote').textContent(), /maximum etch depth/);
+
+await page.locator('#etchSurfaceMode').selectOption('pyramid');
+assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Pyramid XY');
+assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height');
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), false);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), false);
+assert.match(await page.locator('#operationNote').textContent(), /Pyramid XY is the square pitch/);
+await page.locator('#etchSurfaceMode').selectOption('rough');
+assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Feature XY');
+assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height mean');
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), true);
+
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#operationThickness').fill('0.5');
 assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '0.5');
