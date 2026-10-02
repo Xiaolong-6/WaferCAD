@@ -640,9 +640,27 @@ try {
       await page.locator('#threeMaxBtn').click();
       const roughCanvas = page.locator('#threeHost canvas'),
         fitLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
-        fitTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count'));
+        fitTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count')),
+        fitSubdivisionTriangles = Number(
+          await roughCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+        ),
+        fitSceneBudget = Number(
+          await roughCanvas.getAttribute('data-rough-scene-triangle-budget'),
+        ),
+        fitPlanBuilds = Number(
+          await roughCanvas.getAttribute('data-surface-plan-build-count'),
+        ),
+        fitRoughRebuilds = Number(
+          await roughCanvas.getAttribute('data-rough-rebuild-count'),
+        );
       assert.ok(fitLodZones >= 1, `rough LOD diagnostics missing at Fit: ${fitLodZones}`);
       assert.ok(fitTriangles > 0, `rough triangle diagnostics missing at Fit: ${fitTriangles}`);
+      assert.ok(
+        fitSubdivisionTriangles <= fitSceneBudget,
+        `rough subdivision budget exceeded at Fit: ${fitSubdivisionTriangles} > ${fitSceneBudget}`,
+      );
+      assert.ok(fitPlanBuilds >= 1, `surface plan build diagnostics missing: ${fitPlanBuilds}`);
+      assert.ok(fitRoughRebuilds >= 1, `rough rebuild diagnostics missing: ${fitRoughRebuilds}`);
       await capture(page, 'wide-rough-3d-opaque-max');
 
       await roughCanvas.hover();
@@ -650,13 +668,38 @@ try {
       await page.waitForTimeout(320);
       const zoomLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
         zoomStitches = Number(await roughCanvas.getAttribute('data-rough-lod-stitches')),
-        zoomTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count'));
+        zoomTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count')),
+        zoomSubdivisionTriangles = Number(
+          await roughCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+        ),
+        zoomSceneBudget = Number(
+          await roughCanvas.getAttribute('data-rough-scene-triangle-budget'),
+        ),
+        zoomPlanBuilds = Number(
+          await roughCanvas.getAttribute('data-surface-plan-build-count'),
+        ),
+        zoomRoughRebuilds = Number(
+          await roughCanvas.getAttribute('data-rough-rebuild-count'),
+        );
       assert.ok(
         zoomLodZones > fitLodZones,
         `adaptive LOD did not split the zoomed rough surface: ${fitLodZones} -> ${zoomLodZones}`,
       );
       assert.ok(zoomStitches > 0, `adaptive LOD zoom has no seam stitches: ${zoomStitches}`);
       assert.ok(zoomTriangles > 0, `adaptive LOD zoom lost rough triangles: ${zoomTriangles}`);
+      assert.ok(
+        zoomSubdivisionTriangles <= zoomSceneBudget,
+        `rough subdivision budget exceeded after zoom: ${zoomSubdivisionTriangles} > ${zoomSceneBudget}`,
+      );
+      assert.equal(
+        zoomPlanBuilds,
+        fitPlanBuilds,
+        `camera LOD rebuilt the static surface plan: ${fitPlanBuilds} -> ${zoomPlanBuilds}`,
+      );
+      assert.ok(
+        zoomRoughRebuilds > fitRoughRebuilds,
+        `camera zoom did not rebuild rough geometry: ${fitRoughRebuilds} -> ${zoomRoughRebuilds}`,
+      );
       await capture(page, 'wide-rough-3d-adaptive-zoom-max');
       await page.locator('#fit3dBtn').click();
       await page.waitForTimeout(180);
