@@ -124,6 +124,7 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
 let projectName = 'Untitled',
   section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionScaleMode = 'auto',
+  sectionShowBorders = false,
   sectionEditEnabled = false,
   sectionEditor = null,
   history = [],
@@ -917,12 +918,6 @@ function renderMain() {
     canvasPathMulti(ctx, implant.polys, v, back);
     ctx.fillStyle = rgbaColor(implant.color, 0.38);
     ctx.fill('evenodd');
-    if (implant.border) {
-      ctx.setLineDash([5, 4]);
-      ctx.strokeStyle = 'rgba(17,24,32,.9)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
     ctx.restore();
   }
   ctx.save();
@@ -1012,6 +1007,12 @@ function renderSection() {
       }
     ctx.fillStyle = layer.color;
     ctx.fill('evenodd');
+    if (sectionShowBorders) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(17,24,32,.72)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
   }
 
   const roughColumns = sectionColumns(model, section.a, section.b),
@@ -1143,46 +1144,91 @@ function renderSection() {
         if (index === 0) ctx.moveTo(drawX, y);
         else ctx.lineTo(drawX, y);
       });
-      ctx.strokeStyle = shadeColor(layer?.color || '#a4adb6', -60);
-      ctx.globalAlpha = 0.5 + lod.detail * 0.26;
-      ctx.lineWidth = 1.05 + (1 - lod.detail) * 0.75;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.lineCap = 'butt';
-      ctx.lineJoin = 'miter';
+      if (sectionShowBorders) {
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#111820';
+        ctx.globalAlpha = 0.58 + lod.detail * 0.2;
+        ctx.lineWidth = 1.05 + (1 - lod.detail) * 0.75;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+      }
     });
   }
 
   for (const implant of implantSectionBands(model, section.a, section.b)) {
-    const rawDepth = Math.max(0, Number(implant.thickness) || 0),
-      innerZ =
-        implant.face === 'front'
-          ? Math.max(implant.z - rawDepth, Number(implant.zMin))
-          : Math.min(implant.z + rawDepth, Number(implant.zMax)),
-      depth = Math.abs(implant.z - innerZ);
-    if (!(depth > 1e-12)) continue;
+    const rawDepth = Math.max(0, Number(implant.thickness) || 0);
+    if (!(rawDepth > 1e-12)) continue;
 
-    const tiltOffsetX = Math.tan(((Number(implant.tilt) || 0) * Math.PI) / 180) * depth,
-      deltaT = (tiltOffsetX * sectionUnitX) / sectionSpan,
-      outerY = mapZ(implant.z),
-      innerY = mapZ(innerZ),
-      gradient = ctx.createLinearGradient(0, outerY, 0, innerY);
+    const appearance = implant.surfaceAppearance,
+      faceDirection = implant.face === 'back' ? -1 : 1,
+      inwardDirection = -faceDirection,
+      widthPixels = Math.max(1, Math.abs(mapT(implant.t1) - mapT(implant.t0))),
+      samples =
+        appearance?.kind === 'rough'
+          ? Math.max(4, Math.min(400, Math.ceil(widthPixels / 2)))
+          : 1,
+      tiltTangent = Math.tan(((Number(implant.tilt) || 0) * Math.PI) / 180),
+      outerPoints = [],
+      innerPoints = [];
+    let outerZSum = 0,
+      innerZSum = 0,
+      activeSamples = 0;
+
+    for (let sample = 0; sample <= samples; sample++) {
+      const fraction = sample / samples,
+        t = implant.t0 + (implant.t1 - implant.t0) * fraction,
+        worldX = section.a[0] + sectionDx * t,
+        worldY = section.a[1] + sectionDy * t,
+        relief =
+          appearance?.kind === 'rough'
+            ? roughProfileOffsetAtPoint(worldX, worldY, appearance)
+            : 0,
+        outerZ = implant.z + faceDirection * relief,
+        unclippedInnerZ = outerZ + inwardDirection * rawDepth,
+        innerZ =
+          implant.face === 'front'
+            ? Math.max(unclippedInnerZ, Number(implant.zMin))
+            : Math.min(unclippedInnerZ, Number(implant.zMax)),
+        depth = Math.abs(outerZ - innerZ);
+      if (!(depth > 1e-12)) continue;
+
+      const tiltOffsetX = tiltTangent * depth,
+        deltaT = (tiltOffsetX * sectionUnitX) / sectionSpan;
+      outerPoints.push([mapT(t), mapZ(outerZ)]);
+      innerPoints.push([mapT(t + deltaT), mapZ(innerZ)]);
+      outerZSum += outerZ;
+      innerZSum += innerZ;
+      activeSamples++;
+    }
+    if (outerPoints.length < 2 || !activeSamples) continue;
+
+    const gradient = ctx.createLinearGradient(
+      0,
+      mapZ(outerZSum / activeSamples),
+      0,
+      mapZ(innerZSum / activeSamples),
+    );
     gradient.addColorStop(0, rgbaColor(implant.color, 0.72));
     gradient.addColorStop(0.48, rgbaColor(implant.color, 0.4));
     gradient.addColorStop(1, rgbaColor(implant.color, 0.04));
 
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(mapT(implant.t0), outerY);
-    ctx.lineTo(mapT(implant.t1), outerY);
-    ctx.lineTo(mapT(implant.t1 + deltaT), innerY);
-    ctx.lineTo(mapT(implant.t0 + deltaT), innerY);
+    outerPoints.forEach(([x, y], index) => {
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    for (let index = innerPoints.length - 1; index >= 0; index--) {
+      ctx.lineTo(...innerPoints[index]);
+    }
     ctx.closePath();
     ctx.fillStyle = gradient;
     ctx.fill();
-    if (implant.border) {
+    if (sectionShowBorders) {
       ctx.setLineDash([5, 4]);
       ctx.strokeStyle = '#111820';
       ctx.lineWidth = 1;
@@ -1206,7 +1252,14 @@ function renderSection() {
       sy0 = mapZ(slice.z1),
       sy1 = mapZ(slice.z0);
     ctx.fillStyle = layer.color;
-    ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
+    const sideWidth = Math.max(minWidth, sx1 - sx0);
+    ctx.fillRect(sx0, sy0, sideWidth, sy1 - sy0);
+    if (sectionShowBorders) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(17,24,32,.72)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(sx0, sy0, sideWidth, sy1 - sy0);
+    }
   }
 
   ctx.strokeStyle = '#8995a1';
@@ -1227,6 +1280,13 @@ function renderSection() {
     sectionScaleMode === 'auto'
       ? 'Auto: X and Z fit independently. Click for physical 1:1 X:Z scale.'
       : 'Physical 1:1: X and Z use the same px/µm. Click for Auto fit.';
+
+  const borderButton = $('sectionBordersBtn');
+  borderButton.classList.toggle('active', sectionShowBorders);
+  borderButton.setAttribute('aria-pressed', String(sectionShowBorders));
+  borderButton.title = sectionShowBorders
+    ? 'Hide structural borders in Section A–B'
+    : 'Show structural borders in Section A–B';
 
   const scaleLabel =
     sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
@@ -1359,7 +1419,6 @@ function updateOperationUI() {
   $('implantNameRow').classList.toggle('hidden', t !== 'implant');
   $('implantColorRow').classList.toggle('hidden', t !== 'implant');
   $('implantTiltRow').classList.toggle('hidden', t !== 'implant');
-  $('implantBorderRow').classList.toggle('hidden', t !== 'implant');
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
   $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
   $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
@@ -1391,7 +1450,7 @@ function updateOperationUI() {
 
   $('operationNote').textContent =
     t === 'implant'
-      ? 'Experimental structural marker only: mask-selected exposed surfaces are rendered with a user-defined depth and optional geometric tilt.'
+      ? 'Experimental structural marker: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt.'
       : t === 'etch'
         ? roughEtch
           ? 'Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread.'
@@ -1469,7 +1528,6 @@ async function applyOp() {
     }
     params.color = $('implantColor').value;
     params.tilt = tilt;
-    params.border = $('implantBorder').checked;
   } else params.growth = $('growthMode').value;
 
   const taskLabel =
@@ -1573,6 +1631,7 @@ const projectStateController = createProjectStateController({
     roiAnchor,
     section,
     sectionScaleMode,
+    sectionShowBorders,
     planViews,
     xyDisplayUnit,
     activeStructurePalette,
@@ -1601,6 +1660,7 @@ const projectStateController = createProjectStateController({
     section = next.section;
     if (next.projectName) projectName = next.projectName;
     if (next.sectionScaleMode) sectionScaleMode = next.sectionScaleMode;
+    sectionShowBorders = Boolean(next.sectionShowBorders);
     if (next.xyDisplayUnit) xyDisplayUnit = next.xyDisplayUnit;
     if (next.activeStructurePalette) activeStructurePalette = next.activeStructurePalette;
     customStructurePalette = next.customStructurePalette;
@@ -1755,6 +1815,10 @@ const workspaceActions = createWorkspaceActionsController({
   getSectionScaleMode: () => sectionScaleMode,
   setSectionScaleMode: (value) => {
     sectionScaleMode = value;
+  },
+  getSectionShowBorders: () => sectionShowBorders,
+  setSectionShowBorders: (value) => {
+    sectionShowBorders = Boolean(value);
   },
   renderSection,
   getMaskOpacity: () => maskOpacity,
