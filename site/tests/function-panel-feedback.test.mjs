@@ -271,7 +271,8 @@ test('experimental Implant keeps process inputs structural and display styling i
 
 
 test('buried rough interfaces do not create ideal-plane skirts in 3D', () => {
-  assert.match(threeView, /closeToIdeal: !part\.buried/);
+  assert.match(threeView, /closeToIdeal: !cap\.buried/);
+  assert.match(threeView, /buildRenderSurfacePlan\(model, clip\)/);
 });
 
 
