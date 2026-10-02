@@ -37,7 +37,7 @@ Available commands:
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced.
 
-UI orchestration that does not own geometry lives under `site/controllers/`. Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
+UI orchestration that does not own geometry lives under `site/controllers/`. Process input/state and Apply orchestration belong to `process-panel-controller.js`; Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, process-form validation/request assembly, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
 
 ## Deployment
 
