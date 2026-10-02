@@ -132,6 +132,45 @@ assert.equal(Number(await projectHandoffPage.locator('#baseThickness').inputValu
 assert.deepEqual(projectHandoffErrors, []);
 await projectHandoffPage.close();
 
+// Open Example must work even while another tab owns autosave, and the resulting
+// workspace must remain interactive enough to replace the bundled mask.
+const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const exampleErrors = [];
+examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
+examplePage.on('dialog', (dialog) => void dialog.accept());
+await examplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await examplePage.locator('#welcomeExampleBtn').click();
+await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await examplePage.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened Visualization example.',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(
+  await examplePage.locator('.workspace').evaluate((element) => element.inert),
+  false,
+);
+assert.equal(Number(await examplePage.locator('#baseWidth').inputValue()), 100000);
+assert.ok(await examplePage.locator('#maskLayerList .layer-row input:checked').count());
+assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
+await examplePage.locator('#gdsInput').setInputFiles({
+  name: 'example-reimport.oas',
+  mimeType: 'application/octet-stream',
+  buffer: welcomeLayoutBuffer,
+});
+await examplePage.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened example-reimport.oas.',
+  null,
+  { timeout: 30000 },
+);
+assert.ok(await examplePage.locator('#maskLayerList .layer-row').count());
+assert.deepEqual(exampleErrors, []);
+await examplePage.close();
+
 // Settings owns project controls and XY units.
 await page.locator('#settingsTab').click();
 await page.locator('#settingsTools:not([hidden])').waitFor();
@@ -877,7 +916,8 @@ await page.waitForFunction(
 );
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
 
-// Two tabs sharing one browser profile must never write the same local workspace concurrently.
+// Two tabs sharing one browser profile still have one autosave writer, but neither
+// editor is frozen. The non-owner can keep working and explicitly take over saving.
 const safetyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
 const safetyFirst = await safetyContext.newPage();
 const safetySecond = await safetyContext.newPage();
@@ -891,7 +931,7 @@ await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   timeout: 30000,
 });
 await safetyFirst.waitForFunction(
-  () => document.querySelector('.workspace')?.inert === false,
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
   null,
   { timeout: 30000 },
 );
@@ -900,22 +940,25 @@ await safetySecond.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   timeout: 30000,
 });
 await safetySecond.waitForFunction(
-  () => document.querySelector('.workspace')?.inert === true,
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'false',
   null,
   { timeout: 30000 },
 );
+assert.equal(await safetySecond.locator('.workspace').evaluate((element) => element.inert), false);
 assert.equal(await safetySecond.locator('#workspaceConflictDialog').isVisible(), true);
+assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /Autosave paused/);
 await safetySecond.locator('#workspaceTakeOverBtn').click();
 await safetySecond.waitForFunction(
-  () => document.querySelector('.workspace')?.inert === false,
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
   null,
   { timeout: 30000 },
 );
 await safetyFirst.waitForFunction(
-  () => document.querySelector('.workspace')?.inert === true,
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'false',
   null,
   { timeout: 30000 },
 );
+assert.equal(await safetyFirst.locator('.workspace').evaluate((element) => element.inert), false);
 assert.equal(await safetyFirst.locator('#workspaceConflictDialog').isVisible(), true);
 assert.deepEqual(safetyErrors, []);
 await safetyContext.close();
