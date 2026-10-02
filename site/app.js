@@ -917,23 +917,55 @@ function renderSection() {
 
   const roughSlices = sectionSlices(model, section.a, section.b);
   for (const slice of roughSlices) {
-    const layer = layerById(model, slice.layerId);
-    if (!layer) continue;
-
-    for (const [face, appearance, z, interiorZ] of [
-      ['front', slice.frontSurface, slice.z1, slice.z0],
-      ['back', slice.backSurface, slice.z0, slice.z1],
+    for (const [face, appearance, z] of [
+      ['front', slice.frontSurface, slice.z1],
+      ['back', slice.backSurface, slice.z0],
     ]) {
       if (appearance?.kind !== 'rough') continue;
 
       const featurePixels = appearance.featureSize * xScale,
         lod = roughLod(featurePixels),
-        normal = face === 'front' ? 1 : -1,
-        widthPixels = Math.max(1, Math.abs(mapT(slice.t1) - mapT(slice.t0))),
-        sampleStepPixels = Math.max(1.5, Math.min(4, featurePixels / 4 || 1.5)),
-        samples = Math.max(3, Math.min(720, Math.ceil(widthPixels / sampleStepPixels))),
-        thickness = Math.max(1e-9, slice.z1 - slice.z0),
-        minInside = thickness * 0.025,
+        x0 = mapT(slice.t0),
+        x1 = mapT(slice.t1),
+        lowerSegment = face === 'front' ? slice : slice.below,
+        upperSegment = face === 'front' ? slice.above : slice,
+        lowerLayer = lowerSegment ? layerById(model, lowerSegment.layerId) : null,
+        upperLayer = upperSegment ? layerById(model, upperSegment.layerId) : null,
+        lowerColor = lowerLayer?.color || '#fbfcfd',
+        upperColor = upperLayer?.color || '#fbfcfd';
+
+      if (lod.detail <= 0.02) {
+        ctx.beginPath();
+        ctx.moveTo(x0, mapZ(z));
+        ctx.lineTo(x1, mapZ(z));
+        ctx.strokeStyle = shadeColor((lowerLayer || upperLayer)?.color || '#a4adb6', -48);
+        ctx.globalAlpha = 0.62;
+        ctx.lineWidth = 1.25;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
+
+      const intervalPhysical = Math.max(1e-12, Math.abs(slice.t1 - slice.t0) * sectionSpan),
+        feature = Math.max(1e-9, appearance.featureSize),
+        sampleStep = Math.max(feature / 6, intervalPhysical / 900),
+        samples = Math.max(3, Math.min(900, Math.ceil(intervalPhysical / sampleStep))),
+        maxOffset = Math.max(0, appearance.amplitude * 0.5),
+        pixelMarginZ = 1.25 / Math.max(zScale, 1e-12),
+        lowerThickness = lowerSegment
+          ? Math.max(1e-9, lowerSegment.z1 - lowerSegment.z0)
+          : Infinity,
+        upperThickness = upperSegment
+          ? Math.max(1e-9, upperSegment.z1 - upperSegment.z0)
+          : Infinity,
+        lowerLimit = lowerSegment
+          ? lowerSegment.z0 + Math.min(lowerThickness * 0.02, maxOffset * 0.15)
+          : z - maxOffset,
+        upperLimit = upperSegment
+          ? upperSegment.z1 - Math.min(upperThickness * 0.02, maxOffset * 0.15)
+          : z + maxOffset,
+        bandLow = Math.max(lowerSegment?.z0 ?? z - maxOffset - pixelMarginZ, z - maxOffset - pixelMarginZ),
+        bandHigh = Math.min(upperSegment?.z1 ?? z + maxOffset + pixelMarginZ, z + maxOffset + pixelMarginZ),
         profile = [];
 
       for (let index = 0; index <= samples; index++) {
@@ -941,65 +973,37 @@ function renderSection() {
           t = slice.t0 + (slice.t1 - slice.t0) * fraction,
           worldX = section.a[0] + (section.b[0] - section.a[0]) * t,
           worldY = section.a[1] + (section.b[1] - section.a[1]) * t,
-          rawOffset = roughProfileOffsetAtPoint(worldX, worldY, appearance, featurePixels),
-          profileZ =
-            face === 'front'
-              ? Math.max(slice.z0 + minInside, z + normal * rawOffset)
-              : Math.min(slice.z1 - minInside, z + normal * rawOffset);
+          rawZ = z + roughProfileOffsetAtPoint(worldX, worldY, appearance),
+          profileZ = Math.max(lowerLimit, Math.min(upperLimit, rawZ));
         profile.push([mapT(t), mapZ(profileZ)]);
       }
 
-      const x0 = mapT(slice.t0),
-        x1 = mapT(slice.t1),
-        interiorY = mapZ(interiorZ),
-        plotBottom = plotTop + plotHeight;
+      const paintX = Math.min(x0, x1) - 0.75,
+        paintWidth = Math.abs(x1 - x0) + 1.5,
+        bandTopY = mapZ(bandHigh),
+        bandBottomY = mapZ(bandLow);
 
-      if (lod.detail > 0.02) {
-        // Replace the ideal rectangular surface with the actual rendered profile.
-        // The process model remains planar; only the Section renderer changes.
-        ctx.fillStyle = '#fbfcfd';
-        if (face === 'front') {
-          ctx.fillRect(Math.min(x0, x1) - 0.5, plotTop - 1, Math.abs(x1 - x0) + 1, interiorY - plotTop + 1);
-        } else {
-          ctx.fillRect(
-            Math.min(x0, x1) - 0.5,
-            interiorY,
-            Math.abs(x1 - x0) + 1,
-            plotBottom - interiorY + 1,
-          );
-        }
-
-        ctx.beginPath();
-        if (face === 'front') {
-          ctx.moveTo(x0, interiorY);
-          for (const [x, y] of profile) ctx.lineTo(x, y);
-          ctx.lineTo(x1, interiorY);
-        } else {
-          ctx.moveTo(x0, interiorY);
-          ctx.lineTo(x1, interiorY);
-          for (let index = profile.length - 1; index >= 0; index--) {
-            ctx.lineTo(profile[index][0], profile[index][1]);
-          }
-        }
-        ctx.closePath();
-        ctx.fillStyle = layer.color;
-        ctx.fill();
-      }
+      // Paint both sides of one shared physical interface. The nominal process
+      // geometry stays planar; only this narrow visual band is composited.
+      ctx.fillStyle = upperColor;
+      ctx.fillRect(paintX, bandTopY - 0.5, paintWidth, bandBottomY - bandTopY + 1);
 
       ctx.beginPath();
-      const edgeY = mapZ(z);
-      if (lod.detail <= 0.02) {
-        ctx.moveTo(x0, edgeY);
-        ctx.lineTo(x1, edgeY);
-      } else {
-        profile.forEach(([x, y], index) => {
-          if (index === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
-      }
-      ctx.strokeStyle = shadeColor(layer.color, -72);
-      ctx.globalAlpha = 0.55 + lod.detail * 0.35;
-      ctx.lineWidth = 2.1 - lod.detail * 1.05;
+      ctx.moveTo(x0, bandBottomY);
+      for (const [x, y] of profile) ctx.lineTo(x, y);
+      ctx.lineTo(x1, bandBottomY);
+      ctx.closePath();
+      ctx.fillStyle = lowerColor;
+      ctx.fill();
+
+      ctx.beginPath();
+      profile.forEach(([x, y], index) => {
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = shadeColor((lowerLayer || upperLayer)?.color || '#a4adb6', -60);
+      ctx.globalAlpha = 0.72;
+      ctx.lineWidth = 1.05;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
