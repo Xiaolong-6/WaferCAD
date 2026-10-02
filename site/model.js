@@ -327,9 +327,24 @@ function mergeRegions(model, regions) {
   }
   const out = [];
   for (const group of groups.values()) {
-    const geom = unionGeometries(group.geoms);
-    if (isEmpty(geom)) continue;
-    out.push({ id: `region-${model.nextRegionId++}`, geom, stack: group.stack });
+    try {
+      const geom = unionGeometries(group.geoms);
+      if (isEmpty(geom)) continue;
+      out.push({ id: `region-${model.nextRegionId++}`, geom, stack: group.stack });
+    } catch {
+      // Region merging is an optimization, not a semantic requirement. Imported
+      // layouts with many touching curves can defeat polygon-clipping's global
+      // union even though every individual partition is valid. Preserve those
+      // partitions instead of rolling back an otherwise valid process step.
+      for (const geom of group.geoms) {
+        if (isEmpty(geom)) continue;
+        out.push({
+          id: `region-${model.nextRegionId++}`,
+          geom: cloneGeom(geom),
+          stack: group.stack.map((segment) => ({ ...segment })),
+        });
+      }
+    }
   }
   return out;
 }
@@ -383,7 +398,7 @@ function mutateStack(stack, { type, layerId, targetLayerId, amount, face, appear
   return addLayerToSurface(stack, layerId, amount, face);
 }
 
-function splitByArea(model, area, mutator) {
+function splitByArea(model, area, mutator, merge = true) {
   const next = [];
   for (const region of model.regions) {
     const hit = intersection(region.geom, area);
@@ -398,7 +413,7 @@ function splitByArea(model, area, mutator) {
       if (stack.length) next.push({ id: `region-${model.nextRegionId++}`, geom: hit, stack });
     }
   }
-  model.regions = mergeRegions(model, next);
+  model.regions = merge ? mergeRegions(model, next) : next;
 }
 
 function exposedLayerPatches(model, active, face, layerId) {
@@ -493,7 +508,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   let uncovered = baseCoverageState(model) === 'full' ? [] : uncoveredGeometry(model);
 
   // Stage 1: coat every exposed horizontal surface in the selected area.
-  splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face));
+  splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face), false);
 
   // Stage 2: coat genuine vertical boundaries. Work ring-by-ring instead of
   // buffering the union of an entire height patch. This keeps polygon clipping
@@ -508,8 +523,11 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       // The symmetric ring band touches both sides of an edge. The stack test
       // below only accepts the physically lower (front) / higher (back) side,
       // so partition edges and the source interior cannot create fake material.
-      splitByArea(model, band, (stack) =>
-        conformalSidewallStack(stack, layerId, face, source.z),
+      splitByArea(
+        model,
+        band,
+        (stack) => conformalSidewallStack(stack, layerId, face, source.z),
+        false,
       );
 
       // A true void has no stack for splitByArea() to mutate. Add only the
