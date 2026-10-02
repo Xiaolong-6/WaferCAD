@@ -107,6 +107,65 @@ async function checkLayout(page) {
   assert.deepEqual(problems, []);
 }
 
+async function checkCompactProcessLayout(page, name) {
+  await page.locator('#operationTab').click();
+  await page.locator('[data-process-mode="etch"]').click();
+  await page.locator('#etchSurfaceMode').selectOption('rough');
+
+  const metrics = await page.evaluate(() => {
+    const panel = document.querySelector('#operationTools'),
+      feature = document.querySelector('#roughFeatureRow').getBoundingClientRect(),
+      featureCv = document.querySelector('#roughFeatureCvRow').getBoundingClientRect(),
+      height = document.querySelector('#roughHeightRow').getBoundingClientRect(),
+      heightCv = document.querySelector('#roughHeightCvRow').getBoundingClientRect(),
+      labels = [...panel.querySelectorAll('.param-field > span:first-child')].map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { text: element.textContent.trim(), height: rect.height, width: rect.width };
+      });
+    return {
+      overflow: panel.scrollWidth - panel.clientWidth,
+      featureTop: feature.top,
+      featureCvTop: featureCv.top,
+      heightTop: height.top,
+      heightCvTop: heightCv.top,
+      labels,
+    };
+  });
+
+  assert.ok(metrics.overflow <= 1, `${name}: Process panel horizontal overflow ${metrics.overflow}px`);
+  if (name === 'phone') {
+    assert.ok(
+      Math.abs(metrics.featureTop - metrics.featureCvTop) > 4,
+      'phone: Feature fields should collapse to one column',
+    );
+    assert.ok(
+      Math.abs(metrics.heightTop - metrics.heightCvTop) > 4,
+      'phone: Height fields should collapse to one column',
+    );
+  } else {
+    assert.ok(
+      Math.abs(metrics.featureTop - metrics.featureCvTop) <= 2,
+      `${name}: Feature XY and CV are not aligned in one row`,
+    );
+    assert.ok(
+      Math.abs(metrics.heightTop - metrics.heightCvTop) <= 2,
+      `${name}: Height mean and CV are not aligned in one row`,
+    );
+    for (const label of metrics.labels) {
+      assert.ok(label.height <= 16, `${name}: wrapped parameter label ${label.text}`);
+    }
+  }
+
+  await capture(page, `${name}-tab-operation-rough`);
+
+  await page.locator('[data-process-mode="implant"]').click();
+  const implantOverflow = await page.locator('#operationTools').evaluate(
+    (panel) => panel.scrollWidth - panel.clientWidth,
+  );
+  assert.ok(implantOverflow <= 1, `${name}: Implant panel horizontal overflow ${implantOverflow}px`);
+  await capture(page, `${name}-tab-operation-implant`);
+}
+
 async function checkPopover(page, selector, panelId) {
   const popup = await page.locator(selector).boundingBox();
   const panel = await page.locator(panelId).boundingBox();
@@ -430,6 +489,7 @@ try {
       await capture(page, `${name}-tab-${tab}`);
       await checkLayout(page);
     }
+    await checkCompactProcessLayout(page, name);
     await page.locator('#snapshotsTab').click();
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
