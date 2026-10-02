@@ -25,22 +25,38 @@ export function extrusionGroups(model, clip = null) {
   }));
 }
 
-export function sectionSlices(model, a, b) {
-  const slices = [];
+export function sectionColumns(model, a, b) {
+  const columns = [];
   for (const region of model.regions) {
     for (const [t0, t1] of lineIntervalsInMulti(a, b, region.geom)) {
-      for (let index = 0; index < region.stack.length; index++) {
-        const segment = region.stack[index],
-          below = region.stack[index - 1] || null,
-          above = region.stack[index + 1] || null;
-        slices.push({
+      columns.push({
+        t0,
+        t1,
+        stack: region.stack.map((segment) => ({
           ...segment,
-          t0,
-          t1,
-          below: below ? { layerId: below.layerId, z0: below.z0, z1: below.z1 } : null,
-          above: above ? { layerId: above.layerId, z0: above.z0, z1: above.z1 } : null,
-        });
-      }
+          frontSurface: segment.frontSurface ? { ...segment.frontSurface } : undefined,
+          backSurface: segment.backSurface ? { ...segment.backSurface } : undefined,
+        })),
+      });
+    }
+  }
+  return columns;
+}
+
+export function sectionSlices(model, a, b) {
+  const slices = [];
+  for (const column of sectionColumns(model, a, b)) {
+    for (let index = 0; index < column.stack.length; index++) {
+      const segment = column.stack[index],
+        below = column.stack[index - 1] || null,
+        above = column.stack[index + 1] || null;
+      slices.push({
+        ...segment,
+        t0: column.t0,
+        t1: column.t1,
+        below: below ? { ...below } : null,
+        above: above ? { ...above } : null,
+      });
     }
   }
   return slices;
