@@ -9,7 +9,6 @@ import {
 import {
   transformMulti,
 } from './vector-geometry.js';
-import { downloadProject } from './project-io.js';
 import { createThreeView } from './three-view.js';
 import {
   formatLengthInput,
@@ -21,7 +20,6 @@ import {
 } from './units.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
-import { clearWorkspaceState } from './workspace-persistence.js';
 import { createBuildController } from './controllers/build-controller.js';
 import { createFeedbackController } from './controllers/feedback-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
@@ -113,15 +111,6 @@ function status(message, level = 'auto') {
 
 function normalizedProjectName(value = projectName) {
   return String(value ?? '').trim().slice(0, 256) || 'Untitled';
-}
-
-function projectExportFilename() {
-  const stem = normalizedProjectName()
-    .replace(/[<>:"|?*\u0000-\u001f]/g, '-')
-    .replace(/[\\/]/g, '-')
-    .replace(/[. ]+$/g, '')
-    .trim();
-  return `${stem || 'Untitled'}.wafercad`;
 }
 
 function syncProjectNameInput() {
@@ -684,6 +673,18 @@ const projectController = createProjectController({
   fit3d,
   status,
   onProjectChanged: scheduleWorkspacePersistence,
+  normalizedProjectName,
+  getProjectName: () => projectName,
+  setProjectName: (value) => {
+    projectName = value;
+  },
+  syncProjectNameInput,
+  scheduleWorkspacePersistence,
+  resetProjectState,
+  resetRoughDraftControls,
+  clearRoiDrawingMode,
+  clearMaskRoiDrawingMode: () => maskRoiController.clearDrawingMode(),
+  buildProjectSnapshot,
 });
 const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
   projectController;
@@ -961,53 +962,7 @@ function bindUi() {
   mainCanvasController.bind();
   workspacePersistenceController.bind();
 
-  $('projectNameInput').oninput = (event) => {
-    projectName = String(event.target.value ?? '').slice(0, 256);
-    scheduleWorkspacePersistence();
-  };
-  $('projectNameInput').onchange = () => {
-    projectName = normalizedProjectName();
-    $('projectNameInput').value = projectName;
-    scheduleWorkspacePersistence();
-  };
-
-  $('newProjectBtn').onclick = () => {
-    if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
-    void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
-    resetProjectState();
-    resetRoughDraftControls();
-    clearRoiDrawingMode();
-    maskRoiController.clearDrawingMode();
-    snapshotManager.clear();
-    syncBaseControls();
-    renderAll();
-    renderSnapshots();
-    fit3d();
-    status('New empty project.');
-  };
-
-  $('exportProjectBtn').onclick = () => {
-    try {
-      projectName = normalizedProjectName();
-      syncProjectNameInput();
-      downloadProject(buildProjectSnapshot(true), projectExportFilename());
-      status(`Exported ${projectExportFilename()}.`);
-    } catch (error) {
-      console.error(error);
-      status(`Export failed: ${error.message}`, 'error');
-    }
-  };
-
-  $('openProjectInput').onchange = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (!globalThis.confirm('Open project will replace the current workspace. Continue?')) {
-      event.target.value = '';
-      return;
-    }
-    await openProjectFile(file);
-    event.target.value = '';
-  };
+  projectController.bind();
 }
 
 planRenderers = createPlanRenderers({
