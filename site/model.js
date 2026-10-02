@@ -206,15 +206,27 @@ function cloneAppearance(appearance) {
 function normalizedRoughSurface(surface, processRevision = 0, etchDepth = null) {
   if (surface?.kind !== 'rough') return null;
   const featureSize = Math.max(1e-6, Number(surface.featureSize) || 0.5),
-    amplitude = Math.max(1e-6, Number(surface.amplitude) || featureSize),
+    meanHeight = Math.max(
+      1e-6,
+      Number(surface.meanHeight ?? surface.amplitude) || featureSize,
+    ),
+    featureCv = Math.max(0, Math.min(1, Number(surface.featureCv) || 0)),
+    heightCv = Math.max(0, Math.min(1, Number(surface.heightCv) || 0)),
     seed = Number.isInteger(surface.seed)
       ? Math.max(0, surface.seed)
-      : ((Math.max(1, processRevision) * 2654435761) >>> 0);
+      : ((Math.max(1, processRevision) * 2654435761) >>> 0),
+    profileId =
+      typeof surface.profileId === 'string' && surface.profileId
+        ? surface.profileId
+        : `rough-${Math.max(1, processRevision)}-${seed >>> 0}`;
   return {
     kind: 'rough',
     featureSize,
-    amplitude,
+    meanHeight,
+    featureCv,
+    heightCv,
     seed,
+    profileId,
     geometryMode: 'ideal',
     ...(Number.isFinite(etchDepth) ? { etchDepth } : {}),
   };
@@ -408,14 +420,22 @@ function applyOperationImpl(
 ) {
   const amount = Math.max(1e-5, Number(thickness) || 0);
   if (type === 'etch' && surface?.kind === 'rough') {
-    const roughHeight = Number(surface.amplitude);
+    const roughHeight = Number(surface.meanHeight ?? surface.amplitude),
+      featureCv = Number(surface.featureCv ?? 0),
+      heightCv = Number(surface.heightCv ?? 0);
     if (!(roughHeight > 0)) {
-      return { changed: false, error: 'Rough Height must be greater than zero.' };
+      return { changed: false, error: 'Rough mean Height must be greater than zero.' };
     }
     if (roughHeight > amount + 1e-9) {
       return {
         changed: false,
-        error: 'Rough Height cannot exceed Etch Depth.',
+        error: 'Rough mean Height cannot exceed Etch Depth.',
+      };
+    }
+    if (!(featureCv >= 0 && featureCv <= 1) || !(heightCv >= 0 && heightCv <= 1)) {
+      return {
+        changed: false,
+        error: 'Rough CV values must be between 0% and 100%.',
       };
     }
   }
