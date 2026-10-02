@@ -2,13 +2,8 @@ import { layerById, modelBoundsZ } from '../model.js';
 import { sectionContours, sectionSlices, surfaceGroups } from '../model-view-geometry.js';
 import { sectorBoundaryPoints } from '../roi-editor.js';
 import { drawMaskGeometry } from '../draw-mask-geometry.js';
-import {
-  bufferPolyline,
-  circleMulti,
-  intersection,
-  isEmpty,
-  rectMulti,
-} from '../vector-geometry.js';
+import { maskRoiWorldGeometry, multiBounds } from '../mask-roi-geometry.js';
+import { bufferPolyline, intersection, isEmpty } from '../vector-geometry.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -155,41 +150,8 @@ export function createExportController({
     return '';
   }
 
-  function maskRoiGeometry(maskRoi) {
-    if (!maskRoi) return null;
-    if (maskRoi.type === 'rect') {
-      const x0 = Math.min(maskRoi.a[0], maskRoi.b[0]),
-        x1 = Math.max(maskRoi.a[0], maskRoi.b[0]),
-        y0 = Math.min(maskRoi.a[1], maskRoi.b[1]),
-        y1 = Math.max(maskRoi.a[1], maskRoi.b[1]);
-      return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
-    }
-    if (maskRoi.type === 'circle') {
-      return circleMulti(maskRoi.r * 2, maskRoi.r * 2, 128, maskRoi.c[0], maskRoi.c[1]);
-    }
-    return null;
-  }
-
-  function maskRoiBounds(maskRoi) {
-    if (!maskRoi) return null;
-    if (maskRoi.type === 'rect') {
-      return {
-        minX: Math.min(maskRoi.a[0], maskRoi.b[0]),
-        maxX: Math.max(maskRoi.a[0], maskRoi.b[0]),
-        minY: Math.min(maskRoi.a[1], maskRoi.b[1]),
-        maxY: Math.max(maskRoi.a[1], maskRoi.b[1]),
-      };
-    }
-    return {
-      minX: maskRoi.c[0] - maskRoi.r,
-      maxX: maskRoi.c[0] + maskRoi.r,
-      minY: maskRoi.c[1] - maskRoi.r,
-      maxY: maskRoi.c[1] + maskRoi.r,
-    };
-  }
-
-  function maskView(width, height, maskRoi) {
-    const bounds = maskRoiBounds(maskRoi);
+  function maskView(width, height, roiGeometry) {
+    const bounds = multiBounds(roiGeometry);
     if (!bounds) return viewport(width, height, 'mask');
     const spanX = Math.max(1e-12, bounds.maxX - bounds.minX),
       spanY = Math.max(1e-12, bounds.maxY - bounds.minY),
@@ -268,8 +230,12 @@ export function createExportController({
       rect = canvas.getBoundingClientRect(),
       width = Math.max(2, rect.width),
       height = Math.max(2, rect.height),
-      roiGeom = maskRoiGeometry(maskRoi),
-      view = maskView(width, height, maskRoi),
+      roiTransform =
+        maskSourceMode === 'file'
+          ? maskTransform
+          : { x: 0, y: 0, scale: 1, rotation: 0 },
+      roiGeom = maskRoi ? maskRoiWorldGeometry(maskRoi, roiTransform, 128) : null,
+      view = maskView(width, height, roiGeom),
       map = (point) => worldToCanvas(point, view),
       cells = selectedOptions('maskExportCells'),
       layers = selectedOptions('maskExportLayers');
