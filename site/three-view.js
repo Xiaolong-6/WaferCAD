@@ -692,35 +692,46 @@ export function createThreeView({
     try {
       const prepared = prepareAdaptiveRoughTasks();
       for (const task of prepared.tasks) {
-        const cap = task.cap,
-          geometry = geometryFromRoughCap(THREE, {
-            z: cap.z,
-            normal: cap.normal,
-            polys: cap.polys,
-            appearance: cap.appearance,
-            closeToIdeal: !cap.buried,
-            profileNormal: cap.profileNormal,
-            lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
-            lodZones: task.zones,
-          }),
-          material = createSurfaceMaterial(task.layer, task.state, cap.appearance),
-          mesh = addSurfaceMesh(
-            geometry,
-            material,
-            task.state,
-            cap.appearance,
-            cap.buried ? 12 : 0,
-            true,
-          );
-        if (mesh) roughOwnedObjects.add(mesh);
+        const cap = task.cap;
+        let geometry = geometryFromRoughCap(THREE, {
+          z: cap.z,
+          normal: cap.normal,
+          polys: cap.polys,
+          appearance: cap.appearance,
+          closeToIdeal: task.closeToIdeal ?? !cap.buried,
+          profileNormal: cap.profileNormal,
+          lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
+          lodZones: task.zones,
+        });
+        if (task.implant) geometry = shearImplantGeometry(geometry, task.implant);
+
+        const material = createSurfaceMaterial(task.layer, task.state, cap.appearance);
+        if (task.polygonOffset) {
+          material.polygonOffset = true;
+          material.polygonOffsetFactor = -1;
+          material.polygonOffsetUnits = -1;
+        }
+        const mesh = addSurfaceMesh(
+          geometry,
+          material,
+          task.state,
+          cap.appearance,
+          task.sortBias ?? (cap.buried ? 12 : 0),
+          true,
+        );
+        if (mesh) {
+          roughOwnedObjects.add(mesh);
+          if (task.name) mesh.name = task.name;
+        }
 
         if (
+          task.includeBorders !== false &&
           context.borders &&
           !cap.buried &&
           geometry.userData.roughBorderPositions?.length
         ) {
           addBorderPositions(geometry.userData.roughBorderPositions, {
-            order: 100010 + cap.solidIndex,
+            order: 100010 + (cap.solidIndex || 0),
             opacity: context.opacity,
             adaptiveRough: true,
           });
@@ -861,7 +872,15 @@ export function createThreeView({
           continue;
         }
 
-        roughTasks.push({ cap, layer, state });
+        roughTasks.push({
+          kind: 'material',
+          cap,
+          layer,
+          state,
+          sortBias: cap.buried ? 12 : 0,
+          closeToIdeal: !cap.buried,
+          includeBorders: true,
+        });
       }
 
       for (const bucket of smoothCaps.values()) {
@@ -926,40 +945,55 @@ export function createThreeView({
         const outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
-          capGeometry = shearImplantGeometry(
-            appearance
-              ? geometryFromRoughCap(THREE, {
-                  z: implant.outerZ,
-                  normal: outerNormal,
-                  polys: implant.polys,
-                  appearance,
-                  closeToIdeal: false,
-                  profileNormal: outerNormal,
-                  lodContext: lodContextFor(model, clip, implant.polys, implant.outerZ),
-                  lodZones: roughLodZones(model, clip, implant.polys, implant.outerZ),
-                })
-              : geometryFromSolid({
-                  slabs: [],
-                  caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
-                }),
-            implant,
-          ),
           capState = {
             opacity: opacity * 0.3,
             transparent: true,
             depthTest: true,
             depthWrite: false,
           },
-          capMaterial = createSurfaceMaterial(
-            { color: implant.color || '#D65A6F' },
-            capState,
-            appearance,
-          );
-        capMaterial.polygonOffset = true;
-        capMaterial.polygonOffsetFactor = -1;
-        capMaterial.polygonOffsetUnits = -1;
-        const cap = addSurfaceMesh(capGeometry, capMaterial, capState, appearance, 40);
-        if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
+          capName = `${implant.name || implant.implantId || 'Implant'} surface`;
+
+        if (appearance) {
+          roughTasks.push({
+            kind: 'implant',
+            cap: {
+              type: 'cap',
+              layerId: implant.layerId || implant.implantId || 'implant',
+              z: implant.outerZ,
+              normal: outerNormal,
+              polys: implant.polys,
+              appearance,
+              profileNormal: outerNormal,
+              buried: false,
+              solidIndex: 0,
+            },
+            layer: { color: implant.color || '#D65A6F' },
+            state: capState,
+            sortBias: 40,
+            closeToIdeal: false,
+            includeBorders: false,
+            implant,
+            polygonOffset: true,
+            name: capName,
+          });
+        } else {
+          const capGeometry = shearImplantGeometry(
+              geometryFromSolid({
+                slabs: [],
+                caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
+              }),
+              implant,
+            ),
+            capMaterial = createSurfaceMaterial(
+              { color: implant.color || '#D65A6F' },
+              capState,
+            );
+          capMaterial.polygonOffset = true;
+          capMaterial.polygonOffsetFactor = -1;
+          capMaterial.polygonOffsetUnits = -1;
+          const cap = addSurfaceMesh(capGeometry, capMaterial, capState, null, 40);
+          if (cap) cap.name = capName;
+        }
       }
 
       rebuildAdaptiveRoughGeometry();
