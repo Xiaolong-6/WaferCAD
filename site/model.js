@@ -1,5 +1,5 @@
 import {
-  bufferMulti,
+  bufferPolyline,
   circleMulti,
   cloneGeom,
   difference,
@@ -401,21 +401,6 @@ function splitByArea(model, area, mutator) {
   model.regions = mergeRegions(model, next);
 }
 
-function pointOnBoundary(boundary, point, tolerance = 0.05) {
-  for (const poly of boundary)
-    for (const ring of poly)
-      for (let i = 1; i < ring.length; i++) {
-        const [ax, ay] = ring[i - 1],
-          [bx, by] = ring[i],
-          dx = bx - ax,
-          dy = by - ay,
-          len2 = dx * dx + dy * dy || 1,
-          t = Math.max(0, Math.min(1, ((point[0] - ax) * dx + (point[1] - ay) * dy) / len2));
-        if (Math.hypot(point[0] - (ax + t * dx), point[1] - (ay + t * dy)) < tolerance) return true;
-      }
-  return false;
-}
-
 function exposedLayerPatches(model, active, face, layerId) {
   const groups = new Map();
 
@@ -452,39 +437,90 @@ function conformalSidewallStack(stack, layerId, face, sourceZ) {
   return normalizeStack(out);
 }
 
+function conformalRingBands(geom, amount) {
+  const bands = [];
+  for (const poly of geom || [])
+    for (const ring of poly || []) {
+      if (!Array.isArray(ring) || ring.length < 4) continue;
+      const points = ring.slice(0, -1);
+      try {
+        const band = bufferPolyline(points, amount, 20, true);
+        if (!isEmpty(band)) bands.push(band);
+      } catch {
+        // Complex imported rings can make a large polygon union numerically
+        // fragile. Fall back to local edge capsules so one bad ring cannot
+        // cancel an otherwise valid conformal process.
+        for (let index = 1; index < ring.length; index++) {
+          const band = bufferPolyline([ring[index - 1], ring[index]], amount, 12, false);
+          if (!isEmpty(band)) bands.push(band);
+        }
+      }
+    }
+  return bands;
+}
+
+function uncoveredGeometry(model) {
+  let uncovered = cloneGeom(model.boundary);
+  for (const region of model.regions) {
+    if (isEmpty(uncovered)) break;
+    uncovered = difference(uncovered, region.geom);
+  }
+  return uncovered;
+}
+
+function addVoidConformalSidewall(model, geom, layerId, face, sourceZ) {
+  if (isEmpty(geom) || !layerId || sourceZ == null) return;
+  const [lo, hi] = modelBoundsZ(model),
+    z0 = face === 'front' ? lo : sourceZ,
+    z1 = face === 'front' ? sourceZ : hi;
+  if (!(z1 > z0 + 1e-9)) return;
+  model.regions.push({
+    id: `region-${model.nextRegionId++}`,
+    geom,
+    stack: [{ layerId, z0, z1, role: 'conformal-sidewall' }],
+  });
+}
+
 function applyConformalCoating(model, active, layerId, amount, face) {
   // Deposit and Extend share one conformal kernel. Extend simply reuses the
   // selected layer id, so contiguous material merges during stack normalization.
-  // Stage 1 coats every exposed surface in the selected area by the requested
-  // physical thickness.
+  //
+  // Keep the pre-coating void domain. A conformal film is allowed to occupy
+  // empty trench / through-hole space next to an exposed wall; ordinary
+  // splitByArea() only visits existing material regions.
+  let uncovered = uncoveredGeometry(model);
+
+  // Stage 1: coat every exposed horizontal surface in the selected area.
   splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face));
 
-  // Stage 2 re-reads the resulting coating surfaces and fills the vertical
-  // sidewall interval around genuine steps by the same physical XY offset.
-  const sources = exposedLayerPatches(model, active, face, layerId),
-    coversWholeBoundary = isEmpty(difference(model.boundary, active)),
-    sidewallSources =
-      coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources,
-    keepSidewallSegment = coversWholeBoundary
-      ? (a, b) =>
-          !(
-            pointOnBoundary(model.boundary, a) &&
-            pointOnBoundary(model.boundary, b) &&
-            pointOnBoundary(model.boundary, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])
-          )
-      : null;
+  // Stage 2: coat genuine vertical boundaries. Work ring-by-ring instead of
+  // buffering the union of an entire height patch. This keeps polygon clipping
+  // local and avoids the large output-ring failures seen on imported wafers with
+  // many circular/nested features.
+  const sources = exposedLayerPatches(model, active, face, layerId);
+  for (const source of sources) {
+    for (const rawBand of conformalRingBands(source.geom, amount)) {
+      const band = intersection(rawBand, model.boundary);
+      if (isEmpty(band)) continue;
 
-  for (const source of sidewallSources) {
-    const expanded = intersection(
-        bufferMulti(source.geom, amount, 32, keepSidewallSegment),
-        model.boundary,
-      ),
-      sidewallBand = difference(expanded, source.geom);
-    if (isEmpty(sidewallBand)) continue;
+      // The symmetric ring band touches both sides of an edge. The stack test
+      // below only accepts the physically lower (front) / higher (back) side,
+      // so partition edges and the source interior cannot create fake material.
+      splitByArea(model, band, (stack) =>
+        conformalSidewallStack(stack, layerId, face, source.z),
+      );
 
-    splitByArea(model, sidewallBand, (stack) =>
-      conformalSidewallStack(stack, layerId, face, source.z),
-    );
+      // A true void has no stack for splitByArea() to mutate. Add only the
+      // still-uncovered part of this local sidewall band, then remove it from
+      // the void domain so later source levels cannot overlap it.
+      if (!isEmpty(uncovered)) {
+        const voidBand = intersection(band, uncovered);
+        if (!isEmpty(voidBand)) {
+          addVoidConformalSidewall(model, voidBand, layerId, face, source.z);
+          uncovered = difference(uncovered, voidBand);
+        }
+      }
+    }
   }
 }
 
