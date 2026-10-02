@@ -490,7 +490,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // Keep the pre-coating void domain. A conformal film is allowed to occupy
   // empty trench / through-hole space next to an exposed wall; ordinary
   // splitByArea() only visits existing material regions.
-  let uncovered = uncoveredGeometry(model);
+  let uncovered = baseCoverageState(model) === 'full' ? [] : uncoveredGeometry(model);
 
   // Stage 1: coat every exposed horizontal surface in the selected area.
   splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face));
