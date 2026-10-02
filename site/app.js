@@ -43,6 +43,9 @@ import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import {
   clearWorkspaceState,
+  createWorkspaceRecoveryCheckpoint,
+  listWorkspaceRecoveryPoints,
+  loadWorkspaceRecoveryPoint,
   loadWorkspaceState,
   saveWorkspaceState,
 } from './workspace-persistence.js';
@@ -64,6 +67,7 @@ import { createBaseControlsController } from './controllers/base-controls-contro
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
+import { createWorkspaceSessionController } from './controllers/workspace-session-controller.js';
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
 import {
   createEmptyDrawMask,
@@ -149,26 +153,46 @@ function syncProjectNameInput() {
 
 let workspacePersistenceReady = false,
   workspacePersistenceTimer = null,
-  workspacePersistenceWrite = Promise.resolve();
+  workspacePersistenceWrite = Promise.resolve(),
+  workspaceSession = null,
+  workspaceUpdateCommit = '';
+
+function setWorkspaceSaveStatus(text, failed = false) {
+  const host = $('workspaceSaveStatus');
+  if (!host) return;
+  host.textContent = text;
+  host.dataset.failed = failed ? 'true' : 'false';
+}
+
+function savedTimeLabel(date = new Date()) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
 
 function persistWorkspaceNow() {
-  if (!workspacePersistenceReady) return Promise.resolve(false);
+  if (!workspacePersistenceReady || !workspaceSession?.canWrite()) return Promise.resolve(false);
   if (workspacePersistenceTimer != null) {
     clearTimeout(workspacePersistenceTimer);
     workspacePersistenceTimer = null;
   }
   const project = buildProjectSnapshot(true);
+  setWorkspaceSaveStatus('Saving…');
   workspacePersistenceWrite = workspacePersistenceWrite
     .catch(() => {})
-    .then(() => saveWorkspaceState(project));
+    .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
+    .then(() => {
+      setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+      return true;
+    });
   workspacePersistenceWrite.catch((error) => {
+    setWorkspaceSaveStatus('Local save failed', true);
     console.warn('Workspace autosave failed.', error);
   });
   return workspacePersistenceWrite;
 }
 
 function scheduleWorkspacePersistence() {
-  if (!workspacePersistenceReady) return;
+  if (!workspacePersistenceReady || !workspaceSession?.canWrite()) return;
+  setWorkspaceSaveStatus('Saving…');
   if (workspacePersistenceTimer != null) clearTimeout(workspacePersistenceTimer);
   workspacePersistenceTimer = setTimeout(() => {
     workspacePersistenceTimer = null;
@@ -176,10 +200,64 @@ function scheduleWorkspacePersistence() {
   }, 800);
 }
 
+async function refreshRecoveryOptions() {
+  const select = $('workspaceRecoverySelect');
+  const restore = $('workspaceRestoreBtn');
+  if (!select || !restore) return;
+  try {
+    const points = await listWorkspaceRecoveryPoints();
+    select.replaceChildren();
+    if (!points.length) {
+      select.append(new Option('No recovery points', ''));
+      restore.disabled = true;
+      return;
+    }
+    for (const point of points) {
+      const date = new Date(point.updatedAt);
+      const reason = point.reason ? ` · ${point.reason}` : '';
+      const commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
+      select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
+    }
+    restore.disabled = !workspaceSession?.canWrite();
+  } catch (error) {
+    console.warn('Could not list workspace recovery points.', error);
+  }
+}
+
+function syncWorkspaceSessionState({ writable }) {
+  const workspace = document.querySelector('.workspace');
+  const dialog = $('workspaceConflictDialog');
+  if (workspace) workspace.inert = !writable;
+  if (dialog) dialog.hidden = writable;
+  if (!writable) {
+    if (workspacePersistenceTimer != null) {
+      clearTimeout(workspacePersistenceTimer);
+      workspacePersistenceTimer = null;
+    }
+    setWorkspaceSaveStatus('Read-only · another tab is editing');
+    if ($('workspaceRestoreBtn')) $('workspaceRestoreBtn').disabled = true;
+    status('Workspace is active in another tab. This tab is read-only to protect local data.', 'warning');
+  } else if (workspacePersistenceReady) {
+    scheduleWorkspacePersistence();
+    void refreshRecoveryOptions();
+  }
+}
+
 const loadedBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
+workspaceSession = createWorkspaceSessionController({
+  onStateChange: syncWorkspaceSessionState,
+});
+
 const { checkForBuildUpdate, loadBuildCommit } = createBuildController({
   buildVersion: loadedBuildVersion,
   status,
+  onUpdateAvailable: (commit) => {
+    workspaceUpdateCommit = commit;
+    const button = $('safeReloadBtn');
+    const separator = $('safeReloadSeparator');
+    if (button) button.hidden = false;
+    if (separator) separator.hidden = false;
+  },
 });
 
 const sectionControls = createSectionControlsController({
@@ -1647,6 +1725,88 @@ const viewMaximizeController = createViewMaximizeController({
   updateSectionEditor: () => sectionEditor?.update(),
 });
 
+async function restoreSelectedWorkspaceRecovery() {
+  if (!workspaceSession?.canWrite()) {
+    status('This tab is read-only. Take over the workspace before restoring a checkpoint.', 'warning');
+    return;
+  }
+  const key = $('workspaceRecoverySelect')?.value;
+  if (!key) return;
+  if (
+    !globalThis.confirm(
+      'Restore this local recovery checkpoint? The current workspace will be checkpointed first.',
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const current = buildProjectSnapshot(true);
+    await createWorkspaceRecoveryCheckpoint(current, {
+      appCommit: loadedBuildVersion,
+      reason: 'pre-restore',
+    });
+    const recovered = await loadWorkspaceRecoveryPoint(key);
+    if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
+    loadProjectSnapshot(recovered);
+    snapshotManager.importRecords(recovered.snapshots || []);
+    syncBaseControls();
+    maskImportController.syncTransformInputs();
+    renderAll();
+    renderSnapshots();
+    fit3d();
+    await persistWorkspaceNow();
+    await refreshRecoveryOptions();
+    status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
+  } catch (error) {
+    console.error(error);
+    status(`Recovery restore failed: ${error.message}`, 'error');
+  }
+}
+
+async function reloadWorkspaceSafely() {
+  if (!workspaceSession?.canWrite()) {
+    status('This tab is read-only. Update from the tab that owns the workspace.', 'warning');
+    return;
+  }
+  const button = $('safeReloadBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Saving…';
+  }
+
+  try {
+    if (workspacePersistenceTimer != null) {
+      clearTimeout(workspacePersistenceTimer);
+      workspacePersistenceTimer = null;
+    }
+    const project = buildProjectSnapshot(true);
+    setWorkspaceSaveStatus('Saving…');
+    workspacePersistenceWrite = workspacePersistenceWrite
+      .catch(() => {})
+      .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
+      .then(() =>
+        createWorkspaceRecoveryCheckpoint(project, {
+          appCommit: loadedBuildVersion,
+          reason: workspaceUpdateCommit
+            ? `pre-update-${workspaceUpdateCommit.slice(0, 7)}`
+            : 'pre-reload',
+        }),
+      );
+    await workspacePersistenceWrite;
+    setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+    workspaceSession.stop();
+    globalThis.location.reload();
+  } catch (error) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Reload safely';
+    }
+    setWorkspaceSaveStatus('Local save failed', true);
+    status(`Safe reload cancelled: ${error.message}`, 'error');
+  }
+}
+
 function bindUi() {
   bindToolTabs();
   viewPopovers.bind();
@@ -1660,6 +1820,30 @@ function bindUi() {
   drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
+
+  $('workspaceTakeOverBtn').onclick = () => {
+    if (
+      !globalThis.confirm(
+        'Take over editing in this tab? The other tab will become read-only and may contain newer unsaved edits.',
+      )
+    ) {
+      return;
+    }
+    if (workspaceSession.takeOver()) {
+      status('This tab now owns the local workspace.');
+      scheduleWorkspacePersistence();
+      void refreshRecoveryOptions();
+    }
+  };
+  $('safeReloadBtn').onclick = () => {
+    void reloadWorkspaceSafely();
+  };
+  $('workspaceRecoverySelect').onchange = (event) => {
+    $('workspaceRestoreBtn').disabled = !event.target.value || !workspaceSession?.canWrite();
+  };
+  $('workspaceRestoreBtn').onclick = () => {
+    void restoreSelectedWorkspaceRecovery();
+  };
 
   $('projectNameInput').oninput = (event) => {
     projectName = String(event.target.value ?? '').slice(0, 256);
@@ -1735,14 +1919,17 @@ async function initializePersistedWorkspace() {
   } finally {
     workspacePersistenceReady = true;
     scheduleWorkspacePersistence();
+    void refreshRecoveryOptions();
   }
 }
 
+workspaceSession.start();
 bindUi();
 loadBuildCommit();
 window.addEventListener('focus', checkForBuildUpdate);
 window.addEventListener('pagehide', () => {
   void persistWorkspaceNow();
+  workspaceSession.stop();
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkForBuildUpdate();
