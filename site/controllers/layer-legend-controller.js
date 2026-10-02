@@ -21,6 +21,16 @@ const STRUCTURE_PALETTES = {
     '#7FA178',
     '#B7799C',
     '#7590AA',
+    '#5577A8',
+    '#6A9B89',
+    '#C28D42',
+    '#B76570',
+    '#7566A7',
+    '#548FA2',
+    '#8E7459',
+    '#668866',
+    '#9E6284',
+    '#5F7894',
   ],
   airy: [
     '#76A9DC',
@@ -33,6 +43,16 @@ const STRUCTURE_PALETTES = {
     '#9ABD91',
     '#D29ABD',
     '#91A9C2',
+    '#5E97CE',
+    '#6BB6A2',
+    '#DAB75E',
+    '#D78893',
+    '#9685C7',
+    '#72B5C4',
+    '#B89569',
+    '#83A97A',
+    '#C184AA',
+    '#7895B1',
   ],
   warm: [
     '#C77C62',
@@ -45,6 +65,16 @@ const STRUCTURE_PALETTES = {
     '#D1A279',
     '#B78D64',
     '#A76F6F',
+    '#B96850',
+    '#C2844D',
+    '#B99A50',
+    '#92915A',
+    '#A56D60',
+    '#B37589',
+    '#886C61',
+    '#BD8C64',
+    '#A47A51',
+    '#915C5C',
   ],
   cool: [
     '#5F88B5',
@@ -57,6 +87,16 @@ const STRUCTURE_PALETTES = {
     '#8A8DB8',
     '#6397A9',
     '#7B94A6',
+    '#4C76A4',
+    '#4B9193',
+    '#5D81B5',
+    '#5D7295',
+    '#696CA1',
+    '#5A897E',
+    '#628DA7',
+    '#7679A6',
+    '#4F8396',
+    '#677F93',
   ],
 };
 
@@ -88,7 +128,7 @@ function hslHex(h, s, l) {
   );
 }
 
-function randomHarmoniousPalette(count = 10) {
+function randomHarmoniousPalette(count = 20) {
   const seed = Math.random() * 360,
     out = [];
   for (let index = 0; index < count; index++) {
@@ -131,9 +171,14 @@ export function createLayerLegendController({
 
   function applyStructurePalette(palette) {
     let index = 0;
-    for (const layer of getModel().layers) {
+    const model = getModel();
+    for (const layer of model.layers) {
       if (layer.id === 'base') continue;
-      recolorLayer(getModel(), layer.id, palette[index % palette.length]);
+      recolorLayer(model, layer.id, palette[index % palette.length]);
+      index++;
+    }
+    for (const implant of model.implants || []) {
+      recolorImplant(model, implant.id, palette[index % palette.length]);
       index++;
     }
   }
@@ -143,6 +188,16 @@ export function createLayerLegendController({
       index = layers.findIndex((layer) => layer.id === layerId),
       palette = structurePalette();
     if (index >= 0) recolorLayer(getModel(), layerId, palette[index % palette.length]);
+  }
+
+  function colorNewImplant(implantId) {
+    const model = getModel(),
+      layerCount = model.layers.filter((layer) => layer.id !== 'base').length,
+      implantIndex = (model.implants || []).findIndex((implant) => implant.id === implantId),
+      palette = structurePalette();
+    if (implantIndex >= 0) {
+      recolorImplant(model, implantId, palette[(layerCount + implantIndex) % palette.length]);
+    }
   }
 
   function renderLayerLegend() {
@@ -302,37 +357,15 @@ export function createLayerLegendController({
       const main = root.createElement('div');
       main.className = 'legend-row implant-legend-row';
 
-      const visible = root.createElement('input');
-      visible.type = 'checkbox';
-      visible.className = 'legend-visibility';
-      visible.checked = implant.visible !== false;
-      visible.title = visible.checked ? 'Hide implant overlay' : 'Show implant overlay';
-      visible.setAttribute('aria-label', `Toggle visibility for ${implant.name}`);
-      visible.onchange = () => {
-        setImplantVisible(model, implant.id, visible.checked);
-        renderLayerLegend();
-        renderAll();
-      };
-
       const color = root.createElement('button');
       color.type = 'button';
       color.className = 'legend-color-chip implant-gradient-chip';
       color.style.background = `linear-gradient(90deg, ${implant.color} 0%, ${implant.color}26 100%)`;
-      color.title = 'Change implant gradient color';
-
-      const colorInput = root.createElement('input');
-      colorInput.type = 'color';
-      colorInput.className = 'implant-color-input';
-      colorInput.value = implant.color;
-      colorInput.tabIndex = -1;
-      colorInput.oninput = () => {
-        if (!recolorImplant(model, implant.id, colorInput.value)) return;
-        color.style.background = `linear-gradient(90deg, ${colorInput.value} 0%, ${colorInput.value}26 100%)`;
-        renderMain();
-        renderSection();
-        renderThree();
+      color.title = 'Choose implant color from the active palette';
+      color.onclick = () => {
+        setOpenLayerPaletteId(getOpenLayerPaletteId() === implant.id ? null : implant.id);
+        renderLayerLegend();
       };
-      color.onclick = () => colorInput.click();
 
       const name = root.createElement('input');
       name.type = 'text';
@@ -347,16 +380,52 @@ export function createLayerLegendController({
         renderThree();
       };
 
-      const experimental = root.createElement('span');
-      experimental.className = 'experimental-tag implant-exp-tag';
-      experimental.textContent = 'EXP';
-      experimental.title = 'Experimental structural Implant overlay';
+      const visible = root.createElement('input');
+      visible.type = 'checkbox';
+      visible.className = 'legend-visibility';
+      visible.checked = implant.visible !== false;
+      visible.title = visible.checked ? 'Hide implant overlay' : 'Show implant overlay';
+      visible.setAttribute('aria-label', `Toggle visibility for ${implant.name}`);
+      visible.onchange = () => {
+        setImplantVisible(model, implant.id, visible.checked);
+        renderLayerLegend();
+        renderAll();
+      };
 
-      main.append(visible, color, name, experimental, colorInput);
+      main.append(color, name, visible);
       row.append(main);
+
+      if (getOpenLayerPaletteId() === implant.id) {
+        const grid = root.createElement('div');
+        grid.className = 'legend-palette-grid';
+        for (const value of palette) {
+          const chip = root.createElement('button');
+          chip.type = 'button';
+          chip.className = 'legend-palette-chip';
+          chip.style.background = `linear-gradient(90deg, ${value} 0%, ${value}26 100%)`;
+          chip.title = value;
+          chip.onclick = () => {
+            recolorImplant(model, implant.id, value);
+            setOpenLayerPaletteId(null);
+            renderLayerLegend();
+            renderMain();
+            renderSection();
+            renderThree();
+          };
+          grid.append(chip);
+        }
+        row.append(grid);
+      }
+
       host.append(row);
     }
   }
 
-  return { renderLayerLegend, structurePalette, applyStructurePalette, colorNewLayer };
+  return {
+    renderLayerLegend,
+    structurePalette,
+    applyStructurePalette,
+    colorNewLayer,
+    colorNewImplant,
+  };
 }
