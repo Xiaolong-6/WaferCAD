@@ -62,10 +62,8 @@ export function createSectionControlsController({
 
   function setPanelVisible(visible, { create = visible, claim = visible } = {}) {
     const panel = $('sectionCoordsPanel');
-    if (visible) {
-      closeRoiControls();
-      if (claim) claimPopover(panel);
-    }
+    if (visible) closeRoiControls();
+    if (visible && claim) claimPopover(panel);
     panel.hidden = !visible;
     setCreateMode(visible && create);
     syncPanelState();
