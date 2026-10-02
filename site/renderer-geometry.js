@@ -157,10 +157,41 @@ function pointKey(point) {
   return point.map((value) => Number(value).toPrecision(14)).join(',');
 }
 
-function segmentKey2d(a, b) {
-  const pa = pointKey(a);
-  const pb = pointKey(b);
-  return pa < pb ? `${pa}|${pb}` : `${pb}|${pa}`;
+function sidewallLineDescriptor(p, q) {
+  const dx = q[0] - p[0],
+    dy = q[1] - p[1],
+    length = Math.hypot(dx, dy);
+  if (!(length > 1e-12)) return null;
+
+  let ux = dx / length,
+    uy = dy / length;
+  if (ux < -1e-12 || (Math.abs(ux) <= 1e-12 && uy < 0)) {
+    ux = -ux;
+    uy = -uy;
+  }
+
+  const nx = -uy,
+    ny = ux,
+    offset = nx * p[0] + ny * p[1],
+    pT = ux * p[0] + uy * p[1],
+    qT = ux * q[0] + uy * q[1];
+
+  return {
+    ux,
+    uy,
+    nx,
+    ny,
+    offset,
+    t0: Math.min(pT, qT),
+    t1: Math.max(pT, qT),
+    forward: qT >= pT,
+  };
+}
+
+function sidewallLineKey(line) {
+  return [line.ux, line.uy, line.offset]
+    .map((value) => Number(value).toPrecision(13))
+    .join('|');
 }
 
 function ownSidewalls(solids, layerOrder) {
@@ -172,19 +203,22 @@ function ownSidewalls(solids, layerOrder) {
         for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
           const ring = normalizeRing(poly[ringIndex], ringIndex > 0);
           for (let index = 0; index < ring.length; index++) {
-            const p = ring[index];
-            const q = ring[(index + 1) % ring.length];
-            if (Math.hypot(q[0] - p[0], q[1] - p[1]) <= 1e-12) continue;
+            const p = ring[index],
+              q = ring[(index + 1) % ring.length],
+              line = sidewallLineDescriptor(p, q);
+            if (!line) continue;
+
             const part = {
-              layerId: item.layerId,
-              solidIndex,
-              type: 'sidewall',
-              p,
-              q,
-              z0: slab.z0,
-              z1: slab.z1,
-            };
-            const key = segmentKey2d(p, q);
+                layerId: item.layerId,
+                solidIndex,
+                type: 'sidewall',
+                p,
+                q,
+                z0: slab.z0,
+                z1: slab.z1,
+                line,
+              },
+              key = sidewallLineKey(line);
             if (!groups.has(key)) groups.set(key, []);
             groups.get(key).push(part);
           }
@@ -195,46 +229,70 @@ function ownSidewalls(solids, layerOrder) {
 
   const owned = [];
   for (const entries of groups.values()) {
-    const levels = [
-      ...new Set(entries.flatMap((entry) => [entry.z0, entry.z1]).map((z) => zKey(z))),
-    ]
-      .map(Number)
-      .sort((a, b) => a - b);
+    const reference = entries[0].line,
+      tLevels = [...new Set(entries.flatMap((entry) => [entry.line.t0, entry.line.t1]))].sort(
+        (a, b) => a - b,
+      ),
+      pointAt = (t) => [
+        reference.ux * t + reference.nx * reference.offset,
+        reference.uy * t + reference.ny * reference.offset,
+      ];
 
-    for (let index = 0; index < levels.length - 1; index++) {
-      const z0 = levels[index],
-        z1 = levels[index + 1];
-      if (!(z1 > z0 + Z_EPSILON)) continue;
+    for (let tIndex = 0; tIndex < tLevels.length - 1; tIndex++) {
+      const t0 = tLevels[tIndex],
+        t1 = tLevels[tIndex + 1];
+      if (!(t1 > t0 + 1e-12)) continue;
 
-      const covering = entries.filter(
-        (entry) => entry.z0 <= z0 + Z_EPSILON && entry.z1 >= z1 - Z_EPSILON,
+      const xyCovering = entries.filter(
+        (entry) => entry.line.t0 <= t0 + 1e-10 && entry.line.t1 >= t1 - 1e-10,
       );
-      if (!covering.length) continue;
+      if (!xyCovering.length) continue;
 
-      covering.sort((a, b) => {
-        const ai = layerOrder.get(a.layerId) ?? Number.MAX_SAFE_INTEGER;
-        const bi = layerOrder.get(b.layerId) ?? Number.MAX_SAFE_INTEGER;
-        if (ai !== bi) return ai - bi;
-        return String(a.layerId).localeCompare(String(b.layerId));
-      });
+      const zLevels = [...new Set(xyCovering.flatMap((entry) => [entry.z0, entry.z1]))].sort(
+        (a, b) => a - b,
+      );
 
-      const owner = covering[0],
-        interfaceLayerIds = [
-          ...new Set(
-            covering
-              .slice(1)
-              .map((entry) => entry.layerId)
-              .filter((id) => id !== owner.layerId),
-          ),
-        ];
-      owned.push({
-        ...owner,
-        z0,
-        z1,
-        buried: interfaceLayerIds.length > 0,
-        ownership: interfaceLayerIds.length ? 'interface' : 'exterior',
-        interfaceLayerIds,
-      });
+      for (let zIndex = 0; zIndex < zLevels.length - 1; zIndex++) {
+        const z0 = zLevels[zIndex],
+          z1 = zLevels[zIndex + 1];
+        if (!(z1 > z0 + Z_EPSILON)) continue;
+
+        const covering = xyCovering.filter(
+          (entry) => entry.z0 <= z0 + Z_EPSILON && entry.z1 >= z1 - Z_EPSILON,
+        );
+        if (!covering.length) continue;
+
+        covering.sort((a, b) => {
+          const ai = layerOrder.get(a.layerId) ?? Number.MAX_SAFE_INTEGER;
+          const bi = layerOrder.get(b.layerId) ?? Number.MAX_SAFE_INTEGER;
+          if (ai !== bi) return ai - bi;
+          return String(a.layerId).localeCompare(String(b.layerId));
+        });
+
+        const owner = covering[0],
+          interfaceLayerIds = [
+            ...new Set(
+              covering
+                .slice(1)
+                .map((entry) => entry.layerId)
+                .filter((id) => id !== owner.layerId),
+            ),
+          ],
+          a = pointAt(t0),
+          b = pointAt(t1),
+          [p, q] = owner.line.forward ? [a, b] : [b, a];
+
+        owned.push({
+          ...owner,
+          p,
+          q,
+          z0,
+          z1,
+          buried: interfaceLayerIds.length > 0,
+          ownership: interfaceLayerIds.length ? 'interface' : 'exterior',
+          interfaceLayerIds,
+        });
+      }
     }
   }
   return owned;
