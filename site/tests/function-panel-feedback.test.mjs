@@ -169,7 +169,7 @@ test('3D borders are derived from owned surfaces and stay depth-tested', () => {
     threeView,
     /opacity: opacity < 0\.999 \? 0\.62 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/,
   );
-  assert.match(threeView, /if \(borders\) addBorderPositions\(plan\.borderLines\.flat\(2\), 100000\)/);
+  assert.match(threeView, /if \(borders\)[\s\S]*?addBorderPositions\(plan\.borderLines\.flat\(2\), \{[\s\S]*?order: 100000/);
 });
 
 
