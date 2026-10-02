@@ -13,7 +13,8 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
-const { roughLod, roughNoise1D } = await import('./surface-rendering.js');
+const { roughLod, roughNoise1D, roughProfileOffsetAtPoint } =
+  await import('./surface-rendering.js');
 const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
   modelApi;
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
@@ -27,6 +28,15 @@ assert.equal(roughLod(20).micro, 1);
 const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
 assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
+
+const roughAppearance = { featureSize: 0.5, amplitude: 0.8, seed: 42 };
+const roughProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 20);
+assert.equal(
+  roughProfileSample,
+  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 20),
+);
+assert.equal(roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 0), 0);
+assert.ok(Math.abs(roughProfileSample) <= roughAppearance.amplitude / 2 + 1e-12);
 
 const defaults = createModel();
 assert.equal(defaults.width, 100000);
