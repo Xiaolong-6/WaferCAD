@@ -899,64 +899,54 @@ function renderSection() {
 
   const roughColumns = sectionColumns(model, section.a, section.b);
   for (const column of roughColumns) {
-    if (!column.stack.some((segment) => segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough')) {
+    if (
+      !column.stack.some(
+        (segment) => segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough',
+      )
+    ) {
       continue;
     }
 
     const boundaries = [];
     for (let index = 0; index <= column.stack.length; index++) {
       const below = index > 0 ? column.stack[index - 1] : null,
-        above = index < column.stack.length ? column.stack[index] : null,
-        appearance =
-          below?.frontSurface?.kind === 'rough'
-            ? below.frontSurface
-            : above?.backSurface?.kind === 'rough'
-              ? above.backSurface
-              : null,
-        z =
-          index === 0
-            ? column.stack[0].z0
-            : index === column.stack.length
-              ? column.stack.at(-1).z1
-              : below.z1;
-      boundaries.push({ z, appearance });
-    }
-
-    const visibleRough = boundaries
-      .map((boundary, index) => ({
-        ...boundary,
-        index,
-        lod: boundary.appearance
-          ? roughLod(boundary.appearance.featureSize * xScale)
-          : { detail: 0, micro: 0 },
-      }))
-      .filter((boundary) => boundary.appearance && boundary.lod.detail > 0.02);
-
-    if (!visibleRough.length) {
-      for (const boundary of boundaries) {
-        if (boundary.appearance?.kind !== 'rough') continue;
-        ctx.beginPath();
-        ctx.moveTo(mapT(column.t0), mapZ(boundary.z));
-        ctx.lineTo(mapT(column.t1), mapZ(boundary.z));
-        const adjacent =
-          column.stack.find((segment) => Math.abs(segment.z1 - boundary.z) < 1e-9) ||
-          column.stack.find((segment) => Math.abs(segment.z0 - boundary.z) < 1e-9);
-        ctx.strokeStyle = shadeColor(layerById(model, adjacent?.layerId)?.color || '#a4adb6', -48);
-        ctx.globalAlpha = 0.62;
-        ctx.lineWidth = 1.25;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+        above = index < column.stack.length ? column.stack[index] : null;
+      let appearance = null,
+        sourceFace = null;
+      if (below?.frontSurface?.kind === 'rough') {
+        appearance = below.frontSurface;
+        sourceFace = 'front';
+      } else if (above?.backSurface?.kind === 'rough') {
+        appearance = above.backSurface;
+        sourceFace = 'back';
       }
-      continue;
+      const z =
+        index === 0
+          ? column.stack[0].z0
+          : index === column.stack.length
+            ? column.stack.at(-1).z1
+            : below.z1;
+      boundaries.push({ z, appearance, sourceFace });
     }
 
-    const intervalPhysical = Math.max(1e-12, Math.abs(column.t1 - column.t0) * sectionSpan),
+    const roughBoundaries = boundaries.filter((boundary) => boundary.appearance),
+      maxDetail = Math.max(
+        0,
+        ...roughBoundaries.map(
+          (boundary) => roughLod(boundary.appearance.featureSize * xScale).detail,
+        ),
+      ),
+      intervalPhysical = Math.max(1e-12, Math.abs(column.t1 - column.t0) * sectionSpan),
       minFeature = Math.max(
         1e-9,
-        Math.min(...visibleRough.map((boundary) => boundary.appearance.featureSize)),
+        Math.min(...roughBoundaries.map((boundary) => boundary.appearance.featureSize)),
       ),
-      sampleStep = Math.max(minFeature / 6, intervalPhysical / 1100),
-      samples = Math.max(3, Math.min(1100, Math.ceil(intervalPhysical / sampleStep))),
+      sampleStep =
+        maxDetail > 0.02 ? Math.max(minFeature / 6, intervalPhysical / 1100) : intervalPhysical,
+      samples =
+        maxDetail > 0.02
+          ? Math.max(3, Math.min(1100, Math.ceil(intervalPhysical / sampleStep)))
+          : 2,
       profiles = boundaries.map(() => []);
 
     for (let sample = 0; sample <= samples; sample++) {
@@ -966,13 +956,17 @@ function renderSection() {
         worldY = section.a[1] + (section.b[1] - section.a[1]) * t;
 
       boundaries.forEach((boundary, boundaryIndex) => {
-        const visible =
-            boundary.appearance &&
-            roughLod(boundary.appearance.featureSize * xScale).detail > 0.02,
-          offset = visible
-            ? roughProfileOffsetAtPoint(worldX, worldY, boundary.appearance)
-            : 0;
-        profiles[boundaryIndex].push([mapT(t), mapZ(boundary.z + offset)]);
+        let profileZ = boundary.z;
+        if (boundary.appearance) {
+          const lod = roughLod(boundary.appearance.featureSize * xScale),
+            amplitude = Math.max(0, Number(boundary.appearance.amplitude) || 0),
+            meanRelief = amplitude * 0.5,
+            fullRelief = roughProfileOffsetAtPoint(worldX, worldY, boundary.appearance),
+            relief = meanRelief + (fullRelief - meanRelief) * lod.detail,
+            direction = boundary.sourceFace === 'back' ? -1 : 1;
+          profileZ += direction * relief;
+        }
+        profiles[boundaryIndex].push([mapT(t), mapZ(profileZ)]);
       });
     }
 
@@ -981,8 +975,9 @@ function renderSection() {
       paintX = Math.min(x0, x1) - 0.65,
       paintWidth = Math.abs(x1 - x0) + 1.3;
 
-    // Recompose the whole local stack from shared boundary profiles. This removes
-    // region seams and guarantees that adjacent materials meet on exactly one curve.
+    // Recompose the whole local stack from shared physical boundaries. A far-view
+    // rough interface collapses to its mean Z rather than its deepest nominal plane,
+    // so zoom changes detail without changing apparent layer thickness.
     ctx.fillStyle = '#fbfcfd';
     ctx.fillRect(paintX, plotTop - 0.5, paintWidth, plotHeight + 1);
 
@@ -995,7 +990,8 @@ function renderSection() {
 
       ctx.beginPath();
       bottomProfile.forEach(([x, y], index) => {
-        const drawX = index === 0 ? x - 0.65 : index === bottomProfile.length - 1 ? x + 0.65 : x;
+        const drawX =
+          index === 0 ? x - 0.65 : index === bottomProfile.length - 1 ? x + 0.65 : x;
         if (index === 0) ctx.moveTo(drawX, y);
         else ctx.lineTo(drawX, y);
       });
