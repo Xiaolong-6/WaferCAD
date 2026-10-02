@@ -89,14 +89,19 @@ const blockedThreePage = await browser.newPage({ viewport: { width: 1100, height
 const blockedThreeErrors = [];
 blockedThreePage.on('pageerror', (error) => blockedThreeErrors.push(error.message));
 await blockedThreePage.route('https://cdn.jsdelivr.net/**', async (route) => {
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  await new Promise((resolve) => setTimeout(resolve, 12000));
   await route.abort();
 });
 await blockedThreePage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await blockedThreePage.locator('#welcomeEmptyBtn').click();
 await blockedThreePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
-await blockedThreePage.locator('#operationTab').click({ timeout: 1500 });
-await blockedThreePage.locator('#operationTools:not([hidden])').waitFor({ timeout: 1500 });
+await blockedThreePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  null,
+  { timeout: 4000 },
+);
+await blockedThreePage.locator('#operationTab').click({ timeout: 2000 });
+await blockedThreePage.locator('#operationTools:not([hidden])').waitFor({ timeout: 2000 });
 assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
 assert.deepEqual(blockedThreeErrors, []);
 await blockedThreePage.close();
