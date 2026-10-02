@@ -812,6 +812,53 @@ canvas {
   color: #3f4d5a;
   text-decoration: underline;
 }
+.status-action {
+  height: 18px;
+  border: 0;
+  padding: 0 2px;
+  background: transparent;
+  color: #4e6075;
+  font-size: 9.5px;
+  text-decoration: underline;
+}
+.status-action:hover,
+.status-action:focus-visible {
+  background: transparent;
+  color: #273849;
+}
+.workspace-conflict {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  top: 48px;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid #d9b76b;
+  border-radius: 7px;
+  background: #fff9e8;
+  color: #594a2d;
+  box-shadow: 0 4px 18px rgba(38, 45, 52, 0.12);
+  font-size: 11px;
+}
+.workspace-conflict[hidden] {
+  display: none !important;
+}
+.workspace-conflict > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.workspace-conflict strong {
+  font-size: 11.5px;
+}
+.workspace-conflict span {
+  color: #756443;
+}
 
 @media (max-width: 1120px) {
   .workspace {
