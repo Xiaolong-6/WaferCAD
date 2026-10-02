@@ -16,16 +16,15 @@ Inputs:
 - **Area** — Selected mask, Invert mask, or Whole face, with Mask ROI limiting the operation when active.
 - **Depth** — empirical physical depth in the current display unit. Internally stored in µm.
 - **Tilt X** — signed geometric display tilt from the surface normal toward +X, limited to -80°…+80°.
-- **Color** — visualization color for this implant marker.
 Apply records the exposed surface patches intersected by the requested area. It does **not** create a material layer and does not modify the underlying layer stack.
 
 ## Rendering
 
-- **Main**: the implanted surface footprint is overlaid with a translucent implant color.
-- **Section A–B**: the implant is rendered as a color gradient from the outermost tagged surface inward to the empirical depth. Material boundaries do not restart or stop the implant zone. Rough exposed topography is captured at Apply time so the implant starts at the visible outer surface rather than the ideal mean plane. Tilt shifts the inner edge geometrically along the global X direction.
-- **3D**: the tagged exposed surface is shown as a translucent colored overlay.
+- **Main**: the surviving implant footprint is overlaid with a deliberately light translucent color so the underlying structure remains dominant.
+- **Section A–B**: the implant is rendered as a color gradient from the surviving outer boundary inward. Material boundaries do not restart the implant zone. Later Etch operations clip the existing implant volume; they do not regenerate a fresh full-depth implant from the new surface. Rough Etch uses the current rough surface profile for the clipped implant boundary. Tilt shifts the remaining volume geometrically along global X.
+- **3D**: Implant is rendered as a translucent internal volume plus a slightly stronger entry/current-cut surface. The volume is clipped by the current material geometry, so a later Etch removes the corresponding part of the implant and a sufficiently deep Etch removes it completely.
 - **Section Border** is a view-level toggle. When enabled, material boundaries use solid lines and implant boundaries use dashed black lines. Border styling is not stored per implant.
-- **Layers legend** lists implants alongside material layers. Each implant can be renamed, recolored with a gradient swatch, and shown or hidden independently.
+- **Layers legend** lists implants alongside material layers. Each implant can be renamed, shown/hidden, and recolored from the same active structure palette used by material layers. Built-in templates and Random palettes contain 20 colors and Random recolors implants as well as material layers.
 
 The gradient is a visualization convention only. It is not a concentration profile.
 
@@ -58,10 +57,10 @@ This separation prevents an implant from being mistaken for deposited material a
 
 The v1 marker is intentionally lightweight.
 
-- Later Deposit/Extend/Etch operations do not recompute historical implant transport or damage.
-- The stored patch geometry represents the exposed surface state at Apply time. Complex subsequent geometry edits may therefore make an old implant annotation less physically intuitive.
+- Later material operations do not model transport, diffusion, activation, or damage. They only geometrically clip the stored implant volume against the current material structure.
+- The stored patch geometry represents the exposed surface state at Apply time; later deposition does not create new implant above that original volume.
 - Tilt is a single signed X tilt; azimuth is not modeled.
-- 3D shows the tagged surface footprint rather than a volumetric concentration field.
+- 3D is a translucent structural overlay volume, not a volumetric concentration field.
 - Overlapping implants remain separate annotations; no concentration blending is performed.
 
 These limitations are acceptable for the current structural-model scope. Any future physics-aware implementation should be introduced as a separate opt-in model rather than silently changing the meaning of existing implant records.
