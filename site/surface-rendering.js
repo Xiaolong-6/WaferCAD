@@ -56,7 +56,7 @@ function roughNoise2D(x, y, featureSize, seed) {
   return a + (b - a) * sy;
 }
 
-export function roughProfileOffsetAtPoint(x, y, appearance, featurePixels = Infinity) {
+export function roughProfileOffsetAtPoint(x, y, appearance) {
   const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
     amplitude = Math.max(0, Number(appearance?.amplitude) || 0),
     seed = Number(appearance?.seed) >>> 0,
@@ -68,10 +68,7 @@ export function roughProfileOffsetAtPoint(x, y, appearance, featurePixels = Infi
     primary = roughNoise2D(rx, ry, feature, seed),
     fine = roughNoise2D(rx, ry, feature * 0.48, (seed ^ 0x9e3779b9) >>> 0),
     noise = Math.max(-1, Math.min(1, primary * 0.78 + fine * 0.22)),
-    lod = roughLod(featurePixels),
-    mediumStrength = lod.detail * (1 - lod.micro) * 0.35,
-    strength = lod.micro + mediumStrength,
-    offset = noise * amplitude * 0.5 * strength;
+    offset = noise * amplitude * 0.5;
   return Object.is(offset, -0) ? 0 : offset;
 }
 
