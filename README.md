@@ -58,7 +58,6 @@ Rebuilding the base is treated as a reversible operation. If a processed structu
 
 - `site/` — deployed browser application
 - `docs/` — current architecture, usage, and development documentation
-- `legacy/` — selected archived implementation/reference material; not used by the current application
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Local preview
@@ -83,6 +82,10 @@ npm run check
 Project JSON is versioned and migrated before it can replace the current editor state. The current format is **v13**. The **Project** tab opens first; **Save** creates a local browser Recovery checkpoint, while **Export** downloads the `.wafercad` file. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, surface morphology, Implant records, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Earlier formats, including the v6 File/Draw-mask introduction and v12 stochastic-surface format, migrate forward deterministically; v13 adds Pyramid morphology. Repeated snapshot layout/model assets are shared and persisted physical coordinates are normalized to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
+
+## License
+
+WaferCAD is released under the MIT License. See `LICENSE`.
 
 ### Product verification
 

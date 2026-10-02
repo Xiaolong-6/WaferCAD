@@ -30,7 +30,7 @@ const globals = {
 
 export default [
   {
-    ignores: ['legacy/**', 'site/vendor/**'],
+    ignores: ['site/vendor/**'],
   },
   {
     files: ['site/**/*.js', 'site/**/*.mjs'],

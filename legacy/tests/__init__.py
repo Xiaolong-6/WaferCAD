@@ -1,1 +1,0 @@
-"""WaferCAD automated tests."""

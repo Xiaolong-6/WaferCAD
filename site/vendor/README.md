@@ -12,4 +12,3 @@
 
 The UMD bundle is vendored because the deployed WaferCAD site has no build step and the browser geometry kernel needs polygon Boolean operations offline from the application server.
 
-The archived client previously contained an identical copy. That duplicate is intentionally not retained under `legacy/`.
