@@ -52,8 +52,9 @@ export function roughProfileOffsetAtPoint(x, y, appearance, featurePixels = Infi
     noise = Math.max(-1, Math.min(1, primary * 0.78 + fine * 0.22)),
     lod = roughLod(featurePixels),
     mediumStrength = lod.detail * (1 - lod.micro) * 0.35,
-    strength = lod.micro + mediumStrength;
-  return noise * amplitude * 0.5 * strength;
+    strength = lod.micro + mediumStrength,
+    offset = noise * amplitude * 0.5 * strength;
+  return Object.is(offset, -0) ? 0 : offset;
 }
 
 export function roughTextureValue(seed, x, y) {
