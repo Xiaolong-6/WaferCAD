@@ -55,11 +55,11 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
   assert.match(
     threeView,
-    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?render\(\);[\s\S]*?renderer\.render\(scene, camera\)/,
+    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);[\s\S]*?renderer\.render\(scene, camera\)/,
   );
   assert.match(
     threeView,
-    /renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?camera\.updateProjectionMatrix\(\);[\s\S]*?render\(\);/,
+    /renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?camera\.updateProjectionMatrix\(\);[\s\S]*?rebuildAdaptiveRoughGeometry\(\);/,
   );
   assert.match(app, /createThreeView/);
 });
