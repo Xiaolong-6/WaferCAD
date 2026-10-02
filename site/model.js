@@ -5,6 +5,7 @@ import {
   difference,
   intersection,
   isEmpty,
+  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
@@ -523,6 +524,35 @@ function conformalRingBands(geom, amount) {
   return bands;
 }
 
+function packDisjointBands(bands, maxBatchSize = 8) {
+  const batches = [];
+  const overlaps = (a, b) =>
+    !(
+      a.maxX < b.minX - 1e-9 ||
+      b.maxX < a.minX - 1e-9 ||
+      a.maxY < b.minY - 1e-9 ||
+      b.maxY < a.minY - 1e-9
+    );
+
+  for (const band of bands || []) {
+    if (isEmpty(band)) continue;
+    const bounds = multiBounds(band);
+    let batch = batches.find(
+      (candidate) =>
+        candidate.count < maxBatchSize &&
+        candidate.bounds.every((otherBounds) => !overlaps(bounds, otherBounds)),
+    );
+    if (!batch) {
+      batch = { geom: [], bounds: [], count: 0 };
+      batches.push(batch);
+    }
+    batch.geom.push(...cloneGeom(band));
+    batch.bounds.push(bounds);
+    batch.count++;
+  }
+  return batches.map((batch) => batch.geom);
+}
+
 function uncoveredGeometry(model) {
   let uncovered = cloneGeom(model.boundary);
   try {
@@ -577,7 +607,8 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // many circular/nested features.
   const sources = exposedLayerPatches(model, active, face, layerId);
   for (const source of sources) {
-    for (const rawBand of conformalRingBands(source.geom, amount)) {
+    const ringBands = conformalRingBands(source.geom, amount);
+    for (const rawBand of packDisjointBands(ringBands)) {
       const band = intersection(rawBand, model.boundary);
       if (isEmpty(band)) continue;
 
