@@ -1,29 +1,15 @@
 import { parseLayoutFile } from './layout-io.js';
 import {
-  baseCoverageState,
   cloneModel,
   createModel,
-  exposedLayerIds,
-  fullFaceGeometry,
   hasMaterial,
-  layerById,
   surfaceSegment,
   surfaceZ,
 } from './model.js';
 import {
-  bufferPolyline,
-  circleMulti,
-  difference,
-  intersection,
-  isEmpty,
-  rectMulti,
   transformMulti,
-  unionGeometries,
 } from './vector-geometry.js';
-import { downloadProject } from './project-io.js';
 import { createThreeView } from './three-view.js';
-import { sectorBoundaryPoints } from './roi-editor.js';
-import { maskRoiWorldGeometry } from './mask-roi-geometry.js';
 import {
   formatLengthInput,
   formatXY as formatXYValue,
@@ -34,15 +20,6 @@ import {
 } from './units.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
-import {
-  clearWorkspaceRecoveryPoints,
-  clearWorkspaceState,
-  createWorkspaceRecoveryCheckpoint,
-  listWorkspaceRecoveryPoints,
-  loadWorkspaceRecoveryPoint,
-  loadWorkspaceState,
-  saveWorkspaceState,
-} from './workspace-persistence.js';
 import { createBuildController } from './controllers/build-controller.js';
 import { createFeedbackController } from './controllers/feedback-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
@@ -54,6 +31,7 @@ import { createExportController } from './controllers/export-controller.js';
 import { createRoiController } from './controllers/roi-controller.js';
 import { createMaskRoiController } from './controllers/mask-roi-controller.js';
 import { createProcessTaskController } from './controllers/process-task-controller.js';
+import { createProcessPanelController } from './controllers/process-panel-controller.js';
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
@@ -62,10 +40,11 @@ import { createMaskImportController } from './controllers/mask-import-controller
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
 import { createWorkspaceSessionController } from './controllers/workspace-session-controller.js';
+import { createWorkspacePersistenceController } from './controllers/workspace-persistence-controller.js';
+import { createWorkspaceViewController } from './controllers/workspace-view-controller.js';
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
 import {
   createEmptyDrawMask,
-  drawMaskGeometry,
   drawShapeContainsPoint,
 } from './draw-mask-geometry.js';
 import {
@@ -74,6 +53,7 @@ import {
 } from './controllers/project-state-controller.js';
 import { createPlanViewController } from './controllers/plan-view-controller.js';
 import { createPlanRenderers } from './plan-renderers.js';
+import { createSelectionGeometry } from './selection-geometry.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -133,121 +113,28 @@ function normalizedProjectName(value = projectName) {
   return String(value ?? '').trim().slice(0, 256) || 'Untitled';
 }
 
-function projectExportFilename() {
-  const stem = normalizedProjectName()
-    .replace(/[<>:"|?*\u0000-\u001f]/g, '-')
-    .replace(/[\\/]/g, '-')
-    .replace(/[. ]+$/g, '')
-    .trim();
-  return `${stem || 'Untitled'}.wafercad`;
-}
-
 function syncProjectNameInput() {
   const input = $('projectNameInput');
   if (input && document.activeElement !== input) input.value = normalizedProjectName();
 }
 
-let workspacePersistenceReady = false,
-  workspacePersistenceTimer = null,
-  workspacePersistenceWrite = Promise.resolve(),
-  workspaceSession = null,
-  workspaceUpdateCommit = '';
-
-function setWorkspaceSaveStatus(text, failed = false) {
-  const host = $('workspaceSaveStatus');
-  if (!host) return;
-  host.textContent = text;
-  host.dataset.failed = failed ? 'true' : 'false';
-}
-
-function savedTimeLabel(date = new Date()) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
+let workspacePersistenceController = null,
+  workspaceSession = null;
 
 function persistWorkspaceNow() {
-  if (!workspacePersistenceReady || !workspaceSession?.canWrite()) return Promise.resolve(false);
-  if (workspacePersistenceTimer != null) {
-    clearTimeout(workspacePersistenceTimer);
-    workspacePersistenceTimer = null;
-  }
-  const project = buildProjectSnapshot(true);
-  setWorkspaceSaveStatus('Autosaving…');
-  workspacePersistenceWrite = workspacePersistenceWrite
-    .catch(() => {})
-    .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
-    .then(() => {
-      setWorkspaceSaveStatus(`Autosaved · ${savedTimeLabel()}`);
-      return true;
-    });
-  workspacePersistenceWrite.catch((error) => {
-    setWorkspaceSaveStatus('Local save failed', true);
-    console.warn('Workspace autosave failed.', error);
-  });
-  return workspacePersistenceWrite;
+  return workspacePersistenceController?.persistNow() ?? Promise.resolve(false);
 }
 
 function scheduleWorkspacePersistence() {
-  if (!workspacePersistenceReady || !workspaceSession?.canWrite()) return;
-  setWorkspaceSaveStatus('Autosaving…');
-  if (workspacePersistenceTimer != null) clearTimeout(workspacePersistenceTimer);
-  workspacePersistenceTimer = setTimeout(() => {
-    workspacePersistenceTimer = null;
-    void persistWorkspaceNow();
-  }, 800);
+  workspacePersistenceController?.schedule();
 }
 
-async function refreshRecoveryOptions() {
-  const select = $('workspaceRecoverySelect'),
-    restore = $('workspaceRestoreBtn'),
-    clear = $('workspaceRecoveryClearBtn');
-  if (!select || !restore) return;
-  try {
-    const points = await listWorkspaceRecoveryPoints();
-    select.replaceChildren();
-    if (!points.length) {
-      select.append(new Option('No recovery points', ''));
-      restore.disabled = true;
-      if (clear) clear.disabled = true;
-      return;
-    }
-    for (const point of points) {
-      const date = new Date(point.updatedAt);
-      const reason = point.reason ? ` · ${point.reason}` : '';
-      const commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
-      select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
-    }
-    const writable = workspaceSession?.canWrite() ?? false;
-    restore.disabled = !writable;
-    if (clear) clear.disabled = !writable;
-  } catch (error) {
-    console.warn('Could not list workspace recovery points.', error);
-  }
+function refreshRecoveryOptions() {
+  return workspacePersistenceController?.refreshRecoveryOptions() ?? Promise.resolve();
 }
 
-function syncWorkspaceSessionState({ writable }) {
-  const workspace = document.querySelector('.workspace'),
-    dialog = $('workspaceConflictDialog');
-  if (workspace) {
-    workspace.inert = false;
-    workspace.dataset.autosaveOwner = writable ? 'true' : 'false';
-  }
-  if (dialog) dialog.hidden = writable;
-  if (!writable) {
-    if (workspacePersistenceTimer != null) {
-      clearTimeout(workspacePersistenceTimer);
-      workspacePersistenceTimer = null;
-    }
-    setWorkspaceSaveStatus('Autosave paused · another tab owns local storage');
-    if ($('workspaceRestoreBtn')) $('workspaceRestoreBtn').disabled = true;
-    if ($('workspaceRecoveryClearBtn')) $('workspaceRecoveryClearBtn').disabled = true;
-    status(
-      'Another tab owns local autosave. Editing and mask import remain available; use Take over to save from this tab.',
-      'warning',
-    );
-  } else {
-    if (workspacePersistenceReady) scheduleWorkspacePersistence();
-    void refreshRecoveryOptions();
-  }
+function syncWorkspaceSessionState(state) {
+  workspacePersistenceController?.syncSessionState(state);
 }
 
 const loadedBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
@@ -259,7 +146,7 @@ const { checkForBuildUpdate, loadBuildCommit } = createBuildController({
   buildVersion: loadedBuildVersion,
   status,
   onUpdateAvailable: (commit) => {
-    workspaceUpdateCommit = commit;
+    workspacePersistenceController?.setUpdateCommit(commit);
     const button = $('safeReloadBtn');
     const separator = $('safeReloadSeparator');
     if (button) button.hidden = false;
@@ -547,65 +434,21 @@ const layerLegendController = createLayerLegendController({
 });
 const { renderLayerLegend, colorNewLayer, colorNewImplant } = layerLegendController;
 
-function selectedFileMaskGeometry() {
-  const geoms = [];
-  for (const e of layout.elements || []) {
-    if (!selectedElement(e)) continue;
-    if (e.kind === 'polygon') {
-      geoms.push([[e.points.map(maskPoint)]]);
-    } else if (e.kind === 'path' && e.width > 0) {
-      geoms.push(
-        bufferPolyline(e.points.map(maskPoint), (e.width * maskTransform.scale) / 2, 28, false),
-      );
-    }
-  }
-  const merged = unionGeometries(geoms);
-  return isEmpty(merged) ? [] : merged;
-}
-function activeMaskGeometry() {
-  const selected =
-    maskSourceMode === 'draw' ? drawMaskGeometry(drawMask) : selectedFileMaskGeometry();
-  return isEmpty(selected) ? [] : intersection(selected, model.boundary);
-}
+const selectionGeometry = createSelectionGeometry({
+  getState: () => ({
+    model,
+    layout,
+    maskSourceMode,
+    drawMask,
+    maskTransform,
+    maskRoi,
+    roi,
+  }),
+  selectedElement,
+  maskPoint,
+});
+const { operationAreaGeometry, roiGeometry } = selectionGeometry;
 
-function maskRoiGeometry() {
-  if (!maskRoi) return null;
-  const transform =
-    maskSourceMode === 'file'
-      ? maskTransform
-      : { x: 0, y: 0, scale: 1, rotation: 0 };
-  return maskRoiWorldGeometry(maskRoi, transform, 96);
-}
-
-function operationAreaGeometry(mode) {
-  let area;
-  if (mode === 'full') {
-    area = fullFaceGeometry(model);
-  } else {
-    const selected = activeMaskGeometry();
-    if (isEmpty(selected)) return [];
-    area = mode === 'invert' ? difference(model.boundary, selected) : selected;
-  }
-
-  const limiter = maskRoiGeometry();
-  return limiter ? intersection(area, limiter) : area;
-}
-function roiGeometry() {
-  if (!roi) return null;
-  if (roi.type === 'rect') {
-    const x0 = Math.min(roi.a[0], roi.b[0]),
-      x1 = Math.max(roi.a[0], roi.b[0]),
-      y0 = Math.min(roi.a[1], roi.b[1]),
-      y1 = Math.max(roi.a[1], roi.b[1]);
-    return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
-  }
-  if (roi.type === 'circle') return circleMulti(roi.r * 2, roi.r * 2, 96, roi.c[0], roi.c[1]);
-  if (roi.type === 'sector') {
-    const ring = sectorBoundaryPoints(roi, 96);
-    return ring.length ? [[ring]] : null;
-  }
-  return null;
-}
 function stateSnapshot() {
   return { model: cloneModel(model), section: structuredClone(section) };
 }
@@ -706,321 +549,32 @@ function fit3d() {
   threeView?.fit();
 }
 
-function baseSummaryText() {
-  const coverage = baseCoverageState(model);
-  const shape =
-    model.shape === 'circle'
-      ? `Circle · Ø${formatXY(model.width)} ${xyUnit().label}`
-      : `Rectangle · ${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label}`;
-  const state =
-    coverage === 'removed'
-      ? 'Base removed'
-      : coverage === 'partial'
-        ? 'Base partially removed'
-        : 'Base present';
-  return `${shape} · ${state}`;
-}
-
-function syncMaskSourceSummary() {
-  if (maskSourceMode === 'draw') {
-    $('maskSummary').textContent = `Draw · ${drawMask.shapes.length} shapes`;
-    $('maskCellLabel').textContent = `${drawMask.shapes.length} drawn`;
-  } else {
-    $('maskSummary').textContent = layout.name || 'No mask';
-    syncMaskCellLabel();
-  }
-}
+let workspaceViewController = null;
 
 function renderAll() {
-  renderCellTree();
-  renderMaskList();
-  renderLayerLegend();
-  renderMask();
-  renderMain();
-  renderSection();
-  renderThree();
-  syncRoiEditor();
-  $('mainFaceLabel').textContent = `${activeFace} surface`;
-  const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
-  $('faceToggleBtn').textContent = faceLabel;
-  $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
-  syncMaskSourceSummary();
-  syncProjectNameInput();
-  drawMaskController?.syncUi();
-  maskRoiController?.syncEditor();
-  $('baseSummary').textContent = baseSummaryText();
-  updateOperationUI();
-  syncUndo();
+  workspaceViewController?.renderAll();
 }
+
 function resetRoughDraftControls() {
-  $('roughPolarity').value = 'inverted';
-  $('roughFeatureSize').value = formatLengthField(0.5);
-  $('roughAmplitude').value = formatLengthField(1);
-  $('roughFeatureCv').value = '25';
-  $('roughHeightCv').value = '25';
+  workspaceViewController?.resetRoughDraftControls();
 }
 
 function syncBaseControls() {
-  $('baseWidth').value = formatLengthField(model.width);
-  $('baseHeight').value = formatLengthField(model.height);
-  $('baseThickness').value = formatLengthField(model.thickness);
-  $('baseHeight').disabled = model.shape === 'circle';
-  $('baseWidthUnit').textContent = xyUnit().label;
-  $('baseHeightUnit').textContent = xyUnit().label;
-  $('baseThicknessUnit').textContent = xyUnit().label;
-  $('operationThicknessUnit').textContent = xyUnit().label;
-  $('roughFeatureUnit').textContent = xyUnit().label;
-  $('roughHeightUnit').textContent = xyUnit().label;
-  $('xyUnitSelect').value = xyDisplayUnit;
-  $('applyBaseBtn').textContent =
-    baseCoverageState(model) === 'removed' ? 'Recreate base' : 'Apply base';
-  document
-    .querySelectorAll('#substrateShape button')
-    .forEach((b) => b.classList.toggle('active', b.dataset.shape === model.shape));
+  workspaceViewController?.syncBaseControls();
 }
-function updateGrowTargets() {
-  const select = $('targetLayer');
-  if (!select) return;
-  const previous = select.value;
-  select.innerHTML = '';
 
-  const area = operationAreaGeometry($('operationArea').value);
-  const exposed = new Set(exposedLayerIds(model, area, activeFace));
-  for (const layer of model.layers) {
-    if (!exposed.has(layer.id)) continue;
-    select.add(new Option(layer.name, layer.id));
-  }
-  if ([...select.options].some((option) => option.value === previous)) select.value = previous;
-  select.disabled = !select.options.length;
+function syncMaskSourceSummary() {
+  workspaceViewController?.syncMaskSourceSummary();
 }
+
+let processPanelController = null;
 
 function updateOperationUI() {
-  const t = $('operationType').value;
-  document.querySelectorAll('[data-process-mode]').forEach((button) => {
-    const active = button.dataset.processMode === t;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', String(active));
-  });
-
-  $('layerNameRow').classList.toggle('hidden', t !== 'add');
-  $('implantNameRow').classList.toggle('hidden', t !== 'implant');
-  $('implantTiltRow').classList.toggle('hidden', t !== 'implant');
-  $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
-  $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
-  $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
-  const surfaceMode = $('etchSurfaceMode').value,
-    texturedEtch = t === 'etch' && surfaceMode !== 'smooth',
-    stochasticEtch = texturedEtch && surfaceMode === 'rough',
-    pyramidEtch = texturedEtch && surfaceMode === 'pyramid';
-  $('roughPolarityRow').classList.toggle('hidden', !texturedEtch);
-  $('roughFeatureRow').classList.toggle('hidden', !texturedEtch);
-  $('roughFeatureCvRow').classList.toggle('hidden', !stochasticEtch);
-  $('roughHeightRow').classList.toggle('hidden', !texturedEtch);
-  $('roughHeightCvRow').classList.toggle('hidden', !stochasticEtch);
-  $('roughFeatureLabel').textContent = pyramidEtch ? 'Pyramid XY' : 'Feature XY';
-  $('roughHeightLabel').textContent = pyramidEtch ? 'Height' : 'Height mean';
-  $('processThicknessLabel').textContent = t === 'etch' || t === 'implant' ? 'Depth' : 'Z';
-
-  if (t === 'grow') updateGrowTargets();
-
-  const materialExists = hasMaterial(model);
-  $('applyOperationBtn').disabled = !materialExists || Boolean(processTaskController?.isBusy());
-  const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
-  $('processSummary').textContent =
-    `${faceLabel} · ${
-      t === 'add'
-        ? 'Deposit layer'
-        : t === 'grow'
-          ? 'Extend layer'
-          : t === 'implant'
-            ? 'Implant · EXP'
-            : 'Etch'
-    }`;
-
-  $('operationNote').hidden = !materialExists;
-  if (!materialExists) return;
-
-  $('operationNote').textContent =
-    t === 'implant'
-      ? 'Experimental structural marker: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt.'
-      : t === 'etch'
-        ? stochasticEtch
-          ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'}`
-          : pyramidEtch
-            ? `Pyramid XY is the square pitch/base width and Height is apex-to-base relief within the Etch Depth envelope. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'}`
-            : 'Etch removes material vertically and may create through-holes.'
-        : $('growthMode').value === 'conformal'
-          ? t === 'grow'
-            ? 'Conformal Extend continues the target material over every exposed surface in the selected area, then follows steps and sidewalls.'
-            : 'Conformal coverage follows exposed surfaces, steps, and sidewalls.'
-          : 'Directional coverage follows the selected footprint.';
+  processPanelController?.updateUi();
 }
 
-async function applyOp() {
-  if (processTaskController?.isBusy()) {
-    status('An operation is already running. Abort it before starting another.', 'warning');
-    return;
-  }
-
-  const type = $('operationType').value,
-    thickness = manualMicron($('operationThickness').value);
-  $('operationThickness').value = formatLengthField(thickness);
-  if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
-
-  const areaMode = $('operationArea').value;
-
-  const name =
-      type === 'implant'
-        ? $('implantName').value.trim() || `Implant ${model.nextImplantId || 1}`
-        : $('layerName').value.trim() || `Layer ${model.layers.length}`,
-    targetLayerId = $('targetLayer').value;
-  if (type === 'grow' && !targetLayerId) {
-    return status('No exposed target layer is available to Extend.', 'warning');
-  }
-
-  let roughSurface = null;
-  const etchSurfaceMode = $('etchSurfaceMode').value;
-  if (type === 'etch' && etchSurfaceMode !== 'smooth') {
-    const pyramid = etchSurfaceMode === 'pyramid',
-      featureSize = manualMicron($('roughFeatureSize').value),
-      meanHeight = manualMicron($('roughAmplitude').value),
-      featureCvPercent = pyramid ? 0 : Number($('roughFeatureCv').value),
-      heightCvPercent = pyramid ? 0 : Number($('roughHeightCv').value),
-      featureCv = featureCvPercent / 100,
-      heightCv = heightCvPercent / 100;
-    $('roughFeatureSize').value = formatLengthField(featureSize);
-    $('roughAmplitude').value = formatLengthField(meanHeight);
-    if (!(featureSize > 0) || !(meanHeight > 0)) {
-      return status(
-        pyramid
-          ? 'Pyramid XY and Height must be greater than zero.'
-          : 'Rough mean Feature XY and Height must be greater than zero.',
-        'error',
-      );
-    }
-    if (meanHeight > thickness + 1e-9) {
-      return status(
-        pyramid
-          ? 'Pyramid Height cannot exceed Etch Depth.'
-          : 'Rough mean Height cannot exceed Etch Depth.',
-        'error',
-      );
-    }
-    if (
-      !Number.isFinite(featureCvPercent) ||
-      !Number.isFinite(heightCvPercent) ||
-      featureCvPercent < 0 ||
-      featureCvPercent > 100 ||
-      heightCvPercent < 0 ||
-      heightCvPercent > 100
-    ) {
-      return status('Rough Feature CV and Height CV must be between 0% and 100%.', 'error');
-    }
-    roughSurface = {
-      kind: 'rough',
-      morphology: pyramid ? 'pyramid' : 'stochastic',
-      polarity: $('roughPolarity').value === 'normal' ? 'normal' : 'inverted',
-      featureSize,
-      meanHeight,
-      featureCv,
-      heightCv,
-      geometryMode: 'ideal',
-    };
-  }
-
-  const beforeBase = baseCoverageState(model),
-    params = { type, name, targetLayerId, thickness, face: activeFace };
-  if (type === 'etch') params.surface = roughSurface;
-  else if (type === 'implant') {
-    const tilt = Number($('implantTilt').value);
-    if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
-      return status('Implant Tilt X must be between -80° and 80°.', 'error');
-    }
-    params.tilt = tilt;
-  } else params.growth = $('growthMode').value;
-
-  const taskLabel =
-    type === 'etch'
-      ? 'Etching structure…'
-      : type === 'grow'
-        ? 'Extending layer…'
-        : type === 'implant'
-          ? `Marking ${name} implant…`
-          : `Depositing ${name}…`;
-
-  const areaRequest = {
-    mode: areaMode,
-    maskSourceMode,
-    maskRoi: maskRoi ? structuredClone(maskRoi) : null,
-    ...(maskSourceMode === 'draw'
-      ? { drawMask: structuredClone(drawMask) }
-      : {
-          maskTransform: { ...maskTransform },
-          elements: (layout.elements || [])
-            .filter(selectedElement)
-            .map((element) => ({
-              kind: element.kind,
-              width: element.width,
-              points: element.points,
-            })),
-        }),
-  };
-
-  const task = await processTaskController.run(model, params, taskLabel, areaRequest);
-  if (task?.aborted || task?.error || task?.busy) return;
-
-  const result = task.result;
-  if (!result?.changed) {
-    return status(result?.error || 'The operation did not change the model.', 'warning');
-  }
-
-  saveHistory();
-  baseRevertSnapshot = null;
-  model = task.model;
-
-  if (type === 'add' && result.layerId) {
-    colorNewLayer(result.layerId);
-    $('layerName').value = `Layer ${model.nextLayerId}`;
-  } else if (type === 'implant' && result.implantId) {
-    colorNewImplant(result.implantId);
-    $('implantName').value = `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
-  }
-
-  renderAll();
-
-  if (!hasMaterial(model)) {
-    return status(
-      'All material has been removed. Undo, restore a snapshot, or recreate the Base.',
-      'warning',
-    );
-  }
-
-  const afterBase = baseCoverageState(model);
-  if (type === 'etch' && beforeBase !== 'removed' && afterBase === 'removed') {
-    return status(
-      'Base fully removed. Remaining material, if any, is shown independently.',
-      'warning',
-    );
-  }
-
-  const growthLabel =
-    type === 'etch' || type === 'implant'
-      ? ''
-      : params.growth === 'conformal'
-        ? ' · Conformal'
-        : ' · Directional';
-  status(
-    `${
-      type === 'etch'
-        ? 'Etched'
-        : type === 'grow'
-          ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
-          : type === 'implant'
-            ? `Marked implant ${name} (experimental)`
-            : `Deposited ${name}`
-    }${growthLabel} on the ${activeFace}${maskRoi ? ' within Mask ROI' : ''}.`,
-    'success',
-  );
+function applyOp() {
+  return processPanelController?.applyOperation();
 }
 
 const projectStateController = createProjectStateController({
@@ -1119,6 +673,18 @@ const projectController = createProjectController({
   fit3d,
   status,
   onProjectChanged: scheduleWorkspacePersistence,
+  normalizedProjectName,
+  getProjectName: () => projectName,
+  setProjectName: (value) => {
+    projectName = value;
+  },
+  syncProjectNameInput,
+  scheduleWorkspacePersistence,
+  resetProjectState,
+  resetRoughDraftControls,
+  clearRoiDrawingMode,
+  clearMaskRoiDrawingMode: () => maskRoiController.clearDrawingMode(),
+  buildProjectSnapshot,
 });
 const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
   projectController;
@@ -1170,6 +736,60 @@ processTaskController = createProcessTaskController({
     button.disabled = disabled || !hasMaterial(model);
     button.classList.toggle('process-busy', disabled);
   },
+});
+
+processPanelController = createProcessPanelController({
+  root: document,
+  getModel: () => model,
+  setModel: (value) => {
+    model = value;
+  },
+  getActiveFace: () => activeFace,
+  getMaskState: () => ({
+    maskSourceMode,
+    maskRoi,
+    drawMask,
+    maskTransform,
+    layout,
+  }),
+  operationAreaGeometry,
+  selectedElement,
+  manualMicron,
+  formatLengthField,
+  processTaskController,
+  saveHistory,
+  clearBaseRevertSnapshot: () => {
+    baseRevertSnapshot = null;
+  },
+  colorNewLayer,
+  colorNewImplant,
+  renderAll,
+  status,
+});
+
+workspaceViewController = createWorkspaceViewController({
+  root: document,
+  getModel: () => model,
+  getActiveFace: () => activeFace,
+  getMaskState: () => ({ maskSourceMode, drawMask, layout }),
+  getXyDisplayUnit: () => xyDisplayUnit,
+  xyUnitLabel: () => xyUnit().label,
+  formatXY,
+  formatLengthField,
+  renderCellTree,
+  renderMaskList,
+  renderLayerLegend,
+  renderMask,
+  renderMain,
+  renderSection,
+  renderThree,
+  syncRoiEditor,
+  syncMaskCellLabel,
+  syncProjectNameInput,
+  getDrawMaskController: () => drawMaskController,
+  getMaskRoiController: () => maskRoiController,
+  updateOperationUI,
+  syncUndo,
 });
 
 const baseControls = createBaseControlsController({
@@ -1303,88 +923,29 @@ const viewMaximizeController = createViewMaximizeController({
   fit3d,
   updateSectionEditor: () => sectionEditor?.update(),
 });
+workspacePersistenceController = createWorkspacePersistenceController({
+  root: document,
+  workspaceSession,
+  appCommit: loadedBuildVersion,
+  status,
+  buildProjectSnapshot,
+  loadProjectSnapshot,
+  snapshotManager,
+  syncBaseControls,
+  syncTransformInputs: () => maskImportController.syncTransformInputs(),
+  renderAll,
+  renderSnapshots,
+  fit3d,
+  initializeWorkspaceStart,
+  normalizedProjectName,
+  getProjectName: () => projectName,
+  setProjectName: (value) => {
+    projectName = value;
+  },
+  syncProjectNameInput,
+});
 
-async function restoreSelectedWorkspaceRecovery() {
-  if (!workspaceSession?.canWrite()) {
-    status('This tab is read-only. Take over the workspace before restoring a checkpoint.', 'warning');
-    return;
-  }
-  const key = $('workspaceRecoverySelect')?.value;
-  if (!key) return;
-  if (
-    !globalThis.confirm(
-      'Restore this local recovery checkpoint? The current workspace will be checkpointed first.',
-    )
-  ) {
-    return;
-  }
 
-  try {
-    const current = buildProjectSnapshot(true);
-    await createWorkspaceRecoveryCheckpoint(current, {
-      appCommit: loadedBuildVersion,
-      reason: 'pre-restore',
-    });
-    const recovered = await loadWorkspaceRecoveryPoint(key);
-    if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
-    loadProjectSnapshot(recovered);
-    snapshotManager.importRecords(recovered.snapshots || []);
-    syncBaseControls();
-    maskImportController.syncTransformInputs();
-    renderAll();
-    renderSnapshots();
-    fit3d();
-    await persistWorkspaceNow();
-    await refreshRecoveryOptions();
-    status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
-  } catch (error) {
-    console.error(error);
-    status(`Recovery restore failed: ${error.message}`, 'error');
-  }
-}
-
-async function reloadWorkspaceSafely() {
-  if (!workspaceSession?.canWrite()) {
-    status('This tab is read-only. Update from the tab that owns the workspace.', 'warning');
-    return;
-  }
-  const button = $('safeReloadBtn');
-  if (button) {
-    button.disabled = true;
-    button.textContent = 'Saving…';
-  }
-
-  try {
-    if (workspacePersistenceTimer != null) {
-      clearTimeout(workspacePersistenceTimer);
-      workspacePersistenceTimer = null;
-    }
-    const project = buildProjectSnapshot(true);
-    setWorkspaceSaveStatus('Autosaving…');
-    workspacePersistenceWrite = workspacePersistenceWrite
-      .catch(() => {})
-      .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
-      .then(() =>
-        createWorkspaceRecoveryCheckpoint(project, {
-          appCommit: loadedBuildVersion,
-          reason: workspaceUpdateCommit
-            ? `pre-update-${workspaceUpdateCommit.slice(0, 7)}`
-            : 'pre-reload',
-        }),
-      );
-    await workspacePersistenceWrite;
-    setWorkspaceSaveStatus(`Autosaved · ${savedTimeLabel()}`);
-    workspaceSession.stop();
-    globalThis.location.reload();
-  } catch (error) {
-    if (button) {
-      button.disabled = false;
-      button.textContent = 'Reload safely';
-    }
-    setWorkspaceSaveStatus('Local save failed', true);
-    status(`Safe reload cancelled: ${error.message}`, 'error');
-  }
-}
 
 function bindUi() {
   bindToolTabs();
@@ -1399,162 +960,9 @@ function bindUi() {
   drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
+  workspacePersistenceController.bind();
 
-  $('workspaceTakeOverBtn').onclick = () => {
-    if (
-      !globalThis.confirm(
-        'Take over editing in this tab? The other tab will become read-only and may contain newer unsaved edits.',
-      )
-    ) {
-      return;
-    }
-    if (workspaceSession.takeOver()) {
-      status('This tab now owns the local workspace.');
-      scheduleWorkspacePersistence();
-      void refreshRecoveryOptions();
-    }
-  };
-  $('safeReloadBtn').onclick = () => {
-    void reloadWorkspaceSafely();
-  };
-  $('workspaceRecoverySelect').onchange = (event) => {
-    $('workspaceRestoreBtn').disabled = !event.target.value || !workspaceSession?.canWrite();
-  };
-  $('workspaceRestoreBtn').onclick = () => {
-    void restoreSelectedWorkspaceRecovery();
-  };
-  $('workspaceRecoveryClearBtn').onclick = async () => {
-    if (!workspaceSession?.canWrite()) {
-      status('This tab cannot clear local Recovery while another tab owns browser storage.', 'warning');
-      return;
-    }
-    if (!globalThis.confirm('Clear all local Recovery checkpoints? The current autosaved workspace is kept.')) {
-      return;
-    }
-    try {
-      const removed = await clearWorkspaceRecoveryPoints();
-      await refreshRecoveryOptions();
-      status(
-        removed
-          ? `Cleared ${removed} local Recovery checkpoint${removed === 1 ? '' : 's'}.`
-          : 'Recovery is already empty.',
-      );
-    } catch (error) {
-      console.error(error);
-      status(`Could not clear Recovery: ${error.message}`, 'error');
-    }
-  };
-
-  $('projectNameInput').oninput = (event) => {
-    projectName = String(event.target.value ?? '').slice(0, 256);
-    scheduleWorkspacePersistence();
-  };
-  $('projectNameInput').onchange = () => {
-    projectName = normalizedProjectName();
-    $('projectNameInput').value = projectName;
-    scheduleWorkspacePersistence();
-  };
-
-  $('newProjectBtn').onclick = () => {
-    if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
-    void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
-    resetProjectState();
-    resetRoughDraftControls();
-    clearRoiDrawingMode();
-    maskRoiController.clearDrawingMode();
-    snapshotManager.clear();
-    syncBaseControls();
-    renderAll();
-    renderSnapshots();
-    fit3d();
-    status('New empty project.');
-  };
-
-  $('saveProjectBtn').onclick = async () => {
-    if (!workspaceSession?.canWrite()) {
-      status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
-      return;
-    }
-    try {
-      projectName = normalizedProjectName();
-      syncProjectNameInput();
-      if (workspacePersistenceTimer != null) {
-        clearTimeout(workspacePersistenceTimer);
-        workspacePersistenceTimer = null;
-      }
-      const project = buildProjectSnapshot(true);
-      setWorkspaceSaveStatus('Autosaving…');
-      workspacePersistenceWrite = workspacePersistenceWrite
-        .catch(() => {})
-        .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
-        .then(() =>
-          createWorkspaceRecoveryCheckpoint(project, {
-            appCommit: loadedBuildVersion,
-            reason: `manual-save · ${projectName}`,
-          }),
-        );
-      await workspacePersistenceWrite;
-      setWorkspaceSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`);
-      await refreshRecoveryOptions();
-      status(`Saved "${projectName}" locally. It is available in Recovery.`);
-    } catch (error) {
-      console.error(error);
-      setWorkspaceSaveStatus('Local save failed', true);
-      status(`Local Save failed: ${error.message}`, 'error');
-    }
-  };
-
-  $('exportProjectBtn').onclick = () => {
-    try {
-      projectName = normalizedProjectName();
-      syncProjectNameInput();
-      downloadProject(buildProjectSnapshot(true), projectExportFilename());
-      status(`Exported ${projectExportFilename()}.`);
-    } catch (error) {
-      console.error(error);
-      status(`Export failed: ${error.message}`, 'error');
-    }
-  };
-
-  $('openProjectInput').onchange = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (!globalThis.confirm('Open project will replace the current workspace. Continue?')) {
-      event.target.value = '';
-      return;
-    }
-    await openProjectFile(file);
-    event.target.value = '';
-  };
-}
-
-async function initializePersistedWorkspace() {
-  const hasExplicitStart = new URLSearchParams(globalThis.location?.search || '').has('start');
-
-  try {
-    if (hasExplicitStart) {
-      await initializeWorkspaceStart();
-    } else {
-      const saved = await loadWorkspaceState();
-      if (saved) {
-        loadProjectSnapshot(saved);
-        snapshotManager.importRecords(saved.snapshots || []);
-        syncBaseControls();
-        maskImportController.syncTransformInputs();
-        renderAll();
-        renderSnapshots();
-        fit3d();
-        status(`Restored local workspace "${normalizedProjectName()}".`);
-      }
-    }
-  } catch (error) {
-    console.warn('Workspace restore failed.', error);
-    status(`Local workspace restore failed: ${error.message}`);
-  } finally {
-    workspacePersistenceReady = true;
-    scheduleWorkspacePersistence();
-    void refreshRecoveryOptions();
-  }
+  projectController.bind();
 }
 
 planRenderers = createPlanRenderers({
@@ -1614,4 +1022,4 @@ renderAll();
 fit3d();
 document.documentElement.dataset.appReady = 'true';
 status('Ready. Create a base or import a layout.');
-void initializePersistedWorkspace();
+void workspacePersistenceController.initializePersistedWorkspace();

@@ -652,6 +652,59 @@ try {
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
 
+      // Rough Etch -> Conformal regression: inherited rough interfaces are
+      // buried material interfaces and must not create closure skirts inside 3D.
+      const roughConformalModel = createModel({
+        shape: 'rect',
+        width: 20,
+        height: 12,
+        thickness: 8,
+      });
+      applyOperation(roughConformalModel, {
+        type: 'etch',
+        thickness: 1.5,
+        face: 'front',
+        area: rectMulti(10, 8),
+        surface: {
+          kind: 'rough',
+          featureSize: 0.45,
+          meanHeight: 0.6,
+          featureCv: 0.3,
+          heightCv: 0.35,
+          morphology: 'stochastic',
+          polarity: 'inverted',
+          geometryMode: 'ideal',
+        },
+      });
+      applyOperation(roughConformalModel, {
+        type: 'add',
+        name: 'Rough conformal coat',
+        thickness: 0.8,
+        face: 'front',
+        area: roughConformalModel.boundary,
+        growth: 'conformal',
+      });
+      const roughConformalProject = projectForBenchmark({
+        model: roughConformalModel,
+        section: { a: [-9, 0], b: [9, 0] },
+      });
+      await loadProject(page, roughConformalProject, 'wide-rough-conformal');
+      await checkSectionSeams(page, roughConformalProject);
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-conformal-3d-opaque-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('0.5');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-conformal-3d-transparent-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('1');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+
       // Opaque host material must occlude a buried Implant. Lowering global
       // 3D opacity reveals the same internal annotation volume.
       const implantModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 });

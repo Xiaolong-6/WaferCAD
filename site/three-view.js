@@ -468,6 +468,7 @@ export function createThreeView({
           polys: roughPolys,
           appearance: patch.appearance,
           profileNormal: patch.profileNormal,
+          buried: Boolean(patch.buried),
         });
       }
       remaining = difference(remaining, patch.polys);
@@ -652,7 +653,11 @@ export function createThreeView({
         for (const cap of item.caps) {
           for (const part of capRenderParts(item, cap, roughMap)) {
             const geometry = part.appearance
-                ? geometryFromRoughCap({ ...part, clipped: Boolean(clip) })
+                ? geometryFromRoughCap({
+                    ...part,
+                    closeToIdeal: !part.buried,
+                    clipped: Boolean(clip),
+                  })
                 : geometryFromSolid({
                     slabs: [],
                     caps: [{ z: part.z, normal: part.normal, polys: part.polys }],

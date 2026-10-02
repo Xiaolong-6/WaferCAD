@@ -78,7 +78,7 @@ export function surfaceGroups(model, face = 'front') {
 
 export function appearanceSurfaceGroups(model, clip = null) {
   const groups = new Map();
-  const addAppearance = (layerId, z, face, profileNormal, appearance, geom) => {
+  const addAppearance = (layerId, z, face, profileNormal, appearance, geom, buried = false) => {
     if (appearance?.kind !== 'rough' || isEmpty(geom)) return;
     const key = JSON.stringify([
       layerId,
@@ -95,6 +95,7 @@ export function appearanceSurfaceGroups(model, clip = null) {
       appearance.morphology,
       appearance.polarity,
       appearance.etchDepth,
+      buried,
     ]);
     if (!groups.has(key)) {
       groups.set(key, {
@@ -103,6 +104,7 @@ export function appearanceSurfaceGroups(model, clip = null) {
         face,
         profileNormal,
         appearance: { ...appearance },
+        buried,
         geoms: [],
       });
     }
@@ -136,6 +138,7 @@ export function appearanceSurfaceGroups(model, clip = null) {
         segment.frontSurface?.kind === 'rough' ? 1 : -1,
         frontAppearance,
         geom,
+        Boolean(above && Math.abs(above.z0 - segment.z1) <= 1e-8),
       );
       addAppearance(
         segment.layerId,
@@ -144,6 +147,7 @@ export function appearanceSurfaceGroups(model, clip = null) {
         segment.backSurface?.kind === 'rough' ? -1 : 1,
         backAppearance,
         geom,
+        Boolean(below && Math.abs(below.z1 - segment.z0) <= 1e-8),
       );
     }
   }

@@ -502,6 +502,51 @@ test('sub-grid rough-step seam is healed before Conformal can enter the model in
   assert.equal(deepIntrusions.length, 0);
 });
 
+test('rough Etch followed by whole-face Conformal cannot penetrate below the etched floor', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 }),
+    roughFloor = 2.5;
+
+  const etched = applyOperation(model, {
+    type: 'etch',
+    thickness: 1.5,
+    face: 'front',
+    area: rectMulti(10, 8),
+    surface: {
+      kind: 'rough',
+      featureSize: 0.45,
+      meanHeight: 0.6,
+      featureCv: 0.3,
+      heightCv: 0.35,
+      morphology: 'stochastic',
+      polarity: 'inverted',
+    },
+  });
+  assert.equal(etched.changed, true);
+
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Rough conformal guard',
+    thickness: 0.8,
+    face: 'front',
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+  assert.equal(baseCoverageState(model), 'full');
+
+  const sidewalls = model.regions.flatMap((region) =>
+    region.stack.filter(
+      (segment) => segment.layerId === coat.layerId && segment.role === 'conformal-sidewall',
+    ),
+  );
+  assert.ok(sidewalls.length > 0);
+  assert.equal(
+    sidewalls.every((segment) => segment.z0 >= roughFloor - 1e-9),
+    true,
+    `Conformal entered below etched floor: ${JSON.stringify(sidewalls)}`,
+  );
+});
+
 test('Conformal sidewall keeps the inherited rough profile at the exposed cap', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   applyOperation(model, {

@@ -6,8 +6,14 @@ await loadGeometryKernel();
 const { createModel } = await import('../model.js');
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } =
   await import('../vector-geometry.js');
-const { materialSolids, sectionContours, sectionSlices, solidBorders, surfaceGroups } =
-  await import('../model-view-geometry.js');
+const {
+  appearanceSurfaceGroups,
+  materialSolids,
+  sectionContours,
+  sectionSlices,
+  solidBorders,
+  surfaceGroups,
+} = await import('../model-view-geometry.js');
 
 function area(polys) {
   const signed = (ring) =>
@@ -138,6 +144,45 @@ test('Section slices expose both materials around a buried rough interface', () 
   assert.equal(base.above.layerId, 'film');
   assert.equal(film.below.layerId, 'base');
   assert.equal(base.frontSurface.kind, 'rough');
+});
+
+test('buried rough material interfaces are marked so 3D does not close them to the ideal plane', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  model.layers.push({ id: 'film', name: 'Film', color: '#55aacc' });
+  const rough = {
+    kind: 'rough',
+    featureSize: 0.4,
+    meanHeight: 0.4,
+    featureCv: 0.25,
+    heightCv: 0.25,
+    etchDepth: 0.8,
+    seed: 17,
+    profileId: 'rough-buried-render-test',
+    geometryMode: 'ideal',
+    morphology: 'stochastic',
+    polarity: 'inverted',
+  };
+  model.regions[0].stack = [
+    { layerId: 'base', z0: -5, z1: 0, frontSurface: rough },
+    { layerId: 'film', z0: 0, z1: 1, frontSurface: rough },
+  ];
+
+  const groups = appearanceSurfaceGroups(model),
+    baseInterface = groups.find(
+      (group) => group.layerId === 'base' && group.face === 'front' && group.z === 0,
+    ),
+    filmInterface = groups.find(
+      (group) => group.layerId === 'film' && group.face === 'back' && group.z === 0,
+    ),
+    filmOuter = groups.find(
+      (group) => group.layerId === 'film' && group.face === 'front' && group.z === 1,
+    );
+
+  assert.equal(baseInterface?.buried, true);
+  assert.equal(filmInterface?.buried, true);
+  assert.equal(filmOuter?.buried, false);
+  assert.equal(baseInterface?.profileNormal, 1);
+  assert.equal(filmInterface?.profileNormal, 1);
 });
 
 test('same color does not erase distinct materials, holes or separated islands', () => {

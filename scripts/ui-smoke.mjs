@@ -1006,6 +1006,42 @@ const headerToolAlignment = await page.locator('.view-head .view-tools').evaluat
 assert.ok(headerToolAlignment.length >= 4);
 assert.ok(headerToolAlignment.every((value) => value === 'center'));
 
+const headerControlBoxes = await page.locator('.view-panel').evaluateAll((panels) =>
+  panels.flatMap((panel) => {
+    const controls = [...panel.querySelectorAll(
+      '.view-head button, .view-head summary, .view-head .three-border-toggle',
+    )].filter(
+      (element) =>
+        element.checkVisibility() &&
+        !element.closest('.focus-popover, .three-opacity-popover, .export-popover'),
+    );
+    return controls.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        id: element.id || element.textContent?.trim() || element.className,
+        height: rect.height,
+        centerY: rect.top + rect.height / 2,
+        panel: panel.id,
+      };
+    });
+  }),
+);
+assert.ok(headerControlBoxes.length > 12);
+for (const box of headerControlBoxes) {
+  assert.ok(Math.abs(box.height - 21) <= 0.6, `${box.panel}/${box.id} header height ${box.height}`);
+}
+for (const panelId of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+  const boxes = headerControlBoxes.filter((box) => box.panel === panelId);
+  if (boxes.length < 2) continue;
+  const center = boxes.reduce((sum, box) => sum + box.centerY, 0) / boxes.length;
+  for (const box of boxes) {
+    assert.ok(
+      Math.abs(box.centerY - center) <= 0.75,
+      `${panelId}/${box.id} is vertically misaligned by ${Math.abs(box.centerY - center)}px`,
+    );
+  }
+}
+
 for (const [buttonId, panelId] of [
   ['mainMaxBtn', 'mainPanel'],
   ['maskMaxBtn', 'maskPanel'],

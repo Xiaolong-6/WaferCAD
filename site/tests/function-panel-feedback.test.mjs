@@ -15,6 +15,7 @@ const projectState = await readFile(
 );
 const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
 const planRenderers = await readFile(new URL('../plan-renderers.js', import.meta.url), 'utf8');
+const selectionGeometry = await readFile(new URL('../selection-geometry.js', import.meta.url), 'utf8');
 const roiController = await readFile(
   new URL('../controllers/roi-controller.js', import.meta.url),
   'utf8',
@@ -25,6 +26,10 @@ const maskRoiController = await readFile(
 );
 const processTaskController = await readFile(
   new URL('../controllers/process-task-controller.js', import.meta.url),
+  'utf8',
+);
+const processPanelController = await readFile(
+  new URL('../controllers/process-panel-controller.js', import.meta.url),
   'utf8',
 );
 const exportController = await readFile(
@@ -84,10 +89,10 @@ test('typed feedback is centralized in the status bar', () => {
 });
 
 test('Process UI is driven by material presence and exposed Extend targets', () => {
-  assert.match(app, /baseCoverageState\(model\)/);
-  assert.match(app, /exposedLayerIds\(model, area, activeFace\)/);
-  assert.match(app, /All material has been removed/);
-  assert.match(app, /Base fully removed/);
+  assert.match(processPanelController, /baseCoverageState\(model\)/);
+  assert.match(processPanelController, /exposedLayerIds\(model, area, activeFace\)/);
+  assert.match(processPanelController, /All material has been removed/);
+  assert.match(processPanelController, /Base fully removed/);
 });
 
 
@@ -136,6 +141,8 @@ test('Mask topography reference is dashed and all scientific header controls sha
   assert.match(style, /\/\* Unified scientific header controls \*\//);
   assert.match(style, /\.view-head \.mini-btn,[\s\S]*?\.view-head \.three-control/);
   assert.match(style, /\.view-head \.section-view-tools[\s\S]*?gap: 2px/);
+  assert.match(style, /View header controls share one physical box model/);
+  assert.match(style, /max-height: 21px/);
   assert.match(style, /\.view-head \.three-border-toggle > span[\s\S]*?color: inherit/);
   assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
 });
@@ -179,10 +186,10 @@ test('Mask File Draw source is explicit and Draw feeds Process geometry', () => 
   assert.match(html, /data-draw-tool="ring-sector"/);
   assert.match(html, /id="drawShapeEditor"[^>]*hidden/);
   assert.match(app, /maskSourceMode = 'file'/);
-  assert.match(app, /function selectedFileMaskGeometry\(\)/);
-  assert.match(app, /function activeMaskGeometry\(\)/);
-  assert.match(app, /maskSourceMode === 'draw' \? drawMaskGeometry\(drawMask\)/);
-  assert.match(app, /const selected = activeMaskGeometry\(\)/);
+  assert.match(selectionGeometry, /function selectedFileMaskGeometry\(\)/);
+  assert.match(selectionGeometry, /function activeMaskGeometry\(\)/);
+  assert.match(selectionGeometry, /maskSourceMode === 'draw' \? drawMaskGeometry\(drawMask\)/);
+  assert.match(selectionGeometry, /const selected = activeMaskGeometry\(\)/);
   assert.match(planRenderers, /getDrawMaskController\(\)\?\.render\(ctx, v, maskOpacity\)/);
 });
 
@@ -200,8 +207,8 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
   assert.match(html, /data-tool="rect"[^>]*>Square</);
   assert.match(html, /data-tool="circle"[^>]*>Circle</);
   assert.match(html, /id="maskRoiSize"/);
-  assert.match(app, /function maskRoiGeometry\(\)/);
-  assert.match(app, /return limiter \? intersection\(area, limiter\) : area/);
+  assert.match(selectionGeometry, /function maskRoiGeometry\(\)/);
+  assert.match(selectionGeometry, /return limiter \? intersection\(area, limiter\) : area/);
   assert.match(planRenderers, /getMaskRoiController\(\)\?\.render\(ctx, v\)/);
   assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);
   assert.match(maskRoiController, /canMoveBody\(world\)/);
@@ -225,8 +232,8 @@ test('Apply runs as a single cancelable task with elapsed time and Abort', () =>
   assert.match(html, /id="processTaskDialog"[^>]*hidden/);
   assert.match(html, /id="processTaskElapsed"/);
   assert.match(html, /id="processTaskAbortBtn"[^>]*>Abort</);
-  assert.match(app, /processTaskController\.run\(model, params, taskLabel, areaRequest\)/);
-  assert.match(app, /processTaskController\?\.isBusy\(\)/);
+  assert.match(processPanelController, /processTaskController\.run\(model, params, taskLabel, areaRequest\)/);
+  assert.match(processPanelController, /processTaskController\?\.isBusy\(\)/);
   assert.match(processTaskController, /new Worker\(/);
   assert.match(processTaskController, /setInterval\(syncDialog, 100\)/);
   assert.match(processTaskController, /worker\.terminate\(\)/);
@@ -256,8 +263,18 @@ test('experimental Implant keeps process inputs structural and display styling i
   assert.doesNotMatch(html, /id="implantColor"/);
   assert.doesNotMatch(html, /id="implantBorder"/);
   assert.match(html, /id="sectionBordersBtn"/);
-  assert.match(app, /starts at the outermost selected surface/);
-  assert.match(app, /params\.tilt = tilt/);
-  assert.match(app, /colorNewImplant\(result\.implantId\)/);
+  assert.match(processPanelController, /starts at the outermost selected surface/);
+  assert.match(processPanelController, /params\.tilt = tilt/);
+  assert.match(processPanelController, /colorNewImplant\(result\.implantId\)/);
   assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
+});
+
+
+test('buried rough interfaces do not create ideal-plane skirts in 3D', () => {
+  assert.match(threeView, /closeToIdeal: !part\.buried/);
+});
+
+
+test('buried rough interfaces do not create ideal-plane skirts in 3D', () => {
+  assert.match(threeView, /closeToIdeal: !part\.buried/);
 });
