@@ -419,6 +419,12 @@ assert.equal(conformalGrowSide.z0, 5);
 assert.equal(conformalGrowSide.z1, 8);
 assert.equal(conformalGrowSide.role, 'conformal-sidewall');
 assert.equal(surfaceSegment(regionAt(conformalGrowStep, [0, 0]).stack).z1, 8);
+assert.deepEqual(
+  regionAt(conformalGrowStep, [4, 0]).stack.find(
+    (segment) => segment.layerId === conformalGrowSeed.layerId,
+  ),
+  { layerId: conformalGrowSeed.layerId, z0: 5, z1: 6 },
+);
 
 const buriedGrow = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const buriedSeed = applyOperation(buriedGrow, {
