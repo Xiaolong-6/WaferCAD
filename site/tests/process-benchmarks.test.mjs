@@ -4,8 +4,15 @@ import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benc
 
 await loadGeometryKernel();
 const { applyOperation, createModel, surfaceZ } = await import('../model.js');
-const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
-  await import('../vector-geometry.js');
+const {
+  circleMulti,
+  difference,
+  pointInMulti,
+  rectMulti,
+  intersection,
+  isEmpty,
+  unionGeometries,
+} = await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
 function stackAt(model, x, y = 0) {
@@ -412,9 +419,75 @@ test('3D groups retain distinct Z intervals below the old eight-decimal grouping
   );
 });
 
-test('through-trench void remains empty: current Conformal needs an adjacent material stack', () => {
-  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
-  applyOperation(model, { type: 'etch', thickness: 10, area: rectMulti(4, 20) });
-  applyOperation(model, { type: 'add', thickness: 1, area: model.boundary, growth: 'conformal' });
-  assert.deepEqual(stackAt(model, 1.5), []);
+for (const face of ['front', 'back']) {
+  test(`through-trench void receives Conformal sidewall material on the ${face} face`, () => {
+    const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+    applyOperation(model, { type: 'etch', thickness: 10, area: rectMulti(4, 20) });
+    const coat = applyOperation(model, {
+      type: 'add',
+      name: 'Through-wall coat',
+      thickness: 1,
+      face,
+      area: model.boundary,
+      growth: 'conformal',
+    });
+    assert.equal(coat.changed, true);
+    const side = stackAt(model, 1.5).find((segment) => segment.layerId === coat.layerId);
+    assert.ok(side);
+    assert.equal(side.role, 'conformal-sidewall');
+    if (face === 'front') {
+      assert.deepEqual([side.z0, side.z1], [-5, 6]);
+    } else {
+      assert.deepEqual([side.z0, side.z1], [-6, 5]);
+    }
+    assert.deepEqual(stackAt(model, 0), []);
+  });
+}
+
+test('dense nested-ring topography completes whole-face Conformal without internal overlap', () => {
+  const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Blanket',
+    thickness: 2,
+    area: model.boundary,
+    growth: 'direct',
+  });
+
+  const rings = [];
+  for (const x of [-30000, -18000, -6000, 6000, 18000, 30000]) {
+    for (const y of [-30000, -18000, -6000, 6000, 18000, 30000]) {
+      const outer = circleMulti(7000, 7000, 40, x, y),
+        inner = circleMulti(3200, 3200, 32, x, y);
+      rings.push(difference(outer, inner));
+    }
+  }
+  const patterned = unionGeometries(rings);
+  applyOperation(model, {
+    type: 'add',
+    name: 'Ring mesa',
+    thickness: 1.5,
+    area: patterned,
+    growth: 'direct',
+  });
+
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal ring coat',
+    thickness: 0.8,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+  assert.ok(coat.layerId);
+
+  for (let i = 0; i < model.regions.length; i++) {
+    const region = model.regions[i];
+    for (let j = i + 1; j < model.regions.length; j++) {
+      assert.equal(isEmpty(intersection(region.geom, model.regions[j].geom)), true);
+    }
+    for (let j = 1; j < region.stack.length; j++) {
+      assert.ok(region.stack[j].z0 >= region.stack[j - 1].z1 - 1e-9);
+    }
+  }
 });
