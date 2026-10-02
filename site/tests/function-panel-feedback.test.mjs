@@ -140,6 +140,8 @@ test('Mask topography reference is dashed and all scientific header controls sha
   assert.match(style, /\/\* Unified scientific header controls \*\//);
   assert.match(style, /\.view-head \.mini-btn,[\s\S]*?\.view-head \.three-control/);
   assert.match(style, /\.view-head \.section-view-tools[\s\S]*?gap: 2px/);
+  assert.match(style, /View header controls share one physical box model/);
+  assert.match(style, /max-height: 21px/);
   assert.match(style, /\.view-head \.three-border-toggle > span[\s\S]*?color: inherit/);
   assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
 });
