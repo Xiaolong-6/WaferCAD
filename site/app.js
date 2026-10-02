@@ -2045,5 +2045,6 @@ updateOperationUI();
 maskImportController.syncTransformInputs();
 renderAll();
 fit3d();
+document.documentElement.dataset.appReady = 'true';
 status('Ready. Create a base or import a layout.');
 void initializePersistedWorkspace();
