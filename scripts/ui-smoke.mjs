@@ -180,12 +180,16 @@ assert.equal(await page.locator('#roughFeatureRow').isVisible(), false);
 await page.locator('#etchSurfaceMode').selectOption('rough');
 assert.equal(await page.locator('#roughFeatureRow').isVisible(), true);
 assert.equal(await page.locator('#roughHeightRow').isVisible(), true);
-assert.match(await page.locator('#operationNote').textContent(), /render-only/);
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), true);
+assert.match(await page.locator('#operationNote').textContent(), /maximum etch depth/);
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#operationThickness').fill('0.5');
 assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '0.5');
 await page.locator('#roughFeatureSize').fill('0.4');
+await page.locator('#roughFeatureCv').fill('35');
 await page.locator('#roughAmplitude').fill('0.8');
+await page.locator('#roughHeightCv').fill('40');
 await page.locator('#applyOperationBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /Height cannot exceed Etch Depth/);
 await page.locator('#operationThickness').fill('1');
@@ -198,12 +202,18 @@ await page.waitForFunction(() =>
 
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
+assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
 await page.locator('#undoBtn').click();
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
+assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
 await page.locator('#redoBtn').click();
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
+assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
 
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI rough project');
@@ -220,7 +230,10 @@ assert.ok(
       segment.frontSurface?.kind === 'rough' &&
       segment.frontSurface.geometryMode === 'ideal' &&
       Math.abs(segment.frontSurface.featureSize - 0.4) < 1e-12 &&
-      Math.abs(segment.frontSurface.amplitude - 0.8) < 1e-12 &&
+      Math.abs(segment.frontSurface.meanHeight - 0.8) < 1e-12 &&
+      Math.abs(segment.frontSurface.featureCv - 0.35) < 1e-12 &&
+      Math.abs(segment.frontSurface.heightCv - 0.4) < 1e-12 &&
+      typeof segment.frontSurface.profileId === 'string' &&
       Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
 );
