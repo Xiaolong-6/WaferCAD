@@ -11,12 +11,27 @@ import { roughLod, roughTextureValue } from './surface-rendering.js';
 let THREE = null;
 let OrbitControls = null;
 let dependencyError = null;
+let dependencyPromise = null;
 
-try {
-  THREE = await import('three');
-  ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
-} catch (error) {
-  dependencyError = error;
+function loadDependencies() {
+  if (THREE && OrbitControls) return Promise.resolve(true);
+  if (dependencyPromise) return dependencyPromise;
+
+  dependencyPromise = (async () => {
+    try {
+      const threeModule = await import('three'),
+        controlsModule = await import('three/addons/controls/OrbitControls.js');
+      THREE = threeModule;
+      OrbitControls = controlsModule.OrbitControls;
+      dependencyError = null;
+      return true;
+    } catch (error) {
+      dependencyError = error;
+      return false;
+    }
+  })();
+
+  return dependencyPromise;
 }
 
 export function createThreeView({
@@ -37,6 +52,7 @@ export function createThreeView({
   let group = null;
   let axesHelper = null;
   let ready = false;
+  let initPromise = null;
   let frame = null;
   let interacting = false;
   let roughMeshes = [];
@@ -374,52 +390,65 @@ export function createThreeView({
   }
 
   function init() {
-    if (!THREE || !OrbitControls) {
-      console.warn('3D dependencies unavailable; continuing without the 3D view.', dependencyError);
-      host.classList.add('three-unavailable');
-      host.textContent = '3D unavailable';
-      stats.textContent = 'dependency unavailable';
-      return false;
-    }
+    if (ready) return Promise.resolve(true);
+    if (initPromise) return initPromise;
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0xf5f7f9);
+    host.classList.add('three-loading');
+    stats.textContent = 'loading 3D…';
 
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
-    camera.up.set(0, 0, 1);
-    camera.position.set(115, -125, 95);
+    initPromise = loadDependencies().then((available) => {
+      host.classList.remove('three-loading');
+      if (!available || !THREE || !OrbitControls) {
+        console.warn('3D dependencies unavailable; continuing without the 3D view.', dependencyError);
+        host.classList.add('three-unavailable');
+        host.textContent = '3D unavailable';
+        stats.textContent = 'dependency unavailable';
+        return false;
+      }
 
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
-    controls.enableDamping = true;
-    controls.addEventListener('start', () => {
-      interacting = true;
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0xf5f7f9);
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
+      camera.up.set(0, 0, 1);
+      camera.position.set(115, -125, 95);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0, 0);
+      controls.enableDamping = true;
+      controls.addEventListener('start', () => {
+        interacting = true;
+        scheduleFrame();
+      });
+      controls.addEventListener('change', scheduleFrame);
+      controls.addEventListener('end', () => {
+        interacting = false;
+        scheduleFrame();
+      });
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
+      const directional = new THREE.DirectionalLight(0xffffff, 2.2);
+      directional.position.set(80, -70, 130);
+      scene.add(directional);
+
+      group = new THREE.Group();
+      scene.add(group);
+      axesHelper = new THREE.AxesHelper(12);
+      scene.add(axesHelper);
+
+      host.prepend(renderer.domElement);
+      new ResizeObserver(resize).observe(host);
+      ready = true;
+      resize();
+      render();
+      fit();
       scheduleFrame();
-    });
-    controls.addEventListener('change', scheduleFrame);
-    controls.addEventListener('end', () => {
-      interacting = false;
-      scheduleFrame();
+      return true;
     });
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
-    const directional = new THREE.DirectionalLight(0xffffff, 2.2);
-    directional.position.set(80, -70, 130);
-    scene.add(directional);
-
-    group = new THREE.Group();
-    scene.add(group);
-    axesHelper = new THREE.AxesHelper(12);
-    scene.add(axesHelper);
-
-    host.prepend(renderer.domElement);
-    new ResizeObserver(resize).observe(host);
-    ready = true;
-    resize();
-    scheduleFrame();
-    return true;
+    return initPromise;
   }
 
   function render() {
