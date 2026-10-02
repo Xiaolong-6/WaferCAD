@@ -24,6 +24,7 @@ import {
 import { downloadProject } from './project-io.js';
 import { createThreeView } from './three-view.js';
 import {
+  appearanceSurfaceGroups,
   implantSectionBands,
   implantSurfaceGroups,
   sectionColumns,
@@ -855,15 +856,28 @@ function drawMaskStructureReference(ctx, v) {
   ctx.restore();
 }
 
+function fillRoughPlanOverlay(ctx, v, back, alpha = 0.08) {
+  ctx.save();
+  ctx.fillStyle = `rgba(17,24,32,${Math.max(0, Math.min(0.2, alpha))})`;
+  for (const patch of appearanceSurfaceGroups(model)) {
+    if (patch.face !== activeFace) continue;
+    canvasPathMulti(ctx, patch.polys, v, back);
+    ctx.fill('evenodd');
+  }
+  ctx.restore();
+}
+
 function renderMask() {
   const c = $('maskCanvas'),
     { ctx, w, h } = setupCanvas(c),
     v = viewport(w, h, 'mask');
   ctx.clearRect(0, 0, w, h);
 
-  // Alignment reference: current process surface topology, rendered only as
-  // neutral outlines so it cannot be confused with mask layer colors.
+  // Alignment reference: current process surface topology. Rough areas get a
+  // subtle neutral darkening so they read as wafer topography without changing
+  // the mask palette or material hue.
   drawMaskStructureReference(ctx, v);
+  fillRoughPlanOverlay(ctx, v, activeFace === 'back', 0.07);
 
   if (maskSourceMode === 'draw') {
     drawMaskController?.render(ctx, v, maskOpacity);
@@ -912,6 +926,7 @@ function renderMain() {
     ctx.lineWidth = 0.65;
     ctx.stroke();
   }
+  fillRoughPlanOverlay(ctx, v, back, 0.09);
   for (const implant of implantSurfaceGroups(model)) {
     if (implant.face !== activeFace) continue;
     ctx.save();
