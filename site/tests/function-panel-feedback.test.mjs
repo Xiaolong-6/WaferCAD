@@ -15,6 +15,7 @@ const projectState = await readFile(
 );
 const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
 const planRenderers = await readFile(new URL('../plan-renderers.js', import.meta.url), 'utf8');
+const selectionGeometry = await readFile(new URL('../selection-geometry.js', import.meta.url), 'utf8');
 const roiController = await readFile(
   new URL('../controllers/roi-controller.js', import.meta.url),
   'utf8',
@@ -186,9 +187,9 @@ test('Mask File Draw source is explicit and Draw feeds Process geometry', () => 
   assert.match(html, /id="drawShapeEditor"[^>]*hidden/);
   assert.match(app, /maskSourceMode = 'file'/);
   assert.match(app, /function selectedFileMaskGeometry\(\)/);
-  assert.match(app, /function activeMaskGeometry\(\)/);
+  assert.match(selectionGeometry, /function activeMaskGeometry\(\)/);
   assert.match(app, /maskSourceMode === 'draw' \? drawMaskGeometry\(drawMask\)/);
-  assert.match(app, /const selected = activeMaskGeometry\(\)/);
+  assert.match(selectionGeometry, /const selected = activeMaskGeometry\(\)/);
   assert.match(planRenderers, /getDrawMaskController\(\)\?\.render\(ctx, v, maskOpacity\)/);
 });
 
@@ -206,8 +207,8 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
   assert.match(html, /data-tool="rect"[^>]*>Square</);
   assert.match(html, /data-tool="circle"[^>]*>Circle</);
   assert.match(html, /id="maskRoiSize"/);
-  assert.match(app, /function maskRoiGeometry\(\)/);
-  assert.match(app, /return limiter \? intersection\(area, limiter\) : area/);
+  assert.match(selectionGeometry, /function maskRoiGeometry\(\)/);
+  assert.match(selectionGeometry, /return limiter \? intersection\(area, limiter\) : area/);
   assert.match(planRenderers, /getMaskRoiController\(\)\?\.render\(ctx, v\)/);
   assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);
   assert.match(maskRoiController, /canMoveBody\(world\)/);
