@@ -152,7 +152,8 @@ assert.equal(
   await examplePage.locator('.workspace').evaluate((element) => element.inert),
   false,
 );
-assert.equal(Number(await examplePage.locator('#baseWidth').inputValue()), 100000);
+assert.equal(await examplePage.locator('#xyUnitSelect').inputValue(), 'mm');
+assert.equal(Number(await examplePage.locator('#baseWidth').inputValue()), 100);
 assert.ok(await examplePage.locator('#maskLayerList .layer-row input:checked').count());
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
 await examplePage.locator('#gdsInput').setInputFiles({
