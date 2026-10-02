@@ -94,18 +94,18 @@ test('Process UI is driven by material presence and exposed Extend targets', () 
 test('Mask alignment view overlays neutral structure outlines beneath adjustable mask opacity', () => {
   assert.match(html, /id="maskOpacityRange"/);
   assert.match(html, /id="maskOpacityValue"/);
-  assert.match(app, /function drawMaskStructureReference\(/);
-  assert.match(app, /maskStructurePatches\(\)/);
-  assert.match(app, /ctx\.globalAlpha = maskOpacity/);
-  assert.match(app, /drawMaskStructureReference\(ctx, v\)/);
+  assert.match(planRenderers, /function drawMaskStructureReference\(/);
+  assert.match(planRenderers, /maskStructurePatches\(\)/);
+  assert.match(planRenderers, /ctx\.globalAlpha = maskOpacity/);
+  assert.match(planRenderers, /drawMaskStructureReference\(ctx, v\)/);
 });
 
 
 test('Mask alignment opacity is persisted and applies only to the mask overlay', () => {
   assert.match(html, /id="maskOpacityRange"/);
-  assert.match(app, /ctx\.globalAlpha = maskOpacity/);
-  assert.match(app, /drawMaskStructureReference\(ctx, v\)/);
-  assert.match(app, /same-height surface groups across materials/);
+  assert.match(planRenderers, /ctx\.globalAlpha = maskOpacity/);
+  assert.match(planRenderers, /drawMaskStructureReference\(ctx, v\)/);
+  assert.match(planRenderers, /same-height surface groups across materials/);
   assert.match(projectState, /maskOpacity: state\.maskOpacity/);
   assert.match(projectState, /project\.display\?\.maskOpacity == null \? 0\.65/);
 });
@@ -131,8 +131,8 @@ test('workstation visual system keeps scientific controls visually unified', () 
 });
 
 test('Mask topography reference is dashed and all scientific header controls share one style', () => {
-  assert.match(app, /ctx\.setLineDash\(\[4, 3\]\)/);
-  assert.match(app, /ctx\.setLineDash\(\[7, 4\]\)/);
+  assert.match(planRenderers, /ctx\.setLineDash\(\[4, 3\]\)/);
+  assert.match(planRenderers, /ctx\.setLineDash\(\[7, 4\]\)/);
   assert.match(style, /\/\* Unified scientific header controls \*\//);
   assert.match(style, /\.view-head \.mini-btn,[\s\S]*?\.view-head \.three-control/);
   assert.match(style, /\.view-head \.section-view-tools[\s\S]*?gap: 2px/);
@@ -149,8 +149,8 @@ test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
   assert.ok(mainStart >= 0 && maskStart > mainStart && threeStart > maskStart);
   assert.ok(html.indexOf('id="focusEditor"') > mainStart);
   assert.ok(html.indexOf('id="focusEditor"') < maskStart);
-  assert.doesNotMatch(app.slice(app.indexOf('function renderMask()'), app.indexOf('function shadeColor')), /drawRoi/);
-  assert.match(app.slice(app.indexOf('function renderMain()'), app.indexOf('function renderSection()')), /drawRoi\(ctx, v, back\)/);
+  assert.doesNotMatch(planRenderers.slice(planRenderers.indexOf('function renderMask()'), planRenderers.indexOf('function shadeColor')), /drawRoi/);
+  assert.match(planRenderers.slice(planRenderers.indexOf('function renderMain()'), planRenderers.indexOf('function renderSection()')), /drawRoi\(ctx, v, back\)/);
   assert.match(roiController, /canvas\.addEventListener\('dblclick'[\s\S]*?resetPlanView\('mask'\)/);
 });
 
