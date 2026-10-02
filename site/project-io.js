@@ -62,6 +62,7 @@ function quantizeModel(model) {
         if (!isObject(appearance)) continue;
         appearance.featureSize = quantizeLength(appearance.featureSize);
         appearance.amplitude = quantizeLength(appearance.amplitude);
+        if (appearance.etchDepth != null) appearance.etchDepth = quantizeLength(appearance.etchDepth);
       }
     }
   }
