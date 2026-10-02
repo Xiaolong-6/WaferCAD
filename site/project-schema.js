@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 7;
+export const CURRENT_PROJECT_VERSION = 8;
 
 const LIMITS = {
   layers: 10000,
@@ -107,8 +107,14 @@ function validateSurfaceAppearance(appearance, path) {
   assertObject(appearance, path);
   if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
   assertFinite(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
-  assertFinite(appearance.amplitude, `${path}.amplitude`, { min: 1e-12 });
+  const amplitude = assertFinite(appearance.amplitude, `${path}.amplitude`, { min: 1e-12 });
   assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
+  if (appearance.etchDepth != null) {
+    const depth = assertFinite(appearance.etchDepth, `${path}.etchDepth`, { min: 1e-12 });
+    if (amplitude > depth + 1e-9) {
+      fail(`${path}.amplitude`, 'must not exceed etchDepth.');
+    }
+  }
   if (appearance.geometryMode !== 'ideal') {
     fail(`${path}.geometryMode`, 'must be ideal for the current geometry kernel.');
   }
@@ -385,6 +391,23 @@ function validateRoi(roi) {
   fail('roi.type', 'must be rect, circle, or sector.');
 }
 
+function validateMaskRoi(maskRoi) {
+  if (maskRoi == null) return;
+  assertObject(maskRoi, 'maskRoi');
+  if (maskRoi.type === 'square') {
+    assertPoint(maskRoi.c, 'maskRoi.c');
+    assertFinite(maskRoi.size, 'maskRoi.size', { min: 1e-12 });
+    assertFinite(maskRoi.rotation, 'maskRoi.rotation');
+    return;
+  }
+  if (maskRoi.type === 'circle') {
+    assertPoint(maskRoi.c, 'maskRoi.c');
+    assertFinite(maskRoi.r, 'maskRoi.r', { min: 1e-12 });
+    return;
+  }
+  fail('maskRoi.type', 'must be square or circle.');
+}
+
 function validateDrawMask(drawMask) {
   assertObject(drawMask, 'drawMask');
   assertInteger(drawMask.nextShapeId, 'drawMask.nextShapeId', { min: 1, max: 1000000000 });
@@ -547,21 +570,7 @@ function validateProjectCore(
   if (project.drawMask != null) validateDrawMask(project.drawMask);
   if (!['front', 'back'].includes(project.activeFace)) fail('activeFace', 'must be front or back.');
   validateRoi(project.roi);
-  validateRoi(project.maskRoi);
-  if (
-    project.maskRoi != null &&
-    !['rect', 'circle'].includes(project.maskRoi.type)
-  ) {
-    fail('maskRoi.type', 'must be rect or circle.');
-  }
-  if (project.maskRoi?.type === 'rect') {
-    const width = Math.abs(project.maskRoi.b[0] - project.maskRoi.a[0]),
-      height = Math.abs(project.maskRoi.b[1] - project.maskRoi.a[1]),
-      tolerance = Math.max(1e-12, width, height) * 1e-9;
-    if (Math.abs(width - height) > tolerance) {
-      fail('maskRoi', 'rect geometry must be square.');
-    }
-  }
+  validateMaskRoi(project.maskRoi);
   if (
     project.maskRoiAnchor != null &&
     !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.maskRoiAnchor)
@@ -581,6 +590,42 @@ function validateProjectCore(
   else if (project.snapshots != null) fail('snapshots', 'must not be nested.');
 
   return project;
+}
+
+function legacyWorldPointToMaskLocal(point, transform) {
+  const rotation = (-(Number(transform?.rotation) || 0) * Math.PI) / 180,
+    cos = Math.cos(rotation),
+    sin = Math.sin(rotation),
+    scale = Math.max(1e-12, Math.abs(Number(transform?.scale) || 1)),
+    dx = Number(point[0]) - (Number(transform?.x) || 0),
+    dy = Number(point[1]) - (Number(transform?.y) || 0);
+  return [(dx * cos - dy * sin) / scale, (dx * sin + dy * cos) / scale];
+}
+
+function migrateLegacyMaskRoiToLocal(maskRoi, transform) {
+  if (!isObject(maskRoi)) return null;
+  const scale = Math.max(1e-12, Math.abs(Number(transform?.scale) || 1));
+  if (maskRoi.type === 'rect' && Array.isArray(maskRoi.a) && Array.isArray(maskRoi.b)) {
+    const x0 = Math.min(Number(maskRoi.a[0]), Number(maskRoi.b[0])),
+      x1 = Math.max(Number(maskRoi.a[0]), Number(maskRoi.b[0])),
+      y0 = Math.min(Number(maskRoi.a[1]), Number(maskRoi.b[1])),
+      y1 = Math.max(Number(maskRoi.a[1]), Number(maskRoi.b[1])),
+      center = legacyWorldPointToMaskLocal([(x0 + x1) / 2, (y0 + y1) / 2], transform);
+    return {
+      type: 'square',
+      c: center,
+      size: Math.max(x1 - x0, y1 - y0) / scale,
+      rotation: -(Number(transform?.rotation) || 0),
+    };
+  }
+  if (maskRoi.type === 'circle' && Array.isArray(maskRoi.c)) {
+    return {
+      type: 'circle',
+      c: legacyWorldPointToMaskLocal(maskRoi.c, transform),
+      r: Math.abs(Number(maskRoi.r) || 0) / scale,
+    };
+  }
+  return maskRoi;
 }
 
 function migrateProjectCore(project) {
@@ -611,6 +656,9 @@ function migrateProjectCore(project) {
   if (version < 7) {
     if (project.maskRoi == null) project.maskRoi = null;
     if (project.maskRoiAnchor == null) project.maskRoiAnchor = 'center';
+  }
+  if (version < 8 && project.maskRoi != null) {
+    project.maskRoi = migrateLegacyMaskRoiToLocal(project.maskRoi, project.maskTransform);
   }
   project.version = CURRENT_PROJECT_VERSION;
   return project;
