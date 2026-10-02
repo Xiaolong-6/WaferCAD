@@ -10,7 +10,7 @@ The v1 architecture in this document is implemented on the feature branch:
 - exact per-shape parameter popover, including multiline Polygon coordinates;
 - Delete/Clear actions;
 - File and Draw state preserved independently;
-- Draw state persisted in project v6, snapshots, and autosave;
+- Draw state was introduced in project v6 and migrates into the current v13 format; snapshots and autosave preserve it;
 - active source feeds Process Selected mask / Invert mask;
 - active source exports through Mask SVG;
 - Mask Fit/zoom uses the active source;
@@ -151,7 +151,7 @@ Process should use this function for:
 - Invert mask;
 - exposed-layer target filtering when the process area is mask-based.
 
-This avoids branching throughout Deposit / Extend / Etch.
+This avoids branching throughout Deposit / Extend / Etch / Implant.
 
 ### Draw composition
 
