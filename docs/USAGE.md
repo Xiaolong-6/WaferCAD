@@ -131,7 +131,7 @@ Each scientific view has **Max**. It expands Main, Mask, 3D, or Section to the a
 
 Main, Mask, and Section A–B provide **SVG** export. The 3D view provides **GLB** and **PNG**: GLB contains physical geometry in glTF metre units (WaferCAD µm are converted by 1e-6), while PNG captures the current 3D camera at 3× resolution.
 
-Use **Settings → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm). Internal calculations retain their working precision; project export normalizes persisted physical lengths and coordinates to **0.1 nm** (0.0001 µm) so floating-point tails such as `24999.999999999996` are not stored.
+Use **Project → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm). Internal calculations retain their working precision; project export normalizes persisted physical lengths and coordinates to **0.1 nm** (0.0001 µm) so floating-point tails such as `24999.999999999996` are not stored.
 
 ## 9. Snapshots
 
@@ -143,7 +143,7 @@ Snapshots are immutable workspace checkpoints and have no thumbnail dependency. 
 
 ## 10. Save and open
 
-Settings includes an editable **Project name**. Save uses that name as the default `.wafercad` filename. **New** and **Open** both warn before replacing the current workspace.
+Project includes an editable **Project name**. Export uses that name as the default `.wafercad` filename. **New** and **Open** both warn before replacing the current workspace.
 
 The **Project** tab is first and is the default tool tab when the workspace starts.
 
