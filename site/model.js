@@ -435,14 +435,15 @@ function exposedLayerPatches(model, active, face, layerId) {
     if (isEmpty(geom)) continue;
 
     const z = face === 'front' ? segment.z1 : segment.z0,
-      key = z.toFixed(9);
-    if (!groups.has(key)) groups.set(key, { z, geoms: [] });
+      oppositeZ = face === 'front' ? region.stack[0].z0 : region.stack.at(-1).z1,
+      key = `${z.toFixed(9)}:${oppositeZ.toFixed(9)}`;
+    if (!groups.has(key)) groups.set(key, { z, oppositeZ, geoms: [] });
     groups.get(key).geoms.push(geom);
   }
 
   const patches = [];
-  for (const { z, geoms } of groups.values()) {
-    for (const geom of safeUnionParts(geoms)) patches.push({ z, geom });
+  for (const { z, oppositeZ, geoms } of groups.values()) {
+    for (const geom of safeUnionParts(geoms)) patches.push({ z, oppositeZ, geom });
   }
   return patches.sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
 }
@@ -493,11 +494,10 @@ function uncoveredGeometry(model) {
   return uncovered;
 }
 
-function addVoidConformalSidewall(model, geom, layerId, face, sourceZ) {
-  if (isEmpty(geom) || !layerId || sourceZ == null) return;
-  const [lo, hi] = modelBoundsZ(model),
-    z0 = face === 'front' ? lo : sourceZ,
-    z1 = face === 'front' ? sourceZ : hi;
+function addVoidConformalSidewall(model, geom, layerId, face, source) {
+  if (isEmpty(geom) || !layerId || source?.z == null || source?.oppositeZ == null) return;
+  const z0 = face === 'front' ? source.oppositeZ : source.z,
+    z1 = face === 'front' ? source.z : source.oppositeZ;
   if (!(z1 > z0 + 1e-9)) return;
   model.regions.push({
     id: `region-${model.nextRegionId++}`,
@@ -544,7 +544,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       if (!isEmpty(uncovered)) {
         const voidBand = intersection(band, uncovered);
         if (!isEmpty(voidBand)) {
-          addVoidConformalSidewall(model, voidBand, layerId, face, source.z);
+          addVoidConformalSidewall(model, voidBand, layerId, face, source);
           uncovered = difference(uncovered, voidBand);
         }
       }
