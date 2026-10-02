@@ -5,6 +5,10 @@ import test from 'node:test';
 const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
+const rendererGeometry = await readFile(
+  new URL('../renderer-geometry.js', import.meta.url),
+  'utf8',
+);
 
 test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(html, /id="threeOpacityRange"[^>]*value="1"/s);
@@ -12,24 +16,35 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(html, /id="threeBorders"[^>]*checked/);
   assert.match(app, /threeOpacity = 1/);
   assert.match(app, /threeShowBorders = false/);
-  assert.match(threeView, /solidBorders\(item\)/);
+  assert.match(threeView, /buildRenderSurfacePlan\(model, clip\)/);
+  assert.match(rendererGeometry, /function ownHorizontalCaps\(/);
+  assert.match(rendererGeometry, /function ownSidewalls\(/);
+  assert.match(rendererGeometry, /function ownedBorderLines\(/);
   assert.doesNotMatch(threeView, /alphaHash/);
   assert.match(threeView, /transparent: translucent/);
   assert.match(threeView, /depthWrite: !translucent/);
   assert.match(threeView, /depthTest: true/);
   assert.match(threeView, /function updateTransparentOrder\(\)/);
-  assert.match(threeView, /transparentMeshes\.sort\(\(a, b\) => a\.depth - b\.depth\)/);
-  assert.match(threeView, /function capRenderParts\(/);
+  assert.match(threeView, /a\.depth - b\.depth \|\| a\.sortBias - b\.sortBias/);
   assert.match(threeView, /function geometryFromRoughCap\(/);
-  assert.match(threeView, /roughMeshSubdivisionDepth\(/);
-  assert.match(threeView, /roughMeshTriangleBudget\(/);
+  assert.match(threeView, /adaptiveRoughMeshLod\(/);
+  assert.match(threeView, /function roughLodZones\(/);
+  assert.match(threeView, /function maybeRebuildAdaptiveGeometry\(/);
+  assert.match(threeView, /screenPriority: 0\.06/);
   assert.match(threeView, /function roughPointNormal\(/);
-  assert.match(threeView, /visibleSolidBorders\(item, roughMap\)/);
+  assert.doesNotMatch(threeView, /function capRenderParts\(/);
+  assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
   assert.match(threeView, /opacity: opacity \* 0\.18/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
   assert.match(threeView, /opacity: implantState\.opacity,\s*depthTest: true/s);
   assert.match(threeView, /capState = \{[\s\S]*?depthTest: true/);
+  assert.match(threeView, /capMaterial\.polygonOffset = true/);
   assert.match(threeView, /capMaterial\.polygonOffsetFactor = -1/);
+  assert.match(threeView, /if \(!state\?\.transparent\) return base/);
+  assert.match(threeView, /part\.type === 'cap'/);
+  assert.match(threeView, /part\.z0/);
+  assert.match(threeView, /part\.z1/);
+  assert.doesNotMatch(threeView, /forceSinglePass/);
   assert.doesNotMatch(threeView, /opacity: 0\.18/);
   assert.doesNotMatch(threeView, /opacity: 0\.3/);
   assert.match(threeView, /roughProfileOffsetAtPoint\(/);
@@ -38,6 +53,14 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
   assert.match(threeView, /async function exportGlb\(\)/);
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
+  assert.match(
+    threeView,
+    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?render\(\);[\s\S]*?renderer\.render\(scene, camera\)/,
+  );
+  assert.match(
+    threeView,
+    /renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?camera\.updateProjectionMatrix\(\);[\s\S]*?render\(\);/,
+  );
   assert.match(app, /createThreeView/);
 });
 

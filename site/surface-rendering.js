@@ -16,33 +16,86 @@ export function roughLod(featurePixels) {
   };
 }
 
-export function roughMeshTriangleBudget({ triangleCount = 1, clipped = false } = {}) {
-  const triangles = Math.max(1, Math.floor(Number(triangleCount) || 1)),
-    floor = clipped ? 36000 : 72000,
-    ceiling = clipped ? 72000 : 180000;
-  return Math.min(ceiling, Math.max(floor, triangles * 16));
+export function projectedPixelsPerUnit({
+  distance = 1,
+  viewportHeight = 1,
+  fovDegrees = 34,
+  pixelRatio = 1,
+} = {}) {
+  const safeDistance = Math.max(1e-9, Number(distance) || 1),
+    height = Math.max(2, Number(viewportHeight) || 2),
+    ratio = Math.max(0.25, Number(pixelRatio) || 1),
+    fov = Math.max(1, Math.min(179, Number(fovDegrees) || 34)),
+    halfFov = (fov * Math.PI) / 360;
+  return (height * ratio) / (2 * safeDistance * Math.tan(halfFov));
 }
 
-export function roughMeshSubdivisionDepth({
+export function adaptiveRoughMeshLod({
   triangleCount = 1,
   maxEdge = 0,
   featureSize = 1,
-  maxTriangles = 36000,
-  maxDepth = 6,
+  distance = 1,
+  viewportWidth = 1,
+  viewportHeight = 1,
+  fovDegrees = 34,
+  pixelRatio = 1,
+  visibleFraction = 1,
+  roiFraction = 1,
+  screenPriority = 1,
+  maxDepth = 10,
 } = {}) {
   const triangles = Math.max(1, Math.floor(Number(triangleCount) || 1)),
     edge = Math.max(0, Number(maxEdge) || 0),
     feature = Math.max(1e-9, Number(featureSize) || 1),
-    targetEdge = feature * 0.75,
+    width = Math.max(2, Number(viewportWidth) || 2),
+    height = Math.max(2, Number(viewportHeight) || 2),
+    ratio = Math.max(0.25, Number(pixelRatio) || 1),
+    pxPerUnit = projectedPixelsPerUnit({
+      distance,
+      viewportHeight: height,
+      fovDegrees,
+      pixelRatio: ratio,
+    }),
+    featurePixels = feature * pxPerUnit,
+    detail = roughLod(featurePixels),
+    priority = Math.max(0.02, Math.min(1, Number(screenPriority) || 0)),
+    samplesPerFeature = 1 + 3 * detail.detail,
+    targetEdge = Math.max(
+      feature / samplesPerFeature,
+      1.75 / Math.max(1e-12, pxPerUnit * Math.sqrt(priority)),
+    ),
     desiredDepth =
       edge > targetEdge ? Math.max(0, Math.ceil(Math.log2(edge / targetEdge))) : 0,
-    budget = Math.max(triangles, Math.floor(Number(maxTriangles) || triangles)),
+    occupancy = Math.sqrt(clamp01(visibleFraction)),
+    roiFocus = 1 + 0.45 * (1 - Math.sqrt(clamp01(roiFraction))),
+    viewportPixels = width * height * ratio * ratio,
+    maxTriangles = Math.max(
+      triangles,
+      Math.min(
+        900000,
+        Math.max(
+          12000,
+          Math.floor(viewportPixels * (0.08 + 0.32 * occupancy) * roiFocus * priority),
+        ),
+      ),
+    ),
     budgetDepth = Math.max(
       0,
-      Math.floor(Math.log(Math.max(1, budget / triangles)) / Math.log(4)),
+      Math.floor(Math.log(Math.max(1, maxTriangles / triangles)) / Math.log(4)),
     ),
-    depthLimit = Math.max(0, Math.floor(Number(maxDepth) || 0));
-  return Math.min(desiredDepth, budgetDepth, depthLimit);
+    depthLimit = Math.max(0, Math.floor(Number(maxDepth) || 0)),
+    depth = Math.min(desiredDepth, budgetDepth, depthLimit);
+
+  return {
+    depth,
+    detail: detail.detail,
+    micro: detail.micro,
+    featurePixels,
+    pxPerUnit,
+    targetEdge,
+    maxTriangles,
+    screenPriority: priority,
+  };
 }
 
 function hashUnit(seed, index) {
