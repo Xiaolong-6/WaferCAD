@@ -13,7 +13,7 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
-const { roughLod, roughNoise1D, roughProfileOffsetAtPoint } =
+const { roughLod, roughNoise1D, roughProfileOffsetAtPoint, roughVisualBoundsZ } =
   await import('./surface-rendering.js');
 const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
   modelApi;
@@ -29,18 +29,26 @@ const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
 assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
 
-const roughAppearance = { featureSize: 0.5, amplitude: 0.8, seed: 42 };
+const roughAppearance = {
+  featureSize: 0.5,
+  meanHeight: 0.4,
+  featureCv: 0.25,
+  heightCv: 0.25,
+  etchDepth: 0.8,
+  seed: 42,
+  profileId: 'rough-test',
+};
 const roughProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance);
 assert.equal(
   roughProfileSample,
   roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
 );
 assert.ok(roughProfileSample >= -1e-12);
-assert.ok(roughProfileSample <= roughAppearance.amplitude + 1e-12);
-// Physical roughness height is view-independent; LOD can hide detail but never rescales Z.
+assert.ok(roughProfileSample <= roughAppearance.etchDepth + 1e-12);
+const zeroCvAppearance = { ...roughAppearance, featureCv: 0, heightCv: 0 };
 assert.equal(
-  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
-  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
+  roughProfileOffsetAtPoint(1.25, -0.75, zeroCvAppearance),
+  zeroCvAppearance.meanHeight,
 );
 
 const defaults = createModel();
@@ -84,18 +92,29 @@ const roughResult = applyOperation(roughEtch, {
   thickness: 1,
   face: 'front',
   area,
-  surface: { kind: 'rough', featureSize: 0.4, amplitude: 0.8, geometryMode: 'ideal' },
+  surface: {
+    kind: 'rough',
+    featureSize: 0.4,
+    meanHeight: 0.8,
+    featureCv: 0.2,
+    heightCv: 0.3,
+    geometryMode: 'ideal',
+  },
 });
 assert.equal(roughResult.changed, true);
 const roughSurface = surfaceSegment(regionAt(roughEtch, [0, 0]).stack);
 assert.equal(roughSurface.z1, 4);
 assert.equal(roughSurface.frontSurface.kind, 'rough');
 assert.equal(roughSurface.frontSurface.featureSize, 0.4);
-assert.equal(roughSurface.frontSurface.amplitude, 0.8);
+assert.equal(roughSurface.frontSurface.meanHeight, 0.8);
+assert.equal(roughSurface.frontSurface.featureCv, 0.2);
+assert.equal(roughSurface.frontSurface.heightCv, 0.3);
+assert.equal(typeof roughSurface.frontSurface.profileId, 'string');
 assert.equal(roughSurface.frontSurface.geometryMode, 'ideal');
 assert.equal(Number.isInteger(roughSurface.frontSurface.seed), true);
 
 assert.equal(roughSurface.frontSurface.etchDepth, 1);
+assert.deepEqual(roughVisualBoundsZ(roughEtch, [-5, 4]), [-5, 5]);
 
 const invalidRoughEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const invalidRoughResult = applyOperation(invalidRoughEtch, {
@@ -103,7 +122,14 @@ const invalidRoughResult = applyOperation(invalidRoughEtch, {
   thickness: 0.5,
   face: 'front',
   area,
-  surface: { kind: 'rough', featureSize: 0.2, amplitude: 0.8, geometryMode: 'ideal' },
+  surface: {
+    kind: 'rough',
+    featureSize: 0.2,
+    meanHeight: 0.8,
+    featureCv: 0.2,
+    heightCv: 0.2,
+    geometryMode: 'ideal',
+  },
 });
 assert.equal(invalidRoughResult.changed, false);
 assert.match(invalidRoughResult.error, /Height cannot exceed Etch Depth/);
@@ -126,6 +152,7 @@ applyOperation(roughEtch, {
 const inheritedRough = surfaceSegment(regionAt(roughEtch, [0, 0]).stack);
 assert.equal(inheritedRough.frontSurface.kind, 'rough');
 assert.equal(inheritedRough.frontSurface.seed, roughSurface.frontSurface.seed);
+assert.equal(inheritedRough.frontSurface.profileId, roughSurface.frontSurface.profileId);
 
 applyOperation(roughEtch, {
   type: 'etch',
@@ -408,8 +435,12 @@ const roughProject = structuredClone(validProject);
 roughProject.model.regions[0].stack[0].frontSurface = {
   kind: 'rough',
   featureSize: 0.4,
-  amplitude: 0.8,
+  meanHeight: 0.4,
+  featureCv: 0.25,
+  heightCv: 0.3,
   seed: 0xffffffff,
+  profileId: 'rough-schema-test',
+  etchDepth: 0.8,
   geometryMode: 'ideal',
 };
 assert.equal(validateProjectFile(roughProject), roughProject);
