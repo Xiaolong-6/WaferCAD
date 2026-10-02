@@ -503,6 +503,7 @@ try {
         section: { a: [-9, 0], b: [9, 0] },
       });
       await loadProject(page, roughProject, 'wide-rough-buried-interface');
+      await checkSectionSeams(page, roughProject);
       await capture(page, 'wide-rough-buried-interface');
       await page.locator('#sectionMaxBtn').click();
       await capture(page, 'wide-rough-buried-interface-max');
