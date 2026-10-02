@@ -3028,29 +3028,20 @@ summary:focus-visible {
 }
 
 .implant-legend-row {
-  grid-template-columns: 14px 20px minmax(0, 1fr) auto;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
 }
 .legend-visibility {
-  width: 12px !important;
-  height: 12px !important;
-  margin: 0 !important;
+  width: 13px !important;
+  height: 13px !important;
+  margin: 0 3px !important;
+  justify-self: center;
 }
 .implant-gradient-chip {
   width: 18px;
-}
-.implant-color-input {
-  position: absolute;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0;
-  pointer-events: none;
 }
 .implant-row-wrap {
   position: relative;
 }
 .implant-row-wrap.implant-hidden {
   opacity: 0.48;
-}
-.implant-exp-tag {
-  justify-self: end;
 }
