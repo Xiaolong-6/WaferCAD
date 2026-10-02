@@ -190,8 +190,9 @@ export function maskRoiContainsPoint(roi, point) {
   const axes = basis(shape.rotation),
     u = dx * axes.x[0] + dy * axes.x[1],
     v = dx * axes.y[0] + dy * axes.y[1],
-    half = shape.size / 2;
-  return Math.abs(u) <= half && Math.abs(v) <= half;
+    half = shape.size / 2,
+    tolerance = Math.max(1e-12, half * 1e-9);
+  return Math.abs(u) <= half + tolerance && Math.abs(v) <= half + tolerance;
 }
 
 export function resizeMaskRoiFromHandle(roi, handle, point) {
