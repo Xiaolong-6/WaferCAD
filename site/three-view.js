@@ -579,25 +579,6 @@ export function createThreeView({
       mesh.renderOrder = 50000;
       group.add(mesh);
 
-      if (implant.border) {
-        const edgeGeometry = new THREE.BufferGeometry();
-        edgeGeometry.setAttribute(
-          'position',
-          new THREE.Float32BufferAttribute(solidBorders(solid).flat(2), 3),
-        );
-        const edgeMaterial = new THREE.LineDashedMaterial({
-          color: 0x111820,
-          dashSize: Math.max(0.08, (implant.thickness || 1) * 0.18),
-          gapSize: Math.max(0.05, (implant.thickness || 1) * 0.12),
-          transparent: true,
-          opacity: 0.9,
-          depthWrite: false,
-        });
-        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-        edges.computeLineDistances();
-        edges.renderOrder = 100001;
-        group.add(edges);
-      }
     }
 
     stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
