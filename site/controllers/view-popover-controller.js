@@ -44,6 +44,9 @@ export function createViewPopoverController({ root = document } = {}) {
 
   function bind() {
     for (const details of root.querySelectorAll('.view-panel details')) {
+      details.querySelector(':scope > summary')?.addEventListener('click', () => {
+        if (!details.open) claim(details);
+      });
       details.addEventListener('toggle', () => {
         if (details.open) claim(details);
       });
