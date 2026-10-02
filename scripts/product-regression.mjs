@@ -494,7 +494,9 @@ try {
         surface: {
           kind: 'rough',
           featureSize: 0.45,
-          amplitude: 1.2,
+          meanHeight: 0.6,
+          featureCv: 0.3,
+          heightCv: 0.35,
           geometryMode: 'ideal',
         },
       });
