@@ -18,7 +18,7 @@ Primary viewports are 1440 × 900, 1000 × 800, and 390 × 844. The phone contex
 
 ## Layout and renderer changes
 
-On desktop landscape widths above 900 px, the five workspace panels are arranged as **Mask / 3D / Function** on the first row and **Main / Section** on the second row. Their existing grid proportions are preserved: each first-row panel occupies one third, Main occupies one third of the second row, and Section occupies the remaining two thirds.
+On desktop landscape widths above 900 px, the five workspace panels are arranged as **Main / Mask / Function** on the first row and **3D / Section** on the second row. Their six-column allocation is 2/2/2 on the first row and 2/4 on the second row, preserving the established panel proportions.
 
 At widths up to 900 px, A–B coordinates dock below Main so they cannot cover the endpoints. The established three-row narrow layout remains unchanged: Tools/3D, Main/Mask, Section.
 
@@ -43,6 +43,16 @@ The editor uses a compact engineering/CAD workstation visual system. Information
 - popovers and coordinate editors use the same elevated-surface treatment;
 - passive status remains low weight, while success/info/warning/error states retain distinct semantic feedback;
 - visual styling must not change workspace grid allocation, scientific geometry, or editor behavior.
+
+## Post-review extensions, 2026-10-02
+
+The current feature branch extends the September review baseline in three areas that require additional visual attention before merge to `main`:
+
+- **Compact Function panel** — related engineering parameters are paired into two-column rows on desktop and collapse to one column on phone widths. Rough/Pyramid controls share this grammar without horizontal overflow.
+- **Surface morphology** — Section A–B is the profile reference. Rough and Pyramid surfaces use the same deterministic field in Section and 3D; 3D now displaces actual mesh geometry instead of adding a grain/bump texture. Main and Mask only darken non-smooth wafer regions slightly.
+- **Experimental Implant** — the Process form no longer predefines an arbitrary color. Apply assigns from the active 20-color structure palette; Layers controls rename/color/visibility. Main uses a light overlay, Section renders the surviving gradient volume, and 3D renders the clipped internal volume plus the current exposed/cut surface.
+
+The permanent UI smoke now checks Pyramid control switching, removal of the Implant color input, 20-color implant palette behavior, right-aligned visibility control, and project persistence. Pure tests cover morphology polarity, Pyramid profiles, mesh-subdivision budget, and Implant clipping after Etch. A dedicated visual browser pass is still required for final 3D relief quality and transparency judgment because those cannot be established from DOM assertions alone.
 
 ## Reproduce the review
 
