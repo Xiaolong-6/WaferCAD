@@ -2635,6 +2635,66 @@ summary:focus-visible {
 }
 
 
+/* View header controls share one physical box model. Native button/summary/label
+   baselines differ across browsers, so align the containers as boxes rather than
+   relying on inline baseline behavior. */
+.view-head {
+  align-items: center;
+}
+.view-head > div:first-child {
+  align-items: center;
+  line-height: 1;
+}
+.view-head .view-tools,
+.view-head .three-view-tools,
+.view-head .section-view-tools,
+.view-head .zoom-tools,
+.view-head .focus-tools {
+  align-items: center;
+  min-height: 21px;
+  line-height: 1;
+}
+.view-head .view-tools > details,
+.view-head .three-view-tools > details,
+.view-head .section-view-tools > details,
+.view-head .view-tools > label,
+.view-head .three-view-tools > label,
+.view-head .section-view-tools > label,
+.view-head .zoom-tools,
+.view-head .focus-tools {
+  box-sizing: border-box;
+  align-self: center;
+  height: 21px;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.view-head .mini-btn,
+.view-head .three-control,
+.view-head .focus-editor > summary,
+.view-head .three-opacity-control > summary,
+.view-head .export-control > summary,
+.view-head .three-border-toggle {
+  box-sizing: border-box;
+  height: 21px;
+  min-height: 21px;
+  max-height: 21px;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1;
+  vertical-align: top;
+}
+.view-head button,
+.view-head summary,
+.view-head label {
+  font-family: inherit;
+}
+.view-head .readout {
+  align-self: center;
+  line-height: 1;
+}
+
 /* Mask File / Draw source */
 #maskPanel {
   position: relative;
