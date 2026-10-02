@@ -38,6 +38,9 @@ import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import {
   clearWorkspaceState,
+  createWorkspaceRecoveryCheckpoint,
+  listWorkspaceRecoveryPoints,
+  loadWorkspaceRecoveryPoint,
   loadWorkspaceState,
   saveWorkspaceState,
 } from './workspace-persistence.js';
@@ -58,6 +61,7 @@ import { createBaseControlsController } from './controllers/base-controls-contro
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
+import { createWorkspaceSessionController } from './controllers/workspace-session-controller.js';
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
 import {
   createEmptyDrawMask,
@@ -142,26 +146,46 @@ function syncProjectNameInput() {
 
 let workspacePersistenceReady = false,
   workspacePersistenceTimer = null,
-  workspacePersistenceWrite = Promise.resolve();
+  workspacePersistenceWrite = Promise.resolve(),
+  workspaceSession = null,
+  workspaceUpdateCommit = '';
+
+function setWorkspaceSaveStatus(text, failed = false) {
+  const host = $('workspaceSaveStatus');
+  if (!host) return;
+  host.textContent = text;
+  host.dataset.failed = failed ? 'true' : 'false';
+}
+
+function savedTimeLabel(date = new Date()) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
 
 function persistWorkspaceNow() {
-  if (!workspacePersistenceReady) return Promise.resolve(false);
+  if (!workspacePersistenceReady || !workspaceSession?.canWrite()) return Promise.resolve(false);
   if (workspacePersistenceTimer != null) {
     clearTimeout(workspacePersistenceTimer);
     workspacePersistenceTimer = null;
   }
   const project = buildProjectSnapshot(true);
+  setWorkspaceSaveStatus('Saving…');
   workspacePersistenceWrite = workspacePersistenceWrite
     .catch(() => {})
-    .then(() => saveWorkspaceState(project));
+    .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
+    .then(() => {
+      setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+      return true;
+    });
   workspacePersistenceWrite.catch((error) => {
+    setWorkspaceSaveStatus('Local save failed', true);
     console.warn('Workspace autosave failed.', error);
   });
   return workspacePersistenceWrite;
 }
 
 function scheduleWorkspacePersistence() {
-  if (!workspacePersistenceReady) return;
+  if (!workspacePersistenceReady || !workspaceSession?.canWrite()) return;
+  setWorkspaceSaveStatus('Saving…');
   if (workspacePersistenceTimer != null) clearTimeout(workspacePersistenceTimer);
   workspacePersistenceTimer = setTimeout(() => {
     workspacePersistenceTimer = null;
@@ -169,10 +193,64 @@ function scheduleWorkspacePersistence() {
   }, 800);
 }
 
+async function refreshRecoveryOptions() {
+  const select = $('workspaceRecoverySelect');
+  const restore = $('workspaceRestoreBtn');
+  if (!select || !restore) return;
+  try {
+    const points = await listWorkspaceRecoveryPoints();
+    select.replaceChildren();
+    if (!points.length) {
+      select.append(new Option('No recovery points', ''));
+      restore.disabled = true;
+      return;
+    }
+    for (const point of points) {
+      const date = new Date(point.updatedAt);
+      const reason = point.reason ? ` · ${point.reason}` : '';
+      const commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
+      select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
+    }
+    restore.disabled = !workspaceSession?.canWrite();
+  } catch (error) {
+    console.warn('Could not list workspace recovery points.', error);
+  }
+}
+
+function syncWorkspaceSessionState({ writable }) {
+  const workspace = document.querySelector('.workspace');
+  const dialog = $('workspaceConflictDialog');
+  if (workspace) workspace.inert = !writable;
+  if (dialog) dialog.hidden = writable;
+  if (!writable) {
+    if (workspacePersistenceTimer != null) {
+      clearTimeout(workspacePersistenceTimer);
+      workspacePersistenceTimer = null;
+    }
+    setWorkspaceSaveStatus('Read-only · another tab is editing');
+    if ($('workspaceRestoreBtn')) $('workspaceRestoreBtn').disabled = true;
+    status('Workspace is active in another tab. This tab is read-only to protect local data.', 'warning');
+  } else if (workspacePersistenceReady) {
+    scheduleWorkspacePersistence();
+    void refreshRecoveryOptions();
+  }
+}
+
 const loadedBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
+workspaceSession = createWorkspaceSessionController({
+  onStateChange: syncWorkspaceSessionState,
+});
+
 const { checkForBuildUpdate, loadBuildCommit } = createBuildController({
   buildVersion: loadedBuildVersion,
   status,
+  onUpdateAvailable: (commit) => {
+    workspaceUpdateCommit = commit;
+    const button = $('safeReloadBtn');
+    const separator = $('safeReloadSeparator');
+    if (button) button.hidden = false;
+    if (separator) separator.hidden = false;
+  },
 });
 
 const sectionControls = createSectionControlsController({
