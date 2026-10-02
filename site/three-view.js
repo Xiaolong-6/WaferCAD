@@ -332,7 +332,7 @@ export function createThreeView({
     });
   }
 
-  function createSurfaceMaterial(layer, materialState, appearance = null) {
+  function createSurfaceMaterial(layer, materialState, appearance = null, bias = 1) {
     const material = new THREE.MeshStandardMaterial({
       color: layer?.color || '#999',
       roughness: appearance ? 0.82 : 0.78,
@@ -340,8 +340,8 @@ export function createThreeView({
       side: THREE.DoubleSide,
       ...materialState,
       polygonOffset: true,
-      polygonOffsetFactor: 0.45,
-      polygonOffsetUnits: 1,
+      polygonOffsetFactor: Math.min(8, Math.max(1, bias) * 0.35),
+      polygonOffsetUnits: Math.min(12, Math.max(1, bias)),
     });
     if (appearance) {
       material.bumpMap = roughTexture(appearance);
@@ -434,10 +434,10 @@ export function createThreeView({
       solids = materialSolids(model, clip),
       smoothMaterials = new Map();
 
-    const smoothMaterial = (layer) => {
+    const smoothMaterial = (layer, bias) => {
       const key = layer?.id || '__fallback__';
       if (!smoothMaterials.has(key)) {
-        smoothMaterials.set(key, createSurfaceMaterial(layer, materialState));
+        smoothMaterials.set(key, createSurfaceMaterial(layer, materialState, null, bias));
       }
       return smoothMaterials.get(key);
     };
@@ -454,7 +454,7 @@ export function createThreeView({
       // and alpha ordering are explicit instead of relying on one giant mesh.
       if (!materialState.transparent && !layerHasRoughSurface) {
         const geometry = geometryFromSolid(item),
-          material = smoothMaterial(layer);
+          material = smoothMaterial(layer, solidIndex + 1);
         addSurfaceMesh(geometry, material, materialState);
       } else {
         for (const cap of item.caps) {
@@ -465,8 +465,13 @@ export function createThreeView({
                   caps: [{ z: part.z, normal: part.normal, polys: [poly] }],
                 }),
                 material = part.appearance
-                  ? createSurfaceMaterial(layer, materialState, part.appearance)
-                  : smoothMaterial(layer);
+                  ? createSurfaceMaterial(
+                      layer,
+                      materialState,
+                      part.appearance,
+                      solidIndex + 1,
+                    )
+                  : smoothMaterial(layer, solidIndex + 1);
               addPlanarUv(geometry, part.appearance?.featureSize || 1);
               addSurfaceMesh(geometry, material, materialState, part.appearance);
             }
@@ -482,7 +487,11 @@ export function createThreeView({
                 slab.z1,
                 ringIndex > 0,
               );
-              addSurfaceMesh(geometry, smoothMaterial(layer), materialState);
+              addSurfaceMesh(
+                geometry,
+                smoothMaterial(layer, solidIndex + 1),
+                materialState,
+              );
             }
           }
         }
