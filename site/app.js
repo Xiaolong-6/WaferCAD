@@ -975,12 +975,9 @@ function renderSection() {
       paintX = Math.min(x0, x1) - 0.65,
       paintWidth = Math.abs(x1 - x0) + 1.3;
 
-    // Recompose the whole local stack from shared physical boundaries. A far-view
-    // rough interface collapses to its mean Z rather than its deepest nominal plane,
-    // so zoom changes detail without changing apparent layer thickness.
-    ctx.fillStyle = '#fbfcfd';
-    ctx.fillRect(paintX, plotTop - 0.5, paintWidth, plotHeight + 1);
-
+    // Recompose the whole local stack over the ideal contours. Rough etch relief is
+    // one-sided from the deepest nominal plane, so no background erase is needed;
+    // avoiding that erase also prevents antialiased white seams at column boundaries.
     for (let segmentIndex = 0; segmentIndex < column.stack.length; segmentIndex++) {
       const segment = column.stack[segmentIndex],
         layer = layerById(model, segment.layerId),
