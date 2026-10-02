@@ -23,6 +23,8 @@ export function createWorkspaceActionsController({
   getRoi,
   getSectionScaleMode,
   setSectionScaleMode,
+  getSectionShowBorders,
+  setSectionShowBorders,
   renderSection,
   getMaskOpacity,
   setMaskOpacity,
@@ -106,6 +108,12 @@ export function createWorkspaceActionsController({
           ? 'Section scale: Auto fit (X and Z independently).'
           : 'Section scale: physical 1:1 X:Z.',
       );
+    };
+
+    $('sectionBordersBtn').onclick = () => {
+      setSectionShowBorders(!getSectionShowBorders());
+      renderSection();
+      status(getSectionShowBorders() ? 'Section borders shown.' : 'Section borders hidden.');
     };
 
     $('maskOpacityRange').oninput = () => {
