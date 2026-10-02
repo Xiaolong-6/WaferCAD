@@ -155,7 +155,7 @@ export function extrusionGroupsFromTopology(model, clip = null) {
   }
   return [...groups.values()].map(({ geoms, ...segment }) => ({
     ...segment,
-    polys: unionGeometries(geoms),
+    polys: safeUnionGeometry(geoms),
   }));
 }
 
