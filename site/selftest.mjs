@@ -13,8 +13,13 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
-const { roughLod, roughNoise1D, roughProfileOffsetAtPoint, roughVisualBoundsZ } =
-  await import('./surface-rendering.js');
+const {
+  roughLod,
+  roughMeshSubdivisionDepth,
+  roughNoise1D,
+  roughProfileOffsetAtPoint,
+  roughVisualBoundsZ,
+} = await import('./surface-rendering.js');
 const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
   modelApi;
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
@@ -25,6 +30,36 @@ function regionAt(model, point) {
 
 assert.equal(roughLod(0).detail, 0);
 assert.equal(roughLod(20).micro, 1);
+assert.equal(
+  roughMeshSubdivisionDepth({
+    triangleCount: 100,
+    maxEdge: 8,
+    featureSize: 1,
+    maxTriangles: 36000,
+    maxDepth: 5,
+  }),
+  4,
+);
+assert.equal(
+  roughMeshSubdivisionDepth({
+    triangleCount: 1000,
+    maxEdge: 8,
+    featureSize: 1,
+    maxTriangles: 36000,
+    maxDepth: 5,
+  }),
+  2,
+);
+assert.equal(
+  roughMeshSubdivisionDepth({
+    triangleCount: 100,
+    maxEdge: 8,
+    featureSize: 100,
+    maxTriangles: 36000,
+    maxDepth: 5,
+  }),
+  0,
+);
 const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
 assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
