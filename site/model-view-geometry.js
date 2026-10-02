@@ -29,7 +29,18 @@ export function sectionSlices(model, a, b) {
   const slices = [];
   for (const region of model.regions) {
     for (const [t0, t1] of lineIntervalsInMulti(a, b, region.geom)) {
-      for (const segment of region.stack) slices.push({ ...segment, t0, t1 });
+      for (let index = 0; index < region.stack.length; index++) {
+        const segment = region.stack[index],
+          below = region.stack[index - 1] || null,
+          above = region.stack[index + 1] || null;
+        slices.push({
+          ...segment,
+          t0,
+          t1,
+          below: below ? { layerId: below.layerId, z0: below.z0, z1: below.z1 } : null,
+          above: above ? { layerId: above.layerId, z0: above.z0, z1: above.z1 } : null,
+        });
+      }
     }
   }
   return slices;
