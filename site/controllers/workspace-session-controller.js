@@ -108,14 +108,12 @@ export function createWorkspaceSessionController({
   function start() {
     tryAcquire();
     windowRef?.addEventListener?.('storage', handleStorage);
-    windowRef?.addEventListener?.('pagehide', release);
     timer = windowRef?.setInterval?.(refreshOwnership, renewMs) ?? null;
     return writable;
   }
 
   function stop() {
     windowRef?.removeEventListener?.('storage', handleStorage);
-    windowRef?.removeEventListener?.('pagehide', release);
     release();
   }
 
