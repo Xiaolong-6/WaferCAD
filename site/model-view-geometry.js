@@ -78,34 +78,60 @@ export function surfaceGroups(model, face = 'front') {
 
 export function appearanceSurfaceGroups(model, clip = null) {
   const groups = new Map();
-  for (const face of ['front', 'back']) {
-    for (const patch of surfacePatches(model, face)) {
-      if (patch.appearance?.kind !== 'rough') continue;
-      const geom = clip ? intersection(patch.geom, clip) : patch.geom;
-      if (isEmpty(geom)) continue;
-      const key = JSON.stringify([
-        patch.layerId,
-        patch.z,
+  const addAppearance = (layerId, z, face, appearance, geom) => {
+    if (appearance?.kind !== 'rough' || isEmpty(geom)) return;
+    const key = JSON.stringify([
+      layerId,
+      z,
+      face,
+      appearance.profileId,
+      appearance.featureSize,
+      appearance.meanHeight,
+      appearance.featureCv,
+      appearance.heightCv,
+      appearance.seed,
+      appearance.geometryMode,
+      appearance.morphology,
+      appearance.polarity,
+      appearance.etchDepth,
+    ]);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        layerId,
+        z,
         face,
-        patch.appearance.profileId,
-        patch.appearance.featureSize,
-        patch.appearance.meanHeight,
-        patch.appearance.featureCv,
-        patch.appearance.heightCv,
-        patch.appearance.seed,
-        patch.appearance.geometryMode,
-        patch.appearance.morphology,
-        patch.appearance.polarity,
-        patch.appearance.etchDepth,
-      ]);
-      if (!groups.has(key))
-        groups.set(key, {
-          layerId: patch.layerId, z: patch.z, face,
-          appearance: { ...patch.appearance }, geoms: [],
-        });
-      groups.get(key).geoms.push(geom);
+        appearance: { ...appearance },
+        geoms: [],
+      });
+    }
+    groups.get(key).geoms.push(geom);
+  };
+
+  for (const region of model.regions || []) {
+    const geom = clip ? intersection(region.geom, clip) : region.geom;
+    if (isEmpty(geom)) continue;
+
+    for (let index = 0; index < region.stack.length; index++) {
+      const segment = region.stack[index],
+        below = region.stack[index - 1] || null,
+        above = region.stack[index + 1] || null,
+        frontAppearance =
+          segment.frontSurface?.kind === 'rough'
+            ? segment.frontSurface
+            : above?.backSurface?.kind === 'rough'
+              ? above.backSurface
+              : null,
+        backAppearance =
+          segment.backSurface?.kind === 'rough'
+            ? segment.backSurface
+            : below?.frontSurface?.kind === 'rough'
+              ? below.frontSurface
+              : null;
+      addAppearance(segment.layerId, segment.z1, 'front', frontAppearance, geom);
+      addAppearance(segment.layerId, segment.z0, 'back', backAppearance, geom);
     }
   }
+
   return [...groups.values()].map(({ geoms, ...patch }) => ({
     ...patch,
     polys: unionGeometries(geoms),

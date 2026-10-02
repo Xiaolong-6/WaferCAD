@@ -16,6 +16,13 @@ export function roughLod(featurePixels) {
   };
 }
 
+export function roughMeshTriangleBudget({ triangleCount = 1, clipped = false } = {}) {
+  const triangles = Math.max(1, Math.floor(Number(triangleCount) || 1)),
+    floor = clipped ? 36000 : 72000,
+    ceiling = clipped ? 72000 : 180000;
+  return Math.min(ceiling, Math.max(floor, triangles * 16));
+}
+
 export function roughMeshSubdivisionDepth({
   triangleCount = 1,
   maxEdge = 0,

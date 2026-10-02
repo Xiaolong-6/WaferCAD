@@ -22,6 +22,13 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /function capRenderParts\(/);
   assert.match(threeView, /function geometryFromRoughCap\(/);
   assert.match(threeView, /roughMeshSubdivisionDepth\(/);
+  assert.match(threeView, /roughMeshTriangleBudget\(/);
+  assert.match(threeView, /function roughPointNormal\(/);
+  assert.match(threeView, /visibleSolidBorders\(item, roughMap\)/);
+  assert.match(threeView, /opacity: opacity \* 0\.18/);
+  assert.match(threeView, /opacity: opacity \* 0\.3/);
+  assert.doesNotMatch(threeView, /opacity: 0\.18/);
+  assert.doesNotMatch(threeView, /opacity: 0\.3/);
   assert.match(threeView, /roughProfileOffsetAtPoint\(/);
   assert.match(threeView, /color: layer\?\.color \|\| '#999'/);
   assert.doesNotMatch(threeView, /0x24282c/);

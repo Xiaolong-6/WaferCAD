@@ -19,6 +19,7 @@ const { validateProjectFile } = await import('./project-schema.js');
 const {
   roughLod,
   roughMeshSubdivisionDepth,
+  roughMeshTriangleBudget,
   roughNoise1D,
   roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
@@ -35,6 +36,10 @@ for (const palette of Object.values(STRUCTURE_PALETTES)) assert.equal(palette.le
 
 assert.equal(roughLod(0).detail, 0);
 assert.equal(roughLod(20).micro, 1);
+assert.equal(roughMeshTriangleBudget({ triangleCount: 100, clipped: true }), 36000);
+assert.equal(roughMeshTriangleBudget({ triangleCount: 100, clipped: false }), 72000);
+assert.equal(roughMeshTriangleBudget({ triangleCount: 10000, clipped: false }), 160000);
+assert.equal(roughMeshTriangleBudget({ triangleCount: 20000, clipped: false }), 180000);
 assert.equal(
   roughMeshSubdivisionDepth({
     triangleCount: 100,
@@ -249,6 +254,51 @@ assert.equal(Number.isInteger(roughSurface.frontSurface.seed), true);
 
 assert.equal(roughSurface.frontSurface.etchDepth, 1);
 assert.deepEqual(roughVisualBoundsZ(roughEtch, [-5, 4]), [-5, 5]);
+const roughConformalModel = createModel({
+  shape: 'rect',
+  width: 20,
+  height: 20,
+  thickness: 10,
+});
+applyOperation(roughConformalModel, {
+  type: 'etch',
+  thickness: 1,
+  face: 'front',
+  area: roughConformalModel.boundary,
+  surface: {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'inverted',
+    featureSize: 0.5,
+    meanHeight: 0.4,
+    featureCv: 0.2,
+    heightCv: 0.2,
+  },
+});
+const roughCoat = applyOperation(roughConformalModel, {
+    type: 'add',
+    name: 'Rough conformal shell',
+    thickness: 0.5,
+    face: 'front',
+    area: roughConformalModel.boundary,
+    growth: 'conformal',
+  }),
+  roughBoundaryGroups = appearanceSurfaceGroups(roughConformalModel);
+assert.ok(
+  roughBoundaryGroups.some(
+    (group) => group.layerId === 'base' && group.face === 'front' && group.z === 4,
+  ),
+);
+assert.ok(
+  roughBoundaryGroups.some(
+    (group) => group.layerId === roughCoat.layerId && group.face === 'back' && group.z === 4,
+  ),
+);
+assert.ok(
+  roughBoundaryGroups.some(
+    (group) => group.layerId === roughCoat.layerId && group.face === 'front' && group.z === 4.5,
+  ),
+);
 const pyramidEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const pyramidResult = applyOperation(pyramidEtch, {
   type: 'etch',

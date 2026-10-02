@@ -9,6 +9,7 @@ import { difference, intersection, isEmpty } from './vector-geometry.js';
 import {
   roughLod,
   roughMeshSubdivisionDepth,
+  roughMeshTriangleBudget,
   roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
@@ -284,12 +285,38 @@ export function createThreeView({
     ];
   }
 
-  function geometryFromRoughCap({ z, normal, polys, appearance, closeToIdeal = true }) {
+  function roughPointNormal(point, normal, appearance) {
+    const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
+      step = Math.max(1e-6, feature * 0.08),
+      dx =
+        (roughProfileOffsetAtPoint(point[0] + step, point[1], appearance) -
+          roughProfileOffsetAtPoint(point[0] - step, point[1], appearance)) /
+        (2 * step),
+      dy =
+        (roughProfileOffsetAtPoint(point[0], point[1] + step, appearance) -
+          roughProfileOffsetAtPoint(point[0], point[1] - step, appearance)) /
+        (2 * step),
+      length = Math.hypot(dx, dy, 1) || 1;
+    return [-dx / length, -dy / length, normal / length];
+  }
+
+  function geometryFromRoughCap({
+    z,
+    normal,
+    polys,
+    appearance,
+    closeToIdeal = true,
+    clipped = false,
+  }) {
     const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, polys),
       depth = roughMeshSubdivisionDepth({
         triangleCount: baseTriangles.length,
         maxEdge,
         featureSize: appearance?.featureSize,
+        maxTriangles: roughMeshTriangleBudget({
+          triangleCount: baseTriangles.length,
+          clipped,
+        }),
       }),
       triangles = subdivideTriangles(baseTriangles, depth),
       positions = [],
@@ -297,13 +324,21 @@ export function createThreeView({
       roughBorderPositions = [];
 
     const pushTriangle = (a, b, c) => {
-      const faceNormal = triangleNormal(a, b, c);
-      positions.push(...a, ...b, ...c);
-      normals.push(...faceNormal, ...faceNormal, ...faceNormal);
-    };
+        const faceNormal = triangleNormal(a, b, c);
+        positions.push(...a, ...b, ...c);
+        normals.push(...faceNormal, ...faceNormal, ...faceNormal);
+      },
+      pushRoughTriangle = (a, b, c) => {
+        positions.push(...a, ...b, ...c);
+        normals.push(
+          ...roughPointNormal(a, normal, appearance),
+          ...roughPointNormal(b, normal, appearance),
+          ...roughPointNormal(c, normal, appearance),
+        );
+      };
 
     for (const [a, b, c] of triangles) {
-      pushTriangle(
+      pushRoughTriangle(
         roughPoint(a, z, normal, appearance),
         roughPoint(b, z, normal, appearance),
         roughPoint(c, z, normal, appearance),
@@ -440,6 +475,26 @@ export function createThreeView({
       parts.push({ z: cap.z, normal: cap.normal, polys: remaining, appearance: null });
     }
     return parts;
+  }
+
+  function visibleSolidBorders(item, roughMap) {
+    const lines = solidBorders(item).filter(([a, b]) => Math.abs(a[2] - b[2]) > 1e-12);
+    for (const cap of item.caps) {
+      for (const part of capRenderParts(item, cap, roughMap)) {
+        if (part.appearance) continue;
+        for (const poly of part.polys || []) {
+          for (const ring of poly || []) {
+            for (let index = 1; index < ring.length; index++) {
+              lines.push([
+                [...ring[index - 1], part.z],
+                [...ring[index], part.z],
+              ]);
+            }
+          }
+        }
+      }
+    }
+    return lines;
   }
 
   function updateTransparentOrder() {
@@ -594,7 +649,7 @@ export function createThreeView({
         for (const cap of item.caps) {
           for (const part of capRenderParts(item, cap, roughMap)) {
             const geometry = part.appearance
-                ? geometryFromRoughCap(part)
+                ? geometryFromRoughCap({ ...part, clipped: Boolean(clip) })
                 : geometryFromSolid({
                     slabs: [],
                     caps: [{ z: part.z, normal: part.normal, polys: part.polys }],
@@ -648,7 +703,7 @@ export function createThreeView({
         const edgeGeometry = new THREE.BufferGeometry();
         edgeGeometry.setAttribute(
           'position',
-          new THREE.Float32BufferAttribute(solidBorders(item).flat(2), 3),
+          new THREE.Float32BufferAttribute(visibleSolidBorders(item, roughMap).flat(2), 3),
         );
         const edgeMaterial = new THREE.LineBasicMaterial({
           color: 0x111820,
@@ -672,7 +727,7 @@ export function createThreeView({
     // body and move its exposed cap with the current surface profile.
     for (const implant of implantSolids(model, clip)) {
       const implantState = {
-          opacity: 0.18,
+          opacity: opacity * 0.18,
           transparent: true,
           depthTest: false,
           depthWrite: false,
@@ -702,6 +757,7 @@ export function createThreeView({
                 polys: implant.polys,
                 appearance,
                 closeToIdeal: false,
+                clipped: Boolean(clip),
               })
             : geometryFromSolid({
                 slabs: [],
@@ -710,7 +766,7 @@ export function createThreeView({
           implant,
         ),
         capState = {
-          opacity: 0.3,
+          opacity: opacity * 0.3,
           transparent: true,
           depthTest: false,
           depthWrite: false,
