@@ -88,10 +88,13 @@ export function appearanceSurfaceGroups(model, clip = null) {
         patch.z,
         face,
         patch.appearance.profileId,
+        patch.appearance.morphology,
+        patch.appearance.polarity,
         patch.appearance.featureSize,
         patch.appearance.meanHeight,
         patch.appearance.featureCv,
         patch.appearance.heightCv,
+        patch.appearance.etchDepth,
         patch.appearance.seed,
         patch.appearance.geometryMode,
       ]);
