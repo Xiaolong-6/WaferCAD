@@ -473,15 +473,41 @@ const implantResult = applyOperation(implantModel, {
   area: implantArea,
   color: '#C94F68',
   tilt: 12,
-  border: true,
 });
 assert.equal(implantResult.changed, true);
 assert.equal(implantModel.implants.length, 1);
 assert.equal(implantModel.implants[0].name, 'B marker');
 assert.equal(implantModel.implants[0].thickness, 1.25);
 assert.equal(implantModel.implants[0].tilt, 12);
-assert.equal(implantModel.implants[0].border, true);
+assert.equal(implantModel.implants[0].visible, true);
 assert.ok(implantModel.implants[0].patches.length > 0);
 assert.equal(implantModel.regions.length, 1);
+
+const roughImplantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(roughImplantModel, {
+  type: 'etch',
+  thickness: 1,
+  face: 'front',
+  area: implantArea,
+  surface: {
+    kind: 'rough',
+    featureSize: 0.4,
+    meanHeight: 0.6,
+    featureCv: 0.2,
+    heightCv: 0.2,
+    geometryMode: 'ideal',
+  },
+});
+const roughImplantResult = applyOperation(roughImplantModel, {
+  type: 'implant',
+  name: 'Rough-top implant',
+  thickness: 0.8,
+  face: 'front',
+  area: implantArea,
+  color: '#C94F68',
+  tilt: 0,
+});
+assert.equal(roughImplantResult.changed, true);
+assert.equal(roughImplantModel.implants[0].patches[0].surfaceAppearance?.kind, 'rough');
 
 console.log('WaferCAD self-test: OK');

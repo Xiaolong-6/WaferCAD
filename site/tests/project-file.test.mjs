@@ -492,6 +492,42 @@ test('v9 projects migrate to the experimental implant model without changing mat
   assert.equal(validateProjectFile(migrated), migrated);
 });
 
+
+
+test('v10 implant metadata migrates border styling to view state and keeps overlays visible', () => {
+  const source = validProject();
+  source.version = 10;
+  source.display = source.display || {};
+  source.model.implants = [
+    {
+      id: 'implant-1',
+      name: 'Legacy implant',
+      color: '#D65A6F',
+      face: 'front',
+      thickness: 0.5,
+      tilt: 0,
+      border: true,
+      patches: [
+        {
+          geom: structuredClone(source.model.boundary),
+          z: 4,
+          zMin: -4,
+          zMax: 4,
+          layerId: 'base',
+        },
+      ],
+    },
+  ];
+  source.model.nextImplantId = 2;
+
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.display.sectionShowBorders, false);
+  assert.equal(migrated.model.implants[0].visible, true);
+  assert.equal('border' in migrated.model.implants[0], false);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
 test('project validator accepts a structural implant annotation', () => {
   const source = migrateProjectFile(validProject());
   source.model.implants.push({
@@ -501,7 +537,7 @@ test('project validator accepts a structural implant annotation', () => {
     face: 'front',
     thickness: 1.2,
     tilt: 7,
-    border: true,
+    visible: true,
     patches: [
       {
         geom: structuredClone(source.model.boundary),
@@ -525,7 +561,7 @@ test('project validator rejects out-of-contract implant tilt values', () => {
     face: 'front',
     thickness: 1.2,
     tilt: 95,
-    border: true,
+    visible: true,
     patches: [
       {
         geom: structuredClone(source.model.boundary),

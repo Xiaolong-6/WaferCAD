@@ -46,7 +46,7 @@ Available actions:
 
 Deposit and Extend support Directional and Conformal coverage. Etch is vertical subtraction and has no coverage mode.
 
-The experimental Implant action is intentionally structural rather than physical: it marks mask-selected exposed surfaces and renders a user-named implant zone with an empirical depth, display color, optional dashed border, and signed X tilt. It does not model dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT_EXPERIMENTAL.md`.
+The experimental Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and renders a user-named implant zone with an empirical depth, display color, and signed X tilt. Implant visibility/name/gradient color live in the Layers legend; Section has a view-level Border toggle (solid material borders, dashed implant borders). It does not model dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT_EXPERIMENTAL.md`.
 
 ## Safety
 

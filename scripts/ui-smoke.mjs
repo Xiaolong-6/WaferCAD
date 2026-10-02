@@ -333,13 +333,23 @@ await page.locator('#operationArea').selectOption('full');
 await page.locator('#operationThickness').fill('0.6');
 await page.locator('#implantName').fill('UI implant');
 await page.locator('#implantTilt').fill('7');
-await page.locator('#implantBorder').check();
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 await page.waitForFunction(() =>
   /Marked implant UI implant/.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
+
+const implantLegendRow = page.locator('#layerLegend .implant-row-wrap').first();
+assert.equal(await implantLegendRow.count(), 1);
+assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), true);
+await implantLegendRow.locator('.legend-name').fill('UI implant renamed');
+await implantLegendRow.locator('.legend-name').press('Tab');
+await page.locator('#sectionBordersBtn').click();
+assert.equal(await page.locator('#sectionBordersBtn').getAttribute('aria-pressed'), 'true');
+await implantLegendRow.locator('.legend-visibility').uncheck();
+assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), false);
+await implantLegendRow.locator('.legend-visibility').check();
 
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI implant project');
@@ -350,10 +360,12 @@ const implantSavedPath = await implantDownload.path();
 assert.ok(implantSavedPath);
 const implantSaved = JSON.parse(await readFile(implantSavedPath, 'utf8'));
 assert.equal(implantSaved.model.implants.length, 1);
-assert.equal(implantSaved.model.implants[0].name, 'UI implant');
+assert.equal(implantSaved.model.implants[0].name, 'UI implant renamed');
 assert.equal(implantSaved.model.implants[0].thickness, 0.6);
 assert.equal(implantSaved.model.implants[0].tilt, 7);
-assert.equal(implantSaved.model.implants[0].border, true);
+assert.equal(implantSaved.model.implants[0].visible, true);
+assert.equal('border' in implantSaved.model.implants[0], false);
+assert.equal(implantSaved.display.sectionShowBorders, true);
 assert.ok(implantSaved.model.implants[0].patches.length > 0);
 await page.locator('#operationTab').click();
 

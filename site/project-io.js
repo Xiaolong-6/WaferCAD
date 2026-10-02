@@ -73,6 +73,13 @@ function quantizeModel(model) {
       patch.z = quantizeLength(patch.z);
       patch.zMin = quantizeLength(patch.zMin);
       patch.zMax = quantizeLength(patch.zMax);
+      if (isObject(patch.surfaceAppearance)) {
+        patch.surfaceAppearance.featureSize = quantizeLength(patch.surfaceAppearance.featureSize);
+        patch.surfaceAppearance.meanHeight = quantizeLength(patch.surfaceAppearance.meanHeight);
+        if (patch.surfaceAppearance.etchDepth != null) {
+          patch.surfaceAppearance.etchDepth = quantizeLength(patch.surfaceAppearance.etchDepth);
+        }
+      }
     }
   }
   model.thickness = quantizeLength(model.thickness);

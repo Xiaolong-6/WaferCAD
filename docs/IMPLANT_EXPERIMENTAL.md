@@ -17,15 +17,15 @@ Inputs:
 - **Depth** — empirical physical depth in the current display unit. Internally stored in µm.
 - **Tilt X** — signed geometric display tilt from the surface normal toward +X, limited to -80°…+80°.
 - **Color** — visualization color for this implant marker.
-- **Border** — optional black dashed outline.
-
 Apply records the exposed surface patches intersected by the requested area. It does **not** create a material layer and does not modify the underlying layer stack.
 
 ## Rendering
 
-- **Main**: the implanted surface footprint is overlaid with a translucent implant color. Optional border is black and dashed.
-- **Section A–B**: the implant is rendered as a color gradient from the tagged surface inward to the empirical depth. Tilt shifts the inner edge geometrically along the global X direction. The zone is clipped to the Z extent of material that existed in the tagged region when the implant was applied.
-- **3D**: the tagged exposed surface is shown as a translucent colored overlay. Optional border is rendered as a dashed black line.
+- **Main**: the implanted surface footprint is overlaid with a translucent implant color.
+- **Section A–B**: the implant is rendered as a color gradient from the outermost tagged surface inward to the empirical depth. Material boundaries do not restart or stop the implant zone. Rough exposed topography is captured at Apply time so the implant starts at the visible outer surface rather than the ideal mean plane. Tilt shifts the inner edge geometrically along the global X direction.
+- **3D**: the tagged exposed surface is shown as a translucent colored overlay.
+- **Section Border** is a view-level toggle. When enabled, material boundaries use solid lines and implant boundaries use dashed black lines. Border styling is not stored per implant.
+- **Layers legend** lists implants alongside material layers. Each implant can be renamed, recolored with a gradient swatch, and shown or hidden independently.
 
 The gradient is a visualization convention only. It is not a concentration profile.
 
@@ -43,12 +43,13 @@ implant
 ├─ face
 ├─ thickness
 ├─ tilt
-├─ border
+├─ visible
 └─ patches[]
    ├─ geom
    ├─ z
    ├─ zMin / zMax
-   └─ layerId
+   ├─ layerId (provenance only)
+   └─ surfaceAppearance
 ```
 
 This separation prevents an implant from being mistaken for deposited material and leaves room for a future scalar-field implementation without changing the material stack contract.

@@ -249,12 +249,13 @@ test('all view headers expose one Export menu and Mask export filters Cells Laye
 });
 
 
-test('experimental Implant exposes structural-only controls and no physics inputs', () => {
+test('experimental Implant keeps process inputs structural and moves borders to Section', () => {
   assert.match(html, /id="implantName"/);
   assert.match(html, /id="implantColor"[^>]*type="color"/);
   assert.match(html, /id="implantTilt"/);
-  assert.match(html, /id="implantBorder"/);
-  assert.match(app, /Experimental structural marker only/);
+  assert.doesNotMatch(html, /id="implantBorder"/);
+  assert.match(html, /id="sectionBordersBtn"/);
+  assert.match(app, /starts at the outermost selected surface/);
   assert.match(app, /params\.tilt = tilt/);
   assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
 });

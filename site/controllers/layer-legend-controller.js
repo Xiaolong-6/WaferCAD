@@ -2,8 +2,11 @@ import {
   deleteExposedLayer,
   isLayerExposed,
   layerPresent,
+  recolorImplant,
   recolorLayer,
+  renameImplant,
   renameLayer,
+  setImplantVisible,
 } from '../model.js';
 
 const STRUCTURE_PALETTES = {
@@ -288,6 +291,69 @@ export function createLayerLegendController({
         row.append(grid);
       }
 
+      host.append(row);
+    }
+
+    for (const implant of model.implants || []) {
+      const row = root.createElement('div');
+      row.className = 'legend-row-wrap implant-row-wrap';
+      row.classList.toggle('implant-hidden', implant.visible === false);
+
+      const main = root.createElement('div');
+      main.className = 'legend-row implant-legend-row';
+
+      const visible = root.createElement('input');
+      visible.type = 'checkbox';
+      visible.className = 'legend-visibility';
+      visible.checked = implant.visible !== false;
+      visible.title = visible.checked ? 'Hide implant overlay' : 'Show implant overlay';
+      visible.setAttribute('aria-label', `Toggle visibility for ${implant.name}`);
+      visible.onchange = () => {
+        setImplantVisible(model, implant.id, visible.checked);
+        renderLayerLegend();
+        renderAll();
+      };
+
+      const color = root.createElement('button');
+      color.type = 'button';
+      color.className = 'legend-color-chip implant-gradient-chip';
+      color.style.background = `linear-gradient(90deg, ${implant.color} 0%, ${implant.color}26 100%)`;
+      color.title = 'Change implant gradient color';
+
+      const colorInput = root.createElement('input');
+      colorInput.type = 'color';
+      colorInput.className = 'implant-color-input';
+      colorInput.value = implant.color;
+      colorInput.tabIndex = -1;
+      colorInput.oninput = () => {
+        if (!recolorImplant(model, implant.id, colorInput.value)) return;
+        color.style.background = `linear-gradient(90deg, ${colorInput.value} 0%, ${colorInput.value}26 100%)`;
+        renderMain();
+        renderSection();
+        renderThree();
+      };
+      color.onclick = () => colorInput.click();
+
+      const name = root.createElement('input');
+      name.type = 'text';
+      name.className = 'legend-name implant-legend-name';
+      name.value = implant.name;
+      name.title = 'Rename implant overlay';
+      name.onchange = () => {
+        if (!renameImplant(model, implant.id, name.value)) name.value = implant.name;
+        renderLayerLegend();
+        renderMain();
+        renderSection();
+        renderThree();
+      };
+
+      const experimental = root.createElement('span');
+      experimental.className = 'experimental-tag implant-exp-tag';
+      experimental.textContent = 'EXP';
+      experimental.title = 'Experimental structural Implant overlay';
+
+      main.append(visible, color, name, experimental, colorInput);
+      row.append(main);
       host.append(row);
     }
   }

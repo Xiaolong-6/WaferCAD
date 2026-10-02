@@ -63,6 +63,7 @@ export function createProjectStateController({
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
         sectionScaleMode: state.sectionScaleMode,
+        sectionShowBorders: state.sectionShowBorders,
       },
     };
 
@@ -97,7 +98,8 @@ export function createProjectStateController({
       threeShowBorders = Boolean(project.display?.threeShowBorders),
       sectionScaleMode = ['auto', 'physical'].includes(project.display?.sectionScaleMode)
         ? project.display.sectionScaleMode
-        : 'auto';
+        : 'auto',
+      sectionShowBorders = Boolean(project.display?.sectionShowBorders);
 
     applyState({
       model,
@@ -128,6 +130,7 @@ export function createProjectStateController({
       threeOpacity,
       threeShowBorders,
       sectionScaleMode,
+      sectionShowBorders,
       ...(project.name ? { projectName: project.name } : {}),
       planViews: project.planViews,
     });
@@ -158,6 +161,7 @@ export function createProjectStateController({
       section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
       projectName: 'Untitled',
       sectionScaleMode: 'auto',
+      sectionShowBorders: previous.sectionShowBorders,
       xyDisplayUnit: previous.xyDisplayUnit,
       activeStructurePalette: previous.activeStructurePalette,
       customStructurePalette: previous.customStructurePalette,

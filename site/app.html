@@ -702,13 +702,6 @@
                     <span>Color</span>
                     <input id="implantColor" type="color" value="#d65a6f" />
                   </label>
-                  <div id="implantBorderRow" class="param-field hidden">
-                    <span>Border</span>
-                    <label class="inline-check">
-                      <input id="implantBorder" type="checkbox" checked />
-                      <span>Dashed</span>
-                    </label>
-                  </div>
                 </div>
 
                 <div class="param-grid-2 rough-param-grid">
@@ -873,6 +866,15 @@
                 title="Auto: fit X and Z independently. Click for physical 1:1 X:Z scale."
               >
                 Auto
+              </button>
+              <button
+                id="sectionBordersBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Show structural borders in Section A–B"
+              >
+                Border
               </button>
               <details class="export-control">
                 <summary class="mini-btn" title="Export Section A–B">Export</summary>

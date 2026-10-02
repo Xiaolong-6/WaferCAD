@@ -210,6 +210,7 @@ export function solidBorders({ slabs, caps }, thresholdDegrees = 20) {
 export function implantSurfaceGroups(model, clip = null) {
   const groups = [];
   for (const implant of model?.implants || []) {
+    if (implant.visible === false) continue;
     for (const patch of implant.patches || []) {
       const polys = clip ? intersection(patch.geom, clip) : patch.geom;
       if (isEmpty(polys)) continue;
@@ -220,11 +221,10 @@ export function implantSurfaceGroups(model, clip = null) {
         face: implant.face,
         thickness: implant.thickness,
         tilt: implant.tilt || 0,
-        border: Boolean(implant.border),
         z: patch.z,
         zMin: patch.zMin,
         zMax: patch.zMax,
-        layerId: patch.layerId,
+        surfaceAppearance: patch.surfaceAppearance || null,
         polys,
       });
     }
@@ -235,6 +235,7 @@ export function implantSurfaceGroups(model, clip = null) {
 export function implantSectionBands(model, a, b) {
   const bands = [];
   for (const implant of model?.implants || []) {
+    if (implant.visible === false) continue;
     for (const patch of implant.patches || []) {
       for (const [t0, t1] of lineIntervalsInMulti(a, b, patch.geom)) {
         bands.push({
@@ -244,11 +245,10 @@ export function implantSectionBands(model, a, b) {
           face: implant.face,
           thickness: implant.thickness,
           tilt: implant.tilt || 0,
-          border: Boolean(implant.border),
           z: patch.z,
           zMin: patch.zMin,
           zMax: patch.zMax,
-          layerId: patch.layerId,
+          surfaceAppearance: patch.surfaceAppearance || null,
           t0,
           t1,
         });
