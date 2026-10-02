@@ -30,9 +30,12 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(app, /createThreeView/);
 });
 
-test('3D renderer is event-driven and has a dependency-isolated fallback', () => {
+test('3D renderer is event-driven and lazy-loads remote dependencies after app startup', () => {
   assert.doesNotMatch(threeView, /requestAnimationFrame\(animate\)/);
   assert.match(threeView, /function scheduleFrame\(\)/);
+  assert.match(threeView, /function loadDependencies\(\)/);
+  assert.match(threeView, /initPromise = loadDependencies\(\)\.then/);
+  assert.doesNotMatch(threeView, /try \{\s*THREE = await import\('three'\)/);
   assert.match(threeView, /3D dependencies unavailable; continuing without the 3D view/);
   assert.match(threeView, /host\.classList\.add\('three-unavailable'\)/);
 });
