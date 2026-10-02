@@ -68,8 +68,8 @@ export function roughProfileOffsetAtPoint(x, y, appearance) {
     primary = roughNoise2D(rx, ry, feature, seed),
     fine = roughNoise2D(rx, ry, feature * 0.48, (seed ^ 0x9e3779b9) >>> 0),
     noise = Math.max(-1, Math.min(1, primary * 0.78 + fine * 0.22)),
-    offset = noise * amplitude * 0.5;
-  return Object.is(offset, -0) ? 0 : offset;
+    relief = ((noise + 1) * 0.5) * amplitude;
+  return Object.is(relief, -0) ? 0 : relief;
 }
 
 export function roughTextureValue(seed, x, y) {
