@@ -82,6 +82,8 @@ Projects from versions <= 11 migrate to:
 
 so existing files retain their previous appearance.
 
+Pyramid morphology is introduced with project format v13. v12 stochastic projects upgrade to v13 without changing their stored morphology or polarity.
+
 ## Extension point
 
 Future deterministic morphologies should continue using the same two-axis model:
