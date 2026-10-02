@@ -507,6 +507,7 @@ try {
       await page.locator('#sectionMaxBtn').click();
       await capture(page, 'wide-rough-buried-interface-max');
       await page.locator('#sectionMaxBtn').click();
+      await page.waitForTimeout(120);
       await checkLayout(page);
     }
 
