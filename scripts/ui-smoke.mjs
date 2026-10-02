@@ -21,6 +21,24 @@ const welcomeProject = projectForBenchmark({
 });
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
+
+async function canvasInkFraction(page, selector) {
+  return page.locator(selector).evaluate((canvas) => {
+    const ctx = canvas.getContext('2d'),
+      { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let ink = 0,
+      samples = 0;
+    for (let index = 0; index < data.length; index += 16) {
+      const alpha = data[index + 3],
+        r = data[index],
+        g = data[index + 1],
+        b = data[index + 2];
+      samples += 1;
+      if (alpha > 12 && (r < 245 || g < 245 || b < 245)) ink += 1;
+    }
+    return samples ? ink / samples : 0;
+  });
+}
 const launchOptions = {
   headless: true,
   ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
@@ -156,6 +174,10 @@ assert.equal(await examplePage.locator('#xyUnitSelect').inputValue(), 'mm');
 assert.equal(Number(await examplePage.locator('#baseWidth').inputValue()), 100);
 assert.ok(await examplePage.locator('#maskLayerList .layer-row input:checked').count());
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
+const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
+  exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
+assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
+assert.ok(exampleMaskInk > 0.005, `Open Example Mask canvas is blank: ${exampleMaskInk}`);
 await examplePage.locator('#gdsInput').setInputFiles({
   name: 'example-reimport.oas',
   mimeType: 'application/octet-stream',
