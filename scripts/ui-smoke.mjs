@@ -446,10 +446,10 @@ assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
 
 // Main permits only one floating control: Export replaces ROI.
 const mainExportControl = page.locator('#mainPanel .export-control');
-await mainExportControl.locator('> summary').click();
+await mainExportControl.locator(':scope > summary').click();
 assert.equal(await page.locator('#focusEditor').evaluate((details) => details.open), false);
 assert.equal(await mainExportControl.evaluate((details) => details.open), true);
-await mainExportControl.locator('> summary').click();
+await mainExportControl.locator(':scope > summary').click();
 
 // Sector ROI starts as a circle-derived 0°→90° wedge and supports wrapped ranges.
 await page.locator('#focusEditor > summary').click();
@@ -755,12 +755,12 @@ assert.equal(
 // 3D inspection controls should operate without runtime errors.
 const threeOpacityControl = page.locator('#threePanel .three-opacity-control');
 const threeExportControl = page.locator('#threePanel .export-control');
-await threeOpacityControl.locator('> summary').click();
+await threeOpacityControl.locator(':scope > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
-await threeExportControl.locator('> summary').click();
+await threeExportControl.locator(':scope > summary').click();
 assert.equal(await threeOpacityControl.evaluate((details) => details.open), false);
 assert.equal(await threeExportControl.evaluate((details) => details.open), true);
-await threeExportControl.locator('> summary').click();
+await threeExportControl.locator(':scope > summary').click();
 const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
