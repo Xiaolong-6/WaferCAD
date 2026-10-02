@@ -46,6 +46,8 @@ The editor uses a compact engineering/CAD workstation visual system. Information
 
 ## Post-review extensions, 2026-10-02
 
+- **Project persistence semantics** — Project is the first/default tool tab. Save creates a browser-local Recovery checkpoint, Export owns file download, and Recovery exposes Restore plus explicit Clear.
+
 The current feature branch extends the September review baseline in three areas that require additional visual attention before merge to `main`:
 
 - **Compact Function panel** — related engineering parameters are paired into two-column rows on desktop and collapse to one column on phone widths. Rough/Pyramid controls share this grammar without horizontal overflow.
