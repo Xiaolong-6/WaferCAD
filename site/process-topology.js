@@ -47,6 +47,10 @@ function safeUnionParts(geometries) {
   }
 }
 
+function safeUnionGeometry(geometries) {
+  return safeUnionParts(geometries).flatMap((geom) => geom);
+}
+
 function clippedRegionGeometry(region, clip) {
   if (!clip) return region.geom;
   const geom = intersection(region.geom, clip);
@@ -214,7 +218,7 @@ export function materialSolidsFromTopology(model, clip = null) {
         event = events.get(z0);
       for (const item of event.end) active.delete(item);
       for (const item of event.start) active.add(item);
-      const polys = unionGeometries([...active].map((item) => item.polys));
+      const polys = safeUnionGeometry([...active].map((item) => item.polys));
       slabs.push({ z0, z1, polys });
     }
 
@@ -236,6 +240,422 @@ export function materialSolidsFromTopology(model, clip = null) {
       caps,
     };
   });
+}
+
+export function solidBordersFromTopology({ slabs, caps }, thresholdDegrees = 20) {
+  const lines = [];
+  for (const { z, polys } of caps || [])
+    for (const poly of polys || [])
+      for (const ring of poly || [])
+        for (let index = 1; index < ring.length; index++)
+          lines.push([
+            [...ring[index - 1], z],
+            [...ring[index], z],
+          ]);
+
+  const threshold = Math.cos((thresholdDegrees * Math.PI) / 180);
+  for (const { z0, z1, polys } of slabs || [])
+    for (const poly of polys || [])
+      for (const closed of poly || []) {
+        const ring = closed.slice(0, -1);
+        for (let index = 0; index < ring.length; index++) {
+          const p = ring[index],
+            before = ring[(index + ring.length - 1) % ring.length],
+            after = ring[(index + 1) % ring.length],
+            u = [p[0] - before[0], p[1] - before[1]],
+            v = [after[0] - p[0], after[1] - p[1]],
+            denominator = Math.hypot(...u) * Math.hypot(...v);
+          if (!(denominator > 0)) continue;
+          const cosine = (u[0] * v[0] + u[1] * v[1]) / denominator;
+          if (cosine <= threshold)
+            lines.push([
+              [...p, z0],
+              [...p, z1],
+            ]);
+        }
+      }
+  return lines;
+}
+
+function topologyZKey(value) {
+  return Number(value).toPrecision(15);
+}
+
+function roughSurfaceKey(layerId, z, face) {
+  return `${layerId}\u0000${topologyZKey(z)}\u0000${face}`;
+}
+
+function appearanceMapFromTopology(model, clip) {
+  const map = new Map();
+  for (const patch of appearanceSurfaceGroupsFromTopology(model, clip)) {
+    const key = roughSurfaceKey(patch.layerId, patch.z, patch.face);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(patch);
+  }
+  return map;
+}
+
+function splitOwnedCapByAppearance(item, cap, roughMap, solidIndex) {
+  const face = cap.normal > 0 ? 'front' : 'back',
+    patches = roughMap.get(roughSurfaceKey(item.layerId, cap.z, face)) || [],
+    parts = [];
+  let remaining = cap.polys;
+
+  for (const patch of patches) {
+    const roughPolys = intersection(remaining, patch.polys);
+    if (!isEmpty(roughPolys)) {
+      parts.push({
+        layerId: item.layerId,
+        solidIndex,
+        type: 'cap',
+        face,
+        z: cap.z,
+        normal: cap.normal,
+        polys: roughPolys,
+        appearance: patch.appearance,
+        profileNormal: patch.profileNormal,
+        buried: Boolean(patch.buried),
+      });
+    }
+    remaining = difference(remaining, patch.polys);
+    if (isEmpty(remaining)) break;
+  }
+
+  if (!isEmpty(remaining)) {
+    parts.push({
+      layerId: item.layerId,
+      solidIndex,
+      type: 'cap',
+      face,
+      z: cap.z,
+      normal: cap.normal,
+      polys: remaining,
+      appearance: null,
+      profileNormal: cap.normal,
+      buried: false,
+    });
+  }
+  return parts;
+}
+
+function surfaceOwnerRank(part, layerOrder) {
+  return [
+    part.appearance ? 0 : 1,
+    part.normal > 0 ? 0 : 1,
+    layerOrder.get(part.layerId) ?? Number.MAX_SAFE_INTEGER,
+    String(part.layerId),
+  ];
+}
+
+function compareSurfaceOwnerRank(a, b) {
+  for (let index = 0; index < Math.max(a.length, b.length); index++) {
+    if (a[index] === b[index]) continue;
+    return a[index] < b[index] ? -1 : 1;
+  }
+  return 0;
+}
+
+function ownsMaterialInterface(current, other, layerOrder) {
+  return (
+    compareSurfaceOwnerRank(
+      surfaceOwnerRank(current, layerOrder),
+      surfaceOwnerRank(other, layerOrder),
+    ) <= 0
+  );
+}
+
+function ownHorizontalMaterialCaps(rawCaps, layerOrder) {
+  const owned = [];
+  for (let index = 0; index < rawCaps.length; index++) {
+    const cap = rawCaps[index];
+    let remaining = cap.polys;
+
+    for (let otherIndex = 0; otherIndex < rawCaps.length; otherIndex++) {
+      if (otherIndex === index) continue;
+      const other = rawCaps[otherIndex];
+      if (other.layerId === cap.layerId) continue;
+      if (Math.abs(other.z - cap.z) > INTERFACE_EPSILON_UM) continue;
+      if (other.normal !== -cap.normal) continue;
+
+      const overlap = intersection(remaining, other.polys);
+      if (isEmpty(overlap)) continue;
+      if (ownsMaterialInterface(cap, other, layerOrder)) {
+        owned.push({
+          ...cap,
+          polys: overlap,
+          buried: true,
+          ownership: 'interface',
+          interfaceLayerId: other.layerId,
+        });
+      }
+      remaining = difference(remaining, overlap);
+      if (isEmpty(remaining)) break;
+    }
+
+    if (!isEmpty(remaining)) {
+      owned.push({
+        ...cap,
+        polys: remaining,
+        ownership: cap.buried ? 'interface' : 'exterior',
+        interfaceLayerId: null,
+      });
+    }
+  }
+  return owned;
+}
+
+function normalizeBoundaryRing(closed, isHole) {
+  const points = Array.isArray(closed) ? closed : [],
+    isClosed =
+      points.length > 1 &&
+      points[0][0] === points.at(-1)[0] &&
+      points[0][1] === points.at(-1)[1],
+    ring = (isClosed ? points.slice(0, -1) : points.slice()).map(([x, y]) => [x, y]);
+  if (ring.length < 2) return [];
+
+  const signedArea = ring.reduce((sum, point, index) => {
+    const next = ring[(index + 1) % ring.length];
+    return sum + point[0] * next[1] - point[1] * next[0];
+  }, 0);
+  if ((signedArea > 0) !== !isHole) ring.reverse();
+  return ring;
+}
+
+function materialSidewallDescriptor(p, q) {
+  const dx = q[0] - p[0],
+    dy = q[1] - p[1],
+    length = Math.hypot(dx, dy);
+  if (!(length > 1e-12)) return null;
+
+  let ux = dx / length,
+    uy = dy / length;
+  if (ux < -1e-12 || (Math.abs(ux) <= 1e-12 && uy < 0)) {
+    ux = -ux;
+    uy = -uy;
+  }
+  const nx = -uy,
+    ny = ux,
+    offset = nx * p[0] + ny * p[1],
+    pT = ux * p[0] + uy * p[1],
+    qT = ux * q[0] + uy * q[1];
+  return {
+    ux,
+    uy,
+    nx,
+    ny,
+    offset,
+    t0: Math.min(pT, qT),
+    t1: Math.max(pT, qT),
+    forward: qT >= pT,
+  };
+}
+
+function materialSidewallKey(line) {
+  return [line.ux, line.uy, line.offset]
+    .map((value) => Number(value).toPrecision(13))
+    .join('|');
+}
+
+function ownVerticalMaterialSidewalls(solids, layerOrder) {
+  const groups = new Map();
+  solids.forEach((item, solidIndex) => {
+    for (const slab of item.slabs) {
+      for (const poly of slab.polys) {
+        for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
+          const ring = normalizeBoundaryRing(poly[ringIndex], ringIndex > 0);
+          for (let index = 0; index < ring.length; index++) {
+            const p = ring[index],
+              q = ring[(index + 1) % ring.length],
+              line = materialSidewallDescriptor(p, q);
+            if (!line) continue;
+            const part = {
+                layerId: item.layerId,
+                solidIndex,
+                type: 'sidewall',
+                p,
+                q,
+                z0: slab.z0,
+                z1: slab.z1,
+                line,
+              },
+              key = materialSidewallKey(line);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(part);
+          }
+        }
+      }
+    }
+  });
+
+  const owned = [];
+  for (const entries of groups.values()) {
+    const reference = entries[0].line,
+      tLevels = [...new Set(entries.flatMap((entry) => [entry.line.t0, entry.line.t1]))].sort(
+        (a, b) => a - b,
+      ),
+      pointAt = (t) => [
+        reference.ux * t + reference.nx * reference.offset,
+        reference.uy * t + reference.ny * reference.offset,
+      ];
+
+    for (let tIndex = 0; tIndex < tLevels.length - 1; tIndex++) {
+      const t0 = tLevels[tIndex],
+        t1 = tLevels[tIndex + 1];
+      if (!(t1 > t0 + 1e-12)) continue;
+      const xyCovering = entries.filter(
+        (entry) => entry.line.t0 <= t0 + 1e-10 && entry.line.t1 >= t1 - 1e-10,
+      );
+      if (!xyCovering.length) continue;
+
+      const zLevels = [...new Set(xyCovering.flatMap((entry) => [entry.z0, entry.z1]))].sort(
+        (a, b) => a - b,
+      );
+      for (let zIndex = 0; zIndex < zLevels.length - 1; zIndex++) {
+        const z0 = zLevels[zIndex],
+          z1 = zLevels[zIndex + 1];
+        if (!(z1 > z0 + TOPOLOGY_EPSILON_UM)) continue;
+        const covering = xyCovering.filter(
+          (entry) =>
+            entry.z0 <= z0 + TOPOLOGY_EPSILON_UM &&
+            entry.z1 >= z1 - TOPOLOGY_EPSILON_UM,
+        );
+        if (!covering.length) continue;
+
+        covering.sort((a, b) => {
+          const ai = layerOrder.get(a.layerId) ?? Number.MAX_SAFE_INTEGER,
+            bi = layerOrder.get(b.layerId) ?? Number.MAX_SAFE_INTEGER;
+          if (ai !== bi) return ai - bi;
+          return String(a.layerId).localeCompare(String(b.layerId));
+        });
+
+        const owner = covering[0],
+          interfaceLayerIds = [
+            ...new Set(
+              covering
+                .slice(1)
+                .map((entry) => entry.layerId)
+                .filter((id) => id !== owner.layerId),
+            ),
+          ],
+          a = pointAt(t0),
+          b = pointAt(t1),
+          [p, q] = owner.line.forward ? [a, b] : [b, a];
+
+        owned.push({
+          ...owner,
+          p,
+          q,
+          z0,
+          z1,
+          buried: interfaceLayerIds.length > 0,
+          ownership: interfaceLayerIds.length ? 'interface' : 'exterior',
+          interfaceLayerIds,
+        });
+      }
+    }
+  }
+  return owned;
+}
+
+function topologyPointKey3d(point) {
+  return point.map((value) => Number(value).toPrecision(14)).join(',');
+}
+
+function topologyLineKey(a, b) {
+  const pa = topologyPointKey3d(a),
+    pb = topologyPointKey3d(b);
+  return pa < pb ? `${pa}|${pb}` : `${pb}|${pa}`;
+}
+
+function topologyVerticalPointKey(point) {
+  return `${Number(point[0]).toPrecision(14)},${Number(point[1]).toPrecision(14)}`;
+}
+
+function ownedVerticalBorderLines(solids) {
+  const groups = new Map();
+  for (const item of solids) {
+    for (const [a, b] of solidBordersFromTopology(item)) {
+      if (Math.abs(a[2] - b[2]) <= TOPOLOGY_EPSILON_UM) continue;
+      const z0 = Math.min(a[2], b[2]),
+        z1 = Math.max(a[2], b[2]),
+        key = topologyVerticalPointKey(a);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({
+        layerId: item.layerId,
+        point: [a[0], a[1]],
+        z0,
+        z1,
+      });
+    }
+  }
+
+  const lines = [];
+  for (const entries of groups.values()) {
+    const levels = [
+      ...new Set(entries.flatMap((entry) => [entry.z0, entry.z1]).map(topologyZKey)),
+    ]
+      .map(Number)
+      .sort((a, b) => a - b);
+    for (let index = 0; index < levels.length - 1; index++) {
+      const z0 = levels[index],
+        z1 = levels[index + 1];
+      if (!(z1 > z0 + TOPOLOGY_EPSILON_UM)) continue;
+      const covering = entries.filter(
+          (entry) =>
+            entry.z0 <= z0 + TOPOLOGY_EPSILON_UM &&
+            entry.z1 >= z1 - TOPOLOGY_EPSILON_UM,
+        ),
+        uniqueLayers = new Set(covering.map((entry) => entry.layerId));
+      if (uniqueLayers.size !== 1 || !covering.length) continue;
+      const [x, y] = covering[0].point;
+      lines.push([
+        [x, y, z0],
+        [x, y, z1],
+      ]);
+    }
+  }
+  return lines;
+}
+
+function ownedMaterialBorderLines(solids, caps) {
+  const lines = ownedVerticalBorderLines(solids);
+  for (const cap of caps) {
+    if (cap.appearance || cap.buried) continue;
+    for (const poly of cap.polys || [])
+      for (const ring of poly || [])
+        for (let index = 1; index < ring.length; index++)
+          lines.push([
+            [...ring[index - 1], cap.z],
+            [...ring[index], cap.z],
+          ]);
+  }
+
+  const unique = new Map();
+  for (const line of lines) {
+    const key = topologyLineKey(line[0], line[1]);
+    if (!unique.has(key)) unique.set(key, line);
+  }
+  return [...unique.values()];
+}
+
+export function ownedMaterialSurfacesFromTopology(model, clip = null) {
+  const layerOrder = new Map(
+      (model?.layers || []).map((layer, index) => [layer.id, index]),
+    ),
+    solids = materialSolidsFromTopology(model, clip),
+    roughMap = appearanceMapFromTopology(model, clip),
+    rawCaps = [];
+
+  solids.forEach((item, solidIndex) => {
+    for (const cap of item.caps) {
+      rawCaps.push(...splitOwnedCapByAppearance(item, cap, roughMap, solidIndex));
+    }
+  });
+
+  const caps = ownHorizontalMaterialCaps(rawCaps, layerOrder),
+    sidewalls = ownVerticalMaterialSidewalls(solids, layerOrder),
+    borderLines = ownedMaterialBorderLines(solids, caps);
+  return { caps, sidewalls, borderLines };
 }
 
 export function exposedLayerIdsFromTopology(model, area = model?.boundary, face = 'front') {
