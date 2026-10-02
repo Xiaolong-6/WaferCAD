@@ -110,9 +110,8 @@ function quantizeProjectLengths(project) {
   }
 
   if (isObject(project.maskRoi)) {
-    if (Array.isArray(project.maskRoi.a)) quantizePoint(project.maskRoi.a);
-    if (Array.isArray(project.maskRoi.b)) quantizePoint(project.maskRoi.b);
     if (Array.isArray(project.maskRoi.c)) quantizePoint(project.maskRoi.c);
+    if (project.maskRoi.size != null) project.maskRoi.size = quantizeLength(project.maskRoi.size);
     if (project.maskRoi.r != null) project.maskRoi.r = quantizeLength(project.maskRoi.r);
   }
 
