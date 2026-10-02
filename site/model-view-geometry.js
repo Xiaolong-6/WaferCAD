@@ -25,11 +25,38 @@ export function extrusionGroups(model, clip = null) {
   }));
 }
 
-export function sectionSlices(model, a, b) {
-  const slices = [];
+export function sectionColumns(model, a, b) {
+  const columns = [];
   for (const region of model.regions) {
     for (const [t0, t1] of lineIntervalsInMulti(a, b, region.geom)) {
-      for (const segment of region.stack) slices.push({ ...segment, t0, t1 });
+      columns.push({
+        t0,
+        t1,
+        stack: region.stack.map((segment) => ({
+          ...segment,
+          frontSurface: segment.frontSurface ? { ...segment.frontSurface } : undefined,
+          backSurface: segment.backSurface ? { ...segment.backSurface } : undefined,
+        })),
+      });
+    }
+  }
+  return columns;
+}
+
+export function sectionSlices(model, a, b) {
+  const slices = [];
+  for (const column of sectionColumns(model, a, b)) {
+    for (let index = 0; index < column.stack.length; index++) {
+      const segment = column.stack[index],
+        below = column.stack[index - 1] || null,
+        above = column.stack[index + 1] || null;
+      slices.push({
+        ...segment,
+        t0: column.t0,
+        t1: column.t1,
+        below: below ? { ...below } : null,
+        above: above ? { ...above } : null,
+      });
     }
   }
   return slices;
@@ -51,23 +78,76 @@ export function surfaceGroups(model, face = 'front') {
 
 export function appearanceSurfaceGroups(model, clip = null) {
   const groups = new Map();
-  for (const face of ['front', 'back']) {
-    for (const patch of surfacePatches(model, face)) {
-      if (patch.appearance?.kind !== 'rough') continue;
-      const geom = clip ? intersection(patch.geom, clip) : patch.geom;
-      if (isEmpty(geom)) continue;
-      const key = JSON.stringify([
-        patch.layerId, patch.z, face, patch.appearance.featureSize,
-        patch.appearance.amplitude, patch.appearance.seed, patch.appearance.geometryMode,
-      ]);
-      if (!groups.has(key))
-        groups.set(key, {
-          layerId: patch.layerId, z: patch.z, face,
-          appearance: { ...patch.appearance }, geoms: [],
-        });
-      groups.get(key).geoms.push(geom);
+  const addAppearance = (layerId, z, face, profileNormal, appearance, geom) => {
+    if (appearance?.kind !== 'rough' || isEmpty(geom)) return;
+    const key = JSON.stringify([
+      layerId,
+      z,
+      face,
+      profileNormal,
+      appearance.profileId,
+      appearance.featureSize,
+      appearance.meanHeight,
+      appearance.featureCv,
+      appearance.heightCv,
+      appearance.seed,
+      appearance.geometryMode,
+      appearance.morphology,
+      appearance.polarity,
+      appearance.etchDepth,
+    ]);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        layerId,
+        z,
+        face,
+        profileNormal,
+        appearance: { ...appearance },
+        geoms: [],
+      });
+    }
+    groups.get(key).geoms.push(geom);
+  };
+
+  for (const region of model.regions || []) {
+    const geom = clip ? intersection(region.geom, clip) : region.geom;
+    if (isEmpty(geom)) continue;
+
+    for (let index = 0; index < region.stack.length; index++) {
+      const segment = region.stack[index],
+        below = region.stack[index - 1] || null,
+        above = region.stack[index + 1] || null,
+        frontAppearance =
+          segment.frontSurface?.kind === 'rough'
+            ? segment.frontSurface
+            : above?.backSurface?.kind === 'rough'
+              ? above.backSurface
+              : null,
+        backAppearance =
+          segment.backSurface?.kind === 'rough'
+            ? segment.backSurface
+            : below?.frontSurface?.kind === 'rough'
+              ? below.frontSurface
+              : null;
+      addAppearance(
+        segment.layerId,
+        segment.z1,
+        'front',
+        segment.frontSurface?.kind === 'rough' ? 1 : -1,
+        frontAppearance,
+        geom,
+      );
+      addAppearance(
+        segment.layerId,
+        segment.z0,
+        'back',
+        segment.backSurface?.kind === 'rough' ? -1 : 1,
+        backAppearance,
+        geom,
+      );
     }
   }
+
   return [...groups.values()].map(({ geoms, ...patch }) => ({
     ...patch,
     polys: unionGeometries(geoms),
@@ -169,4 +249,97 @@ export function solidBorders({ slabs, caps }, thresholdDegrees = 20) {
         }
       }
   return lines;
+}
+
+
+function implantFragments(model, clip = null) {
+  const fragments = [];
+  for (const implant of model?.implants || []) {
+    if (implant.visible === false) continue;
+    const thickness = Math.max(0, Number(implant.thickness) || 0);
+    if (!(thickness > 1e-12)) continue;
+
+    for (const patch of implant.patches || []) {
+      const sourceLow = implant.face === 'front' ? patch.z - thickness : patch.z,
+        sourceHigh = implant.face === 'front' ? patch.z : patch.z + thickness;
+
+      for (const region of model.regions || []) {
+        if (!region.stack?.length) continue;
+        let geom = intersection(patch.geom, region.geom);
+        if (clip && !isEmpty(geom)) geom = intersection(geom, clip);
+        if (isEmpty(geom)) continue;
+
+        const currentLow = region.stack[0].z0,
+          currentHigh = region.stack.at(-1).z1,
+          z0 = Math.max(sourceLow, currentLow),
+          z1 = Math.min(sourceHigh, currentHigh);
+        if (!(z1 > z0 + 1e-12)) continue;
+
+        const surfaceSegment =
+            implant.face === 'front' ? region.stack.at(-1) : region.stack[0],
+          currentSurfaceZ = implant.face === 'front' ? currentHigh : currentLow,
+          sourceSurfaceZ = Number(patch.z),
+          currentCutsImplant =
+            implant.face === 'front'
+              ? currentSurfaceZ < sourceSurfaceZ - 1e-9
+              : currentSurfaceZ > sourceSurfaceZ + 1e-9,
+          currentAppearance =
+            implant.face === 'front'
+              ? surfaceSegment?.frontSurface
+              : surfaceSegment?.backSurface,
+          outerZ = implant.face === 'front' ? z1 : z0,
+          innerZ = implant.face === 'front' ? z0 : z1;
+
+        fragments.push({
+          implantId: implant.id,
+          name: implant.name,
+          color: implant.color,
+          face: implant.face,
+          thickness,
+          tilt: Number(implant.tilt) || 0,
+          sourceZ: sourceSurfaceZ,
+          outerZ,
+          innerZ,
+          z0,
+          z1,
+          surfaceAppearance:
+            (currentCutsImplant ? currentAppearance : patch.surfaceAppearance) || null,
+          polys: geom,
+        });
+      }
+    }
+  }
+  return fragments;
+}
+
+export function implantSurfaceGroups(model, clip = null) {
+  return implantFragments(model, clip).map((fragment) => ({
+    ...fragment,
+    z: fragment.outerZ,
+  }));
+}
+
+export function implantSolids(model, clip = null) {
+  return implantFragments(model, clip).map((fragment) => ({
+    ...fragment,
+    slabs: [{ z0: fragment.z0, z1: fragment.z1, polys: fragment.polys }],
+    caps: [
+      { z: fragment.z0, normal: -1, polys: fragment.polys },
+      { z: fragment.z1, normal: 1, polys: fragment.polys },
+    ],
+  }));
+}
+
+export function implantSectionBands(model, a, b) {
+  const bands = [];
+  for (const fragment of implantFragments(model)) {
+    for (const [t0, t1] of lineIntervalsInMulti(a, b, fragment.polys)) {
+      bands.push({
+        ...fragment,
+        t0,
+        t1,
+      });
+    }
+  }
+  return bands;
 }

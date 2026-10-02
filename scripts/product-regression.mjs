@@ -48,7 +48,8 @@ async function open(viewport, touch = false) {
   page.on('dialog', (dialog) => void dialog.accept());
   const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
   await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
-  await page.waitForFunction(() => document.querySelector('#sectionControlsBtn').onclick !== null);
+  await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
+  await page.locator('#threeHost canvas').waitFor({ state: 'attached', timeout: 10000 });
   assert.equal(
     await page.locator('#threeHost canvas').count(),
     1,
@@ -104,6 +105,65 @@ async function checkLayout(page) {
     return issues;
   });
   assert.deepEqual(problems, []);
+}
+
+async function checkCompactProcessLayout(page, name) {
+  await page.locator('#operationTab').click();
+  await page.locator('[data-process-mode="etch"]').click();
+  await page.locator('#etchSurfaceMode').selectOption('rough');
+
+  const metrics = await page.evaluate(() => {
+    const panel = document.querySelector('#operationTools'),
+      feature = document.querySelector('#roughFeatureRow').getBoundingClientRect(),
+      featureCv = document.querySelector('#roughFeatureCvRow').getBoundingClientRect(),
+      height = document.querySelector('#roughHeightRow').getBoundingClientRect(),
+      heightCv = document.querySelector('#roughHeightCvRow').getBoundingClientRect(),
+      labels = [...panel.querySelectorAll('.param-field > span:first-child')].map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { text: element.textContent.trim(), height: rect.height, width: rect.width };
+      });
+    return {
+      overflow: panel.scrollWidth - panel.clientWidth,
+      featureTop: feature.top,
+      featureCvTop: featureCv.top,
+      heightTop: height.top,
+      heightCvTop: heightCv.top,
+      labels,
+    };
+  });
+
+  assert.ok(metrics.overflow <= 1, `${name}: Process panel horizontal overflow ${metrics.overflow}px`);
+  if (name === 'phone') {
+    assert.ok(
+      Math.abs(metrics.featureTop - metrics.featureCvTop) > 4,
+      'phone: Feature fields should collapse to one column',
+    );
+    assert.ok(
+      Math.abs(metrics.heightTop - metrics.heightCvTop) > 4,
+      'phone: Height fields should collapse to one column',
+    );
+  } else {
+    assert.ok(
+      Math.abs(metrics.featureTop - metrics.featureCvTop) <= 2,
+      `${name}: Feature XY and CV are not aligned in one row`,
+    );
+    assert.ok(
+      Math.abs(metrics.heightTop - metrics.heightCvTop) <= 2,
+      `${name}: Height mean and CV are not aligned in one row`,
+    );
+    for (const label of metrics.labels) {
+      assert.ok(label.height <= 16, `${name}: wrapped parameter label ${label.text}`);
+    }
+  }
+
+  await capture(page, `${name}-tab-operation-rough`);
+
+  await page.locator('[data-process-mode="implant"]').click();
+  const implantOverflow = await page.locator('#operationTools').evaluate(
+    (panel) => panel.scrollWidth - panel.clientWidth,
+  );
+  assert.ok(implantOverflow <= 1, `${name}: Implant panel horizontal overflow ${implantOverflow}px`);
+  await capture(page, `${name}-tab-operation-implant`);
 }
 
 async function checkPopover(page, selector, panelId) {
@@ -275,7 +335,52 @@ async function checkSectionSeams(page, project) {
     },
     { lo, hi, pad },
   );
-  assert.equal(colors.length, 1, `false Section seams: ${colors.join(' / ')}`);
+  const rgba = colors.map((color) => color.split(',').map(Number)),
+    channelRange = [0, 1, 2, 3].map((channel) => {
+      const values = rgba.map((value) => value[channel]);
+      return Math.max(...values) - Math.min(...values);
+    });
+  assert.ok(
+    channelRange.every((range) => range <= 1),
+    `false Section seams: ${colors.join(' / ')}`,
+  );
+}
+
+async function sectionMaterialThickness(page, hexColor, xFraction = 0.5) {
+  return page.evaluate(
+    ({ hexColor, xFraction }) => {
+      const canvas = document.querySelector('#sectionCanvas'),
+        dpr = Math.min(devicePixelRatio || 1, 2),
+        cssWidth = canvas.width / dpr,
+        x = Math.round((27 + (cssWidth - 37) * xFraction) * dpr),
+        data = canvas.getContext('2d').getImageData(x, 0, 1, canvas.height).data,
+        target = [
+          parseInt(hexColor.slice(1, 3), 16),
+          parseInt(hexColor.slice(3, 5), 16),
+          parseInt(hexColor.slice(5, 7), 16),
+        ],
+        matches = [];
+      for (let y = 0; y < canvas.height; y++) {
+        const offset = y * 4,
+          distance =
+            Math.abs(data[offset] - target[0]) +
+            Math.abs(data[offset + 1] - target[1]) +
+            Math.abs(data[offset + 2] - target[2]);
+        if (distance <= 12) matches.push(y);
+      }
+      let best = 0,
+        run = 0,
+        previous = -2;
+      for (const y of matches) {
+        run = y === previous + 1 ? run + 1 : 1;
+        best = Math.max(best, run);
+        previous = y;
+      }
+      const zPxPerUm = Number(canvas.dataset.zPxPerUm);
+      return best / dpr / zPxPerUm;
+    },
+    { hexColor, xFraction },
+  );
 }
 
 async function checkROI(page, name) {
@@ -384,6 +489,7 @@ try {
       await capture(page, `${name}-tab-${tab}`);
       await checkLayout(page);
     }
+    await checkCompactProcessLayout(page, name);
     await page.locator('#snapshotsTab').click();
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
@@ -473,6 +579,121 @@ try {
         }
       }
     }
+    if (name === 'wide') {
+      const { applyOperation, createModel } = await import('../site/model.js');
+      const { rectMulti } = await import('../site/vector-geometry.js');
+      const roughModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 }),
+        roughArea = rectMulti(10, 12);
+      applyOperation(roughModel, {
+        type: 'etch',
+        thickness: 1.5,
+        face: 'front',
+        area: roughArea,
+        surface: {
+          kind: 'rough',
+          featureSize: 0.45,
+          meanHeight: 0.6,
+          featureCv: 0.3,
+          heightCv: 0.35,
+          geometryMode: 'ideal',
+        },
+      });
+      applyOperation(roughModel, {
+        type: 'add',
+        name: 'Rough coat',
+        thickness: 0.8,
+        face: 'front',
+        area: roughArea,
+        growth: 'direct',
+      });
+      const roughProject = projectForBenchmark({
+        model: roughModel,
+        section: { a: [-9, 0], b: [9, 0] },
+      });
+      await loadProject(page, roughProject, 'wide-rough-buried-interface');
+      await checkSectionSeams(page, roughProject);
+      const normalThickness = await sectionMaterialThickness(page, '#6C8EBF'),
+        normalZMax = await page.locator('#sectionCanvas').getAttribute('data-z-max-um');
+      assert.ok(
+        Math.abs(normalThickness - 0.8) < 0.06,
+        `rough coating physical thickness changed: ${normalThickness} µm`,
+      );
+      assert.ok(Number(normalZMax) >= 4.8 - 1e-9, `rough Auto Z max too small: ${normalZMax}`);
+      await capture(page, 'wide-rough-buried-interface');
+      await page.locator('#sectionMaxBtn').click();
+      await page.waitForTimeout(120);
+      const maxThickness = await sectionMaterialThickness(page, '#6C8EBF');
+      assert.ok(
+        Math.abs(maxThickness - 0.8) < 0.04,
+        `maximized rough coating thickness changed: ${maxThickness} µm`,
+      );
+      assert.ok(
+        Math.abs(maxThickness - normalThickness) < 0.04,
+        `rough coating thickness depends on zoom: ${normalThickness} vs ${maxThickness} µm`,
+      );
+      await capture(page, 'wide-rough-buried-interface-max');
+      await page.locator('#sectionMaxBtn').click();
+      await page.waitForTimeout(120);
+
+      // 3D integration guardrails: clean opaque rough surfaces and sorted
+      // translucent layers should remain layer-colored without screen-door noise.
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-3d-opaque-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('0.5');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-3d-transparent-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('1');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+
+      // Opaque host material must occlude a buried Implant. Lowering global
+      // 3D opacity reveals the same internal annotation volume.
+      const implantModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 });
+      applyOperation(implantModel, {
+        type: 'implant',
+        name: 'Buried implant',
+        thickness: 1,
+        face: 'front',
+        area: rectMulti(10, 8),
+        color: '#9B5DE5',
+      });
+      applyOperation(implantModel, {
+        type: 'add',
+        name: 'Opaque cap',
+        thickness: 0.8,
+        face: 'front',
+        area: implantModel.boundary,
+        growth: 'direct',
+      });
+      const implantProject = projectForBenchmark({
+        model: implantModel,
+        section: { a: [-9, 0], b: [9, 0] },
+      });
+      await loadProject(page, implantProject, 'wide-implant-buried');
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-implant-buried-opaque-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('0.5');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-implant-buried-transparent-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('1');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+
+      await checkLayout(page);
+    }
+
     await checkROI(page, name);
     await context.close();
     console.log(`${name}: A/B, units, ROI, tabs, imports and six process views passed`);

@@ -10,9 +10,10 @@ const buildController = await readFile(
   'utf8',
 );
 
-test('Settings is the final workspace tab and owns the XYZ unit selector', () => {
-  assert.ok(html.indexOf('id="settingsTab"') > html.indexOf('id="snapshotsTab"'));
-  assert.ok(html.indexOf('id="settingsTools"') > html.indexOf('id="snapshotsTools"'));
+test('Project is the first and default workspace tab and owns the XYZ unit selector', () => {
+  assert.ok(html.indexOf('id="settingsTab"') < html.indexOf('id="baseTab"'));
+  assert.match(html, /id="settingsTab"[\s\S]*?class="tool-tab active"[\s\S]*?aria-selected="true"/);
+  assert.match(html, /id="baseTools"[\s\S]*?data-tab-panel="base"[\s\S]*?hidden/);
   const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.doesNotMatch(header, /id="xyUnitSelect"/);
   const settings = html.slice(
@@ -23,18 +24,42 @@ test('Settings is the final workspace tab and owns the XYZ unit selector', () =>
   assert.match(settings, /id="projectNameInput"/);
 });
 
-test('project replacement controls warn and Save uses the project name', () => {
+test('project replacement controls warn, Save is local, and Export downloads the project file', () => {
   assert.match(app, /New project will replace the current workspace/);
   assert.match(app, /Open project will replace the current workspace/);
+  assert.match(app, /manual-save · \$\{projectName\}/);
+  assert.match(app, /createWorkspaceRecoveryCheckpoint\(project/);
+  assert.match(app, /\$\('exportProjectBtn'\)\.onclick/);
   assert.match(app, /downloadProject\(buildProjectSnapshot\(true\), projectExportFilename\(\)\)/);
   assert.match(app, /\.wafercad/);
 });
 
 test('workspace state is restored locally after app reload', () => {
   assert.match(app, /loadWorkspaceState\(\)/);
-  assert.match(app, /saveWorkspaceState\(project\)/);
+  assert.match(app, /saveWorkspaceState\(project, \{ appCommit: loadedBuildVersion \}\)/);
   assert.match(persistence, /indexedDB\.open\(DB_NAME, 1\)/);
+  assert.match(persistence, /createWorkspaceRecoveryCheckpoint/);
+  assert.match(persistence, /pre-migration-v/);
   assert.match(persistence, /validateProjectFile\(migrateProjectFile\(record\.project\)\)/);
+});
+
+test('workspace safety UI exposes local save state, recovery, and safe reload', () => {
+  for (const id of [
+    'workspaceSaveStatus',
+    'safeReloadBtn',
+    'workspaceConflictDialog',
+    'workspaceTakeOverBtn',
+    'workspaceRecoverySelect',
+    'workspaceRestoreBtn',
+    'workspaceRecoveryClearBtn',
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /createWorkspaceRecoveryCheckpoint/);
+  assert.match(app, /clearWorkspaceRecoveryPoints/);
+  assert.match(persistence, /export async function clearWorkspaceRecoveryPoints/);
+  assert.match(app, /workspaceSession\.start\(\)/);
+  assert.match(app, /globalThis\.location\.reload\(\)/);
 });
 
 test('footer exposes repository and exact deployed commit links', () => {
@@ -49,6 +74,8 @@ test('compact controls include concise hover tooltips', () => {
   for (const id of [
     'newProjectBtn',
     'saveProjectBtn',
+    'exportProjectBtn',
+    'workspaceRecoveryClearBtn',
     'mainZoomOut',
     'mainZoomIn',
     'mainZoomFit',

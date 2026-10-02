@@ -1,5 +1,6 @@
 import { createModel } from '../model.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from '../project-schema.js';
+import { normalizeMaskRoi } from '../mask-roi-geometry.js';
 import { normalizeRoi } from '../roi-editor.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
@@ -62,6 +63,7 @@ export function createProjectStateController({
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
         sectionScaleMode: state.sectionScaleMode,
+        sectionShowBorders: state.sectionShowBorders,
       },
     };
 
@@ -96,7 +98,8 @@ export function createProjectStateController({
       threeShowBorders = Boolean(project.display?.threeShowBorders),
       sectionScaleMode = ['auto', 'physical'].includes(project.display?.sectionScaleMode)
         ? project.display.sectionScaleMode
-        : 'auto';
+        : 'auto',
+      sectionShowBorders = Boolean(project.display?.sectionShowBorders);
 
     applyState({
       model,
@@ -112,7 +115,7 @@ export function createProjectStateController({
       maskTransform: project.maskTransform,
       maskSourceMode: project.maskSourceMode || 'file',
       drawMask: structuredClone(project.drawMask || { nextShapeId: 1, shapes: [] }),
-      maskRoi: project.maskRoi ? normalizeRoi(project.maskRoi) : null,
+      maskRoi: project.maskRoi ? normalizeMaskRoi(project.maskRoi) : null,
       maskRoiAnchor: project.maskRoiAnchor || 'center',
       activeFace: project.activeFace,
       roi: project.roi ? normalizeRoi(project.roi) : null,
@@ -127,6 +130,7 @@ export function createProjectStateController({
       threeOpacity,
       threeShowBorders,
       sectionScaleMode,
+      sectionShowBorders,
       ...(project.name ? { projectName: project.name } : {}),
       planViews: project.planViews,
     });
@@ -157,6 +161,7 @@ export function createProjectStateController({
       section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
       projectName: 'Untitled',
       sectionScaleMode: 'auto',
+      sectionShowBorders: previous.sectionShowBorders,
       xyDisplayUnit: previous.xyDisplayUnit,
       activeStructurePalette: previous.activeStructurePalette,
       customStructurePalette: previous.customStructurePalette,

@@ -3,9 +3,16 @@ import test from 'node:test';
 import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel, surfaceZ } = await import('../model.js');
-const { circleMulti, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
-  await import('../vector-geometry.js');
+const { applyOperation, baseCoverageState, createModel, surfaceZ } = await import('../model.js');
+const {
+  circleMulti,
+  difference,
+  pointInMulti,
+  rectMulti,
+  intersection,
+  isEmpty,
+  unionGeometries,
+} = await import('../vector-geometry.js');
 const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
 
 function stackAt(model, x, y = 0) {
@@ -320,7 +327,7 @@ test('Conformal geometry failure rolls back the model atomically', () => {
   }
 });
 
-test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
+test('Conformal Extend reuses the Deposit coating kernel and still requires an exposed target', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const seed = applyOperation(model, { type: 'add', thickness: 2, area: rectMulti(4, 4) });
   applyOperation(model, {
@@ -334,7 +341,10 @@ test('Conformal Grow only starts from exposed target, and ROI clips render geome
     stackAt(model, 2.5).find((s) => s.layerId === seed.layerId),
     { layerId: seed.layerId, z0: 5, z1: 8, role: 'conformal-sidewall' },
   );
-  assert.equal(stackAt(model, 5).length, 1);
+  assert.deepEqual(
+    stackAt(model, 5).find((s) => s.layerId === seed.layerId),
+    { layerId: seed.layerId, z0: 5, z1: 6 },
+  );
   const before = structuredClone(model);
   assert.ok(extrusionGroups(model, rectMulti(2, 2)).length);
   assert.deepEqual(model, before);
@@ -353,6 +363,48 @@ test('Conformal Grow only starts from exposed target, and ROI clips render geome
   assert.deepEqual(model, buried);
 });
 
+for (const face of ['front', 'back']) {
+  test(`Conformal Extend coats exposed surfaces and sidewalls on the ${face} face`, () => {
+    const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+    const seed = applyOperation(model, {
+      type: 'add',
+      name: 'Extend seed',
+      thickness: 2,
+      face,
+      area: rectMulti(4, 4),
+      growth: 'direct',
+    });
+    const result = applyOperation(model, {
+      type: 'grow',
+      targetLayerId: seed.layerId,
+      thickness: 1,
+      face,
+      area: model.boundary,
+      growth: 'conformal',
+    });
+    assert.equal(result.changed, true);
+    const side = stackAt(model, 2.5).find((segment) => segment.layerId === seed.layerId),
+      far = stackAt(model, 5).find((segment) => segment.layerId === seed.layerId);
+    if (face === 'front') {
+      assert.deepEqual(side, {
+        layerId: seed.layerId,
+        z0: 5,
+        z1: 8,
+        role: 'conformal-sidewall',
+      });
+      assert.deepEqual(far, { layerId: seed.layerId, z0: 5, z1: 6 });
+    } else {
+      assert.deepEqual(side, {
+        layerId: seed.layerId,
+        z0: -8,
+        z1: -5,
+        role: 'conformal-sidewall',
+      });
+      assert.deepEqual(far, { layerId: seed.layerId, z0: -6, z1: -5 });
+    }
+  });
+}
+
 test('3D groups retain distinct Z intervals below the old eight-decimal grouping threshold', () => {
   const model = createModel({ shape: 'rect', width: 2, height: 2, thickness: 10 });
   model.regions = [
@@ -367,9 +419,172 @@ test('3D groups retain distinct Z intervals below the old eight-decimal grouping
   );
 });
 
-test('through-trench void remains empty: current Conformal needs an adjacent material stack', () => {
+for (const face of ['front', 'back']) {
+  test(`through-trench void receives Conformal sidewall material on the ${face} face`, () => {
+    const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+    applyOperation(model, { type: 'etch', thickness: 10, area: rectMulti(4, 20) });
+    const coat = applyOperation(model, {
+      type: 'add',
+      name: 'Through-wall coat',
+      thickness: 1,
+      face,
+      area: model.boundary,
+      growth: 'conformal',
+    });
+    assert.equal(coat.changed, true);
+    const side = stackAt(model, 1.5).find((segment) => segment.layerId === coat.layerId);
+    assert.ok(side);
+    assert.equal(side.role, 'conformal-sidewall');
+    if (face === 'front') {
+      assert.deepEqual([side.z0, side.z1], [-5, 6]);
+    } else {
+      assert.deepEqual([side.z0, side.z1], [-6, 5]);
+    }
+    assert.deepEqual(stackAt(model, 0), []);
+  });
+}
+
+test('sub-grid rough-step seam is healed before Conformal can enter the model interior', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
+    gap = 5e-5,
+    halfWidth = 10 - gap / 2;
+  model.regions = [
+    {
+      id: 'left-step',
+      geom: rectMulti(halfWidth, 20, -5 - gap / 4, 0),
+      stack: [{ layerId: 'base', z0: -5, z1: 7 }],
+    },
+    {
+      id: 'right-rough',
+      geom: rectMulti(halfWidth, 20, 5 + gap / 4, 0),
+      stack: [
+        {
+          layerId: 'base',
+          z0: -5,
+          z1: 4,
+          frontSurface: {
+            kind: 'rough',
+            morphology: 'stochastic',
+            polarity: 'inverted',
+            featureSize: 0.5,
+            meanHeight: 0.3,
+            featureCv: 0.1,
+            heightCv: 0.1,
+            seed: 7,
+            profileId: 'rough-step-seam-regression',
+            geometryMode: 'ideal',
+            etchDepth: 1,
+          },
+        },
+      ],
+    },
+  ];
+
+  assert.equal(baseCoverageState(model), 'partial');
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal after rough step',
+    thickness: 0.5,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+  assert.equal(baseCoverageState(model), 'full');
+
+  const deepIntrusions = model.regions.flatMap((region) =>
+    region.stack.filter(
+      (segment) =>
+        segment.layerId === coat.layerId &&
+        segment.role === 'conformal-sidewall' &&
+        segment.z0 <= -5 + 1e-9,
+    ),
+  );
+  assert.equal(deepIntrusions.length, 0);
+});
+
+test('Conformal sidewall keeps the inherited rough profile at the exposed cap', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
-  applyOperation(model, { type: 'etch', thickness: 10, area: rectMulti(4, 20) });
-  applyOperation(model, { type: 'add', thickness: 1, area: model.boundary, growth: 'conformal' });
-  assert.deepEqual(stackAt(model, 1.5), []);
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 1,
+    area: model.boundary,
+    surface: {
+      kind: 'rough',
+      featureSize: 0.8,
+      meanHeight: 0.4,
+      featureCv: 0.15,
+      heightCv: 0.1,
+      morphology: 'stochastic',
+      polarity: 'inverted',
+    },
+  });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Rough mesa',
+    thickness: 2,
+    area: rectMulti(4, 20),
+    growth: 'direct',
+  });
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Rough conformal',
+    thickness: 0.5,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+
+  const source = stackAt(model, 0).find((segment) => segment.layerId === coat.layerId),
+    side = stackAt(model, 2.25).find((segment) => segment.layerId === coat.layerId);
+  assert.ok(source?.frontSurface?.profileId);
+  assert.equal(side?.role, 'conformal-sidewall');
+  assert.equal(side?.frontSurface?.profileId, source.frontSurface.profileId);
+});
+
+test('dense nested-ring topography completes whole-face Conformal without internal overlap', () => {
+  const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Blanket',
+    thickness: 2,
+    area: model.boundary,
+    growth: 'direct',
+  });
+
+  const rings = [];
+  for (const x of [-30000, -18000, -6000, 6000, 18000, 30000]) {
+    for (const y of [-30000, -18000, -6000, 6000, 18000, 30000]) {
+      const outer = circleMulti(7000, 7000, 40, x, y),
+        inner = circleMulti(3200, 3200, 32, x, y);
+      rings.push(difference(outer, inner));
+    }
+  }
+  const patterned = unionGeometries(rings);
+  applyOperation(model, {
+    type: 'add',
+    name: 'Ring mesa',
+    thickness: 1.5,
+    area: patterned,
+    growth: 'direct',
+  });
+
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal ring coat',
+    thickness: 0.8,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+  assert.ok(coat.layerId);
+
+  for (let i = 0; i < model.regions.length; i++) {
+    const region = model.regions[i];
+    for (let j = i + 1; j < model.regions.length; j++) {
+      assert.equal(isEmpty(intersection(region.geom, model.regions[j].geom)), true);
+    }
+    for (let j = 1; j < region.stack.length; j++) {
+      assert.ok(region.stack[j].z0 >= region.stack[j - 1].z1 - 1e-9);
+    }
+  }
 });

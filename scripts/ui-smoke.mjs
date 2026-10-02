@@ -21,6 +21,24 @@ const welcomeProject = projectForBenchmark({
 });
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
+
+async function canvasInkFraction(page, selector) {
+  return page.locator(selector).evaluate((canvas) => {
+    const ctx = canvas.getContext('2d'),
+      { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let ink = 0,
+      samples = 0;
+    for (let index = 0; index < data.length; index += 16) {
+      const alpha = data[index + 3],
+        r = data[index],
+        g = data[index + 1],
+        b = data[index + 2];
+      samples += 1;
+      if (alpha > 12 && (r < 245 || g < 245 || b < 245)) ink += 1;
+    }
+    return samples ? ink / samples : 0;
+  });
+}
 const launchOptions = {
   headless: true,
   ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
@@ -64,6 +82,29 @@ assert.equal(await navigationPage.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await navigationPage.locator('.app-shell').count(), 0);
 assert.deepEqual(navigationErrors, []);
 await navigationPage.close();
+
+// A stalled Three.js CDN must never block the editor shell. The old top-level
+// await implementation left Main/Mask blank and all tool tabs unbound here.
+const blockedThreePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const blockedThreeErrors = [];
+blockedThreePage.on('pageerror', (error) => blockedThreeErrors.push(error.message));
+await blockedThreePage.route('https://cdn.jsdelivr.net/**', async (route) => {
+  await new Promise((resolve) => setTimeout(resolve, 12000));
+  await route.abort();
+});
+await blockedThreePage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+await blockedThreePage.locator('#welcomeEmptyBtn').click();
+await blockedThreePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await blockedThreePage.waitForFunction(
+  () => document.documentElement.dataset.appReady === 'true',
+  null,
+  { timeout: 4000 },
+);
+await blockedThreePage.locator('#operationTab').click({ timeout: 2000 });
+await blockedThreePage.locator('#operationTools:not([hidden])').waitFor({ timeout: 2000 });
+assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
+assert.deepEqual(blockedThreeErrors, []);
+await blockedThreePage.close();
 
 const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];
@@ -132,8 +173,52 @@ assert.equal(Number(await projectHandoffPage.locator('#baseThickness').inputValu
 assert.deepEqual(projectHandoffErrors, []);
 await projectHandoffPage.close();
 
-// Settings owns project controls and XY units.
-await page.locator('#settingsTab').click();
+// Open Example must work even while another tab owns autosave, and the resulting
+// workspace must remain interactive enough to replace the bundled mask.
+const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const exampleErrors = [];
+examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
+examplePage.on('dialog', (dialog) => void dialog.accept());
+await examplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await examplePage.locator('#welcomeExampleBtn').click();
+await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await examplePage.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened Visualization example.',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(
+  await examplePage.locator('.workspace').evaluate((element) => element.inert),
+  false,
+);
+assert.equal(await examplePage.locator('#xyUnitSelect').inputValue(), 'mm');
+assert.equal(Number(await examplePage.locator('#baseWidth').inputValue()), 100);
+assert.ok(await examplePage.locator('#maskLayerList .layer-row input:checked').count());
+assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
+const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
+  exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
+assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
+assert.ok(exampleMaskInk > 0.005, `Open Example Mask canvas is blank: ${exampleMaskInk}`);
+await examplePage.locator('#gdsInput').setInputFiles({
+  name: 'example-reimport.oas',
+  mimeType: 'application/octet-stream',
+  buffer: welcomeLayoutBuffer,
+});
+await examplePage.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened example-reimport.oas.',
+  null,
+  { timeout: 30000 },
+);
+assert.ok(await examplePage.locator('#maskLayerList .layer-row').count());
+assert.deepEqual(exampleErrors, []);
+await examplePage.close();
+
+// Project is the first/default tool tab and owns local Save, file Export, recovery, and XYZ units.
+assert.equal(await page.locator('#settingsTab').getAttribute('aria-selected'), 'true');
 await page.locator('#settingsTools:not([hidden])').waitFor();
 
 // XYZ unit switching converts physical Z drafts as well as X/Y drafts.
@@ -156,10 +241,32 @@ for (const id of [
   'newProjectBtn',
   'openProjectInput',
   'saveProjectBtn',
+  'exportProjectBtn',
+  'workspaceRecoveryClearBtn',
   'xyUnitSelect',
 ]) {
   assert.equal(await page.locator(`#settingsTools #${id}`).count(), 1);
 }
+
+await page.locator('#projectNameInput').fill('UI local checkpoint');
+await page.locator('#saveProjectBtn').click();
+await page.waitForFunction(() =>
+  /Saved "UI local checkpoint" locally/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.ok(await page.locator('#workspaceRecoverySelect option').count() > 0);
+assert.match(await page.locator('#workspaceRecoverySelect option').first().textContent(), /manual-save/);
+assert.equal(await page.locator('#workspaceRecoveryClearBtn').isDisabled(), false);
+await page.locator('#workspaceRecoveryClearBtn').click();
+await page.waitForFunction(
+  () =>
+    ![...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /manual-save/.test(option.textContent || ''),
+    ),
+);
+assert.equal(
+  await page.locator('#workspaceRecoverySelect option').filter({ hasText: /manual-save/ }).count(),
+  0,
+);
 
 // Operation controls remain usable after the toolbar reorganization.
 await page.locator('#operationTab').click();
@@ -178,23 +285,64 @@ await page.locator('[data-process-mode="etch"]').click();
 assert.equal(await page.locator('#etchSurfaceRow').isVisible(), true);
 assert.equal(await page.locator('#roughFeatureRow').isVisible(), false);
 await page.locator('#etchSurfaceMode').selectOption('rough');
+assert.equal(await page.locator('#roughPolarityRow').isVisible(), true);
+assert.equal(await page.locator('#roughPolarity').inputValue(), 'inverted');
+await page.locator('#roughPolarity').selectOption('normal');
+assert.match(await page.locator('#operationNote').textContent(), /Normal points features outward/);
 assert.equal(await page.locator('#roughFeatureRow').isVisible(), true);
 assert.equal(await page.locator('#roughHeightRow').isVisible(), true);
-assert.match(await page.locator('#operationNote').textContent(), /render-only/);
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), true);
+assert.match(await page.locator('#operationNote').textContent(), /maximum etch depth/);
+
+await page.locator('#etchSurfaceMode').selectOption('pyramid');
+assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Pyramid XY');
+assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height');
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), false);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), false);
+assert.match(await page.locator('#operationNote').textContent(), /Pyramid XY is the square pitch/);
+await page.locator('#etchSurfaceMode').selectOption('rough');
+assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Feature XY');
+assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height mean');
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), true);
+
 await page.locator('#operationArea').selectOption('full');
-await page.locator('#operationThickness').fill('1');
+await page.locator('#operationThickness').fill('0.5');
+assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '0.5');
 await page.locator('#roughFeatureSize').fill('0.4');
+await page.locator('#roughFeatureCv').fill('35');
 await page.locator('#roughAmplitude').fill('0.8');
+await page.locator('#roughHeightCv').fill('40');
+await page.locator('#applyOperationBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /Height cannot exceed Etch Depth/);
+await page.locator('#operationThickness').fill('1');
+assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '1');
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 await page.waitForFunction(() =>
   /Etched/.test(document.getElementById('statusText')?.textContent || ''),
 );
 
+assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
+assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
+assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+await page.locator('#undoBtn').click();
+assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
+assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
+assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+await page.locator('#redoBtn').click();
+assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
+assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
+assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
+assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI rough project');
 const roughDownloadPromise = page.waitForEvent('download');
-await page.locator('#saveProjectBtn').click();
+await page.locator('#exportProjectBtn').click();
 const roughDownload = await roughDownloadPromise;
 const roughSavedPath = await roughDownload.path();
 assert.ok(roughSavedPath);
@@ -204,11 +352,74 @@ assert.ok(
   roughSegments.some(
     (segment) =>
       segment.frontSurface?.kind === 'rough' &&
+      segment.frontSurface.morphology === 'stochastic' &&
+      segment.frontSurface.polarity === 'normal' &&
       segment.frontSurface.geometryMode === 'ideal' &&
       Math.abs(segment.frontSurface.featureSize - 0.4) < 1e-12 &&
-      Math.abs(segment.frontSurface.amplitude - 0.8) < 1e-12,
+      Math.abs(segment.frontSurface.meanHeight - 0.8) < 1e-12 &&
+      Math.abs(segment.frontSurface.featureCv - 0.35) < 1e-12 &&
+      Math.abs(segment.frontSurface.heightCv - 0.4) < 1e-12 &&
+      typeof segment.frontSurface.profileId === 'string' &&
+      Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
 );
+await page.locator('#operationTab').click();
+
+// Experimental Implant uses the same process area but records a structural annotation only.
+await page.locator('[data-process-mode="implant"]').click();
+assert.equal(await page.locator('#implantNameRow').isVisible(), true);
+assert.equal(await page.locator('#implantTiltRow').isVisible(), true);
+assert.equal(await page.locator('#implantColor').count(), 0);
+assert.match(await page.locator('#operationNote').textContent(), /Experimental structural marker/);
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#operationThickness').fill('0.6');
+await page.locator('#implantName').fill('UI implant');
+await page.locator('#implantTilt').fill('7');
+await page.locator('#applyOperationBtn').click();
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+await page.waitForFunction(() =>
+  /Marked implant UI implant/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
+
+const implantLegendRow = page.locator('#layerLegend .implant-row-wrap').first();
+assert.equal(await implantLegendRow.count(), 1);
+assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), true);
+assert.doesNotMatch(await implantLegendRow.textContent(), /EXP/);
+const implantOrder = await implantLegendRow.locator('.implant-legend-row').evaluate((row) =>
+  [...row.children].map((child) => child.className),
+);
+assert.match(String(implantOrder.at(-1)), /legend-visibility/);
+await implantLegendRow.locator('.implant-gradient-chip').click();
+assert.equal(await implantLegendRow.locator('.legend-palette-chip').count(), 20);
+await implantLegendRow.locator('.legend-palette-chip').nth(3).click();
+await page.locator('#layerLegend .legend-random').click();
+await implantLegendRow.locator('.legend-name').fill('UI implant renamed');
+await implantLegendRow.locator('.legend-name').press('Tab');
+await page.locator('#sectionBordersBtn').click();
+assert.equal(await page.locator('#sectionBordersBtn').getAttribute('aria-pressed'), 'true');
+await implantLegendRow.locator('.legend-visibility').uncheck();
+assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), false);
+await implantLegendRow.locator('.legend-visibility').check();
+
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI implant project');
+const implantDownloadPromise = page.waitForEvent('download');
+await page.locator('#exportProjectBtn').click();
+const implantDownload = await implantDownloadPromise;
+const implantSavedPath = await implantDownload.path();
+assert.ok(implantSavedPath);
+const implantSaved = JSON.parse(await readFile(implantSavedPath, 'utf8'));
+assert.equal(implantSaved.model.implants.length, 1);
+assert.equal(implantSaved.model.implants[0].name, 'UI implant renamed');
+assert.equal(implantSaved.model.implants[0].thickness, 0.6);
+assert.equal(implantSaved.model.implants[0].tilt, 7);
+assert.equal(implantSaved.model.implants[0].visible, true);
+assert.equal('border' in implantSaved.model.implants[0], false);
+assert.equal(implantSaved.display.sectionShowBorders, true);
+assert.equal(implantSaved.display.customStructurePalette.length, 20);
+assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color));
+assert.ok(implantSaved.model.implants[0].patches.length > 0);
 await page.locator('#operationTab').click();
 
 // Extend targets follow the exposed surface and include Base when it is exposed.
@@ -262,7 +473,7 @@ assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI conformal project');
 const downloadPromise = page.waitForEvent('download');
-await page.locator('#saveProjectBtn').click();
+await page.locator('#exportProjectBtn').click();
 const download = await downloadPromise;
 assert.equal(download.suggestedFilename(), 'UI conformal project.wafercad');
 const savedPath = await download.path();
@@ -374,6 +585,41 @@ assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
 await sectionScaleButton.click();
 assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
+// Conformal Extend reuses the Deposit coating kernel with the existing layer id.
+await page.locator('#operationTab').click();
+await page.locator('[data-process-mode="grow"]').click();
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#growthMode').selectOption('conformal');
+await page.locator('#targetLayer').selectOption(coatId);
+await page.locator('#operationThickness').fill('1');
+assert.match(await page.locator('#operationNote').textContent(), /every exposed surface/);
+await page.locator('#applyOperationBtn').click();
+await page.waitForFunction(() =>
+  /Extended UI conformal · Conformal/.test(document.getElementById('statusText')?.textContent || ''),
+);
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI conformal extend project');
+const extendDownloadPromise = page.waitForEvent('download');
+await page.locator('#exportProjectBtn').click();
+const extendDownload = await extendDownloadPromise;
+const extendSavedPath = await extendDownload.path();
+assert.ok(extendSavedPath);
+const extendSaved = JSON.parse(await readFile(extendSavedPath, 'utf8'));
+const extendStackAt = (x) =>
+  extendSaved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
+assert.deepEqual(
+  extendStackAt(0).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 6 },
+);
+assert.deepEqual(
+  extendStackAt(7000).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 6, z1: 8 },
+);
+assert.deepEqual(
+  extendStackAt(sideX).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 8, role: 'conformal-sidewall' },
+);
+
 await page.locator('#operationTab').click();
 
 // Slice geometry is editable by default; Slice starts one-shot creation.
@@ -443,7 +689,13 @@ await page.locator('#focusEditor').evaluate((details) => {
 await page.locator('#roiEditor:not([hidden])').waitFor();
 assert.ok(Number(await page.locator('#roiWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
-await page.locator('#focusEditor > summary').click();
+
+// Main permits only one floating control: Export replaces ROI.
+const mainExportControl = page.locator('#mainPanel .export-control');
+await mainExportControl.locator(':scope > summary').click();
+assert.equal(await page.locator('#focusEditor').evaluate((details) => details.open), false);
+assert.equal(await mainExportControl.evaluate((details) => details.open), true);
+await mainExportControl.locator(':scope > summary').click();
 
 // Sector ROI starts as a circle-derived 0°→90° wedge and supports wrapped ranges.
 await page.locator('#focusEditor > summary').click();
@@ -507,6 +759,23 @@ await page.waitForFunction(
 );
 assert.ok(await page.locator('#maskLayerList .layer-row').count());
 
+// Mask ROI / Opacity / Export share one exclusive popover slot.
+await page.locator('#maskRoiEditor > summary').click();
+assert.equal(await page.locator('#maskRoiEditor').evaluate((details) => details.open), true);
+await page.locator('#maskPanel .mask-opacity-control > summary').click();
+assert.equal(await page.locator('#maskRoiEditor').evaluate((details) => details.open), false);
+assert.equal(
+  await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
+  true,
+);
+await page.locator('#maskExportControl > summary').click();
+assert.equal(
+  await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
+  false,
+);
+assert.equal(await page.locator('#maskExportControl').evaluate((details) => details.open), true);
+await page.locator('#maskExportControl > summary').click();
+
 const sourceToggle = page.locator('#maskSourceToggleBtn');
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 await sourceToggle.click();
@@ -536,6 +805,14 @@ await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Rectangle');
 assert.ok(Number(await page.locator('#drawShapeWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#drawShapeHeight').inputValue()) > 0);
+
+// A header popover replaces the canvas shape editor in the same Mask window.
+await page.locator('#maskPanel .mask-opacity-control > summary').click();
+assert.equal(await page.locator('#drawShapeEditor').isHidden(), true);
+await page.locator('#maskPanel .mask-opacity-control > summary').click();
+await page.waitForTimeout(350);
+await page.mouse.click(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5);
+await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 
 // Dragging a selected shape keeps the editor open and live-syncs its numeric fields.
 const rectCxBeforeDrag = Number(await page.locator('#drawShapeCx').inputValue());
@@ -668,7 +945,34 @@ await page.locator('#maskRoiEditor > summary').click();
 assert.equal(await page.locator('#maskRoiFields').isVisible(), true);
 assert.equal((await page.locator('#maskRoiShapeLabel').textContent()).trim(), 'Square');
 assert.ok(Number(await page.locator('#maskRoiSize').inputValue()) > 0);
+await page.locator('#maskRoiRotation').fill('27.5');
+await page.locator('#maskRoiRotation').press('Tab');
+assert.equal(Number(await page.locator('#maskRoiRotation').inputValue()), 27.5);
+const maskRoiLocalX = await page.locator('#maskRoiX').inputValue(),
+  maskRoiLocalY = await page.locator('#maskRoiY').inputValue(),
+  maskRoiLocalSize = await page.locator('#maskRoiSize').inputValue();
 await page.locator('#maskRoiEditor > summary').click();
+
+// File-mask alignment moves the Mask ROI visually, but its local parameters stay unchanged.
+await page.locator('#maskTab').click();
+const alignment = page.locator('#maskFileControls details.subgroup');
+if (!(await alignment.evaluate((details) => details.open))) {
+  await alignment.locator(':scope > summary').click();
+}
+await page.locator('#maskOffsetX').fill('1');
+await page.locator('#maskOffsetY').fill('-0.5');
+await page.locator('#maskScale').fill('1.1');
+await page.locator('#maskRotation').fill('12');
+await page.locator('#maskRoiEditor > summary').click();
+assert.equal(await page.locator('#maskRoiX').inputValue(), maskRoiLocalX);
+assert.equal(await page.locator('#maskRoiY').inputValue(), maskRoiLocalY);
+assert.equal(await page.locator('#maskRoiSize').inputValue(), maskRoiLocalSize);
+assert.equal(Number(await page.locator('#maskRoiRotation').inputValue()), 27.5);
+await page.locator('#maskRoiEditor > summary').click();
+await page.locator('#maskOffsetX').fill('0');
+await page.locator('#maskOffsetY').fill('0');
+await page.locator('#maskScale').fill('1');
+await page.locator('#maskRotation').fill('0');
 
 // Each view exposes one Export menu; format-specific actions live inside it.
 for (const [panel, button, filename] of [
@@ -681,6 +985,16 @@ for (const [panel, button, filename] of [
     assert.ok((await page.locator('#maskExportCells option:checked').count()) > 0);
     assert.ok((await page.locator('#maskExportLayers option:checked').count()) > 0);
   }
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator(button).click();
+  const download = await downloadPromise;
+  assert.equal(download.suggestedFilename(), filename);
+}
+for (const [button, filename] of [
+  ['#maskExportGdsBtn', 'wafercad-mask.gds'],
+  ['#maskExportOasBtn', 'wafercad-mask.oas'],
+]) {
+  await page.locator('#maskPanel .export-control > summary').click();
   const downloadPromise = page.waitForEvent('download');
   await page.locator(button).click();
   const download = await downloadPromise;
@@ -722,8 +1036,14 @@ assert.equal(
 );
 
 // 3D inspection controls should operate without runtime errors.
-await page.locator('#threePanel .three-opacity-control > summary').click();
+const threeOpacityControl = page.locator('#threePanel .three-opacity-control');
+const threeExportControl = page.locator('#threePanel .export-control');
+await threeOpacityControl.locator(':scope > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
+await threeExportControl.locator(':scope > summary').click();
+assert.equal(await threeOpacityControl.evaluate((details) => details.open), false);
+assert.equal(await threeExportControl.evaluate((details) => details.open), true);
+await threeExportControl.locator(':scope > summary').click();
 const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
@@ -751,6 +1071,53 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
+
+// Two tabs sharing one browser profile still have one autosave writer, but neither
+// editor is frozen. The non-owner can keep working and explicitly take over saving.
+const safetyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const safetyFirst = await safetyContext.newPage();
+const safetySecond = await safetyContext.newPage();
+const safetyErrors = [];
+for (const safetyPage of [safetyFirst, safetySecond]) {
+  safetyPage.on('pageerror', (error) => safetyErrors.push(error.message));
+  safetyPage.on('dialog', (dialog) => void dialog.accept());
+}
+await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await safetyFirst.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+  null,
+  { timeout: 30000 },
+);
+await safetySecond.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await safetySecond.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'false',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await safetySecond.locator('.workspace').evaluate((element) => element.inert), false);
+assert.equal(await safetySecond.locator('#workspaceConflictDialog').isVisible(), true);
+assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /Autosave paused/);
+await safetySecond.locator('#workspaceTakeOverBtn').click();
+await safetySecond.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+  null,
+  { timeout: 30000 },
+);
+await safetyFirst.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'false',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await safetyFirst.locator('.workspace').evaluate((element) => element.inert), false);
+assert.equal(await safetyFirst.locator('#workspaceConflictDialog').isVisible(), true);
+assert.deepEqual(safetyErrors, []);
+await safetyContext.close();
 
 assert.deepEqual(errors, []);
 await browser.close();

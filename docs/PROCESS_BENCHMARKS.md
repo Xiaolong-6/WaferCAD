@@ -8,11 +8,13 @@ X, Y and Z are stored in µm. The model consists of non-overlapping XY regions w
 
 Directional coverage adds the requested Z amount on the local exposed face inside the operation footprint. Extend requires the target material to be exposed on that face.
 
-Conformal is evaluated in two stages. Stage 1 performs the same physical Z-thickness change as Directional coverage inside the selected Mask / Invert / Whole-face area. Stage 2 re-reads the newly exposed coating surface, finds its step boundaries, offsets those boundaries outward in XY by the same physical thickness, and fills the vertical interval back to the adjacent lower surface on Front (or higher surface on Back). The sidewall uses the same layer id as Stage 1, so normalization merges both pieces into one coating.
+Conformal is evaluated with one shared coating kernel for Deposit and Extend. Stage 1 coats every exposed surface inside the selected Mask / Invert / Whole-face area. Deposit uses a new layer id; Extend reuses the selected target layer id, so coating that touches the existing target merges into it. Directional Extend is intentionally different: it only thickens locations where the target is already exposed. Stage 2 re-reads the newly coated surface, finds its step boundaries, offsets those boundaries outward in XY by the same physical thickness, and fills the vertical interval back to the adjacent lower surface on Front (or higher surface on Back).
 
 The lateral offset equals the physical Z thickness: Z = 1 µm produces a 1 µm XY normal offset. Section and 3D may exaggerate Z for visibility, but that display scaling is never fed back into process geometry.
 
 Etch removes material vertically from the active face, crossing layer boundaries as necessary. It is not material-selective and has no lateral or conformal mode.
+
+Rough and Pyramid Etch surface modes attach deterministic render-only appearance metadata to the newly exposed ideal face. They do not change the canonical material intervals used by these geometry benchmarks. Section and 3D consume the same morphology field, while Main/Mask use only subtle plan-view darkening. Experimental Implant is likewise stored separately from material layers; its surviving annotation volume is clipped against the current material structure after later Etch operations. These display/annotation contracts are tested separately from the material-volume benchmark values below.
 
 ## Analytic fixtures
 
@@ -36,11 +38,13 @@ A separate 100000 × 100000 µm regression verifies that the same Z = 1 µm stil
 
 A multi-opening wafer fixture also etches an array of circular openings through a blanket layer before applying Conformal. This protects the dense/repeated-mask path: boundary buffering must complete for many closed rings and must leave a sidewall coating around each opening. The fixture was added after repeated circular mask geometry exposed a polygon-clipping degeneracy in the former capsule-union buffer construction.
 
+A separate rough-step regression injects a sub-grid uncovered slit at a step boundary and verifies that it is healed before Conformal true-void detection. This protects against the failure mode where a numerical partition seam is rendered as a full-depth crack and then receives conformal material down into the model interior. The healing threshold is 0.1 nm, matching the project persistence precision; wider intentional trenches remain geometry.
+
 Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 µm³, including removal across material interfaces. Browser review projects additionally show a 6 × 8 µm etched area in the 3D and Section views.
 
 ## Permanent verification
 
-`site/tests/process-benchmarks.test.mjs` checks both faces, material intervals, non-overlapping region partitions, stack ordering, coating volumes, etch volume, exposed-target Extend, ROI render-only behavior, and independent Section/3D interval agreement.
+`site/tests/process-benchmarks.test.mjs` checks both faces, material intervals, non-overlapping region partitions, stack ordering, coating volumes, etch volume, Directional Extend, Deposit-equivalent Conformal Extend coverage, exposed-target preconditions, ROI render-only behavior, and independent Section/3D interval agreement.
 
 `site/model-view-geometry.js` derives Section slices and 3D extrusion groups from the canonical model. Exact Z values form group identities; the former eight-decimal grouping could combine distinct Z intervals. The renderer additionally sweeps exact Z slabs per material and unions the footprint at each interval. Horizontal faces come only from differences between adjacent footprints; border lines come from those faces and genuine side corners. This removes internal surfaces and prism edges even when adjacent columns have different Z intervals. Section unions rectangles by material, while Main unions patches by material and surface height, preserving actual steps and material interfaces.
 
@@ -50,9 +54,10 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 
 ## Boundaries locked by tests
 
-- A completely through-etched void has no adjacent region stack to extend. Current Conformal does not create freestanding sidewall material in that empty XY region. A regression explicitly preserves this limitation.
+- A completely through-etched trench remains empty at its center, but Conformal may place sidewall material into the empty XY band adjacent to an exposed wall. The coating spans the wall's vertical interval and does not create an unsupported bridge across the void.
+- Uncovered slivers narrower than 0.1 nm are treated as numerical partition cracks and healed before Conformal. Intentional trenches wider than that threshold remain physical voids.
 - Rounded XY corners are polygonal buffer approximations. Z corners remain piecewise vertical/horizontal, without a normal-offset surface solution.
-- There is no simulation of transport, shadowing, sticking probability, aspect-ratio-dependent coverage, pinch-off, undercuts, or material-selective etch.
+- There is no simulation of transport, shadowing, sticking probability, aspect-ratio-dependent coverage, pinch-off, undercuts, material-selective etch, dopant transport, activation, or diffusion. Implant remains a geometric annotation, not a concentration solver.
 - XY display-unit changes convert inputs and labels only. They do not recalibrate Z, rescale geometry, or change process results.
 
 Changes to these boundaries require an explicit geometry-contract update and new benchmarks.

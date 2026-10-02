@@ -34,18 +34,40 @@ const workspaceActions = await readFile(
   new URL('../controllers/workspace-actions-controller.js', import.meta.url),
   'utf8',
 );
+const viewPopoverController = await readFile(
+  new URL('../controllers/view-popover-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
   assert.match(html, /id="settingsTab"[\s\S]*?>\s*Project\s*<\/button>/);
-  for (const mode of ['add', 'grow', 'etch']) {
+  for (const mode of ['add', 'grow', 'etch', 'implant']) {
     assert.match(html, new RegExp(`data-process-mode="${mode}"`));
   }
   assert.match(html, />\s*Deposit\s*<\/button>/);
   assert.match(html, />\s*Extend\s*<\/button>/);
+  assert.match(html, /Implant[\s\S]*experimental-tag[\s\S]*EXP/);
   assert.match(html, /<span>Coverage<\/span\s*>/);
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
+});
+
+test('function panel groups related engineering parameters compactly', () => {
+  assert.match(html, /class="tool-context process-context"[\s\S]*?id="processSummary"[\s\S]*?id="faceToggleBtn"/);
+  assert.match(
+    html,
+    /class="param-grid-2 rough-param-grid"[\s\S]*?id="roughFeatureRow"[\s\S]*?id="roughFeatureCvRow"/,
+  );
+  assert.match(
+    html,
+    /class="param-grid-2 rough-param-grid"[\s\S]*?id="roughHeightRow"[\s\S]*?id="roughHeightCvRow"/,
+  );
+  assert.match(html, /id="operationThicknessRow" class="param-field"/);
+  assert.match(html, /workspace-recovery-controls compact-action-row/);
+  assert.match(style, /\.param-grid-2 \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(style, /\.param-field \{[\s\S]*?grid-template-columns: max-content minmax\(0, 1fr\) auto/);
+  assert.match(style, /@media \(max-width: 600px\)[\s\S]*?\.param-grid-2 \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
 });
 
 test('typed feedback is centralized in the status bar', () => {
@@ -132,9 +154,16 @@ test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
 });
 
 test('3D border stays above opaque surfaces at 100% opacity', () => {
-  assert.match(threeView, /polygonOffsetFactor: Math\.min\(8, \(index \+ 1\) \* 0\.35\)/);
-  assert.match(threeView, /polygonOffsetUnits: Math\.min\(12, index \+ 1\)/);
-  assert.match(threeView, /opacity: 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
+  assert.match(
+    threeView,
+    /polygonOffsetFactor: Math\.min\(8, Math\.max\(1, bias\) \* 0\.35\)/,
+  );
+  assert.match(
+    threeView,
+    /polygonOffsetUnits: Math\.min\(12, Math\.max\(1, bias\)\)/,
+  );
+  assert.match(threeView, /edges\.renderOrder = 100000 \+ solidIndex/);
+  assert.match(threeView, /opacity: opacity < 0\.999 \? 0\.66 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
 });
 
 
@@ -174,7 +203,21 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
   assert.match(app, /return limiter \? intersection\(area, limiter\) : area/);
   assert.match(app, /maskRoiController\?\.render\(ctx, v\)/);
   assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);
-  assert.match(maskRoiController, /canMoveBody\(point\)/);
+  assert.match(maskRoiController, /canMoveBody\(world\)/);
+});
+
+test('each view uses one shared exclusive popover surface', () => {
+  assert.match(html, /class="section-coords-panel view-popover-surface" data-view-popover-panel/);
+  assert.match(html, /class="draw-shape-editor view-popover-surface" data-view-popover-panel/);
+  assert.match(html, /class="focus-popover[^"]*view-popover-surface"/);
+  assert.match(html, /class="three-opacity-popover[^"]*view-popover-surface"/);
+  assert.match(html, /class="export-popover[^"]*view-popover-surface"/);
+  assert.match(style, /\.view-popover-surface \{/);
+  assert.match(style, /\.view-head details\[open\] > summary/);
+  assert.match(viewPopoverController, /\.view-panel details/);
+  assert.match(viewPopoverController, /details\[open\]/);
+  assert.match(viewPopoverController, /data-view-popover-panel/);
+  assert.match(viewPopoverController, /wafercad:popover-close/);
 });
 
 test('Apply runs as a single cancelable task with elapsed time and Abort', () => {
@@ -203,4 +246,17 @@ test('all view headers expose one Export menu and Mask export filters Cells Laye
   assert.match(exportController, /element\.sourceCell \|\| layout\.root \|\| 'ROOT'/);
   assert.match(workspaceActions, /\.export-control/);
   assert.match(workspaceActions, /syncMaskExportOptions\(\)/);
+});
+
+
+test('experimental Implant keeps process inputs structural and display styling in views', () => {
+  assert.match(html, /id="implantName"/);
+  assert.match(html, /id="implantTilt"/);
+  assert.doesNotMatch(html, /id="implantColor"/);
+  assert.doesNotMatch(html, /id="implantBorder"/);
+  assert.match(html, /id="sectionBordersBtn"/);
+  assert.match(app, /starts at the outermost selected surface/);
+  assert.match(app, /params\.tilt = tilt/);
+  assert.match(app, /colorNewImplant\(result\.implantId\)/);
+  assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
 });

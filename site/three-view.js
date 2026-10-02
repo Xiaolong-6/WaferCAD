@@ -1,16 +1,43 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
-import { appearanceSurfaceGroups, materialSolids, solidBorders } from './model-view-geometry.js';
-import { roughLod, roughTextureValue } from './surface-rendering.js';
+import {
+  appearanceSurfaceGroups,
+  implantSolids,
+  materialSolids,
+  solidBorders,
+} from './model-view-geometry.js';
+import { difference, intersection, isEmpty } from './vector-geometry.js';
+import {
+  roughLod,
+  roughMeshSubdivisionDepth,
+  roughMeshTriangleBudget,
+  roughProfileOffsetAtPoint,
+  roughVisualBoundsZ,
+} from './surface-rendering.js';
 
 let THREE = null;
 let OrbitControls = null;
 let dependencyError = null;
+let dependencyPromise = null;
 
-try {
-  THREE = await import('three');
-  ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
-} catch (error) {
-  dependencyError = error;
+function loadDependencies() {
+  if (THREE && OrbitControls) return Promise.resolve(true);
+  if (dependencyPromise) return dependencyPromise;
+
+  dependencyPromise = (async () => {
+    try {
+      const threeModule = await import('three'),
+        controlsModule = await import('three/addons/controls/OrbitControls.js');
+      THREE = threeModule;
+      OrbitControls = controlsModule.OrbitControls;
+      dependencyError = null;
+      return true;
+    } catch (error) {
+      dependencyError = error;
+      return false;
+    }
+  })();
+
+  return dependencyPromise;
 }
 
 export function createThreeView({
@@ -31,9 +58,11 @@ export function createThreeView({
   let group = null;
   let axesHelper = null;
   let ready = false;
+  let initPromise = null;
   let frame = null;
   let interacting = false;
   let roughMeshes = [];
+  let transparentMeshes = [];
 
   function updateRoughLod() {
     if (!camera || !renderer || !controls || !roughMeshes.length) return;
@@ -42,12 +71,10 @@ export function createThreeView({
       pxPerUm = height / (2 * distance * Math.tan((camera.fov * Math.PI) / 360));
     for (const entry of roughMeshes) {
       const featurePixels = entry.appearance.featureSize * pxPerUm,
-        lod = roughLod(featurePixels),
-        ratio = entry.appearance.amplitude / Math.max(entry.appearance.featureSize, 1e-9);
-      entry.material.color.copy(entry.farColor).lerp(entry.nearColor, 0.35 * lod.detail);
-      entry.material.roughness = 1 - 0.18 * lod.detail;
-      entry.material.bumpScale =
-        Math.min(3, ratio * 0.7) * (0.15 * lod.detail + 0.85 * lod.micro);
+        lod = roughLod(featurePixels);
+      // Geometry carries the actual relief. Only the broad material response is
+      // adjusted with view scale; no bump/noise texture is added on top.
+      entry.material.roughness = 0.82 + 0.12 * lod.detail;
     }
   }
 
@@ -57,6 +84,7 @@ export function createThreeView({
       frame = null;
       const changed = controls?.update?.() || false;
       updateRoughLod();
+      updateTransparentOrder();
       renderer.render(scene, camera);
       if (interacting || changed) scheduleFrame();
     });
@@ -72,44 +100,37 @@ export function createThreeView({
   }
 
   function disposeGroup() {
-    while (group?.children.length) {
-      const object = group.children.pop();
-      object.geometry?.dispose();
-      object.material?.bumpMap?.dispose();
-      object.material?.dispose();
-    }
-    roughMeshes = [];
-  }
-
-  function roughTexture(seed, size = 32) {
-    const data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++)
-      for (let x = 0; x < size; x++) {
-        const value = Math.round(255 * roughTextureValue(seed, x, y)),
-          offset = (y * size + x) * 4;
-        data[offset] = value;
-        data[offset + 1] = value;
-        data[offset + 2] = value;
-        data[offset + 3] = 255;
+    if (!group) return;
+    const geometries = new Set(),
+      materials = new Set(),
+      textures = new Set();
+    for (const object of group.children) {
+      if (object.geometry) geometries.add(object.geometry);
+      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of objectMaterials) {
+        if (!material) continue;
+        materials.add(material);
+        if (material.bumpMap) textures.add(material.bumpMap);
       }
-    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.needsUpdate = true;
-    return texture;
+    }
+    group.clear();
+    for (const geometry of geometries) geometry.dispose();
+    for (const texture of textures) texture.dispose();
+    for (const material of materials) material.dispose();
+    roughMeshes = [];
+    transparentMeshes = [];
   }
 
-  function addPlanarUv(geometry, featureSize) {
-    const positions = geometry.getAttribute('position'),
-      period = Math.max(1e-9, featureSize * 8),
-      uv = new Float32Array(positions.count * 2);
-    for (let index = 0; index < positions.count; index++) {
-      uv[index * 2] = positions.getX(index) / period;
-      uv[index * 2 + 1] = positions.getY(index) / period;
-    }
-    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  function inspectionMaterialState(value) {
+    const number = Number(value),
+      opacity = Math.max(0.1, Math.min(1, Number.isFinite(number) ? number : 1)),
+      translucent = opacity < 0.999;
+    return {
+      opacity,
+      transparent: translucent,
+      depthTest: true,
+      depthWrite: !translucent,
+    };
   }
 
   function xyBounds(geometry) {
@@ -183,53 +204,409 @@ export function createThreeView({
     return geometry;
   }
 
-  function init() {
-    if (!THREE || !OrbitControls) {
-      console.warn('3D dependencies unavailable; continuing without the 3D view.', dependencyError);
-      host.classList.add('three-unavailable');
-      host.textContent = '3D unavailable';
-      stats.textContent = 'dependency unavailable';
-      return false;
+  function shearImplantGeometry(geometry, implant) {
+    const positions = geometry.getAttribute('position'),
+      tangent = Math.tan(((Number(implant.tilt) || 0) * Math.PI) / 180);
+    if (!positions || Math.abs(tangent) < 1e-12) return geometry;
+    for (let index = 0; index < positions.count; index++) {
+      const z = positions.getZ(index),
+        depth = Math.max(
+          0,
+          implant.face === 'front' ? implant.sourceZ - z : z - implant.sourceZ,
+        );
+      positions.setX(index, positions.getX(index) + tangent * depth);
+    }
+    positions.needsUpdate = true;
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    return geometry;
+  }
+
+  function triangleNormal(a, b, c) {
+    const ux = b[0] - a[0],
+      uy = b[1] - a[1],
+      uz = b[2] - a[2],
+      vx = c[0] - a[0],
+      vy = c[1] - a[1],
+      vz = c[2] - a[2],
+      nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx,
+      length = Math.hypot(nx, ny, nz) || 1;
+    return [nx / length, ny / length, nz / length];
+  }
+
+  function roughCapBaseTriangles(z, normal, polys) {
+    const triangles = [];
+    let maxEdge = 0;
+    for (const poly of polys || []) {
+      const rings = poly.map((ring) =>
+          ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)),
+        ),
+        points = rings.flat();
+      if (!rings[0]?.length) continue;
+      for (const indices of THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1))) {
+        let [a, b, c] = indices.map((index) => [points[index].x, points[index].y, z]);
+        const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        if (cross * normal < 0) [b, c] = [c, b];
+        triangles.push([a, b, c]);
+        maxEdge = Math.max(
+          maxEdge,
+          Math.hypot(a[0] - b[0], a[1] - b[1]),
+          Math.hypot(b[0] - c[0], b[1] - c[1]),
+          Math.hypot(c[0] - a[0], c[1] - a[1]),
+        );
+      }
+    }
+    return { triangles, maxEdge };
+  }
+
+  function subdivideTriangles(triangles, depth) {
+    let current = triangles;
+    for (let level = 0; level < depth; level++) {
+      const next = [];
+      for (const [a, b, c] of current) {
+        const ab = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, a[2]],
+          bc = [(b[0] + c[0]) / 2, (b[1] + c[1]) / 2, b[2]],
+          ca = [(c[0] + a[0]) / 2, (c[1] + a[1]) / 2, c[2]];
+        next.push([a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]);
+      }
+      current = next;
+    }
+    return current;
+  }
+
+  function roughPoint(point, z, profileNormal, appearance) {
+    return [
+      point[0],
+      point[1],
+      z + profileNormal * roughProfileOffsetAtPoint(point[0], point[1], appearance),
+    ];
+  }
+
+  function roughPointNormal(point, normal, profileNormal, appearance) {
+    const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
+      step = Math.max(1e-6, feature * 0.08),
+      dx =
+        (roughProfileOffsetAtPoint(point[0] + step, point[1], appearance) -
+          roughProfileOffsetAtPoint(point[0] - step, point[1], appearance)) /
+        (2 * step),
+      dy =
+        (roughProfileOffsetAtPoint(point[0], point[1] + step, appearance) -
+          roughProfileOffsetAtPoint(point[0], point[1] - step, appearance)) /
+        (2 * step),
+      length = Math.hypot(dx, dy, 1) || 1,
+      slopeSign = normal * profileNormal;
+    return [(-slopeSign * dx) / length, (-slopeSign * dy) / length, normal / length];
+  }
+
+  function geometryFromRoughCap({
+    z,
+    normal,
+    polys,
+    appearance,
+    closeToIdeal = true,
+    clipped = false,
+    profileNormal = normal,
+  }) {
+    const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, polys),
+      depth = roughMeshSubdivisionDepth({
+        triangleCount: baseTriangles.length,
+        maxEdge,
+        featureSize: appearance?.featureSize,
+        maxTriangles: roughMeshTriangleBudget({
+          triangleCount: baseTriangles.length,
+          clipped,
+        }),
+      }),
+      triangles = subdivideTriangles(baseTriangles, depth),
+      positions = [],
+      normals = [],
+      roughBorderPositions = [];
+
+    const pushTriangle = (a, b, c) => {
+        const faceNormal = triangleNormal(a, b, c);
+        positions.push(...a, ...b, ...c);
+        normals.push(...faceNormal, ...faceNormal, ...faceNormal);
+      },
+      pushRoughTriangle = (a, b, c) => {
+        positions.push(...a, ...b, ...c);
+        normals.push(
+          ...roughPointNormal(a, normal, profileNormal, appearance),
+          ...roughPointNormal(b, normal, profileNormal, appearance),
+          ...roughPointNormal(c, normal, profileNormal, appearance),
+        );
+      };
+
+    for (const [a, b, c] of triangles) {
+      pushRoughTriangle(
+        roughPoint(a, z, profileNormal, appearance),
+        roughPoint(b, z, profileNormal, appearance),
+        roughPoint(c, z, profileNormal, appearance),
+      );
     }
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0xf5f7f9);
+    // Close the displaced surface back to the ideal process plane. The same
+    // subdivision depth is used on polygon boundaries, so the skirt meets the
+    // tessellated cap without visible cracks.
+    const edgeSegments = 2 ** depth;
+    for (const poly of polys || []) {
+      for (const closed of poly || []) {
+        const ring =
+          closed.length > 1 &&
+          closed[0][0] === closed.at(-1)[0] &&
+          closed[0][1] === closed.at(-1)[1]
+            ? closed.slice(0, -1)
+            : closed.slice();
+        for (let index = 0; index < ring.length; index++) {
+          const p = ring[index],
+            q = ring[(index + 1) % ring.length];
+          for (let step = 0; step < edgeSegments; step++) {
+            const t0 = step / edgeSegments,
+              t1 = (step + 1) / edgeSegments,
+              p0 = [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0],
+              p1 = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1],
+              base0 = [p0[0], p0[1], z],
+              base1 = [p1[0], p1[1], z],
+              top0 = roughPoint(base0, z, profileNormal, appearance),
+              top1 = roughPoint(base1, z, profileNormal, appearance);
+            if (closeToIdeal) {
+              pushTriangle(base0, base1, top1);
+              pushTriangle(base0, top1, top0);
+            }
+            roughBorderPositions.push(...top0, ...top1);
+          }
+        }
+      }
+    }
 
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
-    camera.up.set(0, 0, 1);
-    camera.position.set(115, -125, 95);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.userData.roughSubdivisionDepth = depth;
+    geometry.userData.roughBorderPositions = roughBorderPositions;
+    return geometry;
+  }
 
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
-    controls.enableDamping = true;
-    controls.addEventListener('start', () => {
-      interacting = true;
-      scheduleFrame();
+  function geometryCenter(geometry) {
+    geometry.computeBoundingBox();
+    const center = new THREE.Vector3();
+    geometry.boundingBox?.getCenter(center);
+    return center;
+  }
+
+  function geometryFromSidewallRing(closed, z0, z1, isHole = false) {
+    const points = Array.isArray(closed) ? closed : [],
+      isClosed =
+        points.length > 1 &&
+        points[0][0] === points.at(-1)[0] &&
+        points[0][1] === points.at(-1)[1],
+      ring = (isClosed ? points.slice(0, -1) : points.slice()).map(([x, y]) => [x, y]),
+      positions = [],
+      normals = [];
+    if (ring.length < 2) return new THREE.BufferGeometry();
+
+    const signedArea = ring.reduce((sum, point, index) => {
+      const next = ring[(index + 1) % ring.length];
+      return sum + point[0] * next[1] - point[1] * next[0];
+    }, 0);
+    if ((signedArea > 0) !== !isHole) ring.reverse();
+
+    const triangle = (a, b, c, normal) => {
+      positions.push(...a, ...b, ...c);
+      normals.push(...normal, ...normal, ...normal);
+    };
+    for (let index = 0; index < ring.length; index++) {
+      const p = ring[index],
+        q = ring[(index + 1) % ring.length],
+        dx = q[0] - p[0],
+        dy = q[1] - p[1],
+        length = Math.hypot(dx, dy);
+      if (!length) continue;
+      const normal = [dy / length, -dx / length, 0],
+        a = [...p, z0],
+        b = [...q, z0],
+        c = [...q, z1],
+        d = [...p, z1];
+      triangle(a, b, c, normal);
+      triangle(a, c, d, normal);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return geometry;
+  }
+
+  function roughSurfaceKey(layerId, z, face) {
+    return `${layerId}\u0000${Number(z).toPrecision(15)}\u0000${face}`;
+  }
+
+  function roughSurfaceMap(model, clip) {
+    const map = new Map();
+    for (const patch of appearanceSurfaceGroups(model, clip)) {
+      const key = roughSurfaceKey(patch.layerId, patch.z, patch.face);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(patch);
+    }
+    return map;
+  }
+
+  function capRenderParts(item, cap, roughMap) {
+    const face = cap.normal > 0 ? 'front' : 'back',
+      patches = roughMap.get(roughSurfaceKey(item.layerId, cap.z, face)) || [],
+      parts = [];
+    let remaining = cap.polys;
+
+    for (const patch of patches) {
+      const roughPolys = intersection(remaining, patch.polys);
+      if (!isEmpty(roughPolys)) {
+        parts.push({
+          z: cap.z,
+          normal: cap.normal,
+          polys: roughPolys,
+          appearance: patch.appearance,
+          profileNormal: patch.profileNormal,
+        });
+      }
+      remaining = difference(remaining, patch.polys);
+      if (isEmpty(remaining)) break;
+    }
+
+    if (!isEmpty(remaining)) {
+      parts.push({ z: cap.z, normal: cap.normal, polys: remaining, appearance: null });
+    }
+    return parts;
+  }
+
+  function visibleSolidBorders(item, roughMap) {
+    const lines = solidBorders(item).filter(([a, b]) => Math.abs(a[2] - b[2]) > 1e-12);
+    for (const cap of item.caps) {
+      for (const part of capRenderParts(item, cap, roughMap)) {
+        if (part.appearance) continue;
+        for (const poly of part.polys || []) {
+          for (const ring of poly || []) {
+            for (let index = 1; index < ring.length; index++) {
+              lines.push([
+                [...ring[index - 1], part.z],
+                [...ring[index], part.z],
+              ]);
+            }
+          }
+        }
+      }
+    }
+    return lines;
+  }
+
+  function updateTransparentOrder() {
+    if (!camera || !group || !transparentMeshes.length) return;
+    camera.updateMatrixWorld();
+    const zScale = group.scale.z || 1;
+    for (const entry of transparentMeshes) {
+      const point = entry.center.clone();
+      point.z *= zScale;
+      point.applyMatrix4(camera.matrixWorldInverse);
+      entry.depth = point.z;
+    }
+    transparentMeshes.sort((a, b) => a.depth - b.depth);
+    transparentMeshes.forEach((entry, index) => {
+      entry.mesh.renderOrder = 100 + index;
     });
-    controls.addEventListener('change', scheduleFrame);
-    controls.addEventListener('end', () => {
-      interacting = false;
+  }
+
+  function createSurfaceMaterial(layer, materialState, appearance = null, bias = 1) {
+    return new THREE.MeshStandardMaterial({
+      color: layer?.color || '#999',
+      roughness: appearance ? 0.84 : 0.78,
+      metalness: 0.015,
+      side: THREE.DoubleSide,
+      ...materialState,
+      polygonOffset: true,
+      polygonOffsetFactor: Math.min(8, Math.max(1, bias) * 0.35),
+      polygonOffsetUnits: Math.min(12, Math.max(1, bias)),
+    });
+  }
+
+  function addSurfaceMesh(geometry, material, materialState, appearance = null) {
+    if (!geometry.getAttribute('position')?.count) {
+      geometry.dispose();
+      return null;
+    }
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = materialState.transparent ? 100 : 0;
+    group.add(mesh);
+    if (materialState.transparent) {
+      transparentMeshes.push({ mesh, center: geometryCenter(geometry), depth: 0 });
+    }
+    if (appearance) {
+      mesh.userData.surfaceAppearance = { ...appearance };
+      roughMeshes.push({ mesh, material, appearance: { ...appearance } });
+    }
+    return mesh;
+  }
+
+  function init() {
+    if (ready) return Promise.resolve(true);
+    if (initPromise) return initPromise;
+
+    host.classList.add('three-loading');
+    stats.textContent = 'loading 3D…';
+
+    initPromise = loadDependencies().then((available) => {
+      host.classList.remove('three-loading');
+      if (!available || !THREE || !OrbitControls) {
+        console.warn('3D dependencies unavailable; continuing without the 3D view.', dependencyError);
+        host.classList.add('three-unavailable');
+        host.textContent = '3D unavailable';
+        stats.textContent = 'dependency unavailable';
+        return false;
+      }
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0xf5f7f9);
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
+      camera.up.set(0, 0, 1);
+      camera.position.set(115, -125, 95);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0, 0);
+      controls.enableDamping = true;
+      controls.addEventListener('start', () => {
+        interacting = true;
+        scheduleFrame();
+      });
+      controls.addEventListener('change', scheduleFrame);
+      controls.addEventListener('end', () => {
+        interacting = false;
+        scheduleFrame();
+      });
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
+      const directional = new THREE.DirectionalLight(0xffffff, 2.2);
+      directional.position.set(80, -70, 130);
+      scene.add(directional);
+
+      group = new THREE.Group();
+      scene.add(group);
+      axesHelper = new THREE.AxesHelper(12);
+      scene.add(axesHelper);
+
+      host.prepend(renderer.domElement);
+      new ResizeObserver(resize).observe(host);
+      ready = true;
+      resize();
+      render();
+      fit();
       scheduleFrame();
+      return true;
     });
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
-    const directional = new THREE.DirectionalLight(0xffffff, 2.2);
-    directional.position.set(80, -70, 130);
-    scene.add(directional);
-
-    group = new THREE.Group();
-    scene.add(group);
-    axesHelper = new THREE.AxesHelper(12);
-    scene.add(axesHelper);
-
-    host.prepend(renderer.domElement);
-    new ResizeObserver(resize).observe(host);
-    ready = true;
-    resize();
-    scheduleFrame();
-    return true;
+    return initPromise;
   }
 
   function render() {
@@ -242,96 +619,175 @@ export function createThreeView({
 
     const clip = getClipGeometry(),
       inspection = getInspection() || {},
-      opacity = Math.max(0.1, Math.min(1, Number(inspection.opacity) || 1)),
-      borders = Boolean(inspection.borders);
+      materialState = inspectionMaterialState(inspection.opacity),
+      opacity = materialState.opacity,
+      borders = Boolean(inspection.borders),
+      roughMap = roughSurfaceMap(model, clip),
+      solids = materialSolids(model, clip),
+      smoothMaterials = new Map();
 
-    const solids = materialSolids(model, clip);
-    for (let index = 0; index < solids.length; index++) {
-      const item = solids[index];
-      const geometry = geometryFromSolid(item);
+    const smoothMaterial = (layer, bias) => {
+      const key = layer?.id || '__fallback__';
+      if (!smoothMaterials.has(key)) {
+        smoothMaterials.set(key, createSurfaceMaterial(layer, materialState, null, bias));
+      }
+      return smoothMaterials.get(key);
+    };
 
-      const layer = layerById(model, item.layerId);
-      const material = new THREE.MeshStandardMaterial({
-        color: layer?.color || '#999',
-        roughness: 0.78,
-        metalness: 0.015,
-        side: THREE.DoubleSide,
-        transparent: opacity < 0.999,
-        opacity,
-        depthWrite: opacity >= 0.999,
-        polygonOffset: true,
-        // Push filled surfaces slightly behind their true geometry. This keeps
-        // the wire overlay visible even at 100% opacity while retaining a
-        // stable bias between coplanar material surfaces.
-        polygonOffsetFactor: Math.min(8, (index + 1) * 0.35),
-        polygonOffsetUnits: Math.min(12, index + 1),
-      });
-      if (opacity < 0.999) material.forceSinglePass = true;
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.renderOrder = opacity < 0.999 ? 1 : 0;
-      group.add(mesh);
+    for (let solidIndex = 0; solidIndex < solids.length; solidIndex++) {
+      const item = solids[solidIndex],
+        layer = layerById(model, item.layerId),
+        layerHasRoughSurface = [...roughMap.keys()].some((key) =>
+          key.startsWith(`${item.layerId}\u0000`),
+        );
+
+      // Keep the fast single-mesh path for ordinary opaque layers. Rough layers
+      // and all translucent layers use face/ring chunks so surface appearance
+      // and alpha ordering are explicit instead of relying on one giant mesh.
+      if (!materialState.transparent && !layerHasRoughSurface) {
+        const geometry = geometryFromSolid(item),
+          material = smoothMaterial(layer, solidIndex + 1);
+        addSurfaceMesh(geometry, material, materialState);
+      } else {
+        for (const cap of item.caps) {
+          for (const part of capRenderParts(item, cap, roughMap)) {
+            const geometry = part.appearance
+                ? geometryFromRoughCap({ ...part, clipped: Boolean(clip) })
+                : geometryFromSolid({
+                    slabs: [],
+                    caps: [{ z: part.z, normal: part.normal, polys: part.polys }],
+                  }),
+              material = part.appearance
+                ? createSurfaceMaterial(layer, materialState, part.appearance, solidIndex + 1)
+                : smoothMaterial(layer, solidIndex + 1);
+            addSurfaceMesh(geometry, material, materialState, part.appearance);
+
+            if (borders && part.appearance && geometry.userData.roughBorderPositions?.length) {
+              const edgeGeometry = new THREE.BufferGeometry();
+              edgeGeometry.setAttribute(
+                'position',
+                new THREE.Float32BufferAttribute(geometry.userData.roughBorderPositions, 3),
+              );
+              const edgeMaterial = new THREE.LineBasicMaterial({
+                color: 0x111820,
+                transparent: opacity < 0.999,
+                opacity: opacity < 0.999 ? 0.66 : 1,
+                depthTest: true,
+                depthFunc: THREE.LessEqualDepth,
+                depthWrite: false,
+              });
+              const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+              edges.renderOrder = 100000 + solidIndex;
+              group.add(edges);
+            }
+          }
+        }
+
+        for (const slab of item.slabs) {
+          for (const poly of slab.polys) {
+            for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
+              const geometry = geometryFromSidewallRing(
+                poly[ringIndex],
+                slab.z0,
+                slab.z1,
+                ringIndex > 0,
+              );
+              addSurfaceMesh(
+                geometry,
+                smoothMaterial(layer, solidIndex + 1),
+                materialState,
+              );
+            }
+          }
+        }
+      }
 
       if (borders) {
         const edgeGeometry = new THREE.BufferGeometry();
         edgeGeometry.setAttribute(
           'position',
-          new THREE.Float32BufferAttribute(solidBorders(item).flat(2), 3),
+          new THREE.Float32BufferAttribute(visibleSolidBorders(item, roughMap).flat(2), 3),
         );
         const edgeMaterial = new THREE.LineBasicMaterial({
           color: 0x111820,
-          transparent: true,
-          opacity: 1,
-          depthTest: opacity >= 0.999,
+          transparent: opacity < 0.999,
+          opacity: opacity < 0.999 ? 0.66 : 1,
+          depthTest: true,
           depthFunc: THREE.LessEqualDepth,
           depthWrite: false,
         });
         const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-        // Filled opaque surfaces are depth-biased slightly backwards, so these
-        // true-geometry borders remain crisp at 100% opacity. Transparent
-        // surfaces still draw borders last because they do not write depth.
-        edges.renderOrder = 1000 + index;
+        edges.renderOrder = 100000 + solidIndex;
         group.add(edges);
       }
     }
 
-    for (const patch of appearanceSurfaceGroups(model, clip)) {
-      const normal = patch.face === 'front' ? 1 : -1,
-        geometry = geometryFromSolid({
-          slabs: [],
-          caps: [{ z: patch.z, normal, polys: patch.polys }],
-        });
-      addPlanarUv(geometry, patch.appearance.featureSize);
-      const layer = layerById(model, patch.layerId),
-        farColor = new THREE.Color(0x24282c),
-        nearColor = new THREE.Color(layer?.color || '#666').multiplyScalar(0.5),
-        material = new THREE.MeshStandardMaterial({
-          color: farColor,
-          roughness: 1,
-          metalness: 0,
-          bumpMap: roughTexture(patch.appearance.seed),
-          bumpScale: 0,
-          side: THREE.DoubleSide,
-          transparent: opacity < 0.999,
-          opacity,
-          depthWrite: false,
-          polygonOffset: true,
-          polygonOffsetFactor: -2,
-          polygonOffsetUnits: -2,
-        });
-      if (opacity < 0.999) material.forceSinglePass = true;
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.userData.surfaceAppearance = { ...patch.appearance };
-      mesh.renderOrder = 500;
-      group.add(mesh);
-      roughMeshes.push({
-        mesh,
-        material,
-        appearance: { ...patch.appearance },
-        farColor,
-        nearColor,
-      });
-    }
     updateRoughLod();
+    updateTransparentOrder();
+
+    // Implant remains a non-material annotation, but render its surviving
+    // volume inside the current material geometry. Subsequent etches trim the
+    // body and move its exposed cap with the current surface profile.
+    for (const implant of implantSolids(model, clip)) {
+      const implantState = {
+          opacity: opacity * 0.18,
+          transparent: true,
+          depthTest: true,
+          depthWrite: false,
+        },
+        bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
+        bodyMaterial = new THREE.MeshStandardMaterial({
+          color: implant.color || '#D65A6F',
+          roughness: 0.7,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: implantState.opacity,
+          depthTest: true,
+          depthWrite: false,
+        }),
+        body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState);
+      if (body) body.name = implant.name || implant.implantId || 'Implant';
+
+      const outerNormal = implant.face === 'front' ? 1 : -1,
+        appearance =
+          implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
+        capGeometry = shearImplantGeometry(
+          appearance
+            ? geometryFromRoughCap({
+                z: implant.outerZ,
+                normal: outerNormal,
+                polys: implant.polys,
+                appearance,
+                closeToIdeal: false,
+                clipped: Boolean(clip),
+              })
+            : geometryFromSolid({
+                slabs: [],
+                caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
+              }),
+          implant,
+        ),
+        capState = {
+          opacity: opacity * 0.3,
+          transparent: true,
+          depthTest: true,
+          depthWrite: false,
+        },
+        capMaterial = createSurfaceMaterial(
+          { color: implant.color || '#D65A6F' },
+          capState,
+          appearance,
+          1,
+        );
+      // Opaque material writes depth, so buried Implant geometry is hidden.
+      // A tiny negative polygon offset keeps only a genuinely exposed/cut cap
+      // visible when it is coplanar with the current material surface.
+      capMaterial.polygonOffsetFactor = -1;
+      capMaterial.polygonOffsetUnits = -1;
+      const cap = addSurfaceMesh(capGeometry, capMaterial, capState, appearance);
+      if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
+    }
 
     stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     scheduleFrame();
@@ -342,7 +798,8 @@ export function createThreeView({
     const model = getModel();
     if (!model) return;
 
-    const [lo, hi] = modelBoundsZ(model),
+    const [idealLo, idealHi] = modelBoundsZ(model),
+      [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
       zScale = zDisplayScale(model),
       zSpan = (hi - lo) * zScale,
       clipBounds = xyBounds(getClipGeometry()),

@@ -1,13 +1,16 @@
 import {
-  circleRoiFromAnchor,
-  normalizeRoi,
-  rectRoiFromAnchor,
-  resizeRoiFromHandle,
-  roiAnchorPoint,
-  roiContainsPoint,
-  roiHandlePoints,
-  translateRoi,
-} from '../roi-editor.js';
+  circleMaskRoiFromAnchor,
+  maskLocalToWorld,
+  maskRoiAnchorPoint,
+  maskRoiContainsPoint,
+  maskRoiHandlePoints,
+  maskSquareCorners,
+  normalizeMaskRoi,
+  resizeMaskRoiFromHandle,
+  squareMaskRoiFromAnchor,
+  translateMaskRoi,
+  worldToMaskLocal,
+} from '../mask-roi-geometry.js';
 import { nearestNamedPoint } from '../view-interactions.js';
 
 export function createMaskRoiController({
@@ -20,8 +23,10 @@ export function createMaskRoiController({
   setDraft,
   getAnchor,
   setAnchor,
+  getTransform = () => ({ x: 0, y: 0, scale: 1, rotation: 0 }),
   xyUnitLabel,
   formatLengthField,
+  formatNumericField = (value) => String(Number(value) || 0),
   manualMicron,
   setupCanvas,
   viewport,
@@ -42,56 +47,59 @@ export function createMaskRoiController({
   }
 
   function syncEditor() {
-    const roi = getRoi(),
+    const roi = normalizeMaskRoi(getRoi()),
       editor = $('maskRoiFields');
     if (!editor) return;
     editor.hidden = !roi;
     if (!roi) return;
-    const point = roiAnchorPoint(roi, getAnchor());
+
+    const point = maskRoiAnchorPoint(roi, getAnchor());
     if (!point) return;
 
-    $('maskRoiShapeLabel').textContent = roi.type === 'rect' ? 'Square' : 'Circle';
+    $('maskRoiShapeLabel').textContent = roi.type === 'square' ? 'Square' : 'Circle';
     $('maskRoiUnitLabel').textContent = xyUnitLabel();
     $('maskRoiAnchorSelect').value = getAnchor();
     $('maskRoiX').value = formatLengthField(point[0]);
     $('maskRoiY').value = formatLengthField(point[1]);
-    $('maskRoiRectFields').hidden = roi.type !== 'rect';
+    $('maskRoiRectFields').hidden = roi.type !== 'square';
     $('maskRoiCircleFields').hidden = roi.type !== 'circle';
-    if (roi.type === 'rect') {
-      $('maskRoiSize').value = formatLengthField(
-        Math.max(roi.b[0] - roi.a[0], roi.b[1] - roi.a[1]),
-      );
+    if (roi.type === 'square') {
+      $('maskRoiSize').value = formatLengthField(roi.size);
+      $('maskRoiRotation').value = formatNumericField(roi.rotation, 3);
     } else {
       $('maskRoiRadius').value = formatLengthField(roi.r);
     }
   }
 
   function applyEditor() {
-    const roi = getRoi();
+    const roi = normalizeMaskRoi(getRoi());
     if (!roi) return;
+
     const x = manualMicron($('maskRoiX').value),
       y = manualMicron($('maskRoiY').value),
       anchor = getAnchor(),
       next =
-        roi.type === 'rect'
-          ? rectRoiFromAnchor(
+        roi.type === 'square'
+          ? squareMaskRoiFromAnchor(
               manualMicron($('maskRoiSize').value),
-              manualMicron($('maskRoiSize').value),
+              Number($('maskRoiRotation').value),
               anchor,
               x,
               y,
             )
-          : circleRoiFromAnchor(
+          : circleMaskRoiFromAnchor(
               manualMicron($('maskRoiRadius').value),
               anchor,
               x,
               y,
             );
+
     if (!next) {
       syncEditor();
       status('Mask ROI requires finite coordinates and positive dimensions.', 'warning');
       return;
     }
+
     setRoi(next);
     syncEditor();
     renderMask();
@@ -99,10 +107,11 @@ export function createMaskRoiController({
   }
 
   function screenHandles(roi, view) {
+    const transform = getTransform();
     return Object.fromEntries(
-      Object.entries(roiHandlePoints(roi)).map(([name, point]) => [
+      Object.entries(maskRoiHandlePoints(roi)).map(([name, point]) => [
         name,
-        worldToCanvas(point, view),
+        worldToCanvas(maskLocalToWorld(point, transform), view),
       ]),
     );
   }
@@ -112,37 +121,51 @@ export function createMaskRoiController({
   }
 
   function render(ctx, view) {
-    const shape = getDraft() || getRoi();
+    const shape = normalizeMaskRoi(getDraft() || getRoi());
     if (!shape) return;
 
+    const transform = getTransform();
     ctx.save();
     ctx.strokeStyle = '#9a5b23';
     ctx.fillStyle = 'rgba(230, 162, 60, .05)';
     ctx.setLineDash([5, 4]);
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    if (shape.type === 'rect') {
-      const a = worldToCanvas(shape.a, view),
-        b = worldToCanvas(shape.b, view);
-      ctx.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+
+    if (shape.type === 'square') {
+      const corners = maskSquareCorners(shape),
+        points = ['bottom-left', 'bottom-right', 'top-right', 'top-left'].map((key) =>
+          worldToCanvas(maskLocalToWorld(corners[key], transform), view),
+        );
+      points.forEach(([x, y], index) => {
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
     } else {
-      const c = worldToCanvas(shape.c, view);
-      ctx.arc(c[0], c[1], shape.r * view.s, 0, Math.PI * 2);
+      const center = worldToCanvas(maskLocalToWorld(shape.c, transform), view),
+        radius =
+          shape.r *
+          Math.max(1e-12, Math.abs(Number(transform.scale) || 1)) *
+          view.s;
+      ctx.arc(center[0], center[1], radius, 0, Math.PI * 2);
     }
+
     ctx.fill();
     ctx.stroke();
 
     if (!getDraft() && getRoi() && !getTool()) {
       ctx.setLineDash([]);
       ctx.lineWidth = 1;
-      for (const point of Object.values(roiHandlePoints(getRoi()))) {
-        const q = worldToCanvas(point, view);
+      for (const point of Object.values(maskRoiHandlePoints(shape))) {
+        const q = worldToCanvas(maskLocalToWorld(point, transform), view);
         ctx.fillStyle = '#fff';
         ctx.strokeStyle = '#9a5b23';
         ctx.fillRect(q[0] - 4.5, q[1] - 4.5, 9, 9);
         ctx.strokeRect(q[0] - 4.5, q[1] - 4.5, 9, 9);
       }
     }
+
     ctx.restore();
   }
 
@@ -165,7 +188,7 @@ export function createMaskRoiController({
           .forEach((item) => item.classList.toggle('active', item === button));
         $('maskRoiEditor').open = false;
         renderMask();
-        status('Mask ROI: drag once in Mask to create the process/export region.');
+        status('Mask ROI: drag in Mask. The ROI stays attached to the active Mask coordinates.');
       };
     });
 
@@ -184,28 +207,30 @@ export function createMaskRoiController({
       syncEditor();
     };
 
-    for (const id of [
-      'maskRoiSize',
-      'maskRoiRadius',
-      'maskRoiX',
-      'maskRoiY',
-    ]) {
+    for (const id of ['maskRoiSize', 'maskRoiRadius', 'maskRoiX', 'maskRoiY']) {
       $(id).onchange = applyEditor;
     }
+    $('maskRoiRotation').oninput = applyEditor;
   }
 
   function bindCanvas() {
     const canvas = $('maskCanvas');
 
+    function eventGeometry(event) {
+      const { w, h } = setupCanvas(canvas),
+        rect = canvas.getBoundingClientRect(),
+        view = viewport(w, h, 'mask'),
+        screen = [event.clientX - rect.left, event.clientY - rect.top],
+        world = canvasToWorld(screen[0], screen[1], view),
+        local = worldToMaskLocal(world, getTransform());
+      return { view, screen, world, local };
+    }
+
     canvas.addEventListener(
       'pointermove',
       (event) => {
-        const { w, h } = setupCanvas(canvas),
-          rect = canvas.getBoundingClientRect(),
-          view = viewport(w, h, 'mask'),
-          screen = [event.clientX - rect.left, event.clientY - rect.top],
-          point = canvasToWorld(screen[0], screen[1], view),
-          roi = getRoi(),
+        const { view, screen, world, local } = eventGeometry(event),
+          roi = normalizeMaskRoi(getRoi()),
           tool = getTool();
 
         if (!drag) {
@@ -224,7 +249,7 @@ export function createMaskRoiController({
           if (handle) {
             canvas.style.cursor = resizeCursor(handle);
             event.stopImmediatePropagation();
-          } else if (roiContainsPoint(roi, point) && canMoveBody(point)) {
+          } else if (maskRoiContainsPoint(roi, local) && canMoveBody(world)) {
             canvas.style.cursor = 'move';
             event.stopImmediatePropagation();
           }
@@ -235,62 +260,47 @@ export function createMaskRoiController({
         event.stopImmediatePropagation();
 
         if (drag.mode === 'create') {
-          const dx = point[0] - drag.start[0],
-            dy = point[1] - drag.start[1],
-            side = Math.max(Math.abs(dx), Math.abs(dy)),
-            squarePoint = [
-              drag.start[0] + (Math.sign(dx) || 1) * side,
-              drag.start[1] + (Math.sign(dy) || 1) * side,
-            ];
-          setDraft(
-            getTool() === 'rect'
-              ? normalizeRoi({ type: 'rect', a: drag.start, b: squarePoint })
-              : normalizeRoi({
-                  type: 'circle',
-                  c: drag.start,
-                  r: Math.hypot(point[0] - drag.start[0], point[1] - drag.start[1]),
-                }),
-          );
+          if (getTool() === 'rect') {
+            const dx = local[0] - drag.start[0],
+              dy = local[1] - drag.start[1],
+              side = Math.max(Math.abs(dx), Math.abs(dy)),
+              corner = [
+                drag.start[0] + (Math.sign(dx) || 1) * side,
+                drag.start[1] + (Math.sign(dy) || 1) * side,
+              ];
+            setDraft({
+              type: 'square',
+              c: [(drag.start[0] + corner[0]) / 2, (drag.start[1] + corner[1]) / 2],
+              size: side,
+              rotation: 0,
+            });
+          } else {
+            setDraft({
+              type: 'circle',
+              c: [...drag.start],
+              r: Math.hypot(local[0] - drag.start[0], local[1] - drag.start[1]),
+            });
+          }
           renderMask();
           return;
         }
 
         if (drag.mode === 'resize') {
           const adjusted = [
-              point[0] - drag.offset[0],
-              point[1] - drag.offset[1],
-            ],
-            original = drag.original;
-          if (original.type === 'rect') {
-            const opposite = {
-                'top-left': 'bottom-right',
-                'top-right': 'bottom-left',
-                'bottom-left': 'top-right',
-                'bottom-right': 'top-left',
-              }[drag.handle],
-              fixed = roiHandlePoints(original)[opposite],
-              side = Math.max(
-                Math.abs(adjusted[0] - fixed[0]),
-                Math.abs(adjusted[1] - fixed[1]),
-              ),
-              squarePoint = [
-                fixed[0] + (Math.sign(adjusted[0] - fixed[0]) || 1) * side,
-                fixed[1] + (Math.sign(adjusted[1] - fixed[1]) || 1) * side,
-              ];
-            setRoi(normalizeRoi({ type: 'rect', a: fixed, b: squarePoint }));
-          } else {
-            setRoi(resizeRoiFromHandle(original, drag.handle, adjusted));
-          }
+            local[0] - drag.offset[0],
+            local[1] - drag.offset[1],
+          ];
+          setRoi(resizeMaskRoiFromHandle(drag.original, drag.handle, adjusted));
           syncEditor();
           renderMask();
           return;
         }
 
         setRoi(
-          translateRoi(
+          translateMaskRoi(
             drag.original,
-            point[0] - drag.start[0],
-            point[1] - drag.start[1],
+            local[0] - drag.start[0],
+            local[1] - drag.start[1],
           ),
         );
         syncEditor();
@@ -303,16 +313,12 @@ export function createMaskRoiController({
       'pointerdown',
       (event) => {
         if (event.button !== 0) return;
-        const { w, h } = setupCanvas(canvas),
-          rect = canvas.getBoundingClientRect(),
-          view = viewport(w, h, 'mask'),
-          screen = [event.clientX - rect.left, event.clientY - rect.top],
-          point = canvasToWorld(screen[0], screen[1], view),
-          roi = getRoi(),
+        const { view, screen, world, local } = eventGeometry(event),
+          roi = normalizeMaskRoi(getRoi()),
           tool = getTool();
 
         if (tool) {
-          drag = { mode: 'create', pointerId: event.pointerId, start: point };
+          drag = { mode: 'create', pointerId: event.pointerId, start: local };
         } else if (roi) {
           const handle = nearestNamedPoint(
             screen,
@@ -320,19 +326,19 @@ export function createMaskRoiController({
             event.pointerType === 'touch' ? 22 : 12,
           );
           if (handle) {
-            const corner = roiHandlePoints(roi)[handle];
+            const corner = maskRoiHandlePoints(roi)[handle];
             drag = {
               mode: 'resize',
               pointerId: event.pointerId,
               handle,
               original: structuredClone(roi),
-              offset: [point[0] - corner[0], point[1] - corner[1]],
+              offset: [local[0] - corner[0], local[1] - corner[1]],
             };
-          } else if (roiContainsPoint(roi, point) && canMoveBody(point)) {
+          } else if (maskRoiContainsPoint(roi, local) && canMoveBody(world)) {
             drag = {
               mode: 'move',
               pointerId: event.pointerId,
-              start: point,
+              start: local,
               original: structuredClone(roi),
             };
           } else {
@@ -357,28 +363,24 @@ export function createMaskRoiController({
         event.stopImmediatePropagation();
 
         if (drag.mode === 'create') {
-          const next = normalizeRoi(getDraft()),
+          const next = normalizeMaskRoi(getDraft()),
             valid =
               next &&
-              (next.type === 'circle'
-                ? next.r > 1e-9
-                : next.b[0] - next.a[0] > 1e-9 && next.b[1] - next.a[1] > 1e-9);
+              (next.type === 'circle' ? next.r > 1e-9 : next.size > 1e-9);
           if (valid) {
             setRoi(next);
             setAnchor('center');
             clearDrawingMode();
             syncEditor();
             onChanged();
-            status('Mask ROI created. Drag it or its handles to adjust the region.');
+            status('Mask ROI created. Drag it or its handles to adjust the mask-local region.');
           }
           setDraft(null);
         } else {
           onChanged();
         }
 
-        if (canvas.hasPointerCapture(event.pointerId)) {
-          canvas.releasePointerCapture(event.pointerId);
-        }
+        if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
         drag = null;
         renderMask();
       },
@@ -393,9 +395,7 @@ export function createMaskRoiController({
         setDraft(null);
         syncEditor();
         drag = null;
-        if (canvas.hasPointerCapture(event.pointerId)) {
-          canvas.releasePointerCapture(event.pointerId);
-        }
+        if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
         renderMask();
         event.stopImmediatePropagation();
       },

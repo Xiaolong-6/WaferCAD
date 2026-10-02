@@ -6,7 +6,7 @@ await loadGeometryKernel();
 const { createModel } = await import('../model.js');
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } =
   await import('../vector-geometry.js');
-const { materialSolids, sectionContours, solidBorders, surfaceGroups } =
+const { materialSolids, sectionContours, sectionSlices, solidBorders, surfaceGroups } =
   await import('../model-view-geometry.js');
 
 function area(polys) {
@@ -109,6 +109,36 @@ for (const face of ['front', 'back']) {
     });
   }
 }
+
+test('Section slices expose both materials around a buried rough interface', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  model.layers.push({ id: 'film', name: 'Film', color: '#88aa66' });
+  model.regions[0].stack = [
+    {
+      layerId: 'base',
+      z0: -5,
+      z1: 0,
+      frontSurface: {
+        kind: 'rough',
+        featureSize: 0.4,
+        meanHeight: 0.4,
+        featureCv: 0.25,
+        heightCv: 0.25,
+        etchDepth: 0.8,
+        seed: 17,
+        profileId: 'rough-buried-test',
+        geometryMode: 'ideal',
+      },
+    },
+    { layerId: 'film', z0: 0, z1: 1 },
+  ];
+  const slices = sectionSlices(model, [-9, 0], [9, 0]),
+    base = slices.find((slice) => slice.layerId === 'base'),
+    film = slices.find((slice) => slice.layerId === 'film');
+  assert.equal(base.above.layerId, 'film');
+  assert.equal(film.below.layerId, 'base');
+  assert.equal(base.frontSurface.kind, 'rough');
+});
 
 test('same color does not erase distinct materials, holes or separated islands', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });

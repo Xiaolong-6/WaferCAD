@@ -33,7 +33,7 @@ Available commands:
 - `npm run lint` — ESLint over the active JavaScript only; `legacy/` and vendored code are excluded.
 - `npm run format` — Prettier rewrite for the active application and current documentation.
 - `npm run format:check` — CI formatting gate for new/refactored project-IO/schema code and current docs.
-- `npm test` — vector/GDS/project-schema smoke tests plus focused regression tests for XY units, GDS error handling, project files, and snapshots.
+- `npm test` — vector/GDS/project-schema smoke tests plus focused regression tests for XY units, GDS error handling, project files, snapshots, surface morphology, Implant clipping, palette behavior, and material boundaries.
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced.
 
@@ -58,10 +58,14 @@ There is no application build step.
 9. The 3D ROI is render-only.
 10. All four views derive from the same region-stack model.
 11. Layers are referenced by stable internal ID, not by user-visible name.
-12. Structure colors come from curated or generated harmonious palettes; arbitrary color-picker input is intentionally hidden.
+12. Structure and Implant colors come from curated or generated harmonious 20-color palettes; arbitrary color-picker input is intentionally hidden from Process.
 13. Etch has no growth mode.
-14. Base rebuilds remain reversible.
-15. Snapshots are independent immutable workspace state; snapshot records must not recursively contain snapshots.
+14. Rough/Pyramid morphology is deterministic appearance metadata; Section and 3D must consume the same profile field and canonical material geometry remains ideal.
+15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface.
+16. Main/Mask morphology cues must remain subtle overlays that do not replace the underlying material/mask color language.
+17. Base rebuilds remain reversible.
+18. Snapshots are independent immutable workspace state; snapshot records must not recursively contain snapshots.
+19. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 ## Legacy code
 
@@ -76,6 +80,8 @@ The formatter ignores `legacy/` and `site/vendor/`. Vendored code must not be re
 ## CI gates
 
 Pull requests run the fast **Quality** gate and the permanent Chromium **UI smoke**. Parser/import changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
+
+Surface/Implant changes should add both pure geometry/profile assertions and at least one real UI-path assertion. A browser pass is required when changing 3D displacement, transparency, compact Process layout, or legend interaction because syntax/unit tests alone cannot establish visual correctness.
 
 ## Product and process regression
 

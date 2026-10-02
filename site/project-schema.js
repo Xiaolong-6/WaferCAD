@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 7;
+export const CURRENT_PROJECT_VERSION = 13;
 
 const LIMITS = {
   layers: 10000,
@@ -13,6 +13,8 @@ const LIMITS = {
   paletteColors: 64,
   snapshots: 100,
   drawMaskShapes: 10000,
+  implants: 10000,
+  implantPatches: 200000,
 };
 
 function fail(path, message) {
@@ -107,8 +109,25 @@ function validateSurfaceAppearance(appearance, path) {
   assertObject(appearance, path);
   if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
   assertFinite(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
-  assertFinite(appearance.amplitude, `${path}.amplitude`, { min: 1e-12 });
+  const meanHeight = assertFinite(appearance.meanHeight, `${path}.meanHeight`, { min: 1e-12 });
+  assertFinite(appearance.featureCv, `${path}.featureCv`, { min: 0, max: 1 });
+  assertFinite(appearance.heightCv, `${path}.heightCv`, { min: 0, max: 1 });
+  assertString(appearance.morphology, `${path}.morphology`);
+  if (!['stochastic', 'pyramid'].includes(appearance.morphology)) {
+    fail(`${path}.morphology`, 'must be stochastic or pyramid.');
+  }
+  assertString(appearance.polarity, `${path}.polarity`);
+  if (!['inverted', 'normal'].includes(appearance.polarity)) {
+    fail(`${path}.polarity`, 'must be inverted or normal.');
+  }
   assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
+  assertString(appearance.profileId, `${path}.profileId`, { max: 128 });
+  if (appearance.etchDepth != null) {
+    const depth = assertFinite(appearance.etchDepth, `${path}.etchDepth`, { min: 1e-12 });
+    if (meanHeight > depth + 1e-9) {
+      fail(`${path}.meanHeight`, 'must not exceed etchDepth.');
+    }
+  }
   if (appearance.geometryMode !== 'ideal') {
     fail(`${path}.geometryMode`, 'must be ideal for the current geometry kernel.');
   }
@@ -269,8 +288,52 @@ function validateModel(model, budget) {
     if (region.stack.length === 0) fail(`${path}.stack`, 'must not be empty.');
   });
 
+  if (model.implants != null) {
+    const implants = assertArray(model.implants, 'model.implants', LIMITS.implants),
+      implantIds = new Set();
+    implants.forEach((implant, implantIndex) => {
+      const path = `model.implants[${implantIndex}]`;
+      assertObject(implant, path);
+      const id = assertString(implant.id, `${path}.id`, { max: 128 });
+      if (implantIds.has(id)) fail(`${path}.id`, 'must be unique.');
+      implantIds.add(id);
+      assertString(implant.name, `${path}.name`, { max: 256 });
+      if (typeof implant.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(implant.color)) {
+        fail(`${path}.color`, 'must be a six-digit hexadecimal color.');
+      }
+      if (!['front', 'back'].includes(implant.face)) {
+        fail(`${path}.face`, 'must be front or back.');
+      }
+      assertFinite(implant.thickness, `${path}.thickness`, { min: 1e-12 });
+      assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
+      if (typeof implant.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
+
+      const patches = assertArray(implant.patches, `${path}.patches`, LIMITS.implantPatches);
+      patches.forEach((patch, patchIndex) => {
+        const patchPath = `${path}.patches[${patchIndex}]`;
+        assertObject(patch, patchPath);
+        validateMultiPolygon(patch.geom, `${patchPath}.geom`, budget);
+        if (patch.geom.length === 0) fail(`${patchPath}.geom`, 'must not be empty.');
+        assertFinite(patch.z, `${patchPath}.z`);
+        assertFinite(patch.zMin, `${patchPath}.zMin`);
+        assertFinite(patch.zMax, `${patchPath}.zMax`);
+        if (patch.zMax < patch.zMin) fail(patchPath, 'must have zMax >= zMin.');
+        if (patch.z < patch.zMin - 1e-9 || patch.z > patch.zMax + 1e-9) {
+          fail(`${patchPath}.z`, 'must lie within zMin/zMax.');
+        }
+        assertString(patch.layerId, `${patchPath}.layerId`, { max: 128 });
+        if (patch.surfaceAppearance != null) {
+          validateSurfaceAppearance(patch.surfaceAppearance, `${patchPath}.surfaceAppearance`);
+        }
+      });
+    });
+  }
+
   validateModelGeometry(model);
 
+  if (model.nextImplantId != null) {
+    assertInteger(model.nextImplantId, 'model.nextImplantId', { min: 1 });
+  }
   assertInteger(model.nextLayerId, 'model.nextLayerId', { min: 1 });
   assertInteger(model.nextRegionId, 'model.nextRegionId', { min: 1 });
   assertInteger(model.revision, 'model.revision', { min: 0 });
@@ -385,6 +448,23 @@ function validateRoi(roi) {
   fail('roi.type', 'must be rect, circle, or sector.');
 }
 
+function validateMaskRoi(maskRoi) {
+  if (maskRoi == null) return;
+  assertObject(maskRoi, 'maskRoi');
+  if (maskRoi.type === 'square') {
+    assertPoint(maskRoi.c, 'maskRoi.c');
+    assertFinite(maskRoi.size, 'maskRoi.size', { min: 1e-12 });
+    assertFinite(maskRoi.rotation, 'maskRoi.rotation');
+    return;
+  }
+  if (maskRoi.type === 'circle') {
+    assertPoint(maskRoi.c, 'maskRoi.c');
+    assertFinite(maskRoi.r, 'maskRoi.r', { min: 1e-12 });
+    return;
+  }
+  fail('maskRoi.type', 'must be square or circle.');
+}
+
 function validateDrawMask(drawMask) {
   assertObject(drawMask, 'drawMask');
   assertInteger(drawMask.nextShapeId, 'drawMask.nextShapeId', { min: 1, max: 1000000000 });
@@ -478,6 +558,9 @@ function validateDisplay(display) {
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
   }
+  if (display.sectionShowBorders != null && typeof display.sectionShowBorders !== 'boolean') {
+    fail('display.sectionShowBorders', 'must be boolean.');
+  }
   if (
     display.sectionScaleMode != null &&
     !['auto', 'physical'].includes(display.sectionScaleMode)
@@ -547,21 +630,7 @@ function validateProjectCore(
   if (project.drawMask != null) validateDrawMask(project.drawMask);
   if (!['front', 'back'].includes(project.activeFace)) fail('activeFace', 'must be front or back.');
   validateRoi(project.roi);
-  validateRoi(project.maskRoi);
-  if (
-    project.maskRoi != null &&
-    !['rect', 'circle'].includes(project.maskRoi.type)
-  ) {
-    fail('maskRoi.type', 'must be rect or circle.');
-  }
-  if (project.maskRoi?.type === 'rect') {
-    const width = Math.abs(project.maskRoi.b[0] - project.maskRoi.a[0]),
-      height = Math.abs(project.maskRoi.b[1] - project.maskRoi.a[1]),
-      tolerance = Math.max(1e-12, width, height) * 1e-9;
-    if (Math.abs(width - height) > tolerance) {
-      fail('maskRoi', 'rect geometry must be square.');
-    }
-  }
+  validateMaskRoi(project.maskRoi);
   if (
     project.maskRoiAnchor != null &&
     !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.maskRoiAnchor)
@@ -581,6 +650,75 @@ function validateProjectCore(
   else if (project.snapshots != null) fail('snapshots', 'must not be nested.');
 
   return project;
+}
+
+function legacyWorldPointToMaskLocal(point, transform) {
+  const rotation = (-(Number(transform?.rotation) || 0) * Math.PI) / 180,
+    cos = Math.cos(rotation),
+    sin = Math.sin(rotation),
+    scale = Math.max(1e-12, Math.abs(Number(transform?.scale) || 1)),
+    dx = Number(point[0]) - (Number(transform?.x) || 0),
+    dy = Number(point[1]) - (Number(transform?.y) || 0);
+  return [(dx * cos - dy * sin) / scale, (dx * sin + dy * cos) / scale];
+}
+
+function migrateLegacyMaskRoiToLocal(maskRoi, transform) {
+  if (!isObject(maskRoi)) return null;
+  const scale = Math.max(1e-12, Math.abs(Number(transform?.scale) || 1));
+  if (maskRoi.type === 'rect' && Array.isArray(maskRoi.a) && Array.isArray(maskRoi.b)) {
+    const x0 = Math.min(Number(maskRoi.a[0]), Number(maskRoi.b[0])),
+      x1 = Math.max(Number(maskRoi.a[0]), Number(maskRoi.b[0])),
+      y0 = Math.min(Number(maskRoi.a[1]), Number(maskRoi.b[1])),
+      y1 = Math.max(Number(maskRoi.a[1]), Number(maskRoi.b[1])),
+      center = legacyWorldPointToMaskLocal([(x0 + x1) / 2, (y0 + y1) / 2], transform);
+    return {
+      type: 'square',
+      c: center,
+      size: Math.max(x1 - x0, y1 - y0) / scale,
+      rotation: -(Number(transform?.rotation) || 0),
+    };
+  }
+  if (maskRoi.type === 'circle' && Array.isArray(maskRoi.c)) {
+    return {
+      type: 'circle',
+      c: legacyWorldPointToMaskLocal(maskRoi.c, transform),
+      r: Math.abs(Number(maskRoi.r) || 0) / scale,
+    };
+  }
+  return maskRoi;
+}
+
+function migrateRoughAppearances(model) {
+  if (!isObject(model)) return;
+
+  const migrateAppearance = (appearance) => {
+    if (!isObject(appearance) || appearance.kind !== 'rough') return;
+    const legacyHeight = Number(appearance.meanHeight ?? appearance.amplitude);
+    if (!(appearance.meanHeight > 0) && legacyHeight > 0) appearance.meanHeight = legacyHeight;
+    if (!(appearance.etchDepth > 0)) {
+      appearance.etchDepth = Math.max(1e-12, Number(appearance.meanHeight) || legacyHeight || 1);
+    }
+    if (!Number.isFinite(appearance.featureCv)) appearance.featureCv = 0.25;
+    if (!Number.isFinite(appearance.heightCv)) appearance.heightCv = 0.25;
+    appearance.featureCv = Math.max(0, Math.min(1, appearance.featureCv));
+    appearance.heightCv = Math.max(0, Math.min(1, appearance.heightCv));
+    appearance.morphology = 'stochastic';
+    if (!['inverted', 'normal'].includes(appearance.polarity)) appearance.polarity = 'inverted';
+    if (typeof appearance.profileId !== 'string' || !appearance.profileId) {
+      appearance.profileId = `rough-${Number(appearance.seed) >>> 0}`;
+    }
+    delete appearance.amplitude;
+  };
+
+  for (const region of model.regions || []) {
+    for (const segment of region.stack || []) {
+      migrateAppearance(segment.frontSurface);
+      migrateAppearance(segment.backSurface);
+    }
+  }
+  for (const implant of model.implants || []) {
+    for (const patch of implant.patches || []) migrateAppearance(patch.surfaceAppearance);
+  }
 }
 
 function migrateProjectCore(project) {
@@ -611,6 +749,44 @@ function migrateProjectCore(project) {
   if (version < 7) {
     if (project.maskRoi == null) project.maskRoi = null;
     if (project.maskRoiAnchor == null) project.maskRoiAnchor = 'center';
+  }
+  if (version < 8 && project.maskRoi != null) {
+    project.maskRoi = migrateLegacyMaskRoiToLocal(project.maskRoi, project.maskTransform);
+  }
+  if (version < 12) migrateRoughAppearances(project.model);
+  if (version < 10 && isObject(project.model)) {
+    if (!Array.isArray(project.model.implants)) project.model.implants = [];
+    if (!Number.isInteger(project.model.nextImplantId) || project.model.nextImplantId < 1) {
+      project.model.nextImplantId = project.model.implants.length + 1;
+    }
+  }
+  if (version < 11) {
+    if (project.display == null) project.display = {};
+    if (isObject(project.display) && project.display.sectionShowBorders == null) {
+      project.display.sectionShowBorders = false;
+    }
+    if (isObject(project.model)) {
+      for (const implant of project.model.implants || []) {
+        if (!isObject(implant)) continue;
+        if (typeof implant.visible !== 'boolean') implant.visible = true;
+        delete implant.border;
+        for (const patch of implant.patches || []) {
+          if (!isObject(patch) || patch.surfaceAppearance != null) continue;
+          const match = (project.model.regions || []).find((region) => {
+            const stack = region?.stack || [];
+            const segment = implant.face === 'back' ? stack[0] : stack.at(-1);
+            if (!segment || segment.layerId !== patch.layerId) return false;
+            const z = implant.face === 'back' ? segment.z0 : segment.z1;
+            return Math.abs(Number(z) - Number(patch.z)) <= 1e-9;
+          });
+          const stack = match?.stack || [];
+          const segment = implant.face === 'back' ? stack[0] : stack.at(-1);
+          const appearance =
+            implant.face === 'back' ? segment?.backSurface : segment?.frontSurface;
+          patch.surfaceAppearance = isObject(appearance) ? structuredClone(appearance) : null;
+        }
+      }
+    }
   }
   project.version = CURRENT_PROJECT_VERSION;
   return project;

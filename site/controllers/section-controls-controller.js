@@ -5,6 +5,7 @@ export function createSectionControlsController({
   getSectionEditor,
   setSectionEditEnabledValue,
   closeRoiControls = () => {},
+  claimPopover = () => {},
   xyUnitLabel,
   formatLengthField,
   manualMicron,
@@ -59,9 +60,10 @@ export function createSectionControlsController({
     button.title = visible ? 'Close Slice controls' : 'Create or edit Slice';
   }
 
-  function setPanelVisible(visible, { create = visible } = {}) {
+  function setPanelVisible(visible, { create = visible, claim = visible } = {}) {
     const panel = $('sectionCoordsPanel');
     if (visible) closeRoiControls();
+    if (visible && claim) claimPopover(panel);
     panel.hidden = !visible;
     setCreateMode(visible && create);
     syncPanelState();
@@ -90,6 +92,10 @@ export function createSectionControlsController({
   }
 
   function bind() {
+    $('sectionCoordsPanel').addEventListener('wafercad:popover-close', (event) => {
+      event.preventDefault();
+      setPanelVisible(false, { create: false, claim: false });
+    });
     $('sectionControlsBtn').onclick = () => {
       const panel = $('sectionCoordsPanel');
       setPanelVisible(panel.hidden, { create: panel.hidden });

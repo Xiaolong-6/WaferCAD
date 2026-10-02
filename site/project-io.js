@@ -61,7 +61,24 @@ function quantizeModel(model) {
       for (const appearance of [segment.frontSurface, segment.backSurface]) {
         if (!isObject(appearance)) continue;
         appearance.featureSize = quantizeLength(appearance.featureSize);
-        appearance.amplitude = quantizeLength(appearance.amplitude);
+        appearance.meanHeight = quantizeLength(appearance.meanHeight);
+        if (appearance.etchDepth != null) appearance.etchDepth = quantizeLength(appearance.etchDepth);
+      }
+    }
+  }
+  for (const implant of model.implants || []) {
+    implant.thickness = quantizeLength(implant.thickness);
+    for (const patch of implant.patches || []) {
+      quantizeMultiPolygon(patch.geom);
+      patch.z = quantizeLength(patch.z);
+      patch.zMin = quantizeLength(patch.zMin);
+      patch.zMax = quantizeLength(patch.zMax);
+      if (isObject(patch.surfaceAppearance)) {
+        patch.surfaceAppearance.featureSize = quantizeLength(patch.surfaceAppearance.featureSize);
+        patch.surfaceAppearance.meanHeight = quantizeLength(patch.surfaceAppearance.meanHeight);
+        if (patch.surfaceAppearance.etchDepth != null) {
+          patch.surfaceAppearance.etchDepth = quantizeLength(patch.surfaceAppearance.etchDepth);
+        }
       }
     }
   }
@@ -110,9 +127,8 @@ function quantizeProjectLengths(project) {
   }
 
   if (isObject(project.maskRoi)) {
-    if (Array.isArray(project.maskRoi.a)) quantizePoint(project.maskRoi.a);
-    if (Array.isArray(project.maskRoi.b)) quantizePoint(project.maskRoi.b);
     if (Array.isArray(project.maskRoi.c)) quantizePoint(project.maskRoi.c);
+    if (project.maskRoi.size != null) project.maskRoi.size = quantizeLength(project.maskRoi.size);
     if (project.maskRoi.r != null) project.maskRoi.r = quantizeLength(project.maskRoi.r);
   }
 

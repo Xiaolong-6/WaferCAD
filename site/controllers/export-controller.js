@@ -2,13 +2,13 @@ import { layerById, modelBoundsZ } from '../model.js';
 import { sectionContours, sectionSlices, surfaceGroups } from '../model-view-geometry.js';
 import { sectorBoundaryPoints } from '../roi-editor.js';
 import { drawMaskGeometry } from '../draw-mask-geometry.js';
+import { maskRoiWorldGeometry, multiBounds } from '../mask-roi-geometry.js';
+import { bufferPolyline, intersection, isEmpty } from '../vector-geometry.js';
 import {
-  bufferPolyline,
-  circleMulti,
-  intersection,
-  isEmpty,
-  rectMulti,
-} from '../vector-geometry.js';
+  collectMaskExportElements,
+  serializeGDS,
+  serializeOASIS,
+} from '../layout-export.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -155,41 +155,8 @@ export function createExportController({
     return '';
   }
 
-  function maskRoiGeometry(maskRoi) {
-    if (!maskRoi) return null;
-    if (maskRoi.type === 'rect') {
-      const x0 = Math.min(maskRoi.a[0], maskRoi.b[0]),
-        x1 = Math.max(maskRoi.a[0], maskRoi.b[0]),
-        y0 = Math.min(maskRoi.a[1], maskRoi.b[1]),
-        y1 = Math.max(maskRoi.a[1], maskRoi.b[1]);
-      return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
-    }
-    if (maskRoi.type === 'circle') {
-      return circleMulti(maskRoi.r * 2, maskRoi.r * 2, 128, maskRoi.c[0], maskRoi.c[1]);
-    }
-    return null;
-  }
-
-  function maskRoiBounds(maskRoi) {
-    if (!maskRoi) return null;
-    if (maskRoi.type === 'rect') {
-      return {
-        minX: Math.min(maskRoi.a[0], maskRoi.b[0]),
-        maxX: Math.max(maskRoi.a[0], maskRoi.b[0]),
-        minY: Math.min(maskRoi.a[1], maskRoi.b[1]),
-        maxY: Math.max(maskRoi.a[1], maskRoi.b[1]),
-      };
-    }
-    return {
-      minX: maskRoi.c[0] - maskRoi.r,
-      maxX: maskRoi.c[0] + maskRoi.r,
-      minY: maskRoi.c[1] - maskRoi.r,
-      maxY: maskRoi.c[1] + maskRoi.r,
-    };
-  }
-
-  function maskView(width, height, maskRoi) {
-    const bounds = maskRoiBounds(maskRoi);
+  function maskView(width, height, roiGeometry) {
+    const bounds = multiBounds(roiGeometry);
     if (!bounds) return viewport(width, height, 'mask');
     const spanX = Math.max(1e-12, bounds.maxX - bounds.minX),
       spanY = Math.max(1e-12, bounds.maxY - bounds.minY),
@@ -262,14 +229,86 @@ export function createExportController({
     }
   }
 
+  function maskExportContext() {
+    const { layout, maskTransform, maskSourceMode, drawMask, maskRoi } = getState(),
+      roiTransform =
+        maskSourceMode === 'file'
+          ? maskTransform
+          : { x: 0, y: 0, scale: 1, rotation: 0 },
+      roiGeometry = maskRoi ? maskRoiWorldGeometry(maskRoi, roiTransform, 128) : null,
+      cells = selectedOptions('maskExportCells'),
+      layers = selectedOptions('maskExportLayers');
+    if (maskSourceMode === 'file' && (!cells.size || !layers.size)) {
+      status('Select at least one Cell and one Layer before exporting Mask.', 'warning');
+      return null;
+    }
+    return {
+      layout,
+      maskTransform,
+      maskSourceMode,
+      drawMask,
+      maskRoi,
+      roiGeometry,
+      cells,
+      layers,
+    };
+  }
+
+  function exportMaskLayout(format) {
+    const context = maskExportContext();
+    if (!context) return;
+    const exported = collectMaskExportElements({
+      layout: context.layout,
+      maskSourceMode: context.maskSourceMode,
+      drawMask: context.drawMask,
+      maskTransform: context.maskTransform,
+      maskRoi: context.maskRoi,
+      selectedCells: context.cells,
+      selectedLayerKeys: context.layers,
+    });
+    if (!exported.elements.length) {
+      status('Nothing from the selected Mask source overlaps the export region.', 'warning');
+      return;
+    }
+
+    try {
+      const oasis = format === 'oas',
+        bytes = oasis ? serializeOASIS(exported.elements) : serializeGDS(exported.elements),
+        extension = oasis ? 'oas' : 'gds',
+        mime = oasis ? 'application/vnd.semi-oasis' : 'application/octet-stream';
+      downloadBlob(new Blob([bytes], { type: mime }), `wafercad-mask.${extension}`);
+      status(
+        `Exported ${context.maskSourceMode === 'draw' ? 'Draw' : 'File'} Mask as ${
+          oasis ? 'OASIS' : 'GDSII'
+        }${context.maskRoi ? ' cropped to Mask ROI' : ''}.`,
+        'success',
+      );
+    } catch (error) {
+      console.error(error);
+      status(`Mask ${oasis ? 'OASIS' : 'GDSII'} export failed: ${error.message}`, 'error');
+    }
+  }
+
+  function exportMaskGds() {
+    exportMaskLayout('gds');
+  }
+
+  function exportMaskOas() {
+    exportMaskLayout('oas');
+  }
+
   function exportMaskSvg() {
     const { layout, maskTransform, maskSourceMode, drawMask, maskRoi } = getState(),
       canvas = $('maskCanvas'),
       rect = canvas.getBoundingClientRect(),
       width = Math.max(2, rect.width),
       height = Math.max(2, rect.height),
-      roiGeom = maskRoiGeometry(maskRoi),
-      view = maskView(width, height, maskRoi),
+      roiTransform =
+        maskSourceMode === 'file'
+          ? maskTransform
+          : { x: 0, y: 0, scale: 1, rotation: 0 },
+      roiGeom = maskRoi ? maskRoiWorldGeometry(maskRoi, roiTransform, 128) : null,
+      view = maskView(width, height, roiGeom),
       map = (point) => worldToCanvas(point, view),
       cells = selectedOptions('maskExportCells'),
       layers = selectedOptions('maskExportLayers');
@@ -442,5 +481,13 @@ export function createExportController({
     status('Exported Section A–B as SVG.');
   }
 
-  return { downloadBlob, exportMainSvg, exportMaskSvg, exportSectionSvg, syncMaskExportOptions };
+  return {
+    downloadBlob,
+    exportMainSvg,
+    exportMaskSvg,
+    exportMaskGds,
+    exportMaskOas,
+    exportSectionSvg,
+    syncMaskExportOptions,
+  };
 }

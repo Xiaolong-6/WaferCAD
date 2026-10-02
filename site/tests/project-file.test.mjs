@@ -381,22 +381,22 @@ test('project validator accepts persisted sector ROI', () => {
 });
 
 
-test('project v7 persists and quantizes independent Mask ROI', async () => {
+test('project v8 persists and quantizes mask-local rotated Square ROI', async () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION;
   source.maskRoi = {
-    type: 'rect',
-    a: [-10.000049, -10.000049],
-    b: [10.000051, 10.000051],
+    type: 'square',
+    c: [1.23456789, -2.34567891],
+    size: 20.000051,
+    rotation: 37.5,
   };
   source.maskRoiAnchor = 'top-left';
 
   const text = serializeProject(source);
   const stored = JSON.parse(text);
-  assert.equal(stored.maskRoi.a[0], -10);
-  assert.equal(stored.maskRoi.a[1], -10);
-  assert.equal(stored.maskRoi.b[0], 10.0001);
-  assert.equal(stored.maskRoi.b[1], 10.0001);
+  assert.deepEqual(stored.maskRoi.c, [1.2346, -2.3457]);
+  assert.equal(stored.maskRoi.size, 20.0001);
+  assert.equal(stored.maskRoi.rotation, 37.5);
   assert.equal(stored.maskRoiAnchor, 'top-left');
 
   const loaded = await readProjectFile({
@@ -404,21 +404,20 @@ test('project v7 persists and quantizes independent Mask ROI', async () => {
     text: async () => text,
   });
   assert.deepEqual(loaded.maskRoi, stored.maskRoi);
-  assert.equal(loaded.maskRoiAnchor, 'top-left');
   assert.equal(validateProjectFile(loaded), loaded);
 });
 
-test('Mask ROI accepts only Square-compatible rect geometry or circle types', () => {
+test('Mask ROI accepts rotated Square or Circle only', () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION;
   source.maskRoi = { type: 'circle', c: [0, 0], r: 5 };
   assert.equal(validateProjectFile(source), source);
 
-  source.maskRoi = { type: 'rect', a: [-5, -5], b: [5, 5] };
+  source.maskRoi = { type: 'square', c: [1, 2], size: 10, rotation: 42 };
   assert.equal(validateProjectFile(source), source);
 
-  source.maskRoi = { type: 'rect', a: [-5, -4], b: [5, 4] };
-  assert.throws(() => validateProjectFile(source), /must be square/);
+  source.maskRoi = { type: 'rect', a: [-5, -5], b: [5, 5] };
+  assert.throws(() => validateProjectFile(source), /maskRoi\.type/);
 
   source.maskRoi = {
     type: 'sector',
@@ -428,6 +427,135 @@ test('Mask ROI accepts only Square-compatible rect geometry or circle types', ()
     endDeg: 90,
   };
   assert.throws(() => validateProjectFile(source), /maskRoi\.type/);
+});
+
+test('v8 migration upgrades rough amplitude metadata to mean/CV profile schema', () => {
+  const source = validProject();
+  source.version = 8;
+  source.model.regions[0].stack[0].frontSurface = {
+    kind: 'rough',
+    featureSize: 0.5,
+    amplitude: 0.4,
+    etchDepth: 0.8,
+    seed: 123,
+    geometryMode: 'ideal',
+  };
+
+  const migrated = migrateProjectFile(source),
+    rough = migrated.model.regions[0].stack[0].frontSurface;
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(rough.meanHeight, 0.4);
+  assert.equal(rough.featureCv, 0.25);
+  assert.equal(rough.heightCv, 0.25);
+  assert.equal(rough.morphology, 'stochastic');
+  assert.equal(rough.polarity, 'inverted');
+  assert.equal(rough.profileId, 'rough-123');
+  assert.equal('amplitude' in rough, false);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('v11 rough surfaces migrate to stochastic inverted polarity without visual drift', () => {
+  const source = validProject();
+  source.version = 11;
+  source.model.regions[0].stack[0].frontSurface = {
+    kind: 'rough',
+    featureSize: 0.5,
+    meanHeight: 0.4,
+    featureCv: 0.2,
+    heightCv: 0.3,
+    etchDepth: 0.8,
+    seed: 321,
+    profileId: 'rough-v11',
+    geometryMode: 'ideal',
+  };
+  source.model.implants = [
+    {
+      id: 'implant-1',
+      name: 'Rough implant',
+      color: '#D65A6F',
+      face: 'front',
+      thickness: 0.5,
+      tilt: 0,
+      visible: true,
+      patches: [
+        {
+          geom: structuredClone(source.model.boundary),
+          z: 4,
+          zMin: -4,
+          zMax: 4,
+          layerId: 'base',
+          surfaceAppearance: structuredClone(source.model.regions[0].stack[0].frontSurface),
+        },
+      ],
+    },
+  ];
+  source.model.nextImplantId = 2;
+
+  const migrated = migrateProjectFile(source),
+    rough = migrated.model.regions[0].stack[0].frontSurface,
+    implantRough = migrated.model.implants[0].patches[0].surfaceAppearance;
+  assert.equal(rough.morphology, 'stochastic');
+  assert.equal(rough.polarity, 'inverted');
+  assert.equal(implantRough.morphology, 'stochastic');
+  assert.equal(implantRough.polarity, 'inverted');
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('v12 stochastic surfaces upgrade to v13 without changing morphology', () => {
+  const source = migrateProjectFile(validProject());
+  source.version = 12;
+  source.model.regions[0].stack[0].frontSurface = {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'normal',
+    featureSize: 0.5,
+    meanHeight: 0.4,
+    featureCv: 0.2,
+    heightCv: 0.3,
+    etchDepth: 0.8,
+    seed: 222,
+    profileId: 'rough-v12',
+    geometryMode: 'ideal',
+  };
+
+  const migrated = migrateProjectFile(source),
+    rough = migrated.model.regions[0].stack[0].frontSurface;
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(rough.morphology, 'stochastic');
+  assert.equal(rough.polarity, 'normal');
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('project validator accepts pyramid surface morphology', () => {
+  const source = migrateProjectFile(validProject());
+  source.model.regions[0].stack[0].frontSurface = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 2,
+    meanHeight: 0.8,
+    featureCv: 0,
+    heightCv: 0,
+    etchDepth: 1,
+    seed: 11,
+    profileId: 'pyramid-schema-test',
+    geometryMode: 'ideal',
+  };
+  assert.equal(validateProjectFile(source), source);
+});
+
+test('v7 migration converts world-space Mask ROI into mask-local coordinates', () => {
+  const source = validProject();
+  source.version = 7;
+  source.maskRoi = { type: 'rect', a: [-10, -10], b: [10, 10] };
+  source.maskRoiAnchor = 'center';
+
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.maskRoi.type, 'square');
+  assert.ok(Math.abs(migrated.maskRoi.size - 20 / source.maskTransform.scale) < 1e-12);
+  assert.equal(migrated.maskRoi.rotation, -source.maskTransform.rotation);
+  assert.equal(validateProjectFile(migrated), migrated);
 });
 
 test('v6 migration defaults independent Mask ROI state', () => {
@@ -440,4 +568,102 @@ test('v6 migration defaults independent Mask ROI state', () => {
   assert.equal(migrated.maskRoi, null);
   assert.equal(migrated.maskRoiAnchor, 'center');
   assert.equal(validateProjectFile(migrated), migrated);
+});
+
+
+test('v9 projects migrate to the experimental implant model without changing material geometry', () => {
+  const source = validProject();
+  source.version = 9;
+  delete source.model.implants;
+  delete source.model.nextImplantId;
+
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.deepEqual(migrated.model.implants, []);
+  assert.equal(migrated.model.nextImplantId, 1);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+
+
+test('v10 implant metadata migrates border styling to view state and keeps overlays visible', () => {
+  const source = validProject();
+  source.version = 10;
+  source.display = source.display || {};
+  source.model.implants = [
+    {
+      id: 'implant-1',
+      name: 'Legacy implant',
+      color: '#D65A6F',
+      face: 'front',
+      thickness: 0.5,
+      tilt: 0,
+      border: true,
+      patches: [
+        {
+          geom: structuredClone(source.model.boundary),
+          z: 4,
+          zMin: -4,
+          zMax: 4,
+          layerId: 'base',
+        },
+      ],
+    },
+  ];
+  source.model.nextImplantId = 2;
+
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.display.sectionShowBorders, false);
+  assert.equal(migrated.model.implants[0].visible, true);
+  assert.equal('border' in migrated.model.implants[0], false);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('project validator accepts a structural implant annotation', () => {
+  const source = migrateProjectFile(validProject());
+  source.model.implants.push({
+    id: 'implant-1',
+    name: 'Test implant',
+    color: '#D65A6F',
+    face: 'front',
+    thickness: 1.2,
+    tilt: 7,
+    visible: true,
+    patches: [
+      {
+        geom: structuredClone(source.model.boundary),
+        z: 4,
+        zMin: -4,
+        zMax: 4,
+        layerId: 'base',
+      },
+    ],
+  });
+  source.model.nextImplantId = 2;
+  assert.equal(validateProjectFile(source), source);
+});
+
+test('project validator rejects out-of-contract implant tilt values', () => {
+  const source = migrateProjectFile(validProject());
+  source.model.implants.push({
+    id: 'implant-1',
+    name: 'Bad tilt',
+    color: '#D65A6F',
+    face: 'front',
+    thickness: 1.2,
+    tilt: 95,
+    visible: true,
+    patches: [
+      {
+        geom: structuredClone(source.model.boundary),
+        z: 4,
+        zMin: -4,
+        zMax: 4,
+        layerId: 'base',
+      },
+    ],
+  });
+  source.model.nextImplantId = 2;
+  assert.throws(() => validateProjectFile(source), /model\.implants\[0\]\.tilt/);
 });

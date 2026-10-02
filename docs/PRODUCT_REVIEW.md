@@ -18,7 +18,7 @@ Primary viewports are 1440 × 900, 1000 × 800, and 390 × 844. The phone contex
 
 ## Layout and renderer changes
 
-On desktop landscape widths above 900 px, the five workspace panels are arranged as **Mask / 3D / Function** on the first row and **Main / Section** on the second row. Their existing grid proportions are preserved: each first-row panel occupies one third, Main occupies one third of the second row, and Section occupies the remaining two thirds.
+On desktop landscape widths above 900 px, the five workspace panels are arranged as **Main / Mask / Function** on the first row and **3D / Section** on the second row. Their six-column allocation is 2/2/2 on the first row and 2/4 on the second row, preserving the established panel proportions.
 
 At widths up to 900 px, A–B coordinates dock below Main so they cannot cover the endpoints. The established three-row narrow layout remains unchanged: Tools/3D, Main/Mask, Section.
 
@@ -43,6 +43,18 @@ The editor uses a compact engineering/CAD workstation visual system. Information
 - popovers and coordinate editors use the same elevated-surface treatment;
 - passive status remains low weight, while success/info/warning/error states retain distinct semantic feedback;
 - visual styling must not change workspace grid allocation, scientific geometry, or editor behavior.
+
+## Post-review extensions, 2026-10-02
+
+- **Project persistence semantics** — Project is the first/default tool tab. Save creates a browser-local Recovery checkpoint, Export owns file download, and Recovery exposes Restore plus explicit Clear.
+
+The current feature branch extends the September review baseline in three areas that require additional visual attention before merge to `main`:
+
+- **Compact Function panel** — related engineering parameters are paired into two-column rows on desktop and collapse to one column on phone widths. Rough/Pyramid controls share this grammar without horizontal overflow.
+- **Surface morphology** — Section A–B is the profile reference. Rough and Pyramid surfaces use the same deterministic field in Section and 3D; 3D displaces actual mesh geometry instead of adding a grain/bump texture. Full-model rough caps receive a larger bounded tessellation budget and profile-derived vertex normals, while ROI keeps concentrated fine detail. Inherited buried rough interfaces are displaced with the same profile direction so conformal display shells do not fall back to an ideal internal plane; rough caps also suppress the duplicate ideal horizontal border.
+- **Experimental Implant** — the Process form no longer predefines an arbitrary color. Apply assigns from the active 20-color structure palette; Layers controls rename/color/visibility. Main uses a light overlay, Section renders the surviving gradient volume, and 3D renders the clipped internal volume plus the current exposed/cut surface. 3D Implant body/cap alpha now follows the global Opacity control while preserving their relative contrast.
+
+The permanent UI smoke checks Pyramid control switching, removal of the Implant color input, 20-color implant palette behavior, right-aligned visibility control, and project persistence. Pure/static regressions cover full/ROI rough mesh budgets, inherited rough interface pairing for conformal shells, duplicate ideal-border suppression hooks, global-opacity coupling/depth testing for 3D Implant overlays, morphology polarity, Pyramid profiles, and Implant clipping after Etch. The real-WebGL product pass now captures a deliberately buried Implant at 100% and 50% 3D opacity: the opaque capture is the occlusion reference and the transparent capture is the internal-volume reference. A browser pass remains the final authority for relief quality and transparency judgment because those cannot be established from DOM assertions alone.
 
 ## Reproduce the review
 

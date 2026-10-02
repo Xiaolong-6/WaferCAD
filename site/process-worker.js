@@ -14,7 +14,13 @@ function modules() {
       import(versioned('./model.js')),
       import(versioned('./vector-geometry.js')),
       import(versioned('./draw-mask-geometry.js')),
-    ]).then(([modelApi, vectorApi, drawApi]) => ({ modelApi, vectorApi, drawApi }));
+      import(versioned('./mask-roi-geometry.js')),
+    ]).then(([modelApi, vectorApi, drawApi, maskRoiApi]) => ({
+      modelApi,
+      vectorApi,
+      drawApi,
+      maskRoiApi,
+    }));
   }
   return modulesPromise;
 }
@@ -30,27 +36,6 @@ function maskPoint(point, transform) {
     sx * c - sy * s + (Number(transform?.x) || 0),
     sx * s + sy * c + (Number(transform?.y) || 0),
   ];
-}
-
-function maskRoiGeometry(maskRoi, vectorApi) {
-  if (!maskRoi) return null;
-  if (maskRoi.type === 'rect') {
-    const x0 = Math.min(maskRoi.a[0], maskRoi.b[0]),
-      x1 = Math.max(maskRoi.a[0], maskRoi.b[0]),
-      y0 = Math.min(maskRoi.a[1], maskRoi.b[1]),
-      y1 = Math.max(maskRoi.a[1], maskRoi.b[1]);
-    return vectorApi.rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
-  }
-  if (maskRoi.type === 'circle') {
-    return vectorApi.circleMulti(
-      maskRoi.r * 2,
-      maskRoi.r * 2,
-      96,
-      maskRoi.c[0],
-      maskRoi.c[1],
-    );
-  }
-  return null;
 }
 
 function fileMaskGeometry(elements, transform, vectorApi) {
@@ -73,7 +58,7 @@ function fileMaskGeometry(elements, transform, vectorApi) {
   return vectorApi.unionGeometries(geoms);
 }
 
-function processArea(model, request, modelApi, vectorApi, drawApi) {
+function processArea(model, request, modelApi, vectorApi, drawApi, maskRoiApi) {
   const mode = request?.mode || 'full';
   let area;
   if (mode === 'full') {
@@ -88,7 +73,13 @@ function processArea(model, request, modelApi, vectorApi, drawApi) {
     area = mode === 'invert' ? vectorApi.difference(model.boundary, clipped) : clipped;
   }
 
-  const limiter = maskRoiGeometry(request?.maskRoi, vectorApi);
+  const roiTransform =
+      request?.maskSourceMode === 'draw'
+        ? { x: 0, y: 0, scale: 1, rotation: 0 }
+        : request?.maskTransform,
+    limiter = request?.maskRoi
+      ? maskRoiApi.maskRoiWorldGeometry(request.maskRoi, roiTransform, 96)
+      : null;
   return limiter ? vectorApi.intersection(area, limiter) : area;
 }
 
@@ -96,9 +87,9 @@ self.onmessage = async (event) => {
   const { id, model, params, areaRequest } = event.data || {};
   if (!id) return;
   try {
-    const { modelApi, vectorApi, drawApi } = await modules();
+    const { modelApi, vectorApi, drawApi, maskRoiApi } = await modules();
     self.postMessage({ id, type: 'progress', stage: 'Preparing process area…' });
-    const area = processArea(model, areaRequest, modelApi, vectorApi, drawApi);
+    const area = processArea(model, areaRequest, modelApi, vectorApi, drawApi, maskRoiApi);
     if (vectorApi.isEmpty(area)) {
       self.postMessage({
         id,

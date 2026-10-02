@@ -13,6 +13,9 @@ globalThis.polygonClipping = commonJsModule.exports;
 const { createBuildController } = await import('../controllers/build-controller.js');
 const { createPlanViewController } = await import('../controllers/plan-view-controller.js');
 const { createStartupController } = await import('../controllers/startup-controller.js');
+const { createWorkspaceSessionController } = await import(
+  '../controllers/workspace-session-controller.js'
+);
 
 function buildHost() {
   return {
@@ -30,6 +33,7 @@ function buildHost() {
 test('build controller renders deployed commit and announces a newer build', async () => {
   const host = buildHost();
   const messages = [];
+  const updates = [];
   const responses = [
     { ok: true, json: async () => ({ commit: 'abcdef1234567890' }) },
     { ok: true, json: async () => ({ commit: 'fedcba9876543210' }) },
@@ -39,6 +43,7 @@ test('build controller renders deployed commit and announces a newer build', asy
     status: (message) => messages.push(message),
     documentRef: { getElementById: () => host },
     fetchImpl: async () => responses.shift(),
+    onUpdateAvailable: (commit) => updates.push(commit),
   });
 
   await controller.loadBuildCommit();
@@ -48,7 +53,126 @@ test('build controller renders deployed commit and announces a newer build', asy
   await controller.checkForBuildUpdate();
   assert.equal(host.textContent, 'commit abcdef1 · update');
   assert.match(host.title, /deployed fedcba9/);
-  assert.deepEqual(messages, ['Update fedcba9 available. Save the project, then reload the page.']);
+  assert.deepEqual(messages, [
+    'Update fedcba9 available. Use Reload safely to update without losing the workspace.',
+  ]);
+  assert.deepEqual(updates, ['fedcba9876543210']);
+});
+
+test('workspace session allows only one writer until explicit takeover', () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  };
+  const listenersA = new Map();
+  const listenersB = new Map();
+  const windowA = {
+    setInterval: () => 1,
+    clearInterval: () => {},
+    addEventListener: (name, fn) => listenersA.set(name, fn),
+    removeEventListener: (name) => listenersA.delete(name),
+  };
+  const windowB = {
+    setInterval: () => 2,
+    clearInterval: () => {},
+    addEventListener: (name, fn) => listenersB.set(name, fn),
+    removeEventListener: (name) => listenersB.delete(name),
+  };
+  let clock = 1000;
+  const first = createWorkspaceSessionController({
+    storage,
+    windowRef: windowA,
+    now: () => clock,
+    tabId: 'tab-a',
+  });
+  const second = createWorkspaceSessionController({
+    storage,
+    windowRef: windowB,
+    now: () => clock,
+    tabId: 'tab-b',
+  });
+
+  assert.equal(first.start(), true);
+  assert.equal(second.start(), false);
+  assert.equal(first.canWrite(), true);
+  assert.equal(second.canWrite(), false);
+
+  assert.equal(second.takeOver(), true);
+  listenersA.get('storage')?.({
+    key: 'wafercad.workspace.owner.v1',
+    newValue: storage.getItem('wafercad.workspace.owner.v1'),
+  });
+  assert.equal(second.canWrite(), true);
+  assert.equal(first.canWrite(), false);
+
+  clock += 8000;
+  assert.equal(first.takeOver(), true);
+  first.stop();
+  second.stop();
+});
+
+test('workspace session keeps a stable tab identity across reloads', () => {
+  const leaseValues = new Map();
+  const sessionValues = new Map();
+  const storage = {
+    getItem: (key) => leaseValues.get(key) ?? null,
+    setItem: (key, value) => leaseValues.set(key, value),
+    removeItem: (key) => leaseValues.delete(key),
+  };
+  const sessionStorage = {
+    getItem: (key) => sessionValues.get(key) ?? null,
+    setItem: (key, value) => sessionValues.set(key, value),
+  };
+  const windowRef = {
+    sessionStorage,
+    crypto: { randomUUID: () => 'stable-tab-id' },
+    setInterval: () => 1,
+    clearInterval: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+
+  const beforeReload = createWorkspaceSessionController({ storage, windowRef });
+  assert.equal(beforeReload.start(), true);
+  assert.equal(beforeReload.tabId, 'stable-tab-id');
+
+  // Simulate a reload that occurs before pagehide had a chance to release the
+  // old lease. sessionStorage identifies it as the same browser tab.
+  const afterReload = createWorkspaceSessionController({ storage, windowRef });
+  assert.equal(afterReload.tabId, 'stable-tab-id');
+  assert.equal(afterReload.start(), true);
+  assert.equal(afterReload.canWrite(), true);
+
+  beforeReload.stop();
+  afterReload.stop();
+});
+
+test('workspace session stays usable when localStorage is unavailable', () => {
+  const storage = {
+    getItem: () => {
+      throw new Error('storage blocked');
+    },
+    setItem: () => {
+      throw new Error('storage blocked');
+    },
+    removeItem: () => {
+      throw new Error('storage blocked');
+    },
+  };
+  const windowRef = {
+    sessionStorage: null,
+    crypto: { randomUUID: () => 'private-tab' },
+    setInterval: () => 1,
+    clearInterval: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  const session = createWorkspaceSessionController({ storage, windowRef });
+  assert.equal(session.start(), true);
+  assert.equal(session.canWrite(), true);
+  session.stop();
 });
 
 test('startup controller consumes a staged layout and clears the startup query', async () => {

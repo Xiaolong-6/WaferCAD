@@ -1,10 +1,12 @@
 import {
   bufferMulti,
+  bufferPolyline,
   circleMulti,
   cloneGeom,
   difference,
   intersection,
   isEmpty,
+  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
@@ -50,6 +52,8 @@ export function createModel({
         stack: [{ layerId: 'base', z0: -thickness / 2, z1: thickness / 2 }],
       },
     ],
+    implants: [],
+    nextImplantId: 1,
     nextLayerId: 1,
     nextRegionId: 2,
     revision: 1,
@@ -162,6 +166,36 @@ export function recolorLayer(model, id, color) {
   return true;
 }
 
+export function implantById(model, id) {
+  return (model?.implants || []).find((implant) => implant.id === id) || null;
+}
+
+export function renameImplant(model, id, name) {
+  const implant = implantById(model, id);
+  if (!implant) return false;
+  const clean = String(name || '').trim();
+  if (!clean) return false;
+  implant.name = clean;
+  model.revision++;
+  return true;
+}
+
+export function recolorImplant(model, id, color) {
+  const implant = implantById(model, id);
+  if (!implant || !/^#[0-9a-f]{6}$/i.test(color || '')) return false;
+  implant.color = color;
+  model.revision++;
+  return true;
+}
+
+export function setImplantVisible(model, id, visible) {
+  const implant = implantById(model, id);
+  if (!implant) return false;
+  implant.visible = Boolean(visible);
+  model.revision++;
+  return true;
+}
+
 export function isLayerExposed(model, id) {
   if (id === 'base' || !layerById(model, id)) return false;
   let found = false;
@@ -203,14 +237,39 @@ export function surfaceAppearance(segment, face = 'front') {
 function cloneAppearance(appearance) {
   return appearance ? { ...appearance } : null;
 }
-function normalizedRoughSurface(surface, processRevision = 0) {
+function normalizedRoughSurface(surface, processRevision = 0, etchDepth = null) {
   if (surface?.kind !== 'rough') return null;
   const featureSize = Math.max(1e-6, Number(surface.featureSize) || 0.5),
-    amplitude = Math.max(1e-6, Number(surface.amplitude) || featureSize),
+    meanHeight = Math.max(
+      1e-6,
+      Number(surface.meanHeight ?? surface.amplitude) || featureSize,
+    ),
+    featureCv = Math.max(0, Math.min(1, Number(surface.featureCv) || 0)),
+    heightCv = Math.max(0, Math.min(1, Number(surface.heightCv) || 0)),
+    morphology = ['stochastic', 'pyramid'].includes(surface.morphology)
+      ? surface.morphology
+      : 'stochastic',
+    polarity = surface.polarity === 'normal' ? 'normal' : 'inverted',
     seed = Number.isInteger(surface.seed)
       ? Math.max(0, surface.seed)
-      : ((Math.max(1, processRevision) * 2654435761) >>> 0);
-  return { kind: 'rough', featureSize, amplitude, seed, geometryMode: 'ideal' };
+      : ((Math.max(1, processRevision) * 2654435761) >>> 0),
+    profileId =
+      typeof surface.profileId === 'string' && surface.profileId
+        ? surface.profileId
+        : `rough-${Math.max(1, processRevision)}-${seed >>> 0}`;
+  return {
+    kind: 'rough',
+    featureSize,
+    meanHeight,
+    featureCv,
+    heightCv,
+    morphology,
+    polarity,
+    seed,
+    profileId,
+    geometryMode: 'ideal',
+    ...(Number.isFinite(etchDepth) ? { etchDepth } : {}),
+  };
 }
 function withSurfaceAppearance(stack, face, appearance) {
   if (!stack?.length) return stack;
@@ -259,6 +318,22 @@ function stackKey(stack) {
     )
     .join('|');
 }
+function safeUnionParts(geometries) {
+  const geoms = (geometries || []).filter((geom) => !isEmpty(geom));
+  if (!geoms.length) return [];
+  if (geoms.length === 1) return [cloneGeom(geoms[0])];
+  try {
+    const merged = unionGeometries(geoms);
+    return isEmpty(merged) ? [] : [merged];
+  } catch {
+    const middle = Math.ceil(geoms.length / 2);
+    return [
+      ...safeUnionParts(geoms.slice(0, middle)),
+      ...safeUnionParts(geoms.slice(middle)),
+    ];
+  }
+}
+
 function mergeRegions(model, regions) {
   const groups = new Map();
   for (const region of regions) {
@@ -270,9 +345,16 @@ function mergeRegions(model, regions) {
   }
   const out = [];
   for (const group of groups.values()) {
-    const geom = unionGeometries(group.geoms);
-    if (isEmpty(geom)) continue;
-    out.push({ id: `region-${model.nextRegionId++}`, geom, stack: group.stack });
+    // Merge as far as the geometry kernel safely allows. If one large union is
+    // numerically unstable, recursively keep smaller valid partitions instead
+    // of failing the process or exploding all the way back to one region per cut.
+    for (const geom of safeUnionParts(group.geoms)) {
+      out.push({
+        id: `region-${model.nextRegionId++}`,
+        geom,
+        stack: group.stack.map((segment) => ({ ...segment })),
+      });
+    }
   }
   return out;
 }
@@ -326,7 +408,7 @@ function mutateStack(stack, { type, layerId, targetLayerId, amount, face, appear
   return addLayerToSurface(stack, layerId, amount, face);
 }
 
-function splitByArea(model, area, mutator) {
+function splitByArea(model, area, mutator, merge = true) {
   const next = [];
   for (const region of model.regions) {
     const hit = intersection(region.geom, area);
@@ -341,22 +423,7 @@ function splitByArea(model, area, mutator) {
       if (stack.length) next.push({ id: `region-${model.nextRegionId++}`, geom: hit, stack });
     }
   }
-  model.regions = mergeRegions(model, next);
-}
-
-function pointOnBoundary(boundary, point, tolerance = 0.05) {
-  for (const poly of boundary)
-    for (const ring of poly)
-      for (let i = 1; i < ring.length; i++) {
-        const [ax, ay] = ring[i - 1],
-          [bx, by] = ring[i],
-          dx = bx - ax,
-          dy = by - ay,
-          len2 = dx * dx + dy * dy || 1,
-          t = Math.max(0, Math.min(1, ((point[0] - ax) * dx + (point[1] - ay) * dy) / len2));
-        if (Math.hypot(point[0] - (ax + t * dx), point[1] - (ay + t * dy)) < tolerance) return true;
-      }
-  return false;
+  model.regions = merge ? mergeRegions(model, next) : next;
 }
 
 function exposedLayerPatches(model, active, face, layerId) {
@@ -369,39 +436,313 @@ function exposedLayerPatches(model, active, face, layerId) {
     const geom = intersection(region.geom, active);
     if (isEmpty(geom)) continue;
 
-    const z = face === 'front' ? segment.z1 : segment.z0;
-    const key = z.toFixed(9);
-    if (!groups.has(key)) groups.set(key, { z, geoms: [] });
+    const z = face === 'front' ? segment.z1 : segment.z0,
+      oppositeZ = face === 'front' ? region.stack[0].z0 : region.stack.at(-1).z1,
+      appearance = cloneAppearance(surfaceAppearance(segment, face)),
+      key = `${z.toFixed(9)}:${oppositeZ.toFixed(9)}:${JSON.stringify(appearance || null)}`;
+    if (!groups.has(key)) groups.set(key, { z, oppositeZ, appearance, geoms: [] });
     groups.get(key).geoms.push(geom);
   }
 
-  return [...groups.values()]
-    .map(({ z, geoms }) => ({ z, geom: unionGeometries(geoms) }))
-    .sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
+  const patches = [];
+  for (const { z, oppositeZ, appearance, geoms } of groups.values()) {
+    for (const geom of safeUnionParts(geoms)) patches.push({ z, oppositeZ, appearance, geom });
+  }
+  return patches.sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
 }
 
-function conformalSidewallStack(stack, layerId, face, sourceZ) {
+function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null) {
   const local = surfaceZ(stack, face);
   if (local == null || sourceZ == null || !layerId) return stack;
 
-  const out = stack.map((seg) => ({ ...seg }));
+  const out = stack.map((seg) => ({ ...seg })),
+    sidewall =
+      face === 'front'
+        ? { layerId, z0: local, z1: sourceZ, role: 'conformal-sidewall' }
+        : { layerId, z0: sourceZ, z1: local, role: 'conformal-sidewall' };
   if (face === 'front') {
     if (local >= sourceZ - 1e-9) return out;
-    out.push({ layerId, z0: local, z1: sourceZ, role: 'conformal-sidewall' });
+    if (appearance) sidewall.frontSurface = cloneAppearance(appearance);
+    out.push(sidewall);
   } else {
     if (local <= sourceZ + 1e-9) return out;
-    out.unshift({ layerId, z0: sourceZ, z1: local, role: 'conformal-sidewall' });
+    if (appearance) sidewall.backSurface = cloneAppearance(appearance);
+    out.unshift(sidewall);
   }
   return normalizeStack(out);
 }
 
+function splitConformalSidewallArea(model, area, layerId, face, sourceZ, appearance) {
+  const next = [];
+  for (const region of model.regions) {
+    const stack = region.stack.map((segment) => ({ ...segment })),
+      local = surfaceZ(stack, face),
+      needsSidewall =
+        local != null &&
+        (face === 'front' ? local < sourceZ - 1e-9 : local > sourceZ + 1e-9);
+
+    // Do not partition source/same-height/higher material at all. Besides being
+    // cheaper, this prevents no-op cuts from surviving as fake internal shapes
+    // when a later best-effort region union has to preserve separate pieces.
+    if (!needsSidewall) {
+      next.push({ id: region.id, geom: cloneGeom(region.geom), stack });
+      continue;
+    }
+
+    const hit = intersection(region.geom, area),
+      rest = difference(region.geom, area);
+    if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
+    if (!isEmpty(hit)) {
+      next.push({
+        id: `region-${model.nextRegionId++}`,
+        geom: hit,
+        stack: conformalSidewallStack(stack, layerId, face, sourceZ, appearance),
+      });
+    }
+  }
+  model.regions = next;
+}
+
+function conformalRingBands(geom, amount) {
+  const bands = [];
+  for (const poly of geom || [])
+    for (const ring of poly || []) {
+      if (!Array.isArray(ring) || ring.length < 4) continue;
+      const points = ring.slice(0, -1);
+      try {
+        const band = bufferPolyline(points, amount, 32, true);
+        if (!isEmpty(band)) bands.push(band);
+      } catch {
+        // Complex imported rings can make a large polygon union numerically
+        // fragile. Fall back to local edge capsules so one bad ring cannot
+        // cancel an otherwise valid conformal process.
+        for (let index = 1; index < ring.length; index++) {
+          const band = bufferPolyline([ring[index - 1], ring[index]], amount, 20, false);
+          if (!isEmpty(band)) bands.push(band);
+        }
+      }
+    }
+  return bands;
+}
+
+function packDisjointBands(bands, maxBatchSize = 8) {
+  const batches = [];
+  const overlaps = (a, b) =>
+    !(
+      a.maxX < b.minX - 1e-9 ||
+      b.maxX < a.minX - 1e-9 ||
+      a.maxY < b.minY - 1e-9 ||
+      b.maxY < a.minY - 1e-9
+    );
+
+  for (const band of bands || []) {
+    if (isEmpty(band)) continue;
+    const bounds = multiBounds(band);
+    let batch = batches.find(
+      (candidate) =>
+        candidate.count < maxBatchSize &&
+        candidate.bounds.every((otherBounds) => !overlaps(bounds, otherBounds)),
+    );
+    if (!batch) {
+      batch = { geom: [], bounds: [], count: 0 };
+      batches.push(batch);
+    }
+    batch.geom.push(...cloneGeom(band));
+    batch.bounds.push(bounds);
+    batch.count++;
+  }
+  return batches.map((batch) => batch.geom);
+}
+
+const COVERAGE_CRACK_TOLERANCE_UM = 1e-4; // 0.1 nm, the persistence precision.
+
+function uncoveredGeometryRaw(model) {
+  let uncovered = cloneGeom(model.boundary);
+  try {
+    // Union compatible coverage first. Repeatedly subtracting many adjacent
+    // partitions can leave machine-scale slivers between otherwise coincident
+    // mask edges, which later look like real through-voids.
+    const coveredParts = safeUnionParts((model.regions || []).map((region) => region.geom));
+    for (const covered of coveredParts) {
+      if (isEmpty(uncovered)) break;
+      uncovered = difference(uncovered, covered);
+    }
+    return uncovered;
+  } catch {
+    // Void coating is an extension of the core conformal pass. If a pathological
+    // imported partition cannot be subtracted reliably, keep coating all
+    // existing exposed material rather than failing the entire deposition.
+    return [];
+  }
+}
+
+function healNumericalCoverageCracks(model) {
+  const uncovered = uncoveredGeometryRaw(model);
+  if (isEmpty(uncovered)) return false;
+
+  let changed = false;
+  for (const poly of uncovered) {
+    const crack = [poly],
+      bounds = multiBounds(crack),
+      narrow = Math.min(bounds.width, bounds.height) <= COVERAGE_CRACK_TOLERANCE_UM + 1e-12,
+      tiny = geometryArea(crack) <= COVERAGE_CRACK_TOLERANCE_UM ** 2 * 4;
+    if (!narrow && !tiny) continue;
+
+    let halo;
+    try {
+      halo = bufferMulti(crack, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
+    } catch {
+      continue;
+    }
+
+    let bestRegion = null,
+      bestContact = 0;
+    for (const region of model.regions || []) {
+      const contact = geometryArea(intersection(region.geom, halo));
+      if (contact > bestContact) {
+        bestContact = contact;
+        bestRegion = region;
+      }
+    }
+    if (!bestRegion || bestContact <= 0) continue;
+
+    try {
+      bestRegion.geom = unionGeometries([bestRegion.geom, crack]);
+      changed = true;
+    } catch {
+      // A sub-grid repair must never make a valid process operation fail.
+    }
+  }
+  return changed;
+}
+
+function uncoveredGeometry(model) {
+  return uncoveredGeometryRaw(model);
+}
+
+function addVoidConformalSidewall(model, geom, layerId, face, source) {
+  if (isEmpty(geom) || !layerId || source?.z == null || source?.oppositeZ == null) return;
+  const z0 = face === 'front' ? source.oppositeZ : source.z,
+    z1 = face === 'front' ? source.z : source.oppositeZ;
+  if (!(z1 > z0 + 1e-9)) return;
+  model.regions.push({
+    id: `region-${model.nextRegionId++}`,
+    geom,
+    stack: [
+      {
+        layerId,
+        z0,
+        z1,
+        role: 'conformal-sidewall',
+        ...(source.appearance ? { [surfaceField(face)]: cloneAppearance(source.appearance) } : {}),
+      },
+    ],
+  });
+}
+
+function applyConformalCoating(model, active, layerId, amount, face) {
+  // Repair sub-grid seams before true through-void detection. Otherwise a
+  // numerical slit can be mistaken for a trench and receive a full-depth film.
+  if (healNumericalCoverageCracks(model)) {
+    model.regions = mergeRegions(model, model.regions);
+  }
+
+  // Deposit and Extend share one conformal kernel. Extend simply reuses the
+  // selected layer id, so contiguous material merges during stack normalization.
+  //
+  // Keep the pre-coating void domain. A conformal film is allowed to occupy
+  // empty trench / through-hole space next to an exposed wall; ordinary
+  // splitByArea() only visits existing material regions.
+  let uncovered = baseCoverageState(model) === 'full' ? [] : uncoveredGeometry(model);
+
+  // Stage 1: coat every exposed horizontal surface in the selected area.
+  splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face), false);
+
+  // Stage 2: coat genuine vertical boundaries. Work ring-by-ring instead of
+  // buffering the union of an entire height patch. This keeps polygon clipping
+  // local and avoids the large output-ring failures seen on imported wafers with
+  // many circular/nested features.
+  const sources = exposedLayerPatches(model, active, face, layerId);
+  for (const source of sources) {
+    const ringBands = conformalRingBands(source.geom, amount);
+    for (const rawBand of packDisjointBands(ringBands)) {
+      const band = intersection(rawBand, model.boundary);
+      if (isEmpty(band)) continue;
+
+      // The symmetric ring band touches both sides of an edge. The stack test
+      // below only accepts the physically lower (front) / higher (back) side,
+      // so partition edges and the source interior cannot create fake material.
+      splitConformalSidewallArea(
+        model,
+        band,
+        layerId,
+        face,
+        source.z,
+        source.appearance,
+      );
+
+      // A true void has no stack for splitByArea() to mutate. Add only the
+      // still-uncovered part of this local sidewall band, then remove it from
+      // the void domain so later source levels cannot overlap it.
+      if (!isEmpty(uncovered)) {
+        const voidBand = intersection(band, uncovered);
+        if (!isEmpty(voidBand)) {
+          addVoidConformalSidewall(model, voidBand, layerId, face, source);
+          uncovered = difference(uncovered, voidBand);
+        }
+      }
+    }
+  }
+}
+
 function applyOperationImpl(
   model,
-  { type, name, targetLayerId, thickness, face = 'front', area, growth = 'direct', surface },
+  {
+    type,
+    name,
+    targetLayerId,
+    thickness,
+    face = 'front',
+    area,
+    growth = 'direct',
+    surface,
+    color,
+    tilt = 0,
+  },
 ) {
-  const amount = Math.max(1e-5, Number(thickness) || 0),
-    appearance =
-      type === 'etch' ? normalizedRoughSurface(surface, (model.processRevision || 0) + 1) : null;
+  const amount = Math.max(1e-5, Number(thickness) || 0);
+  if (type === 'etch' && surface?.kind === 'rough') {
+    const roughHeight = Number(surface.meanHeight ?? surface.amplitude),
+      featureCv = Number(surface.featureCv ?? 0),
+      heightCv = Number(surface.heightCv ?? 0),
+      morphology = surface.morphology ?? 'stochastic',
+      polarity = surface.polarity ?? 'inverted';
+    if (!(roughHeight > 0)) {
+      return { changed: false, error: 'Rough mean Height must be greater than zero.' };
+    }
+    if (roughHeight > amount + 1e-9) {
+      return {
+        changed: false,
+        error: 'Rough mean Height cannot exceed Etch Depth.',
+      };
+    }
+    if (!(featureCv >= 0 && featureCv <= 1) || !(heightCv >= 0 && heightCv <= 1)) {
+      return {
+        changed: false,
+        error: 'Rough CV values must be between 0% and 100%.',
+      };
+    }
+    if (!['stochastic', 'pyramid'].includes(morphology)) {
+      return { changed: false, error: 'Unsupported surface morphology.' };
+    }
+    if (!['inverted', 'normal'].includes(polarity)) {
+      return { changed: false, error: 'Rough polarity must be Inverted or Normal.' };
+    }
+  }
+  const appearance =
+    type === 'etch'
+      ? normalizedRoughSurface(surface, (model.processRevision || 0) + 1, amount)
+      : null;
   let active = intersection(area, model.boundary);
   if (isEmpty(active)) return { changed: false };
   if (!hasMaterial(model)) {
@@ -416,6 +757,46 @@ function applyOperationImpl(
   if (!touchesMaterial) {
     return { changed: false, error: 'The selected area contains no material.' };
   }
+  if (type === 'implant') {
+    const patches = [];
+    for (const region of model.regions) {
+      const segment = surfaceSegment(region.stack, face),
+        geom = intersection(region.geom, active);
+      if (!segment || isEmpty(geom)) continue;
+      patches.push({
+        geom,
+        z: face === 'front' ? segment.z1 : segment.z0,
+        zMin: region.stack[0]?.z0 ?? segment.z0,
+        zMax: region.stack.at(-1)?.z1 ?? segment.z1,
+        layerId: segment.layerId,
+        surfaceAppearance: cloneAppearance(surfaceAppearance(segment, face)),
+      });
+    }
+    if (!patches.length) {
+      return { changed: false, error: 'No exposed surface is available for Implant.' };
+    }
+
+    if (!Array.isArray(model.implants)) model.implants = [];
+    if (!Number.isInteger(model.nextImplantId) || model.nextImplantId < 1) {
+      model.nextImplantId = model.implants.length + 1;
+    }
+    const ordinal = model.nextImplantId++,
+      implant = {
+        id: `implant-${ordinal}`,
+        name: String(name || `Implant ${ordinal}`).trim() || `Implant ${ordinal}`,
+        color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#D65A6F',
+        face,
+        thickness: amount,
+        tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
+        visible: true,
+        patches,
+      };
+    model.implants.push(implant);
+    model.revision++;
+    model.processRevision = (model.processRevision || 0) + 1;
+    return { changed: true, implantId: implant.id };
+  }
+
   let layer = null;
   if (type === 'add') layer = createLayer(model, name);
   if (type === 'grow' && !layerById(model, targetLayerId))
@@ -436,48 +817,16 @@ function applyOperationImpl(
       mutateStack(stack, { type, amount, face, appearance }),
     );
   } else if (growth === 'conformal') {
-    // Stage 1: perform the same vertical change as Direct inside the selected
-    // mask/invert/full-face area.
-    splitByArea(model, active, (stack) =>
-      mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
-    );
-
-    // Stage 2: inspect the newly grown exposed surface, find its step edges,
-    // offset those edges outward by the same physical distance as the Z thickness, and fill
-    // the vertical interval back to the neighboring surface. This merges with
-    // the Direct-grown material because it uses the same layer id.
-    const coatingLayerId = layer?.id || targetLayerId;
-    const sources = exposedLayerPatches(model, active, face, coatingLayerId);
-    const coversWholeBoundary = isEmpty(difference(model.boundary, active));
-    const sidewallSources =
-      type === 'add' && coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources;
-    const keepSidewallSegment = coversWholeBoundary
-      ? (a, b) =>
-          !(
-            pointOnBoundary(model.boundary, a) &&
-            pointOnBoundary(model.boundary, b) &&
-            pointOnBoundary(model.boundary, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])
-          )
-      : null;
-
-    for (const source of sidewallSources) {
-      const expanded = intersection(
-        bufferMulti(source.geom, amount, 32, keepSidewallSegment),
-        model.boundary,
-      );
-      const sidewallBand = difference(expanded, source.geom);
-      if (isEmpty(sidewallBand)) continue;
-
-      splitByArea(model, sidewallBand, (stack) =>
-        conformalSidewallStack(stack, coatingLayerId, face, source.z),
-      );
-    }
+    applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
   } else {
     splitByArea(model, active, (stack) =>
       mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
     );
   }
   model.regions = mergeRegions(model, model.regions);
+  if (healNumericalCoverageCracks(model)) {
+    model.regions = mergeRegions(model, model.regions);
+  }
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };
