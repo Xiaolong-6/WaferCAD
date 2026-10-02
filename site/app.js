@@ -550,7 +550,7 @@ const layerLegendController = createLayerLegendController({
   updateOperationUI,
   status,
 });
-const { renderLayerLegend, colorNewLayer } = layerLegendController;
+const { renderLayerLegend, colorNewLayer, colorNewImplant } = layerLegendController;
 
 function selectedFileMaskGeometry() {
   const geoms = [];
@@ -916,7 +916,7 @@ function renderMain() {
     if (implant.face !== activeFace) continue;
     ctx.save();
     canvasPathMulti(ctx, implant.polys, v, back);
-    ctx.fillStyle = rgbaColor(implant.color, 0.38);
+    ctx.fillStyle = rgbaColor(implant.color, 0.14);
     ctx.fill('evenodd');
     ctx.restore();
   }
@@ -1157,12 +1157,8 @@ function renderSection() {
   }
 
   for (const implant of implantSectionBands(model, section.a, section.b)) {
-    const rawDepth = Math.max(0, Number(implant.thickness) || 0);
-    if (!(rawDepth > 1e-12)) continue;
-
     const appearance = implant.surfaceAppearance,
       faceDirection = implant.face === 'back' ? -1 : 1,
-      inwardDirection = -faceDirection,
       widthPixels = Math.max(1, Math.abs(mapT(implant.t1) - mapT(implant.t0))),
       samples =
         appearance?.kind === 'rough'
@@ -1184,19 +1180,22 @@ function renderSection() {
           appearance?.kind === 'rough'
             ? roughProfileOffsetAtPoint(worldX, worldY, appearance)
             : 0,
-        outerZ = implant.z + faceDirection * relief,
-        unclippedInnerZ = outerZ + inwardDirection * rawDepth,
-        innerZ =
-          implant.face === 'front'
-            ? Math.max(unclippedInnerZ, Number(implant.zMin))
-            : Math.min(unclippedInnerZ, Number(implant.zMax)),
-        depth = Math.abs(outerZ - innerZ);
-      if (!(depth > 1e-12)) continue;
+        outerZ = implant.outerZ + faceDirection * relief,
+        innerZ = implant.innerZ,
+        outerDepth = Math.max(
+          0,
+          implant.face === 'front' ? implant.sourceZ - outerZ : outerZ - implant.sourceZ,
+        ),
+        innerDepth = Math.max(
+          0,
+          implant.face === 'front' ? implant.sourceZ - innerZ : innerZ - implant.sourceZ,
+        ),
+        outerDeltaT = (tiltTangent * outerDepth * sectionUnitX) / sectionSpan,
+        innerDeltaT = (tiltTangent * innerDepth * sectionUnitX) / sectionSpan;
 
-      const tiltOffsetX = tiltTangent * depth,
-        deltaT = (tiltOffsetX * sectionUnitX) / sectionSpan;
-      outerPoints.push([mapT(t), mapZ(outerZ)]);
-      innerPoints.push([mapT(t + deltaT), mapZ(innerZ)]);
+      if (!(Math.abs(outerZ - innerZ) > 1e-12)) continue;
+      outerPoints.push([mapT(t + outerDeltaT), mapZ(outerZ)]);
+      innerPoints.push([mapT(t + innerDeltaT), mapZ(innerZ)]);
       outerZSum += outerZ;
       innerZSum += innerZ;
       activeSamples++;
@@ -1414,7 +1413,6 @@ function updateOperationUI() {
 
   $('layerNameRow').classList.toggle('hidden', t !== 'add');
   $('implantNameRow').classList.toggle('hidden', t !== 'implant');
-  $('implantColorRow').classList.toggle('hidden', t !== 'implant');
   $('implantTiltRow').classList.toggle('hidden', t !== 'implant');
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
   $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
@@ -1523,7 +1521,6 @@ async function applyOp() {
     if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
       return status('Implant Tilt X must be between -80° and 80°.', 'error');
     }
-    params.color = $('implantColor').value;
     params.tilt = tilt;
   } else params.growth = $('growthMode').value;
 
@@ -1570,6 +1567,7 @@ async function applyOp() {
     colorNewLayer(result.layerId);
     $('layerName').value = `Layer ${model.nextLayerId}`;
   } else if (type === 'implant' && result.implantId) {
+    colorNewImplant(result.implantId);
     $('implantName').value = `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
   }
 
