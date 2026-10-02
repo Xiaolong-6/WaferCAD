@@ -11,7 +11,8 @@ This audit reconciles the current feature-branch documentation with the merged c
 - **Renderer consistency:** Section A–B and 3D consume the same deterministic surface profile. 3D uses geometry displacement with bounded scope-aware tessellation and profile-derived normals rather than a separate grain/bump texture. Inherited buried rough interfaces share the same displacement direction, so conformal display shells retain the micro-profile on inner and outer boundaries. Rough regions suppress the duplicate ideal horizontal cap border. Main and Mask only add subtle neutral darkening over non-smooth wafer regions.
 - **Implant:** remains a non-material structural annotation. Process no longer asks for a pre-Apply color; Apply assigns from the active 20-color structure palette. Layers owns rename/color/visibility. Main uses a light overlay, Section shows the clipped gradient volume, and 3D shows the surviving internal volume plus its current exposed/cut surface. 3D body/cap alpha scales with the global Opacity control, and depth testing ensures opaque host material hides buried Implant volume while transparent inspection reveals it. Later Etch clips existing Implant volume.
 - **Palette contract:** curated and Random structure palettes contain 20 colors and include Implant annotations.
-- **Export/persistence:** render-only morphology and Implant overlays do not redefine the canonical material solid used by physical process geometry. Project validation covers morphology and Implant metadata.
+- **Export/persistence:** render-only morphology and Implant overlays do not redefine the canonical material solid used by physical process geometry. Mask export supports SVG, GDSII, and OASIS; File/Draw source, Cell/Layer filters, alignment, and active Mask ROI are resolved before binary serialization. Project validation covers morphology and Implant metadata.
+- **Conformal geometry hygiene:** sub-0.1 nm uncovered slivers are treated as numerical partition cracks and healed before true-void detection, preventing a mask/rough-step seam from becoming a full-depth conformal channel. Genuine trenches wider than the persistence precision remain physical voids and continue to receive sidewall coating.
 - **Conformal Extend:** uses the same coating kernel as Conformal Deposit with the existing target layer id; Directional Extend retains the narrower exposed-target-only behavior.
 - **Project Save/Export:** Project is the first/default tab. Save creates a local browser Recovery checkpoint; Export downloads the project file; Recovery can be restored or cleared independently of the current autosave.
 
@@ -48,6 +49,8 @@ Static consistency checks confirm that the current branch has:
 - inherited rough interface pairing for conformal display shells;
 - rough-border suppression of the ideal internal cap line;
 - clipped Implant solids in 3D and Section with global 3D opacity coupling;
+- sub-grid seam healing before Conformal true-void detection;
+- ROI-aware Mask GDSII/OASIS serialization with round-trip parser coverage;
 - subtle Main/Mask morphology overlays.
 
 JavaScript syntax checks passed for the touched 3D renderer, view-geometry helper, surface-rendering helper, self-test, and focused 3D-control regression after the final fixes.
