@@ -133,6 +133,25 @@ export async function loadWorkspaceRecoveryPoint(key) {
   }
 }
 
+export async function clearWorkspaceRecoveryPoints() {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readwrite'),
+      store = transaction.objectStore(STORE_NAME),
+      records = await requestResult(store.getAll());
+    let removed = 0;
+    for (const record of records) {
+      if (!String(record?.key || '').startsWith(RECOVERY_PREFIX)) continue;
+      store.delete(record.key);
+      removed++;
+    }
+    await transactionDone(transaction);
+    return removed;
+  } finally {
+    database.close();
+  }
+}
+
 export async function loadWorkspaceState() {
   const database = await openDatabase();
   try {
