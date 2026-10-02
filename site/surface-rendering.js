@@ -41,7 +41,8 @@ export function adaptiveRoughMeshLod({
   pixelRatio = 1,
   visibleFraction = 1,
   roiFraction = 1,
-  maxDepth = 8,
+  screenPriority = 1,
+  maxDepth = 10,
 } = {}) {
   const triangles = Math.max(1, Math.floor(Number(triangleCount) || 1)),
     edge = Math.max(0, Number(maxEdge) || 0),
@@ -57,8 +58,12 @@ export function adaptiveRoughMeshLod({
     }),
     featurePixels = feature * pxPerUnit,
     detail = roughLod(featurePixels),
+    priority = Math.max(0.02, Math.min(1, Number(screenPriority) || 0)),
     samplesPerFeature = 1 + 3 * detail.detail,
-    targetEdge = Math.max(feature / samplesPerFeature, 1.75 / Math.max(1e-12, pxPerUnit)),
+    targetEdge = Math.max(
+      feature / samplesPerFeature,
+      1.75 / Math.max(1e-12, pxPerUnit * Math.sqrt(priority)),
+    ),
     desiredDepth =
       edge > targetEdge ? Math.max(0, Math.ceil(Math.log2(edge / targetEdge))) : 0,
     occupancy = Math.sqrt(clamp01(visibleFraction)),
@@ -70,7 +75,7 @@ export function adaptiveRoughMeshLod({
         900000,
         Math.max(
           12000,
-          Math.floor(viewportPixels * (0.08 + 0.32 * occupancy) * roiFocus),
+          Math.floor(viewportPixels * (0.08 + 0.32 * occupancy) * roiFocus * priority),
         ),
       ),
     ),
@@ -89,6 +94,7 @@ export function adaptiveRoughMeshLod({
     pxPerUnit,
     targetEdge,
     maxTriangles,
+    screenPriority: priority,
   };
 }
 
