@@ -39,7 +39,11 @@ The model is intentionally 2.5D: XY footprints are vector polygons and vertical 
 
 ### `site/app.js`
 
-Owns application state, top-level UI composition, undo/redo, project persistence, and synchronization between controllers/views. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/apply orchestration is delegated to `site/controllers/process-panel-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
+Owns application state, top-level UI composition, undo/redo, and synchronization between controllers/views. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/apply orchestration is delegated to `site/controllers/process-panel-controller.js`; browser autosave/Recovery/safe-reload orchestration is delegated to `site/controllers/workspace-persistence-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
+
+### `site/controllers/workspace-persistence-controller.js`
+
+Owns browser-local autosave scheduling, manual Recovery checkpoints, recovery-list/restore/clear UI, cross-tab persistence state feedback, safe reload checkpointing, and initial persisted-workspace restore. IndexedDB storage/validation stays in `workspace-persistence.js`, while the controller receives project capture/restore callbacks from the application composition root.
 
 ### `site/controllers/process-panel-controller.js`
 
