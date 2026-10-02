@@ -267,3 +267,8 @@ test('experimental Implant keeps process inputs structural and display styling i
   assert.match(processPanelController, /colorNewImplant\(result\.implantId\)/);
   assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
 });
+
+
+test('buried rough interfaces do not create ideal-plane skirts in 3D', () => {
+  assert.match(threeView, /closeToIdeal: !part\.buried/);
+});
