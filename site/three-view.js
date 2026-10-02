@@ -285,6 +285,7 @@ export function createThreeView({
       delete data.roughLodDepthMin;
       delete data.roughLodDepthMax;
       delete data.roughTriangleCount;
+      delete data.roughSubdivisionTriangleCount;
       delete data.roughLodZones;
       delete data.roughLodStitches;
       return;
@@ -292,16 +293,16 @@ export function createThreeView({
     data.roughLodDepthMin = String(Math.min(...depths));
     data.roughLodDepthMax = String(Math.max(...depths));
     data.roughTriangleCount = String(Math.round(triangles));
+    data.roughSubdivisionTriangleCount = String(Math.round(subdivisionTriangles));
     data.roughLodZones = String(zones);
     data.roughLodStitches = String(stitches);
   }
 
   function maybeRebuildAdaptiveGeometry() {
-    if (rendering || !roughMeshes.length) return false;
+    if (rendering || !roughTasks.length) return false;
     const signature = adaptiveLodSignature();
     if (!signature || signature === lastLodSignature) return false;
-    render();
-    return true;
+    return rebuildAdaptiveRoughGeometry();
   }
 
   function scheduleFrame() {
@@ -825,6 +826,183 @@ export function createThreeView({
       });
     }
     return mesh;
+  }
+
+  function disposeObjectResources(object) {
+    object?.geometry?.dispose?.();
+    const materials = Array.isArray(object?.material) ? object.material : [object?.material];
+    for (const material of materials) {
+      if (!material) continue;
+      material.bumpMap?.dispose?.();
+      material.dispose?.();
+    }
+  }
+
+  function clearAdaptiveRoughObjects() {
+    if (!roughOwnedObjects.size) {
+      roughMeshes = [];
+      return;
+    }
+    const owned = new Set(roughOwnedObjects);
+    transparentMeshes = transparentMeshes.filter((entry) => !owned.has(entry.mesh));
+    for (const object of owned) {
+      group?.remove(object);
+      disposeObjectResources(object);
+    }
+    roughOwnedObjects.clear();
+    roughMeshes = [];
+  }
+
+  function addBorderPositions(
+    positions,
+    { order = 100000, opacity = 1, adaptiveRough = false } = {},
+  ) {
+    if (!positions?.length) return null;
+    const edgeGeometry = new THREE.BufferGeometry();
+    edgeGeometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(positions, 3),
+    );
+    const edgeMaterial = new THREE.LineBasicMaterial({
+        color: 0x111820,
+        transparent: opacity < 0.999,
+        opacity: opacity < 0.999 ? 0.62 : 1,
+        depthTest: true,
+        depthFunc: THREE.LessEqualDepth,
+        depthWrite: false,
+      }),
+      edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+    edges.renderOrder = order;
+    group.add(edges);
+    if (adaptiveRough) roughOwnedObjects.add(edges);
+    return edges;
+  }
+
+  function roughSceneRoiFraction(model, clip) {
+    const modelArea = Math.max(1e-12, Number(model.width) * Number(model.height)),
+      visibleArea = Math.max(1e-12, boundsArea(visibleBounds(model, clip)));
+    return Math.max(0, Math.min(1, visibleArea / modelArea));
+  }
+
+  function prepareAdaptiveRoughTasks() {
+    const context = roughRenderContext;
+    if (!context || !roughTasks.length) return { tasks: [], sceneBudget: 0 };
+    const requests = [],
+      tasks = roughTasks.map((task) => {
+        const zones = roughLodZones(
+          context.model,
+          context.clip,
+          task.cap.polys,
+          task.cap.z,
+        ).map((zone) => {
+          const base = roughCapBaseTriangles(
+              task.cap.z,
+              task.cap.normal,
+              zone.polys,
+            ),
+            preview = adaptiveRoughMeshLod({
+              triangleCount: base.triangles.length,
+              maxEdge: base.maxEdge,
+              featureSize: task.cap.appearance?.featureSize,
+              ...(zone.lodContext || {}),
+            }),
+            prepared = {
+              ...zone,
+              baseTriangles: base.triangles,
+              maxEdge: base.maxEdge,
+              triangleBudget: null,
+            };
+          requests.push({
+            zone: prepared,
+            baseTriangles: Math.max(1, base.triangles.length),
+            desiredTriangles: Math.max(1, preview.desiredTriangles),
+            priority: zone.lodContext?.screenPriority ?? 1,
+          });
+          return prepared;
+        });
+        return { ...task, zones };
+      }),
+      viewport = currentViewport(),
+      sceneBudget = roughSceneTriangleBudget({
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        pixelRatio: viewport.pixelRatio,
+        roiFraction: roughSceneRoiFraction(context.model, context.clip),
+      }),
+      allocations = allocateRoughTriangleBudgets(requests, {
+        totalBudget: sceneBudget,
+      });
+
+    requests.forEach((request, index) => {
+      request.zone.triangleBudget = allocations[index];
+    });
+    return { tasks, sceneBudget };
+  }
+
+  function rebuildAdaptiveRoughGeometry() {
+    const context = roughRenderContext;
+    clearAdaptiveRoughObjects();
+    if (!context || !roughTasks.length) {
+      lastLodSignature = null;
+      updateRoughDiagnostics();
+      return false;
+    }
+
+    const wasRendering = rendering;
+    rendering = true;
+    try {
+      const prepared = prepareAdaptiveRoughTasks();
+      for (const task of prepared.tasks) {
+        const cap = task.cap,
+          geometry = geometryFromRoughCap({
+            z: cap.z,
+            normal: cap.normal,
+            polys: cap.polys,
+            appearance: cap.appearance,
+            closeToIdeal: !cap.buried,
+            profileNormal: cap.profileNormal,
+            lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
+            lodZones: task.zones,
+          }),
+          material = createSurfaceMaterial(task.layer, task.state, cap.appearance),
+          mesh = addSurfaceMesh(
+            geometry,
+            material,
+            task.state,
+            cap.appearance,
+            cap.buried ? 12 : 0,
+            true,
+          );
+        if (mesh) roughOwnedObjects.add(mesh);
+
+        if (
+          context.borders &&
+          !cap.buried &&
+          geometry.userData.roughBorderPositions?.length
+        ) {
+          addBorderPositions(geometry.userData.roughBorderPositions, {
+            order: 100010 + cap.solidIndex,
+            opacity: context.opacity,
+            adaptiveRough: true,
+          });
+        }
+      }
+
+      roughRebuildCount++;
+      const data = renderer?.domElement?.dataset;
+      if (data) {
+        data.roughSceneTriangleBudget = String(prepared.sceneBudget);
+        data.roughRebuildCount = String(roughRebuildCount);
+        data.surfacePlanBuildCount = String(surfacePlanBuildCount);
+      }
+      updateRoughMaterialLod();
+      updateTransparentOrder();
+      updateRoughDiagnostics();
+      lastLodSignature = adaptiveLodSignature();
+      return true;
+    } finally {
+      rendering = wasRendering;
+    }
   }
 
   function init() {
