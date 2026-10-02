@@ -1,5 +1,6 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
 import { appearanceSurfaceGroups, materialSolids, solidBorders } from './model-view-geometry.js';
+import { difference, intersection, isEmpty } from './vector-geometry.js';
 import { roughLod, roughTextureValue } from './surface-rendering.js';
 
 let THREE = null;
@@ -34,6 +35,7 @@ export function createThreeView({
   let frame = null;
   let interacting = false;
   let roughMeshes = [];
+  let transparentMeshes = [];
 
   function updateRoughLod() {
     if (!camera || !renderer || !controls || !roughMeshes.length) return;
@@ -43,12 +45,21 @@ export function createThreeView({
     for (const entry of roughMeshes) {
       const featurePixels = entry.appearance.featureSize * pxPerUm,
         lod = roughLod(featurePixels),
-        ratio = entry.appearance.meanHeight / Math.max(entry.appearance.featureSize, 1e-9);
-      // Match Section semantics: roughness changes the surface response, never
-      // the material identity or layer color.
-      entry.material.roughness = 0.78 + 0.18 * lod.detail;
+        relief = Math.max(
+          0,
+          Number(
+            entry.appearance.etchDepth ??
+              entry.appearance.meanHeight ??
+              entry.appearance.amplitude ??
+              0,
+          ) || 0,
+        ),
+        ratio = relief / Math.max(entry.appearance.featureSize, 1e-9);
+      // Far views converge to the clean layer surface. Feature-scale relief
+      // appears progressively as it becomes resolvable, without changing color.
+      entry.material.roughness = 0.78 + 0.16 * lod.detail;
       entry.material.bumpScale =
-        Math.min(2.4, ratio * 0.55) * (0.18 * lod.detail + 0.82 * lod.micro);
+        Math.min(2.2, ratio * 0.5) * (0.3 * lod.detail + 0.7 * lod.micro);
     }
   }
 
@@ -58,6 +69,7 @@ export function createThreeView({
       frame = null;
       const changed = controls?.update?.() || false;
       updateRoughLod();
+      updateTransparentOrder();
       renderer.render(scene, camera);
       if (interacting || changed) scheduleFrame();
     });
@@ -73,16 +85,28 @@ export function createThreeView({
   }
 
   function disposeGroup() {
-    while (group?.children.length) {
-      const object = group.children.pop();
-      object.geometry?.dispose();
-      object.material?.bumpMap?.dispose();
-      object.material?.dispose();
+    if (!group) return;
+    const geometries = new Set(),
+      materials = new Set(),
+      textures = new Set();
+    for (const object of group.children) {
+      if (object.geometry) geometries.add(object.geometry);
+      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of objectMaterials) {
+        if (!material) continue;
+        materials.add(material);
+        if (material.bumpMap) textures.add(material.bumpMap);
+      }
     }
+    group.clear();
+    for (const geometry of geometries) geometry.dispose();
+    for (const texture of textures) texture.dispose();
+    for (const material of materials) material.dispose();
     roughMeshes = [];
+    transparentMeshes = [];
   }
 
-  function roughTexture(appearance, size = 64) {
+  function roughTexture(appearance, size = 128) {
     const data = new Uint8Array(size * size * 4);
     for (let y = 0; y < size; y++)
       for (let x = 0; x < size; x++) {
@@ -94,10 +118,13 @@ export function createThreeView({
         data[offset + 3] = 255;
       }
     const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.minFilter = THREE.LinearFilter;
+    // Mirroring removes hard tile seams while preserving feature-scale detail
+    // when the user zooms into a large rough surface.
+    texture.wrapS = THREE.MirroredRepeatWrapping;
+    texture.wrapT = THREE.MirroredRepeatWrapping;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = true;
     if (renderer?.capabilities) {
       texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     }
@@ -120,14 +147,11 @@ export function createThreeView({
     const number = Number(value),
       opacity = Math.max(0.1, Math.min(1, Number.isFinite(number) ? number : 1)),
       translucent = opacity < 0.999;
-    // Screen-door transparency avoids whole-mesh alpha sorting failures on
-    // stacked/overlapping CAD solids while keeping each surviving sample at
-    // the layer's true color.
     return {
       opacity,
-      transparent: false,
-      alphaHash: translucent,
-      depthWrite: true,
+      transparent: translucent,
+      depthTest: true,
+      depthWrite: !translucent,
     };
   }
 
@@ -202,6 +226,148 @@ export function createThreeView({
     return geometry;
   }
 
+  function geometryCenter(geometry) {
+    geometry.computeBoundingBox();
+    const center = new THREE.Vector3();
+    geometry.boundingBox?.getCenter(center);
+    return center;
+  }
+
+  function geometryFromSidewallRing(closed, z0, z1, isHole = false) {
+    const points = Array.isArray(closed) ? closed : [],
+      isClosed =
+        points.length > 1 &&
+        points[0][0] === points.at(-1)[0] &&
+        points[0][1] === points.at(-1)[1],
+      ring = (isClosed ? points.slice(0, -1) : points.slice()).map(([x, y]) => [x, y]),
+      positions = [],
+      normals = [];
+    if (ring.length < 2) return new THREE.BufferGeometry();
+
+    const signedArea = ring.reduce((sum, point, index) => {
+      const next = ring[(index + 1) % ring.length];
+      return sum + point[0] * next[1] - point[1] * next[0];
+    }, 0);
+    if ((signedArea > 0) !== !isHole) ring.reverse();
+
+    const triangle = (a, b, c, normal) => {
+      positions.push(...a, ...b, ...c);
+      normals.push(...normal, ...normal, ...normal);
+    };
+    for (let index = 0; index < ring.length; index++) {
+      const p = ring[index],
+        q = ring[(index + 1) % ring.length],
+        dx = q[0] - p[0],
+        dy = q[1] - p[1],
+        length = Math.hypot(dx, dy);
+      if (!length) continue;
+      const normal = [dy / length, -dx / length, 0],
+        a = [...p, z0],
+        b = [...q, z0],
+        c = [...q, z1],
+        d = [...p, z1];
+      triangle(a, b, c, normal);
+      triangle(a, c, d, normal);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return geometry;
+  }
+
+  function roughSurfaceKey(layerId, z, face) {
+    return `${layerId}\u0000${Number(z).toPrecision(15)}\u0000${face}`;
+  }
+
+  function roughSurfaceMap(model, clip) {
+    const map = new Map();
+    for (const patch of appearanceSurfaceGroups(model, clip)) {
+      const key = roughSurfaceKey(patch.layerId, patch.z, patch.face);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(patch);
+    }
+    return map;
+  }
+
+  function capRenderParts(item, cap, roughMap) {
+    const face = cap.normal > 0 ? 'front' : 'back',
+      patches = roughMap.get(roughSurfaceKey(item.layerId, cap.z, face)) || [],
+      parts = [];
+    let remaining = cap.polys;
+
+    for (const patch of patches) {
+      const roughPolys = intersection(remaining, patch.polys);
+      if (!isEmpty(roughPolys)) {
+        parts.push({
+          z: cap.z,
+          normal: cap.normal,
+          polys: roughPolys,
+          appearance: patch.appearance,
+        });
+      }
+      remaining = difference(remaining, patch.polys);
+      if (isEmpty(remaining)) break;
+    }
+
+    if (!isEmpty(remaining)) {
+      parts.push({ z: cap.z, normal: cap.normal, polys: remaining, appearance: null });
+    }
+    return parts;
+  }
+
+  function updateTransparentOrder() {
+    if (!camera || !group || !transparentMeshes.length) return;
+    camera.updateMatrixWorld();
+    const zScale = group.scale.z || 1;
+    for (const entry of transparentMeshes) {
+      const point = entry.center.clone();
+      point.z *= zScale;
+      point.applyMatrix4(camera.matrixWorldInverse);
+      entry.depth = point.z;
+    }
+    transparentMeshes.sort((a, b) => a.depth - b.depth);
+    transparentMeshes.forEach((entry, index) => {
+      entry.mesh.renderOrder = 100 + index;
+    });
+  }
+
+  function createSurfaceMaterial(layer, materialState, appearance = null, bias = 1) {
+    const material = new THREE.MeshStandardMaterial({
+      color: layer?.color || '#999',
+      roughness: appearance ? 0.82 : 0.78,
+      metalness: 0.015,
+      side: THREE.DoubleSide,
+      ...materialState,
+      polygonOffset: true,
+      polygonOffsetFactor: Math.min(8, Math.max(1, bias) * 0.35),
+      polygonOffsetUnits: Math.min(12, Math.max(1, bias)),
+    });
+    if (appearance) {
+      material.bumpMap = roughTexture(appearance);
+      material.bumpScale = 0;
+    }
+    return material;
+  }
+
+  function addSurfaceMesh(geometry, material, materialState, appearance = null) {
+    if (!geometry.getAttribute('position')?.count) {
+      geometry.dispose();
+      return null;
+    }
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = materialState.transparent ? 100 : 0;
+    group.add(mesh);
+    if (materialState.transparent) {
+      transparentMeshes.push({ mesh, center: geometryCenter(geometry), depth: 0 });
+    }
+    if (appearance) {
+      mesh.userData.surfaceAppearance = { ...appearance };
+      roughMeshes.push({ mesh, material, appearance: { ...appearance } });
+    }
+    return mesh;
+  }
+
   function init() {
     if (!THREE || !OrbitControls) {
       console.warn('3D dependencies unavailable; continuing without the 3D view.', dependencyError);
@@ -263,30 +429,73 @@ export function createThreeView({
       inspection = getInspection() || {},
       materialState = inspectionMaterialState(inspection.opacity),
       opacity = materialState.opacity,
-      borders = Boolean(inspection.borders);
+      borders = Boolean(inspection.borders),
+      roughMap = roughSurfaceMap(model, clip),
+      solids = materialSolids(model, clip),
+      smoothMaterials = new Map();
 
-    const solids = materialSolids(model, clip);
-    for (let index = 0; index < solids.length; index++) {
-      const item = solids[index];
-      const geometry = geometryFromSolid(item);
+    const smoothMaterial = (layer, bias) => {
+      const key = layer?.id || '__fallback__';
+      if (!smoothMaterials.has(key)) {
+        smoothMaterials.set(key, createSurfaceMaterial(layer, materialState, null, bias));
+      }
+      return smoothMaterials.get(key);
+    };
 
-      const layer = layerById(model, item.layerId);
-      const material = new THREE.MeshStandardMaterial({
-        color: layer?.color || '#999',
-        roughness: 0.78,
-        metalness: 0.015,
-        side: THREE.DoubleSide,
-        ...materialState,
-        polygonOffset: true,
-        // Push filled surfaces slightly behind their true geometry. This keeps
-        // the wire overlay visible even at 100% opacity while retaining a
-        // stable bias between coplanar material surfaces.
-        polygonOffsetFactor: Math.min(8, (index + 1) * 0.35),
-        polygonOffsetUnits: Math.min(12, index + 1),
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.renderOrder = 0;
-      group.add(mesh);
+    for (let solidIndex = 0; solidIndex < solids.length; solidIndex++) {
+      const item = solids[solidIndex],
+        layer = layerById(model, item.layerId),
+        layerHasRoughSurface = [...roughMap.keys()].some((key) =>
+          key.startsWith(`${item.layerId}\u0000`),
+        );
+
+      // Keep the fast single-mesh path for ordinary opaque layers. Rough layers
+      // and all translucent layers use face/ring chunks so surface appearance
+      // and alpha ordering are explicit instead of relying on one giant mesh.
+      if (!materialState.transparent && !layerHasRoughSurface) {
+        const geometry = geometryFromSolid(item),
+          material = smoothMaterial(layer, solidIndex + 1);
+        addSurfaceMesh(geometry, material, materialState);
+      } else {
+        for (const cap of item.caps) {
+          for (const part of capRenderParts(item, cap, roughMap)) {
+            for (const poly of part.polys) {
+              const geometry = geometryFromSolid({
+                  slabs: [],
+                  caps: [{ z: part.z, normal: part.normal, polys: [poly] }],
+                }),
+                material = part.appearance
+                  ? createSurfaceMaterial(
+                      layer,
+                      materialState,
+                      part.appearance,
+                      solidIndex + 1,
+                    )
+                  : smoothMaterial(layer, solidIndex + 1);
+              addPlanarUv(geometry, part.appearance?.featureSize || 1);
+              addSurfaceMesh(geometry, material, materialState, part.appearance);
+            }
+          }
+        }
+
+        for (const slab of item.slabs) {
+          for (const poly of slab.polys) {
+            for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
+              const geometry = geometryFromSidewallRing(
+                poly[ringIndex],
+                slab.z0,
+                slab.z1,
+                ringIndex > 0,
+              );
+              addSurfaceMesh(
+                geometry,
+                smoothMaterial(layer, solidIndex + 1),
+                materialState,
+              );
+            }
+          }
+        }
+      }
 
       if (borders) {
         const edgeGeometry = new THREE.BufferGeometry();
@@ -297,52 +506,19 @@ export function createThreeView({
         const edgeMaterial = new THREE.LineBasicMaterial({
           color: 0x111820,
           transparent: opacity < 0.999,
-          opacity: opacity < 0.999 ? 0.72 : 1,
+          opacity: opacity < 0.999 ? 0.66 : 1,
           depthTest: true,
           depthFunc: THREE.LessEqualDepth,
           depthWrite: false,
         });
         const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-        // Filled opaque surfaces are depth-biased slightly backwards, so these
-        // true-geometry borders remain crisp at 100% opacity. Transparent
-        // surfaces still draw borders last because they do not write depth.
-        edges.renderOrder = 1000 + index;
+        edges.renderOrder = 100000 + solidIndex;
         group.add(edges);
       }
     }
 
-    for (const patch of appearanceSurfaceGroups(model, clip)) {
-      const normal = patch.face === 'front' ? 1 : -1,
-        geometry = geometryFromSolid({
-          slabs: [],
-          caps: [{ z: patch.z, normal, polys: patch.polys }],
-        });
-      addPlanarUv(geometry, patch.appearance.featureSize);
-      const layer = layerById(model, patch.layerId),
-        material = new THREE.MeshStandardMaterial({
-          color: layer?.color || '#666',
-          roughness: 0.78,
-          metalness: 0.015,
-          bumpMap: roughTexture(patch.appearance),
-          bumpScale: 0,
-          side: THREE.DoubleSide,
-          ...materialState,
-          polygonOffset: true,
-          polygonOffsetFactor: -2,
-          polygonOffsetUnits: -2,
-        });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.userData.surfaceAppearance = { ...patch.appearance };
-      mesh.renderOrder = 10;
-      group.add(mesh);
-      roughMeshes.push({
-        mesh,
-        material,
-        appearance: { ...patch.appearance },
-      });
-    }
     updateRoughLod();
-
+    updateTransparentOrder();
     stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     scheduleFrame();
   }

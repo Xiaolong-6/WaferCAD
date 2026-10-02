@@ -573,6 +573,24 @@ try {
       await capture(page, 'wide-rough-buried-interface-max');
       await page.locator('#sectionMaxBtn').click();
       await page.waitForTimeout(120);
+
+      // 3D integration guardrails: clean opaque rough surfaces and sorted
+      // translucent layers should remain layer-colored without screen-door noise.
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-3d-opaque-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('0.5');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-3d-transparent-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('1');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+
       await checkLayout(page);
     }
 
