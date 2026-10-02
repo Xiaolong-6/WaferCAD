@@ -39,11 +39,19 @@ The model is intentionally 2.5D: XY footprints are vector polygons and vertical 
 
 ### `site/app.js`
 
-Owns application state, top-level UI composition, undo/redo, and synchronization between controllers/views. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/apply orchestration is delegated to `site/controllers/process-panel-controller.js`; browser autosave/Recovery/safe-reload orchestration is delegated to `site/controllers/workspace-persistence-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
+Owns application state and top-level controller composition. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/apply orchestration is delegated to `site/controllers/process-panel-controller.js`; browser autosave/Recovery/safe-reload orchestration is delegated to `site/controllers/workspace-persistence-controller.js`; synchronized view refresh/base summaries live in `site/controllers/workspace-view-controller.js`; mask/ROI process-selection geometry lives in `site/selection-geometry.js`; Project toolbar actions live in `site/controllers/project-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
 
 ### `site/controllers/workspace-persistence-controller.js`
 
 Owns browser-local autosave scheduling, manual Recovery checkpoints, recovery-list/restore/clear UI, cross-tab persistence state feedback, safe reload checkpointing, and initial persisted-workspace restore. IndexedDB storage/validation stays in `workspace-persistence.js`, while the controller receives project capture/restore callbacks from the application composition root.
+
+### `site/controllers/workspace-view-controller.js`
+
+Owns synchronized refresh of Main/Mask/Section/3D plus the small derived UI summaries that belong to that refresh boundary. It does not mutate canonical process geometry; app state is supplied through narrow getters and all view-specific rendering remains in the dedicated renderers/controllers.
+
+### `site/selection-geometry.js`
+
+Owns the derived XY geometry used by Process and 3D inspection: selected File/Draw mask geometry, Mask ROI clipping, Whole/Mask/Invert process areas, and Main ROI geometry. These are derived selections only; the canonical model remains unchanged.
 
 ### `site/controllers/process-panel-controller.js`
 
@@ -70,7 +78,7 @@ Owns the region-stack model and geometry semantics:
 
 ### `site/three-view.js`
 
-Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, physical GLB export, high-resolution PNG capture, and graceful degradation when the external 3D dependency is unavailable. Rough/Pyramid caps use scope-aware bounded tessellation plus profile-derived vertex normals, so full-model views receive a larger mesh budget while ROI inspection retains fine relief. Inherited rough interfaces are rendered on both sides of a material boundary with a shared displacement direction, allowing conformal display shells to keep the same micro-profile instead of exposing the ideal process plane. Ideal horizontal border segments are suppressed wherever a displaced rough boundary is rendered. No separate bump/noise texture is added. Implant is rendered as a clipped translucent internal volume plus its current exposed/cut surface; its body/cap contrast is preserved while alpha scales with the global 3D opacity. GLB export scales canonical µm coordinates by 1e-6 so downstream glTF software receives metres; render-only morphology and Implant overlays are not promoted into the canonical material solid.
+Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, physical GLB export, high-resolution PNG capture, and graceful degradation when the external 3D dependency is unavailable. Rough/Pyramid caps use scope-aware bounded tessellation plus profile-derived vertex normals, so full-model views receive a larger mesh budget while ROI inspection retains fine relief. Inherited rough interfaces are rendered on both sides of a material boundary with a shared displacement direction, allowing conformal display shells to keep the same micro-profile instead of exposing the ideal process plane. Rough appearance groups distinguish exposed from buried interfaces: buried material interfaces retain the shared heightfield but do not receive the external cap skirt back to the ideal plane, preventing internal sheets after rough Etch followed by Conformal coverage. Ideal horizontal border segments are suppressed wherever a displaced rough boundary is rendered. No separate bump/noise texture is added. Implant is rendered as a clipped translucent internal volume plus its current exposed/cut surface; its body/cap contrast is preserved while alpha scales with the global 3D opacity. GLB export scales canonical µm coordinates by 1e-6 so downstream glTF software receives metres; render-only morphology and Implant overlays are not promoted into the canonical material solid.
 
 ### `site/section-editor.js`
 
@@ -78,7 +86,7 @@ Owns explicit A/B handle interaction, fixed CSS-pixel targets, grab offsets, poi
 
 ### `site/model-view-geometry.js`
 
-Derives Section material contours, same-material/same-height Main surface groups, rough appearance-boundary groups, clipped Implant fragments/solids, and 3D material boundaries from the canonical region-stack model. Rough appearance groups include exposed faces and inherited buried interfaces so adjacent materials can share one visual heightfield without changing the ideal stack. Exact-Z slabs union each material footprint; only footprint differences produce horizontal faces and border lines. Computation partitions are not visible interfaces. ROI clipping leaves the model unchanged.
+Derives Section material contours, same-material/same-height Main surface groups, rough appearance-boundary groups, clipped Implant fragments/solids, and 3D material boundaries from the canonical region-stack model. Rough appearance groups include exposed faces and inherited buried interfaces so adjacent materials can share one visual heightfield without changing the ideal stack; the derived group metadata marks buried interfaces explicitly for 3D closure decisions. Exact-Z slabs union each material footprint; only footprint differences produce horizontal faces and border lines. Computation partitions are not visible interfaces. ROI clipping leaves the model unchanged.
 
 ### `site/vector-geometry.js`
 
