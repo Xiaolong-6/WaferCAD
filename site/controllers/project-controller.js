@@ -1,5 +1,6 @@
 import { assertLayoutByteLength } from '../layout-io.js';
 import { readProjectFile } from '../project-io.js';
+import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { createVisualizationExample } from '../welcome-example.js';
 
 export function createProjectController({
@@ -119,7 +120,7 @@ export function createProjectController({
   function openVisualizationExample() {
     try {
       status('Building example…');
-      const project = createVisualizationExample();
+      const project = validateProjectFile(migrateProjectFile(createVisualizationExample()));
       if (!project.name) project.name = 'Visualization example';
       loadProjectSnapshot(project);
       snapshotManager.importRecords(project.snapshots || []);
