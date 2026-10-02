@@ -63,6 +63,7 @@ export function createWorkspaceSessionController({
       writeLease();
       return true;
     }
+    if (!leaseIsActive(lease)) return tryAcquire();
     return false;
   }
 
