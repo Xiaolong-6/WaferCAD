@@ -5,10 +5,10 @@ import { drawMaskGeometry } from '../draw-mask-geometry.js';
 import { maskRoiWorldGeometry, multiBounds } from '../mask-roi-geometry.js';
 import { bufferPolyline, intersection, isEmpty } from '../vector-geometry.js';
 import {
-  buildMaskExportRecords,
-  encodeGdsMask,
-  encodeOasisMask,
-} from '../mask-export.js';
+  collectMaskExportElements,
+  serializeGDS,
+  serializeOASIS,
+} from '../layout-export.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -257,23 +257,23 @@ export function createExportController({
   function exportMaskLayout(format) {
     const context = maskExportContext();
     if (!context) return;
-    const records = buildMaskExportRecords({
+    const exported = collectMaskExportElements({
       layout: context.layout,
       maskSourceMode: context.maskSourceMode,
       drawMask: context.drawMask,
       maskTransform: context.maskTransform,
-      roiGeometry: context.roiGeometry,
+      maskRoi: context.maskRoi,
       selectedCells: context.cells,
-      selectedLayers: context.layers,
+      selectedLayerKeys: context.layers,
     });
-    if (!records.length) {
+    if (!exported.elements.length) {
       status('Nothing from the selected Mask source overlaps the export region.', 'warning');
       return;
     }
 
     try {
       const oasis = format === 'oas',
-        bytes = oasis ? encodeOasisMask(records) : encodeGdsMask(records),
+        bytes = oasis ? serializeOASIS(exported.elements) : serializeGDS(exported.elements),
         extension = oasis ? 'oas' : 'gds',
         mime = oasis ? 'application/vnd.semi-oasis' : 'application/octet-stream';
       downloadBlob(new Blob([bytes], { type: mime }), `wafercad-mask.${extension}`);
