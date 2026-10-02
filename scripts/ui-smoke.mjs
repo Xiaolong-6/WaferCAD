@@ -347,6 +347,7 @@ await page.locator('#operationTab').click();
 await page.locator('[data-process-mode="implant"]').click();
 assert.equal(await page.locator('#implantNameRow').isVisible(), true);
 assert.equal(await page.locator('#implantTiltRow').isVisible(), true);
+assert.equal(await page.locator('#implantColor').count(), 0);
 assert.match(await page.locator('#operationNote').textContent(), /Experimental structural marker/);
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#operationThickness').fill('0.6');
@@ -362,6 +363,15 @@ assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 const implantLegendRow = page.locator('#layerLegend .implant-row-wrap').first();
 assert.equal(await implantLegendRow.count(), 1);
 assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), true);
+assert.doesNotMatch(await implantLegendRow.textContent(), /EXP/);
+const implantOrder = await implantLegendRow.locator('.implant-legend-row').evaluate((row) =>
+  [...row.children].map((child) => child.className),
+);
+assert.match(String(implantOrder.at(-1)), /legend-visibility/);
+await implantLegendRow.locator('.implant-gradient-chip').click();
+assert.equal(await implantLegendRow.locator('.legend-palette-chip').count(), 20);
+await implantLegendRow.locator('.legend-palette-chip').nth(3).click();
+await page.locator('#layerLegend .legend-random').click();
 await implantLegendRow.locator('.legend-name').fill('UI implant renamed');
 await implantLegendRow.locator('.legend-name').press('Tab');
 await page.locator('#sectionBordersBtn').click();
@@ -385,6 +395,8 @@ assert.equal(implantSaved.model.implants[0].tilt, 7);
 assert.equal(implantSaved.model.implants[0].visible, true);
 assert.equal('border' in implantSaved.model.implants[0], false);
 assert.equal(implantSaved.display.sectionShowBorders, true);
+assert.equal(implantSaved.display.customStructurePalette.length, 20);
+assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color));
 assert.ok(implantSaved.model.implants[0].patches.length > 0);
 await page.locator('#operationTab').click();
 
