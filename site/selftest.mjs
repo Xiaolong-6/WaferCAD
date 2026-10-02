@@ -61,6 +61,14 @@ assert.equal(
   }),
   0,
 );
+assert.equal(
+  roughMeshSubdivisionDepth({
+    triangleCount: 2,
+    maxEdge: 50,
+    featureSize: 1,
+  }),
+  6,
+);
 const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
 assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
