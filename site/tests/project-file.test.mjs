@@ -429,6 +429,29 @@ test('Mask ROI accepts rotated Square or Circle only', () => {
   assert.throws(() => validateProjectFile(source), /maskRoi\.type/);
 });
 
+test('v8 migration upgrades rough amplitude metadata to mean/CV profile schema', () => {
+  const source = validProject();
+  source.version = 8;
+  source.model.regions[0].stack[0].frontSurface = {
+    kind: 'rough',
+    featureSize: 0.5,
+    amplitude: 0.4,
+    etchDepth: 0.8,
+    seed: 123,
+    geometryMode: 'ideal',
+  };
+
+  const migrated = migrateProjectFile(source),
+    rough = migrated.model.regions[0].stack[0].frontSurface;
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(rough.meanHeight, 0.4);
+  assert.equal(rough.featureCv, 0.25);
+  assert.equal(rough.heightCv, 0.25);
+  assert.equal(rough.profileId, 'rough-123');
+  assert.equal('amplitude' in rough, false);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
 test('v7 migration converts world-space Mask ROI into mask-local coordinates', () => {
   const source = validProject();
   source.version = 7;
