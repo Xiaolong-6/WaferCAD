@@ -255,6 +255,40 @@ export function createThreeView({
     }
   }
 
+  function updateRoughDiagnostics() {
+    if (!renderer?.domElement) return;
+    const depths = roughMeshes
+        .map((entry) => Number(entry.mesh.geometry?.userData?.roughSubdivisionDepth))
+        .filter(Number.isFinite),
+      triangles = roughMeshes.reduce(
+        (sum, entry) => sum + (entry.mesh.geometry?.getAttribute('position')?.count || 0) / 3,
+        0,
+      ),
+      zones = roughMeshes.reduce(
+        (sum, entry) => sum + (Number(entry.mesh.geometry?.userData?.roughLodZoneCount) || 0),
+        0,
+      ),
+      stitches = roughMeshes.reduce(
+        (sum, entry) => sum + (Number(entry.mesh.geometry?.userData?.roughLodStitchCount) || 0),
+        0,
+      ),
+      data = renderer.domElement.dataset;
+
+    if (!depths.length) {
+      delete data.roughLodDepthMin;
+      delete data.roughLodDepthMax;
+      delete data.roughTriangleCount;
+      delete data.roughLodZones;
+      delete data.roughLodStitches;
+      return;
+    }
+    data.roughLodDepthMin = String(Math.min(...depths));
+    data.roughLodDepthMax = String(Math.max(...depths));
+    data.roughTriangleCount = String(Math.round(triangles));
+    data.roughLodZones = String(zones);
+    data.roughLodStitches = String(stitches);
+  }
+
   function maybeRebuildAdaptiveGeometry() {
     if (rendering || !roughMeshes.length) return false;
     const signature = adaptiveLodSignature();
@@ -1015,6 +1049,7 @@ export function createThreeView({
 
       updateRoughMaterialLod();
       updateTransparentOrder();
+      updateRoughDiagnostics();
       lastLodSignature = roughMeshes.length ? adaptiveLodSignature() : null;
       stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     } finally {
