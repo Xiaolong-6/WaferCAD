@@ -244,7 +244,9 @@ function normalizedRoughSurface(surface, processRevision = 0, etchDepth = null) 
     ),
     featureCv = Math.max(0, Math.min(1, Number(surface.featureCv) || 0)),
     heightCv = Math.max(0, Math.min(1, Number(surface.heightCv) || 0)),
-    morphology = 'stochastic',
+    morphology = ['stochastic', 'pyramid'].includes(surface.morphology)
+      ? surface.morphology
+      : 'stochastic',
     polarity = surface.polarity === 'normal' ? 'normal' : 'inverted',
     seed = Number.isInteger(surface.seed)
       ? Math.max(0, surface.seed)
@@ -487,8 +489,8 @@ function applyOperationImpl(
         error: 'Rough CV values must be between 0% and 100%.',
       };
     }
-    if (morphology !== 'stochastic') {
-      return { changed: false, error: 'Unsupported rough morphology.' };
+    if (!['stochastic', 'pyramid'].includes(morphology)) {
+      return { changed: false, error: 'Unsupported surface morphology.' };
     }
     if (!['inverted', 'normal'].includes(polarity)) {
       return { changed: false, error: 'Rough polarity must be Inverted or Normal.' };
