@@ -5,7 +5,6 @@ import {
   createModel,
   fullFaceGeometry,
   hasMaterial,
-  layerById,
   surfaceSegment,
   surfaceZ,
 } from './model.js';
@@ -784,171 +783,8 @@ function updateOperationUI() {
   processPanelController?.updateUi();
 }
 
-async function applyOp() {
-  if (processTaskController?.isBusy()) {
-    status('An operation is already running. Abort it before starting another.', 'warning');
-    return;
-  }
-
-  const type = $('operationType').value,
-    thickness = manualMicron($('operationThickness').value);
-  $('operationThickness').value = formatLengthField(thickness);
-  if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
-
-  const areaMode = $('operationArea').value;
-
-  const name =
-      type === 'implant'
-        ? $('implantName').value.trim() || `Implant ${model.nextImplantId || 1}`
-        : $('layerName').value.trim() || `Layer ${model.layers.length}`,
-    targetLayerId = $('targetLayer').value;
-  if (type === 'grow' && !targetLayerId) {
-    return status('No exposed target layer is available to Extend.', 'warning');
-  }
-
-  let roughSurface = null;
-  const etchSurfaceMode = $('etchSurfaceMode').value;
-  if (type === 'etch' && etchSurfaceMode !== 'smooth') {
-    const pyramid = etchSurfaceMode === 'pyramid',
-      featureSize = manualMicron($('roughFeatureSize').value),
-      meanHeight = manualMicron($('roughAmplitude').value),
-      featureCvPercent = pyramid ? 0 : Number($('roughFeatureCv').value),
-      heightCvPercent = pyramid ? 0 : Number($('roughHeightCv').value),
-      featureCv = featureCvPercent / 100,
-      heightCv = heightCvPercent / 100;
-    $('roughFeatureSize').value = formatLengthField(featureSize);
-    $('roughAmplitude').value = formatLengthField(meanHeight);
-    if (!(featureSize > 0) || !(meanHeight > 0)) {
-      return status(
-        pyramid
-          ? 'Pyramid XY and Height must be greater than zero.'
-          : 'Rough mean Feature XY and Height must be greater than zero.',
-        'error',
-      );
-    }
-    if (meanHeight > thickness + 1e-9) {
-      return status(
-        pyramid
-          ? 'Pyramid Height cannot exceed Etch Depth.'
-          : 'Rough mean Height cannot exceed Etch Depth.',
-        'error',
-      );
-    }
-    if (
-      !Number.isFinite(featureCvPercent) ||
-      !Number.isFinite(heightCvPercent) ||
-      featureCvPercent < 0 ||
-      featureCvPercent > 100 ||
-      heightCvPercent < 0 ||
-      heightCvPercent > 100
-    ) {
-      return status('Rough Feature CV and Height CV must be between 0% and 100%.', 'error');
-    }
-    roughSurface = {
-      kind: 'rough',
-      morphology: pyramid ? 'pyramid' : 'stochastic',
-      polarity: $('roughPolarity').value === 'normal' ? 'normal' : 'inverted',
-      featureSize,
-      meanHeight,
-      featureCv,
-      heightCv,
-      geometryMode: 'ideal',
-    };
-  }
-
-  const beforeBase = baseCoverageState(model),
-    params = { type, name, targetLayerId, thickness, face: activeFace };
-  if (type === 'etch') params.surface = roughSurface;
-  else if (type === 'implant') {
-    const tilt = Number($('implantTilt').value);
-    if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
-      return status('Implant Tilt X must be between -80° and 80°.', 'error');
-    }
-    params.tilt = tilt;
-  } else params.growth = $('growthMode').value;
-
-  const taskLabel =
-    type === 'etch'
-      ? 'Etching structure…'
-      : type === 'grow'
-        ? 'Extending layer…'
-        : type === 'implant'
-          ? `Marking ${name} implant…`
-          : `Depositing ${name}…`;
-
-  const areaRequest = {
-    mode: areaMode,
-    maskSourceMode,
-    maskRoi: maskRoi ? structuredClone(maskRoi) : null,
-    ...(maskSourceMode === 'draw'
-      ? { drawMask: structuredClone(drawMask) }
-      : {
-          maskTransform: { ...maskTransform },
-          elements: (layout.elements || [])
-            .filter(selectedElement)
-            .map((element) => ({
-              kind: element.kind,
-              width: element.width,
-              points: element.points,
-            })),
-        }),
-  };
-
-  const task = await processTaskController.run(model, params, taskLabel, areaRequest);
-  if (task?.aborted || task?.error || task?.busy) return;
-
-  const result = task.result;
-  if (!result?.changed) {
-    return status(result?.error || 'The operation did not change the model.', 'warning');
-  }
-
-  saveHistory();
-  baseRevertSnapshot = null;
-  model = task.model;
-
-  if (type === 'add' && result.layerId) {
-    colorNewLayer(result.layerId);
-    $('layerName').value = `Layer ${model.nextLayerId}`;
-  } else if (type === 'implant' && result.implantId) {
-    colorNewImplant(result.implantId);
-    $('implantName').value = `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
-  }
-
-  renderAll();
-
-  if (!hasMaterial(model)) {
-    return status(
-      'All material has been removed. Undo, restore a snapshot, or recreate the Base.',
-      'warning',
-    );
-  }
-
-  const afterBase = baseCoverageState(model);
-  if (type === 'etch' && beforeBase !== 'removed' && afterBase === 'removed') {
-    return status(
-      'Base fully removed. Remaining material, if any, is shown independently.',
-      'warning',
-    );
-  }
-
-  const growthLabel =
-    type === 'etch' || type === 'implant'
-      ? ''
-      : params.growth === 'conformal'
-        ? ' · Conformal'
-        : ' · Directional';
-  status(
-    `${
-      type === 'etch'
-        ? 'Etched'
-        : type === 'grow'
-          ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
-          : type === 'implant'
-            ? `Marked implant ${name} (experimental)`
-            : `Deposited ${name}`
-    }${growthLabel} on the ${activeFace}${maskRoi ? ' within Mask ROI' : ''}.`,
-    'success',
-  );
+function applyOp() {
+  return processPanelController?.applyOperation();
 }
 
 const projectStateController = createProjectStateController({
@@ -1103,9 +939,30 @@ processTaskController = createProcessTaskController({
 processPanelController = createProcessPanelController({
   root: document,
   getModel: () => model,
+  setModel: (value) => {
+    model = value;
+  },
   getActiveFace: () => activeFace,
+  getMaskState: () => ({
+    maskSourceMode,
+    maskRoi,
+    drawMask,
+    maskTransform,
+    layout,
+  }),
   operationAreaGeometry,
+  selectedElement,
+  manualMicron,
+  formatLengthField,
   processTaskController,
+  saveHistory,
+  clearBaseRevertSnapshot: () => {
+    baseRevertSnapshot = null;
+  },
+  colorNewLayer,
+  colorNewImplant,
+  renderAll,
+  status,
 });
 
 const baseControls = createBaseControlsController({
