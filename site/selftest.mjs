@@ -13,10 +13,13 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { appearanceSurfaceGroups, implantSectionBands, implantSolids } =
   await import('./model-view-geometry.js');
+const { buildRenderSurfacePlan } = await import('./renderer-geometry.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { STRUCTURE_PALETTES } = await import('./controllers/layer-legend-controller.js');
 const { validateProjectFile } = await import('./project-schema.js');
 const {
+  adaptiveRoughMeshLod,
+  projectedPixelsPerUnit,
   roughLod,
   roughMeshSubdivisionDepth,
   roughMeshTriangleBudget,
@@ -78,6 +81,73 @@ assert.equal(
   }),
   6,
 );
+
+assert.ok(
+  projectedPixelsPerUnit({
+    distance: 50,
+    viewportHeight: 600,
+    fovDegrees: 34,
+    pixelRatio: 2,
+  }) >
+    projectedPixelsPerUnit({
+      distance: 500,
+      viewportHeight: 600,
+      fovDegrees: 34,
+      pixelRatio: 2,
+    }),
+);
+const adaptiveNear = adaptiveRoughMeshLod({
+    triangleCount: 2,
+    maxEdge: 100,
+    featureSize: 0.5,
+    distance: 50,
+    viewportWidth: 640,
+    viewportHeight: 480,
+    fovDegrees: 34,
+    pixelRatio: 1,
+    visibleFraction: 1,
+    roiFraction: 1,
+  }),
+  adaptiveFar = adaptiveRoughMeshLod({
+    triangleCount: 2,
+    maxEdge: 100,
+    featureSize: 0.5,
+    distance: 5000,
+    viewportWidth: 640,
+    viewportHeight: 480,
+    fovDegrees: 34,
+    pixelRatio: 1,
+    visibleFraction: 1,
+    roiFraction: 1,
+  }),
+  adaptiveBackground = adaptiveRoughMeshLod({
+    triangleCount: 2,
+    maxEdge: 100,
+    featureSize: 0.5,
+    distance: 50,
+    viewportWidth: 640,
+    viewportHeight: 480,
+    fovDegrees: 34,
+    pixelRatio: 1,
+    visibleFraction: 0.04,
+    roiFraction: 1,
+    screenPriority: 0.06,
+  }),
+  adaptiveRoi = adaptiveRoughMeshLod({
+    triangleCount: 2,
+    maxEdge: 100,
+    featureSize: 0.5,
+    distance: 50,
+    viewportWidth: 640,
+    viewportHeight: 480,
+    fovDegrees: 34,
+    pixelRatio: 1,
+    visibleFraction: 1,
+    roiFraction: 0.05,
+  });
+assert.ok(adaptiveNear.depth > adaptiveFar.depth);
+assert.ok(adaptiveBackground.maxTriangles < adaptiveNear.maxTriangles);
+assert.ok(adaptiveRoi.maxTriangles > adaptiveNear.maxTriangles);
 const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
 assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
@@ -303,6 +373,18 @@ assert.ok(
     (group) => group.layerId === roughCoat.layerId && group.face === 'front' && group.z === 4.5,
   ),
 );
+
+const roughRenderPlan = buildRenderSurfacePlan(roughConformalModel),
+  buriedAtInheritedInterface = roughRenderPlan.caps.filter(
+    (cap) => cap.buried && Math.abs(cap.z - 4) < 1e-9,
+  ),
+  buriedHorizontalBorders = roughRenderPlan.borderLines.filter(
+    ([a, b]) => Math.abs(a[2] - 4) < 1e-9 && Math.abs(b[2] - 4) < 1e-9,
+  );
+assert.equal(buriedAtInheritedInterface.length, 1);
+assert.equal(buriedAtInheritedInterface[0].appearance?.kind, 'rough');
+assert.equal(buriedHorizontalBorders.length, 0);
+assert.ok(roughRenderPlan.sidewalls.every((part) => part.ownership === 'exterior' || part.ownership === 'interface'));
 const pyramidEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const pyramidResult = applyOperation(pyramidEtch, {
   type: 'etch',
