@@ -46,6 +46,7 @@ import { createFeedbackController } from './controllers/feedback-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
 import { bindToolTabs } from './controllers/tool-tabs-controller.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
+import { createViewPopoverController } from './controllers/view-popover-controller.js';
 import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
 import { createExportController } from './controllers/export-controller.js';
 import { createRoiController } from './controllers/roi-controller.js';
@@ -117,6 +118,7 @@ let projectName = 'Untitled',
   processTaskController = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
 const feedback = createFeedbackController();
+const viewPopovers = createViewPopoverController({ root: document });
 
 function status(message, level = 'auto') {
   feedback.show(message, level);
@@ -190,6 +192,7 @@ const sectionControls = createSectionControlsController({
     if (editor) editor.open = false;
     clearRoiDrawingMode();
   },
+  claimPopover: (panel) => viewPopovers.claim(panel),
   getModel: () => model,
   xyUnitLabel: () => xyUnit().label,
   formatLengthField,
@@ -1420,6 +1423,7 @@ drawMaskController = createDrawMaskController({
   isInteractionBlocked: () => Boolean(maskRoiTool),
   syncSourceSummary: syncMaskSourceSummary,
   onMaskChanged: updateOperationUI,
+  claimPopover: (panel) => viewPopovers.claim(panel),
   status,
 });
 
@@ -1560,6 +1564,7 @@ const viewMaximizeController = createViewMaximizeController({
 
 function bindUi() {
   bindToolTabs();
+  viewPopovers.bind();
   viewMaximizeController.bind();
   roiController.bind();
   processTaskController.bind();
