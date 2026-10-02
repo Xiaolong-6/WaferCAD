@@ -178,7 +178,7 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
   assert.match(app, /return limiter \? intersection\(area, limiter\) : area/);
   assert.match(app, /maskRoiController\?\.render\(ctx, v\)/);
   assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);
-  assert.match(maskRoiController, /canMoveBody\(point\)/);
+  assert.match(maskRoiController, /canMoveBody\(world\)/);
 });
 
 test('each view uses one shared exclusive popover surface', () => {
