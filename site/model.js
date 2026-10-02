@@ -436,29 +436,36 @@ function exposedLayerPatches(model, active, face, layerId) {
 
     const z = face === 'front' ? segment.z1 : segment.z0,
       oppositeZ = face === 'front' ? region.stack[0].z0 : region.stack.at(-1).z1,
-      key = `${z.toFixed(9)}:${oppositeZ.toFixed(9)}`;
-    if (!groups.has(key)) groups.set(key, { z, oppositeZ, geoms: [] });
+      appearance = cloneAppearance(surfaceAppearance(segment, face)),
+      key = `${z.toFixed(9)}:${oppositeZ.toFixed(9)}:${JSON.stringify(appearance || null)}`;
+    if (!groups.has(key)) groups.set(key, { z, oppositeZ, appearance, geoms: [] });
     groups.get(key).geoms.push(geom);
   }
 
   const patches = [];
-  for (const { z, oppositeZ, geoms } of groups.values()) {
-    for (const geom of safeUnionParts(geoms)) patches.push({ z, oppositeZ, geom });
+  for (const { z, oppositeZ, appearance, geoms } of groups.values()) {
+    for (const geom of safeUnionParts(geoms)) patches.push({ z, oppositeZ, appearance, geom });
   }
   return patches.sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
 }
 
-function conformalSidewallStack(stack, layerId, face, sourceZ) {
+function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null) {
   const local = surfaceZ(stack, face);
   if (local == null || sourceZ == null || !layerId) return stack;
 
-  const out = stack.map((seg) => ({ ...seg }));
+  const out = stack.map((seg) => ({ ...seg })),
+    sidewall =
+      face === 'front'
+        ? { layerId, z0: local, z1: sourceZ, role: 'conformal-sidewall' }
+        : { layerId, z0: sourceZ, z1: local, role: 'conformal-sidewall' };
   if (face === 'front') {
     if (local >= sourceZ - 1e-9) return out;
-    out.push({ layerId, z0: local, z1: sourceZ, role: 'conformal-sidewall' });
+    if (appearance) sidewall.frontSurface = cloneAppearance(appearance);
+    out.push(sidewall);
   } else {
     if (local <= sourceZ + 1e-9) return out;
-    out.unshift({ layerId, z0: sourceZ, z1: local, role: 'conformal-sidewall' });
+    if (appearance) sidewall.backSurface = cloneAppearance(appearance);
+    out.unshift(sidewall);
   }
   return normalizeStack(out);
 }
@@ -509,7 +516,15 @@ function addVoidConformalSidewall(model, geom, layerId, face, source) {
   model.regions.push({
     id: `region-${model.nextRegionId++}`,
     geom,
-    stack: [{ layerId, z0, z1, role: 'conformal-sidewall' }],
+    stack: [
+      {
+        layerId,
+        z0,
+        z1,
+        role: 'conformal-sidewall',
+        ...(source.appearance ? { [surfaceField(face)]: cloneAppearance(source.appearance) } : {}),
+      },
+    ],
   });
 }
 
@@ -541,7 +556,8 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       splitByArea(
         model,
         band,
-        (stack) => conformalSidewallStack(stack, layerId, face, source.z),
+        (stack) =>
+          conformalSidewallStack(stack, layerId, face, source.z, source.appearance),
         false,
       );
 
