@@ -50,6 +50,7 @@ import {
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import {
+  clearWorkspaceRecoveryPoints,
   clearWorkspaceState,
   createWorkspaceRecoveryCheckpoint,
   listWorkspaceRecoveryPoints,
@@ -210,8 +211,9 @@ function scheduleWorkspacePersistence() {
 }
 
 async function refreshRecoveryOptions() {
-  const select = $('workspaceRecoverySelect');
-  const restore = $('workspaceRestoreBtn');
+  const select = $('workspaceRecoverySelect'),
+    restore = $('workspaceRestoreBtn'),
+    clear = $('workspaceRecoveryClearBtn');
   if (!select || !restore) return;
   try {
     const points = await listWorkspaceRecoveryPoints();
@@ -219,6 +221,7 @@ async function refreshRecoveryOptions() {
     if (!points.length) {
       select.append(new Option('No recovery points', ''));
       restore.disabled = true;
+      if (clear) clear.disabled = true;
       return;
     }
     for (const point of points) {
@@ -227,7 +230,9 @@ async function refreshRecoveryOptions() {
       const commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
       select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
     }
-    restore.disabled = !workspaceSession?.canWrite();
+    const writable = workspaceSession?.canWrite() ?? false;
+    restore.disabled = !writable;
+    if (clear) clear.disabled = !writable;
   } catch (error) {
     console.warn('Could not list workspace recovery points.', error);
   }
@@ -248,6 +253,7 @@ function syncWorkspaceSessionState({ writable }) {
     }
     setWorkspaceSaveStatus('Autosave paused · another tab owns local storage');
     if ($('workspaceRestoreBtn')) $('workspaceRestoreBtn').disabled = true;
+    if ($('workspaceRecoveryClearBtn')) $('workspaceRecoveryClearBtn').disabled = true;
     status(
       'Another tab owns local autosave. Editing and mask import remain available; use Take over to save from this tab.',
       'warning',
@@ -2044,6 +2050,27 @@ function bindUi() {
   $('workspaceRestoreBtn').onclick = () => {
     void restoreSelectedWorkspaceRecovery();
   };
+  $('workspaceRecoveryClearBtn').onclick = async () => {
+    if (!workspaceSession?.canWrite()) {
+      status('This tab cannot clear local Recovery while another tab owns browser storage.', 'warning');
+      return;
+    }
+    if (!globalThis.confirm('Clear all local Recovery checkpoints? The current autosaved workspace is kept.')) {
+      return;
+    }
+    try {
+      const removed = await clearWorkspaceRecoveryPoints();
+      await refreshRecoveryOptions();
+      status(
+        removed
+          ? `Cleared ${removed} local Recovery checkpoint${removed === 1 ? '' : 's'}.`
+          : 'Recovery is already empty.',
+      );
+    } catch (error) {
+      console.error(error);
+      status(`Could not clear Recovery: ${error.message}`, 'error');
+    }
+  };
 
   $('projectNameInput').oninput = (event) => {
     projectName = String(event.target.value ?? '').slice(0, 256);
@@ -2070,15 +2097,49 @@ function bindUi() {
     status('New empty project.');
   };
 
-  $('saveProjectBtn').onclick = () => {
+  $('saveProjectBtn').onclick = async () => {
+    if (!workspaceSession?.canWrite()) {
+      status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
+      return;
+    }
+    try {
+      projectName = normalizedProjectName();
+      syncProjectNameInput();
+      if (workspacePersistenceTimer != null) {
+        clearTimeout(workspacePersistenceTimer);
+        workspacePersistenceTimer = null;
+      }
+      const project = buildProjectSnapshot(true);
+      setWorkspaceSaveStatus('Saving…');
+      workspacePersistenceWrite = workspacePersistenceWrite
+        .catch(() => {})
+        .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
+        .then(() =>
+          createWorkspaceRecoveryCheckpoint(project, {
+            appCommit: loadedBuildVersion,
+            reason: `manual-save · ${projectName}`,
+          }),
+        );
+      await workspacePersistenceWrite;
+      setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+      await refreshRecoveryOptions();
+      status(`Saved "${projectName}" locally. It is available in Recovery.`);
+    } catch (error) {
+      console.error(error);
+      setWorkspaceSaveStatus('Local save failed', true);
+      status(`Local Save failed: ${error.message}`, 'error');
+    }
+  };
+
+  $('exportProjectBtn').onclick = () => {
     try {
       projectName = normalizedProjectName();
       syncProjectNameInput();
       downloadProject(buildProjectSnapshot(true), projectExportFilename());
-      status(`Project saved as ${projectExportFilename()}.`);
+      status(`Exported ${projectExportFilename()}.`);
     } catch (error) {
       console.error(error);
-      status(`Save failed: ${error.message}`);
+      status(`Export failed: ${error.message}`, 'error');
     }
   };
 
