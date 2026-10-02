@@ -251,6 +251,41 @@ test('material solid topology removes internal caps across computational partiti
   assert.ok(Math.abs(geometryArea(solid.slabs[0].polys) - 200) < 1e-8);
 });
 
+test('topology derivation is pure after a mixed Etch and Conformal sequence', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 1.5,
+    face: 'front',
+    area: rectMulti(8, 6),
+    surface: {
+      kind: 'rough',
+      featureSize: 0.5,
+      meanHeight: 0.4,
+      featureCv: 0.2,
+      heightCv: 0.2,
+      morphology: 'stochastic',
+      polarity: 'inverted',
+    },
+  });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Coat',
+    thickness: 0.6,
+    face: 'front',
+    area: model.boundary,
+    growth: 'conformal',
+  });
+
+  const before = structuredClone(model);
+  deriveProcessTopology(model, { face: 'front' });
+  deriveProcessTopology(model, { face: 'back' });
+  sectionSlicesFromTopology(model, [-9, 0], [9, 0]);
+  materialSolidsFromTopology(model);
+  appearanceSurfaceGroupsFromTopology(model);
+  assert.deepEqual(model, before);
+});
+
 test('deriveProcessTopology reports one coherent 2.5D fact set', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
   const topology = deriveProcessTopology(model);
