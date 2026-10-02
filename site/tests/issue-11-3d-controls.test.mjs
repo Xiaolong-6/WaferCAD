@@ -40,7 +40,9 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /capState = \{[\s\S]*?depthTest: true/);
   assert.match(threeView, /capMaterial\.polygonOffset = true/);
   assert.match(threeView, /capMaterial\.polygonOffsetFactor = -1/);
-  assert.match(threeView, /material\.forceSinglePass = true/);
+  assert.match(threeView, /part\.type === 'cap'/);
+  assert.match(threeView, /\\u0000side\\u0000\\${part\.z0}\\u0000\\${part\.z1}/);
+  assert.doesNotMatch(threeView, /forceSinglePass/);
   assert.doesNotMatch(threeView, /opacity: 0\.18/);
   assert.doesNotMatch(threeView, /opacity: 0\.3/);
   assert.match(threeView, /roughProfileOffsetAtPoint\(/);
