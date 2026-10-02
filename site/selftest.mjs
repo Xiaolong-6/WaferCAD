@@ -59,6 +59,43 @@ assert.equal(
   roughProfileOffsetAtPoint(1.25, -0.75, zeroCvAppearance),
   zeroCvAppearance.meanHeight,
 );
+const pyramidAppearance = {
+  kind: 'rough',
+  morphology: 'pyramid',
+  polarity: 'normal',
+  featureSize: 2,
+  meanHeight: 0.8,
+  featureCv: 0,
+  heightCv: 0,
+  etchDepth: 1,
+  seed: 7,
+  profileId: 'pyramid-test',
+};
+assert.equal(roughProfileOffsetAtPoint(0, 0, pyramidAppearance), 0.8);
+assert.equal(roughProfileOffsetAtPoint(1, 0, pyramidAppearance), 0);
+assert.ok(
+  Math.abs(
+    roughProfileOffsetAtPoint(0, 0, { ...pyramidAppearance, polarity: 'inverted' }) - 0.2
+  ) < 1e-12,
+);
+assert.equal(
+  roughProfileOffsetAtPoint(1, 0, { ...pyramidAppearance, polarity: 'inverted' }),
+  1,
+);
+for (const [x, y] of [
+  [0, 0],
+  [0.25, 0.4],
+  [0.8, -0.3],
+  [1, 1],
+]) {
+  const normal = roughProfileOffsetAtPoint(x, y, pyramidAppearance),
+    inverted = roughProfileOffsetAtPoint(x, y, {
+      ...pyramidAppearance,
+      polarity: 'inverted',
+    });
+  assert.ok(Math.abs(normal + inverted - pyramidAppearance.etchDepth) < 1e-12);
+}
+
 
 const defaults = createModel();
 assert.equal(defaults.width, 100000);
@@ -130,6 +167,32 @@ assert.equal(Number.isInteger(roughSurface.frontSurface.seed), true);
 
 assert.equal(roughSurface.frontSurface.etchDepth, 1);
 assert.deepEqual(roughVisualBoundsZ(roughEtch, [-5, 4]), [-5, 5]);
+const pyramidEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const pyramidResult = applyOperation(pyramidEtch, {
+  type: 'etch',
+  thickness: 1,
+  face: 'front',
+  area,
+  surface: {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'inverted',
+    featureSize: 0.6,
+    meanHeight: 0.7,
+    featureCv: 0,
+    heightCv: 0,
+    geometryMode: 'ideal',
+  },
+});
+assert.equal(pyramidResult.changed, true);
+const pyramidSurface = surfaceSegment(regionAt(pyramidEtch, [0, 0]).stack).frontSurface;
+assert.equal(pyramidSurface.morphology, 'pyramid');
+assert.equal(pyramidSurface.polarity, 'inverted');
+assert.equal(pyramidSurface.featureCv, 0);
+assert.equal(pyramidSurface.heightCv, 0);
+assert.equal(pyramidSurface.meanHeight, 0.7);
+assert.equal(pyramidSurface.etchDepth, 1);
+
 
 const invalidRoughEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const invalidRoughResult = applyOperation(invalidRoughEtch, {
