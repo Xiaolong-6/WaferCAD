@@ -1646,6 +1646,7 @@ async function reloadWorkspaceSafely() {
       );
     await workspacePersistenceWrite;
     setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+    workspaceSession.stop();
     globalThis.location.reload();
   } catch (error) {
     if (button) {
