@@ -1163,6 +1163,9 @@ export function createThreeView({
 
     renderer.setPixelRatio(multiplier);
     renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
+    camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
+    camera.updateProjectionMatrix();
+    render();
     renderer.render(scene, camera);
     try {
       const blob = await new Promise((resolve, reject) =>
@@ -1177,6 +1180,7 @@ export function createThreeView({
       renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
       camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
       camera.updateProjectionMatrix();
+      render();
       scheduleFrame();
     }
   }
