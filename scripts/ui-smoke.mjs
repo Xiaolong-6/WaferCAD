@@ -182,9 +182,14 @@ assert.equal(await page.locator('#roughFeatureRow').isVisible(), true);
 assert.equal(await page.locator('#roughHeightRow').isVisible(), true);
 assert.match(await page.locator('#operationNote').textContent(), /render-only/);
 await page.locator('#operationArea').selectOption('full');
-await page.locator('#operationThickness').fill('1');
+await page.locator('#operationThickness').fill('0.5');
+assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '0.5');
 await page.locator('#roughFeatureSize').fill('0.4');
 await page.locator('#roughAmplitude').fill('0.8');
+await page.locator('#applyOperationBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /Height cannot exceed Etch Depth/);
+await page.locator('#operationThickness').fill('1');
+assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '1');
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 await page.waitForFunction(() =>
@@ -215,7 +220,8 @@ assert.ok(
       segment.frontSurface?.kind === 'rough' &&
       segment.frontSurface.geometryMode === 'ideal' &&
       Math.abs(segment.frontSurface.featureSize - 0.4) < 1e-12 &&
-      Math.abs(segment.frontSurface.amplitude - 0.8) < 1e-12,
+      Math.abs(segment.frontSurface.amplitude - 0.8) < 1e-12 &&
+      Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
 );
 await page.locator('#operationTab').click();
@@ -708,7 +714,34 @@ await page.locator('#maskRoiEditor > summary').click();
 assert.equal(await page.locator('#maskRoiFields').isVisible(), true);
 assert.equal((await page.locator('#maskRoiShapeLabel').textContent()).trim(), 'Square');
 assert.ok(Number(await page.locator('#maskRoiSize').inputValue()) > 0);
+await page.locator('#maskRoiRotation').fill('27.5');
+await page.locator('#maskRoiRotation').press('Tab');
+assert.equal(Number(await page.locator('#maskRoiRotation').inputValue()), 27.5);
+const maskRoiLocalX = await page.locator('#maskRoiX').inputValue(),
+  maskRoiLocalY = await page.locator('#maskRoiY').inputValue(),
+  maskRoiLocalSize = await page.locator('#maskRoiSize').inputValue();
 await page.locator('#maskRoiEditor > summary').click();
+
+// File-mask alignment moves the Mask ROI visually, but its local parameters stay unchanged.
+await page.locator('#maskTab').click();
+const alignment = page.locator('#maskFileControls details.subgroup');
+if (!(await alignment.evaluate((details) => details.open))) {
+  await alignment.locator(':scope > summary').click();
+}
+await page.locator('#maskOffsetX').fill('1');
+await page.locator('#maskOffsetY').fill('-0.5');
+await page.locator('#maskScale').fill('1.1');
+await page.locator('#maskRotation').fill('12');
+await page.locator('#maskRoiEditor > summary').click();
+assert.equal(await page.locator('#maskRoiX').inputValue(), maskRoiLocalX);
+assert.equal(await page.locator('#maskRoiY').inputValue(), maskRoiLocalY);
+assert.equal(await page.locator('#maskRoiSize').inputValue(), maskRoiLocalSize);
+assert.equal(Number(await page.locator('#maskRoiRotation').inputValue()), 27.5);
+await page.locator('#maskRoiEditor > summary').click();
+await page.locator('#maskOffsetX').fill('0');
+await page.locator('#maskOffsetY').fill('0');
+await page.locator('#maskScale').fill('1');
+await page.locator('#maskRotation').fill('0');
 
 // Each view exposes one Export menu; format-specific actions live inside it.
 for (const [panel, button, filename] of [
