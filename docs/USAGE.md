@@ -85,7 +85,8 @@ Choose an action:
 
 - Deposit new layer;
 - Extend existing layer;
-- Etch / subtract.
+- Etch / subtract;
+- Implant **(experimental)**.
 
 Choose an area:
 
@@ -98,21 +99,23 @@ For Deposit and Extend, choose:
 - Directional;
 - Conformal.
 
-Etch has no coverage setting.
+Etch has no coverage setting. Its **Surface** selector supports **Smooth**, **Rough**, and **Pyramid**. Rough is stochastic correlated relief; Pyramid is a deterministic square-pyramid array. Both expose **Orientation**: Normal points features outward and Inverted mirrors the same field inward. Rough additionally exposes Feature/Height CV controls. Surface morphology is render-only metadata on the newly exposed face; it does not alter the canonical material Z stack. Section and 3D sample the same deterministic field.
 
-Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness and Etch uses Z as etch depth. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md).
+Implant is a structural visualization primitive rather than a dopant-physics solver. Set Name, Area, Depth, and optional signed **Tilt X**; Apply records the existing exposed implant volume without creating a material layer. Color is assigned from the active 20-color structure palette after Apply and is edited from the Layers legend. Later Etch operations clip the surviving Implant volume instead of regenerating a new full-depth marker.
+
+Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness; Etch and Implant use it as depth. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md), [surface morphology](ROUGHNESS_MORPHOLOGY.md), and [experimental Implant](IMPLANT_EXPERIMENTAL.md).
 
 ## 7. Manage layers
 
-The Section A–B layer legend is also the layer manager.
+The Section A–B **Layers** legend is also the display manager for material layers and Implant annotations.
 
-Each row lets you edit the layer name. Color is intentionally a secondary visual setting: choose from the active curated palette by clicking the layer swatch. The legend header provides several preset palettes and a Random action that generates a harmonious palette. Arbitrary color-picker input is not exposed.
+Each material row lets you edit the layer name. Color is intentionally a secondary visual setting: choose from the active curated palette by clicking the layer swatch. Implant rows use the same palette system, expose independent visibility checkboxes, and keep the checkbox at the right edge with the delete control alignment. The built-in palettes and Random palette contain 20 colors; Random recolors both material layers and implants. Arbitrary color-picker input is not exposed in the Process form.
 
-Layer identity is stored separately from the visible name, so renaming or recoloring does not break Extend, Etch, Undo, or saved projects.
+Layer and Implant identities are stored separately from visible names/colors, so renaming or recoloring does not break Extend, Etch, Implant clipping, Undo, or saved projects.
 
 ## 8. Inspect Main and Section
 
-Main can display the front or back surface.
+Main can display the front or back surface. Non-smooth wafer regions keep the same material color with a subtle darkening, while Implant uses a light overlay so the base pattern remains readable. Section shows the actual Rough/Pyramid profile and clipped Implant gradient volume; 3D uses geometry-displaced morphology and a translucent surviving internal Implant volume.
 
 Existing Slice geometry is always editable in **Main**: drag A or B directly, or drag the A–B line itself to translate the whole slice. The **Slice** button opens the A–B coordinate panel and starts one-shot creation mode; drag anywhere in Main to create a replacement A→B line, then creation mode ends automatically while the existing slice remains editable. Closing the panel does not lock the slice. A focused endpoint also accepts arrow keys (one screen pixel, or ten with Shift). Numeric inputs provide exact coordinate editing. Front/Back uses the same canonical coordinates with a mirrored view.
 
@@ -144,7 +147,7 @@ Use **Settings → Save** to export the current project. Snapshot records are in
 
 The active workspace is also autosaved locally in IndexedDB. Reloading `app.html` restores the most recent local workspace; an explicit project/example launched from the welcome page takes priority over that local restore.
 
-Use **Settings → Open** to restore a project. Older supported project files are migrated to the current format version before validation. Save and Open enforce the same 256 MB safety limit.
+Use **Settings → Open** to restore a project. Older supported project files are migrated to the current **v13** format before validation. v13 adds Pyramid morphology while preserving v12 stochastic morphology/polarity and older project semantics. Save and Open enforce the same 256 MB safety limit.
 
 
 ### Base lifecycle and Process
