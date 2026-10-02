@@ -2846,3 +2846,31 @@ summary:focus-visible {
   width: auto !important;
   margin: 0;
 }
+
+.implant-legend-row {
+  grid-template-columns: 14px 20px minmax(0, 1fr) auto;
+}
+.legend-visibility {
+  width: 12px !important;
+  height: 12px !important;
+  margin: 0 !important;
+}
+.implant-gradient-chip {
+  width: 18px;
+}
+.implant-color-input {
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0;
+  pointer-events: none;
+}
+.implant-row-wrap {
+  position: relative;
+}
+.implant-row-wrap.implant-hidden {
+  opacity: 0.48;
+}
+.implant-exp-tag {
+  justify-self: end;
+}
