@@ -7,7 +7,9 @@ await loadGeometryKernel();
 const { applyOperation, createModel, geometryArea } = await import('../model.js');
 const {
   appearanceSurfaceGroupsFromTopology,
+  classifyCoverageVoids,
   conformalMaterialWallTargets,
+  conformalWallTargets,
   deriveProcessTopology,
   exposedLayerIdsFromTopology,
   exposedSurfaceGroups,
@@ -121,6 +123,83 @@ test('conformal wall targets select only the physically lower neighbor', () => {
   assert.equal(targets[0].localZ, 4);
   assert.equal(targets[0].sourceZ, 6);
   assert.ok(geometryArea(targets[0].geom) > 0);
+});
+
+test('coverage topology distinguishes numerical cracks from true voids', () => {
+  const crackModel = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 }),
+    gap = 5e-5,
+    half = 10 - gap / 2;
+  crackModel.regions = [
+    {
+      id: 'left',
+      geom: rectMulti(half, 10, -5 - gap / 4, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+    {
+      id: 'right',
+      geom: rectMulti(half, 10, 5 + gap / 4, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+  ];
+  const crackCoverage = classifyCoverageVoids(crackModel, { crackTolerance: 1e-4 });
+  assert.equal(crackCoverage.cracks.length, 1);
+  assert.equal(crackCoverage.voids.length, 0);
+
+  const voidModel = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  voidModel.regions = [
+    {
+      id: 'left-half',
+      geom: rectMulti(10, 10, -5, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+  ];
+  const voidCoverage = classifyCoverageVoids(voidModel, { crackTolerance: 1e-4 });
+  assert.equal(voidCoverage.cracks.length, 0);
+  assert.equal(voidCoverage.voids.length, 1);
+  assert.ok(voidCoverage.voids[0].area > 40);
+});
+
+test('conformal wall topology emits material-wall and void-wall explicitly', () => {
+  const stepped = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  stepped.regions = [
+    {
+      id: 'high',
+      geom: rectMulti(10, 10, -5, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 6 }],
+    },
+    {
+      id: 'low',
+      geom: rectMulti(10, 10, 5, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+  ];
+  const band = rectMulti(1, 10, 0, 0),
+    stepTargets = conformalWallTargets(stepped, band, {
+      face: 'front',
+      source: { z: 6, oppositeZ: -4 },
+      voidDomain: [],
+    });
+  assert.equal(stepTargets.materialWalls.length, 1);
+  assert.equal(stepTargets.materialWalls[0].kind, 'material-wall');
+  assert.equal(stepTargets.voidWalls.length, 0);
+
+  const open = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  open.regions = [
+    {
+      id: 'left',
+      geom: rectMulti(10, 10, -5, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 6 }],
+    },
+  ];
+  const openTargets = conformalWallTargets(open, band, {
+    face: 'front',
+    source: { z: 6, oppositeZ: -4 },
+    voidDomain: uncoveredDomain(open),
+  });
+  assert.equal(openTargets.materialWalls.length, 0);
+  assert.equal(openTargets.voidWalls.length, 1);
+  assert.equal(openTargets.voidWalls[0].kind, 'void-wall');
+  assert.deepEqual([openTargets.voidWalls[0].z0, openTargets.voidWalls[0].z1], [-4, 6]);
 });
 
 test('deriveProcessTopology reports one coherent 2.5D fact set', () => {
