@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 11;
+export const CURRENT_PROJECT_VERSION = 12;
 
 const LIMITS = {
   layers: 10000,
@@ -112,6 +112,14 @@ function validateSurfaceAppearance(appearance, path) {
   const meanHeight = assertFinite(appearance.meanHeight, `${path}.meanHeight`, { min: 1e-12 });
   assertFinite(appearance.featureCv, `${path}.featureCv`, { min: 0, max: 1 });
   assertFinite(appearance.heightCv, `${path}.heightCv`, { min: 0, max: 1 });
+  assertString(appearance.morphology, `${path}.morphology`);
+  if (appearance.morphology !== 'stochastic') {
+    fail(`${path}.morphology`, 'must be stochastic for the current roughness generator.');
+  }
+  assertString(appearance.polarity, `${path}.polarity`);
+  if (!['inverted', 'normal'].includes(appearance.polarity)) {
+    fail(`${path}.polarity`, 'must be inverted or normal.');
+  }
   assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
   assertString(appearance.profileId, `${path}.profileId`, { max: 128 });
   if (appearance.etchDepth != null) {
@@ -682,26 +690,34 @@ function migrateLegacyMaskRoiToLocal(maskRoi, transform) {
 
 function migrateRoughAppearances(model) {
   if (!isObject(model)) return;
+
+  const migrateAppearance = (appearance) => {
+    if (!isObject(appearance) || appearance.kind !== 'rough') return;
+    const legacyHeight = Number(appearance.meanHeight ?? appearance.amplitude);
+    if (!(appearance.meanHeight > 0) && legacyHeight > 0) appearance.meanHeight = legacyHeight;
+    if (!(appearance.etchDepth > 0)) {
+      appearance.etchDepth = Math.max(1e-12, Number(appearance.meanHeight) || legacyHeight || 1);
+    }
+    if (!Number.isFinite(appearance.featureCv)) appearance.featureCv = 0.25;
+    if (!Number.isFinite(appearance.heightCv)) appearance.heightCv = 0.25;
+    appearance.featureCv = Math.max(0, Math.min(1, appearance.featureCv));
+    appearance.heightCv = Math.max(0, Math.min(1, appearance.heightCv));
+    appearance.morphology = 'stochastic';
+    if (!['inverted', 'normal'].includes(appearance.polarity)) appearance.polarity = 'inverted';
+    if (typeof appearance.profileId !== 'string' || !appearance.profileId) {
+      appearance.profileId = `rough-${Number(appearance.seed) >>> 0}`;
+    }
+    delete appearance.amplitude;
+  };
+
   for (const region of model.regions || []) {
     for (const segment of region.stack || []) {
-      for (const field of ['frontSurface', 'backSurface']) {
-        const appearance = segment[field];
-        if (!isObject(appearance) || appearance.kind !== 'rough') continue;
-        const legacyHeight = Number(appearance.meanHeight ?? appearance.amplitude);
-        if (!(appearance.meanHeight > 0) && legacyHeight > 0) appearance.meanHeight = legacyHeight;
-        if (!(appearance.etchDepth > 0)) {
-          appearance.etchDepth = Math.max(1e-12, Number(appearance.meanHeight) || legacyHeight || 1);
-        }
-        if (!Number.isFinite(appearance.featureCv)) appearance.featureCv = 0.25;
-        if (!Number.isFinite(appearance.heightCv)) appearance.heightCv = 0.25;
-        appearance.featureCv = Math.max(0, Math.min(1, appearance.featureCv));
-        appearance.heightCv = Math.max(0, Math.min(1, appearance.heightCv));
-        if (typeof appearance.profileId !== 'string' || !appearance.profileId) {
-          appearance.profileId = `rough-${Number(appearance.seed) >>> 0}`;
-        }
-        delete appearance.amplitude;
-      }
+      migrateAppearance(segment.frontSurface);
+      migrateAppearance(segment.backSurface);
     }
+  }
+  for (const implant of model.implants || []) {
+    for (const patch of implant.patches || []) migrateAppearance(patch.surfaceAppearance);
   }
 }
 
@@ -737,7 +753,7 @@ function migrateProjectCore(project) {
   if (version < 8 && project.maskRoi != null) {
     project.maskRoi = migrateLegacyMaskRoiToLocal(project.maskRoi, project.maskTransform);
   }
-  if (version < 9) migrateRoughAppearances(project.model);
+  if (version < 12) migrateRoughAppearances(project.model);
   if (version < 10 && isObject(project.model)) {
     if (!Array.isArray(project.model.implants)) project.model.implants = [];
     if (!Number.isInteger(project.model.nextImplantId) || project.model.nextImplantId < 1) {
