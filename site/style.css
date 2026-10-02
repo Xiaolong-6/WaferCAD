@@ -131,7 +131,7 @@ button:hover,
 .control-section input,
 .control-section select {
   width: 100%;
-  height: 27px;
+  height: 25px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: #fff;
@@ -146,12 +146,12 @@ button:hover,
 }
 .field-row {
   display: grid !important;
-  grid-template-columns: 57px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
   gap: 5px;
-  font-size: 11.5px;
+  font-size: 11px;
   color: #46515d;
-  margin: 4px 0 !important;
+  margin: 3px 0 !important;
 }
 .three-fields,
 .four-fields {
@@ -1060,7 +1060,7 @@ canvas {
   min-height: 0;
   overflow: auto;
   border-bottom: 0;
-  padding: 7px 8px 8px;
+  padding: 6px 7px 7px;
   background: #fff;
 }
 
@@ -1069,21 +1069,21 @@ canvas {
 }
 
 .tool-tab-panel.operation-section {
-  padding: 7px 8px 8px;
+  padding: 6px 7px 7px;
   background: #fdfcff;
 }
 
 .tool-context {
-  min-height: 23px;
+  min-height: 21px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 2px 4px;
+  padding: 0 1px 3px;
   border-bottom: 1px solid var(--line2);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: #5e6976;
-  font-size: 10px;
+  font-size: 9.5px;
 }
 
 .tool-context .muted {
@@ -1187,7 +1187,187 @@ canvas {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 4px;
   align-items: center;
-  margin-top: 5px;
+  margin-top: 4px;
+}
+
+/* Compact engineering form grammar shared by the function panel. */
+.process-context {
+  min-height: 24px;
+}
+
+.context-action {
+  height: 21px;
+  min-width: 54px;
+  padding: 1px 7px;
+  font-size: 9.5px;
+}
+
+.process-control-body {
+  display: grid;
+  gap: 3px;
+}
+
+.process-mode {
+  margin: 1px 0 3px;
+}
+
+.process-mode button {
+  height: 25px;
+  font-size: 10.5px;
+}
+
+.param-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 7px;
+  margin: 1px 0;
+  min-width: 0;
+}
+
+.param-grid-2:not(:has(> :not(.hidden))) {
+  display: none;
+}
+
+.param-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: #4f5b67;
+  font-size: 10px;
+}
+
+.param-field > span:first-child {
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.param-field > input,
+.param-field > select {
+  min-width: 0;
+  height: 25px;
+  padding: 2px 5px;
+  text-align: right;
+}
+
+.param-field > select {
+  text-align: left;
+}
+
+.param-field input[type='color'] {
+  min-width: 42px;
+  padding: 2px;
+}
+
+.field-unit {
+  min-width: 12px;
+  color: #7a8691;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.inline-check {
+  min-width: 0;
+  min-height: 25px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  color: #56626f;
+}
+
+.inline-check input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+#operationTools:has([data-process-mode='etch'].active) #operationThicknessRow {
+  grid-column: 1 / -1;
+}
+
+.rough-param-grid {
+  border-top: 1px solid var(--line2);
+  padding-top: 3px;
+  margin-top: 1px;
+}
+
+.operation-actions + .compact-hint {
+  margin-top: 3px;
+  line-height: 1.2;
+}
+
+.compact-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.compact-action-row .recovery-field {
+  min-width: 0;
+}
+
+.compact-action-row > button {
+  height: 25px;
+  white-space: nowrap;
+}
+
+.settings-project-actions {
+  margin-top: 4px;
+}
+
+.snapshot-panel {
+  gap: 3px;
+}
+
+@media (max-width: 600px) {
+  .process-mode button {
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 9.5px;
+    white-space: nowrap;
+  }
+
+  .process-mode .experimental-tag {
+    display: none;
+  }
+
+  .param-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .param-grid-2 > :not(.hidden) {
+    grid-column: 1 / -1;
+  }
+
+  .param-field {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    font-size: 9.5px;
+  }
+
+  .param-field > * {
+    min-width: 0;
+  }
+
+  .inline-check {
+    overflow: hidden;
+  }
+
+  .compact-action-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compact-action-row > button {
+    width: 100%;
+  }
 }
 
 .operation-actions .apply-btn {
