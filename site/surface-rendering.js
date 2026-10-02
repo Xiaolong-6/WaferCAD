@@ -115,7 +115,30 @@ function roughNoise2D(x, y, featureSize, seed) {
   return a + (b - a) * sy;
 }
 
+function pyramidProfileOffsetAtPoint(x, y, appearance) {
+  const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
+    depth = roughMaxRelief(appearance),
+    height = Math.min(
+      depth,
+      Math.max(0, Number(appearance?.meanHeight ?? appearance?.amplitude) || feature),
+    ),
+    wrap = (value) => {
+      const unit = Number(value) / feature;
+      return unit - Math.floor(unit + 0.5);
+    },
+    localX = wrap(x),
+    localY = wrap(y),
+    tent = Math.max(0, 1 - 2 * Math.max(Math.abs(localX), Math.abs(localY))),
+    normalOffset = height * tent,
+    offset = appearance?.polarity === 'normal' ? normalOffset : depth - normalOffset;
+  return Object.is(offset, -0) ? 0 : offset;
+}
+
 export function roughProfileOffsetAtPoint(x, y, appearance) {
+  if (appearance?.morphology === 'pyramid') {
+    return pyramidProfileOffsetAtPoint(x, y, appearance);
+  }
+
   const meanFeature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
     meanHeight = Math.max(
       0,
