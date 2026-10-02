@@ -447,8 +447,57 @@ test('v8 migration upgrades rough amplitude metadata to mean/CV profile schema',
   assert.equal(rough.meanHeight, 0.4);
   assert.equal(rough.featureCv, 0.25);
   assert.equal(rough.heightCv, 0.25);
+  assert.equal(rough.morphology, 'stochastic');
+  assert.equal(rough.polarity, 'inverted');
   assert.equal(rough.profileId, 'rough-123');
   assert.equal('amplitude' in rough, false);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('v11 rough surfaces migrate to stochastic inverted polarity without visual drift', () => {
+  const source = validProject();
+  source.version = 11;
+  source.model.regions[0].stack[0].frontSurface = {
+    kind: 'rough',
+    featureSize: 0.5,
+    meanHeight: 0.4,
+    featureCv: 0.2,
+    heightCv: 0.3,
+    etchDepth: 0.8,
+    seed: 321,
+    profileId: 'rough-v11',
+    geometryMode: 'ideal',
+  };
+  source.model.implants = [
+    {
+      id: 'implant-1',
+      name: 'Rough implant',
+      color: '#D65A6F',
+      face: 'front',
+      thickness: 0.5,
+      tilt: 0,
+      visible: true,
+      patches: [
+        {
+          geom: structuredClone(source.model.boundary),
+          z: 4,
+          zMin: -4,
+          zMax: 4,
+          layerId: 'base',
+          surfaceAppearance: structuredClone(source.model.regions[0].stack[0].frontSurface),
+        },
+      ],
+    },
+  ];
+  source.model.nextImplantId = 2;
+
+  const migrated = migrateProjectFile(source),
+    rough = migrated.model.regions[0].stack[0].frontSurface,
+    implantRough = migrated.model.implants[0].patches[0].surfaceAppearance;
+  assert.equal(rough.morphology, 'stochastic');
+  assert.equal(rough.polarity, 'inverted');
+  assert.equal(implantRough.morphology, 'stochastic');
+  assert.equal(implantRough.polarity, 'inverted');
   assert.equal(validateProjectFile(migrated), migrated);
 });
 
