@@ -1,15 +1,10 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
+import { implantSolids, materialSolids } from './model-view-geometry.js';
+import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
-  appearanceSurfaceGroups,
-  implantSolids,
-  materialSolids,
-  solidBorders,
-} from './model-view-geometry.js';
-import { difference, intersection, isEmpty } from './vector-geometry.js';
-import {
+  adaptiveRoughMeshLod,
+  projectedPixelsPerUnit,
   roughLod,
-  roughMeshSubdivisionDepth,
-  roughMeshTriangleBudget,
   roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
@@ -61,29 +56,124 @@ export function createThreeView({
   let initPromise = null;
   let frame = null;
   let interacting = false;
+  let rendering = false;
+  let lastLodSignature = null;
   let roughMeshes = [];
   let transparentMeshes = [];
 
-  function updateRoughLod() {
-    if (!camera || !renderer || !controls || !roughMeshes.length) return;
-    const distance = Math.max(1e-9, camera.position.distanceTo(controls.target)),
-      height = Math.max(2, renderer.domElement.clientHeight || host.clientHeight || 2),
-      pxPerUm = height / (2 * distance * Math.tan((camera.fov * Math.PI) / 360));
+  function currentViewport() {
+    return {
+      width: Math.max(2, renderer?.domElement?.clientWidth || host.clientWidth || 2),
+      height: Math.max(2, renderer?.domElement?.clientHeight || host.clientHeight || 2),
+      pixelRatio: Math.max(0.25, renderer?.getPixelRatio?.() || 1),
+    };
+  }
+
+  function visibleBounds(model, clip) {
+    const modelBounds = {
+        minX: -model.width / 2,
+        minY: -model.height / 2,
+        maxX: model.width / 2,
+        maxY: model.height / 2,
+      },
+      clipBounds = xyBounds(clip);
+    if (!clipBounds) return modelBounds;
+    const bounds = {
+      minX: Math.max(modelBounds.minX, clipBounds.minX),
+      minY: Math.max(modelBounds.minY, clipBounds.minY),
+      maxX: Math.min(modelBounds.maxX, clipBounds.maxX),
+      maxY: Math.min(modelBounds.maxY, clipBounds.maxY),
+    };
+    return bounds.maxX > bounds.minX && bounds.maxY > bounds.minY ? bounds : modelBounds;
+  }
+
+  function boundsArea(bounds) {
+    if (!bounds) return 0;
+    return Math.max(0, bounds.maxX - bounds.minX) * Math.max(0, bounds.maxY - bounds.minY);
+  }
+
+  function lodContextFor(model, clip, polys, z = 0) {
+    const viewport = currentViewport(),
+      patchBounds = xyBounds(polys),
+      viewBounds = visibleBounds(model, clip),
+      modelArea = Math.max(1e-12, Number(model.width) * Number(model.height)),
+      visibleArea = Math.max(1e-12, boundsArea(viewBounds)),
+      patchArea = Math.max(1e-12, Math.min(visibleArea, boundsArea(patchBounds) || visibleArea)),
+      center = patchBounds
+        ? new THREE.Vector3(
+            (patchBounds.minX + patchBounds.maxX) / 2,
+            (patchBounds.minY + patchBounds.maxY) / 2,
+            z * (group?.scale?.z || 1),
+          )
+        : controls.target.clone(),
+      distance = Math.max(1e-9, camera.position.distanceTo(center));
+
+    return {
+      distance,
+      viewportWidth: viewport.width,
+      viewportHeight: viewport.height,
+      pixelRatio: viewport.pixelRatio,
+      fovDegrees: camera.fov,
+      visibleFraction: Math.max(0, Math.min(1, patchArea / visibleArea)),
+      roiFraction: Math.max(0, Math.min(1, visibleArea / modelArea)),
+    };
+  }
+
+  function adaptiveLodSignature() {
+    if (!camera || !renderer || !controls || !roughMeshes.length) return null;
+    const viewport = currentViewport(),
+      distance = Math.max(1e-9, camera.position.distanceTo(controls.target)),
+      pxPerUnit = projectedPixelsPerUnit({
+        distance,
+        viewportHeight: viewport.height,
+        fovDegrees: camera.fov,
+        pixelRatio: viewport.pixelRatio,
+      }),
+      direction = camera.position.clone().sub(controls.target).normalize(),
+      azimuth = Math.atan2(direction.y, direction.x),
+      elevation = Math.asin(Math.max(-1, Math.min(1, direction.z))),
+      scaleBucket = Math.round(Math.log2(Math.max(1e-12, pxPerUnit)) * 2),
+      azimuthBucket = Math.round(azimuth / (Math.PI / 12)),
+      elevationBucket = Math.round(elevation / (Math.PI / 12)),
+      widthBucket = Math.round((viewport.width * viewport.pixelRatio) / 160),
+      heightBucket = Math.round((viewport.height * viewport.pixelRatio) / 160);
+    return `${scaleBucket}:${azimuthBucket}:${elevationBucket}:${widthBucket}:${heightBucket}`;
+  }
+
+  function updateRoughMaterialLod() {
+    if (!camera || !renderer || !roughMeshes.length) return;
+    const viewport = currentViewport();
     for (const entry of roughMeshes) {
-      const featurePixels = entry.appearance.featureSize * pxPerUm,
+      const point = entry.center.clone();
+      point.z *= group?.scale?.z || 1;
+      const distance = Math.max(1e-9, camera.position.distanceTo(point)),
+        pxPerUm = projectedPixelsPerUnit({
+          distance,
+          viewportHeight: viewport.height,
+          fovDegrees: camera.fov,
+          pixelRatio: viewport.pixelRatio,
+        }),
+        featurePixels = entry.appearance.featureSize * pxPerUm,
         lod = roughLod(featurePixels);
-      // Geometry carries the actual relief. Only the broad material response is
-      // adjusted with view scale; no bump/noise texture is added on top.
       entry.material.roughness = 0.82 + 0.12 * lod.detail;
     }
+  }
+
+  function maybeRebuildAdaptiveGeometry() {
+    if (rendering || !roughMeshes.length) return false;
+    const signature = adaptiveLodSignature();
+    if (!signature || signature === lastLodSignature) return false;
+    render();
+    return true;
   }
 
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
       frame = null;
-      const changed = controls?.update?.() || false;
-      updateRoughLod();
+      const changed = controls?.update?.() || false,
+        rebuilt = maybeRebuildAdaptiveGeometry();
+      if (!rebuilt) updateRoughMaterialLod();
       updateTransparentOrder();
       renderer.render(scene, camera);
       if (interacting || changed) scheduleFrame();
@@ -307,19 +397,17 @@ export function createThreeView({
     polys,
     appearance,
     closeToIdeal = true,
-    clipped = false,
+    lodContext = {},
     profileNormal = normal,
   }) {
     const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, polys),
-      depth = roughMeshSubdivisionDepth({
+      lod = adaptiveRoughMeshLod({
         triangleCount: baseTriangles.length,
         maxEdge,
         featureSize: appearance?.featureSize,
-        maxTriangles: roughMeshTriangleBudget({
-          triangleCount: baseTriangles.length,
-          clipped,
-        }),
+        ...lodContext,
       }),
+      depth = lod.depth,
       triangles = subdivideTriangles(baseTriangles, depth),
       positions = [],
       normals = [],
@@ -385,6 +473,7 @@ export function createThreeView({
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geometry.userData.roughSubdivisionDepth = depth;
+    geometry.userData.roughLod = lod;
     geometry.userData.roughBorderPositions = roughBorderPositions;
     return geometry;
   }
@@ -396,39 +485,27 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallRing(closed, z0, z1, isHole = false) {
-    const points = Array.isArray(closed) ? closed : [],
-      isClosed =
-        points.length > 1 &&
-        points[0][0] === points.at(-1)[0] &&
-        points[0][1] === points.at(-1)[1],
-      ring = (isClosed ? points.slice(0, -1) : points.slice()).map(([x, y]) => [x, y]),
-      positions = [],
+  function geometryFromSidewallParts(parts) {
+    const positions = [],
       normals = [];
-    if (ring.length < 2) return new THREE.BufferGeometry();
-
-    const signedArea = ring.reduce((sum, point, index) => {
-      const next = ring[(index + 1) % ring.length];
-      return sum + point[0] * next[1] - point[1] * next[0];
-    }, 0);
-    if ((signedArea > 0) !== !isHole) ring.reverse();
 
     const triangle = (a, b, c, normal) => {
       positions.push(...a, ...b, ...c);
       normals.push(...normal, ...normal, ...normal);
     };
-    for (let index = 0; index < ring.length; index++) {
-      const p = ring[index],
-        q = ring[(index + 1) % ring.length],
+
+    for (const part of parts || []) {
+      const p = part.p,
+        q = part.q,
         dx = q[0] - p[0],
         dy = q[1] - p[1],
         length = Math.hypot(dx, dy);
       if (!length) continue;
       const normal = [dy / length, -dx / length, 0],
-        a = [...p, z0],
-        b = [...q, z0],
-        c = [...q, z1],
-        d = [...p, z1];
+        a = [...p, part.z0],
+        b = [...q, part.z0],
+        c = [...q, part.z1],
+        d = [...p, part.z1];
       triangle(a, b, c, normal);
       triangle(a, c, d, normal);
     }
@@ -437,68 +514,6 @@ export function createThreeView({
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     return geometry;
-  }
-
-  function roughSurfaceKey(layerId, z, face) {
-    return `${layerId}\u0000${Number(z).toPrecision(15)}\u0000${face}`;
-  }
-
-  function roughSurfaceMap(model, clip) {
-    const map = new Map();
-    for (const patch of appearanceSurfaceGroups(model, clip)) {
-      const key = roughSurfaceKey(patch.layerId, patch.z, patch.face);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(patch);
-    }
-    return map;
-  }
-
-  function capRenderParts(item, cap, roughMap) {
-    const face = cap.normal > 0 ? 'front' : 'back',
-      patches = roughMap.get(roughSurfaceKey(item.layerId, cap.z, face)) || [],
-      parts = [];
-    let remaining = cap.polys;
-
-    for (const patch of patches) {
-      const roughPolys = intersection(remaining, patch.polys);
-      if (!isEmpty(roughPolys)) {
-        parts.push({
-          z: cap.z,
-          normal: cap.normal,
-          polys: roughPolys,
-          appearance: patch.appearance,
-          profileNormal: patch.profileNormal,
-          buried: Boolean(patch.buried),
-        });
-      }
-      remaining = difference(remaining, patch.polys);
-      if (isEmpty(remaining)) break;
-    }
-
-    if (!isEmpty(remaining)) {
-      parts.push({ z: cap.z, normal: cap.normal, polys: remaining, appearance: null });
-    }
-    return parts;
-  }
-
-  function visibleSolidBorders(item, roughMap) {
-    const lines = solidBorders(item).filter(([a, b]) => Math.abs(a[2] - b[2]) > 1e-12);
-    for (const cap of item.caps) {
-      for (const part of capRenderParts(item, cap, roughMap)) {
-        if (part.appearance) continue;
-        for (const poly of part.polys || []) {
-          for (const ring of poly || []) {
-            for (let index = 1; index < ring.length; index++) {
-              lines.push([
-                [...ring[index - 1], part.z],
-                [...ring[index], part.z],
-              ]);
-            }
-          }
-        }
-      }
-    }
-    return lines;
   }
 
   function updateTransparentOrder() {
@@ -511,39 +526,59 @@ export function createThreeView({
       point.applyMatrix4(camera.matrixWorldInverse);
       entry.depth = point.z;
     }
-    transparentMeshes.sort((a, b) => a.depth - b.depth);
+    transparentMeshes.sort(
+      (a, b) => a.depth - b.depth || a.sortBias - b.sortBias || a.sequence - b.sequence,
+    );
     transparentMeshes.forEach((entry, index) => {
       entry.mesh.renderOrder = 100 + index;
     });
   }
 
-  function createSurfaceMaterial(layer, materialState, appearance = null, bias = 1) {
-    return new THREE.MeshStandardMaterial({
+  function createSurfaceMaterial(layer, materialState, appearance = null) {
+    const material = new THREE.MeshStandardMaterial({
       color: layer?.color || '#999',
       roughness: appearance ? 0.84 : 0.78,
       metalness: 0.015,
       side: THREE.DoubleSide,
+      premultipliedAlpha: Boolean(materialState.transparent),
       ...materialState,
-      polygonOffset: true,
-      polygonOffsetFactor: Math.min(8, Math.max(1, bias) * 0.35),
-      polygonOffsetUnits: Math.min(12, Math.max(1, bias)),
     });
+    if (materialState.transparent) material.forceSinglePass = true;
+    return material;
   }
 
-  function addSurfaceMesh(geometry, material, materialState, appearance = null) {
+  function addSurfaceMesh(
+    geometry,
+    material,
+    materialState,
+    appearance = null,
+    sortBias = 0,
+  ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
       return null;
     }
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(geometry, material),
+      center = geometryCenter(geometry);
     mesh.renderOrder = materialState.transparent ? 100 : 0;
     group.add(mesh);
     if (materialState.transparent) {
-      transparentMeshes.push({ mesh, center: geometryCenter(geometry), depth: 0 });
+      transparentMeshes.push({
+        mesh,
+        center,
+        depth: 0,
+        sortBias,
+        sequence: transparentMeshes.length,
+      });
     }
     if (appearance) {
       mesh.userData.surfaceAppearance = { ...appearance };
-      roughMeshes.push({ mesh, material, appearance: { ...appearance } });
+      roughMeshes.push({
+        mesh,
+        material,
+        appearance: { ...appearance },
+        center,
+      });
     }
     return mesh;
   }
@@ -611,190 +646,187 @@ export function createThreeView({
   }
 
   function render() {
-    if (!ready) return;
+    if (!ready || rendering) return;
     const model = getModel();
     if (!model) return;
 
-    disposeGroup();
-    group.scale.z = zDisplayScale(model);
+    rendering = true;
+    try {
+      disposeGroup();
+      group.scale.z = zDisplayScale(model);
 
-    const clip = getClipGeometry(),
-      inspection = getInspection() || {},
-      materialState = inspectionMaterialState(inspection.opacity),
-      opacity = materialState.opacity,
-      borders = Boolean(inspection.borders),
-      roughMap = roughSurfaceMap(model, clip),
-      solids = materialSolids(model, clip),
-      smoothMaterials = new Map();
-
-    const smoothMaterial = (layer, bias) => {
-      const key = layer?.id || '__fallback__';
-      if (!smoothMaterials.has(key)) {
-        smoothMaterials.set(key, createSurfaceMaterial(layer, materialState, null, bias));
-      }
-      return smoothMaterials.get(key);
-    };
-
-    for (let solidIndex = 0; solidIndex < solids.length; solidIndex++) {
-      const item = solids[solidIndex],
-        layer = layerById(model, item.layerId),
-        layerHasRoughSurface = [...roughMap.keys()].some((key) =>
-          key.startsWith(`${item.layerId}\u0000`),
-        );
-
-      // Keep the fast single-mesh path for ordinary opaque layers. Rough layers
-      // and all translucent layers use face/ring chunks so surface appearance
-      // and alpha ordering are explicit instead of relying on one giant mesh.
-      if (!materialState.transparent && !layerHasRoughSurface) {
-        const geometry = geometryFromSolid(item),
-          material = smoothMaterial(layer, solidIndex + 1);
-        addSurfaceMesh(geometry, material, materialState);
-      } else {
-        for (const cap of item.caps) {
-          for (const part of capRenderParts(item, cap, roughMap)) {
-            const geometry = part.appearance
-                ? geometryFromRoughCap({
-                    ...part,
-                    closeToIdeal: !part.buried,
-                    clipped: Boolean(clip),
-                  })
-                : geometryFromSolid({
-                    slabs: [],
-                    caps: [{ z: part.z, normal: part.normal, polys: part.polys }],
-                  }),
-              material = part.appearance
-                ? createSurfaceMaterial(layer, materialState, part.appearance, solidIndex + 1)
-                : smoothMaterial(layer, solidIndex + 1);
-            addSurfaceMesh(geometry, material, materialState, part.appearance);
-
-            if (borders && part.appearance && geometry.userData.roughBorderPositions?.length) {
-              const edgeGeometry = new THREE.BufferGeometry();
-              edgeGeometry.setAttribute(
-                'position',
-                new THREE.Float32BufferAttribute(geometry.userData.roughBorderPositions, 3),
-              );
-              const edgeMaterial = new THREE.LineBasicMaterial({
-                color: 0x111820,
-                transparent: opacity < 0.999,
-                opacity: opacity < 0.999 ? 0.66 : 1,
-                depthTest: true,
-                depthFunc: THREE.LessEqualDepth,
-                depthWrite: false,
-              });
-              const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-              edges.renderOrder = 100000 + solidIndex;
-              group.add(edges);
+      const clip = getClipGeometry(),
+        inspection = getInspection() || {},
+        materialState = inspectionMaterialState(inspection.opacity),
+        opacity = materialState.opacity,
+        borders = Boolean(inspection.borders),
+        plan = buildRenderSurfacePlan(model, clip),
+        interfaceState = materialState.transparent
+          ? {
+              opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
+              transparent: true,
+              depthTest: true,
+              depthWrite: false,
             }
-          }
+          : null,
+        smoothCaps = new Map(),
+        sidewalls = new Map();
+
+      const stateFor = (part) => (part.buried ? interfaceState : materialState),
+        bucketKey = (part) => `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`,
+        pushBucket = (map, part) => {
+          const key = bucketKey(part);
+          if (!map.has(key)) map.set(key, { part, items: [] });
+          map.get(key).items.push(part);
+        },
+        addBorderPositions = (positions, order = 100000) => {
+          if (!positions?.length) return;
+          const edgeGeometry = new THREE.BufferGeometry();
+          edgeGeometry.setAttribute(
+            'position',
+            new THREE.Float32BufferAttribute(positions, 3),
+          );
+          const edgeMaterial = new THREE.LineBasicMaterial({
+            color: 0x111820,
+            transparent: opacity < 0.999,
+            opacity: opacity < 0.999 ? 0.62 : 1,
+            depthTest: true,
+            depthFunc: THREE.LessEqualDepth,
+            depthWrite: false,
+          });
+          const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+          edges.renderOrder = order;
+          group.add(edges);
+        };
+
+      for (const cap of plan.caps) {
+        const state = stateFor(cap);
+        if (!state) continue;
+        const layer = layerById(model, cap.layerId);
+
+        if (!cap.appearance) {
+          pushBucket(smoothCaps, cap);
+          continue;
         }
 
-        for (const slab of item.slabs) {
-          for (const poly of slab.polys) {
-            for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
-              const geometry = geometryFromSidewallRing(
-                poly[ringIndex],
-                slab.z0,
-                slab.z1,
-                ringIndex > 0,
-              );
-              addSurfaceMesh(
-                geometry,
-                smoothMaterial(layer, solidIndex + 1),
-                materialState,
-              );
-            }
-          }
+        const geometry = geometryFromRoughCap({
+            z: cap.z,
+            normal: cap.normal,
+            polys: cap.polys,
+            appearance: cap.appearance,
+            closeToIdeal: !cap.buried,
+            profileNormal: cap.profileNormal,
+            lodContext: lodContextFor(model, clip, cap.polys, cap.z),
+          }),
+          material = createSurfaceMaterial(layer, state, cap.appearance);
+        addSurfaceMesh(geometry, material, state, cap.appearance, cap.buried ? 12 : 0);
+
+        if (borders && !cap.buried && geometry.userData.roughBorderPositions?.length) {
+          addBorderPositions(geometry.userData.roughBorderPositions, 100010 + cap.solidIndex);
         }
       }
 
-      if (borders) {
-        const edgeGeometry = new THREE.BufferGeometry();
-        edgeGeometry.setAttribute(
-          'position',
-          new THREE.Float32BufferAttribute(visibleSolidBorders(item, roughMap).flat(2), 3),
-        );
-        const edgeMaterial = new THREE.LineBasicMaterial({
-          color: 0x111820,
-          transparent: opacity < 0.999,
-          opacity: opacity < 0.999 ? 0.66 : 1,
-          depthTest: true,
-          depthFunc: THREE.LessEqualDepth,
-          depthWrite: false,
-        });
-        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-        edges.renderOrder = 100000 + solidIndex;
-        group.add(edges);
+      for (const bucket of smoothCaps.values()) {
+        const state = stateFor(bucket.part);
+        if (!state) continue;
+        const geometry = geometryFromSolid({
+            slabs: [],
+            caps: bucket.items.map((part) => ({
+              z: part.z,
+              normal: part.normal,
+              polys: part.polys,
+            })),
+          }),
+          material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+        addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 10 : 0);
       }
+
+      for (const sidewall of plan.sidewalls) {
+        if (!stateFor(sidewall)) continue;
+        pushBucket(sidewalls, sidewall);
+      }
+      for (const bucket of sidewalls.values()) {
+        const state = stateFor(bucket.part);
+        if (!state) continue;
+        const geometry = geometryFromSidewallParts(bucket.items),
+          material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+        addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
+      }
+
+      if (borders) addBorderPositions(plan.borderLines.flat(2), 100000);
+
+      updateRoughMaterialLod();
+      updateTransparentOrder();
+
+      // Implant remains a non-material annotation. Opaque host material writes
+      // depth and occludes buried Implant; translucent host surfaces intentionally
+      // stop writing depth so the surviving volume can be inspected.
+      for (const implant of implantSolids(model, clip)) {
+        const implantState = {
+            opacity: opacity * 0.18,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+          },
+          bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
+          bodyMaterial = new THREE.MeshStandardMaterial({
+            color: implant.color || '#D65A6F',
+            roughness: 0.7,
+            metalness: 0,
+            side: THREE.DoubleSide,
+            premultipliedAlpha: true,
+            transparent: true,
+            opacity: implantState.opacity,
+            depthTest: true,
+            depthWrite: false,
+          }),
+          body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
+        bodyMaterial.forceSinglePass = true;
+        if (body) body.name = implant.name || implant.implantId || 'Implant';
+
+        const outerNormal = implant.face === 'front' ? 1 : -1,
+          appearance =
+            implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
+          capGeometry = shearImplantGeometry(
+            appearance
+              ? geometryFromRoughCap({
+                  z: implant.outerZ,
+                  normal: outerNormal,
+                  polys: implant.polys,
+                  appearance,
+                  closeToIdeal: false,
+                  profileNormal: outerNormal,
+                  lodContext: lodContextFor(model, clip, implant.polys, implant.outerZ),
+                })
+              : geometryFromSolid({
+                  slabs: [],
+                  caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
+                }),
+            implant,
+          ),
+          capState = {
+            opacity: opacity * 0.3,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+          },
+          capMaterial = createSurfaceMaterial(
+            { color: implant.color || '#D65A6F' },
+            capState,
+            appearance,
+          );
+        capMaterial.polygonOffset = true;
+        capMaterial.polygonOffsetFactor = -1;
+        capMaterial.polygonOffsetUnits = -1;
+        const cap = addSurfaceMesh(capGeometry, capMaterial, capState, appearance, 40);
+        if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
+      }
+
+      lastLodSignature = roughMeshes.length ? adaptiveLodSignature() : null;
+      stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
+    } finally {
+      rendering = false;
     }
-
-    updateRoughLod();
-    updateTransparentOrder();
-
-    // Implant remains a non-material annotation, but render its surviving
-    // volume inside the current material geometry. Subsequent etches trim the
-    // body and move its exposed cap with the current surface profile.
-    for (const implant of implantSolids(model, clip)) {
-      const implantState = {
-          opacity: opacity * 0.18,
-          transparent: true,
-          depthTest: true,
-          depthWrite: false,
-        },
-        bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
-        bodyMaterial = new THREE.MeshStandardMaterial({
-          color: implant.color || '#D65A6F',
-          roughness: 0.7,
-          metalness: 0,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: implantState.opacity,
-          depthTest: true,
-          depthWrite: false,
-        }),
-        body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState);
-      if (body) body.name = implant.name || implant.implantId || 'Implant';
-
-      const outerNormal = implant.face === 'front' ? 1 : -1,
-        appearance =
-          implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
-        capGeometry = shearImplantGeometry(
-          appearance
-            ? geometryFromRoughCap({
-                z: implant.outerZ,
-                normal: outerNormal,
-                polys: implant.polys,
-                appearance,
-                closeToIdeal: false,
-                clipped: Boolean(clip),
-              })
-            : geometryFromSolid({
-                slabs: [],
-                caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
-              }),
-          implant,
-        ),
-        capState = {
-          opacity: opacity * 0.3,
-          transparent: true,
-          depthTest: true,
-          depthWrite: false,
-        },
-        capMaterial = createSurfaceMaterial(
-          { color: implant.color || '#D65A6F' },
-          capState,
-          appearance,
-          1,
-        );
-      // Opaque material writes depth, so buried Implant geometry is hidden.
-      // A tiny negative polygon offset keeps only a genuinely exposed/cut cap
-      // visible when it is coplanar with the current material surface.
-      capMaterial.polygonOffsetFactor = -1;
-      capMaterial.polygonOffsetUnits = -1;
-      const cap = addSurfaceMesh(capGeometry, capMaterial, capState, appearance);
-      if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
-    }
-
-    stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     scheduleFrame();
   }
 
