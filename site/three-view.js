@@ -1094,6 +1094,9 @@ export function createThreeView({
         smoothCaps = new Map(),
         sidewalls = new Map();
 
+      surfacePlanBuildCount++;
+      roughRenderContext = { model, clip, opacity, borders };
+
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
         bucketKey = (part, state) => {
           const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
@@ -1106,26 +1109,6 @@ export function createThreeView({
           if (!map.has(key)) map.set(key, { part, items: [] });
           map.get(key).items.push(part);
         },
-        addBorderPositions = (positions, order = 100000) => {
-          if (!positions?.length) return;
-          const edgeGeometry = new THREE.BufferGeometry();
-          edgeGeometry.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(positions, 3),
-          );
-          const edgeMaterial = new THREE.LineBasicMaterial({
-            color: 0x111820,
-            transparent: opacity < 0.999,
-            opacity: opacity < 0.999 ? 0.62 : 1,
-            depthTest: true,
-            depthFunc: THREE.LessEqualDepth,
-            depthWrite: false,
-          });
-          const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-          edges.renderOrder = order;
-          group.add(edges);
-        };
-
       for (const cap of plan.caps) {
         const state = stateFor(cap);
         if (!state) continue;
@@ -1136,22 +1119,7 @@ export function createThreeView({
           continue;
         }
 
-        const geometry = geometryFromRoughCap({
-            z: cap.z,
-            normal: cap.normal,
-            polys: cap.polys,
-            appearance: cap.appearance,
-            closeToIdeal: !cap.buried,
-            profileNormal: cap.profileNormal,
-            lodContext: lodContextFor(model, clip, cap.polys, cap.z),
-            lodZones: roughLodZones(model, clip, cap.polys, cap.z),
-          }),
-          material = createSurfaceMaterial(layer, state, cap.appearance);
-        addSurfaceMesh(geometry, material, state, cap.appearance, cap.buried ? 12 : 0);
-
-        if (borders && !cap.buried && geometry.userData.roughBorderPositions?.length) {
-          addBorderPositions(geometry.userData.roughBorderPositions, 100010 + cap.solidIndex);
-        }
+        roughTasks.push({ cap, layer, state });
       }
 
       for (const bucket of smoothCaps.values()) {
@@ -1182,7 +1150,12 @@ export function createThreeView({
         addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
       }
 
-      if (borders) addBorderPositions(plan.borderLines.flat(2), 100000);
+      if (borders) {
+        addBorderPositions(plan.borderLines.flat(2), {
+          order: 100000,
+          opacity,
+        });
+      }
 
       // Implant remains a non-material annotation. Opaque host material writes
       // depth and occludes buried Implant; translucent host surfaces intentionally
@@ -1247,10 +1220,8 @@ export function createThreeView({
         if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
       }
 
-      updateRoughMaterialLod();
+      rebuildAdaptiveRoughGeometry();
       updateTransparentOrder();
-      updateRoughDiagnostics();
-      lastLodSignature = roughMeshes.length ? adaptiveLodSignature() : null;
       stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     } finally {
       rendering = false;
@@ -1364,7 +1335,7 @@ export function createThreeView({
     renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
     camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
     camera.updateProjectionMatrix();
-    render();
+    rebuildAdaptiveRoughGeometry();
     renderer.render(scene, camera);
     try {
       const blob = await new Promise((resolve, reject) =>
@@ -1379,7 +1350,7 @@ export function createThreeView({
       renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
       camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
       camera.updateProjectionMatrix();
-      render();
+      rebuildAdaptiveRoughGeometry();
       scheduleFrame();
     }
   }
