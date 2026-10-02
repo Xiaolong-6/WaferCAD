@@ -161,17 +161,15 @@ test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
   assert.match(roiController, /canvas\.addEventListener\('dblclick'[\s\S]*?resetPlanView\('mask'\)/);
 });
 
-test('3D border stays above opaque surfaces at 100% opacity', () => {
+test('3D borders are derived from owned surfaces and stay depth-tested', () => {
+  assert.match(threeView, /plan = buildRenderSurfacePlan\(model, clip\)/);
+  assert.match(threeView, /addBorderPositions = \(positions, order = 100000\)/);
+  assert.match(threeView, /edges\.renderOrder = order/);
   assert.match(
     threeView,
-    /polygonOffsetFactor: Math\.min\(8, Math\.max\(1, bias\) \* 0\.35\)/,
+    /opacity: opacity < 0\.999 \? 0\.62 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/,
   );
-  assert.match(
-    threeView,
-    /polygonOffsetUnits: Math\.min\(12, Math\.max\(1, bias\)\)/,
-  );
-  assert.match(threeView, /edges\.renderOrder = 100000 \+ solidIndex/);
-  assert.match(threeView, /opacity: opacity < 0\.999 \? 0\.66 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
+  assert.match(threeView, /if \(borders\) addBorderPositions\(plan\.borderLines\.flat\(2\), 100000\)/);
 });
 
 
@@ -273,9 +271,4 @@ test('experimental Implant keeps process inputs structural and display styling i
 test('buried rough interfaces do not create ideal-plane skirts in 3D', () => {
   assert.match(threeView, /closeToIdeal: !cap\.buried/);
   assert.match(threeView, /buildRenderSurfacePlan\(model, clip\)/);
-});
-
-
-test('buried rough interfaces do not create ideal-plane skirts in 3D', () => {
-  assert.match(threeView, /closeToIdeal: !part\.buried/);
 });
