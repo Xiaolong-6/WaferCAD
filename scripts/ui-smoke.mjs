@@ -83,6 +83,24 @@ assert.equal(await navigationPage.locator('.app-shell').count(), 0);
 assert.deepEqual(navigationErrors, []);
 await navigationPage.close();
 
+// A stalled Three.js CDN must never block the editor shell. The old top-level
+// await implementation left Main/Mask blank and all tool tabs unbound here.
+const blockedThreePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const blockedThreeErrors = [];
+blockedThreePage.on('pageerror', (error) => blockedThreeErrors.push(error.message));
+await blockedThreePage.route('https://cdn.jsdelivr.net/**', async (route) => {
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  await route.abort();
+});
+await blockedThreePage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+await blockedThreePage.locator('#welcomeEmptyBtn').click();
+await blockedThreePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await blockedThreePage.locator('#operationTab').click({ timeout: 1500 });
+await blockedThreePage.locator('#operationTools:not([hidden])').waitFor({ timeout: 1500 });
+assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
+assert.deepEqual(blockedThreeErrors, []);
+await blockedThreePage.close();
+
 const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];
 refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));
