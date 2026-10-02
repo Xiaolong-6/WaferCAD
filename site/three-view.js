@@ -43,7 +43,7 @@ export function createThreeView({
     for (const entry of roughMeshes) {
       const featurePixels = entry.appearance.featureSize * pxPerUm,
         lod = roughLod(featurePixels),
-        ratio = entry.appearance.amplitude / Math.max(entry.appearance.featureSize, 1e-9);
+        ratio = entry.appearance.meanHeight / Math.max(entry.appearance.featureSize, 1e-9);
       // Match Section semantics: roughness changes the surface response, never
       // the material identity or layer color.
       entry.material.roughness = 0.78 + 0.18 * lod.detail;
@@ -82,11 +82,11 @@ export function createThreeView({
     roughMeshes = [];
   }
 
-  function roughTexture(seed, size = 64) {
+  function roughTexture(appearance, size = 64) {
     const data = new Uint8Array(size * size * 4);
     for (let y = 0; y < size; y++)
       for (let x = 0; x < size; x++) {
-        const value = Math.round(255 * roughTextureValue(seed, x, y)),
+        const value = Math.round(255 * roughTextureValue(appearance, x, y, size)),
           offset = (y * size + x) * 4;
         data[offset] = value;
         data[offset + 1] = value;
@@ -323,7 +323,7 @@ export function createThreeView({
           color: layer?.color || '#666',
           roughness: 0.78,
           metalness: 0.015,
-          bumpMap: roughTexture(patch.appearance.seed),
+          bumpMap: roughTexture(patch.appearance),
           bumpScale: 0,
           side: THREE.DoubleSide,
           ...materialState,
