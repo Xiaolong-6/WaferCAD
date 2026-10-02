@@ -155,6 +155,7 @@ export function createWorkspaceActionsController({
     $('operationArea').onchange = updateOperationUI;
     $('growthMode').onchange = updateOperationUI;
     $('etchSurfaceMode').onchange = updateOperationUI;
+    $('roughPolarity').onchange = updateOperationUI;
     $('applyOperationBtn').onclick = applyOperation;
     $('fit3dBtn').onclick = fit3d;
   }
