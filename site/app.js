@@ -33,7 +33,7 @@ import {
   toMicron,
   unitMeta,
 } from './units.js';
-import { roughLod, roughNoise1D } from './surface-rendering.js';
+import { roughLod, roughProfileOffsetAtPoint } from './surface-rendering.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import {
@@ -912,39 +912,95 @@ function renderSection() {
     ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
   }
 
-  for (const slice of sectionSlices(model, section.a, section.b)) {
-    for (const [face, appearance, z] of [
-      ['front', slice.frontSurface, slice.z1],
-      ['back', slice.backSurface, slice.z0],
+  const roughSlices = sectionSlices(model, section.a, section.b);
+  for (const slice of roughSlices) {
+    const layer = layerById(model, slice.layerId);
+    if (!layer) continue;
+
+    for (const [face, appearance, z, interiorZ] of [
+      ['front', slice.frontSurface, slice.z1, slice.z0],
+      ['back', slice.backSurface, slice.z0, slice.z1],
     ]) {
       if (appearance?.kind !== 'rough') continue;
+
       const featurePixels = appearance.featureSize * xScale,
         lod = roughLod(featurePixels),
         normal = face === 'front' ? 1 : -1,
-        widthPixels = Math.abs(mapT(slice.t1) - mapT(slice.t0)),
-        sampleStepPixels = Math.max(2, featurePixels * 0.45),
-        samples = Math.max(2, Math.min(480, Math.ceil(widthPixels / sampleStepPixels))),
-        physicalAmplitudePixels = appearance.amplitude * zScale * 0.5,
-        mediumAmplitudePixels =
-          Math.min(1.2, physicalAmplitudePixels) * lod.detail * (1 - lod.micro),
-        amplitudePixels = physicalAmplitudePixels * lod.micro + mediumAmplitudePixels;
+        widthPixels = Math.max(1, Math.abs(mapT(slice.t1) - mapT(slice.t0))),
+        sampleStepPixels = Math.max(1.5, Math.min(4, featurePixels / 4 || 1.5)),
+        samples = Math.max(3, Math.min(720, Math.ceil(widthPixels / sampleStepPixels))),
+        thickness = Math.max(1e-9, slice.z1 - slice.z0),
+        minInside = thickness * 0.025,
+        profile = [];
 
-      ctx.beginPath();
       for (let index = 0; index <= samples; index++) {
         const fraction = index / samples,
           t = slice.t0 + (slice.t1 - slice.t0) * fraction,
-          distance = t * sectionSpan,
-          noise = roughNoise1D(distance, appearance),
-          x = mapT(t),
-          y = mapZ(z) - normal * noise * amplitudePixels;
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+          worldX = section.a[0] + (section.b[0] - section.a[0]) * t,
+          worldY = section.a[1] + (section.b[1] - section.a[1]) * t,
+          rawOffset = roughProfileOffsetAtPoint(worldX, worldY, appearance, featurePixels),
+          profileZ =
+            face === 'front'
+              ? Math.max(slice.z0 + minInside, z + normal * rawOffset)
+              : Math.min(slice.z1 - minInside, z + normal * rawOffset);
+        profile.push([mapT(t), mapZ(profileZ)]);
       }
-      ctx.strokeStyle = '#2f3439';
-      ctx.lineWidth = 3 - 1.4 * lod.detail;
+
+      const x0 = mapT(slice.t0),
+        x1 = mapT(slice.t1),
+        interiorY = mapZ(interiorZ),
+        plotBottom = plotTop + plotHeight;
+
+      if (lod.detail > 0.02) {
+        // Replace the ideal rectangular surface with the actual rendered profile.
+        // The process model remains planar; only the Section renderer changes.
+        ctx.fillStyle = '#fbfcfd';
+        if (face === 'front') {
+          ctx.fillRect(Math.min(x0, x1) - 0.5, plotTop - 1, Math.abs(x1 - x0) + 1, interiorY - plotTop + 1);
+        } else {
+          ctx.fillRect(
+            Math.min(x0, x1) - 0.5,
+            interiorY,
+            Math.abs(x1 - x0) + 1,
+            plotBottom - interiorY + 1,
+          );
+        }
+
+        ctx.beginPath();
+        if (face === 'front') {
+          ctx.moveTo(x0, interiorY);
+          for (const [x, y] of profile) ctx.lineTo(x, y);
+          ctx.lineTo(x1, interiorY);
+        } else {
+          ctx.moveTo(x0, interiorY);
+          ctx.lineTo(x1, interiorY);
+          for (let index = profile.length - 1; index >= 0; index--) {
+            ctx.lineTo(profile[index][0], profile[index][1]);
+          }
+        }
+        ctx.closePath();
+        ctx.fillStyle = layer.color;
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      const edgeY = mapZ(z);
+      if (lod.detail <= 0.02) {
+        ctx.moveTo(x0, edgeY);
+        ctx.lineTo(x1, edgeY);
+      } else {
+        profile.forEach(([x, y], index) => {
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+      }
+      ctx.strokeStyle = shadeColor(layer.color, -72);
+      ctx.globalAlpha = 0.55 + lod.detail * 0.35;
+      ctx.lineWidth = 2.1 - lod.detail * 1.05;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
+      ctx.globalAlpha = 1;
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
     }
