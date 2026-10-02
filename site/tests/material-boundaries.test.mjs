@@ -121,8 +121,12 @@ test('Section slices expose both materials around a buried rough interface', () 
       frontSurface: {
         kind: 'rough',
         featureSize: 0.4,
-        amplitude: 0.8,
+        meanHeight: 0.4,
+        featureCv: 0.25,
+        heightCv: 0.25,
+        etchDepth: 0.8,
         seed: 17,
+        profileId: 'rough-buried-test',
         geometryMode: 'ideal',
       },
     },
