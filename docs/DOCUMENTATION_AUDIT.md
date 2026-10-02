@@ -52,4 +52,4 @@ Static consistency checks confirm that the current branch has:
 
 JavaScript syntax checks passed for the touched 3D renderer, view-geometry helper, surface-rendering helper, self-test, and focused 3D-control regression after the final fixes.
 
-A full browser/WebGL visual pass is still the required final check for relief quality and transparency ordering. That check is delegated to the pull-request UI smoke/product-regression workflow before merge; this audit does not treat static assertions alone as visual proof.
+A full browser/WebGL visual pass is still the required final check for relief quality and transparency ordering. The pull-request product regression now includes explicit opaque/transparent captures of a buried Implant, alongside the rough-surface captures; this audit does not treat static assertions alone as visual proof.

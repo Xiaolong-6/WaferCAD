@@ -652,6 +652,45 @@ try {
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
 
+      // Opaque host material must occlude a buried Implant. Lowering global
+      // 3D opacity reveals the same internal annotation volume.
+      const implantModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 });
+      applyOperation(implantModel, {
+        type: 'implant',
+        name: 'Buried implant',
+        thickness: 1,
+        face: 'front',
+        area: rectMulti(10, 8),
+        color: '#9B5DE5',
+      });
+      applyOperation(implantModel, {
+        type: 'add',
+        name: 'Opaque cap',
+        thickness: 0.8,
+        face: 'front',
+        area: implantModel.boundary,
+        growth: 'direct',
+      });
+      const implantProject = projectForBenchmark({
+        model: implantModel,
+        section: { a: [-9, 0], b: [9, 0] },
+      });
+      await loadProject(page, implantProject, 'wide-implant-buried');
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-implant-buried-opaque-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('0.5');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-implant-buried-transparent-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('1');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+
       await checkLayout(page);
     }
 
