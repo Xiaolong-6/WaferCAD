@@ -470,6 +470,37 @@ function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null
   return normalizeStack(out);
 }
 
+function splitConformalSidewallArea(model, area, layerId, face, sourceZ, appearance) {
+  const next = [];
+  for (const region of model.regions) {
+    const stack = region.stack.map((segment) => ({ ...segment })),
+      local = surfaceZ(stack, face),
+      needsSidewall =
+        local != null &&
+        (face === 'front' ? local < sourceZ - 1e-9 : local > sourceZ + 1e-9);
+
+    // Do not partition source/same-height/higher material at all. Besides being
+    // cheaper, this prevents no-op cuts from surviving as fake internal shapes
+    // when a later best-effort region union has to preserve separate pieces.
+    if (!needsSidewall) {
+      next.push({ id: region.id, geom: cloneGeom(region.geom), stack });
+      continue;
+    }
+
+    const hit = intersection(region.geom, area),
+      rest = difference(region.geom, area);
+    if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
+    if (!isEmpty(hit)) {
+      next.push({
+        id: `region-${model.nextRegionId++}`,
+        geom: hit,
+        stack: conformalSidewallStack(stack, layerId, face, sourceZ, appearance),
+      });
+    }
+  }
+  model.regions = next;
+}
+
 function conformalRingBands(geom, amount) {
   const bands = [];
   for (const poly of geom || [])
@@ -477,14 +508,14 @@ function conformalRingBands(geom, amount) {
       if (!Array.isArray(ring) || ring.length < 4) continue;
       const points = ring.slice(0, -1);
       try {
-        const band = bufferPolyline(points, amount, 20, true);
+        const band = bufferPolyline(points, amount, 32, true);
         if (!isEmpty(band)) bands.push(band);
       } catch {
         // Complex imported rings can make a large polygon union numerically
         // fragile. Fall back to local edge capsules so one bad ring cannot
         // cancel an otherwise valid conformal process.
         for (let index = 1; index < ring.length; index++) {
-          const band = bufferPolyline([ring[index - 1], ring[index]], amount, 12, false);
+          const band = bufferPolyline([ring[index - 1], ring[index]], amount, 20, false);
           if (!isEmpty(band)) bands.push(band);
         }
       }
@@ -546,19 +577,20 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // many circular/nested features.
   const sources = exposedLayerPatches(model, active, face, layerId);
   for (const source of sources) {
-    for (const rawBand of safeUnionParts(conformalRingBands(source.geom, amount))) {
+    for (const rawBand of conformalRingBands(source.geom, amount)) {
       const band = intersection(rawBand, model.boundary);
       if (isEmpty(band)) continue;
 
       // The symmetric ring band touches both sides of an edge. The stack test
       // below only accepts the physically lower (front) / higher (back) side,
       // so partition edges and the source interior cannot create fake material.
-      splitByArea(
+      splitConformalSidewallArea(
         model,
         band,
-        (stack) =>
-          conformalSidewallStack(stack, layerId, face, source.z, source.appearance),
-        false,
+        layerId,
+        face,
+        source.z,
+        source.appearance,
       );
 
       // A true void has no stack for splitByArea() to mutate. Add only the
