@@ -39,7 +39,11 @@ The model is intentionally 2.5D: XY footprints are vector polygons and vertical 
 
 ### `site/app.js`
 
-Owns application state, UI orchestration, 2D viewport interaction, undo/redo, project persistence, and synchronization between the views. The 3D renderer is delegated to a focused controller rather than implemented inline.
+Owns application state, top-level UI orchestration, undo/redo, project persistence, and synchronization between controllers/views. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; the 3D renderer is delegated to `site/three-view.js`.
+
+### `site/plan-renderers.js`
+
+Owns the synchronized Canvas 2D drawing path for Mask, Main, and Section A–B. It consumes canonical model/view state through narrow getters and reuses `model-view-geometry.js` plus the shared rough-surface profile field. Keeping rendering here prevents display-only morphology, Implant gradients, viewport drawing, and Section visibility aids from accumulating in the application composition root.
 
 ### `site/model.js`
 
