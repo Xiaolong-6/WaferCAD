@@ -1134,10 +1134,7 @@ function renderSection() {
     boundaries.forEach((boundary, boundaryIndex) => {
       if (boundary.appearance?.kind !== 'rough') return;
       const profile = profiles[boundaryIndex],
-        lod = roughLod(boundary.appearance.featureSize * xScale),
-        adjacent =
-          column.stack[boundaryIndex - 1] || column.stack[boundaryIndex] || null,
-        layer = adjacent ? layerById(model, adjacent.layerId) : null;
+        lod = roughLod(boundary.appearance.featureSize * xScale);
       ctx.beginPath();
       profile.forEach(([x, y], index) => {
         const drawX = index === 0 ? x - 0.65 : index === profile.length - 1 ? x + 0.65 : x;
