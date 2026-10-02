@@ -12,6 +12,7 @@ globalThis.polygonClipping = commonJsModule.exports;
 const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
+const { implantSectionBands, implantSolids } = await import('./model-view-geometry.js');
 const { validateProjectFile } = await import('./project-schema.js');
 const { roughLod, roughNoise1D, roughProfileOffsetAtPoint, roughVisualBoundsZ } =
   await import('./surface-rendering.js');
@@ -509,5 +510,75 @@ const roughImplantResult = applyOperation(roughImplantModel, {
 });
 assert.equal(roughImplantResult.changed, true);
 assert.equal(roughImplantModel.implants[0].patches[0].surfaceAppearance?.kind, 'rough');
+
+const etchedImplantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(etchedImplantModel, {
+  type: 'implant',
+  name: 'Etch-follow implant',
+  thickness: 2,
+  face: 'front',
+  area: rectMulti(20, 20),
+  tilt: 0,
+});
+const beforeEtchSolid = implantSolids(etchedImplantModel)[0];
+assert.ok(beforeEtchSolid);
+assert.ok(Math.abs(beforeEtchSolid.z1 - beforeEtchSolid.z0 - 2) < 1e-9);
+applyOperation(etchedImplantModel, {
+  type: 'etch',
+  thickness: 0.5,
+  face: 'front',
+  area: rectMulti(20, 20),
+});
+const afterEtchSolid = implantSolids(etchedImplantModel)[0];
+assert.ok(afterEtchSolid);
+assert.ok(Math.abs(afterEtchSolid.z1 - afterEtchSolid.z0 - 1.5) < 1e-9);
+
+const roughCutModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(roughCutModel, {
+  type: 'implant',
+  name: 'Rough-cut implant',
+  thickness: 2,
+  face: 'front',
+  area: rectMulti(20, 20),
+  tilt: 0,
+});
+applyOperation(roughCutModel, {
+  type: 'etch',
+  thickness: 0.5,
+  face: 'front',
+  area: rectMulti(20, 20),
+  surface: {
+    kind: 'rough',
+    featureSize: 0.4,
+    meanHeight: 0.25,
+    featureCv: 0.2,
+    heightCv: 0.2,
+    geometryMode: 'ideal',
+  },
+});
+const roughCutBand = implantSectionBands(roughCutModel, [-8, 0], [8, 0])[0];
+assert.equal(roughCutBand.surfaceAppearance?.kind, 'rough');
+
+const fullyEtchedImplantModel = createModel({
+  shape: 'rect',
+  width: 20,
+  height: 20,
+  thickness: 10,
+});
+applyOperation(fullyEtchedImplantModel, {
+  type: 'implant',
+  name: 'Removed implant',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(20, 20),
+  tilt: 0,
+});
+applyOperation(fullyEtchedImplantModel, {
+  type: 'etch',
+  thickness: 1.5,
+  face: 'front',
+  area: rectMulti(20, 20),
+});
+assert.equal(implantSolids(fullyEtchedImplantModel).length, 0);
 
 console.log('WaferCAD self-test: OK');
