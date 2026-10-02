@@ -6,7 +6,12 @@ import {
   solidBorders,
 } from './model-view-geometry.js';
 import { difference, intersection, isEmpty } from './vector-geometry.js';
-import { roughLod, roughTextureValue } from './surface-rendering.js';
+import {
+  roughLod,
+  roughMeshSubdivisionDepth,
+  roughProfileOffsetAtPoint,
+  roughVisualBoundsZ,
+} from './surface-rendering.js';
 
 let THREE = null;
 let OrbitControls = null;
@@ -65,22 +70,10 @@ export function createThreeView({
       pxPerUm = height / (2 * distance * Math.tan((camera.fov * Math.PI) / 360));
     for (const entry of roughMeshes) {
       const featurePixels = entry.appearance.featureSize * pxPerUm,
-        lod = roughLod(featurePixels),
-        relief = Math.max(
-          0,
-          Number(
-            entry.appearance.etchDepth ??
-              entry.appearance.meanHeight ??
-              entry.appearance.amplitude ??
-              0,
-          ) || 0,
-        ),
-        ratio = relief / Math.max(entry.appearance.featureSize, 1e-9);
-      // Far views converge to the clean layer surface. Feature-scale relief
-      // appears progressively as it becomes resolvable, without changing color.
-      entry.material.roughness = 0.78 + 0.16 * lod.detail;
-      entry.material.bumpScale =
-        Math.min(2.2, ratio * 0.5) * (0.3 * lod.detail + 0.7 * lod.micro);
+        lod = roughLod(featurePixels);
+      // Geometry carries the actual relief. Only the broad material response is
+      // adjusted with view scale; no bump/noise texture is added on top.
+      entry.material.roughness = 0.82 + 0.12 * lod.detail;
     }
   }
 
@@ -125,43 +118,6 @@ export function createThreeView({
     for (const material of materials) material.dispose();
     roughMeshes = [];
     transparentMeshes = [];
-  }
-
-  function roughTexture(appearance, size = 128) {
-    const data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++)
-      for (let x = 0; x < size; x++) {
-        const value = Math.round(255 * roughTextureValue(appearance, x, y, size)),
-          offset = (y * size + x) * 4;
-        data[offset] = value;
-        data[offset + 1] = value;
-        data[offset + 2] = value;
-        data[offset + 3] = 255;
-      }
-    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-    // Mirroring removes hard tile seams while preserving feature-scale detail
-    // when the user zooms into a large rough surface.
-    texture.wrapS = THREE.MirroredRepeatWrapping;
-    texture.wrapT = THREE.MirroredRepeatWrapping;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.generateMipmaps = true;
-    if (renderer?.capabilities) {
-      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-    }
-    texture.needsUpdate = true;
-    return texture;
-  }
-
-  function addPlanarUv(geometry, featureSize) {
-    const positions = geometry.getAttribute('position'),
-      period = Math.max(1e-9, featureSize * 8),
-      uv = new Float32Array(positions.count * 2);
-    for (let index = 0; index < positions.count; index++) {
-      uv[index * 2] = positions.getX(index) / period;
-      uv[index * 2 + 1] = positions.getY(index) / period;
-    }
-    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   }
 
   function inspectionMaterialState(value) {
@@ -244,6 +200,134 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return geometry;
+  }
+
+  function triangleNormal(a, b, c) {
+    const ux = b[0] - a[0],
+      uy = b[1] - a[1],
+      uz = b[2] - a[2],
+      vx = c[0] - a[0],
+      vy = c[1] - a[1],
+      vz = c[2] - a[2],
+      nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx,
+      length = Math.hypot(nx, ny, nz) || 1;
+    return [nx / length, ny / length, nz / length];
+  }
+
+  function roughCapBaseTriangles(z, normal, polys) {
+    const triangles = [];
+    let maxEdge = 0;
+    for (const poly of polys || []) {
+      const rings = poly.map((ring) =>
+          ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)),
+        ),
+        points = rings.flat();
+      if (!rings[0]?.length) continue;
+      for (const indices of THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1))) {
+        let [a, b, c] = indices.map((index) => [points[index].x, points[index].y, z]);
+        const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        if (cross * normal < 0) [b, c] = [c, b];
+        triangles.push([a, b, c]);
+        maxEdge = Math.max(
+          maxEdge,
+          Math.hypot(a[0] - b[0], a[1] - b[1]),
+          Math.hypot(b[0] - c[0], b[1] - c[1]),
+          Math.hypot(c[0] - a[0], c[1] - a[1]),
+        );
+      }
+    }
+    return { triangles, maxEdge };
+  }
+
+  function subdivideTriangles(triangles, depth) {
+    let current = triangles;
+    for (let level = 0; level < depth; level++) {
+      const next = [];
+      for (const [a, b, c] of current) {
+        const ab = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, a[2]],
+          bc = [(b[0] + c[0]) / 2, (b[1] + c[1]) / 2, b[2]],
+          ca = [(c[0] + a[0]) / 2, (c[1] + a[1]) / 2, c[2]];
+        next.push([a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]);
+      }
+      current = next;
+    }
+    return current;
+  }
+
+  function roughPoint(point, z, normal, appearance) {
+    return [
+      point[0],
+      point[1],
+      z + normal * roughProfileOffsetAtPoint(point[0], point[1], appearance),
+    ];
+  }
+
+  function geometryFromRoughCap({ z, normal, polys, appearance }) {
+    const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, polys),
+      depth = roughMeshSubdivisionDepth({
+        triangleCount: baseTriangles.length,
+        maxEdge,
+        featureSize: appearance?.featureSize,
+      }),
+      triangles = subdivideTriangles(baseTriangles, depth),
+      positions = [],
+      normals = [],
+      roughBorderPositions = [];
+
+    const pushTriangle = (a, b, c) => {
+      const faceNormal = triangleNormal(a, b, c);
+      positions.push(...a, ...b, ...c);
+      normals.push(...faceNormal, ...faceNormal, ...faceNormal);
+    };
+
+    for (const [a, b, c] of triangles) {
+      pushTriangle(
+        roughPoint(a, z, normal, appearance),
+        roughPoint(b, z, normal, appearance),
+        roughPoint(c, z, normal, appearance),
+      );
+    }
+
+    // Close the displaced surface back to the ideal process plane. The same
+    // subdivision depth is used on polygon boundaries, so the skirt meets the
+    // tessellated cap without visible cracks.
+    const edgeSegments = 2 ** depth;
+    for (const poly of polys || []) {
+      for (const closed of poly || []) {
+        const ring =
+          closed.length > 1 &&
+          closed[0][0] === closed.at(-1)[0] &&
+          closed[0][1] === closed.at(-1)[1]
+            ? closed.slice(0, -1)
+            : closed.slice();
+        for (let index = 0; index < ring.length; index++) {
+          const p = ring[index],
+            q = ring[(index + 1) % ring.length];
+          for (let step = 0; step < edgeSegments; step++) {
+            const t0 = step / edgeSegments,
+              t1 = (step + 1) / edgeSegments,
+              p0 = [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0],
+              p1 = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1],
+              base0 = [p0[0], p0[1], z],
+              base1 = [p1[0], p1[1], z],
+              top0 = roughPoint(base0, z, normal, appearance),
+              top1 = roughPoint(base1, z, normal, appearance);
+            pushTriangle(base0, base1, top1);
+            pushTriangle(base0, top1, top0);
+            roughBorderPositions.push(...top0, ...top1);
+          }
+        }
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.userData.roughSubdivisionDepth = depth;
+    geometry.userData.roughBorderPositions = roughBorderPositions;
     return geometry;
   }
 
@@ -354,9 +438,9 @@ export function createThreeView({
   }
 
   function createSurfaceMaterial(layer, materialState, appearance = null, bias = 1) {
-    const material = new THREE.MeshStandardMaterial({
+    return new THREE.MeshStandardMaterial({
       color: layer?.color || '#999',
-      roughness: appearance ? 0.82 : 0.78,
+      roughness: appearance ? 0.84 : 0.78,
       metalness: 0.015,
       side: THREE.DoubleSide,
       ...materialState,
@@ -364,11 +448,6 @@ export function createThreeView({
       polygonOffsetFactor: Math.min(8, Math.max(1, bias) * 0.35),
       polygonOffsetUnits: Math.min(12, Math.max(1, bias)),
     });
-    if (appearance) {
-      material.bumpMap = roughTexture(appearance);
-      material.bumpScale = 0;
-    }
-    return material;
   }
 
   function addSurfaceMesh(geometry, material, materialState, appearance = null) {
@@ -493,21 +572,34 @@ export function createThreeView({
       } else {
         for (const cap of item.caps) {
           for (const part of capRenderParts(item, cap, roughMap)) {
-            for (const poly of part.polys) {
-              const geometry = geometryFromSolid({
-                  slabs: [],
-                  caps: [{ z: part.z, normal: part.normal, polys: [poly] }],
-                }),
-                material = part.appearance
-                  ? createSurfaceMaterial(
-                      layer,
-                      materialState,
-                      part.appearance,
-                      solidIndex + 1,
-                    )
-                  : smoothMaterial(layer, solidIndex + 1);
-              addPlanarUv(geometry, part.appearance?.featureSize || 1);
-              addSurfaceMesh(geometry, material, materialState, part.appearance);
+            const geometry = part.appearance
+                ? geometryFromRoughCap(part)
+                : geometryFromSolid({
+                    slabs: [],
+                    caps: [{ z: part.z, normal: part.normal, polys: part.polys }],
+                  }),
+              material = part.appearance
+                ? createSurfaceMaterial(layer, materialState, part.appearance, solidIndex + 1)
+                : smoothMaterial(layer, solidIndex + 1);
+            addSurfaceMesh(geometry, material, materialState, part.appearance);
+
+            if (borders && part.appearance && geometry.userData.roughBorderPositions?.length) {
+              const edgeGeometry = new THREE.BufferGeometry();
+              edgeGeometry.setAttribute(
+                'position',
+                new THREE.Float32BufferAttribute(geometry.userData.roughBorderPositions, 3),
+              );
+              const edgeMaterial = new THREE.LineBasicMaterial({
+                color: 0x111820,
+                transparent: opacity < 0.999,
+                opacity: opacity < 0.999 ? 0.66 : 1,
+                depthTest: true,
+                depthFunc: THREE.LessEqualDepth,
+                depthWrite: false,
+              });
+              const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+              edges.renderOrder = 100000 + solidIndex;
+              group.add(edges);
             }
           }
         }
@@ -590,7 +682,8 @@ export function createThreeView({
     const model = getModel();
     if (!model) return;
 
-    const [lo, hi] = modelBoundsZ(model),
+    const [idealLo, idealHi] = modelBoundsZ(model),
+      [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
       zScale = zDisplayScale(model),
       zSpan = (hi - lo) * zScale,
       clipBounds = xyBounds(getClipGeometry()),
