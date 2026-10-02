@@ -5,7 +5,10 @@ import {
   lineIntervalsInMulti,
   unionGeometries,
 } from './vector-geometry.js';
-import { surfacePatches } from './model.js';
+import {
+  appearanceSurfaceGroupsFromTopology,
+  visibleSurfaceGroups,
+} from './process-topology.js';
 
 // All views consume canonical physical XYZ geometry; visual Z scaling is renderer-only.
 export function extrusionGroups(model, clip = null) {
@@ -63,99 +66,28 @@ export function sectionSlices(model, a, b) {
 }
 
 // Region partitions describe processing history, not visible material boundaries.
+// Topology v2 owns which horizontal faces are physically exposed and which
+// rough interfaces are buried; the view layer only adapts those facts.
 export function surfaceGroups(model, face = 'front') {
-  const groups = new Map();
-  for (const patch of surfacePatches(model, face)) {
-    const key = JSON.stringify([patch.layerId, patch.z]);
-    if (!groups.has(key)) groups.set(key, { layerId: patch.layerId, z: patch.z, geoms: [] });
-    groups.get(key).geoms.push(patch.geom);
-  }
-  return [...groups.values()].map(({ geoms, ...patch }) => ({
-    ...patch,
-    geom: unionGeometries(geoms),
+  return visibleSurfaceGroups(model, { face }).map(({ layerId, z, geom }) => ({
+    layerId,
+    z,
+    geom,
   }));
 }
 
 export function appearanceSurfaceGroups(model, clip = null) {
-  const groups = new Map();
-  const addAppearance = (layerId, z, face, profileNormal, appearance, geom, buried = false) => {
-    if (appearance?.kind !== 'rough' || isEmpty(geom)) return;
-    const key = JSON.stringify([
+  return appearanceSurfaceGroupsFromTopology(model, clip).map(
+    ({ layerId, z, face, profileNormal, appearance, buried, polys }) => ({
       layerId,
       z,
       face,
       profileNormal,
-      appearance.profileId,
-      appearance.featureSize,
-      appearance.meanHeight,
-      appearance.featureCv,
-      appearance.heightCv,
-      appearance.seed,
-      appearance.geometryMode,
-      appearance.morphology,
-      appearance.polarity,
-      appearance.etchDepth,
+      appearance,
       buried,
-    ]);
-    if (!groups.has(key)) {
-      groups.set(key, {
-        layerId,
-        z,
-        face,
-        profileNormal,
-        appearance: { ...appearance },
-        buried,
-        geoms: [],
-      });
-    }
-    groups.get(key).geoms.push(geom);
-  };
-
-  for (const region of model.regions || []) {
-    const geom = clip ? intersection(region.geom, clip) : region.geom;
-    if (isEmpty(geom)) continue;
-
-    for (let index = 0; index < region.stack.length; index++) {
-      const segment = region.stack[index],
-        below = region.stack[index - 1] || null,
-        above = region.stack[index + 1] || null,
-        frontAppearance =
-          segment.frontSurface?.kind === 'rough'
-            ? segment.frontSurface
-            : above?.backSurface?.kind === 'rough'
-              ? above.backSurface
-              : null,
-        backAppearance =
-          segment.backSurface?.kind === 'rough'
-            ? segment.backSurface
-            : below?.frontSurface?.kind === 'rough'
-              ? below.frontSurface
-              : null;
-      addAppearance(
-        segment.layerId,
-        segment.z1,
-        'front',
-        segment.frontSurface?.kind === 'rough' ? 1 : -1,
-        frontAppearance,
-        geom,
-        Boolean(above && Math.abs(above.z0 - segment.z1) <= 1e-8),
-      );
-      addAppearance(
-        segment.layerId,
-        segment.z0,
-        'back',
-        segment.backSurface?.kind === 'rough' ? -1 : 1,
-        backAppearance,
-        geom,
-        Boolean(below && Math.abs(below.z1 - segment.z0) <= 1e-8),
-      );
-    }
-  }
-
-  return [...groups.values()].map(({ geoms, ...patch }) => ({
-    ...patch,
-    polys: unionGeometries(geoms),
-  }));
+      polys,
+    }),
+  );
 }
 
 export function sectionContours(model, a, b) {
