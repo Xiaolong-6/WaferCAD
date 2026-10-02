@@ -14,6 +14,8 @@ The lateral offset equals the physical Z thickness: Z = 1 µm produces a 1 µm X
 
 Etch removes material vertically from the active face, crossing layer boundaries as necessary. It is not material-selective and has no lateral or conformal mode.
 
+Rough and Pyramid Etch surface modes attach deterministic render-only appearance metadata to the newly exposed ideal face. They do not change the canonical material intervals used by these geometry benchmarks. Section and 3D consume the same morphology field, while Main/Mask use only subtle plan-view darkening. Experimental Implant is likewise stored separately from material layers; its surviving annotation volume is clipped against the current material structure after later Etch operations. These display/annotation contracts are tested separately from the material-volume benchmark values below.
+
 ## Analytic fixtures
 
 All fixtures use a 20 × 20 µm rectangular base, Z thickness 10 (`−5 … +5`), a feature height/depth of 2, a coating amount of 1, and a Section from `(−9, 0)` to `(9, 0)`.
@@ -52,7 +54,7 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 
 - A completely through-etched void has no adjacent region stack to extend. Current Conformal does not create freestanding sidewall material in that empty XY region. A regression explicitly preserves this limitation.
 - Rounded XY corners are polygonal buffer approximations. Z corners remain piecewise vertical/horizontal, without a normal-offset surface solution.
-- There is no simulation of transport, shadowing, sticking probability, aspect-ratio-dependent coverage, pinch-off, undercuts, or material-selective etch.
+- There is no simulation of transport, shadowing, sticking probability, aspect-ratio-dependent coverage, pinch-off, undercuts, material-selective etch, dopant transport, activation, or diffusion. Implant remains a geometric annotation, not a concentration solver.
 - XY display-unit changes convert inputs and labels only. They do not recalibrate Z, rescale geometry, or change process results.
 
 Changes to these boundaries require an explicit geometry-contract update and new benchmarks.
