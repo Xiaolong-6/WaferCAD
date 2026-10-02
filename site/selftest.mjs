@@ -181,6 +181,7 @@ const partialSidewallModel = {
             [1, -1],
             [1, 1],
             [0, 1],
+            [0, 0],
             [0, -1],
           ],
         ],
@@ -190,22 +191,19 @@ const partialSidewallModel = {
   ],
 };
 const partialSidewallPlan = buildRenderSurfacePlan(partialSidewallModel),
-  sharedSidewallParts = partialSidewallPlan.sidewalls
-    .filter(
-      (part) =>
-        Math.abs(part.p[0]) < 1e-12 &&
-        Math.abs(part.q[0]) < 1e-12 &&
-        Math.abs(Math.abs(part.p[1] - part.q[1]) - 2) < 1e-12,
-    )
-    .sort((a, b) => a.z0 - b.z0);
-assert.equal(sharedSidewallParts.length, 2);
-assert.deepEqual(
-  sharedSidewallParts.map((part) => [part.z0, part.z1, part.ownership]),
-  [
-    [0, 1, 'interface'],
-    [1, 2, 'exterior'],
-  ],
-);
+  sharedSidewallParts = partialSidewallPlan.sidewalls.filter(
+    (part) => Math.abs(part.p[0]) < 1e-12 && Math.abs(part.q[0]) < 1e-12,
+  ),
+  sharedSidewallLengths = new Map();
+for (const part of sharedSidewallParts) {
+  const key = `${part.z0}:${part.z1}:${part.ownership}`,
+    length = Math.hypot(part.q[0] - part.p[0], part.q[1] - part.p[1]);
+  sharedSidewallLengths.set(key, (sharedSidewallLengths.get(key) || 0) + length);
+}
+assert.deepEqual([...sharedSidewallLengths].sort(), [
+  ['0:1:interface', 2],
+  ['1:2:exterior', 2],
+]);
 const sharedVerticalBorders = partialSidewallPlan.borderLines
   .filter(
     ([a, b]) =>
