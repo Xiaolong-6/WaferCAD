@@ -990,6 +990,16 @@ for (const [panel, button, filename] of [
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), filename);
 }
+for (const [button, filename] of [
+  ['#maskExportGdsBtn', 'wafercad-mask.gds'],
+  ['#maskExportOasBtn', 'wafercad-mask.oas'],
+]) {
+  await page.locator('#maskPanel .export-control > summary').click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator(button).click();
+  const download = await downloadPromise;
+  assert.equal(download.suggestedFilename(), filename);
+}
 const headerToolAlignment = await page.locator('.view-head .view-tools').evaluateAll((groups) =>
   groups.map((group) => getComputedStyle(group).alignItems),
 );
