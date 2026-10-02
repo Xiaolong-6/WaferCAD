@@ -2721,3 +2721,50 @@ summary:focus-visible {
     width: calc(100vw - 16px);
   }
 }
+
+
+/* Unified view popovers: one visual shell across Main / Mask / 3D / Section. */
+.view-popover-surface {
+  border: 1px solid #cbd3db;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.985);
+  color: #334352;
+  box-shadow: var(--shadow-popover, 0 8px 22px rgba(31, 41, 51, 0.12));
+}
+
+.focus-popover,
+.three-opacity-popover,
+.export-popover,
+.section-coords-panel {
+  padding: 7px;
+}
+
+.view-head details[open] > summary,
+#sectionControlsBtn.active {
+  border-color: #aebcc9;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  box-shadow: none;
+}
+
+.section-coords-panel {
+  z-index: 12;
+  top: 32px;
+  width: 200px;
+  backdrop-filter: none;
+}
+
+.section-coords-head,
+.draw-shape-editor-head {
+  color: #5f6b77;
+}
+
+.draw-shape-editor {
+  z-index: 12;
+}
+
+.draw-shape-editor-head {
+  min-height: 28px;
+  background: #f8fafb;
+}
+
