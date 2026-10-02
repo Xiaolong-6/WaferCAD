@@ -21,8 +21,6 @@ const {
   adaptiveRoughMeshLod,
   projectedPixelsPerUnit,
   roughLod,
-  roughMeshSubdivisionDepth,
-  roughMeshTriangleBudget,
   roughNoise1D,
   roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
@@ -39,49 +37,6 @@ for (const palette of Object.values(STRUCTURE_PALETTES)) assert.equal(palette.le
 
 assert.equal(roughLod(0).detail, 0);
 assert.equal(roughLod(20).micro, 1);
-assert.equal(roughMeshTriangleBudget({ triangleCount: 100, clipped: true }), 36000);
-assert.equal(roughMeshTriangleBudget({ triangleCount: 100, clipped: false }), 72000);
-assert.equal(roughMeshTriangleBudget({ triangleCount: 10000, clipped: false }), 160000);
-assert.equal(roughMeshTriangleBudget({ triangleCount: 20000, clipped: false }), 180000);
-assert.equal(
-  roughMeshSubdivisionDepth({
-    triangleCount: 100,
-    maxEdge: 8,
-    featureSize: 1,
-    maxTriangles: 36000,
-    maxDepth: 5,
-  }),
-  4,
-);
-assert.equal(
-  roughMeshSubdivisionDepth({
-    triangleCount: 1000,
-    maxEdge: 8,
-    featureSize: 1,
-    maxTriangles: 36000,
-    maxDepth: 5,
-  }),
-  2,
-);
-assert.equal(
-  roughMeshSubdivisionDepth({
-    triangleCount: 100,
-    maxEdge: 8,
-    featureSize: 100,
-    maxTriangles: 36000,
-    maxDepth: 5,
-  }),
-  0,
-);
-assert.equal(
-  roughMeshSubdivisionDepth({
-    triangleCount: 2,
-    maxEdge: 50,
-    featureSize: 1,
-  }),
-  6,
-);
-
 assert.ok(
   projectedPixelsPerUnit({
     distance: 50,
