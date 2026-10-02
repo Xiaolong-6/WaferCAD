@@ -5,6 +5,10 @@ import test from 'node:test';
 const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const persistence = await readFile(new URL('../workspace-persistence.js', import.meta.url), 'utf8');
+const workspacePersistenceController = await readFile(
+  new URL('../controllers/workspace-persistence-controller.js', import.meta.url),
+  'utf8',
+);
 const buildController = await readFile(
   new URL('../controllers/build-controller.js', import.meta.url),
   'utf8',
@@ -27,16 +31,16 @@ test('Project is the first and default workspace tab and owns the XYZ unit selec
 test('project replacement controls warn, Save is local, and Export downloads the project file', () => {
   assert.match(app, /New project will replace the current workspace/);
   assert.match(app, /Open project will replace the current workspace/);
-  assert.match(app, /manual-save · \$\{projectName\}/);
-  assert.match(app, /createWorkspaceRecoveryCheckpoint\(project/);
+  assert.match(workspacePersistenceController, /manual-save · \$\{projectName\}/);
+  assert.match(workspacePersistenceController, /createWorkspaceRecoveryCheckpoint\(project/);
   assert.match(app, /\$\('exportProjectBtn'\)\.onclick/);
   assert.match(app, /downloadProject\(buildProjectSnapshot\(true\), projectExportFilename\(\)\)/);
   assert.match(app, /\.wafercad/);
 });
 
 test('workspace state is restored locally after app reload', () => {
-  assert.match(app, /loadWorkspaceState\(\)/);
-  assert.match(app, /saveWorkspaceState\(project, \{ appCommit: loadedBuildVersion \}\)/);
+  assert.match(workspacePersistenceController, /loadWorkspaceState\(\)/);
+  assert.match(workspacePersistenceController, /saveWorkspaceState\(project, \{ appCommit \}\)/);
   assert.match(persistence, /indexedDB\.open\(DB_NAME, 1\)/);
   assert.match(persistence, /createWorkspaceRecoveryCheckpoint/);
   assert.match(persistence, /pre-migration-v/);
@@ -55,11 +59,11 @@ test('workspace safety UI exposes local save state, recovery, and safe reload', 
   ]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
-  assert.match(app, /createWorkspaceRecoveryCheckpoint/);
-  assert.match(app, /clearWorkspaceRecoveryPoints/);
+  assert.match(workspacePersistenceController, /createWorkspaceRecoveryCheckpoint/);
+  assert.match(workspacePersistenceController, /clearWorkspaceRecoveryPoints/);
   assert.match(persistence, /export async function clearWorkspaceRecoveryPoints/);
   assert.match(app, /workspaceSession\.start\(\)/);
-  assert.match(app, /globalThis\.location\.reload\(\)/);
+  assert.match(workspacePersistenceController, /globalThis\.location\.reload\(\)/);
 });
 
 test('footer exposes repository and exact deployed commit links', () => {
