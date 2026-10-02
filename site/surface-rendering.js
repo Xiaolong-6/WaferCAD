@@ -138,8 +138,10 @@ export function roughProfileOffsetAtPoint(x, y, appearance) {
       heightCv,
       gaussianNoise2D(rx, ry, localFeature, (seed ^ 0x9e3779b9) >>> 0, 2),
     ),
-    relief = Math.min(roughMaxRelief(appearance), meanHeight * heightFactor);
-  return Object.is(relief, -0) ? 0 : relief;
+    relief = Math.min(roughMaxRelief(appearance), meanHeight * heightFactor),
+    polarity = appearance?.polarity === 'normal' ? 'normal' : 'inverted',
+    offset = polarity === 'normal' ? roughMaxRelief(appearance) - relief : relief;
+  return Object.is(offset, -0) ? 0 : offset;
 }
 
 export function roughTextureValue(appearanceOrSeed, x, y, size = 64) {
