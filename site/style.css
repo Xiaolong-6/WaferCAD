@@ -2851,9 +2851,9 @@ summary:focus-visible {
   grid-template-columns: 20px minmax(0, 1fr) auto;
 }
 .legend-visibility {
-  width: 12px !important;
-  height: 12px !important;
-  margin: 0 3px 0 0 !important;
+  width: 13px !important;
+  height: 13px !important;
+  margin: 0 3px !important;
   justify-self: center;
 }
 .implant-gradient-chip {
