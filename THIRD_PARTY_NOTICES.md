@@ -8,6 +8,7 @@ WaferCAD uses the following third-party software in the active browser applicati
 - Upstream: https://github.com/mfogel/polygon-clipping
 - Package: https://www.npmjs.com/package/polygon-clipping
 - Vendored bundle: `site/vendor/polygon-clipping.umd.js`
+- Vendored Git blob: `ea20c2b105a925b5b9f888f394479a6ce88a2403`
 
 The bundle is vendored because WaferCAD is deployed as a static site with no build step.
 
