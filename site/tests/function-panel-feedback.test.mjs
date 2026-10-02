@@ -88,10 +88,10 @@ test('typed feedback is centralized in the status bar', () => {
 });
 
 test('Process UI is driven by material presence and exposed Extend targets', () => {
-  assert.match(app, /baseCoverageState\(model\)/);
+  assert.match(processPanelController, /baseCoverageState\(model\)/);
   assert.match(processPanelController, /exposedLayerIds\(model, area, activeFace\)/);
-  assert.match(app, /All material has been removed/);
-  assert.match(app, /Base fully removed/);
+  assert.match(processPanelController, /All material has been removed/);
+  assert.match(processPanelController, /Base fully removed/);
 });
 
 
@@ -229,8 +229,8 @@ test('Apply runs as a single cancelable task with elapsed time and Abort', () =>
   assert.match(html, /id="processTaskDialog"[^>]*hidden/);
   assert.match(html, /id="processTaskElapsed"/);
   assert.match(html, /id="processTaskAbortBtn"[^>]*>Abort</);
-  assert.match(app, /processTaskController\.run\(model, params, taskLabel, areaRequest\)/);
-  assert.match(app, /processTaskController\?\.isBusy\(\)/);
+  assert.match(processPanelController, /processTaskController\.run\(model, params, taskLabel, areaRequest\)/);
+  assert.match(processPanelController, /processTaskController\?\.isBusy\(\)/);
   assert.match(processTaskController, /new Worker\(/);
   assert.match(processTaskController, /setInterval\(syncDialog, 100\)/);
   assert.match(processTaskController, /worker\.terminate\(\)/);
@@ -261,7 +261,7 @@ test('experimental Implant keeps process inputs structural and display styling i
   assert.doesNotMatch(html, /id="implantBorder"/);
   assert.match(html, /id="sectionBordersBtn"/);
   assert.match(processPanelController, /starts at the outermost selected surface/);
-  assert.match(app, /params\.tilt = tilt/);
-  assert.match(app, /colorNewImplant\(result\.implantId\)/);
+  assert.match(processPanelController, /params\.tilt = tilt/);
+  assert.match(processPanelController, /colorNewImplant\(result\.implantId\)/);
   assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
 });
