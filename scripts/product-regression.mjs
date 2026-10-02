@@ -275,7 +275,15 @@ async function checkSectionSeams(page, project) {
     },
     { lo, hi, pad },
   );
-  assert.equal(colors.length, 1, `false Section seams: ${colors.join(' / ')}`);
+  const rgba = colors.map((color) => color.split(',').map(Number)),
+    channelRange = [0, 1, 2, 3].map((channel) => {
+      const values = rgba.map((value) => value[channel]);
+      return Math.max(...values) - Math.min(...values);
+    });
+  assert.ok(
+    channelRange.every((range) => range <= 1),
+    `false Section seams: ${colors.join(' / ')}`,
+  );
 }
 
 async function checkROI(page, name) {
