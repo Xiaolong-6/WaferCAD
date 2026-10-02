@@ -3,25 +3,15 @@ import {
   baseCoverageState,
   cloneModel,
   createModel,
-  fullFaceGeometry,
   hasMaterial,
   surfaceSegment,
   surfaceZ,
 } from './model.js';
 import {
-  bufferPolyline,
-  circleMulti,
-  difference,
-  intersection,
-  isEmpty,
-  rectMulti,
   transformMulti,
-  unionGeometries,
 } from './vector-geometry.js';
 import { downloadProject } from './project-io.js';
 import { createThreeView } from './three-view.js';
-import { sectorBoundaryPoints } from './roi-editor.js';
-import { maskRoiWorldGeometry } from './mask-roi-geometry.js';
 import {
   formatLengthInput,
   formatXY as formatXYValue,
@@ -57,7 +47,6 @@ import { createWorkspacePersistenceController } from './controllers/workspace-pe
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
 import {
   createEmptyDrawMask,
-  drawMaskGeometry,
   drawShapeContainsPoint,
 } from './draw-mask-geometry.js';
 import {
@@ -66,6 +55,7 @@ import {
 } from './controllers/project-state-controller.js';
 import { createPlanViewController } from './controllers/plan-view-controller.js';
 import { createPlanRenderers } from './plan-renderers.js';
+import { createSelectionGeometry } from './selection-geometry.js';
 
 const $ = (id) => document.getElementById(id);
 const MASK_PALETTE = [
@@ -455,65 +445,21 @@ const layerLegendController = createLayerLegendController({
 });
 const { renderLayerLegend, colorNewLayer, colorNewImplant } = layerLegendController;
 
-function selectedFileMaskGeometry() {
-  const geoms = [];
-  for (const e of layout.elements || []) {
-    if (!selectedElement(e)) continue;
-    if (e.kind === 'polygon') {
-      geoms.push([[e.points.map(maskPoint)]]);
-    } else if (e.kind === 'path' && e.width > 0) {
-      geoms.push(
-        bufferPolyline(e.points.map(maskPoint), (e.width * maskTransform.scale) / 2, 28, false),
-      );
-    }
-  }
-  const merged = unionGeometries(geoms);
-  return isEmpty(merged) ? [] : merged;
-}
-function activeMaskGeometry() {
-  const selected =
-    maskSourceMode === 'draw' ? drawMaskGeometry(drawMask) : selectedFileMaskGeometry();
-  return isEmpty(selected) ? [] : intersection(selected, model.boundary);
-}
+const selectionGeometry = createSelectionGeometry({
+  getState: () => ({
+    model,
+    layout,
+    maskSourceMode,
+    drawMask,
+    maskTransform,
+    maskRoi,
+    roi,
+  }),
+  selectedElement,
+  maskPoint,
+});
+const { operationAreaGeometry, roiGeometry } = selectionGeometry;
 
-function maskRoiGeometry() {
-  if (!maskRoi) return null;
-  const transform =
-    maskSourceMode === 'file'
-      ? maskTransform
-      : { x: 0, y: 0, scale: 1, rotation: 0 };
-  return maskRoiWorldGeometry(maskRoi, transform, 96);
-}
-
-function operationAreaGeometry(mode) {
-  let area;
-  if (mode === 'full') {
-    area = fullFaceGeometry(model);
-  } else {
-    const selected = activeMaskGeometry();
-    if (isEmpty(selected)) return [];
-    area = mode === 'invert' ? difference(model.boundary, selected) : selected;
-  }
-
-  const limiter = maskRoiGeometry();
-  return limiter ? intersection(area, limiter) : area;
-}
-function roiGeometry() {
-  if (!roi) return null;
-  if (roi.type === 'rect') {
-    const x0 = Math.min(roi.a[0], roi.b[0]),
-      x1 = Math.max(roi.a[0], roi.b[0]),
-      y0 = Math.min(roi.a[1], roi.b[1]),
-      y1 = Math.max(roi.a[1], roi.b[1]);
-    return rectMulti(x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
-  }
-  if (roi.type === 'circle') return circleMulti(roi.r * 2, roi.r * 2, 96, roi.c[0], roi.c[1]);
-  if (roi.type === 'sector') {
-    const ring = sectorBoundaryPoints(roi, 96);
-    return ring.length ? [[ring]] : null;
-  }
-  return null;
-}
 function stateSnapshot() {
   return { model: cloneModel(model), section: structuredClone(section) };
 }
