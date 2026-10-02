@@ -48,7 +48,8 @@ async function open(viewport, touch = false) {
   page.on('dialog', (dialog) => void dialog.accept());
   const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
   await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
-  await page.waitForFunction(() => document.querySelector('#sectionControlsBtn').onclick !== null);
+  await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
+  await page.locator('#threeHost canvas').waitFor({ state: 'attached', timeout: 10000 });
   assert.equal(
     await page.locator('#threeHost canvas').count(),
     1,
