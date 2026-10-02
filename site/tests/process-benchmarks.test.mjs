@@ -356,6 +356,48 @@ test('Conformal Extend reuses the Deposit coating kernel and still requires an e
   assert.deepEqual(model, buried);
 });
 
+for (const face of ['front', 'back']) {
+  test(`Conformal Extend coats exposed surfaces and sidewalls on the ${face} face`, () => {
+    const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+    const seed = applyOperation(model, {
+      type: 'add',
+      name: 'Extend seed',
+      thickness: 2,
+      face,
+      area: rectMulti(4, 4),
+      growth: 'direct',
+    });
+    const result = applyOperation(model, {
+      type: 'grow',
+      targetLayerId: seed.layerId,
+      thickness: 1,
+      face,
+      area: model.boundary,
+      growth: 'conformal',
+    });
+    assert.equal(result.changed, true);
+    const side = stackAt(model, 2.5).find((segment) => segment.layerId === seed.layerId),
+      far = stackAt(model, 5).find((segment) => segment.layerId === seed.layerId);
+    if (face === 'front') {
+      assert.deepEqual(side, {
+        layerId: seed.layerId,
+        z0: 5,
+        z1: 8,
+        role: 'conformal-sidewall',
+      });
+      assert.deepEqual(far, { layerId: seed.layerId, z0: 5, z1: 6 });
+    } else {
+      assert.deepEqual(side, {
+        layerId: seed.layerId,
+        z0: -8,
+        z1: -5,
+        role: 'conformal-sidewall',
+      });
+      assert.deepEqual(far, { layerId: seed.layerId, z0: -6, z1: -5 });
+    }
+  });
+}
+
 test('3D groups retain distinct Z intervals below the old eight-decimal grouping threshold', () => {
   const model = createModel({ shape: 'rect', width: 2, height: 2, thickness: 10 });
   model.regions = [
