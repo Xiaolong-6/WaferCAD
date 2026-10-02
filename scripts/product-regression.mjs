@@ -638,7 +638,28 @@ try {
       // 3D integration guardrails: clean opaque rough surfaces and sorted
       // translucent layers should remain layer-colored without screen-door noise.
       await page.locator('#threeMaxBtn').click();
+      const roughCanvas = page.locator('#threeHost canvas'),
+        fitLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
+        fitTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count'));
+      assert.ok(fitLodZones >= 1, `rough LOD diagnostics missing at Fit: ${fitLodZones}`);
+      assert.ok(fitTriangles > 0, `rough triangle diagnostics missing at Fit: ${fitTriangles}`);
       await capture(page, 'wide-rough-3d-opaque-max');
+
+      await roughCanvas.hover();
+      for (let step = 0; step < 8; step++) await page.mouse.wheel(0, -600);
+      await page.waitForTimeout(320);
+      const zoomLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
+        zoomStitches = Number(await roughCanvas.getAttribute('data-rough-lod-stitches')),
+        zoomTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count'));
+      assert.ok(
+        zoomLodZones > fitLodZones,
+        `adaptive LOD did not split the zoomed rough surface: ${fitLodZones} -> ${zoomLodZones}`,
+      );
+      assert.ok(zoomStitches > 0, `adaptive LOD zoom has no seam stitches: ${zoomStitches}`);
+      assert.ok(zoomTriangles > 0, `adaptive LOD zoom lost rough triangles: ${zoomTriangles}`);
+      await capture(page, 'wide-rough-3d-adaptive-zoom-max');
+      await page.locator('#fit3dBtn').click();
+      await page.waitForTimeout(180);
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.locator('#threeOpacityRange').fill('0.5');
