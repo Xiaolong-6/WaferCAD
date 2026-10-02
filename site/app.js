@@ -1580,6 +1580,83 @@ const viewMaximizeController = createViewMaximizeController({
   updateSectionEditor: () => sectionEditor?.update(),
 });
 
+async function restoreSelectedWorkspaceRecovery() {
+  if (!workspaceSession?.canWrite()) {
+    status('This tab is read-only. Take over the workspace before restoring a checkpoint.', 'warning');
+    return;
+  }
+  const key = $('workspaceRecoverySelect')?.value;
+  if (!key) return;
+  if (!globalThis.confirm('Restore this local recovery checkpoint? The current workspace will be checkpointed first.')) {
+    return;
+  }
+
+  try {
+    const current = buildProjectSnapshot(true);
+    await createWorkspaceRecoveryCheckpoint(current, {
+      appCommit: loadedBuildVersion,
+      reason: 'pre-restore',
+    });
+    const recovered = await loadWorkspaceRecoveryPoint(key);
+    if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
+    loadProjectSnapshot(recovered);
+    snapshotManager.importRecords(recovered.snapshots || []);
+    syncBaseControls();
+    maskImportController.syncTransformInputs();
+    renderAll();
+    renderSnapshots();
+    fit3d();
+    await persistWorkspaceNow();
+    await refreshRecoveryOptions();
+    status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
+  } catch (error) {
+    console.error(error);
+    status(`Recovery restore failed: ${error.message}`, 'error');
+  }
+}
+
+async function reloadWorkspaceSafely() {
+  if (!workspaceSession?.canWrite()) {
+    status('This tab is read-only. Update from the tab that owns the workspace.', 'warning');
+    return;
+  }
+  const button = $('safeReloadBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Saving…';
+  }
+
+  try {
+    if (workspacePersistenceTimer != null) {
+      clearTimeout(workspacePersistenceTimer);
+      workspacePersistenceTimer = null;
+    }
+    const project = buildProjectSnapshot(true);
+    setWorkspaceSaveStatus('Saving…');
+    workspacePersistenceWrite = workspacePersistenceWrite
+      .catch(() => {})
+      .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
+      .then(() =>
+        createWorkspaceRecoveryCheckpoint(project, {
+          appCommit: loadedBuildVersion,
+          reason: workspaceUpdateCommit
+            ? `pre-update-${workspaceUpdateCommit.slice(0, 7)}`
+            : 'pre-reload',
+        }),
+      );
+    await workspacePersistenceWrite;
+    setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+    globalThis.location.reload();
+  } catch (error) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Reload safely';
+    }
+    setWorkspaceSaveStatus('Local save failed', true);
+    status(`Safe reload cancelled: ${error.message}`, 'error');
+  }
+}
+
 function bindUi() {
   bindToolTabs();
   viewMaximizeController.bind();
@@ -1592,6 +1669,30 @@ function bindUi() {
   drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
+
+  $('workspaceTakeOverBtn').onclick = () => {
+    if (
+      !globalThis.confirm(
+        'Take over editing in this tab? The other tab will become read-only and may contain newer unsaved edits.',
+      )
+    ) {
+      return;
+    }
+    if (workspaceSession.takeOver()) {
+      status('This tab now owns the local workspace.');
+      scheduleWorkspacePersistence();
+      void refreshRecoveryOptions();
+    }
+  };
+  $('safeReloadBtn').onclick = () => {
+    void reloadWorkspaceSafely();
+  };
+  $('workspaceRecoverySelect').onchange = (event) => {
+    $('workspaceRestoreBtn').disabled = !event.target.value || !workspaceSession?.canWrite();
+  };
+  $('workspaceRestoreBtn').onclick = () => {
+    void restoreSelectedWorkspaceRecovery();
+  };
 
   $('projectNameInput').oninput = (event) => {
     projectName = String(event.target.value ?? '').slice(0, 256);
@@ -1666,9 +1767,11 @@ async function initializePersistedWorkspace() {
   } finally {
     workspacePersistenceReady = true;
     scheduleWorkspacePersistence();
+    void refreshRecoveryOptions();
   }
 }
 
+workspaceSession.start();
 bindUi();
 loadBuildCommit();
 window.addEventListener('focus', checkForBuildUpdate);
