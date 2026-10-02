@@ -26,6 +26,65 @@ function hashUnit(seed, index) {
   return (x >>> 0) / 0xffffffff;
 }
 
+function gaussianHash(seed, x, y, channel = 0) {
+  const a = Math.max(
+      1e-12,
+      hashUnit((Number(seed) >>> 0) ^ Math.imul((y | 0) + channel * 17, 0x85ebca6b), x | 0),
+    ),
+    b = hashUnit(
+      (Number(seed) >>> 0) ^ Math.imul((y | 0) + channel * 29, 0xc2b2ae35),
+      (x | 0) + channel * 13,
+    );
+  return Math.sqrt(-2 * Math.log(a)) * Math.cos(Math.PI * 2 * b);
+}
+
+function gaussianNoise2D(x, y, featureSize, seed, channel = 0) {
+  const feature = Math.max(1e-9, Number(featureSize) || 1),
+    gx = Number(x) / feature,
+    gy = Number(y) / feature,
+    ix = Math.floor(gx),
+    iy = Math.floor(gy),
+    tx = gx - ix,
+    ty = gy - iy,
+    sx = tx * tx * (3 - 2 * tx),
+    sy = ty * ty * (3 - 2 * ty),
+    sample = (dx, dy) => gaussianHash(seed, ix + dx, iy + dy, channel),
+    a = sample(0, 0) + (sample(1, 0) - sample(0, 0)) * sx,
+    b = sample(0, 1) + (sample(1, 1) - sample(0, 1)) * sx;
+  // Smooth interpolation lowers the variance; this factor keeps CV controls
+  // close to their statistical meaning without introducing discontinuities.
+  return (a + (b - a) * sy) * 1.5;
+}
+
+function lognormalFactor(cv, z) {
+  const value = Math.max(0, Math.min(1, Number(cv) || 0));
+  if (value <= 1e-12) return 1;
+  const sigma = Math.sqrt(Math.log1p(value * value));
+  return Math.exp(-0.5 * sigma * sigma + sigma * Math.max(-3.5, Math.min(3.5, z)));
+}
+
+export function roughMaxRelief(appearance) {
+  const depth = Number(appearance?.etchDepth),
+    meanHeight = Math.max(0, Number(appearance?.meanHeight ?? appearance?.amplitude) || 0);
+  return Number.isFinite(depth) && depth > 0 ? depth : meanHeight;
+}
+
+export function roughVisualBoundsZ(model, baseBounds = [0, 0]) {
+  let lo = Number(baseBounds?.[0]),
+    hi = Number(baseBounds?.[1]);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) [lo, hi] = [0, 0];
+
+  for (const region of model?.regions || []) {
+    for (const segment of region.stack || []) {
+      const front = segment.frontSurface,
+        back = segment.backSurface;
+      if (front?.kind === 'rough') hi = Math.max(hi, segment.z1 + roughMaxRelief(front));
+      if (back?.kind === 'rough') lo = Math.min(lo, segment.z0 - roughMaxRelief(back));
+    }
+  }
+  return [lo, hi];
+}
+
 export function roughNoise1D(distance, appearance) {
   const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
     x = Number(distance) / feature,
@@ -57,22 +116,43 @@ function roughNoise2D(x, y, featureSize, seed) {
 }
 
 export function roughProfileOffsetAtPoint(x, y, appearance) {
-  const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
-    amplitude = Math.max(0, Number(appearance?.amplitude) || 0),
+  const meanFeature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
+    meanHeight = Math.max(
+      0,
+      Number(appearance?.meanHeight ?? appearance?.amplitude) || meanFeature,
+    ),
+    featureCv = Math.max(0, Math.min(1, Number(appearance?.featureCv) || 0)),
+    heightCv = Math.max(0, Math.min(1, Number(appearance?.heightCv) || 0)),
     seed = Number(appearance?.seed) >>> 0,
     angle = ((seed % 3600) / 3600) * Math.PI * 2,
     cos = Math.cos(angle),
     sin = Math.sin(angle),
     rx = Number(x) * cos + Number(y) * sin,
     ry = -Number(x) * sin + Number(y) * cos,
-    primary = roughNoise2D(rx, ry, feature, seed),
-    fine = roughNoise2D(rx, ry, feature * 0.48, (seed ^ 0x9e3779b9) >>> 0),
-    noise = Math.max(-1, Math.min(1, primary * 0.78 + fine * 0.22)),
-    relief = ((noise + 1) * 0.5) * amplitude;
+    featureFactor = lognormalFactor(
+      featureCv,
+      gaussianNoise2D(rx, ry, meanFeature * 4, (seed ^ 0x51ed270b) >>> 0, 1),
+    ),
+    localFeature = Math.max(meanFeature * 0.2, meanFeature * featureFactor),
+    heightFactor = lognormalFactor(
+      heightCv,
+      gaussianNoise2D(rx, ry, localFeature, (seed ^ 0x9e3779b9) >>> 0, 2),
+    ),
+    relief = Math.min(roughMaxRelief(appearance), meanHeight * heightFactor);
   return Object.is(relief, -0) ? 0 : relief;
 }
 
-export function roughTextureValue(seed, x, y) {
-  const rowSeed = ((Number(seed) >>> 0) ^ Math.imul(y | 0, 0x85ebca6b)) >>> 0;
+export function roughTextureValue(appearanceOrSeed, x, y, size = 64) {
+  if (appearanceOrSeed && typeof appearanceOrSeed === 'object') {
+    const appearance = appearanceOrSeed,
+      feature = Math.max(1e-9, Number(appearance.featureSize) || 1),
+      span = feature * 8,
+      px = (Number(x) / Math.max(1, size - 1)) * span,
+      py = (Number(y) / Math.max(1, size - 1)) * span,
+      max = Math.max(1e-9, roughMaxRelief(appearance));
+    return clamp01(roughProfileOffsetAtPoint(px, py, appearance) / max);
+  }
+  const seed = Number(appearanceOrSeed) >>> 0,
+    rowSeed = (seed ^ Math.imul(y | 0, 0x85ebca6b)) >>> 0;
   return hashUnit(rowSeed, x | 0);
 }
