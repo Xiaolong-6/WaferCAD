@@ -44,7 +44,7 @@ Available actions:
 - Etch / subtract
 - Implant **(experimental)**
 
-Deposit and Extend support Directional and Conformal coverage. Etch is vertical subtraction and has no coverage mode; its Surface setting can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
+Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Etch is vertical subtraction and has no coverage mode; its Surface setting can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
 
 The experimental Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and creates a user-named implant zone with an empirical depth and signed X tilt. Color is assigned after Apply from the active 20-color structure palette and can be changed from the Layers legend. Main uses a light overlay, Section shows the gradient volume, and 3D shows the surviving internal volume. Later Etch operations geometrically clip that existing implant, including rough-profile display, without modeling dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT_EXPERIMENTAL.md`.
 
@@ -78,7 +78,7 @@ npm run check
 
 ## Project-file safety
 
-Project JSON is versioned and migrated before it can replace the current editor state. The current format is **v13**. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, surface morphology, Implant records, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Earlier formats, including the v6 File/Draw-mask introduction and v12 stochastic-surface format, migrate forward deterministically; v13 adds Pyramid morphology. Repeated snapshot layout/model assets are shared and persisted physical coordinates are normalized to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
+Project JSON is versioned and migrated before it can replace the current editor state. The current format is **v13**. The **Project** tab opens first; **Save** creates a local browser Recovery checkpoint, while **Export** downloads the `.wafercad` file. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, surface morphology, Implant records, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Earlier formats, including the v6 File/Draw-mask introduction and v12 stochastic-surface format, migrate forward deterministically; v13 adds Pyramid morphology. Repeated snapshot layout/model assets are shared and persisted physical coordinates are normalized to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
 
