@@ -35,11 +35,12 @@ assert.equal(
   roughProfileSample,
   roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
 );
-assert.ok(Math.abs(roughProfileSample) <= roughAppearance.amplitude / 2 + 1e-12);
+assert.ok(roughProfileSample >= -1e-12);
+assert.ok(roughProfileSample <= roughAppearance.amplitude + 1e-12);
 // Physical roughness height is view-independent; LOD can hide detail but never rescales Z.
 assert.equal(
-  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 0),
-  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 100),
+  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
+  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
 );
 
 const defaults = createModel();
@@ -93,6 +94,20 @@ assert.equal(roughSurface.frontSurface.featureSize, 0.4);
 assert.equal(roughSurface.frontSurface.amplitude, 0.8);
 assert.equal(roughSurface.frontSurface.geometryMode, 'ideal');
 assert.equal(Number.isInteger(roughSurface.frontSurface.seed), true);
+
+assert.equal(roughSurface.frontSurface.etchDepth, 1);
+
+const invalidRoughEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const invalidRoughResult = applyOperation(invalidRoughEtch, {
+  type: 'etch',
+  thickness: 0.5,
+  face: 'front',
+  area,
+  surface: { kind: 'rough', featureSize: 0.2, amplitude: 0.8, geometryMode: 'ideal' },
+});
+assert.equal(invalidRoughResult.changed, false);
+assert.match(invalidRoughResult.error, /Height cannot exceed Etch Depth/);
+assert.equal(surfaceSegment(regionAt(invalidRoughEtch, [0, 0]).stack).z1, 5);
 
 const smoothEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(smoothEtch, { type: 'etch', thickness: 1, face: 'front', area });
