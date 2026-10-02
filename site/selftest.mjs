@@ -206,6 +206,20 @@ assert.deepEqual(
     [1, 2, 'exterior'],
   ],
 );
+const sharedVerticalBorders = partialSidewallPlan.borderLines
+  .filter(
+    ([a, b]) =>
+      Math.abs(a[0]) < 1e-12 &&
+      Math.abs(b[0]) < 1e-12 &&
+      Math.abs(Math.abs(a[1]) - 1) < 1e-12 &&
+      Math.abs(a[1] - b[1]) < 1e-12,
+  )
+  .map(([a, b]) => [Math.min(a[2], b[2]), Math.max(a[2], b[2])])
+  .sort((a, b) => a[0] - b[0]);
+assert.deepEqual(sharedVerticalBorders, [
+  [1, 2],
+  [1, 2],
+]);
 const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
 assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
