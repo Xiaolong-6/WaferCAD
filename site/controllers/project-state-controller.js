@@ -1,5 +1,6 @@
 import { createModel } from '../model.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from '../project-schema.js';
+import { normalizeMaskRoi } from '../mask-roi-geometry.js';
 import { normalizeRoi } from '../roi-editor.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
@@ -112,7 +113,7 @@ export function createProjectStateController({
       maskTransform: project.maskTransform,
       maskSourceMode: project.maskSourceMode || 'file',
       drawMask: structuredClone(project.drawMask || { nextShapeId: 1, shapes: [] }),
-      maskRoi: project.maskRoi ? normalizeRoi(project.maskRoi) : null,
+      maskRoi: project.maskRoi ? normalizeMaskRoi(project.maskRoi) : null,
       maskRoiAnchor: project.maskRoiAnchor || 'center',
       activeFace: project.activeFace,
       roi: project.roi ? normalizeRoi(project.roi) : null,
