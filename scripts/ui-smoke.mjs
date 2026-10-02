@@ -256,7 +256,6 @@ await page.waitForFunction(() =>
 assert.ok(await page.locator('#workspaceRecoverySelect option').count() > 0);
 assert.match(await page.locator('#workspaceRecoverySelect option').first().textContent(), /manual-save/);
 assert.equal(await page.locator('#workspaceRecoveryClearBtn').isDisabled(), false);
-page.once('dialog', (dialog) => dialog.accept());
 await page.locator('#workspaceRecoveryClearBtn').click();
 await page.waitForFunction(
   () => document.getElementById('workspaceRecoverySelect')?.options?.length === 1,
