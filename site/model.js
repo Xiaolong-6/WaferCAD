@@ -402,7 +402,7 @@ function splitByArea(model, area, mutator) {
 }
 
 function exposedLayerPatches(model, active, face, layerId) {
-  const groups = new Map();
+  const patches = [];
 
   for (const region of model.regions) {
     const segment = surfaceSegment(region.stack, face);
@@ -411,15 +411,17 @@ function exposedLayerPatches(model, active, face, layerId) {
     const geom = intersection(region.geom, active);
     if (isEmpty(geom)) continue;
 
-    const z = face === 'front' ? segment.z1 : segment.z0;
-    const key = z.toFixed(9);
-    if (!groups.has(key)) groups.set(key, { z, geoms: [] });
-    groups.get(key).geoms.push(geom);
+    patches.push({
+      z: face === 'front' ? segment.z1 : segment.z0,
+      geom,
+    });
   }
 
-  return [...groups.values()]
-    .map(({ z, geoms }) => ({ z, geom: unionGeometries(geoms) }))
-    .sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
+  // Keep regions separate here. Unioning every same-Z patch first made complex
+  // imported layouts numerically fragile. Shared partition edges are harmless:
+  // conformalSidewallStack() rejects a neighbor whose exposed Z already reaches
+  // the source Z, so only genuine height/void boundaries receive material.
+  return patches.sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
 }
 
 function conformalSidewallStack(stack, layerId, face, sourceZ) {
