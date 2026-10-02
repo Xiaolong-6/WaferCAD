@@ -96,7 +96,7 @@ await blockedThreePage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 3
 await blockedThreePage.locator('#welcomeEmptyBtn').click();
 await blockedThreePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await blockedThreePage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  () => document.documentElement.dataset.appReady === 'true',
   null,
   { timeout: 4000 },
 );
