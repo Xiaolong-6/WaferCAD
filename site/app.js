@@ -232,20 +232,26 @@ async function refreshRecoveryOptions() {
 }
 
 function syncWorkspaceSessionState({ writable }) {
-  const workspace = document.querySelector('.workspace');
-  const dialog = $('workspaceConflictDialog');
-  if (workspace) workspace.inert = !writable;
+  const workspace = document.querySelector('.workspace'),
+    dialog = $('workspaceConflictDialog');
+  if (workspace) {
+    workspace.inert = false;
+    workspace.dataset.autosaveOwner = writable ? 'true' : 'false';
+  }
   if (dialog) dialog.hidden = writable;
   if (!writable) {
     if (workspacePersistenceTimer != null) {
       clearTimeout(workspacePersistenceTimer);
       workspacePersistenceTimer = null;
     }
-    setWorkspaceSaveStatus('Read-only · another tab is editing');
+    setWorkspaceSaveStatus('Autosave paused · another tab owns local storage');
     if ($('workspaceRestoreBtn')) $('workspaceRestoreBtn').disabled = true;
-    status('Workspace is active in another tab. This tab is read-only to protect local data.', 'warning');
-  } else if (workspacePersistenceReady) {
-    scheduleWorkspacePersistence();
+    status(
+      'Another tab owns local autosave. Editing and mask import remain available; use Take over to save from this tab.',
+      'warning',
+    );
+  } else {
+    if (workspacePersistenceReady) scheduleWorkspacePersistence();
     void refreshRecoveryOptions();
   }
 }
