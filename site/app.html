@@ -432,12 +432,24 @@
         <section class="tool-panel" id="toolPanel" aria-label="Workspace tools">
           <div class="tool-tabs" role="tablist" aria-label="Workspace tools">
             <button
-              id="baseTab"
+              id="settingsTab"
               class="tool-tab active"
               type="button"
               role="tab"
-              aria-controls="baseTools"
+              aria-controls="settingsTools"
               aria-selected="true"
+              data-tool-tab="settings"
+            >
+              Project
+            </button>
+            <button
+              id="baseTab"
+              class="tool-tab"
+              type="button"
+              role="tab"
+              aria-controls="baseTools"
+              aria-selected="false"
+              tabindex="-1"
               data-tool-tab="base"
             >
               Base
@@ -478,18 +490,6 @@
             >
               Snapshots <span id="snapshotCount" class="badge">0</span>
             </button>
-            <button
-              id="settingsTab"
-              class="tool-tab"
-              type="button"
-              role="tab"
-              aria-controls="settingsTools"
-              aria-selected="false"
-              tabindex="-1"
-              data-tool-tab="settings"
-            >
-              Project
-            </button>
           </div>
 
           <div class="tool-tab-content">
@@ -499,6 +499,7 @@
               role="tabpanel"
               aria-labelledby="baseTab"
               data-tab-panel="base"
+              hidden
             >
               <div class="tool-context">
                 <span id="baseSummary" class="muted">100000 × 100000 µm · Z 12 µm</span>
@@ -806,7 +807,6 @@
               role="tabpanel"
               aria-labelledby="settingsTab"
               data-tab-panel="settings"
-              hidden
             >
               <div class="tool-context"><span>Project</span></div>
               <div class="control-body">
@@ -825,11 +825,22 @@
                   <button id="newProjectBtn" class="compact-btn" title="Start a new empty project">
                     New
                   </button>
-                  <label class="button compact-btn" title="Open a WaferCAD project"
+                  <label class="button compact-btn" title="Open a WaferCAD project file"
                     >Open<input id="openProjectInput" type="file" accept=".json,.wafercad" hidden
                   /></label>
-                  <button id="saveProjectBtn" class="compact-btn" title="Save this project">
+                  <button
+                    id="saveProjectBtn"
+                    class="compact-btn"
+                    title="Save a local recovery checkpoint in browser storage"
+                  >
                     Save
+                  </button>
+                  <button
+                    id="exportProjectBtn"
+                    class="compact-btn"
+                    title="Export the current project as a .wafercad file"
+                  >
+                    Export
                   </button>
                 </div>
                 <div class="workspace-recovery-controls compact-action-row">
@@ -841,6 +852,15 @@
                   </label>
                   <button id="workspaceRestoreBtn" class="compact-btn" type="button" disabled>
                     Restore
+                  </button>
+                  <button
+                    id="workspaceRecoveryClearBtn"
+                    class="compact-btn quiet"
+                    type="button"
+                    title="Clear all local recovery checkpoints"
+                    disabled
+                  >
+                    Clear
                   </button>
                 </div>
               </div>
