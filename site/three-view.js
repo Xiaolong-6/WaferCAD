@@ -272,6 +272,11 @@ export function createThreeView({
         (sum, entry) => sum + (entry.mesh.geometry?.getAttribute('position')?.count || 0) / 3,
         0,
       ),
+      subdivisionTriangles = roughMeshes.reduce(
+        (sum, entry) =>
+          sum + (Number(entry.mesh.geometry?.userData?.roughSubdivisionTriangleCount) || 0),
+        0,
+      ),
       zones = roughMeshes.reduce(
         (sum, entry) => sum + (Number(entry.mesh.geometry?.userData?.roughLodZoneCount) || 0),
         0,
@@ -289,6 +294,9 @@ export function createThreeView({
       delete data.roughSubdivisionTriangleCount;
       delete data.roughLodZones;
       delete data.roughLodStitches;
+      delete data.roughSceneTriangleBudget;
+      delete data.roughRequestedSceneTriangleBudget;
+      delete data.roughBaseTriangleCount;
       return;
     }
     data.roughLodDepthMin = String(Math.min(...depths));
@@ -653,12 +661,14 @@ export function createThreeView({
         return { ...task, zones };
       }),
       viewport = currentViewport(),
-      sceneBudget = roughSceneTriangleBudget({
+      requestedSceneBudget = roughSceneTriangleBudget({
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
         pixelRatio: viewport.pixelRatio,
         roiFraction: roughSceneRoiFraction(context.model, context.clip),
       }),
+      baseTriangleCount = requests.reduce((sum, request) => sum + request.baseTriangles, 0),
+      sceneBudget = Math.max(requestedSceneBudget, baseTriangleCount),
       allocations = allocateRoughTriangleBudgets(requests, {
         totalBudget: sceneBudget,
       });
@@ -666,7 +676,7 @@ export function createThreeView({
     requests.forEach((request, index) => {
       request.zone.triangleBudget = allocations[index];
     });
-    return { tasks, sceneBudget };
+    return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount };
   }
 
   function rebuildAdaptiveRoughGeometry() {
@@ -722,6 +732,8 @@ export function createThreeView({
       const data = renderer?.domElement?.dataset;
       if (data) {
         data.roughSceneTriangleBudget = String(prepared.sceneBudget);
+        data.roughRequestedSceneTriangleBudget = String(prepared.requestedSceneBudget);
+        data.roughBaseTriangleCount = String(prepared.baseTriangleCount);
         data.roughRebuildCount = String(roughRebuildCount);
         data.surfacePlanBuildCount = String(surfacePlanBuildCount);
       }
