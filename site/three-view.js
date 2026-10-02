@@ -44,10 +44,11 @@ export function createThreeView({
       const featurePixels = entry.appearance.featureSize * pxPerUm,
         lod = roughLod(featurePixels),
         ratio = entry.appearance.amplitude / Math.max(entry.appearance.featureSize, 1e-9);
-      entry.material.color.copy(entry.farColor).lerp(entry.nearColor, 0.35 * lod.detail);
-      entry.material.roughness = 1 - 0.18 * lod.detail;
+      // Match Section semantics: roughness changes the surface response, never
+      // the material identity or layer color.
+      entry.material.roughness = 0.78 + 0.18 * lod.detail;
       entry.material.bumpScale =
-        Math.min(3, ratio * 0.7) * (0.15 * lod.detail + 0.85 * lod.micro);
+        Math.min(2.4, ratio * 0.55) * (0.18 * lod.detail + 0.82 * lod.micro);
     }
   }
 
@@ -81,7 +82,7 @@ export function createThreeView({
     roughMeshes = [];
   }
 
-  function roughTexture(seed, size = 32) {
+  function roughTexture(seed, size = 64) {
     const data = new Uint8Array(size * size * 4);
     for (let y = 0; y < size; y++)
       for (let x = 0; x < size; x++) {
@@ -97,6 +98,9 @@ export function createThreeView({
     texture.wrapT = THREE.RepeatWrapping;
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
+    if (renderer?.capabilities) {
+      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    }
     texture.needsUpdate = true;
     return texture;
   }
@@ -110,6 +114,21 @@ export function createThreeView({
       uv[index * 2 + 1] = positions.getY(index) / period;
     }
     geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  }
+
+  function inspectionMaterialState(value) {
+    const number = Number(value),
+      opacity = Math.max(0.1, Math.min(1, Number.isFinite(number) ? number : 1)),
+      translucent = opacity < 0.999;
+    // Screen-door transparency avoids whole-mesh alpha sorting failures on
+    // stacked/overlapping CAD solids while keeping each surviving sample at
+    // the layer's true color.
+    return {
+      opacity,
+      transparent: false,
+      alphaHash: translucent,
+      depthWrite: true,
+    };
   }
 
   function xyBounds(geometry) {
@@ -242,7 +261,8 @@ export function createThreeView({
 
     const clip = getClipGeometry(),
       inspection = getInspection() || {},
-      opacity = Math.max(0.1, Math.min(1, Number(inspection.opacity) || 1)),
+      materialState = inspectionMaterialState(inspection.opacity),
+      opacity = materialState.opacity,
       borders = Boolean(inspection.borders);
 
     const solids = materialSolids(model, clip);
@@ -256,9 +276,7 @@ export function createThreeView({
         roughness: 0.78,
         metalness: 0.015,
         side: THREE.DoubleSide,
-        transparent: opacity < 0.999,
-        opacity,
-        depthWrite: opacity >= 0.999,
+        ...materialState,
         polygonOffset: true,
         // Push filled surfaces slightly behind their true geometry. This keeps
         // the wire overlay visible even at 100% opacity while retaining a
@@ -266,9 +284,8 @@ export function createThreeView({
         polygonOffsetFactor: Math.min(8, (index + 1) * 0.35),
         polygonOffsetUnits: Math.min(12, index + 1),
       });
-      if (opacity < 0.999) material.forceSinglePass = true;
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.renderOrder = opacity < 0.999 ? 1 : 0;
+      mesh.renderOrder = 0;
       group.add(mesh);
 
       if (borders) {
@@ -279,9 +296,9 @@ export function createThreeView({
         );
         const edgeMaterial = new THREE.LineBasicMaterial({
           color: 0x111820,
-          transparent: true,
-          opacity: 1,
-          depthTest: opacity >= 0.999,
+          transparent: opacity < 0.999,
+          opacity: opacity < 0.999 ? 0.72 : 1,
+          depthTest: true,
           depthFunc: THREE.LessEqualDepth,
           depthWrite: false,
         });
@@ -302,33 +319,26 @@ export function createThreeView({
         });
       addPlanarUv(geometry, patch.appearance.featureSize);
       const layer = layerById(model, patch.layerId),
-        farColor = new THREE.Color(0x24282c),
-        nearColor = new THREE.Color(layer?.color || '#666').multiplyScalar(0.5),
         material = new THREE.MeshStandardMaterial({
-          color: farColor,
-          roughness: 1,
-          metalness: 0,
+          color: layer?.color || '#666',
+          roughness: 0.78,
+          metalness: 0.015,
           bumpMap: roughTexture(patch.appearance.seed),
           bumpScale: 0,
           side: THREE.DoubleSide,
-          transparent: opacity < 0.999,
-          opacity,
-          depthWrite: false,
+          ...materialState,
           polygonOffset: true,
           polygonOffsetFactor: -2,
           polygonOffsetUnits: -2,
         });
-      if (opacity < 0.999) material.forceSinglePass = true;
       const mesh = new THREE.Mesh(geometry, material);
       mesh.userData.surfaceAppearance = { ...patch.appearance };
-      mesh.renderOrder = 500;
+      mesh.renderOrder = 10;
       group.add(mesh);
       roughMeshes.push({
         mesh,
         material,
         appearance: { ...patch.appearance },
-        farColor,
-        nearColor,
       });
     }
     updateRoughLod();

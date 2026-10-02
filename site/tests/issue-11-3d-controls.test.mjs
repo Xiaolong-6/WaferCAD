@@ -13,10 +13,15 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(app, /threeOpacity = 1/);
   assert.match(app, /threeShowBorders = false/);
   assert.match(threeView, /solidBorders\(item\)/);
-  assert.match(threeView, /depthWrite: opacity >= 0\.999/);
-  assert.match(threeView, /depthTest: opacity >= 0\.999/);
+  assert.match(threeView, /alphaHash: translucent/);
+  assert.match(threeView, /transparent: false/);
+  assert.match(threeView, /depthWrite: true/);
+  assert.match(threeView, /depthTest: true/);
   assert.match(threeView, /edges\.renderOrder = 1000 \+ index/);
-  assert.match(threeView, /mesh\.renderOrder = opacity < 0\.999 \? 1 : 0/);
+  assert.match(threeView, /color: layer\?\.color \|\| '#666'/);
+  assert.match(threeView, /mesh\.renderOrder = 10/);
+  assert.doesNotMatch(threeView, /0x24282c/);
+  assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
   assert.match(threeView, /async function exportGlb\(\)/);
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
   assert.match(app, /createThreeView/);
