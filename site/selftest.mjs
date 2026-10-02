@@ -11,6 +11,7 @@ globalThis.polygonClipping = commonJsModule.exports;
 
 const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
+const { appearanceSurfaceGroups } = await import('./model-view-geometry.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { validateProjectFile } = await import('./project-schema.js');
 const {
@@ -75,6 +76,40 @@ const roughAppearance = {
   seed: 42,
   profileId: 'rough-test',
 };
+
+const appearanceGroupModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
+  appearanceGroupRegion = appearanceGroupModel.regions[0],
+  appearanceGroupSegment = appearanceGroupRegion.stack[0];
+appearanceGroupModel.regions = [
+  {
+    ...appearanceGroupRegion,
+    stack: [
+      {
+        ...appearanceGroupSegment,
+        frontSurface: { kind: 'rough', ...roughAppearance, polarity: 'inverted' },
+      },
+    ],
+  },
+  {
+    ...appearanceGroupRegion,
+    stack: [
+      {
+        ...appearanceGroupSegment,
+        frontSurface: { kind: 'rough', ...roughAppearance, polarity: 'normal' },
+      },
+    ],
+  },
+  {
+    ...appearanceGroupRegion,
+    stack: [
+      {
+        ...appearanceGroupSegment,
+        frontSurface: { kind: 'rough', ...roughAppearance, etchDepth: 0.6 },
+      },
+    ],
+  },
+];
+assert.equal(appearanceSurfaceGroups(appearanceGroupModel).length, 3);
 const roughProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance);
 assert.equal(
   roughProfileSample,
