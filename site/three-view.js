@@ -135,12 +135,12 @@ export function createThreeView({
     const distance = Math.max(1e-9, camera.position.distanceTo(controls.target)),
       halfHeight = distance * Math.tan((camera.fov * Math.PI) / 360) * 1.8,
       halfWidth = halfHeight * Math.max(0.2, camera.aspect),
-      forward = new THREE.Vector3(),
       right = new THREE.Vector3(),
       viewUp = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    right.crossVectors(forward, camera.up).normalize();
-    viewUp.crossVectors(right, forward).normalize();
+    camera.updateMatrixWorld();
+    const elements = camera.matrixWorld.elements;
+    right.set(elements[0], elements[1], elements[2]).normalize();
+    viewUp.set(elements[4], elements[5], elements[6]).normalize();
 
     const corners = [];
     for (const sx of [-1, 1]) {
@@ -766,8 +766,8 @@ export function createThreeView({
       new ResizeObserver(resize).observe(host);
       ready = true;
       resize();
-      render();
       fit();
+      render();
       scheduleFrame();
       return true;
     });
@@ -886,9 +886,6 @@ export function createThreeView({
 
       if (borders) addBorderPositions(plan.borderLines.flat(2), 100000);
 
-      updateRoughMaterialLod();
-      updateTransparentOrder();
-
       // Implant remains a non-material annotation. Opaque host material writes
       // depth and occludes buried Implant; translucent host surfaces intentionally
       // stop writing depth so the surviving volume can be inspected.
@@ -954,6 +951,8 @@ export function createThreeView({
         if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
       }
 
+      updateRoughMaterialLod();
+      updateTransparentOrder();
       lastLodSignature = roughMeshes.length ? adaptiveLodSignature() : null;
       stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     } finally {
