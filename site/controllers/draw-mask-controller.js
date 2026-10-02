@@ -28,6 +28,7 @@ export function createDrawMaskController({
   isInteractionBlocked = () => false,
   syncSourceSummary = () => {},
   onMaskChanged = () => {},
+  claimPopover = () => {},
   status,
 }) {
   const $ = (id) => root.getElementById(id);
@@ -199,6 +200,7 @@ export function createDrawMaskController({
     if (!shape) return;
     selectedId = shape.id;
     renderEditor();
+    claimPopover($('drawShapeEditor'));
     $('drawShapeEditor').hidden = false;
     syncUi({ preserveEditor: true });
     renderMask();
