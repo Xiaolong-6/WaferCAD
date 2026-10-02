@@ -3,6 +3,7 @@ import {
   difference,
   intersection,
   isEmpty,
+  multiBounds,
   unionGeometries,
 } from './vector-geometry.js';
 
@@ -293,6 +294,59 @@ export function uncoveredDomain(model, clip = model?.boundary) {
   }
 }
 
+function ringArea(ring) {
+  let sum = 0;
+  for (let index = 1; index < (ring || []).length; index++) {
+    const a = ring[index - 1],
+      b = ring[index];
+    sum += a[0] * b[1] - b[0] * a[1];
+  }
+  return sum / 2;
+}
+
+function geometryArea(geometry) {
+  let total = 0;
+  for (const polygon of geometry || []) {
+    if (!polygon.length) continue;
+    let value = Math.abs(ringArea(polygon[0]));
+    for (let index = 1; index < polygon.length; index++) {
+      value -= Math.abs(ringArea(polygon[index]));
+    }
+    total += Math.max(0, value);
+  }
+  return total;
+}
+
+export function classifyCoverageVoids(
+  model,
+  {
+    clip = model?.boundary,
+    crackTolerance = 1e-4,
+  } = {},
+) {
+  const all = uncoveredDomain(model, clip),
+    cracks = [],
+    voids = [];
+
+  for (const polygon of all) {
+    const geom = [polygon],
+      bounds = multiBounds(geom),
+      area = geometryArea(geom),
+      narrow =
+        Math.min(bounds.width, bounds.height) <= crackTolerance + TOPOLOGY_EPSILON_UM,
+      tiny = area <= crackTolerance ** 2 * 4,
+      item = {
+        kind: narrow || tiny ? 'numerical-crack' : 'true-void',
+        geom,
+        bounds,
+        area,
+      };
+    (narrow || tiny ? cracks : voids).push(item);
+  }
+
+  return { all, cracks, voids };
+}
+
 export function conformalMaterialWallTargets(
   model,
   band,
@@ -324,14 +378,60 @@ export function conformalMaterialWallTargets(
   return out;
 }
 
+export function conformalWallTargets(
+  model,
+  band,
+  {
+    face = 'front',
+    source,
+    voidDomain = [],
+  } = {},
+) {
+  const sourceZ = Number(source?.z),
+    materialWalls = conformalMaterialWallTargets(model, band, { face, sourceZ }).map(
+      (target) => ({
+        ...target,
+        z0: Math.min(target.localZ, target.sourceZ),
+        z1: Math.max(target.localZ, target.sourceZ),
+      }),
+    ),
+    voidWalls = [];
+
+  if (
+    !isEmpty(voidDomain) &&
+    Number.isFinite(sourceZ) &&
+    Number.isFinite(Number(source?.oppositeZ))
+  ) {
+    const geom = intersection(band, voidDomain),
+      oppositeZ = Number(source.oppositeZ),
+      z0 = Math.min(sourceZ, oppositeZ),
+      z1 = Math.max(sourceZ, oppositeZ);
+    if (!isEmpty(geom) && z1 > z0 + TOPOLOGY_EPSILON_UM) {
+      voidWalls.push({
+        kind: 'void-wall',
+        face,
+        sourceZ,
+        oppositeZ,
+        z0,
+        z1,
+        geom,
+      });
+    }
+  }
+
+  return { materialWalls, voidWalls };
+}
+
 export function deriveProcessTopology(model, { face = 'front', clip = null } = {}) {
   const domain = clip || model?.boundary || [];
+  const coverage = classifyCoverageVoids(model, { clip: domain });
   return {
     kernel: 'surface-topology-v2',
     face,
     exposedFaces: visibleSurfaceGroups(model, { face, clip }),
     materialInterfaces: materialInterfaceGroups(model, { clip }),
     appearanceFaces: appearanceSurfaceGroupsFromTopology(model, clip),
-    voids: uncoveredDomain(model, domain),
+    voids: coverage.voids,
+    numericalCracks: coverage.cracks,
   };
 }
