@@ -450,6 +450,8 @@ const {
   downloadBlob,
   exportMainSvg,
   exportMaskSvg,
+  exportMaskGds,
+  exportMaskOas,
   exportSectionSvg,
   syncMaskExportOptions,
 } = exportController;
@@ -1848,6 +1850,8 @@ const workspaceActions = createWorkspaceActionsController({
   fit3d,
   exportMainSvg,
   exportMaskSvg,
+  exportMaskGds,
+  exportMaskOas,
   exportSectionSvg,
   syncMaskExportOptions,
   getThreeView: () => threeView,

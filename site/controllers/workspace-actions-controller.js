@@ -16,6 +16,8 @@ export function createWorkspaceActionsController({
   fit3d,
   exportMainSvg,
   exportMaskSvg,
+  exportMaskGds,
+  exportMaskOas,
   exportSectionSvg,
   syncMaskExportOptions = () => {},
   getThreeView,
@@ -187,6 +189,14 @@ export function createWorkspaceActionsController({
     $('maskExportSvgBtn').onclick = () => {
       exportMaskSvg();
       closeExport('maskExportSvgBtn');
+    };
+    $('maskExportGdsBtn').onclick = () => {
+      exportMaskGds();
+      closeExport('maskExportGdsBtn');
+    };
+    $('maskExportOasBtn').onclick = () => {
+      exportMaskOas();
+      closeExport('maskExportOasBtn');
     };
     $('sectionExportSvgBtn').onclick = () => {
       exportSectionSvg();

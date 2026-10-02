@@ -311,7 +311,12 @@
                     </label>
                   </div>
                   <p id="maskExportDrawNote" class="export-note" hidden>Draw source exports all drawn shapes.</p>
-                  <button id="maskExportSvgBtn" class="mini-btn" type="button">Export SVG</button>
+                  <div class="export-action-row">
+                    <button id="maskExportSvgBtn" class="mini-btn" type="button">SVG</button>
+                    <button id="maskExportGdsBtn" class="mini-btn" type="button">GDS</button>
+                    <button id="maskExportOasBtn" class="mini-btn" type="button">OAS</button>
+                  </div>
+                  <p class="export-note">Mask ROI crops all exported formats when active.</p>
                 </div>
               </details>
               <button

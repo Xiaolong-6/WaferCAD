@@ -4,6 +4,11 @@ import { sectorBoundaryPoints } from '../roi-editor.js';
 import { drawMaskGeometry } from '../draw-mask-geometry.js';
 import { maskRoiWorldGeometry, multiBounds } from '../mask-roi-geometry.js';
 import { bufferPolyline, intersection, isEmpty } from '../vector-geometry.js';
+import {
+  buildMaskExportRecords,
+  encodeGdsMask,
+  encodeOasisMask,
+} from '../mask-export.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -224,6 +229,74 @@ export function createExportController({
     }
   }
 
+  function maskExportContext() {
+    const { layout, maskTransform, maskSourceMode, drawMask, maskRoi } = getState(),
+      roiTransform =
+        maskSourceMode === 'file'
+          ? maskTransform
+          : { x: 0, y: 0, scale: 1, rotation: 0 },
+      roiGeometry = maskRoi ? maskRoiWorldGeometry(maskRoi, roiTransform, 128) : null,
+      cells = selectedOptions('maskExportCells'),
+      layers = selectedOptions('maskExportLayers');
+    if (maskSourceMode === 'file' && (!cells.size || !layers.size)) {
+      status('Select at least one Cell and one Layer before exporting Mask.', 'warning');
+      return null;
+    }
+    return {
+      layout,
+      maskTransform,
+      maskSourceMode,
+      drawMask,
+      maskRoi,
+      roiGeometry,
+      cells,
+      layers,
+    };
+  }
+
+  function exportMaskLayout(format) {
+    const context = maskExportContext();
+    if (!context) return;
+    const records = buildMaskExportRecords({
+      layout: context.layout,
+      maskSourceMode: context.maskSourceMode,
+      drawMask: context.drawMask,
+      maskTransform: context.maskTransform,
+      roiGeometry: context.roiGeometry,
+      selectedCells: context.cells,
+      selectedLayers: context.layers,
+    });
+    if (!records.length) {
+      status('Nothing from the selected Mask source overlaps the export region.', 'warning');
+      return;
+    }
+
+    try {
+      const oasis = format === 'oas',
+        bytes = oasis ? encodeOasisMask(records) : encodeGdsMask(records),
+        extension = oasis ? 'oas' : 'gds',
+        mime = oasis ? 'application/vnd.semi-oasis' : 'application/octet-stream';
+      downloadBlob(new Blob([bytes], { type: mime }), `wafercad-mask.${extension}`);
+      status(
+        `Exported ${context.maskSourceMode === 'draw' ? 'Draw' : 'File'} Mask as ${
+          oasis ? 'OASIS' : 'GDSII'
+        }${context.maskRoi ? ' cropped to Mask ROI' : ''}.`,
+        'success',
+      );
+    } catch (error) {
+      console.error(error);
+      status(`Mask ${oasis ? 'OASIS' : 'GDSII'} export failed: ${error.message}`, 'error');
+    }
+  }
+
+  function exportMaskGds() {
+    exportMaskLayout('gds');
+  }
+
+  function exportMaskOas() {
+    exportMaskLayout('oas');
+  }
+
   function exportMaskSvg() {
     const { layout, maskTransform, maskSourceMode, drawMask, maskRoi } = getState(),
       canvas = $('maskCanvas'),
@@ -408,5 +481,13 @@ export function createExportController({
     status('Exported Section A–B as SVG.');
   }
 
-  return { downloadBlob, exportMainSvg, exportMaskSvg, exportSectionSvg, syncMaskExportOptions };
+  return {
+    downloadBlob,
+    exportMainSvg,
+    exportMaskSvg,
+    exportMaskGds,
+    exportMaskOas,
+    exportSectionSvg,
+    syncMaskExportOptions,
+  };
 }
