@@ -98,35 +98,6 @@ export function adaptiveRoughMeshLod({
   };
 }
 
-export function roughMeshTriangleBudget({ triangleCount = 1, clipped = false } = {}) {
-  const triangles = Math.max(1, Math.floor(Number(triangleCount) || 1)),
-    floor = clipped ? 36000 : 72000,
-    ceiling = clipped ? 72000 : 180000;
-  return Math.min(ceiling, Math.max(floor, triangles * 16));
-}
-
-export function roughMeshSubdivisionDepth({
-  triangleCount = 1,
-  maxEdge = 0,
-  featureSize = 1,
-  maxTriangles = 36000,
-  maxDepth = 6,
-} = {}) {
-  const triangles = Math.max(1, Math.floor(Number(triangleCount) || 1)),
-    edge = Math.max(0, Number(maxEdge) || 0),
-    feature = Math.max(1e-9, Number(featureSize) || 1),
-    targetEdge = feature * 0.75,
-    desiredDepth =
-      edge > targetEdge ? Math.max(0, Math.ceil(Math.log2(edge / targetEdge))) : 0,
-    budget = Math.max(triangles, Math.floor(Number(maxTriangles) || triangles)),
-    budgetDepth = Math.max(
-      0,
-      Math.floor(Math.log(Math.max(1, budget / triangles)) / Math.log(4)),
-    ),
-    depthLimit = Math.max(0, Math.floor(Number(maxDepth) || 0));
-  return Math.min(desiredDepth, budgetDepth, depthLimit);
-}
-
 function hashUnit(seed, index) {
   let x = (Number(seed) >>> 0) ^ Math.imul(index | 0, 0x9e3779b1);
   x ^= x >>> 16;
