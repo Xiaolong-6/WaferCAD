@@ -444,6 +444,45 @@ for (const face of ['front', 'back']) {
   });
 }
 
+test('Conformal sidewall keeps the inherited rough profile at the exposed cap', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 1,
+    area: model.boundary,
+    surface: {
+      kind: 'rough',
+      featureSize: 0.8,
+      meanHeight: 0.4,
+      featureCv: 0.15,
+      heightCv: 0.1,
+      morphology: 'stochastic',
+      polarity: 'inverted',
+    },
+  });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Rough mesa',
+    thickness: 2,
+    area: rectMulti(4, 20),
+    growth: 'direct',
+  });
+  const coat = applyOperation(model, {
+    type: 'add',
+    name: 'Rough conformal',
+    thickness: 0.5,
+    area: model.boundary,
+    growth: 'conformal',
+  });
+  assert.equal(coat.changed, true);
+
+  const source = stackAt(model, 0).find((segment) => segment.layerId === coat.layerId),
+    side = stackAt(model, 2.25).find((segment) => segment.layerId === coat.layerId);
+  assert.ok(source?.frontSurface?.profileId);
+  assert.equal(side?.role, 'conformal-sidewall');
+  assert.equal(side?.frontSurface?.profileId, source.frontSurface.profileId);
+});
+
 test('dense nested-ring topography completes whole-face Conformal without internal overlap', () => {
   const model = createModel({ shape: 'circle', width: 100000, height: 100000, thickness: 12 });
   applyOperation(model, {
