@@ -150,7 +150,7 @@ The renderer is event-driven: it renders on model/view changes and while OrbitCo
 
 ### Section A–B
 
-Intersects the A–B line with every region polygon, then draws each region stack over the resulting line intervals. Rough/Pyramid boundaries sample the same morphology field used by 3D, so the cross-section is the reference profile for displaced surface rendering. Implant appears as a clipped gradient band whose outer boundary follows the current exposed morphology. Main, Mask, and Section have vector SVG exporters that reuse the same canonical geometry/view transforms. All four scientific views support an in-page maximize/restore inspection state; this state is display-only and is not persisted in the project.
+Intersects the A–B line with every region polygon, then draws each region stack over the resulting line intervals. Rough/Pyramid boundaries sample the same morphology field used by 3D, so the cross-section is the reference profile for displaced surface rendering. Implant appears as a clipped gradient band whose outer boundary follows the current exposed morphology. Main and Section have vector SVG exporters. Mask export additionally supports GDSII and OASIS through `site/layout-export.js`; File/Draw source, Cell/Layer filters, alignment transform, and Mask ROI are resolved before serialization so SVG/GDS/OAS represent the same export intent. All four scientific views support an in-page maximize/restore inspection state; this state is display-only and is not persisted in the project.
 
 ## Units
 
