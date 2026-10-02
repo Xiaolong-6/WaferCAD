@@ -844,6 +844,49 @@ await page.waitForFunction(
 );
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
 
+// Two tabs sharing one browser profile must never write the same local workspace concurrently.
+const safetyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const safetyFirst = await safetyContext.newPage();
+const safetySecond = await safetyContext.newPage();
+const safetyErrors = [];
+for (const safetyPage of [safetyFirst, safetySecond]) {
+  safetyPage.on('pageerror', (error) => safetyErrors.push(error.message));
+  safetyPage.on('dialog', (dialog) => void dialog.accept());
+}
+await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await safetyFirst.waitForFunction(
+  () => document.querySelector('.workspace')?.inert === false,
+  null,
+  { timeout: 30000 },
+);
+await safetySecond.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await safetySecond.waitForFunction(
+  () => document.querySelector('.workspace')?.inert === true,
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await safetySecond.locator('#workspaceConflictDialog').isVisible(), true);
+await safetySecond.locator('#workspaceTakeOverBtn').click();
+await safetySecond.waitForFunction(
+  () => document.querySelector('.workspace')?.inert === false,
+  null,
+  { timeout: 30000 },
+);
+await safetyFirst.waitForFunction(
+  () => document.querySelector('.workspace')?.inert === true,
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await safetyFirst.locator('#workspaceConflictDialog').isVisible(), true);
+assert.deepEqual(safetyErrors, []);
+await safetyContext.close();
+
 assert.deepEqual(errors, []);
 await browser.close();
 
