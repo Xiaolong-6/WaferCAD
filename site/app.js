@@ -185,12 +185,12 @@ function persistWorkspaceNow() {
     workspacePersistenceTimer = null;
   }
   const project = buildProjectSnapshot(true);
-  setWorkspaceSaveStatus('Saving…');
+  setWorkspaceSaveStatus('Autosaving…');
   workspacePersistenceWrite = workspacePersistenceWrite
     .catch(() => {})
     .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
     .then(() => {
-      setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+      setWorkspaceSaveStatus(`Autosaved · ${savedTimeLabel()}`);
       return true;
     });
   workspacePersistenceWrite.catch((error) => {
@@ -202,7 +202,7 @@ function persistWorkspaceNow() {
 
 function scheduleWorkspacePersistence() {
   if (!workspacePersistenceReady || !workspaceSession?.canWrite()) return;
-  setWorkspaceSaveStatus('Saving…');
+  setWorkspaceSaveStatus('Autosaving…');
   if (workspacePersistenceTimer != null) clearTimeout(workspacePersistenceTimer);
   workspacePersistenceTimer = setTimeout(() => {
     workspacePersistenceTimer = null;
@@ -1987,7 +1987,7 @@ async function reloadWorkspaceSafely() {
       workspacePersistenceTimer = null;
     }
     const project = buildProjectSnapshot(true);
-    setWorkspaceSaveStatus('Saving…');
+    setWorkspaceSaveStatus('Autosaving…');
     workspacePersistenceWrite = workspacePersistenceWrite
       .catch(() => {})
       .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
@@ -2000,7 +2000,7 @@ async function reloadWorkspaceSafely() {
         }),
       );
     await workspacePersistenceWrite;
-    setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+    setWorkspaceSaveStatus(`Autosaved · ${savedTimeLabel()}`);
     workspaceSession.stop();
     globalThis.location.reload();
   } catch (error) {
@@ -2110,7 +2110,7 @@ function bindUi() {
         workspacePersistenceTimer = null;
       }
       const project = buildProjectSnapshot(true);
-      setWorkspaceSaveStatus('Saving…');
+      setWorkspaceSaveStatus('Autosaving…');
       workspacePersistenceWrite = workspacePersistenceWrite
         .catch(() => {})
         .then(() => saveWorkspaceState(project, { appCommit: loadedBuildVersion }))
@@ -2121,7 +2121,7 @@ function bindUi() {
           }),
         );
       await workspacePersistenceWrite;
-      setWorkspaceSaveStatus(`Saved locally · ${savedTimeLabel()}`);
+      setWorkspaceSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`);
       await refreshRecoveryOptions();
       status(`Saved "${projectName}" locally. It is available in Recovery.`);
     } catch (error) {
