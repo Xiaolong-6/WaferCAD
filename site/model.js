@@ -316,6 +316,22 @@ function stackKey(stack) {
     )
     .join('|');
 }
+function safeUnionParts(geometries) {
+  const geoms = (geometries || []).filter((geom) => !isEmpty(geom));
+  if (!geoms.length) return [];
+  if (geoms.length === 1) return [cloneGeom(geoms[0])];
+  try {
+    const merged = unionGeometries(geoms);
+    return isEmpty(merged) ? [] : [merged];
+  } catch {
+    const middle = Math.ceil(geoms.length / 2);
+    return [
+      ...safeUnionParts(geoms.slice(0, middle)),
+      ...safeUnionParts(geoms.slice(middle)),
+    ];
+  }
+}
+
 function mergeRegions(model, regions) {
   const groups = new Map();
   for (const region of regions) {
@@ -327,23 +343,15 @@ function mergeRegions(model, regions) {
   }
   const out = [];
   for (const group of groups.values()) {
-    try {
-      const geom = unionGeometries(group.geoms);
-      if (isEmpty(geom)) continue;
-      out.push({ id: `region-${model.nextRegionId++}`, geom, stack: group.stack });
-    } catch {
-      // Region merging is an optimization, not a semantic requirement. Imported
-      // layouts with many touching curves can defeat polygon-clipping's global
-      // union even though every individual partition is valid. Preserve those
-      // partitions instead of rolling back an otherwise valid process step.
-      for (const geom of group.geoms) {
-        if (isEmpty(geom)) continue;
-        out.push({
-          id: `region-${model.nextRegionId++}`,
-          geom: cloneGeom(geom),
-          stack: group.stack.map((segment) => ({ ...segment })),
-        });
-      }
+    // Merge as far as the geometry kernel safely allows. If one large union is
+    // numerically unstable, recursively keep smaller valid partitions instead
+    // of failing the process or exploding all the way back to one region per cut.
+    for (const geom of safeUnionParts(group.geoms)) {
+      out.push({
+        id: `region-${model.nextRegionId++}`,
+        geom,
+        stack: group.stack.map((segment) => ({ ...segment })),
+      });
     }
   }
   return out;
@@ -417,7 +425,7 @@ function splitByArea(model, area, mutator, merge = true) {
 }
 
 function exposedLayerPatches(model, active, face, layerId) {
-  const patches = [];
+  const groups = new Map();
 
   for (const region of model.regions) {
     const segment = surfaceSegment(region.stack, face);
@@ -426,16 +434,16 @@ function exposedLayerPatches(model, active, face, layerId) {
     const geom = intersection(region.geom, active);
     if (isEmpty(geom)) continue;
 
-    patches.push({
-      z: face === 'front' ? segment.z1 : segment.z0,
-      geom,
-    });
+    const z = face === 'front' ? segment.z1 : segment.z0,
+      key = z.toFixed(9);
+    if (!groups.has(key)) groups.set(key, { z, geoms: [] });
+    groups.get(key).geoms.push(geom);
   }
 
-  // Keep regions separate here. Unioning every same-Z patch first made complex
-  // imported layouts numerically fragile. Shared partition edges are harmless:
-  // conformalSidewallStack() rejects a neighbor whose exposed Z already reaches
-  // the source Z, so only genuine height/void boundaries receive material.
+  const patches = [];
+  for (const { z, geoms } of groups.values()) {
+    for (const geom of safeUnionParts(geoms)) patches.push({ z, geom });
+  }
   return patches.sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
 }
 
@@ -516,7 +524,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // many circular/nested features.
   const sources = exposedLayerPatches(model, active, face, layerId);
   for (const source of sources) {
-    for (const rawBand of conformalRingBands(source.geom, amount)) {
+    for (const rawBand of safeUnionParts(conformalRingBands(source.geom, amount))) {
       const band = intersection(rawBand, model.boundary);
       if (isEmpty(band)) continue;
 
