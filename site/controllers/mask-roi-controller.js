@@ -207,9 +207,10 @@ export function createMaskRoiController({
       syncEditor();
     };
 
-    for (const id of ['maskRoiSize', 'maskRoiRotation', 'maskRoiRadius', 'maskRoiX', 'maskRoiY']) {
+    for (const id of ['maskRoiSize', 'maskRoiRadius', 'maskRoiX', 'maskRoiY']) {
       $(id).onchange = applyEditor;
     }
+    $('maskRoiRotation').oninput = applyEditor;
   }
 
   function bindCanvas() {
