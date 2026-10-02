@@ -252,6 +252,34 @@ test('material solid topology removes internal caps across computational partiti
   assert.ok(Math.abs(geometryArea(solid.slabs[0].polys) - 200) < 1e-8);
 });
 
+test('material slab derivation falls back when polygon union rejects a complex set', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  model.regions = [
+    {
+      id: 'left',
+      geom: rectMulti(9.5, 10, -5.25, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+    {
+      id: 'right',
+      geom: rectMulti(9.5, 10, 5.25, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+  ];
+
+  const originalUnion = globalThis.polygonClipping.union;
+  globalThis.polygonClipping.union = () => {
+    throw new Error('synthetic union rejection');
+  };
+  try {
+    const [solid] = materialSolidsFromTopology(model);
+    assert.equal(solid.slabs.length, 1);
+    assert.ok(Math.abs(geometryArea(solid.slabs[0].polys) - 190) < 1e-8);
+  } finally {
+    globalThis.polygonClipping.union = originalUnion;
+  }
+});
+
 test('owned material surfaces reconcile partial-height shared sidewalls once', () => {
   const model = createModel({ shape: 'rect', width: 2, height: 2, thickness: 2 });
   model.layers.push({ id: 'right', name: 'Right', color: '#999999' });
