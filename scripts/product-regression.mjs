@@ -716,6 +716,95 @@ try {
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
 
+      // Multi-cap stress: several independent rough patches must share one
+      // scene-wide subdivision budget, and camera LOD changes must not rebuild
+      // the static ownership plan.
+      const roughStressModel = createModel({
+        shape: 'rect',
+        width: 40,
+        height: 40,
+        thickness: 8,
+      });
+      for (const [index, [cx, cy]] of [
+        [-10, -10],
+        [10, -10],
+        [-10, 10],
+        [10, 10],
+      ].entries()) {
+        applyOperation(roughStressModel, {
+          type: 'etch',
+          thickness: 1 + index * 0.15,
+          face: 'front',
+          area: rectMulti(8, 8, cx, cy),
+          surface: {
+            kind: 'rough',
+            featureSize: 0.35 + index * 0.04,
+            meanHeight: 0.5,
+            featureCv: 0.25,
+            heightCv: 0.3,
+            seed: 101 + index,
+            morphology: 'stochastic',
+            polarity: 'inverted',
+            geometryMode: 'ideal',
+          },
+        });
+      }
+      const roughStressProject = projectForBenchmark({
+        model: roughStressModel,
+        section: { a: [-19, 0], b: [19, 0] },
+      });
+      await loadProject(page, roughStressProject, 'wide-rough-stress');
+      await page.locator('#threeMaxBtn').click();
+      await page.waitForTimeout(180);
+      const stressCanvas = page.locator('#threeHost canvas'),
+        stressBudget = Number(
+          await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
+        ),
+        stressSubdivision = Number(
+          await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+        ),
+        stressPlanBuilds = Number(
+          await stressCanvas.getAttribute('data-surface-plan-build-count'),
+        ),
+        stressRebuilds = Number(
+          await stressCanvas.getAttribute('data-rough-rebuild-count'),
+        );
+      assert.ok(stressBudget > 0, `rough stress budget missing: ${stressBudget}`);
+      assert.ok(
+        stressSubdivision <= stressBudget,
+        `multi-cap rough subdivision exceeded global budget: ${stressSubdivision} > ${stressBudget}`,
+      );
+      await stressCanvas.hover();
+      for (let step = 0; step < 5; step++) await page.mouse.wheel(0, -500);
+      await page.waitForTimeout(280);
+      const stressZoomPlanBuilds = Number(
+          await stressCanvas.getAttribute('data-surface-plan-build-count'),
+        ),
+        stressZoomRebuilds = Number(
+          await stressCanvas.getAttribute('data-rough-rebuild-count'),
+        ),
+        stressZoomBudget = Number(
+          await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
+        ),
+        stressZoomSubdivision = Number(
+          await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+        );
+      assert.equal(
+        stressZoomPlanBuilds,
+        stressPlanBuilds,
+        `multi-cap camera zoom rebuilt surface plan: ${stressPlanBuilds} -> ${stressZoomPlanBuilds}`,
+      );
+      assert.ok(
+        stressZoomRebuilds > stressRebuilds,
+        `multi-cap camera zoom did not rebuild rough meshes: ${stressRebuilds} -> ${stressZoomRebuilds}`,
+      );
+      assert.ok(
+        stressZoomSubdivision <= stressZoomBudget,
+        `multi-cap zoom exceeded global budget: ${stressZoomSubdivision} > ${stressZoomBudget}`,
+      );
+      await capture(page, 'wide-rough-stress-global-budget');
+      await page.locator('#threeMaxBtn').click();
+
       // Rough Etch -> Conformal regression: inherited rough interfaces are
       // buried material interfaces and must not create closure skirts inside 3D.
       const roughConformalModel = createModel({
