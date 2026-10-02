@@ -30,6 +30,8 @@ assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
 
 const roughAppearance = {
+  morphology: 'stochastic',
+  polarity: 'inverted',
   featureSize: 0.5,
   meanHeight: 0.4,
   featureCv: 0.25,
@@ -45,6 +47,13 @@ assert.equal(
 );
 assert.ok(roughProfileSample >= -1e-12);
 assert.ok(roughProfileSample <= roughAppearance.etchDepth + 1e-12);
+const normalProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, {
+  ...roughAppearance,
+  polarity: 'normal',
+});
+assert.ok(
+  Math.abs(normalProfileSample + roughProfileSample - roughAppearance.etchDepth) < 1e-12,
+);
 const zeroCvAppearance = { ...roughAppearance, featureCv: 0, heightCv: 0 };
 assert.equal(
   roughProfileOffsetAtPoint(1.25, -0.75, zeroCvAppearance),
@@ -96,6 +105,8 @@ const roughResult = applyOperation(roughEtch, {
   area,
   surface: {
     kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'normal',
     featureSize: 0.4,
     meanHeight: 0.8,
     featureCv: 0.2,
@@ -107,6 +118,8 @@ assert.equal(roughResult.changed, true);
 const roughSurface = surfaceSegment(regionAt(roughEtch, [0, 0]).stack);
 assert.equal(roughSurface.z1, 4);
 assert.equal(roughSurface.frontSurface.kind, 'rough');
+assert.equal(roughSurface.frontSurface.morphology, 'stochastic');
+assert.equal(roughSurface.frontSurface.polarity, 'normal');
 assert.equal(roughSurface.frontSurface.featureSize, 0.4);
 assert.equal(roughSurface.frontSurface.meanHeight, 0.8);
 assert.equal(roughSurface.frontSurface.featureCv, 0.2);
@@ -436,6 +449,8 @@ assert.equal(validateProjectFile(validProject), validProject);
 const roughProject = structuredClone(validProject);
 roughProject.model.regions[0].stack[0].frontSurface = {
   kind: 'rough',
+  morphology: 'stochastic',
+  polarity: 'inverted',
   featureSize: 0.4,
   meanHeight: 0.4,
   featureCv: 0.25,
