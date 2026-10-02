@@ -136,9 +136,16 @@ test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
 });
 
 test('3D border stays above opaque surfaces at 100% opacity', () => {
-  assert.match(threeView, /polygonOffsetFactor: Math\.min\(8, \(index \+ 1\) \* 0\.35\)/);
-  assert.match(threeView, /polygonOffsetUnits: Math\.min\(12, index \+ 1\)/);
-  assert.match(threeView, /opacity: 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
+  assert.match(
+    threeView,
+    /polygonOffsetFactor: Math\.min\(8, Math\.max\(1, bias\) \* 0\.35\)/,
+  );
+  assert.match(
+    threeView,
+    /polygonOffsetUnits: Math\.min\(12, Math\.max\(1, bias\)\)/,
+  );
+  assert.match(threeView, /edges\.renderOrder = 100000 \+ solidIndex/);
+  assert.match(threeView, /opacity: opacity < 0\.999 \? 0\.66 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
 });
 
 
