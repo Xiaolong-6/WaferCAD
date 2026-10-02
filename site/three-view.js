@@ -265,7 +265,7 @@ export function createThreeView({
     ];
   }
 
-  function geometryFromRoughCap({ z, normal, polys, appearance }) {
+  function geometryFromRoughCap({ z, normal, polys, appearance, closeToIdeal = true }) {
     const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, polys),
       depth = roughMeshSubdivisionDepth({
         triangleCount: baseTriangles.length,
@@ -315,8 +315,10 @@ export function createThreeView({
               base1 = [p1[0], p1[1], z],
               top0 = roughPoint(base0, z, normal, appearance),
               top1 = roughPoint(base1, z, normal, appearance);
-            pushTriangle(base0, base1, top1);
-            pushTriangle(base0, top1, top0);
+            if (closeToIdeal) {
+              pushTriangle(base0, base1, top1);
+              pushTriangle(base0, top1, top0);
+            }
             roughBorderPositions.push(...top0, ...top1);
           }
         }
@@ -652,8 +654,18 @@ export function createThreeView({
       const normal = implant.face === 'front' ? 1 : -1,
         epsilon = Math.max(1e-5, Math.abs(implant.thickness || 0) * 1e-4),
         capZ = implant.z + normal * epsilon,
+        roughAppearance =
+          implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
         solid = { slabs: [], caps: [{ z: capZ, normal, polys: implant.polys }] },
-        geometry = geometryFromSolid(solid),
+        geometry = roughAppearance
+          ? geometryFromRoughCap({
+              z: capZ,
+              normal,
+              polys: implant.polys,
+              appearance: roughAppearance,
+              closeToIdeal: false,
+            })
+          : geometryFromSolid(solid),
         material = new THREE.MeshStandardMaterial({
           color: implant.color || '#D65A6F',
           roughness: 0.62,
