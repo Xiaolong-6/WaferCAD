@@ -5,13 +5,13 @@ WaferCAD is a browser-only vector 2.5D editor for building and inspecting mask-d
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
 - **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon/Ring/Ring Sector), with adjustable opacity above the current active-face topography outline.
-- **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, physical GLB export, and 3× PNG capture.
+- **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, geometry-displaced rough/pyramid surfaces, surviving internal Implant overlays, physical GLB export, and 3× PNG capture.
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
 
 ## Geometry model
 
-XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Deposit, Extend, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same geometry state.
+XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Deposit, Extend, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation all use the same canonical material geometry. Rough/Pyramid surface morphology is stored as deterministic appearance metadata, while Implant is stored separately as a structural annotation volume.
 
 - **X, Y and Z** are stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display/input unit can be switched between nm, µm, and mm without changing geometry.
 - Section and 3D may stretch Z for visibility; that display scaling never changes the saved physical Z coordinates.
@@ -44,7 +44,7 @@ Available actions:
 - Etch / subtract
 - Implant **(experimental)**
 
-Deposit and Extend support Directional and Conformal coverage. Etch is vertical subtraction and has no coverage mode.
+Deposit and Extend support Directional and Conformal coverage. Etch is vertical subtraction and has no coverage mode; its Surface setting can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
 
 The experimental Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and creates a user-named implant zone with an empirical depth and signed X tilt. Color is assigned after Apply from the active 20-color structure palette and can be changed from the Layers legend. Main uses a light overlay, Section shows the gradient volume, and 3D shows the surviving internal volume. Later Etch operations geometrically clip that existing implant, including rough-profile display, without modeling dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT_EXPERIMENTAL.md`.
 
@@ -78,7 +78,7 @@ npm run check
 
 ## Project-file safety
 
-Project JSON is versioned and migrated before it can replace the current editor state. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Project v6 adds persisted File/Draw mask-source state and project-local drawn mask geometry, while retaining shared snapshot layout/model assets and 0.1 nm persistence normalization. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
+Project JSON is versioned and migrated before it can replace the current editor state. The current format is **v13**. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, surface morphology, Implant records, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Earlier formats, including the v6 File/Draw-mask introduction and v12 stochastic-surface format, migrate forward deterministically; v13 adds Pyramid morphology. Repeated snapshot layout/model assets are shared and persisted physical coordinates are normalized to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
 
