@@ -15,6 +15,7 @@ const {
   exposedSurfaceGroups,
   materialInterfaceGroups,
   materialSolidsFromTopology,
+  ownedMaterialSurfacesFromTopology,
   sectionSlicesFromTopology,
   uncoveredDomain,
   visibleSurfaceGroups,
@@ -249,6 +250,38 @@ test('material solid topology removes internal caps across computational partiti
   assert.equal(solid.slabs.length, 1);
   assert.equal(solid.caps.length, 2);
   assert.ok(Math.abs(geometryArea(solid.slabs[0].polys) - 200) < 1e-8);
+});
+
+test('owned material surfaces reconcile partial-height shared sidewalls once', () => {
+  const model = createModel({ shape: 'rect', width: 2, height: 2, thickness: 2 });
+  model.layers.push({ id: 'right', name: 'Right', color: '#999999' });
+  model.regions = [
+    {
+      id: 'left',
+      geom: rectMulti(1, 2, -0.5, 0),
+      stack: [{ layerId: 'base', z0: 0, z1: 1 }],
+    },
+    {
+      id: 'right',
+      geom: rectMulti(1, 2, 0.5, 0),
+      stack: [{ layerId: 'right', z0: 0, z1: 2 }],
+    },
+  ];
+
+  const plan = ownedMaterialSurfacesFromTopology(model),
+    shared = plan.sidewalls.filter(
+      (part) => Math.abs(part.p[0]) < 1e-12 && Math.abs(part.q[0]) < 1e-12,
+    ),
+    summary = new Map();
+  for (const part of shared) {
+    const key = `${part.z0}:${part.z1}:${part.ownership}`,
+      length = Math.hypot(part.q[0] - part.p[0], part.q[1] - part.p[1]);
+    summary.set(key, (summary.get(key) || 0) + length);
+  }
+  assert.deepEqual([...summary].sort(), [
+    ['0:1:interface', 2],
+    ['1:2:exterior', 2],
+  ]);
 });
 
 test('topology derivation is pure after a mixed Etch and Conformal sequence', () => {
