@@ -1481,7 +1481,9 @@ function updateOperationUI() {
             ? `Pyramid XY is the square pitch/base width and Height is apex-to-base relief within the Etch Depth envelope. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'}`
             : 'Etch removes material vertically and may create through-holes.'
         : $('growthMode').value === 'conformal'
-          ? 'Conformal coverage follows exposed steps and includes sidewalls.'
+          ? t === 'grow'
+            ? 'Conformal Extend continues the target material over every exposed surface in the selected area, then follows steps and sidewalls.'
+            : 'Conformal coverage follows exposed surfaces, steps, and sidewalls.'
           : 'Directional coverage follows the selected footprint.';
 }
 
