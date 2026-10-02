@@ -732,7 +732,7 @@ export function createThreeView({
       const implantState = {
           opacity: opacity * 0.18,
           transparent: true,
-          depthTest: false,
+          depthTest: true,
           depthWrite: false,
         },
         bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
@@ -743,7 +743,7 @@ export function createThreeView({
           side: THREE.DoubleSide,
           transparent: true,
           opacity: implantState.opacity,
-          depthTest: false,
+          depthTest: true,
           depthWrite: false,
         }),
         body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState);
@@ -771,7 +771,7 @@ export function createThreeView({
         capState = {
           opacity: opacity * 0.3,
           transparent: true,
-          depthTest: false,
+          depthTest: true,
           depthWrite: false,
         },
         capMaterial = createSurfaceMaterial(
@@ -779,8 +779,13 @@ export function createThreeView({
           capState,
           appearance,
           1,
-        ),
-        cap = addSurfaceMesh(capGeometry, capMaterial, capState, appearance);
+        );
+      // Opaque material writes depth, so buried Implant geometry is hidden.
+      // A tiny negative polygon offset keeps only a genuinely exposed/cut cap
+      // visible when it is coplanar with the current material surface.
+      capMaterial.polygonOffsetFactor = -1;
+      capMaterial.polygonOffsetUnits = -1;
+      const cap = addSurfaceMesh(capGeometry, capMaterial, capState, appearance);
       if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
     }
 
