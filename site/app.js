@@ -1,6 +1,5 @@
 import { parseLayoutFile } from './layout-io.js';
 import {
-  baseCoverageState,
   cloneModel,
   createModel,
   hasMaterial,
@@ -44,6 +43,7 @@ import { createMainCanvasController } from './controllers/main-canvas-controller
 import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
 import { createWorkspaceSessionController } from './controllers/workspace-session-controller.js';
 import { createWorkspacePersistenceController } from './controllers/workspace-persistence-controller.js';
+import { createWorkspaceViewController } from './controllers/workspace-view-controller.js';
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
 import {
   createEmptyDrawMask,
@@ -560,78 +560,24 @@ function fit3d() {
   threeView?.fit();
 }
 
-function baseSummaryText() {
-  const coverage = baseCoverageState(model);
-  const shape =
-    model.shape === 'circle'
-      ? `Circle · Ø${formatXY(model.width)} ${xyUnit().label}`
-      : `Rectangle · ${formatXY(model.width)} × ${formatXY(model.height)} ${xyUnit().label}`;
-  const state =
-    coverage === 'removed'
-      ? 'Base removed'
-      : coverage === 'partial'
-        ? 'Base partially removed'
-        : 'Base present';
-  return `${shape} · ${state}`;
-}
-
-function syncMaskSourceSummary() {
-  if (maskSourceMode === 'draw') {
-    $('maskSummary').textContent = `Draw · ${drawMask.shapes.length} shapes`;
-    $('maskCellLabel').textContent = `${drawMask.shapes.length} drawn`;
-  } else {
-    $('maskSummary').textContent = layout.name || 'No mask';
-    syncMaskCellLabel();
-  }
-}
+let workspaceViewController = null;
 
 function renderAll() {
-  renderCellTree();
-  renderMaskList();
-  renderLayerLegend();
-  renderMask();
-  renderMain();
-  renderSection();
-  renderThree();
-  syncRoiEditor();
-  $('mainFaceLabel').textContent = `${activeFace} surface`;
-  const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
-  $('faceToggleBtn').textContent = faceLabel;
-  $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
-  syncMaskSourceSummary();
-  syncProjectNameInput();
-  drawMaskController?.syncUi();
-  maskRoiController?.syncEditor();
-  $('baseSummary').textContent = baseSummaryText();
-  updateOperationUI();
-  syncUndo();
+  workspaceViewController?.renderAll();
 }
+
 function resetRoughDraftControls() {
-  $('roughPolarity').value = 'inverted';
-  $('roughFeatureSize').value = formatLengthField(0.5);
-  $('roughAmplitude').value = formatLengthField(1);
-  $('roughFeatureCv').value = '25';
-  $('roughHeightCv').value = '25';
+  workspaceViewController?.resetRoughDraftControls();
 }
 
 function syncBaseControls() {
-  $('baseWidth').value = formatLengthField(model.width);
-  $('baseHeight').value = formatLengthField(model.height);
-  $('baseThickness').value = formatLengthField(model.thickness);
-  $('baseHeight').disabled = model.shape === 'circle';
-  $('baseWidthUnit').textContent = xyUnit().label;
-  $('baseHeightUnit').textContent = xyUnit().label;
-  $('baseThicknessUnit').textContent = xyUnit().label;
-  $('operationThicknessUnit').textContent = xyUnit().label;
-  $('roughFeatureUnit').textContent = xyUnit().label;
-  $('roughHeightUnit').textContent = xyUnit().label;
-  $('xyUnitSelect').value = xyDisplayUnit;
-  $('applyBaseBtn').textContent =
-    baseCoverageState(model) === 'removed' ? 'Recreate base' : 'Apply base';
-  document
-    .querySelectorAll('#substrateShape button')
-    .forEach((b) => b.classList.toggle('active', b.dataset.shape === model.shape));
+  workspaceViewController?.syncBaseControls();
 }
+
+function syncMaskSourceSummary() {
+  workspaceViewController?.syncMaskSourceSummary();
+}
+
 let processPanelController = null;
 
 function updateOperationUI() {
@@ -818,6 +764,31 @@ processPanelController = createProcessPanelController({
   colorNewImplant,
   renderAll,
   status,
+});
+
+workspaceViewController = createWorkspaceViewController({
+  root: document,
+  getModel: () => model,
+  getActiveFace: () => activeFace,
+  getMaskState: () => ({ maskSourceMode, drawMask, layout }),
+  getXyDisplayUnit: () => xyDisplayUnit,
+  xyUnitLabel: () => xyUnit().label,
+  formatXY,
+  formatLengthField,
+  renderCellTree,
+  renderMaskList,
+  renderLayerLegend,
+  renderMask,
+  renderMain,
+  renderSection,
+  renderThree,
+  syncRoiEditor,
+  syncMaskCellLabel,
+  syncProjectNameInput,
+  getDrawMaskController: () => drawMaskController,
+  getMaskRoiController: () => maskRoiController,
+  updateOperationUI,
+  syncUndo,
 });
 
 const baseControls = createBaseControlsController({
