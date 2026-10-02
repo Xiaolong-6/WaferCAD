@@ -320,7 +320,7 @@ test('Conformal geometry failure rolls back the model atomically', () => {
   }
 });
 
-test('Conformal Grow only starts from exposed target, and ROI clips render geometry only', () => {
+test('Conformal Extend reuses the Deposit coating kernel and still requires an exposed target', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const seed = applyOperation(model, { type: 'add', thickness: 2, area: rectMulti(4, 4) });
   applyOperation(model, {
@@ -334,7 +334,10 @@ test('Conformal Grow only starts from exposed target, and ROI clips render geome
     stackAt(model, 2.5).find((s) => s.layerId === seed.layerId),
     { layerId: seed.layerId, z0: 5, z1: 8, role: 'conformal-sidewall' },
   );
-  assert.equal(stackAt(model, 5).length, 1);
+  assert.deepEqual(
+    stackAt(model, 5).find((s) => s.layerId === seed.layerId),
+    { layerId: seed.layerId, z0: 5, z1: 6 },
+  );
   const before = structuredClone(model);
   assert.ok(extrusionGroups(model, rectMulti(2, 2)).length);
   assert.deepEqual(model, before);
