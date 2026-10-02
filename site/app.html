@@ -685,6 +685,16 @@
                   </select></label
                 >
                 <label
+                  id="roughPolarityRow"
+                  class="field-row hidden"
+                  title="Normal points rough features outward; Inverted keeps the existing pit/valley orientation"
+                  ><span>Orientation</span
+                  ><select id="roughPolarity">
+                    <option value="inverted">Inverted · pits ↓</option>
+                    <option value="normal">Normal · peaks ↑</option>
+                  </select></label
+                >
+                <label
                   id="roughFeatureRow"
                   class="field-row hidden"
                   title="Mean lateral XY size of the roughness features"
@@ -701,7 +711,7 @@
                 <label
                   id="roughHeightRow"
                   class="field-row hidden"
-                  title="Mean height of rough features measured upward from the deepest etched valley"
+                  title="Mean feature relief within the etch-depth envelope; Orientation mirrors the same height field"
                   ><span>Height mean <b id="roughHeightUnit">µm</b></span
                   ><input id="roughAmplitude" type="number" value="1" min="0" step="any"
                 /></label>
