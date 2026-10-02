@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 10;
+export const CURRENT_PROJECT_VERSION = 11;
 
 const LIMITS = {
   layers: 10000,
@@ -298,7 +298,7 @@ function validateModel(model, budget) {
       }
       assertFinite(implant.thickness, `${path}.thickness`, { min: 1e-12 });
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
-      if (typeof implant.border !== 'boolean') fail(`${path}.border`, 'must be boolean.');
+      if (typeof implant.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
 
       const patches = assertArray(implant.patches, `${path}.patches`, LIMITS.implantPatches);
       patches.forEach((patch, patchIndex) => {
@@ -314,6 +314,9 @@ function validateModel(model, budget) {
           fail(`${patchPath}.z`, 'must lie within zMin/zMax.');
         }
         assertString(patch.layerId, `${patchPath}.layerId`, { max: 128 });
+        if (patch.surfaceAppearance != null) {
+          validateSurfaceAppearance(patch.surfaceAppearance, `${patchPath}.surfaceAppearance`);
+        }
       });
     });
   }
@@ -547,6 +550,9 @@ function validateDisplay(display) {
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
   }
+  if (display.sectionShowBorders != null && typeof display.sectionShowBorders !== 'boolean') {
+    fail('display.sectionShowBorders', 'must be boolean.');
+  }
   if (
     display.sectionScaleMode != null &&
     !['auto', 'physical'].includes(display.sectionScaleMode)
@@ -736,6 +742,34 @@ function migrateProjectCore(project) {
     if (!Array.isArray(project.model.implants)) project.model.implants = [];
     if (!Number.isInteger(project.model.nextImplantId) || project.model.nextImplantId < 1) {
       project.model.nextImplantId = project.model.implants.length + 1;
+    }
+  }
+  if (version < 11) {
+    if (project.display == null) project.display = {};
+    if (isObject(project.display) && project.display.sectionShowBorders == null) {
+      project.display.sectionShowBorders = false;
+    }
+    if (isObject(project.model)) {
+      for (const implant of project.model.implants || []) {
+        if (!isObject(implant)) continue;
+        if (typeof implant.visible !== 'boolean') implant.visible = true;
+        delete implant.border;
+        for (const patch of implant.patches || []) {
+          if (!isObject(patch) || patch.surfaceAppearance != null) continue;
+          const match = (project.model.regions || []).find((region) => {
+            const stack = region?.stack || [];
+            const segment = implant.face === 'back' ? stack[0] : stack.at(-1);
+            if (!segment || segment.layerId !== patch.layerId) return false;
+            const z = implant.face === 'back' ? segment.z0 : segment.z1;
+            return Math.abs(Number(z) - Number(patch.z)) <= 1e-9;
+          });
+          const stack = match?.stack || [];
+          const segment = implant.face === 'back' ? stack[0] : stack.at(-1);
+          const appearance =
+            implant.face === 'back' ? segment?.backSurface : segment?.frontSurface;
+          patch.surfaceAppearance = isObject(appearance) ? structuredClone(appearance) : null;
+        }
+      }
     }
   }
   project.version = CURRENT_PROJECT_VERSION;

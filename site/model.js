@@ -164,6 +164,36 @@ export function recolorLayer(model, id, color) {
   return true;
 }
 
+export function implantById(model, id) {
+  return (model?.implants || []).find((implant) => implant.id === id) || null;
+}
+
+export function renameImplant(model, id, name) {
+  const implant = implantById(model, id);
+  if (!implant) return false;
+  const clean = String(name || '').trim();
+  if (!clean) return false;
+  implant.name = clean;
+  model.revision++;
+  return true;
+}
+
+export function recolorImplant(model, id, color) {
+  const implant = implantById(model, id);
+  if (!implant || !/^#[0-9a-f]{6}$/i.test(color || '')) return false;
+  implant.color = color;
+  model.revision++;
+  return true;
+}
+
+export function setImplantVisible(model, id, visible) {
+  const implant = implantById(model, id);
+  if (!implant) return false;
+  implant.visible = Boolean(visible);
+  model.revision++;
+  return true;
+}
+
 export function isLayerExposed(model, id) {
   if (id === 'base' || !layerById(model, id)) return false;
   let found = false;
@@ -429,7 +459,6 @@ function applyOperationImpl(
     surface,
     color,
     tilt = 0,
-    border = false,
   },
 ) {
   const amount = Math.max(1e-5, Number(thickness) || 0);
@@ -483,6 +512,7 @@ function applyOperationImpl(
         zMin: region.stack[0]?.z0 ?? segment.z0,
         zMax: region.stack.at(-1)?.z1 ?? segment.z1,
         layerId: segment.layerId,
+        surfaceAppearance: cloneAppearance(surfaceAppearance(segment, face)),
       });
     }
     if (!patches.length) {
@@ -501,7 +531,7 @@ function applyOperationImpl(
         face,
         thickness: amount,
         tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
-        border: Boolean(border),
+        visible: true,
         patches,
       };
     model.implants.push(implant);
