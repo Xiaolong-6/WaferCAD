@@ -1,15 +1,26 @@
 import {
   bufferMulti,
-  bufferPolyline,
   circleMulti,
   cloneGeom,
   difference,
   intersection,
   isEmpty,
-  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
+import {
+  classifyCoverageVoids,
+  conformalBoundaryBands,
+  conformalWallTargets,
+  DEFAULT_COVERAGE_CRACK_TOLERANCE_UM,
+  exposedLayerIdsFromTopology,
+  exposedSurfaceGroups,
+  regionSurfaceFaces,
+  stackSurfaceAppearance,
+  stackSurfaceSegment,
+  stackSurfaceZ,
+  uncoveredDomain,
+} from './process-topology.js';
 
 export const COLORS = [
   '#6C8EBF',
@@ -118,14 +129,7 @@ export function baseCoverageState(model) {
 }
 
 export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
-  if (!model || isEmpty(area)) return [];
-  const ids = new Set();
-  for (const region of model.regions || []) {
-    if (isEmpty(intersection(region.geom, area))) continue;
-    const segment = surfaceSegment(region.stack, face);
-    if (segment) ids.add(segment.layerId);
-  }
-  return [...ids];
+  return exposedLayerIdsFromTopology(model, area, face);
 }
 
 export function zDisplayScale(model) {
@@ -225,14 +229,13 @@ export function deleteExposedLayer(model, id) {
 }
 
 export function surfaceSegment(stack, face = 'front') {
-  if (!stack?.length) return null;
-  return face === 'front' ? stack.at(-1) : stack[0];
+  return stackSurfaceSegment(stack, face);
 }
 function surfaceField(face = 'front') {
   return face === 'back' ? 'backSurface' : 'frontSurface';
 }
 export function surfaceAppearance(segment, face = 'front') {
-  return segment?.[surfaceField(face)] || null;
+  return stackSurfaceAppearance(segment, face);
 }
 function cloneAppearance(appearance) {
   return appearance ? { ...appearance } : null;
@@ -282,8 +285,7 @@ function withSurfaceAppearance(stack, face, appearance) {
   return out;
 }
 export function surfaceZ(stack, face = 'front') {
-  const seg = surfaceSegment(stack, face);
-  return seg ? (face === 'front' ? seg.z1 : seg.z0) : null;
+  return stackSurfaceZ(stack, face);
 }
 export function normalizeStack(stack) {
   const sorted = (stack || [])
@@ -427,28 +429,17 @@ function splitByArea(model, area, mutator, merge = true) {
 }
 
 function exposedLayerPatches(model, active, face, layerId) {
-  const groups = new Map();
-
-  for (const region of model.regions) {
-    const segment = surfaceSegment(region.stack, face);
-    if (!segment || segment.layerId !== layerId) continue;
-
-    const geom = intersection(region.geom, active);
-    if (isEmpty(geom)) continue;
-
-    const z = face === 'front' ? segment.z1 : segment.z0,
-      oppositeZ = face === 'front' ? region.stack[0].z0 : region.stack.at(-1).z1,
-      appearance = cloneAppearance(surfaceAppearance(segment, face)),
-      key = `${z.toFixed(9)}:${oppositeZ.toFixed(9)}:${JSON.stringify(appearance || null)}`;
-    if (!groups.has(key)) groups.set(key, { z, oppositeZ, appearance, geoms: [] });
-    groups.get(key).geoms.push(geom);
-  }
-
-  const patches = [];
-  for (const { z, oppositeZ, appearance, geoms } of groups.values()) {
-    for (const geom of safeUnionParts(geoms)) patches.push({ z, oppositeZ, appearance, geom });
-  }
-  return patches.sort((a, b) => (face === 'front' ? b.z - a.z : a.z - b.z));
+  return exposedSurfaceGroups(model, {
+    face,
+    clip: active,
+    layerId,
+    preserveOppositeZ: true,
+  }).map(({ z, oppositeZ, appearance, geom }) => ({
+    z,
+    oppositeZ,
+    appearance,
+    geom,
+  }));
 }
 
 function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null) {
@@ -472,30 +463,32 @@ function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null
   return normalizeStack(out);
 }
 
-function splitConformalSidewallArea(model, area, layerId, face, sourceZ, appearance) {
-  const next = [];
+function applyConformalMaterialWalls(
+  model,
+  materialWalls,
+  layerId,
+  face,
+  sourceZ,
+  appearance,
+) {
+  const targets = new Map((materialWalls || []).map((target) => [target.regionId, target])),
+    next = [];
+
   for (const region of model.regions) {
     const stack = region.stack.map((segment) => ({ ...segment })),
-      local = surfaceZ(stack, face),
-      needsSidewall =
-        local != null &&
-        (face === 'front' ? local < sourceZ - 1e-9 : local > sourceZ + 1e-9);
+      target = targets.get(region.id);
 
-    // Do not partition source/same-height/higher material at all. Besides being
-    // cheaper, this prevents no-op cuts from surviving as fake internal shapes
-    // when a later best-effort region union has to preserve separate pieces.
-    if (!needsSidewall) {
+    if (!target) {
       next.push({ id: region.id, geom: cloneGeom(region.geom), stack });
       continue;
     }
 
-    const hit = intersection(region.geom, area),
-      rest = difference(region.geom, area);
+    const rest = difference(region.geom, target.geom);
     if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
-    if (!isEmpty(hit)) {
+    if (!isEmpty(target.geom)) {
       next.push({
         id: `region-${model.nextRegionId++}`,
-        geom: hit,
+        geom: target.geom,
         stack: conformalSidewallStack(stack, layerId, face, sourceZ, appearance),
       });
     }
@@ -503,91 +496,21 @@ function splitConformalSidewallArea(model, area, layerId, face, sourceZ, appeara
   model.regions = next;
 }
 
-function conformalRingBands(geom, amount) {
-  const bands = [];
-  for (const poly of geom || [])
-    for (const ring of poly || []) {
-      if (!Array.isArray(ring) || ring.length < 4) continue;
-      const points = ring.slice(0, -1);
-      try {
-        const band = bufferPolyline(points, amount, 32, true);
-        if (!isEmpty(band)) bands.push(band);
-      } catch {
-        // Complex imported rings can make a large polygon union numerically
-        // fragile. Fall back to local edge capsules so one bad ring cannot
-        // cancel an otherwise valid conformal process.
-        for (let index = 1; index < ring.length; index++) {
-          const band = bufferPolyline([ring[index - 1], ring[index]], amount, 20, false);
-          if (!isEmpty(band)) bands.push(band);
-        }
-      }
-    }
-  return bands;
-}
-
-function packDisjointBands(bands, maxBatchSize = 8) {
-  const batches = [];
-  const overlaps = (a, b) =>
-    !(
-      a.maxX < b.minX - 1e-9 ||
-      b.maxX < a.minX - 1e-9 ||
-      a.maxY < b.minY - 1e-9 ||
-      b.maxY < a.minY - 1e-9
-    );
-
-  for (const band of bands || []) {
-    if (isEmpty(band)) continue;
-    const bounds = multiBounds(band);
-    let batch = batches.find(
-      (candidate) =>
-        candidate.count < maxBatchSize &&
-        candidate.bounds.every((otherBounds) => !overlaps(bounds, otherBounds)),
-    );
-    if (!batch) {
-      batch = { geom: [], bounds: [], count: 0 };
-      batches.push(batch);
-    }
-    batch.geom.push(...cloneGeom(band));
-    batch.bounds.push(bounds);
-    batch.count++;
-  }
-  return batches.map((batch) => batch.geom);
-}
-
-const COVERAGE_CRACK_TOLERANCE_UM = 1e-4; // 0.1 nm, the persistence precision.
+const COVERAGE_CRACK_TOLERANCE_UM = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM;
 
 function uncoveredGeometryRaw(model) {
-  let uncovered = cloneGeom(model.boundary);
-  try {
-    // Union compatible coverage first. Repeatedly subtracting many adjacent
-    // partitions can leave machine-scale slivers between otherwise coincident
-    // mask edges, which later look like real through-voids.
-    const coveredParts = safeUnionParts((model.regions || []).map((region) => region.geom));
-    for (const covered of coveredParts) {
-      if (isEmpty(uncovered)) break;
-      uncovered = difference(uncovered, covered);
-    }
-    return uncovered;
-  } catch {
-    // Void coating is an extension of the core conformal pass. If a pathological
-    // imported partition cannot be subtracted reliably, keep coating all
-    // existing exposed material rather than failing the entire deposition.
-    return [];
-  }
+  return uncoveredDomain(model, model.boundary);
 }
 
 function healNumericalCoverageCracks(model) {
-  const uncovered = uncoveredGeometryRaw(model);
-  if (isEmpty(uncovered)) return false;
+  const { cracks } = classifyCoverageVoids(model, {
+    clip: model.boundary,
+    crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
+  });
+  if (!cracks.length) return false;
 
   let changed = false;
-  for (const poly of uncovered) {
-    const crack = [poly],
-      bounds = multiBounds(crack),
-      narrow = Math.min(bounds.width, bounds.height) <= COVERAGE_CRACK_TOLERANCE_UM + 1e-12,
-      tiny = geometryArea(crack) <= COVERAGE_CRACK_TOLERANCE_UM ** 2 * 4;
-    if (!narrow && !tiny) continue;
-
+  for (const { geom: crack } of cracks) {
     let halo;
     try {
       halo = bufferMulti(crack, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
@@ -664,32 +587,30 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // many circular/nested features.
   const sources = exposedLayerPatches(model, active, face, layerId);
   for (const source of sources) {
-    const ringBands = conformalRingBands(source.geom, amount);
-    for (const rawBand of packDisjointBands(ringBands)) {
+    for (const rawBand of conformalBoundaryBands(source.geom, amount)) {
       const band = intersection(rawBand, model.boundary);
       if (isEmpty(band)) continue;
 
-      // The symmetric ring band touches both sides of an edge. The stack test
-      // below only accepts the physically lower (front) / higher (back) side,
-      // so partition edges and the source interior cannot create fake material.
-      splitConformalSidewallArea(
+      // Topology v2 classifies this symmetric edge band once. Equal-height
+      // computational partitions never become material-wall targets; genuine
+      // uncovered domain becomes an explicit void-wall target.
+      const { materialWalls, voidWalls } = conformalWallTargets(model, band, {
+        face,
+        source,
+        voidDomain: uncovered,
+      });
+      applyConformalMaterialWalls(
         model,
-        band,
+        materialWalls,
         layerId,
         face,
         source.z,
         source.appearance,
       );
 
-      // A true void has no stack for splitByArea() to mutate. Add only the
-      // still-uncovered part of this local sidewall band, then remove it from
-      // the void domain so later source levels cannot overlap it.
-      if (!isEmpty(uncovered)) {
-        const voidBand = intersection(band, uncovered);
-        if (!isEmpty(voidBand)) {
-          addVoidConformalSidewall(model, voidBand, layerId, face, source);
-          uncovered = difference(uncovered, voidBand);
-        }
+      for (const wall of voidWalls) {
+        addVoidConformalSidewall(model, wall.geom, layerId, face, source);
+        uncovered = difference(uncovered, wall.geom);
       }
     }
   }
@@ -859,20 +780,14 @@ export function modelBoundsZ(model) {
 }
 
 export function surfacePatches(model, face = 'front') {
-  const out = [];
-  for (const region of model.regions) {
-    const seg = surfaceSegment(region.stack, face);
-    if (!seg) continue;
-    out.push({
-      geom: region.geom,
-      layerId: seg.layerId,
-      z: face === 'front' ? seg.z1 : seg.z0,
-      face,
-      appearance: cloneAppearance(surfaceAppearance(seg, face)),
-      stack: region.stack,
-    });
-  }
-  return out;
+  return regionSurfaceFaces(model, { face }).map((patch) => ({
+    geom: patch.geom,
+    layerId: patch.layerId,
+    z: patch.z,
+    face: patch.face,
+    appearance: patch.appearance,
+    stack: patch.stack,
+  }));
 }
 
 export function layerUsage(model, id) {

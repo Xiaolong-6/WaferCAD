@@ -1,161 +1,51 @@
+import { intersection, isEmpty, lineIntervalsInMulti, unionGeometries } from './vector-geometry.js';
 import {
-  difference,
-  intersection,
-  isEmpty,
-  lineIntervalsInMulti,
-  unionGeometries,
-} from './vector-geometry.js';
-import { surfacePatches } from './model.js';
+  appearanceSurfaceGroupsFromTopology,
+  extrusionGroupsFromTopology,
+  materialSolidsFromTopology,
+  sectionColumnsFromTopology,
+  sectionSlicesFromTopology,
+  visibleSurfaceGroups,
+} from './process-topology.js';
 
 // All views consume canonical physical XYZ geometry; visual Z scaling is renderer-only.
+// Topology v2 owns the shared volumetric/section derivation; this module keeps
+// the stable view-facing API.
 export function extrusionGroups(model, clip = null) {
-  const groups = new Map();
-  for (const region of model.regions) {
-    const geom = clip ? intersection(region.geom, clip) : region.geom;
-    if (isEmpty(geom)) continue;
-    for (const segment of region.stack) {
-      const key = JSON.stringify([segment.layerId, segment.z0, segment.z1]);
-      if (!groups.has(key)) groups.set(key, { ...segment, geoms: [] });
-      groups.get(key).geoms.push(geom);
-    }
-  }
-  return [...groups.values()].map(({ geoms, ...segment }) => ({
-    ...segment,
-    polys: unionGeometries(geoms),
-  }));
+  return extrusionGroupsFromTopology(model, clip);
 }
 
 export function sectionColumns(model, a, b) {
-  const columns = [];
-  for (const region of model.regions) {
-    for (const [t0, t1] of lineIntervalsInMulti(a, b, region.geom)) {
-      columns.push({
-        t0,
-        t1,
-        stack: region.stack.map((segment) => ({
-          ...segment,
-          frontSurface: segment.frontSurface ? { ...segment.frontSurface } : undefined,
-          backSurface: segment.backSurface ? { ...segment.backSurface } : undefined,
-        })),
-      });
-    }
-  }
-  return columns;
+  return sectionColumnsFromTopology(model, a, b);
 }
 
 export function sectionSlices(model, a, b) {
-  const slices = [];
-  for (const column of sectionColumns(model, a, b)) {
-    for (let index = 0; index < column.stack.length; index++) {
-      const segment = column.stack[index],
-        below = column.stack[index - 1] || null,
-        above = column.stack[index + 1] || null;
-      slices.push({
-        ...segment,
-        t0: column.t0,
-        t1: column.t1,
-        below: below ? { ...below } : null,
-        above: above ? { ...above } : null,
-      });
-    }
-  }
-  return slices;
+  return sectionSlicesFromTopology(model, a, b);
 }
 
 // Region partitions describe processing history, not visible material boundaries.
+// Topology v2 owns which horizontal faces are physically exposed and which
+// rough interfaces are buried; the view layer only adapts those facts.
 export function surfaceGroups(model, face = 'front') {
-  const groups = new Map();
-  for (const patch of surfacePatches(model, face)) {
-    const key = JSON.stringify([patch.layerId, patch.z]);
-    if (!groups.has(key)) groups.set(key, { layerId: patch.layerId, z: patch.z, geoms: [] });
-    groups.get(key).geoms.push(patch.geom);
-  }
-  return [...groups.values()].map(({ geoms, ...patch }) => ({
-    ...patch,
-    geom: unionGeometries(geoms),
+  return visibleSurfaceGroups(model, { face }).map(({ layerId, z, geom }) => ({
+    layerId,
+    z,
+    geom,
   }));
 }
 
 export function appearanceSurfaceGroups(model, clip = null) {
-  const groups = new Map();
-  const addAppearance = (layerId, z, face, profileNormal, appearance, geom, buried = false) => {
-    if (appearance?.kind !== 'rough' || isEmpty(geom)) return;
-    const key = JSON.stringify([
+  return appearanceSurfaceGroupsFromTopology(model, clip).map(
+    ({ layerId, z, face, profileNormal, appearance, buried, polys }) => ({
       layerId,
       z,
       face,
       profileNormal,
-      appearance.profileId,
-      appearance.featureSize,
-      appearance.meanHeight,
-      appearance.featureCv,
-      appearance.heightCv,
-      appearance.seed,
-      appearance.geometryMode,
-      appearance.morphology,
-      appearance.polarity,
-      appearance.etchDepth,
+      appearance,
       buried,
-    ]);
-    if (!groups.has(key)) {
-      groups.set(key, {
-        layerId,
-        z,
-        face,
-        profileNormal,
-        appearance: { ...appearance },
-        buried,
-        geoms: [],
-      });
-    }
-    groups.get(key).geoms.push(geom);
-  };
-
-  for (const region of model.regions || []) {
-    const geom = clip ? intersection(region.geom, clip) : region.geom;
-    if (isEmpty(geom)) continue;
-
-    for (let index = 0; index < region.stack.length; index++) {
-      const segment = region.stack[index],
-        below = region.stack[index - 1] || null,
-        above = region.stack[index + 1] || null,
-        frontAppearance =
-          segment.frontSurface?.kind === 'rough'
-            ? segment.frontSurface
-            : above?.backSurface?.kind === 'rough'
-              ? above.backSurface
-              : null,
-        backAppearance =
-          segment.backSurface?.kind === 'rough'
-            ? segment.backSurface
-            : below?.frontSurface?.kind === 'rough'
-              ? below.frontSurface
-              : null;
-      addAppearance(
-        segment.layerId,
-        segment.z1,
-        'front',
-        segment.frontSurface?.kind === 'rough' ? 1 : -1,
-        frontAppearance,
-        geom,
-        Boolean(above && Math.abs(above.z0 - segment.z1) <= 1e-8),
-      );
-      addAppearance(
-        segment.layerId,
-        segment.z0,
-        'back',
-        segment.backSurface?.kind === 'rough' ? -1 : 1,
-        backAppearance,
-        geom,
-        Boolean(below && Math.abs(below.z1 - segment.z0) <= 1e-8),
-      );
-    }
-  }
-
-  return [...groups.values()].map(({ geoms, ...patch }) => ({
-    ...patch,
-    polys: unionGeometries(geoms),
-  }));
+      polys,
+    }),
+  );
 }
 
 export function sectionContours(model, a, b) {
@@ -177,50 +67,11 @@ export function sectionContours(model, a, b) {
   return [...groups].map(([layerId, geoms]) => ({ layerId, polys: unionGeometries(geoms) }));
 }
 
-// A material's boundary is built from unioned Z slabs. Only footprint differences
-// become horizontal faces; overlapping material at a slab transition is internal.
+// A material's boundary is built by topology v2 from unioned Z slabs.
+// Only footprint differences become horizontal caps; overlapping slab
+// transitions are internal and never rendered as physical faces.
 export function materialSolids(model, clip = null) {
-  const layers = new Map();
-  for (const item of extrusionGroups(model, clip)) {
-    if (!layers.has(item.layerId)) layers.set(item.layerId, []);
-    layers.get(item.layerId).push(item);
-  }
-  return [...layers].map(([layerId, items]) => {
-    const events = new Map();
-    for (const item of items) {
-      for (const [z, kind] of [
-        [item.z0, 'start'],
-        [item.z1, 'end'],
-      ]) {
-        if (!events.has(z)) events.set(z, { start: [], end: [] });
-        events.get(z)[kind].push(item);
-      }
-    }
-    const levels = [...events.keys()].sort((a, b) => a - b);
-    const active = new Set(),
-      slabs = [];
-    for (let i = 0; i < levels.length - 1; i++) {
-      const z0 = levels[i],
-        z1 = levels[i + 1],
-        event = events.get(z0);
-      for (const item of event.end) active.delete(item);
-      for (const item of event.start) active.add(item);
-      const polys = unionGeometries([...active].map((item) => item.polys));
-      slabs.push({ z0, z1, polys });
-    }
-    const caps = [];
-    for (let i = 0; i < slabs.length; i++) {
-      const slab = slabs[i];
-      for (const [z, normal, neighbor] of [
-        [slab.z0, -1, slabs[i - 1]],
-        [slab.z1, 1, slabs[i + 1]],
-      ]) {
-        const polys = difference(slab.polys, neighbor?.polys || []);
-        if (!isEmpty(polys)) caps.push({ z, normal, polys });
-      }
-    }
-    return { layerId, slabs: slabs.filter((slab) => !isEmpty(slab.polys)), caps };
-  });
+  return materialSolidsFromTopology(model, clip);
 }
 
 export function solidBorders({ slabs, caps }, thresholdDegrees = 20) {

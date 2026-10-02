@@ -8,7 +8,7 @@ X, Y and Z are stored in µm. The model consists of non-overlapping XY regions w
 
 Directional coverage adds the requested Z amount on the local exposed face inside the operation footprint. Extend requires the target material to be exposed on that face.
 
-Conformal is evaluated with one shared coating kernel for Deposit and Extend. Stage 1 coats every exposed surface inside the selected Mask / Invert / Whole-face area. Deposit uses a new layer id; Extend reuses the selected target layer id, so coating that touches the existing target merges into it. Directional Extend is intentionally different: it only thickens locations where the target is already exposed. Stage 2 re-reads the newly coated surface, finds its step boundaries, offsets those boundaries outward in XY by the same physical thickness, and fills the vertical interval back to the adjacent lower surface on Front (or higher surface on Back).
+Conformal is evaluated with one shared coating kernel for Deposit and Extend and one shared Process Geometry Kernel v2 topology contract. Stage 1 coats every topology-v2 exposed horizontal face inside the selected Mask / Invert / Whole-face area. Deposit uses a new layer id; Extend reuses the selected target layer id, so coating that touches the existing target merges into it. Directional Extend is intentionally different: it only thickens locations where the target is already exposed. Stage 2 re-reads the newly coated source faces, offsets their local edge bands outward in XY by the same physical thickness, then accepts only topology-v2 `material-wall` or `void-wall` targets. Equal-height computational partitions are rejected before mutation. `material-wall` spans to the adjacent lower surface on Front (or higher surface on Back); `void-wall` spans the true uncovered wall interval.
 
 The lateral offset equals the physical Z thickness: Z = 1 µm produces a 1 µm XY normal offset. Section and 3D may exaggerate Z for visibility, but that display scaling is never fed back into process geometry.
 
@@ -38,7 +38,7 @@ A separate 100000 × 100000 µm regression verifies that the same Z = 1 µm stil
 
 A multi-opening wafer fixture also etches an array of circular openings through a blanket layer before applying Conformal. This protects the dense/repeated-mask path: boundary buffering must complete for many closed rings and must leave a sidewall coating around each opening. The fixture was added after repeated circular mask geometry exposed a polygon-clipping degeneracy in the former capsule-union buffer construction.
 
-A separate rough-step regression injects a sub-grid uncovered slit at a step boundary and verifies that it is healed before Conformal true-void detection. This protects against the failure mode where a numerical partition seam is rendered as a full-depth crack and then receives conformal material down into the model interior. The healing threshold is 0.1 nm, matching the project persistence precision; wider intentional trenches remain geometry.
+A separate rough-step regression injects a sub-grid uncovered slit at a step boundary and verifies that topology v2 classifies it as a `numerical-crack` and it is healed before Conformal true-void detection. This protects against the failure mode where a numerical partition seam is rendered as a full-depth crack and then receives conformal material down into the model interior. The healing threshold is 0.1 nm, matching the project persistence precision; wider intentional trenches remain geometry.
 
 Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 µm³, including removal across material interfaces. Browser review projects additionally show a 6 × 8 µm etched area in the 3D and Section views.
 
@@ -46,7 +46,7 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 
 `site/tests/process-benchmarks.test.mjs` checks both faces, material intervals, non-overlapping region partitions, stack ordering, coating volumes, etch volume, Directional Extend, Deposit-equivalent Conformal Extend coverage, exposed-target preconditions, ROI render-only behavior, and independent Section/3D interval agreement.
 
-`site/model-view-geometry.js` derives Section slices and 3D extrusion groups from the canonical model. Exact Z values form group identities; the former eight-decimal grouping could combine distinct Z intervals. The renderer additionally sweeps exact Z slabs per material and unions the footprint at each interval. Horizontal faces come only from differences between adjacent footprints; border lines come from those faces and genuine side corners. This removes internal surfaces and prism edges even when adjacent columns have different Z intervals. Section unions rectangles by material, while Main unions patches by material and surface height, preserving actual steps and material interfaces.
+`site/process-topology.js` derives Section slices, exact-Z extrusion groups, and material slab/cap topology from the canonical model; `site/model-view-geometry.js` is the stable view adapter. Exact Z values form group identities; the former eight-decimal grouping could combine distinct Z intervals. The renderer additionally sweeps exact Z slabs per material and unions the footprint at each interval. Horizontal faces come only from differences between adjacent footprints; border lines come from those faces and genuine side corners. This removes internal surfaces and prism edges even when adjacent columns have different Z intervals. Section unions rectangles by material, while Main unions patches by material and surface height, preserving actual steps and material interfaces.
 
 `site/tests/material-boundaries.test.mjs` verifies partition-independent outlines, material identity throughout each cross-section, absence of internal 3D caps, coating volume, holes, separated islands, and render-only ROI clipping. The browser regression samples a continuous substrate row across former Section seams at each viewport/DPR.
 
@@ -61,3 +61,6 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 - XY display-unit changes convert inputs and labels only. They do not recalibrate Z, rescale geometry, or change process results.
 
 Changes to these boundaries require an explicit geometry-contract update and new benchmarks.
+
+
+The full topology ownership and non-goals are documented in [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md).
