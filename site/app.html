@@ -47,7 +47,7 @@
               </button>
               <details id="focusEditor" class="focus-editor">
                 <summary class="mini-btn" title="Edit the 3D region of interest">ROI</summary>
-                <div class="focus-popover">
+                <div class="focus-popover view-popover-surface">
                   <div class="focus-popover-actions">
                     <button
                       class="roi-tool mini-btn"
@@ -147,7 +147,7 @@
               </div>
               <details class="export-control">
                 <summary class="mini-btn" title="Export Main">Export</summary>
-                <div class="export-popover">
+                <div class="export-popover view-popover-surface">
                   <button id="mainExportSvgBtn" class="mini-btn" type="button">SVG</button>
                 </div>
               </details>
@@ -186,7 +186,7 @@
           </div>
           <div
             id="sectionCoordsPanel"
-            class="section-coords-panel"
+            class="section-coords-panel view-popover-surface" data-view-popover-panel
             aria-label="A–B coordinates"
             hidden
           >
@@ -221,7 +221,7 @@
               </button>
               <details id="maskRoiEditor" class="focus-editor mask-roi-control">
                 <summary class="mini-btn" title="Limit Mask processing/export to a Rect or Circle ROI">ROI</summary>
-                <div class="focus-popover mask-roi-popover">
+                <div class="focus-popover mask-roi-popover view-popover-surface">
                   <div class="focus-popover-actions">
                     <button class="mask-roi-tool mini-btn" data-tool="rect" type="button">Square</button>
                     <button class="mask-roi-tool mini-btn" data-tool="circle" type="button">Circle</button>
@@ -263,7 +263,7 @@
                 >
                   Opacity
                 </summary>
-                <div class="three-opacity-popover mask-opacity-popover">
+                <div class="three-opacity-popover mask-opacity-popover view-popover-surface">
                   <label for="maskOpacityRange"
                     ><span>Mask opacity</span><output id="maskOpacityValue">65%</output></label
                   >
@@ -298,7 +298,7 @@
               </div>
               <details id="maskExportControl" class="export-control">
                 <summary class="mini-btn" title="Export current Mask">Export</summary>
-                <div class="export-popover mask-export-popover">
+                <div class="export-popover mask-export-popover view-popover-surface">
                   <div id="maskExportFilterGroup">
                     <label class="export-field">
                       <span>Cells</span>
@@ -359,7 +359,7 @@
             <button id="drawMaskClearBtn" class="mini-btn" type="button" disabled>Clear</button>
             <span id="drawMaskHint" class="draw-mask-hint">0 shapes</span>
           </div>
-          <div id="drawShapeEditor" class="draw-shape-editor" hidden>
+          <div id="drawShapeEditor" class="draw-shape-editor view-popover-surface" data-view-popover-panel hidden>
             <div class="draw-shape-editor-head">
               <strong id="drawShapeEditorTitle">Shape</strong>
               <button id="drawShapeEditorClose" class="quiet" type="button" aria-label="Close shape editor">×</button>
@@ -384,7 +384,7 @@
                 >
                   Opacity
                 </summary>
-                <div class="three-opacity-popover">
+                <div class="three-opacity-popover view-popover-surface">
                   <label for="threeOpacityRange"
                     ><span>Opacity</span><output id="threeOpacityValue">100%</output></label
                   >
@@ -409,7 +409,7 @@
               <button id="fit3dBtn" class="mini-btn three-control" title="Fit the 3D model">Fit</button>
               <details class="export-control">
                 <summary class="mini-btn three-control" title="Export 3D">Export</summary>
-                <div class="export-popover">
+                <div class="export-popover view-popover-surface">
                   <button id="threeExportModelBtn" class="mini-btn three-control" type="button">GLB</button>
                   <button id="threeExportPngBtn" class="mini-btn three-control" type="button">PNG 3×</button>
                 </div>
@@ -795,7 +795,7 @@
               </button>
               <details class="export-control">
                 <summary class="mini-btn" title="Export Section A–B">Export</summary>
-                <div class="export-popover">
+                <div class="export-popover view-popover-surface">
                   <button id="sectionExportSvgBtn" class="mini-btn" type="button">SVG</button>
                 </div>
               </details>
