@@ -32,9 +32,27 @@ test('project replacement controls warn and Save uses the project name', () => {
 
 test('workspace state is restored locally after app reload', () => {
   assert.match(app, /loadWorkspaceState\(\)/);
-  assert.match(app, /saveWorkspaceState\(project\)/);
+  assert.match(app, /saveWorkspaceState\(project, \{ appCommit: loadedBuildVersion \}\)/);
   assert.match(persistence, /indexedDB\.open\(DB_NAME, 1\)/);
+  assert.match(persistence, /createWorkspaceRecoveryCheckpoint/);
+  assert.match(persistence, /pre-migration-v/);
   assert.match(persistence, /validateProjectFile\(migrateProjectFile\(record\.project\)\)/);
+});
+
+test('workspace safety UI exposes local save state, recovery, and safe reload', () => {
+  for (const id of [
+    'workspaceSaveStatus',
+    'safeReloadBtn',
+    'workspaceConflictDialog',
+    'workspaceTakeOverBtn',
+    'workspaceRecoverySelect',
+    'workspaceRestoreBtn',
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /createWorkspaceRecoveryCheckpoint/);
+  assert.match(app, /workspaceSession\.start\(\)/);
+  assert.match(app, /globalThis\.location\.reload\(\)/);
 });
 
 test('footer exposes repository and exact deployed commit links', () => {
