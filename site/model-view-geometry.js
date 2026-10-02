@@ -94,6 +94,9 @@ export function appearanceSurfaceGroups(model, clip = null) {
         patch.appearance.heightCv,
         patch.appearance.seed,
         patch.appearance.geometryMode,
+        patch.appearance.morphology,
+        patch.appearance.polarity,
+        patch.appearance.etchDepth,
       ]);
       if (!groups.has(key))
         groups.set(key, {
