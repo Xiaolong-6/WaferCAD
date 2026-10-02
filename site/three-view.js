@@ -1108,7 +1108,8 @@ export function createThreeView({
           const key = bucketKey(part, state);
           if (!map.has(key)) map.set(key, { part, items: [] });
           map.get(key).items.push(part);
-        },
+        };
+
       for (const cap of plan.caps) {
         const state = stateFor(cap);
         if (!state) continue;
