@@ -30,13 +30,17 @@ assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
 
 const roughAppearance = { featureSize: 0.5, amplitude: 0.8, seed: 42 };
-const roughProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 20);
+const roughProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance);
 assert.equal(
   roughProfileSample,
-  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 20),
+  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
 );
-assert.equal(roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 0), 0);
 assert.ok(Math.abs(roughProfileSample) <= roughAppearance.amplitude / 2 + 1e-12);
+// Physical roughness height is view-independent; LOD can hide detail but never rescales Z.
+assert.equal(
+  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 0),
+  roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance, 100),
+);
 
 const defaults = createModel();
 assert.equal(defaults.width, 100000);
