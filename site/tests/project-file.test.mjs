@@ -501,6 +501,24 @@ test('v11 rough surfaces migrate to stochastic inverted polarity without visual 
   assert.equal(validateProjectFile(migrated), migrated);
 });
 
+test('project validator accepts pyramid surface morphology', () => {
+  const source = migrateProjectFile(validProject());
+  source.model.regions[0].stack[0].frontSurface = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 2,
+    meanHeight: 0.8,
+    featureCv: 0,
+    heightCv: 0,
+    etchDepth: 1,
+    seed: 11,
+    profileId: 'pyramid-schema-test',
+    geometryMode: 'ideal',
+  };
+  assert.equal(validateProjectFile(source), source);
+});
+
 test('v7 migration converts world-space Mask ROI into mask-local coordinates', () => {
   const source = validProject();
   source.version = 7;
