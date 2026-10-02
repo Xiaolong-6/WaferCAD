@@ -381,22 +381,22 @@ test('project validator accepts persisted sector ROI', () => {
 });
 
 
-test('project v7 persists and quantizes independent Mask ROI', async () => {
+test('project v8 persists and quantizes mask-local rotated Square ROI', async () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION;
   source.maskRoi = {
-    type: 'rect',
-    a: [-10.000049, -10.000049],
-    b: [10.000051, 10.000051],
+    type: 'square',
+    c: [1.23456789, -2.34567891],
+    size: 20.000051,
+    rotation: 37.5,
   };
   source.maskRoiAnchor = 'top-left';
 
   const text = serializeProject(source);
   const stored = JSON.parse(text);
-  assert.equal(stored.maskRoi.a[0], -10);
-  assert.equal(stored.maskRoi.a[1], -10);
-  assert.equal(stored.maskRoi.b[0], 10.0001);
-  assert.equal(stored.maskRoi.b[1], 10.0001);
+  assert.deepEqual(stored.maskRoi.c, [1.2346, -2.3457]);
+  assert.equal(stored.maskRoi.size, 20.0001);
+  assert.equal(stored.maskRoi.rotation, 37.5);
   assert.equal(stored.maskRoiAnchor, 'top-left');
 
   const loaded = await readProjectFile({
@@ -404,21 +404,20 @@ test('project v7 persists and quantizes independent Mask ROI', async () => {
     text: async () => text,
   });
   assert.deepEqual(loaded.maskRoi, stored.maskRoi);
-  assert.equal(loaded.maskRoiAnchor, 'top-left');
   assert.equal(validateProjectFile(loaded), loaded);
 });
 
-test('Mask ROI accepts only Square-compatible rect geometry or circle types', () => {
+test('Mask ROI accepts rotated Square or Circle only', () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION;
   source.maskRoi = { type: 'circle', c: [0, 0], r: 5 };
   assert.equal(validateProjectFile(source), source);
 
-  source.maskRoi = { type: 'rect', a: [-5, -5], b: [5, 5] };
+  source.maskRoi = { type: 'square', c: [1, 2], size: 10, rotation: 42 };
   assert.equal(validateProjectFile(source), source);
 
-  source.maskRoi = { type: 'rect', a: [-5, -4], b: [5, 4] };
-  assert.throws(() => validateProjectFile(source), /must be square/);
+  source.maskRoi = { type: 'rect', a: [-5, -5], b: [5, 5] };
+  assert.throws(() => validateProjectFile(source), /maskRoi\.type/);
 
   source.maskRoi = {
     type: 'sector',
@@ -428,6 +427,20 @@ test('Mask ROI accepts only Square-compatible rect geometry or circle types', ()
     endDeg: 90,
   };
   assert.throws(() => validateProjectFile(source), /maskRoi\.type/);
+});
+
+test('v7 migration converts world-space Mask ROI into mask-local coordinates', () => {
+  const source = validProject();
+  source.version = 7;
+  source.maskRoi = { type: 'rect', a: [-10, -10], b: [10, 10] };
+  source.maskRoiAnchor = 'center';
+
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.maskRoi.type, 'square');
+  assert.ok(Math.abs(migrated.maskRoi.size - 20 / source.maskTransform.scale) < 1e-12);
+  assert.equal(migrated.maskRoi.rotation, -source.maskTransform.rotation);
+  assert.equal(validateProjectFile(migrated), migrated);
 });
 
 test('v6 migration defaults independent Mask ROI state', () => {
