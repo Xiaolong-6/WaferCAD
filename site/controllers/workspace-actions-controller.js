@@ -45,6 +45,12 @@ export function createWorkspaceActionsController({
 }) {
   const $ = (id) => root.getElementById(id);
 
+  function syncRoughHeightLimit() {
+    const depth = Number($('operationThickness')?.value);
+    if (Number.isFinite(depth) && depth > 0) $('roughAmplitude').max = String(depth);
+    else $('roughAmplitude').removeAttribute('max');
+  }
+
   function bindUnitControls() {
     $('xyUnitSelect').onchange = () => {
       const oldUnit = getXyUnit(),
@@ -63,6 +69,7 @@ export function createWorkspaceActionsController({
       $('operationThickness').value = formatLengthField(draftOperation);
       $('roughFeatureSize').value = formatLengthField(draftRoughFeature);
       $('roughAmplitude').value = formatLengthField(draftRoughAmplitude);
+      syncRoughHeightLimit();
       $('baseWidthUnit').textContent = getXyUnit().label;
       $('baseHeightUnit').textContent = getXyUnit().label;
       $('baseThicknessUnit').textContent = getXyUnit().label;
@@ -78,8 +85,11 @@ export function createWorkspaceActionsController({
       $(id).addEventListener('change', () => {
         const value = manualMicron($(id).value);
         if (Number.isFinite(value)) $(id).value = formatLengthField(value);
+        if (id === 'operationThickness') syncRoughHeightLimit();
       });
     }
+    $('operationThickness').addEventListener('input', syncRoughHeightLimit);
+    syncRoughHeightLimit();
   }
 
   function bindViewControls() {
