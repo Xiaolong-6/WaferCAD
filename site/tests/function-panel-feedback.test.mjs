@@ -186,9 +186,9 @@ test('Mask File Draw source is explicit and Draw feeds Process geometry', () => 
   assert.match(html, /data-draw-tool="ring-sector"/);
   assert.match(html, /id="drawShapeEditor"[^>]*hidden/);
   assert.match(app, /maskSourceMode = 'file'/);
-  assert.match(app, /function selectedFileMaskGeometry\(\)/);
+  assert.match(selectionGeometry, /function selectedFileMaskGeometry\(\)/);
   assert.match(selectionGeometry, /function activeMaskGeometry\(\)/);
-  assert.match(app, /maskSourceMode === 'draw' \? drawMaskGeometry\(drawMask\)/);
+  assert.match(selectionGeometry, /maskSourceMode === 'draw' \? drawMaskGeometry\(drawMask\)/);
   assert.match(selectionGeometry, /const selected = activeMaskGeometry\(\)/);
   assert.match(planRenderers, /getDrawMaskController\(\)\?\.render\(ctx, v, maskOpacity\)/);
 });
