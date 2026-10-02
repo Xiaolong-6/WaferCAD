@@ -761,16 +761,13 @@ export function createThreeView({
   }
 
   function createSurfaceMaterial(layer, materialState, appearance = null) {
-    const material = new THREE.MeshStandardMaterial({
+    return new THREE.MeshStandardMaterial({
       color: layer?.color || '#999',
       roughness: appearance ? 0.84 : 0.78,
       metalness: 0.015,
       side: THREE.DoubleSide,
-      premultipliedAlpha: Boolean(materialState.transparent),
       ...materialState,
     });
-    if (materialState.transparent) material.forceSinglePass = true;
-    return material;
   }
 
   function addSurfaceMesh(
@@ -899,9 +896,14 @@ export function createThreeView({
         sidewalls = new Map();
 
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
-        bucketKey = (part) => `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`,
-        pushBucket = (map, part) => {
-          const key = bucketKey(part);
+        bucketKey = (part, state) => {
+          const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
+          if (!state?.transparent) return base;
+          if (part.type === 'cap') return `${base}\u0000cap\u0000${part.z}\u0000${part.normal}`;
+          return `${base}\u0000side\u0000${part.z0}\u0000${part.z1}`;
+        },
+        pushBucket = (map, part, state) => {
+          const key = bucketKey(part, state);
           if (!map.has(key)) map.set(key, { part, items: [] });
           map.get(key).items.push(part);
         },
@@ -931,7 +933,7 @@ export function createThreeView({
         const layer = layerById(model, cap.layerId);
 
         if (!cap.appearance) {
-          pushBucket(smoothCaps, cap);
+          pushBucket(smoothCaps, cap, state);
           continue;
         }
 
@@ -969,8 +971,9 @@ export function createThreeView({
       }
 
       for (const sidewall of plan.sidewalls) {
-        if (!stateFor(sidewall)) continue;
-        pushBucket(sidewalls, sidewall);
+        const state = stateFor(sidewall);
+        if (!state) continue;
+        pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
         const state = stateFor(bucket.part);
@@ -998,14 +1001,12 @@ export function createThreeView({
             roughness: 0.7,
             metalness: 0,
             side: THREE.DoubleSide,
-            premultipliedAlpha: true,
             transparent: true,
             opacity: implantState.opacity,
             depthTest: true,
             depthWrite: false,
           }),
           body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
-        bodyMaterial.forceSinglePass = true;
         if (body) body.name = implant.name || implant.implantId || 'Implant';
 
         const outerNormal = implant.face === 'front' ? 1 : -1,
