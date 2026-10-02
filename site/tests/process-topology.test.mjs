@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
 
 const { applyOperation, createModel, geometryArea } = await import('../model.js');
 const {
