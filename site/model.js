@@ -452,6 +452,42 @@ function conformalSidewallStack(stack, layerId, face, sourceZ) {
   return normalizeStack(out);
 }
 
+function applyConformalCoating(model, active, layerId, amount, face) {
+  // Deposit and Extend share one conformal kernel. Extend simply reuses the
+  // selected layer id, so contiguous material merges during stack normalization.
+  // Stage 1 coats every exposed surface in the selected area by the requested
+  // physical thickness.
+  splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face));
+
+  // Stage 2 re-reads the resulting coating surfaces and fills the vertical
+  // sidewall interval around genuine steps by the same physical XY offset.
+  const sources = exposedLayerPatches(model, active, face, layerId),
+    coversWholeBoundary = isEmpty(difference(model.boundary, active)),
+    sidewallSources =
+      coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources,
+    keepSidewallSegment = coversWholeBoundary
+      ? (a, b) =>
+          !(
+            pointOnBoundary(model.boundary, a) &&
+            pointOnBoundary(model.boundary, b) &&
+            pointOnBoundary(model.boundary, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])
+          )
+      : null;
+
+  for (const source of sidewallSources) {
+    const expanded = intersection(
+        bufferMulti(source.geom, amount, 32, keepSidewallSegment),
+        model.boundary,
+      ),
+      sidewallBand = difference(expanded, source.geom);
+    if (isEmpty(sidewallBand)) continue;
+
+    splitByArea(model, sidewallBand, (stack) =>
+      conformalSidewallStack(stack, layerId, face, source.z),
+    );
+  }
+}
+
 function applyOperationImpl(
   model,
   {
@@ -574,42 +610,7 @@ function applyOperationImpl(
       mutateStack(stack, { type, amount, face, appearance }),
     );
   } else if (growth === 'conformal') {
-    // Stage 1: perform the same vertical change as Direct inside the selected
-    // mask/invert/full-face area.
-    splitByArea(model, active, (stack) =>
-      mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
-    );
-
-    // Stage 2: inspect the newly grown exposed surface, find its step edges,
-    // offset those edges outward by the same physical distance as the Z thickness, and fill
-    // the vertical interval back to the neighboring surface. This merges with
-    // the Direct-grown material because it uses the same layer id.
-    const coatingLayerId = layer?.id || targetLayerId;
-    const sources = exposedLayerPatches(model, active, face, coatingLayerId);
-    const coversWholeBoundary = isEmpty(difference(model.boundary, active));
-    const sidewallSources =
-      type === 'add' && coversWholeBoundary && sources.length ? sources.slice(0, -1) : sources;
-    const keepSidewallSegment = coversWholeBoundary
-      ? (a, b) =>
-          !(
-            pointOnBoundary(model.boundary, a) &&
-            pointOnBoundary(model.boundary, b) &&
-            pointOnBoundary(model.boundary, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])
-          )
-      : null;
-
-    for (const source of sidewallSources) {
-      const expanded = intersection(
-        bufferMulti(source.geom, amount, 32, keepSidewallSegment),
-        model.boundary,
-      );
-      const sidewallBand = difference(expanded, source.geom);
-      if (isEmpty(sidewallBand)) continue;
-
-      splitByArea(model, sidewallBand, (stack) =>
-        conformalSidewallStack(stack, coatingLayerId, face, source.z),
-      );
-    }
+    applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
   } else {
     splitByArea(model, active, (stack) =>
       mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
