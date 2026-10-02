@@ -1361,7 +1361,8 @@ canvas {
     overflow: hidden;
   }
 
-  .compact-action-row {
+  .compact-action-row,
+  .workspace-recovery-controls {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1399,10 +1400,14 @@ canvas {
 
 .settings-project-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   margin-top: 5px;
   padding-bottom: 2px !important;
+}
+
+.workspace-recovery-controls {
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
 .settings-project-actions > * {
