@@ -1,4 +1,4 @@
-import { intersection, isEmpty, unionGeometries } from './vector-geometry.js';
+import { intersection, isEmpty, lineIntervalsInMulti, unionGeometries } from './vector-geometry.js';
 import {
   appearanceSurfaceGroupsFromTopology,
   extrusionGroupsFromTopology,
