@@ -291,7 +291,11 @@ assert.ok(
 );
 assert.ok(
   roughBoundaryGroups.some(
-    (group) => group.layerId === roughCoat.layerId && group.face === 'back' && group.z === 4,
+    (group) =>
+      group.layerId === roughCoat.layerId &&
+      group.face === 'back' &&
+      group.z === 4 &&
+      group.profileNormal === 1,
   ),
 );
 assert.ok(

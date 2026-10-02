@@ -277,15 +277,15 @@ export function createThreeView({
     return current;
   }
 
-  function roughPoint(point, z, normal, appearance) {
+  function roughPoint(point, z, profileNormal, appearance) {
     return [
       point[0],
       point[1],
-      z + normal * roughProfileOffsetAtPoint(point[0], point[1], appearance),
+      z + profileNormal * roughProfileOffsetAtPoint(point[0], point[1], appearance),
     ];
   }
 
-  function roughPointNormal(point, normal, appearance) {
+  function roughPointNormal(point, normal, profileNormal, appearance) {
     const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
       step = Math.max(1e-6, feature * 0.08),
       dx =
@@ -296,8 +296,9 @@ export function createThreeView({
         (roughProfileOffsetAtPoint(point[0], point[1] + step, appearance) -
           roughProfileOffsetAtPoint(point[0], point[1] - step, appearance)) /
         (2 * step),
-      length = Math.hypot(dx, dy, 1) || 1;
-    return [-dx / length, -dy / length, normal / length];
+      length = Math.hypot(dx, dy, 1) || 1,
+      slopeSign = normal * profileNormal;
+    return [(-slopeSign * dx) / length, (-slopeSign * dy) / length, normal / length];
   }
 
   function geometryFromRoughCap({
@@ -307,6 +308,7 @@ export function createThreeView({
     appearance,
     closeToIdeal = true,
     clipped = false,
+    profileNormal = normal,
   }) {
     const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, polys),
       depth = roughMeshSubdivisionDepth({
@@ -331,17 +333,17 @@ export function createThreeView({
       pushRoughTriangle = (a, b, c) => {
         positions.push(...a, ...b, ...c);
         normals.push(
-          ...roughPointNormal(a, normal, appearance),
-          ...roughPointNormal(b, normal, appearance),
-          ...roughPointNormal(c, normal, appearance),
+          ...roughPointNormal(a, normal, profileNormal, appearance),
+          ...roughPointNormal(b, normal, profileNormal, appearance),
+          ...roughPointNormal(c, normal, profileNormal, appearance),
         );
       };
 
     for (const [a, b, c] of triangles) {
       pushRoughTriangle(
-        roughPoint(a, z, normal, appearance),
-        roughPoint(b, z, normal, appearance),
-        roughPoint(c, z, normal, appearance),
+        roughPoint(a, z, profileNormal, appearance),
+        roughPoint(b, z, profileNormal, appearance),
+        roughPoint(c, z, profileNormal, appearance),
       );
     }
 
@@ -367,8 +369,8 @@ export function createThreeView({
               p1 = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1],
               base0 = [p0[0], p0[1], z],
               base1 = [p1[0], p1[1], z],
-              top0 = roughPoint(base0, z, normal, appearance),
-              top1 = roughPoint(base1, z, normal, appearance);
+              top0 = roughPoint(base0, z, profileNormal, appearance),
+              top1 = roughPoint(base1, z, profileNormal, appearance);
             if (closeToIdeal) {
               pushTriangle(base0, base1, top1);
               pushTriangle(base0, top1, top0);
@@ -465,6 +467,7 @@ export function createThreeView({
           normal: cap.normal,
           polys: roughPolys,
           appearance: patch.appearance,
+          profileNormal: patch.profileNormal,
         });
       }
       remaining = difference(remaining, patch.polys);

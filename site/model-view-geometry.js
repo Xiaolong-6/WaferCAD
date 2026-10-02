@@ -78,12 +78,13 @@ export function surfaceGroups(model, face = 'front') {
 
 export function appearanceSurfaceGroups(model, clip = null) {
   const groups = new Map();
-  const addAppearance = (layerId, z, face, appearance, geom) => {
+  const addAppearance = (layerId, z, face, profileNormal, appearance, geom) => {
     if (appearance?.kind !== 'rough' || isEmpty(geom)) return;
     const key = JSON.stringify([
       layerId,
       z,
       face,
+      profileNormal,
       appearance.profileId,
       appearance.featureSize,
       appearance.meanHeight,
@@ -100,6 +101,7 @@ export function appearanceSurfaceGroups(model, clip = null) {
         layerId,
         z,
         face,
+        profileNormal,
         appearance: { ...appearance },
         geoms: [],
       });
@@ -127,8 +129,22 @@ export function appearanceSurfaceGroups(model, clip = null) {
             : below?.frontSurface?.kind === 'rough'
               ? below.frontSurface
               : null;
-      addAppearance(segment.layerId, segment.z1, 'front', frontAppearance, geom);
-      addAppearance(segment.layerId, segment.z0, 'back', backAppearance, geom);
+      addAppearance(
+        segment.layerId,
+        segment.z1,
+        'front',
+        segment.frontSurface?.kind === 'rough' ? 1 : -1,
+        frontAppearance,
+        geom,
+      );
+      addAppearance(
+        segment.layerId,
+        segment.z0,
+        'back',
+        segment.backSurface?.kind === 'rough' ? -1 : 1,
+        backAppearance,
+        geom,
+      );
     }
   }
 
