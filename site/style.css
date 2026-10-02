@@ -1337,7 +1337,16 @@ canvas {
   }
 
   .param-field {
-    grid-template-columns: 62px minmax(0, 1fr) auto;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    font-size: 9.5px;
+  }
+
+  .param-field > * {
+    min-width: 0;
+  }
+
+  .inline-check {
+    overflow: hidden;
   }
 
   .compact-action-row {
