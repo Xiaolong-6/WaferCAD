@@ -1,5 +1,6 @@
 import { assertLayoutByteLength } from '../layout-io.js';
-import { readProjectFile } from '../project-io.js';
+import { downloadProject, readProjectFile } from '../project-io.js';
+import { clearWorkspaceState } from '../workspace-persistence.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { createVisualizationExample } from '../welcome-example.js';
 
@@ -14,6 +15,16 @@ export function createProjectController({
   fit3d,
   status,
   onProjectChanged = () => {},
+  normalizedProjectName,
+  getProjectName,
+  setProjectName,
+  syncProjectNameInput,
+  scheduleWorkspacePersistence,
+  resetProjectState,
+  resetRoughDraftControls,
+  clearRoiDrawingMode,
+  clearMaskRoiDrawingMode,
+  buildProjectSnapshot,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -138,5 +149,73 @@ export function createProjectController({
     }
   }
 
-  return { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample };
+
+  function projectExportFilename() {
+    const stem = normalizedProjectName(getProjectName())
+      .replace(/[<>:"|?*\u0000-\u001f]/g, '-')
+      .replace(/[\\/]/g, '-')
+      .replace(/[. ]+$/g, '')
+      .trim();
+    return `${stem || 'Untitled'}.wafercad`;
+  }
+
+  function bind() {
+    $('projectNameInput').oninput = (event) => {
+      setProjectName(String(event.target.value ?? '').slice(0, 256));
+      scheduleWorkspacePersistence();
+    };
+    $('projectNameInput').onchange = () => {
+      const projectName = normalizedProjectName(getProjectName());
+      setProjectName(projectName);
+      $('projectNameInput').value = projectName;
+      scheduleWorkspacePersistence();
+    };
+
+    $('newProjectBtn').onclick = () => {
+      if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
+      void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
+      resetProjectState();
+      resetRoughDraftControls();
+      clearRoiDrawingMode();
+      clearMaskRoiDrawingMode();
+      snapshotManager.clear();
+      syncBaseControls();
+      renderAll();
+      renderSnapshots();
+      fit3d();
+      status('New empty project.');
+    };
+
+    $('exportProjectBtn').onclick = () => {
+      try {
+        const projectName = normalizedProjectName(getProjectName());
+        setProjectName(projectName);
+        syncProjectNameInput();
+        downloadProject(buildProjectSnapshot(true), projectExportFilename());
+        status(`Exported ${projectExportFilename()}.`);
+      } catch (error) {
+        console.error(error);
+        status(`Export failed: ${error.message}`, 'error');
+      }
+    };
+
+    $('openProjectInput').onchange = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!globalThis.confirm('Open project will replace the current workspace. Continue?')) {
+        event.target.value = '';
+        return;
+      }
+      await openProjectFile(file);
+      event.target.value = '';
+    };
+  }
+
+  return {
+    bind,
+    renderSnapshots,
+    openLayoutFile,
+    openProjectFile,
+    openVisualizationExample,
+  };
 }
