@@ -1435,12 +1435,17 @@ function updateOperationUI() {
   $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
   $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
   $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
-  const roughEtch = t === 'etch' && $('etchSurfaceMode').value === 'rough';
-  $('roughPolarityRow').classList.toggle('hidden', !roughEtch);
-  $('roughFeatureRow').classList.toggle('hidden', !roughEtch);
-  $('roughFeatureCvRow').classList.toggle('hidden', !roughEtch);
-  $('roughHeightRow').classList.toggle('hidden', !roughEtch);
-  $('roughHeightCvRow').classList.toggle('hidden', !roughEtch);
+  const surfaceMode = $('etchSurfaceMode').value,
+    texturedEtch = t === 'etch' && surfaceMode !== 'smooth',
+    stochasticEtch = texturedEtch && surfaceMode === 'rough',
+    pyramidEtch = texturedEtch && surfaceMode === 'pyramid';
+  $('roughPolarityRow').classList.toggle('hidden', !texturedEtch);
+  $('roughFeatureRow').classList.toggle('hidden', !texturedEtch);
+  $('roughFeatureCvRow').classList.toggle('hidden', !stochasticEtch);
+  $('roughHeightRow').classList.toggle('hidden', !texturedEtch);
+  $('roughHeightCvRow').classList.toggle('hidden', !stochasticEtch);
+  $('roughFeatureLabel').textContent = pyramidEtch ? 'Pyramid XY' : 'Feature XY';
+  $('roughHeightLabel').textContent = pyramidEtch ? 'Height' : 'Height mean';
   $('processThicknessLabel').textContent = t === 'etch' || t === 'implant' ? 'Depth' : 'Z';
 
   if (t === 'grow') updateGrowTargets();
@@ -1466,9 +1471,11 @@ function updateOperationUI() {
     t === 'implant'
       ? 'Experimental structural marker: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt.'
       : t === 'etch'
-        ? roughEtch
+        ? stochasticEtch
           ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'}`
-          : 'Etch removes material vertically and may create through-holes.'
+          : pyramidEtch
+            ? `Pyramid XY is the square pitch/base width and Height is apex-to-base relief within the Etch Depth envelope. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'}`
+            : 'Etch removes material vertically and may create through-holes.'
         : $('growthMode').value === 'conformal'
           ? 'Conformal coverage follows exposed steps and includes sidewalls.'
           : 'Directional coverage follows the selected footprint.';
@@ -1497,20 +1504,32 @@ async function applyOp() {
   }
 
   let roughSurface = null;
-  if (type === 'etch' && $('etchSurfaceMode').value === 'rough') {
-    const featureSize = manualMicron($('roughFeatureSize').value),
+  const etchSurfaceMode = $('etchSurfaceMode').value;
+  if (type === 'etch' && etchSurfaceMode !== 'smooth') {
+    const pyramid = etchSurfaceMode === 'pyramid',
+      featureSize = manualMicron($('roughFeatureSize').value),
       meanHeight = manualMicron($('roughAmplitude').value),
-      featureCvPercent = Number($('roughFeatureCv').value),
-      heightCvPercent = Number($('roughHeightCv').value),
+      featureCvPercent = pyramid ? 0 : Number($('roughFeatureCv').value),
+      heightCvPercent = pyramid ? 0 : Number($('roughHeightCv').value),
       featureCv = featureCvPercent / 100,
       heightCv = heightCvPercent / 100;
     $('roughFeatureSize').value = formatLengthField(featureSize);
     $('roughAmplitude').value = formatLengthField(meanHeight);
     if (!(featureSize > 0) || !(meanHeight > 0)) {
-      return status('Rough mean Feature XY and Height must be greater than zero.', 'error');
+      return status(
+        pyramid
+          ? 'Pyramid XY and Height must be greater than zero.'
+          : 'Rough mean Feature XY and Height must be greater than zero.',
+        'error',
+      );
     }
     if (meanHeight > thickness + 1e-9) {
-      return status('Rough mean Height cannot exceed Etch Depth.', 'error');
+      return status(
+        pyramid
+          ? 'Pyramid Height cannot exceed Etch Depth.'
+          : 'Rough mean Height cannot exceed Etch Depth.',
+        'error',
+      );
     }
     if (
       !Number.isFinite(featureCvPercent) ||
@@ -1524,7 +1543,7 @@ async function applyOp() {
     }
     roughSurface = {
       kind: 'rough',
-      morphology: 'stochastic',
+      morphology: pyramid ? 'pyramid' : 'stochastic',
       polarity: $('roughPolarity').value === 'normal' ? 'normal' : 'inverted',
       featureSize,
       meanHeight,
