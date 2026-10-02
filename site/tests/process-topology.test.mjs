@@ -14,6 +14,8 @@ const {
   exposedLayerIdsFromTopology,
   exposedSurfaceGroups,
   materialInterfaceGroups,
+  materialSolidsFromTopology,
+  sectionSlicesFromTopology,
   uncoveredDomain,
   visibleSurfaceGroups,
 } = await import('../process-topology.js');
@@ -200,6 +202,53 @@ test('conformal wall topology emits material-wall and void-wall explicitly', () 
   assert.equal(openTargets.voidWalls.length, 1);
   assert.equal(openTargets.voidWalls[0].kind, 'void-wall');
   assert.deepEqual([openTargets.voidWalls[0].z0, openTargets.voidWalls[0].z1], [-4, 6]);
+});
+
+test('Section slices and 3D solid caps share topology v2 boundaries', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  applyOperation(model, {
+    type: 'add',
+    name: 'Step',
+    thickness: 2,
+    face: 'front',
+    area: rectMulti(10, 10, -5, 0),
+    growth: 'direct',
+  });
+
+  const slices = sectionSlicesFromTopology(model, [-9, 0], [9, 0]),
+    solids = materialSolidsFromTopology(model),
+    stepSlice = slices.find((slice) => slice.layerId !== 'base');
+  assert.ok(stepSlice);
+  assert.deepEqual([stepSlice.z0, stepSlice.z1], [4, 6]);
+
+  const base = solids.find((solid) => solid.layerId === 'base'),
+    step = solids.find((solid) => solid.layerId !== 'base');
+  assert.ok(base);
+  assert.ok(step);
+  assert.equal(base.caps.some((cap) => cap.z === 4 && cap.normal === 1), true);
+  assert.equal(step.caps.some((cap) => cap.z === 4 && cap.normal === -1), true);
+  assert.equal(step.caps.some((cap) => cap.z === 6 && cap.normal === 1), true);
+});
+
+test('material solid topology removes internal caps across computational partitions', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  model.regions = [
+    {
+      id: 'left',
+      geom: rectMulti(10, 10, -5, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+    {
+      id: 'right',
+      geom: rectMulti(10, 10, 5, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+  ];
+
+  const [solid] = materialSolidsFromTopology(model);
+  assert.equal(solid.slabs.length, 1);
+  assert.equal(solid.caps.length, 2);
+  assert.ok(Math.abs(geometryArea(solid.slabs[0].polys) - 200) < 1e-8);
 });
 
 test('deriveProcessTopology reports one coherent 2.5D fact set', () => {
