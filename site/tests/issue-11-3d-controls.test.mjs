@@ -9,6 +9,10 @@ const rendererGeometry = await readFile(
   new URL('../renderer-geometry.js', import.meta.url),
   'utf8',
 );
+const processTopology = await readFile(
+  new URL('../process-topology.js', import.meta.url),
+  'utf8',
+);
 
 test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(html, /id="threeOpacityRange"[^>]*value="1"/s);
@@ -17,9 +21,10 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(app, /threeOpacity = 1/);
   assert.match(app, /threeShowBorders = false/);
   assert.match(threeView, /buildRenderSurfacePlan\(model, clip\)/);
-  assert.match(rendererGeometry, /function ownHorizontalCaps\(/);
-  assert.match(rendererGeometry, /function ownSidewalls\(/);
-  assert.match(rendererGeometry, /function ownedBorderLines\(/);
+  assert.match(rendererGeometry, /ownedMaterialSurfacesFromTopology/);
+  assert.match(processTopology, /function ownHorizontalMaterialCaps\(/);
+  assert.match(processTopology, /function ownVerticalMaterialSidewalls\(/);
+  assert.match(processTopology, /function ownedMaterialBorderLines\(/);
   assert.doesNotMatch(threeView, /alphaHash/);
   assert.match(threeView, /transparent: translucent/);
   assert.match(threeView, /depthWrite: !translucent/);
