@@ -34,6 +34,10 @@ const workspaceActions = await readFile(
   new URL('../controllers/workspace-actions-controller.js', import.meta.url),
   'utf8',
 );
+const viewPopoverController = await readFile(
+  new URL('../controllers/view-popover-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
@@ -175,6 +179,20 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
   assert.match(app, /maskRoiController\?\.render\(ctx, v\)/);
   assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);
   assert.match(maskRoiController, /canMoveBody\(point\)/);
+});
+
+test('each view uses one shared exclusive popover surface', () => {
+  assert.match(html, /class="section-coords-panel view-popover-surface" data-view-popover-panel/);
+  assert.match(html, /class="draw-shape-editor view-popover-surface" data-view-popover-panel/);
+  assert.match(html, /class="focus-popover[^"]*view-popover-surface"/);
+  assert.match(html, /class="three-opacity-popover[^"]*view-popover-surface"/);
+  assert.match(html, /class="export-popover[^"]*view-popover-surface"/);
+  assert.match(style, /\.view-popover-surface \{/);
+  assert.match(style, /\.view-head details\[open\] > summary/);
+  assert.match(viewPopoverController, /\.view-panel details/);
+  assert.match(viewPopoverController, /details\[open\]/);
+  assert.match(viewPopoverController, /data-view-popover-panel/);
+  assert.match(viewPopoverController, /wafercad:popover-close/);
 });
 
 test('Apply runs as a single cancelable task with elapsed time and Abort', () => {
