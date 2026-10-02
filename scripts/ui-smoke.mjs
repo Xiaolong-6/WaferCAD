@@ -263,6 +263,10 @@ await page.locator('[data-process-mode="etch"]').click();
 assert.equal(await page.locator('#etchSurfaceRow').isVisible(), true);
 assert.equal(await page.locator('#roughFeatureRow').isVisible(), false);
 await page.locator('#etchSurfaceMode').selectOption('rough');
+assert.equal(await page.locator('#roughPolarityRow').isVisible(), true);
+assert.equal(await page.locator('#roughPolarity').inputValue(), 'inverted');
+await page.locator('#roughPolarity').selectOption('normal');
+assert.match(await page.locator('#operationNote').textContent(), /Normal points features outward/);
 assert.equal(await page.locator('#roughFeatureRow').isVisible(), true);
 assert.equal(await page.locator('#roughHeightRow').isVisible(), true);
 assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
@@ -313,6 +317,8 @@ assert.ok(
   roughSegments.some(
     (segment) =>
       segment.frontSurface?.kind === 'rough' &&
+      segment.frontSurface.morphology === 'stochastic' &&
+      segment.frontSurface.polarity === 'normal' &&
       segment.frontSurface.geometryMode === 'ideal' &&
       Math.abs(segment.frontSurface.featureSize - 0.4) < 1e-12 &&
       Math.abs(segment.frontSurface.meanHeight - 0.8) < 1e-12 &&
