@@ -492,7 +492,7 @@ export function serializeOASIS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) 
   const dbuMicron = chooseDbuMicron(elements),
     quantized = quantizeElements(elements, dbuMicron),
     parts = [
-      asciiBytes('%SEMI-OASIS\r\n'),
+      new TextEncoder().encode('%SEMI-OASIS\r\n'),
       oasisUint(1),
       oasisString('1.0'),
       oasisReal(1 / dbuMicron),
@@ -527,6 +527,8 @@ export function serializeOASIS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) 
       );
     }
   }
-  parts.push(oasisUint(2));
+  // OASIS END is exactly 256 bytes: id + two-byte b-string length +
+  // 252 padding bytes + validation scheme 0 (none).
+  parts.push(oasisUint(2), oasisUint(252), new Uint8Array(252), oasisUint(0));
   return concatBytes(parts);
 }
