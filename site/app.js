@@ -882,6 +882,8 @@ function renderSection() {
   c.dataset.scaleMode = sectionScaleMode;
   c.dataset.xPxPerUm = String(xScale);
   c.dataset.zPxPerUm = String(zScale);
+  c.dataset.zMinUm = String(lo);
+  c.dataset.zMaxUm = String(hi);
 
   ctx.fillStyle = '#fbfcfd';
   ctx.fillRect(0, 0, w, h);
