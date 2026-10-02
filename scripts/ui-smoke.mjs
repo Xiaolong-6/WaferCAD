@@ -217,8 +217,8 @@ assert.ok(await examplePage.locator('#maskLayerList .layer-row').count());
 assert.deepEqual(exampleErrors, []);
 await examplePage.close();
 
-// Settings owns project controls and XY units.
-await page.locator('#settingsTab').click();
+// Project is the first/default tool tab and owns local Save, file Export, recovery, and XYZ units.
+assert.equal(await page.locator('#settingsTab').getAttribute('aria-selected'), 'true');
 await page.locator('#settingsTools:not([hidden])').waitFor();
 
 // XYZ unit switching converts physical Z drafts as well as X/Y drafts.
@@ -241,10 +241,27 @@ for (const id of [
   'newProjectBtn',
   'openProjectInput',
   'saveProjectBtn',
+  'exportProjectBtn',
+  'workspaceRecoveryClearBtn',
   'xyUnitSelect',
 ]) {
   assert.equal(await page.locator(`#settingsTools #${id}`).count(), 1);
 }
+
+await page.locator('#projectNameInput').fill('UI local checkpoint');
+await page.locator('#saveProjectBtn').click();
+await page.waitForFunction(() =>
+  /Saved "UI local checkpoint" locally/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.ok(await page.locator('#workspaceRecoverySelect option').count() > 0);
+assert.match(await page.locator('#workspaceRecoverySelect option').first().textContent(), /manual-save/);
+assert.equal(await page.locator('#workspaceRecoveryClearBtn').isDisabled(), false);
+page.once('dialog', (dialog) => dialog.accept());
+await page.locator('#workspaceRecoveryClearBtn').click();
+await page.waitForFunction(
+  () => document.getElementById('workspaceRecoverySelect')?.options?.length === 1,
+);
+assert.equal(await page.locator('#workspaceRecoverySelect').inputValue(), '');
 
 // Operation controls remain usable after the toolbar reorganization.
 await page.locator('#operationTab').click();
@@ -320,7 +337,7 @@ assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI rough project');
 const roughDownloadPromise = page.waitForEvent('download');
-await page.locator('#saveProjectBtn').click();
+await page.locator('#exportProjectBtn').click();
 const roughDownload = await roughDownloadPromise;
 const roughSavedPath = await roughDownload.path();
 assert.ok(roughSavedPath);
@@ -383,7 +400,7 @@ await implantLegendRow.locator('.legend-visibility').check();
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI implant project');
 const implantDownloadPromise = page.waitForEvent('download');
-await page.locator('#saveProjectBtn').click();
+await page.locator('#exportProjectBtn').click();
 const implantDownload = await implantDownloadPromise;
 const implantSavedPath = await implantDownload.path();
 assert.ok(implantSavedPath);
@@ -451,7 +468,7 @@ assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('UI conformal project');
 const downloadPromise = page.waitForEvent('download');
-await page.locator('#saveProjectBtn').click();
+await page.locator('#exportProjectBtn').click();
 const download = await downloadPromise;
 assert.equal(download.suggestedFilename(), 'UI conformal project.wafercad');
 const savedPath = await download.path();
