@@ -443,7 +443,13 @@ await page.locator('#focusEditor').evaluate((details) => {
 await page.locator('#roiEditor:not([hidden])').waitFor();
 assert.ok(Number(await page.locator('#roiWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
-await page.locator('#focusEditor > summary').click();
+
+// Main permits only one floating control: Export replaces ROI.
+const mainExportControl = page.locator('#mainPanel .export-control');
+await mainExportControl.locator('> summary').click();
+assert.equal(await page.locator('#focusEditor').evaluate((details) => details.open), false);
+assert.equal(await mainExportControl.evaluate((details) => details.open), true);
+await mainExportControl.locator('> summary').click();
 
 // Sector ROI starts as a circle-derived 0°→90° wedge and supports wrapped ranges.
 await page.locator('#focusEditor > summary').click();
@@ -507,6 +513,23 @@ await page.waitForFunction(
 );
 assert.ok(await page.locator('#maskLayerList .layer-row').count());
 
+// Mask ROI / Opacity / Export share one exclusive popover slot.
+await page.locator('#maskRoiEditor > summary').click();
+assert.equal(await page.locator('#maskRoiEditor').evaluate((details) => details.open), true);
+await page.locator('#maskPanel .mask-opacity-control > summary').click();
+assert.equal(await page.locator('#maskRoiEditor').evaluate((details) => details.open), false);
+assert.equal(
+  await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
+  true,
+);
+await page.locator('#maskExportControl > summary').click();
+assert.equal(
+  await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
+  false,
+);
+assert.equal(await page.locator('#maskExportControl').evaluate((details) => details.open), true);
+await page.locator('#maskExportControl > summary').click();
+
 const sourceToggle = page.locator('#maskSourceToggleBtn');
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
 await sourceToggle.click();
@@ -536,6 +559,14 @@ await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 assert.equal((await page.locator('#drawShapeEditorTitle').textContent()).trim(), 'Rectangle');
 assert.ok(Number(await page.locator('#drawShapeWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#drawShapeHeight').inputValue()) > 0);
+
+// A header popover replaces the canvas shape editor in the same Mask window.
+await page.locator('#maskPanel .mask-opacity-control > summary').click();
+assert.equal(await page.locator('#drawShapeEditor').isHidden(), true);
+await page.locator('#maskPanel .mask-opacity-control > summary').click();
+await page.waitForTimeout(350);
+await page.mouse.click(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5);
+await page.locator('#drawShapeEditor:not([hidden])').waitFor();
 
 // Dragging a selected shape keeps the editor open and live-syncs its numeric fields.
 const rectCxBeforeDrag = Number(await page.locator('#drawShapeCx').inputValue());
@@ -722,8 +753,14 @@ assert.equal(
 );
 
 // 3D inspection controls should operate without runtime errors.
-await page.locator('#threePanel .three-opacity-control > summary').click();
+const threeOpacityControl = page.locator('#threePanel .three-opacity-control');
+const threeExportControl = page.locator('#threePanel .export-control');
+await threeOpacityControl.locator('> summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
+await threeExportControl.locator('> summary').click();
+assert.equal(await threeOpacityControl.evaluate((details) => details.open), false);
+assert.equal(await threeExportControl.evaluate((details) => details.open), true);
+await threeExportControl.locator('> summary').click();
 const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
