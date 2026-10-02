@@ -13,7 +13,6 @@ on:
   push:
     branches:
       - main
-      - feat/experimental-implant-structure
     paths:
       - "site/**"
       - "scripts/ui-smoke.mjs"
