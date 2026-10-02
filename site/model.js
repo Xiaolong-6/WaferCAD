@@ -11,7 +11,8 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import {
-  conformalMaterialWallTargets,
+  classifyCoverageVoids,
+  conformalWallTargets,
   exposedLayerIdsFromTopology,
   exposedSurfaceGroups,
   regionSurfaceFaces,
@@ -462,22 +463,21 @@ function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null
   return normalizeStack(out);
 }
 
-function splitConformalSidewallArea(model, area, layerId, face, sourceZ, appearance) {
-  const targets = new Map(
-    conformalMaterialWallTargets(model, area, { face, sourceZ }).map((target) => [
-      target.regionId,
-      target,
-    ]),
-  );
-  const next = [];
+function applyConformalMaterialWalls(
+  model,
+  materialWalls,
+  layerId,
+  face,
+  sourceZ,
+  appearance,
+) {
+  const targets = new Map((materialWalls || []).map((target) => [target.regionId, target])),
+    next = [];
 
   for (const region of model.regions) {
     const stack = region.stack.map((segment) => ({ ...segment })),
       target = targets.get(region.id);
 
-    // Topology v2 has already rejected source/same-height/higher neighbors.
-    // Preserve untouched regions exactly so computational partitions cannot
-    // turn into material walls during a Conformal operation.
     if (!target) {
       next.push({ id: region.id, geom: cloneGeom(region.geom), stack });
       continue;
@@ -554,17 +554,14 @@ function uncoveredGeometryRaw(model) {
 }
 
 function healNumericalCoverageCracks(model) {
-  const uncovered = uncoveredGeometryRaw(model);
-  if (isEmpty(uncovered)) return false;
+  const { cracks } = classifyCoverageVoids(model, {
+    clip: model.boundary,
+    crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
+  });
+  if (!cracks.length) return false;
 
   let changed = false;
-  for (const poly of uncovered) {
-    const crack = [poly],
-      bounds = multiBounds(crack),
-      narrow = Math.min(bounds.width, bounds.height) <= COVERAGE_CRACK_TOLERANCE_UM + 1e-12,
-      tiny = geometryArea(crack) <= COVERAGE_CRACK_TOLERANCE_UM ** 2 * 4;
-    if (!narrow && !tiny) continue;
-
+  for (const { geom: crack } of cracks) {
     let halo;
     try {
       halo = bufferMulti(crack, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
@@ -646,27 +643,26 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       const band = intersection(rawBand, model.boundary);
       if (isEmpty(band)) continue;
 
-      // The symmetric ring band touches both sides of an edge. The stack test
-      // below only accepts the physically lower (front) / higher (back) side,
-      // so partition edges and the source interior cannot create fake material.
-      splitConformalSidewallArea(
+      // Topology v2 classifies this symmetric edge band once. Equal-height
+      // computational partitions never become material-wall targets; genuine
+      // uncovered domain becomes an explicit void-wall target.
+      const { materialWalls, voidWalls } = conformalWallTargets(model, band, {
+        face,
+        source,
+        voidDomain: uncovered,
+      });
+      applyConformalMaterialWalls(
         model,
-        band,
+        materialWalls,
         layerId,
         face,
         source.z,
         source.appearance,
       );
 
-      // A true void has no stack for splitByArea() to mutate. Add only the
-      // still-uncovered part of this local sidewall band, then remove it from
-      // the void domain so later source levels cannot overlap it.
-      if (!isEmpty(uncovered)) {
-        const voidBand = intersection(band, uncovered);
-        if (!isEmpty(voidBand)) {
-          addVoidConformalSidewall(model, voidBand, layerId, face, source);
-          uncovered = difference(uncovered, voidBand);
-        }
+      for (const wall of voidWalls) {
+        addVoidConformalSidewall(model, wall.geom, layerId, face, source);
+        uncovered = difference(uncovered, wall.geom);
       }
     }
   }
