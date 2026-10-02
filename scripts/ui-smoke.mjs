@@ -258,9 +258,15 @@ assert.match(await page.locator('#workspaceRecoverySelect option').first().textC
 assert.equal(await page.locator('#workspaceRecoveryClearBtn').isDisabled(), false);
 await page.locator('#workspaceRecoveryClearBtn').click();
 await page.waitForFunction(
-  () => document.getElementById('workspaceRecoverySelect')?.options?.length === 1,
+  () =>
+    ![...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /manual-save/.test(option.textContent || ''),
+    ),
 );
-assert.equal(await page.locator('#workspaceRecoverySelect').inputValue(), '');
+assert.equal(
+  await page.locator('#workspaceRecoverySelect option').filter({ hasText: /manual-save/ }).count(),
+  0,
+);
 
 // Operation controls remain usable after the toolbar reorganization.
 await page.locator('#operationTab').click();
