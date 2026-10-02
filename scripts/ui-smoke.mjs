@@ -580,6 +580,41 @@ assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
 await sectionScaleButton.click();
 assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
+// Conformal Extend reuses the Deposit coating kernel with the existing layer id.
+await page.locator('#operationTab').click();
+await page.locator('[data-process-mode="grow"]').click();
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#growthMode').selectOption('conformal');
+await page.locator('#targetLayer').selectOption(coatId);
+await page.locator('#operationThickness').fill('1');
+assert.match(await page.locator('#operationNote').textContent(), /every exposed surface/);
+await page.locator('#applyOperationBtn').click();
+await page.waitForFunction(() =>
+  /Extended UI conformal · Conformal/.test(document.getElementById('statusText')?.textContent || ''),
+);
+await page.locator('#settingsTab').click();
+await page.locator('#projectNameInput').fill('UI conformal extend project');
+const extendDownloadPromise = page.waitForEvent('download');
+await page.locator('#exportProjectBtn').click();
+const extendDownload = await extendDownloadPromise;
+const extendSavedPath = await extendDownload.path();
+assert.ok(extendSavedPath);
+const extendSaved = JSON.parse(await readFile(extendSavedPath, 'utf8'));
+const extendStackAt = (x) =>
+  extendSaved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
+assert.deepEqual(
+  extendStackAt(0).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 6 },
+);
+assert.deepEqual(
+  extendStackAt(7000).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 6, z1: 8 },
+);
+assert.deepEqual(
+  extendStackAt(sideX).find((segment) => segment.layerId === coatId),
+  { layerId: coatId, z0: 4, z1: 8, role: 'conformal-sidewall' },
+);
+
 await page.locator('#operationTab').click();
 
 // Slice geometry is editable by default; Slice starts one-shot creation.
