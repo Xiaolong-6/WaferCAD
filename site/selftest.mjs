@@ -13,6 +13,7 @@ const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { parseGDS, flattenGDS, makeDemoLayout } = await import('./gds.js');
 const { implantSectionBands, implantSolids } = await import('./model-view-geometry.js');
+const { STRUCTURE_PALETTES } = await import('./controllers/layer-legend-controller.js');
 const { validateProjectFile } = await import('./project-schema.js');
 const { roughLod, roughNoise1D, roughProfileOffsetAtPoint, roughVisualBoundsZ } =
   await import('./surface-rendering.js');
@@ -23,6 +24,8 @@ const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
 function regionAt(model, point) {
   return model.regions.find((region) => pointInMulti(point, region.geom)) || null;
 }
+
+for (const palette of Object.values(STRUCTURE_PALETTES)) assert.equal(palette.length, 20);
 
 assert.equal(roughLod(0).detail, 0);
 assert.equal(roughLod(20).micro, 1);
