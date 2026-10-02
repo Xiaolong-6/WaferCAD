@@ -1,4 +1,5 @@
 import {
+  bufferPolyline,
   cloneGeom,
   difference,
   intersection,
@@ -454,6 +455,61 @@ export function classifyCoverageVoids(
   }
 
   return { all, cracks, voids };
+}
+
+function packDisjointBands(bands, maxBatchSize = 8) {
+  const batches = [];
+  const overlaps = (a, b) =>
+    !(
+      a.maxX < b.minX - TOPOLOGY_EPSILON_UM ||
+      b.maxX < a.minX - TOPOLOGY_EPSILON_UM ||
+      a.maxY < b.minY - TOPOLOGY_EPSILON_UM ||
+      b.maxY < a.minY - TOPOLOGY_EPSILON_UM
+    );
+
+  for (const band of bands || []) {
+    if (isEmpty(band)) continue;
+    const bounds = multiBounds(band);
+    let batch = batches.find(
+      (candidate) =>
+        candidate.count < maxBatchSize &&
+        candidate.bounds.every((otherBounds) => !overlaps(bounds, otherBounds)),
+    );
+    if (!batch) {
+      batch = { geom: [], bounds: [], count: 0 };
+      batches.push(batch);
+    }
+    batch.geom.push(...cloneGeom(band));
+    batch.bounds.push(bounds);
+    batch.count++;
+  }
+  return batches.map((batch) => batch.geom);
+}
+
+export function conformalBoundaryBands(geom, amount) {
+  const distance = Math.max(0, Number(amount) || 0),
+    bands = [];
+  if (!(distance > TOPOLOGY_EPSILON_UM)) return bands;
+
+  for (const polygon of geom || []) {
+    for (const ring of polygon || []) {
+      if (!Array.isArray(ring) || ring.length < 4) continue;
+      const points = ring.slice(0, -1);
+      try {
+        const band = bufferPolyline(points, distance, 32, true);
+        if (!isEmpty(band)) bands.push(band);
+      } catch {
+        // Keep boundary construction local. One pathological imported ring must
+        // not cancel otherwise valid Conformal wall topology.
+        for (let index = 1; index < ring.length; index++) {
+          const band = bufferPolyline([ring[index - 1], ring[index]], distance, 20, false);
+          if (!isEmpty(band)) bands.push(band);
+        }
+      }
+    }
+  }
+
+  return packDisjointBands(bands);
 }
 
 export function conformalMaterialWallTargets(
