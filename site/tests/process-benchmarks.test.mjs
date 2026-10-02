@@ -3,7 +3,7 @@ import test from 'node:test';
 import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel, surfaceZ } = await import('../model.js');
+const { applyOperation, baseCoverageState, createModel, surfaceZ } = await import('../model.js');
 const {
   circleMulti,
   difference,
