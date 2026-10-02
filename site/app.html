@@ -659,10 +659,6 @@
                 <label id="implantTiltRow" class="field-row hidden" title="Signed geometric tilt from the surface normal toward +X">
                   <span>Tilt X°</span><input id="implantTilt" type="number" value="0" min="-80" max="80" step="1"
                 /></label>
-                <div id="implantBorderRow" class="field-row hidden">
-                  <span>Border</span>
-                  <label class="inline-check"><input id="implantBorder" type="checkbox" checked /> Dashed black</label>
-                </div>
                 <label id="targetLayerRow" class="field-row hidden"
                   ><span>Target</span><select id="targetLayer"></select
                 ></label>
@@ -841,6 +837,15 @@
                 title="Auto: fit X and Z independently. Click for physical 1:1 X:Z scale."
               >
                 Auto
+              </button>
+              <button
+                id="sectionBordersBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Show structural borders in Section A–B"
+              >
+                Border
               </button>
               <details class="export-control">
                 <summary class="mini-btn" title="Export Section A–B">Export</summary>
