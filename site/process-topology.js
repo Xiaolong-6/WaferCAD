@@ -8,6 +8,12 @@ import {
   multiBounds,
   unionGeometries,
 } from './vector-geometry.js';
+import {
+  canonicalLineInterval,
+  lineIntervalKey,
+  partitionLineIntervals,
+  pointAtLineT,
+} from './line-intervals.js';
 
 export const TOPOLOGY_EPSILON_UM = 1e-9;
 export const INTERFACE_EPSILON_UM = 1e-8;
@@ -421,41 +427,6 @@ function normalizeBoundaryRing(closed, isHole) {
   return ring;
 }
 
-function materialSidewallDescriptor(p, q) {
-  const dx = q[0] - p[0],
-    dy = q[1] - p[1],
-    length = Math.hypot(dx, dy);
-  if (!(length > 1e-12)) return null;
-
-  let ux = dx / length,
-    uy = dy / length;
-  if (ux < -1e-12 || (Math.abs(ux) <= 1e-12 && uy < 0)) {
-    ux = -ux;
-    uy = -uy;
-  }
-  const nx = -uy,
-    ny = ux,
-    offset = nx * p[0] + ny * p[1],
-    pT = ux * p[0] + uy * p[1],
-    qT = ux * q[0] + uy * q[1];
-  return {
-    ux,
-    uy,
-    nx,
-    ny,
-    offset,
-    t0: Math.min(pT, qT),
-    t1: Math.max(pT, qT),
-    forward: qT >= pT,
-  };
-}
-
-function materialSidewallKey(line) {
-  return [line.ux, line.uy, line.offset]
-    .map((value) => Number(value).toPrecision(13))
-    .join('|');
-}
-
 function ownVerticalMaterialSidewalls(solids, layerOrder) {
   const groups = new Map();
   solids.forEach((item, solidIndex) => {
@@ -466,7 +437,7 @@ function ownVerticalMaterialSidewalls(solids, layerOrder) {
           for (let index = 0; index < ring.length; index++) {
             const p = ring[index],
               q = ring[(index + 1) % ring.length],
-              line = materialSidewallDescriptor(p, q);
+              line = canonicalLineInterval(p, q);
             if (!line) continue;
             const part = {
                 layerId: item.layerId,
@@ -478,7 +449,7 @@ function ownVerticalMaterialSidewalls(solids, layerOrder) {
                 z1: slab.z1,
                 line,
               },
-              key = materialSidewallKey(line);
+              key = lineIntervalKey(line);
             if (!groups.has(key)) groups.set(key, []);
             groups.get(key).push(part);
           }
@@ -489,24 +460,8 @@ function ownVerticalMaterialSidewalls(solids, layerOrder) {
 
   const owned = [];
   for (const entries of groups.values()) {
-    const reference = entries[0].line,
-      tLevels = [...new Set(entries.flatMap((entry) => [entry.line.t0, entry.line.t1]))].sort(
-        (a, b) => a - b,
-      ),
-      pointAt = (t) => [
-        reference.ux * t + reference.nx * reference.offset,
-        reference.uy * t + reference.ny * reference.offset,
-      ];
-
-    for (let tIndex = 0; tIndex < tLevels.length - 1; tIndex++) {
-      const t0 = tLevels[tIndex],
-        t1 = tLevels[tIndex + 1];
-      if (!(t1 > t0 + 1e-12)) continue;
-      const xyCovering = entries.filter(
-        (entry) => entry.line.t0 <= t0 + 1e-10 && entry.line.t1 >= t1 - 1e-10,
-      );
-      if (!xyCovering.length) continue;
-
+    const reference = entries[0].line;
+    for (const { t0, t1, covering: xyCovering } of partitionLineIntervals(entries)) {
       const zLevels = [...new Set(xyCovering.flatMap((entry) => [entry.z0, entry.z1]))].sort(
         (a, b) => a - b,
       );
@@ -537,8 +492,8 @@ function ownVerticalMaterialSidewalls(solids, layerOrder) {
                 .filter((id) => id !== owner.layerId),
             ),
           ],
-          a = pointAt(t0),
-          b = pointAt(t1),
+          a = pointAtLineT(reference, t0),
+          b = pointAtLineT(reference, t1),
           [p, q] = owner.line.forward ? [a, b] : [b, a];
 
         owned.push({
