@@ -1364,6 +1364,7 @@ function renderAll() {
   syncUndo();
 }
 function resetRoughDraftControls() {
+  $('roughPolarity').value = 'inverted';
   $('roughFeatureSize').value = formatLengthField(0.5);
   $('roughAmplitude').value = formatLengthField(1);
   $('roughFeatureCv').value = '25';
@@ -1420,6 +1421,7 @@ function updateOperationUI() {
   $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
   $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
   const roughEtch = t === 'etch' && $('etchSurfaceMode').value === 'rough';
+  $('roughPolarityRow').classList.toggle('hidden', !roughEtch);
   $('roughFeatureRow').classList.toggle('hidden', !roughEtch);
   $('roughFeatureCvRow').classList.toggle('hidden', !roughEtch);
   $('roughHeightRow').classList.toggle('hidden', !roughEtch);
@@ -1450,7 +1452,7 @@ function updateOperationUI() {
       ? 'Experimental structural marker: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt.'
       : t === 'etch'
         ? roughEtch
-          ? 'Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread.'
+          ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'}`
           : 'Etch removes material vertically and may create through-holes.'
         : $('growthMode').value === 'conformal'
           ? 'Conformal coverage follows exposed steps and includes sidewalls.'
@@ -1507,6 +1509,8 @@ async function applyOp() {
     }
     roughSurface = {
       kind: 'rough',
+      morphology: 'stochastic',
+      polarity: $('roughPolarity').value === 'normal' ? 'normal' : 'inverted',
       featureSize,
       meanHeight,
       featureCv,
