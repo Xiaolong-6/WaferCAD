@@ -157,11 +157,10 @@ function pointKey(point) {
   return point.map((value) => Number(value).toPrecision(14)).join(',');
 }
 
-function segmentKey2d(a, b, z0, z1) {
+function segmentKey2d(a, b) {
   const pa = pointKey(a);
   const pb = pointKey(b);
-  const [lo, hi] = pa < pb ? [pa, pb] : [pb, pa];
-  return `${lo}|${hi}|${zKey(z0)}|${zKey(z1)}`;
+  return pa < pb ? `${pa}|${pb}` : `${pb}|${pa}`;
 }
 
 function ownSidewalls(solids, layerOrder) {
@@ -184,11 +183,8 @@ function ownSidewalls(solids, layerOrder) {
               q,
               z0: slab.z0,
               z1: slab.z1,
-              buried: false,
-              ownership: 'exterior',
-              interfaceLayerIds: [],
             };
-            const key = segmentKey2d(p, q, slab.z0, slab.z1);
+            const key = segmentKey2d(p, q);
             if (!groups.has(key)) groups.set(key, []);
             groups.get(key).push(part);
           }
@@ -199,22 +195,47 @@ function ownSidewalls(solids, layerOrder) {
 
   const owned = [];
   for (const entries of groups.values()) {
-    entries.sort((a, b) => {
-      const ai = layerOrder.get(a.layerId) ?? Number.MAX_SAFE_INTEGER;
-      const bi = layerOrder.get(b.layerId) ?? Number.MAX_SAFE_INTEGER;
-      if (ai !== bi) return ai - bi;
-      return String(a.layerId).localeCompare(String(b.layerId));
-    });
-    const owner = entries[0];
-    const interfaceLayerIds = [
-      ...new Set(entries.slice(1).map((entry) => entry.layerId).filter((id) => id !== owner.layerId)),
-    ];
-    owned.push({
-      ...owner,
-      buried: interfaceLayerIds.length > 0,
-      ownership: interfaceLayerIds.length ? 'interface' : 'exterior',
-      interfaceLayerIds,
-    });
+    const levels = [
+      ...new Set(entries.flatMap((entry) => [entry.z0, entry.z1]).map((z) => zKey(z))),
+    ]
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    for (let index = 0; index < levels.length - 1; index++) {
+      const z0 = levels[index],
+        z1 = levels[index + 1];
+      if (!(z1 > z0 + Z_EPSILON)) continue;
+
+      const covering = entries.filter(
+        (entry) => entry.z0 <= z0 + Z_EPSILON && entry.z1 >= z1 - Z_EPSILON,
+      );
+      if (!covering.length) continue;
+
+      covering.sort((a, b) => {
+        const ai = layerOrder.get(a.layerId) ?? Number.MAX_SAFE_INTEGER;
+        const bi = layerOrder.get(b.layerId) ?? Number.MAX_SAFE_INTEGER;
+        if (ai !== bi) return ai - bi;
+        return String(a.layerId).localeCompare(String(b.layerId));
+      });
+
+      const owner = covering[0],
+        interfaceLayerIds = [
+          ...new Set(
+            covering
+              .slice(1)
+              .map((entry) => entry.layerId)
+              .filter((id) => id !== owner.layerId),
+          ),
+        ];
+      owned.push({
+        ...owner,
+        z0,
+        z1,
+        buried: interfaceLayerIds.length > 0,
+        ownership: interfaceLayerIds.length ? 'interface' : 'exterior',
+        interfaceLayerIds,
+      });
+    }
   }
   return owned;
 }
