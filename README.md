@@ -6,7 +6,7 @@ Its core question is practical: **given this mask and this sequence of process s
 
 The application is deployed as a static GitHub Pages site. It has four synchronized views:
 
-- **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon/Ring/Ring Sector), with adjustable opacity above the current active-face topography outline.
+- **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon/Ring/Ring Sector), with adjustable opacity above the current active-face topography outline and filtered **SVG/GDSII/OASIS** export; an active Mask ROI crops every export format.
 - **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, geometry-displaced rough/pyramid surfaces, conformal display shells that preserve inherited rough interfaces, surviving internal Implant overlays whose alpha follows the global 3D opacity, physical GLB export, and 3× PNG capture.
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
