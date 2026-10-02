@@ -9,7 +9,6 @@ import {
   projectedPixelsPerUnit,
   roughSceneTriangleBudget,
   roughLod,
-  roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 
