@@ -5,6 +5,7 @@ import {
   materialSolidsFromTopology,
   sectionColumnsFromTopology,
   sectionSlicesFromTopology,
+  solidBordersFromTopology,
   visibleSurfaceGroups,
 } from './process-topology.js';
 
@@ -74,38 +75,9 @@ export function materialSolids(model, clip = null) {
   return materialSolidsFromTopology(model, clip);
 }
 
-export function solidBorders({ slabs, caps }, thresholdDegrees = 20) {
-  const lines = [];
-  for (const { z, polys } of caps)
-    for (const poly of polys)
-      for (const ring of poly)
-        for (let i = 1; i < ring.length; i++)
-          lines.push([
-            [...ring[i - 1], z],
-            [...ring[i], z],
-          ]);
-  const threshold = Math.cos((thresholdDegrees * Math.PI) / 180);
-  for (const { z0, z1, polys } of slabs)
-    for (const poly of polys)
-      for (const closed of poly) {
-        const ring = closed.slice(0, -1);
-        for (let i = 0; i < ring.length; i++) {
-          const p = ring[i],
-            before = ring[(i + ring.length - 1) % ring.length],
-            after = ring[(i + 1) % ring.length];
-          const u = [p[0] - before[0], p[1] - before[1]],
-            v = [after[0] - p[0], after[1] - p[1]];
-          const cosine = (u[0] * v[0] + u[1] * v[1]) / (Math.hypot(...u) * Math.hypot(...v));
-          if (cosine <= threshold)
-            lines.push([
-              [...p, z0],
-              [...p, z1],
-            ]);
-        }
-      }
-  return lines;
+export function solidBorders(solid, thresholdDegrees = 20) {
+  return solidBordersFromTopology(solid, thresholdDegrees);
 }
-
 
 function implantFragments(model, clip = null) {
   const fragments = [];
