@@ -113,6 +113,68 @@ test('workspace session allows only one writer until explicit takeover', () => {
   second.stop();
 });
 
+test('workspace session keeps a stable tab identity across reloads', () => {
+  const leaseValues = new Map();
+  const sessionValues = new Map();
+  const storage = {
+    getItem: (key) => leaseValues.get(key) ?? null,
+    setItem: (key, value) => leaseValues.set(key, value),
+    removeItem: (key) => leaseValues.delete(key),
+  };
+  const sessionStorage = {
+    getItem: (key) => sessionValues.get(key) ?? null,
+    setItem: (key, value) => sessionValues.set(key, value),
+  };
+  const windowRef = {
+    sessionStorage,
+    crypto: { randomUUID: () => 'stable-tab-id' },
+    setInterval: () => 1,
+    clearInterval: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+
+  const beforeReload = createWorkspaceSessionController({ storage, windowRef });
+  assert.equal(beforeReload.start(), true);
+  assert.equal(beforeReload.tabId, 'stable-tab-id');
+
+  // Simulate a reload that occurs before pagehide had a chance to release the
+  // old lease. sessionStorage identifies it as the same browser tab.
+  const afterReload = createWorkspaceSessionController({ storage, windowRef });
+  assert.equal(afterReload.tabId, 'stable-tab-id');
+  assert.equal(afterReload.start(), true);
+  assert.equal(afterReload.canWrite(), true);
+
+  beforeReload.stop();
+  afterReload.stop();
+});
+
+test('workspace session stays usable when localStorage is unavailable', () => {
+  const storage = {
+    getItem: () => {
+      throw new Error('storage blocked');
+    },
+    setItem: () => {
+      throw new Error('storage blocked');
+    },
+    removeItem: () => {
+      throw new Error('storage blocked');
+    },
+  };
+  const windowRef = {
+    sessionStorage: null,
+    crypto: { randomUUID: () => 'private-tab' },
+    setInterval: () => 1,
+    clearInterval: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  const session = createWorkspaceSessionController({ storage, windowRef });
+  assert.equal(session.start(), true);
+  assert.equal(session.canWrite(), true);
+  session.stop();
+});
+
 test('startup controller consumes a staged layout and clears the startup query', async () => {
   const calls = [];
   const file = { name: 'layout.oas' };
