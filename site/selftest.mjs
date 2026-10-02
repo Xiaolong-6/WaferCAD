@@ -19,7 +19,9 @@ const { STRUCTURE_PALETTES } = await import('./controllers/layer-legend-controll
 const { validateProjectFile } = await import('./project-schema.js');
 const {
   adaptiveRoughMeshLod,
+  allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
+  roughSceneTriangleBudget,
   roughLod,
   roughNoise1D,
   roughProfileOffsetAtPoint,
@@ -103,6 +105,24 @@ const adaptiveNear = adaptiveRoughMeshLod({
 assert.ok(adaptiveNear.depth > adaptiveFar.depth);
 assert.ok(adaptiveBackground.maxTriangles < adaptiveNear.maxTriangles);
 assert.ok(adaptiveRoi.maxTriangles > adaptiveNear.maxTriangles);
+const sceneBudget = roughSceneTriangleBudget({
+    viewportWidth: 1200,
+    viewportHeight: 800,
+    pixelRatio: 2,
+    roiFraction: 1,
+  }),
+  allocatedBudgets = allocateRoughTriangleBudgets(
+    [
+      { baseTriangles: 100, desiredTriangles: 500000, priority: 1 },
+      { baseTriangles: 100, desiredTriangles: 500000, priority: 0.06 },
+      { baseTriangles: 100, desiredTriangles: 500000, priority: 0.3 },
+    ],
+    { totalBudget: sceneBudget },
+  );
+assert.ok(sceneBudget <= 900000);
+assert.ok(allocatedBudgets.reduce((sum, value) => sum + value, 0) <= sceneBudget);
+assert.ok(allocatedBudgets[0] > allocatedBudgets[1]);
+assert.ok(allocatedBudgets.every((value) => value >= 100));
 
 const partialSidewallModel = {
   width: 2,
