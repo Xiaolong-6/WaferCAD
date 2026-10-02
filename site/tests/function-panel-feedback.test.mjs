@@ -27,6 +27,10 @@ const processTaskController = await readFile(
   new URL('../controllers/process-task-controller.js', import.meta.url),
   'utf8',
 );
+const processPanelController = await readFile(
+  new URL('../controllers/process-panel-controller.js', import.meta.url),
+  'utf8',
+);
 const exportController = await readFile(
   new URL('../controllers/export-controller.js', import.meta.url),
   'utf8',
@@ -85,7 +89,7 @@ test('typed feedback is centralized in the status bar', () => {
 
 test('Process UI is driven by material presence and exposed Extend targets', () => {
   assert.match(app, /baseCoverageState\(model\)/);
-  assert.match(app, /exposedLayerIds\(model, area, activeFace\)/);
+  assert.match(processPanelController, /exposedLayerIds\(model, area, activeFace\)/);
   assert.match(app, /All material has been removed/);
   assert.match(app, /Base fully removed/);
 });
@@ -256,7 +260,7 @@ test('experimental Implant keeps process inputs structural and display styling i
   assert.doesNotMatch(html, /id="implantColor"/);
   assert.doesNotMatch(html, /id="implantBorder"/);
   assert.match(html, /id="sectionBordersBtn"/);
-  assert.match(app, /starts at the outermost selected surface/);
+  assert.match(processPanelController, /starts at the outermost selected surface/);
   assert.match(app, /params\.tilt = tilt/);
   assert.match(app, /colorNewImplant\(result\.implantId\)/);
   assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
