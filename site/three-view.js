@@ -4,7 +4,9 @@ import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { difference, intersection, isEmpty } from './vector-geometry.js';
 import {
   adaptiveRoughMeshLod,
+  allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
+  roughSceneTriangleBudget,
   roughLod,
   roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
@@ -60,6 +62,11 @@ export function createThreeView({
   let rendering = false;
   let lastLodSignature = null;
   let roughMeshes = [];
+  let roughTasks = [];
+  let roughOwnedObjects = new Set();
+  let roughRenderContext = null;
+  let roughRebuildCount = 0;
+  let surfacePlanBuildCount = 0;
   let transparentMeshes = [];
 
   function currentViewport() {
@@ -338,6 +345,9 @@ export function createThreeView({
     for (const texture of textures) texture.dispose();
     for (const material of materials) material.dispose();
     roughMeshes = [];
+    roughTasks = [];
+    roughOwnedObjects = new Set();
+    roughRenderContext = null;
     transparentMeshes = [];
   }
 
@@ -601,12 +611,18 @@ export function createThreeView({
 
     for (const zone of zones) {
       if (isEmpty(zone.polys)) continue;
-      const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, zone.polys),
+      const base =
+          Array.isArray(zone.baseTriangles) && Number.isFinite(zone.maxEdge)
+            ? { triangles: zone.baseTriangles, maxEdge: zone.maxEdge }
+            : roughCapBaseTriangles(z, normal, zone.polys),
+        baseTriangles = base.triangles,
+        maxEdge = base.maxEdge,
         lod = adaptiveRoughMeshLod({
           triangleCount: baseTriangles.length,
           maxEdge,
           featureSize: appearance?.featureSize,
           ...(zone.lodContext || lodContext),
+          triangleBudget: zone.triangleBudget ?? null,
         }),
         depth = lod.depth,
         triangles = subdivideTriangles(baseTriangles, depth),
@@ -701,6 +717,10 @@ export function createThreeView({
     geometry.userData.roughBorderPositions = roughBorderPositions;
     geometry.userData.roughLodZoneCount = zoneResults.length;
     geometry.userData.roughLodStitchCount = internalEdges.size;
+    geometry.userData.roughSubdivisionTriangleCount = zoneResults.reduce(
+      (sum, zone) => sum + zone.lod.estimatedTriangles,
+      0,
+    );
     return geometry;
   }
 
@@ -776,6 +796,7 @@ export function createThreeView({
     materialState,
     appearance = null,
     sortBias = 0,
+    trackAdaptiveRough = false,
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
@@ -794,8 +815,8 @@ export function createThreeView({
         sequence: transparentMeshes.length,
       });
     }
-    if (appearance) {
-      mesh.userData.surfaceAppearance = { ...appearance };
+    if (appearance) mesh.userData.surfaceAppearance = { ...appearance };
+    if (appearance && trackAdaptiveRough) {
       roughMeshes.push({
         mesh,
         material,
