@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 12;
+export const CURRENT_PROJECT_VERSION = 13;
 
 const LIMITS = {
   layers: 10000,
@@ -113,8 +113,8 @@ function validateSurfaceAppearance(appearance, path) {
   assertFinite(appearance.featureCv, `${path}.featureCv`, { min: 0, max: 1 });
   assertFinite(appearance.heightCv, `${path}.heightCv`, { min: 0, max: 1 });
   assertString(appearance.morphology, `${path}.morphology`);
-  if (appearance.morphology !== 'stochastic') {
-    fail(`${path}.morphology`, 'must be stochastic for the current roughness generator.');
+  if (!['stochastic', 'pyramid'].includes(appearance.morphology)) {
+    fail(`${path}.morphology`, 'must be stochastic or pyramid.');
   }
   assertString(appearance.polarity, `${path}.polarity`);
   if (!['inverted', 'normal'].includes(appearance.polarity)) {
