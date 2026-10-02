@@ -551,7 +551,7 @@ const layerLegendController = createLayerLegendController({
   updateOperationUI,
   status,
 });
-const { renderLayerLegend, colorNewLayer } = layerLegendController;
+const { renderLayerLegend, colorNewLayer, colorNewImplant } = layerLegendController;
 
 function selectedFileMaskGeometry() {
   const geoms = [];
@@ -1608,6 +1608,7 @@ async function applyOp() {
     colorNewLayer(result.layerId);
     $('layerName').value = `Layer ${model.nextLayerId}`;
   } else if (type === 'implant' && result.implantId) {
+    colorNewImplant(result.implantId);
     $('implantName').value = `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
   }
 
