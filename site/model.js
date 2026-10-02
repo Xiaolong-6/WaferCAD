@@ -1,17 +1,16 @@
 import {
   bufferMulti,
-  bufferPolyline,
   circleMulti,
   cloneGeom,
   difference,
   intersection,
   isEmpty,
-  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
 import {
   classifyCoverageVoids,
+  conformalBoundaryBands,
   conformalWallTargets,
   DEFAULT_COVERAGE_CRACK_TOLERANCE_UM,
   exposedLayerIdsFromTopology,
@@ -497,57 +496,6 @@ function applyConformalMaterialWalls(
   model.regions = next;
 }
 
-function conformalRingBands(geom, amount) {
-  const bands = [];
-  for (const poly of geom || [])
-    for (const ring of poly || []) {
-      if (!Array.isArray(ring) || ring.length < 4) continue;
-      const points = ring.slice(0, -1);
-      try {
-        const band = bufferPolyline(points, amount, 32, true);
-        if (!isEmpty(band)) bands.push(band);
-      } catch {
-        // Complex imported rings can make a large polygon union numerically
-        // fragile. Fall back to local edge capsules so one bad ring cannot
-        // cancel an otherwise valid conformal process.
-        for (let index = 1; index < ring.length; index++) {
-          const band = bufferPolyline([ring[index - 1], ring[index]], amount, 20, false);
-          if (!isEmpty(band)) bands.push(band);
-        }
-      }
-    }
-  return bands;
-}
-
-function packDisjointBands(bands, maxBatchSize = 8) {
-  const batches = [];
-  const overlaps = (a, b) =>
-    !(
-      a.maxX < b.minX - 1e-9 ||
-      b.maxX < a.minX - 1e-9 ||
-      a.maxY < b.minY - 1e-9 ||
-      b.maxY < a.minY - 1e-9
-    );
-
-  for (const band of bands || []) {
-    if (isEmpty(band)) continue;
-    const bounds = multiBounds(band);
-    let batch = batches.find(
-      (candidate) =>
-        candidate.count < maxBatchSize &&
-        candidate.bounds.every((otherBounds) => !overlaps(bounds, otherBounds)),
-    );
-    if (!batch) {
-      batch = { geom: [], bounds: [], count: 0 };
-      batches.push(batch);
-    }
-    batch.geom.push(...cloneGeom(band));
-    batch.bounds.push(bounds);
-    batch.count++;
-  }
-  return batches.map((batch) => batch.geom);
-}
-
 const COVERAGE_CRACK_TOLERANCE_UM = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM;
 
 function uncoveredGeometryRaw(model) {
@@ -639,8 +587,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // many circular/nested features.
   const sources = exposedLayerPatches(model, active, face, layerId);
   for (const source of sources) {
-    const ringBands = conformalRingBands(source.geom, amount);
-    for (const rawBand of packDisjointBands(ringBands)) {
+    for (const rawBand of conformalBoundaryBands(source.geom, amount)) {
       const band = intersection(rawBand, model.boundary);
       if (isEmpty(band)) continue;
 
