@@ -53,6 +53,23 @@ test('function panel uses Process and Project labels with segmented process mode
   assert.match(html, /id="processSummary"/);
 });
 
+test('function panel groups related engineering parameters compactly', () => {
+  assert.match(html, /class="tool-context process-context"[\s\S]*?id="processSummary"[\s\S]*?id="faceToggleBtn"/);
+  assert.match(
+    html,
+    /class="param-grid-2 rough-param-grid"[\s\S]*?id="roughFeatureRow"[\s\S]*?id="roughFeatureCvRow"/,
+  );
+  assert.match(
+    html,
+    /class="param-grid-2 rough-param-grid"[\s\S]*?id="roughHeightRow"[\s\S]*?id="roughHeightCvRow"/,
+  );
+  assert.match(html, /id="operationThicknessRow" class="param-field"/);
+  assert.match(html, /workspace-recovery-controls compact-action-row/);
+  assert.match(style, /\.param-grid-2 \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(style, /\.param-field \{[\s\S]*?grid-template-columns: max-content minmax\(0, 1fr\) auto/);
+  assert.match(style, /@media \(max-width: 600px\)[\s\S]*?\.param-grid-2 \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
+});
+
 test('typed feedback is centralized in the status bar', () => {
   assert.match(html, /id="statusBar"[^>]*data-level="passive"/);
   assert.doesNotMatch(html, /id="feedbackToasts"/);
