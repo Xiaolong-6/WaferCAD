@@ -84,8 +84,16 @@ export function appearanceSurfaceGroups(model, clip = null) {
       const geom = clip ? intersection(patch.geom, clip) : patch.geom;
       if (isEmpty(geom)) continue;
       const key = JSON.stringify([
-        patch.layerId, patch.z, face, patch.appearance.featureSize,
-        patch.appearance.amplitude, patch.appearance.seed, patch.appearance.geometryMode,
+        patch.layerId,
+        patch.z,
+        face,
+        patch.appearance.profileId,
+        patch.appearance.featureSize,
+        patch.appearance.meanHeight,
+        patch.appearance.featureCv,
+        patch.appearance.heightCv,
+        patch.appearance.seed,
+        patch.appearance.geometryMode,
       ]);
       if (!groups.has(key))
         groups.set(key, {
