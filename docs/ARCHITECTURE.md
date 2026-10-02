@@ -39,7 +39,11 @@ The model is intentionally 2.5D: XY footprints are vector polygons and vertical 
 
 ### `site/app.js`
 
-Owns application state, top-level UI orchestration, undo/redo, project persistence, and synchronization between controllers/views. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; the 3D renderer is delegated to `site/three-view.js`.
+Owns application state, top-level UI composition, undo/redo, project persistence, and synchronization between controllers/views. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/apply orchestration is delegated to `site/controllers/process-panel-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
+
+### `site/controllers/process-panel-controller.js`
+
+Owns Process panel presentation state, exposed Extend target refresh, input normalization/validation, worker request construction, and post-Apply model handoff/status messaging. It deliberately does not implement process geometry: canonical Deposit/Extend/Etch/Implant semantics remain in `model.js` / the process worker path.
 
 ### `site/plan-renderers.js`
 
