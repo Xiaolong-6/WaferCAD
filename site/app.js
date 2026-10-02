@@ -23,7 +23,7 @@ import {
 } from './vector-geometry.js';
 import { downloadProject } from './project-io.js';
 import { createThreeView } from './three-view.js';
-import { sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
+import { sectionColumns, sectionContours, sectionSlices, surfaceGroups } from './model-view-geometry.js';
 import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from './roi-editor.js';
 import {
   formatLengthInput,
@@ -897,8 +897,145 @@ function renderSection() {
     ctx.fill('evenodd');
   }
 
-  // Auto mode keeps sub-pixel physical sidewalls legible. Physical 1:1 mode
-  // disables this screen-space widening so X and Z use the same px/µm scale.
+  const roughColumns = sectionColumns(model, section.a, section.b);
+  for (const column of roughColumns) {
+    if (!column.stack.some((segment) => segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough')) {
+      continue;
+    }
+
+    const boundaries = [];
+    for (let index = 0; index <= column.stack.length; index++) {
+      const below = index > 0 ? column.stack[index - 1] : null,
+        above = index < column.stack.length ? column.stack[index] : null,
+        appearance =
+          below?.frontSurface?.kind === 'rough'
+            ? below.frontSurface
+            : above?.backSurface?.kind === 'rough'
+              ? above.backSurface
+              : null,
+        z =
+          index === 0
+            ? column.stack[0].z0
+            : index === column.stack.length
+              ? column.stack.at(-1).z1
+              : below.z1;
+      boundaries.push({ z, appearance });
+    }
+
+    const visibleRough = boundaries
+      .map((boundary, index) => ({
+        ...boundary,
+        index,
+        lod: boundary.appearance
+          ? roughLod(boundary.appearance.featureSize * xScale)
+          : { detail: 0, micro: 0 },
+      }))
+      .filter((boundary) => boundary.appearance && boundary.lod.detail > 0.02);
+
+    if (!visibleRough.length) {
+      for (const boundary of boundaries) {
+        if (boundary.appearance?.kind !== 'rough') continue;
+        ctx.beginPath();
+        ctx.moveTo(mapT(column.t0), mapZ(boundary.z));
+        ctx.lineTo(mapT(column.t1), mapZ(boundary.z));
+        const adjacent =
+          column.stack.find((segment) => Math.abs(segment.z1 - boundary.z) < 1e-9) ||
+          column.stack.find((segment) => Math.abs(segment.z0 - boundary.z) < 1e-9);
+        ctx.strokeStyle = shadeColor(layerById(model, adjacent?.layerId)?.color || '#a4adb6', -48);
+        ctx.globalAlpha = 0.62;
+        ctx.lineWidth = 1.25;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      continue;
+    }
+
+    const intervalPhysical = Math.max(1e-12, Math.abs(column.t1 - column.t0) * sectionSpan),
+      minFeature = Math.max(
+        1e-9,
+        Math.min(...visibleRough.map((boundary) => boundary.appearance.featureSize)),
+      ),
+      sampleStep = Math.max(minFeature / 6, intervalPhysical / 1100),
+      samples = Math.max(3, Math.min(1100, Math.ceil(intervalPhysical / sampleStep))),
+      profiles = boundaries.map(() => []);
+
+    for (let sample = 0; sample <= samples; sample++) {
+      const fraction = sample / samples,
+        t = column.t0 + (column.t1 - column.t0) * fraction,
+        worldX = section.a[0] + (section.b[0] - section.a[0]) * t,
+        worldY = section.a[1] + (section.b[1] - section.a[1]) * t;
+
+      boundaries.forEach((boundary, boundaryIndex) => {
+        const visible =
+            boundary.appearance &&
+            roughLod(boundary.appearance.featureSize * xScale).detail > 0.02,
+          offset = visible
+            ? roughProfileOffsetAtPoint(worldX, worldY, boundary.appearance)
+            : 0;
+        profiles[boundaryIndex].push([mapT(t), mapZ(boundary.z + offset)]);
+      });
+    }
+
+    const x0 = mapT(column.t0),
+      x1 = mapT(column.t1),
+      paintX = Math.min(x0, x1) - 0.65,
+      paintWidth = Math.abs(x1 - x0) + 1.3;
+
+    // Recompose the whole local stack from shared boundary profiles. This removes
+    // region seams and guarantees that adjacent materials meet on exactly one curve.
+    ctx.fillStyle = '#fbfcfd';
+    ctx.fillRect(paintX, plotTop - 0.5, paintWidth, plotHeight + 1);
+
+    for (let segmentIndex = 0; segmentIndex < column.stack.length; segmentIndex++) {
+      const segment = column.stack[segmentIndex],
+        layer = layerById(model, segment.layerId),
+        bottomProfile = profiles[segmentIndex],
+        topProfile = profiles[segmentIndex + 1];
+      if (!layer) continue;
+
+      ctx.beginPath();
+      bottomProfile.forEach(([x, y], index) => {
+        const drawX = index === 0 ? x - 0.65 : index === bottomProfile.length - 1 ? x + 0.65 : x;
+        if (index === 0) ctx.moveTo(drawX, y);
+        else ctx.lineTo(drawX, y);
+      });
+      for (let index = topProfile.length - 1; index >= 0; index--) {
+        const [x, y] = topProfile[index],
+          drawX = index === 0 ? x - 0.65 : index === topProfile.length - 1 ? x + 0.65 : x;
+        ctx.lineTo(drawX, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = layer.color;
+      ctx.fill();
+    }
+
+    boundaries.forEach((boundary, boundaryIndex) => {
+      if (boundary.appearance?.kind !== 'rough') return;
+      const profile = profiles[boundaryIndex],
+        lod = roughLod(boundary.appearance.featureSize * xScale),
+        adjacent =
+          column.stack[boundaryIndex - 1] || column.stack[boundaryIndex] || null,
+        layer = adjacent ? layerById(model, adjacent.layerId) : null;
+      ctx.beginPath();
+      profile.forEach(([x, y], index) => {
+        const drawX = index === 0 ? x - 0.65 : index === profile.length - 1 ? x + 0.65 : x;
+        if (index === 0) ctx.moveTo(drawX, y);
+        else ctx.lineTo(drawX, y);
+      });
+      ctx.strokeStyle = shadeColor(layer?.color || '#a4adb6', -60);
+      ctx.globalAlpha = 0.58 + lod.detail * 0.18;
+      ctx.lineWidth = 1.05;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+    });
+  }
+
+  // Auto mode keeps sub-pixel physical sidewalls legible. Draw this last so the
+  // visibility aid cannot be erased by rough-surface compositing.
   for (const slice of sectionSlices(model, section.a, section.b)) {
     if (slice.role !== 'conformal-sidewall') continue;
     const layer = layerById(model, slice.layerId);
@@ -913,104 +1050,6 @@ function renderSection() {
       sy1 = mapZ(slice.z0);
     ctx.fillStyle = layer.color;
     ctx.fillRect(sx0, sy0, Math.max(minWidth, sx1 - sx0), sy1 - sy0);
-  }
-
-  const roughSlices = sectionSlices(model, section.a, section.b);
-  for (const slice of roughSlices) {
-    for (const [face, appearance, z] of [
-      ['front', slice.frontSurface, slice.z1],
-      ['back', slice.backSurface, slice.z0],
-    ]) {
-      if (appearance?.kind !== 'rough') continue;
-
-      const featurePixels = appearance.featureSize * xScale,
-        lod = roughLod(featurePixels),
-        x0 = mapT(slice.t0),
-        x1 = mapT(slice.t1),
-        lowerSegment = face === 'front' ? slice : slice.below,
-        upperSegment = face === 'front' ? slice.above : slice,
-        lowerLayer = lowerSegment ? layerById(model, lowerSegment.layerId) : null,
-        upperLayer = upperSegment ? layerById(model, upperSegment.layerId) : null,
-        lowerColor = lowerLayer?.color || '#fbfcfd',
-        upperColor = upperLayer?.color || '#fbfcfd';
-
-      if (lod.detail <= 0.02) {
-        ctx.beginPath();
-        ctx.moveTo(x0, mapZ(z));
-        ctx.lineTo(x1, mapZ(z));
-        ctx.strokeStyle = shadeColor((lowerLayer || upperLayer)?.color || '#a4adb6', -48);
-        ctx.globalAlpha = 0.62;
-        ctx.lineWidth = 1.25;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        continue;
-      }
-
-      const intervalPhysical = Math.max(1e-12, Math.abs(slice.t1 - slice.t0) * sectionSpan),
-        feature = Math.max(1e-9, appearance.featureSize),
-        sampleStep = Math.max(feature / 6, intervalPhysical / 900),
-        samples = Math.max(3, Math.min(900, Math.ceil(intervalPhysical / sampleStep))),
-        maxOffset = Math.max(0, appearance.amplitude * 0.5),
-        pixelMarginZ = 1.25 / Math.max(zScale, 1e-12),
-        lowerThickness = lowerSegment
-          ? Math.max(1e-9, lowerSegment.z1 - lowerSegment.z0)
-          : Infinity,
-        upperThickness = upperSegment
-          ? Math.max(1e-9, upperSegment.z1 - upperSegment.z0)
-          : Infinity,
-        lowerLimit = lowerSegment
-          ? lowerSegment.z0 + Math.min(lowerThickness * 0.02, maxOffset * 0.15)
-          : z - maxOffset,
-        upperLimit = upperSegment
-          ? upperSegment.z1 - Math.min(upperThickness * 0.02, maxOffset * 0.15)
-          : z + maxOffset,
-        bandLow = Math.max(lowerSegment?.z0 ?? z - maxOffset - pixelMarginZ, z - maxOffset - pixelMarginZ),
-        bandHigh = Math.min(upperSegment?.z1 ?? z + maxOffset + pixelMarginZ, z + maxOffset + pixelMarginZ),
-        profile = [];
-
-      for (let index = 0; index <= samples; index++) {
-        const fraction = index / samples,
-          t = slice.t0 + (slice.t1 - slice.t0) * fraction,
-          worldX = section.a[0] + (section.b[0] - section.a[0]) * t,
-          worldY = section.a[1] + (section.b[1] - section.a[1]) * t,
-          rawZ = z + roughProfileOffsetAtPoint(worldX, worldY, appearance),
-          profileZ = Math.max(lowerLimit, Math.min(upperLimit, rawZ));
-        profile.push([mapT(t), mapZ(profileZ)]);
-      }
-
-      const paintX = Math.min(x0, x1) - 0.75,
-        paintWidth = Math.abs(x1 - x0) + 1.5,
-        bandTopY = mapZ(bandHigh),
-        bandBottomY = mapZ(bandLow);
-
-      // Paint both sides of one shared physical interface. The nominal process
-      // geometry stays planar; only this narrow visual band is composited.
-      ctx.fillStyle = upperColor;
-      ctx.fillRect(paintX, bandTopY - 0.5, paintWidth, bandBottomY - bandTopY + 1);
-
-      ctx.beginPath();
-      ctx.moveTo(x0, bandBottomY);
-      for (const [x, y] of profile) ctx.lineTo(x, y);
-      ctx.lineTo(x1, bandBottomY);
-      ctx.closePath();
-      ctx.fillStyle = lowerColor;
-      ctx.fill();
-
-      ctx.beginPath();
-      profile.forEach(([x, y], index) => {
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.strokeStyle = shadeColor((lowerLayer || upperLayer)?.color || '#a4adb6', -60);
-      ctx.globalAlpha = 0.72;
-      ctx.lineWidth = 1.05;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.lineCap = 'butt';
-      ctx.lineJoin = 'miter';
-    }
   }
 
   ctx.strokeStyle = '#8995a1';
