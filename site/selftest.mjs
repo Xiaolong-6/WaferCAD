@@ -148,6 +148,64 @@ const adaptiveNear = adaptiveRoughMeshLod({
 assert.ok(adaptiveNear.depth > adaptiveFar.depth);
 assert.ok(adaptiveBackground.maxTriangles < adaptiveNear.maxTriangles);
 assert.ok(adaptiveRoi.maxTriangles > adaptiveNear.maxTriangles);
+
+const partialSidewallModel = {
+  width: 2,
+  height: 2,
+  layers: [
+    { id: 'left', name: 'Left', color: '#777777' },
+    { id: 'right', name: 'Right', color: '#999999' },
+  ],
+  regions: [
+    {
+      id: 'left-region',
+      geom: [
+        [
+          [
+            [-1, -1],
+            [0, -1],
+            [0, 1],
+            [-1, 1],
+            [-1, -1],
+          ],
+        ],
+      ],
+      stack: [{ layerId: 'left', z0: 0, z1: 1 }],
+    },
+    {
+      id: 'right-region',
+      geom: [
+        [
+          [
+            [0, -1],
+            [1, -1],
+            [1, 1],
+            [0, 1],
+            [0, -1],
+          ],
+        ],
+      ],
+      stack: [{ layerId: 'right', z0: 0, z1: 2 }],
+    },
+  ],
+};
+const partialSidewallPlan = buildRenderSurfacePlan(partialSidewallModel),
+  sharedSidewallParts = partialSidewallPlan.sidewalls
+    .filter(
+      (part) =>
+        Math.abs(part.p[0]) < 1e-12 &&
+        Math.abs(part.q[0]) < 1e-12 &&
+        Math.abs(Math.abs(part.p[1] - part.q[1]) - 2) < 1e-12,
+    )
+    .sort((a, b) => a.z0 - b.z0);
+assert.equal(sharedSidewallParts.length, 2);
+assert.deepEqual(
+  sharedSidewallParts.map((part) => [part.z0, part.z1, part.ownership]),
+  [
+    [0, 1, 'interface'],
+    [1, 2, 'exterior'],
+  ],
+);
 const roughNoiseSample = roughNoise1D(1.25, { featureSize: 0.5, seed: 42 });
 assert.equal(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 42 }));
 assert.notEqual(roughNoiseSample, roughNoise1D(1.25, { featureSize: 0.5, seed: 43 }));
