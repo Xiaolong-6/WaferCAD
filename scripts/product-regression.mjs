@@ -473,6 +473,31 @@ try {
         }
       }
     }
+    if (name === 'wide') {
+      const { applyOperation, createModel } = await import('../site/model.js');
+      const { rectMulti } = await import('../site/vector-geometry.js');
+      const roughModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 });
+      applyOperation(roughModel, {
+        type: 'etch',
+        thickness: 1.5,
+        face: 'front',
+        area: rectMulti(10, 12),
+        surface: {
+          kind: 'rough',
+          featureSize: 0.45,
+          amplitude: 1.2,
+          geometryMode: 'ideal',
+        },
+      });
+      const roughProject = projectForBenchmark({
+        model: roughModel,
+        section: { a: [-9, 0], b: [9, 0] },
+      });
+      await loadProject(page, roughProject, 'wide-rough-section');
+      await capture(page, 'wide-rough-section');
+      await checkLayout(page);
+    }
+
     await checkROI(page, name);
     await context.close();
     console.log(`${name}: A/B, units, ROI, tabs, imports and six process views passed`);
