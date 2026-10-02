@@ -517,6 +517,23 @@ try {
       await capture(page, 'wide-rough-buried-interface-max');
       await page.locator('#sectionMaxBtn').click();
       await page.waitForTimeout(120);
+
+      // Visual guardrails for the 3D redesign: opaque and translucent rough
+      // surfaces must stay smooth and layer-colored, without screen-door noise.
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-3d-opaque-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('0.5');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
+      await page.locator('#threeMaxBtn').click();
+      await capture(page, 'wide-rough-3d-transparent-max');
+      await page.locator('#threeMaxBtn').click();
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('1');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.waitForTimeout(120);
       await checkLayout(page);
     }
 
