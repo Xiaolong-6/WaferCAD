@@ -13,6 +13,10 @@ const buildController = await readFile(
   new URL('../controllers/build-controller.js', import.meta.url),
   'utf8',
 );
+const projectController = await readFile(
+  new URL('../controllers/project-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('Project is the first and default workspace tab and owns the XYZ unit selector', () => {
   assert.ok(html.indexOf('id="settingsTab"') < html.indexOf('id="baseTab"'));
@@ -29,13 +33,13 @@ test('Project is the first and default workspace tab and owns the XYZ unit selec
 });
 
 test('project replacement controls warn, Save is local, and Export downloads the project file', () => {
-  assert.match(app, /New project will replace the current workspace/);
-  assert.match(app, /Open project will replace the current workspace/);
+  assert.match(projectController, /New project will replace the current workspace/);
+  assert.match(projectController, /Open project will replace the current workspace/);
   assert.match(workspacePersistenceController, /manual-save · \$\{projectName\}/);
   assert.match(workspacePersistenceController, /createWorkspaceRecoveryCheckpoint\(project/);
-  assert.match(app, /\$\('exportProjectBtn'\)\.onclick/);
-  assert.match(app, /downloadProject\(buildProjectSnapshot\(true\), projectExportFilename\(\)\)/);
-  assert.match(app, /\.wafercad/);
+  assert.match(projectController, /\$\('exportProjectBtn'\)\.onclick/);
+  assert.match(projectController, /downloadProject\(buildProjectSnapshot\(true\), projectExportFilename\(\)\)/);
+  assert.match(projectController, /\.wafercad/);
 });
 
 test('workspace state is restored locally after app reload', () => {
