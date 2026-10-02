@@ -1149,12 +1149,15 @@ function renderAll() {
   updateOperationUI();
   syncUndo();
 }
+function resetRoughDraftControls() {
+  $('roughFeatureSize').value = formatLengthField(0.5);
+  $('roughAmplitude').value = formatLengthField(1);
+}
+
 function syncBaseControls() {
   $('baseWidth').value = formatLengthField(model.width);
   $('baseHeight').value = formatLengthField(model.height);
   $('baseThickness').value = formatLengthField(model.thickness);
-  $('roughFeatureSize').value = formatLengthField(0.5);
-  $('roughAmplitude').value = formatLengthField(1);
   $('baseHeight').disabled = model.shape === 'circle';
   $('baseWidthUnit').textContent = xyUnit().label;
   $('baseHeightUnit').textContent = xyUnit().label;
@@ -1633,6 +1636,7 @@ function bindUi() {
     if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
     void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
     resetProjectState();
+    resetRoughDraftControls();
     clearRoiDrawingMode();
     maskRoiController.clearDrawingMode();
     snapshotManager.clear();
