@@ -614,22 +614,18 @@
               data-tab-panel="operation"
               hidden
             >
-              <div class="tool-context">
+              <div class="tool-context process-context">
                 <span id="processSummary">Front · Deposit layer</span>
+                <button
+                  id="faceToggleBtn"
+                  class="compact-btn context-action"
+                  type="button"
+                  title="Switch active process face"
+                >
+                  Front
+                </button>
               </div>
-              <div class="control-body">
-                <div class="field-row active-face-row">
-                  <span>Active face</span>
-                  <button
-                    id="faceToggleBtn"
-                    class="compact-btn"
-                    type="button"
-                    title="Switch active process face"
-                  >
-                    Front
-                  </button>
-                </div>
-
+              <div class="control-body process-control-body">
                 <div id="processMode" class="segmented process-mode" aria-label="Process action">
                   <button type="button" class="active" data-process-mode="add" aria-pressed="true">
                     Deposit
@@ -647,85 +643,122 @@
                   <option value="implant">Implant (experimental)</option>
                 </select>
 
-                <label id="layerNameRow" class="field-row"
-                  ><span>Name</span><input id="layerName" value="Layer 1"
-                /></label>
-                <label id="implantNameRow" class="field-row hidden"
-                  ><span>Name</span><input id="implantName" value="Implant 1"
-                /></label>
-                <label id="implantColorRow" class="field-row hidden"
-                  ><span>Color</span><input id="implantColor" type="color" value="#d65a6f"
-                /></label>
-                <label id="implantTiltRow" class="field-row hidden" title="Signed geometric tilt from the surface normal toward +X">
-                  <span>Tilt X°</span><input id="implantTilt" type="number" value="0" min="-80" max="80" step="1"
-                /></label>
-                <label id="targetLayerRow" class="field-row hidden"
-                  ><span>Target</span><select id="targetLayer"></select
-                ></label>
-                <label class="field-row"
-                  ><span>Area</span
-                  ><select id="operationArea">
-                    <option value="mask">Selected mask</option>
-                    <option value="invert">Invert mask</option>
-                    <option value="full">Whole face</option>
-                  </select></label
-                >
-                <label id="growthModeRow" class="field-row"
-                  ><span>Coverage</span
-                  ><select id="growthMode">
-                    <option value="direct">Directional</option>
-                    <option value="conformal">Conformal</option>
-                  </select></label
-                >
-                <label id="etchSurfaceRow" class="field-row hidden"
-                  ><span>Surface</span
-                  ><select id="etchSurfaceMode">
-                    <option value="smooth">Smooth</option>
-                    <option value="rough">Rough</option>
-                  </select></label
-                >
-                <label
-                  id="roughPolarityRow"
-                  class="field-row hidden"
-                  title="Normal points rough features outward; Inverted keeps the existing pit/valley orientation"
-                  ><span>Orientation</span
-                  ><select id="roughPolarity">
-                    <option value="inverted">Inverted · pits ↓</option>
-                    <option value="normal">Normal · peaks ↑</option>
-                  </select></label
-                >
-                <label
-                  id="roughFeatureRow"
-                  class="field-row hidden"
-                  title="Mean lateral XY size of the roughness features"
-                  ><span>Feature XY <b id="roughFeatureUnit">µm</b></span
-                  ><input id="roughFeatureSize" type="number" value="0.5" min="0" step="any"
-                /></label>
-                <label
-                  id="roughFeatureCvRow"
-                  class="field-row hidden"
-                  title="Coefficient of variation of the lateral feature size"
-                  ><span>Feature CV %</span
-                  ><input id="roughFeatureCv" type="number" value="25" min="0" max="100" step="1"
-                /></label>
-                <label
-                  id="roughHeightRow"
-                  class="field-row hidden"
-                  title="Mean feature relief within the etch-depth envelope; Orientation mirrors the same height field"
-                  ><span>Height mean <b id="roughHeightUnit">µm</b></span
-                  ><input id="roughAmplitude" type="number" value="1" min="0" step="any"
-                /></label>
-                <label
-                  id="roughHeightCvRow"
-                  class="field-row hidden"
-                  title="Coefficient of variation of the rough feature height"
-                  ><span>Height CV %</span
-                  ><input id="roughHeightCv" type="number" value="25" min="0" max="100" step="1"
-                /></label>
-                <label class="field-row"
-                  ><span><b id="processThicknessLabel">Z</b> <b id="operationThicknessUnit">µm</b></span
-                  ><input id="operationThickness" type="number" value="3" min="0" step="any"
-                /></label>
+                <div class="param-grid-2 process-area-grid">
+                  <label class="param-field">
+                    <span>Area</span>
+                    <select id="operationArea">
+                      <option value="mask">Selected mask</option>
+                      <option value="invert">Invert mask</option>
+                      <option value="full">Whole face</option>
+                    </select>
+                  </label>
+                  <label id="growthModeRow" class="param-field">
+                    <span>Coverage</span>
+                    <select id="growthMode">
+                      <option value="direct">Directional</option>
+                      <option value="conformal">Conformal</option>
+                    </select>
+                  </label>
+                  <label id="etchSurfaceRow" class="param-field hidden">
+                    <span>Surface</span>
+                    <select id="etchSurfaceMode">
+                      <option value="smooth">Smooth</option>
+                      <option value="rough">Rough</option>
+                    </select>
+                  </label>
+                  <label
+                    id="implantTiltRow"
+                    class="param-field hidden"
+                    title="Signed geometric tilt from the surface normal toward +X"
+                  >
+                    <span>Tilt X</span>
+                    <input id="implantTilt" type="number" value="0" min="-80" max="80" step="1" />
+                    <b class="field-unit">°</b>
+                  </label>
+                </div>
+
+                <div class="param-grid-2 process-main-grid">
+                  <label id="layerNameRow" class="param-field">
+                    <span>Name</span>
+                    <input id="layerName" value="Layer 1" />
+                  </label>
+                  <label id="targetLayerRow" class="param-field hidden">
+                    <span>Target</span>
+                    <select id="targetLayer"></select>
+                  </label>
+                  <label id="implantNameRow" class="param-field hidden">
+                    <span>Name</span>
+                    <input id="implantName" value="Implant 1" />
+                  </label>
+                  <label id="operationThicknessRow" class="param-field">
+                    <span><b id="processThicknessLabel">Z</b></span>
+                    <input id="operationThickness" type="number" value="3" min="0" step="any" />
+                    <b id="operationThicknessUnit" class="field-unit">µm</b>
+                  </label>
+                </div>
+
+                <div class="param-grid-2 process-implant-grid">
+                  <label id="implantColorRow" class="param-field hidden">
+                    <span>Color</span>
+                    <input id="implantColor" type="color" value="#d65a6f" />
+                  </label>
+                </div>
+
+                <div class="param-grid-2 rough-param-grid">
+                  <label
+                    id="roughFeatureRow"
+                    class="param-field hidden"
+                    title="Mean lateral XY size of the roughness features"
+                  >
+                    <span>Feature XY</span>
+                    <input id="roughFeatureSize" type="number" value="0.5" min="0" step="any" />
+                    <b id="roughFeatureUnit" class="field-unit">µm</b>
+                  </label>
+                  <label
+                    id="roughFeatureCvRow"
+                    class="param-field hidden"
+                    title="Coefficient of variation of the lateral feature size"
+                  >
+                    <span>Feature CV</span>
+                    <input id="roughFeatureCv" type="number" value="25" min="0" max="100" step="1" />
+                    <b class="field-unit">%</b>
+                  </label>
+                </div>
+
+                <div class="param-grid-2 rough-param-grid">
+                  <label
+                    id="roughHeightRow"
+                    class="param-field hidden"
+                    title="Mean feature relief within the etch-depth envelope; Orientation mirrors the same height field"
+                  >
+                    <span>Height mean</span>
+                    <input id="roughAmplitude" type="number" value="1" min="0" step="any" />
+                    <b id="roughHeightUnit" class="field-unit">µm</b>
+                  </label>
+                  <label
+                    id="roughHeightCvRow"
+                    class="param-field hidden"
+                    title="Coefficient of variation of the rough feature height"
+                  >
+                    <span>Height CV</span>
+                    <input id="roughHeightCv" type="number" value="25" min="0" max="100" step="1" />
+                    <b class="field-unit">%</b>
+                  </label>
+                </div>
+
+                <div class="param-grid-2 rough-param-grid">
+                  <label
+                    id="roughPolarityRow"
+                    class="param-field hidden"
+                    title="Normal points rough features outward; Inverted keeps the existing pit/valley orientation"
+                  >
+                    <span>Orientation</span>
+                    <select id="roughPolarity">
+                      <option value="inverted">Inverted · pits ↓</option>
+                      <option value="normal">Normal · peaks ↑</option>
+                    </select>
+                  </label>
+                </div>
 
                 <div class="operation-actions">
                   <button id="applyOperationBtn" class="primary apply-btn">Apply</button>
@@ -805,15 +838,15 @@
                     Save
                   </button>
                 </div>
-                <div class="workspace-recovery-controls">
-                  <label class="field-row">
+                <div class="workspace-recovery-controls compact-action-row">
+                  <label class="param-field recovery-field">
                     <span>Recovery</span>
                     <select id="workspaceRecoverySelect" aria-label="Workspace recovery checkpoint">
                       <option value="">No recovery points</option>
                     </select>
                   </label>
-                  <button id="workspaceRestoreBtn" class="wide compact-btn" type="button" disabled>
-                    Restore checkpoint
+                  <button id="workspaceRestoreBtn" class="compact-btn" type="button" disabled>
+                    Restore
                   </button>
                 </div>
               </div>
