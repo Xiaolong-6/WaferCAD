@@ -30,7 +30,6 @@ export function createPlanRenderers({
   formatXY,
   xyText,
   xyUnitLabel,
-  scheduleWorkspacePersistence,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -259,7 +258,6 @@ export function createPlanRenderers({
   
     getMaskRoiController()?.render(ctx, v);
     drawPlanAxes(ctx, v, w, h, false);
-    scheduleWorkspacePersistence();
   }
   function shadeColor(hex, delta) {
     const n = parseInt(hex.slice(1), 16),
@@ -323,7 +321,6 @@ export function createPlanRenderers({
     drawPlanAxes(ctx, v, w, h, back);
     syncSectionInputs();
     getSectionEditor()?.update();
-    scheduleWorkspacePersistence();
   }
   function renderSection() {
       const { model, section, sectionScaleMode, sectionShowBorders } = getState();
@@ -673,7 +670,6 @@ export function createPlanRenderers({
       sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
     $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
     $('sectionRange').textContent = `Z (${xyUnitLabel()}) ${formatXY(lo)} → ${formatXY(hi)}`;
-    scheduleWorkspacePersistence();
   }
 
   return { renderMask, renderMain, renderSection };
