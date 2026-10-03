@@ -285,6 +285,7 @@ export function createPlanRenderers({
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'main'),
       back = activeFace === 'back';
+    c.dataset.xPxPerUm = String(v.s);
     $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
     ctx.clearRect(0, 0, w, h);
     drawBaseOutline(ctx, v, { fill: false, back });
