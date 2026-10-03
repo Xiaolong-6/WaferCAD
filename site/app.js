@@ -1,4 +1,5 @@
 import { parseLayoutFile } from './layout-io.js';
+import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
 import {
   cloneModel,
   createModel,
@@ -523,9 +524,53 @@ function applyImportedLayout(imported, displayName) {
 }
 
 async function importLayoutBuffer(arrayBuffer, filename, displayName = filename) {
-  const imported = await parseLayoutFile(arrayBuffer, filename);
+  let imported;
+  if (processTaskController) {
+    const task = await processTaskController.runWorker(
+      '../layout-worker.js',
+      { arrayBuffer, filename },
+      {
+        label: `Importing ${displayName || filename || 'layout'}…`,
+        abortMessage: 'Layout import aborted. The current workspace was not changed.',
+        failurePrefix: 'Layout import failed',
+        transfer: [arrayBuffer],
+      },
+    );
+    if (task?.aborted) return null;
+    if (task?.busy) throw new Error('Another background task is already running.');
+    if (task?.error) throw new Error(task.error);
+    imported = task.imported;
+  } else {
+    imported = await parseLayoutFile(arrayBuffer, filename);
+  }
   applyImportedLayout(imported, displayName);
   return imported;
+}
+
+async function readProjectFileTask(file) {
+  if (!file) throw new Error('No project file selected.');
+  if (file.size > MAX_PROJECT_FILE_BYTES) {
+    throw new Error(
+      `Project file is larger than the ${Math.round(MAX_PROJECT_FILE_BYTES / (1024 * 1024))} MB safety limit.`,
+    );
+  }
+  if (!processTaskController) return readProjectFile(file);
+
+  const arrayBuffer = await file.arrayBuffer();
+  const task = await processTaskController.runWorker(
+    '../project-worker.js',
+    { arrayBuffer },
+    {
+      label: `Opening ${file.name || 'project'}…`,
+      abortMessage: 'Project open aborted. The current workspace was not changed.',
+      failurePrefix: 'Project open failed',
+      transfer: [arrayBuffer],
+    },
+  );
+  if (task?.aborted) throw new Error('Project open aborted.');
+  if (task?.busy) throw new Error('Another background task is already running.');
+  if (task?.error) throw new Error(task.error);
+  return task.project;
 }
 
 let planRenderers = null;
@@ -692,6 +737,7 @@ const projectController = createProjectController({
   status,
   onProjectChanged: markProjectDirty,
   checkpointBeforeReplace: checkpointWorkspace,
+  readProjectFileTask,
   normalizedProjectName,
   getProjectName: () => projectName,
   setProjectName: (value) => {
