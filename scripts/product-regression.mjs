@@ -94,6 +94,20 @@ async function openFunctionPanel(page, name, clickOptions = {}) {
   }, name);
 }
 
+const PRIMARY_VIEW_PANEL_IDS = {
+  main: 'mainPanel',
+  mask: 'maskPanel',
+  three: 'threePanel',
+};
+
+async function ensurePrimaryViewVisible(page, name) {
+  const panel = page.locator(`#${PRIMARY_VIEW_PANEL_IDS[name]}`);
+  if (!(await panel.isVisible())) {
+    await page.locator(`.workstation-view-tab[data-view="${name}"]`).click();
+    await panel.waitFor({ state: 'visible' });
+  }
+}
+
 async function capture(page, name) {
   // Allow two rendered frames after layout or model changes.
   await page.evaluate(
@@ -131,6 +145,7 @@ async function checkLayout(page) {
     }
     for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas']) {
       const canvas = document.getElementById(id);
+      if (!canvas.checkVisibility()) continue;
       const rect = canvas.getBoundingClientRect();
       if (rect.width < 80 || rect.height < 100) issues.push(`${id}: too small`);
       const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -597,12 +612,20 @@ try {
     await checkLayout(page);
     await checkAB(page, name);
     await checkSectionCollapse(page, name);
+    await ensurePrimaryViewVisible(page, 'three');
     await page.locator('#threePanel .three-opacity-control > summary').click();
     await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
     await page.locator('#threePanel .three-opacity-control > summary').click();
-    for (const tab of ['base', 'mask', 'operation', 'snapshots', 'settings']) {
-      await page.locator(`#${tab}Tab`).click();
-      await capture(page, `${name}-tab-${tab}`);
+    await ensurePrimaryViewVisible(page, 'main');
+    for (const [tool, captureName] of [
+      ['base', 'base'],
+      ['mask', 'mask'],
+      ['process', 'operation'],
+      ['snapshots', 'snapshots'],
+      ['project', 'settings'],
+    ]) {
+      await openFunctionPanel(page, tool);
+      await capture(page, `${name}-tab-${captureName}`);
       await checkLayout(page);
     }
     await checkCompactProcessLayout(page, name);
@@ -1221,6 +1244,7 @@ try {
       await checkLayout(page);
     }
 
+    await ensurePrimaryViewVisible(page, 'main');
     await checkROI(page, name);
     await context.close();
     console.log(`${name}: A/B, units, ROI, tabs, imports and six process views passed`);
