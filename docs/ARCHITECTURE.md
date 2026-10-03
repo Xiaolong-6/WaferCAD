@@ -126,7 +126,9 @@ Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm c
 
 ### `site/workspace-snapshots.js`
 
-Owns named immutable workspace checkpoints independently of the DOM and renderers. It receives capture/restore callbacks from `app.js`, so snapshot storage does not duplicate editor logic. Snapshots have timestamp defaults, can be renamed/restored/deleted, and intentionally contain no thumbnails.
+Owns named immutable workspace checkpoints independently of the DOM and renderers. It receives capture/restore callbacks from `app.js`, so snapshot storage does not duplicate editor logic. Each snapshot optionally records `branchId` and `parentId`; each branch stores its root checkpoint and independent HEAD. A branch may initially point at a checkpoint owned by its parent branch, so shared process history is not duplicated. Existing snapshot-only projects are normalized into one linear `Main` branch on import.
+
+Snapshot Restore does not move the active branch or branch HEAD. Creating/switching a branch is explicit and restores that branch point/HEAD through the same validated workspace restore callback. Project storage keeps branch metadata separate from snapshot state, preserving the rule that snapshot state never recursively contains snapshots or branch graphs. Snapshots have timestamp defaults, can be renamed/restored/deleted, and intentionally contain no thumbnails.
 
 ### `site/gds.js`
 
