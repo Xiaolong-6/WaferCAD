@@ -10,6 +10,7 @@ import {
 
 const DBU_TARGET_MICRON = 0.0001;
 const GDS_COORD_LIMIT = 2_000_000_000;
+const OAS_COORD_LIMIT = Math.floor(Number.MAX_SAFE_INTEGER / 8);
 const GEOM_EPS = 1e-12;
 
 function layerKey(layer, datatype) {
@@ -276,14 +277,18 @@ export function collectMaskExportElements({
   return { elements: out, roiApplied: Boolean(roi), source: 'file' };
 }
 
-function chooseDbuMicron(elements, targetDbuMicron = DBU_TARGET_MICRON) {
+function chooseDbuMicron(
+  elements,
+  targetDbuMicron = DBU_TARGET_MICRON,
+  coordinateLimit = GDS_COORD_LIMIT,
+) {
   let maxAbs = 1;
   for (const element of elements || []) {
     for (const [x, y] of element.points || []) maxAbs = Math.max(maxAbs, Math.abs(x), Math.abs(y));
     maxAbs = Math.max(maxAbs, Math.abs(Number(element.width) || 0));
   }
   let dbu = targetDbuMicron;
-  while (maxAbs / dbu > GDS_COORD_LIMIT) dbu *= 10;
+  while (maxAbs / dbu > coordinateLimit) dbu *= 10;
   return dbu;
 }
 
@@ -524,7 +529,11 @@ function oasisPointList(points, closed) {
 export function serializeOASIS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
   // OASIS PATH stores half-width as an integer. A half-size base DBU keeps
   // 0.1 nm full-width increments exactly representable.
-  const dbuMicron = chooseDbuMicron(elements, DBU_TARGET_MICRON / 2),
+  const dbuMicron = chooseDbuMicron(
+      elements,
+      DBU_TARGET_MICRON / 2,
+      OAS_COORD_LIMIT,
+    ),
     quantized = quantizeElements(elements, dbuMicron),
     parts = [
       new TextEncoder().encode('%SEMI-OASIS\r\n'),
