@@ -133,13 +133,17 @@ Main and Section A–B provide **SVG** export. Mask provides **SVG, GDSII, and O
 
 Use **Project → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm). Internal calculations retain their working precision; project export normalizes persisted physical lengths and coordinates to **0.1 nm** (0.0001 µm) so floating-point tails such as `24999.999999999996` are not stored.
 
-## 9. Snapshots
+## 9. Process history, snapshots, and branches
 
-Open the **Snapshots** tab and use **Save snapshot** to capture the current workspace immediately. Snapshots are grouped into process branches. The **Current branch** selector shows which branch receives the next saved checkpoint and switches the workspace to that branch's latest snapshot (HEAD).
+Every successful **Apply** appends a lightweight process-history node to the active branch. The tree records the operation type and the key physical/process parameters used for that step. Failed, aborted, or no-change operations do not create nodes.
 
-A new snapshot uses the current local timestamp as its default name. Rename it directly in the row if needed. **Restore** replaces the current workspace with that checkpoint without silently changing the active branch. **Branch** creates a named process variant from any snapshot, restores that branch point, and makes the new branch active. **×** deletes only that snapshot; descendants are re-parented so branch history does not keep dangling references.
+Use **Save snapshot** when a process state is worth naming. A snapshot is an immutable **milestone attached to the current process-history node** rather than a separate history line. It still captures the complete restorable workspace state.
 
-Snapshots remain immutable workspace checkpoints and have no thumbnail dependency. Restoring a checkpoint does not rewrite branch HEAD. Branching is therefore the explicit way to continue from an older checkpoint without overwriting later work. A project stores at most 100 snapshots and 32 snapshot branches so every UI-reachable state remains persistable. Existing projects without branch metadata open as one linear **Main** branch.
+The **Current branch** selector switches the workspace to that branch's latest process HEAD. **Restore** loads a milestone without silently moving the branch HEAD. If the restored milestone is behind HEAD, or Undo moves the editor behind HEAD, the Snapshots panel marks the workspace as **Historical state**. Continuing with Apply requires a new branch; WaferCAD prompts first and creates the branch before geometry processing begins. The original branch remains unchanged.
+
+**Branch** creates a named process variant from any milestone. If branching follows Undo and no milestone exists at that exact node, WaferCAD creates the branch-point milestone automatically. Existing projects without process-history metadata continue to open as a linear **Main** branch.
+
+A project stores at most 100 named snapshots, 32 branches, and 1000 process-history nodes. Only branch HEADs and named milestones retain complete workspace states; ordinary Apply nodes remain lightweight so process trees do not multiply large mask/model payloads.
 
 ## 10. Save and open
 
