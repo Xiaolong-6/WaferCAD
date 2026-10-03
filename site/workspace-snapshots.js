@@ -164,13 +164,21 @@ export function createSnapshotManager({
     }));
   }
 
+  function milestoneAtProcessNode(nodeId, branchId = null) {
+    if (!nodeId) return null;
+    return records
+      .filter(
+        (record) =>
+          record.historyNodeId === nodeId && (!branchId || record.branchId === branchId),
+      )
+      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0] || null;
+  }
+
   function stateForProcessNode(node) {
     if (!node) return null;
     if (node.state) return node.state;
 
-    const milestone = records
-      .filter((record) => record.historyNodeId === node.id)
-      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
+    const milestone = milestoneAtProcessNode(node.id, node.branchId);
     if (milestone?.state) return milestone.state;
 
     const branch = branchById(node.branchId);
@@ -431,6 +439,9 @@ export function createSnapshotManager({
     if (!context) throw new Error('The current process state is already at the variant HEAD.');
 
     let snapshotId = context.snapshotId;
+    if (!snapshotId) {
+      snapshotId = milestoneAtProcessNode(context.cursorNodeId, context.branchId)?.id || null;
+    }
     if (!snapshotId) {
       const branchPoint = create(`${context.branchName || 'Process'} branch point`);
       snapshotId = branchPoint.id;
