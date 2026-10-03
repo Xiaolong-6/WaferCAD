@@ -555,8 +555,13 @@ export function createWorkspacePersistenceController({
         });
       }
       if (savedChanged && !dirty) markDirty();
-      if (dirty) await persistNow();
-      else syncSaveStatus();
+      const persisted = dirty ? await persistNow() : true;
+      if (!persisted || !hasWriteAccess()) {
+        status('Workspace takeover was interrupted by another tab before this state could be saved.', 'error');
+        syncSaveStatus();
+        return;
+      }
+      syncSaveStatus();
       status(
         savedChanged
           ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery.'
