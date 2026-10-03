@@ -58,6 +58,33 @@ async function open(viewport, touch = false) {
   return { page, context };
 }
 
+async function chooseConfirmation(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  await overlay.waitFor({ state: 'visible', timeout: 5000 });
+  await overlay.locator(`[data-dialog-action="${action}"]`).click();
+}
+
+async function confirmIfVisible(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  if (await overlay.isVisible()) {
+    await overlay.locator(`[data-dialog-action="${action}"]`).click();
+  }
+}
+
+async function waitForDetailedRough(page, timeout = 15000) {
+  await page.waitForFunction(
+    () => {
+      const canvas = document.querySelector('#threeHost canvas');
+      return (
+        canvas?.dataset?.roughMeshMode === 'detailed' &&
+        canvas?.dataset?.roughMeshWorker === 'true'
+      );
+    },
+    null,
+    { timeout },
+  );
+}
+
 async function capture(page, name) {
   // Allow two rendered frames after layout or model changes.
   await page.evaluate(
@@ -333,6 +360,7 @@ async function loadProject(page, project, name) {
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(project)),
   });
+  await chooseConfirmation(page);
   await page.waitForFunction(
     (filename) => document.querySelector('#statusText').textContent === `Opened ${filename}.`,
     `${name}.wafercad`,
@@ -519,6 +547,18 @@ try {
     await page.locator('#snapshotsTab').click();
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
+    const snapshotName = page.locator('.snapshot-name').first();
+    await snapshotName.fill('Regression checkpoint');
+    await page.waitForFunction(
+      () => document.querySelector('.snapshot-commit-state')?.textContent === 'Saved',
+      null,
+      { timeout: 5000 },
+    );
+    await page.locator('#saveSnapshotBtn').click();
+    assert.ok(
+      (await page.locator('.snapshot-name').allInputValues()).includes('Regression checkpoint'),
+      'snapshot rename was lost after rerender',
+    );
     await page.locator('#settingsTab').click();
     await page.locator('#xyUnitSelect').selectOption('nm');
     await page.locator('#snapshotsTab').click();
@@ -553,6 +593,7 @@ try {
       await page.locator('#baseTab').click();
       await page.locator('#baseWidth').fill(String(baseWidth));
       await page.locator('#applyBaseBtn').click();
+      await confirmIfVisible(page);
       await page.locator('#maskTab').click();
       await capture(page, `${name}-${sample}`);
       await checkLayout(page);
@@ -670,6 +711,7 @@ try {
       // 3D integration guardrails: clean opaque rough surfaces and sorted
       // translucent layers should remain layer-colored without screen-door noise.
       await page.locator('#threeMaxBtn').click();
+      await waitForDetailedRough(page);
       const roughCanvas = page.locator('#threeHost canvas'),
         fitLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
         fitTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count')),
@@ -706,9 +748,50 @@ try {
       );
       await capture(page, 'wide-rough-3d-opaque-max');
 
+      // Interaction LOD: entering a drag switches to the cached coarse mesh.
+      // Camera movement itself must not trigger tessellation; releasing the
+      // pointer schedules one worker-built detailed refinement.
+      const roughBox = await roughCanvas.boundingBox();
+      assert.ok(roughBox);
+      await page.mouse.move(roughBox.x + roughBox.width * 0.52, roughBox.y + roughBox.height * 0.54);
+      await page.mouse.down();
+      await page.mouse.move(roughBox.x + roughBox.width * 0.58, roughBox.y + roughBox.height * 0.49, {
+        steps: 3,
+      });
+      await page.waitForFunction(
+        () => document.querySelector('#threeHost canvas')?.dataset?.roughMeshMode === 'interactive',
+        null,
+        { timeout: 5000 },
+      );
+      const dragStartRebuilds = Number(
+        await roughCanvas.getAttribute('data-rough-rebuild-count'),
+      );
+      await page.mouse.move(roughBox.x + roughBox.width * 0.68, roughBox.y + roughBox.height * 0.43, {
+        steps: 12,
+      });
+      await page.waitForTimeout(80);
+      const dragMoveRebuilds = Number(
+        await roughCanvas.getAttribute('data-rough-rebuild-count'),
+      );
+      assert.equal(
+        dragMoveRebuilds,
+        dragStartRebuilds,
+        `rough tessellation rebuilt during pointer drag: ${dragStartRebuilds} -> ${dragMoveRebuilds}`,
+      );
+      assert.equal(await roughCanvas.getAttribute('data-rough-mesh-worker'), 'true');
+      await page.mouse.up();
+      await waitForDetailedRough(page);
+      const dragEndRebuilds = Number(
+        await roughCanvas.getAttribute('data-rough-rebuild-count'),
+      );
+      assert.ok(
+        dragEndRebuilds > dragMoveRebuilds,
+        `rough detail did not refine after pointer release: ${dragMoveRebuilds} -> ${dragEndRebuilds}`,
+      );
+
       await roughCanvas.hover();
       for (let step = 0; step < 8; step++) await page.mouse.wheel(0, -600);
-      await page.waitForTimeout(320);
+      await waitForDetailedRough(page);
       const zoomLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
         zoomStitches = Number(await roughCanvas.getAttribute('data-rough-lod-stitches')),
         zoomTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count')),
@@ -815,7 +898,7 @@ try {
       });
       await loadProject(page, roughStressProject, 'wide-rough-stress');
       await page.locator('#threeMaxBtn').click();
-      await page.waitForTimeout(180);
+      await waitForDetailedRough(page);
       const stressCanvas = page.locator('#threeHost canvas'),
         stressBudget = Number(
           await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
@@ -842,7 +925,7 @@ try {
       );
       await stressCanvas.hover();
       for (let step = 0; step < 5; step++) await page.mouse.wheel(0, -500);
-      await page.waitForTimeout(280);
+      await waitForDetailedRough(page);
       const stressZoomPlanBuilds = Number(
           await stressCanvas.getAttribute('data-surface-plan-build-count'),
         ),
