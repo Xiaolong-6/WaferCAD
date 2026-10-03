@@ -194,6 +194,40 @@ test('project storage rejects XY geometry that collapses at the 0.1 nm persisten
   assert.throws(() => serializeProject(source), /cannot be stored safely/i);
 });
 
+test('project storage rejects semantic geometry that collapses at file precision', () => {
+  const tiny = PROJECT_LENGTH_QUANTUM_UM * 0.4;
+
+  const roiProject = validProject();
+  roiProject.roi = { type: 'rect', a: [0, 0], b: [tiny, 1] };
+  assert.equal(validateProjectFile(roiProject), roiProject);
+  assert.throws(() => serializeProject(roiProject), /cannot be stored safely.*roi/i);
+
+  const sectionProject = validProject();
+  sectionProject.section = { a: [0, 0], b: [tiny, 0] };
+  assert.equal(validateProjectFile(sectionProject), sectionProject);
+  assert.throws(() => serializeProject(sectionProject), /cannot be stored safely.*section/i);
+
+  const lineworkProject = validProject();
+  lineworkProject.layout.linework = [
+    {
+      kind: 'path',
+      sourceCell: 'TOP',
+      layer: 1,
+      datatype: 0,
+      width: 0,
+      points: [
+        [0, 0],
+        [tiny, 0],
+      ],
+    },
+  ];
+  assert.equal(validateProjectFile(lineworkProject), lineworkProject);
+  assert.throws(
+    () => serializeProject(lineworkProject),
+    /cannot be stored safely.*must span a non-zero distance/i,
+  );
+});
+
 test('project storage rejects non-zero layout path widths that quantize to zero', () => {
   const source = validProject(),
     tinyWidth = PROJECT_LENGTH_QUANTUM_UM * 0.4,
