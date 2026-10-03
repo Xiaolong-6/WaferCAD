@@ -1030,6 +1030,7 @@ const workspaceActions = createWorkspaceActionsController({
   renderThree,
   zoomPlanView,
   resetPlanView,
+  updateSectionEditor: () => sectionEditor?.update(),
   getHistory: () => history,
   getFuture: () => future,
   stateSnapshot,
