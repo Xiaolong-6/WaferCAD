@@ -363,6 +363,7 @@ function mergeRegions(model, regions) {
 
 function trimStack(stack, amount, face, appearance = null) {
   let left = amount,
+    cutIntoSegment = false,
     out = stack.map((seg) => ({ ...seg }));
   while (left > 1e-9 && out.length) {
     const idx = face === 'front' ? out.length - 1 : 0,
@@ -375,9 +376,18 @@ function trimStack(stack, amount, face, appearance = null) {
       if (face === 'front') seg.z1 -= left;
       else seg.z0 += left;
       left = 0;
+      cutIntoSegment = true;
     }
   }
-  return withSurfaceAppearance(normalizeStack(out), face, appearance);
+
+  const normalized = normalizeStack(out);
+  if (appearance) return withSurfaceAppearance(normalized, face, appearance);
+
+  // A smooth etch that cuts into a material creates a new smooth cut face.
+  // If it removes one or more whole layers and lands exactly on an existing
+  // interface, that interface has merely been re-exposed: keep its stored
+  // morphology (for example rough Si -> conformal Al2O3 -> Al strip).
+  return cutIntoSegment ? withSurfaceAppearance(normalized, face, null) : normalized;
 }
 
 function addLayerToSurface(stack, layerId, amount, face) {
