@@ -49,6 +49,19 @@ export function createWorkspacePersistenceController({
     timer = null;
   }
 
+  async function saveCurrentProject(project) {
+    const saved = await saveWorkspaceState(
+      project,
+      { appCommit },
+      { canCommit: () => workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? true },
+    );
+    if (!saved) {
+      setSaveStatus('Autosave paused · another tab owns local storage');
+      return false;
+    }
+    return true;
+  }
+
   function persistNow() {
     if (!ready || !workspaceSession?.canWrite()) return Promise.resolve(false);
     clearTimer();
@@ -56,8 +69,9 @@ export function createWorkspacePersistenceController({
     setSaveStatus('Autosaving…');
     write = write
       .catch(() => {})
-      .then(() => saveWorkspaceState(project, { appCommit }))
-      .then(() => {
+      .then(() => saveCurrentProject(project))
+      .then((saved) => {
+        if (!saved) return false;
         setSaveStatus(`Autosaved · ${savedTimeLabel()}`);
         return true;
       });
@@ -189,13 +203,14 @@ export function createWorkspacePersistenceController({
       setSaveStatus('Autosaving…');
       write = write
         .catch(() => {})
-        .then(() => saveWorkspaceState(project, { appCommit }))
-        .then(() =>
-          createWorkspaceRecoveryCheckpoint(project, {
+        .then(() => saveCurrentProject(project))
+        .then((saved) => {
+          if (!saved) throw new Error('Another tab took over local autosave.');
+          return createWorkspaceRecoveryCheckpoint(project, {
             appCommit,
             reason: updateCommit ? `pre-update-${updateCommit.slice(0, 7)}` : 'pre-reload',
-          }),
-        );
+          });
+        });
       await write;
       setSaveStatus(`Autosaved · ${savedTimeLabel()}`);
       workspaceSession.stop();
@@ -236,13 +251,14 @@ export function createWorkspacePersistenceController({
       setSaveStatus('Autosaving…');
       write = write
         .catch(() => {})
-        .then(() => saveWorkspaceState(project, { appCommit }))
-        .then(() =>
-          createWorkspaceRecoveryCheckpoint(project, {
+        .then(() => saveCurrentProject(project))
+        .then((saved) => {
+          if (!saved) throw new Error('Another tab took over local autosave.');
+          return createWorkspaceRecoveryCheckpoint(project, {
             appCommit,
             reason: `manual-save · ${projectName}`,
-          }),
-        );
+          });
+        });
       await write;
       setSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`);
       await refreshRecoveryOptions();
