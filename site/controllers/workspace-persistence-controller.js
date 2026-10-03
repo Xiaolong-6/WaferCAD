@@ -210,6 +210,18 @@ export function createWorkspacePersistenceController({
     }
   }
 
+  async function checkpointCurrent(reason = 'pre-destructive-action') {
+    if (!ready || !workspaceSession?.canWrite()) return false;
+    clearTimer();
+    const project = buildProjectSnapshot(true);
+    await createWorkspaceRecoveryCheckpoint(project, {
+      appCommit,
+      reason,
+    });
+    await refreshRecoveryOptions();
+    return true;
+  }
+
   async function saveCheckpoint() {
     if (!workspaceSession?.canWrite()) {
       status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
@@ -330,6 +342,7 @@ export function createWorkspacePersistenceController({
     persistNow,
     schedule,
     refreshRecoveryOptions,
+    checkpointCurrent,
     syncSessionState,
     setUpdateCommit,
     initializePersistedWorkspace,
