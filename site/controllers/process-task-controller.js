@@ -24,11 +24,10 @@ export function createProcessTaskController({
     $('processTaskElapsed').textContent = formatElapsed(performance.now() - active.startedAt);
   }
 
-  function clearActive() {
-    if (!active) return;
-    clearInterval(active.timer);
-    active.worker?.terminate();
-    active = null;
+  function finish(task) {
+    clearInterval(task.timer);
+    task.worker.terminate();
+    if (active?.id === task.id) active = null;
     setApplyDisabled(false);
     syncDialog();
   }
@@ -36,21 +35,26 @@ export function createProcessTaskController({
   function abort() {
     if (!active) return;
     const task = active;
-    clearInterval(task.timer);
-    task.worker.terminate();
-    active = null;
-    setApplyDisabled(false);
-    syncDialog();
-    status('Operation aborted. The structure was not changed.', 'warning');
+    finish(task);
+    status(task.abortMessage, 'warning');
     task.resolve({ aborted: true });
   }
 
-  function run(model, params, label = 'Applying process…', areaRequest = null) {
+  function runWorker(
+    workerPath,
+    payload,
+    {
+      label = 'Working…',
+      abortMessage = 'Task aborted. The workspace was not changed.',
+      failurePrefix = 'Task failed',
+      transfer = [],
+    } = {},
+  ) {
     if (active) return Promise.resolve({ busy: true });
 
     return new Promise((resolve) => {
-      const id = `process-${++sequence}`,
-        workerUrl = new URL('../process-worker.js', import.meta.url),
+      const id = `task-${++sequence}`,
+        workerUrl = new URL(workerPath, import.meta.url),
         currentModuleUrl = new URL(import.meta.url);
       workerUrl.search = currentModuleUrl.search;
       const worker = new Worker(workerUrl),
@@ -59,6 +63,7 @@ export function createProcessTaskController({
           worker,
           resolve,
           label,
+          abortMessage,
           stage: 'Preparing worker…',
           startedAt: performance.now(),
           timer: null,
@@ -74,46 +79,47 @@ export function createProcessTaskController({
         if (!active || active.id !== id || message.id !== id) return;
 
         if (message.type === 'progress') {
-          active.stage = message.stage || 'Computing geometry…';
+          active.stage = message.stage || 'Working…';
           syncDialog();
           return;
         }
 
         if (message.type === 'done') {
-          clearInterval(active.timer);
-          active.worker.terminate();
-          active = null;
-          setApplyDisabled(false);
-          syncDialog();
-          resolve({ model: message.model, result: message.result, aborted: false });
+          finish(task);
+          resolve({ ...message, aborted: false });
           return;
         }
 
         if (message.type === 'error') {
-          clearInterval(active.timer);
-          active.worker.terminate();
-          active = null;
-          setApplyDisabled(false);
-          syncDialog();
-          status(`Operation failed: ${message.message || 'unknown error'}`, 'error');
-          resolve({ error: message.message || 'unknown error', aborted: false });
+          const error = message.message || 'unknown error';
+          finish(task);
+          status(`${failurePrefix}: ${error}`, 'error');
+          resolve({ error, aborted: false });
         }
       };
 
       worker.onerror = (event) => {
         if (!active || active.id !== id) return;
-        const message = event.message || 'Process worker failed.';
-        clearInterval(active.timer);
-        active.worker.terminate();
-        active = null;
-        setApplyDisabled(false);
-        syncDialog();
-        status(`Operation failed: ${message}`, 'error');
+        const message = event.message || 'Worker failed.';
+        finish(task);
+        status(`${failurePrefix}: ${message}`, 'error');
         resolve({ error: message, aborted: false });
       };
 
-      worker.postMessage({ id, model, params, areaRequest });
+      worker.postMessage({ id, ...payload }, transfer);
     });
+  }
+
+  function run(model, params, label = 'Applying process…', areaRequest = null) {
+    return runWorker(
+      '../process-worker.js',
+      { model, params, areaRequest },
+      {
+        label,
+        abortMessage: 'Operation aborted. The structure was not changed.',
+        failurePrefix: 'Operation failed',
+      },
+    );
   }
 
   function bind() {
@@ -124,6 +130,7 @@ export function createProcessTaskController({
   return {
     bind,
     run,
+    runWorker,
     abort,
     isBusy: () => Boolean(active),
   };
