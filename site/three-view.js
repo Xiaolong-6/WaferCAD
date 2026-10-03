@@ -1,8 +1,12 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
 import { implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
-import { geometryFromRoughCap, roughCapBaseTriangles } from './rough-mesh-geometry.js';
-import { intersection, isEmpty } from './vector-geometry.js';
+import {
+  geometryFromRoughCap,
+  roughBoundaryEdgesFromTriangles,
+  roughCapBaseTriangles,
+  subdivideRoughBaseTriangles,
+} from './rough-mesh-geometry.js';
 import {
   adaptiveRoughMeshLod,
   allocateRoughTriangleBudgets,
@@ -107,10 +111,15 @@ export function createThreeView({
     clip,
     polys,
     z = 0,
-    { visibleFraction = null, screenPriority = 1, maxDepth = 10 } = {},
+    {
+      visibleFraction = null,
+      screenPriority = 1,
+      maxDepth = 10,
+      patchBounds: patchBoundsOverride = null,
+    } = {},
   ) {
     const viewport = currentViewport(),
-      patchBounds = xyBounds(polys),
+      patchBounds = patchBoundsOverride || xyBounds(polys),
       viewBounds = visibleBounds(model, clip),
       modelArea = Math.max(1e-12, Number(model.width) * Number(model.height)),
       visibleArea = Math.max(1e-12, boundsArea(viewBounds)),
@@ -172,20 +181,6 @@ export function createThreeView({
     };
   }
 
-  function rectGeometry(minX, minY, maxX, maxY) {
-    return [
-      [
-        [
-          [minX, minY],
-          [maxX, minY],
-          [maxX, maxY],
-          [minX, maxY],
-          [minX, minY],
-        ],
-      ],
-    ];
-  }
-
   function roughAxisDivisions(span, featureSize) {
     const features = Math.max(0, Number(span) || 0) / Math.max(1e-9, Number(featureSize) || 1);
     if (features >= 16) return 4;
@@ -194,57 +189,101 @@ export function createThreeView({
     return 1;
   }
 
+  function triangleSetBounds(triangles) {
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const triangle of triangles || []) {
+      for (const point of triangle || []) {
+        minX = Math.min(minX, Number(point?.[0]));
+        minY = Math.min(minY, Number(point?.[1]));
+        maxX = Math.max(maxX, Number(point?.[0]));
+        maxY = Math.max(maxY, Number(point?.[1]));
+      }
+    }
+    return [minX, minY, maxX, maxY].every(Number.isFinite)
+      ? { minX, minY, maxX, maxY }
+      : null;
+  }
+
+  function triangleSetMaxEdge(triangles) {
+    let maxEdge = 0;
+    for (const triangle of triangles || []) {
+      for (const [a, b] of [
+        [triangle[0], triangle[1]],
+        [triangle[1], triangle[2]],
+        [triangle[2], triangle[0]],
+      ]) {
+        maxEdge = Math.max(maxEdge, Math.hypot(a[0] - b[0], a[1] - b[1]));
+      }
+    }
+    return maxEdge;
+  }
+
+  function spatialBaseDepth(base, bounds, columns, rows) {
+    const cellSpan = Math.max(
+        (bounds.maxX - bounds.minX) / Math.max(1, columns),
+        (bounds.maxY - bounds.minY) / Math.max(1, rows),
+        1e-9,
+      ),
+      desired = base.maxEdge > cellSpan ? Math.ceil(Math.log2(base.maxEdge / cellSpan)) : 0;
+    let depth = Math.min(2, Math.max(0, desired));
+    while (depth > 0 && base.triangles.length * 4 ** depth > 8192) depth--;
+    return depth;
+  }
+
   function prepareRoughSpatialZones(task) {
-    if (task.spatialZones?.length) return task.spatialZones;
+    if (task.spatialZones !== undefined) return task.spatialZones;
     const cap = task.cap,
       bounds = xyBounds(cap.polys),
       featureSize = cap.appearance?.featureSize;
-    if (!bounds) return [];
+    if (!bounds) {
+      task.spatialZones = [];
+      return task.spatialZones;
+    }
+
+    const base = roughCapBaseTriangles(THREE, cap.z, cap.normal, cap.polys);
+    roughBaseTriangulationCount++;
+    if (!base.triangles.length) {
+      task.spatialZones = [];
+      roughSpatialZoneBuildCount++;
+      return task.spatialZones;
+    }
 
     const columns = roughAxisDivisions(bounds.maxX - bounds.minX, featureSize),
       rows = roughAxisDivisions(bounds.maxY - bounds.minY, featureSize),
-      width = (bounds.maxX - bounds.minX) / columns,
-      height = (bounds.maxY - bounds.minY) / rows,
-      zones = [];
+      depth = spatialBaseDepth(base, bounds, columns, rows),
+      spatialTriangles = subdivideRoughBaseTriangles(base.triangles, depth),
+      spanX = Math.max(1e-12, bounds.maxX - bounds.minX),
+      spanY = Math.max(1e-12, bounds.maxY - bounds.minY),
+      buckets = new Map();
 
-    for (let row = 0; row < rows; row++) {
-      const minY = bounds.minY + row * height,
-        maxY = row === rows - 1 ? bounds.maxY : minY + height;
-      for (let column = 0; column < columns; column++) {
-        const minX = bounds.minX + column * width,
-          maxX = column === columns - 1 ? bounds.maxX : minX + width,
-          polys =
-            columns === 1 && rows === 1
-              ? cap.polys
-              : intersection(cap.polys, rectGeometry(minX, minY, maxX, maxY));
-        if (isEmpty(polys)) continue;
-        const base = roughCapBaseTriangles(THREE, cap.z, cap.normal, polys);
-        if (!base.triangles.length) continue;
-        zones.push({
-          polys,
-          bounds: xyBounds(polys) || { minX, minY, maxX, maxY },
-          baseTriangles: base.triangles,
-          maxEdge: base.maxEdge,
-        });
-      }
+    for (const triangle of spatialTriangles) {
+      const cx = (triangle[0][0] + triangle[1][0] + triangle[2][0]) / 3,
+        cy = (triangle[0][1] + triangle[1][1] + triangle[2][1]) / 3,
+        column = Math.max(
+          0,
+          Math.min(columns - 1, Math.floor(((cx - bounds.minX) / spanX) * columns)),
+        ),
+        row = Math.max(
+          0,
+          Math.min(rows - 1, Math.floor(((cy - bounds.minY) / spanY) * rows)),
+        ),
+        key = `${row}|${column}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(triangle);
     }
 
-    if (!zones.length) {
-      const base = roughCapBaseTriangles(THREE, cap.z, cap.normal, cap.polys);
-      if (base.triangles.length) {
-        zones.push({
-          polys: cap.polys,
-          bounds,
-          baseTriangles: base.triangles,
-          maxEdge: base.maxEdge,
-        });
-      }
-    }
-
-    task.spatialZones = zones;
+    task.spatialZones = [...buckets.values()].map((baseTriangles) => ({
+      polys: null,
+      bounds: triangleSetBounds(baseTriangles),
+      baseTriangles,
+      maxEdge: triangleSetMaxEdge(baseTriangles),
+      edges: roughBoundaryEdgesFromTriangles(baseTriangles),
+    }));
     roughSpatialZoneBuildCount++;
-    roughBaseTriangulationCount += zones.length;
-    return zones;
+    return task.spatialZones;
   }
 
   function boundsOverlap(a, b) {
@@ -684,10 +723,11 @@ export function createThreeView({
       tasks = roughTasks.map((task) => {
         const zones = prepareRoughSpatialZones(task).map((zone) => {
           const priority = roughZonePriority(zone.bounds, focus),
-            lodContext = lodContextFor(context.model, context.clip, zone.polys, task.cap.z, {
+            lodContext = lodContextFor(context.model, context.clip, null, task.cap.z, {
               visibleFraction: priority >= 0.9 ? 1 : priority >= 0.2 ? 0.2 : 0.04,
               screenPriority: priority,
               maxDepth: priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
+              patchBounds: zone.bounds,
             }),
             preview = adaptiveRoughMeshLod({
               triangleCount: zone.baseTriangles.length,
