@@ -372,3 +372,45 @@ test('Undo cursor can branch without a pre-existing milestone', () => {
   assert.equal(manager.activeBranch().id, branch.id);
   assert.equal(manager.list().some((record) => record.historyNodeId === first.id), true);
 });
+
+
+test('automatic branches use concise Variant names and historical state can return to HEAD', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'oxide' };
+  manager.recordOperation({ kind: 'add', label: 'Deposit oxide' });
+  const milestone = manager.create('A very long descriptive process milestone');
+
+  live = { model: { processRevision: 2 }, value: 'main-head' };
+  manager.recordOperation({ kind: 'etch', label: 'Etch' });
+
+  assert.equal(manager.restore(milestone.id), true);
+  assert.equal(live.value, 'oxide');
+  assert.ok(manager.continuationContext());
+
+  assert.equal(manager.restoreActiveBranchHead(), true);
+  assert.equal(live.value, 'main-head');
+  assert.equal(manager.continuationContext(), null);
+
+  manager.restore(milestone.id);
+  const firstVariant = manager.createBranchFromCursor();
+  assert.equal(firstVariant.name, 'Variant 1');
+
+  manager.switchBranch('main');
+  manager.restore(milestone.id);
+  const secondVariant = manager.createBranchFromCursor();
+  assert.equal(secondVariant.name, 'Variant 2');
+});
