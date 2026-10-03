@@ -67,6 +67,16 @@ async function openFunctionPanel(page, name, clickOptions = {}) {
   }, name);
 }
 
+async function closeFunctionPanel(page) {
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  if (await panel.evaluate((element) => element.classList.contains('open'))) {
+    await page.locator('.workstation-tool-close').click();
+    await page.waitForFunction(
+      () => !document.getElementById('toolPanel')?.classList.contains('open'),
+    );
+  }
+}
+
 async function canvasInkFraction(page, selector) {
   return page.locator(selector).evaluate((canvas) => {
     const ctx = canvas.getContext('2d'),
@@ -915,7 +925,7 @@ assert.deepEqual(
   { layerId: coatId, z0: 4, z1: 8, role: 'conformal-sidewall' },
 );
 
-await openFunctionPanel(page, 'process');
+await closeFunctionPanel(page);
 
 // Slice geometry is editable by default; Slice starts one-shot creation.
 const abPanel = page.locator('#sectionCoordsPanel');
