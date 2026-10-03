@@ -1139,8 +1139,7 @@ bindUi();
 loadBuildCommit();
 window.addEventListener('focus', checkForBuildUpdate);
 window.addEventListener('pagehide', () => {
-  void persistWorkspaceNow();
-  workspaceSession.stop();
+  void persistWorkspaceNow().finally(() => workspaceSession.stop());
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkForBuildUpdate();
