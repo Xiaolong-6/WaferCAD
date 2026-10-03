@@ -12,8 +12,29 @@ export function getAdjacentToolName(current, direction, order = WORKSTATION_TOOL
   return order[Math.max(0, Math.min(order.length - 1, index + delta))];
 }
 
-export function preferredWorkstationViewMode(width) {
-  return Number(width) <= 820 ? 'main' : 'overview';
+const WORKSTATION_VIEW_MODE_STORAGE_KEY = 'wafercad.workstation-view-mode.v1';
+const SINGLE_VIEW_MODES = new Set(['main', 'mask', 'three']);
+const DESKTOP_VIEW_MODES = new Set(['main', 'mask', 'three', 'overview', 'split']);
+
+export function preferredWorkstationViewMode(width, rememberedMode = '') {
+  const compact = Number(width) <= 820;
+  if (compact) return SINGLE_VIEW_MODES.has(rememberedMode) ? rememberedMode : 'main';
+  return DESKTOP_VIEW_MODES.has(rememberedMode) ? rememberedMode : 'main';
+}
+
+function storedWorkstationViewMode(winLike) {
+  try {
+    return String(winLike?.sessionStorage?.getItem(WORKSTATION_VIEW_MODE_STORAGE_KEY) || '');
+  } catch {
+    return '';
+  }
+}
+
+function rememberWorkstationViewMode(winLike, mode) {
+  if (!DESKTOP_VIEW_MODES.has(mode)) return;
+  try {
+    winLike?.sessionStorage?.setItem(WORKSTATION_VIEW_MODE_STORAGE_KEY, mode);
+  } catch {}
 }
 
 export function isCompactWorkstationViewport(winLike) {
@@ -62,13 +83,14 @@ function makeButton(root, className, text, attrs = {}) {
 }
 
 export function createWorkstationUiController({ root = document, win = window } = {}) {
+  const rememberedViewMode = storedWorkstationViewMode(win);
   const state = {
     initialized: false,
     bound: false,
     activeTool: 'process',
-    currentSingleView: 'main',
-    desktopViewMode: 'overview',
-    viewMode: 'overview',
+    currentSingleView: SINGLE_VIEW_MODES.has(rememberedViewMode) ? rememberedViewMode : 'main',
+    desktopViewMode: preferredWorkstationViewMode(win.innerWidth, rememberedViewMode),
+    viewMode: 'single',
     wasMobile: isCompactWorkstationViewport(win),
     programmaticToolScroll: false,
     toolScrollRelease: 0,
@@ -180,7 +202,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     return compact;
   }
 
-  function applyViewMode(mode, { refresh = true } = {}) {
+  function applyViewMode(mode, { refresh = true, remember = true } = {}) {
     const mobile = syncCompactUi();
     let nextMode = mode;
 
@@ -195,6 +217,13 @@ export function createWorkstationUiController({ root = document, win = window } 
     } else {
       state.currentSingleView = nextMode;
       state.viewMode = 'single';
+    }
+
+    if (remember) {
+      rememberWorkstationViewMode(
+        win,
+        state.viewMode === 'single' ? state.currentSingleView : state.viewMode,
+      );
     }
 
     const visible =
@@ -458,9 +487,13 @@ export function createWorkstationUiController({ root = document, win = window } 
     setupToolFlyout();
     setupSectionDock();
 
-    const initialMode = syncCompactUi() ? 'main' : preferredWorkstationViewMode(win.innerWidth);
-    if (initialMode === 'overview') applyViewMode('overview', { refresh: false });
-    else applyViewMode(initialMode, { refresh: false });
+    const compact = syncCompactUi();
+    const initialMode = compact
+      ? SINGLE_VIEW_MODES.has(rememberedViewMode)
+        ? rememberedViewMode
+        : 'main'
+      : preferredWorkstationViewMode(win.innerWidth, rememberedViewMode);
+    applyViewMode(initialMode, { refresh: false, remember: false });
 
     state.initialized = true;
     return true;
@@ -554,9 +587,9 @@ export function createWorkstationUiController({ root = document, win = window } 
         refs.sectionPanel.classList.remove('workstation-legend-open');
         refs.sectionLayersButton?.setAttribute('aria-expanded', 'false');
         if (mobile) {
-          applyViewMode(state.currentSingleView, { refresh: false });
+          applyViewMode(state.currentSingleView, { refresh: false, remember: false });
         } else {
-          applyViewMode(state.desktopViewMode, { refresh: false });
+          applyViewMode(state.desktopViewMode, { refresh: false, remember: false });
         }
         scheduleViewportRefresh();
       }
