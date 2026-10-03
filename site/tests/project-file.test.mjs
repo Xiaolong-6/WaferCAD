@@ -224,7 +224,7 @@ test('project storage rejects semantic geometry that collapses at file precision
   assert.equal(validateProjectFile(lineworkProject), lineworkProject);
   assert.throws(
     () => serializeProject(lineworkProject),
-    /cannot be stored safely.*must span a non-zero distance/i,
+    /cannot be stored safely.*linework\[0\]\.points collapse to zero length/i,
   );
 });
 
