@@ -7,7 +7,9 @@ await loadGeometryKernel();
 
 const {
   geometryFromRoughCap,
+  geometryFromRoughMeshData,
   roughBoundaryEdgesFromTriangles,
+  roughMeshDataFromPreparedCap,
   subdivideRoughBaseTriangles,
 } = await import('../rough-mesh-geometry.js');
 
@@ -99,4 +101,80 @@ test('triangle-partitioned LOD zones treat shared edges as seams rather than phy
   assert.equal(geometry.userData.roughLodZoneCount, 2);
   assert.equal(geometry.userData.roughLodStitchCount, 1);
   assert.equal(geometry.userData.roughBorderPositions.length, 24);
+});
+
+
+test('worker-ready rough mesh data is transferable and reconstructs geometry metadata', () => {
+  class BufferGeometry {
+    constructor() {
+      this.userData = {};
+      this.attributes = {};
+    }
+
+    setAttribute(name, attribute) {
+      this.attributes[name] = attribute;
+    }
+  }
+
+  class Float32BufferAttribute {
+    constructor(array, itemSize) {
+      this.array = array;
+      this.itemSize = itemSize;
+    }
+  }
+
+  const THREE = { BufferGeometry, Float32BufferAttribute },
+    appearance = {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 0.5,
+      meanHeight: 0.1,
+      etchDepth: 0.1,
+      featureCv: 0,
+      heightCv: 0,
+      seed: 4,
+      geometryMode: 'ideal',
+    },
+    zones = squareTriangles.map((triangle) => ({
+      baseTriangles: [triangle],
+      maxEdge: Math.SQRT2,
+      edges: roughBoundaryEdgesFromTriangles([triangle]),
+      triangleBudget: 4,
+      lodContext: {
+        distance: 20,
+        viewportWidth: 640,
+        viewportHeight: 480,
+        pixelRatio: 1,
+        fovDegrees: 34,
+        visibleFraction: 0.5,
+        roiFraction: 1,
+        screenPriority: 0.5,
+        maxDepth: 1,
+      },
+    })),
+    data = roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      lodZones: zones,
+      closeToIdeal: true,
+    });
+
+  assert.ok(data.positions instanceof Float32Array);
+  assert.ok(data.normals instanceof Float32Array);
+  assert.ok(data.roughBorderPositions instanceof Float32Array);
+  assert.ok(data.positions.length > 0);
+  assert.equal(data.positions.length, data.normals.length);
+  assert.equal(data.metadata.roughLodZoneCount, 2);
+  assert.equal(data.metadata.roughLodStitchCount, 1);
+
+  const geometry = geometryFromRoughMeshData(THREE, data);
+  assert.equal(geometry.attributes.position.array, data.positions);
+  assert.equal(geometry.attributes.normal.array, data.normals);
+  assert.equal(geometry.userData.roughLodZoneCount, data.metadata.roughLodZoneCount);
+  assert.equal(
+    geometry.userData.roughSubdivisionTriangleCount,
+    data.metadata.roughSubdivisionTriangleCount,
+  );
 });

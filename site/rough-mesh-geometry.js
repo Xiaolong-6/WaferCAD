@@ -6,7 +6,6 @@ import {
   pointAtLineT,
 } from './line-intervals.js';
 import { adaptiveRoughMeshLod, roughProfileOffsetAtPoint } from './surface-rendering.js';
-import { isEmpty } from './vector-geometry.js';
 
 function triangleNormal(a, b, c) {
   const ux = b[0] - a[0],
@@ -120,19 +119,16 @@ function roughPointNormal(point, normal, profileNormal, appearance) {
   return [(-slopeSign * dx) / length, (-slopeSign * dy) / length, normal / length];
 }
 
-export function geometryFromRoughCap(
-  THREE,
-  {
-    z,
-    normal,
-    polys,
-    appearance,
-    closeToIdeal = true,
-    lodContext = {},
-    lodZones = null,
-    profileNormal = normal,
-  },
-) {
+export function roughMeshDataFromPreparedCap({
+  z,
+  normal,
+  polys,
+  appearance,
+  closeToIdeal = true,
+  lodContext = {},
+  lodZones = null,
+  profileNormal = normal,
+}) {
   const zones = Array.isArray(lodZones) && lodZones.length ? lodZones : [{ polys, lodContext }],
     positions = [],
     normals = [],
@@ -200,13 +196,9 @@ export function geometryFromRoughCap(
     };
 
   for (const zone of zones) {
-    if (!zone.baseTriangles?.length && isEmpty(zone.polys)) continue;
-    const base =
-        Array.isArray(zone.baseTriangles) && Number.isFinite(zone.maxEdge)
-          ? { triangles: zone.baseTriangles, maxEdge: zone.maxEdge }
-          : roughCapBaseTriangles(THREE, z, normal, zone.polys),
-      baseTriangles = base.triangles,
-      maxEdge = base.maxEdge,
+    if (!Array.isArray(zone.baseTriangles) || !zone.baseTriangles.length) continue;
+    const baseTriangles = zone.baseTriangles,
+      maxEdge = Math.max(0, Number(zone.maxEdge) || 0),
       lod = adaptiveRoughMeshLod({
         triangleCount: baseTriangles.length,
         maxEdge,
@@ -332,17 +324,89 @@ export function geometryFromRoughCap(
     }
   }
 
+  return {
+    positions: new Float32Array(positions),
+    normals: new Float32Array(normals),
+    roughBorderPositions: new Float32Array(roughBorderPositions),
+    metadata: {
+      roughSubdivisionDepth: maxDepth,
+      roughLod: zoneResults.map((zone) => zone.lod),
+      roughLodZoneCount: zoneResults.length,
+      roughLodStitchCount: seamSpans.length,
+      roughSubdivisionTriangleCount: zoneResults.reduce(
+        (sum, zone) => sum + zone.lod.estimatedTriangles,
+        0,
+      ),
+    },
+  };
+}
+
+export function geometryFromRoughMeshData(THREE, data) {
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.userData.roughSubdivisionDepth = maxDepth;
-  geometry.userData.roughLod = zoneResults.map((zone) => zone.lod);
-  geometry.userData.roughBorderPositions = roughBorderPositions;
-  geometry.userData.roughLodZoneCount = zoneResults.length;
-  geometry.userData.roughLodStitchCount = seamSpans.length;
-  geometry.userData.roughSubdivisionTriangleCount = zoneResults.reduce(
-    (sum, zone) => sum + zone.lod.estimatedTriangles,
-    0,
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(data?.positions || new Float32Array(), 3),
   );
+  geometry.setAttribute(
+    'normal',
+    new THREE.Float32BufferAttribute(data?.normals || new Float32Array(), 3),
+  );
+  const metadata = data?.metadata || {};
+  geometry.userData.roughSubdivisionDepth = Number(metadata.roughSubdivisionDepth) || 0;
+  geometry.userData.roughLod = Array.isArray(metadata.roughLod) ? metadata.roughLod : [];
+  geometry.userData.roughBorderPositions = data?.roughBorderPositions || new Float32Array();
+  geometry.userData.roughLodZoneCount = Number(metadata.roughLodZoneCount) || 0;
+  geometry.userData.roughLodStitchCount = Number(metadata.roughLodStitchCount) || 0;
+  geometry.userData.roughSubdivisionTriangleCount =
+    Number(metadata.roughSubdivisionTriangleCount) || 0;
   return geometry;
+}
+
+export function geometryFromRoughCap(
+  THREE,
+  {
+    z,
+    normal,
+    polys,
+    appearance,
+    closeToIdeal = true,
+    lodContext = {},
+    lodZones = null,
+    profileNormal = normal,
+  },
+) {
+  const sourceZones =
+      Array.isArray(lodZones) && lodZones.length ? lodZones : [{ polys, lodContext }],
+    preparedZones = sourceZones.map((zone) => {
+      if (
+        Array.isArray(zone.baseTriangles) &&
+        zone.baseTriangles.length &&
+        Number.isFinite(zone.maxEdge)
+      ) {
+        return {
+          ...zone,
+          edges: Array.isArray(zone.edges)
+            ? zone.edges
+            : roughBoundaryEdgesFromTriangles(zone.baseTriangles),
+        };
+      }
+      const base = roughCapBaseTriangles(THREE, z, normal, zone.polys);
+      return {
+        ...zone,
+        baseTriangles: base.triangles,
+        maxEdge: base.maxEdge,
+        edges: roughBoundaryEdgesFromTriangles(base.triangles),
+      };
+    }),
+    data = roughMeshDataFromPreparedCap({
+      z,
+      normal,
+      polys,
+      appearance,
+      closeToIdeal,
+      lodContext,
+      lodZones: preparedZones,
+      profileNormal,
+    });
+  return geometryFromRoughMeshData(THREE, data);
 }
