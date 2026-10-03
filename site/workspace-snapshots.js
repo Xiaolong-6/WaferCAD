@@ -284,6 +284,7 @@ export function createSnapshotManager({
     };
     records.unshift(record);
     cursorSnapshotId = record.id;
+    cursorBaselineState = cloneState(record.state);
 
     if (atHead) {
       branch.headSnapshotId = record.id;
@@ -897,7 +898,12 @@ export function createSnapshotManager({
       typeof branchState?.cursorSnapshotId === 'string' && recordById(branchState.cursorSnapshotId)
         ? branchState.cursorSnapshotId
         : active?.headSnapshotId || null;
-    cursorBaselineState = cloneState(capture());
+
+    const cursorSnapshot = cursorSnapshotId ? recordById(cursorSnapshotId) : null;
+    const cursorNode = cursorNodeId ? nodeById(cursorNodeId) : null;
+    const canonicalCursorState =
+      cursorSnapshot?.state || stateForProcessNode(cursorNode) || capture();
+    cursorBaselineState = cloneState(canonicalCursorState);
     return records.length;
   }
 
