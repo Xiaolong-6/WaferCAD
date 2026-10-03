@@ -350,6 +350,17 @@ function assertQuantizedProjectGeometryPreserved(before, after) {
     );
   }
 
+  const originalNodes = before?.snapshotBranches?.nodes || [],
+    storedNodes = after?.snapshotBranches?.nodes || [];
+  for (let index = 0; index < originalNodes.length; index++) {
+    if (!originalNodes[index]?.state) continue;
+    assertLayoutGeometryPreserved(
+      originalNodes[index]?.state?.layout,
+      storedNodes[index]?.state?.layout,
+      `snapshotBranches.nodes[${index}].state.layout`,
+    );
+  }
+
   const originalBranches = before?.snapshotBranches?.branches || [],
     storedBranches = after?.snapshotBranches?.branches || [];
   for (let index = 0; index < originalBranches.length; index++) {
