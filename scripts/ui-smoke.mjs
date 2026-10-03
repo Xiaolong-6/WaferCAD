@@ -189,6 +189,60 @@ assert.equal(Number(await projectHandoffPage.locator('#baseThickness').inputValu
 assert.deepEqual(projectHandoffErrors, []);
 await projectHandoffPage.close();
 
+// A Welcome explicit start must checkpoint an existing autosaved workspace before
+// replacing it, and that checkpoint must be actually restorable.
+const welcomeCheckpointContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const welcomeCheckpointPage = await welcomeCheckpointContext.newPage();
+const welcomeCheckpointErrors = [];
+welcomeCheckpointPage.on('pageerror', (error) => welcomeCheckpointErrors.push(error.message));
+welcomeCheckpointPage.on('dialog', (dialog) => void dialog.accept());
+await welcomeCheckpointPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await welcomeCheckpointPage.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+  null,
+  { timeout: 30000 },
+);
+await welcomeCheckpointPage.locator('#projectNameInput').fill('Before welcome replacement');
+await welcomeCheckpointPage.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await welcomeCheckpointPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await welcomeCheckpointPage.locator('#welcomeExampleBtn').click();
+await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await welcomeCheckpointPage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened Visualization example.',
+  null,
+  { timeout: 30000 },
+);
+await welcomeCheckpointPage.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-welcome-start/.test(option.textContent || ''),
+    ),
+  null,
+  { timeout: 5000 },
+);
+await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption({
+  label: /pre-welcome-start/,
+});
+await welcomeCheckpointPage.locator('#workspaceRestoreBtn').click();
+await welcomeCheckpointPage.waitForFunction(
+  () => /Restored local recovery checkpoint/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+assert.equal(
+  await welcomeCheckpointPage.locator('#projectNameInput').inputValue(),
+  'Before welcome replacement',
+);
+assert.deepEqual(welcomeCheckpointErrors, []);
+await welcomeCheckpointContext.close();
+
 // Open Example must work even while another tab owns autosave, and the resulting
 // workspace must remain interactive enough to replace the bundled mask.
 const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
