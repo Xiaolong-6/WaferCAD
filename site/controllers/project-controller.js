@@ -16,6 +16,7 @@ export function createProjectController({
   status,
   onProjectChanged = () => {},
   checkpointBeforeReplace = async () => false,
+  readProjectFileTask = readProjectFile,
   normalizedProjectName,
   getProjectName,
   setProjectName,
@@ -114,7 +115,7 @@ export function createProjectController({
 
   async function openProjectFile(file) {
     try {
-      const project = await readProjectFile(file);
+      const project = await readProjectFileTask(file);
       await checkpointBeforeReplace('pre-open-project');
       if (!project.name) {
         project.name =
