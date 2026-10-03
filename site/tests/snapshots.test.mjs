@@ -662,11 +662,50 @@ test('history browsing distinguishes an exact restored state from edited histori
   live.view.zoom = 2;
   assert.equal(manager.hasHistoricalWorkingEdits(), true);
 
+  manager.create('Edited historical milestone');
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+
   assert.equal(manager.restoreActiveBranchHead(), true);
   assert.equal(manager.hasHistoricalWorkingEdits(), false);
 
   assert.equal(manager.restoreProcessNode(first.id), true);
   assert.equal(manager.hasHistoricalWorkingEdits(), false);
+});
+
+test('reloaded historical working edits remain distinguishable from the canonical process state', () => {
+  let live = { model: { processRevision: 0 }, value: 'base', view: { zoom: 1 } };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1', view: { zoom: 1 } };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  live = { model: { processRevision: 2 }, value: 'step-2', view: { zoom: 1 } };
+  manager.recordOperation({ kind: 'add', label: 'Step 2' });
+
+  manager.restoreProcessNode(first.id);
+  live.view.zoom = 2;
+  const persistedWorkingState = structuredClone(live);
+  const branchState = manager.exportBranchState();
+
+  let reloadedLive = persistedWorkingState;
+  const reloaded = createSnapshotManager({
+    capture: () => reloadedLive,
+    restore: (value) => {
+      reloadedLive = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+  reloaded.importRecords([], branchState);
+
+  assert.ok(reloaded.continuationContext());
+  assert.equal(reloaded.hasHistoricalWorkingEdits(), true);
 });
 
 test('branching from a restored process step reuses an existing milestone at that node', () => {
