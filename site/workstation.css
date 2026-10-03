@@ -259,8 +259,10 @@ html.workstation-ui-v2 .workspace {
   min-height: 0;
   padding: 0;
   display: grid;
+  grid-template-areas: none;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) minmax(155px, 28%);
+  grid-auto-flow: row;
   gap: 1px;
   overflow: hidden;
   background: #11161a;
@@ -274,6 +276,7 @@ html.workstation-ui-v2 .workstation-view-stage {
   min-width: 0;
   min-height: 0;
   display: grid;
+  grid-template-areas: none;
   gap: 1px;
   overflow: hidden;
   background: #aeb7c0;
