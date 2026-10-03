@@ -434,6 +434,9 @@ export function createWorkstationUiController({ root = document, win = window } 
     refs.overviewButton?.addEventListener('click', () => applyViewMode('overview'));
     refs.splitButton?.addEventListener('click', () => applyViewMode('split'));
     refs.sectionCollapseButton?.addEventListener('click', toggleSectionDock);
+    root.querySelectorAll('.view-max-btn').forEach((button) => {
+      button.addEventListener('click', closeTools);
+    });
 
     root.getElementById('projectNameInput')?.addEventListener('input', () => updateProjectMeta());
     root.addEventListener('wafercad:project-name-sync', (event) => {
