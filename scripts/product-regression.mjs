@@ -70,6 +70,30 @@ async function capture(page, name) {
   cases.push(name);
 }
 
+async function threeFramebufferHash(page) {
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
+  return page.locator('#threeHost canvas').evaluate((canvas) => {
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) throw new Error('3D framebuffer is unavailable.');
+    gl.finish();
+    const width = canvas.width,
+      height = canvas.height,
+      pixels = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    let hash = 2166136261;
+    for (let index = 0; index < pixels.length; index++) {
+      hash ^= pixels[index];
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+  });
+}
+
 async function checkLayout(page) {
   const problems = await page.evaluate(() => {
     const issues = [];
@@ -941,6 +965,17 @@ try {
       });
       await loadProject(page, implantProject, 'wide-implant-buried');
       await page.locator('#threeMaxBtn').click();
+      const implantVisibility = page.locator('#layerLegend .implant-row-wrap .legend-visibility');
+      assert.equal(await implantVisibility.count(), 1);
+      const opaqueVisibleHash = await threeFramebufferHash(page);
+      await implantVisibility.uncheck();
+      const opaqueHiddenHash = await threeFramebufferHash(page);
+      assert.equal(
+        opaqueVisibleHash,
+        opaqueHiddenHash,
+        'Buried implant visibility changed an opaque 3D framebuffer',
+      );
+      await implantVisibility.check();
       await capture(page, 'wide-implant-buried-opaque-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
@@ -948,6 +983,15 @@ try {
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
       await page.locator('#threeMaxBtn').click();
+      const transparentVisibleHash = await threeFramebufferHash(page);
+      await implantVisibility.uncheck();
+      const transparentHiddenHash = await threeFramebufferHash(page);
+      assert.notEqual(
+        transparentVisibleHash,
+        transparentHiddenHash,
+        'Transparent 3D did not reveal the buried implant',
+      );
+      await implantVisibility.check();
       await capture(page, 'wide-implant-buried-transparent-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
