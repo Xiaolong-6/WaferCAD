@@ -180,13 +180,17 @@ function deepEqual(left, right) {
   return true;
 }
 
-function cloneCore(value, { model = true, layout = true } = {}) {
+function cloneCore(
+  value,
+  { model = true, layout = true, snapshotBranches = true } = {},
+) {
   const clone = {};
   for (const [key, item] of Object.entries(value || {})) {
     if (key === 'snapshots' || key === 'sharedLayouts' || key === 'sharedModels' || key === 'storage')
       continue;
     if (!model && key === 'model') continue;
     if (!layout && key === 'layout') continue;
+    if (!snapshotBranches && key === 'snapshotBranches') continue;
     clone[key] = structuredClone(item);
   }
   return clone;
@@ -267,7 +271,7 @@ function packWorkspaceState(state, modelAssets, layoutAssets, { quantize = false
 export function prepareProjectForWorkspaceStorage(project) {
   validateProjectFile(project);
 
-  const stored = cloneCore(project);
+  const stored = cloneCore(project, { snapshotBranches: false });
   const layoutAssets = createAssetResolver(project.layout, () => {});
   const modelAssets = createAssetResolver(project.model, () => {}, modelAssetKey);
 
@@ -410,7 +414,7 @@ function assertQuantizedProjectGeometryPreserved(before, after) {
 export function prepareProjectForStorage(project) {
   validateProjectFile(project);
 
-  const stored = cloneCore(project);
+  const stored = cloneCore(project, { snapshotBranches: false });
   quantizeProjectLengths(stored);
 
   const layoutAssets = createAssetResolver(project.layout, quantizeLayout);
