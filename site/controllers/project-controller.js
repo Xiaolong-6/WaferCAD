@@ -41,7 +41,6 @@ export function createProjectController({
       empty.className = 'empty-list';
       empty.textContent = 'No snapshots';
       host.append(empty);
-      onProjectChanged();
       return;
     }
 
@@ -55,6 +54,7 @@ export function createProjectController({
       name.title = record.createdAt;
       name.onchange = () => {
         if (!snapshotManager.rename(record.id, name.value)) name.value = record.name;
+        else onProjectChanged();
         renderSnapshots();
       };
 
@@ -89,6 +89,7 @@ export function createProjectController({
       deleteButton.title = 'Delete snapshot';
       deleteButton.onclick = () => {
         snapshotManager.remove(record.id);
+        onProjectChanged();
         renderSnapshots();
         status(`Deleted snapshot "${record.name}".`);
       };
@@ -96,7 +97,6 @@ export function createProjectController({
       row.append(name, restoreButton, deleteButton);
       host.append(row);
     }
-    onProjectChanged();
   }
 
   async function openLayoutFile(file) {
