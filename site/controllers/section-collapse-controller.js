@@ -21,6 +21,12 @@ export function createSectionCollapseController({
     drag = null;
 
   function bounds() {
+    const canvas = $('sectionCanvas'),
+      displayLo = Number(canvas?.dataset?.zMinUm),
+      displayHi = Number(canvas?.dataset?.zMaxUm);
+    if (Number.isFinite(displayLo) && Number.isFinite(displayHi) && displayHi > displayLo) {
+      return [displayLo, displayHi];
+    }
     return modelBoundsZ(getModel());
   }
 
@@ -245,8 +251,11 @@ export function createSectionCollapseController({
 
     $('sectionCollapseEditor').addEventListener('pointerdown', (event) => event.stopPropagation());
     $('sectionCollapseEditor').addEventListener('click', (event) => event.stopPropagation());
-    $('sectionCanvas').addEventListener('pointerdown', () => {
-      if (editorOpen && !drag) close();
+    root.addEventListener('pointerdown', (event) => {
+      if (!editorOpen || drag) return;
+      if ($('sectionCollapseEditor').contains(event.target)) return;
+      if ($('sectionCollapseAxisBtn').contains(event.target)) return;
+      close();
     });
 
     globalThis.addEventListener('pointermove', moveDrag);
