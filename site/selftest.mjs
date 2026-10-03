@@ -829,6 +829,26 @@ assert.equal(implantModel.implants[0].tilt, 12);
 assert.equal(implantModel.implants[0].visible, true);
 assert.ok(implantModel.implants[0].patches.length > 0);
 assert.equal(implantModel.regions.length, 1);
+assert.equal(implantSolids(implantModel)[0]?.surfaceExposed, true);
+
+const buriedImplantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(buriedImplantModel, {
+  type: 'implant',
+  name: 'Buried marker',
+  thickness: 1,
+  face: 'front',
+  area: implantArea,
+  tilt: 0,
+});
+applyOperation(buriedImplantModel, {
+  type: 'add',
+  name: 'Cap',
+  thickness: 0.8,
+  face: 'front',
+  area: buriedImplantModel.boundary,
+  growth: 'direct',
+});
+assert.equal(implantSolids(buriedImplantModel)[0]?.surfaceExposed, false);
 
 const roughImplantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(roughImplantModel, {
@@ -878,6 +898,7 @@ applyOperation(etchedImplantModel, {
 const afterEtchSolid = implantSolids(etchedImplantModel)[0];
 assert.ok(afterEtchSolid);
 assert.ok(Math.abs(afterEtchSolid.z1 - afterEtchSolid.z0 - 1.5) < 1e-9);
+assert.equal(afterEtchSolid.surfaceExposed, true);
 
 const roughCutModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(roughCutModel, {
