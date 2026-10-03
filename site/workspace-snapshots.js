@@ -603,13 +603,21 @@ export function createSnapshotManager({
   }
 
   function exportBranchState() {
+    const exportedNodes = historyNodes.map((node) => {
+      const state = stateForProcessNode(node);
+      return {
+        ...node,
+        ...(state ? { state } : { state: null }),
+      };
+    });
+    const fullyRestorable = exportedNodes.every((node) => Boolean(node.state));
     return clone({
-      version: 3,
+      version: fullyRestorable ? 3 : 2,
       activeBranchId,
       cursorNodeId,
       cursorSnapshotId,
       branches,
-      nodes: historyNodes,
+      nodes: exportedNodes,
     });
   }
 
