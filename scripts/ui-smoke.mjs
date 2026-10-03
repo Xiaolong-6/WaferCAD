@@ -1212,10 +1212,15 @@ await page.locator('#layerName').fill('Draw probe');
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
-await page
-  .locator('#layerLegend .legend-name')
-  .filter({ hasText: 'Draw probe' })
-  .waitFor({ timeout: 30000 });
+try {
+  await page
+    .locator('#layerLegend .legend-name')
+    .filter({ hasText: 'Draw probe' })
+    .waitFor({ timeout: 30000 });
+} catch (error) {
+  console.error('Draw probe diagnostics:', JSON.stringify(await processDiagnostics(page)));
+  throw error;
+}
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
 assert.match(await page.locator('#statusText').textContent(), /Deposited Draw probe|Saved locally/);
 
