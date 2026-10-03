@@ -441,6 +441,36 @@ test('legacy process nodes remain readable and use a milestone state when one ex
   assert.equal(live.value, 'legacy-step');
 });
 
+test('branching from a restored process step reuses an existing milestone at that node', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const milestone = manager.create('Named step 1');
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'add', label: 'Step 2' });
+
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  const before = manager.list().length;
+  const variant = manager.createBranchFromCursor('Variant from process row');
+
+  assert.equal(manager.list().length, before);
+  assert.equal(variant.rootSnapshotId, milestone.id);
+});
+
 test('restoring an older milestone requires a branch before another Apply', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
