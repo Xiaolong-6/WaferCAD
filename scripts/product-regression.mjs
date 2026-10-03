@@ -133,6 +133,18 @@ async function capture(page, name) {
       ),
   );
   await page.screenshot({ path: join(output, `${name}.png`), fullPage: true });
+  // fullPage capture can transiently change Chromium's page metrics. WaferCAD
+  // listens to ResizeObserver/window resize, so let the real viewport settle
+  // and force one render pass before the next interaction/assertion.
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+          requestAnimationFrame(() => requestAnimationFrame(resolveFrame));
+        }),
+      ),
+  );
   cases.push(name);
 }
 
