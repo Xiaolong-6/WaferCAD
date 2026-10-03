@@ -8,7 +8,7 @@ export function createFeedbackController({ root = document } = {}) {
     if (/warning|no material|removed|select .* first|not exposed|did not change|skipped/i.test(text))
       return 'warning';
     if (/reading|preparing|loading|importing|resolving/i.test(text)) return 'progress';
-    if (/saved|opened|restored|exported|deposited|extended|etched|deleted|applied|imported/i.test(text))
+    if (/saved|opened|restored|exported|download requested|deposited|extended|etched|deleted|applied|imported/i.test(text))
       return 'success';
     return 'passive';
   }
