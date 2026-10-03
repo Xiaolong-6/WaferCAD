@@ -32,6 +32,10 @@ async function processDiagnostics(page) {
         applyDisabled: Boolean(document.getElementById('applyOperationBtn')?.disabled),
         roughRebuilds: document.querySelector('#threeHost canvas')?.dataset?.roughRebuildCount || '',
         roughZones: document.querySelector('#threeHost canvas')?.dataset?.roughLodZones || '',
+        operationType: document.getElementById('operationType')?.value || '',
+        growthMode: document.getElementById('growthMode')?.value || '',
+        workerGrowth: globalThis.__lastProcessWorkerPayload?.params?.growth || '',
+        workerType: globalThis.__lastProcessWorkerPayload?.params?.type || '',
       }))
       .catch((error) => ({ evaluateError: error.message })),
     new Promise((resolve) => setTimeout(() => resolve({ pageUnresponsive: true }), 2000)),
@@ -1210,6 +1214,20 @@ await page.locator('#growthMode').selectOption('direct');
 await page.locator('#operationArea').selectOption('mask');
 await page.locator('#operationThickness').fill('0.2');
 await page.locator('#layerName').fill('Draw probe');
+assert.equal(await page.locator('#operationType').inputValue(), 'add');
+assert.equal(await page.locator('#growthMode').inputValue(), 'direct');
+await page.evaluate(() => {
+  if (Worker.prototype.__wafercadProcessProbeInstalled) return;
+  const originalPostMessage = Worker.prototype.postMessage;
+  Object.defineProperty(Worker.prototype, '__wafercadProcessProbeInstalled', {
+    value: true,
+    configurable: true,
+  });
+  Worker.prototype.postMessage = function patchedPostMessage(message, ...rest) {
+    if (message?.params) globalThis.__lastProcessWorkerPayload = structuredClone(message);
+    return originalPostMessage.call(this, message, ...rest);
+  };
+});
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
