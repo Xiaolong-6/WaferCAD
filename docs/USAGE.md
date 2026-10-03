@@ -135,11 +135,11 @@ Use **Project → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z d
 
 ## 9. Snapshots
 
-Open the **Snapshots** tab and use **Save snapshot** to capture the current workspace immediately.
+Open the **Snapshots** tab and use **Save snapshot** to capture the current workspace immediately. Snapshots are grouped into process branches. The **Current branch** selector shows which branch receives the next saved checkpoint and switches the workspace to that branch's latest snapshot (HEAD).
 
-A new snapshot uses the current local timestamp as its default name. Rename it directly in the row if needed. **Restore** replaces the current workspace with the checkpoint; **×** deletes only that snapshot.
+A new snapshot uses the current local timestamp as its default name. Rename it directly in the row if needed. **Restore** replaces the current workspace with that checkpoint without silently changing the active branch. **Branch** creates a named process variant from any snapshot, restores that branch point, and makes the new branch active. **×** deletes only that snapshot; descendants are re-parented so branch history does not keep dangling references.
 
-Snapshots are immutable workspace checkpoints and have no thumbnail dependency. Restoring and then continuing to edit does not mutate the saved checkpoint. A project stores at most 100 snapshots so every UI-reachable state remains persistable.
+Snapshots remain immutable workspace checkpoints and have no thumbnail dependency. Restoring a checkpoint does not rewrite branch HEAD. Branching is therefore the explicit way to continue from an older checkpoint without overwriting later work. A project stores at most 100 snapshots and 32 snapshot branches so every UI-reachable state remains persistable. Existing projects without branch metadata open as one linear **Main** branch.
 
 ## 10. Save and open
 
