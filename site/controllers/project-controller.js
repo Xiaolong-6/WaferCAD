@@ -1,6 +1,5 @@
 import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
-import { clearWorkspaceState } from '../workspace-persistence.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { createVisualizationExample } from '../welcome-example.js';
 
@@ -189,7 +188,6 @@ export function createProjectController({
       if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
       try {
         await checkpointBeforeReplace('pre-new-project');
-        await clearWorkspaceState();
         resetProjectState();
         resetRoughDraftControls();
         clearRoiDrawingMode();
