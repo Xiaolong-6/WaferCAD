@@ -131,10 +131,13 @@ export function createSectionCollapseController({
 
     const popover = $('sectionCollapseEditor');
     if (editorOpen && globalThis.innerWidth > 600) {
-      const body = $('sectionBody'),
-        maxLeft = Math.max(6, body.clientWidth - 246);
+      const overlay = $('sectionCollapseOverlay'),
+        popoverWidth = Math.max(1, popover.offsetWidth),
+        popoverHeight = Math.max(1, popover.offsetHeight),
+        maxLeft = Math.max(6, overlay.clientWidth - popoverWidth - 6),
+        maxTop = Math.max(6, overlay.clientHeight - popoverHeight - 6);
       popover.style.left = `${Math.min(maxLeft, Math.max(36, left + 18))}px`;
-      popover.style.top = `${Math.max(6, Math.min(body.clientHeight - 190, breakY - 84))}px`;
+      popover.style.top = `${Math.max(6, Math.min(maxTop, breakY - popoverHeight / 2))}px`;
     }
 
     syncRuler();
