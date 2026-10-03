@@ -3532,7 +3532,7 @@ summary:focus-visible {
 /* Snapshot process history */
 .snapshot-branch-bar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   padding: 5px 6px;
@@ -3558,25 +3558,6 @@ summary:focus-visible {
   color: #33414e;
   font: inherit;
   font-size: 9.5px;
-}
-
-.snapshot-branch-state {
-  min-width: 34px;
-  padding: 2px 4px;
-  border: 1px solid #c7d5df;
-  border-radius: 3px;
-  background: #f4f9fc;
-  color: #52728a;
-  font-size: 7.5px;
-  font-weight: 700;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.snapshot-branch-state[data-historical='true'] {
-  border-color: #ddcfaa;
-  background: #fffaf0;
-  color: #816b35;
 }
 
 .snapshot-continuation-banner {
