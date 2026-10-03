@@ -798,13 +798,14 @@ const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
       x = Math.round((left + t * iw) * dpr),
       z0 = Number(canvas.dataset.sectionZ0Um),
       z1 = Number(canvas.dataset.sectionZ1Um),
+      modelLo = Number(canvas.dataset.zMinUm),
       top = Number(canvas.dataset.sectionCollapseTopUm),
       bottom = Number(canvas.dataset.sectionCollapseBottomUm),
       frameTop = Number(canvas.dataset.sectionFrameTop),
       frameBottom = Number(canvas.dataset.sectionFrameBottom),
       upperY = Number(canvas.dataset.sectionCollapseUpperY),
       lowerY = Number(canvas.dataset.sectionCollapseLowerY),
-      z = (z0 + bottom) / 2;
+      z = (modelLo + bottom) / 2;
     const mapZ = (value) => {
       if (value >= top) {
         return frameTop + ((z1 - value) / Math.max(z1 - top, 1e-12)) * (upperY - frameTop);
