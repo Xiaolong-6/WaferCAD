@@ -393,7 +393,9 @@ async function checkAB(page, name) {
   await dragHandle(page, 'a', 8, 0);
   const back = await coords(page);
   close(back[0], nmRoundedMicron(moved[0] - 8 / scale));
+  await openFunctionPanel(page, 'process');
   await page.locator('#faceToggleBtn').click();
+  await closeFunctionPanel(page);
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
   assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
   await page.locator('#mainZoomIn').click();
