@@ -3534,6 +3534,12 @@ summary:focus-visible {
     height: 150px;
   }
 
+  .section-collapse-ruler-handle {
+    left: -13px;
+    width: 26px;
+    height: 26px;
+  }
+
   .section-collapse-fine-row {
     grid-template-columns: 48px 34px minmax(0, 1fr) 34px;
   }
