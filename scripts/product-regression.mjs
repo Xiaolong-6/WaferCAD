@@ -652,6 +652,12 @@ try {
         ),
         fitRoughRebuilds = Number(
           await roughCanvas.getAttribute('data-rough-rebuild-count'),
+        ),
+        fitSpatialZoneBuilds = Number(
+          await roughCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        fitBaseTriangulations = Number(
+          await roughCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
       assert.ok(fitLodZones >= 1, `rough LOD diagnostics missing at Fit: ${fitLodZones}`);
       assert.ok(fitTriangles > 0, `rough triangle diagnostics missing at Fit: ${fitTriangles}`);
@@ -661,6 +667,11 @@ try {
       );
       assert.ok(fitPlanBuilds >= 1, `surface plan build diagnostics missing: ${fitPlanBuilds}`);
       assert.ok(fitRoughRebuilds >= 1, `rough rebuild diagnostics missing: ${fitRoughRebuilds}`);
+      assert.ok(fitSpatialZoneBuilds >= 1, `rough spatial zones were not prepared: ${fitSpatialZoneBuilds}`);
+      assert.ok(
+        fitBaseTriangulations >= fitSpatialZoneBuilds,
+        `rough base triangulation cache is incomplete: ${fitBaseTriangulations} < ${fitSpatialZoneBuilds}`,
+      );
       await capture(page, 'wide-rough-3d-opaque-max');
 
       await roughCanvas.hover();
@@ -680,10 +691,17 @@ try {
         ),
         zoomRoughRebuilds = Number(
           await roughCanvas.getAttribute('data-rough-rebuild-count'),
+        ),
+        zoomSpatialZoneBuilds = Number(
+          await roughCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        zoomBaseTriangulations = Number(
+          await roughCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
-      assert.ok(
-        zoomLodZones > fitLodZones,
-        `adaptive LOD did not split the zoomed rough surface: ${fitLodZones} -> ${zoomLodZones}`,
+      assert.equal(
+        zoomLodZones,
+        fitLodZones,
+        `camera LOD changed the cached spatial zone count: ${fitLodZones} -> ${zoomLodZones}`,
       );
       assert.ok(zoomStitches > 0, `adaptive LOD zoom has no seam stitches: ${zoomStitches}`);
       assert.ok(zoomTriangles > 0, `adaptive LOD zoom lost rough triangles: ${zoomTriangles}`);
@@ -699,6 +717,16 @@ try {
       assert.ok(
         zoomRoughRebuilds > fitRoughRebuilds,
         `camera zoom did not rebuild rough geometry: ${fitRoughRebuilds} -> ${zoomRoughRebuilds}`,
+      );
+      assert.equal(
+        zoomSpatialZoneBuilds,
+        fitSpatialZoneBuilds,
+        `camera zoom rebuilt rough spatial zones: ${fitSpatialZoneBuilds} -> ${zoomSpatialZoneBuilds}`,
+      );
+      assert.equal(
+        zoomBaseTriangulations,
+        fitBaseTriangulations,
+        `camera zoom retriangulated rough base geometry: ${fitBaseTriangulations} -> ${zoomBaseTriangulations}`,
       );
       await capture(page, 'wide-rough-3d-adaptive-zoom-max');
       await page.locator('#fit3dBtn').click();
@@ -768,6 +796,12 @@ try {
         ),
         stressRebuilds = Number(
           await stressCanvas.getAttribute('data-rough-rebuild-count'),
+        ),
+        stressSpatialZoneBuilds = Number(
+          await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        stressBaseTriangulations = Number(
+          await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
       assert.ok(stressBudget > 0, `rough stress budget missing: ${stressBudget}`);
       assert.ok(
@@ -788,6 +822,12 @@ try {
         ),
         stressZoomSubdivision = Number(
           await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+        ),
+        stressZoomSpatialZoneBuilds = Number(
+          await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        stressZoomBaseTriangulations = Number(
+          await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
       assert.equal(
         stressZoomPlanBuilds,
@@ -797,6 +837,16 @@ try {
       assert.ok(
         stressZoomRebuilds > stressRebuilds,
         `multi-cap camera zoom did not rebuild rough meshes: ${stressRebuilds} -> ${stressZoomRebuilds}`,
+      );
+      assert.equal(
+        stressZoomSpatialZoneBuilds,
+        stressSpatialZoneBuilds,
+        `multi-cap camera zoom rebuilt spatial zones: ${stressSpatialZoneBuilds} -> ${stressZoomSpatialZoneBuilds}`,
+      );
+      assert.equal(
+        stressZoomBaseTriangulations,
+        stressBaseTriangulations,
+        `multi-cap camera zoom retriangulated base geometry: ${stressBaseTriangulations} -> ${stressZoomBaseTriangulations}`,
       );
       assert.ok(
         stressZoomSubdivision <= stressZoomBudget,
