@@ -37,6 +37,7 @@ import { createProcessPanelController } from './controllers/process-panel-contro
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
+import { createSectionCollapseController } from './controllers/section-collapse-controller.js';
 import { createBaseControlsController } from './controllers/base-controls-controller.js';
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
@@ -95,6 +96,7 @@ let projectName = 'Untitled',
   section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionScaleMode = 'auto',
   sectionShowBorders = false,
+  sectionCollapse = null,
   sectionEditEnabled = false,
   sectionEditor = null,
   history = [],
@@ -197,6 +199,19 @@ const {
   completeCreate: completeSectionCreate,
   cancelCreate: cancelSectionCreate,
 } = sectionControls;
+
+const sectionCollapseController = createSectionCollapseController({
+  root: document,
+  getModel: () => model,
+  getSectionCollapse: () => sectionCollapse,
+  setSectionCollapse: (value) => {
+    sectionCollapse = value;
+  },
+  renderSection,
+  onChanged: markProjectDirty,
+  formatXY,
+  xyUnitLabel: () => xyUnit().label,
+});
 
 function xyUnit() {
   return unitMeta(xyDisplayUnit);
@@ -345,6 +360,7 @@ const exportController = createExportController({
     maskRoi,
     roi,
     sectionScaleMode,
+    sectionCollapse,
   }),
   viewport,
   worldToCanvas,
@@ -695,6 +711,7 @@ const projectStateController = createProjectStateController({
     section,
     sectionScaleMode,
     sectionShowBorders,
+    sectionCollapse,
     planViews,
     xyDisplayUnit,
     activeStructurePalette,
@@ -724,6 +741,7 @@ const projectStateController = createProjectStateController({
     if (next.projectName) projectName = next.projectName;
     if (next.sectionScaleMode) sectionScaleMode = next.sectionScaleMode;
     sectionShowBorders = Boolean(next.sectionShowBorders);
+    sectionCollapse = next.sectionCollapse || null;
     if (next.xyDisplayUnit) xyDisplayUnit = next.xyDisplayUnit;
     if (next.activeStructurePalette) activeStructurePalette = next.activeStructurePalette;
     customStructurePalette = next.customStructurePalette;
@@ -1098,6 +1116,7 @@ function bindUi() {
   roiController.bind();
   processTaskController.bind();
   sectionControls.bind();
+  sectionCollapseController.bind();
   baseControls.bind();
   maskImportController.bind();
   maskRoiController.bind();
@@ -1125,11 +1144,13 @@ planRenderers = createPlanRenderers({
     section,
     sectionScaleMode,
     sectionShowBorders,
+    sectionCollapse,
     maskOpacity,
   }),
   getDrawMaskController: () => drawMaskController,
   getMaskRoiController: () => maskRoiController,
   getSectionEditor: () => sectionEditor,
+  getSectionCollapseController: () => sectionCollapseController,
   setupCanvas,
   viewport,
   worldToCanvas,
