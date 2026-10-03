@@ -337,10 +337,11 @@ export function createPlanRenderers({
 
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      pad = Math.max(1e-9, (hi - lo) * 0.08),
+      collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
+      edgeSpan = Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005),
+      pad = Math.max(1e-9, Math.min((hi - lo) * 0.08, edgeSpan * 0.12)),
       z0 = lo - pad,
       z1 = hi + pad,
-      collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
       sectionSpan = Math.max(
         Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]),
         1e-12,
