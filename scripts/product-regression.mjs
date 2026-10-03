@@ -729,9 +729,9 @@ try {
     const { page, context } = await open(viewport, touch);
     await capture(page, `${name}-empty`);
     await checkLayout(page);
-    await checkWorkstationShellLayout(page, name);
     await checkAB(page, name);
     await checkSectionCollapse(page, name);
+    await checkWorkstationShellLayout(page, name);
     await ensurePrimaryViewVisible(page, 'three');
     await page.locator('#threePanel .three-opacity-control > summary').click();
     await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
