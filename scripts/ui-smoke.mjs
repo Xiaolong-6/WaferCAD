@@ -1250,6 +1250,7 @@ assert.equal(await safetyFirst.locator('#workspaceConflictDialog').isVisible(), 
 assert.deepEqual(safetyErrors, []);
 await safetyContext.close();
 
+assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);
 assert.deepEqual(errors, []);
 await browser.close();
 
