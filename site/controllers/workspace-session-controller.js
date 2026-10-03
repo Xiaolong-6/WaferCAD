@@ -126,6 +126,21 @@ export function createWorkspaceSessionController({
     return tryAcquire({ force: true });
   }
 
+  function hasWriteLease() {
+    if (!writable) return false;
+    try {
+      if (typeof storage?.getItem !== 'function' || typeof storage?.setItem !== 'function') {
+        return true;
+      }
+      const lease = currentLease();
+      if (!leaseIsActive(lease)) return true;
+      return lease.tabId === resolvedTabId;
+    } catch {
+      // Cross-tab coordination is unavailable; preserve the single-tab fallback.
+      return true;
+    }
+  }
+
   function release() {
     if (timer != null) {
       windowRef?.clearInterval?.(timer);
@@ -170,6 +185,7 @@ export function createWorkspaceSessionController({
     stop,
     takeOver,
     canWrite: () => writable,
+    hasWriteLease,
     tabId: resolvedTabId,
   };
 }
