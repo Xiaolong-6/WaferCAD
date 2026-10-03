@@ -401,6 +401,31 @@ await historyRestorePage.evaluate(() => {
   input.value = '0.4';
   input.dispatchEvent(new Event('input', { bubbles: true }));
 });
+await historyRestorePage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await historyRestorePage.reload({ waitUntil: 'networkidle' });
+await historyRestorePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyRestorePage, 'snapshots');
+await historyRestorePage.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+assert.equal(Number(await historyRestorePage.locator('#maskOpacityRange').inputValue()), 0.4);
+assert.ok(
+  await historyRestorePage
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'History A')),
+);
+assert.equal(
+  await historyRestorePage
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B')),
+  false,
+);
 await historyRestorePage.locator('.snapshot-return-head').click();
 await historyRestorePage.waitForFunction(
   () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
