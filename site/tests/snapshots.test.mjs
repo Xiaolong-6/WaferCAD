@@ -441,6 +441,74 @@ test('legacy process nodes remain readable and use a milestone state when one ex
   assert.equal(live.value, 'legacy-step');
 });
 
+test('legacy history only upgrades to v3 when every process node is restorable', () => {
+  let live = { model: { processRevision: 2 }, value: 'legacy-head' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  manager.importRecords([], {
+    version: 2,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-2',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Legacy unavailable' },
+      },
+      {
+        id: 'process-2',
+        branchId: 'main',
+        parentId: 'process-1',
+        createdAt: '2026-10-03T10:01:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'add', label: 'Legacy head' },
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-2',
+        headState: { model: { processRevision: 2 }, value: 'legacy-head' },
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  });
+
+  const legacyExport = manager.exportBranchState();
+  assert.equal(legacyExport.version, 2);
+  assert.equal(legacyExport.nodes[0].state, null);
+  assert.equal(legacyExport.nodes[1].state.value, 'legacy-head');
+
+  const milestone = {
+    id: 'legacy-step-1',
+    name: 'Recovered legacy step',
+    createdAt: '2026-10-03T10:00:30.000Z',
+    branchId: 'main',
+    parentId: null,
+    historyNodeId: 'process-1',
+    state: { model: { processRevision: 1 }, value: 'legacy-step-1' },
+  };
+  manager.importRecords([milestone], legacyExport);
+  const upgraded = manager.exportBranchState();
+  assert.equal(upgraded.version, 3);
+  assert.equal(upgraded.nodes[0].state.value, 'legacy-step-1');
+  assert.equal(upgraded.nodes[1].state.value, 'legacy-head');
+});
+
 test('branching from a restored process step reuses an existing milestone at that node', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
