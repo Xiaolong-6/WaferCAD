@@ -227,9 +227,12 @@ await welcomeCheckpointPage.waitForFunction(
   null,
   { timeout: 5000 },
 );
-await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption({
-  label: /pre-welcome-start/,
-});
+const welcomeRecoveryValue = await welcomeCheckpointPage
+  .locator('#workspaceRecoverySelect option')
+  .filter({ hasText: /pre-welcome-start/ })
+  .getAttribute('value');
+assert.ok(welcomeRecoveryValue);
+await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption(welcomeRecoveryValue);
 await welcomeCheckpointPage.locator('#workspaceRestoreBtn').click();
 await welcomeCheckpointPage.waitForFunction(
   () => /Restored local recovery checkpoint/.test(document.getElementById('statusText')?.textContent || ''),
