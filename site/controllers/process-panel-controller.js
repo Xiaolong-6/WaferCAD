@@ -296,7 +296,7 @@ export function createProcessPanelController({
   
     if (!hasMaterial(model)) {
       return status(
-        'All material has been removed. Undo, restore a snapshot, or recreate the Base.',
+        'All material has been removed. Undo, restore a History step, or recreate the Base.',
         'warning',
       );
     }
