@@ -330,6 +330,7 @@ const welcomeRecoveryValue = await welcomeCheckpointPage
   .filter({ hasText: /pre-welcome-start/ })
   .getAttribute('value');
 assert.ok(welcomeRecoveryValue);
+await openFunctionPanel(welcomeCheckpointPage, 'project');
 await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption(welcomeRecoveryValue);
 await welcomeCheckpointPage.locator('#workspaceRestoreBtn').click();
 await chooseConfirmation(welcomeCheckpointPage);
@@ -436,6 +437,7 @@ await examplePage.close();
 // Project is the first/default tool tab and owns local Save, file Export, recovery, and XYZ units.
 assert.equal(await page.locator('#settingsTab').getAttribute('aria-selected'), 'true');
 await page.locator('#settingsTools:not([hidden])').waitFor();
+await openFunctionPanel(page, 'project');
 
 // XYZ unit switching converts physical Z drafts as well as X/Y drafts.
 await page.locator('#xyUnitSelect').selectOption('nm');
@@ -1505,6 +1507,7 @@ await safetyFirst.waitForFunction(
   null,
   { timeout: 5000 },
 );
+await openFunctionPanel(safetySecond, 'project');
 await safetySecond.locator('#newProjectBtn').click();
 await chooseConfirmation(safetySecond);
 await safetySecond.waitForFunction(
