@@ -115,7 +115,8 @@ function implantFragments(model, clip = null) {
               ? surfaceSegment?.frontSurface
               : surfaceSegment?.backSurface,
           outerZ = implant.face === 'front' ? z1 : z0,
-          innerZ = implant.face === 'front' ? z0 : z1;
+          innerZ = implant.face === 'front' ? z0 : z1,
+          surfaceExposed = Math.abs(currentSurfaceZ - outerZ) <= 1e-9;
 
         fragments.push({
           implantId: implant.id,
@@ -127,6 +128,7 @@ function implantFragments(model, clip = null) {
           sourceZ: sourceSurfaceZ,
           outerZ,
           innerZ,
+          surfaceExposed,
           z0,
           z1,
           surfaceAppearance:
