@@ -72,13 +72,18 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
   assert.match(threeView, /async function exportGlb\(\)/);
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
+  assert.match(threeView, /preserveDrawingBuffer: false/);
   assert.match(
     threeView,
-    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);[\s\S]*?renderer\.render\(scene, camera\)/,
+    /captureRenderer = new THREE\.WebGLRenderer\(\{[\s\S]*?preserveDrawingBuffer: true/,
   );
   assert.match(
     threeView,
-    /renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?camera\.updateProjectionMatrix\(\);[\s\S]*?rebuildAdaptiveRoughGeometry\(\);/,
+    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);[\s\S]*?captureRenderer\.render\(scene, camera\)/,
+  );
+  assert.match(
+    threeView,
+    /captureRenderer\.dispose\(\)[\s\S]*?renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);/,
   );
   assert.match(app, /createThreeView/);
 });
