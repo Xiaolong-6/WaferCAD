@@ -256,6 +256,38 @@ await page.waitForFunction(() =>
 assert.ok(await page.locator('#workspaceRecoverySelect option').count() > 0);
 assert.match(await page.locator('#workspaceRecoverySelect option').first().textContent(), /manual-save/);
 assert.equal(await page.locator('#workspaceRecoveryClearBtn').isDisabled(), false);
+const persistenceStores = await page.evaluate(
+  () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('wafercad-workspace-v1', 2);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const stores = [...database.objectStoreNames];
+        const transaction = database.transaction(['workspace', 'workspace-metadata'], 'readonly');
+        const payloadRequest = transaction.objectStore('workspace').getAll();
+        const metadataRequest = transaction.objectStore('workspace-metadata').getAll();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => {
+          const metadataRecovery = metadataRequest.result.find((record) =>
+            String(record?.key || '').startsWith('recovery:'),
+          );
+          const payloadRecovery = payloadRequest.result.find((record) =>
+            String(record?.key || '').startsWith('recovery:'),
+          );
+          database.close();
+          resolve({
+            stores,
+            metadataHasProject: Object.hasOwn(metadataRecovery || {}, 'project'),
+            payloadHasProject: Boolean(payloadRecovery?.project),
+          });
+        };
+      };
+    }),
+);
+assert.ok(persistenceStores.stores.includes('workspace-metadata'));
+assert.equal(persistenceStores.metadataHasProject, false);
+assert.equal(persistenceStores.payloadHasProject, true);
 await page.locator('#workspaceRecoveryClearBtn').click();
 await page.waitForFunction(
   () =>
@@ -1096,9 +1128,15 @@ assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
 
-// The active workspace is restored after a normal app.html refresh.
+// The active workspace is restored after a normal app.html refresh. This also
+// proves that a 2D-only display mutation schedules autosave without relying on 3D rendering.
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('Refresh restore check');
+await page.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.37';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
 await page.waitForTimeout(1000);
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForFunction(
@@ -1107,6 +1145,36 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.37);
+
+// Snapshot Restore checkpoints the current state before replacement.
+await page.locator('#snapshotsTab').click();
+await page.locator('#saveSnapshotBtn').click();
+await page.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.22';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await page.waitForTimeout(50);
+await page.locator('.snapshot-action').first().click();
+await page.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-snapshot-restore/.test(option.textContent || ''),
+    ),
+);
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.37);
+
+// New Project also leaves a Recovery checkpoint before replacing the live workspace.
+await page.locator('#settingsTab').click();
+await page.locator('#newProjectBtn').click();
+await page.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-new-project/.test(option.textContent || ''),
+    ),
+);
+assert.match(await page.locator('#statusText').textContent(), /New empty project/);
 
 // Two tabs sharing one browser profile still have one autosave writer, but neither
 // editor is frozen. The non-owner can keep working and explicitly take over saving.
