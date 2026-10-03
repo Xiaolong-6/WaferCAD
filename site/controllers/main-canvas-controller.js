@@ -60,6 +60,7 @@ export function createMainCanvasController({
       },
       isCreateMode: getSectionCreateMode,
       isInteractionBlocked: () => isRoiDrawing() || panMode,
+      isVisibilityBlocked: isRoiDrawing,
       onChange: (next) => {
         setSection(next);
         renderMain();
