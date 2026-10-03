@@ -222,3 +222,24 @@ test('layout export rejects negative layer or datatype instead of silently remap
   assert.throws(() => serializeGDS([polygon]), /datatype is invalid/);
   assert.throws(() => serializeOASIS([polygon]), /datatype is invalid/);
 });
+
+test('OASIS keeps 0.1 nm PATH width precision across a 300 mm wafer-scale coordinate span', async () => {
+  const source = [
+    {
+      kind: 'path',
+      layer: 9,
+      datatype: 1,
+      width: 0.0001,
+      points: [
+        [-150000, 0],
+        [150000, 0],
+      ],
+    },
+  ];
+  const parsed = await parseOAS(serializeOASIS(source).buffer),
+    flat = flattenGDS(parsed, parsed.root);
+  assert.equal(flat.elements.length, 1);
+  assert.ok(Math.abs(flat.elements[0].width - 0.0001) <= 1e-12);
+  assert.ok(Math.abs(flat.elements[0].points[0][0] + 150000) <= 1e-9);
+  assert.ok(Math.abs(flat.elements[0].points[1][0] - 150000) <= 1e-9);
+});
