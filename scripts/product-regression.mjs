@@ -389,19 +389,22 @@ async function loadProject(page, project, name) {
 }
 
 async function checkSectionSeams(page, project) {
-  // Z=0 is uninterrupted substrate in every benchmark, including after etching.
-  // Use the renderer's broken-Z transform diagnostics instead of assuming a
-  // single linear Z axis.
-  const colors = await page.evaluate(() => {
+  // Probe a row inside the Base interval shared by all material regions.
+  // This remains valid when back-side coatings extend below the Base.
+  const baseCommonLo = Math.max(
+    ...project.model.regions
+      .map((region) => region.stack.find((segment) => segment.layerId === 'base')?.z0)
+      .filter(Number.isFinite),
+  );
+  const colors = await page.evaluate((baseCommonLo) => {
     const canvas = document.querySelector('#sectionCanvas'),
       dpr = Math.min(devicePixelRatio || 1, 2),
       width = canvas.width / dpr,
       z0 = Number(canvas.dataset.sectionZ0Um),
       z1 = Number(canvas.dataset.sectionZ1Um),
-      modelLo = Number(canvas.dataset.zMinUm),
       top = Number(canvas.dataset.sectionCollapseTopUm),
       bottom = Number(canvas.dataset.sectionCollapseBottomUm),
-      z = 0 >= top || 0 <= bottom ? 0 : (modelLo + bottom) / 2,
+      z = 0 >= top || 0 <= bottom ? 0 : (baseCommonLo + bottom) / 2,
       frameTop = Number(canvas.dataset.sectionFrameTop),
       frameBottom = Number(canvas.dataset.sectionFrameBottom),
       upperY = Number(canvas.dataset.sectionCollapseUpperY),
@@ -423,7 +426,7 @@ async function checkSectionSeams(page, project) {
       unique = new Set();
     for (let i = 0; i < pixels.length; i += 4) unique.add([...pixels.slice(i, i + 4)].join(','));
     return [...unique];
-  });
+  }, baseCommonLo);
   const rgba = colors.map((color) => color.split(',').map(Number)),
     channelRange = [0, 1, 2, 3].map((channel) => {
       const values = rgba.map((value) => value[channel]);
