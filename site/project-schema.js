@@ -658,7 +658,7 @@ function validateSnapshotRecords(snapshots, shared) {
 function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   if (snapshotBranches == null) return;
   const value = assertObject(snapshotBranches, 'snapshotBranches');
-  const version = assertInteger(value.version, 'snapshotBranches.version', { min: 1, max: 2 });
+  const version = assertInteger(value.version, 'snapshotBranches.version', { min: 1, max: 3 });
   const activeBranchId = assertString(value.activeBranchId, 'snapshotBranches.activeBranchId', {
     max: 128,
   });
@@ -697,6 +697,9 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       }
       if (node.operation.label != null) {
         assertString(node.operation.label, `${path}.operation.label`, { max: 512 });
+      }
+      if (version >= 3 && node.state == null) {
+        fail(`${path}.state`, 'is required for restorable process history.');
       }
       if (node.state != null) {
         assertObject(node.state, `${path}.state`);
