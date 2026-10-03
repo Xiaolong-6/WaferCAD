@@ -64,10 +64,13 @@ There is no application build step.
 15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface.
 16. Main/Mask morphology cues must remain subtle overlays that do not replace the underlying material/mask color language.
 17. Base rebuilds remain reversible.
-18. Snapshots are independent immutable workspace state; snapshot records must not recursively contain snapshots or snapshot-branch metadata.
-19. Snapshot branch graphs must keep valid snapshot/branch references. Branch HEAD is independent per branch, and restoring an old snapshot must not silently rewrite HEAD or the active branch.
-20. Existing projects without branch metadata must normalize into one linear Main branch without changing snapshot state.
-21. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
+18. Snapshots are immutable milestone state; snapshot records must not recursively contain snapshots or snapshot-branch metadata.
+19. Every successful Process Apply must append exactly one lightweight process-history node. Failed, aborted, and no-change operations must append none.
+20. Process branch HEAD is independent per branch. Restore and Undo may move the cursor behind HEAD but must never rewrite HEAD; the next Apply must branch first.
+21. Branch HEAD state and named milestone state are the only complete states added by process history. Ordinary process nodes must remain metadata-only.
+22. Snapshot/process graph references must validate before live state replacement. Packed export/autosave must preserve branch HEAD state through the shared asset layer.
+23. Existing projects without branch metadata must normalize into one linear Main branch without changing snapshot state.
+24. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 
 ## Source style
