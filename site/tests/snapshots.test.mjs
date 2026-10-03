@@ -80,7 +80,7 @@ test('snapshot manager never creates more records than the project schema can pe
 
   for (let i = 0; i < MAX_SNAPSHOTS; i++) manager.create();
   assert.equal(manager.list().length, MAX_SNAPSHOTS);
-  assert.throws(() => manager.create(), /Snapshot limit of 100 reached/);
+  assert.throws(() => manager.create(), /Milestone limit of 100 reached/);
 });
 
 
@@ -363,7 +363,7 @@ test('restoring an older milestone requires a branch before another Apply', () =
   assert.equal(manager.continuationContext().snapshotId, oxide.id);
   assert.throws(
     () => manager.recordOperation({ kind: 'etch', label: 'Unsafe rewrite' }),
-    /new branch is required/i,
+    /new variant is required/i,
   );
 
   const variant = manager.createBranchFromCursor('Black silicon');
