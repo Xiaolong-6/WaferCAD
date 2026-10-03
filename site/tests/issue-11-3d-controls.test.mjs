@@ -37,9 +37,12 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /a\.depth - b\.depth \|\| a\.sortBias - b\.sortBias/);
   assert.match(roughMeshGeometry, /function geometryFromRoughCap\(/);
   assert.match(threeView, /adaptiveRoughMeshLod\(/);
-  assert.match(threeView, /function roughLodZones\(/);
+  assert.match(threeView, /function prepareRoughSpatialZones\(/);
+  assert.match(threeView, /task\.spatialZones = zones/);
+  assert.match(threeView, /roughBaseTriangulationCount \+= zones\.length/);
+  assert.match(threeView, /function roughZonePriority\(/);
   assert.match(threeView, /function maybeRebuildAdaptiveGeometry\(/);
-  assert.match(threeView, /screenPriority: 0\.06/);
+  assert.match(threeView, /return normalizedDistance <= 1\.75 \? 0\.28 : 0\.06/);
   assert.match(roughMeshGeometry, /function roughPointNormal\(/);
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
