@@ -25,11 +25,16 @@ test('workstation tool order keeps the continuous function flow', () => {
   ]);
 });
 
-test('mobile prefers a focused single Main view while desktop opens overview', () => {
+test('workstation starts focused and restores an explicit remembered view', () => {
   assert.equal(preferredWorkstationViewMode(390), 'main');
   assert.equal(preferredWorkstationViewMode(820), 'main');
-  assert.equal(preferredWorkstationViewMode(821), 'overview');
-  assert.equal(preferredWorkstationViewMode(1440), 'overview');
+  assert.equal(preferredWorkstationViewMode(821), 'main');
+  assert.equal(preferredWorkstationViewMode(1440), 'main');
+  assert.equal(preferredWorkstationViewMode(1440, 'overview'), 'overview');
+  assert.equal(preferredWorkstationViewMode(1440, 'split'), 'split');
+  assert.equal(preferredWorkstationViewMode(1440, 'three'), 'three');
+  assert.equal(preferredWorkstationViewMode(390, 'three'), 'three');
+  assert.equal(preferredWorkstationViewMode(390, 'overview'), 'main');
 });
 
 
