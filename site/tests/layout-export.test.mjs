@@ -101,3 +101,35 @@ test('Draw Mask ring exports as hole-free GDS/OAS polygons instead of filling th
   const oas = flattenGDS(oasParsed, oasParsed.root);
   assert.ok(oas.elements.length > 4);
 });
+
+test('Mask GDS/OAS export rejects geometry that collapses at the 0.1 nm DBU', () => {
+  const tinyPolygon = [
+    {
+      kind: 'polygon',
+      layer: 1,
+      datatype: 0,
+      points: [
+        [0, 0],
+        [0.00004, 0],
+        [0.00004, 0.00004],
+      ],
+    },
+  ];
+  assert.throws(() => serializeGDS(tinyPolygon), /collapses at the selected .* database unit/);
+  assert.throws(() => serializeOASIS(tinyPolygon), /collapses at the selected .* database unit/);
+
+  const tinyPath = [
+    {
+      kind: 'path',
+      layer: 2,
+      datatype: 0,
+      width: 0,
+      points: [
+        [0, 0],
+        [0.00004, 0],
+      ],
+    },
+  ];
+  assert.throws(() => serializeGDS(tinyPath), /path collapses at the selected .* database unit/);
+  assert.throws(() => serializeOASIS(tinyPath), /path collapses at the selected .* database unit/);
+});
