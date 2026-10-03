@@ -52,7 +52,7 @@ const TOOL_META = {
   base: { id: 'baseTools', label: 'Base', icon: '◇', hint: 'substrate definition' },
   mask: { id: 'maskTools', label: 'Mask', icon: '⌗', hint: 'source · layout · alignment' },
   process: { id: 'operationTools', label: 'Process', icon: '≋', hint: 'operation · target · parameters' },
-  snapshots: { id: 'snapshotsTools', label: 'History', icon: '◷', hint: 'milestones · variants' },
+  snapshots: { id: 'snapshotsTools', label: 'History', icon: '◷', hint: 'steps · milestones · variants' },
 };
 
 const VIEW_META = {
