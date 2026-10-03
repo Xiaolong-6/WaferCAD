@@ -114,13 +114,13 @@ await refreshPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   timeout: 30000,
 });
 await refreshPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  () => document.documentElement.dataset.appReady === 'true',
   null,
   { timeout: 30000 },
 );
 await refreshPage.reload({ waitUntil: 'networkidle' });
 await refreshPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  () => document.documentElement.dataset.appReady === 'true',
   null,
   { timeout: 30000 },
 );
