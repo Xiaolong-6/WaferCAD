@@ -379,8 +379,12 @@ export function createSnapshotManager({
     );
   }
 
+  function canRecordOperation() {
+    return historyNodes.length < maxHistoryNodes;
+  }
+
   function recordOperation(operation = {}) {
-    if (historyNodes.length >= maxHistoryNodes) {
+    if (!canRecordOperation()) {
       throw new Error(`Process history limit of ${maxHistoryNodes} reached.`);
     }
     if (continuationContext()) {
@@ -661,6 +665,7 @@ export function createSnapshotManager({
     createBranch,
     createBranchFromCursor,
     continuationContext,
+    canRecordOperation,
     recordOperation,
     syncCursorToProcessRevision,
     switchBranch,
