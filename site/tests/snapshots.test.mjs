@@ -148,3 +148,117 @@ test('snapshot preserves Draw mask source independently from imported layout ass
   assert.equal(restored.maskSourceMode, 'draw');
   assert.deepEqual(restored.drawMask.shapes[0].b, [1, 1]);
 });
+
+
+test('snapshot branches keep independent heads and restore the selected branch head', () => {
+  let live = { value: 1 };
+  const restored = [];
+  let snapshotId = 0;
+  let branchId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      restored.push(value);
+      live = value;
+    },
+    validateState: (value) => typeof value?.value === 'number',
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+  });
+
+  const base = manager.create('Shared process');
+  live = { value: 2 };
+  const mainHead = manager.create('Planar');
+
+  const branch = manager.createBranch(base.id, 'Black silicon');
+  assert.equal(manager.activeBranch().id, branch.id);
+  assert.equal(manager.switchBranch(branch.id), true);
+  assert.equal(live.value, 1);
+
+  live = { value: 3 };
+  const blackSiliconHead = manager.create('Rough etch');
+  assert.equal(blackSiliconHead.parentId, base.id);
+  assert.equal(blackSiliconHead.branchId, branch.id);
+
+  assert.equal(manager.switchBranch('main'), true);
+  assert.equal(live.value, 2);
+  assert.equal(manager.activeBranch().headSnapshotId, mainHead.id);
+
+  assert.equal(manager.switchBranch(branch.id), true);
+  assert.equal(live.value, 3);
+  assert.equal(manager.activeBranch().headSnapshotId, blackSiliconHead.id);
+  assert.ok(restored.length >= 3);
+});
+
+test('snapshot branch state round-trips and legacy snapshots become a linear Main branch', () => {
+  let live = { value: 1 };
+  let snapshotId = 0;
+  let branchId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => typeof value?.value === 'number',
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+  });
+
+  const base = manager.create('Base');
+  const branch = manager.createBranch(base.id, 'Variant');
+  manager.switchBranch(branch.id);
+  live = { value: 2 };
+  const child = manager.create('Variant step');
+
+  const records = manager.exportRecords();
+  const branchState = manager.exportBranchState();
+
+  const imported = createSnapshotManager({
+    capture: () => ({ value: 0 }),
+    restore: () => {},
+    validateState: (value) => typeof value?.value === 'number',
+  });
+  assert.equal(imported.importRecords(records, branchState), 2);
+  assert.equal(imported.activeBranch().id, branch.id);
+  assert.equal(imported.activeBranch().headSnapshotId, child.id);
+  assert.equal(imported.list().find((record) => record.id === child.id).parentId, base.id);
+
+  const legacy = createSnapshotManager({
+    capture: () => ({ value: 0 }),
+    restore: () => {},
+    validateState: (value) => typeof value?.value === 'number',
+  });
+  legacy.importRecords([
+    { id: 'new', name: 'New', createdAt: '2026-10-03T10:01:00Z', state: { value: 2 } },
+    { id: 'old', name: 'Old', createdAt: '2026-10-03T10:00:00Z', state: { value: 1 } },
+  ]);
+  const legacyRecords = legacy.list();
+  assert.equal(legacyRecords.find((record) => record.id === 'old').parentId, null);
+  assert.equal(legacyRecords.find((record) => record.id === 'new').parentId, 'old');
+  assert.equal(legacy.activeBranch().id, 'main');
+  assert.equal(legacy.activeBranch().headSnapshotId, 'new');
+});
+
+test('deleting a branch point reparents descendants without leaving dangling heads', () => {
+  let live = { value: 1 };
+  let snapshotId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: () => {},
+    validateState: () => true,
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => 'variant',
+  });
+
+  const first = manager.create('First');
+  live = { value: 2 };
+  const second = manager.create('Second');
+  const branch = manager.createBranch(second.id, 'Variant');
+  manager.switchBranch(branch.id);
+  live = { value: 3 };
+  const child = manager.create('Child');
+
+  assert.equal(manager.remove(second.id), true);
+  assert.equal(manager.list().find((record) => record.id === child.id).parentId, first.id);
+  assert.equal(manager.listBranches().find((item) => item.id === branch.id).rootSnapshotId, first.id);
+});
