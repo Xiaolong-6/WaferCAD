@@ -89,6 +89,9 @@ function validateMultiPolygon(value, path, budget) {
       if (first[0] !== last[0] || first[1] !== last[1]) {
         fail(ringPath, 'must be closed.');
       }
+      if (!(Math.abs(ringArea(ring)) > 0)) {
+        fail(ringPath, 'must enclose non-zero area.');
+      }
     });
   });
 }
