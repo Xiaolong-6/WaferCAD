@@ -239,12 +239,28 @@ test('startup controller consumes a staged layout and clears the startup query',
     historyRef: { replaceState: (...args) => calls.push(['history', ...args]) },
   });
 
-  await controller.initializeWorkspaceStart();
+  const started = await controller.initializeWorkspaceStart();
 
+  assert.equal(started, true);
   assert.deepEqual(calls, [
     ['history', null, '', './app.html'],
     ['layout', file],
   ]);
+});
+
+test('startup controller reports a staged open failure so persistence can restore current state', async () => {
+  const file = { name: 'broken.wafercad' };
+  const controller = createStartupController({
+    takeStartupFile: async () => ({ kind: 'project', file }),
+    openLayoutFile: async () => true,
+    openProjectFile: async () => false,
+    openVisualizationExample: () => true,
+    status: () => {},
+    locationRef: { search: '?start=staged' },
+    historyRef: { replaceState: () => {} },
+  });
+
+  assert.equal(await controller.initializeWorkspaceStart(), false);
 });
 
 test('startup controller opens the example without touching staged files', async () => {
