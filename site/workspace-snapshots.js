@@ -350,7 +350,7 @@ export function createSnapshotManager({
     restore(restoredState);
     cursorNodeId = record.historyNodeId || null;
     cursorSnapshotId = record.id;
-    cursorBaselineState = restoredState;
+    cursorBaselineState = cloneState(restoredState);
     return true;
   }
 
@@ -367,7 +367,7 @@ export function createSnapshotManager({
     restore(restoredState);
     cursorNodeId = node.id;
     cursorSnapshotId = null;
-    cursorBaselineState = restoredState;
+    cursorBaselineState = cloneState(restoredState);
     return true;
   }
 
