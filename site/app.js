@@ -137,6 +137,10 @@ function refreshRecoveryOptions() {
   return workspacePersistenceController?.refreshRecoveryOptions() ?? Promise.resolve();
 }
 
+function checkpointWorkspace(reason) {
+  return workspacePersistenceController?.checkpointCurrent(reason) ?? Promise.resolve(false);
+}
+
 function syncWorkspaceSessionState(state) {
   workspacePersistenceController?.syncSessionState(state);
 }
@@ -687,6 +691,7 @@ const projectController = createProjectController({
   fit3d,
   status,
   onProjectChanged: markProjectDirty,
+  checkpointBeforeReplace: checkpointWorkspace,
   normalizedProjectName,
   getProjectName: () => projectName,
   setProjectName: (value) => {
