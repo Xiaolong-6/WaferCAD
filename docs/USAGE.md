@@ -155,7 +155,7 @@ The **Project** tab is first and is the default tool tab when the workspace star
 
 **Save** writes the current project into browser storage and creates an explicit local **Recovery** checkpoint. Recovery points are listed in the Project tab, can be restored later, and can be cleared manually. Clearing Recovery checkpoints does not delete the current autosaved workspace. Continuous IndexedDB autosave still protects the latest working state between manual Save checkpoints and across reloads.
 
-**Export** downloads the current project as a `.wafercad` file. Snapshot records are included, and repeated snapshot mask/layout and unchanged model assets are stored once so large masks do not multiply the exported file size for every snapshot.
+**Export** downloads the current project as a `.wafercad` file. Process history, milestones, variants, and their restore states are included. Repeated layout/model assets are stored through the shared-asset layer so unchanged data is not copied once per checkpoint.
 
 Use **Project → Open** to restore an exported project file. Older supported project files are migrated to the current **v13** format before validation. v13 adds Pyramid morphology while preserving v12 stochastic morphology/polarity and older project semantics. Export and Open enforce the same 256 MB safety limit.
 
