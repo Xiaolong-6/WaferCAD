@@ -93,11 +93,15 @@ async function openFunctionPanel(page, name, clickOptions = {}) {
     return panel.getBoundingClientRect().left >= rail.getBoundingClientRect().right - 1;
   });
   await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
-  await page.evaluate((sectionName) => {
-    const scroller = document.querySelector('#toolPanel .tool-tab-content');
-    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
-    if (scroller && section) scroller.scrollTop = Math.max(0, section.offsetTop - 6);
-  }, name);
+  await page.waitForFunction(
+    (sectionName) => {
+      const scroller = document.querySelector('#toolPanel .tool-tab-content');
+      const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
+      if (!scroller || !section) return false;
+      return Math.abs(section.getBoundingClientRect().top - scroller.getBoundingClientRect().top) <= 14;
+    },
+    name,
+  );
 }
 
 async function closeFunctionPanel(page) {
