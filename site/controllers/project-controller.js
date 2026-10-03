@@ -27,6 +27,7 @@ export function createProjectController({
   clearRoiDrawingMode,
   clearMaskRoiDrawingMode,
   buildProjectSnapshot,
+  confirmAction = async () => false,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -52,10 +53,43 @@ export function createProjectController({
       name.className = 'snapshot-name';
       name.value = record.name;
       name.title = record.createdAt;
-      name.onchange = () => {
-        if (!snapshotManager.rename(record.id, name.value)) name.value = record.name;
-        else onProjectChanged();
-        renderSnapshots();
+
+      const commitState = root.createElement('span');
+      commitState.className = 'snapshot-commit-state';
+      commitState.textContent = 'Saved';
+
+      let renameTimer = null;
+      const commitName = () => {
+        if (renameTimer != null) {
+          clearTimeout(renameTimer);
+          renameTimer = null;
+        }
+        const next = name.value.trim();
+        if (!next || !snapshotManager.rename(record.id, next)) {
+          name.value = record.name;
+          commitState.textContent = 'Not saved';
+          commitState.dataset.failed = 'true';
+          return false;
+        }
+        record.name = next;
+        commitState.textContent = 'Saved';
+        commitState.dataset.failed = 'false';
+        onProjectChanged();
+        return true;
+      };
+
+      name.oninput = () => {
+        commitState.textContent = 'Editing…';
+        commitState.dataset.failed = 'false';
+        if (renameTimer != null) clearTimeout(renameTimer);
+        renameTimer = setTimeout(commitName, 350);
+      };
+      name.onblur = commitName;
+      name.onkeydown = (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        commitName();
+        name.blur();
       };
 
       const restoreButton = root.createElement('button');
@@ -94,7 +128,7 @@ export function createProjectController({
         status(`Deleted snapshot "${record.name}".`);
       };
 
-      row.append(name, restoreButton, deleteButton);
+      row.append(name, commitState, restoreButton, deleteButton);
       host.append(row);
     }
   }
@@ -185,7 +219,17 @@ export function createProjectController({
     };
 
     $('newProjectBtn').onclick = async () => {
-      if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
+      if (
+        !(await confirmAction({
+          title: 'Create new project?',
+          message: 'The current workspace will be replaced.',
+          detail: 'A local recovery checkpoint is created before the replacement.',
+          confirmLabel: 'New project',
+          danger: true,
+        }))
+      ) {
+        return;
+      }
       try {
         await checkpointBeforeReplace('pre-new-project');
         resetProjectState();
@@ -226,7 +270,15 @@ export function createProjectController({
     $('openProjectInput').onchange = async (event) => {
       const file = event.target.files[0];
       if (!file) return;
-      if (!globalThis.confirm('Open project will replace the current workspace. Continue?')) {
+      if (
+        !(await confirmAction({
+          title: 'Open project?',
+          message: 'The current workspace will be replaced by the selected project file.',
+          detail: 'A local recovery checkpoint is created before the replacement.',
+          confirmLabel: 'Open project',
+          danger: true,
+        }))
+      ) {
         event.target.value = '';
         return;
       }
