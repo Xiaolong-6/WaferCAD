@@ -850,8 +850,8 @@ async function ensureWritableProcessBranch() {
     message: continuation.snapshotName
       ? `"${continuation.snapshotName}" is behind the current branch HEAD.`
       : 'Undo moved the workspace behind the current branch HEAD.',
-    detail: 'WaferCAD will create a new process branch first. The existing branch remains unchanged.',
-    confirmLabel: 'Create branch & apply',
+    detail: 'WaferCAD will create a new variant first. The existing branch and its HEAD remain unchanged.',
+    confirmLabel: 'Create variant & apply',
   });
   if (!confirmed) return false;
 
