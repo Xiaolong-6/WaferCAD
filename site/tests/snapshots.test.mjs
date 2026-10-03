@@ -262,3 +262,113 @@ test('deleting a branch point reparents descendants without leaving dangling hea
   assert.equal(manager.list().find((record) => record.id === child.id).parentId, first.id);
   assert.equal(manager.listBranches().find((item) => item.id === branch.id).rootSnapshotId, first.id);
 });
+
+
+test('V2 process history records Apply nodes and attaches snapshots as milestones', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'oxide' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Deposit oxide' });
+  assert.equal(first.parentId, null);
+  assert.equal(first.processRevision, 1);
+  assert.equal(manager.activeBranch().headNodeId, first.id);
+
+  const milestone = manager.create('After oxide');
+  assert.equal(milestone.historyNodeId, first.id);
+
+  live = { model: { processRevision: 2 }, value: 'etch' };
+  const second = manager.recordOperation({ kind: 'etch', label: 'Etch active window' });
+  assert.equal(second.parentId, first.id);
+  assert.equal(manager.listHistory().length, 2);
+  assert.equal(manager.exportBranchState().version, 2);
+});
+
+test('restoring an older milestone requires a branch before another Apply', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'oxide' };
+  const oxideNode = manager.recordOperation({ kind: 'add', label: 'Deposit oxide' });
+  const oxide = manager.create('After oxide');
+
+  live = { model: { processRevision: 2 }, value: 'planar' };
+  const planarNode = manager.recordOperation({ kind: 'add', label: 'Planar continuation' });
+  assert.equal(manager.continuationContext(), null);
+
+  assert.equal(manager.restore(oxide.id), true);
+  assert.equal(live.value, 'oxide');
+  assert.equal(manager.continuationContext().snapshotId, oxide.id);
+  assert.throws(
+    () => manager.recordOperation({ kind: 'etch', label: 'Unsafe rewrite' }),
+    /new branch is required/i,
+  );
+
+  const variant = manager.createBranchFromCursor('Black silicon');
+  assert.equal(manager.activeBranch().id, variant.id);
+  assert.equal(manager.activeBranch().rootNodeId, oxideNode.id);
+
+  live = { model: { processRevision: 2 }, value: 'black-silicon' };
+  const rough = manager.recordOperation({ kind: 'etch', label: 'Rough etch' });
+  assert.equal(rough.parentId, oxideNode.id);
+
+  assert.equal(manager.switchBranch('main'), true);
+  assert.equal(live.value, 'planar');
+  assert.equal(manager.activeBranch().headNodeId, planarNode.id);
+
+  assert.equal(manager.switchBranch(variant.id), true);
+  assert.equal(live.value, 'black-silicon');
+  assert.equal(manager.activeBranch().headNodeId, rough.id);
+});
+
+test('Undo cursor can branch without a pre-existing milestone', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'etch', label: 'Step 2' });
+
+  assert.equal(manager.syncCursorToProcessRevision(1), true);
+  assert.equal(manager.continuationContext().cursorNodeId, first.id);
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const branch = manager.createBranchFromCursor('Undo continuation');
+  assert.equal(manager.activeBranch().id, branch.id);
+  assert.equal(manager.list().some((record) => record.historyNodeId === first.id), true);
+});
