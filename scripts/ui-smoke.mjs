@@ -1512,6 +1512,26 @@ await page.waitForFunction(
 );
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
+// Snapshot branches use an inline branch editor, keep independent heads, and restore
+// the selected branch head when switching through the Current branch selector.
+await page.locator('.snapshot-branch-action').first().click();
+const branchEditor = page.locator('.snapshot-branch-editor').first();
+await branchEditor.locator('input').fill('Smoke variant');
+await branchEditor.locator('.snapshot-branch-create').click();
+await page.waitForFunction(
+  () => /Created branch "Smoke variant"/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#snapshotBranchSelect option').count(), 2);
+assert.notEqual(await page.locator('#snapshotBranchSelect').inputValue(), 'main');
+await page.locator('#saveSnapshotBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /on "Smoke variant"/);
+await page.locator('#snapshotBranchSelect').selectOption('main');
+await page.waitForFunction(
+  () => /Switched to branch "Main"/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
+assert.equal(await page.locator('.snapshot-branch-group').count(), 2);
+
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await openFunctionPanel(page, 'project');
 await page.locator('#newProjectBtn').click();
