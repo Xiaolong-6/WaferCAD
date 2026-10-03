@@ -334,6 +334,113 @@ test('V2 process history records Apply nodes and attaches snapshots as milestone
   assert.equal(manager.exportBranchState().version, 2);
 });
 
+test('process history steps are directly restorable without milestones and survive import', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Deposit first' });
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'add', label: 'Deposit second' });
+
+  assert.equal(manager.list().length, 0);
+  assert.equal(manager.listHistory().find((node) => node.id === first.id).restorable, true);
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(live.value, 'step-1');
+  assert.equal(manager.continuationContext().processLabel, 'Deposit first');
+
+  const branchState = manager.exportBranchState();
+  const imported = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+  imported.importRecords([], branchState);
+
+  live = { model: { processRevision: 99 }, value: 'changed' };
+  assert.equal(imported.restoreProcessNode(first.id), true);
+  assert.equal(live.value, 'step-1');
+  assert.equal(imported.listHistory().find((node) => node.id === first.id).restorable, true);
+});
+
+test('legacy process nodes remain readable and use a milestone state when one exists', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  const milestoneState = { model: { processRevision: 1 }, value: 'legacy-step' };
+  manager.importRecords(
+    [
+      {
+        id: 'snapshot-legacy',
+        name: 'Legacy checkpoint',
+        createdAt: '2026-10-03T10:00:00.000Z',
+        branchId: 'main',
+        parentId: null,
+        historyNodeId: 'process-1',
+        state: milestoneState,
+      },
+    ],
+    {
+      version: 2,
+      activeBranchId: 'main',
+      cursorNodeId: 'process-2',
+      cursorSnapshotId: null,
+      nodes: [
+        {
+          id: 'process-1',
+          branchId: 'main',
+          parentId: null,
+          createdAt: '2026-10-03T10:00:00.000Z',
+          processRevision: 1,
+          operation: { kind: 'add', label: 'Legacy first' },
+        },
+        {
+          id: 'process-2',
+          branchId: 'main',
+          parentId: 'process-1',
+          createdAt: '2026-10-03T10:01:00.000Z',
+          processRevision: 2,
+          operation: { kind: 'add', label: 'Legacy head' },
+        },
+      ],
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          rootSnapshotId: 'snapshot-legacy',
+          headSnapshotId: 'snapshot-legacy',
+          rootNodeId: 'process-1',
+          headNodeId: 'process-2',
+          headState: { model: { processRevision: 2 }, value: 'legacy-head' },
+          createdAt: '1970-01-01T00:00:00.000Z',
+        },
+      ],
+    },
+  );
+
+  const history = manager.listHistory();
+  assert.equal(history.find((node) => node.id === 'process-1').restorable, true);
+  assert.equal(history.find((node) => node.id === 'process-2').restorable, true);
+  assert.equal(manager.restoreProcessNode('process-1'), true);
+  assert.equal(live.value, 'legacy-step');
+});
+
 test('restoring an older milestone requires a branch before another Apply', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
