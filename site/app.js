@@ -567,8 +567,11 @@ async function readProjectFileTask(file) {
       transfer: [arrayBuffer],
     },
   );
-  if (task?.aborted) throw new Error('Project open aborted.');
-  if (task?.busy) throw new Error('Another background task is already running.');
+  if (task?.aborted) return null;
+  if (task?.busy) {
+    status('Another background task is already running.', 'warning');
+    return null;
+  }
   if (task?.error) throw new Error(task.error);
   return task.project;
 }
