@@ -1,7 +1,7 @@
 import { modelBoundsZ } from '../model.js';
 import {
-  defaultSectionCollapse,
-  normalizeSectionCollapse,
+  defaultSectionCollapseForModel,
+  resolveSectionCollapse,
   sectionCollapseSnapValues,
 } from '../section-z-collapse.js';
 
@@ -31,7 +31,7 @@ export function createSectionCollapseController({
   }
 
   function current() {
-    return normalizeSectionCollapse(getSectionCollapse(), bounds());
+    return resolveSectionCollapse(getSectionCollapse(), getModel(), bounds());
   }
 
   function setCurrent(value) {
@@ -283,6 +283,6 @@ export function createSectionCollapseController({
     bind,
     sync,
     close,
-    defaultForCurrentModel: () => defaultSectionCollapse(bounds()),
+    defaultForCurrentModel: () => defaultSectionCollapseForModel(getModel(), bounds()),
   };
 }
