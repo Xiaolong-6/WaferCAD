@@ -360,6 +360,7 @@ await historyRestorePage.waitForFunction(
 await openFunctionPanel(historyRestorePage, 'snapshots');
 assert.equal(await historyRestorePage.locator('#snapshotsTools > .tool-context').count(), 0);
 assert.equal(await historyRestorePage.locator('.snapshot-branch-state').count(), 0);
+assert.equal(await historyRestorePage.locator('.snapshot-branch-title strong').count(), 0);
 const historySectionLabel = historyRestorePage
   .locator('#snapshotsTools > .workstation-section-label strong');
 assert.equal((await historySectionLabel.textContent()).trim(), 'History');
@@ -372,6 +373,8 @@ assert.equal(await historyARow.getAttribute('role'), 'button');
 assert.equal(await historyBRow.getAttribute('data-head'), 'true');
 await historyARow.click();
 await historyRestorePage.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+assert.equal(await historyRestorePage.locator('#undoBtn').isDisabled(), true);
+assert.equal(await historyRestorePage.locator('#redoBtn').isDisabled(), true);
 assert.match(
   await historyRestorePage.locator('.snapshot-continuation-banner').textContent(),
   /Viewing process step .*History A/,
