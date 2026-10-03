@@ -45,7 +45,8 @@ test('project replacement controls warn, Save is local, and Export downloads the
 
 test('workspace state is restored locally after app reload', () => {
   assert.match(workspacePersistenceController, /loadWorkspaceState\(\)/);
-  assert.match(workspacePersistenceController, /saveWorkspaceState\(project, \{ appCommit \}\)/);
+  assert.match(workspacePersistenceController, /saveWorkspaceState\([\s\S]*canCommit/);
+  assert.match(workspaceSessionController, /hasWriteLease/);
   assert.match(persistence, /const DB_VERSION = 2/);
   assert.match(persistence, /indexedDB\.open\(DB_NAME, DB_VERSION\)/);
   assert.match(persistence, /META_STORE_NAME = 'workspace-metadata'/);
