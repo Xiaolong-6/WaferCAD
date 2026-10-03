@@ -759,6 +759,27 @@ const snapshotManager = createSnapshotManager({
   validateState: isValidSnapshotState,
 });
 
+async function exportProjectFileTask(project, filename) {
+  if (!processTaskController) return false;
+  const task = await processTaskController.runWorker(
+    '../project-export-worker.js',
+    { project },
+    {
+      label: `Exporting ${filename || 'project'}…`,
+      abortMessage: 'Project export aborted. No file was written.',
+      failurePrefix: 'Project export failed',
+    },
+  );
+  if (task?.aborted) return false;
+  if (task?.busy) {
+    status('Another background task is already running.', 'warning');
+    return false;
+  }
+  if (task?.error) return false;
+  downloadBlob(new Blob([task.arrayBuffer], { type: 'application/json' }), filename);
+  return true;
+}
+
 const projectController = createProjectController({
   importLayoutBuffer,
   loadProjectSnapshot,
@@ -771,6 +792,7 @@ const projectController = createProjectController({
   onProjectChanged: markProjectDirty,
   checkpointBeforeReplace: checkpointWorkspace,
   readProjectFileTask,
+  exportProjectFileTask,
   normalizedProjectName,
   getProjectName: () => projectName,
   setProjectName: (value) => {
