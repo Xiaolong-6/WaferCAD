@@ -1,10 +1,66 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="workstation-boot">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <title>WaferCAD Workspace</title>
+    <style id="workstationBootStyle">
+      html.workstation-boot {
+        background: #11171c;
+      }
+
+      html.workstation-boot body {
+        margin: 0;
+        background: #11171c;
+      }
+
+      html.workstation-boot .topbar,
+      html.workstation-boot .app-shell,
+      html.workstation-boot .statusbar,
+      html.workstation-boot .process-task-dialog,
+      html.workstation-boot .workspace-conflict {
+        visibility: hidden !important;
+      }
+
+      #workstationBootScreen {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        place-items: center;
+        background: #11171c;
+        color: #dce4ea;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      html.workstation-boot #workstationBootScreen {
+        display: grid;
+      }
+
+      .workstation-boot-card {
+        display: grid;
+        min-width: 180px;
+        gap: 7px;
+        text-align: center;
+      }
+
+      .workstation-boot-card strong {
+        font-size: 14px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+      }
+
+      .workstation-boot-card span {
+        color: #7f8b95;
+        font-size: 10px;
+      }
+
+      #workstationBootScreen[data-error="true"] .workstation-boot-card span {
+        color: #d6a4a4;
+      }
+    </style>
     <script type="importmap">
       {
         "imports": {
@@ -15,6 +71,12 @@
     </script>
   </head>
   <body>
+    <div id="workstationBootScreen" role="status" aria-live="polite">
+      <div class="workstation-boot-card">
+        <strong>WaferCAD</strong>
+        <span id="workstationBootMessage">Opening workspace…</span>
+      </div>
+    </div>
     <header class="topbar">
       <div class="brand">
         <a
@@ -1085,15 +1147,21 @@
         } catch {}
 
         const suffix = `?v=${encodeURIComponent(version)}`;
-        const stylesheet = document.createElement('link');
-        stylesheet.rel = 'stylesheet';
-        stylesheet.href = `./style.css${suffix}`;
-        document.head.append(stylesheet);
 
-        const workstationStylesheet = document.createElement('link');
-        workstationStylesheet.rel = 'stylesheet';
-        workstationStylesheet.href = `./workstation.css${suffix}`;
-        document.head.append(workstationStylesheet);
+        const loadStylesheet = (href, label) =>
+          new Promise((resolve, reject) => {
+            const stylesheet = document.createElement('link');
+            stylesheet.rel = 'stylesheet';
+            stylesheet.href = href;
+            stylesheet.onload = resolve;
+            stylesheet.onerror = () => reject(new Error(`Failed to load ${label} stylesheet.`));
+            document.head.append(stylesheet);
+          });
+
+        await Promise.all([
+          loadStylesheet(`./style.css${suffix}`, 'base'),
+          loadStylesheet(`./workstation.css${suffix}`, 'workstation'),
+        ]);
 
         await new Promise((resolve, reject) => {
           const vendor = document.createElement('script');
@@ -1103,11 +1171,19 @@
           document.head.append(vendor);
         });
 
-        const app = document.createElement('script');
-        app.type = 'module';
-        app.src = `./app.js${suffix}`;
-        document.body.append(app);
+        await new Promise((resolve, reject) => {
+          const app = document.createElement('script');
+          app.type = 'module';
+          app.src = `./app.js${suffix}`;
+          app.onload = resolve;
+          app.onerror = () => reject(new Error('Failed to load the WaferCAD application.'));
+          document.body.append(app);
+        });
       })().catch((error) => {
+        const boot = document.getElementById('workstationBootScreen');
+        const message = document.getElementById('workstationBootMessage');
+        if (boot) boot.dataset.error = 'true';
+        if (message) message.textContent = `Startup failed: ${error.message}`;
         const host = document.getElementById('statusText');
         if (host) host.textContent = `Startup failed: ${error.message}`;
         console.error(error);
