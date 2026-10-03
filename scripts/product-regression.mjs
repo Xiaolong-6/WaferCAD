@@ -185,6 +185,53 @@ async function checkLayout(page) {
   assert.deepEqual(problems, []);
 }
 
+async function checkWorkstationShellLayout(page, name) {
+  const compact = await page.evaluate(() =>
+    document.documentElement.classList.contains('workstation-compact-ui'),
+  );
+
+  if (name === 'phone') {
+    assert.equal(compact, true, 'phone: compact workstation class is missing');
+    assert.equal(await page.locator('#mainPanel').isVisible(), true);
+    assert.equal(await page.locator('#maskPanel').isHidden(), true);
+    assert.equal(await page.locator('#threePanel').isHidden(), true);
+    assert.equal(await page.locator('#layerLegend').isHidden(), true);
+    assert.equal(await page.locator('.workstation-section-layers').isVisible(), true);
+    return;
+  }
+
+  assert.equal(compact, false, `${name}: desktop viewport should not be compact`);
+  await page.getByRole('button', { name: 'Split' }).click();
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
+  const split = await page.evaluate(() => {
+    const main = document.getElementById('mainPanel').getBoundingClientRect();
+    const three = document.getElementById('threePanel').getBoundingClientRect();
+    const stage = document.querySelector('.workstation-view-stage').getBoundingClientRect();
+    return {
+      main: { left: main.left, right: main.right, width: main.width },
+      three: { left: three.left, right: three.right, width: three.width },
+      stage: { left: stage.left, right: stage.right, width: stage.width },
+    };
+  });
+  const ratio = split.main.width / split.three.width;
+  assert.ok(ratio > 0.92 && ratio < 1.08, `${name}: Split is not balanced (${ratio})`);
+  assert.ok(
+    Math.abs(split.main.right - split.three.left) <= 2,
+    `${name}: Split contains an unexpected gap or implicit grid track`,
+  );
+  assert.ok(
+    Math.abs(split.main.left - split.stage.left) <= 2 &&
+      Math.abs(split.three.right - split.stage.right) <= 2,
+    `${name}: Split does not fill the primary stage`,
+  );
+  await page.getByRole('button', { name: 'Overview' }).click();
+}
+
 async function checkCompactProcessLayout(page, name) {
   await openFunctionPanel(page, 'process');
   await page.locator('[data-process-mode="etch"]').click();
@@ -666,6 +713,7 @@ try {
     const { page, context } = await open(viewport, touch);
     await capture(page, `${name}-empty`);
     await checkLayout(page);
+    await checkWorkstationShellLayout(page, name);
     await checkAB(page, name);
     await checkSectionCollapse(page, name);
     await ensurePrimaryViewVisible(page, 'three');
