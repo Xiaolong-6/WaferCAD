@@ -499,10 +499,12 @@ try {
     await page.locator('#xyUnitSelect').selectOption('nm');
     await page.locator('#snapshotsTab').click();
     await page.locator('.snapshot-action').first().click();
-    const snapshotStatus = await page.locator('#statusText').textContent(),
-      restoredUnit = await page.locator('#xyUnitSelect').inputValue();
-    assert.match(snapshotStatus || '', /Restored snapshot/);
-    assert.equal(restoredUnit, 'um');
+    await page.waitForFunction(
+      () => /Restored snapshot/.test(document.getElementById('statusText')?.textContent || ''),
+      null,
+      { timeout: 10000 },
+    );
+    assert.equal(await page.locator('#xyUnitSelect').inputValue(), 'um');
     assert.deepEqual(await coords(page), savedCoords);
     await capture(page, `${name}-snapshot-restored`);
     await page.locator('#maskTab').click();
