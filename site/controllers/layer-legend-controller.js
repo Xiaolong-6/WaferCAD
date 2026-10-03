@@ -156,6 +156,7 @@ export function createLayerLegendController({
   renderThree,
   renderAll,
   updateOperationUI,
+  onChanged = () => {},
   status,
   confirmDelete = (message) => globalThis.confirm(message),
 }) {
@@ -233,6 +234,7 @@ export function createLayerLegendController({
       setActiveStructurePalette(paletteSelect.value);
       setOpenLayerPaletteId(null);
       applyStructurePalette(structurePalette());
+      onChanged();
       renderLayerLegend();
       renderMain();
       renderSection();
@@ -249,6 +251,7 @@ export function createLayerLegendController({
       setCustomStructurePalette(palette);
       setOpenLayerPaletteId(null);
       applyStructurePalette(palette);
+      onChanged();
       renderLayerLegend();
       renderMain();
       renderSection();
@@ -289,6 +292,7 @@ export function createLayerLegendController({
       name.title = present ? 'Rename layer' : 'Layer is not present in the model';
       name.onchange = () => {
         if (!renameLayer(model, layer.id, name.value)) name.value = layer.name;
+        onChanged();
         renderLayerLegend();
         renderMain();
         renderSection();
@@ -315,6 +319,7 @@ export function createLayerLegendController({
             return;
           }
           if (getOpenLayerPaletteId() === layer.id) setOpenLayerPaletteId(null);
+          onChanged();
           renderAll();
           updateOperationUI();
           status(`Deleted exposed layer "${layer.name}".`);
@@ -335,6 +340,7 @@ export function createLayerLegendController({
           chip.title = value;
           chip.onclick = () => {
             recolorLayer(model, layer.id, value);
+            onChanged();
             setOpenLayerPaletteId(null);
             renderLayerLegend();
             renderMain();
@@ -374,6 +380,7 @@ export function createLayerLegendController({
       name.title = 'Rename implant overlay';
       name.onchange = () => {
         if (!renameImplant(model, implant.id, name.value)) name.value = implant.name;
+        onChanged();
         renderLayerLegend();
         renderMain();
         renderSection();
@@ -388,6 +395,7 @@ export function createLayerLegendController({
       visible.setAttribute('aria-label', `Toggle visibility for ${implant.name}`);
       visible.onchange = () => {
         setImplantVisible(model, implant.id, visible.checked);
+        onChanged();
         renderLayerLegend();
         renderAll();
       };
@@ -406,6 +414,7 @@ export function createLayerLegendController({
           chip.title = value;
           chip.onclick = () => {
             recolorImplant(model, implant.id, value);
+            onChanged();
             setOpenLayerPaletteId(null);
             renderLayerLegend();
             renderMain();

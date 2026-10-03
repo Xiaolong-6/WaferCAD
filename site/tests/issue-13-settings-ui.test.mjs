@@ -9,6 +9,10 @@ const workspacePersistenceController = await readFile(
   new URL('../controllers/workspace-persistence-controller.js', import.meta.url),
   'utf8',
 );
+const workspaceSessionController = await readFile(
+  new URL('../controllers/workspace-session-controller.js', import.meta.url),
+  'utf8',
+);
 const buildController = await readFile(
   new URL('../controllers/build-controller.js', import.meta.url),
   'utf8',
@@ -38,17 +42,24 @@ test('project replacement controls warn, Save is local, and Export downloads the
   assert.match(workspacePersistenceController, /manual-save · \$\{projectName\}/);
   assert.match(workspacePersistenceController, /createWorkspaceRecoveryCheckpoint\(project/);
   assert.match(projectController, /\$\('exportProjectBtn'\)\.onclick/);
-  assert.match(projectController, /downloadProject\(buildProjectSnapshot\(true\), projectExportFilename\(\)\)/);
+  assert.match(projectController, /exportProjectFileTask/);
+  assert.match(app, /project-export-worker\.js/);
   assert.match(projectController, /\.wafercad/);
 });
 
 test('workspace state is restored locally after app reload', () => {
   assert.match(workspacePersistenceController, /loadWorkspaceState\(\)/);
-  assert.match(workspacePersistenceController, /saveWorkspaceState\(project, \{ appCommit \}\)/);
-  assert.match(persistence, /indexedDB\.open\(DB_NAME, 1\)/);
+  assert.match(workspacePersistenceController, /saveWorkspaceState\([\s\S]*canCommit/);
+  assert.match(workspaceSessionController, /hasWriteLease/);
+  assert.match(persistence, /const DB_VERSION = 2/);
+  assert.match(persistence, /indexedDB\.open\(DB_NAME, DB_VERSION\)/);
+  assert.match(persistence, /META_STORE_NAME = 'workspace-metadata'/);
   assert.match(persistence, /createWorkspaceRecoveryCheckpoint/);
   assert.match(persistence, /pre-migration-v/);
-  assert.match(persistence, /validateProjectFile\(migrateProjectFile\(record\.project\)\)/);
+  assert.match(persistence, /const project = structuredClone\(record\.project\)/);
+  assert.match(persistence, /validateProjectFile\(migrateProjectFile\(project\)\)/);
+  assert.match(persistence, /prepareProjectForWorkspaceStorage\(project\)/);
+  assert.match(persistence, /expandProjectStorage\(project\)/);
 });
 
 test('workspace safety UI exposes local save state, recovery, and safe reload', () => {

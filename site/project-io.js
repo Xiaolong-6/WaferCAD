@@ -220,6 +220,108 @@ function createAssetResolver(rootAsset, quantize) {
   return { resolve, shared };
 }
 
+export function prepareProjectForWorkspaceStorage(project) {
+  validateProjectFile(project);
+
+  const stored = cloneCore(project);
+  const layoutAssets = createAssetResolver(project.layout, () => {});
+  const modelAssets = createAssetResolver(project.model, () => {});
+
+  if (Array.isArray(project.snapshots)) {
+    stored.snapshots = project.snapshots.map((record) => {
+      const state = cloneCore(record.state, { model: false, layout: false });
+      state.modelRef = modelAssets.resolve(record.state.model);
+      state.layoutRef = layoutAssets.resolve(record.state.layout);
+      return {
+        id: record.id,
+        name: record.name,
+        createdAt: record.createdAt,
+        state,
+      };
+    });
+  }
+
+  if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
+  if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
+  stored.storage = {
+    encoding: STORAGE_ENCODING,
+    lossless: true,
+  };
+  return stored;
+}
+
+function openRingArea(points) {
+  let area2 = 0;
+  for (let index = 0; index < (points?.length || 0); index++) {
+    const a = points[index],
+      b = points[(index + 1) % points.length];
+    area2 += Number(a?.[0]) * Number(b?.[1]) - Number(b?.[0]) * Number(a?.[1]);
+  }
+  return Math.abs(area2) / 2;
+}
+
+function pathSpansDistance(points) {
+  const first = points?.[0];
+  return Boolean(
+    first &&
+      points
+        .slice(1)
+        .some((point) => Number(point?.[0]) !== Number(first[0]) || Number(point?.[1]) !== Number(first[1])),
+  );
+}
+
+function assertLayoutGeometryPreserved(before, after, path = 'layout') {
+  for (const key of ['elements', 'linework']) {
+    const original = before?.[key] || [],
+      stored = after?.[key] || [];
+    for (let index = 0; index < original.length; index++) {
+      const source = original[index],
+        quantized = stored[index],
+        itemPath = `${path}.${key}[${index}]`;
+      if (
+        source?.kind === 'path' &&
+        Number(source.width) > 0 &&
+        !(Number(quantized?.width) > 0)
+      ) {
+        throw new Error(
+          `${itemPath}.width collapses to zero at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
+        );
+      }
+      if (
+        source?.kind === 'path' &&
+        pathSpansDistance(source.points) &&
+        !pathSpansDistance(quantized?.points)
+      ) {
+        throw new Error(
+          `${itemPath}.points collapse to zero length at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
+        );
+      }
+      if (
+        source?.kind === 'polygon' &&
+        openRingArea(source.points) > 0 &&
+        !(openRingArea(quantized?.points) > 0)
+      ) {
+        throw new Error(
+          `${itemPath}.points collapse to zero area at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
+        );
+      }
+    }
+  }
+}
+
+function assertQuantizedProjectGeometryPreserved(before, after) {
+  assertLayoutGeometryPreserved(before?.layout, after?.layout, 'layout');
+  const originalSnapshots = before?.snapshots || [],
+    storedSnapshots = after?.snapshots || [];
+  for (let index = 0; index < originalSnapshots.length; index++) {
+    assertLayoutGeometryPreserved(
+      originalSnapshots[index]?.state?.layout,
+      storedSnapshots[index]?.state?.layout,
+      `snapshots[${index}].state.layout`,
+    );
+  }
+}
+
 export function prepareProjectForStorage(project) {
   validateProjectFile(project);
 
@@ -250,6 +352,17 @@ export function prepareProjectForStorage(project) {
     encoding: STORAGE_ENCODING,
     lengthQuantumUm: PROJECT_LENGTH_QUANTUM_UM,
   };
+
+  const verification = structuredClone(stored);
+  expandProjectStorage(verification);
+  try {
+    assertQuantizedProjectGeometryPreserved(project, verification);
+    validateProjectFile(verification);
+  } catch (error) {
+    throw new Error(
+      `Project cannot be stored safely at ${PROJECT_LENGTH_QUANTUM_UM} µm precision: ${error.message}`,
+    );
+  }
   return stored;
 }
 

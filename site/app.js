@@ -1,4 +1,5 @@
 import { parseLayoutFile } from './layout-io.js';
+import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
 import {
   cloneModel,
   createModel,
@@ -129,8 +130,16 @@ function scheduleWorkspacePersistence() {
   workspacePersistenceController?.schedule();
 }
 
+function markProjectDirty() {
+  scheduleWorkspacePersistence();
+}
+
 function refreshRecoveryOptions() {
   return workspacePersistenceController?.refreshRecoveryOptions() ?? Promise.resolve();
+}
+
+function checkpointWorkspace(reason) {
+  return workspacePersistenceController?.checkpointCurrent(reason) ?? Promise.resolve(false);
 }
 
 function syncWorkspaceSessionState(state) {
@@ -158,6 +167,7 @@ const sectionControls = createSectionControlsController({
   getSection: () => section,
   setSection: (value) => {
     section = value;
+    markProjectDirty();
   },
   getSectionEditor: () => sectionEditor,
   getSectionEditEnabled: () => sectionEditEnabled,
@@ -255,6 +265,7 @@ const planView = createPlanViewController({
   xyUnitLabel: () => xyUnit().label,
   renderMask,
   renderMain,
+  onChanged: markProjectDirty,
 });
 const {
   setupCanvas,
@@ -271,6 +282,7 @@ const maskBrowser = createMaskBrowserController({
   getActiveCell: () => activeCell,
   setActiveCellValue: (value) => {
     activeCell = value;
+    markProjectDirty();
   },
   getExpandedCells: () => expandedCells,
   getSelectedLayerKeys: () => selectedLayerKeys,
@@ -282,6 +294,7 @@ const maskBrowser = createMaskBrowserController({
   layerColor,
   renderMask,
   renderAll,
+  onChanged: markProjectDirty,
 });
 const {
   hierarchyFromParsed,
@@ -294,6 +307,27 @@ const {
   renderCellTree,
   renderMaskList,
 } = maskBrowser;
+
+async function runMaskLayoutExport(request) {
+  if (!processTaskController) return null;
+  const formatLabel = request?.format === 'oas' ? 'OASIS' : 'GDSII';
+  const task = await processTaskController.runWorker(
+    '../layout-export-worker.js',
+    request,
+    {
+      label: `Exporting Mask as ${formatLabel}…`,
+      abortMessage: 'Mask export aborted. No file was written.',
+      failurePrefix: `Mask ${formatLabel} export failed`,
+    },
+  );
+  if (task?.aborted) return null;
+  if (task?.busy) {
+    status('Another background task is already running.', 'warning');
+    return null;
+  }
+  if (task?.error) throw new Error(task.error);
+  return task;
+}
 
 const exportController = createExportController({
   getState: () => ({
@@ -317,6 +351,7 @@ const exportController = createExportController({
   layerKey,
   layerColor,
   formatXY,
+  runMaskLayoutExport,
   status,
 });
 const {
@@ -333,6 +368,7 @@ const roiController = createRoiController({
   getRoi: () => roi,
   setRoi: (value) => {
     roi = value;
+    markProjectDirty();
   },
   getRoiTool: () => roiTool,
   setRoiTool: (value) => {
@@ -345,6 +381,7 @@ const roiController = createRoiController({
   getRoiAnchor: () => roiAnchor,
   setRoiAnchor: (value) => {
     roiAnchor = value;
+    markProjectDirty();
   },
   getActiveFace: () => activeFace,
   isInteractionBlocked: () => sectionEditEnabled,
@@ -370,6 +407,7 @@ maskRoiController = createMaskRoiController({
   getRoi: () => maskRoi,
   setRoi: (value) => {
     maskRoi = value;
+    markProjectDirty();
   },
   getTool: () => maskRoiTool,
   setTool: (value) => {
@@ -382,6 +420,7 @@ maskRoiController = createMaskRoiController({
   getAnchor: () => maskRoiAnchor,
   setAnchor: (value) => {
     maskRoiAnchor = value;
+    markProjectDirty();
   },
   getTransform: () =>
     maskSourceMode === 'file'
@@ -399,10 +438,7 @@ maskRoiController = createMaskRoiController({
   canMoveBody: (point) =>
     maskSourceMode !== 'draw' ||
     !drawMask.shapes.some((shape) => drawShapeContainsPoint(shape, point)),
-  onChanged: () => {
-    updateOperationUI();
-    scheduleWorkspacePersistence();
-  },
+  onChanged: updateOperationUI,
   status,
 });
 
@@ -411,10 +447,12 @@ const layerLegendController = createLayerLegendController({
   getActiveStructurePalette: () => activeStructurePalette,
   setActiveStructurePalette: (value) => {
     activeStructurePalette = value;
+    markProjectDirty();
   },
   getCustomStructurePalette: () => customStructurePalette,
   setCustomStructurePalette: (value) => {
     customStructurePalette = value;
+    markProjectDirty();
   },
   getOpenLayerPaletteId: () => openLayerPaletteId,
   setOpenLayerPaletteId: (value) => {
@@ -430,6 +468,7 @@ const layerLegendController = createLayerLegendController({
   renderThree,
   renderAll,
   updateOperationUI,
+  onChanged: markProjectDirty,
   status,
 });
 const { renderLayerLegend, colorNewLayer, colorNewImplant } = layerLegendController;
@@ -455,6 +494,7 @@ function stateSnapshot() {
 function restoreSnapshot(snapshot) {
   model = cloneModel(snapshot.model);
   section = structuredClone(snapshot.section || section);
+  markProjectDirty();
 }
 function saveHistory() {
   history.push(stateSnapshot());
@@ -489,6 +529,7 @@ function applyImportedLayout(imported, displayName) {
   maskSourceMode = 'file';
   fitImportedLayout();
   planViews.mask = { zoom: 1, panX: 0, panY: 0 };
+  markProjectDirty();
   renderAll();
 
   const units = layout.units?.xy || 'µm';
@@ -505,9 +546,57 @@ function applyImportedLayout(imported, displayName) {
 }
 
 async function importLayoutBuffer(arrayBuffer, filename, displayName = filename) {
-  const imported = await parseLayoutFile(arrayBuffer, filename);
+  let imported;
+  if (processTaskController) {
+    const task = await processTaskController.runWorker(
+      '../layout-worker.js',
+      { arrayBuffer, filename },
+      {
+        label: `Importing ${displayName || filename || 'layout'}…`,
+        abortMessage: 'Layout import aborted. The current workspace was not changed.',
+        failurePrefix: 'Layout import failed',
+        transfer: [arrayBuffer],
+      },
+    );
+    if (task?.aborted) return null;
+    if (task?.busy) throw new Error('Another background task is already running.');
+    if (task?.error) throw new Error(task.error);
+    imported = task.imported;
+  } else {
+    imported = await parseLayoutFile(arrayBuffer, filename);
+  }
+  await checkpointWorkspace('pre-import-layout');
   applyImportedLayout(imported, displayName);
   return imported;
+}
+
+async function readProjectFileTask(file) {
+  if (!file) throw new Error('No project file selected.');
+  if (file.size > MAX_PROJECT_FILE_BYTES) {
+    throw new Error(
+      `Project file is larger than the ${Math.round(MAX_PROJECT_FILE_BYTES / (1024 * 1024))} MB safety limit.`,
+    );
+  }
+  if (!processTaskController) return readProjectFile(file);
+
+  const arrayBuffer = await file.arrayBuffer();
+  const task = await processTaskController.runWorker(
+    '../project-worker.js',
+    { arrayBuffer },
+    {
+      label: `Opening ${file.name || 'project'}…`,
+      abortMessage: 'Project open aborted. The current workspace was not changed.',
+      failurePrefix: 'Project open failed',
+      transfer: [arrayBuffer],
+    },
+  );
+  if (task?.aborted) return null;
+  if (task?.busy) {
+    status('Another background task is already running.', 'warning');
+    return null;
+  }
+  if (task?.error) throw new Error(task.error);
+  return task.project;
 }
 
 let planRenderers = null;
@@ -541,8 +630,15 @@ function initThree() {
 }
 
 function renderThree() {
-  threeView?.render();
-  scheduleWorkspacePersistence();
+  try {
+    threeView?.render();
+    delete $('threeHost').dataset.renderError;
+  } catch (error) {
+    const message = error?.message || String(error || 'Unknown 3D render error');
+    $('threeHost').dataset.renderError = message;
+    $('threeStats').textContent = '3D render error';
+    console.error('3D render failed.', error);
+  }
 }
 
 function fit3d() {
@@ -639,18 +735,18 @@ const projectStateController = createProjectStateController({
     baseRevertSnapshot = null;
     drawMaskController?.resetInteraction();
     maskRoiController?.clearDrawingMode();
+    markProjectDirty();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
-  syncThreeControls: ({
-    maskOpacity: maskAlpha,
-    threeOpacity: opacity,
-    threeShowBorders: borders,
-  }) => {
-    $('maskOpacityRange').value = String(maskAlpha);
-    $('maskOpacityValue').value = `${Math.round(maskAlpha * 100)}%`;
-    $('threeOpacityRange').value = String(opacity);
-    $('threeOpacityValue').value = `${Math.round(opacity * 100)}%`;
-    $('threeBorders').checked = borders;
+  syncDisplayControls: () => {
+    syncBaseControls();
+    syncSectionInputs();
+    maskImportController?.syncTransformInputs();
+    $('maskOpacityRange').value = String(maskOpacity);
+    $('maskOpacityValue').value = `${Math.round(maskOpacity * 100)}%`;
+    $('threeOpacityRange').value = String(threeOpacity);
+    $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
+    $('threeBorders').checked = threeShowBorders;
   },
   setSectionEditEnabled,
 });
@@ -663,6 +759,27 @@ const snapshotManager = createSnapshotManager({
   validateState: isValidSnapshotState,
 });
 
+async function exportProjectFileTask(project, filename) {
+  if (!processTaskController) return false;
+  const task = await processTaskController.runWorker(
+    '../project-export-worker.js',
+    { project },
+    {
+      label: `Exporting ${filename || 'project'}…`,
+      abortMessage: 'Project export aborted. No file was written.',
+      failurePrefix: 'Project export failed',
+    },
+  );
+  if (task?.aborted) return false;
+  if (task?.busy) {
+    status('Another background task is already running.', 'warning');
+    return false;
+  }
+  if (task?.error) return false;
+  downloadBlob(new Blob([task.arrayBuffer], { type: 'application/json' }), filename);
+  return true;
+}
+
 const projectController = createProjectController({
   importLayoutBuffer,
   loadProjectSnapshot,
@@ -672,14 +789,17 @@ const projectController = createProjectController({
   renderAll,
   fit3d,
   status,
-  onProjectChanged: scheduleWorkspacePersistence,
+  onProjectChanged: markProjectDirty,
+  checkpointBeforeReplace: checkpointWorkspace,
+  readProjectFileTask,
+  exportProjectFileTask,
   normalizedProjectName,
   getProjectName: () => projectName,
   setProjectName: (value) => {
     projectName = value;
   },
   syncProjectNameInput,
-  scheduleWorkspacePersistence,
+  scheduleWorkspacePersistence: markProjectDirty,
   resetProjectState,
   resetRoughDraftControls,
   clearRoiDrawingMode,
@@ -693,6 +813,7 @@ const maskImportController = createMaskImportController({
   getMaskTransform: () => maskTransform,
   setMaskTransform: (value) => {
     maskTransform = value;
+    markProjectDirty();
   },
   manualMicron,
   formatLengthField,
@@ -708,10 +829,12 @@ drawMaskController = createDrawMaskController({
   getMode: () => maskSourceMode,
   setMode: (value) => {
     maskSourceMode = value;
+    markProjectDirty();
   },
   getDrawMask: () => drawMask,
   setDrawMask: (value) => {
     drawMask = value;
+    markProjectDirty();
   },
   setupCanvas,
   viewport,
@@ -743,6 +866,7 @@ processPanelController = createProcessPanelController({
   getModel: () => model,
   setModel: (value) => {
     model = value;
+    markProjectDirty();
   },
   getActiveFace: () => activeFace,
   getMaskState: () => ({
@@ -796,9 +920,11 @@ const baseControls = createBaseControlsController({
   getModel: () => model,
   setModel: (value) => {
     model = value;
+    markProjectDirty();
   },
   setSection: (value) => {
     section = value;
+    markProjectDirty();
   },
   getBaseRevertSnapshot: () => baseRevertSnapshot,
   setBaseRevertSnapshot: (value) => {
@@ -822,6 +948,7 @@ const workspaceActions = createWorkspaceActionsController({
   getXyUnit: xyUnit,
   setXyDisplayUnit: (value) => {
     xyDisplayUnit = value;
+    markProjectDirty();
   },
   formatLengthField,
   manualMicron,
@@ -831,6 +958,7 @@ const workspaceActions = createWorkspaceActionsController({
   getActiveFace: () => activeFace,
   setActiveFace: (value) => {
     activeFace = value;
+    markProjectDirty();
   },
   updateOperationUI,
   applyOperation: applyOp,
@@ -847,24 +975,29 @@ const workspaceActions = createWorkspaceActionsController({
   getSectionScaleMode: () => sectionScaleMode,
   setSectionScaleMode: (value) => {
     sectionScaleMode = value;
+    markProjectDirty();
   },
   getSectionShowBorders: () => sectionShowBorders,
   setSectionShowBorders: (value) => {
     sectionShowBorders = Boolean(value);
+    markProjectDirty();
   },
   renderSection,
   getMaskOpacity: () => maskOpacity,
   setMaskOpacity: (value) => {
     maskOpacity = value;
+    markProjectDirty();
   },
   renderMask,
   getThreeOpacity: () => threeOpacity,
   setThreeOpacity: (value) => {
     threeOpacity = value;
+    markProjectDirty();
   },
   getThreeShowBorders: () => threeShowBorders,
   setThreeShowBorders: (value) => {
     threeShowBorders = value;
+    markProjectDirty();
   },
   renderThree,
   zoomPlanView,
@@ -879,12 +1012,14 @@ const workspaceActions = createWorkspaceActionsController({
   syncBaseControls,
   snapshotManager,
   renderSnapshots,
+  onProjectChanged: markProjectDirty,
 });
 
 const mainCanvasController = createMainCanvasController({
   getSection: () => section,
   setSection: (value) => {
     section = value;
+    markProjectDirty();
   },
   getActiveFace: () => activeFace,
   getSectionCreateMode: () => sectionEditEnabled,
@@ -998,7 +1133,6 @@ planRenderers = createPlanRenderers({
   formatXY,
   xyText,
   xyUnitLabel: () => xyUnit().label,
-  scheduleWorkspacePersistence,
 });
 
 workspaceSession.start();
@@ -1006,8 +1140,12 @@ bindUi();
 loadBuildCommit();
 window.addEventListener('focus', checkForBuildUpdate);
 window.addEventListener('pagehide', () => {
-  void persistWorkspaceNow();
-  workspaceSession.stop();
+  void persistWorkspaceNow()
+    .catch(() => false)
+    .finally(() => workspaceSession.stop());
+});
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) globalThis.location.reload();
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkForBuildUpdate();

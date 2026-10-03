@@ -774,8 +774,10 @@ export function uncoveredDomain(model, clip = model?.boundary) {
       uncovered = difference(uncovered, covered);
     }
     return uncovered;
-  } catch {
-    return [];
+  } catch (error) {
+    throw new Error(
+      `Coverage topology failed while deriving uncovered material: ${error?.message || String(error)}`,
+    );
   }
 }
 

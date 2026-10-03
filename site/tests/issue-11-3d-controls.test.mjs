@@ -37,13 +37,22 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /a\.depth - b\.depth \|\| a\.sortBias - b\.sortBias/);
   assert.match(roughMeshGeometry, /function geometryFromRoughCap\(/);
   assert.match(threeView, /adaptiveRoughMeshLod\(/);
-  assert.match(threeView, /function roughLodZones\(/);
+  assert.match(threeView, /function prepareRoughSpatialZones\(/);
+  assert.match(threeView, /task\.spatialZones = \[\.\.\.buckets\.values\(\)\]\.map/);
+  assert.match(threeView, /roughBaseTriangulationCount\+\+/);
+  assert.match(threeView, /subdivideRoughBaseTriangles\(base\.triangles, depth\)/);
+  assert.match(threeView, /roughBoundaryEdgesFromTriangles\(baseTriangles\)/);
+  assert.doesNotMatch(threeView, /intersection\(cap\.polys/);
+  assert.match(threeView, /function roughZonePriority\(/);
   assert.match(threeView, /function maybeRebuildAdaptiveGeometry\(/);
-  assert.match(threeView, /screenPriority: 0\.06/);
+  assert.match(threeView, /return normalizedDistance <= 1\.75 \? 0\.28 : 0\.06/);
   assert.match(roughMeshGeometry, /function roughPointNormal\(/);
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
+  assert.match(threeView, /const showInternalImplants = materialState\.transparent/);
+  assert.match(threeView, /if \(!showInternalImplants && !implant\.surfaceExposed\) continue/);
+  assert.match(threeView, /if \(showInternalImplants\)/);
   assert.match(threeView, /opacity: opacity \* 0\.18/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
   assert.match(threeView, /opacity: implantState\.opacity,\s*depthTest: true/s);
@@ -63,13 +72,18 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
   assert.match(threeView, /async function exportGlb\(\)/);
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
+  assert.match(threeView, /preserveDrawingBuffer: false/);
   assert.match(
     threeView,
-    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);[\s\S]*?renderer\.render\(scene, camera\)/,
+    /captureRenderer = new THREE\.WebGLRenderer\(\{[\s\S]*?preserveDrawingBuffer: true/,
   );
   assert.match(
     threeView,
-    /renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?camera\.updateProjectionMatrix\(\);[\s\S]*?rebuildAdaptiveRoughGeometry\(\);/,
+    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);[\s\S]*?captureRenderer\.render\(scene, camera\)/,
+  );
+  assert.match(
+    threeView,
+    /captureRenderer\.dispose\(\)[\s\S]*?renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);/,
   );
   assert.match(app, /createThreeView/);
 });

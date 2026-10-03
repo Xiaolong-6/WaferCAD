@@ -1,7 +1,13 @@
+import {
+  expandProjectStorage,
+  prepareProjectForWorkspaceStorage,
+} from './project-io.js';
 import { CURRENT_PROJECT_VERSION, migrateProjectFile, validateProjectFile } from './project-schema.js';
 
 const DB_NAME = 'wafercad-workspace-v1';
+const DB_VERSION = 2;
 const STORE_NAME = 'workspace';
+const META_STORE_NAME = 'workspace-metadata';
 const RECORD_KEY = 'current';
 const RECOVERY_PREFIX = 'recovery:';
 const MAX_RECOVERY_POINTS = 8;
@@ -23,20 +29,6 @@ function transactionDone(transaction) {
   });
 }
 
-function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME, { keyPath: 'key' });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('IndexedDB is unavailable.'));
-  });
-}
-
 function recordMetadata(project, metadata = {}) {
   return {
     appCommit: String(metadata.appCommit || ''),
@@ -46,28 +38,94 @@ function recordMetadata(project, metadata = {}) {
   };
 }
 
+function metadataRecord(key, project, metadata = {}, updatedAt = new Date().toISOString()) {
+  return {
+    key,
+    updatedAt,
+    ...recordMetadata(project, metadata),
+  };
+}
+
+function migrateLegacyMetadata(transaction) {
+  if (!transaction) return;
+  const payloadStore = transaction.objectStore(STORE_NAME);
+  const metadataStore = transaction.objectStore(META_STORE_NAME);
+  const cursorRequest = payloadStore.openCursor();
+  cursorRequest.onsuccess = () => {
+    const cursor = cursorRequest.result;
+    if (!cursor) return;
+    const record = cursor.value || {};
+    if (record.key) {
+      metadataStore.put({
+        key: record.key,
+        updatedAt: String(record.updatedAt || ''),
+        appCommit: String(record.appCommit || ''),
+        projectVersion: Number(record.projectVersion ?? record.project?.version) || null,
+        revision: Number(record.revision ?? record.project?.model?.revision) || 0,
+        reason: String(record.reason || ''),
+      });
+    }
+    cursor.continue();
+  };
+}
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (event) => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, { keyPath: 'key' });
+      }
+      if (!database.objectStoreNames.contains(META_STORE_NAME)) {
+        database.createObjectStore(META_STORE_NAME, { keyPath: 'key' });
+      }
+      if (event.oldVersion > 0 && event.oldVersion < 2) {
+        migrateLegacyMetadata(request.transaction);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('IndexedDB is unavailable.'));
+  });
+}
+
 async function pruneRecoveryPoints(database, keep = MAX_RECOVERY_POINTS) {
-  const transaction = database.transaction(STORE_NAME, 'readwrite');
-  const store = transaction.objectStore(STORE_NAME);
-  const records = await requestResult(store.getAll());
+  const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
+  const payloadStore = transaction.objectStore(STORE_NAME);
+  const metadataStore = transaction.objectStore(META_STORE_NAME);
+  const records = await requestResult(metadataStore.getAll());
   const recoveries = records
     .filter((record) => String(record?.key || '').startsWith(RECOVERY_PREFIX))
     .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
-  recoveries.slice(Math.max(0, keep)).forEach((record) => store.delete(record.key));
+  for (const record of recoveries.slice(Math.max(0, keep))) {
+    payloadStore.delete(record.key);
+    metadataStore.delete(record.key);
+  }
   await transactionDone(transaction);
 }
 
-export async function saveWorkspaceState(project, metadata = {}) {
+export async function saveWorkspaceState(
+  project,
+  metadata = {},
+  { canCommit = () => true } = {},
+) {
+  const preparedProject = prepareProjectForWorkspaceStorage(project);
+  if (!canCommit()) return false;
+
   const database = await openDatabase();
   try {
-    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    if (!canCommit()) return false;
+    const updatedAt = new Date().toISOString();
+    const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).put({
       key: RECORD_KEY,
-      project,
-      updatedAt: new Date().toISOString(),
-      ...recordMetadata(project, metadata),
+      project: preparedProject,
     });
+    transaction
+      .objectStore(META_STORE_NAME)
+      .put(metadataRecord(RECORD_KEY, project, metadata, updatedAt));
     await transactionDone(transaction);
+    return true;
   } finally {
     database.close();
   }
@@ -78,13 +136,14 @@ export async function createWorkspaceRecoveryCheckpoint(project, metadata = {}) 
   try {
     const updatedAt = new Date().toISOString();
     const key = `${RECOVERY_PREFIX}${updatedAt}:${Math.random().toString(36).slice(2, 8)}`;
-    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).put({
       key,
-      project: structuredClone(project),
-      updatedAt,
-      ...recordMetadata(project, metadata),
+      project: prepareProjectForWorkspaceStorage(project),
     });
+    transaction
+      .objectStore(META_STORE_NAME)
+      .put(metadataRecord(key, project, metadata, updatedAt));
     await transactionDone(transaction);
     await pruneRecoveryPoints(database);
     return key;
@@ -96,9 +155,9 @@ export async function createWorkspaceRecoveryCheckpoint(project, metadata = {}) 
 export async function listWorkspaceRecoveryPoints() {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction(STORE_NAME, 'readonly');
+    const transaction = database.transaction(META_STORE_NAME, 'readonly');
     const done = transactionDone(transaction);
-    const records = await requestResult(transaction.objectStore(STORE_NAME).getAll());
+    const records = await requestResult(transaction.objectStore(META_STORE_NAME).getAll());
     await done;
     return records
       .filter((record) => String(record?.key || '').startsWith(RECOVERY_PREFIX))
@@ -127,7 +186,9 @@ export async function loadWorkspaceRecoveryPoint(key) {
     const record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
     await done;
     if (!record?.project) return null;
-    return validateProjectFile(migrateProjectFile(record.project));
+    const project = structuredClone(record.project);
+    expandProjectStorage(project);
+    return validateProjectFile(migrateProjectFile(project));
   } finally {
     database.close();
   }
@@ -136,13 +197,15 @@ export async function loadWorkspaceRecoveryPoint(key) {
 export async function clearWorkspaceRecoveryPoints() {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction(STORE_NAME, 'readwrite'),
-      store = transaction.objectStore(STORE_NAME),
-      records = await requestResult(store.getAll());
+    const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
+    const payloadStore = transaction.objectStore(STORE_NAME);
+    const metadataStore = transaction.objectStore(META_STORE_NAME);
+    const records = await requestResult(metadataStore.getAll());
     let removed = 0;
     for (const record of records) {
       if (!String(record?.key || '').startsWith(RECOVERY_PREFIX)) continue;
-      store.delete(record.key);
+      payloadStore.delete(record.key);
+      metadataStore.delete(record.key);
       removed++;
     }
     await transactionDone(transaction);
@@ -154,31 +217,40 @@ export async function clearWorkspaceRecoveryPoints() {
 
 export async function loadWorkspaceState() {
   const database = await openDatabase();
+  let record = null;
+  let metadata = null;
   try {
-    const transaction = database.transaction(STORE_NAME, 'readonly');
+    const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readonly');
     const done = transactionDone(transaction);
-    const record = await requestResult(transaction.objectStore(STORE_NAME).get(RECORD_KEY));
+    [record, metadata] = await Promise.all([
+      requestResult(transaction.objectStore(STORE_NAME).get(RECORD_KEY)),
+      requestResult(transaction.objectStore(META_STORE_NAME).get(RECORD_KEY)),
+    ]);
     await done;
-    if (!record?.project) return null;
-
-    const rawVersion = Number(record.project.version) || 1;
-    if (rawVersion < CURRENT_PROJECT_VERSION) {
-      await createWorkspaceRecoveryCheckpoint(record.project, {
-        appCommit: record.appCommit,
-        reason: `pre-migration-v${rawVersion}`,
-      });
-    }
-    return validateProjectFile(migrateProjectFile(record.project));
   } finally {
     database.close();
   }
+
+  if (!record?.project) return null;
+  const project = structuredClone(record.project);
+  expandProjectStorage(project);
+  const rawVersion = Number(project.version) || 1,
+    migrated = validateProjectFile(migrateProjectFile(project));
+  if (rawVersion < CURRENT_PROJECT_VERSION) {
+    await createWorkspaceRecoveryCheckpoint(migrated, {
+      appCommit: metadata?.appCommit,
+      reason: `pre-migration-v${rawVersion}`,
+    });
+  }
+  return migrated;
 }
 
 export async function clearWorkspaceState() {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).delete(RECORD_KEY);
+    transaction.objectStore(META_STORE_NAME).delete(RECORD_KEY);
     await transactionDone(transaction);
   } finally {
     database.close();

@@ -1,3 +1,5 @@
+import { MAX_LAYOUT_FILE_BYTES } from './layout-io.js';
+import { MAX_PROJECT_FILE_BYTES } from './project-io.js';
 import { createVisualizationLayout } from './welcome-example.js';
 import { stageStartupFile } from './startup-file.js';
 
@@ -68,6 +70,12 @@ function drawPreview() {
 async function stageAndOpen(file, kind) {
   if (!file) return;
   try {
+    const maxBytes = kind === 'project' ? MAX_PROJECT_FILE_BYTES : MAX_LAYOUT_FILE_BYTES;
+    if (file.size > maxBytes) {
+      throw new Error(
+        `${kind === 'project' ? 'Project' : 'Layout'} file is larger than the ${Math.round(maxBytes / (1024 * 1024))} MB safety limit.`,
+      );
+    }
     status(`Preparing ${file.name}…`);
     await stageStartupFile(file, kind);
     globalThis.location.href = './app.html?start=staged';

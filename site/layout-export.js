@@ -10,6 +10,7 @@ import {
 
 const DBU_TARGET_MICRON = 0.0001;
 const GDS_COORD_LIMIT = 2_000_000_000;
+const OAS_COORD_LIMIT = Math.floor(Number.MAX_SAFE_INTEGER / 8);
 const GEOM_EPS = 1e-12;
 
 function layerKey(layer, datatype) {
@@ -276,15 +277,29 @@ export function collectMaskExportElements({
   return { elements: out, roiApplied: Boolean(roi), source: 'file' };
 }
 
-function chooseDbuMicron(elements) {
+function chooseDbuMicron(
+  elements,
+  targetDbuMicron = DBU_TARGET_MICRON,
+  coordinateLimit = GDS_COORD_LIMIT,
+) {
   let maxAbs = 1;
   for (const element of elements || []) {
     for (const [x, y] of element.points || []) maxAbs = Math.max(maxAbs, Math.abs(x), Math.abs(y));
     maxAbs = Math.max(maxAbs, Math.abs(Number(element.width) || 0));
   }
-  let dbu = DBU_TARGET_MICRON;
-  while (maxAbs / dbu > GDS_COORD_LIMIT) dbu *= 10;
+  let dbu = targetDbuMicron;
+  while (maxAbs / dbu > coordinateLimit) dbu *= 10;
   return dbu;
+}
+
+function quantizedPolygonArea2(points) {
+  let area2 = 0n;
+  for (let index = 0; index < points.length; index++) {
+    const [x0, y0] = points[index],
+      [x1, y1] = points[(index + 1) % points.length];
+    area2 += BigInt(x0) * BigInt(y1) - BigInt(x1) * BigInt(y0);
+  }
+  return area2 < 0n ? -area2 : area2;
 }
 
 function quantizeElements(elements, dbuMicron) {
@@ -298,17 +313,35 @@ function quantizeElements(elements, dbuMicron) {
       if (!previous || next[0] !== previous[0] || next[1] !== previous[1]) points.push(next);
     }
     if (element.kind === 'polygon') {
-      if (points.length > 2 && points[0][0] === points.at(-1)[0] && points[0][1] === points.at(-1)[1]) {
+      if (
+        points.length > 2 &&
+        points[0][0] === points.at(-1)[0] &&
+        points[0][1] === points.at(-1)[1]
+      ) {
         points.pop();
       }
-      if (points.length < 3) continue;
+      if (points.length < 3 || quantizedPolygonArea2(points) === 0n) {
+        throw new Error(
+          `Mask export geometry collapses at the selected ${dbuMicron} µm database unit.`,
+        );
+      }
     } else if (points.length < 2) {
-      continue;
+      throw new Error(
+        `Mask export path collapses at the selected ${dbuMicron} µm database unit.`,
+      );
+    }
+    const layer = Number(element.layer),
+      datatype = Number(element.datatype);
+    if (!Number.isSafeInteger(layer) || layer < 0) {
+      throw new Error(`Mask export layer is invalid: ${element.layer}.`);
+    }
+    if (!Number.isSafeInteger(datatype) || datatype < 0) {
+      throw new Error(`Mask export datatype is invalid: ${element.datatype}.`);
     }
     out.push({
       ...element,
-      layer: Math.max(0, Math.min(32767, Math.round(Number(element.layer) || 0))),
-      datatype: Math.max(0, Math.min(32767, Math.round(Number(element.datatype) || 0))),
+      layer,
+      datatype,
       width: quantize(Math.abs(Number(element.width) || 0)),
       points,
     });
@@ -408,6 +441,11 @@ export function serializeGDS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
     ];
 
   for (const element of quantized) {
+    if (element.layer > 32767 || element.datatype > 32767) {
+      throw new Error(
+        `GDSII export cannot represent layer/datatype ${element.layer}/${element.datatype} as INT2.`,
+      );
+    }
     if (element.kind === 'polygon') {
       if (element.points.length + 1 > 8190) {
         throw new Error('A polygon is too large for one GDSII BOUNDARY record.');
@@ -489,7 +527,13 @@ function oasisPointList(points, closed) {
 }
 
 export function serializeOASIS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
-  const dbuMicron = chooseDbuMicron(elements),
+  // OASIS PATH stores half-width as an integer. A half-size base DBU keeps
+  // 0.1 nm full-width increments exactly representable.
+  const dbuMicron = chooseDbuMicron(
+      elements,
+      DBU_TARGET_MICRON / 2,
+      OAS_COORD_LIMIT,
+    ),
     quantized = quantizeElements(elements, dbuMicron),
     parts = [
       new TextEncoder().encode('%SEMI-OASIS\r\n'),

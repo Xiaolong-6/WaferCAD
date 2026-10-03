@@ -47,7 +47,7 @@ export function roughCapBaseTriangles(THREE, z, normal, polys) {
   return { triangles, maxEdge };
 }
 
-function subdivideTriangles(triangles, depth) {
+export function subdivideRoughBaseTriangles(triangles, depth) {
   let current = triangles;
   for (let level = 0; level < depth; level++) {
     const next = [];
@@ -60,6 +60,40 @@ function subdivideTriangles(triangles, depth) {
     current = next;
   }
   return current;
+}
+
+export function roughBoundaryEdgesFromTriangles(triangles) {
+  const entries = new Map();
+  const coordinateKey = (value) => Number(value).toPrecision(15);
+  const pointKey = (point) => `${coordinateKey(point[0])},${coordinateKey(point[1])}`;
+
+  for (const triangle of triangles || []) {
+    if (!Array.isArray(triangle) || triangle.length !== 3) continue;
+    for (const [p, q] of [
+      [triangle[0], triangle[1]],
+      [triangle[1], triangle[2]],
+      [triangle[2], triangle[0]],
+    ]) {
+      const line = canonicalLineInterval(p, q);
+      if (!line) continue;
+      const a = pointKey(p),
+        b = pointKey(q),
+        segmentKey = a < b ? `${a}|${b}` : `${b}|${a}`,
+        existing = entries.get(segmentKey);
+      if (existing) {
+        existing.count++;
+      } else {
+        entries.set(segmentKey, {
+          count: 1,
+          edge: { p, q, line, key: lineIntervalKey(line) },
+        });
+      }
+    }
+  }
+
+  return [...entries.values()]
+    .filter((entry) => entry.count === 1)
+    .map((entry) => entry.edge);
 }
 
 function roughPoint(point, z, profileNormal, appearance) {
@@ -166,7 +200,7 @@ export function geometryFromRoughCap(
     };
 
   for (const zone of zones) {
-    if (isEmpty(zone.polys)) continue;
+    if (!zone.baseTriangles?.length && isEmpty(zone.polys)) continue;
     const base =
         Array.isArray(zone.baseTriangles) && Number.isFinite(zone.maxEdge)
           ? { triangles: zone.baseTriangles, maxEdge: zone.maxEdge }
@@ -181,8 +215,8 @@ export function geometryFromRoughCap(
         triangleBudget: zone.triangleBudget ?? null,
       }),
       depth = lod.depth,
-      triangles = subdivideTriangles(baseTriangles, depth),
-      edges = polygonEdges(zone.polys);
+      triangles = subdivideRoughBaseTriangles(baseTriangles, depth),
+      edges = Array.isArray(zone.edges) ? zone.edges : polygonEdges(zone.polys);
     maxDepth = Math.max(maxDepth, depth);
     zoneResults.push({ ...zone, depth, lod, edges });
 

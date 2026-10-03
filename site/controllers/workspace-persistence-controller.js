@@ -49,15 +49,33 @@ export function createWorkspacePersistenceController({
     timer = null;
   }
 
+  function hasWriteAccess() {
+    return workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? false;
+  }
+
+  async function saveCurrentProject(project) {
+    const saved = await saveWorkspaceState(
+      project,
+      { appCommit },
+      { canCommit: hasWriteAccess },
+    );
+    if (!saved) {
+      setSaveStatus('Autosave paused · another tab owns local storage');
+      return false;
+    }
+    return true;
+  }
+
   function persistNow() {
-    if (!ready || !workspaceSession?.canWrite()) return Promise.resolve(false);
+    if (!ready || !hasWriteAccess()) return Promise.resolve(false);
     clearTimer();
     const project = buildProjectSnapshot(true);
     setSaveStatus('Autosaving…');
     write = write
       .catch(() => {})
-      .then(() => saveWorkspaceState(project, { appCommit }))
-      .then(() => {
+      .then(() => saveCurrentProject(project))
+      .then((saved) => {
+        if (!saved) return false;
         setSaveStatus(`Autosaved · ${savedTimeLabel()}`);
         return true;
       });
@@ -69,7 +87,7 @@ export function createWorkspacePersistenceController({
   }
 
   function schedule() {
-    if (!ready || !workspaceSession?.canWrite()) return;
+    if (!ready || !hasWriteAccess()) return;
     setSaveStatus('Autosaving…');
     clearTimer();
     timer = setTimeout(() => {
@@ -98,7 +116,7 @@ export function createWorkspacePersistenceController({
           commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
         select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
       }
-      const writable = workspaceSession?.canWrite() ?? false;
+      const writable = hasWriteAccess() ?? false;
       restore.disabled = !writable;
       if (clear) clear.disabled = !writable;
     } catch (error) {
@@ -134,7 +152,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function restoreSelectedRecovery() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab is read-only. Take over the workspace before restoring a checkpoint.', 'warning');
       return;
     }
@@ -173,7 +191,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function reloadSafely() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab is read-only. Update from the tab that owns the workspace.', 'warning');
       return;
     }
@@ -189,13 +207,14 @@ export function createWorkspacePersistenceController({
       setSaveStatus('Autosaving…');
       write = write
         .catch(() => {})
-        .then(() => saveWorkspaceState(project, { appCommit }))
-        .then(() =>
-          createWorkspaceRecoveryCheckpoint(project, {
+        .then(() => saveCurrentProject(project))
+        .then((saved) => {
+          if (!saved) throw new Error('Another tab took over local autosave.');
+          return createWorkspaceRecoveryCheckpoint(project, {
             appCommit,
             reason: updateCommit ? `pre-update-${updateCommit.slice(0, 7)}` : 'pre-reload',
-          }),
-        );
+          });
+        });
       await write;
       setSaveStatus(`Autosaved · ${savedTimeLabel()}`);
       workspaceSession.stop();
@@ -210,8 +229,20 @@ export function createWorkspacePersistenceController({
     }
   }
 
+  async function checkpointCurrent(reason = 'pre-destructive-action') {
+    if (!ready || !hasWriteAccess()) return false;
+    clearTimer();
+    const project = buildProjectSnapshot(true);
+    await createWorkspaceRecoveryCheckpoint(project, {
+      appCommit,
+      reason,
+    });
+    await refreshRecoveryOptions();
+    return true;
+  }
+
   async function saveCheckpoint() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
       return;
     }
@@ -224,13 +255,14 @@ export function createWorkspacePersistenceController({
       setSaveStatus('Autosaving…');
       write = write
         .catch(() => {})
-        .then(() => saveWorkspaceState(project, { appCommit }))
-        .then(() =>
-          createWorkspaceRecoveryCheckpoint(project, {
+        .then(() => saveCurrentProject(project))
+        .then((saved) => {
+          if (!saved) throw new Error('Another tab took over local autosave.');
+          return createWorkspaceRecoveryCheckpoint(project, {
             appCommit,
             reason: `manual-save · ${projectName}`,
-          }),
-        );
+          });
+        });
       await write;
       setSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`);
       await refreshRecoveryOptions();
@@ -244,9 +276,43 @@ export function createWorkspacePersistenceController({
 
   async function initializePersistedWorkspace() {
     const hasExplicitStart = new URLSearchParams(globalThis.location?.search || '').has('start');
+    let allowInitialAutosave = true;
     try {
       if (hasExplicitStart) {
-        await initializeWorkspaceStart();
+        const saved = await loadWorkspaceState();
+        if (saved && hasWriteAccess()) {
+          try {
+            await createWorkspaceRecoveryCheckpoint(saved, {
+              appCommit,
+              reason: 'pre-welcome-start',
+            });
+          } catch (error) {
+            console.error(error);
+            loadProjectSnapshot(saved);
+            snapshotManager.importRecords(saved.snapshots || []);
+            syncBaseControls();
+            syncTransformInputs();
+            renderAll();
+            renderSnapshots();
+            fit3d();
+            status(
+              `Welcome action cancelled because the current workspace could not be checkpointed: ${error.message}`,
+              'error',
+            );
+            return;
+          }
+        }
+        const started = await initializeWorkspaceStart();
+        if (!started && saved) {
+          loadProjectSnapshot(saved);
+          snapshotManager.importRecords(saved.snapshots || []);
+          syncBaseControls();
+          syncTransformInputs();
+          renderAll();
+          renderSnapshots();
+          fit3d();
+          status(`Welcome action failed; restored local workspace "${normalizedProjectName()}".`, 'warning');
+        }
       } else {
         const saved = await loadWorkspaceState();
         if (saved) {
@@ -261,11 +327,12 @@ export function createWorkspacePersistenceController({
         }
       }
     } catch (error) {
+      allowInitialAutosave = false;
       console.warn('Workspace restore failed.', error);
-      status(`Local workspace restore failed: ${error.message}`);
+      status(`Local workspace restore failed: ${error.message}`, 'error');
     } finally {
       ready = true;
-      schedule();
+      if (allowInitialAutosave) schedule();
       void refreshRecoveryOptions();
     }
   }
@@ -290,13 +357,13 @@ export function createWorkspacePersistenceController({
       void reloadSafely();
     };
     $('workspaceRecoverySelect').onchange = (event) => {
-      $('workspaceRestoreBtn').disabled = !event.target.value || !workspaceSession?.canWrite();
+      $('workspaceRestoreBtn').disabled = !event.target.value || !hasWriteAccess();
     };
     $('workspaceRestoreBtn').onclick = () => {
       void restoreSelectedRecovery();
     };
     $('workspaceRecoveryClearBtn').onclick = async () => {
-      if (!workspaceSession?.canWrite()) {
+      if (!hasWriteAccess()) {
         status('This tab cannot clear local Recovery while another tab owns browser storage.', 'warning');
         return;
       }
@@ -330,6 +397,7 @@ export function createWorkspacePersistenceController({
     persistNow,
     schedule,
     refreshRecoveryOptions,
+    checkpointCurrent,
     syncSessionState,
     setUpdateCommit,
     initializePersistedWorkspace,

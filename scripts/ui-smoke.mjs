@@ -22,6 +22,22 @@ const welcomeProject = projectForBenchmark({
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 
+async function processDiagnostics(page) {
+  return Promise.race([
+    page
+      .evaluate(() => ({
+        status: document.getElementById('statusText')?.textContent || '',
+        stage: document.getElementById('processTaskStage')?.textContent || '',
+        taskHidden: Boolean(document.getElementById('processTaskDialog')?.hidden),
+        applyDisabled: Boolean(document.getElementById('applyOperationBtn')?.disabled),
+        roughRebuilds: document.querySelector('#threeHost canvas')?.dataset?.roughRebuildCount || '',
+        roughZones: document.querySelector('#threeHost canvas')?.dataset?.roughLodZones || '',
+      }))
+      .catch((error) => ({ evaluateError: error.message })),
+    new Promise((resolve) => setTimeout(() => resolve({ pageUnresponsive: true }), 2000)),
+  ]);
+}
+
 async function canvasInkFraction(page, selector) {
   return page.locator(selector).evaluate((canvas) => {
     const ctx = canvas.getContext('2d'),
@@ -83,6 +99,75 @@ assert.equal(await navigationPage.locator('.app-shell').count(), 0);
 assert.deepEqual(navigationErrors, []);
 await navigationPage.close();
 
+// Legacy autosaves must migrate before validation blocks the recovery checkpoint.
+const legacyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const legacyPage = await legacyContext.newPage();
+const legacyErrors = [];
+legacyPage.on('pageerror', (error) => legacyErrors.push(error.message));
+const legacyWorkspace = structuredClone(welcomeProject);
+legacyWorkspace.version = 1;
+legacyWorkspace.name = 'Legacy v1 workspace';
+legacyWorkspace.model.units.z = 'relative';
+delete legacyWorkspace.roiAnchor;
+delete legacyWorkspace.display.threeOpacity;
+delete legacyWorkspace.display.threeShowBorders;
+await legacyPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await legacyPage.evaluate(
+  (project) =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('wafercad-workspace-v1', 2);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains('workspace')) {
+          database.createObjectStore('workspace', { keyPath: 'key' });
+        }
+        if (!database.objectStoreNames.contains('workspace-metadata')) {
+          database.createObjectStore('workspace-metadata', { keyPath: 'key' });
+        }
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result,
+          transaction = database.transaction(['workspace', 'workspace-metadata'], 'readwrite');
+        transaction.objectStore('workspace').put({ key: 'current', project });
+        transaction.objectStore('workspace-metadata').put({
+          key: 'current',
+          updatedAt: new Date().toISOString(),
+          appCommit: 'legacy-fixture',
+          projectVersion: 1,
+          revision: Number(project.model?.revision) || 0,
+          reason: '',
+        });
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+      };
+    }),
+  legacyWorkspace,
+);
+await legacyPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await legacyPage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(Number(await legacyPage.locator('#baseWidth').inputValue()), 4321);
+await legacyPage.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-migration-v1/.test(option.textContent || ''),
+    ),
+  null,
+  { timeout: 10000 },
+);
+assert.deepEqual(legacyErrors, []);
+await legacyContext.close();
+
 // A stalled Three.js CDN must never block the editor shell. The old top-level
 // await implementation left Main/Mask blank and all tool tabs unbound here.
 const blockedThreePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
@@ -114,13 +199,13 @@ await refreshPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   timeout: 30000,
 });
 await refreshPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  () => document.documentElement.dataset.appReady === 'true',
   null,
   { timeout: 30000 },
 );
 await refreshPage.reload({ waitUntil: 'networkidle' });
 await refreshPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
+  () => document.documentElement.dataset.appReady === 'true',
   null,
   { timeout: 30000 },
 );
@@ -172,6 +257,107 @@ assert.equal(Number(await projectHandoffPage.locator('#baseHeight').inputValue()
 assert.equal(Number(await projectHandoffPage.locator('#baseThickness').inputValue()), 7);
 assert.deepEqual(projectHandoffErrors, []);
 await projectHandoffPage.close();
+
+// A Welcome explicit start must checkpoint an existing autosaved workspace before
+// replacing it, and that checkpoint must be actually restorable.
+const welcomeCheckpointContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const welcomeCheckpointPage = await welcomeCheckpointContext.newPage();
+const welcomeCheckpointErrors = [];
+welcomeCheckpointPage.on('pageerror', (error) => welcomeCheckpointErrors.push(error.message));
+welcomeCheckpointPage.on('dialog', (dialog) => void dialog.accept());
+await welcomeCheckpointPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await welcomeCheckpointPage.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+  null,
+  { timeout: 30000 },
+);
+await welcomeCheckpointPage.locator('#projectNameInput').fill('Before welcome replacement');
+await welcomeCheckpointPage.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await welcomeCheckpointPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await welcomeCheckpointPage.locator('#welcomeExampleBtn').click();
+await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await welcomeCheckpointPage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened Visualization example.',
+  null,
+  { timeout: 30000 },
+);
+await welcomeCheckpointPage.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-welcome-start/.test(option.textContent || ''),
+    ),
+  null,
+  { timeout: 5000 },
+);
+const welcomeRecoveryValue = await welcomeCheckpointPage
+  .locator('#workspaceRecoverySelect option')
+  .filter({ hasText: /pre-welcome-start/ })
+  .getAttribute('value');
+assert.ok(welcomeRecoveryValue);
+await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption(welcomeRecoveryValue);
+await welcomeCheckpointPage.locator('#workspaceRestoreBtn').click();
+await welcomeCheckpointPage.waitForFunction(
+  () => /Restored local recovery checkpoint/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+assert.equal(
+  await welcomeCheckpointPage.locator('#projectNameInput').inputValue(),
+  'Before welcome replacement',
+);
+assert.deepEqual(welcomeCheckpointErrors, []);
+await welcomeCheckpointContext.close();
+
+// A failed staged project from Welcome must restore the previous current workspace
+// instead of autosaving the default empty editor over it.
+const failedWelcomeContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const failedWelcomePage = await failedWelcomeContext.newPage();
+const failedWelcomeErrors = [];
+failedWelcomePage.on('pageerror', (error) => failedWelcomeErrors.push(error.message));
+failedWelcomePage.on('dialog', (dialog) => void dialog.accept());
+await failedWelcomePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await failedWelcomePage.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+  null,
+  { timeout: 30000 },
+);
+await failedWelcomePage.locator('#projectNameInput').fill('Before failed welcome open');
+await failedWelcomePage.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await failedWelcomePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await failedWelcomePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'broken.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from('{not valid json'),
+});
+await failedWelcomePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await failedWelcomePage.waitForFunction(
+  () =>
+    /Welcome action failed; restored local workspace/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(
+  await failedWelcomePage.locator('#projectNameInput').inputValue(),
+  'Before failed welcome open',
+);
+assert.deepEqual(failedWelcomeErrors, []);
+await failedWelcomeContext.close();
 
 // Open Example must work even while another tab owns autosave, and the resulting
 // workspace must remain interactive enough to replace the bundled mask.
@@ -256,6 +442,38 @@ await page.waitForFunction(() =>
 assert.ok(await page.locator('#workspaceRecoverySelect option').count() > 0);
 assert.match(await page.locator('#workspaceRecoverySelect option').first().textContent(), /manual-save/);
 assert.equal(await page.locator('#workspaceRecoveryClearBtn').isDisabled(), false);
+const persistenceStores = await page.evaluate(
+  () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('wafercad-workspace-v1', 2);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const stores = [...database.objectStoreNames];
+        const transaction = database.transaction(['workspace', 'workspace-metadata'], 'readonly');
+        const payloadRequest = transaction.objectStore('workspace').getAll();
+        const metadataRequest = transaction.objectStore('workspace-metadata').getAll();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => {
+          const metadataRecovery = metadataRequest.result.find((record) =>
+            String(record?.key || '').startsWith('recovery:'),
+          );
+          const payloadRecovery = payloadRequest.result.find((record) =>
+            String(record?.key || '').startsWith('recovery:'),
+          );
+          database.close();
+          resolve({
+            stores,
+            metadataHasProject: Object.hasOwn(metadataRecovery || {}, 'project'),
+            payloadHasProject: Boolean(payloadRecovery?.project),
+          });
+        };
+      };
+    }),
+);
+assert.ok(persistenceStores.stores.includes('workspace-metadata'));
+assert.equal(persistenceStores.metadataHasProject, false);
+assert.equal(persistenceStores.payloadHasProject, true);
 await page.locator('#workspaceRecoveryClearBtn').click();
 await page.waitForFunction(
   () =>
@@ -320,9 +538,20 @@ await page.locator('#operationThickness').fill('1');
 assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '1');
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
-await page.waitForFunction(() =>
-  /Etched/.test(document.getElementById('statusText')?.textContent || ''),
-);
+try {
+  await page.waitForFunction(
+    () => {
+      const text = document.getElementById('statusText')?.textContent || '';
+      return /Etched|Operation failed|Conformal geometry failed/.test(text);
+    },
+    null,
+    { timeout: 30000 },
+  );
+} catch (error) {
+  console.error('Rough Etch timeout diagnostics:', await processDiagnostics(page));
+  throw error;
+}
+assert.match(await page.locator('#statusText').textContent(), /Etched/);
 
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
@@ -1096,10 +1325,43 @@ assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png
 
 assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
 
-// The active workspace is restored after a normal app.html refresh.
+// The active workspace is restored after a normal app.html refresh. This also
+// proves that a 2D-only display mutation schedules autosave without relying on 3D rendering.
 await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('Refresh restore check');
-await page.waitForTimeout(1000);
+await page.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.35';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await page.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+const storedMaskOpacity = await page.evaluate(
+  () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('wafercad-workspace-v1', 2);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction('workspace', 'readonly');
+        const recordRequest = transaction.objectStore('workspace').get('current');
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => {
+          database.close();
+          const project = recordRequest.result?.project;
+          resolve({
+            maskOpacity: project?.display?.maskOpacity ?? null,
+            storageEncoding: project?.storage?.encoding ?? null,
+          });
+        };
+      };
+    }),
+);
+assert.equal(storedMaskOpacity.maskOpacity, 0.35);
+assert.equal(storedMaskOpacity.storageEncoding, 'shared-assets-v1');
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
@@ -1107,6 +1369,36 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
+
+// Snapshot Restore checkpoints the current state before replacement.
+await page.locator('#snapshotsTab').click();
+await page.locator('#saveSnapshotBtn').click();
+await page.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.2';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await page.waitForTimeout(50);
+await page.locator('.snapshot-action').first().click();
+await page.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-snapshot-restore/.test(option.textContent || ''),
+    ),
+);
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
+
+// New Project also leaves a Recovery checkpoint before replacing the live workspace.
+await page.locator('#settingsTab').click();
+await page.locator('#newProjectBtn').click();
+await page.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-new-project/.test(option.textContent || ''),
+    ),
+);
+assert.match(await page.locator('#statusText').textContent(), /New empty project/);
 
 // Two tabs sharing one browser profile still have one autosave writer, but neither
 // editor is frozen. The non-owner can keep working and explicitly take over saving.
@@ -1139,6 +1431,46 @@ await safetySecond.waitForFunction(
 assert.equal(await safetySecond.locator('.workspace').evaluate((element) => element.inert), false);
 assert.equal(await safetySecond.locator('#workspaceConflictDialog').isVisible(), true);
 assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /Autosave paused/);
+
+// A read-only tab may reset its in-memory workspace, but it must never delete
+// or overwrite the current autosave owned by the other tab.
+await safetyFirst.locator('#projectNameInput').fill('Owner survives read-only New');
+await safetyFirst.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await safetySecond.locator('#newProjectBtn').click();
+await safetySecond.waitForFunction(
+  () => /New empty project/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+assert.equal(
+  await safetyFirst.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const request = indexedDB.open('wafercad-workspace-v1', 2);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result,
+            transaction = database.transaction('workspace', 'readonly'),
+            current = transaction.objectStore('workspace').get('current');
+          transaction.onerror = () => reject(transaction.error);
+          transaction.oncomplete = () => {
+            database.close();
+            resolve(current.result?.project?.name ?? null);
+          };
+        };
+      }),
+  ),
+  'Owner survives read-only New',
+);
+assert.equal(
+  await safetySecond.locator('.workspace').getAttribute('data-autosave-owner'),
+  'false',
+);
+
 await safetySecond.locator('#workspaceTakeOverBtn').click();
 await safetySecond.waitForFunction(
   () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
@@ -1155,6 +1487,7 @@ assert.equal(await safetyFirst.locator('#workspaceConflictDialog').isVisible(), 
 assert.deepEqual(safetyErrors, []);
 await safetyContext.close();
 
+assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);
 assert.deepEqual(errors, []);
 await browser.close();
 

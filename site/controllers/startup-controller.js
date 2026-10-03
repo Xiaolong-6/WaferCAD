@@ -10,31 +10,34 @@ export function createStartupController({
   async function initializeWorkspaceStart() {
     const params = new URLSearchParams(locationRef?.search || ''),
       start = params.get('start');
-    if (!start) return;
+    if (!start) return true;
 
     try {
       historyRef.replaceState(null, '', './app.html');
     } catch {}
 
+    if (start === 'empty') return true;
+
     if (start === 'example') {
-      openVisualizationExample();
-      return;
+      return Boolean(await openVisualizationExample());
     }
 
-    if (start !== 'staged') return;
+    if (start !== 'staged') return false;
 
     try {
       const staged = await takeStartupFile();
       if (!staged) {
         status('No pending welcome-page file was found. Use Import layout or Open project.');
-        return;
+        return false;
       }
-      if (staged.kind === 'layout') await openLayoutFile(staged.file);
-      else if (staged.kind === 'project') await openProjectFile(staged.file);
-      else status('The pending welcome-page file type is unsupported.');
+      if (staged.kind === 'layout') return Boolean(await openLayoutFile(staged.file));
+      if (staged.kind === 'project') return Boolean(await openProjectFile(staged.file));
+      status('The pending welcome-page file type is unsupported.');
+      return false;
     } catch (error) {
       console.error(error);
       status(`Could not open the welcome-page file: ${error.message}`);
+      return false;
     }
   }
 

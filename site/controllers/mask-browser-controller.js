@@ -13,6 +13,7 @@ export function createMaskBrowserController({
   layerColor,
   renderMask,
   renderAll,
+  onChanged = () => {},
 }) {
   let scopeCacheCell = null,
     scopeCacheHierarchy = null,
@@ -133,6 +134,7 @@ export function createMaskBrowserController({
 
   function setActiveCell(name) {
     setActiveCellValue(name || null);
+    onChanged();
     invalidateScope();
     renderCellTree();
     renderMaskList();
@@ -241,6 +243,7 @@ export function createMaskBrowserController({
       checkbox.checked = selectedLayerKeys.has(item.key);
       checkbox.onchange = () => {
         checkbox.checked ? selectedLayerKeys.add(item.key) : selectedLayerKeys.delete(item.key);
+        onChanged();
         renderAll();
       };
 

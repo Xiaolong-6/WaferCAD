@@ -32,12 +32,12 @@ Available commands:
 
 - `npm run lint` — ESLint over the active JavaScript only; vendored code is excluded.
 - `npm run format` — Prettier rewrite for the active application and current documentation.
-- `npm run format:check` — CI formatting gate for new/refactored project-IO/schema code and current docs.
+- `npm run format:check` — local formatting verification for the active application and current docs; the fast CI gate intentionally omits Prettier.
 - `npm test` — vector/GDS/project-schema smoke tests plus focused regression tests for XY units, GDS error handling, project files, snapshots, surface morphology, Implant clipping, palette behavior, and material boundaries.
 
-The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced.
+The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced, and the quantized storage representation is expanded and validated again before export. Interactive project/layout parsing, .wafercad packing/serialization, and Mask GDS/OAS serialization run in workers so large file transforms do not monopolize the UI thread. Keep worker handoff transactional: Abort/error must not replace live state or leave the shared task controller busy.
 
-UI orchestration that does not own canonical geometry lives under `site/controllers/`. Process input/state and Apply orchestration belong to `process-panel-controller.js`; browser autosave/Recovery/safe-reload behavior belongs to `workspace-persistence-controller.js`; synchronized view/base summaries belong to `workspace-view-controller.js`; Project toolbar actions belong to `project-controller.js`; Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Derived process/ROI selection geometry lives in `site/selection-geometry.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, process-form validation/request assembly, persistence workflows, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
+UI orchestration that does not own canonical geometry lives under `site/controllers/`. Process input/state and Apply orchestration belong to `process-panel-controller.js`; browser autosave/Recovery/cross-tab lease/safe-reload behavior belongs to `workspace-persistence-controller.js`; synchronized view/base summaries belong to `workspace-view-controller.js`; Project toolbar actions belong to `project-controller.js`; Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Derived process/ROI selection geometry lives in `site/selection-geometry.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, process-form validation/request assembly, persistence workflows, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
 
 ## Deployment
 
@@ -76,9 +76,9 @@ The formatter ignores `site/vendor/`. Vendored code must not be reformatted loca
 
 ## CI gates
 
-Pull requests run the fast **Quality** gate and the permanent Chromium **UI smoke**. Parser/import changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
+Pull requests run the fast **Quality** gate (`npm run check:ci`, currently ESLint plus tests) and the permanent Chromium **UI smoke**. The complete local `npm run check` additionally runs `format:check`; formatting is intentionally not duplicated in the fast CI gate. Parser/import/export changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
 
-Surface/Implant changes should add both pure geometry/profile assertions and at least one real UI-path assertion. Changes to adaptive 3D must also preserve the scene-wide subdivision budget and prove that camera-only LOD updates do not rebuild the static surface plan. Rough triangulation belongs in `rough-mesh-geometry.js`; physical cap/sidewall/border ownership belongs in `process-topology.js`; `three-view.js` should remain scene/camera/material orchestration. A browser pass is required when changing 3D displacement, transparency, compact Process layout, or legend interaction because syntax/unit tests alone cannot establish visual correctness.
+Surface/Implant changes should add both pure geometry/profile assertions and at least one real UI-path assertion. Changes to adaptive 3D must preserve the scene-wide subdivision budget and prove that camera-only LOD updates do not rebuild the static surface plan, spatial rough zones, or cached base triangulation. Rough triangulation belongs in `rough-mesh-geometry.js`; physical cap/sidewall/border ownership belongs in `process-topology.js`; `three-view.js` should remain scene/camera/material orchestration. A browser pass is required when changing 3D displacement, transparency, cached LOD-zone boundaries, compact Process layout, or legend interaction because syntax/unit tests alone cannot establish visual correctness.
 
 ## Product and process regression
 

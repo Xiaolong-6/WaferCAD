@@ -5,11 +5,15 @@ import test from 'node:test';
 import {
   MAX_PROJECT_FILE_BYTES,
   PROJECT_LENGTH_QUANTUM_UM,
+  expandProjectStorage,
+  prepareProjectForWorkspaceStorage,
   readProjectFile,
   serializeProject,
 } from '../project-io.js';
 import {
   CURRENT_PROJECT_VERSION,
+  PROJECT_COORDINATE_LIMIT_UM,
+  PROJECT_LENGTH_LIMIT_UM,
   migrateProjectFile,
   validateProjectFile,
 } from '../project-schema.js';
@@ -151,9 +155,147 @@ test('project validator accepts the runtime nanometre zoom ceiling', () => {
   assert.equal(validateProjectFile(source), source);
 });
 
+test('project validator rejects coordinates outside the physical CAD envelope', () => {
+  const source = validProject();
+  source.section.a[0] = PROJECT_COORDINATE_LIMIT_UM + 1;
+  assert.throws(() => validateProjectFile(source), /section\.a\[0\].*must be between/);
+
+  const oversized = validProject();
+  oversized.roi = { type: 'circle', c: [0, 0], r: PROJECT_LENGTH_LIMIT_UM + 1 };
+  assert.throws(() => validateProjectFile(oversized), /roi\.r.*must be between/);
+});
+
 test('project serializer enforces the same size ceiling used by Open', () => {
   assert.throws(() => serializeProject(validProject(), 1024), /larger than the 0 MB safety limit/);
   assert.doesNotThrow(() => serializeProject(validProject(), MAX_PROJECT_FILE_BYTES));
+});
+
+test('project validator rejects zero-area material polygon rings', () => {
+  const source = validProject();
+  source.model.regions[0].geom = [
+    [
+      [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [0, 0],
+      ],
+    ],
+  ];
+  assert.throws(() => validateProjectFile(source), /must enclose non-zero area/);
+});
+
+test('project storage rejects XY geometry that collapses at the 0.1 nm persistence quantum', () => {
+  const source = validProject(),
+    halfWidth = PROJECT_LENGTH_QUANTUM_UM * 0.2;
+  source.model.width = halfWidth * 2;
+  source.model.boundary = [
+    [
+      [
+        [-halfWidth, -50],
+        [halfWidth, -50],
+        [halfWidth, 50],
+        [-halfWidth, 50],
+        [-halfWidth, -50],
+      ],
+    ],
+  ];
+  source.model.regions[0].geom = structuredClone(source.model.boundary);
+
+  assert.equal(validateProjectFile(source), source);
+  assert.throws(() => serializeProject(source), /cannot be stored safely/i);
+});
+
+test('project storage rejects semantic geometry that collapses at file precision', () => {
+  const tiny = PROJECT_LENGTH_QUANTUM_UM * 0.4;
+
+  const roiProject = validProject();
+  roiProject.roi = { type: 'rect', a: [0, 0], b: [tiny, 1] };
+  assert.equal(validateProjectFile(roiProject), roiProject);
+  assert.throws(() => serializeProject(roiProject), /cannot be stored safely.*roi/i);
+
+  const sectionProject = validProject();
+  sectionProject.section = { a: [0, 0], b: [tiny, 0] };
+  assert.equal(validateProjectFile(sectionProject), sectionProject);
+  assert.throws(() => serializeProject(sectionProject), /cannot be stored safely.*section/i);
+
+  const lineworkProject = validProject();
+  lineworkProject.layout.linework = [
+    {
+      kind: 'path',
+      sourceCell: 'TOP',
+      layer: 1,
+      datatype: 0,
+      width: 0,
+      points: [
+        [0, 0],
+        [tiny, 0],
+      ],
+    },
+  ];
+  assert.equal(validateProjectFile(lineworkProject), lineworkProject);
+  assert.throws(
+    () => serializeProject(lineworkProject),
+    /cannot be stored safely.*linework\[0\]\.points collapse to zero length/i,
+  );
+});
+
+test('project storage rejects non-zero layout path widths that quantize to zero', () => {
+  const source = validProject(),
+    tinyWidth = PROJECT_LENGTH_QUANTUM_UM * 0.4,
+    path = {
+      kind: 'path',
+      sourceCell: 'TOP',
+      layer: 1,
+      datatype: 0,
+      width: tinyWidth,
+      points: [
+        [-1, 0],
+        [1, 0],
+      ],
+    };
+  source.layout.elements = [path];
+  source.layout.combos = [
+    { key: '1|0', cell: 'TOP', layer: 1, datatype: 0, count: 1 },
+  ];
+
+  assert.equal(validateProjectFile(source), source);
+  assert.throws(
+    () => serializeProject(source),
+    /cannot be stored safely.*layout\.elements\[0\]\.width collapses to zero/i,
+  );
+
+  const snapshotSource = validProject();
+  snapshotSource.snapshots = [
+    {
+      id: 'snapshot-path-width',
+      name: 'Tiny path',
+      createdAt: '2026-10-03T06:00:00.000Z',
+      state: structuredClone(snapshotSource),
+    },
+  ];
+  snapshotSource.snapshots[0].state.layout.elements = [structuredClone(path)];
+  snapshotSource.snapshots[0].state.layout.combos = [
+    { key: '1|0', cell: 'TOP', layer: 1, datatype: 0, count: 1 },
+  ];
+
+  assert.equal(validateProjectFile(snapshotSource), snapshotSource);
+  assert.throws(
+    () => serializeProject(snapshotSource),
+    /cannot be stored safely.*snapshots\[0\]\.state\.layout\.elements\[0\]\.width collapses to zero/i,
+  );
+});
+
+test('project storage rejects geometry that collapses at the 0.1 nm persistence quantum', () => {
+  const source = validProject();
+  source.model.regions[0].stack[0].z0 = 0;
+  source.model.regions[0].stack[0].z1 = PROJECT_LENGTH_QUANTUM_UM * 0.4;
+
+  assert.equal(validateProjectFile(source), source);
+  assert.throws(
+    () => serializeProject(source),
+    /cannot be stored safely.*z1 > z0/i,
+  );
 });
 
 test('project storage compacts repeated snapshot assets and rounds physical lengths to 0.1 nm', async () => {
@@ -195,6 +337,30 @@ test('project storage compacts repeated snapshot assets and rounds physical leng
   assert.strictEqual(loaded.snapshots[0].state.layout, loaded.layout);
   assert.strictEqual(loaded.snapshots[0].state.model, loaded.model);
   assert.equal(validateProjectFile(loaded), loaded);
+});
+
+test('Recovery shared-asset packing is lossless below the file quantization boundary', () => {
+  const source = validProject();
+  source.section.a[0] = 0.00004;
+  source.snapshots = [
+    {
+      id: 'snapshot-lossless',
+      name: 'Lossless checkpoint',
+      createdAt: '2026-10-03T04:00:00.000Z',
+      state: structuredClone(source),
+    },
+  ];
+
+  const stored = prepareProjectForWorkspaceStorage(source);
+  assert.equal(stored.storage.encoding, 'shared-assets-v1');
+  assert.equal(stored.storage.lossless, true);
+  assert.equal(stored.section.a[0], 0.00004);
+  assert.equal(stored.snapshots[0].state.model, undefined);
+  assert.equal(stored.snapshots[0].state.layout, undefined);
+
+  expandProjectStorage(stored);
+  assert.equal(stored.section.a[0], 0.00004);
+  assert.equal(validateProjectFile(stored), stored);
 });
 
 test('project storage keeps distinct snapshot masks as shared assets', async () => {

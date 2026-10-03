@@ -1,4 +1,6 @@
 export const CURRENT_PROJECT_VERSION = 13;
+export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
+export const PROJECT_LENGTH_LIMIT_UM = PROJECT_COORDINATE_LIMIT_UM * 2;
 
 const LIMITS = {
   layers: 10000,
@@ -55,11 +57,22 @@ function assertInteger(value, path, { min = -2147483648, max = 2147483647 } = {}
   return value;
 }
 
+function assertCoordinate(value, path) {
+  return assertFinite(value, path, {
+    min: -PROJECT_COORDINATE_LIMIT_UM,
+    max: PROJECT_COORDINATE_LIMIT_UM,
+  });
+}
+
+function assertLength(value, path, { min = 0 } = {}) {
+  return assertFinite(value, path, { min, max: PROJECT_LENGTH_LIMIT_UM });
+}
+
 function assertPoint(value, path) {
   assertArray(value, path, 2);
   if (value.length !== 2) fail(path, 'must contain exactly two coordinates.');
-  assertFinite(value[0], `${path}[0]`);
-  assertFinite(value[1], `${path}[1]`);
+  assertCoordinate(value[0], `${path}[0]`);
+  assertCoordinate(value[1], `${path}[1]`);
 }
 
 function validatePointArray(points, path, { min = 2, budget }) {
@@ -89,6 +102,9 @@ function validateMultiPolygon(value, path, budget) {
       if (first[0] !== last[0] || first[1] !== last[1]) {
         fail(ringPath, 'must be closed.');
       }
+      if (!(Math.abs(ringArea(ring)) > 0)) {
+        fail(ringPath, 'must enclose non-zero area.');
+      }
     });
   });
 }
@@ -108,8 +124,8 @@ function validateLayer(layer, index, ids) {
 function validateSurfaceAppearance(appearance, path) {
   assertObject(appearance, path);
   if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
-  assertFinite(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
-  const meanHeight = assertFinite(appearance.meanHeight, `${path}.meanHeight`, { min: 1e-12 });
+  assertLength(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
+  const meanHeight = assertLength(appearance.meanHeight, `${path}.meanHeight`, { min: 1e-12 });
   assertFinite(appearance.featureCv, `${path}.featureCv`, { min: 0, max: 1 });
   assertFinite(appearance.heightCv, `${path}.heightCv`, { min: 0, max: 1 });
   assertString(appearance.morphology, `${path}.morphology`);
@@ -123,7 +139,7 @@ function validateSurfaceAppearance(appearance, path) {
   assertInteger(appearance.seed, `${path}.seed`, { min: 0, max: 0xffffffff });
   assertString(appearance.profileId, `${path}.profileId`, { max: 128 });
   if (appearance.etchDepth != null) {
-    const depth = assertFinite(appearance.etchDepth, `${path}.etchDepth`, { min: 1e-12 });
+    const depth = assertLength(appearance.etchDepth, `${path}.etchDepth`, { min: 1e-12 });
     if (meanHeight > depth + 1e-9) {
       fail(`${path}.meanHeight`, 'must not exceed etchDepth.');
     }
@@ -142,8 +158,8 @@ function validateStack(stack, path, layerIds) {
     assertObject(segment, segmentPath);
     const layerId = assertString(segment.layerId, `${segmentPath}.layerId`, { max: 128 });
     if (!layerIds.has(layerId)) fail(`${segmentPath}.layerId`, 'references an unknown layer.');
-    const z0 = assertFinite(segment.z0, `${segmentPath}.z0`);
-    const z1 = assertFinite(segment.z1, `${segmentPath}.z1`);
+    const z0 = assertCoordinate(segment.z0, `${segmentPath}.z0`);
+    const z1 = assertCoordinate(segment.z1, `${segmentPath}.z1`);
     if (!(z1 > z0)) fail(segmentPath, 'must satisfy z1 > z0.');
     if (z0 < previousZ1 - 1e-9) fail(segmentPath, 'overlaps the previous stack segment.');
     if (segment.frontSurface != null) {
@@ -164,9 +180,9 @@ function geometryKernel() {
 
 function ringArea(ring) {
   let sum = 0;
-  for (let i = 1; i < ring.length; i++) {
-    const a = ring[i - 1];
-    const b = ring[i];
+  for (let index = 0; index < (ring?.length || 0); index++) {
+    const a = ring[index],
+      b = ring[(index + 1) % ring.length];
     sum += a[0] * b[1] - b[0] * a[1];
   }
   return sum / 2;
@@ -257,9 +273,9 @@ function validateModel(model, budget) {
   assertObject(model, 'model');
   if (model.kernel !== 'vector-2.5d-v1') fail('model.kernel', 'is not supported.');
   if (!['circle', 'rect'].includes(model.shape)) fail('model.shape', 'must be circle or rect.');
-  assertFinite(model.width, 'model.width', { min: 1e-12 });
-  assertFinite(model.height, 'model.height', { min: 1e-12 });
-  assertFinite(model.thickness, 'model.thickness', { min: 1e-12 });
+  assertLength(model.width, 'model.width', { min: 1e-12 });
+  assertLength(model.height, 'model.height', { min: 1e-12 });
+  assertLength(model.thickness, 'model.thickness', { min: 1e-12 });
 
   const units = assertObject(model.units, 'model.units');
   if (units.xy !== 'µm') fail('model.units.xy', 'must be µm.');
@@ -304,7 +320,7 @@ function validateModel(model, budget) {
       if (!['front', 'back'].includes(implant.face)) {
         fail(`${path}.face`, 'must be front or back.');
       }
-      assertFinite(implant.thickness, `${path}.thickness`, { min: 1e-12 });
+      assertLength(implant.thickness, `${path}.thickness`, { min: 1e-12 });
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
       if (typeof implant.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
 
@@ -314,9 +330,9 @@ function validateModel(model, budget) {
         assertObject(patch, patchPath);
         validateMultiPolygon(patch.geom, `${patchPath}.geom`, budget);
         if (patch.geom.length === 0) fail(`${patchPath}.geom`, 'must not be empty.');
-        assertFinite(patch.z, `${patchPath}.z`);
-        assertFinite(patch.zMin, `${patchPath}.zMin`);
-        assertFinite(patch.zMax, `${patchPath}.zMax`);
+        assertCoordinate(patch.z, `${patchPath}.z`);
+        assertCoordinate(patch.zMin, `${patchPath}.zMin`);
+        assertCoordinate(patch.zMax, `${patchPath}.zMax`);
         if (patch.zMax < patch.zMin) fail(patchPath, 'must have zMax >= zMin.');
         if (patch.z < patch.zMin - 1e-9 || patch.z > patch.zMax + 1e-9) {
           fail(`${patchPath}.z`, 'must lie within zMin/zMax.');
@@ -344,12 +360,12 @@ function validateModel(model, budget) {
 
 function validateBounds(bounds, path) {
   assertObject(bounds, path);
-  const minX = assertFinite(bounds.minX, `${path}.minX`);
-  const minY = assertFinite(bounds.minY, `${path}.minY`);
-  const maxX = assertFinite(bounds.maxX, `${path}.maxX`);
-  const maxY = assertFinite(bounds.maxY, `${path}.maxY`);
-  const width = assertFinite(bounds.width, `${path}.width`, { min: 0 });
-  const height = assertFinite(bounds.height, `${path}.height`, { min: 0 });
+  const minX = assertCoordinate(bounds.minX, `${path}.minX`);
+  const minY = assertCoordinate(bounds.minY, `${path}.minY`);
+  const maxX = assertCoordinate(bounds.maxX, `${path}.maxX`);
+  const maxY = assertCoordinate(bounds.maxY, `${path}.maxY`);
+  const width = assertLength(bounds.width, `${path}.width`);
+  const height = assertLength(bounds.height, `${path}.height`);
   if (maxX < minX || maxY < minY) fail(path, 'has inverted min/max bounds.');
   const tolerance = Math.max(1, Math.abs(maxX - minX), Math.abs(maxY - minY)) * 1e-9;
   if (Math.abs(width - (maxX - minX)) > tolerance)
@@ -368,7 +384,9 @@ function validateLayoutElement(element, path, budget) {
     min: element.kind === 'polygon' ? 3 : 2,
     budget,
   });
-  if (element.kind === 'path') assertFinite(element.width, `${path}.width`, { min: 0 });
+  if (element.kind === 'path') {
+    assertLength(element.width, `${path}.width`);
+  }
 }
 
 function validateLayout(layout, budget) {
@@ -415,15 +433,15 @@ function validateLayout(layout, budget) {
 
   const units = assertObject(layout.units, 'layout.units');
   if (!['µm', 'DBU'].includes(units.xy)) fail('layout.units.xy', 'must be µm or DBU.');
-  assertFinite(units.dbuToMicron, 'layout.units.dbuToMicron', { min: 0 });
+  assertLength(units.dbuToMicron, 'layout.units.dbuToMicron');
   if (typeof units.hasPhysicalUnits !== 'boolean')
     fail('layout.units.hasPhysicalUnits', 'must be boolean.');
 }
 
 function validateMaskTransform(value) {
   const transform = assertObject(value, 'maskTransform');
-  assertFinite(transform.x, 'maskTransform.x');
-  assertFinite(transform.y, 'maskTransform.y');
+  assertCoordinate(transform.x, 'maskTransform.x');
+  assertCoordinate(transform.y, 'maskTransform.y');
   assertFinite(transform.scale, 'maskTransform.scale', { min: 1e-12 });
   assertFinite(transform.rotation, 'maskTransform.rotation');
 }
@@ -434,11 +452,14 @@ function validateRoi(roi) {
   if (roi.type === 'rect') {
     assertPoint(roi.a, 'roi.a');
     assertPoint(roi.b, 'roi.b');
+    if (!(Math.abs(roi.b[0] - roi.a[0]) > 0) || !(Math.abs(roi.b[1] - roi.a[1]) > 0)) {
+      fail('roi', 'rectangle must have non-zero width and height.');
+    }
     return;
   }
   if (roi.type === 'circle' || roi.type === 'sector') {
     assertPoint(roi.c, 'roi.c');
-    assertFinite(roi.r, 'roi.r', { min: 0 });
+    assertLength(roi.r, 'roi.r', { min: 1e-12 });
     if (roi.type === 'sector') {
       assertFinite(roi.startDeg, 'roi.startDeg');
       assertFinite(roi.endDeg, 'roi.endDeg');
@@ -453,13 +474,13 @@ function validateMaskRoi(maskRoi) {
   assertObject(maskRoi, 'maskRoi');
   if (maskRoi.type === 'square') {
     assertPoint(maskRoi.c, 'maskRoi.c');
-    assertFinite(maskRoi.size, 'maskRoi.size', { min: 1e-12 });
+    assertLength(maskRoi.size, 'maskRoi.size', { min: 1e-12 });
     assertFinite(maskRoi.rotation, 'maskRoi.rotation');
     return;
   }
   if (maskRoi.type === 'circle') {
     assertPoint(maskRoi.c, 'maskRoi.c');
-    assertFinite(maskRoi.r, 'maskRoi.r', { min: 1e-12 });
+    assertLength(maskRoi.r, 'maskRoi.r', { min: 1e-12 });
     return;
   }
   fail('maskRoi.type', 'must be square or circle.');
@@ -479,21 +500,30 @@ function validateDrawMask(drawMask) {
     if (shape.type === 'rect') {
       assertPoint(shape.a, `${path}.a`);
       assertPoint(shape.b, `${path}.b`);
+      if (
+        !(Math.abs(shape.b[0] - shape.a[0]) > 0) ||
+        !(Math.abs(shape.b[1] - shape.a[1]) > 0)
+      ) {
+        fail(path, 'rectangle must have non-zero width and height.');
+      }
       return;
     }
     if (shape.type === 'circle') {
       assertPoint(shape.c, `${path}.c`);
-      assertFinite(shape.r, `${path}.r`, { min: 0 });
+      assertLength(shape.r, `${path}.r`, { min: 1e-12 });
       return;
     }
     if (shape.type === 'polygon') {
       validatePointArray(shape.points, `${path}.points`, { min: 3, budget: { points: 0 } });
+      if (!(Math.abs(ringArea(shape.points)) > 0)) {
+        fail(`${path}.points`, 'must enclose non-zero area.');
+      }
       return;
     }
     if (shape.type === 'ring' || shape.type === 'ring-sector') {
       assertPoint(shape.c, `${path}.c`);
-      assertFinite(shape.innerR, `${path}.innerR`, { min: 0 });
-      assertFinite(shape.outerR, `${path}.outerR`, { min: 0 });
+      assertLength(shape.innerR, `${path}.innerR`);
+      assertLength(shape.outerR, `${path}.outerR`);
       if (!(shape.outerR > shape.innerR)) {
         fail(`${path}.outerR`, 'must be greater than innerR.');
       }
@@ -516,6 +546,9 @@ function validateSection(section) {
   assertObject(section, 'section');
   assertPoint(section.a, 'section.a');
   assertPoint(section.b, 'section.b');
+  if (section.a[0] === section.b[0] && section.a[1] === section.b[1]) {
+    fail('section', 'A and B must be distinct points.');
+  }
 }
 
 function validatePlanViews(planViews) {
@@ -523,8 +556,8 @@ function validatePlanViews(planViews) {
   for (const key of ['mask', 'main']) {
     const view = assertObject(planViews[key], `planViews.${key}`);
     assertFinite(view.zoom, `planViews.${key}.zoom`, { min: 1e-6, max: 1e8 });
-    assertFinite(view.panX, `planViews.${key}.panX`);
-    assertFinite(view.panY, `planViews.${key}.panY`);
+    assertCoordinate(view.panX, `planViews.${key}.panX`);
+    assertCoordinate(view.panY, `planViews.${key}.panY`);
   }
 }
 

@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload product review and preview
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wafercad-product-review-${{ github.sha }}
           path: test-results/product-review

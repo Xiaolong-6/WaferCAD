@@ -46,6 +46,7 @@ export function createWorkspaceActionsController({
   syncBaseControls,
   snapshotManager,
   renderSnapshots,
+  onProjectChanged = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -190,12 +191,12 @@ export function createWorkspaceActionsController({
       exportMaskSvg();
       closeExport('maskExportSvgBtn');
     };
-    $('maskExportGdsBtn').onclick = () => {
-      exportMaskGds();
+    $('maskExportGdsBtn').onclick = async () => {
+      await exportMaskGds();
       closeExport('maskExportGdsBtn');
     };
-    $('maskExportOasBtn').onclick = () => {
-      exportMaskOas();
+    $('maskExportOasBtn').onclick = async () => {
+      await exportMaskOas();
       closeExport('maskExportOasBtn');
     };
     $('sectionExportSvgBtn').onclick = () => {
@@ -260,6 +261,7 @@ export function createWorkspaceActionsController({
     $('saveSnapshotBtn').onclick = () => {
       try {
         const saved = snapshotManager.create();
+        onProjectChanged();
         renderSnapshots();
         status(`Saved snapshot "${saved.name}".`);
       } catch (error) {

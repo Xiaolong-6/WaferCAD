@@ -23,7 +23,7 @@ export function createProjectStateController({
   getState,
   applyState,
   getSnapshotRecords = () => [],
-  syncThreeControls,
+  syncDisplayControls = () => {},
   setSectionEditEnabled,
 }) {
   function buildProjectSnapshot(includeSnapshots = false) {
@@ -136,7 +136,7 @@ export function createProjectStateController({
     });
 
     ensureHierarchy();
-    syncThreeControls({ maskOpacity, threeOpacity, threeShowBorders });
+    syncDisplayControls();
   }
 
   function resetProjectState() {

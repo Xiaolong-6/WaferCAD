@@ -46,6 +46,22 @@ test('surface topology collapses computational partitions at equal height', () =
   assert.equal(uncoveredDomain(model).length, 0);
 });
 
+test('uncoveredDomain propagates polygon-kernel failures instead of hiding conformal voids', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 });
+  const originalDifference = globalThis.polygonClipping.difference;
+  globalThis.polygonClipping.difference = () => {
+    throw new Error('synthetic difference failure');
+  };
+  try {
+    assert.throws(
+      () => uncoveredDomain(model),
+      /Coverage topology failed.*synthetic difference failure/,
+    );
+  } finally {
+    globalThis.polygonClipping.difference = originalDifference;
+  }
+});
+
 test('topology distinguishes exposed faces from buried material interfaces', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
   const added = applyOperation(model, {

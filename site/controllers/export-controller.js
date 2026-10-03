@@ -52,6 +52,7 @@ export function createExportController({
   layerKey,
   layerColor,
   formatXY,
+  runMaskLayoutExport = null,
   status,
 }) {
   const $ = (id) => root.getElementById(id);
@@ -254,27 +255,48 @@ export function createExportController({
     };
   }
 
-  function exportMaskLayout(format) {
+  async function exportMaskLayout(format) {
     const context = maskExportContext();
     if (!context) return;
-    const exported = collectMaskExportElements({
-      layout: context.layout,
-      maskSourceMode: context.maskSourceMode,
-      drawMask: context.drawMask,
-      maskTransform: context.maskTransform,
-      maskRoi: context.maskRoi,
-      selectedCells: context.cells,
-      selectedLayerKeys: context.layers,
-    });
-    if (!exported.elements.length) {
-      status('Nothing from the selected Mask source overlaps the export region.', 'warning');
-      return;
-    }
+    const oasis = format === 'oas';
 
     try {
-      const oasis = format === 'oas',
-        bytes = oasis ? serializeOASIS(exported.elements) : serializeGDS(exported.elements),
-        extension = oasis ? 'oas' : 'gds',
+      let bytes;
+      if (runMaskLayoutExport) {
+        const task = await runMaskLayoutExport({
+          format,
+          layout: context.layout,
+          maskSourceMode: context.maskSourceMode,
+          drawMask: context.drawMask,
+          maskTransform: context.maskTransform,
+          maskRoi: context.maskRoi,
+          selectedCells: [...context.cells],
+          selectedLayerKeys: [...context.layers],
+        });
+        if (!task) return;
+        if (task.empty) {
+          status('Nothing from the selected Mask source overlaps the export region.', 'warning');
+          return;
+        }
+        bytes = new Uint8Array(task.arrayBuffer);
+      } else {
+        const exported = collectMaskExportElements({
+          layout: context.layout,
+          maskSourceMode: context.maskSourceMode,
+          drawMask: context.drawMask,
+          maskTransform: context.maskTransform,
+          maskRoi: context.maskRoi,
+          selectedCells: context.cells,
+          selectedLayerKeys: context.layers,
+        });
+        if (!exported.elements.length) {
+          status('Nothing from the selected Mask source overlaps the export region.', 'warning');
+          return;
+        }
+        bytes = oasis ? serializeOASIS(exported.elements) : serializeGDS(exported.elements);
+      }
+
+      const extension = oasis ? 'oas' : 'gds',
         mime = oasis ? 'application/vnd.semi-oasis' : 'application/octet-stream';
       downloadBlob(new Blob([bytes], { type: mime }), `wafercad-mask.${extension}`);
       status(
@@ -290,11 +312,11 @@ export function createExportController({
   }
 
   function exportMaskGds() {
-    exportMaskLayout('gds');
+    return exportMaskLayout('gds');
   }
 
   function exportMaskOas() {
-    exportMaskLayout('oas');
+    return exportMaskLayout('oas');
   }
 
   function exportMaskSvg() {

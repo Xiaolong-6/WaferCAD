@@ -73,6 +73,8 @@ async function capture(page, name) {
 async function checkLayout(page) {
   const problems = await page.evaluate(() => {
     const issues = [];
+    const threeError = document.getElementById('threeHost')?.dataset.renderError;
+    if (threeError) issues.push(`3D render error: ${threeError}`);
     if (document.documentElement.scrollWidth > innerWidth) issues.push('page horizontal overflow');
     for (const panel of document.querySelectorAll('.view-panel')) {
       const head = panel.querySelector('.view-head').getBoundingClientRect();
@@ -497,6 +499,12 @@ try {
     await page.locator('#xyUnitSelect').selectOption('nm');
     await page.locator('#snapshotsTab').click();
     await page.locator('.snapshot-action').first().click();
+    await page.waitForFunction(
+      () => /Restored snapshot/.test(document.getElementById('statusText')?.textContent || ''),
+      null,
+      { timeout: 10000 },
+    );
+    assert.equal(await page.locator('#xyUnitSelect').inputValue(), 'um');
     assert.deepEqual(await coords(page), savedCoords);
     await capture(page, `${name}-snapshot-restored`);
     await page.locator('#maskTab').click();
@@ -652,6 +660,12 @@ try {
         ),
         fitRoughRebuilds = Number(
           await roughCanvas.getAttribute('data-rough-rebuild-count'),
+        ),
+        fitSpatialZoneBuilds = Number(
+          await roughCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        fitBaseTriangulations = Number(
+          await roughCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
       assert.ok(fitLodZones >= 1, `rough LOD diagnostics missing at Fit: ${fitLodZones}`);
       assert.ok(fitTriangles > 0, `rough triangle diagnostics missing at Fit: ${fitTriangles}`);
@@ -661,6 +675,11 @@ try {
       );
       assert.ok(fitPlanBuilds >= 1, `surface plan build diagnostics missing: ${fitPlanBuilds}`);
       assert.ok(fitRoughRebuilds >= 1, `rough rebuild diagnostics missing: ${fitRoughRebuilds}`);
+      assert.ok(fitSpatialZoneBuilds >= 1, `rough spatial zones were not prepared: ${fitSpatialZoneBuilds}`);
+      assert.ok(
+        fitBaseTriangulations >= fitSpatialZoneBuilds,
+        `rough base triangulation cache is incomplete: ${fitBaseTriangulations} < ${fitSpatialZoneBuilds}`,
+      );
       await capture(page, 'wide-rough-3d-opaque-max');
 
       await roughCanvas.hover();
@@ -680,10 +699,17 @@ try {
         ),
         zoomRoughRebuilds = Number(
           await roughCanvas.getAttribute('data-rough-rebuild-count'),
+        ),
+        zoomSpatialZoneBuilds = Number(
+          await roughCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        zoomBaseTriangulations = Number(
+          await roughCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
-      assert.ok(
-        zoomLodZones > fitLodZones,
-        `adaptive LOD did not split the zoomed rough surface: ${fitLodZones} -> ${zoomLodZones}`,
+      assert.equal(
+        zoomLodZones,
+        fitLodZones,
+        `camera LOD changed the cached spatial zone count: ${fitLodZones} -> ${zoomLodZones}`,
       );
       assert.ok(zoomStitches > 0, `adaptive LOD zoom has no seam stitches: ${zoomStitches}`);
       assert.ok(zoomTriangles > 0, `adaptive LOD zoom lost rough triangles: ${zoomTriangles}`);
@@ -699,6 +725,16 @@ try {
       assert.ok(
         zoomRoughRebuilds > fitRoughRebuilds,
         `camera zoom did not rebuild rough geometry: ${fitRoughRebuilds} -> ${zoomRoughRebuilds}`,
+      );
+      assert.equal(
+        zoomSpatialZoneBuilds,
+        fitSpatialZoneBuilds,
+        `camera zoom rebuilt rough spatial zones: ${fitSpatialZoneBuilds} -> ${zoomSpatialZoneBuilds}`,
+      );
+      assert.equal(
+        zoomBaseTriangulations,
+        fitBaseTriangulations,
+        `camera zoom retriangulated rough base geometry: ${fitBaseTriangulations} -> ${zoomBaseTriangulations}`,
       );
       await capture(page, 'wide-rough-3d-adaptive-zoom-max');
       await page.locator('#fit3dBtn').click();
@@ -768,6 +804,12 @@ try {
         ),
         stressRebuilds = Number(
           await stressCanvas.getAttribute('data-rough-rebuild-count'),
+        ),
+        stressSpatialZoneBuilds = Number(
+          await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        stressBaseTriangulations = Number(
+          await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
       assert.ok(stressBudget > 0, `rough stress budget missing: ${stressBudget}`);
       assert.ok(
@@ -788,6 +830,12 @@ try {
         ),
         stressZoomSubdivision = Number(
           await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+        ),
+        stressZoomSpatialZoneBuilds = Number(
+          await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+        ),
+        stressZoomBaseTriangulations = Number(
+          await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
         );
       assert.equal(
         stressZoomPlanBuilds,
@@ -797,6 +845,16 @@ try {
       assert.ok(
         stressZoomRebuilds > stressRebuilds,
         `multi-cap camera zoom did not rebuild rough meshes: ${stressRebuilds} -> ${stressZoomRebuilds}`,
+      );
+      assert.equal(
+        stressZoomSpatialZoneBuilds,
+        stressSpatialZoneBuilds,
+        `multi-cap camera zoom rebuilt spatial zones: ${stressSpatialZoneBuilds} -> ${stressZoomSpatialZoneBuilds}`,
+      );
+      assert.equal(
+        stressZoomBaseTriangulations,
+        stressBaseTriangulations,
+        `multi-cap camera zoom retriangulated base geometry: ${stressBaseTriangulations} -> ${stressZoomBaseTriangulations}`,
       );
       assert.ok(
         stressZoomSubdivision <= stressZoomBudget,
@@ -883,6 +941,16 @@ try {
       });
       await loadProject(page, implantProject, 'wide-implant-buried');
       await page.locator('#threeMaxBtn').click();
+      assert.equal(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')),
+        0,
+        'Opaque 3D must not add buried implant volume meshes',
+      );
+      assert.equal(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-surface-count')),
+        0,
+        'Opaque 3D must not add a surface overlay for a fully buried implant',
+      );
       await capture(page, 'wide-implant-buried-opaque-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
@@ -890,12 +958,58 @@ try {
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
       await page.locator('#threeMaxBtn').click();
+      assert.ok(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')) > 0,
+        'Transparent 3D must add the buried implant volume for inspection',
+      );
       await capture(page, 'wide-implant-buried-transparent-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.locator('#threeOpacityRange').fill('1');
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
+
+      // Etching into an Implant exposes its surviving outer face. Opaque 3D
+      // must render that surface overlay without rendering the buried volume.
+      const exposedImplantModel = createModel({
+        shape: 'rect',
+        width: 20,
+        height: 12,
+        thickness: 8,
+      });
+      applyOperation(exposedImplantModel, {
+        type: 'implant',
+        name: 'Etch-exposed implant',
+        thickness: 1,
+        face: 'front',
+        area: rectMulti(10, 8),
+        color: '#9B5DE5',
+      });
+      applyOperation(exposedImplantModel, {
+        type: 'etch',
+        thickness: 0.4,
+        face: 'front',
+        area: exposedImplantModel.boundary,
+      });
+      await loadProject(
+        page,
+        projectForBenchmark({
+          model: exposedImplantModel,
+          section: { a: [-9, 0], b: [9, 0] },
+        }),
+        'wide-implant-etched-exposed',
+      );
+      await page.locator('#threeMaxBtn').click();
+      assert.equal(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')),
+        0,
+      );
+      assert.ok(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-surface-count')) > 0,
+        'Opaque 3D must keep an Implant overlay after Etch exposes its surviving surface',
+      );
+      await capture(page, 'wide-implant-etched-exposed-opaque-max');
+      await page.locator('#threeMaxBtn').click();
 
       await checkLayout(page);
     }

@@ -1,6 +1,5 @@
 import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
-import { clearWorkspaceState } from '../workspace-persistence.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { createVisualizationExample } from '../welcome-example.js';
 
@@ -15,6 +14,9 @@ export function createProjectController({
   fit3d,
   status,
   onProjectChanged = () => {},
+  checkpointBeforeReplace = async () => false,
+  readProjectFileTask = readProjectFile,
+  exportProjectFileTask = null,
   normalizedProjectName,
   getProjectName,
   setProjectName,
@@ -39,7 +41,6 @@ export function createProjectController({
       empty.className = 'empty-list';
       empty.textContent = 'No snapshots';
       host.append(empty);
-      onProjectChanged();
       return;
     }
 
@@ -53,6 +54,7 @@ export function createProjectController({
       name.title = record.createdAt;
       name.onchange = () => {
         if (!snapshotManager.rename(record.id, name.value)) name.value = record.name;
+        else onProjectChanged();
         renderSnapshots();
       };
 
@@ -60,7 +62,14 @@ export function createProjectController({
       restoreButton.type = 'button';
       restoreButton.className = 'snapshot-action';
       restoreButton.textContent = 'Restore';
-      restoreButton.onclick = () => {
+      restoreButton.onclick = async () => {
+        try {
+          await checkpointBeforeReplace('pre-snapshot-restore');
+        } catch (error) {
+          console.error(error);
+          status(`Snapshot restore cancelled: ${error.message}`, 'error');
+          return;
+        }
         if (!snapshotManager.restore(record.id)) {
           status('Snapshot restore failed validation.');
           return;
@@ -69,6 +78,7 @@ export function createProjectController({
         syncTransformInputs();
         renderAll();
         fit3d();
+        onProjectChanged();
         status(`Restored snapshot "${record.name}".`);
       };
 
@@ -79,6 +89,7 @@ export function createProjectController({
       deleteButton.title = 'Delete snapshot';
       deleteButton.onclick = () => {
         snapshotManager.remove(record.id);
+        onProjectChanged();
         renderSnapshots();
         status(`Deleted snapshot "${record.name}".`);
       };
@@ -86,14 +97,14 @@ export function createProjectController({
       row.append(name, restoreButton, deleteButton);
       host.append(row);
     }
-    onProjectChanged();
   }
 
   async function openLayoutFile(file) {
     try {
       assertLayoutByteLength(file.size);
       status(`Reading ${file.name}…`);
-      await importLayoutBuffer(await file.arrayBuffer(), file.name, file.name);
+      const imported = await importLayoutBuffer(await file.arrayBuffer(), file.name, file.name);
+      if (!imported) return false;
       status(`Opened ${file.name}.`);
       return true;
     } catch (error) {
@@ -105,7 +116,9 @@ export function createProjectController({
 
   async function openProjectFile(file) {
     try {
-      const project = await readProjectFile(file);
+      const project = await readProjectFileTask(file);
+      if (!project) return false;
+      await checkpointBeforeReplace('pre-open-project');
       if (!project.name) {
         project.name =
           String(file.name || '')
@@ -171,28 +184,39 @@ export function createProjectController({
       scheduleWorkspacePersistence();
     };
 
-    $('newProjectBtn').onclick = () => {
+    $('newProjectBtn').onclick = async () => {
       if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
-      void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
-      resetProjectState();
-      resetRoughDraftControls();
-      clearRoiDrawingMode();
-      clearMaskRoiDrawingMode();
-      snapshotManager.clear();
-      syncBaseControls();
-      renderAll();
-      renderSnapshots();
-      fit3d();
-      status('New empty project.');
+      try {
+        await checkpointBeforeReplace('pre-new-project');
+        resetProjectState();
+        resetRoughDraftControls();
+        clearRoiDrawingMode();
+        clearMaskRoiDrawingMode();
+        snapshotManager.clear();
+        syncBaseControls();
+        renderAll();
+        renderSnapshots();
+        fit3d();
+        status('New empty project.');
+      } catch (error) {
+        console.error(error);
+        status(`New project cancelled: ${error.message}`, 'error');
+      }
     };
 
-    $('exportProjectBtn').onclick = () => {
+    $('exportProjectBtn').onclick = async () => {
       try {
         const projectName = normalizedProjectName(getProjectName());
         setProjectName(projectName);
         syncProjectNameInput();
-        downloadProject(buildProjectSnapshot(true), projectExportFilename());
-        status(`Exported ${projectExportFilename()}.`);
+        const filename = projectExportFilename(),
+          project = buildProjectSnapshot(true);
+        if (exportProjectFileTask) {
+          if (!(await exportProjectFileTask(project, filename))) return;
+        } else {
+          downloadProject(project, filename);
+        }
+        status(`Exported ${filename}.`);
       } catch (error) {
         console.error(error);
         status(`Export failed: ${error.message}`, 'error');

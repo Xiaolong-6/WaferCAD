@@ -101,3 +101,145 @@ test('Draw Mask ring exports as hole-free GDS/OAS polygons instead of filling th
   const oas = flattenGDS(oasParsed, oasParsed.root);
   assert.ok(oas.elements.length > 4);
 });
+
+test('Mask GDS/OAS export rejects geometry below each format DBU precision', () => {
+  const gdsTinyPolygon = [
+    {
+      kind: 'polygon',
+      layer: 1,
+      datatype: 0,
+      points: [
+        [0, 0],
+        [0.00004, 0],
+        [0.00004, 0.00004],
+      ],
+    },
+  ];
+  assert.throws(() => serializeGDS(gdsTinyPolygon), /collapses at the selected .* database unit/);
+
+  const oasTinyPolygon = [
+    {
+      kind: 'polygon',
+      layer: 1,
+      datatype: 0,
+      points: [
+        [0, 0],
+        [0.00002, 0],
+        [0.00002, 0.00002],
+      ],
+    },
+  ];
+  assert.throws(() => serializeOASIS(oasTinyPolygon), /collapses at the selected .* database unit/);
+
+  const gdsTinyPath = [
+    {
+      kind: 'path',
+      layer: 2,
+      datatype: 0,
+      width: 0,
+      points: [
+        [0, 0],
+        [0.00004, 0],
+      ],
+    },
+  ];
+  assert.throws(() => serializeGDS(gdsTinyPath), /path collapses at the selected .* database unit/);
+
+  const oasTinyPath = [
+    {
+      kind: 'path',
+      layer: 2,
+      datatype: 0,
+      width: 0,
+      points: [
+        [0, 0],
+        [0.00002, 0],
+      ],
+    },
+  ];
+  assert.throws(() => serializeOASIS(oasTinyPath), /path collapses at the selected .* database unit/);
+});
+
+test('OASIS preserves a 0.1 nm PATH width exactly through integer half-width encoding', async () => {
+  const source = [
+    {
+      kind: 'path',
+      layer: 3,
+      datatype: 0,
+      width: 0.0001,
+      points: [
+        [0, 0],
+        [1, 0],
+      ],
+    },
+  ];
+  const parsed = await parseOAS(serializeOASIS(source).buffer),
+    flat = flattenGDS(parsed, parsed.root);
+  assert.equal(flat.elements.length, 1);
+  assert.ok(Math.abs(flat.elements[0].width - 0.0001) <= 1e-12);
+});
+
+test('OASIS preserves large non-negative layer numbers while GDSII rejects INT2 overflow', async () => {
+  const elements = [
+    {
+      kind: 'polygon',
+      layer: 40000,
+      datatype: 17,
+      points: [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+      ],
+    },
+  ];
+
+  assert.throws(() => serializeGDS(elements), /cannot represent layer\/datatype 40000\/17/);
+
+  const parsed = await parseOAS(serializeOASIS(elements).buffer),
+    flat = flattenGDS(parsed, parsed.root);
+  assert.equal(flat.elements.length, 1);
+  assert.equal(flat.elements[0].layer, 40000);
+  assert.equal(flat.elements[0].datatype, 17);
+});
+
+test('layout export rejects negative layer or datatype instead of silently remapping to zero', () => {
+  const polygon = {
+    kind: 'polygon',
+    layer: -1,
+    datatype: 0,
+    points: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+    ],
+  };
+  assert.throws(() => serializeGDS([polygon]), /layer is invalid/);
+  assert.throws(() => serializeOASIS([polygon]), /layer is invalid/);
+
+  polygon.layer = 1;
+  polygon.datatype = -2;
+  assert.throws(() => serializeGDS([polygon]), /datatype is invalid/);
+  assert.throws(() => serializeOASIS([polygon]), /datatype is invalid/);
+});
+
+test('OASIS keeps 0.1 nm PATH width precision across a 300 mm wafer-scale coordinate span', async () => {
+  const source = [
+    {
+      kind: 'path',
+      layer: 9,
+      datatype: 1,
+      width: 0.0001,
+      points: [
+        [-150000, 0],
+        [150000, 0],
+      ],
+    },
+  ];
+  const parsed = await parseOAS(serializeOASIS(source).buffer),
+    flat = flattenGDS(parsed, parsed.root);
+  assert.equal(flat.elements.length, 1);
+  assert.ok(Math.abs(flat.elements[0].width - 0.0001) <= 1e-12);
+  assert.ok(Math.abs(flat.elements[0].points[0][0] + 150000) <= 1e-9);
+  assert.ok(Math.abs(flat.elements[0].points[1][0] - 150000) <= 1e-9);
+});
