@@ -101,12 +101,7 @@ export function createProjectController({
       if (!ok) branchSelect.value = snapshotManager.activeBranch().id;
     };
 
-    const branchState = root.createElement('span');
-    branchState.className = 'snapshot-branch-state';
-    branchState.textContent = continuation ? 'historical' : 'HEAD';
-    if (continuation) branchState.dataset.historical = 'true';
-
-    branchBar.append(branchLabel, branchSelect, branchState);
+    branchBar.append(branchLabel, branchSelect);
     host.append(branchBar);
 
     if (continuation) {
@@ -118,8 +113,10 @@ export function createProjectController({
       title.textContent = 'Historical working state';
       const detail = root.createElement('span');
       detail.textContent = continuation.snapshotName
-        ? `Viewing "${continuation.snapshotName}". Edits here stay in this working state; a successful Apply will create a new variant from it.`
-        : 'Undo moved before the variant HEAD. Edits here stay in this working state; a successful Apply will create a milestone and new variant from it.';
+        ? `Viewing milestone "${continuation.snapshotName}". Edits here stay in this working state; a successful Apply will create a new variant from it.`
+        : continuation.processLabel
+          ? `Viewing process step "${continuation.processLabel}". Edits here stay in this working state; a successful Apply will create a new variant from it.`
+          : 'Viewing an older process state. Edits here stay in this working state; a successful Apply will create a milestone and new variant from it.';
       copy.append(title, detail);
 
       const returnButton = root.createElement('button');
@@ -345,7 +342,8 @@ export function createProjectController({
     function createProcessRow(node) {
       const row = root.createElement('div');
       row.className = 'process-history-row';
-      if (node.id === activeBranch.headNodeId) row.dataset.head = 'true';
+      const isHead = node.id === activeBranch.headNodeId;
+      if (isHead) row.dataset.head = 'true';
       if (continuation?.cursorNodeId === node.id) row.dataset.cursor = 'true';
 
       const marker = root.createElement('span');
@@ -367,6 +365,43 @@ export function createProjectController({
 
       body.append(label, meta);
       row.append(marker, body);
+
+      if (!isHead && node.restorable) {
+        row.classList.add('is-restorable');
+        row.tabIndex = 0;
+        row.setAttribute('role', 'button');
+        row.setAttribute('aria-label', `Restore process step ${label.textContent}`);
+        row.title = 'Restore this process step';
+
+        const restoreStep = async () => {
+          try {
+            await checkpointBeforeReplace('pre-process-history-restore');
+          } catch (error) {
+            console.error(error);
+            status(`Process step restore cancelled: ${error.message}`, 'error');
+            return;
+          }
+          if (!snapshotManager.restoreProcessNode(node.id)) {
+            status('This process step does not contain a restorable state.', 'warning');
+            return;
+          }
+          refreshAfterSnapshotLoad();
+          onProjectChanged();
+          renderSnapshots();
+          status(`Restored process step "${label.textContent}".`);
+        };
+
+        row.onclick = restoreStep;
+        row.onkeydown = (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          void restoreStep();
+        };
+      } else if (!isHead && !node.restorable) {
+        row.classList.add('is-unavailable');
+        row.title = 'This legacy process step was saved without a restore state.';
+      }
+
       return row;
     }
 
