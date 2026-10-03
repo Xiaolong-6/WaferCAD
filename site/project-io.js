@@ -250,6 +250,39 @@ export function prepareProjectForWorkspaceStorage(project) {
   return stored;
 }
 
+function assertLayoutPathWidthsPreserved(before, after, path = 'layout') {
+  for (const key of ['elements', 'linework']) {
+    const original = before?.[key] || [],
+      stored = after?.[key] || [];
+    for (let index = 0; index < original.length; index++) {
+      const source = original[index],
+        quantized = stored[index];
+      if (
+        source?.kind === 'path' &&
+        Number(source.width) > 0 &&
+        !(Number(quantized?.width) > 0)
+      ) {
+        throw new Error(
+          `${path}.${key}[${index}].width collapses to zero at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
+        );
+      }
+    }
+  }
+}
+
+function assertQuantizedProjectGeometryPreserved(before, after) {
+  assertLayoutPathWidthsPreserved(before?.layout, after?.layout, 'layout');
+  const originalSnapshots = before?.snapshots || [],
+    storedSnapshots = after?.snapshots || [];
+  for (let index = 0; index < originalSnapshots.length; index++) {
+    assertLayoutPathWidthsPreserved(
+      originalSnapshots[index]?.state?.layout,
+      storedSnapshots[index]?.state?.layout,
+      `snapshots[${index}].state.layout`,
+    );
+  }
+}
+
 export function prepareProjectForStorage(project) {
   validateProjectFile(project);
 
@@ -284,6 +317,7 @@ export function prepareProjectForStorage(project) {
   const verification = structuredClone(stored);
   expandProjectStorage(verification);
   try {
+    assertQuantizedProjectGeometryPreserved(project, verification);
     validateProjectFile(verification);
   } catch (error) {
     throw new Error(
