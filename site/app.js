@@ -762,6 +762,7 @@ const projectStateController = createProjectStateController({
     markProjectDirty();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
+  getSnapshotBranchState: () => snapshotManager.exportBranchState(),
   syncDisplayControls: () => {
     syncBaseControls();
     syncSectionInputs();
