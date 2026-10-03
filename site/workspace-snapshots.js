@@ -609,9 +609,10 @@ export function createSnapshotManager({
     if (!validateState(workingState)) {
       throw new Error('Cannot create a variant from an invalid historical working state.');
     }
+    const originNode = context.cursorNodeId ? nodeById(context.cursorNodeId) : null;
     return createVariant({
-      originNodeId: context.cursorNodeId || null,
-      parentVariantId: context.branchId,
+      originNodeId: originNode?.id || null,
+      parentVariantId: originNode?.branchId || context.branchId,
       name: name || nextVariantName(),
       headState: workingState,
     });
