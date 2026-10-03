@@ -684,7 +684,7 @@ test('historical working edits seed an automatic continuation variant', () => {
   assert.equal(live.value, 'historical-working-edit');
 });
 
-test('a milestone created from an Undo cursor is attached to the historical graph position', () => {
+test('Undo branching reuses a milestone already attached to the historical graph position', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
   let branchId = 0;
@@ -709,14 +709,13 @@ test('a milestone created from an Undo cursor is attached to the historical grap
 
   manager.syncCursorToProcessRevision(1);
   live = { model: { processRevision: 1 }, value: 'step-1' };
-  manager.createBranchFromCursor('Undo variant');
+  const before = manager.list().length;
+  const variant = manager.createBranchFromCursor('Undo variant');
 
-  const branchPoint = manager
-    .list()
-    .find((record) => record.name === 'Main branch point');
-  assert.ok(branchPoint);
-  assert.equal(branchPoint.historyNodeId, first.id);
-  assert.equal(branchPoint.parentId, firstMilestone.id);
+  assert.equal(manager.list().length, before);
+  assert.equal(variant.rootSnapshotId, firstMilestone.id);
+  assert.equal(variant.rootNodeId, first.id);
+  assert.equal(manager.list().some((record) => record.name === 'Main branch point'), false);
 });
 
 test('automatic branches use concise Variant names and historical state can return to HEAD', () => {
