@@ -73,6 +73,8 @@ async function capture(page, name) {
 async function checkLayout(page) {
   const problems = await page.evaluate(() => {
     const issues = [];
+    const threeError = document.getElementById('threeHost')?.dataset.renderError;
+    if (threeError) issues.push(`3D render error: ${threeError}`);
     if (document.documentElement.scrollWidth > innerWidth) issues.push('page horizontal overflow');
     for (const panel of document.querySelectorAll('.view-panel')) {
       const head = panel.querySelector('.view-head').getBoundingClientRect();
