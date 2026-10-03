@@ -250,20 +250,59 @@ export function prepareProjectForWorkspaceStorage(project) {
   return stored;
 }
 
-function assertLayoutPathWidthsPreserved(before, after, path = 'layout') {
+function openRingArea(points) {
+  let area2 = 0;
+  for (let index = 0; index < (points?.length || 0); index++) {
+    const a = points[index],
+      b = points[(index + 1) % points.length];
+    area2 += Number(a?.[0]) * Number(b?.[1]) - Number(b?.[0]) * Number(a?.[1]);
+  }
+  return Math.abs(area2) / 2;
+}
+
+function pathSpansDistance(points) {
+  const first = points?.[0];
+  return Boolean(
+    first &&
+      points
+        .slice(1)
+        .some((point) => Number(point?.[0]) !== Number(first[0]) || Number(point?.[1]) !== Number(first[1])),
+  );
+}
+
+function assertLayoutGeometryPreserved(before, after, path = 'layout') {
   for (const key of ['elements', 'linework']) {
     const original = before?.[key] || [],
       stored = after?.[key] || [];
     for (let index = 0; index < original.length; index++) {
       const source = original[index],
-        quantized = stored[index];
+        quantized = stored[index],
+        itemPath = `${path}.${key}[${index}]`;
       if (
         source?.kind === 'path' &&
         Number(source.width) > 0 &&
         !(Number(quantized?.width) > 0)
       ) {
         throw new Error(
-          `${path}.${key}[${index}].width collapses to zero at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
+          `${itemPath}.width collapses to zero at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
+        );
+      }
+      if (
+        source?.kind === 'path' &&
+        pathSpansDistance(source.points) &&
+        !pathSpansDistance(quantized?.points)
+      ) {
+        throw new Error(
+          `${itemPath}.points collapse to zero length at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
+        );
+      }
+      if (
+        source?.kind === 'polygon' &&
+        openRingArea(source.points) > 0 &&
+        !(openRingArea(quantized?.points) > 0)
+      ) {
+        throw new Error(
+          `${itemPath}.points collapse to zero area at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
         );
       }
     }
@@ -271,11 +310,11 @@ function assertLayoutPathWidthsPreserved(before, after, path = 'layout') {
 }
 
 function assertQuantizedProjectGeometryPreserved(before, after) {
-  assertLayoutPathWidthsPreserved(before?.layout, after?.layout, 'layout');
+  assertLayoutGeometryPreserved(before?.layout, after?.layout, 'layout');
   const originalSnapshots = before?.snapshots || [],
     storedSnapshots = after?.snapshots || [];
   for (let index = 0; index < originalSnapshots.length; index++) {
-    assertLayoutPathWidthsPreserved(
+    assertLayoutGeometryPreserved(
       originalSnapshots[index]?.state?.layout,
       storedSnapshots[index]?.state?.layout,
       `snapshots[${index}].state.layout`,
