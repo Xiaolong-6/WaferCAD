@@ -9,6 +9,7 @@ import {
   serializeProject,
 } from '../project-io.js';
 import { validateProjectFile } from '../project-schema.js';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendorSource = readFileSync(
   new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
@@ -220,6 +221,25 @@ test('V3 process-node restore states survive the project Open path', async () =>
   assert.equal(loaded.snapshotBranches.version, 3);
   assert.equal(loaded.snapshotBranches.nodes[0].state.model.processRevision, 1);
   assert.equal(loaded.snapshotBranches.nodes[1].state.model.processRevision, 2);
+
+  let live = loaded;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => {
+      try {
+        validateProjectFile(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  });
+  manager.importRecords(loaded.snapshots || [], loaded.snapshotBranches);
+  assert.equal(manager.restoreProcessNode('process-1'), true);
+  assert.equal(live.model.processRevision, 1);
 });
 
 test('V2 process history without node restore states remains backward compatible', () => {
