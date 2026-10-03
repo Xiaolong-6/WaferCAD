@@ -97,6 +97,13 @@ async function capture(page, name) {
   cases.push(name);
 }
 
+async function setCheckboxState(locator, checked) {
+  await locator.evaluate((input, next) => {
+    input.checked = Boolean(next);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, checked);
+}
+
 async function threeFramebufferHash(page) {
   await page.evaluate(
     () =>
@@ -1051,14 +1058,14 @@ try {
       const implantVisibility = page.locator('#layerLegend .implant-row-wrap .legend-visibility');
       assert.equal(await implantVisibility.count(), 1);
       const opaqueVisibleHash = await threeFramebufferHash(page);
-      await implantVisibility.uncheck();
+      await setCheckboxState(implantVisibility, false);
       const opaqueHiddenHash = await threeFramebufferHash(page);
       assert.equal(
         opaqueVisibleHash,
         opaqueHiddenHash,
         'Buried implant visibility changed an opaque 3D framebuffer',
       );
-      await implantVisibility.check();
+      await setCheckboxState(implantVisibility, true);
       await capture(page, 'wide-implant-buried-opaque-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
@@ -1067,14 +1074,14 @@ try {
       await page.waitForTimeout(120);
       await page.locator('#threeMaxBtn').click();
       const transparentVisibleHash = await threeFramebufferHash(page);
-      await implantVisibility.uncheck();
+      await setCheckboxState(implantVisibility, false);
       const transparentHiddenHash = await threeFramebufferHash(page);
       assert.notEqual(
         transparentVisibleHash,
         transparentHiddenHash,
         'Transparent 3D did not reveal the buried implant',
       );
-      await implantVisibility.check();
+      await setCheckboxState(implantVisibility, true);
       await capture(page, 'wide-implant-buried-transparent-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
