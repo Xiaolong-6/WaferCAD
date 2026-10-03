@@ -3,6 +3,7 @@ import { implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
   geometryFromRoughCap,
+  geometryFromRoughMeshData,
   roughBoundaryEdgesFromTriangles,
   roughCapBaseTriangles,
   subdivideRoughBaseTriangles,
@@ -74,6 +75,12 @@ export function createThreeView({
   let roughBaseTriangulationCount = 0;
   let surfacePlanBuildCount = 0;
   let transparentMeshes = [];
+  let roughWorker = null;
+  let roughWorkerResolve = null;
+  let roughWorkerGeneration = 0;
+  let roughRefineTimer = null;
+  let roughInteractionCache = null;
+  let currentRoughMode = 'none';
 
   function currentViewport() {
     return {
@@ -312,7 +319,7 @@ export function createThreeView({
   }
 
   function adaptiveLodSignature() {
-    if (!camera || !renderer || !controls || !roughMeshes.length) return null;
+    if (!camera || !renderer || !controls) return null;
     const viewport = currentViewport(),
       distance = Math.max(1e-9, camera.position.distanceTo(controls.target)),
       pxPerUnit = projectedPixelsPerUnit({
@@ -400,20 +407,38 @@ export function createThreeView({
     data.roughLodStitches = String(stitches);
   }
 
-  function maybeRebuildAdaptiveGeometry() {
-    if (rendering || !roughTasks.length) return false;
-    const signature = adaptiveLodSignature();
-    if (!signature || signature === lastLodSignature) return false;
-    return rebuildAdaptiveRoughGeometry();
+  function clearRoughRefineTimer() {
+    if (roughRefineTimer == null) return;
+    clearTimeout(roughRefineTimer);
+    roughRefineTimer = null;
+  }
+
+  function terminateRoughWorker({ invalidate = false } = {}) {
+    const resolve = roughWorkerResolve;
+    roughWorkerResolve = null;
+    if (roughWorker) {
+      roughWorker.terminate();
+      roughWorker = null;
+    }
+    if (invalidate) roughWorkerGeneration++;
+    resolve?.(false);
+  }
+
+  function scheduleDetailedRoughBuild(delay = 140) {
+    if (!ready || interacting || rendering || !roughTasks.length) return;
+    clearRoughRefineTimer();
+    roughRefineTimer = setTimeout(() => {
+      roughRefineTimer = null;
+      if (!interacting) void requestRoughGeometry('detailed');
+    }, Math.max(0, Number(delay) || 0));
   }
 
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
       frame = null;
-      const changed = controls?.update?.() || false,
-        rebuilt = maybeRebuildAdaptiveGeometry();
-      if (!rebuilt) updateRoughMaterialLod();
+      const changed = controls?.update?.() || false;
+      updateRoughMaterialLod();
       updateTransparentOrder();
       renderer.render(scene, camera);
       if (interacting || changed) scheduleFrame();
@@ -426,11 +451,17 @@ export function createThreeView({
     renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
     camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
     camera.updateProjectionMatrix();
+    if (!interacting) scheduleDetailedRoughBuild();
     scheduleFrame();
   }
 
   function disposeGroup() {
     if (!group) return;
+    clearRoughRefineTimer();
+    terminateRoughWorker({ invalidate: true });
+    roughInteractionCache = null;
+    currentRoughMode = 'none';
+    lastLodSignature = null;
     const geometries = new Set(),
       materials = new Set(),
       textures = new Set();
@@ -715,7 +746,7 @@ export function createThreeView({
     return Math.max(0, Math.min(1, visibleArea / modelArea));
   }
 
-  function prepareAdaptiveRoughTasks() {
+  function prepareAdaptiveRoughTasks({ interactive = false } = {}) {
     const context = roughRenderContext;
     if (!context || !roughTasks.length) return { tasks: [], sceneBudget: 0 };
     const focus = focusBounds(),
@@ -726,7 +757,7 @@ export function createThreeView({
             lodContext = lodContextFor(context.model, context.clip, null, task.cap.z, {
               visibleFraction: priority >= 0.9 ? 1 : priority >= 0.2 ? 0.2 : 0.04,
               screenPriority: priority,
-              maxDepth: priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
+              maxDepth: interactive ? 3 : priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
               patchBounds: zone.bounds,
             }),
             preview = adaptiveRoughMeshLod({
@@ -756,6 +787,7 @@ export function createThreeView({
         viewportHeight: viewport.height,
         pixelRatio: viewport.pixelRatio,
         roiFraction: roughSceneRoiFraction(context.model, context.clip),
+        hardCap: interactive ? 70000 : 900000,
       }),
       baseTriangleCount = requests.reduce((sum, request) => sum + request.baseTriangles, 0),
       sceneBudget = Math.max(requestedSceneBudget, baseTriangleCount),
@@ -769,7 +801,226 @@ export function createThreeView({
     return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount };
   }
 
-  function rebuildAdaptiveRoughGeometry() {
+  function roughWorkerDiagnostics(prepared) {
+    return {
+      sceneBudget: prepared.sceneBudget,
+      requestedSceneBudget: prepared.requestedSceneBudget,
+      baseTriangleCount: prepared.baseTriangleCount,
+    };
+  }
+
+  function applyRoughMeshResults(results, diagnostics, mode, signature = null) {
+    const context = roughRenderContext;
+    if (!context) return false;
+    clearAdaptiveRoughObjects();
+
+    for (const result of results || []) {
+      const task = roughTasks[result.taskId];
+      if (!task || !result.data) continue;
+      const cap = task.cap,
+        meshData = task.implant
+          ? {
+              ...result.data,
+              positions: result.data.positions.slice(),
+              normals: result.data.normals.slice(),
+            }
+          : result.data;
+      let geometry = geometryFromRoughMeshData(THREE, meshData);
+      if (task.implant) geometry = shearImplantGeometry(geometry, task.implant);
+
+      const material = createSurfaceMaterial(task.layer, task.state, cap.appearance);
+      if (task.polygonOffset) {
+        material.polygonOffset = true;
+        material.polygonOffsetFactor = -1;
+        material.polygonOffsetUnits = -1;
+      }
+      const mesh = addSurfaceMesh(
+        geometry,
+        material,
+        task.state,
+        cap.appearance,
+        task.sortBias ?? (cap.buried ? 12 : 0),
+        true,
+      );
+      if (mesh) {
+        roughOwnedObjects.add(mesh);
+        if (task.name) mesh.name = task.name;
+      }
+
+      if (
+        task.includeBorders !== false &&
+        context.borders &&
+        !cap.buried &&
+        geometry.userData.roughBorderPositions?.length
+      ) {
+        addBorderPositions(geometry.userData.roughBorderPositions, {
+          order: 100010 + (cap.solidIndex || 0),
+          opacity: context.opacity,
+          adaptiveRough: true,
+        });
+      }
+    }
+
+    roughRebuildCount++;
+    currentRoughMode = mode;
+    const data = renderer?.domElement?.dataset;
+    if (data) {
+      data.roughSceneTriangleBudget = String(diagnostics?.sceneBudget || 0);
+      data.roughRequestedSceneTriangleBudget = String(diagnostics?.requestedSceneBudget || 0);
+      data.roughBaseTriangleCount = String(diagnostics?.baseTriangleCount || 0);
+      data.roughSpatialZoneBuildCount = String(roughSpatialZoneBuildCount);
+      data.roughBaseTriangulationCount = String(roughBaseTriangulationCount);
+      data.roughRebuildCount = String(roughRebuildCount);
+      data.surfacePlanBuildCount = String(surfacePlanBuildCount);
+      data.roughMeshMode = mode;
+      data.roughMeshWorker = 'true';
+    }
+    updateRoughMaterialLod();
+    updateTransparentOrder();
+    updateRoughDiagnostics();
+    if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
+    scheduleFrame();
+    return true;
+  }
+
+  function roughWorkerPayload(prepared) {
+    return prepared.tasks.map((task, taskId) => {
+      const cap = task.cap;
+      return {
+        taskId,
+        geometry: {
+          z: cap.z,
+          normal: cap.normal,
+          appearance: cap.appearance,
+          closeToIdeal: task.closeToIdeal ?? !cap.buried,
+          profileNormal: cap.profileNormal,
+          lodZones: task.zones.map((zone) => ({
+            baseTriangles: zone.baseTriangles,
+            maxEdge: zone.maxEdge,
+            edges: zone.edges,
+            lodContext: zone.lodContext,
+            triangleBudget: zone.triangleBudget,
+          })),
+        },
+      };
+    });
+  }
+
+  function requestRoughGeometry(
+    mode = 'detailed',
+    { force = false, refineAfter = false } = {},
+  ) {
+    if (!roughRenderContext || !roughTasks.length || rendering) return Promise.resolve(false);
+    const interactive = mode === 'interactive',
+      signature = adaptiveLodSignature();
+    if (
+      !interactive &&
+      !force &&
+      currentRoughMode === 'detailed' &&
+      signature &&
+      signature === lastLodSignature
+    ) {
+      return Promise.resolve(false);
+    }
+
+    clearRoughRefineTimer();
+    terminateRoughWorker();
+    const prepared = prepareAdaptiveRoughTasks({ interactive }),
+      diagnostics = roughWorkerDiagnostics(prepared);
+    if (!prepared.tasks.length) return Promise.resolve(false);
+
+    let worker;
+    try {
+      const workerUrl = new URL('./rough-mesh-worker.js', import.meta.url),
+        currentModuleUrl = new URL(import.meta.url);
+      workerUrl.search = currentModuleUrl.search;
+      worker = new Worker(workerUrl);
+    } catch (error) {
+      console.warn('Rough mesh worker unavailable; using synchronous fallback.', error);
+      if (!interactive) return Promise.resolve(rebuildAdaptiveRoughGeometrySync());
+      return Promise.resolve(false);
+    }
+
+    const generation = ++roughWorkerGeneration,
+      id = `rough-${generation}`;
+    roughWorker = worker;
+
+    return new Promise((resolve) => {
+      roughWorkerResolve = resolve;
+      const finish = () => {
+        if (roughWorker === worker) {
+          roughWorker = null;
+          roughWorkerResolve = null;
+        }
+        worker.terminate();
+      };
+
+      worker.onmessage = (event) => {
+        const message = event.data || {};
+        if (message.id !== id || message.generation !== generation) return;
+        if (generation !== roughWorkerGeneration) {
+          finish();
+          resolve(false);
+          return;
+        }
+        if (message.type === 'error') {
+          console.warn('Rough mesh worker failed.', message.message);
+          finish();
+          if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync());
+          else resolve(false);
+          return;
+        }
+        if (message.type !== 'done') return;
+
+        finish();
+        if (generation !== roughWorkerGeneration) {
+          resolve(false);
+          return;
+        }
+        if (interactive) {
+          roughInteractionCache = {
+            results: message.results,
+            diagnostics,
+          };
+        }
+        const applied = applyRoughMeshResults(
+          message.results,
+          diagnostics,
+          mode,
+          interactive ? null : signature,
+        );
+        if (interactive && refineAfter && !interacting) scheduleDetailedRoughBuild(60);
+        resolve(applied);
+      };
+
+      worker.onerror = (event) => {
+        if (generation !== roughWorkerGeneration) {
+          finish();
+          resolve(false);
+          return;
+        }
+        console.warn('Rough mesh worker failed.', event.message || event);
+        finish();
+        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync());
+        else resolve(false);
+      };
+
+      try {
+        worker.postMessage({
+          id,
+          generation,
+          tasks: roughWorkerPayload(prepared),
+        });
+      } catch (error) {
+        console.warn('Could not start rough mesh worker task.', error);
+        finish();
+        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync());
+        else resolve(false);
+      }
+    });
+  }
+
+  function rebuildAdaptiveRoughGeometrySync({ interactive = false } = {}) {
     const context = roughRenderContext;
     clearAdaptiveRoughObjects();
     if (!context || !roughTasks.length) {
@@ -781,7 +1032,7 @@ export function createThreeView({
     const wasRendering = rendering;
     rendering = true;
     try {
-      const prepared = prepareAdaptiveRoughTasks();
+      const prepared = prepareAdaptiveRoughTasks({ interactive });
       for (const task of prepared.tasks) {
         const cap = task.cap;
         let geometry = geometryFromRoughCap(THREE, {
@@ -830,6 +1081,7 @@ export function createThreeView({
       }
 
       roughRebuildCount++;
+      currentRoughMode = interactive ? 'interactive' : 'detailed';
       const data = renderer?.domElement?.dataset;
       if (data) {
         data.roughSceneTriangleBudget = String(prepared.sceneBudget);
@@ -839,11 +1091,13 @@ export function createThreeView({
         data.roughBaseTriangulationCount = String(roughBaseTriangulationCount);
         data.roughRebuildCount = String(roughRebuildCount);
         data.surfacePlanBuildCount = String(surfacePlanBuildCount);
+        data.roughMeshMode = currentRoughMode;
+        data.roughMeshWorker = 'false';
       }
       updateRoughMaterialLod();
       updateTransparentOrder();
       updateRoughDiagnostics();
-      lastLodSignature = adaptiveLodSignature();
+      if (!interactive) lastLodSignature = adaptiveLodSignature();
       return true;
     } finally {
       rendering = wasRendering;
@@ -881,11 +1135,26 @@ export function createThreeView({
       controls.enableDamping = true;
       controls.addEventListener('start', () => {
         interacting = true;
+        clearRoughRefineTimer();
+        terminateRoughWorker({ invalidate: true });
+        if (roughInteractionCache) {
+          applyRoughMeshResults(
+            roughInteractionCache.results,
+            roughInteractionCache.diagnostics,
+            'interactive',
+          );
+        } else if (roughTasks.length) {
+          void requestRoughGeometry('interactive');
+        }
         scheduleFrame();
       });
-      controls.addEventListener('change', scheduleFrame);
+      controls.addEventListener('change', () => {
+        if (!interacting) scheduleDetailedRoughBuild();
+        scheduleFrame();
+      });
       controls.addEventListener('end', () => {
         interacting = false;
+        scheduleDetailedRoughBuild();
         scheduleFrame();
       });
 
@@ -1089,12 +1358,12 @@ export function createThreeView({
         }
       }
 
-      rebuildAdaptiveRoughGeometry();
       updateTransparentOrder();
       stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     } finally {
       rendering = false;
     }
+    if (roughTasks.length) void requestRoughGeometry('interactive', { refineAfter: true });
     scheduleFrame();
   }
 
@@ -1204,7 +1473,7 @@ export function createThreeView({
     renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
     camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
     camera.updateProjectionMatrix();
-    rebuildAdaptiveRoughGeometry();
+    await requestRoughGeometry('detailed', { force: true });
     renderer.render(scene, camera);
     try {
       const blob = await new Promise((resolve, reject) =>
@@ -1219,7 +1488,7 @@ export function createThreeView({
       renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
       camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
       camera.updateProjectionMatrix();
-      rebuildAdaptiveRoughGeometry();
+      await requestRoughGeometry('detailed', { force: true });
       scheduleFrame();
     }
   }
