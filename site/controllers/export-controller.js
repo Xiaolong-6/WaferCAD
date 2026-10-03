@@ -4,6 +4,13 @@ import { sectorBoundaryPoints } from '../roi-editor.js';
 import { drawMaskGeometry } from '../draw-mask-geometry.js';
 import { maskRoiWorldGeometry, multiBounds } from '../mask-roi-geometry.js';
 import { bufferPolyline, intersection, isEmpty } from '../vector-geometry.js';
+import { roughVisualBoundsZ } from '../surface-rendering.js';
+import {
+  createSectionZTransform,
+  niceSectionTicks,
+  resolveSectionCollapse,
+  sectionVisibleZSpan,
+} from '../section-z-collapse.js';
 import {
   collectMaskExportElements,
   serializeGDS,
@@ -415,16 +422,18 @@ export function createExportController({
   }
 
   function exportSectionSvg() {
-    const { model, section, sectionScaleMode } = getState();
+    const { model, section, sectionScaleMode, sectionCollapse } = getState();
     const canvas = $('sectionCanvas'),
       rect = canvas.getBoundingClientRect(),
       width = Math.max(2, rect.width),
       height = Math.max(2, rect.height),
-      [lo, hi] = modelBoundsZ(model),
-      pad = Math.max(1e-9, (hi - lo) * 0.08),
+      [idealLo, idealHi] = modelBoundsZ(model),
+      [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
+      collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
+      edgeSpan = Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005),
+      pad = Math.max(1e-9, Math.min((hi - lo) * 0.08, edgeSpan * 0.12)),
       z0 = lo - pad,
       z1 = hi + pad,
-      zSpan = Math.max(z1 - z0, 1e-12),
       sectionSpan = Math.max(
         Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]),
         1e-12,
@@ -436,7 +445,7 @@ export function createExportController({
       innerWidth = width - left - right,
       innerHeight = height - top - bottom,
       autoXScale = innerWidth / sectionSpan,
-      autoZScale = innerHeight / zSpan;
+      breakPixels = 8;
 
     let plotLeft = left,
       plotTop = top,
@@ -444,14 +453,27 @@ export function createExportController({
       plotHeight = innerHeight;
 
     if (sectionScaleMode === 'physical') {
-      const scale = Math.min(autoXScale, autoZScale);
+      const visibleZSpan = Math.max(sectionVisibleZSpan(z0, z1, collapse), 1e-12),
+        scale = Math.min(autoXScale, Math.max(1e-12, (innerHeight - breakPixels) / visibleZSpan));
       plotWidth = sectionSpan * scale;
-      plotHeight = zSpan * scale;
+      plotHeight = visibleZSpan * scale + breakPixels;
       plotLeft = left + (innerWidth - plotWidth) / 2;
       plotTop = top + (innerHeight - plotHeight) / 2;
     }
 
-    const map = ([t, z]) => [plotLeft + t * plotWidth, plotTop + ((z1 - z) / zSpan) * plotHeight];
+    const xScale = plotWidth / sectionSpan,
+      zTransform = createSectionZTransform({
+        zMin: z0,
+        zMax: z1,
+        collapse,
+        plotTop,
+        plotHeight,
+        breakPixels,
+        upperFraction: 0.8,
+        mode: sectionScaleMode,
+        xScale,
+      }),
+      map = ([t, z]) => [plotLeft + t * plotWidth, zTransform.mapZ(z)];
     let body = '';
 
     for (const contour of sectionContours(model, section.a, section.b)) {
@@ -480,24 +502,71 @@ export function createExportController({
       )}" height="${svgNumber(sy1 - sy0)}" fill="${layer.color}"/>`;
     }
 
-    body += `<rect x="${svgNumber(plotLeft)}" y="${svgNumber(plotTop)}" width="${svgNumber(
-      plotWidth,
-    )}" height="${svgNumber(plotHeight)}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
-    body += `<text x="3" y="${svgNumber(
-      plotTop + 7,
-    )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">${formatXY(
-      z1,
-    )}</text><text x="3" y="${svgNumber(
-      plotTop + plotHeight,
-    )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">${formatXY(
-      z0,
-    )}</text><text x="${svgNumber(plotLeft)}" y="${svgNumber(
-      Math.min(height - 5, plotTop + plotHeight + 15),
+    body += `<rect x="${svgNumber(plotLeft)}" y="${svgNumber(
+      zTransform.upperBottom,
+    )}" width="${svgNumber(plotWidth)}" height="${svgNumber(
+      zTransform.breakPixels,
+    )}" fill="#fbfcfd"/>`;
+    body += `<path d="M${svgNumber(plotLeft)} ${svgNumber(
+      zTransform.frameTop,
+    )}H${svgNumber(plotLeft + plotWidth)}V${svgNumber(
+      zTransform.upperBottom,
+    )}M${svgNumber(plotLeft + plotWidth)} ${svgNumber(
+      zTransform.lowerTop,
+    )}V${svgNumber(zTransform.frameBottom)}H${svgNumber(plotLeft)}V${svgNumber(
+      zTransform.lowerTop,
+    )}M${svgNumber(plotLeft)} ${svgNumber(
+      zTransform.upperBottom,
+    )}V${svgNumber(zTransform.frameTop)}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
+
+    for (const [x, direction] of [
+      [plotLeft, 1],
+      [plotLeft + plotWidth, -1],
+    ]) {
+      body += `<path d="M${svgNumber(x)} ${svgNumber(
+        zTransform.upperBottom - 1,
+      )}L${svgNumber(x + direction * 6)} ${svgNumber(
+        zTransform.upperBottom + 3,
+      )}L${svgNumber(x + direction * 12)} ${svgNumber(
+        zTransform.upperBottom - 1,
+      )}M${svgNumber(x)} ${svgNumber(
+        zTransform.lowerTop + 1,
+      )}L${svgNumber(x + direction * 6)} ${svgNumber(
+        zTransform.lowerTop - 3,
+      )}L${svgNumber(x + direction * 12)} ${svgNumber(
+        zTransform.lowerTop + 1,
+      )}" fill="none" stroke="#788593" stroke-width=".8" opacity=".72"/>`;
+    }
+
+    const tickValues = [
+      ...niceSectionTicks(collapse.top, z1, 4),
+      ...niceSectionTicks(z0, collapse.bottom, 2),
+    ];
+    let lastTickY = -Infinity;
+    for (const value of tickValues) {
+      const y = zTransform.mapZ(value);
+      if (Math.abs(y - lastTickY) < 10) continue;
+      lastTickY = y;
+      body += `<line x1="${svgNumber(plotLeft - 4)}" y1="${svgNumber(
+        y,
+      )}" x2="${svgNumber(plotLeft)}" y2="${svgNumber(
+        y,
+      )}" stroke="#aab3bd" stroke-width=".7"/><text x="${svgNumber(
+        plotLeft - 6,
+      )}" y="${svgNumber(
+        y + 2.5,
+      )}" text-anchor="end" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">${formatXY(
+        value,
+      )}</text>`;
+    }
+
+    body += `<text x="${svgNumber(plotLeft)}" y="${svgNumber(
+      Math.min(height - 5, zTransform.frameBottom + 15),
     )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">A</text><text x="${svgNumber(
-      plotLeft + plotWidth - 7,
+      plotLeft + plotWidth,
     )}" y="${svgNumber(
-      Math.min(height - 5, plotTop + plotHeight + 15),
-    )}" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">B</text>`;
+      Math.min(height - 5, zTransform.frameBottom + 15),
+    )}" text-anchor="end" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">B</text>`;
 
     downloadText(svgDocument(width, height, body), 'wafercad-section-ab.svg');
     status('Exported Section A–B as SVG.');

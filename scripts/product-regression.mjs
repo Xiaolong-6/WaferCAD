@@ -203,6 +203,65 @@ async function coords(page) {
   );
 }
 
+async function checkSectionCollapse(page, name) {
+  const entry = page.locator('#sectionCollapseAxisBtn'),
+    editor = page.locator('#sectionCollapseEditor'),
+    canvas = page.locator('#sectionCanvas');
+
+  await canvas.scrollIntoViewIfNeeded();
+  assert.equal(await entry.isVisible(), true, `${name}: Z collapse axis entry is missing`);
+  assert.equal(await editor.isHidden(), true, `${name}: collapse editor should be hidden normally`);
+
+  const before = {
+    top: Number(await canvas.getAttribute('data-section-collapse-top-um')),
+    bottom: Number(await canvas.getAttribute('data-section-collapse-bottom-um')),
+    breakY: Number(await canvas.getAttribute('data-section-collapse-break-y')),
+  };
+  assert.ok(Number.isFinite(before.top) && Number.isFinite(before.bottom));
+  assert.ok(before.top > before.bottom);
+  assert.ok(Number.isFinite(before.breakY));
+
+  await entry.click();
+  assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
+  await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
+  await capture(page, `${name}-section-z-collapse-edit`);
+  const handleSize = await page.locator('#sectionCollapseTopHandle').boundingBox();
+  assert.ok(handleSize);
+  assert.ok(
+    handleSize.width >= (name === 'phone' ? 24 : 16),
+    `${name}: collapse ruler handle is too small`,
+  );
+
+  await page.locator('#sectionCollapseTarget').selectOption('top');
+  await page.locator('#sectionCollapseStep').selectOption('0.1');
+  await page.locator('#sectionCollapsePlus').click();
+  const nudgedTop = Number(await canvas.getAttribute('data-section-collapse-top-um'));
+  assert.ok(nudgedTop > before.top, `${name}: fine adjustment did not update the top boundary`);
+
+  await page.keyboard.press('Escape');
+  assert.equal(await editor.isHidden(), true, `${name}: Escape did not close collapse editor`);
+  const closedTop = Number(await canvas.getAttribute('data-section-collapse-top-um'));
+  close(closedTop, nudgedTop, 1e-9);
+
+  await entry.click();
+  assert.equal(await editor.isVisible(), true);
+  close(
+    Number(
+      await page.locator('#sectionCollapseTopValue').textContent().then((text) =>
+        Number(text.replace('−', '-').replace(/[^0-9+.-]/g, '')),
+      ),
+    ),
+    nudgedTop,
+    1e-3,
+  );
+  await page.locator('#sectionCollapseClose').click();
+  assert.equal(await editor.isHidden(), true);
+
+  const afterBreakY = Number(await canvas.getAttribute('data-section-collapse-break-y'));
+  close(afterBreakY, before.breakY, 1e-9);
+  await capture(page, `${name}-section-z-collapse`);
+}
+
 async function dragHandle(page, endpoint, dx, dy, cancel = false) {
   const handle = page.locator(`[data-endpoint=${endpoint}]`);
   await handle.scrollIntoViewIfNeeded();
@@ -330,27 +389,44 @@ async function loadProject(page, project, name) {
 }
 
 async function checkSectionSeams(page, project) {
-  const { modelBoundsZ } = await import('../site/model.js');
-  const [lo, hi] = modelBoundsZ(project.model);
-  const pad = Math.max(1.5, (hi - lo) * 0.08);
-  // Z=0 is uninterrupted substrate in every benchmark, including after etching.
-  // Inspect actual canvas pixels across the old column boundaries at each DPR.
-  const colors = await page.evaluate(
-    ({ lo, hi, pad }) => {
-      const canvas = document.querySelector('#sectionCanvas');
-      const dpr = Math.min(devicePixelRatio || 1, 2);
-      const width = canvas.width / dpr,
-        height = canvas.height / dpr;
-      const row = Math.round((10 + ((hi + pad) / (hi - lo + 2 * pad)) * (height - 32)) * dpr);
-      const start = Math.ceil((27 + (width - 37) * 0.1) * dpr);
-      const end = Math.floor((27 + (width - 37) * 0.9) * dpr);
-      const pixels = canvas.getContext('2d').getImageData(start, row, end - start, 1).data;
-      const unique = new Set();
-      for (let i = 0; i < pixels.length; i += 4) unique.add([...pixels.slice(i, i + 4)].join(','));
-      return [...unique];
-    },
-    { lo, hi, pad },
+  // Probe a row inside the Base interval shared by all material regions.
+  // This remains valid when back-side coatings extend below the Base.
+  const baseCommonLo = Math.max(
+    ...project.model.regions
+      .map((region) => region.stack.find((segment) => segment.layerId === 'base')?.z0)
+      .filter(Number.isFinite),
   );
+  const colors = await page.evaluate((baseCommonLo) => {
+    const canvas = document.querySelector('#sectionCanvas'),
+      dpr = Math.min(devicePixelRatio || 1, 2),
+      width = canvas.width / dpr,
+      z0 = Number(canvas.dataset.sectionZ0Um),
+      z1 = Number(canvas.dataset.sectionZ1Um),
+      top = Number(canvas.dataset.sectionCollapseTopUm),
+      bottom = Number(canvas.dataset.sectionCollapseBottomUm),
+      z = 0 >= top || 0 <= bottom ? 0 : (baseCommonLo + bottom) / 2,
+      frameTop = Number(canvas.dataset.sectionFrameTop),
+      frameBottom = Number(canvas.dataset.sectionFrameBottom),
+      upperY = Number(canvas.dataset.sectionCollapseUpperY),
+      lowerY = Number(canvas.dataset.sectionCollapseLowerY);
+
+    let y;
+    if (z >= top) {
+      y = frameTop + ((z1 - z) / Math.max(z1 - top, 1e-12)) * (upperY - frameTop);
+    } else if (z <= bottom) {
+      y = lowerY + ((bottom - z) / Math.max(bottom - z0, 1e-12)) * (frameBottom - lowerY);
+    } else {
+      y = (upperY + lowerY) / 2;
+    }
+
+    const row = Math.round(y * dpr),
+      start = Math.ceil((27 + (width - 37) * 0.1) * dpr),
+      end = Math.floor((27 + (width - 37) * 0.9) * dpr),
+      pixels = canvas.getContext('2d').getImageData(start, row, end - start, 1).data,
+      unique = new Set();
+    for (let i = 0; i < pixels.length; i += 4) unique.add([...pixels.slice(i, i + 4)].join(','));
+    return [...unique];
+  }, baseCommonLo);
   const rgba = colors.map((color) => color.split(',').map(Number)),
     channelRange = [0, 1, 2, 3].map((channel) => {
       const values = rgba.map((value) => value[channel]);
@@ -497,6 +573,7 @@ try {
     await capture(page, `${name}-empty`);
     await checkLayout(page);
     await checkAB(page, name);
+    await checkSectionCollapse(page, name);
     await page.locator('#threePanel .three-opacity-control > summary').click();
     await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
     await page.locator('#threePanel .three-opacity-control > summary').click();

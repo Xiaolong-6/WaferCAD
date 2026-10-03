@@ -27,6 +27,15 @@ const {
   roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
 } = await import('./surface-rendering.js');
+const {
+  createSectionZTransform,
+  defaultSectionCollapse,
+  defaultSectionCollapseForModel,
+  niceSectionTicks,
+  normalizeSectionCollapse,
+  resolveSectionCollapse,
+  sectionCollapseSnapValues,
+} = await import('./section-z-collapse.js');
 const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
   modelApi;
 const { difference, intersection, isEmpty, pointInMulti, rectMulti } = vg;
@@ -36,6 +45,48 @@ function regionAt(model, point) {
 }
 
 for (const palette of Object.values(STRUCTURE_PALETTES)) assert.equal(palette.length, 20);
+
+const defaultCollapse = defaultSectionCollapse([-350, 30]);
+assert.ok(defaultCollapse.top > 0 && defaultCollapse.top < 30);
+assert.ok(defaultCollapse.bottom > -350 && defaultCollapse.bottom < -300);
+const normalizedCollapse = normalizeSectionCollapse({ top: 10, bottom: -330 }, [-350, 30]);
+assert.deepEqual(normalizedCollapse, { top: 10, bottom: -330 });
+const collapseTransform = createSectionZTransform({
+  zMin: -380,
+  zMax: 60,
+  collapse: normalizedCollapse,
+  plotTop: 10,
+  plotHeight: 400,
+  breakPixels: 8,
+  upperFraction: 0.8,
+});
+assert.ok(collapseTransform.mapZ(30) < collapseTransform.mapZ(10));
+assert.ok(collapseTransform.mapZ(10) < collapseTransform.mapZ(-330));
+assert.ok(collapseTransform.mapZ(-330) < collapseTransform.mapZ(-350));
+assert.equal(
+  Math.round(collapseTransform.lowerTop - collapseTransform.upperBottom),
+  8,
+);
+assert.ok(niceSectionTicks(10, 30, 4).length >= 2);
+const collapseSnapModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+assert.ok(sectionCollapseSnapValues(collapseSnapModel, [-10, 0]).includes(-10));
+assert.ok(sectionCollapseSnapValues(collapseSnapModel, [-10, 0]).includes(0));
+const layeredCollapseModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(layeredCollapseModel, {
+  type: 'add',
+  name: 'Surface cap',
+  thickness: 1,
+  face: 'front',
+  area: layeredCollapseModel.boundary,
+  growth: 'direct',
+});
+const safeDefaultCollapse = defaultSectionCollapseForModel(layeredCollapseModel, [-5, 6]);
+assert.ok(safeDefaultCollapse.top < 5, 'default collapse must stay inside Base bulk');
+assert.ok(safeDefaultCollapse.bottom > -5, 'default collapse must preserve the Base bottom');
+assert.deepEqual(
+  resolveSectionCollapse(null, layeredCollapseModel, [-5, 6]),
+  normalizeSectionCollapse(safeDefaultCollapse, [-5, 6]),
+);
 
 assert.equal(roughLod(0).detail, 0);
 assert.equal(roughLod(20).micro, 1);
@@ -777,6 +828,13 @@ const validProject = {
   display: { xyUnit: 'um', structurePalette: 'balanced', customStructurePalette: null },
 };
 assert.equal(validateProjectFile(validProject), validProject);
+
+const collapseProject = structuredClone(validProject);
+collapseProject.display.sectionCollapse = { top: -0.5, bottom: -9.5 };
+assert.equal(validateProjectFile(collapseProject), collapseProject);
+const invalidCollapseProject = structuredClone(validProject);
+invalidCollapseProject.display.sectionCollapse = { top: -9.5, bottom: -0.5 };
+assert.throws(() => validateProjectFile(invalidCollapseProject), /sectionCollapse/);
 
 const roughProject = structuredClone(validProject);
 roughProject.model.regions[0].stack[0].frontSurface = {

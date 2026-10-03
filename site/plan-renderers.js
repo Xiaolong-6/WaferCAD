@@ -11,6 +11,12 @@ import {
 import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from './roi-editor.js';
 import { roughLod, roughProfileOffsetAtPoint, roughVisualBoundsZ } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
+import {
+  createSectionZTransform,
+  niceSectionTicks,
+  resolveSectionCollapse,
+  sectionVisibleZSpan,
+} from './section-z-collapse.js';
 
 export function createPlanRenderers({
   root = document,
@@ -18,6 +24,7 @@ export function createPlanRenderers({
   getDrawMaskController,
   getMaskRoiController,
   getSectionEditor,
+  getSectionCollapseController = () => null,
   setupCanvas,
   viewport,
   worldToCanvas,
@@ -323,17 +330,18 @@ export function createPlanRenderers({
     getSectionEditor()?.update();
   }
   function renderSection() {
-      const { model, section, sectionScaleMode, sectionShowBorders } = getState();
+    const { model, section, sectionScaleMode, sectionShowBorders, sectionCollapse } = getState();
     const c = $('sectionCanvas'),
       { ctx, w, h } = setupCanvas(c);
     ctx.clearRect(0, 0, w, h);
-  
+
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      pad = Math.max(1e-9, (hi - lo) * 0.08),
+      collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
+      edgeSpan = Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005),
+      pad = Math.max(1e-9, Math.min((hi - lo) * 0.08, edgeSpan * 0.12)),
       z0 = lo - pad,
       z1 = hi + pad,
-      zSpan = Math.max(z1 - z0, 1e-12),
       sectionSpan = Math.max(
         Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]),
         1e-12,
@@ -345,32 +353,55 @@ export function createPlanRenderers({
       iw = w - left - right,
       ih = h - top - bottom,
       autoXScale = iw / sectionSpan,
-      autoZScale = ih / zSpan;
-  
+      breakPixels = 8;
+
     let plotLeft = left,
       plotTop = top,
       plotWidth = iw,
       plotHeight = ih;
-  
+
     if (sectionScaleMode === 'physical') {
-      const scale = Math.min(autoXScale, autoZScale);
+      const visibleZSpan = Math.max(sectionVisibleZSpan(z0, z1, collapse), 1e-12),
+        scale = Math.min(autoXScale, Math.max(1e-12, (ih - breakPixels) / visibleZSpan));
       plotWidth = sectionSpan * scale;
-      plotHeight = zSpan * scale;
+      plotHeight = visibleZSpan * scale + breakPixels;
       plotLeft = left + (iw - plotWidth) / 2;
       plotTop = top + (ih - plotHeight) / 2;
     }
-  
+
     const xScale = plotWidth / sectionSpan,
-      zScale = plotHeight / zSpan,
+      zTransform = createSectionZTransform({
+        zMin: z0,
+        zMax: z1,
+        collapse,
+        plotTop,
+        plotHeight,
+        breakPixels,
+        upperFraction: 0.8,
+        mode: sectionScaleMode,
+        xScale,
+      }),
+      zScale = zTransform.topScale,
       zExaggeration = zScale / xScale,
       mapT = (t) => plotLeft + t * plotWidth,
-      mapZ = (z) => plotTop + ((z1 - z) / zSpan) * plotHeight;
-  
+      mapZ = zTransform.mapZ;
+
     c.dataset.scaleMode = sectionScaleMode;
     c.dataset.xPxPerUm = String(xScale);
     c.dataset.zPxPerUm = String(zScale);
     c.dataset.zMinUm = String(lo);
     c.dataset.zMaxUm = String(hi);
+    c.dataset.sectionPlotLeft = String(plotLeft);
+    c.dataset.sectionCollapseBreakY = String(zTransform.breakCenter);
+    c.dataset.sectionCollapseUpperY = String(zTransform.upperBottom);
+    c.dataset.sectionCollapseLowerY = String(zTransform.lowerTop);
+    c.dataset.sectionFrameTop = String(zTransform.frameTop);
+    c.dataset.sectionFrameBottom = String(zTransform.frameBottom);
+    c.dataset.sectionZ0Um = String(z0);
+    c.dataset.sectionZ1Um = String(z1);
+    c.dataset.sectionBottomPxPerUm = String(zTransform.bottomScale);
+    c.dataset.sectionCollapseTopUm = String(collapse.top);
+    c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
   
     ctx.fillStyle = '#fbfcfd';
     ctx.fillRect(0, 0, w, h);
@@ -640,15 +671,83 @@ export function createPlanRenderers({
       }
     }
   
+    // Hide all geometry inside the collapsed Z interval, then redraw only the
+    // broken frame. The true world-Z mapping remains available to every renderer.
+    ctx.fillStyle = '#fbfcfd';
+    ctx.fillRect(
+      plotLeft,
+      zTransform.upperBottom - 0.5,
+      plotWidth,
+      zTransform.breakPixels + 1,
+    );
+
     ctx.strokeStyle = '#8995a1';
     ctx.lineWidth = 0.8;
-    ctx.strokeRect(plotLeft, plotTop, plotWidth, plotHeight);
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, zTransform.frameTop);
+    ctx.lineTo(plotLeft + plotWidth, zTransform.frameTop);
+    ctx.lineTo(plotLeft + plotWidth, zTransform.upperBottom);
+    ctx.moveTo(plotLeft + plotWidth, zTransform.lowerTop);
+    ctx.lineTo(plotLeft + plotWidth, zTransform.frameBottom);
+    ctx.lineTo(plotLeft, zTransform.frameBottom);
+    ctx.lineTo(plotLeft, zTransform.lowerTop);
+    ctx.moveTo(plotLeft, zTransform.upperBottom);
+    ctx.lineTo(plotLeft, zTransform.frameTop);
+    ctx.stroke();
+
+    // Restrained break notches at the plot edges; the interactive entry point
+    // is the small DOM control over the left Z axis.
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+    ctx.strokeStyle = '#788593';
+    ctx.lineWidth = 0.8;
+    for (const [x, direction] of [
+      [plotLeft, 1],
+      [plotLeft + plotWidth, -1],
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(x, zTransform.upperBottom - 1);
+      ctx.lineTo(x + direction * 6, zTransform.upperBottom + 3);
+      ctx.lineTo(x + direction * 12, zTransform.upperBottom - 1);
+      ctx.moveTo(x, zTransform.lowerTop + 1);
+      ctx.lineTo(x + direction * 6, zTransform.lowerTop - 3);
+      ctx.lineTo(x + direction * 12, zTransform.lowerTop + 1);
+      ctx.stroke();
+    }
+    ctx.restore();
+
     ctx.fillStyle = '#707b86';
     ctx.font = '8px system-ui';
-    ctx.fillText(formatXY(z1), 3, plotTop + 7);
-    ctx.fillText(formatXY(z0), 3, plotTop + plotHeight);
-    ctx.fillText('A', plotLeft, Math.min(h - 5, plotTop + plotHeight + 15));
-    ctx.fillText('B', plotLeft + plotWidth - 7, Math.min(h - 5, plotTop + plotHeight + 15));
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const tickValues = [
+        ...niceSectionTicks(collapse.top, z1, 4),
+        ...niceSectionTicks(z0, collapse.bottom, 2),
+      ],
+      usedTickY = [];
+    for (const value of tickValues) {
+      const y = mapZ(value);
+      if (usedTickY.some((other) => Math.abs(other - y) < 10)) continue;
+      usedTickY.push(y);
+      ctx.strokeStyle = '#aab3bd';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(plotLeft - 4, y);
+      ctx.lineTo(plotLeft, y);
+      ctx.stroke();
+      ctx.fillStyle = '#707b86';
+      ctx.fillText(formatXY(value), plotLeft - 6, y);
+    }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('A', plotLeft, Math.min(h - 5, zTransform.frameBottom + 15));
+    ctx.textAlign = 'right';
+    ctx.fillText(
+      'B',
+      plotLeft + plotWidth,
+      Math.min(h - 5, zTransform.frameBottom + 15),
+    );
+    ctx.textAlign = 'left';
   
     const scaleButton = $('sectionScaleModeBtn');
     scaleButton.textContent = sectionScaleMode === 'auto' ? 'Auto' : '1:1';
@@ -670,6 +769,7 @@ export function createPlanRenderers({
       sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
     $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
     $('sectionRange').textContent = `Z (${xyUnitLabel()}) ${formatXY(lo)} → ${formatXY(hi)}`;
+    getSectionCollapseController()?.sync();
   }
 
   return { renderMask, renderMain, renderSection };

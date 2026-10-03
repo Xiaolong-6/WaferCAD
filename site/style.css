@@ -669,6 +669,7 @@ canvas {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 190px;
   overflow: hidden;
+  position: relative;
 }
 .section-body > canvas {
   min-width: 0;
@@ -3238,4 +3239,342 @@ summary:focus-visible {
   color: #6f7b86;
   font-size: 8.5px;
   line-height: 1.35;
+}
+
+
+/* Section Z collapse: the axis break is the only normal-state entry point. */
+.section-collapse-overlay {
+  position: absolute;
+  z-index: 8;
+  inset: 0 190px 0 0;
+  pointer-events: none;
+}
+
+.section-collapse-axis-btn {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.section-collapse-axis-btn:hover,
+.section-collapse-axis-btn:focus-visible {
+  border: 0;
+  background: transparent;
+}
+
+.section-collapse-axis-glyph {
+  position: absolute;
+  inset: 4px;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.section-collapse-axis-btn:hover .section-collapse-axis-glyph,
+.section-collapse-axis-btn:focus-visible .section-collapse-axis-glyph,
+.section-collapse-axis-btn.active .section-collapse-axis-glyph {
+  background: var(--accent-soft);
+}
+
+.section-collapse-axis-glyph::before,
+.section-collapse-axis-glyph::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 5px;
+  background:
+    linear-gradient(
+        135deg,
+        transparent 0 39%,
+        var(--accent) 41% 49%,
+        transparent 51% 100%
+      )
+      0 0 / 10px 5px repeat-x;
+}
+
+.section-collapse-axis-glyph::before {
+  top: 3px;
+}
+
+.section-collapse-axis-glyph::after {
+  bottom: 3px;
+  transform: scaleY(-1);
+}
+
+.section-collapse-editor {
+  position: absolute;
+  z-index: 12;
+  width: 252px;
+  padding: 7px;
+  pointer-events: auto;
+}
+
+.section-collapse-editor[hidden] {
+  display: none !important;
+}
+
+.section-collapse-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: #5f6b77;
+  font-size: 9px;
+}
+
+.section-collapse-editor-head strong {
+  color: #46515d;
+  font-size: 9.5px;
+}
+
+.section-collapse-close {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: #687583;
+  font-size: 14px;
+}
+
+.section-collapse-editor-grid {
+  display: grid;
+  grid-template-columns: 45px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.section-collapse-ruler {
+  position: relative;
+  height: 168px;
+  margin-left: 14px;
+  border-left: 1px solid #aeb8c4;
+  touch-action: none;
+  user-select: none;
+}
+
+.section-collapse-ruler-tick {
+  position: absolute;
+  left: -5px;
+  width: 5px;
+  border-top: 1px solid #aeb8c4;
+}
+
+.section-collapse-ruler-tick span {
+  position: absolute;
+  right: 8px;
+  top: -6px;
+  color: #798591;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.section-collapse-window {
+  position: absolute;
+  left: -1px;
+  width: 10px;
+  background: rgba(93, 112, 137, 0.1);
+  border-top: 1px solid rgba(93, 112, 137, 0.45);
+  border-bottom: 1px solid rgba(93, 112, 137, 0.45);
+}
+
+.section-collapse-ruler-handle {
+  position: absolute;
+  left: -9px;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    0 1px 3px #0002;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.section-collapse-ruler-handle::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.section-collapse-ruler-handle.dragging {
+  background: var(--accent-dark);
+}
+
+.section-collapse-controls {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.section-collapse-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.section-collapse-kv {
+  min-width: 0;
+  padding: 4px 5px;
+  border: 1px solid #e1e5ea;
+  border-radius: 3px;
+  background: #fbfcfd;
+  color: #707c88;
+  font-size: 8px;
+}
+
+.section-collapse-kv strong {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  color: #465563;
+  font-size: 9px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-collapse-row {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  color: #5b6773;
+  font-size: 9px;
+}
+
+.section-collapse-row select {
+  width: 100%;
+  min-width: 0;
+  height: 22px;
+  border: 1px solid #ccd4dc;
+  border-radius: 3px;
+  background: #fbfcfd;
+  padding: 1px 4px;
+  font-size: 9px;
+}
+
+.section-collapse-fine-row {
+  display: grid;
+  grid-template-columns: 50px 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 3px;
+  color: #5b6773;
+  font-size: 9px;
+}
+
+.section-collapse-fine-row button {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+}
+
+.section-collapse-fine-value {
+  min-width: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #dce2e8;
+  border-radius: 3px;
+  background: #f8fafb;
+  color: #4d5b68;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-collapse-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #606d79;
+  font-size: 9px;
+}
+
+.section-collapse-check input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .section-collapse-overlay {
+    right: 130px;
+  }
+
+  .section-collapse-editor {
+    left: 5px !important;
+    right: 5px !important;
+    top: auto !important;
+    bottom: 5px !important;
+    width: auto;
+  }
+
+  .section-collapse-editor-grid {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .section-collapse-ruler {
+    height: 150px;
+  }
+
+  .section-collapse-ruler-handle {
+    left: -13px;
+    width: 26px;
+    height: 26px;
+  }
+
+  .section-collapse-fine-row {
+    grid-template-columns: 48px 34px minmax(0, 1fr) 34px;
+  }
+
+  .section-collapse-fine-row button {
+    width: 34px;
+    height: 30px;
+  }
+
+  .section-collapse-row select,
+  .section-collapse-fine-value {
+    height: 30px;
+  }
+
+  .section-collapse-axis-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .section-collapse-ruler-handle {
+    left: -13px;
+    width: 26px;
+    height: 26px;
+  }
+}
+
+@media (pointer: coarse) {
+  .section-collapse-axis-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  .section-collapse-ruler-handle {
+    left: -13px;
+    width: 26px;
+    height: 26px;
+  }
 }

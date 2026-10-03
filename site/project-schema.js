@@ -594,6 +594,20 @@ function validateDisplay(display) {
   if (display.sectionShowBorders != null && typeof display.sectionShowBorders !== 'boolean') {
     fail('display.sectionShowBorders', 'must be boolean.');
   }
+  if (display.sectionCollapse != null) {
+    const collapse = assertObject(display.sectionCollapse, 'display.sectionCollapse');
+    assertFinite(collapse.top, 'display.sectionCollapse.top', {
+      min: -PROJECT_COORDINATE_LIMIT_UM,
+      max: PROJECT_COORDINATE_LIMIT_UM,
+    });
+    assertFinite(collapse.bottom, 'display.sectionCollapse.bottom', {
+      min: -PROJECT_COORDINATE_LIMIT_UM,
+      max: PROJECT_COORDINATE_LIMIT_UM,
+    });
+    if (!(collapse.top > collapse.bottom)) {
+      fail('display.sectionCollapse', 'top must be greater than bottom.');
+    }
+  }
   if (
     display.sectionScaleMode != null &&
     !['auto', 'physical'].includes(display.sectionScaleMode)

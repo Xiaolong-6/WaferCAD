@@ -740,27 +740,42 @@ const savedPad = Math.max(1e-9, (savedHi - savedLo) * 0.08);
 const sectionZ0 = savedLo - savedPad;
 const sectionZ1 = savedHi + savedPad;
 const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
-  (canvas, { color, sideX, sectionZ0, sectionZ1 }) => {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
-    const left = 27;
-    const right = 10;
-    const top = 10;
-    const bottom = 22;
-    const iw = rect.width - left - right;
-    const ih = rect.height - top - bottom;
-    const t = (sideX + 7000) / 14000;
-    const x = Math.round((left + t * iw) * dpr);
-    const y = Math.round((top + ((sectionZ1 - 6) / (sectionZ1 - sectionZ0)) * ih) * dpr);
-    const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
-    const expected = [
-      Number.parseInt(color.slice(1, 3), 16),
-      Number.parseInt(color.slice(3, 5), 16),
-      Number.parseInt(color.slice(5, 7), 16),
-    ];
-    return { actual, expected };
+  (canvas, { color, sideX }) => {
+    const rect = canvas.getBoundingClientRect(),
+      dpr = Math.min(globalThis.devicePixelRatio || 1, 2),
+      left = 27,
+      right = 10,
+      iw = rect.width - left - right,
+      t = (sideX + 7000) / 14000,
+      x = Math.round((left + t * iw) * dpr),
+      z = 6,
+      z0 = Number(canvas.dataset.sectionZ0Um),
+      z1 = Number(canvas.dataset.sectionZ1Um),
+      top = Number(canvas.dataset.sectionCollapseTopUm),
+      bottom = Number(canvas.dataset.sectionCollapseBottomUm),
+      frameTop = Number(canvas.dataset.sectionFrameTop),
+      frameBottom = Number(canvas.dataset.sectionFrameBottom),
+      upperY = Number(canvas.dataset.sectionCollapseUpperY),
+      lowerY = Number(canvas.dataset.sectionCollapseLowerY);
+    const mapZ = (value) => {
+      if (value >= top) {
+        return frameTop + ((z1 - value) / Math.max(z1 - top, 1e-12)) * (upperY - frameTop);
+      }
+      if (value <= bottom) {
+        return lowerY + ((bottom - value) / Math.max(bottom - z0, 1e-12)) * (frameBottom - lowerY);
+      }
+      return (upperY + lowerY) / 2;
+    };
+    const y = Math.round(mapZ(z) * dpr),
+      actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)],
+      expected = [
+        Number.parseInt(color.slice(1, 3), 16),
+        Number.parseInt(color.slice(3, 5), 16),
+        Number.parseInt(color.slice(5, 7), 16),
+      ];
+    return { actual, expected, z, top, bottom };
   },
-  { color: coatColor, sideX, sectionZ0, sectionZ1 },
+  { color: coatColor, sideX },
 );
 assert.ok(
   sidewallPixel.actual.every(
@@ -772,28 +787,45 @@ assert.ok(
 // Probe the trench wall x-position deep inside the continuous Base material,
 // where the process model is partitioned but the visible material is identical.
 const baseColor = saved.model.layers.find((layer) => layer.id === 'base').color;
+const baseCommonLo = Math.max(
+  ...saved.model.regions
+    .map((region) => region.stack.find((segment) => segment.layerId === 'base')?.z0)
+    .filter(Number.isFinite),
+);
 const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
-  (canvas, { color, sectionZ0, sectionZ1 }) => {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
-    const left = 27;
-    const right = 10;
-    const top = 10;
-    const bottom = 22;
-    const iw = rect.width - left - right;
-    const ih = rect.height - top - bottom;
-    const t = (5000 + 7000) / 14000;
-    const x = Math.round((left + t * iw) * dpr);
-    const y = Math.round((top + ((sectionZ1 - 0) / (sectionZ1 - sectionZ0)) * ih) * dpr);
-    const actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
-    const expected = [
-      Number.parseInt(color.slice(1, 3), 16),
-      Number.parseInt(color.slice(3, 5), 16),
-      Number.parseInt(color.slice(5, 7), 16),
-    ];
-    return { actual, expected };
+  (canvas, { color, baseCommonLo }) => {
+    const rect = canvas.getBoundingClientRect(),
+      dpr = Math.min(globalThis.devicePixelRatio || 1, 2),
+      left = 27,
+      right = 10,
+      iw = rect.width - left - right,
+      t = (5000 + 7000) / 14000,
+      x = Math.round((left + t * iw) * dpr),
+      z0 = Number(canvas.dataset.sectionZ0Um),
+      z1 = Number(canvas.dataset.sectionZ1Um),
+      top = Number(canvas.dataset.sectionCollapseTopUm),
+      bottom = Number(canvas.dataset.sectionCollapseBottomUm),
+      frameTop = Number(canvas.dataset.sectionFrameTop),
+      frameBottom = Number(canvas.dataset.sectionFrameBottom),
+      upperY = Number(canvas.dataset.sectionCollapseUpperY),
+      lowerY = Number(canvas.dataset.sectionCollapseLowerY),
+      z = (baseCommonLo + bottom) / 2;
+    const mapZ = (value) => {
+      if (value >= top) {
+        return frameTop + ((z1 - value) / Math.max(z1 - top, 1e-12)) * (upperY - frameTop);
+      }
+      return lowerY + ((bottom - value) / Math.max(bottom - z0, 1e-12)) * (frameBottom - lowerY);
+    };
+    const y = Math.round(mapZ(z) * dpr),
+      actual = [...canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)],
+      expected = [
+        Number.parseInt(color.slice(1, 3), 16),
+        Number.parseInt(color.slice(3, 5), 16),
+        Number.parseInt(color.slice(5, 7), 16),
+      ];
+    return { actual, expected, z };
   },
-  { color: baseColor, sectionZ0, sectionZ1 },
+  { color: baseColor, baseCommonLo },
 );
 assert.ok(
   baseSeamPixel.actual.every(

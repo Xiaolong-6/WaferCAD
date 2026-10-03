@@ -930,8 +930,96 @@
               <span id="sectionRange" class="readout"></span>
             </div>
           </div>
-          <div class="section-body">
+          <div class="section-body" id="sectionBody">
             <canvas id="sectionCanvas"></canvas>
+            <div id="sectionCollapseOverlay" class="section-collapse-overlay">
+              <button
+                id="sectionCollapseAxisBtn"
+                class="section-collapse-axis-btn"
+                type="button"
+                aria-expanded="false"
+                aria-controls="sectionCollapseEditor"
+                title="Adjust Z collapse"
+              >
+                <span class="section-collapse-axis-glyph" aria-hidden="true"></span>
+              </button>
+              <div
+                id="sectionCollapseEditor"
+                class="section-collapse-editor view-popover-surface"
+                aria-label="Z collapse editor"
+                hidden
+              >
+                <div class="section-collapse-editor-head">
+                  <strong>Z collapse</strong>
+                  <button
+                    id="sectionCollapseClose"
+                    class="section-collapse-close"
+                    type="button"
+                    aria-label="Close Z collapse editor"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div class="section-collapse-editor-grid">
+                  <div
+                    id="sectionCollapseRuler"
+                    class="section-collapse-ruler"
+                    aria-label="Full Z range collapse editor"
+                  >
+                    <div id="sectionCollapseWindow" class="section-collapse-window"></div>
+                    <button
+                      id="sectionCollapseTopHandle"
+                      class="section-collapse-ruler-handle"
+                      type="button"
+                      aria-label="Drag top collapse boundary"
+                    ></button>
+                    <button
+                      id="sectionCollapseBottomHandle"
+                      class="section-collapse-ruler-handle"
+                      type="button"
+                      aria-label="Drag bottom collapse boundary"
+                    ></button>
+                  </div>
+                  <div class="section-collapse-controls">
+                    <div class="section-collapse-values">
+                      <div class="section-collapse-kv">
+                        <span>Top</span><strong id="sectionCollapseTopValue">—</strong>
+                      </div>
+                      <div class="section-collapse-kv">
+                        <span>Bottom</span><strong id="sectionCollapseBottomValue">—</strong>
+                      </div>
+                    </div>
+                    <label class="section-collapse-row">
+                      <span>Fine target</span>
+                      <select id="sectionCollapseTarget">
+                        <option value="top">Top</option>
+                        <option value="bottom">Bottom</option>
+                        <option value="window">Whole range</option>
+                      </select>
+                    </label>
+                    <label class="section-collapse-row">
+                      <span>Step</span>
+                      <select id="sectionCollapseStep">
+                        <option value="0.01">0.01 µm</option>
+                        <option value="0.1" selected>0.1 µm</option>
+                        <option value="1">1 µm</option>
+                        <option value="10">10 µm</option>
+                      </select>
+                    </label>
+                    <div class="section-collapse-fine-row">
+                      <span>Adjust</span>
+                      <button id="sectionCollapseMinus" class="mini-btn" type="button">−</button>
+                      <output id="sectionCollapseFineValue" class="section-collapse-fine-value">—</output>
+                      <button id="sectionCollapsePlus" class="mini-btn" type="button">+</button>
+                    </div>
+                    <label class="section-collapse-check">
+                      <input id="sectionCollapseSnap" type="checkbox" checked />
+                      <span>Snap while dragging</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
             <aside id="layerLegend" class="layer-legend" aria-label="Structure layers"></aside>
           </div>
         </section>
