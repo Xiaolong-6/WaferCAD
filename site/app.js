@@ -119,8 +119,10 @@ function normalizedProjectName(value = projectName) {
 }
 
 function syncProjectNameInput() {
+  const value = normalizedProjectName();
   const input = $('projectNameInput');
-  if (input && document.activeElement !== input) input.value = normalizedProjectName();
+  if (input && document.activeElement !== input) input.value = value;
+  document.dispatchEvent(new CustomEvent('wafercad:project-name-sync', { detail: { name: value } }));
 }
 
 let workspacePersistenceController = null,
