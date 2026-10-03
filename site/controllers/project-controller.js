@@ -44,9 +44,34 @@ export function createProjectController({
       historyNodes = snapshotManager.listHistory(),
       branches = snapshotManager.listBranches(),
       activeBranch = snapshotManager.activeBranch(),
+      continuation = snapshotManager.continuationContext(),
       recordById = new Map(records.map((record) => [record.id, record]));
+
     $('snapshotCount').textContent = String(records.length);
     host.innerHTML = '';
+
+    async function switchToBranch(targetId) {
+      if (targetId === snapshotManager.activeBranch().id && !snapshotManager.continuationContext()) {
+        return true;
+      }
+      try {
+        await checkpointBeforeReplace('pre-snapshot-branch-switch');
+      } catch (error) {
+        console.error(error);
+        status(`Branch switch cancelled: ${error.message}`, 'error');
+        return false;
+      }
+      if (!snapshotManager.switchBranch(targetId)) {
+        status('Branch switch failed validation.', 'error');
+        return false;
+      }
+      refreshAfterSnapshotLoad();
+      onProjectChanged();
+      const nextBranch = snapshotManager.activeBranch();
+      renderSnapshots();
+      status(`Switched to branch "${nextBranch.name}" HEAD.`);
+      return true;
+    }
 
     const branchBar = root.createElement('div');
     branchBar.className = 'snapshot-branch-bar';
@@ -58,7 +83,7 @@ export function createProjectController({
     const branchSelect = root.createElement('select');
     branchSelect.id = 'snapshotBranchSelect';
     branchSelect.className = 'snapshot-branch-select';
-    branchSelect.title = 'Switch to another process branch';
+    branchSelect.title = 'Switch to another process branch HEAD';
     for (const branch of branches) {
       const option = root.createElement('option');
       option.value = branch.id;
@@ -67,32 +92,19 @@ export function createProjectController({
     }
     branchSelect.value = activeBranch.id;
     branchSelect.onchange = async () => {
-      const targetId = branchSelect.value;
-      if (targetId === snapshotManager.activeBranch().id) return;
-      try {
-        await checkpointBeforeReplace('pre-snapshot-branch-switch');
-      } catch (error) {
-        console.error(error);
-        branchSelect.value = snapshotManager.activeBranch().id;
-        status(`Branch switch cancelled: ${error.message}`, 'error');
-        return;
-      }
-      if (!snapshotManager.switchBranch(targetId)) {
-        branchSelect.value = snapshotManager.activeBranch().id;
-        status('Branch switch failed validation.', 'error');
-        return;
-      }
-      refreshAfterSnapshotLoad();
-      onProjectChanged();
-      const nextBranch = snapshotManager.activeBranch();
-      renderSnapshots();
-      status(`Switched to branch "${nextBranch.name}".`);
+      const selected = branchSelect.value;
+      const ok = await switchToBranch(selected);
+      if (!ok) branchSelect.value = snapshotManager.activeBranch().id;
     };
 
-    branchBar.append(branchLabel, branchSelect);
+    const branchState = root.createElement('span');
+    branchState.className = 'snapshot-branch-state';
+    branchState.textContent = continuation ? 'historical' : 'HEAD';
+    if (continuation) branchState.dataset.historical = 'true';
+
+    branchBar.append(branchLabel, branchSelect, branchState);
     host.append(branchBar);
 
-    const continuation = snapshotManager.continuationContext();
     if (continuation) {
       const banner = root.createElement('div');
       banner.className = 'snapshot-continuation-banner';
@@ -102,205 +114,224 @@ export function createProjectController({
       title.textContent = 'Historical state';
       const detail = root.createElement('span');
       detail.textContent = continuation.snapshotName
-        ? `Restored "${continuation.snapshotName}". Continuing will branch from here.`
-        : 'Undo moved before the branch HEAD. Continuing will create a milestone and branch.';
+        ? `Viewing "${continuation.snapshotName}". The next Apply will create a new variant automatically.`
+        : 'Undo moved before the branch HEAD. The next Apply will create a milestone and new variant automatically.';
       copy.append(title, detail);
 
-      const continueButton = root.createElement('button');
-      continueButton.type = 'button';
-      continueButton.className = 'snapshot-continue-action';
-      continueButton.textContent = 'Branch & continue';
-      continueButton.onclick = async () => {
+      const returnButton = root.createElement('button');
+      returnButton.type = 'button';
+      returnButton.className = 'snapshot-return-head';
+      returnButton.textContent = `Return to ${activeBranch.name} HEAD`;
+      returnButton.onclick = async () => {
         try {
-          await checkpointBeforeReplace('pre-process-continuation-branch');
-          const created = snapshotManager.createBranchFromCursor();
-          onProjectChanged();
-          renderSnapshots();
-          status(`Created branch "${created.name}" for continued processing.`);
+          await checkpointBeforeReplace('pre-snapshot-return-head');
         } catch (error) {
           console.error(error);
-          status(`Branch creation failed: ${error.message}`, 'error');
+          status(`Return to HEAD cancelled: ${error.message}`, 'error');
+          return;
         }
+        if (!snapshotManager.restoreActiveBranchHead()) {
+          status('Could not restore the current branch HEAD.', 'error');
+          return;
+        }
+        refreshAfterSnapshotLoad();
+        onProjectChanged();
+        renderSnapshots();
+        status(`Returned to "${activeBranch.name}" HEAD.`);
       };
 
-      banner.append(copy, continueButton);
+      banner.append(copy, returnButton);
       host.append(banner);
     }
 
     if (!records.length && !historyNodes.length) {
       const empty = root.createElement('div');
       empty.className = 'empty-list';
-      empty.textContent = 'Apply a process step or save a snapshot to start the process tree.';
+      empty.textContent = 'Apply a process step or save a milestone to start the process history.';
       host.append(empty);
       return;
     }
 
-    function createMilestoneRow(record, branch) {
-      const wrap = root.createElement('div');
-      wrap.className = 'snapshot-tree-node snapshot-milestone-node';
-      if (record.id === branch.headSnapshotId) wrap.dataset.milestoneHead = 'true';
+    function closeMenu(details) {
+      if (details) details.open = false;
+    }
 
-      const row = root.createElement('div');
-      row.className = 'snapshot-row snapshot-tree-row';
+    function createActionMenu(items, label = 'More milestone actions') {
+      const details = root.createElement('details');
+      details.className = 'snapshot-more-menu';
+
+      const summary = root.createElement('summary');
+      summary.className = 'snapshot-more-trigger';
+      summary.textContent = '⋯';
+      summary.setAttribute('aria-label', label);
+      summary.title = label;
+
+      const menu = root.createElement('div');
+      menu.className = 'snapshot-more-popover';
+
+      for (const item of items) {
+        const button = root.createElement('button');
+        button.type = 'button';
+        button.textContent = item.label;
+        if (item.danger) button.dataset.danger = 'true';
+        button.onclick = async () => {
+          closeMenu(details);
+          await item.run();
+        };
+        menu.append(button);
+      }
+
+      details.append(summary, menu);
+      return details;
+    }
+
+    function createMilestoneRow(record) {
+      const wrap = root.createElement('div');
+      wrap.className = 'snapshot-milestone-row';
+      if (record.id === activeBranch.headSnapshotId) wrap.dataset.milestoneHead = 'true';
+      if (continuation?.snapshotId === record.id) wrap.dataset.cursor = 'true';
 
       const marker = root.createElement('span');
-      marker.className = 'snapshot-tree-marker snapshot-milestone-marker';
-      marker.title = 'Snapshot milestone';
+      marker.className = 'snapshot-milestone-marker';
       marker.textContent = '★';
+      marker.title = 'Snapshot milestone';
       marker.setAttribute('aria-hidden', 'true');
 
-      const name = root.createElement('input');
-      name.className = 'snapshot-name';
-      name.value = record.name;
+      const body = root.createElement('div');
+      body.className = 'snapshot-milestone-body';
+      const name = root.createElement('strong');
+      name.textContent = record.name;
       name.title = record.createdAt;
+      const meta = root.createElement('span');
+      meta.textContent =
+        record.id === activeBranch.headSnapshotId
+          ? 'milestone · latest saved'
+          : 'milestone';
+      body.append(name, meta);
 
-      const commitState = root.createElement('span');
-      commitState.className = 'snapshot-commit-state';
-      commitState.textContent = 'Saved';
+      const renameEditor = root.createElement('div');
+      renameEditor.className = 'snapshot-inline-editor';
+      renameEditor.hidden = true;
 
-      let renameTimer = null;
-      const commitName = () => {
-        if (renameTimer != null) {
-          clearTimeout(renameTimer);
-          renameTimer = null;
-        }
-        const next = name.value.trim();
+      const renameInput = root.createElement('input');
+      renameInput.type = 'text';
+      renameInput.maxLength = 256;
+      renameInput.value = record.name;
+      renameInput.setAttribute('aria-label', 'Snapshot name');
+
+      const saveRename = root.createElement('button');
+      saveRename.type = 'button';
+      saveRename.textContent = 'Save';
+
+      const cancelRename = root.createElement('button');
+      cancelRename.type = 'button';
+      cancelRename.textContent = 'Cancel';
+
+      const commitRename = () => {
+        const next = renameInput.value.trim();
         if (!next || !snapshotManager.rename(record.id, next)) {
-          name.value = record.name;
-          commitState.textContent = 'Not saved';
-          commitState.dataset.failed = 'true';
-          return false;
-        }
-        record.name = next;
-        commitState.textContent = 'Saved';
-        commitState.dataset.failed = 'false';
-        onProjectChanged();
-        return true;
-      };
-
-      name.oninput = () => {
-        commitState.textContent = 'Editing…';
-        commitState.dataset.failed = 'false';
-        if (renameTimer != null) clearTimeout(renameTimer);
-        renameTimer = setTimeout(commitName, 350);
-      };
-      name.onblur = commitName;
-      name.onkeydown = (event) => {
-        if (event.key !== 'Enter') return;
-        event.preventDefault();
-        commitName();
-        name.blur();
-      };
-
-      const actions = root.createElement('div');
-      actions.className = 'snapshot-node-actions';
-
-      const restoreButton = root.createElement('button');
-      restoreButton.type = 'button';
-      restoreButton.className = 'snapshot-action';
-      restoreButton.textContent = 'Restore';
-      restoreButton.onclick = async () => {
-        try {
-          await checkpointBeforeReplace('pre-snapshot-restore');
-        } catch (error) {
-          console.error(error);
-          status(`Snapshot restore cancelled: ${error.message}`, 'error');
+          renameInput.value = record.name;
           return;
         }
-        if (!snapshotManager.restore(record.id)) {
-          status('Snapshot restore failed validation.');
-          return;
-        }
-        refreshAfterSnapshotLoad();
         onProjectChanged();
         renderSnapshots();
-        status(`Restored snapshot "${record.name}".`);
+        status(`Renamed snapshot to "${next}".`);
       };
-
-      const branchButton = root.createElement('button');
-      branchButton.type = 'button';
-      branchButton.className = 'snapshot-branch-action';
-      branchButton.textContent = 'Branch';
-      branchButton.title = 'Create a new process branch from this milestone';
-
-      const deleteButton = root.createElement('button');
-      deleteButton.type = 'button';
-      deleteButton.className = 'snapshot-delete';
-      deleteButton.textContent = '×';
-      deleteButton.title = 'Delete snapshot';
-      deleteButton.onclick = () => {
-        snapshotManager.remove(record.id);
-        onProjectChanged();
-        renderSnapshots();
-        status(`Deleted snapshot "${record.name}".`);
+      saveRename.onclick = commitRename;
+      cancelRename.onclick = () => {
+        renameEditor.hidden = true;
       };
-
-      actions.append(restoreButton, branchButton, deleteButton);
-      row.append(marker, name, commitState, actions);
-
-      const branchEditor = root.createElement('div');
-      branchEditor.className = 'snapshot-branch-editor';
-      branchEditor.hidden = true;
-
-      const branchName = root.createElement('input');
-      branchName.type = 'text';
-      branchName.maxLength = 256;
-      branchName.value = `${record.name} branch`;
-      branchName.setAttribute('aria-label', 'Branch name');
-
-      const createBranchButton = root.createElement('button');
-      createBranchButton.type = 'button';
-      createBranchButton.className = 'snapshot-branch-create';
-      createBranchButton.textContent = 'Create';
-
-      const cancelBranchButton = root.createElement('button');
-      cancelBranchButton.type = 'button';
-      cancelBranchButton.className = 'snapshot-branch-cancel';
-      cancelBranchButton.textContent = 'Cancel';
-
-      branchButton.onclick = () => {
-        branchEditor.hidden = false;
-        branchName.focus();
-        branchName.select();
-      };
-      cancelBranchButton.onclick = () => {
-        branchEditor.hidden = true;
-      };
-      branchName.onkeydown = (event) => {
-        if (event.key === 'Escape') {
+      renameInput.onkeydown = (event) => {
+        if (event.key === 'Enter') {
           event.preventDefault();
-          branchEditor.hidden = true;
-        } else if (event.key === 'Enter') {
+          commitRename();
+        } else if (event.key === 'Escape') {
           event.preventDefault();
-          createBranchButton.click();
+          renameEditor.hidden = true;
         }
       };
-      createBranchButton.onclick = async () => {
-        try {
-          await checkpointBeforeReplace('pre-snapshot-branch-create');
-          const created = snapshotManager.createBranch(record.id, branchName.value);
-          if (!snapshotManager.switchBranch(created.id)) {
-            throw new Error('The branch point could not be restored.');
-          }
-          refreshAfterSnapshotLoad();
-          onProjectChanged();
-          renderSnapshots();
-          status(`Created branch "${created.name}" from "${record.name}".`);
-        } catch (error) {
-          console.error(error);
-          status(`Branch creation failed: ${error.message}`, 'error');
-        }
-      };
+      renameEditor.append(renameInput, saveRename, cancelRename);
 
-      branchEditor.append(branchName, createBranchButton, cancelBranchButton);
-      wrap.append(row, branchEditor);
+      const menu = createActionMenu([
+        {
+          label: 'Restore',
+          run: async () => {
+            try {
+              await checkpointBeforeReplace('pre-snapshot-restore');
+            } catch (error) {
+              console.error(error);
+              status(`Snapshot restore cancelled: ${error.message}`, 'error');
+              return;
+            }
+            if (!snapshotManager.restore(record.id)) {
+              status('Snapshot restore failed validation.', 'error');
+              return;
+            }
+            refreshAfterSnapshotLoad();
+            onProjectChanged();
+            renderSnapshots();
+            status(`Restored snapshot "${record.name}".`);
+          },
+        },
+        {
+          label: 'Branch from here',
+          run: async () => {
+            try {
+              await checkpointBeforeReplace('pre-snapshot-branch-create');
+              const created = snapshotManager.createBranch(record.id);
+              if (!snapshotManager.switchBranch(created.id)) {
+                throw new Error('The branch point could not be restored.');
+              }
+              refreshAfterSnapshotLoad();
+              onProjectChanged();
+              renderSnapshots();
+              status(`Created "${created.name}" from "${record.name}".`);
+            } catch (error) {
+              console.error(error);
+              status(`Branch creation failed: ${error.message}`, 'error');
+            }
+          },
+        },
+        {
+          label: 'Rename',
+          run: async () => {
+            renameEditor.hidden = false;
+            renameInput.focus();
+            renameInput.select();
+          },
+        },
+        {
+          label: 'Delete',
+          danger: true,
+          run: async () => {
+            const confirmed = await confirmAction({
+              title: 'Delete snapshot?',
+              message: `Delete "${record.name}"?`,
+              detail: 'Process history remains intact. Any milestone links are reconnected.',
+              confirmLabel: 'Delete',
+            });
+            if (!confirmed) return;
+            snapshotManager.remove(record.id);
+            onProjectChanged();
+            renderSnapshots();
+            status(`Deleted snapshot "${record.name}".`);
+          },
+        },
+      ]);
+
+      const row = root.createElement('div');
+      row.className = 'snapshot-timeline-row';
+      row.append(marker, body, menu);
+
+      wrap.append(row, renameEditor);
       return wrap;
     }
 
-    function createProcessRow(node, branch) {
+    function createProcessRow(node) {
       const row = root.createElement('div');
       row.className = 'process-history-row';
-      if (node.id === branch.headNodeId) row.dataset.head = 'true';
+      if (node.id === activeBranch.headNodeId) row.dataset.head = 'true';
+      if (continuation?.cursorNodeId === node.id) row.dataset.cursor = 'true';
 
       const marker = root.createElement('span');
       marker.className = 'process-history-marker';
@@ -313,7 +344,9 @@ export function createProjectController({
       label.textContent = node.operation?.label || node.operation?.kind || 'Process step';
 
       const meta = root.createElement('span');
-      const face = node.operation?.face ? node.operation.face[0].toUpperCase() + node.operation.face.slice(1) : '';
+      const face = node.operation?.face
+        ? node.operation.face[0].toUpperCase() + node.operation.face.slice(1)
+        : '';
       const area = node.operation?.areaLabel || '';
       meta.textContent = [face, area, `r${node.processRevision}`].filter(Boolean).join(' · ');
 
@@ -322,73 +355,166 @@ export function createProjectController({
       return row;
     }
 
-    for (const branch of branches) {
-      const group = root.createElement('section');
-      group.className = 'snapshot-branch-group';
-      if (branch.active) group.dataset.active = 'true';
+    const activeGroup = root.createElement('section');
+    activeGroup.className = 'snapshot-branch-group snapshot-active-branch';
+    activeGroup.dataset.active = 'true';
 
-      const branchHead = root.createElement('div');
-      branchHead.className = 'snapshot-branch-head';
+    const branchHead = root.createElement('div');
+    branchHead.className = 'snapshot-branch-head';
 
-      const branchTitle = root.createElement('div');
-      branchTitle.className = 'snapshot-branch-title';
-      const dot = root.createElement('span');
-      dot.className = 'snapshot-branch-dot';
-      dot.setAttribute('aria-hidden', 'true');
-      const title = root.createElement('strong');
-      title.textContent = branch.name;
-      const count = root.createElement('span');
-      count.className = 'snapshot-branch-count';
-      count.textContent = `${branch.processStepCount} step${branch.processStepCount === 1 ? '' : 's'} · ${branch.ownSnapshotCount} milestone${branch.ownSnapshotCount === 1 ? '' : 's'}`;
-      branchTitle.append(dot, title, count);
-      branchHead.append(branchTitle);
-      group.append(branchHead);
+    const branchTitle = root.createElement('div');
+    branchTitle.className = 'snapshot-branch-title';
+    const dot = root.createElement('span');
+    dot.className = 'snapshot-branch-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    const title = root.createElement('strong');
+    title.textContent = activeBranch.name;
+    const count = root.createElement('span');
+    count.className = 'snapshot-branch-count';
+    count.textContent = `${activeBranch.processStepCount} step${activeBranch.processStepCount === 1 ? '' : 's'} · ${activeBranch.ownSnapshotCount} milestone${activeBranch.ownSnapshotCount === 1 ? '' : 's'}`;
+    branchTitle.append(dot, title, count);
 
-      if (branch.rootSnapshotId) {
-        const source = recordById.get(branch.rootSnapshotId);
-        const origin = root.createElement('div');
-        origin.className = 'snapshot-branch-origin';
-        origin.textContent = source ? `↳ from ${source.name}` : '↳ branch origin';
-        group.append(origin);
+    const branchMenu = createActionMenu(
+      [
+        {
+          label: 'Rename branch',
+          run: async () => {
+            branchRename.hidden = false;
+            branchRenameInput.focus();
+            branchRenameInput.select();
+          },
+        },
+      ],
+      'More branch actions',
+    );
+
+    branchHead.append(branchTitle, branchMenu);
+    activeGroup.append(branchHead);
+
+    const branchRename = root.createElement('div');
+    branchRename.className = 'snapshot-inline-editor snapshot-branch-rename';
+    branchRename.hidden = true;
+
+    const branchRenameInput = root.createElement('input');
+    branchRenameInput.type = 'text';
+    branchRenameInput.maxLength = 256;
+    branchRenameInput.value = activeBranch.name;
+    branchRenameInput.setAttribute('aria-label', 'Branch name');
+
+    const saveBranchRename = root.createElement('button');
+    saveBranchRename.type = 'button';
+    saveBranchRename.textContent = 'Save';
+
+    const cancelBranchRename = root.createElement('button');
+    cancelBranchRename.type = 'button';
+    cancelBranchRename.textContent = 'Cancel';
+
+    const commitBranchRename = () => {
+      const next = branchRenameInput.value.trim();
+      if (!next || !snapshotManager.renameBranch(activeBranch.id, next)) return;
+      onProjectChanged();
+      renderSnapshots();
+      status(`Renamed branch to "${snapshotManager.activeBranch().name}".`);
+    };
+    saveBranchRename.onclick = commitBranchRename;
+    cancelBranchRename.onclick = () => {
+      branchRename.hidden = true;
+    };
+    branchRenameInput.onkeydown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        commitBranchRename();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        branchRename.hidden = true;
+      }
+    };
+    branchRename.append(branchRenameInput, saveBranchRename, cancelBranchRename);
+    activeGroup.append(branchRename);
+
+    if (activeBranch.rootSnapshotId) {
+      const source = recordById.get(activeBranch.rootSnapshotId);
+      const origin = root.createElement('div');
+      origin.className = 'snapshot-branch-origin';
+      origin.textContent = source ? `↳ from ${source.name}` : '↳ branch origin';
+      activeGroup.append(origin);
+    }
+
+    const timeline = root.createElement('div');
+    timeline.className = 'snapshot-tree';
+
+    const ownRecords = records.filter((record) => record.branchId === activeBranch.id),
+      ownNodes = historyNodes.filter((node) => node.branchId === activeBranch.id),
+      events = [
+        ...ownNodes.map((node) => ({ type: 'process', createdAt: node.createdAt, value: node })),
+        ...ownRecords.map((record) => ({
+          type: 'milestone',
+          createdAt: record.createdAt,
+          value: record,
+        })),
+      ].sort((left, right) => {
+        const delta = Date.parse(left.createdAt) - Date.parse(right.createdAt);
+        if (delta !== 0) return delta;
+        return left.type === 'process' ? -1 : 1;
+      });
+
+    if (!events.length) {
+      const emptyBranch = root.createElement('div');
+      emptyBranch.className = 'snapshot-branch-empty';
+      emptyBranch.textContent =
+        activeBranch.rootSnapshotId
+          ? 'Branch ready. The next successful Apply becomes its first process step.'
+          : 'No process steps or milestones on this branch yet.';
+      timeline.append(emptyBranch);
+    }
+
+    for (const event of events) {
+      timeline.append(
+        event.type === 'process'
+          ? createProcessRow(event.value)
+          : createMilestoneRow(event.value),
+      );
+    }
+
+    activeGroup.append(timeline);
+    host.append(activeGroup);
+
+    const otherBranches = branches.filter((branch) => branch.id !== activeBranch.id);
+    if (otherBranches.length) {
+      const otherHead = root.createElement('div');
+      otherHead.className = 'snapshot-other-heading';
+      otherHead.textContent = 'Other branches';
+      host.append(otherHead);
+
+      const otherList = root.createElement('div');
+      otherList.className = 'snapshot-other-list';
+
+      for (const branch of otherBranches) {
+        const source = branch.rootSnapshotId ? recordById.get(branch.rootSnapshotId) : null;
+        const button = root.createElement('button');
+        button.type = 'button';
+        button.className = 'snapshot-other-branch';
+
+        const branchCopy = root.createElement('span');
+        branchCopy.className = 'snapshot-other-copy';
+        const branchName = root.createElement('strong');
+        branchName.textContent = branch.name;
+        const branchOrigin = root.createElement('span');
+        branchOrigin.textContent = source
+          ? `from ${source.name}`
+          : 'independent branch';
+        branchCopy.append(branchName, branchOrigin);
+
+        const stats = root.createElement('span');
+        stats.className = 'snapshot-other-stats';
+        stats.textContent = `${branch.processStepCount} step${branch.processStepCount === 1 ? '' : 's'} · ${branch.ownSnapshotCount} milestone${branch.ownSnapshotCount === 1 ? '' : 's'}`;
+
+        button.append(branchCopy, stats);
+        button.onclick = () => switchToBranch(branch.id);
+        otherList.append(button);
       }
 
-      const timeline = root.createElement('div');
-      timeline.className = 'snapshot-tree';
-      const ownRecords = records.filter((record) => record.branchId === branch.id),
-        ownNodes = historyNodes.filter((node) => node.branchId === branch.id),
-        events = [
-          ...ownNodes.map((node) => ({ type: 'process', createdAt: node.createdAt, value: node })),
-          ...ownRecords.map((record) => ({
-            type: 'milestone',
-            createdAt: record.createdAt,
-            value: record,
-          })),
-        ].sort((left, right) => {
-          const delta = Date.parse(left.createdAt) - Date.parse(right.createdAt);
-          if (delta !== 0) return delta;
-          return left.type === 'process' ? -1 : 1;
-        });
-
-      if (!events.length) {
-        const emptyBranch = root.createElement('div');
-        emptyBranch.className = 'snapshot-branch-empty';
-        emptyBranch.textContent =
-          branch.rootSnapshotId
-            ? 'Branch ready. The next successful Apply becomes its first process step.'
-            : 'No process steps or milestones on this branch yet.';
-        timeline.append(emptyBranch);
-      }
-
-      for (const event of events) {
-        timeline.append(
-          event.type === 'process'
-            ? createProcessRow(event.value, branch)
-            : createMilestoneRow(event.value, branch),
-        );
-      }
-
-      group.append(timeline);
-      host.append(group);
+      host.append(otherList);
     }
   }
 
