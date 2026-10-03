@@ -1,16 +1,24 @@
 :root {
-  --wc-chrome-0: #151a20;
-  --wc-chrome-1: #1b2026;
-  --wc-chrome-2: #20262d;
-  --wc-chrome-3: #29323b;
-  --wc-chrome-line: #343e48;
-  --wc-canvas: #f8fafb;
-  --wc-panel: #f3f6f8;
-  --wc-panel-line: #cfd7df;
-  --wc-muted-dark: #91a0ac;
-  --wc-accent: #6f94b8;
-  --wc-accent-strong: #4f7699;
-  --wc-accent-soft: #e3edf5;
+  --wc-chrome-0: #14191f;
+  --wc-chrome-1: #1a2027;
+  --wc-chrome-2: #20272f;
+  --wc-chrome-3: #27313a;
+  --wc-chrome-line: #303a44;
+  --wc-workspace: #e8edf1;
+  --wc-canvas: #fcfdfe;
+  --wc-panel: #f6f8fa;
+  --wc-panel-line: #d7dee4;
+  --wc-panel-line-strong: #c5ced6;
+  --wc-text: #202a33;
+  --wc-text-secondary: #5f6c78;
+  --wc-muted: #89949e;
+  --wc-muted-dark: #929da7;
+  --wc-accent: #4b89c6;
+  --wc-accent-strong: #3979b7;
+  --wc-accent-soft: #e7f0f8;
+  --wc-success: #458568;
+  --wc-warning: #b98538;
+  --wc-danger: #c94f5d;
   --wc-rail-width: 44px;
   --wc-viewbar-height: 34px;
   --wc-tool-width: 320px;
@@ -1190,4 +1198,316 @@ html.workstation-ui-v2.workstation-compact-ui #sectionCoordsPanel {
   margin: 0;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 8px 22px rgba(31, 41, 51, 0.16);
+}
+
+
+/* Color System v2
+   Keep application chrome neutral and let material/geometry colors carry the
+   scientific information. Blue is reserved for interaction and selection. */
+html.workstation-ui-v2 {
+  --bg: var(--wc-workspace);
+  --panel: var(--wc-panel);
+  --line: var(--wc-panel-line);
+  --line2: #e6ebef;
+  --text: var(--wc-text);
+  --muted: #74808b;
+  --accent: var(--wc-accent);
+  --accent-soft: var(--wc-accent-soft);
+  --accent-dark: var(--wc-accent-strong);
+}
+
+html.workstation-ui-v2 .topbar {
+  background: linear-gradient(#1b2128, #171d23);
+  border-bottom-color: #0d1217;
+  color: #e9eef2;
+}
+
+html.workstation-ui-v2 .brand-home {
+  color: #f2f5f7;
+}
+
+html.workstation-ui-v2 .workstation-top-meta {
+  color: var(--wc-muted-dark);
+}
+
+html.workstation-ui-v2 .workstation-chrome-btn {
+  color: #a3aeb7;
+}
+
+html.workstation-ui-v2 .workstation-chrome-btn:hover,
+html.workstation-ui-v2 .workstation-chrome-btn:focus-visible {
+  border-color: #3a4650;
+  background: var(--wc-chrome-3);
+  color: #f1f4f6;
+}
+
+html.workstation-ui-v2 .workstation-chrome-btn.active {
+  border-color: #3f6482;
+  background: #25303a;
+  color: #edf5fb;
+}
+
+html.workstation-ui-v2 .app-shell {
+  background: var(--wc-chrome-1);
+}
+
+html.workstation-ui-v2 .workstation-rail {
+  border-right-color: #10161a;
+  background: var(--wc-chrome-1);
+}
+
+html.workstation-ui-v2 .workstation-rail-button {
+  color: #7f8a94;
+}
+
+html.workstation-ui-v2 .workstation-rail-button:hover,
+html.workstation-ui-v2 .workstation-rail-button:focus-visible {
+  border-color: #313c46;
+  background: var(--wc-chrome-3);
+  color: #d1d8de;
+}
+
+html.workstation-ui-v2 .workstation-rail-button.active {
+  border-color: #35424d;
+  background: #242c34;
+  color: #e1e8ed;
+}
+
+html.workstation-ui-v2 .workstation-rail-button.active::before {
+  background: var(--wc-accent);
+}
+
+html.workstation-ui-v2 .workstation-viewbar {
+  border-bottom-color: #11171b;
+  background: var(--wc-chrome-2);
+  color: #8a959f;
+}
+
+html.workstation-ui-v2 .workstation-view-tab {
+  color: #89949e;
+}
+
+html.workstation-ui-v2 .workstation-view-tab:hover,
+html.workstation-ui-v2 .workstation-view-tab:focus-visible {
+  background: var(--wc-chrome-3);
+  color: #d8dfe4;
+}
+
+html.workstation-ui-v2 .workstation-view-tab.active {
+  background: transparent;
+  color: #f2f5f7;
+}
+
+html.workstation-ui-v2 .workstation-view-tab.active::after {
+  background: var(--wc-accent);
+}
+
+html.workstation-ui-v2 .workspace {
+  background: #11161a;
+}
+
+html.workstation-ui-v2 .workstation-view-stage {
+  background: #bfc8d0;
+}
+
+html.workstation-ui-v2 .workstation-view-stage > .view-panel,
+html.workstation-ui-v2 #sectionPanel {
+  background: var(--wc-canvas);
+}
+
+html.workstation-ui-v2 .workstation-view-stage .view-head,
+html.workstation-ui-v2 #sectionPanel .view-head {
+  border-bottom-color: #151b20;
+  background: rgba(32, 39, 47, 0.985);
+  color: #d9e0e5;
+}
+
+html.workstation-ui-v2 .workstation-view-stage .view-head strong,
+html.workstation-ui-v2 #sectionPanel .view-head strong {
+  color: #edf1f4;
+}
+
+html.workstation-ui-v2 .workstation-view-stage .view-head span,
+html.workstation-ui-v2 .workstation-view-stage .readout,
+html.workstation-ui-v2 #sectionPanel .view-head span {
+  color: #89949e;
+}
+
+html.workstation-ui-v2 .workstation-view-stage .view-head .mini-btn,
+html.workstation-ui-v2 .workstation-view-stage .view-head summary.mini-btn,
+html.workstation-ui-v2 .workstation-view-stage .view-head .three-control,
+html.workstation-ui-v2 #sectionPanel .mini-btn {
+  border-color: transparent;
+  background: transparent;
+  color: #a4afb8;
+}
+
+html.workstation-ui-v2 .workstation-view-stage .view-head .mini-btn:hover,
+html.workstation-ui-v2 .workstation-view-stage .view-head summary.mini-btn:hover,
+html.workstation-ui-v2 .workstation-view-stage .view-head .three-control:hover,
+html.workstation-ui-v2 #sectionPanel .mini-btn:hover {
+  border-color: #45515c;
+  background: var(--wc-chrome-3);
+  color: #f1f4f6;
+}
+
+html.workstation-ui-v2 #sectionPanel .mini-btn.active,
+html.workstation-ui-v2 #sectionPanel .mini-btn[aria-pressed='true'] {
+  border-color: #3f6482;
+  background: #25303a;
+  color: #edf5fb;
+}
+
+html.workstation-ui-v2 #toolPanel.workstation-tool-flyout {
+  border-color: var(--wc-panel-line-strong);
+  background: var(--wc-panel);
+  color: var(--wc-text);
+  box-shadow: 0 18px 44px rgba(18, 26, 34, 0.24);
+}
+
+html.workstation-ui-v2 #toolPanel.workstation-tool-flyout::before {
+  border-left-color: var(--wc-panel-line-strong);
+  border-bottom-color: var(--wc-panel-line-strong);
+  background: #eef2f5;
+}
+
+html.workstation-ui-v2 .workstation-tool-head {
+  border-bottom-color: var(--wc-panel-line);
+  background: #eef2f5;
+}
+
+html.workstation-ui-v2 .workstation-tool-head strong,
+html.workstation-ui-v2 .workstation-section-label {
+  color: var(--wc-text);
+}
+
+html.workstation-ui-v2 .workstation-tool-position,
+html.workstation-ui-v2 .workstation-section-label span {
+  color: var(--wc-muted);
+}
+
+html.workstation-ui-v2 .workstation-tool-close {
+  color: #687581;
+}
+
+html.workstation-ui-v2 .workstation-tool-close:hover,
+html.workstation-ui-v2 .workstation-tool-close:focus-visible {
+  border-color: var(--wc-panel-line-strong);
+  background: #e6ebef;
+  color: var(--wc-text);
+}
+
+html.workstation-ui-v2 #toolPanel .tool-tab-content::-webkit-scrollbar-thumb {
+  background: #c8d0d7;
+}
+
+html.workstation-ui-v2 #toolPanel .tool-tab-panel {
+  border-bottom-color: var(--wc-panel-line);
+}
+
+html.workstation-ui-v2 #toolPanel .tool-context {
+  border-color: #dce2e7;
+  color: var(--wc-text-secondary);
+}
+
+html.workstation-ui-v2 #toolPanel input,
+html.workstation-ui-v2 #toolPanel select {
+  border-color: var(--wc-panel-line-strong);
+  background: #fff;
+  color: var(--wc-text);
+}
+
+html.workstation-ui-v2 #toolPanel input:focus,
+html.workstation-ui-v2 #toolPanel select:focus {
+  border-color: #7ca7cb;
+  box-shadow: 0 0 0 2px rgba(75, 137, 198, 0.12);
+}
+
+html.workstation-ui-v2 #toolPanel button:not(.primary):not(.apply-btn):not(.workstation-tool-close) {
+  border-color: var(--wc-panel-line);
+  background: #fff;
+  color: var(--wc-text-secondary);
+}
+
+html.workstation-ui-v2 #toolPanel button:not(.primary):not(.apply-btn):not(.workstation-tool-close):hover {
+  border-color: #b8c3cc;
+  background: #f9fbfc;
+  color: var(--wc-text);
+}
+
+html.workstation-ui-v2 #toolPanel .primary,
+html.workstation-ui-v2 #toolPanel .apply-btn {
+  border-color: var(--wc-accent-strong);
+  background: var(--wc-accent);
+  color: #fff;
+}
+
+html.workstation-ui-v2 #toolPanel .primary:hover,
+html.workstation-ui-v2 #toolPanel .apply-btn:hover {
+  background: var(--wc-accent-strong);
+}
+
+html.workstation-ui-v2 .statusbar {
+  border-top-color: #0d1216;
+  background: var(--wc-chrome-1);
+  color: #7d8892;
+}
+
+html.workstation-ui-v2 .statusbar a,
+html.workstation-ui-v2 .status-action {
+  color: #8c99a4;
+}
+
+html.workstation-ui-v2 .statusbar a:hover,
+html.workstation-ui-v2 .status-action:hover {
+  color: #dce3e8;
+}
+
+html.workstation-ui-v2 .badge,
+html.workstation-ui-v2 .face-pill {
+  background: #eef2f5;
+  color: var(--wc-text-secondary);
+}
+
+html.workstation-ui-v2 .danger,
+html.workstation-ui-v2 .danger-zone button {
+  --accent: var(--wc-danger);
+}
+
+
+html.workstation-ui-v2 #toolPanel .segmented {
+  border-color: transparent;
+  background: #eef2f5;
+}
+
+html.workstation-ui-v2
+  #toolPanel
+  .segmented
+  button:not(.primary):not(.apply-btn):not(.workstation-tool-close) {
+  border-color: transparent;
+  background: transparent;
+  color: var(--wc-text-secondary);
+  box-shadow: none;
+}
+
+html.workstation-ui-v2
+  #toolPanel
+  .segmented
+  button:not(.primary):not(.apply-btn):not(.workstation-tool-close):hover {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--wc-text);
+}
+
+html.workstation-ui-v2
+  #toolPanel
+  .segmented
+  button.active:not(.primary):not(.apply-btn):not(.workstation-tool-close) {
+  border-color: #b7cbe0;
+  background: var(--wc-accent-soft);
+  color: #315f87;
+  box-shadow:
+    inset 0 -2px 0 var(--wc-accent),
+    0 1px 2px rgba(31, 41, 51, 0.05);
+  font-weight: 680;
 }
