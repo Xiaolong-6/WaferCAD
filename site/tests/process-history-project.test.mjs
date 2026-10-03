@@ -89,7 +89,7 @@ function validProject(processRevision = 0) {
   };
 }
 
-test('V2 process history and branch HEAD state survive packed project storage', () => {
+test('V3 restorable process history survives packed project storage', () => {
   const source = validProject(2);
   const milestoneState = validProject(1);
   const headState = validProject(2);
@@ -106,7 +106,7 @@ test('V2 process history and branch HEAD state survive packed project storage', 
     },
   ];
   source.snapshotBranches = {
-    version: 2,
+    version: 3,
     activeBranchId: 'main',
     cursorNodeId: 'process-2',
     cursorSnapshotId: null,
@@ -147,7 +147,7 @@ test('V2 process history and branch HEAD state survive packed project storage', 
   assert.equal(validateProjectFile(source), source);
 
   const stored = JSON.parse(serializeProject(source));
-  assert.equal(stored.snapshotBranches.version, 2);
+  assert.equal(stored.snapshotBranches.version, 3);
   assert.equal(stored.snapshotBranches.nodes[1].parentId, 'process-1');
   assert.equal(stored.snapshots[0].historyNodeId, 'process-1');
   assert.equal(stored.snapshotBranches.nodes[0].state.model, undefined);
@@ -166,6 +166,74 @@ test('V2 process history and branch HEAD state survive packed project storage', 
   expandProjectStorage(workspaceStored);
   assert.equal(workspaceStored.snapshotBranches.nodes[0].state.model.processRevision, 1);
   assert.equal(workspaceStored.snapshotBranches.branches[0].headState.model.processRevision, 2);
+});
+
+test('V2 process history without node restore states remains backward compatible', () => {
+  const source = validProject(1);
+  source.snapshotBranches = {
+    version: 2,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Legacy process step' },
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: validProject(1),
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  assert.equal(validateProjectFile(source), source);
+});
+
+test('V3 schema rejects process nodes without restore states', () => {
+  const source = validProject(1);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Missing state' },
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: validProject(1),
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  assert.throws(() => validateProjectFile(source), /state.*required for restorable process history/i);
 });
 
 test('V2 schema rejects dangling process history references', () => {
