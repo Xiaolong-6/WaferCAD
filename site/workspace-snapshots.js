@@ -804,6 +804,15 @@ export function createSnapshotManager({
     historyNodes = importedNodes;
     branches = importedBranches.slice(0, maxBranches);
 
+    // Promote every legacy node whose exact state can already be recovered from
+    // an attached milestone or the branch HEAD. This prevents a legacy HEAD
+    // from losing its only restore state when the branch later advances.
+    for (const node of historyNodes) {
+      if (node.state) continue;
+      const recoverable = stateForProcessNode(node);
+      if (recoverable && validateState(recoverable)) node.state = cloneState(recoverable);
+    }
+
     // V2 initially derived default branch names from the full milestone name.
     // Normalize only that exact legacy auto-name pattern; explicit user names stay untouched.
     const usedBranchNames = new Set(branches.map((branch) => branch.name));
