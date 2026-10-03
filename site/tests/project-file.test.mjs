@@ -12,6 +12,8 @@ import {
 } from '../project-io.js';
 import {
   CURRENT_PROJECT_VERSION,
+  PROJECT_COORDINATE_LIMIT_UM,
+  PROJECT_LENGTH_LIMIT_UM,
   migrateProjectFile,
   validateProjectFile,
 } from '../project-schema.js';
@@ -151,6 +153,16 @@ test('project validator accepts the runtime nanometre zoom ceiling', () => {
   source.planViews.mask.zoom = 1e8;
   source.planViews.main.zoom = 1e8;
   assert.equal(validateProjectFile(source), source);
+});
+
+test('project validator rejects coordinates outside the physical CAD envelope', () => {
+  const source = validProject();
+  source.section.a[0] = PROJECT_COORDINATE_LIMIT_UM + 1;
+  assert.throws(() => validateProjectFile(source), /section\.a\[0\].*must be between/);
+
+  const oversized = validProject();
+  oversized.roi = { type: 'circle', c: [0, 0], r: PROJECT_LENGTH_LIMIT_UM + 1 };
+  assert.throws(() => validateProjectFile(oversized), /roi\.r.*must be between/);
 });
 
 test('project serializer enforces the same size ceiling used by Open', () => {
