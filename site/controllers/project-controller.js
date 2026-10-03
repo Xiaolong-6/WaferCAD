@@ -135,7 +135,7 @@ export function createProjectController({
           return;
         }
         if (!snapshotManager.restoreActiveBranchHead()) {
-          status('Could not restore the current branch HEAD.', 'error');
+          status('Could not restore the current variant HEAD.', 'error');
           return;
         }
         refreshAfterSnapshotLoad();
@@ -288,7 +288,7 @@ export function createProjectController({
               await checkpointBeforeReplace('pre-snapshot-branch-create');
               const created = snapshotManager.createBranch(record.id);
               if (!snapshotManager.switchBranch(created.id)) {
-                throw new Error('The branch point could not be restored.');
+                throw new Error('The variant origin could not be restored.');
               }
               refreshAfterSnapshotLoad();
               onProjectChanged();
@@ -440,7 +440,7 @@ export function createProjectController({
     branchRenameInput.type = 'text';
     branchRenameInput.maxLength = 256;
     branchRenameInput.value = activeBranch.name;
-    branchRenameInput.setAttribute('aria-label', 'Branch name');
+    branchRenameInput.setAttribute('aria-label', 'Variant name');
 
     const saveBranchRename = root.createElement('button');
     saveBranchRename.type = 'button';
@@ -477,7 +477,7 @@ export function createProjectController({
       const source = recordById.get(activeBranch.rootSnapshotId);
       const origin = root.createElement('div');
       origin.className = 'snapshot-branch-origin';
-      origin.textContent = source ? `↳ from ${source.name}` : '↳ branch origin';
+      origin.textContent = source ? `↳ from ${source.name}` : '↳ variant origin';
       activeGroup.append(origin);
     }
 
@@ -566,7 +566,7 @@ export function createProjectController({
         const branchOrigin = root.createElement('span');
         branchOrigin.textContent = source
           ? `from ${source.name}`
-          : 'independent branch';
+          : 'independent variant';
         branchCopy.append(branchName, branchOrigin);
 
         const stats = root.createElement('span');
