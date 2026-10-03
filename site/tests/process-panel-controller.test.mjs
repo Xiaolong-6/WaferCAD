@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { createModel } from '../model.js';
-import { createProcessPanelController } from '../controllers/process-panel-controller.js';
+const vendorSource = readFileSync(
+  new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
+const commonJsModule = { exports: {} };
+new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
+globalThis.polygonClipping = commonJsModule.exports;
+
+const { createModel } = await import('../model.js');
+const { createProcessPanelController } = await import('../controllers/process-panel-controller.js');
 
 function fakeRoot() {
   const values = {
