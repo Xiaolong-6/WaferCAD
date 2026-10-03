@@ -373,6 +373,12 @@ assert.equal(await historyARow.getAttribute('role'), 'button');
 assert.equal(await historyBRow.getAttribute('data-head'), 'true');
 await historyARow.click();
 await historyRestorePage.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+assert.equal(
+  await historyRestorePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
+    options.some((option) => /pre-process-history-restore/.test(option.textContent || '')),
+  ),
+  false,
+);
 assert.equal(await historyRestorePage.locator('#undoBtn').isDisabled(), true);
 assert.equal(await historyRestorePage.locator('#redoBtn').isDisabled(), true);
 assert.match(
@@ -390,9 +396,22 @@ assert.equal(
     .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B')),
   false,
 );
+await historyRestorePage.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.4';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
 await historyRestorePage.locator('.snapshot-return-head').click();
 await historyRestorePage.waitForFunction(
   () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
+);
+await historyRestorePage.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-snapshot-return-head/.test(option.textContent || ''),
+    ),
+  null,
+  { timeout: 5000 },
 );
 assert.ok(
   await historyRestorePage
