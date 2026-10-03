@@ -57,17 +57,27 @@ export function createProcessTaskController({
         workerUrl = new URL(workerPath, import.meta.url),
         currentModuleUrl = new URL(import.meta.url);
       workerUrl.search = currentModuleUrl.search;
-      const worker = new Worker(workerUrl),
-        task = {
-          id,
-          worker,
-          resolve,
-          label,
-          abortMessage,
-          stage: 'Preparing worker…',
-          startedAt: performance.now(),
-          timer: null,
-        };
+      let worker;
+      try {
+        worker = new Worker(workerUrl);
+      } catch (error) {
+        const message = error?.message || String(error || 'Worker failed to start.');
+        setApplyDisabled(false);
+        status(`${failurePrefix}: ${message}`, 'error');
+        resolve({ error: message, aborted: false });
+        return;
+      }
+
+      const task = {
+        id,
+        worker,
+        resolve,
+        label,
+        abortMessage,
+        stage: 'Preparing worker…',
+        startedAt: performance.now(),
+        timer: null,
+      };
 
       active = task;
       setApplyDisabled(true);
@@ -106,7 +116,14 @@ export function createProcessTaskController({
         resolve({ error: message, aborted: false });
       };
 
-      worker.postMessage({ id, ...payload }, transfer);
+      try {
+        worker.postMessage({ id, ...payload }, transfer);
+      } catch (error) {
+        const message = error?.message || String(error || 'Worker message could not be sent.');
+        finish(task);
+        status(`${failurePrefix}: ${message}`, 'error');
+        resolve({ error: message, aborted: false });
+      }
     });
   }
 
