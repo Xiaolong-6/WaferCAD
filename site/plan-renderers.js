@@ -392,6 +392,13 @@ export function createPlanRenderers({
     c.dataset.zMaxUm = String(hi);
     c.dataset.sectionPlotLeft = String(plotLeft);
     c.dataset.sectionCollapseBreakY = String(zTransform.breakCenter);
+    c.dataset.sectionCollapseUpperY = String(zTransform.upperBottom);
+    c.dataset.sectionCollapseLowerY = String(zTransform.lowerTop);
+    c.dataset.sectionFrameTop = String(zTransform.frameTop);
+    c.dataset.sectionFrameBottom = String(zTransform.frameBottom);
+    c.dataset.sectionZ0Um = String(z0);
+    c.dataset.sectionZ1Um = String(z1);
+    c.dataset.sectionBottomPxPerUm = String(zTransform.bottomScale);
     c.dataset.sectionCollapseTopUm = String(collapse.top);
     c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
   
