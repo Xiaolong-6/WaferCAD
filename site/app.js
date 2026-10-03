@@ -629,7 +629,15 @@ function initThree() {
 }
 
 function renderThree() {
-  threeView?.render();
+  try {
+    threeView?.render();
+    delete $('threeHost').dataset.renderError;
+  } catch (error) {
+    const message = error?.message || String(error || 'Unknown 3D render error');
+    $('threeHost').dataset.renderError = message;
+    $('threeStats').textContent = '3D render error';
+    console.error('3D render failed.', error);
+  }
 }
 
 function fit3d() {
