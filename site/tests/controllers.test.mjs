@@ -100,6 +100,11 @@ test('workspace session allows only one writer until explicit takeover', () => {
   assert.equal(second.canWrite(), false);
 
   assert.equal(second.takeOver(), true);
+  assert.equal(second.hasWriteLease(), true);
+  // Before tab A receives its storage event, its cached writable flag is stale.
+  // The commit guard must still observe the live lease synchronously.
+  assert.equal(first.canWrite(), true);
+  assert.equal(first.hasWriteLease(), false);
   listenersA.get('storage')?.({
     key: 'wafercad.workspace.owner.v1',
     newValue: storage.getItem('wafercad.workspace.owner.v1'),
@@ -172,6 +177,7 @@ test('workspace session stays usable when localStorage is unavailable', () => {
   const session = createWorkspaceSessionController({ storage, windowRef });
   assert.equal(session.start(), true);
   assert.equal(session.canWrite(), true);
+  assert.equal(session.hasWriteLease(), true);
   session.stop();
 });
 
