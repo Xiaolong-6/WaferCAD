@@ -19,12 +19,17 @@ on:
       - "site/oasis.js"
       - "site/layout-io.js"
       - "site/layout-export.js"
+      - "site/layout-worker.js"
+      - "site/layout-export-worker.js"
+      - "site/project-worker.js"
       - "site/app.html"
       - "site/app.js"
       - "site/sample-layouts.js"
       - "site/samples/klayout/**"
       - "scripts/klayout-compat.mjs"
       - "scripts/klayout-ui-compat.mjs"
+      - "scripts/klayout-export-fixtures.mjs"
+      - "scripts/klayout-export-verify.py"
       - ".github/workflows/klayout-compat.yml"
   push:
     branches:
@@ -34,12 +39,17 @@ on:
       - "site/oasis.js"
       - "site/layout-io.js"
       - "site/layout-export.js"
+      - "site/layout-worker.js"
+      - "site/layout-export-worker.js"
+      - "site/project-worker.js"
       - "site/app.html"
       - "site/app.js"
       - "site/sample-layouts.js"
       - "site/samples/klayout/**"
       - "scripts/klayout-compat.mjs"
       - "scripts/klayout-ui-compat.mjs"
+      - "scripts/klayout-export-fixtures.mjs"
+      - "scripts/klayout-export-verify.py"
       - ".github/workflows/klayout-compat.yml"
 
 permissions:
@@ -67,6 +77,12 @@ jobs:
 
       - name: Sweep parser and flatten pipeline
         run: node scripts/klayout-compat.mjs --root _klayout/testdata --scope "${{ inputs.scope || 'all' }}" --report klayout-compat.json
+
+      - name: Verify WaferCAD exports with KLayout
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
+          node scripts/klayout-export-fixtures.mjs test-results/klayout-export
+          python3 scripts/klayout-export-verify.py test-results/klayout-export
 
       - name: Upload compatibility report
         if: always()
