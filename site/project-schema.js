@@ -374,7 +374,14 @@ function validateLayoutElement(element, path, budget) {
   if (element.kind === 'polygon' && !(Math.abs(ringArea(element.points)) > 0)) {
     fail(`${path}.points`, 'must enclose non-zero area.');
   }
-  if (element.kind === 'path') assertFinite(element.width, `${path}.width`, { min: 0 });
+  if (element.kind === 'path') {
+    assertFinite(element.width, `${path}.width`, { min: 0 });
+    const origin = element.points[0],
+      hasLength = element.points
+        .slice(1)
+        .some((point) => point[0] !== origin[0] || point[1] !== origin[1]);
+    if (!hasLength) fail(`${path}.points`, 'must span a non-zero distance.');
+  }
 }
 
 function validateLayout(layout, budget) {
@@ -440,11 +447,14 @@ function validateRoi(roi) {
   if (roi.type === 'rect') {
     assertPoint(roi.a, 'roi.a');
     assertPoint(roi.b, 'roi.b');
+    if (!(Math.abs(roi.b[0] - roi.a[0]) > 0) || !(Math.abs(roi.b[1] - roi.a[1]) > 0)) {
+      fail('roi', 'rectangle must have non-zero width and height.');
+    }
     return;
   }
   if (roi.type === 'circle' || roi.type === 'sector') {
     assertPoint(roi.c, 'roi.c');
-    assertFinite(roi.r, 'roi.r', { min: 0 });
+    assertFinite(roi.r, 'roi.r', { min: 1e-12 });
     if (roi.type === 'sector') {
       assertFinite(roi.startDeg, 'roi.startDeg');
       assertFinite(roi.endDeg, 'roi.endDeg');
@@ -531,6 +541,9 @@ function validateSection(section) {
   assertObject(section, 'section');
   assertPoint(section.a, 'section.a');
   assertPoint(section.b, 'section.b');
+  if (section.a[0] === section.b[0] && section.a[1] === section.b[1]) {
+    fail('section', 'A and B must be distinct points.');
+  }
 }
 
 function validatePlanViews(planViews) {
