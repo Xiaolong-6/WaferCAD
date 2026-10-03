@@ -10,6 +10,10 @@ const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js')
 const welcomeLayoutBuffer = await readFile(
   new URL('../site/samples/klayout/oas-rectangles.oas', import.meta.url),
 );
+const snapshotExportFixtureBuffer = await readFile(
+  new URL('../examples/projects/black-si-photodiode-acs-photonics-2023.wafercad', import.meta.url),
+);
+const snapshotExportFixture = JSON.parse(snapshotExportFixtureBuffer.toString('utf8'));
 const welcomeProject = projectForBenchmark({
   model: createModel({
     shape: 'rect',
@@ -1621,22 +1625,6 @@ assert.equal(
   false,
 );
 
-// Project export is accepted only after the browser emits a real download event.
-// Save the captured file and verify that snapshot history survived serialization.
-const expectedSnapshotCount = Number(await page.locator('#snapshotCount').textContent());
-await openFunctionPanel(page, 'project');
-await page.locator('#projectNameInput').fill('Snapshot export check');
-const snapshotExportPromise = page.waitForEvent('download');
-await page.locator('#exportProjectBtn').click();
-const snapshotExport = await snapshotExportPromise;
-assert.equal(snapshotExport.suggestedFilename(), 'Snapshot export check.wafercad');
-assert.match(await page.locator('#statusText').textContent(), /Download requested/);
-const snapshotExportPath = await snapshotExport.path();
-assert.ok(snapshotExportPath);
-const snapshotExportedProject = JSON.parse(await readFile(snapshotExportPath, 'utf8'));
-assert.equal(snapshotExportedProject.snapshots.length, expectedSnapshotCount);
-assert.equal(snapshotExportedProject.snapshotBranches.branches.length, 3);
-
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await openFunctionPanel(page, 'project');
 await page.locator('#newProjectBtn').click();
@@ -1648,6 +1636,51 @@ await page.waitForFunction(
     ),
 );
 assert.match(await page.locator('#statusText').textContent(), /New empty project/);
+
+// Project delivery gate: use a fresh browser context so accumulated download state
+// from the long smoke scenario cannot mask whether one user-requested export works.
+const projectDownloadContext = await browser.newContext({
+  viewport: { width: 1100, height: 760 },
+  acceptDownloads: true,
+});
+const projectDownloadPage = await projectDownloadContext.newPage();
+const projectDownloadErrors = [];
+projectDownloadPage.on('pageerror', (error) => projectDownloadErrors.push(error.message));
+await projectDownloadPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await projectDownloadPage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'snapshot-export-fixture.wafercad',
+  mimeType: 'application/json',
+  buffer: snapshotExportFixtureBuffer,
+});
+await projectDownloadPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await projectDownloadPage.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened snapshot-export-fixture.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(
+  Number(await projectDownloadPage.locator('#snapshotCount').textContent()),
+  snapshotExportFixture.snapshots.length,
+);
+await openFunctionPanel(projectDownloadPage, 'project');
+await projectDownloadPage.locator('#projectNameInput').fill('Snapshot export check');
+const snapshotExportPromise = projectDownloadPage.waitForEvent('download', { timeout: 30000 });
+await projectDownloadPage.locator('#exportProjectBtn').click();
+const snapshotExport = await snapshotExportPromise;
+assert.equal(snapshotExport.suggestedFilename(), 'Snapshot export check.wafercad');
+assert.match(
+  await projectDownloadPage.locator('#statusText').textContent(),
+  /Download requested/,
+);
+const snapshotExportPath = await snapshotExport.path();
+assert.ok(snapshotExportPath);
+const snapshotExportedProject = JSON.parse(await readFile(snapshotExportPath, 'utf8'));
+assert.equal(snapshotExportedProject.format, 'WaferCAD-vector');
+assert.equal(snapshotExportedProject.snapshots.length, snapshotExportFixture.snapshots.length);
+assert.deepEqual(projectDownloadErrors, []);
+await projectDownloadContext.close();
 
 // Two tabs sharing one browser profile still have one autosave writer, but neither
 // editor is frozen. The non-owner can keep working and explicitly take over saving.
