@@ -1081,6 +1081,11 @@
         stylesheet.href = `./style.css${suffix}`;
         document.head.append(stylesheet);
 
+        const workstationStylesheet = document.createElement('link');
+        workstationStylesheet.rel = 'stylesheet';
+        workstationStylesheet.href = `./workstation.css${suffix}`;
+        document.head.append(workstationStylesheet);
+
         await new Promise((resolve, reject) => {
           const vendor = document.createElement('script');
           vendor.src = `./vendor/polygon-clipping.umd.js${suffix}`;

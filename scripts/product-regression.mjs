@@ -71,6 +71,59 @@ async function confirmIfVisible(page, action = 'confirm') {
   }
 }
 
+const FUNCTION_SECTION_IDS = {
+  project: 'settingsTools',
+  base: 'baseTools',
+  mask: 'maskTools',
+  process: 'operationTools',
+  snapshots: 'snapshotsTools',
+};
+
+async function openFunctionPanel(page, name, clickOptions = {}) {
+  const button = page.locator(`.workstation-rail-button[data-tool="${name}"]`);
+  await button.waitFor({ state: 'visible', timeout: clickOptions.timeout || 5000 });
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  const isOpen = await panel.evaluate((element) => element.classList.contains('open'));
+  const isActive = await button.evaluate((element) => element.classList.contains('active'));
+  if (!isOpen || !isActive) await button.click(clickOptions);
+  await page.waitForFunction(() => {
+    const panel = document.getElementById('toolPanel');
+    const rail = document.querySelector('.workstation-rail');
+    if (!panel?.classList.contains('open') || !rail) return false;
+    return panel.getBoundingClientRect().left >= rail.getBoundingClientRect().right - 1;
+  });
+  await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
+  await page.evaluate((sectionName) => {
+    const scroller = document.querySelector('#toolPanel .tool-tab-content');
+    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
+    if (scroller && section) scroller.scrollTop = Math.max(0, section.offsetTop - 6);
+  }, name);
+}
+
+async function closeFunctionPanel(page) {
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  if (await panel.evaluate((element) => element.classList.contains('open'))) {
+    await page.locator('.workstation-tool-close').click();
+    await page.waitForFunction(
+      () => !document.getElementById('toolPanel')?.classList.contains('open'),
+    );
+  }
+}
+
+const PRIMARY_VIEW_PANEL_IDS = {
+  main: 'mainPanel',
+  mask: 'maskPanel',
+  three: 'threePanel',
+};
+
+async function ensurePrimaryViewVisible(page, name) {
+  const panel = page.locator(`#${PRIMARY_VIEW_PANEL_IDS[name]}`);
+  if (!(await panel.isVisible())) {
+    await page.locator(`.workstation-view-tab[data-view="${name}"]`).click();
+    await panel.waitFor({ state: 'visible' });
+  }
+}
+
 async function capture(page, name) {
   // Allow two rendered frames after layout or model changes.
   await page.evaluate(
@@ -80,6 +133,15 @@ async function capture(page, name) {
       ),
   );
   await page.screenshot({ path: join(output, `${name}.png`), fullPage: true });
+  // fullPage capture can transiently change Chromium's page metrics. Let the
+  // real viewport settle naturally; do not broadcast resize because that would
+  // invalidate renderer caches the next assertion may intentionally inspect.
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
   cases.push(name);
 }
 
@@ -108,6 +170,7 @@ async function checkLayout(page) {
     }
     for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas']) {
       const canvas = document.getElementById(id);
+      if (!canvas.checkVisibility()) continue;
       const rect = canvas.getBoundingClientRect();
       if (rect.width < 80 || rect.height < 100) issues.push(`${id}: too small`);
       const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -123,7 +186,7 @@ async function checkLayout(page) {
 }
 
 async function checkCompactProcessLayout(page, name) {
-  await page.locator('#operationTab').click();
+  await openFunctionPanel(page, 'process');
   await page.locator('[data-process-mode="etch"]').click();
   await page.locator('#etchSurfaceMode').selectOption('rough');
 
@@ -225,6 +288,14 @@ async function checkSectionCollapse(page, name) {
   assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
   await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
   await capture(page, `${name}-section-z-collapse-edit`);
+  await page.waitForFunction(
+    (expectedBreakY) =>
+      Math.abs(
+        Number(document.getElementById('sectionCanvas')?.dataset.sectionCollapseBreakY) -
+          expectedBreakY,
+      ) < 1e-6,
+    before.breakY,
+  );
   const handleSize = await page.locator('#sectionCollapseTopHandle').boundingBox();
   assert.ok(handleSize);
   assert.ok(
@@ -291,11 +362,24 @@ async function checkAB(page, name) {
   await page.locator('#sectionControlsBtn').click();
   assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
   assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
-  await page.mouse.move(canvas.x + canvas.width * 0.28, canvas.y + canvas.height * 0.42);
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
+  const creationCanvas = await mainCanvas.boundingBox();
+  assert.ok(creationCanvas);
+  await page.mouse.move(
+    creationCanvas.x + creationCanvas.width * 0.28,
+    creationCanvas.y + creationCanvas.height * 0.42,
+  );
   await page.mouse.down();
-  await page.mouse.move(canvas.x + canvas.width * 0.72, canvas.y + canvas.height * 0.58, {
-    steps: 5,
-  });
+  await page.mouse.move(
+    creationCanvas.x + creationCanvas.width * 0.72,
+    creationCanvas.y + creationCanvas.height * 0.58,
+    { steps: 5 },
+  );
   await page.mouse.up();
   assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
   assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
@@ -303,7 +387,12 @@ async function checkAB(page, name) {
   const before = await coords(page);
   const a = await page.locator('[data-endpoint=a]').boundingBox();
   const b = await page.locator('[data-endpoint=b]').boundingBox();
-  const scale = Math.min((canvas.width - 68) / 100000, (canvas.height - 68) / 100000);
+  const liveCanvas = await mainCanvas.boundingBox();
+  assert.ok(liveCanvas);
+  const scale = Math.min(
+    (liveCanvas.width - 68) / 100000,
+    (liveCanvas.height - 68) / 100000,
+  );
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
   close(after[0], nmRoundedMicron(before[0] + 16 / scale));
@@ -339,12 +428,15 @@ async function checkAB(page, name) {
     moved[1] = touchMoved[1];
     await session.detach();
   }
-  await page.locator('#operationTab').click();
+  await openFunctionPanel(page, 'process');
   await page.locator('#faceToggleBtn').click();
+  await closeFunctionPanel(page);
   await dragHandle(page, 'a', 8, 0);
   const back = await coords(page);
   close(back[0], nmRoundedMicron(moved[0] - 8 / scale));
+  await openFunctionPanel(page, 'process');
   await page.locator('#faceToggleBtn').click();
+  await closeFunctionPanel(page);
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
   assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
   await page.locator('#mainZoomIn').click();
@@ -353,7 +445,7 @@ async function checkAB(page, name) {
   back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
   close((await coords(page))[0], back[0]);
   await page.locator('#mainZoomFit').click();
-  await page.locator('#settingsTab').click();
+  await openFunctionPanel(page, 'project');
   for (const [unit, multiplier] of [
     ['nm', 1000],
     ['mm', 0.001],
@@ -363,6 +455,7 @@ async function checkAB(page, name) {
     const values = await coords(page);
     values.forEach((value, i) => close(value, back[i] * multiplier));
   }
+  await closeFunctionPanel(page);
   await page.locator('[data-endpoint=a]').focus();
   await page.keyboard.press('ArrowRight');
   close((await coords(page))[0], nmRoundedMicron(back[0] + 1 / scale));
@@ -375,7 +468,7 @@ async function checkAB(page, name) {
 }
 
 async function loadProject(page, project, name) {
-  await page.locator('#settingsTab').click();
+  await openFunctionPanel(page, 'project');
   await page.locator('#openProjectInput').setInputFiles({
     name: `${name}.wafercad`,
     mimeType: 'application/json',
@@ -386,6 +479,7 @@ async function loadProject(page, project, name) {
     (filename) => document.querySelector('#statusText').textContent === `Opened ${filename}.`,
     `${name}.wafercad`,
   );
+  await closeFunctionPanel(page);
 }
 
 async function checkSectionSeams(page, project) {
@@ -574,16 +668,24 @@ try {
     await checkLayout(page);
     await checkAB(page, name);
     await checkSectionCollapse(page, name);
+    await ensurePrimaryViewVisible(page, 'three');
     await page.locator('#threePanel .three-opacity-control > summary').click();
     await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
     await page.locator('#threePanel .three-opacity-control > summary').click();
-    for (const tab of ['base', 'mask', 'operation', 'snapshots', 'settings']) {
-      await page.locator(`#${tab}Tab`).click();
-      await capture(page, `${name}-tab-${tab}`);
+    await ensurePrimaryViewVisible(page, 'main');
+    for (const [tool, captureName] of [
+      ['base', 'base'],
+      ['mask', 'mask'],
+      ['process', 'operation'],
+      ['snapshots', 'snapshots'],
+      ['project', 'settings'],
+    ]) {
+      await openFunctionPanel(page, tool);
+      await capture(page, `${name}-tab-${captureName}`);
       await checkLayout(page);
     }
     await checkCompactProcessLayout(page, name);
-    await page.locator('#snapshotsTab').click();
+    await openFunctionPanel(page, 'snapshots');
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
     const snapshotName = page.locator('.snapshot-name').first();
@@ -602,9 +704,9 @@ try {
       ).includes('Regression checkpoint'),
       'snapshot rename was lost after rerender',
     );
-    await page.locator('#settingsTab').click();
+    await openFunctionPanel(page, 'project');
     await page.locator('#xyUnitSelect').selectOption('nm');
-    await page.locator('#snapshotsTab').click();
+    await openFunctionPanel(page, 'snapshots');
     await page.locator('.snapshot-action').first().click();
     await page.waitForFunction(
       () => /Restored snapshot/.test(document.getElementById('statusText')?.textContent || ''),
@@ -614,7 +716,7 @@ try {
     assert.equal(await page.locator('#xyUnitSelect').inputValue(), 'um');
     assert.deepEqual(await coords(page), savedCoords);
     await capture(page, `${name}-snapshot-restored`);
-    await page.locator('#maskTab').click();
+    await openFunctionPanel(page, 'mask');
     for (const sample of ['gds-alm', 'gds-basic-instances', 'oas-cblock']) {
       await page.locator('#sampleMaskSelect').selectOption(sample);
       await page.waitForFunction(
@@ -633,11 +735,11 @@ try {
       const bounds = imported.layout.bounds;
       const baseWidth =
         Math.max(1, ...['minX', 'minY', 'maxX', 'maxY'].map((key) => Math.abs(bounds[key]))) * 2.2;
-      await page.locator('#baseTab').click();
+      await openFunctionPanel(page, 'base');
       await page.locator('#baseWidth').fill(String(baseWidth));
       await page.locator('#applyBaseBtn').click();
       await confirmIfVisible(page);
-      await page.locator('#maskTab').click();
+      await openFunctionPanel(page, 'mask');
       await capture(page, `${name}-${sample}`);
       await checkLayout(page);
     }
@@ -1198,6 +1300,7 @@ try {
       await checkLayout(page);
     }
 
+    await ensurePrimaryViewVisible(page, 'main');
     await checkROI(page, name);
     await context.close();
     console.log(`${name}: A/B, units, ROI, tabs, imports and six process views passed`);

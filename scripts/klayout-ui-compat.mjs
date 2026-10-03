@@ -90,7 +90,8 @@ await page.waitForFunction(
   null,
   { timeout: 30000 },
 );
-await page.locator('[data-tool-tab="mask"]').click();
+await page.locator('.workstation-rail-button[data-tool="mask"]').click();
+await page.locator('#toolPanel.workstation-tool-flyout.open').waitFor();
 
 const allFiles = (await walk(root)).sort();
 const files = allFiles.filter((file) => coreDirs.has(relativeFile(file).split('/')[0]));
@@ -185,13 +186,13 @@ for (const sample of sampleOptions) {
 
 let operation = { status: 'pass', error: null };
 try {
-  await page.locator('[data-tool-tab="mask"]').click();
+  await page.locator('.workstation-rail-button[data-tool="mask"]').click();
   await markPending(page);
   await page.locator('#sampleMaskSelect').selectOption('oas-rectangles');
   await waitForImport(page);
   const state = await uiState(page);
   if (!state.layers) throw new Error('Rectangle sample has no selectable layer.');
-  await page.locator('[data-tool-tab="operation"]').click();
+  await page.locator('.workstation-rail-button[data-tool="process"]').click();
   await page.locator('[data-process-mode="add"]').click();
   await page.locator('#operationArea').selectOption('mask');
   await page.locator('#layerName').fill('UI import probe');

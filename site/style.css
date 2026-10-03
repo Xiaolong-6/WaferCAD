@@ -1422,9 +1422,31 @@ canvas {
 .three-unavailable {
   display: grid;
   place-items: center;
+  padding: 12px;
   color: #75818d;
   font-size: 10px;
+  text-align: center;
   background: #f5f7f9;
+}
+
+.three-unavailable-card {
+  display: grid;
+  gap: 4px;
+  max-width: 300px;
+  padding: 12px 14px;
+  border: 1px solid #d9e0e6;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 4px #0000000d;
+}
+
+.three-unavailable-card strong {
+  color: #4d5965;
+  font-size: 11px;
+}
+
+.three-unavailable-card span {
+  line-height: 1.45;
 }
 
 /* Explicit A/B handles sit above the canvas and stay the same screen size. */

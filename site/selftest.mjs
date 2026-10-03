@@ -35,6 +35,7 @@ const {
   normalizeSectionCollapse,
   resolveSectionCollapse,
   sectionCollapseSnapValues,
+  translateSectionCollapse,
 } = await import('./section-z-collapse.js');
 const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
   modelApi;
@@ -51,6 +52,13 @@ assert.ok(defaultCollapse.top > 0 && defaultCollapse.top < 30);
 assert.ok(defaultCollapse.bottom > -350 && defaultCollapse.bottom < -300);
 const normalizedCollapse = normalizeSectionCollapse({ top: 10, bottom: -330 }, [-350, 30]);
 assert.deepEqual(normalizedCollapse, { top: 10, bottom: -330 });
+const collapseWidth = normalizedCollapse.top - normalizedCollapse.bottom,
+  translatedToTop = translateSectionCollapse(normalizedCollapse, 1000, [-350, 30]),
+  translatedToBottom = translateSectionCollapse(normalizedCollapse, -1000, [-350, 30]);
+assert.ok(Math.abs(translatedToTop.top - 26.2) < 1e-9);
+assert.ok(Math.abs(translatedToBottom.bottom + 346.2) < 1e-9);
+assert.ok(Math.abs(translatedToTop.top - translatedToTop.bottom - collapseWidth) < 1e-9);
+assert.ok(Math.abs(translatedToBottom.top - translatedToBottom.bottom - collapseWidth) < 1e-9);
 const collapseTransform = createSectionZTransform({
   zMin: -380,
   zMax: 60,

@@ -25,7 +25,7 @@ import { createBuildController } from './controllers/build-controller.js';
 import { createFeedbackController } from './controllers/feedback-controller.js';
 import { createConfirmationDialogController } from './controllers/confirmation-dialog-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
-import { bindToolTabs } from './controllers/tool-tabs-controller.js';
+import { createWorkstationUiController } from './workstation-ui.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
 import { createViewPopoverController } from './controllers/view-popover-controller.js';
 import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
@@ -119,8 +119,10 @@ function normalizedProjectName(value = projectName) {
 }
 
 function syncProjectNameInput() {
+  const value = normalizedProjectName();
   const input = $('projectNameInput');
-  if (input && document.activeElement !== input) input.value = normalizedProjectName();
+  if (input && document.activeElement !== input) input.value = value;
+  document.dispatchEvent(new CustomEvent('wafercad:project-name-sync', { detail: { name: value } }));
 }
 
 let workspacePersistenceController = null,
@@ -1109,9 +1111,10 @@ workspacePersistenceController = createWorkspacePersistenceController({
 });
 
 
+const workstationUiController = createWorkstationUiController({ root: document, win: window });
 
 function bindUi() {
-  bindToolTabs();
+  workstationUiController.bind();
   viewPopovers.bind();
   viewMaximizeController.bind();
   roiController.bind();

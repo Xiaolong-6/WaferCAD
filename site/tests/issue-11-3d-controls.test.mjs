@@ -98,8 +98,11 @@ test('3D renderer is event-driven and lazy-loads remote dependencies after app s
   assert.doesNotMatch(threeView, /requestAnimationFrame\(animate\)/);
   assert.match(threeView, /function scheduleFrame\(\)/);
   assert.match(threeView, /function loadDependencies\(\)/);
-  assert.match(threeView, /initPromise = loadDependencies\(\)\.then/);
+  assert.match(threeView, /initPromise = loadDependencies\(\)\s*\.then/);
   assert.doesNotMatch(threeView, /try \{\s*THREE = await import\('three'\)/);
+  assert.match(threeView, /function showUnavailable\(/);
   assert.match(threeView, /3D dependencies unavailable; continuing without the 3D view/);
+  assert.match(threeView, /WebGL unavailable; continuing without the 3D view/);
+  assert.match(threeView, /could not create a WebGL context/);
   assert.match(threeView, /host\.classList\.add\('three-unavailable'\)/);
 });

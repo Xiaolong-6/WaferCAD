@@ -80,6 +80,32 @@ export function normalizeSectionCollapse(value, bounds) {
   return { top, bottom };
 }
 
+export function translateSectionCollapse(value, delta, bounds) {
+  const normalized = normalizeSectionCollapse(value, bounds),
+    [rawLo, rawHi] = bounds || [],
+    lo = Number(rawLo),
+    hi = Number(rawHi),
+    requested = Number(delta);
+
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || !(hi > lo) || !Number.isFinite(requested)) {
+    return normalized;
+  }
+
+  const span = hi - lo,
+    minVisible = Math.max(span * 0.01, 1e-12),
+    minBottom = lo + minVisible,
+    maxTop = hi - minVisible,
+    applied = Math.max(
+      minBottom - normalized.bottom,
+      Math.min(maxTop - normalized.top, requested),
+    );
+
+  return {
+    top: normalized.top + applied,
+    bottom: normalized.bottom + applied,
+  };
+}
+
 export function sectionVisibleZSpan(zMin, zMax, collapse) {
   return Math.max(0, zMax - collapse.top) + Math.max(0, collapse.bottom - zMin);
 }

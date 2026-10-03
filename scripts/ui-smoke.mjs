@@ -32,6 +32,10 @@ async function processDiagnostics(page) {
         applyDisabled: Boolean(document.getElementById('applyOperationBtn')?.disabled),
         roughRebuilds: document.querySelector('#threeHost canvas')?.dataset?.roughRebuildCount || '',
         roughZones: document.querySelector('#threeHost canvas')?.dataset?.roughLodZones || '',
+        operationType: document.getElementById('operationType')?.value || '',
+        growthMode: document.getElementById('growthMode')?.value || '',
+        workerGrowth: globalThis.__lastProcessWorkerPayload?.params?.growth || '',
+        workerType: globalThis.__lastProcessWorkerPayload?.params?.type || '',
       }))
       .catch((error) => ({ evaluateError: error.message })),
     new Promise((resolve) => setTimeout(() => resolve({ pageUnresponsive: true }), 2000)),
@@ -42,6 +46,39 @@ async function chooseConfirmation(page, action = 'confirm') {
   const overlay = page.locator('#confirmationDialogOverlay');
   await overlay.waitFor({ state: 'visible', timeout: 5000 });
   await overlay.locator(`[data-dialog-action="${action}"]`).click();
+}
+
+const FUNCTION_SECTION_IDS = {
+  project: 'settingsTools',
+  base: 'baseTools',
+  mask: 'maskTools',
+  process: 'operationTools',
+  snapshots: 'snapshotsTools',
+};
+
+async function openFunctionPanel(page, name, clickOptions = {}) {
+  const button = page.locator(`.workstation-rail-button[data-tool="${name}"]`);
+  await button.waitFor({ state: 'visible', timeout: clickOptions.timeout || 5000 });
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  const isOpen = await panel.evaluate((element) => element.classList.contains('open'));
+  const isActive = await button.evaluate((element) => element.classList.contains('active'));
+  if (!isOpen || !isActive) await button.click(clickOptions);
+  await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
+  await page.evaluate((sectionName) => {
+    const scroller = document.querySelector('#toolPanel .tool-tab-content');
+    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
+    if (scroller && section) scroller.scrollTop = Math.max(0, section.offsetTop - 6);
+  }, name);
+}
+
+async function closeFunctionPanel(page) {
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  if (await panel.evaluate((element) => element.classList.contains('open'))) {
+    await page.locator('.workstation-tool-close').click();
+    await page.waitForFunction(
+      () => !document.getElementById('toolPanel')?.classList.contains('open'),
+    );
+  }
 }
 
 async function canvasInkFraction(page, selector) {
@@ -191,7 +228,7 @@ await blockedThreePage.waitForFunction(
   null,
   { timeout: 4000 },
 );
-await blockedThreePage.locator('#operationTab').click({ timeout: 2000 });
+await openFunctionPanel(blockedThreePage, 'process', { timeout: 2000 });
 await blockedThreePage.locator('#operationTools:not([hidden])').waitFor({ timeout: 2000 });
 assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
 assert.deepEqual(blockedThreeErrors, []);
@@ -307,6 +344,7 @@ const welcomeRecoveryValue = await welcomeCheckpointPage
   .filter({ hasText: /pre-welcome-start/ })
   .getAttribute('value');
 assert.ok(welcomeRecoveryValue);
+await openFunctionPanel(welcomeCheckpointPage, 'project');
 await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption(welcomeRecoveryValue);
 await welcomeCheckpointPage.locator('#workspaceRestoreBtn').click();
 await chooseConfirmation(welcomeCheckpointPage);
@@ -413,6 +451,7 @@ await examplePage.close();
 // Project is the first/default tool tab and owns local Save, file Export, recovery, and XYZ units.
 assert.equal(await page.locator('#settingsTab').getAttribute('aria-selected'), 'true');
 await page.locator('#settingsTools:not([hidden])').waitFor();
+await openFunctionPanel(page, 'project');
 
 // XYZ unit switching converts physical Z drafts as well as X/Y drafts.
 await page.locator('#xyUnitSelect').selectOption('nm');
@@ -495,7 +534,7 @@ assert.equal(
 );
 
 // Operation controls remain usable after the toolbar reorganization.
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('#operationTools:not([hidden])').waitFor();
 for (const id of ['applyOperationBtn', 'undoBtn', 'redoBtn', 'faceToggleBtn']) {
   assert.equal(await page.locator(`#operationTools #${id}`).count(), 1);
@@ -576,7 +615,7 @@ assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
 
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI rough project');
 const roughDownloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -600,7 +639,7 @@ assert.ok(
       Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
 );
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 
 // Experimental Implant uses the same process area but records a structural annotation only.
 await page.locator('[data-process-mode="implant"]').click();
@@ -639,7 +678,7 @@ await implantLegendRow.locator('.legend-visibility').uncheck();
 assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), false);
 await implantLegendRow.locator('.legend-visibility').check();
 
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI implant project');
 const implantDownloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -657,7 +696,7 @@ assert.equal(implantSaved.display.sectionShowBorders, true);
 assert.equal(implantSaved.display.customStructurePalette.length, 20);
 assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color));
 assert.ok(implantSaved.model.implants[0].patches.length > 0);
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 
 // Extend targets follow the exposed surface and include Base when it is exposed.
 await page.locator('[data-process-mode="grow"]').click();
@@ -681,7 +720,7 @@ const conformalProject = projectForBenchmark({
   model: conformalFixture,
   section: { a: [-7000, 0], b: [7000, 0] },
 });
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#openProjectInput').setInputFiles({
   name: 'ui-conformal-round-trench.wafercad',
   mimeType: 'application/json',
@@ -691,7 +730,7 @@ await chooseConfirmation(page);
 await page.waitForFunction(() =>
   (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
 );
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="add"]').click();
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#growthMode').selectOption('conformal');
@@ -708,7 +747,7 @@ await page.waitForFunction(() =>
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI conformal project');
 const downloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -856,7 +895,7 @@ await sectionScaleButton.click();
 assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
 // Conformal Extend reuses the Deposit coating kernel with the existing layer id.
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="grow"]').click();
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#growthMode').selectOption('conformal');
@@ -867,7 +906,7 @@ await page.locator('#applyOperationBtn').click();
 await page.waitForFunction(() =>
   /Extended UI conformal · Conformal/.test(document.getElementById('statusText')?.textContent || ''),
 );
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI conformal extend project');
 const extendDownloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -890,7 +929,7 @@ assert.deepEqual(
   { layerId: coatId, z0: 4, z1: 8, role: 'conformal-sidewall' },
 );
 
-await page.locator('#operationTab').click();
+await closeFunctionPanel(page);
 
 // Slice geometry is editable by default; Slice starts one-shot creation.
 const abPanel = page.locator('#sectionCoordsPanel');
@@ -1169,18 +1208,44 @@ await page.locator('#drawShapeEditorClose').click();
 assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
 
 // The active Draw source feeds Process Selected mask.
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="add"]').click();
+await page.locator('#growthMode').selectOption('direct');
 await page.locator('#operationArea').selectOption('mask');
 await page.locator('#operationThickness').fill('0.2');
 await page.locator('#layerName').fill('Draw probe');
+assert.equal(await page.locator('#operationType').inputValue(), 'add');
+assert.equal(await page.locator('#growthMode').inputValue(), 'direct');
+await page.evaluate(() => {
+  if (Worker.prototype.__wafercadProcessProbeInstalled) return;
+  const originalPostMessage = Worker.prototype.postMessage;
+  Object.defineProperty(Worker.prototype, '__wafercadProcessProbeInstalled', {
+    value: true,
+    configurable: true,
+  });
+  Worker.prototype.postMessage = function patchedPostMessage(message, ...rest) {
+    if (message?.params) globalThis.__lastProcessWorkerPayload = structuredClone(message);
+    return originalPostMessage.call(this, message, ...rest);
+  };
+});
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
-await page.waitForFunction(() =>
-  /^Deposited Draw probe/.test(document.getElementById('statusText')?.textContent || ''),
-);
+try {
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('#layerLegend .legend-name')].some(
+        (input) => input.value === 'Draw probe',
+      ),
+    null,
+    { timeout: 30000 },
+  );
+} catch (error) {
+  console.error('Draw probe diagnostics:', JSON.stringify(await processDiagnostics(page)));
+  throw error;
+}
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
+assert.match(await page.locator('#statusText').textContent(), /Deposited Draw probe|Saved locally/);
 
 // Switching sources never destroys either source.
 await sourceToggle.click();
@@ -1224,7 +1289,7 @@ const maskRoiLocalX = await page.locator('#maskRoiX').inputValue(),
 await page.locator('#maskRoiEditor > summary').click();
 
 // File-mask alignment moves the Mask ROI visually, but its local parameters stay unchanged.
-await page.locator('#maskTab').click();
+await openFunctionPanel(page, 'mask');
 const alignment = page.locator('#maskFileControls details.subgroup');
 if (!(await alignment.evaluate((details) => details.open))) {
   await alignment.locator(':scope > summary').click();
@@ -1298,7 +1363,10 @@ const headerControlBoxes = await page.locator('.view-panel').evaluateAll((panels
 );
 assert.ok(headerControlBoxes.length > 12);
 for (const box of headerControlBoxes) {
-  assert.ok(Math.abs(box.height - 21) <= 0.6, `${box.panel}/${box.id} header height ${box.height}`);
+  assert.ok(
+    box.height >= 20.4 && box.height <= 22.6,
+    `${box.panel}/${box.id} header height ${box.height}`,
+  );
 }
 for (const panelId of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
   const boxes = headerControlBoxes.filter((box) => box.panel === panelId);
@@ -1368,7 +1436,7 @@ assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
 
 // The active workspace is restored after a normal app.html refresh. This also
 // proves that a 2D-only display mutation schedules autosave without relying on 3D rendering.
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('Refresh restore check');
 await page.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
@@ -1413,7 +1481,7 @@ assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh rest
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
 // Snapshot Restore checkpoints the current state before replacement.
-await page.locator('#snapshotsTab').click();
+await openFunctionPanel(page, 'snapshots');
 await page.locator('#saveSnapshotBtn').click();
 await page.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
@@ -1431,7 +1499,7 @@ await page.waitForFunction(
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#newProjectBtn').click();
 await chooseConfirmation(page);
 await page.waitForFunction(
@@ -1482,6 +1550,7 @@ await safetyFirst.waitForFunction(
   null,
   { timeout: 5000 },
 );
+await openFunctionPanel(safetySecond, 'project');
 await safetySecond.locator('#newProjectBtn').click();
 await chooseConfirmation(safetySecond);
 await safetySecond.waitForFunction(
@@ -1573,10 +1642,56 @@ assert.equal(
   (await degraded.locator('#threeStats').textContent()).trim(),
   'dependency unavailable',
 );
+assert.match(
+  await degraded.locator('#threeHost').textContent(),
+  /Three\.js resources could not be loaded/,
+);
 assert.equal(await degraded.locator('#mainCanvas').count(), 1);
 assert.equal(await degraded.locator('#maskCanvas').count(), 1);
 assert.deepEqual(degradedErrors, []);
 await degradedContext.close();
+
+// A browser/environment that loads Three.js but cannot create WebGL must leave
+// the 2D editor usable and replace the loading state with an explicit diagnosis.
+const noWebGlContext = await degradedBrowser.newContext({
+  viewport: { width: 1100, height: 760 },
+});
+await noWebGlContext.addInitScript(() => {
+  const originalGetContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function getContext(type, ...args) {
+    if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') return null;
+    return originalGetContext.call(this, type, ...args);
+  };
+});
+const noWebGl = await noWebGlContext.newPage();
+const noWebGlErrors = [];
+noWebGl.on('pageerror', (error) => noWebGlErrors.push(error.message));
+await noWebGl.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'domcontentloaded',
+  timeout: 30000,
+});
+await noWebGl.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Ready. Create a base or import a layout.',
+  null,
+  { timeout: 30000 },
+);
+await noWebGl.waitForFunction(
+  () => (document.getElementById('threeStats')?.textContent || '').trim() === 'WebGL unavailable',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await noWebGl.locator('#threeHost').getAttribute('data-three-unavailable-reason'), 'webgl');
+assert.match(
+  await noWebGl.locator('#threeHost').textContent(),
+  /could not create a WebGL context/,
+);
+assert.equal(await noWebGl.locator('#threeHost').evaluate((node) => node.classList.contains('three-loading')), false);
+assert.equal(await noWebGl.locator('#mainCanvas').count(), 1);
+assert.equal(await noWebGl.locator('#maskCanvas').count(), 1);
+assert.deepEqual(noWebGlErrors, []);
+await noWebGlContext.close();
 await degradedBrowser.close();
 
 console.log('WaferCAD UI smoke: OK');

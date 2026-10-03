@@ -82,6 +82,47 @@ export function createThreeView({
   let roughInteractionCache = null;
   let currentRoughMode = 'none';
 
+  function showUnavailable({
+    status = '3D unavailable',
+    reason = 'unknown',
+    title = '3D unavailable',
+    detail = 'The 3D view could not be initialized.',
+    warning = '',
+    error = null,
+  } = {}) {
+    ready = false;
+    host.classList.remove('three-loading');
+    host.classList.add('three-unavailable');
+    host.dataset.threeUnavailableReason = reason;
+    delete host.dataset.renderError;
+
+    try {
+      renderer?.dispose?.();
+    } catch {
+      // Best-effort cleanup after partial renderer initialization.
+    }
+    renderer = null;
+    scene = null;
+    camera = null;
+    controls = null;
+    group = null;
+    axesHelper = null;
+
+    const notice = host.ownerDocument.createElement('div'),
+      heading = host.ownerDocument.createElement('strong'),
+      description = host.ownerDocument.createElement('span');
+    notice.className = 'three-unavailable-card';
+    notice.setAttribute('role', 'status');
+    heading.textContent = title;
+    description.textContent = detail;
+    notice.append(heading, description);
+    host.replaceChildren(notice);
+    stats.textContent = status;
+
+    if (warning) console.warn(warning, error);
+    return false;
+  }
+
   function currentViewport() {
     return {
       width: Math.max(2, renderer?.domElement?.clientWidth || host.clientWidth || 2),
@@ -1115,72 +1156,109 @@ export function createThreeView({
     host.classList.add('three-loading');
     stats.textContent = 'loading 3D…';
 
-    initPromise = loadDependencies().then((available) => {
-      host.classList.remove('three-loading');
-      if (!available || !THREE || !OrbitControls) {
-        console.warn('3D dependencies unavailable; continuing without the 3D view.', dependencyError);
-        host.classList.add('three-unavailable');
-        host.textContent = '3D unavailable';
-        stats.textContent = 'dependency unavailable';
-        return false;
-      }
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
-      renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
-      renderer.setClearColor(0xf5f7f9);
-
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
-      camera.up.set(0, 0, 1);
-      camera.position.set(115, -125, 95);
-
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.target.set(0, 0, 0);
-      controls.enableDamping = true;
-      controls.addEventListener('start', () => {
-        interacting = true;
-        clearRoughRefineTimer();
-        terminateRoughWorker({ invalidate: true });
-        if (roughInteractionCache) {
-          applyRoughMeshResults(
-            roughInteractionCache.results,
-            roughInteractionCache.diagnostics,
-            'interactive',
-          );
-        } else if (roughTasks.length) {
-          void requestRoughGeometry('interactive');
+    initPromise = loadDependencies()
+      .then((available) => {
+        if (!available || !THREE || !OrbitControls) {
+          return showUnavailable({
+            status: 'dependency unavailable',
+            reason: 'dependency',
+            detail: 'Three.js resources could not be loaded. Main, Mask, and Section remain available.',
+            warning: '3D dependencies unavailable; continuing without the 3D view.',
+            error: dependencyError,
+          });
         }
-        scheduleFrame();
-      });
-      controls.addEventListener('change', () => {
-        if (!interacting) scheduleDetailedRoughBuild();
-        scheduleFrame();
-      });
-      controls.addEventListener('end', () => {
-        interacting = false;
-        scheduleDetailedRoughBuild();
-        scheduleFrame();
-      });
 
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
-      const directional = new THREE.DirectionalLight(0xffffff, 2.2);
-      directional.position.set(80, -70, 130);
-      scene.add(directional);
+        try {
+          renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
+        } catch (error) {
+          return showUnavailable({
+            status: 'WebGL unavailable',
+            reason: 'webgl',
+            detail:
+              'This browser or environment could not create a WebGL context. Main, Mask, and Section remain available.',
+            warning: 'WebGL unavailable; continuing without the 3D view.',
+            error,
+          });
+        }
 
-      group = new THREE.Group();
-      scene.add(group);
-      axesHelper = new THREE.AxesHelper(12);
-      scene.add(axesHelper);
+        try {
+          renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
+          renderer.setClearColor(0xf5f7f9);
 
-      host.prepend(renderer.domElement);
-      new ResizeObserver(resize).observe(host);
-      ready = true;
-      resize();
-      fit();
-      render();
-      scheduleFrame();
-      return true;
-    });
+          scene = new THREE.Scene();
+          camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
+          camera.up.set(0, 0, 1);
+          camera.position.set(115, -125, 95);
+
+          controls = new OrbitControls(camera, renderer.domElement);
+          controls.target.set(0, 0, 0);
+          controls.enableDamping = true;
+          controls.addEventListener('start', () => {
+            interacting = true;
+            clearRoughRefineTimer();
+            terminateRoughWorker({ invalidate: true });
+            if (roughInteractionCache) {
+              applyRoughMeshResults(
+                roughInteractionCache.results,
+                roughInteractionCache.diagnostics,
+                'interactive',
+              );
+            } else if (roughTasks.length) {
+              void requestRoughGeometry('interactive');
+            }
+            scheduleFrame();
+          });
+          controls.addEventListener('change', () => {
+            if (!interacting) scheduleDetailedRoughBuild();
+            scheduleFrame();
+          });
+          controls.addEventListener('end', () => {
+            interacting = false;
+            scheduleDetailedRoughBuild();
+            scheduleFrame();
+          });
+
+          scene.add(new THREE.HemisphereLight(0xffffff, 0x7b8794, 2.25));
+          const directional = new THREE.DirectionalLight(0xffffff, 2.2);
+          directional.position.set(80, -70, 130);
+          scene.add(directional);
+
+          group = new THREE.Group();
+          scene.add(group);
+          axesHelper = new THREE.AxesHelper(12);
+          scene.add(axesHelper);
+
+          host.classList.remove('three-loading', 'three-unavailable');
+          delete host.dataset.threeUnavailableReason;
+          host.prepend(renderer.domElement);
+          new ResizeObserver(resize).observe(host);
+          ready = true;
+          resize();
+          fit();
+          render();
+          scheduleFrame();
+          return true;
+        } catch (error) {
+          return showUnavailable({
+            status: '3D initialization failed',
+            reason: 'initialization',
+            detail:
+              'The 3D renderer started but could not finish initialization. Main, Mask, and Section remain available.',
+            warning: '3D initialization failed; continuing without the 3D view.',
+            error,
+          });
+        }
+      })
+      .catch((error) =>
+        showUnavailable({
+          status: '3D initialization failed',
+          reason: 'initialization',
+          detail:
+            'The 3D renderer could not be initialized. Main, Mask, and Section remain available.',
+          warning: '3D initialization failed; continuing without the 3D view.',
+          error,
+        }),
+      );
 
     return initPromise;
   }
