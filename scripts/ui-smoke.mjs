@@ -331,6 +331,20 @@ await welcomeCheckpointPage.waitForFunction(
   null,
   { timeout: 30000 },
 );
+await welcomeCheckpointPage.waitForFunction(() => {
+  const canvas = document.getElementById('sectionCanvas');
+  const meta = document.getElementById('sectionMeta')?.textContent || '';
+  return (
+    canvas?.checkVisibility() &&
+    Number(canvas.dataset.xPxPerUm) > 0 &&
+    Number(canvas.dataset.zPxPerUm) > 0 &&
+    !/Z ×-/.test(meta)
+  );
+});
+assert.ok(
+  (await canvasInkFraction(welcomeCheckpointPage, '#sectionCanvas')) > 0.005,
+  'Visualization example Section A–B rendered blank',
+);
 await welcomeCheckpointPage.waitForFunction(
   () =>
     [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>

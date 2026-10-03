@@ -16,6 +16,16 @@ export function preferredWorkstationViewMode(width) {
   return Number(width) <= 820 ? 'main' : 'overview';
 }
 
+export function isCompactWorkstationViewport(winLike) {
+  const innerWidth = Number(winLike?.innerWidth);
+  const screenWidth = Number(winLike?.screen?.width);
+  const coarsePointer = Boolean(winLike?.matchMedia?.('(pointer: coarse)')?.matches);
+  return (
+    (Number.isFinite(innerWidth) && innerWidth <= 820) ||
+    (coarsePointer && Number.isFinite(screenWidth) && screenWidth <= 820)
+  );
+}
+
 const TOOL_META = {
   project: { id: 'settingsTools', label: 'Project', icon: '▣', hint: 'file · recovery · display' },
   base: { id: 'baseTools', label: 'Base', icon: '◇', hint: 'substrate definition' },
@@ -59,7 +69,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     currentSingleView: 'main',
     desktopViewMode: 'overview',
     viewMode: 'overview',
-    wasMobile: Number(win.innerWidth) <= 820,
+    wasMobile: isCompactWorkstationViewport(win),
     programmaticToolScroll: false,
     toolScrollRelease: 0,
     railWheelLocked: false,
@@ -114,13 +124,23 @@ export function createWorkstationUiController({ root = document, win = window } 
     }
   }
 
+  function syncToolScrollTail() {
+    if (!refs.toolScrollTail || !refs.toolContent) return;
+    refs.toolScrollTail.style.height = `${Math.max(0, refs.toolContent.clientHeight - 72)}px`;
+  }
+
   function scrollToTool(name, behavior = 'smooth') {
     const section = refs.toolSections?.get(name);
     const scroller = refs.toolContent;
     if (!section || !scroller) return;
 
+    syncToolScrollTail();
+    const sectionTop =
+      scroller.scrollTop +
+      section.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top;
     const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-    const targetTop = Math.max(0, Math.min(maxTop, section.offsetTop - 6));
+    const targetTop = Math.max(0, Math.min(maxTop, sectionTop - 6));
     state.programmaticToolScroll = true;
     win.clearTimeout(state.toolScrollRelease);
     scroller.scrollTo({ top: targetTop, behavior });
@@ -144,12 +164,24 @@ export function createWorkstationUiController({ root = document, win = window } 
 
   function scheduleViewportRefresh() {
     win.requestAnimationFrame(() => {
-      win.dispatchEvent(new Event('resize'));
+      win.requestAnimationFrame(() => {
+        win.dispatchEvent(new Event('resize'));
+      });
     });
   }
 
+  function syncCompactUi() {
+    const compact = isCompactWorkstationViewport(win);
+    root.documentElement.classList.toggle('workstation-compact-ui', compact);
+    if (!compact) {
+      refs.sectionPanel?.classList.remove('workstation-legend-open');
+      refs.sectionLayersButton?.setAttribute('aria-expanded', 'false');
+    }
+    return compact;
+  }
+
   function applyViewMode(mode, { refresh = true } = {}) {
-    const mobile = Number(win.innerWidth) <= 820;
+    const mobile = syncCompactUi();
     let nextMode = mode;
 
     if (mobile && (mode === 'overview' || mode === 'split')) {
@@ -362,6 +394,13 @@ export function createWorkstationUiController({ root = document, win = window } 
       refs.toolSections.set(name, section);
     }
 
+    const scrollTail = root.createElement('div');
+    scrollTail.className = 'workstation-tool-scroll-tail';
+    scrollTail.setAttribute('aria-hidden', 'true');
+    refs.toolContent.append(scrollTail);
+    refs.toolScrollTail = scrollTail;
+    syncToolScrollTail();
+
     refs.toolPanel.classList.remove('open');
     refs.toolPosition.textContent = TOOL_META[state.activeTool].label;
   }
@@ -369,13 +408,22 @@ export function createWorkstationUiController({ root = document, win = window } 
   function setupSectionDock() {
     const tools = refs.sectionPanel.querySelector('.view-tools');
     if (!tools) return;
-    const button = makeButton(root, 'mini-btn workstation-section-collapse', '⌄', {
+
+    const layersButton = makeButton(root, 'mini-btn workstation-section-layers', 'Layers', {
+      title: 'Show or hide the layer legend',
+      ariaLabel: 'Show or hide the layer legend',
+    });
+    layersButton.setAttribute('aria-expanded', 'false');
+
+    const collapseButton = makeButton(root, 'mini-btn workstation-section-collapse', '⌄', {
       title: 'Collapse Section A–B',
       ariaLabel: 'Collapse Section A–B',
     });
-    button.setAttribute('aria-expanded', 'true');
-    tools.append(button);
-    refs.sectionCollapseButton = button;
+    collapseButton.setAttribute('aria-expanded', 'true');
+
+    tools.append(layersButton, collapseButton);
+    refs.sectionLayersButton = layersButton;
+    refs.sectionCollapseButton = collapseButton;
   }
 
   function initialize() {
@@ -402,6 +450,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     }
 
     root.documentElement.classList.add('workstation-ui-v2');
+    syncCompactUi();
     createRail();
     createViewbar();
     createTopbarControls();
@@ -409,7 +458,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     setupToolFlyout();
     setupSectionDock();
 
-    const initialMode = preferredWorkstationViewMode(win.innerWidth);
+    const initialMode = syncCompactUi() ? 'main' : preferredWorkstationViewMode(win.innerWidth);
     if (initialMode === 'overview') applyViewMode('overview', { refresh: false });
     else applyViewMode(initialMode, { refresh: false });
 
@@ -435,6 +484,11 @@ export function createWorkstationUiController({ root = document, win = window } 
     refs.overviewButton?.addEventListener('click', () => applyViewMode('overview'));
     refs.splitButton?.addEventListener('click', () => applyViewMode('split'));
     refs.sectionCollapseButton?.addEventListener('click', toggleSectionDock);
+    refs.sectionLayersButton?.addEventListener('click', () => {
+      const open = refs.sectionPanel.classList.toggle('workstation-legend-open');
+      refs.sectionLayersButton.setAttribute('aria-expanded', String(open));
+      scheduleViewportRefresh();
+    });
     root.querySelectorAll('.view-max-btn').forEach((button) => {
       button.addEventListener('click', closeTools);
     });
@@ -494,16 +548,28 @@ export function createWorkstationUiController({ root = document, win = window } 
     });
 
     win.addEventListener('resize', () => {
-      const mobile = Number(win.innerWidth) <= 820;
+      const mobile = syncCompactUi();
       if (mobile !== state.wasMobile) {
         state.wasMobile = mobile;
+        refs.sectionPanel.classList.remove('workstation-legend-open');
+        refs.sectionLayersButton?.setAttribute('aria-expanded', 'false');
         if (mobile) {
           applyViewMode(state.currentSingleView, { refresh: false });
         } else {
           applyViewMode(state.desktopViewMode, { refresh: false });
         }
+        scheduleViewportRefresh();
       }
+      syncToolScrollTail();
       updateRailAnchor(state.activeTool);
+    });
+
+    win.visualViewport?.addEventListener('resize', () => {
+      const mobile = syncCompactUi();
+      if (mobile !== state.wasMobile) {
+        state.wasMobile = mobile;
+        applyViewMode(mobile ? state.currentSingleView : state.desktopViewMode);
+      }
     });
 
     root.addEventListener('keydown', (event) => {

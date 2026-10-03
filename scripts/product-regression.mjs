@@ -93,11 +93,15 @@ async function openFunctionPanel(page, name, clickOptions = {}) {
     return panel.getBoundingClientRect().left >= rail.getBoundingClientRect().right - 1;
   });
   await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
-  await page.evaluate((sectionName) => {
-    const scroller = document.querySelector('#toolPanel .tool-tab-content');
-    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
-    if (scroller && section) scroller.scrollTop = Math.max(0, section.offsetTop - 6);
-  }, name);
+  await page.waitForFunction(
+    (sectionName) => {
+      const scroller = document.querySelector('#toolPanel .tool-tab-content');
+      const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
+      if (!scroller || !section) return false;
+      return Math.abs(section.getBoundingClientRect().top - scroller.getBoundingClientRect().top) <= 14;
+    },
+    name,
+  );
 }
 
 async function closeFunctionPanel(page) {
@@ -183,6 +187,69 @@ async function checkLayout(page) {
     return issues;
   });
   assert.deepEqual(problems, []);
+}
+
+async function checkWorkstationShellLayout(page, name) {
+  const compact = await page.evaluate(() =>
+    document.documentElement.classList.contains('workstation-compact-ui'),
+  );
+
+  if (name === 'phone') {
+    assert.equal(compact, true, 'phone: compact workstation class is missing');
+    assert.equal(await page.locator('#mainPanel').isVisible(), true);
+    assert.equal(await page.locator('#maskPanel').isHidden(), true);
+    assert.equal(await page.locator('#threePanel').isHidden(), true);
+    assert.equal(await page.locator('#layerLegend').isHidden(), true);
+    assert.equal(await page.locator('.workstation-section-layers').isVisible(), true);
+    return;
+  }
+
+  assert.equal(compact, false, `${name}: desktop viewport should not be compact`);
+  await page.getByRole('button', { name: 'Split' }).click();
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
+  const split = await page.evaluate(() => {
+    const main = document.getElementById('mainPanel').getBoundingClientRect();
+    const three = document.getElementById('threePanel').getBoundingClientRect();
+    const stage = document.querySelector('.workstation-view-stage').getBoundingClientRect();
+    return {
+      main: { left: main.left, right: main.right, width: main.width },
+      three: { left: three.left, right: three.right, width: three.width },
+      stage: { left: stage.left, right: stage.right, width: stage.width },
+    };
+  });
+  const ratio = split.main.width / split.three.width;
+  assert.ok(ratio > 0.92 && ratio < 1.08, `${name}: Split is not balanced (${ratio})`);
+  assert.ok(
+    Math.abs(split.main.right - split.three.left) <= 2,
+    `${name}: Split contains an unexpected gap or implicit grid track`,
+  );
+  assert.ok(
+    Math.abs(split.main.left - split.stage.left) <= 2 &&
+      Math.abs(split.three.right - split.stage.right) <= 2,
+    `${name}: Split does not fill the primary stage`,
+  );
+  await page.getByRole('button', { name: 'Overview' }).click();
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById('mainCanvas');
+    if (!canvas?.checkVisibility()) return false;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    return (
+      Math.abs(canvas.width - rect.width * dpr) <= 2 &&
+      Math.abs(canvas.height - rect.height * dpr) <= 2
+    );
+  });
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
 }
 
 async function checkCompactProcessLayout(page, name) {
@@ -370,6 +437,13 @@ async function checkAB(page, name) {
   );
   const creationCanvas = await mainCanvas.boundingBox();
   assert.ok(creationCanvas);
+  if (name === 'phone') {
+    assert.ok(
+      Math.abs(creationCanvas.width - canvas.width) <= 2 &&
+        Math.abs(creationCanvas.height - canvas.height) <= 2,
+      'phone: opening Slice controls must not resize Main canvas',
+    );
+  }
   await page.mouse.move(
     creationCanvas.x + creationCanvas.width * 0.28,
     creationCanvas.y + creationCanvas.height * 0.42,
@@ -385,14 +459,8 @@ async function checkAB(page, name) {
   assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
 
   const before = await coords(page);
-  const a = await page.locator('[data-endpoint=a]').boundingBox();
-  const b = await page.locator('[data-endpoint=b]').boundingBox();
-  const liveCanvas = await mainCanvas.boundingBox();
-  assert.ok(liveCanvas);
-  const scale = Math.min(
-    (liveCanvas.width - 68) / 100000,
-    (liveCanvas.height - 68) / 100000,
-  );
+  const scale = Number(await mainCanvas.getAttribute('data-x-px-per-um'));
+  assert.ok(Number.isFinite(scale) && scale > 0, `${name}: Main render scale is unavailable`);
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
   close(after[0], nmRoundedMicron(before[0] + 16 / scale));
@@ -439,12 +507,18 @@ async function checkAB(page, name) {
   await closeFunctionPanel(page);
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
   assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
-  await page.locator('#mainZoomIn').click();
-  assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
-  await dragHandle(page, 'a', 4, 0);
-  back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
-  close((await coords(page))[0], back[0]);
-  await page.locator('#mainZoomFit').click();
+  if (name === 'phone') {
+    assert.equal(await page.locator('#mainZoomIn').isHidden(), true);
+    assert.equal(await page.locator('#mainZoomOut').isHidden(), true);
+    assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
+  } else {
+    await page.locator('#mainZoomIn').click();
+    assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
+    await dragHandle(page, 'a', 4, 0);
+    back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
+    close((await coords(page))[0], back[0]);
+    await page.locator('#mainZoomFit').click();
+  }
   await openFunctionPanel(page, 'project');
   for (const [unit, multiplier] of [
     ['nm', 1000],
@@ -464,7 +538,22 @@ async function checkAB(page, name) {
   // Closing Slice hides only the parameter panel; geometry remains directly editable.
   await page.locator('#sectionControlsBtn').click();
   assert.equal(await page.locator('#sectionCoordsPanel').isHidden(), true);
-  assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
+  await page.locator('[data-endpoint=a]').waitFor({ state: 'visible' });
+  if (name === 'phone') {
+    const closedCanvas = await mainCanvas.boundingBox();
+    assert.ok(closedCanvas);
+    assert.ok(
+      Math.abs(closedCanvas.width - canvas.width) <= 2 &&
+        Math.abs(closedCanvas.height - canvas.height) <= 2,
+      'phone: closing Slice controls must not resize Main canvas',
+    );
+  }
 }
 
 async function loadProject(page, project, name) {
@@ -668,6 +757,7 @@ try {
     await checkLayout(page);
     await checkAB(page, name);
     await checkSectionCollapse(page, name);
+    await checkWorkstationShellLayout(page, name);
     await ensurePrimaryViewVisible(page, 'three');
     await page.locator('#threePanel .three-opacity-control > summary').click();
     await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
