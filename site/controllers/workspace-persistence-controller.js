@@ -258,6 +258,29 @@ export function createWorkspacePersistenceController({
     const hasExplicitStart = new URLSearchParams(globalThis.location?.search || '').has('start');
     try {
       if (hasExplicitStart) {
+        const saved = await loadWorkspaceState();
+        if (saved && workspaceSession?.canWrite()) {
+          try {
+            await createWorkspaceRecoveryCheckpoint(saved, {
+              appCommit,
+              reason: 'pre-welcome-start',
+            });
+          } catch (error) {
+            console.error(error);
+            loadProjectSnapshot(saved);
+            snapshotManager.importRecords(saved.snapshots || []);
+            syncBaseControls();
+            syncTransformInputs();
+            renderAll();
+            renderSnapshots();
+            fit3d();
+            status(
+              `Welcome action cancelled because the current workspace could not be checkpointed: ${error.message}`,
+              'error',
+            );
+            return;
+          }
+        }
         await initializeWorkspaceStart();
       } else {
         const saved = await loadWorkspaceState();
