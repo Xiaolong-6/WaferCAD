@@ -74,6 +74,12 @@ Equal-height computational partitions are neither type and cannot generate Confo
 
 The model layer receives those wall targets and performs the actual stack mutation.
 
+### Owned material surfaces
+
+`ownedMaterialSurfacesFromTopology()` is the single source for 3D physical ownership. It splits caps by surface appearance, chooses one deterministic owner for coincident horizontal material interfaces, reconciles collinear partial-height sidewalls, and derives physical border lines. `renderer-geometry.js` is intentionally only an adapter to this result.
+
+Collinear XY ownership uses `line-intervals.js`, shared with adaptive rough-mesh seam reconciliation. Complex slab unions use the kernel's fail-soft union path; if a bulk polygon union rejects a pathological set, derivation falls back recursively rather than aborting the whole render.
+
 ### Section and 3D solid topology
 
 The same topology module derives:
@@ -113,6 +119,8 @@ The permanent test suite protects these properties:
 - material-wall classification rejects source/same-height/higher neighbors;
 - void-wall classification requires actual uncovered domain;
 - Section slices and 3D slabs/caps use the same canonical intervals;
+- coincident horizontal interfaces, partial-height sidewalls, and borders have one Kernel-v2 owner;
+- complex slab union rejection degrades through the fail-soft union path instead of crashing rendering;
 - internal material caps do not appear across computational partitions;
 - rough Etch followed by Conformal cannot create sidewall material below the etched floor;
 - front/back Step/Trench/Island and through-void Conformal benchmarks remain unchanged.

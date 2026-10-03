@@ -30,6 +30,61 @@ export function projectedPixelsPerUnit({
   return (height * ratio) / (2 * safeDistance * Math.tan(halfFov));
 }
 
+export function roughSceneTriangleBudget({
+  viewportWidth = 1,
+  viewportHeight = 1,
+  pixelRatio = 1,
+  roiFraction = 1,
+  hardCap = 900000,
+} = {}) {
+  const width = Math.max(2, Number(viewportWidth) || 2),
+    height = Math.max(2, Number(viewportHeight) || 2),
+    ratio = Math.max(0.25, Number(pixelRatio) || 1),
+    pixels = width * height * ratio * ratio,
+    roiBoost = 1 + 0.35 * (1 - Math.sqrt(clamp01(roiFraction))),
+    cap = Math.max(24000, Math.floor(Number(hardCap) || 900000));
+  return Math.min(cap, Math.max(24000, Math.floor(pixels * 0.22 * roiBoost)));
+}
+
+export function allocateRoughTriangleBudgets(requests, { totalBudget = 900000 } = {}) {
+  const normalized = (requests || []).map((request, index) => {
+      const base = Math.max(1, Math.floor(Number(request?.baseTriangles) || 1)),
+        desired = Math.max(base, Math.floor(Number(request?.desiredTriangles) || base)),
+        priority = Math.max(0.02, Math.min(1, Number(request?.priority) || 0.02));
+      return { index, base, desired, priority, allocated: base };
+    }),
+    minimum = normalized.reduce((sum, item) => sum + item.base, 0),
+    budget = Math.max(minimum, Math.floor(Number(totalBudget) || minimum));
+  let remaining = Math.max(0, budget - minimum),
+    active = normalized.filter((item) => item.desired > item.allocated);
+
+  while (remaining > 0 && active.length) {
+    const totalWeight = active.reduce(
+        (sum, item) => sum + item.priority * Math.sqrt(item.desired - item.allocated),
+        0,
+      ),
+      before = remaining;
+    for (const item of active) {
+      if (remaining <= 0) break;
+      const need = item.desired - item.allocated,
+        weight = item.priority * Math.sqrt(Math.max(1, need)),
+        share =
+          totalWeight > 0
+            ? Math.max(1, Math.floor((before * weight) / totalWeight))
+            : Math.max(1, Math.floor(before / active.length)),
+        grant = Math.min(need, share, remaining);
+      item.allocated += grant;
+      remaining -= grant;
+    }
+    active = active.filter((item) => item.desired > item.allocated);
+    if (remaining === before) break;
+  }
+
+  return normalized
+    .sort((a, b) => a.index - b.index)
+    .map((item) => item.allocated);
+}
+
 export function adaptiveRoughMeshLod({
   triangleCount = 1,
   maxEdge = 0,
@@ -43,6 +98,7 @@ export function adaptiveRoughMeshLod({
   roiFraction = 1,
   screenPriority = 1,
   maxDepth = 10,
+  triangleBudget = null,
 } = {}) {
   const triangles = Math.max(1, Math.floor(Number(triangleCount) || 1)),
     edge = Math.max(0, Number(maxEdge) || 0),
@@ -69,7 +125,7 @@ export function adaptiveRoughMeshLod({
     occupancy = Math.sqrt(clamp01(visibleFraction)),
     roiFocus = 1 + 0.45 * (1 - Math.sqrt(clamp01(roiFraction))),
     viewportPixels = width * height * ratio * ratio,
-    maxTriangles = Math.max(
+    localMaxTriangles = Math.max(
       triangles,
       Math.min(
         900000,
@@ -79,12 +135,18 @@ export function adaptiveRoughMeshLod({
         ),
       ),
     ),
+    maxTriangles =
+      triangleBudget == null
+        ? localMaxTriangles
+        : Math.max(triangles, Math.floor(Number(triangleBudget) || triangles)),
     budgetDepth = Math.max(
       0,
       Math.floor(Math.log(Math.max(1, maxTriangles / triangles)) / Math.log(4)),
     ),
     depthLimit = Math.max(0, Math.floor(Number(maxDepth) || 0)),
-    depth = Math.min(desiredDepth, budgetDepth, depthLimit);
+    cappedDesiredDepth = Math.min(desiredDepth, depthLimit),
+    desiredTriangles = triangles * 4 ** cappedDesiredDepth,
+    depth = Math.min(cappedDesiredDepth, budgetDepth);
 
   return {
     depth,
@@ -94,6 +156,10 @@ export function adaptiveRoughMeshLod({
     pxPerUnit,
     targetEdge,
     maxTriangles,
+    localMaxTriangles,
+    desiredDepth: cappedDesiredDepth,
+    desiredTriangles,
+    estimatedTriangles: triangles * 4 ** depth,
     screenPriority: priority,
   };
 }

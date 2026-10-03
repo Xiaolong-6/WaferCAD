@@ -1,12 +1,14 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
 import { implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { geometryFromRoughCap, roughCapBaseTriangles } from './rough-mesh-geometry.js';
 import { difference, intersection, isEmpty } from './vector-geometry.js';
 import {
   adaptiveRoughMeshLod,
+  allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
+  roughSceneTriangleBudget,
   roughLod,
-  roughProfileOffsetAtPoint,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 
@@ -60,6 +62,11 @@ export function createThreeView({
   let rendering = false;
   let lastLodSignature = null;
   let roughMeshes = [];
+  let roughTasks = [];
+  let roughOwnedObjects = new Set();
+  let roughRenderContext = null;
+  let roughRebuildCount = 0;
+  let surfacePlanBuildCount = 0;
   let transparentMeshes = [];
 
   function currentViewport() {
@@ -264,6 +271,11 @@ export function createThreeView({
         (sum, entry) => sum + (entry.mesh.geometry?.getAttribute('position')?.count || 0) / 3,
         0,
       ),
+      subdivisionTriangles = roughMeshes.reduce(
+        (sum, entry) =>
+          sum + (Number(entry.mesh.geometry?.userData?.roughSubdivisionTriangleCount) || 0),
+        0,
+      ),
       zones = roughMeshes.reduce(
         (sum, entry) => sum + (Number(entry.mesh.geometry?.userData?.roughLodZoneCount) || 0),
         0,
@@ -278,23 +290,27 @@ export function createThreeView({
       delete data.roughLodDepthMin;
       delete data.roughLodDepthMax;
       delete data.roughTriangleCount;
+      delete data.roughSubdivisionTriangleCount;
       delete data.roughLodZones;
       delete data.roughLodStitches;
+      delete data.roughSceneTriangleBudget;
+      delete data.roughRequestedSceneTriangleBudget;
+      delete data.roughBaseTriangleCount;
       return;
     }
     data.roughLodDepthMin = String(Math.min(...depths));
     data.roughLodDepthMax = String(Math.max(...depths));
     data.roughTriangleCount = String(Math.round(triangles));
+    data.roughSubdivisionTriangleCount = String(Math.round(subdivisionTriangles));
     data.roughLodZones = String(zones);
     data.roughLodStitches = String(stitches);
   }
 
   function maybeRebuildAdaptiveGeometry() {
-    if (rendering || !roughMeshes.length) return false;
+    if (rendering || !roughTasks.length) return false;
     const signature = adaptiveLodSignature();
     if (!signature || signature === lastLodSignature) return false;
-    render();
-    return true;
+    return rebuildAdaptiveRoughGeometry();
   }
 
   function scheduleFrame() {
@@ -338,6 +354,9 @@ export function createThreeView({
     for (const texture of textures) texture.dispose();
     for (const material of materials) material.dispose();
     roughMeshes = [];
+    roughTasks = [];
+    roughOwnedObjects = new Set();
+    roughRenderContext = null;
     transparentMeshes = [];
   }
 
@@ -443,267 +462,6 @@ export function createThreeView({
     return geometry;
   }
 
-  function triangleNormal(a, b, c) {
-    const ux = b[0] - a[0],
-      uy = b[1] - a[1],
-      uz = b[2] - a[2],
-      vx = c[0] - a[0],
-      vy = c[1] - a[1],
-      vz = c[2] - a[2],
-      nx = uy * vz - uz * vy,
-      ny = uz * vx - ux * vz,
-      nz = ux * vy - uy * vx,
-      length = Math.hypot(nx, ny, nz) || 1;
-    return [nx / length, ny / length, nz / length];
-  }
-
-  function roughCapBaseTriangles(z, normal, polys) {
-    const triangles = [];
-    let maxEdge = 0;
-    for (const poly of polys || []) {
-      const rings = poly.map((ring) =>
-          ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)),
-        ),
-        points = rings.flat();
-      if (!rings[0]?.length) continue;
-      for (const indices of THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1))) {
-        let [a, b, c] = indices.map((index) => [points[index].x, points[index].y, z]);
-        const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
-        if (cross * normal < 0) [b, c] = [c, b];
-        triangles.push([a, b, c]);
-        maxEdge = Math.max(
-          maxEdge,
-          Math.hypot(a[0] - b[0], a[1] - b[1]),
-          Math.hypot(b[0] - c[0], b[1] - c[1]),
-          Math.hypot(c[0] - a[0], c[1] - a[1]),
-        );
-      }
-    }
-    return { triangles, maxEdge };
-  }
-
-  function subdivideTriangles(triangles, depth) {
-    let current = triangles;
-    for (let level = 0; level < depth; level++) {
-      const next = [];
-      for (const [a, b, c] of current) {
-        const ab = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, a[2]],
-          bc = [(b[0] + c[0]) / 2, (b[1] + c[1]) / 2, b[2]],
-          ca = [(c[0] + a[0]) / 2, (c[1] + a[1]) / 2, c[2]];
-        next.push([a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]);
-      }
-      current = next;
-    }
-    return current;
-  }
-
-  function roughPoint(point, z, profileNormal, appearance) {
-    return [
-      point[0],
-      point[1],
-      z + profileNormal * roughProfileOffsetAtPoint(point[0], point[1], appearance),
-    ];
-  }
-
-  function roughPointNormal(point, normal, profileNormal, appearance) {
-    const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
-      step = Math.max(1e-6, feature * 0.08),
-      dx =
-        (roughProfileOffsetAtPoint(point[0] + step, point[1], appearance) -
-          roughProfileOffsetAtPoint(point[0] - step, point[1], appearance)) /
-        (2 * step),
-      dy =
-        (roughProfileOffsetAtPoint(point[0], point[1] + step, appearance) -
-          roughProfileOffsetAtPoint(point[0], point[1] - step, appearance)) /
-        (2 * step),
-      length = Math.hypot(dx, dy, 1) || 1,
-      slopeSign = normal * profileNormal;
-    return [(-slopeSign * dx) / length, (-slopeSign * dy) / length, normal / length];
-  }
-
-  function geometryFromRoughCap({
-    z,
-    normal,
-    polys,
-    appearance,
-    closeToIdeal = true,
-    lodContext = {},
-    lodZones = null,
-    profileNormal = normal,
-  }) {
-    const zones = Array.isArray(lodZones) && lodZones.length ? lodZones : [{ polys, lodContext }],
-      positions = [],
-      normals = [],
-      roughBorderPositions = [],
-      zoneResults = [];
-    let maxDepth = 0;
-
-    const edgeKey = (p, q) => {
-        const keyPoint = (point) =>
-          `${Number(point[0]).toPrecision(13)},${Number(point[1]).toPrecision(13)}`,
-          a = keyPoint(p),
-          b = keyPoint(q);
-        return a < b ? `${a}|${b}` : `${b}|${a}`;
-      },
-      polygonEdges = (zonePolys) => {
-        const edges = [];
-        for (const poly of zonePolys || []) {
-          for (const closed of poly || []) {
-            const ring =
-              closed.length > 1 &&
-              closed[0][0] === closed.at(-1)[0] &&
-              closed[0][1] === closed.at(-1)[1]
-                ? closed.slice(0, -1)
-                : closed.slice();
-            for (let index = 0; index < ring.length; index++) {
-              const p = ring[index],
-                q = ring[(index + 1) % ring.length];
-              if (Math.hypot(q[0] - p[0], q[1] - p[1]) <= 1e-12) continue;
-              edges.push({ p, q, key: edgeKey(p, q) });
-            }
-          }
-        }
-        return edges;
-      },
-      pushTriangle = (a, b, c) => {
-        const faceNormal = triangleNormal(a, b, c);
-        positions.push(...a, ...b, ...c);
-        normals.push(...faceNormal, ...faceNormal, ...faceNormal);
-      },
-      pushRoughTriangle = (a, b, c) => {
-        positions.push(...a, ...b, ...c);
-        normals.push(
-          ...roughPointNormal(a, normal, profileNormal, appearance),
-          ...roughPointNormal(b, normal, profileNormal, appearance),
-          ...roughPointNormal(c, normal, profileNormal, appearance),
-        );
-      },
-      pointAlongEdge = (p, q, t) => [
-        p[0] + (q[0] - p[0]) * t,
-        p[1] + (q[1] - p[1]) * t,
-        z,
-      ],
-      roughAlongEdge = (p, q, t) =>
-        roughPoint(pointAlongEdge(p, q, t), z, profileNormal, appearance),
-      coarseApproxAlongEdge = (p, q, t, coarseDepth) => {
-        const segments = 2 ** coarseDepth,
-          scaled = Math.max(0, Math.min(segments, t * segments)),
-          index = Math.min(segments - 1, Math.floor(scaled)),
-          local = Math.max(0, Math.min(1, scaled - index)),
-          a = roughAlongEdge(p, q, index / segments),
-          b = roughAlongEdge(p, q, (index + 1) / segments);
-        return [
-          a[0] + (b[0] - a[0]) * local,
-          a[1] + (b[1] - a[1]) * local,
-          a[2] + (b[2] - a[2]) * local,
-        ];
-      };
-
-    for (const zone of zones) {
-      if (isEmpty(zone.polys)) continue;
-      const { triangles: baseTriangles, maxEdge } = roughCapBaseTriangles(z, normal, zone.polys),
-        lod = adaptiveRoughMeshLod({
-          triangleCount: baseTriangles.length,
-          maxEdge,
-          featureSize: appearance?.featureSize,
-          ...(zone.lodContext || lodContext),
-        }),
-        depth = lod.depth,
-        triangles = subdivideTriangles(baseTriangles, depth),
-        edges = polygonEdges(zone.polys);
-      maxDepth = Math.max(maxDepth, depth);
-      zoneResults.push({ ...zone, depth, lod, edges });
-
-      for (const [a, b, c] of triangles) {
-        pushRoughTriangle(
-          roughPoint(a, z, profileNormal, appearance),
-          roughPoint(b, z, profileNormal, appearance),
-          roughPoint(c, z, profileNormal, appearance),
-        );
-      }
-    }
-
-    const edgeOwners = new Map();
-    zoneResults.forEach((zone, zoneIndex) => {
-      for (const edge of zone.edges) {
-        if (!edgeOwners.has(edge.key)) edgeOwners.set(edge.key, []);
-        edgeOwners.get(edge.key).push({ zoneIndex, edge });
-      }
-    });
-
-    const internalEdges = new Set(
-      [...edgeOwners]
-        .filter(([, owners]) => new Set(owners.map((owner) => owner.zoneIndex)).size > 1)
-        .map(([key]) => key),
-    );
-
-    // Close only true physical cap boundaries back to the ideal process plane.
-    // Internal camera-LOD boundaries are stitched below and never become skirts.
-    if (closeToIdeal) {
-      zoneResults.forEach((zone) => {
-        const edgeSegments = 2 ** zone.depth;
-        for (const edge of zone.edges) {
-          if (internalEdges.has(edge.key)) continue;
-          for (let step = 0; step < edgeSegments; step++) {
-            const t0 = step / edgeSegments,
-              t1 = (step + 1) / edgeSegments,
-              base0 = pointAlongEdge(edge.p, edge.q, t0),
-              base1 = pointAlongEdge(edge.p, edge.q, t1),
-              top0 = roughAlongEdge(edge.p, edge.q, t0),
-              top1 = roughAlongEdge(edge.p, edge.q, t1);
-            pushTriangle(base0, base1, top1);
-            pushTriangle(base0, top1, top0);
-            roughBorderPositions.push(...top0, ...top1);
-          }
-        }
-      });
-    }
-
-    // Stitch mismatched LOD boundaries by connecting the fine sampled heightfield
-    // to the piecewise-linear coarse edge. This removes T-junction cracks without
-    // introducing an ideal-plane curtain at the camera-focus boundary.
-    for (const [key, owners] of edgeOwners) {
-      if (!internalEdges.has(key) || owners.length < 2) continue;
-      const uniqueOwners = owners.filter(
-        (owner, index) => owners.findIndex((entry) => entry.zoneIndex === owner.zoneIndex) === index,
-      );
-      if (uniqueOwners.length < 2) continue;
-
-      const sorted = uniqueOwners.sort(
-          (a, b) => zoneResults[b.zoneIndex].depth - zoneResults[a.zoneIndex].depth,
-        ),
-        fine = sorted[0],
-        coarse = sorted.at(-1),
-        fineDepth = zoneResults[fine.zoneIndex].depth,
-        coarseDepth = zoneResults[coarse.zoneIndex].depth;
-      if (fineDepth <= coarseDepth) continue;
-
-      const p = fine.edge.p,
-        q = fine.edge.q,
-        fineSegments = 2 ** fineDepth;
-      for (let step = 0; step < fineSegments; step++) {
-        const t0 = step / fineSegments,
-          t1 = (step + 1) / fineSegments,
-          fine0 = roughAlongEdge(p, q, t0),
-          fine1 = roughAlongEdge(p, q, t1),
-          coarse0 = coarseApproxAlongEdge(p, q, t0, coarseDepth),
-          coarse1 = coarseApproxAlongEdge(p, q, t1, coarseDepth);
-        pushTriangle(coarse0, coarse1, fine1);
-        pushTriangle(coarse0, fine1, fine0);
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geometry.userData.roughSubdivisionDepth = maxDepth;
-    geometry.userData.roughLod = zoneResults.map((zone) => zone.lod);
-    geometry.userData.roughBorderPositions = roughBorderPositions;
-    geometry.userData.roughLodZoneCount = zoneResults.length;
-    geometry.userData.roughLodStitchCount = internalEdges.size;
-    return geometry;
-  }
-
   function geometryCenter(geometry) {
     geometry.computeBoundingBox();
     const center = new THREE.Vector3();
@@ -776,6 +534,7 @@ export function createThreeView({
     materialState,
     appearance = null,
     sortBias = 0,
+    trackAdaptiveRough = false,
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
@@ -794,8 +553,8 @@ export function createThreeView({
         sequence: transparentMeshes.length,
       });
     }
-    if (appearance) {
-      mesh.userData.surfaceAppearance = { ...appearance };
+    if (appearance) mesh.userData.surfaceAppearance = { ...appearance };
+    if (appearance && trackAdaptiveRough) {
       roughMeshes.push({
         mesh,
         material,
@@ -804,6 +563,198 @@ export function createThreeView({
       });
     }
     return mesh;
+  }
+
+  function disposeObjectResources(object) {
+    object?.geometry?.dispose?.();
+    const materials = Array.isArray(object?.material) ? object.material : [object?.material];
+    for (const material of materials) {
+      if (!material) continue;
+      material.bumpMap?.dispose?.();
+      material.dispose?.();
+    }
+  }
+
+  function clearAdaptiveRoughObjects() {
+    if (!roughOwnedObjects.size) {
+      roughMeshes = [];
+      return;
+    }
+    const owned = new Set(roughOwnedObjects);
+    transparentMeshes = transparentMeshes.filter((entry) => !owned.has(entry.mesh));
+    for (const object of owned) {
+      group?.remove(object);
+      disposeObjectResources(object);
+    }
+    roughOwnedObjects.clear();
+    roughMeshes = [];
+  }
+
+  function addBorderPositions(
+    positions,
+    { order = 100000, opacity = 1, adaptiveRough = false } = {},
+  ) {
+    if (!positions?.length) return null;
+    const edgeGeometry = new THREE.BufferGeometry();
+    edgeGeometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(positions, 3),
+    );
+    const edgeMaterial = new THREE.LineBasicMaterial({
+        color: 0x111820,
+        transparent: opacity < 0.999,
+        opacity: opacity < 0.999 ? 0.62 : 1,
+        depthTest: true,
+        depthFunc: THREE.LessEqualDepth,
+        depthWrite: false,
+      }),
+      edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+    edges.renderOrder = order;
+    group.add(edges);
+    if (adaptiveRough) roughOwnedObjects.add(edges);
+    return edges;
+  }
+
+  function roughSceneRoiFraction(model, clip) {
+    const modelArea = Math.max(1e-12, Number(model.width) * Number(model.height)),
+      visibleArea = Math.max(1e-12, boundsArea(visibleBounds(model, clip)));
+    return Math.max(0, Math.min(1, visibleArea / modelArea));
+  }
+
+  function prepareAdaptiveRoughTasks() {
+    const context = roughRenderContext;
+    if (!context || !roughTasks.length) return { tasks: [], sceneBudget: 0 };
+    const requests = [],
+      tasks = roughTasks.map((task) => {
+        const zones = roughLodZones(
+          context.model,
+          context.clip,
+          task.cap.polys,
+          task.cap.z,
+        ).map((zone) => {
+          const base = roughCapBaseTriangles(THREE, 
+              task.cap.z,
+              task.cap.normal,
+              zone.polys,
+            ),
+            preview = adaptiveRoughMeshLod({
+              triangleCount: base.triangles.length,
+              maxEdge: base.maxEdge,
+              featureSize: task.cap.appearance?.featureSize,
+              ...(zone.lodContext || {}),
+            }),
+            prepared = {
+              ...zone,
+              baseTriangles: base.triangles,
+              maxEdge: base.maxEdge,
+              triangleBudget: null,
+            };
+          requests.push({
+            zone: prepared,
+            baseTriangles: Math.max(1, base.triangles.length),
+            desiredTriangles: Math.max(1, preview.desiredTriangles),
+            priority: zone.lodContext?.screenPriority ?? 1,
+          });
+          return prepared;
+        });
+        return { ...task, zones };
+      }),
+      viewport = currentViewport(),
+      requestedSceneBudget = roughSceneTriangleBudget({
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        pixelRatio: viewport.pixelRatio,
+        roiFraction: roughSceneRoiFraction(context.model, context.clip),
+      }),
+      baseTriangleCount = requests.reduce((sum, request) => sum + request.baseTriangles, 0),
+      sceneBudget = Math.max(requestedSceneBudget, baseTriangleCount),
+      allocations = allocateRoughTriangleBudgets(requests, {
+        totalBudget: sceneBudget,
+      });
+
+    requests.forEach((request, index) => {
+      request.zone.triangleBudget = allocations[index];
+    });
+    return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount };
+  }
+
+  function rebuildAdaptiveRoughGeometry() {
+    const context = roughRenderContext;
+    clearAdaptiveRoughObjects();
+    if (!context || !roughTasks.length) {
+      lastLodSignature = null;
+      updateRoughDiagnostics();
+      return false;
+    }
+
+    const wasRendering = rendering;
+    rendering = true;
+    try {
+      const prepared = prepareAdaptiveRoughTasks();
+      for (const task of prepared.tasks) {
+        const cap = task.cap;
+        let geometry = geometryFromRoughCap(THREE, {
+          z: cap.z,
+          normal: cap.normal,
+          polys: cap.polys,
+          appearance: cap.appearance,
+          closeToIdeal: task.closeToIdeal ?? !cap.buried,
+          profileNormal: cap.profileNormal,
+          lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
+          lodZones: task.zones,
+        });
+        if (task.implant) geometry = shearImplantGeometry(geometry, task.implant);
+
+        const material = createSurfaceMaterial(task.layer, task.state, cap.appearance);
+        if (task.polygonOffset) {
+          material.polygonOffset = true;
+          material.polygonOffsetFactor = -1;
+          material.polygonOffsetUnits = -1;
+        }
+        const mesh = addSurfaceMesh(
+          geometry,
+          material,
+          task.state,
+          cap.appearance,
+          task.sortBias ?? (cap.buried ? 12 : 0),
+          true,
+        );
+        if (mesh) {
+          roughOwnedObjects.add(mesh);
+          if (task.name) mesh.name = task.name;
+        }
+
+        if (
+          task.includeBorders !== false &&
+          context.borders &&
+          !cap.buried &&
+          geometry.userData.roughBorderPositions?.length
+        ) {
+          addBorderPositions(geometry.userData.roughBorderPositions, {
+            order: 100010 + (cap.solidIndex || 0),
+            opacity: context.opacity,
+            adaptiveRough: true,
+          });
+        }
+      }
+
+      roughRebuildCount++;
+      const data = renderer?.domElement?.dataset;
+      if (data) {
+        data.roughSceneTriangleBudget = String(prepared.sceneBudget);
+        data.roughRequestedSceneTriangleBudget = String(prepared.requestedSceneBudget);
+        data.roughBaseTriangleCount = String(prepared.baseTriangleCount);
+        data.roughRebuildCount = String(roughRebuildCount);
+        data.surfacePlanBuildCount = String(surfacePlanBuildCount);
+      }
+      updateRoughMaterialLod();
+      updateTransparentOrder();
+      updateRoughDiagnostics();
+      lastLodSignature = adaptiveLodSignature();
+      return true;
+    } finally {
+      rendering = wasRendering;
+    }
   }
 
   function init() {
@@ -895,6 +846,9 @@ export function createThreeView({
         smoothCaps = new Map(),
         sidewalls = new Map();
 
+      surfacePlanBuildCount++;
+      roughRenderContext = { model, clip, opacity, borders };
+
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
         bucketKey = (part, state) => {
           const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
@@ -906,25 +860,6 @@ export function createThreeView({
           const key = bucketKey(part, state);
           if (!map.has(key)) map.set(key, { part, items: [] });
           map.get(key).items.push(part);
-        },
-        addBorderPositions = (positions, order = 100000) => {
-          if (!positions?.length) return;
-          const edgeGeometry = new THREE.BufferGeometry();
-          edgeGeometry.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(positions, 3),
-          );
-          const edgeMaterial = new THREE.LineBasicMaterial({
-            color: 0x111820,
-            transparent: opacity < 0.999,
-            opacity: opacity < 0.999 ? 0.62 : 1,
-            depthTest: true,
-            depthFunc: THREE.LessEqualDepth,
-            depthWrite: false,
-          });
-          const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-          edges.renderOrder = order;
-          group.add(edges);
         };
 
       for (const cap of plan.caps) {
@@ -937,22 +872,15 @@ export function createThreeView({
           continue;
         }
 
-        const geometry = geometryFromRoughCap({
-            z: cap.z,
-            normal: cap.normal,
-            polys: cap.polys,
-            appearance: cap.appearance,
-            closeToIdeal: !cap.buried,
-            profileNormal: cap.profileNormal,
-            lodContext: lodContextFor(model, clip, cap.polys, cap.z),
-            lodZones: roughLodZones(model, clip, cap.polys, cap.z),
-          }),
-          material = createSurfaceMaterial(layer, state, cap.appearance);
-        addSurfaceMesh(geometry, material, state, cap.appearance, cap.buried ? 12 : 0);
-
-        if (borders && !cap.buried && geometry.userData.roughBorderPositions?.length) {
-          addBorderPositions(geometry.userData.roughBorderPositions, 100010 + cap.solidIndex);
-        }
+        roughTasks.push({
+          kind: 'material',
+          cap,
+          layer,
+          state,
+          sortBias: cap.buried ? 12 : 0,
+          closeToIdeal: !cap.buried,
+          includeBorders: true,
+        });
       }
 
       for (const bucket of smoothCaps.values()) {
@@ -983,7 +911,12 @@ export function createThreeView({
         addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
       }
 
-      if (borders) addBorderPositions(plan.borderLines.flat(2), 100000);
+      if (borders) {
+        addBorderPositions(plan.borderLines.flat(2), {
+          order: 100000,
+          opacity,
+        });
+      }
 
       // Implant remains a non-material annotation. Opaque host material writes
       // depth and occludes buried Implant; translucent host surfaces intentionally
@@ -1012,46 +945,59 @@ export function createThreeView({
         const outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
-          capGeometry = shearImplantGeometry(
-            appearance
-              ? geometryFromRoughCap({
-                  z: implant.outerZ,
-                  normal: outerNormal,
-                  polys: implant.polys,
-                  appearance,
-                  closeToIdeal: false,
-                  profileNormal: outerNormal,
-                  lodContext: lodContextFor(model, clip, implant.polys, implant.outerZ),
-                  lodZones: roughLodZones(model, clip, implant.polys, implant.outerZ),
-                })
-              : geometryFromSolid({
-                  slabs: [],
-                  caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
-                }),
-            implant,
-          ),
           capState = {
             opacity: opacity * 0.3,
             transparent: true,
             depthTest: true,
             depthWrite: false,
           },
-          capMaterial = createSurfaceMaterial(
-            { color: implant.color || '#D65A6F' },
-            capState,
-            appearance,
-          );
-        capMaterial.polygonOffset = true;
-        capMaterial.polygonOffsetFactor = -1;
-        capMaterial.polygonOffsetUnits = -1;
-        const cap = addSurfaceMesh(capGeometry, capMaterial, capState, appearance, 40);
-        if (cap) cap.name = `${implant.name || implant.implantId || 'Implant'} surface`;
+          capName = `${implant.name || implant.implantId || 'Implant'} surface`;
+
+        if (appearance) {
+          roughTasks.push({
+            kind: 'implant',
+            cap: {
+              type: 'cap',
+              layerId: implant.layerId || implant.implantId || 'implant',
+              z: implant.outerZ,
+              normal: outerNormal,
+              polys: implant.polys,
+              appearance,
+              profileNormal: outerNormal,
+              buried: false,
+              solidIndex: 0,
+            },
+            layer: { color: implant.color || '#D65A6F' },
+            state: capState,
+            sortBias: 40,
+            closeToIdeal: false,
+            includeBorders: false,
+            implant,
+            polygonOffset: true,
+            name: capName,
+          });
+        } else {
+          const capGeometry = shearImplantGeometry(
+              geometryFromSolid({
+                slabs: [],
+                caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
+              }),
+              implant,
+            ),
+            capMaterial = createSurfaceMaterial(
+              { color: implant.color || '#D65A6F' },
+              capState,
+            );
+          capMaterial.polygonOffset = true;
+          capMaterial.polygonOffsetFactor = -1;
+          capMaterial.polygonOffsetUnits = -1;
+          const cap = addSurfaceMesh(capGeometry, capMaterial, capState, null, 40);
+          if (cap) cap.name = capName;
+        }
       }
 
-      updateRoughMaterialLod();
+      rebuildAdaptiveRoughGeometry();
       updateTransparentOrder();
-      updateRoughDiagnostics();
-      lastLodSignature = roughMeshes.length ? adaptiveLodSignature() : null;
       stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
     } finally {
       rendering = false;
@@ -1165,7 +1111,7 @@ export function createThreeView({
     renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
     camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
     camera.updateProjectionMatrix();
-    render();
+    rebuildAdaptiveRoughGeometry();
     renderer.render(scene, camera);
     try {
       const blob = await new Promise((resolve, reject) =>
@@ -1180,7 +1126,7 @@ export function createThreeView({
       renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
       camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
       camera.updateProjectionMatrix();
-      render();
+      rebuildAdaptiveRoughGeometry();
       scheduleFrame();
     }
   }

@@ -78,7 +78,7 @@ The formatter ignores `site/vendor/`. Vendored code must not be reformatted loca
 
 Pull requests run the fast **Quality** gate and the permanent Chromium **UI smoke**. Parser/import changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
 
-Surface/Implant changes should add both pure geometry/profile assertions and at least one real UI-path assertion. A browser pass is required when changing 3D displacement, transparency, compact Process layout, or legend interaction because syntax/unit tests alone cannot establish visual correctness.
+Surface/Implant changes should add both pure geometry/profile assertions and at least one real UI-path assertion. Changes to adaptive 3D must also preserve the scene-wide subdivision budget and prove that camera-only LOD updates do not rebuild the static surface plan. Rough triangulation belongs in `rough-mesh-geometry.js`; physical cap/sidewall/border ownership belongs in `process-topology.js`; `three-view.js` should remain scene/camera/material orchestration. A browser pass is required when changing 3D displacement, transparency, compact Process layout, or legend interaction because syntax/unit tests alone cannot establish visual correctness.
 
 ## Product and process regression
 
