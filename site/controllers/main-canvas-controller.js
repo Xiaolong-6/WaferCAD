@@ -72,6 +72,9 @@ export function createMainCanvasController({
 
     panButton?.addEventListener('click', () => setPanMode(!panMode));
     $('sectionControlsBtn')?.addEventListener('click', () => setPanMode(false));
+    root.querySelectorAll('#mainPanel .roi-tool, #clearRoiBtn').forEach((button) => {
+      button.addEventListener('click', () => setPanMode(false));
+    });
 
     main.addEventListener('pointerdown', (event) => {
       if (!panMode || isRoiDrawing() || event.isPrimary === false) return;
