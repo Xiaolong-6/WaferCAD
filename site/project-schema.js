@@ -371,16 +371,8 @@ function validateLayoutElement(element, path, budget) {
     min: element.kind === 'polygon' ? 3 : 2,
     budget,
   });
-  if (element.kind === 'polygon' && !(Math.abs(ringArea(element.points)) > 0)) {
-    fail(`${path}.points`, 'must enclose non-zero area.');
-  }
   if (element.kind === 'path') {
     assertFinite(element.width, `${path}.width`, { min: 0 });
-    const origin = element.points[0],
-      hasLength = element.points
-        .slice(1)
-        .some((point) => point[0] !== origin[0] || point[1] !== origin[1]);
-    if (!hasLength) fail(`${path}.points`, 'must span a non-zero distance.');
   }
 }
 
