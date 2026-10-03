@@ -201,6 +201,12 @@ async function checkWorkstationShellLayout(page, name) {
     assert.equal(await page.locator('#threePanel').isHidden(), true);
     assert.equal(await page.locator('#layerLegend').isHidden(), true);
     assert.equal(await page.locator('.workstation-section-layers').isVisible(), true);
+    assert.equal(await page.locator('#mainPanBtn').isVisible(), true);
+    assert.equal(await page.locator('#mainZoomOut').isVisible(), true);
+    assert.equal(await page.locator('#mainZoomIn').isVisible(), true);
+    assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
+    assert.equal(await page.locator('#sectionPanel .export-control > summary').isVisible(), true);
+    assert.equal(await page.locator('.workstation-section-collapse').isVisible(), true);
     return;
   }
 
@@ -339,6 +345,17 @@ async function checkSectionCollapse(page, name) {
     canvas = page.locator('#sectionCanvas');
 
   await canvas.scrollIntoViewIfNeeded();
+  if (name === 'phone') {
+    const dockToggle = page.locator('.workstation-section-collapse');
+    assert.equal(await page.locator('#sectionPanel .export-control > summary').isVisible(), true);
+    assert.equal((await dockToggle.textContent()).trim(), 'Hide');
+    await dockToggle.click();
+    assert.equal((await dockToggle.textContent()).trim(), 'Show');
+    assert.equal(await page.locator('#sectionBody').isHidden(), true);
+    await dockToggle.click();
+    assert.equal((await dockToggle.textContent()).trim(), 'Hide');
+    await canvas.waitFor({ state: 'visible' });
+  }
   assert.equal(await entry.isVisible(), true, `${name}: Z collapse axis entry is missing`);
   assert.equal(await editor.isHidden(), true, `${name}: collapse editor should be hidden normally`);
 
@@ -507,17 +524,45 @@ async function checkAB(page, name) {
   await closeFunctionPanel(page);
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
   assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
+  await page.locator('#mainZoomIn').click();
+  assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
+  await dragHandle(page, 'a', 4, 0);
+  back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
+  close((await coords(page))[0], back[0]);
+  await page.locator('#mainZoomFit').click();
+
   if (name === 'phone') {
-    assert.equal(await page.locator('#mainZoomIn').isHidden(), true);
-    assert.equal(await page.locator('#mainZoomOut').isHidden(), true);
-    assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
-  } else {
-    await page.locator('#mainZoomIn').click();
-    assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
-    await dragHandle(page, 'a', 4, 0);
-    back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
-    close((await coords(page))[0], back[0]);
+    const panButton = page.locator('#mainPanBtn');
+    const handleBeforePan = await page.locator('[data-endpoint=a]').boundingBox();
+    const panCanvas = await mainCanvas.boundingBox();
+    assert.ok(handleBeforePan && panCanvas);
+    await panButton.click();
+    assert.equal(await panButton.getAttribute('aria-pressed'), 'true');
+    await page.mouse.move(panCanvas.x + panCanvas.width * 0.55, panCanvas.y + panCanvas.height * 0.55);
+    await page.mouse.down();
+    await page.mouse.move(
+      panCanvas.x + panCanvas.width * 0.55 + 24,
+      panCanvas.y + panCanvas.height * 0.55 + 16,
+      { steps: 5 },
+    );
+    await page.mouse.up();
+    const handleAfterPan = await page.locator('[data-endpoint=a]').boundingBox();
+    assert.ok(handleAfterPan);
+    close(handleAfterPan.x - handleBeforePan.x, 24, 2);
+    close(handleAfterPan.y - handleBeforePan.y, 16, 2);
+    await panButton.click();
+    assert.equal(await panButton.getAttribute('aria-pressed'), 'false');
     await page.locator('#mainZoomFit').click();
+    await page.evaluate(
+      () =>
+        new Promise((resolveFrame) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+        ),
+    );
+    const handleAfterFit = await page.locator('[data-endpoint=a]').boundingBox();
+    assert.ok(handleAfterFit);
+    close(handleAfterFit.x, handleBeforePan.x, 2);
+    close(handleAfterFit.y, handleBeforePan.y, 2);
   }
   await openFunctionPanel(page, 'project');
   for (const [unit, multiplier] of [
