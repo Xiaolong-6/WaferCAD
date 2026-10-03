@@ -67,9 +67,10 @@ export function createWorkstationUiController({ root = document, win = window } 
 
   const refs = {};
 
-  function updateProjectMeta() {
+  function updateProjectMeta(explicitName = '') {
     if (!refs.topMeta) return;
-    const value = root.getElementById('projectNameInput')?.value?.trim();
+    const value =
+      String(explicitName || '').trim() || root.getElementById('projectNameInput')?.value?.trim();
     refs.topMeta.textContent = value || 'Untitled';
   }
 
@@ -137,6 +138,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     }
     refs.toolPanel.classList.add('open');
     setActiveRail(name);
+    win.requestAnimationFrame(() => updateRailAnchor(name));
     scrollToTool(name, behavior);
   }
 
@@ -433,7 +435,10 @@ export function createWorkstationUiController({ root = document, win = window } 
     refs.splitButton?.addEventListener('click', () => applyViewMode('split'));
     refs.sectionCollapseButton?.addEventListener('click', toggleSectionDock);
 
-    root.getElementById('projectNameInput')?.addEventListener('input', updateProjectMeta);
+    root.getElementById('projectNameInput')?.addEventListener('input', () => updateProjectMeta());
+    root.addEventListener('wafercad:project-name-sync', (event) => {
+      updateProjectMeta(event.detail?.name);
+    });
 
     refs.rail.addEventListener(
       'wheel',
@@ -458,6 +463,15 @@ export function createWorkstationUiController({ root = document, win = window } 
     refs.toolContent.addEventListener('scroll', () => {
       if (state.programmaticToolScroll || scrollFrame) return;
       scrollFrame = win.requestAnimationFrame(() => {
+        const atBottom =
+          refs.toolContent.scrollTop + refs.toolContent.clientHeight >=
+          refs.toolContent.scrollHeight - 2;
+        if (atBottom) {
+          setActiveRail(WORKSTATION_TOOL_ORDER.at(-1));
+          scrollFrame = 0;
+          return;
+        }
+
         const referenceTop = refs.toolContent.getBoundingClientRect().top + 14;
         let bestName = state.activeTool;
         let bestDistance = Number.POSITIVE_INFINITY;
