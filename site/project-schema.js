@@ -1,6 +1,6 @@
 export const CURRENT_PROJECT_VERSION = 13;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
-export const PROJECT_LENGTH_LIMIT_UM = 1e9;
+export const PROJECT_LENGTH_LIMIT_UM = PROJECT_COORDINATE_LIMIT_UM * 2;
 
 const LIMITS = {
   layers: 10000,
