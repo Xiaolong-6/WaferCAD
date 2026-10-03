@@ -292,6 +292,7 @@ const {
   worldToCanvas,
   canvasToWorld,
   resetPlanView,
+  panPlanView,
   zoomPlanView,
   drawPlanAxes,
 } = planView;
@@ -1061,6 +1062,7 @@ const mainCanvasController = createMainCanvasController({
   worldToCanvas,
   canvasToWorld,
   zoomPlanView,
+  panPlanView,
   resetPlanView,
   xyText,
   renderMain,
