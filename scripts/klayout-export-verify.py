@@ -44,4 +44,31 @@ for name in ("wafercad-export.gds", "wafercad-export.oas"):
         }
     )
 
+large_path = root / "wafercad-export-large-layer.oas"
+large_layout = kdb.Layout()
+large_layout.read(str(large_path))
+large_top = list(large_layout.top_cells())[0]
+large_layers = {
+    (info.layer, info.datatype)
+    for index in large_layout.layer_indexes()
+    for info in [large_layout.get_info(index)]
+    if not large_top.shapes(index).is_empty()
+}
+if (40000, 17) not in large_layers:
+    raise SystemExit(
+        f"{large_path.name}: expected OASIS layer/datatype 40000/17, got {sorted(large_layers)}"
+    )
+results.append(
+    {
+        "file": large_path.name,
+        "top_cell": large_top.name,
+        "layers": sorted([list(item) for item in large_layers]),
+        "bbox_um": [
+            large_top.bbox().width() * large_layout.dbu,
+            large_top.bbox().height() * large_layout.dbu,
+        ],
+        "dbu_um": large_layout.dbu,
+    }
+)
+
 print(json.dumps({"results": results}))
