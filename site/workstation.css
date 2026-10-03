@@ -780,3 +780,22 @@ html.workstation-ui-v2 .status-action:hover {
     transition: none;
   }
 }
+
+
+/* Preserve the existing Max/Restore behavior after Main/Mask/3D move into the view stage. */
+html.workstation-ui-v2 body.view-maximized .workstation-layout-actions {
+  visibility: hidden;
+}
+
+html.workstation-ui-v2 body.view-maximized .view-panel.is-maximized {
+  inset: 40px 2px 20px calc(var(--wc-rail-width) + 1px);
+  z-index: 65;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 820px) {
+  html.workstation-ui-v2 body.view-maximized .view-panel.is-maximized {
+    inset-top: 44px;
+  }
+}
