@@ -69,6 +69,7 @@ export function createProjectController({
         syncTransformInputs();
         renderAll();
         fit3d();
+        onProjectChanged();
         status(`Restored snapshot "${record.name}".`);
       };
 
