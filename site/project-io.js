@@ -291,15 +291,16 @@ export function prepareProjectForWorkspaceStorage(project) {
   }
 
   if (isObject(project.snapshotBranches)) {
-    stored.snapshotBranches = structuredClone(project.snapshotBranches);
-    stored.snapshotBranches.nodes = (project.snapshotBranches.nodes || []).map((node) => {
+    const { nodes = [], branches = [], ...branchMetadata } = project.snapshotBranches;
+    stored.snapshotBranches = structuredClone(branchMetadata);
+    stored.snapshotBranches.nodes = nodes.map((node) => {
       const storedNode = structuredClone(node);
       if (isObject(node.state)) {
         storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets);
       }
       return storedNode;
     });
-    stored.snapshotBranches.branches = (project.snapshotBranches.branches || []).map((branch) => {
+    stored.snapshotBranches.branches = branches.map((branch) => {
       const storedBranch = structuredClone(branch);
       if (isObject(branch.headState)) {
         storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets);
@@ -436,15 +437,16 @@ export function prepareProjectForStorage(project) {
   }
 
   if (isObject(project.snapshotBranches)) {
-    stored.snapshotBranches = structuredClone(project.snapshotBranches);
-    stored.snapshotBranches.nodes = (project.snapshotBranches.nodes || []).map((node) => {
+    const { nodes = [], branches = [], ...branchMetadata } = project.snapshotBranches;
+    stored.snapshotBranches = structuredClone(branchMetadata);
+    stored.snapshotBranches.nodes = nodes.map((node) => {
       const storedNode = structuredClone(node);
       if (isObject(node.state)) {
         storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets, { quantize: true });
       }
       return storedNode;
     });
-    stored.snapshotBranches.branches = (project.snapshotBranches.branches || []).map((branch) => {
+    stored.snapshotBranches.branches = branches.map((branch) => {
       const storedBranch = structuredClone(branch);
       if (isObject(branch.headState)) {
         storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets, { quantize: true });
