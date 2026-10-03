@@ -2,6 +2,7 @@ import { migrateProjectFile, validateProjectFile } from './project-schema.js';
 
 export const MAX_PROJECT_FILE_BYTES = 256 * 1024 * 1024;
 export const PROJECT_LENGTH_QUANTUM_UM = 0.0001;
+export const DOWNLOAD_URL_REVOKE_DELAY_MS = 30_000;
 
 const STORAGE_ENCODING = 'shared-assets-v1';
 
@@ -472,14 +473,23 @@ export function serializeProject(project, maxBytes = MAX_PROJECT_FILE_BYTES) {
   return serializedProject(project, maxBytes).text;
 }
 
-export function downloadProject(project, filename = 'wafercad-project.json') {
+export function downloadProject(project, filename = 'wafercad-project.wafercad') {
   const { blob } = serializedProject(project, MAX_PROJECT_FILE_BYTES);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  anchor.hidden = true;
+  document.body.append(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+
+  // Revoking synchronously can invalidate the Blob URL before the browser has
+  // actually started consuming it. Keep it alive long enough for the download
+  // handoff, then release it to avoid leaking object URLs.
+  setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_DELAY_MS);
+
+  return { requested: true, filename, bytes: blob.size };
 }
 
 export async function readProjectFile(file) {
