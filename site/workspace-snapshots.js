@@ -361,12 +361,21 @@ export function createSnapshotManager({
 
   function createBranchFromCursor(name = '') {
     const context = continuationContext();
-    if (!context?.snapshotId) {
-      throw new Error('Create a snapshot before branching from this historical state.');
+    if (!context) throw new Error('The current process state is already at the branch HEAD.');
+
+    let snapshotId = context.snapshotId;
+    let snapshotName = context.snapshotName;
+    if (!snapshotId) {
+      const branchPoint = create(
+        context.snapshotName || `${context.branchName || 'Process'} branch point`,
+      );
+      snapshotId = branchPoint.id;
+      snapshotName = branchPoint.name;
     }
+
     return createBranch(
-      context.snapshotId,
-      name || `${context.snapshotName || 'Process'} continuation`,
+      snapshotId,
+      name || `${snapshotName || 'Process'} continuation`,
     );
   }
 
