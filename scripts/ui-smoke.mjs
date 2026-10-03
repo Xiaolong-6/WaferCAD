@@ -1214,10 +1214,14 @@ await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), false);
 try {
-  await page
-    .locator('#layerLegend .legend-name')
-    .filter({ hasText: 'Draw probe' })
-    .waitFor({ timeout: 30000 });
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('#layerLegend .legend-name')].some(
+        (input) => input.value === 'Draw probe',
+      ),
+    null,
+    { timeout: 30000 },
+  );
 } catch (error) {
   console.error('Draw probe diagnostics:', JSON.stringify(await processDiagnostics(page)));
   throw error;
