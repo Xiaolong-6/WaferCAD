@@ -107,6 +107,67 @@ const launchOptions = {
   ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
 };
 const browser = await chromium.launch(launchOptions);
+
+// Startup must never expose the legacy/raw workspace while the workstation
+// stylesheet or DOM transformation is still pending.
+const bootPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const bootErrors = [];
+let releaseWorkstationCss;
+let workstationCssSeen;
+let appRequestedBeforeCss = false;
+const workstationCssGate = new Promise((resolve) => {
+  releaseWorkstationCss = resolve;
+});
+const workstationCssRequest = new Promise((resolve) => {
+  workstationCssSeen = resolve;
+});
+bootPage.on('pageerror', (error) => bootErrors.push(error.message));
+await bootPage.route('**/workstation.css*', async (route) => {
+  workstationCssSeen();
+  await workstationCssGate;
+  await route.continue();
+});
+await bootPage.route('**/app.js*', async (route) => {
+  appRequestedBeforeCss = true;
+  await route.continue();
+});
+const bootNavigation = bootPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'domcontentloaded',
+  timeout: 30000,
+});
+await workstationCssRequest;
+assert.equal(
+  await bootPage.evaluate(() => document.documentElement.classList.contains('workstation-boot')),
+  true,
+);
+assert.equal(
+  await bootPage.locator('.app-shell').evaluate((element) => getComputedStyle(element).visibility),
+  'hidden',
+);
+assert.equal(await bootPage.locator('#workstationBootScreen').isVisible(), true);
+assert.equal(await bootPage.locator('.workstation-rail').count(), 0);
+assert.equal(appRequestedBeforeCss, false);
+
+releaseWorkstationCss();
+await bootNavigation;
+await bootPage.waitForFunction(
+  () => document.documentElement.dataset.appReady === 'true',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(
+  await bootPage.evaluate(() => document.documentElement.classList.contains('workstation-boot')),
+  false,
+);
+assert.equal(
+  await bootPage.locator('.app-shell').evaluate((element) => getComputedStyle(element).visibility),
+  'visible',
+);
+assert.equal(await bootPage.locator('.workstation-rail').isVisible(), true);
+assert.equal(await bootPage.locator('#workstationBootScreen').isVisible(), false);
+assert.deepEqual(bootErrors, []);
+await bootPage.close();
+
 const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
 const errors = [];
 

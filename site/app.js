@@ -1256,6 +1256,17 @@ updateOperationUI();
 maskImportController.syncTransformInputs();
 renderAll();
 fit3d();
+
+if (
+  !document.documentElement.classList.contains('workstation-ui-v2') ||
+  !document.querySelector('.workstation-rail') ||
+  !document.querySelector('.workstation-view-stage')
+) {
+  throw new Error('Workstation UI failed to initialize.');
+}
+
 document.documentElement.dataset.appReady = 'true';
+document.documentElement.classList.remove('workstation-boot');
+document.getElementById('workstationBootScreen')?.setAttribute('aria-hidden', 'true');
 status('Ready. Create a base or import a layout.');
 void workspacePersistenceController.initializePersistedWorkspace();
