@@ -15,6 +15,7 @@ export function createProjectController({
   fit3d,
   status,
   onProjectChanged = () => {},
+  checkpointBeforeReplace = async () => false,
   normalizedProjectName,
   getProjectName,
   setProjectName,
@@ -60,7 +61,14 @@ export function createProjectController({
       restoreButton.type = 'button';
       restoreButton.className = 'snapshot-action';
       restoreButton.textContent = 'Restore';
-      restoreButton.onclick = () => {
+      restoreButton.onclick = async () => {
+        try {
+          await checkpointBeforeReplace('pre-snapshot-restore');
+        } catch (error) {
+          console.error(error);
+          status(`Snapshot restore cancelled: ${error.message}`, 'error');
+          return;
+        }
         if (!snapshotManager.restore(record.id)) {
           status('Snapshot restore failed validation.');
           return;
@@ -107,6 +115,7 @@ export function createProjectController({
   async function openProjectFile(file) {
     try {
       const project = await readProjectFile(file);
+      await checkpointBeforeReplace('pre-open-project');
       if (!project.name) {
         project.name =
           String(file.name || '')
@@ -172,19 +181,25 @@ export function createProjectController({
       scheduleWorkspacePersistence();
     };
 
-    $('newProjectBtn').onclick = () => {
+    $('newProjectBtn').onclick = async () => {
       if (!globalThis.confirm('New project will replace the current workspace. Continue?')) return;
-      void clearWorkspaceState().catch((error) => console.warn('Could not clear autosave.', error));
-      resetProjectState();
-      resetRoughDraftControls();
-      clearRoiDrawingMode();
-      clearMaskRoiDrawingMode();
-      snapshotManager.clear();
-      syncBaseControls();
-      renderAll();
-      renderSnapshots();
-      fit3d();
-      status('New empty project.');
+      try {
+        await checkpointBeforeReplace('pre-new-project');
+        await clearWorkspaceState();
+        resetProjectState();
+        resetRoughDraftControls();
+        clearRoiDrawingMode();
+        clearMaskRoiDrawingMode();
+        snapshotManager.clear();
+        syncBaseControls();
+        renderAll();
+        renderSnapshots();
+        fit3d();
+        status('New empty project.');
+      } catch (error) {
+        console.error(error);
+        status(`New project cancelled: ${error.message}`, 'error');
+      }
     };
 
     $('exportProjectBtn').onclick = () => {
