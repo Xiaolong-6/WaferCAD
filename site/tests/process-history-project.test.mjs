@@ -82,7 +82,7 @@ function validProject(processRevision = 0) {
       main: { zoom: 1, panX: 0, panY: 0 },
     },
     display: {
-      xyUnit: 'µm',
+      xyUnit: 'um',
       structurePalette: 'balanced',
       customStructurePalette: null,
     },
