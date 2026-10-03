@@ -64,6 +64,7 @@ export function createProjectStateController({
         threeShowBorders: state.threeShowBorders,
         sectionScaleMode: state.sectionScaleMode,
         sectionShowBorders: state.sectionShowBorders,
+        sectionCollapse: state.sectionCollapse,
       },
     };
 
@@ -99,7 +100,16 @@ export function createProjectStateController({
       sectionScaleMode = ['auto', 'physical'].includes(project.display?.sectionScaleMode)
         ? project.display.sectionScaleMode
         : 'auto',
-      sectionShowBorders = Boolean(project.display?.sectionShowBorders);
+      sectionShowBorders = Boolean(project.display?.sectionShowBorders),
+      sectionCollapse =
+        project.display?.sectionCollapse &&
+        Number.isFinite(Number(project.display.sectionCollapse.top)) &&
+        Number.isFinite(Number(project.display.sectionCollapse.bottom))
+          ? {
+              top: Number(project.display.sectionCollapse.top),
+              bottom: Number(project.display.sectionCollapse.bottom),
+            }
+          : null;
 
     applyState({
       model,
@@ -131,6 +141,7 @@ export function createProjectStateController({
       threeShowBorders,
       sectionScaleMode,
       sectionShowBorders,
+      sectionCollapse,
       ...(project.name ? { projectName: project.name } : {}),
       planViews: project.planViews,
     });
@@ -162,6 +173,7 @@ export function createProjectStateController({
       projectName: 'Untitled',
       sectionScaleMode: 'auto',
       sectionShowBorders: previous.sectionShowBorders,
+      sectionCollapse: null,
       xyDisplayUnit: previous.xyDisplayUnit,
       activeStructurePalette: previous.activeStructurePalette,
       customStructurePalette: previous.customStructurePalette,
