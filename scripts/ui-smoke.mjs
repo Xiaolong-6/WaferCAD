@@ -767,6 +767,7 @@ const downloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
 const download = await downloadPromise;
 assert.equal(download.suggestedFilename(), 'UI conformal project.wafercad');
+assert.match(await page.locator('#statusText').textContent(), /Download requested/);
 const savedPath = await download.path();
 assert.ok(savedPath);
 const saved = JSON.parse(await readFile(savedPath, 'utf8'));
@@ -1619,6 +1620,22 @@ assert.equal(
     .evaluateAll((inputs) => inputs.some((input) => input.value === 'Continuation probe')),
   false,
 );
+
+// Project export is accepted only after the browser emits a real download event.
+// Save the captured file and verify that snapshot history survived serialization.
+const expectedSnapshotCount = Number(await page.locator('#snapshotCount').textContent());
+await openFunctionPanel(page, 'project');
+await page.locator('#projectNameInput').fill('Snapshot export check');
+const snapshotExportPromise = page.waitForEvent('download');
+await page.locator('#exportProjectBtn').click();
+const snapshotExport = await snapshotExportPromise;
+assert.equal(snapshotExport.suggestedFilename(), 'Snapshot export check.wafercad');
+assert.match(await page.locator('#statusText').textContent(), /Download requested/);
+const snapshotExportPath = await snapshotExport.path();
+assert.ok(snapshotExportPath);
+const snapshotExportedProject = JSON.parse(await readFile(snapshotExportPath, 'utf8'));
+assert.equal(snapshotExportedProject.snapshots.length, expectedSnapshotCount);
+assert.equal(snapshotExportedProject.snapshotBranches.branches.length, 3);
 
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await openFunctionPanel(page, 'project');
