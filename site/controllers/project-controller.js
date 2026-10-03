@@ -361,7 +361,15 @@ export function createProjectController({
         ? node.operation.face[0].toUpperCase() + node.operation.face.slice(1)
         : '';
       const area = node.operation?.areaLabel || '';
-      meta.textContent = [face, area, `r${node.processRevision}`].filter(Boolean).join(' · ');
+      const legacyUnavailable = !isHead && !node.restorable;
+      meta.textContent = [
+        face,
+        area,
+        `r${node.processRevision}`,
+        legacyUnavailable ? 'legacy · no checkpoint' : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
 
       body.append(label, meta);
       row.append(marker, body);
