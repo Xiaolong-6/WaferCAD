@@ -47,4 +47,20 @@ const elements = [
 
 await writeFile(path.join(output, 'wafercad-export.gds'), serializeGDS(elements));
 await writeFile(path.join(output, 'wafercad-export.oas'), serializeOASIS(elements));
+await writeFile(
+  path.join(output, 'wafercad-export-large-layer.oas'),
+  serializeOASIS([
+    {
+      kind: 'polygon',
+      layer: 40000,
+      datatype: 17,
+      points: [
+        [0, 0],
+        [6, 0],
+        [6, 4],
+        [0, 4],
+      ],
+    },
+  ]),
+);
 console.log(output);
