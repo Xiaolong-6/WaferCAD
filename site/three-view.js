@@ -867,7 +867,7 @@ export function createThreeView({
         return false;
       }
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
       renderer.setClearColor(0xf5f7f9);
 
@@ -1213,26 +1213,37 @@ export function createThreeView({
     if (!ready || !renderer || !scene || !camera) throw new Error('3D view is unavailable.');
     const rect = host.getBoundingClientRect(),
       oldPixelRatio = renderer.getPixelRatio(),
-      multiplier = Math.max(1, Math.min(4, Number(scale) || 3));
+      multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
+      width = Math.max(2, rect.width),
+      height = Math.max(2, rect.height),
+      captureRenderer = new THREE.WebGLRenderer({
+        antialias: true,
+        preserveDrawingBuffer: true,
+      });
+
+    captureRenderer.setPixelRatio(multiplier);
+    captureRenderer.setSize(width, height, false);
+    captureRenderer.setClearColor(0xf5f7f9);
+    captureRenderer.outputColorSpace = renderer.outputColorSpace;
+    captureRenderer.toneMapping = renderer.toneMapping;
+    captureRenderer.toneMappingExposure = renderer.toneMappingExposure;
 
     renderer.setPixelRatio(multiplier);
-    renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
-    camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
     rebuildAdaptiveRoughGeometry();
-    renderer.render(scene, camera);
     try {
-      const blob = await new Promise((resolve, reject) =>
-        renderer.domElement.toBlob(
+      captureRenderer.render(scene, camera);
+      return await new Promise((resolve, reject) =>
+        captureRenderer.domElement.toBlob(
           (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),
           'image/png',
         ),
       );
-      return blob;
     } finally {
+      captureRenderer.dispose();
       renderer.setPixelRatio(oldPixelRatio);
-      renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
-      camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
       rebuildAdaptiveRoughGeometry();
       scheduleFrame();
