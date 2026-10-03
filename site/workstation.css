@@ -796,6 +796,6 @@ html.workstation-ui-v2 body.view-maximized .view-panel.is-maximized {
 
 @media (max-width: 820px) {
   html.workstation-ui-v2 body.view-maximized .view-panel.is-maximized {
-    inset-top: 44px;
+    top: 44px;
   }
 }
