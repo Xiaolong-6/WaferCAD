@@ -1720,11 +1720,12 @@ await page.waitForTimeout(50);
 let milestoneRow = page.locator('.snapshot-milestone-row').first();
 await milestoneRow.locator('.snapshot-more-trigger').click();
 await milestoneRow.locator('.snapshot-more-popover button').first().click();
-await page.waitForFunction(
-  () =>
-    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
-      /pre-snapshot-restore/.test(option.textContent || ''),
-    ),
+await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+assert.equal(
+  await page.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
+    options.some((option) => /pre-snapshot-restore/.test(option.textContent || '')),
+  ),
+  false,
 );
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 assert.equal(await page.locator('.snapshot-more-trigger').count(), 2);
@@ -1750,7 +1751,7 @@ await page.locator('#snapshotBranchSelect').selectOption('main');
 await page.waitForFunction(
   () => /Switched to variant "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
 );
-assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.2);
 
 // A milestone used as a variant origin cannot be deleted silently.
 milestoneRow = page.locator('.snapshot-milestone-row').first();
