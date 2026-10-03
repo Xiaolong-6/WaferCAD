@@ -450,12 +450,16 @@ async function checkAB(page, name) {
   const before = await coords(page);
   const a = await page.locator('[data-endpoint=a]').boundingBox();
   const b = await page.locator('[data-endpoint=b]').boundingBox();
-  const liveCanvas = await mainCanvas.boundingBox();
-  assert.ok(liveCanvas);
-  const scale = Math.min(
-    (liveCanvas.width - 68) / 100000,
-    (liveCanvas.height - 68) / 100000,
-  );
+  assert.ok(a && b);
+  const screenDx = b.x + b.width / 2 - (a.x + a.width / 2);
+  const screenDy = b.y + b.height / 2 - (a.y + a.height / 2);
+  const worldDx = before[2] - before[0];
+  const worldDy = before[3] - before[1];
+  const scaleCandidates = [];
+  if (Math.abs(worldDx) > 1e-9) scaleCandidates.push(Math.abs(screenDx / worldDx));
+  if (Math.abs(worldDy) > 1e-9) scaleCandidates.push(Math.abs(screenDy / worldDy));
+  const scale = Math.max(...scaleCandidates);
+  assert.ok(Number.isFinite(scale) && scale > 0, `${name}: could not derive live Main px/µm`);
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
   close(after[0], nmRoundedMicron(before[0] + 16 / scale));
