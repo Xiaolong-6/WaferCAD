@@ -64,8 +64,10 @@ There is no application build step.
 15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface.
 16. Main/Mask morphology cues must remain subtle overlays that do not replace the underlying material/mask color language.
 17. Base rebuilds remain reversible.
-18. Snapshots are independent immutable workspace state; snapshot records must not recursively contain snapshots.
-19. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
+18. Snapshots are independent immutable workspace state; snapshot records must not recursively contain snapshots or snapshot-branch metadata.
+19. Snapshot branch graphs must keep valid snapshot/branch references. Branch HEAD is independent per branch, and restoring an old snapshot must not silently rewrite HEAD or the active branch.
+20. Existing projects without branch metadata must normalize into one linear Main branch without changing snapshot state.
+21. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 
 ## Source style
