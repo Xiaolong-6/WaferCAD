@@ -238,8 +238,23 @@ export function prepareProjectForWorkspaceStorage(project) {
         createdAt: record.createdAt,
         ...(record.branchId ? { branchId: record.branchId } : {}),
         ...(record.parentId ? { parentId: record.parentId } : {}),
+        ...(record.historyNodeId ? { historyNodeId: record.historyNodeId } : {}),
         state,
       };
+    });
+  }
+
+  if (isObject(project.snapshotBranches)) {
+    stored.snapshotBranches = structuredClone(project.snapshotBranches);
+    stored.snapshotBranches.branches = (project.snapshotBranches.branches || []).map((branch) => {
+      const storedBranch = structuredClone(branch);
+      if (isObject(branch.headState)) {
+        const state = cloneCore(branch.headState, { model: false, layout: false });
+        state.modelRef = modelAssets.resolve(branch.headState.model);
+        state.layoutRef = layoutAssets.resolve(branch.headState.layout);
+        storedBranch.headState = state;
+      }
+      return storedBranch;
     });
   }
 
@@ -322,6 +337,17 @@ function assertQuantizedProjectGeometryPreserved(before, after) {
       `snapshots[${index}].state.layout`,
     );
   }
+
+  const originalBranches = before?.snapshotBranches?.branches || [],
+    storedBranches = after?.snapshotBranches?.branches || [];
+  for (let index = 0; index < originalBranches.length; index++) {
+    if (!originalBranches[index]?.headState) continue;
+    assertLayoutGeometryPreserved(
+      originalBranches[index]?.headState?.layout,
+      storedBranches[index]?.headState?.layout,
+      `snapshotBranches.branches[${index}].headState.layout`,
+    );
+  }
 }
 
 export function prepareProjectForStorage(project) {
@@ -345,8 +371,24 @@ export function prepareProjectForStorage(project) {
         createdAt: record.createdAt,
         ...(record.branchId ? { branchId: record.branchId } : {}),
         ...(record.parentId ? { parentId: record.parentId } : {}),
+        ...(record.historyNodeId ? { historyNodeId: record.historyNodeId } : {}),
         state,
       };
+    });
+  }
+
+  if (isObject(project.snapshotBranches)) {
+    stored.snapshotBranches = structuredClone(project.snapshotBranches);
+    stored.snapshotBranches.branches = (project.snapshotBranches.branches || []).map((branch) => {
+      const storedBranch = structuredClone(branch);
+      if (isObject(branch.headState)) {
+        const state = cloneCore(branch.headState, { model: false, layout: false });
+        quantizeProjectLengths(state);
+        state.modelRef = modelAssets.resolve(branch.headState.model);
+        state.layoutRef = layoutAssets.resolve(branch.headState.layout);
+        storedBranch.headState = state;
+      }
+      return storedBranch;
     });
   }
 
@@ -385,6 +427,19 @@ export function expandProjectStorage(project) {
   const sharedModels = Array.isArray(project.sharedModels) ? project.sharedModels : [];
   for (const record of project.snapshots || []) {
     const state = record?.state;
+    if (!isObject(state)) continue;
+    if (state.layout == null && state.layoutRef != null) {
+      state.layout = resolveAsset(state.layoutRef, project.layout, sharedLayouts, 'layout');
+    }
+    if (state.model == null && state.modelRef != null) {
+      state.model = resolveAsset(state.modelRef, project.model, sharedModels, 'model');
+    }
+    delete state.layoutRef;
+    delete state.modelRef;
+  }
+
+  for (const branch of project.snapshotBranches?.branches || []) {
+    const state = branch?.headState;
     if (!isObject(state)) continue;
     if (state.layout == null && state.layoutRef != null) {
       state.layout = resolveAsset(state.layoutRef, project.layout, sharedLayouts, 'layout');
