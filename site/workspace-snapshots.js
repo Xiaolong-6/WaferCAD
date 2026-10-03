@@ -2,6 +2,33 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function deepEqual(left, right) {
+  const pending = [[left, right]];
+  while (pending.length) {
+    const [a, b] = pending.pop();
+    if (Object.is(a, b)) continue;
+    if (typeof a !== typeof b || a === null || b === null) return false;
+    if (typeof a !== 'object') return false;
+
+    const aArray = Array.isArray(a);
+    if (aArray !== Array.isArray(b)) return false;
+    if (aArray) {
+      if (a.length !== b.length) return false;
+      for (let index = 0; index < a.length; index++) pending.push([a[index], b[index]]);
+      continue;
+    }
+
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    for (const key of aKeys) {
+      if (!Object.hasOwn(b, key)) return false;
+      pending.push([a[key], b[key]]);
+    }
+  }
+  return true;
+}
+
 function createStateCloner() {
   const layoutAssets = new WeakMap();
   const modelAssets = new WeakMap();
@@ -139,6 +166,7 @@ export function createSnapshotManager({
   let activeBranchId = MAIN_SNAPSHOT_BRANCH_ID;
   let cursorNodeId = null;
   let cursorSnapshotId = null;
+  let cursorBaselineState = null;
   const cloneState = createStateCloner();
 
   function branchById(id) {
@@ -317,9 +345,11 @@ export function createSnapshotManager({
   function restoreById(id) {
     const record = recordById(id);
     if (!record || !validateState(record.state)) return false;
-    restore(cloneState(record.state));
+    const restoredState = cloneState(record.state);
+    restore(restoredState);
     cursorNodeId = record.historyNodeId || null;
     cursorSnapshotId = record.id;
+    cursorBaselineState = restoredState;
     return true;
   }
 
@@ -332,9 +362,11 @@ export function createSnapshotManager({
     if (!branch) return false;
 
     activeBranchId = branch.id;
-    restore(cloneState(state));
+    const restoredState = cloneState(state);
+    restore(restoredState);
     cursorNodeId = node.id;
     cursorSnapshotId = null;
+    cursorBaselineState = restoredState;
     return true;
   }
 
@@ -383,6 +415,7 @@ export function createSnapshotManager({
     activeBranchId = branch.id;
     cursorNodeId = branch.headNodeId;
     cursorSnapshotId = source.id;
+    cursorBaselineState = cloneState(capture());
     return branchView(branch, activeBranchId, records, historyNodes);
   }
 
@@ -395,13 +428,16 @@ export function createSnapshotManager({
     activeBranchId = branch.id;
 
     let restored = false;
+    let restoredState = null;
     if (branch.headState && validateState(branch.headState)) {
-      restore(cloneState(branch.headState));
+      restoredState = cloneState(branch.headState);
+      restore(restoredState);
       restored = true;
     } else if (branch.headSnapshotId) {
       const record = recordById(branch.headSnapshotId);
       if (record && validateState(record.state)) {
-        restore(cloneState(record.state));
+        restoredState = cloneState(record.state);
+        restore(restoredState);
         restored = true;
       }
     } else {
@@ -417,6 +453,7 @@ export function createSnapshotManager({
 
     cursorNodeId = branch.headNodeId || null;
     cursorSnapshotId = branch.headSnapshotId || null;
+    cursorBaselineState = restoredState || cloneState(capture());
     return true;
   }
 
@@ -468,6 +505,16 @@ export function createSnapshotManager({
     return switchBranch(activeBranchId);
   }
 
+  function hasHistoricalWorkingEdits() {
+    if (!continuationContext()) return false;
+    if (!cursorBaselineState) return true;
+    try {
+      return !deepEqual(capture(), cursorBaselineState);
+    } catch {
+      return true;
+    }
+  }
+
   function syncActiveHeadState() {
     const branch = branchById(activeBranchId);
     if (!branch || !isCursorAtBranchHead()) return false;
@@ -485,6 +532,7 @@ export function createSnapshotManager({
     }
 
     branch.headState = state;
+    cursorBaselineState = cloneState(state);
     return true;
   }
 
@@ -570,6 +618,7 @@ export function createSnapshotManager({
     branch.headState = state;
     cursorNodeId = node.id;
     cursorSnapshotId = null;
+    cursorBaselineState = null;
     return clone(node);
   }
 
@@ -584,6 +633,7 @@ export function createSnapshotManager({
       if (node.processRevision === target) {
         cursorNodeId = node.id;
         cursorSnapshotId = null;
+        cursorBaselineState = cloneState(capture());
         return true;
       }
       nodeId = node.parentId;
@@ -594,6 +644,7 @@ export function createSnapshotManager({
         ? branch.rootNodeId
         : null;
       cursorSnapshotId = branch.rootSnapshotId || null;
+      cursorBaselineState = cloneState(capture());
       return true;
     }
     return false;
@@ -606,6 +657,7 @@ export function createSnapshotManager({
     activeBranchId = MAIN_SNAPSHOT_BRANCH_ID;
     cursorNodeId = null;
     cursorSnapshotId = null;
+    cursorBaselineState = null;
   }
 
   function exportRecords() {
@@ -845,6 +897,7 @@ export function createSnapshotManager({
       typeof branchState?.cursorSnapshotId === 'string' && recordById(branchState.cursorSnapshotId)
         ? branchState.cursorSnapshotId
         : active?.headSnapshotId || null;
+    cursorBaselineState = cloneState(capture());
     return records.length;
   }
 
@@ -869,6 +922,7 @@ export function createSnapshotManager({
     removeBranch,
     restore: restoreById,
     restoreProcessNode,
+    hasHistoricalWorkingEdits,
     syncActiveHeadState,
     clear,
     exportRecords,
