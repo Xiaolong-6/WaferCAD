@@ -49,11 +49,15 @@ export function createWorkspacePersistenceController({
     timer = null;
   }
 
+  function hasWriteAccess() {
+    return workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? false;
+  }
+
   async function saveCurrentProject(project) {
     const saved = await saveWorkspaceState(
       project,
       { appCommit },
-      { canCommit: () => workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? true },
+      { canCommit: hasWriteAccess },
     );
     if (!saved) {
       setSaveStatus('Autosave paused · another tab owns local storage');
@@ -63,7 +67,7 @@ export function createWorkspacePersistenceController({
   }
 
   function persistNow() {
-    if (!ready || !workspaceSession?.canWrite()) return Promise.resolve(false);
+    if (!ready || !hasWriteAccess()) return Promise.resolve(false);
     clearTimer();
     const project = buildProjectSnapshot(true);
     setSaveStatus('Autosaving…');
@@ -83,7 +87,7 @@ export function createWorkspacePersistenceController({
   }
 
   function schedule() {
-    if (!ready || !workspaceSession?.canWrite()) return;
+    if (!ready || !hasWriteAccess()) return;
     setSaveStatus('Autosaving…');
     clearTimer();
     timer = setTimeout(() => {
@@ -112,7 +116,7 @@ export function createWorkspacePersistenceController({
           commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
         select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
       }
-      const writable = workspaceSession?.canWrite() ?? false;
+      const writable = hasWriteAccess() ?? false;
       restore.disabled = !writable;
       if (clear) clear.disabled = !writable;
     } catch (error) {
@@ -148,7 +152,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function restoreSelectedRecovery() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab is read-only. Take over the workspace before restoring a checkpoint.', 'warning');
       return;
     }
@@ -187,7 +191,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function reloadSafely() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab is read-only. Update from the tab that owns the workspace.', 'warning');
       return;
     }
@@ -226,7 +230,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function checkpointCurrent(reason = 'pre-destructive-action') {
-    if (!ready || !workspaceSession?.canWrite()) return false;
+    if (!ready || !hasWriteAccess()) return false;
     clearTimer();
     const project = buildProjectSnapshot(true);
     await createWorkspaceRecoveryCheckpoint(project, {
@@ -238,7 +242,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function saveCheckpoint() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
       return;
     }
@@ -276,7 +280,7 @@ export function createWorkspacePersistenceController({
     try {
       if (hasExplicitStart) {
         const saved = await loadWorkspaceState();
-        if (saved && workspaceSession?.canWrite()) {
+        if (saved && hasWriteAccess()) {
           try {
             await createWorkspaceRecoveryCheckpoint(saved, {
               appCommit,
@@ -343,13 +347,13 @@ export function createWorkspacePersistenceController({
       void reloadSafely();
     };
     $('workspaceRecoverySelect').onchange = (event) => {
-      $('workspaceRestoreBtn').disabled = !event.target.value || !workspaceSession?.canWrite();
+      $('workspaceRestoreBtn').disabled = !event.target.value || !hasWriteAccess();
     };
     $('workspaceRestoreBtn').onclick = () => {
       void restoreSelectedRecovery();
     };
     $('workspaceRecoveryClearBtn').onclick = async () => {
-      if (!workspaceSession?.canWrite()) {
+      if (!hasWriteAccess()) {
         status('This tab cannot clear local Recovery while another tab owns browser storage.', 'warning');
         return;
       }
