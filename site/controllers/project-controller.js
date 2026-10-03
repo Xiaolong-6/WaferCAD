@@ -17,6 +17,7 @@ export function createProjectController({
   onProjectChanged = () => {},
   checkpointBeforeReplace = async () => false,
   readProjectFileTask = readProjectFile,
+  exportProjectFileTask = null,
   normalizedProjectName,
   getProjectName,
   setProjectName,
@@ -205,13 +206,19 @@ export function createProjectController({
       }
     };
 
-    $('exportProjectBtn').onclick = () => {
+    $('exportProjectBtn').onclick = async () => {
       try {
         const projectName = normalizedProjectName(getProjectName());
         setProjectName(projectName);
         syncProjectNameInput();
-        downloadProject(buildProjectSnapshot(true), projectExportFilename());
-        status(`Exported ${projectExportFilename()}.`);
+        const filename = projectExportFilename(),
+          project = buildProjectSnapshot(true);
+        if (exportProjectFileTask) {
+          if (!(await exportProjectFileTask(project, filename))) return;
+        } else {
+          downloadProject(project, filename);
+        }
+        status(`Exported ${filename}.`);
       } catch (error) {
         console.error(error);
         status(`Export failed: ${error.message}`, 'error');
