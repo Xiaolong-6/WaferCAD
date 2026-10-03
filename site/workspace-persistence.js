@@ -111,7 +111,7 @@ export async function saveWorkspaceState(project, metadata = {}) {
     const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).put({
       key: RECORD_KEY,
-      project,
+      project: prepareProjectForWorkspaceStorage(project),
     });
     transaction
       .objectStore(META_STORE_NAME)
@@ -223,14 +223,16 @@ export async function loadWorkspaceState() {
   }
 
   if (!record?.project) return null;
-  const rawVersion = Number(record.project.version) || 1;
+  const project = structuredClone(record.project);
+  expandProjectStorage(project);
+  const rawVersion = Number(project.version) || 1;
   if (rawVersion < CURRENT_PROJECT_VERSION) {
-    await createWorkspaceRecoveryCheckpoint(record.project, {
+    await createWorkspaceRecoveryCheckpoint(project, {
       appCommit: metadata?.appCommit,
       reason: `pre-migration-v${rawVersion}`,
     });
   }
-  return validateProjectFile(migrateProjectFile(record.project));
+  return validateProjectFile(migrateProjectFile(project));
 }
 
 export async function clearWorkspaceState() {
