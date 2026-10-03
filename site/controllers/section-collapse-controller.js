@@ -1,6 +1,7 @@
 import { modelBoundsZ } from '../model.js';
 import {
   defaultSectionCollapseForModel,
+  normalizeSectionCollapse,
   resolveSectionCollapse,
   sectionCollapseSnapValues,
 } from '../section-z-collapse.js';
