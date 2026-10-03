@@ -309,6 +309,96 @@ assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
 assert.deepEqual(blockedThreeErrors, []);
 await blockedThreePage.close();
 
+// Every successful process step is a restorable checkpoint, even without a named
+// milestone. The restore state must also survive local autosave + full reload.
+const historyRestoreContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyRestorePage = await historyRestoreContext.newPage();
+const historyRestoreErrors = [];
+historyRestorePage.on('pageerror', (error) => historyRestoreErrors.push(error.message));
+await historyRestorePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await historyRestorePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'history-restore-base.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await historyRestorePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyRestorePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-restore-base.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyRestorePage, 'process');
+await historyRestorePage.locator('[data-process-mode="add"]').click();
+await historyRestorePage.locator('#operationArea').selectOption('full');
+await historyRestorePage.locator('#growthMode').selectOption('direct');
+await historyRestorePage.locator('#operationThickness').fill('0.05');
+await historyRestorePage.locator('#layerName').fill('History A');
+await historyRestorePage.locator('#applyOperationBtn').click();
+await historyRestorePage.waitForFunction(
+  () => /Deposited History A/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+await historyRestorePage.locator('#layerName').fill('History B');
+await historyRestorePage.locator('#applyOperationBtn').click();
+await historyRestorePage.waitForFunction(
+  () => /Deposited History B/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+await historyRestorePage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await historyRestorePage.reload({ waitUntil: 'networkidle' });
+await historyRestorePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyRestorePage, 'snapshots');
+assert.equal(await historyRestorePage.locator('#snapshotsTools > .tool-context').count(), 0);
+assert.equal(await historyRestorePage.locator('.snapshot-branch-state').count(), 0);
+const historySectionLabel = historyRestorePage
+  .locator('#snapshotsTools > .workstation-section-label strong');
+assert.equal((await historySectionLabel.textContent()).trim(), 'History');
+
+const historyARow = historyRestorePage.locator('.process-history-row', { hasText: 'History A' });
+const historyBRow = historyRestorePage.locator('.process-history-row', { hasText: 'History B' });
+assert.equal(await historyARow.count(), 1);
+assert.equal(await historyBRow.count(), 1);
+assert.equal(await historyARow.getAttribute('role'), 'button');
+assert.equal(await historyBRow.getAttribute('data-head'), 'true');
+await historyARow.click();
+await historyRestorePage.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+assert.match(
+  await historyRestorePage.locator('.snapshot-continuation-banner').textContent(),
+  /Viewing process step .*History A/,
+);
+assert.ok(
+  await historyRestorePage
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'History A')),
+);
+assert.equal(
+  await historyRestorePage
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B')),
+  false,
+);
+await historyRestorePage.locator('.snapshot-return-head').click();
+await historyRestorePage.waitForFunction(
+  () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.ok(
+  await historyRestorePage
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B')),
+);
+assert.deepEqual(historyRestoreErrors, []);
+await historyRestoreContext.close();
+
 const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];
 refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));
@@ -1658,7 +1748,7 @@ await v2MilestoneRow.locator('.snapshot-more-popover button').first().click();
 await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
 assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /Historical working state/);
 assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /successful Apply/i);
-assert.equal((await page.locator('.snapshot-branch-state').textContent()).trim(), 'historical');
+assert.equal(await page.locator('.snapshot-branch-state').count(), 0);
 
 // Historical viewing has an explicit route back to the branch's autosaved HEAD.
 await page.locator('.snapshot-return-head').click();
@@ -1666,7 +1756,7 @@ await page.waitForFunction(
   () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.equal(await page.locator('.snapshot-continuation-banner').count(), 0);
-assert.equal((await page.locator('.snapshot-branch-state').textContent()).trim(), 'HEAD');
+assert.equal(await page.locator('.snapshot-branch-state').count(), 0);
 assert.ok(
   await page
     .locator('#layerLegend .legend-name')
@@ -1747,7 +1837,7 @@ assert.equal(
   'Variant 2',
 );
 assert.match(await page.locator('.snapshot-branch-group').textContent(), /Continuation probe/);
-assert.equal((await page.locator('.snapshot-branch-state').textContent()).trim(), 'HEAD');
+assert.equal(await page.locator('.snapshot-branch-state').count(), 0);
 assert.equal(await page.locator('.snapshot-continuation-banner').count(), 0);
 
 
