@@ -435,7 +435,8 @@ export function createSnapshotManager({
   function parentBranchId(branch) {
     if (!branch || branch.id === MAIN_SNAPSHOT_BRANCH_ID) return null;
     const source = branch.rootSnapshotId ? recordById(branch.rootSnapshotId) : null;
-    return branchById(source?.branchId)?.id || MAIN_SNAPSHOT_BRANCH_ID;
+    const candidate = branchById(source?.branchId)?.id || null;
+    return candidate && candidate !== branch.id ? candidate : MAIN_SNAPSHOT_BRANCH_ID;
   }
 
   function removeBranch(id) {
