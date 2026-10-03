@@ -448,18 +448,8 @@ async function checkAB(page, name) {
   assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
 
   const before = await coords(page);
-  const a = await page.locator('[data-endpoint=a]').boundingBox();
-  const b = await page.locator('[data-endpoint=b]').boundingBox();
-  assert.ok(a && b);
-  const screenDx = b.x + b.width / 2 - (a.x + a.width / 2);
-  const screenDy = b.y + b.height / 2 - (a.y + a.height / 2);
-  const worldDx = before[2] - before[0];
-  const worldDy = before[3] - before[1];
-  const scaleCandidates = [];
-  if (Math.abs(worldDx) > 1e-9) scaleCandidates.push(Math.abs(screenDx / worldDx));
-  if (Math.abs(worldDy) > 1e-9) scaleCandidates.push(Math.abs(screenDy / worldDy));
-  const scale = Math.max(...scaleCandidates);
-  assert.ok(Number.isFinite(scale) && scale > 0, `${name}: could not derive live Main px/µm`);
+  const scale = Number(await mainCanvas.getAttribute('data-x-px-per-um'));
+  assert.ok(Number.isFinite(scale) && scale > 0, `${name}: Main render scale is unavailable`);
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
   close(after[0], nmRoundedMicron(before[0] + 16 / scale));
