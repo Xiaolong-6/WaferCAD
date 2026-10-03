@@ -1077,7 +1077,6 @@ planRenderers = createPlanRenderers({
   formatXY,
   xyText,
   xyUnitLabel: () => xyUnit().label,
-  scheduleWorkspacePersistence,
 });
 
 workspaceSession.start();
