@@ -292,6 +292,16 @@ export function createSnapshotManager({
     if (branchesUsingSnapshot(id).length) return false;
 
     const record = records[index];
+    if (record.historyNodeId) {
+      const node = nodeById(record.historyNodeId);
+      const alternateMilestone = records.find(
+        (item) => item.id !== id && item.historyNodeId === record.historyNodeId,
+      );
+      if (node && !node.state && !alternateMilestone && validateState(record.state)) {
+        node.state = cloneState(record.state);
+      }
+    }
+
     for (const item of records) {
       if (item.parentId === id) item.parentId = record.parentId || null;
     }
