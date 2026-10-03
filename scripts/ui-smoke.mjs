@@ -14,6 +14,14 @@ const snapshotExportFixtureBuffer = await readFile(
   new URL('../examples/projects/black-si-photodiode-acs-photonics-2023.wafercad', import.meta.url),
 );
 const snapshotExportFixture = JSON.parse(snapshotExportFixtureBuffer.toString('utf8'));
+const snapshotExportNodeIds = new Set(
+  (snapshotExportFixture.snapshotBranches?.nodes || []).map((node) => node.id),
+);
+const snapshotExportHistoryCount =
+  (snapshotExportFixture.snapshotBranches?.nodes || []).length +
+  (snapshotExportFixture.snapshots || []).filter(
+    (record) => !record.historyNodeId || !snapshotExportNodeIds.has(record.historyNodeId),
+  ).length;
 const welcomeProject = projectForBenchmark({
   model: createModel({
     shape: 'rect',
@@ -309,8 +317,8 @@ assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
 assert.deepEqual(blockedThreeErrors, []);
 await blockedThreePage.close();
 
-// Every successful process step is a restorable checkpoint, even without a named
-// milestone. The restore state must also survive local autosave + full reload.
+// Every successful process Step is a restorable History node. The restore state
+// must also survive local autosave + full reload.
 const historyRestoreContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
 const historyRestorePage = await historyRestoreContext.newPage();
 const historyRestoreErrors = [];
@@ -1842,7 +1850,7 @@ await projectDownloadPage.waitForFunction(
 );
 assert.equal(
   Number(await projectDownloadPage.locator('#snapshotCount').textContent()),
-  snapshotExportFixture.snapshotBranches?.nodes?.length || 0,
+  snapshotExportHistoryCount,
 );
 await openFunctionPanel(projectDownloadPage, 'snapshots');
 assert.equal(
