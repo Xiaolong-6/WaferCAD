@@ -70,7 +70,7 @@ const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
 const errors = [];
 
 page.on('pageerror', (error) => errors.push(error.message));
-page.on('dialog', (dialog) => void dialog.accept());
+page.on('dialog', (dialog) => { errors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 
 await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
@@ -270,7 +270,7 @@ const welcomeCheckpointContext = await browser.newContext({ viewport: { width: 1
 const welcomeCheckpointPage = await welcomeCheckpointContext.newPage();
 const welcomeCheckpointErrors = [];
 welcomeCheckpointPage.on('pageerror', (error) => welcomeCheckpointErrors.push(error.message));
-welcomeCheckpointPage.on('dialog', (dialog) => void dialog.accept());
+welcomeCheckpointPage.on('dialog', (dialog) => { welcomeCheckpointErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await welcomeCheckpointPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
@@ -328,7 +328,7 @@ const failedWelcomeContext = await browser.newContext({ viewport: { width: 1100,
 const failedWelcomePage = await failedWelcomeContext.newPage();
 const failedWelcomeErrors = [];
 failedWelcomePage.on('pageerror', (error) => failedWelcomeErrors.push(error.message));
-failedWelcomePage.on('dialog', (dialog) => void dialog.accept());
+failedWelcomePage.on('dialog', (dialog) => { failedWelcomeErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await failedWelcomePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
@@ -371,7 +371,7 @@ await failedWelcomeContext.close();
 const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const exampleErrors = [];
 examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
-examplePage.on('dialog', (dialog) => void dialog.accept());
+examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await examplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 await examplePage.locator('#welcomeExampleBtn').click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
@@ -1418,7 +1418,7 @@ const safetySecond = await safetyContext.newPage();
 const safetyErrors = [];
 for (const safetyPage of [safetyFirst, safetySecond]) {
   safetyPage.on('pageerror', (error) => safetyErrors.push(error.message));
-  safetyPage.on('dialog', (dialog) => void dialog.accept());
+  safetyPage.on('dialog', (dialog) => { safetyErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 }
 await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
