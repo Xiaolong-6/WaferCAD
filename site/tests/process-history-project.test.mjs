@@ -229,6 +229,85 @@ test('V3 Variant parent linkage survives validation and packed storage', () => {
   );
 });
 
+test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
+  const source = validProject(1);
+  const step = validProject(1);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'variant-a',
+    cursorNodeId: 'process-main',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-main',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-04T00:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Main Step' },
+        state: step,
+      },
+      {
+        id: 'process-b',
+        branchId: 'variant-b',
+        parentId: 'process-main',
+        createdAt: '2026-10-04T00:02:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'etch', label: 'B Step' },
+        state: validProject(2),
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-main',
+        headState: step,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'variant-a',
+        name: 'A',
+        parentBranchId: 'main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-main',
+        headState: step,
+        createdAt: '2026-10-04T00:01:00.000Z',
+      },
+      {
+        id: 'variant-b',
+        name: 'B',
+        parentBranchId: 'variant-a',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-b',
+        headNodeId: 'process-b',
+        headState: validProject(2),
+        createdAt: '2026-10-04T00:02:00.000Z',
+      },
+    ],
+  };
+
+  assert.throws(
+    () => validateProjectFile(source),
+    /rootNodeId.*owned by the parent Variant/i,
+  );
+
+  source.snapshotBranches.branches[2].rootNodeId = 'process-main';
+  source.snapshotBranches.branches[2].parentBranchId = 'variant-a';
+  source.snapshotBranches.branches[1].parentBranchId = 'variant-b';
+  assert.throws(
+    () => validateProjectFile(source),
+    /parentBranchId.*ancestry cycle/i,
+  );
+});
+
 test('V3 process-node restore states survive the project Open path', async () => {
   const source = validProject(2);
   const stepOne = validProject(1);
