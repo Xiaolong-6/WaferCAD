@@ -881,9 +881,16 @@ try {
       });
       await loadProject(page, roughStressProject, 'wide-rough-stress');
       await page.locator('#threeMaxBtn').click();
-      await page.waitForTimeout(180);
-      const stressCanvas = page.locator('#threeHost canvas'),
-        stressBudget = Number(
+      const stressCanvas = page.locator('#threeHost canvas');
+      await page.waitForFunction(
+        () => {
+          const canvas = document.querySelector('#threeHost canvas');
+          return canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true';
+        },
+        null,
+        { timeout: 10000 },
+      );
+      const stressBudget = Number(
           await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
         ),
         stressSubdivision = Number(
