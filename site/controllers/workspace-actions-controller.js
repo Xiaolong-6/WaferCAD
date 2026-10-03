@@ -46,6 +46,7 @@ export function createWorkspaceActionsController({
   syncBaseControls,
   snapshotManager,
   renderSnapshots,
+  onProjectChanged = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -260,6 +261,7 @@ export function createWorkspaceActionsController({
     $('saveSnapshotBtn').onclick = () => {
       try {
         const saved = snapshotManager.create();
+        onProjectChanged();
         renderSnapshots();
         status(`Saved snapshot "${saved.name}".`);
       } catch (error) {
