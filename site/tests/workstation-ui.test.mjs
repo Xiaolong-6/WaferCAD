@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   WORKSTATION_TOOL_ORDER,
   getAdjacentToolName,
+  isCompactWorkstationViewport,
   preferredWorkstationViewMode,
 } from '../workstation-ui.js';
 
@@ -29,4 +30,27 @@ test('mobile prefers a focused single Main view while desktop opens overview', (
   assert.equal(preferredWorkstationViewMode(820), 'main');
   assert.equal(preferredWorkstationViewMode(821), 'overview');
   assert.equal(preferredWorkstationViewMode(1440), 'overview');
+});
+
+
+test('compact detection survives a desktop-sized CSS viewport on a phone', () => {
+  const mobileDesktopSite = {
+    innerWidth: 980,
+    screen: { width: 390 },
+    matchMedia: () => ({ matches: true }),
+  };
+  const desktopTouchscreen = {
+    innerWidth: 1440,
+    screen: { width: 1440 },
+    matchMedia: () => ({ matches: true }),
+  };
+  const narrowMouse = {
+    innerWidth: 700,
+    screen: { width: 700 },
+    matchMedia: () => ({ matches: false }),
+  };
+
+  assert.equal(isCompactWorkstationViewport(mobileDesktopSite), true);
+  assert.equal(isCompactWorkstationViewport(desktopTouchscreen), false);
+  assert.equal(isCompactWorkstationViewport(narrowMouse), true);
 });
