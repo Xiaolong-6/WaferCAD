@@ -388,27 +388,40 @@ async function loadProject(page, project, name) {
 }
 
 async function checkSectionSeams(page, project) {
-  const { modelBoundsZ } = await import('../site/model.js');
-  const [lo, hi] = modelBoundsZ(project.model);
-  const pad = Math.max(1.5, (hi - lo) * 0.08);
   // Z=0 is uninterrupted substrate in every benchmark, including after etching.
-  // Inspect actual canvas pixels across the old column boundaries at each DPR.
-  const colors = await page.evaluate(
-    ({ lo, hi, pad }) => {
-      const canvas = document.querySelector('#sectionCanvas');
-      const dpr = Math.min(devicePixelRatio || 1, 2);
-      const width = canvas.width / dpr,
-        height = canvas.height / dpr;
-      const row = Math.round((10 + ((hi + pad) / (hi - lo + 2 * pad)) * (height - 32)) * dpr);
-      const start = Math.ceil((27 + (width - 37) * 0.1) * dpr);
-      const end = Math.floor((27 + (width - 37) * 0.9) * dpr);
-      const pixels = canvas.getContext('2d').getImageData(start, row, end - start, 1).data;
-      const unique = new Set();
-      for (let i = 0; i < pixels.length; i += 4) unique.add([...pixels.slice(i, i + 4)].join(','));
-      return [...unique];
-    },
-    { lo, hi, pad },
-  );
+  // Use the renderer's broken-Z transform diagnostics instead of assuming a
+  // single linear Z axis.
+  const colors = await page.evaluate(() => {
+    const canvas = document.querySelector('#sectionCanvas'),
+      dpr = Math.min(devicePixelRatio || 1, 2),
+      width = canvas.width / dpr,
+      z = 0,
+      z0 = Number(canvas.dataset.sectionZ0Um),
+      z1 = Number(canvas.dataset.sectionZ1Um),
+      top = Number(canvas.dataset.sectionCollapseTopUm),
+      bottom = Number(canvas.dataset.sectionCollapseBottomUm),
+      frameTop = Number(canvas.dataset.sectionFrameTop),
+      frameBottom = Number(canvas.dataset.sectionFrameBottom),
+      upperY = Number(canvas.dataset.sectionCollapseUpperY),
+      lowerY = Number(canvas.dataset.sectionCollapseLowerY);
+
+    let y;
+    if (z >= top) {
+      y = frameTop + ((z1 - z) / Math.max(z1 - top, 1e-12)) * (upperY - frameTop);
+    } else if (z <= bottom) {
+      y = lowerY + ((bottom - z) / Math.max(bottom - z0, 1e-12)) * (frameBottom - lowerY);
+    } else {
+      y = (upperY + lowerY) / 2;
+    }
+
+    const row = Math.round(y * dpr),
+      start = Math.ceil((27 + (width - 37) * 0.1) * dpr),
+      end = Math.floor((27 + (width - 37) * 0.9) * dpr),
+      pixels = canvas.getContext('2d').getImageData(start, row, end - start, 1).data,
+      unique = new Set();
+    for (let i = 0; i < pixels.length; i += 4) unique.add([...pixels.slice(i, i + 4)].join(','));
+    return [...unique];
+  });
   const rgba = colors.map((color) => color.split(',').map(Number)),
     channelRange = [0, 1, 2, 3].map((channel) => {
       const values = rgba.map((value) => value[channel]);
