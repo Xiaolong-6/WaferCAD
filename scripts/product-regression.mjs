@@ -362,11 +362,24 @@ async function checkAB(page, name) {
   await page.locator('#sectionControlsBtn').click();
   assert.equal(await page.locator('#sectionCoordsPanel').isVisible(), true);
   assert.equal(await page.locator('[data-endpoint=a]').isHidden(), true);
-  await page.mouse.move(canvas.x + canvas.width * 0.28, canvas.y + canvas.height * 0.42);
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
+  const creationCanvas = await mainCanvas.boundingBox();
+  assert.ok(creationCanvas);
+  await page.mouse.move(
+    creationCanvas.x + creationCanvas.width * 0.28,
+    creationCanvas.y + creationCanvas.height * 0.42,
+  );
   await page.mouse.down();
-  await page.mouse.move(canvas.x + canvas.width * 0.72, canvas.y + canvas.height * 0.58, {
-    steps: 5,
-  });
+  await page.mouse.move(
+    creationCanvas.x + creationCanvas.width * 0.72,
+    creationCanvas.y + creationCanvas.height * 0.58,
+    { steps: 5 },
+  );
   await page.mouse.up();
   assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
   assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
@@ -374,7 +387,12 @@ async function checkAB(page, name) {
   const before = await coords(page);
   const a = await page.locator('[data-endpoint=a]').boundingBox();
   const b = await page.locator('[data-endpoint=b]').boundingBox();
-  const scale = Math.min((canvas.width - 68) / 100000, (canvas.height - 68) / 100000);
+  const liveCanvas = await mainCanvas.boundingBox();
+  assert.ok(liveCanvas);
+  const scale = Math.min(
+    (liveCanvas.width - 68) / 100000,
+    (liveCanvas.height - 68) / 100000,
+  );
   await dragHandle(page, 'a', 16, -8);
   const after = await coords(page);
   close(after[0], nmRoundedMicron(before[0] + 16 / scale));
