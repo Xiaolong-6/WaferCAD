@@ -835,6 +835,38 @@ const projectController = createProjectController({
 const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
   projectController;
 
+async function ensureWritableProcessBranch() {
+  if (!snapshotManager.canRecordOperation()) {
+    status('Process history limit reached. Delete or export this project before adding more steps.', 'error');
+    return false;
+  }
+
+  const continuation = snapshotManager.continuationContext();
+  if (!continuation) return true;
+
+  const confirmed = await confirmationDialog.confirm({
+    title: 'Continue from historical state?',
+    message: continuation.snapshotName
+      ? `"${continuation.snapshotName}" is behind the current branch HEAD.`
+      : 'Undo moved the workspace behind the current branch HEAD.',
+    detail: 'WaferCAD will create a new process branch first. The existing branch remains unchanged.',
+    confirmLabel: 'Create branch & apply',
+  });
+  if (!confirmed) return false;
+
+  const created = snapshotManager.createBranchFromCursor();
+  markProjectDirty();
+  renderSnapshots();
+  status(`Created branch "${created.name}" for continued processing.`);
+  return true;
+}
+
+function recordProcessOperation(operation) {
+  snapshotManager.recordOperation(operation);
+  markProjectDirty();
+  renderSnapshots();
+}
+
 const maskImportController = createMaskImportController({
   getMaskTransform: () => maskTransform,
   setMaskTransform: (value) => {
@@ -909,6 +941,8 @@ processPanelController = createProcessPanelController({
   formatLengthField,
   processTaskController,
   saveHistory,
+  beforeApply: ensureWritableProcessBranch,
+  recordProcessOperation,
   clearBaseRevertSnapshot: () => {
     baseRevertSnapshot = null;
   },
