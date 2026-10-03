@@ -639,6 +639,37 @@ test('legacy history only upgrades to v3 when every process node is restorable',
   assert.equal(upgraded.nodes[1].state.value, 'legacy-head');
 });
 
+test('restoring an older milestone on the HEAD process node does not overwrite the exact HEAD state', () => {
+  let live = { model: { processRevision: 1 }, value: 'process-head', view: { opacity: 0.35 } };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const node = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const milestone = manager.create('Before display edit');
+
+  live = { model: { processRevision: 1 }, value: 'process-head', view: { opacity: 0.2 } };
+  assert.equal(manager.syncActiveHeadState(), true);
+
+  assert.equal(manager.restore(milestone.id), true);
+  assert.equal(manager.continuationContext().cursorNodeId, node.id);
+  assert.equal(manager.continuationContext().snapshotId, milestone.id);
+  assert.equal(live.view.opacity, 0.35);
+
+  // Persistence while detached must not promote the restored milestone into HEAD.
+  manager.exportBranchState();
+  assert.equal(manager.restoreActiveBranchHead(), true);
+  assert.equal(live.view.opacity, 0.2);
+});
+
 test('history browsing distinguishes an exact restored state from edited historical work', () => {
   let live = { model: { processRevision: 0 }, value: 'base', view: { zoom: 1 } };
   let nodeId = 0;
