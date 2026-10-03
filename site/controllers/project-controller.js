@@ -322,20 +322,19 @@ export function createProjectController({
         },
         {
           label: 'Delete bookmark',
-            danger: true,
-            disabled: protectedByLegacyVariant.length > 0,
-            title: protectedByLegacyVariant.length
-              ? 'This legacy bookmark is still referenced by a Variant.'
-              : 'Delete this bookmark label. The Step remains restorable.',
-            run: async () => {
-              if (!snapshotManager.remove(bookmark.id)) {
-                status('This legacy bookmark is still referenced by a Variant.', 'warning');
-                return;
-              }
-              onProjectChanged();
-              renderSnapshots();
-              status(`Deleted bookmark "${bookmark.name}".`);
-            },
+          danger: true,
+          disabled: protectedByLegacyVariant.length > 0,
+          title: protectedByLegacyVariant.length
+            ? 'This legacy bookmark is still referenced by a Variant.'
+            : 'Delete this bookmark label. The Step remains restorable.',
+          run: async () => {
+            if (!snapshotManager.remove(bookmark.id)) {
+              status('This legacy bookmark is still referenced by a Variant.', 'warning');
+              return;
+            }
+            onProjectChanged();
+            renderSnapshots();
+            status(`Deleted bookmark "${bookmark.name}".`);
           },
         },
       );
