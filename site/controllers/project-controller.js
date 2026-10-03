@@ -50,19 +50,37 @@ export function createProjectController({
     $('snapshotCount').textContent = String(records.length);
     host.innerHTML = '';
 
+    async function prepareHistoryReplacement(reason, label = 'History navigation') {
+      const currentContinuation = snapshotManager.continuationContext();
+      if (!currentContinuation) {
+        if (!snapshotManager.syncActiveHeadState()) {
+          status('Could not preserve the current variant HEAD before navigation.', 'error');
+          return false;
+        }
+        return true;
+      }
+
+      if (!snapshotManager.hasHistoricalWorkingEdits()) return true;
+      try {
+        await checkpointBeforeReplace(reason);
+        return true;
+      } catch (error) {
+        console.error(error);
+        status(`${label} cancelled: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
     async function switchToBranch(targetId) {
       if (targetId === snapshotManager.activeBranch().id && !snapshotManager.continuationContext()) {
         return true;
       }
-      try {
-        if (snapshotManager.continuationContext()) {
-          await checkpointBeforeReplace('pre-snapshot-variant-switch');
-        } else {
-          snapshotManager.syncActiveHeadState();
-        }
-      } catch (error) {
-        console.error(error);
-        status(`Variant switch cancelled: ${error.message}`, 'error');
+      if (
+        !(await prepareHistoryReplacement(
+          'pre-snapshot-variant-switch',
+          'Variant switch',
+        ))
+      ) {
         return false;
       }
       if (!snapshotManager.switchBranch(targetId)) {
@@ -124,11 +142,12 @@ export function createProjectController({
       returnButton.className = 'snapshot-return-head';
       returnButton.textContent = `Return to ${activeBranch.name} HEAD`;
       returnButton.onclick = async () => {
-        try {
-          await checkpointBeforeReplace('pre-snapshot-return-head');
-        } catch (error) {
-          console.error(error);
-          status(`Return to HEAD cancelled: ${error.message}`, 'error');
+        if (
+          !(await prepareHistoryReplacement(
+            'pre-snapshot-return-head',
+            'Return to HEAD',
+          ))
+        ) {
           return;
         }
         if (!snapshotManager.restoreActiveBranchHead()) {
@@ -261,11 +280,12 @@ export function createProjectController({
         {
           label: 'Restore milestone',
           run: async () => {
-            try {
-              await checkpointBeforeReplace('pre-snapshot-restore');
-            } catch (error) {
-              console.error(error);
-              status(`Milestone restore cancelled: ${error.message}`, 'error');
+            if (
+              !(await prepareHistoryReplacement(
+                'pre-snapshot-restore',
+                'Milestone restore',
+              ))
+            ) {
               return;
             }
             if (!snapshotManager.restore(record.id)) {
@@ -282,7 +302,14 @@ export function createProjectController({
           label: 'Variant from here',
           run: async () => {
             try {
-              await checkpointBeforeReplace('pre-snapshot-branch-create');
+              if (
+                !(await prepareHistoryReplacement(
+                  'pre-snapshot-branch-create',
+                  'Variant creation',
+                ))
+              ) {
+                return;
+              }
               const created = snapshotManager.createBranch(record.id);
               if (!snapshotManager.switchBranch(created.id)) {
                 throw new Error('The variant origin could not be restored.');
@@ -382,11 +409,12 @@ export function createProjectController({
         row.title = 'Restore this process step';
 
         const restoreStep = async () => {
-          try {
-            await checkpointBeforeReplace('pre-process-history-restore');
-          } catch (error) {
-            console.error(error);
-            status(`Process step restore cancelled: ${error.message}`, 'error');
+          if (
+            !(await prepareHistoryReplacement(
+              'pre-process-history-restore',
+              'Process step restore',
+            ))
+          ) {
             return;
           }
           if (!snapshotManager.restoreProcessNode(node.id)) {
