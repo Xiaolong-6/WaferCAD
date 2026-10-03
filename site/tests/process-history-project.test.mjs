@@ -248,13 +248,22 @@ test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
         state: step,
       },
       {
+        id: 'process-a',
+        branchId: 'variant-a',
+        parentId: 'process-main',
+        createdAt: '2026-10-04T00:01:30.000Z',
+        processRevision: 2,
+        operation: { kind: 'add', label: 'A Step' },
+        state: validProject(2),
+      },
+      {
         id: 'process-b',
         branchId: 'variant-b',
-        parentId: 'process-main',
+        parentId: 'process-a',
         createdAt: '2026-10-04T00:02:00.000Z',
-        processRevision: 2,
+        processRevision: 3,
         operation: { kind: 'etch', label: 'B Step' },
-        state: validProject(2),
+        state: validProject(3),
       },
     ],
     branches: [
@@ -276,8 +285,8 @@ test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
         rootSnapshotId: null,
         headSnapshotId: null,
         rootNodeId: 'process-main',
-        headNodeId: 'process-main',
-        headState: step,
+        headNodeId: 'process-a',
+        headState: validProject(2),
         createdAt: '2026-10-04T00:01:00.000Z',
       },
       {
@@ -288,7 +297,7 @@ test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
         headSnapshotId: null,
         rootNodeId: 'process-b',
         headNodeId: 'process-b',
-        headState: validProject(2),
+        headState: validProject(3),
         createdAt: '2026-10-04T00:02:00.000Z',
       },
     ],
@@ -299,8 +308,9 @@ test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
     /rootNodeId.*owned by the parent Variant/i,
   );
 
-  source.snapshotBranches.branches[2].rootNodeId = 'process-main';
+  source.snapshotBranches.branches[2].rootNodeId = 'process-a';
   source.snapshotBranches.branches[2].parentBranchId = 'variant-a';
+  source.snapshotBranches.branches[1].rootNodeId = 'process-b';
   source.snapshotBranches.branches[1].parentBranchId = 'variant-b';
   assert.throws(
     () => validateProjectFile(source),
