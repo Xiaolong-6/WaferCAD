@@ -1181,12 +1181,17 @@ const storedMaskOpacity = await page.evaluate(
         transaction.onerror = () => reject(transaction.error);
         transaction.oncomplete = () => {
           database.close();
-          resolve(recordRequest.result?.project?.display?.maskOpacity ?? null);
+          const project = recordRequest.result?.project;
+          resolve({
+            maskOpacity: project?.display?.maskOpacity ?? null,
+            storageEncoding: project?.storage?.encoding ?? null,
+          });
         };
       };
     }),
 );
-assert.equal(storedMaskOpacity, 0.35);
+assert.equal(storedMaskOpacity.maskOpacity, 0.35);
+assert.equal(storedMaskOpacity.storageEncoding, 'shared-assets-v1');
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
