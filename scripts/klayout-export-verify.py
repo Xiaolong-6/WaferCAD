@@ -26,7 +26,7 @@ for name in ("wafercad-export.gds", "wafercad-export.oas"):
     if missing:
         raise SystemExit(f"{name}: missing exported layers {sorted(missing)}")
     bbox = top.bbox()
-    if bbox.empty():
+    if bbox.width() <= 0 or bbox.height() <= 0:
         raise SystemExit(f"{name}: empty top-cell bbox")
     width_um = bbox.width() * layout.dbu
     height_um = bbox.height() * layout.dbu
@@ -44,4 +44,4 @@ for name in ("wafercad-export.gds", "wafercad-export.oas"):
         }
     )
 
-print(json.dumps({"klayout": kdb.Application.instance().version(), "results": results}))
+print(json.dumps({"results": results}))
