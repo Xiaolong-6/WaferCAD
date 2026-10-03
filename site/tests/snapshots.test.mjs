@@ -239,28 +239,68 @@ test('snapshot branch state round-trips and legacy snapshots become a linear Mai
   assert.equal(legacy.activeBranch().headSnapshotId, 'new');
 });
 
-test('deleting a branch point reparents descendants without leaving dangling heads', () => {
+test('branch origin milestones are protected and deleting a leaf variant keeps its origin', () => {
   let live = { value: 1 };
   let snapshotId = 0;
+  let branchId = 0;
   const manager = createSnapshotManager({
     capture: () => live,
-    restore: () => {},
+    restore: (value) => {
+      live = value;
+    },
     validateState: () => true,
     idFactory: () => `snapshot-${++snapshotId}`,
-    branchIdFactory: () => 'variant',
+    branchIdFactory: () => `branch-${++branchId}`,
   });
 
-  const first = manager.create('First');
+  manager.create('First');
   live = { value: 2 };
-  const second = manager.create('Second');
-  const branch = manager.createBranch(second.id, 'Variant');
+  const origin = manager.create('Second');
+  const branch = manager.createBranch(origin.id, 'Variant');
   manager.switchBranch(branch.id);
   live = { value: 3 };
   const child = manager.create('Child');
 
-  assert.equal(manager.remove(second.id), true);
-  assert.equal(manager.list().find((record) => record.id === child.id).parentId, first.id);
-  assert.equal(manager.listBranches().find((item) => item.id === branch.id).rootSnapshotId, first.id);
+  assert.deepEqual(
+    manager.branchesUsingSnapshot(origin.id).map((item) => item.name),
+    ['Variant'],
+  );
+  assert.equal(manager.remove(origin.id), false);
+
+  const removed = manager.removeBranch(branch.id);
+  assert.equal(removed.name, 'Variant');
+  assert.equal(manager.activeBranch().id, 'main');
+  assert.equal(live.value, 2);
+  assert.equal(manager.list().some((record) => record.id === child.id), false);
+  assert.equal(manager.list().some((record) => record.id === origin.id), true);
+  assert.equal(manager.remove(origin.id), true);
+});
+
+test('variant deletion requires child variants to be removed first', () => {
+  let live = { value: 1 };
+  let snapshotId = 0;
+  let branchId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: () => true,
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+  });
+
+  const origin = manager.create('Origin');
+  const parent = manager.createBranch(origin.id, 'Parent');
+  manager.switchBranch(parent.id);
+  live = { value: 2 };
+  const childOrigin = manager.create('Child origin');
+  const child = manager.createBranch(childOrigin.id, 'Child');
+
+  assert.throws(() => manager.removeBranch(parent.id), /child variants/i);
+  assert.equal(manager.removeBranch(child.id).name, 'Child');
+  assert.equal(manager.removeBranch(parent.id).name, 'Parent');
+  assert.equal(manager.listBranches().length, 1);
 });
 
 
@@ -373,6 +413,106 @@ test('Undo cursor can branch without a pre-existing milestone', () => {
   assert.equal(manager.list().some((record) => record.historyNodeId === first.id), true);
 });
 
+
+
+test('HEAD state tracks non-process edits without advancing process history', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const base = manager.create('Base');
+  live = { model: { processRevision: 1 }, value: 'process-head' };
+  manager.recordOperation({ kind: 'add', label: 'Step 1' });
+
+  live = { model: { processRevision: 1 }, value: 'edited-head-view' };
+  assert.equal(manager.syncActiveHeadState(), true);
+
+  const variant = manager.createBranch(base.id, 'Temporary');
+  manager.switchBranch(variant.id);
+  assert.equal(live.value, 'base');
+
+  manager.switchBranch('main');
+  assert.equal(live.value, 'edited-head-view');
+  assert.equal(manager.listHistory().length, 1);
+});
+
+test('historical working edits seed an automatic continuation variant', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'milestone-state' };
+  manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const milestone = manager.create('Fork point');
+  live = { model: { processRevision: 2 }, value: 'main-head' };
+  manager.recordOperation({ kind: 'etch', label: 'Step 2' });
+
+  manager.restore(milestone.id);
+  live = { model: { processRevision: 1 }, value: 'historical-working-edit' };
+  const variant = manager.createBranchFromCursor();
+
+  manager.switchBranch('main');
+  assert.equal(live.value, 'main-head');
+  manager.switchBranch(variant.id);
+  assert.equal(live.value, 'historical-working-edit');
+});
+
+test('a milestone created from an Undo cursor is attached to the historical graph position', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const firstMilestone = manager.create('After step 1');
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'etch', label: 'Step 2' });
+  manager.create('After step 2');
+
+  manager.syncCursorToProcessRevision(1);
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  manager.createBranchFromCursor('Undo variant');
+
+  const branchPoint = manager
+    .list()
+    .find((record) => record.name === 'Main branch point');
+  assert.ok(branchPoint);
+  assert.equal(branchPoint.historyNodeId, first.id);
+  assert.equal(branchPoint.parentId, firstMilestone.id);
+});
 
 test('automatic branches use concise Variant names and historical state can return to HEAD', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
