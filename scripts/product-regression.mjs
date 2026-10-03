@@ -203,6 +203,62 @@ async function coords(page) {
   );
 }
 
+async function checkSectionCollapse(page, name) {
+  const entry = page.locator('#sectionCollapseAxisBtn'),
+    editor = page.locator('#sectionCollapseEditor'),
+    canvas = page.locator('#sectionCanvas');
+
+  await canvas.scrollIntoViewIfNeeded();
+  assert.equal(await entry.isVisible(), true, `${name}: Z collapse axis entry is missing`);
+  assert.equal(await editor.isHidden(), true, `${name}: collapse editor should be hidden normally`);
+
+  const before = {
+    top: Number(await canvas.getAttribute('data-section-collapse-top-um')),
+    bottom: Number(await canvas.getAttribute('data-section-collapse-bottom-um')),
+    breakY: Number(await canvas.getAttribute('data-section-collapse-break-y')),
+  };
+  assert.ok(Number.isFinite(before.top) && Number.isFinite(before.bottom));
+  assert.ok(before.top > before.bottom);
+  assert.ok(Number.isFinite(before.breakY));
+
+  await entry.click();
+  assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
+  await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
+  const handleSize = await page.locator('#sectionCollapseTopHandle').boundingBox();
+  assert.ok(handleSize);
+  assert.ok(
+    handleSize.width >= (name === 'phone' ? 24 : 16),
+    `${name}: collapse ruler handle is too small`,
+  );
+
+  await page.locator('#sectionCollapseTarget').selectOption('top');
+  await page.locator('#sectionCollapseStep').selectOption('0.1');
+  await page.locator('#sectionCollapsePlus').click();
+  const nudgedTop = Number(await canvas.getAttribute('data-section-collapse-top-um'));
+  assert.ok(nudgedTop > before.top, `${name}: fine adjustment did not update the top boundary`);
+
+  await page.keyboard.press('Escape');
+  assert.equal(await editor.isHidden(), true, `${name}: Escape did not close collapse editor`);
+  const closedTop = Number(await canvas.getAttribute('data-section-collapse-top-um'));
+  close(closedTop, nudgedTop, 1e-9);
+
+  await entry.click();
+  assert.equal(await editor.isVisible(), true);
+  close(
+    Number(await page.locator('#sectionCollapseTopValue').textContent().then((text) =>
+      Number(text.replace(/[^0-9+.-]/g, '')),
+    )),
+    nudgedTop,
+    1e-3,
+  );
+  await page.locator('#sectionCollapseClose').click();
+  assert.equal(await editor.isHidden(), true);
+
+  const afterBreakY = Number(await canvas.getAttribute('data-section-collapse-break-y'));
+  close(afterBreakY, before.breakY, 1e-9);
+  await capture(page, `${name}-section-z-collapse`);
+}
+
 async function dragHandle(page, endpoint, dx, dy, cancel = false) {
   const handle = page.locator(`[data-endpoint=${endpoint}]`);
   await handle.scrollIntoViewIfNeeded();
@@ -497,6 +553,7 @@ try {
     await capture(page, `${name}-empty`);
     await checkLayout(page);
     await checkAB(page, name);
+    await checkSectionCollapse(page, name);
     await page.locator('#threePanel .three-opacity-control > summary').click();
     await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
     await page.locator('#threePanel .three-opacity-control > summary').click();
