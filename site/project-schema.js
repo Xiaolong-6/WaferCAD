@@ -670,6 +670,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   const branchIds = new Set();
   const snapshotIds = new Set((snapshots || []).map((record) => record?.id).filter(Boolean));
   const nodeIds = new Set();
+  const nodesById = new Map();
 
   if (version >= 2) {
     const nodes = assertArray(
@@ -683,6 +684,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       const id = assertString(node.id, `${path}.id`, { max: 128 });
       if (nodeIds.has(id)) fail(`${path}.id`, 'must be unique.');
       nodeIds.add(id);
+      nodesById.set(id, node);
       assertString(node.branchId, `${path}.branchId`, { max: 128 });
       if (node.parentId != null) {
         assertString(node.parentId, `${path}.parentId`, { max: 128 });
@@ -774,6 +776,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   });
 
   if (version >= 3) {
+    const branchById = new Map(branches.map((branch) => [branch.id, branch]));
     branches.forEach((branch, index) => {
       if (
         branch.parentBranchId != null &&
@@ -783,6 +786,33 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
           `snapshotBranches.branches[${index}].parentBranchId`,
           'references an unknown parent variant.',
         );
+      }
+
+      if (
+        branch.id !== 'main' &&
+        branch.parentBranchId != null &&
+        branch.rootNodeId != null
+      ) {
+        const origin = nodesById.get(branch.rootNodeId);
+        if (origin && origin.branchId !== branch.parentBranchId) {
+          fail(
+            `snapshotBranches.branches[${index}].rootNodeId`,
+            'must reference a Step owned by the parent Variant.',
+          );
+        }
+      }
+
+      const seenParents = new Set([branch.id]);
+      let parentId = branch.parentBranchId;
+      while (parentId != null) {
+        if (seenParents.has(parentId)) {
+          fail(
+            `snapshotBranches.branches[${index}].parentBranchId`,
+            'must not create a Variant ancestry cycle.',
+          );
+        }
+        seenParents.add(parentId);
+        parentId = branchById.get(parentId)?.parentBranchId ?? null;
       }
     });
   }
