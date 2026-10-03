@@ -133,16 +133,13 @@ async function capture(page, name) {
       ),
   );
   await page.screenshot({ path: join(output, `${name}.png`), fullPage: true });
-  // fullPage capture can transiently change Chromium's page metrics. WaferCAD
-  // listens to ResizeObserver/window resize, so let the real viewport settle
-  // and force one render pass before the next interaction/assertion.
+  // fullPage capture can transiently change Chromium's page metrics. Let the
+  // real viewport settle naturally; do not broadcast resize because that would
+  // invalidate renderer caches the next assertion may intentionally inspect.
   await page.evaluate(
     () =>
       new Promise((resolveFrame) =>
-        requestAnimationFrame(() => {
-          window.dispatchEvent(new Event('resize'));
-          requestAnimationFrame(() => requestAnimationFrame(resolveFrame));
-        }),
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
       ),
   );
   cases.push(name);
@@ -291,6 +288,14 @@ async function checkSectionCollapse(page, name) {
   assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
   await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
   await capture(page, `${name}-section-z-collapse-edit`);
+  await page.waitForFunction(
+    (expectedBreakY) =>
+      Math.abs(
+        Number(document.getElementById('sectionCanvas')?.dataset.sectionCollapseBreakY) -
+          expectedBreakY,
+      ) < 1e-6,
+    before.breakY,
+  );
   const handleSize = await page.locator('#sectionCollapseTopHandle').boundingBox();
   assert.ok(handleSize);
   assert.ok(
