@@ -969,6 +969,48 @@ try {
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
 
+      // Etching into an Implant exposes its surviving outer face. Opaque 3D
+      // must render that surface overlay without rendering the buried volume.
+      const exposedImplantModel = createModel({
+        shape: 'rect',
+        width: 20,
+        height: 12,
+        thickness: 8,
+      });
+      applyOperation(exposedImplantModel, {
+        type: 'implant',
+        name: 'Etch-exposed implant',
+        thickness: 1,
+        face: 'front',
+        area: rectMulti(10, 8),
+        color: '#9B5DE5',
+      });
+      applyOperation(exposedImplantModel, {
+        type: 'etch',
+        thickness: 0.4,
+        face: 'front',
+        area: exposedImplantModel.boundary,
+      });
+      await loadProject(
+        page,
+        projectForBenchmark({
+          model: exposedImplantModel,
+          section: { a: [-9, 0], b: [9, 0] },
+        }),
+        'wide-implant-etched-exposed',
+      );
+      await page.locator('#threeMaxBtn').click();
+      assert.equal(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')),
+        0,
+      );
+      assert.ok(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-surface-count')) > 0,
+        'Opaque 3D must keep an Implant overlay after Etch exposes its surviving surface',
+      );
+      await capture(page, 'wide-implant-etched-exposed-opaque-max');
+      await page.locator('#threeMaxBtn').click();
+
       await checkLayout(page);
     }
 
