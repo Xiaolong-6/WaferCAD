@@ -1557,7 +1557,11 @@ await page.waitForFunction(
 
 await openFunctionPanel(page, 'snapshots');
 assert.ok(await page.locator('.process-history-row').count());
-const v2MilestoneRow = page.getByDisplayValue('V2 branch point').locator('..');
+const v2MilestoneIndex = await page.locator('.snapshot-name').evaluateAll((inputs) =>
+  inputs.findIndex((input) => input.value === 'V2 branch point'),
+);
+assert.ok(v2MilestoneIndex >= 0);
+const v2MilestoneRow = page.locator('.snapshot-name').nth(v2MilestoneIndex).locator('..');
 await v2MilestoneRow.locator('.snapshot-action').click();
 await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
 assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /Historical state/);
