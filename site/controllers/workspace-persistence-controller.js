@@ -491,36 +491,41 @@ export function createWorkspacePersistenceController({
     const flushed = await requestOwnerFlush(),
       marker = readMarker(),
       savedChanged = Boolean(marker?.saveId && marker.saveId !== baseSaveId),
-      latestSaved = savedChanged || !flushed ? await loadWorkspaceState().catch(() => null) : null;
+      uncertain = Boolean(ownerTabId && !flushed),
+      diverged = Boolean(dirty || savedChanged),
+      latestSaved =
+        diverged || uncertain ? await loadWorkspaceState().catch(() => null) : null;
 
     let choice = 'use-current';
-    if (savedChanged) {
+    if (diverged || uncertain) {
+      const actions = [{ value: 'cancel', label: 'Cancel', default: true }];
+      if (latestSaved) {
+        actions.push({ value: 'load-saved', label: 'Load latest saved', kind: 'primary' });
+      }
+      actions.push({ value: 'use-current', label: 'Use this tab', kind: 'danger' });
+
       choice = await chooseAction({
-        title: 'Workspace states differ',
-        message: dirty
-          ? 'This tab has unsaved edits, and another tab has saved a newer workspace.'
-          : 'Another tab has saved a newer workspace since this tab was opened.',
+        title: diverged ? 'Workspace states differ' : 'Other tab state not verified',
+        message:
+          dirty && savedChanged
+            ? 'This tab has unsaved edits, and another tab has saved a newer workspace.'
+            : dirty
+              ? 'This tab has unsaved edits that differ from the latest saved workspace.'
+              : savedChanged
+                ? 'Another tab has saved a newer workspace since this tab was opened.'
+                : 'No saved-state difference was detected, but the other tab did not confirm a final flush.',
         detail: flushed
           ? 'Choose which state this tab should own. The displaced saved state is protected with a Recovery checkpoint when needed.'
-          : 'The other tab did not confirm a final flush, so it may also contain newer unsaved edits.',
+          : 'The other tab may still contain newer unsaved edits. Taking over prevents that tab from committing them until it explicitly takes ownership again.',
         cancelValue: 'cancel',
-        actions: [
-          { value: 'cancel', label: 'Cancel', default: true },
-          { value: 'load-saved', label: 'Load latest saved', kind: 'primary' },
-          { value: 'use-current', label: 'Use this tab', kind: 'danger' },
-        ],
+        actions,
       });
     } else {
       const confirmed = await confirmAction({
-        title: dirty ? 'Take over with unsaved edits?' : 'Take over workspace?',
-        message: dirty
-          ? 'This tab has unsaved edits. The latest saved workspace has not changed since this tab started.'
-          : 'This tab will become the local autosave owner.',
-        detail: flushed
-          ? 'The previous owner confirmed its latest state was saved.'
-          : 'The previous owner did not confirm a final flush.',
+        title: 'Workspace states match',
+        message: 'No local edits or newer saved state were detected in either tab.',
+        detail: 'The previous owner confirmed its latest state was saved.',
         confirmLabel: 'Take over',
-        danger: Boolean(dirty),
       });
       if (!confirmed) choice = 'cancel';
     }
@@ -547,18 +552,25 @@ export function createWorkspacePersistenceController({
       syncSaveStatus();
       status('Took over this workspace and loaded the latest saved state.', 'success');
     } else {
-      if (savedChanged && latestSaved) {
+      if (latestSaved && dirty) {
         await createWorkspaceRecoveryCheckpoint(latestSaved, {
           appCommit,
-          reason: 'pre-takeover-remote',
+          reason: savedChanged ? 'pre-takeover-remote' : 'pre-takeover-current',
         });
       }
-      if (savedChanged && !dirty) markDirty();
-      if (dirty) await persistNow();
-      else syncSaveStatus();
+      if ((savedChanged || uncertain) && !dirty) markDirty();
+      if (dirty) {
+        const persisted = await persistNow();
+        if (!persisted) {
+          status('Take over succeeded, but the current tab could not commit its state.', 'error');
+          return;
+        }
+      } else {
+        syncSaveStatus();
+      }
       status(
-        savedChanged
-          ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery.'
+        diverged || uncertain
+          ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery when applicable.'
           : 'This tab now owns the local workspace.',
         'success',
       );
