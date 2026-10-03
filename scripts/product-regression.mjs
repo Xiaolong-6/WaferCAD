@@ -45,7 +45,7 @@ async function open(viewport, touch = false) {
   }
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
-  page.on('dialog', (dialog) => void dialog.accept());
+  page.on('dialog', (dialog) => { errors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
   const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
   await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
   await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
@@ -56,6 +56,19 @@ async function open(viewport, touch = false) {
     'Real 3D must render in this suite',
   );
   return { page, context };
+}
+
+async function chooseConfirmation(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  await overlay.waitFor({ state: 'visible', timeout: 5000 });
+  await overlay.locator(`[data-dialog-action="${action}"]`).click();
+}
+
+async function confirmIfVisible(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  if (await overlay.isVisible()) {
+    await overlay.locator(`[data-dialog-action="${action}"]`).click();
+  }
 }
 
 async function capture(page, name) {
@@ -309,6 +322,7 @@ async function loadProject(page, project, name) {
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(project)),
   });
+  await chooseConfirmation(page);
   await page.waitForFunction(
     (filename) => document.querySelector('#statusText').textContent === `Opened ${filename}.`,
     `${name}.wafercad`,
@@ -495,6 +509,22 @@ try {
     await page.locator('#snapshotsTab').click();
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
+    const snapshotName = page.locator('.snapshot-name').first();
+    await snapshotName.fill('Regression checkpoint');
+    await page.waitForFunction(
+      () => document.querySelector('.snapshot-commit-state')?.textContent === 'Saved',
+      null,
+      { timeout: 5000 },
+    );
+    await page.locator('#saveSnapshotBtn').click();
+    assert.ok(
+      (
+        await page
+          .locator('.snapshot-name')
+          .evaluateAll((inputs) => inputs.map((input) => input.value))
+      ).includes('Regression checkpoint'),
+      'snapshot rename was lost after rerender',
+    );
     await page.locator('#settingsTab').click();
     await page.locator('#xyUnitSelect').selectOption('nm');
     await page.locator('#snapshotsTab').click();
@@ -529,6 +559,7 @@ try {
       await page.locator('#baseTab').click();
       await page.locator('#baseWidth').fill(String(baseWidth));
       await page.locator('#applyBaseBtn').click();
+      await confirmIfVisible(page);
       await page.locator('#maskTab').click();
       await capture(page, `${name}-${sample}`);
       await checkLayout(page);
@@ -646,8 +677,16 @@ try {
       // 3D integration guardrails: clean opaque rough surfaces and sorted
       // translucent layers should remain layer-colored without screen-door noise.
       await page.locator('#threeMaxBtn').click();
-      const roughCanvas = page.locator('#threeHost canvas'),
-        fitLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
+      const roughCanvas = page.locator('#threeHost canvas');
+      await page.waitForFunction(
+        () => {
+          const canvas = document.querySelector('#threeHost canvas');
+          return canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true';
+        },
+        null,
+        { timeout: 10000 },
+      );
+      const fitLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
         fitTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count')),
         fitSubdivisionTriangles = Number(
           await roughCanvas.getAttribute('data-rough-subdivision-triangle-count'),
@@ -682,9 +721,60 @@ try {
       );
       await capture(page, 'wide-rough-3d-opaque-max');
 
+      // Interaction LOD: switch to a cached coarse mesh once at drag start,
+      // avoid topology rebuilds during mousemove, then refine asynchronously.
+      const dragBox = await roughCanvas.boundingBox();
+      assert.ok(dragBox, 'rough 3D canvas has no interaction bounds');
+      const dragX = dragBox.x + dragBox.width * 0.55,
+        dragY = dragBox.y + dragBox.height * 0.52;
+      await page.mouse.move(dragX, dragY);
+      await page.mouse.down();
+      await page.mouse.move(dragX + 4, dragY + 2);
+      await page.waitForFunction(
+        () => document.querySelector('#threeHost canvas')?.dataset.roughMeshMode === 'interactive',
+        null,
+        { timeout: 5000 },
+      );
+      const dragStartRebuilds = Number(
+        await roughCanvas.getAttribute('data-rough-rebuild-count'),
+      );
+      for (let step = 1; step <= 12; step++) {
+        await page.mouse.move(dragX + 4 + step * 5, dragY - step * 2);
+      }
+      const dragMoveRebuilds = Number(
+        await roughCanvas.getAttribute('data-rough-rebuild-count'),
+      );
+      assert.equal(
+        dragMoveRebuilds,
+        dragStartRebuilds,
+        `rough mesh rebuilt during drag: ${dragStartRebuilds} -> ${dragMoveRebuilds}`,
+      );
+      await page.mouse.up();
+      await page.waitForFunction(
+        (previous) => {
+          const canvas = document.querySelector('#threeHost canvas');
+          return (
+            canvas?.dataset.roughMeshMode === 'detailed' &&
+            Number(canvas.dataset.roughRebuildCount || 0) > previous
+          );
+        },
+        dragMoveRebuilds,
+        { timeout: 10000 },
+      );
+
       await roughCanvas.hover();
       for (let step = 0; step < 8; step++) await page.mouse.wheel(0, -600);
-      await page.waitForTimeout(320);
+      await page.waitForFunction(
+        (previous) => {
+          const canvas = document.querySelector('#threeHost canvas');
+          return (
+            canvas?.dataset.roughMeshMode === 'detailed' &&
+            Number(canvas.dataset.roughRebuildCount || 0) > previous
+          );
+        },
+        fitRoughRebuilds,
+        { timeout: 10000 },
+      );
       const zoomLodZones = Number(await roughCanvas.getAttribute('data-rough-lod-zones')),
         zoomStitches = Number(await roughCanvas.getAttribute('data-rough-lod-stitches')),
         zoomTriangles = Number(await roughCanvas.getAttribute('data-rough-triangle-count')),
@@ -818,7 +908,17 @@ try {
       );
       await stressCanvas.hover();
       for (let step = 0; step < 5; step++) await page.mouse.wheel(0, -500);
-      await page.waitForTimeout(280);
+      await page.waitForFunction(
+        (previous) => {
+          const canvas = document.querySelector('#threeHost canvas');
+          return (
+            canvas?.dataset.roughMeshMode === 'detailed' &&
+            Number(canvas.dataset.roughRebuildCount || 0) > previous
+          );
+        },
+        stressRebuilds,
+        { timeout: 10000 },
+      );
       const stressZoomPlanBuilds = Number(
           await stressCanvas.getAttribute('data-surface-plan-build-count'),
         ),

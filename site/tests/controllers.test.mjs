@@ -118,6 +118,54 @@ test('workspace session allows only one writer until explicit takeover', () => {
   second.stop();
 });
 
+test('workspace session does not silently acquire an expired lease after starting read-only', () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  };
+  let clock = 1000;
+  let secondRenew = null;
+  const first = createWorkspaceSessionController({
+    storage,
+    windowRef: {
+      setInterval: () => 1,
+      clearInterval: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    },
+    now: () => clock,
+    tabId: 'owner',
+  });
+  const second = createWorkspaceSessionController({
+    storage,
+    windowRef: {
+      setInterval: (fn) => {
+        secondRenew = fn;
+        return 2;
+      },
+      clearInterval: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    },
+    now: () => clock,
+    tabId: 'paused-tab',
+  });
+
+  assert.equal(first.start(), true);
+  assert.equal(second.start(), false);
+  clock += 8000;
+  secondRenew?.();
+  assert.equal(second.canWrite(), false);
+  assert.equal(second.hasWriteLease(), false);
+  assert.equal(second.takeOver(), true);
+  assert.equal(second.hasWriteLease(), true);
+
+  first.stop();
+  second.stop();
+});
+
 test('workspace session keeps a stable tab identity across reloads', () => {
   const leaseValues = new Map();
   const sessionValues = new Map();

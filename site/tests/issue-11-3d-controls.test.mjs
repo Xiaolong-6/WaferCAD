@@ -44,7 +44,13 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /roughBoundaryEdgesFromTriangles\(baseTriangles\)/);
   assert.doesNotMatch(threeView, /intersection\(cap\.polys/);
   assert.match(threeView, /function roughZonePriority\(/);
-  assert.match(threeView, /function maybeRebuildAdaptiveGeometry\(/);
+  assert.doesNotMatch(threeView, /function maybeRebuildAdaptiveGeometry\(/);
+  assert.match(threeView, /function requestRoughGeometry\(/);
+  assert.match(threeView, /new Worker\(workerUrl/);
+  assert.match(threeView, /roughInteractionCache/);
+  assert.match(threeView, /roughMeshMode = mode/);
+  assert.match(threeView, /controls\.addEventListener\('start'/);
+  assert.match(threeView, /controls\.addEventListener\('end'/);
   assert.match(threeView, /return normalizedDistance <= 1\.75 \? 0\.28 : 0\.06/);
   assert.match(roughMeshGeometry, /function roughPointNormal\(/);
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
@@ -79,11 +85,11 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   );
   assert.match(
     threeView,
-    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);[\s\S]*?captureRenderer\.render\(scene, camera\)/,
+    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?await requestRoughGeometry\('detailed', \{ force: true \}\);[\s\S]*?captureRenderer\.render\(scene, camera\)/,
   );
   assert.match(
     threeView,
-    /captureRenderer\.dispose\(\)[\s\S]*?renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?rebuildAdaptiveRoughGeometry\(\);/,
+    /captureRenderer\.dispose\(\)[\s\S]*?renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?await requestRoughGeometry\('detailed', \{ force: true \}\);/,
   );
   assert.match(app, /createThreeView/);
 });

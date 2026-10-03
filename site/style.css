@@ -3120,3 +3120,122 @@ summary:focus-visible {
 .implant-row-wrap.implant-hidden {
   opacity: 0.48;
 }
+
+
+/* In-page destructive-action dialog. Keeps automation and keyboard interaction in DOM. */
+.confirmation-overlay {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(24, 31, 38, 0.22);
+}
+.confirmation-overlay[hidden] {
+  display: none !important;
+}
+.confirmation-dialog {
+  width: min(430px, calc(100vw - 28px));
+  padding: 12px;
+  border: 1px solid #bfc9d3;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 16px 44px rgba(31, 41, 51, 0.22);
+}
+.confirmation-copy {
+  display: grid;
+  gap: 5px;
+}
+.confirmation-copy strong {
+  color: #2f3b47;
+  font-size: 12px;
+}
+.confirmation-copy p {
+  margin: 0;
+  color: #53616e;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+.confirmation-copy .confirmation-detail {
+  color: #78838e;
+  font-size: 9.5px;
+}
+.confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 11px;
+}
+.confirmation-action {
+  min-height: 27px;
+  padding: 4px 9px;
+  border: 1px solid #c7d0d8;
+  border-radius: 4px;
+  background: #f7f9fa;
+  color: #44515e;
+  font-size: 10px;
+}
+.confirmation-action.primary {
+  border-color: #8099ae;
+  background: #eaf2f8;
+  color: #2f536f;
+}
+.confirmation-action.danger {
+  border-color: #d8aeb4;
+  background: #fff1f2;
+  color: #8b3543;
+}
+
+.snapshot-row {
+  grid-template-columns: minmax(0, 1fr) 48px auto 22px;
+}
+.snapshot-commit-state {
+  overflow: hidden;
+  color: #75808b;
+  font-size: 8.5px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.snapshot-commit-state[data-failed='true'] {
+  color: #9a3c49;
+}
+
+#workspaceSaveStatus[data-state='dirty'] {
+  color: #8a5d13;
+  font-weight: 600;
+}
+#workspaceSaveStatus[data-state='saving'] {
+  color: #46637c;
+}
+#workspaceSaveStatus[data-state='saved'] {
+  color: #4f6c5a;
+}
+#workspaceSaveStatus[data-state='paused'] {
+  color: #7a6844;
+}
+#workspaceSaveStatus[data-state='error'] {
+  color: #923746;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .snapshot-row {
+    grid-template-columns: minmax(0, 1fr) 42px auto 22px;
+  }
+  .confirmation-dialog {
+    width: min(430px, calc(100vw - 16px));
+  }
+}
+
+
+.three-export-popover {
+  width: min(270px, 76vw);
+}
+.three-export-popover .export-note {
+  margin-top: 2px;
+  color: #6f7b86;
+  font-size: 8.5px;
+  line-height: 1.35;
+}

@@ -38,6 +38,12 @@ async function processDiagnostics(page) {
   ]);
 }
 
+async function chooseConfirmation(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  await overlay.waitFor({ state: 'visible', timeout: 5000 });
+  await overlay.locator(`[data-dialog-action="${action}"]`).click();
+}
+
 async function canvasInkFraction(page, selector) {
   return page.locator(selector).evaluate((canvas) => {
     const ctx = canvas.getContext('2d'),
@@ -64,7 +70,7 @@ const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
 const errors = [];
 
 page.on('pageerror', (error) => errors.push(error.message));
-page.on('dialog', (dialog) => void dialog.accept());
+page.on('dialog', (dialog) => { errors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 
 await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
@@ -264,7 +270,7 @@ const welcomeCheckpointContext = await browser.newContext({ viewport: { width: 1
 const welcomeCheckpointPage = await welcomeCheckpointContext.newPage();
 const welcomeCheckpointErrors = [];
 welcomeCheckpointPage.on('pageerror', (error) => welcomeCheckpointErrors.push(error.message));
-welcomeCheckpointPage.on('dialog', (dialog) => void dialog.accept());
+welcomeCheckpointPage.on('dialog', (dialog) => { welcomeCheckpointErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await welcomeCheckpointPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
@@ -276,7 +282,7 @@ await welcomeCheckpointPage.waitForFunction(
 );
 await welcomeCheckpointPage.locator('#projectNameInput').fill('Before welcome replacement');
 await welcomeCheckpointPage.waitForFunction(
-  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
   null,
   { timeout: 5000 },
 );
@@ -303,6 +309,7 @@ const welcomeRecoveryValue = await welcomeCheckpointPage
 assert.ok(welcomeRecoveryValue);
 await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption(welcomeRecoveryValue);
 await welcomeCheckpointPage.locator('#workspaceRestoreBtn').click();
+await chooseConfirmation(welcomeCheckpointPage);
 await welcomeCheckpointPage.waitForFunction(
   () => /Restored local recovery checkpoint/.test(document.getElementById('statusText')?.textContent || ''),
   null,
@@ -321,7 +328,7 @@ const failedWelcomeContext = await browser.newContext({ viewport: { width: 1100,
 const failedWelcomePage = await failedWelcomeContext.newPage();
 const failedWelcomeErrors = [];
 failedWelcomePage.on('pageerror', (error) => failedWelcomeErrors.push(error.message));
-failedWelcomePage.on('dialog', (dialog) => void dialog.accept());
+failedWelcomePage.on('dialog', (dialog) => { failedWelcomeErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await failedWelcomePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
@@ -333,7 +340,7 @@ await failedWelcomePage.waitForFunction(
 );
 await failedWelcomePage.locator('#projectNameInput').fill('Before failed welcome open');
 await failedWelcomePage.waitForFunction(
-  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
   null,
   { timeout: 5000 },
 );
@@ -364,7 +371,7 @@ await failedWelcomeContext.close();
 const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const exampleErrors = [];
 examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
-examplePage.on('dialog', (dialog) => void dialog.accept());
+examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await examplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 await examplePage.locator('#welcomeExampleBtn').click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
@@ -475,6 +482,7 @@ assert.ok(persistenceStores.stores.includes('workspace-metadata'));
 assert.equal(persistenceStores.metadataHasProject, false);
 assert.equal(persistenceStores.payloadHasProject, true);
 await page.locator('#workspaceRecoveryClearBtn').click();
+await chooseConfirmation(page);
 await page.waitForFunction(
   () =>
     ![...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
@@ -679,6 +687,7 @@ await page.locator('#openProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from(JSON.stringify(conformalProject)),
 });
+await chooseConfirmation(page);
 await page.waitForFunction(() =>
   (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
 );
@@ -1335,7 +1344,7 @@ await page.evaluate(() => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 });
 await page.waitForFunction(
-  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
   null,
   { timeout: 5000 },
 );
@@ -1392,6 +1401,7 @@ assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35)
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await page.locator('#settingsTab').click();
 await page.locator('#newProjectBtn').click();
+await chooseConfirmation(page);
 await page.waitForFunction(
   () =>
     [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
@@ -1408,7 +1418,7 @@ const safetySecond = await safetyContext.newPage();
 const safetyErrors = [];
 for (const safetyPage of [safetyFirst, safetySecond]) {
   safetyPage.on('pageerror', (error) => safetyErrors.push(error.message));
-  safetyPage.on('dialog', (dialog) => void dialog.accept());
+  safetyPage.on('dialog', (dialog) => { safetyErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 }
 await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
@@ -1430,17 +1440,18 @@ await safetySecond.waitForFunction(
 );
 assert.equal(await safetySecond.locator('.workspace').evaluate((element) => element.inert), false);
 assert.equal(await safetySecond.locator('#workspaceConflictDialog').isVisible(), true);
-assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /Autosave paused/);
+assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /autosave paused/i);
 
 // A read-only tab may reset its in-memory workspace, but it must never delete
 // or overwrite the current autosave owned by the other tab.
 await safetyFirst.locator('#projectNameInput').fill('Owner survives read-only New');
 await safetyFirst.waitForFunction(
-  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
   null,
   { timeout: 5000 },
 );
 await safetySecond.locator('#newProjectBtn').click();
+await chooseConfirmation(safetySecond);
 await safetySecond.waitForFunction(
   () => /New empty project/.test(document.getElementById('statusText')?.textContent || ''),
   null,
@@ -1470,8 +1481,18 @@ assert.equal(
   await safetySecond.locator('.workspace').getAttribute('data-autosave-owner'),
   'false',
 );
+assert.match(
+  await safetySecond.locator('#workspaceSaveStatus').textContent(),
+  /Unsaved changes · autosave paused/,
+);
 
 await safetySecond.locator('#workspaceTakeOverBtn').click();
+await safetySecond.locator('#confirmationDialogOverlay:not([hidden])').waitFor();
+assert.match(
+  await safetySecond.locator('#confirmationDialogTitle').textContent(),
+  /Workspace states differ/,
+);
+await chooseConfirmation(safetySecond, 'use-current');
 await safetySecond.waitForFunction(
   () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
   null,

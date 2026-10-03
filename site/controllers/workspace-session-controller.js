@@ -95,7 +95,9 @@ export function createWorkspaceSessionController({
       if (!writeLease()) emit();
       return true;
     }
-    if (!leaseIsActive(lease)) return tryAcquire();
+    // A tab that started as a non-owner never acquires the workspace silently.
+    // Its in-memory state may have diverged while autosave was paused, so a
+    // deliberate Take over flow must reconcile it with the latest saved state.
     return false;
   }
 
@@ -156,10 +158,6 @@ export function createWorkspaceSessionController({
   function handleStorage(event) {
     if (event?.key !== LEASE_KEY) return;
     const lease = parseLease(event.newValue);
-    if (!writable && !leaseIsActive(lease)) {
-      tryAcquire();
-      return;
-    }
     const nextWritable =
       writable && (!leaseIsActive(lease) || lease?.tabId === resolvedTabId);
     if (nextWritable !== writable) {

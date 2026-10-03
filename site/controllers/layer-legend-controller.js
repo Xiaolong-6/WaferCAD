@@ -158,7 +158,7 @@ export function createLayerLegendController({
   updateOperationUI,
   onChanged = () => {},
   status,
-  confirmDelete = (message) => globalThis.confirm(message),
+  confirmAction = async () => false,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -309,8 +309,18 @@ export function createLayerLegendController({
         remove.textContent = '×';
         remove.title = `Delete exposed layer "${layer.name}"`;
         remove.setAttribute('aria-label', `Delete exposed layer ${layer.name}`);
-        remove.onclick = () => {
-          if (!confirmDelete(`Delete exposed layer "${layer.name}"? This can be undone.`)) return;
+        remove.onclick = async () => {
+          if (
+            !(await confirmAction({
+              title: 'Delete exposed layer?',
+              message: `Delete exposed layer "${layer.name}"?`,
+              detail: 'This change can be undone.',
+              confirmLabel: 'Delete layer',
+              danger: true,
+            }))
+          ) {
+            return;
+          }
           saveHistory();
           if (!deleteExposedLayer(model, layer.id)) {
             discardLastHistory();
