@@ -138,6 +138,11 @@ export function createWorkspacePersistenceController({
     return workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? false;
   }
 
+  function loadProjectWithSnapshotHistory(project) {
+    loadProjectSnapshot(project);
+    snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+  }
+
   function clearTimer() {
     if (timer == null) return;
     clearTimeout(timer);
@@ -386,8 +391,7 @@ export function createWorkspacePersistenceController({
       });
       const recovered = await loadWorkspaceRecoveryPoint(key);
       if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
-      loadProjectSnapshot(recovered);
-      snapshotManager.importRecords(recovered.snapshots || [], recovered.snapshotBranches);
+      loadProjectWithSnapshotHistory(recovered);
       syncBaseControls();
       syncTransformInputs();
       renderAll();
@@ -539,8 +543,7 @@ export function createWorkspacePersistenceController({
           reason: 'pre-takeover-current',
         });
       }
-      loadProjectSnapshot(latestSaved);
-      snapshotManager.importRecords(latestSaved.snapshots || [], latestSaved.snapshotBranches);
+      loadProjectWithSnapshotHistory(latestSaved);
       syncBaseControls();
       syncTransformInputs();
       renderAll();
@@ -598,8 +601,7 @@ export function createWorkspacePersistenceController({
             });
           } catch (error) {
             console.error(error);
-            loadProjectSnapshot(saved);
-            snapshotManager.importRecords(saved.snapshots || []);
+            loadProjectWithSnapshotHistory(saved);
             syncBaseControls();
             syncTransformInputs();
             renderAll();
@@ -615,8 +617,7 @@ export function createWorkspacePersistenceController({
         }
         const started = await initializeWorkspaceStart();
         if (!started && saved) {
-          loadProjectSnapshot(saved);
-          snapshotManager.importRecords(saved.snapshots || []);
+          loadProjectWithSnapshotHistory(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();
@@ -631,8 +632,7 @@ export function createWorkspacePersistenceController({
       } else {
         const saved = await loadWorkspaceState();
         if (saved) {
-          loadProjectSnapshot(saved);
-          snapshotManager.importRecords(saved.snapshots || []);
+          loadProjectWithSnapshotHistory(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();

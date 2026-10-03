@@ -3860,8 +3860,13 @@ summary:focus-visible {
   text-align: left;
 }
 
-.snapshot-more-popover button:hover {
+.snapshot-more-popover button:hover:not(:disabled) {
   background: #f4f7f9;
+}
+
+.snapshot-more-popover button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .snapshot-more-popover button[data-danger='true'] {

@@ -13,6 +13,7 @@ export function createProcessPanelController({
   processTaskController,
   saveHistory,
   beforeApply = async () => true,
+  commitApplyBranch = async () => null,
   recordProcessOperation = () => {},
   clearBaseRevertSnapshot,
   colorNewLayer,
@@ -199,7 +200,8 @@ export function createProcessPanelController({
             ? `Marking ${name} implant…`
             : `Depositing ${name}…`;
 
-    if (!(await beforeApply())) return;
+    const applyGate = await beforeApply();
+    if (!applyGate) return;
   
     const areaRequest = {
       mode: areaMode,
@@ -225,6 +227,13 @@ export function createProcessPanelController({
     const result = task.result;
     if (!result?.changed) {
       return status(result?.error || 'The operation did not change the model.', 'warning');
+    }
+
+    try {
+      await commitApplyBranch(applyGate);
+    } catch (error) {
+      console.error(error);
+      return status(`Variant creation failed: ${error.message}`, 'error');
     }
   
     saveHistory();

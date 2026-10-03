@@ -851,7 +851,7 @@ try {
     await snapshotRow.locator('.snapshot-more-trigger').click();
     await snapshotRow.locator('.snapshot-more-popover button').first().click();
     await page.waitForFunction(
-      () => /Restored snapshot/.test(document.getElementById('statusText')?.textContent || ''),
+      () => /Restored milestone/.test(document.getElementById('statusText')?.textContent || ''),
       null,
       { timeout: 10000 },
     );

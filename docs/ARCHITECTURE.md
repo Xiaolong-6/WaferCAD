@@ -126,11 +126,13 @@ Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm c
 
 ### `site/workspace-snapshots.js`
 
-Owns the process-history graph, named immutable milestones, and branch HEAD state independently of the DOM and renderers. A successful Apply creates a lightweight node with `branchId`, `parentId`, `processRevision`, timestamp, and structured operation metadata. A snapshot stores a full validated workspace state plus the `historyNodeId` it marks.
+Owns the process-history graph, named immutable milestones, and variant/branch HEAD state independently of the DOM and renderers. A successful Apply creates a lightweight node with `branchId`, `parentId`, `processRevision`, timestamp, and structured operation metadata. A milestone stores a full validated workspace state plus the `historyNodeId` it marks.
 
-Each branch keeps independent process `rootNodeId` / `headNodeId` pointers and one validated `headState`. Ordinary process nodes do not store full models/layouts. This bounds storage growth while still allowing branch switching to restore the latest state immediately. Named milestone states and branch HEAD states are packed through the same shared model/layout asset layer during autosave, Recovery, and file export.
+Each variant keeps independent process `rootNodeId` / `headNodeId` pointers and one validated `headState`. Ordinary process nodes do not store full models/layouts. This bounds storage growth while still allowing variant switching to restore the latest state immediately. HEAD state is synchronized lazily at persistence/export and variant-switch boundaries so non-process edits are retained without cloning the full workspace on every UI input. Named milestone states and variant HEAD states are packed through the same shared model/layout asset layer during autosave, Recovery, and file export.
 
-Restoring a milestone or Undo can move the process cursor behind HEAD without changing HEAD. Before another Apply, the application must create a continuation branch; if no milestone exists at an Undo cursor, a branch-point milestone is created automatically. Existing v1 branch metadata and older snapshot-only projects import into the V2 manager without changing their saved workspace states.
+Restoring a milestone or Undo can move the process cursor behind HEAD without changing HEAD. The resulting historical working state may be inspected or edited. Apply uses a two-phase continuation transaction: the process worker runs first, and a new variant is committed only after a successful geometry-changing result. Failed, aborted, busy, and no-change operations therefore cannot leave empty variants. The new variant is seeded from the actual historical working state. If no milestone exists at an Undo cursor, a branch-point milestone is created at that graph position automatically.
+
+Milestones referenced as variant origins cannot be deleted, which preserves provenance. Non-Main leaf variants can be deleted after a Recovery checkpoint; variants with child variants must be reduced from the leaves first. Existing v1 branch metadata and older snapshot-only projects import into the V2 manager without changing their saved workspace states.
 
 ### `site/gds.js`
 

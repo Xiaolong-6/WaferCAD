@@ -133,17 +133,19 @@ Main and Section A–B provide **SVG** export. Mask provides **SVG, GDSII, and O
 
 Use **Project → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm). Internal calculations retain their working precision; project export normalizes persisted physical lengths and coordinates to **0.1 nm** (0.0001 µm) so floating-point tails such as `24999.999999999996` are not stored.
 
-## 9. Process history, snapshots, and branches
+## 9. Process history, milestones, and variants
 
-Every successful **Apply** appends a lightweight process-history node to the active branch. The tree records the operation type and the key physical/process parameters used for that step. Failed, aborted, or no-change operations do not create nodes.
+Every successful **Apply** appends a lightweight process-history node to the active variant. The tree records the operation type and the key physical/process parameters used for that step. Failed, aborted, busy, or no-change operations do not create history nodes or empty variants.
 
-Use **Save snapshot** when a process state is worth naming. A snapshot is an immutable **milestone attached to the current process-history node** rather than a separate history line. It still captures the complete restorable workspace state.
+Use **Save milestone** when a process state is worth naming. A milestone is an immutable checkpoint attached to the current process-history node and captures the complete restorable workspace state.
 
-The **Current branch** selector switches the workspace to that branch's latest process HEAD. **Restore** loads a milestone without silently moving the branch HEAD. If the restored milestone is behind HEAD, or Undo moves the editor behind HEAD, the Snapshots panel marks the workspace as **Historical state**. Continuing with Apply requires a new branch; WaferCAD prompts first and creates the branch before geometry processing begins. The original branch remains unchanged.
+The **Current variant** selector switches the workspace to that variant's latest **HEAD**. Restoring an older milestone or using Undo can move the editor behind HEAD; the History panel then marks the workspace as **Historical working state**. Non-process edits made there stay in the working state. If the next Apply succeeds, WaferCAD creates a new `Variant N` from that exact working state and records the successful process step there. The original variant and its HEAD remain unchanged. If Apply fails, is aborted, is busy, or produces no geometry change, no variant is created.
 
-**Branch** creates a named process variant from any milestone. If branching follows Undo and no milestone exists at that exact node, WaferCAD creates the branch-point milestone automatically. Existing projects without process-history metadata continue to open as a linear **Main** branch.
+**Variant from here** creates a process variant from a milestone. When continuation follows Undo and no milestone exists at that exact process node, WaferCAD creates a branch-point milestone attached to that historical graph position. A milestone used as a variant origin is protected from deletion so provenance cannot be silently rewritten. Non-Main leaf variants can be deleted; child variants must be removed first.
 
-A project stores at most 100 named snapshots, 32 branches, and 1000 process-history nodes. Only branch HEADs and named milestones retain complete workspace states; ordinary Apply nodes remain lightweight so process trees do not multiply large mask/model payloads.
+Variant HEAD state also includes non-process project edits such as ROI/view/project settings. It is synchronized before persistence/export and before switching variants, so returning to a variant restores its actual latest working HEAD rather than only its last process operation.
+
+A project stores at most 100 named milestones, 32 variants, and 1000 process-history nodes. Only variant HEADs and named milestones retain complete workspace states; ordinary Apply nodes remain lightweight so process trees do not multiply large mask/model payloads. Existing projects without process-history metadata continue to open as a linear **Main** variant.
 
 ## 10. Save and open
 
