@@ -3753,6 +3753,25 @@ summary:focus-visible {
   background: #fffaf0;
 }
 
+.process-history-row.is-restorable {
+  cursor: pointer;
+}
+
+.process-history-row.is-restorable:hover .process-history-body,
+.process-history-row.is-restorable:focus-visible .process-history-body {
+  background: #f3f8fc;
+}
+
+.process-history-row.is-restorable:focus-visible {
+  outline: 1px solid #8fb3cf;
+  outline-offset: -1px;
+  border-radius: 3px;
+}
+
+.process-history-row.is-unavailable {
+  opacity: 0.58;
+}
+
 .process-history-body strong,
 .process-history-body span,
 .snapshot-milestone-body strong,
