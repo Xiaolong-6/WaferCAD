@@ -141,7 +141,7 @@ export function createWorkspacePersistenceController({
   }
 
   function hasWriteAccess() {
-    return workspaceSession?.hasWriteLease?.() ?? hasWriteAccess() ?? false;
+    return workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? false;
   }
 
   function markDirty() {
@@ -155,10 +155,7 @@ export function createWorkspacePersistenceController({
     const saved = await saveWorkspaceState(
       project,
       { appCommit },
-      {
-        canCommit: () =>
-          workspaceSession?.hasWriteLease?.() ?? hasWriteAccess() ?? true,
-      },
+      { canCommit: hasWriteAccess },
     );
     if (!saved) {
       saving = false;
