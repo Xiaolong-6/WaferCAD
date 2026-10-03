@@ -38,7 +38,8 @@ test('project replacement controls warn, Save is local, and Export downloads the
   assert.match(workspacePersistenceController, /manual-save · \$\{projectName\}/);
   assert.match(workspacePersistenceController, /createWorkspaceRecoveryCheckpoint\(project/);
   assert.match(projectController, /\$\('exportProjectBtn'\)\.onclick/);
-  assert.match(projectController, /downloadProject\(buildProjectSnapshot\(true\), projectExportFilename\(\)\)/);
+  assert.match(projectController, /exportProjectFileTask/);
+  assert.match(app, /project-export-worker\.js/);
   assert.match(projectController, /\.wafercad/);
 });
 
@@ -50,7 +51,8 @@ test('workspace state is restored locally after app reload', () => {
   assert.match(persistence, /META_STORE_NAME = 'workspace-metadata'/);
   assert.match(persistence, /createWorkspaceRecoveryCheckpoint/);
   assert.match(persistence, /pre-migration-v/);
-  assert.match(persistence, /validateProjectFile\(migrateProjectFile\(record\.project\)\)/);
+  assert.match(persistence, /const project = structuredClone\(record\.project\)/);
+  assert.match(persistence, /validateProjectFile\(migrateProjectFile\(project\)\)/);
   assert.match(persistence, /prepareProjectForWorkspaceStorage\(project\)/);
   assert.match(persistence, /expandProjectStorage\(project\)/);
 });
