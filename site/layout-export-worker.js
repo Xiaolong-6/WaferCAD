@@ -1,4 +1,6 @@
 const versionQuery = self.location.search || '';
+self.importScripts(`./vendor/polygon-clipping.umd.js${versionQuery}`);
+
 
 function versioned(path) {
   const url = new URL(path, self.location.href);
