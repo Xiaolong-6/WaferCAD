@@ -315,6 +315,50 @@ assert.equal(
 assert.deepEqual(welcomeCheckpointErrors, []);
 await welcomeCheckpointContext.close();
 
+// A failed staged project from Welcome must restore the previous current workspace
+// instead of autosaving the default empty editor over it.
+const failedWelcomeContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const failedWelcomePage = await failedWelcomeContext.newPage();
+const failedWelcomeErrors = [];
+failedWelcomePage.on('pageerror', (error) => failedWelcomeErrors.push(error.message));
+failedWelcomePage.on('dialog', (dialog) => void dialog.accept());
+await failedWelcomePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await failedWelcomePage.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+  null,
+  { timeout: 30000 },
+);
+await failedWelcomePage.locator('#projectNameInput').fill('Before failed welcome open');
+await failedWelcomePage.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await failedWelcomePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await failedWelcomePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'broken.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from('{not valid json'),
+});
+await failedWelcomePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await failedWelcomePage.waitForFunction(
+  () =>
+    /Welcome action failed; restored local workspace/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(
+  await failedWelcomePage.locator('#projectNameInput').inputValue(),
+  'Before failed welcome open',
+);
+assert.deepEqual(failedWelcomeErrors, []);
+await failedWelcomeContext.close();
+
 // Open Example must work even while another tab owns autosave, and the resulting
 // workspace must remain interactive enough to replace the bundled mask.
 const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
