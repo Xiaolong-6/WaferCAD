@@ -102,8 +102,8 @@ test('Draw Mask ring exports as hole-free GDS/OAS polygons instead of filling th
   assert.ok(oas.elements.length > 4);
 });
 
-test('Mask GDS/OAS export rejects geometry that collapses at the 0.1 nm DBU', () => {
-  const tinyPolygon = [
+test('Mask GDS/OAS export rejects geometry below each format DBU precision', () => {
+  const gdsTinyPolygon = [
     {
       kind: 'polygon',
       layer: 1,
@@ -115,10 +115,23 @@ test('Mask GDS/OAS export rejects geometry that collapses at the 0.1 nm DBU', ()
       ],
     },
   ];
-  assert.throws(() => serializeGDS(tinyPolygon), /collapses at the selected .* database unit/);
-  assert.throws(() => serializeOASIS(tinyPolygon), /collapses at the selected .* database unit/);
+  assert.throws(() => serializeGDS(gdsTinyPolygon), /collapses at the selected .* database unit/);
 
-  const tinyPath = [
+  const oasTinyPolygon = [
+    {
+      kind: 'polygon',
+      layer: 1,
+      datatype: 0,
+      points: [
+        [0, 0],
+        [0.00002, 0],
+        [0.00002, 0.00002],
+      ],
+    },
+  ];
+  assert.throws(() => serializeOASIS(oasTinyPolygon), /collapses at the selected .* database unit/);
+
+  const gdsTinyPath = [
     {
       kind: 'path',
       layer: 2,
@@ -130,8 +143,40 @@ test('Mask GDS/OAS export rejects geometry that collapses at the 0.1 nm DBU', ()
       ],
     },
   ];
-  assert.throws(() => serializeGDS(tinyPath), /path collapses at the selected .* database unit/);
-  assert.throws(() => serializeOASIS(tinyPath), /path collapses at the selected .* database unit/);
+  assert.throws(() => serializeGDS(gdsTinyPath), /path collapses at the selected .* database unit/);
+
+  const oasTinyPath = [
+    {
+      kind: 'path',
+      layer: 2,
+      datatype: 0,
+      width: 0,
+      points: [
+        [0, 0],
+        [0.00002, 0],
+      ],
+    },
+  ];
+  assert.throws(() => serializeOASIS(oasTinyPath), /path collapses at the selected .* database unit/);
+});
+
+test('OASIS preserves a 0.1 nm PATH width exactly through integer half-width encoding', async () => {
+  const source = [
+    {
+      kind: 'path',
+      layer: 3,
+      datatype: 0,
+      width: 0.0001,
+      points: [
+        [0, 0],
+        [1, 0],
+      ],
+    },
+  ];
+  const parsed = await parseOAS(serializeOASIS(source).buffer),
+    flat = flattenGDS(parsed, parsed.root);
+  assert.equal(flat.elements.length, 1);
+  assert.ok(Math.abs(flat.elements[0].width - 0.0001) <= 1e-12);
 });
 
 test('OASIS preserves large non-negative layer numbers while GDSII rejects INT2 overflow', async () => {
