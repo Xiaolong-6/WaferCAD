@@ -698,6 +698,14 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       if (node.operation.label != null) {
         assertString(node.operation.label, `${path}.operation.label`, { max: 512 });
       }
+      if (node.state != null) {
+        assertObject(node.state, `${path}.state`);
+        if (node.state.snapshots != null) fail(`${path}.state.snapshots`, 'must not be nested.');
+        if (node.state.snapshotBranches != null) {
+          fail(`${path}.state.snapshotBranches`, 'must not be nested.');
+        }
+        validateProjectCore(node.state, false, shared);
+      }
     });
     nodes.forEach((node, index) => {
       if (node.parentId != null && !nodeIds.has(node.parentId)) {
