@@ -565,6 +565,7 @@ async function importLayoutBuffer(arrayBuffer, filename, displayName = filename)
   } else {
     imported = await parseLayoutFile(arrayBuffer, filename);
   }
+  await checkpointWorkspace('pre-import-layout');
   applyImportedLayout(imported, displayName);
   return imported;
 }
