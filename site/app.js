@@ -138,7 +138,6 @@ function scheduleWorkspacePersistence() {
 }
 
 function markProjectDirty() {
-  snapshotManager?.syncActiveHeadState?.();
   scheduleWorkspacePersistence();
 }
 
@@ -765,7 +764,10 @@ const projectStateController = createProjectStateController({
     markProjectDirty();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
-  getSnapshotBranchState: () => snapshotManager.exportBranchState(),
+  getSnapshotBranchState: () => {
+    snapshotManager?.syncActiveHeadState?.();
+    return snapshotManager?.exportBranchState?.() || null;
+  },
   syncDisplayControls: () => {
     syncBaseControls();
     syncSectionInputs();
