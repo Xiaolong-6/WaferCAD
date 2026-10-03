@@ -156,8 +156,9 @@ export function createWorkstationUiController({ root = document, win = window } 
       nextMode = state.currentSingleView;
     }
 
+    if (!mobile) state.desktopViewMode = nextMode;
+
     if (nextMode === 'overview' || nextMode === 'split') {
-      state.desktopViewMode = nextMode;
       state.viewMode = nextMode;
     } else {
       state.currentSingleView = nextMode;
