@@ -1138,7 +1138,9 @@ bindUi();
 loadBuildCommit();
 window.addEventListener('focus', checkForBuildUpdate);
 window.addEventListener('pagehide', () => {
-  void persistWorkspaceNow().finally(() => workspaceSession.stop());
+  void persistWorkspaceNow()
+    .catch(() => false)
+    .finally(() => workspaceSession.stop());
 });
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) globalThis.location.reload();
