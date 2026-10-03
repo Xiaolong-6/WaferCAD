@@ -1161,10 +1161,32 @@ await page.locator('#settingsTab').click();
 await page.locator('#projectNameInput').fill('Refresh restore check');
 await page.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
-  input.value = '0.37';
+  input.value = '0.35';
   input.dispatchEvent(new Event('input', { bubbles: true }));
 });
-await page.waitForTimeout(1000);
+await page.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+const storedMaskOpacity = await page.evaluate(
+  () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('wafercad-workspace-v1', 2);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction('workspace', 'readonly');
+        const recordRequest = transaction.objectStore('workspace').get('current');
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => {
+          database.close();
+          resolve(recordRequest.result?.project?.display?.maskOpacity ?? null);
+        };
+      };
+    }),
+);
+assert.equal(storedMaskOpacity, 0.35);
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
@@ -1172,14 +1194,14 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
-assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.37);
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
 // Snapshot Restore checkpoints the current state before replacement.
 await page.locator('#snapshotsTab').click();
 await page.locator('#saveSnapshotBtn').click();
 await page.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
-  input.value = '0.22';
+  input.value = '0.2';
   input.dispatchEvent(new Event('input', { bubbles: true }));
 });
 await page.waitForTimeout(50);
@@ -1190,7 +1212,7 @@ await page.waitForFunction(
       /pre-snapshot-restore/.test(option.textContent || ''),
     ),
 );
-assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.37);
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await page.locator('#settingsTab').click();
