@@ -210,7 +210,7 @@ export function createSnapshotManager({
 
   function create(name = '') {
     if (records.length >= maxRecords) {
-      throw new Error(`Snapshot limit of ${maxRecords} reached.`);
+      throw new Error(`Milestone limit of ${maxRecords} reached.`);
     }
     const branch = branchById(activeBranchId) || branches[0];
     const stamp = now();
@@ -305,10 +305,10 @@ export function createSnapshotManager({
 
   function createBranch(snapshotId, name = '', { headState = null } = {}) {
     if (branches.length >= maxBranches) {
-      throw new Error(`Branch limit of ${maxBranches} reached.`);
+      throw new Error(`Variant limit of ${maxBranches} reached.`);
     }
     const source = recordById(snapshotId);
-    if (!source) throw new Error('Branch source snapshot was not found.');
+    if (!source) throw new Error('Variant source milestone was not found.');
 
     const stamp = now();
     const date = stamp instanceof Date ? stamp : new Date(stamp);
@@ -316,7 +316,7 @@ export function createSnapshotManager({
     while (!id || branchById(id)) id = branchIdFactory();
 
     const seedState = headState == null ? source.state : headState;
-    if (!validateState(seedState)) throw new Error('Cannot seed a branch from an invalid workspace state.');
+    if (!validateState(seedState)) throw new Error('Cannot seed a variant from an invalid workspace state.');
 
     const branch = {
       id,
@@ -393,7 +393,7 @@ export function createSnapshotManager({
 
   function createBranchFromCursor(name = '') {
     const context = continuationContext();
-    if (!context) throw new Error('The current process state is already at the branch HEAD.');
+    if (!context) throw new Error('The current process state is already at the variant HEAD.');
 
     let snapshotId = context.snapshotId;
     if (!snapshotId) {
@@ -403,7 +403,7 @@ export function createSnapshotManager({
 
     const workingState = cloneState(capture());
     if (!validateState(workingState)) {
-      throw new Error('Cannot branch from an invalid historical working state.');
+      throw new Error('Cannot create a variant from an invalid historical working state.');
     }
     return createBranch(snapshotId, name || nextVariantName(), { headState: workingState });
   }
@@ -486,7 +486,7 @@ export function createSnapshotManager({
       throw new Error(`Process history limit of ${maxHistoryNodes} reached.`);
     }
     if (continuationContext()) {
-      throw new Error('A new branch is required before continuing from a historical checkpoint.');
+      throw new Error('A new variant is required before continuing from a historical checkpoint.');
     }
 
     const branch = branchById(activeBranchId) || branches[0];
