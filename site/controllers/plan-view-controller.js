@@ -15,6 +15,7 @@ export function createPlanViewController({
   xyUnitLabel,
   renderMask,
   renderMain,
+  onChanged = () => {},
 }) {
   const featureSizeCache = {
     mask: { layout: null, scale: null, value: null },
@@ -236,6 +237,7 @@ export function createPlanViewController({
 
   function resetPlanView(kind) {
     Object.assign(getPlanViews()[kind], { zoom: 1, panX: 0, panY: 0 });
+    onChanged();
     kind === 'mask' ? renderMask() : renderMain();
   }
 
@@ -254,6 +256,7 @@ export function createPlanViewController({
       mapped = worldToCanvas(anchor, after, back);
     state.panX += px - mapped[0];
     state.panY += py - mapped[1];
+    onChanged();
     kind === 'mask' ? renderMask() : renderMain();
   }
 
