@@ -758,6 +758,7 @@ const projectStateController = createProjectStateController({
     history = [];
     future = [];
     baseRevertSnapshot = null;
+    syncUndo();
     drawMaskController?.resetInteraction();
     maskRoiController?.clearDrawingMode();
     sectionCollapseController.close();
@@ -852,8 +853,10 @@ async function ensureWritableProcessBranch() {
   const confirmed = await confirmationDialog.confirm({
     title: 'Continue from historical state?',
     message: continuation.snapshotName
-      ? `"${continuation.snapshotName}" is behind the current variant HEAD.`
-      : 'Undo moved the workspace behind the current variant HEAD.',
+      ? `Milestone "${continuation.snapshotName}" is behind the current variant HEAD.`
+      : continuation.processLabel
+        ? `Process step "${continuation.processLabel}" is behind the current variant HEAD.`
+        : 'The workspace is behind the current variant HEAD.',
     detail:
       'If this operation succeeds, WaferCAD will create a new variant from the current historical working state. The existing variant and its HEAD remain unchanged.',
     confirmLabel: 'Create variant & apply',
