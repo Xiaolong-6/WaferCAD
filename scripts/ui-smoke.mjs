@@ -458,7 +458,7 @@ await historyRestorePage.waitForFunction(
   () => /Created Variant "Variant 1"/.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.equal(await historyRestorePage.locator('.history-variant').count(), 2);
-const childVariant = historyRestorePage.locator('.history-variant[data-variant-id!="main"]').first();
+const childVariant = historyRestorePage.locator('.history-variant:not([data-variant-id="main"])').first();
 assert.equal(
   await childVariant.evaluate((section) =>
     Boolean(
@@ -528,7 +528,7 @@ assert.equal(
   'Detector path',
 );
 assert.equal(await historyRestorePage.locator('.history-variant').count(), 2);
-const reloadedChild = historyRestorePage.locator('.history-variant[data-variant-id!="main"]').first();
+const reloadedChild = historyRestorePage.locator('.history-variant:not([data-variant-id="main"])').first();
 assert.equal(
   (await reloadedChild.locator('.history-variant-name').textContent()).trim(),
   'Detector path',
