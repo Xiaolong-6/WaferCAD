@@ -392,29 +392,6 @@ button:hover,
   display: grid;
   gap: 2px;
 }
-.snapshot-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 22px;
-  gap: 3px;
-  align-items: center;
-}
-.snapshot-name {
-  height: 23px !important;
-  min-width: 0;
-  padding: 2px 5px !important;
-  font-size: 9.5px !important;
-}
-.snapshot-action,
-.snapshot-delete {
-  height: 23px;
-  padding: 2px 5px;
-  font-size: 9px;
-}
-.snapshot-delete {
-  width: 22px;
-  padding: 0;
-  color: #8a5b62;
-}
 
 .workspace {
   padding: 4px;
@@ -3210,21 +3187,6 @@ summary:focus-visible {
   color: #8b3543;
 }
 
-.snapshot-row {
-  grid-template-columns: minmax(0, 1fr) 48px auto 22px;
-}
-.snapshot-commit-state {
-  overflow: hidden;
-  color: #75808b;
-  font-size: 8.5px;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.snapshot-commit-state[data-failed='true'] {
-  color: #9a3c49;
-}
-
 #workspaceSaveStatus[data-state='dirty'] {
   color: #8a5d13;
   font-weight: 600;
@@ -3244,9 +3206,6 @@ summary:focus-visible {
 }
 
 @media (max-width: 600px) {
-  .snapshot-row {
-    grid-template-columns: minmax(0, 1fr) 42px auto 22px;
-  }
   .confirmation-dialog {
     width: min(430px, calc(100vw - 16px));
   }
