@@ -4,6 +4,7 @@ import {
   normalizeSectionCollapse,
   resolveSectionCollapse,
   sectionCollapseSnapValues,
+  translateSectionCollapse,
 } from '../section-z-collapse.js';
 
 export function createSectionCollapseController({
@@ -178,19 +179,8 @@ export function createSectionCollapseController({
     } else if (activeTarget === 'bottom') {
       value.bottom = Math.min(value.top - minGap, Math.max(lo, value.bottom + step));
     } else {
-      const range = value.top - value.bottom;
-      let top = value.top + step,
-        bottom = value.bottom + step;
-      if (top > hi) {
-        top = hi;
-        bottom = top - range;
-      }
-      if (bottom < lo) {
-        bottom = lo;
-        top = bottom + range;
-      }
-      value.top = top;
-      value.bottom = bottom;
+      setCurrent(translateSectionCollapse(value, step, [lo, hi]));
+      return;
     }
     setCurrent(value);
   }
