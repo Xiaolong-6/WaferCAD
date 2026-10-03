@@ -250,6 +250,16 @@ export function prepareProjectForStorage(project) {
     encoding: STORAGE_ENCODING,
     lengthQuantumUm: PROJECT_LENGTH_QUANTUM_UM,
   };
+
+  const verification = structuredClone(stored);
+  expandProjectStorage(verification);
+  try {
+    validateProjectFile(verification);
+  } catch (error) {
+    throw new Error(
+      `Project cannot be stored safely at ${PROJECT_LENGTH_QUANTUM_UM} µm precision: ${error.message}`,
+    );
+  }
   return stored;
 }
 
