@@ -30,6 +30,7 @@ export function createDrawMaskController({
   onMaskChanged = () => {},
   claimPopover = () => {},
   status,
+  confirmAction = async () => false,
 }) {
   const $ = (id) => root.getElementById(id);
   let tool = null,
@@ -586,9 +587,18 @@ export function createDrawMaskController({
     $('drawShapeEditorDelete').onclick = removeSelected;
     $('drawShapeEditorClose').onclick = closeEditor;
     $('drawShapeEditorApply').onclick = applyEditor;
-    $('drawMaskClearBtn').onclick = () => {
+    $('drawMaskClearBtn').onclick = async () => {
       if (!currentMask().shapes.length) return;
-      if (!globalThis.confirm('Clear all drawn mask shapes?')) return;
+      if (
+        !(await confirmAction({
+          title: 'Clear drawn mask?',
+          message: 'Remove every shape from the current Draw mask?',
+          confirmLabel: 'Clear mask',
+          danger: true,
+        }))
+      ) {
+        return;
+      }
       selectedId = null;
       setMask({ nextShapeId: 1, shapes: [] });
       setTool(null);

@@ -23,6 +23,7 @@ import { createSnapshotManager } from './workspace-snapshots.js';
 import { takeStartupFile } from './startup-file.js';
 import { createBuildController } from './controllers/build-controller.js';
 import { createFeedbackController } from './controllers/feedback-controller.js';
+import { createConfirmationDialogController } from './controllers/confirmation-dialog-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
 import { bindToolTabs } from './controllers/tool-tabs-controller.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
@@ -104,6 +105,7 @@ let projectName = 'Untitled',
   processTaskController = null;
 const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 0, panY: 0 } };
 const feedback = createFeedbackController();
+const confirmationDialog = createConfirmationDialogController({ root: document });
 const viewPopovers = createViewPopoverController({ root: document });
 
 function status(message, level = 'auto') {
@@ -470,6 +472,7 @@ const layerLegendController = createLayerLegendController({
   updateOperationUI,
   onChanged: markProjectDirty,
   status,
+  confirmAction: (options) => confirmationDialog.confirm(options),
 });
 const { renderLayerLegend, colorNewLayer, colorNewImplant } = layerLegendController;
 
@@ -805,6 +808,7 @@ const projectController = createProjectController({
   clearRoiDrawingMode,
   clearMaskRoiDrawingMode: () => maskRoiController.clearDrawingMode(),
   buildProjectSnapshot,
+  confirmAction: (options) => confirmationDialog.confirm(options),
 });
 const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
   projectController;
@@ -850,6 +854,7 @@ drawMaskController = createDrawMaskController({
   onMaskChanged: updateOperationUI,
   claimPopover: (panel) => viewPopovers.claim(panel),
   status,
+  confirmAction: (options) => confirmationDialog.confirm(options),
 });
 
 processTaskController = createProcessTaskController({
@@ -942,6 +947,7 @@ const baseControls = createBaseControlsController({
   renderAll,
   fit3d,
   status,
+  confirmAction: (options) => confirmationDialog.confirm(options),
 });
 
 const workspaceActions = createWorkspaceActionsController({
@@ -1013,6 +1019,7 @@ const workspaceActions = createWorkspaceActionsController({
   snapshotManager,
   renderSnapshots,
   onProjectChanged: markProjectDirty,
+  getModel: () => model,
 });
 
 const mainCanvasController = createMainCanvasController({
@@ -1078,6 +1085,8 @@ workspacePersistenceController = createWorkspacePersistenceController({
     projectName = value;
   },
   syncProjectNameInput,
+  confirmAction: (options) => confirmationDialog.confirm(options),
+  chooseAction: (options) => confirmationDialog.ask(options),
 });
 
 

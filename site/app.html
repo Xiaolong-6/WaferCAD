@@ -415,9 +415,12 @@
               <button id="fit3dBtn" class="mini-btn three-control" title="Fit the 3D model">Fit</button>
               <details class="export-control">
                 <summary class="mini-btn three-control" title="Export 3D">Export</summary>
-                <div class="export-popover view-popover-surface">
-                  <button id="threeExportModelBtn" class="mini-btn three-control" type="button">GLB</button>
-                  <button id="threeExportPngBtn" class="mini-btn three-control" type="button">PNG 3×</button>
+                <div class="export-popover three-export-popover view-popover-surface">
+                  <button id="threeExportModelBtn" class="mini-btn three-control" type="button">GLB · physical</button>
+                  <button id="threeExportPngBtn" class="mini-btn three-control" type="button">PNG 3× · rendered</button>
+                  <div class="export-note">
+                    GLB uses canonical ideal process solids. Rough/Pyramid relief and rough conformal display shells are visual-only and are not embedded in GLB.
+                  </div>
                 </div>
               </details>
               <button
