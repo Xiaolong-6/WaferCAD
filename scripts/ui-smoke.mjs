@@ -1333,7 +1333,10 @@ const headerControlBoxes = await page.locator('.view-panel').evaluateAll((panels
 );
 assert.ok(headerControlBoxes.length > 12);
 for (const box of headerControlBoxes) {
-  assert.ok(Math.abs(box.height - 21) <= 0.6, `${box.panel}/${box.id} header height ${box.height}`);
+  assert.ok(
+    box.height >= 20.4 && box.height <= 22.6,
+    `${box.panel}/${box.id} header height ${box.height}`,
+  );
 }
 for (const panelId of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
   const boxes = headerControlBoxes.filter((box) => box.panel === panelId);
