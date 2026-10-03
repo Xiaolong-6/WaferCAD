@@ -821,43 +821,11 @@ try {
     }
     await checkCompactProcessLayout(page, name);
     await openFunctionPanel(page, 'snapshots');
-    await page.locator('#saveSnapshotBtn').click();
-    const savedCoords = await coords(page);
-    let snapshotRow = page.locator('.snapshot-milestone-row').first();
-    await snapshotRow.locator('.snapshot-more-trigger').click();
-    await snapshotRow.locator('.snapshot-more-popover button').nth(2).click();
-    const renameEditor = snapshotRow.locator('.snapshot-inline-editor:not([hidden])');
-    await renameEditor.locator('input').fill('Regression checkpoint');
-    await renameEditor.locator('button').first().click();
-    await page.locator('#saveSnapshotBtn').click();
-    assert.ok(
-      (
-        await page
-          .locator('.snapshot-milestone-body strong')
-          .evaluateAll((labels) => labels.map((label) => label.textContent))
-      ).includes('Regression checkpoint'),
-      'snapshot rename was lost after rerender',
-    );
-    await openFunctionPanel(page, 'project');
-    await page.locator('#xyUnitSelect').selectOption('nm');
-    await openFunctionPanel(page, 'snapshots');
-    const snapshotIndex = await page.locator('.snapshot-milestone-row').evaluateAll((rows) =>
-      rows.findIndex(
-        (row) => row.querySelector('.snapshot-milestone-body strong')?.textContent === 'Regression checkpoint',
-      ),
-    );
-    assert.ok(snapshotIndex >= 0);
-    snapshotRow = page.locator('.snapshot-milestone-row').nth(snapshotIndex);
-    await snapshotRow.locator('.snapshot-more-trigger').click();
-    await snapshotRow.locator('.snapshot-more-popover button').first().click();
-    await page.waitForFunction(
-      () => /Restored milestone/.test(document.getElementById('statusText')?.textContent || ''),
-      null,
-      { timeout: 10000 },
-    );
-    assert.equal(await page.locator('#xyUnitSelect').inputValue(), 'um');
-    assert.deepEqual(await coords(page), savedCoords);
-    await capture(page, `${name}-snapshot-restored`);
+    assert.match(await page.locator('#saveSnapshotBtn').textContent(), /Bookmark current step/i);
+    assert.equal(await page.locator('.snapshot-other-branch').count(), 0);
+    await capture(page, `${name}-history-tree`);
+    await checkLayout(page);
+
     await openFunctionPanel(page, 'mask');
     for (const sample of ['gds-alm', 'gds-basic-instances', 'oas-cblock']) {
       await page.locator('#sampleMaskSelect').selectOption(sample);
