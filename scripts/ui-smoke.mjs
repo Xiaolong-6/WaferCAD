@@ -361,6 +361,9 @@ await openFunctionPanel(historyRestorePage, 'snapshots');
 assert.equal(await historyRestorePage.locator('#snapshotsTools > .tool-context').count(), 0);
 assert.equal(await historyRestorePage.locator('.snapshot-branch-state').count(), 0);
 assert.equal(await historyRestorePage.locator('.snapshot-branch-title strong').count(), 0);
+assert.match(await historyRestorePage.locator('#saveSnapshotBtn').textContent(), /Bookmark current step/i);
+assert.equal(await historyRestorePage.locator('.history-tree-root').count(), 1);
+assert.equal(await historyRestorePage.locator('.history-variant[data-variant-id="main"]').count(), 1);
 const historySectionLabel = historyRestorePage
   .locator('#snapshotsTools > .workstation-section-label strong');
 assert.equal((await historySectionLabel.textContent()).trim(), 'History');
@@ -383,7 +386,7 @@ assert.equal(await historyRestorePage.locator('#undoBtn').isDisabled(), true);
 assert.equal(await historyRestorePage.locator('#redoBtn').isDisabled(), true);
 assert.match(
   await historyRestorePage.locator('.snapshot-continuation-banner').textContent(),
-  /Viewing process step .*History A/,
+  /Viewing Step .*History A/,
 );
 assert.ok(
   await historyRestorePage
@@ -443,6 +446,96 @@ assert.ok(
     .locator('#layerLegend .legend-name')
     .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B')),
 );
+
+// Branch directly from a Step: the Variant must appear at that Step in the tree.
+await openFunctionPanel(historyRestorePage, 'snapshots');
+const historyAStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History A' });
+await historyAStep.locator('.snapshot-more-trigger').click();
+await historyAStep
+  .locator('.snapshot-more-popover button', { hasText: 'Variant from here' })
+  .click();
+await historyRestorePage.waitForFunction(
+  () => /Created Variant "Variant 1"/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await historyRestorePage.locator('.history-variant').count(), 2);
+const childVariant = historyRestorePage.locator('.history-variant[data-variant-id!="main"]').first();
+assert.equal(
+  await childVariant.evaluate((section) =>
+    Boolean(
+      section.previousElementSibling?.classList.contains('history-step-wrap') &&
+        /History A/.test(section.previousElementSibling.textContent || ''),
+    ),
+  ),
+  true,
+);
+
+// Variant rename is a first-class inline action, not hidden in the overflow menu.
+await childVariant.locator('.history-variant-rename-trigger').click();
+const variantEditor = childVariant.locator('.history-variant-editor:not([hidden])');
+await variantEditor.locator('input').fill('Detector path');
+await variantEditor.locator('button').first().click();
+assert.equal(
+  await historyRestorePage.locator('#snapshotBranchSelect option:checked').textContent(),
+  'Detector path',
+);
+assert.equal(
+  (await historyRestorePage.locator('.history-variant[data-active="true"] .history-variant-name').textContent()).trim(),
+  'Detector path',
+);
+
+// Add a process Step on the child Variant.
+await openFunctionPanel(historyRestorePage, 'process');
+await historyRestorePage.locator('[data-process-mode="add"]').click();
+await historyRestorePage.locator('#operationArea').selectOption('full');
+await historyRestorePage.locator('#growthMode').selectOption('direct');
+await historyRestorePage.locator('#operationThickness').fill('0.05');
+await historyRestorePage.locator('#layerName').fill('Variant C');
+await historyRestorePage.locator('#applyOperationBtn').click();
+await historyRestorePage.waitForFunction(
+  () => /Deposited Variant C/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+
+// Bookmark annotates a Step but does not create another restore lineage.
+await openFunctionPanel(historyRestorePage, 'snapshots');
+const variantCStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'Variant C' });
+await variantCStep.locator('.snapshot-more-trigger').click();
+await variantCStep
+  .locator('.snapshot-more-popover button', { hasText: 'Add bookmark' })
+  .click();
+assert.equal(await variantCStep.locator('.history-bookmark-row').count(), 1);
+assert.equal(
+  Number(await historyRestorePage.locator('#snapshotCount').textContent()),
+  3,
+);
+
+// Autosave/reload preserves the Step tree, Variant name, origin, and bookmark.
+await historyRestorePage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await historyRestorePage.reload({ waitUntil: 'networkidle' });
+await historyRestorePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyRestorePage, 'snapshots');
+assert.equal(
+  await historyRestorePage.locator('#snapshotBranchSelect option:checked').textContent(),
+  'Detector path',
+);
+assert.equal(await historyRestorePage.locator('.history-variant').count(), 2);
+const reloadedChild = historyRestorePage.locator('.history-variant[data-variant-id!="main"]').first();
+assert.equal(
+  (await reloadedChild.locator('.history-variant-name').textContent()).trim(),
+  'Detector path',
+);
+assert.match(await reloadedChild.textContent(), /Variant C/);
+assert.equal(await reloadedChild.locator('.history-bookmark-row').count(), 1);
+
 assert.deepEqual(historyRestoreErrors, []);
 await historyRestoreContext.close();
 
@@ -1707,203 +1800,10 @@ await page.waitForFunction(
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
-// Snapshot milestones keep destructive/branch actions behind one quiet overflow menu.
+// History is Step-first: manual save is only a bookmark annotation.
 await openFunctionPanel(page, 'snapshots');
-assert.match(await page.locator('#saveSnapshotBtn').textContent(), /Save milestone/);
-await page.locator('#saveSnapshotBtn').click();
-await page.evaluate(() => {
-  const input = document.getElementById('maskOpacityRange');
-  input.value = '0.2';
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-});
-await page.waitForTimeout(50);
-let milestoneRow = page.locator('.snapshot-milestone-row').first();
-await milestoneRow.locator('.snapshot-more-trigger').click();
-await milestoneRow.locator('.snapshot-more-popover button').first().click();
-await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
-assert.equal(
-  await page.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
-    options.some((option) => /pre-snapshot-restore/.test(option.textContent || '')),
-  ),
-  false,
-);
-assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
-assert.equal(await page.locator('.snapshot-more-trigger').count(), 2);
-assert.equal(await page.locator('.snapshot-branch-group').count(), 1);
-
-// Manual branching is still available in the overflow menu, but uses a short Variant name.
-milestoneRow = page.locator('.snapshot-milestone-row').first();
-await milestoneRow.locator('.snapshot-more-trigger').click();
-await milestoneRow.locator('.snapshot-more-popover button').nth(1).click();
-await page.waitForFunction(
-  () => /Created variant "Variant 1"/.test(document.getElementById('statusText')?.textContent || ''),
-);
-assert.equal(await page.locator('#snapshotBranchSelect option').count(), 2);
-assert.equal(
-  await page.locator('#snapshotBranchSelect option:checked').textContent(),
-  'Variant 1',
-);
-assert.equal(await page.locator('.snapshot-branch-group').count(), 1);
-assert.equal(await page.locator('.snapshot-other-branch').count(), 1);
-await page.locator('#saveSnapshotBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /on "Variant 1"/);
-await page.locator('#snapshotBranchSelect').selectOption('main');
-await page.waitForFunction(
-  () => /Switched to variant "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
-);
-assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.2);
-
-// A milestone used as a variant origin cannot be deleted silently.
-milestoneRow = page.locator('.snapshot-milestone-row').first();
-await milestoneRow.locator('.snapshot-more-trigger').click();
-const originDelete = milestoneRow.locator('.snapshot-more-popover button').last();
-assert.equal(await originDelete.isDisabled(), true);
-await milestoneRow.locator('.snapshot-more-trigger').click();
-
-// V2: save a milestone, move Main forward, then restore the milestone.
-await page.locator('#saveSnapshotBtn').click();
-let v2MilestoneRow = page.locator('.snapshot-milestone-row').last();
-await v2MilestoneRow.locator('.snapshot-more-trigger').click();
-await v2MilestoneRow.locator('.snapshot-more-popover button').nth(2).click();
-const v2RenameEditor = v2MilestoneRow.locator('.snapshot-inline-editor:not([hidden])');
-await v2RenameEditor.locator('input').fill('V2 branch point');
-await v2RenameEditor.locator('button').first().click();
-
-await openFunctionPanel(page, 'process');
-await page.locator('[data-process-mode="add"]').click();
-await page.locator('#operationArea').selectOption('full');
-await page.locator('#growthMode').selectOption('direct');
-await page.locator('#operationThickness').fill('0.05');
-await page.locator('#layerName').fill('Main after milestone');
-await page.locator('#applyOperationBtn').click();
-await page.waitForFunction(
-  () => /Deposited Main after milestone/.test(document.getElementById('statusText')?.textContent || ''),
-  null,
-  { timeout: 30000 },
-);
-
-await openFunctionPanel(page, 'snapshots');
-assert.ok(await page.locator('.process-history-row').count());
-let v2MilestoneIndex = await page.locator('.snapshot-milestone-row').evaluateAll((rows) =>
-  rows.findIndex(
-    (row) => row.querySelector('.snapshot-milestone-body strong')?.textContent === 'V2 branch point',
-  ),
-);
-assert.ok(v2MilestoneIndex >= 0);
-v2MilestoneRow = page.locator('.snapshot-milestone-row').nth(v2MilestoneIndex);
-await v2MilestoneRow.locator('.snapshot-more-trigger').click();
-await v2MilestoneRow.locator('.snapshot-more-popover button').first().click();
-await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
-assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /Historical working state/);
-assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /successful Apply/i);
-assert.equal(await page.locator('.snapshot-branch-state').count(), 0);
-
-// Historical viewing has an explicit route back to the branch's autosaved HEAD.
-await page.locator('.snapshot-return-head').click();
-await page.waitForFunction(
-  () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
-);
-assert.equal(await page.locator('.snapshot-continuation-banner').count(), 0);
-assert.equal(await page.locator('.snapshot-branch-state').count(), 0);
-assert.ok(
-  await page
-    .locator('#layerLegend .legend-name')
-    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Main after milestone')),
-);
-
-// Restore again, then Apply directly: confirmation creates a new Variant automatically.
-v2MilestoneIndex = await page.locator('.snapshot-milestone-row').evaluateAll((rows) =>
-  rows.findIndex(
-    (row) => row.querySelector('.snapshot-milestone-body strong')?.textContent === 'V2 branch point',
-  ),
-);
-v2MilestoneRow = page.locator('.snapshot-milestone-row').nth(v2MilestoneIndex);
-await v2MilestoneRow.locator('.snapshot-more-trigger').click();
-await v2MilestoneRow.locator('.snapshot-more-popover button').first().click();
-await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
-
-await openFunctionPanel(page, 'process');
-await page.locator('[data-process-mode="add"]').click();
-await page.locator('#operationArea').selectOption('full');
-await page.locator('#growthMode').selectOption('direct');
-await page.locator('#operationThickness').fill('0.05');
-await page.locator('#layerName').fill('Continuation probe');
-await page.locator('#applyOperationBtn').click();
-await page.locator('#confirmationDialogOverlay:not([hidden])').waitFor();
-assert.match(
-  await page.locator('#confirmationDialogTitle').textContent(),
-  /Continue from historical state/,
-);
-assert.match(
-  await page.locator('[data-dialog-action="confirm"]').textContent(),
-  /Create variant & apply/,
-);
-await chooseConfirmation(page);
-await page.waitForFunction(
-  () => /Deposited Continuation probe/.test(document.getElementById('statusText')?.textContent || ''),
-  null,
-  { timeout: 30000 },
-);
-
-await openFunctionPanel(page, 'snapshots');
-assert.equal(await page.locator('#snapshotBranchSelect option').count(), 3);
-assert.equal(
-  await page.locator('#snapshotBranchSelect option:checked').textContent(),
-  'Variant 2',
-);
-assert.equal(await page.locator('.snapshot-branch-group').count(), 1);
-assert.equal(await page.locator('.snapshot-other-branch').count(), 2);
-assert.equal(await page.locator('.snapshot-continuation-banner').count(), 0);
-assert.match(await page.locator('.snapshot-branch-group').textContent(), /Continuation probe/);
-assert.ok(
-  await page
-    .locator('#layerLegend .legend-name')
-    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Continuation probe')),
-);
-assert.equal(
-  await page
-    .locator('#layerLegend .legend-name')
-    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Main after milestone')),
-  false,
-);
-
-await page.waitForFunction(
-  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
-  null,
-  { timeout: 5000 },
-);
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
-  null,
-  { timeout: 30000 },
-);
-await openFunctionPanel(page, 'snapshots');
-assert.equal(await page.locator('#snapshotBranchSelect option').count(), 3);
-assert.equal(
-  await page.locator('#snapshotBranchSelect option:checked').textContent(),
-  'Variant 2',
-);
-assert.match(await page.locator('.snapshot-branch-group').textContent(), /Continuation probe/);
-assert.equal(await page.locator('.snapshot-branch-state').count(), 0);
-assert.equal(await page.locator('.snapshot-continuation-banner').count(), 0);
-
-
-await page.locator('#snapshotBranchSelect').selectOption('main');
-await page.waitForFunction(
-  () => /Switched to variant "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
-);
-assert.ok(
-  await page
-    .locator('#layerLegend .legend-name')
-    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Main after milestone')),
-);
-assert.equal(
-  await page
-    .locator('#layerLegend .legend-name')
-    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Continuation probe')),
-  false,
-);
+assert.match(await page.locator('#saveSnapshotBtn').textContent(), /Bookmark current step/i);
+assert.equal(await page.locator('.snapshot-other-branch').count(), 0);
 
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await openFunctionPanel(page, 'project');
