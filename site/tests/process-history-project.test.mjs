@@ -5,6 +5,7 @@ import test from 'node:test';
 import {
   expandProjectStorage,
   prepareProjectForWorkspaceStorage,
+  readProjectFile,
   serializeProject,
 } from '../project-io.js';
 import { validateProjectFile } from '../project-schema.js';
@@ -166,6 +167,59 @@ test('V3 restorable process history survives packed project storage', () => {
   expandProjectStorage(workspaceStored);
   assert.equal(workspaceStored.snapshotBranches.nodes[0].state.model.processRevision, 1);
   assert.equal(workspaceStored.snapshotBranches.branches[0].headState.model.processRevision, 2);
+});
+
+test('V3 process-node restore states survive the project Open path', async () => {
+  const source = validProject(2);
+  const stepOne = validProject(1);
+  const stepTwo = validProject(2);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-2',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Step one' },
+        state: stepOne,
+      },
+      {
+        id: 'process-2',
+        branchId: 'main',
+        parentId: 'process-1',
+        createdAt: '2026-10-03T10:01:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'etch', label: 'Step two' },
+        state: stepTwo,
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-2',
+        headState: stepTwo,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  const text = serializeProject(source);
+  const loaded = await readProjectFile({
+    size: Buffer.byteLength(text),
+    text: async () => text,
+  });
+  assert.equal(loaded.snapshotBranches.version, 3);
+  assert.equal(loaded.snapshotBranches.nodes[0].state.model.processRevision, 1);
+  assert.equal(loaded.snapshotBranches.nodes[1].state.model.processRevision, 2);
 });
 
 test('V2 process history without node restore states remains backward compatible', () => {
