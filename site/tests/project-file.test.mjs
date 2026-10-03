@@ -891,3 +891,39 @@ test('project storage preserves snapshot branch graph metadata', () => {
   assert.equal(workspaceStored.snapshots[1].parentId, 'snapshot-main');
   assert.equal(workspaceStored.snapshotBranches.activeBranchId, 'branch-black');
 });
+
+
+test('project validator rejects dangling snapshot branch graph references', () => {
+  const source = validProject();
+  source.snapshots = [
+    {
+      id: 'snapshot-1',
+      name: 'Checkpoint',
+      createdAt: '2026-10-03T10:00:00.000Z',
+      branchId: 'main',
+      parentId: 'missing',
+      state: validProject(),
+    },
+  ];
+  source.snapshotBranches = {
+    version: 1,
+    activeBranchId: 'main',
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: 'snapshot-1',
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+  assert.throws(() => validateProjectFile(source), /parentId references an unknown snapshot/);
+
+  source.snapshots[0].parentId = null;
+  source.snapshotBranches.branches[0].headSnapshotId = 'missing';
+  assert.throws(
+    () => validateProjectFile(source),
+    /headSnapshotId references an unknown snapshot/,
+  );
+});
