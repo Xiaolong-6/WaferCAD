@@ -47,6 +47,7 @@ export function createWorkspaceActionsController({
   snapshotManager,
   renderSnapshots,
   onProjectChanged = () => {},
+  getModel = () => null,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -163,6 +164,17 @@ export function createWorkspaceActionsController({
     $('fit3dBtn').onclick = fit3d;
   }
 
+  function modelHasDisplayMorphology() {
+    for (const region of getModel()?.regions || []) {
+      for (const segment of region.stack || []) {
+        if (segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough') {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   function bindExports() {
     const closeExport = (id) => {
       const details = $(id)?.closest('details');
@@ -209,7 +221,12 @@ export function createWorkspaceActionsController({
         const blob = await getThreeView()?.exportGlb();
         if (!blob) throw new Error('3D export is unavailable.');
         downloadBlob(blob, 'wafercad-model.glb');
-        status(`Exported ${getRoi() ? 'ROI' : 'full'} 3D model as GLB (physical metres).`);
+        status(
+          modelHasDisplayMorphology()
+            ? `Exported ${getRoi() ? 'ROI' : 'full'} GLB using canonical ideal process geometry; displayed Rough/Pyramid morphology is not embedded.`
+            : `Exported ${getRoi() ? 'ROI' : 'full'} 3D model as GLB (physical metres).`,
+          'success',
+        );
       } catch (error) {
         console.error(error);
         status(`3D model export failed: ${error.message}`, 'error');
