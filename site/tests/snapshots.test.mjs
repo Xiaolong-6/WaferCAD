@@ -639,6 +639,36 @@ test('legacy history only upgrades to v3 when every process node is restorable',
   assert.equal(upgraded.nodes[1].state.value, 'legacy-head');
 });
 
+test('history browsing distinguishes an exact restored state from edited historical work', () => {
+  let live = { model: { processRevision: 0 }, value: 'base', view: { zoom: 1 } };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1', view: { zoom: 1 } };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  live = { model: { processRevision: 2 }, value: 'step-2', view: { zoom: 1 } };
+  manager.recordOperation({ kind: 'add', label: 'Step 2' });
+
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+
+  live.view.zoom = 2;
+  assert.equal(manager.hasHistoricalWorkingEdits(), true);
+
+  assert.equal(manager.restoreActiveBranchHead(), true);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+});
+
 test('branching from a restored process step reuses an existing milestone at that node', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
