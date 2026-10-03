@@ -44,6 +44,29 @@ async function chooseConfirmation(page, action = 'confirm') {
   await overlay.locator(`[data-dialog-action="${action}"]`).click();
 }
 
+const FUNCTION_SECTION_IDS = {
+  project: 'settingsTools',
+  base: 'baseTools',
+  mask: 'maskTools',
+  process: 'operationTools',
+  snapshots: 'snapshotsTools',
+};
+
+async function openFunctionPanel(page, name, clickOptions = {}) {
+  const button = page.locator(`.workstation-rail-button[data-tool="${name}"]`);
+  await button.waitFor({ state: 'visible', timeout: clickOptions.timeout || 5000 });
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  const isOpen = await panel.evaluate((element) => element.classList.contains('open'));
+  const isActive = await button.evaluate((element) => element.classList.contains('active'));
+  if (!isOpen || !isActive) await button.click(clickOptions);
+  await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
+  await page.evaluate((sectionName) => {
+    const scroller = document.querySelector('#toolPanel .tool-tab-content');
+    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
+    if (scroller && section) scroller.scrollTop = Math.max(0, section.offsetTop - 6);
+  }, name);
+}
+
 async function canvasInkFraction(page, selector) {
   return page.locator(selector).evaluate((canvas) => {
     const ctx = canvas.getContext('2d'),
@@ -191,7 +214,7 @@ await blockedThreePage.waitForFunction(
   null,
   { timeout: 4000 },
 );
-await blockedThreePage.locator('#operationTab').click({ timeout: 2000 });
+await openFunctionPanel(blockedThreePage, 'process', { timeout: 2000 });
 await blockedThreePage.locator('#operationTools:not([hidden])').waitFor({ timeout: 2000 });
 assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
 assert.deepEqual(blockedThreeErrors, []);
@@ -495,7 +518,7 @@ assert.equal(
 );
 
 // Operation controls remain usable after the toolbar reorganization.
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('#operationTools:not([hidden])').waitFor();
 for (const id of ['applyOperationBtn', 'undoBtn', 'redoBtn', 'faceToggleBtn']) {
   assert.equal(await page.locator(`#operationTools #${id}`).count(), 1);
@@ -576,7 +599,7 @@ assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
 
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI rough project');
 const roughDownloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -600,7 +623,7 @@ assert.ok(
       Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
 );
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 
 // Experimental Implant uses the same process area but records a structural annotation only.
 await page.locator('[data-process-mode="implant"]').click();
@@ -639,7 +662,7 @@ await implantLegendRow.locator('.legend-visibility').uncheck();
 assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), false);
 await implantLegendRow.locator('.legend-visibility').check();
 
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI implant project');
 const implantDownloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -657,7 +680,7 @@ assert.equal(implantSaved.display.sectionShowBorders, true);
 assert.equal(implantSaved.display.customStructurePalette.length, 20);
 assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color));
 assert.ok(implantSaved.model.implants[0].patches.length > 0);
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 
 // Extend targets follow the exposed surface and include Base when it is exposed.
 await page.locator('[data-process-mode="grow"]').click();
@@ -681,7 +704,7 @@ const conformalProject = projectForBenchmark({
   model: conformalFixture,
   section: { a: [-7000, 0], b: [7000, 0] },
 });
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#openProjectInput').setInputFiles({
   name: 'ui-conformal-round-trench.wafercad',
   mimeType: 'application/json',
@@ -691,7 +714,7 @@ await chooseConfirmation(page);
 await page.waitForFunction(() =>
   (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
 );
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="add"]').click();
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#growthMode').selectOption('conformal');
@@ -708,7 +731,7 @@ await page.waitForFunction(() =>
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI conformal project');
 const downloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -856,7 +879,7 @@ await sectionScaleButton.click();
 assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
 // Conformal Extend reuses the Deposit coating kernel with the existing layer id.
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="grow"]').click();
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#growthMode').selectOption('conformal');
@@ -867,7 +890,7 @@ await page.locator('#applyOperationBtn').click();
 await page.waitForFunction(() =>
   /Extended UI conformal · Conformal/.test(document.getElementById('statusText')?.textContent || ''),
 );
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI conformal extend project');
 const extendDownloadPromise = page.waitForEvent('download');
 await page.locator('#exportProjectBtn').click();
@@ -890,7 +913,7 @@ assert.deepEqual(
   { layerId: coatId, z0: 4, z1: 8, role: 'conformal-sidewall' },
 );
 
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 
 // Slice geometry is editable by default; Slice starts one-shot creation.
 const abPanel = page.locator('#sectionCoordsPanel');
@@ -1169,7 +1192,7 @@ await page.locator('#drawShapeEditorClose').click();
 assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
 
 // The active Draw source feeds Process Selected mask.
-await page.locator('#operationTab').click();
+await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="add"]').click();
 await page.locator('#operationArea').selectOption('mask');
 await page.locator('#operationThickness').fill('0.2');
@@ -1224,7 +1247,7 @@ const maskRoiLocalX = await page.locator('#maskRoiX').inputValue(),
 await page.locator('#maskRoiEditor > summary').click();
 
 // File-mask alignment moves the Mask ROI visually, but its local parameters stay unchanged.
-await page.locator('#maskTab').click();
+await openFunctionPanel(page, 'mask');
 const alignment = page.locator('#maskFileControls details.subgroup');
 if (!(await alignment.evaluate((details) => details.open))) {
   await alignment.locator(':scope > summary').click();
@@ -1368,7 +1391,7 @@ assert.equal(await page.locator('#maskSelectionSummary').count(), 0);
 
 // The active workspace is restored after a normal app.html refresh. This also
 // proves that a 2D-only display mutation schedules autosave without relying on 3D rendering.
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('Refresh restore check');
 await page.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
@@ -1413,7 +1436,7 @@ assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh rest
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
 // Snapshot Restore checkpoints the current state before replacement.
-await page.locator('#snapshotsTab').click();
+await openFunctionPanel(page, 'snapshots');
 await page.locator('#saveSnapshotBtn').click();
 await page.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
@@ -1431,7 +1454,7 @@ await page.waitForFunction(
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
-await page.locator('#settingsTab').click();
+await openFunctionPanel(page, 'project');
 await page.locator('#newProjectBtn').click();
 await chooseConfirmation(page);
 await page.waitForFunction(
