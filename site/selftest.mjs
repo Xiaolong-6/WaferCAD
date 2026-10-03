@@ -30,8 +30,10 @@ const {
 const {
   createSectionZTransform,
   defaultSectionCollapse,
+  defaultSectionCollapseForModel,
   niceSectionTicks,
   normalizeSectionCollapse,
+  resolveSectionCollapse,
   sectionCollapseSnapValues,
 } = await import('./section-z-collapse.js');
 const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
@@ -69,6 +71,22 @@ assert.ok(niceSectionTicks(10, 30, 4).length >= 2);
 const collapseSnapModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 assert.ok(sectionCollapseSnapValues(collapseSnapModel, [-10, 0]).includes(-10));
 assert.ok(sectionCollapseSnapValues(collapseSnapModel, [-10, 0]).includes(0));
+const layeredCollapseModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(layeredCollapseModel, {
+  type: 'add',
+  name: 'Surface cap',
+  thickness: 1,
+  face: 'front',
+  area: layeredCollapseModel.boundary,
+  growth: 'direct',
+});
+const safeDefaultCollapse = defaultSectionCollapseForModel(layeredCollapseModel, [-5, 6]);
+assert.ok(safeDefaultCollapse.top < 5, 'default collapse must stay inside Base bulk');
+assert.ok(safeDefaultCollapse.bottom > -5, 'default collapse must preserve the Base bottom');
+assert.deepEqual(
+  resolveSectionCollapse(null, layeredCollapseModel, [-5, 6]),
+  normalizeSectionCollapse(safeDefaultCollapse, [-5, 6]),
+);
 
 assert.equal(roughLod(0).detail, 0);
 assert.equal(roughLod(20).micro, 1);
