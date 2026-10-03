@@ -7,6 +7,7 @@ export function createSectionEditor({
   getFrame,
   isCreateMode = () => false,
   isInteractionBlocked = () => false,
+  isVisibilityBlocked = isInteractionBlocked,
   onChange,
   onCreateDone,
   onExitCreate,
@@ -57,14 +58,14 @@ export function createSectionEditor({
 
   function update() {
     const frame = getFrame(),
-      blocked = isInteractionBlocked(),
+      hiddenByMode = isVisibilityBlocked(),
       creating = isCreateMode();
     host.hidden = false;
 
     for (const button of handles) {
       const point = frame.toScreen(getSection()[button.dataset.endpoint]);
       const visible =
-        !blocked &&
+        !hiddenByMode &&
         !creating &&
         (drag?.button === button ||
           (point[0] >= 0 && point[0] <= frame.width && point[1] >= 0 && point[1] <= frame.height));
