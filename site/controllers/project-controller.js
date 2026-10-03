@@ -62,7 +62,7 @@ export function createProjectController({
       }
     }
 
-    $('snapshotCount').textContent = String(historyNodes.length);
+    $('snapshotCount').textContent = String(historyNodes.length + legacyBookmarks.length);
     host.innerHTML = '';
 
     async function prepareHistoryReplacement(reason, label = 'History navigation') {
@@ -246,7 +246,7 @@ export function createProjectController({
       name.textContent = bookmark.name;
       name.title = bookmark.createdAt;
       const meta = root.createElement('span');
-      meta.textContent = 'bookmark';
+      meta.textContent = bookmark.legacyCheckpoint ? 'legacy saved state' : 'bookmark';
       body.append(name, meta);
 
       const editor = root.createElement('div');
@@ -287,18 +287,41 @@ export function createProjectController({
       editor.append(input, save, cancel);
 
       const protectedByLegacyVariant = snapshotManager.branchesUsingSnapshot(bookmark.id);
-      const menu = createActionMenu(
-        [
-          {
-            label: 'Rename bookmark',
-            run: async () => {
-              editor.hidden = false;
-              input.focus();
-              input.select();
-            },
+      const bookmarkActions = [];
+      if (bookmark.legacyCheckpoint) {
+        bookmarkActions.push({
+          label: 'Restore legacy state',
+          run: async () => {
+            if (
+              !(await prepareHistoryReplacement(
+                'pre-legacy-bookmark-restore',
+                'Legacy state restore',
+              ))
+            ) {
+              return;
+            }
+            if (!snapshotManager.restore(bookmark.id)) {
+              status('Legacy saved state failed validation.', 'error');
+              return;
+            }
+            refreshAfterSnapshotLoad();
+            onProjectChanged();
+            renderSnapshots();
+            status(`Restored legacy saved state "${bookmark.name}".`);
           },
-          {
-            label: 'Delete bookmark',
+        });
+      }
+      bookmarkActions.push(
+        {
+          label: 'Rename bookmark',
+          run: async () => {
+            editor.hidden = false;
+            input.focus();
+            input.select();
+          },
+        },
+        {
+          label: 'Delete bookmark',
             danger: true,
             disabled: protectedByLegacyVariant.length > 0,
             title: protectedByLegacyVariant.length
@@ -314,9 +337,9 @@ export function createProjectController({
               status(`Deleted bookmark "${bookmark.name}".`);
             },
           },
-        ],
-        'Bookmark actions',
+        },
       );
+      const menu = createActionMenu(bookmarkActions, 'Bookmark actions');
 
       row.append(marker, body, menu);
       wrap.append(row, editor);
