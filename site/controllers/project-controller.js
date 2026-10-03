@@ -417,12 +417,10 @@ export function createProjectController({
     const dot = root.createElement('span');
     dot.className = 'snapshot-branch-dot';
     dot.setAttribute('aria-hidden', 'true');
-    const title = root.createElement('strong');
-    title.textContent = activeBranch.name;
     const count = root.createElement('span');
     count.className = 'snapshot-branch-count';
     count.textContent = `${activeBranch.processStepCount} step${activeBranch.processStepCount === 1 ? '' : 's'} · ${activeBranch.ownSnapshotCount} milestone${activeBranch.ownSnapshotCount === 1 ? '' : 's'}`;
-    branchTitle.append(dot, title, count);
+    branchTitle.append(dot, count);
 
     const branchMenuItems = [
       {
