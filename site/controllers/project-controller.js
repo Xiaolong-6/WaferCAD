@@ -221,7 +221,7 @@ export function createProjectController({
       renameInput.type = 'text';
       renameInput.maxLength = 256;
       renameInput.value = record.name;
-      renameInput.setAttribute('aria-label', 'Snapshot name');
+      renameInput.setAttribute('aria-label', 'Milestone name');
 
       const saveRename = root.createElement('button');
       saveRename.type = 'button';
