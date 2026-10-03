@@ -1,3 +1,7 @@
+import {
+  expandProjectStorage,
+  prepareProjectForWorkspaceStorage,
+} from './project-io.js';
 import { CURRENT_PROJECT_VERSION, migrateProjectFile, validateProjectFile } from './project-schema.js';
 
 const DB_NAME = 'wafercad-workspace-v1';
@@ -126,7 +130,7 @@ export async function createWorkspaceRecoveryCheckpoint(project, metadata = {}) 
     const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).put({
       key,
-      project: structuredClone(project),
+      project: prepareProjectForWorkspaceStorage(project),
     });
     transaction
       .objectStore(META_STORE_NAME)
@@ -173,7 +177,9 @@ export async function loadWorkspaceRecoveryPoint(key) {
     const record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
     await done;
     if (!record?.project) return null;
-    return validateProjectFile(migrateProjectFile(record.project));
+    const project = structuredClone(record.project);
+    expandProjectStorage(project);
+    return validateProjectFile(migrateProjectFile(project));
   } finally {
     database.close();
   }
