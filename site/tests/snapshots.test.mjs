@@ -372,3 +372,104 @@ test('Undo cursor can branch without a pre-existing milestone', () => {
   assert.equal(manager.activeBranch().id, branch.id);
   assert.equal(manager.list().some((record) => record.historyNodeId === first.id), true);
 });
+
+
+test('automatic branches use concise Variant names and historical state can return to HEAD', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'oxide' };
+  manager.recordOperation({ kind: 'add', label: 'Deposit oxide' });
+  const milestone = manager.create('A very long descriptive process milestone');
+
+  live = { model: { processRevision: 2 }, value: 'main-head' };
+  manager.recordOperation({ kind: 'etch', label: 'Etch' });
+
+  assert.equal(manager.restore(milestone.id), true);
+  assert.equal(live.value, 'oxide');
+  assert.ok(manager.continuationContext());
+
+  assert.equal(manager.restoreActiveBranchHead(), true);
+  assert.equal(live.value, 'main-head');
+  assert.equal(manager.continuationContext(), null);
+
+  manager.restore(milestone.id);
+  const firstVariant = manager.createBranchFromCursor();
+  assert.equal(firstVariant.name, 'Variant 1');
+
+  manager.switchBranch('main');
+  manager.restore(milestone.id);
+  const secondVariant = manager.createBranchFromCursor();
+  assert.equal(secondVariant.name, 'Variant 2');
+});
+
+
+test('legacy milestone-derived branch names normalize to concise Variants on import', () => {
+  const sourceState = { model: { processRevision: 1 }, value: 'source' };
+  const manager = createSnapshotManager({
+    capture: () => sourceState,
+    restore: () => {},
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  const records = [
+    {
+      id: 'snapshot-source',
+      name: '00 | n++ Si substrate; 350um assumed',
+      createdAt: '2026-10-03T10:00:00.000Z',
+      branchId: 'main',
+      parentId: null,
+      historyNodeId: null,
+      state: sourceState,
+    },
+  ];
+  const branchState = {
+    version: 2,
+    activeBranchId: 'legacy-auto',
+    cursorNodeId: null,
+    cursorSnapshotId: 'snapshot-source',
+    nodes: [],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: 'snapshot-source',
+        rootNodeId: null,
+        headNodeId: null,
+        headState: sourceState,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'legacy-auto',
+        name: '00 | n++ Si substrate; 350um assumed continuation',
+        rootSnapshotId: 'snapshot-source',
+        headSnapshotId: 'snapshot-source',
+        rootNodeId: null,
+        headNodeId: null,
+        headState: sourceState,
+        createdAt: '2026-10-03T10:01:00.000Z',
+      },
+    ],
+  };
+
+  manager.importRecords(records, branchState);
+  assert.equal(manager.activeBranch().name, 'Variant 1');
+  assert.equal(manager.listBranches().find((branch) => branch.id === 'main').name, 'Main');
+
+  branchState.branches[1].name = 'Black-Si';
+  manager.importRecords(records, branchState);
+  assert.equal(manager.activeBranch().name, 'Black-Si');
+});

@@ -823,26 +823,33 @@ try {
     await openFunctionPanel(page, 'snapshots');
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
-    const snapshotName = page.locator('.snapshot-name').first();
-    await snapshotName.fill('Regression checkpoint');
-    await page.waitForFunction(
-      () => document.querySelector('.snapshot-commit-state')?.textContent === 'Saved',
-      null,
-      { timeout: 5000 },
-    );
+    let snapshotRow = page.locator('.snapshot-milestone-row').first();
+    await snapshotRow.locator('.snapshot-more-trigger').click();
+    await snapshotRow.locator('.snapshot-more-popover button').nth(2).click();
+    const renameEditor = snapshotRow.locator('.snapshot-inline-editor:not([hidden])');
+    await renameEditor.locator('input').fill('Regression checkpoint');
+    await renameEditor.locator('button').first().click();
     await page.locator('#saveSnapshotBtn').click();
     assert.ok(
       (
         await page
-          .locator('.snapshot-name')
-          .evaluateAll((inputs) => inputs.map((input) => input.value))
+          .locator('.snapshot-milestone-body strong')
+          .evaluateAll((labels) => labels.map((label) => label.textContent))
       ).includes('Regression checkpoint'),
       'snapshot rename was lost after rerender',
     );
     await openFunctionPanel(page, 'project');
     await page.locator('#xyUnitSelect').selectOption('nm');
     await openFunctionPanel(page, 'snapshots');
-    await page.locator('.snapshot-action').first().click();
+    const snapshotIndex = await page.locator('.snapshot-milestone-row').evaluateAll((rows) =>
+      rows.findIndex(
+        (row) => row.querySelector('.snapshot-milestone-body strong')?.textContent === 'Regression checkpoint',
+      ),
+    );
+    assert.ok(snapshotIndex >= 0);
+    snapshotRow = page.locator('.snapshot-milestone-row').nth(snapshotIndex);
+    await snapshotRow.locator('.snapshot-more-trigger').click();
+    await snapshotRow.locator('.snapshot-more-popover button').first().click();
     await page.waitForFunction(
       () => /Restored snapshot/.test(document.getElementById('statusText')?.textContent || ''),
       null,

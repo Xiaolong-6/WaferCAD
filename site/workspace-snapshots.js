@@ -265,13 +265,19 @@ export function createSnapshotManager({
   }
 
   function uniqueBranchName(name, excludeId = null) {
-    const base = cleanName(name) || `Branch ${branches.length + 1}`;
+    const base = cleanName(name) || 'Variant';
     const used = (candidate) =>
       branches.some((branch) => branch.id !== excludeId && branch.name === candidate);
     if (!used(base)) return base;
     let suffix = 2;
     while (used(`${base} ${suffix}`)) suffix += 1;
     return `${base} ${suffix}`;
+  }
+
+  function nextVariantName() {
+    let index = 1;
+    while (branches.some((branch) => branch.name === `Variant ${index}`)) index += 1;
+    return `Variant ${index}`;
   }
 
   function createBranch(snapshotId, name = '') {
@@ -288,7 +294,7 @@ export function createSnapshotManager({
 
     const branch = {
       id,
-      name: uniqueBranchName(name || `${source.name} branch`),
+      name: uniqueBranchName(name || nextVariantName()),
       rootSnapshotId: source.id,
       headSnapshotId: source.id,
       rootNodeId: source.historyNodeId || null,
@@ -364,19 +370,16 @@ export function createSnapshotManager({
     if (!context) throw new Error('The current process state is already at the branch HEAD.');
 
     let snapshotId = context.snapshotId;
-    let snapshotName = context.snapshotName;
     if (!snapshotId) {
-      const branchPoint = create(
-        context.snapshotName || `${context.branchName || 'Process'} branch point`,
-      );
+      const branchPoint = create(`${context.branchName || 'Process'} branch point`);
       snapshotId = branchPoint.id;
-      snapshotName = branchPoint.name;
     }
 
-    return createBranch(
-      snapshotId,
-      name || `${snapshotName || 'Process'} continuation`,
-    );
+    return createBranch(snapshotId, name || nextVariantName());
+  }
+
+  function restoreActiveBranchHead() {
+    return switchBranch(activeBranchId);
   }
 
   function canRecordOperation() {
@@ -639,6 +642,25 @@ export function createSnapshotManager({
     records = next;
     historyNodes = importedNodes;
     branches = importedBranches.slice(0, maxBranches);
+
+    // V2 initially derived default branch names from the full milestone name.
+    // Normalize only that exact legacy auto-name pattern; explicit user names stay untouched.
+    const usedBranchNames = new Set(branches.map((branch) => branch.name));
+    let legacyVariantIndex = 1;
+    for (const branch of branches) {
+      if (branch.id === MAIN_SNAPSHOT_BRANCH_ID || !branch.rootSnapshotId) continue;
+      const source = records.find((record) => record.id === branch.rootSnapshotId);
+      if (!source || !branch.name.startsWith(source.name)) continue;
+      const suffix = branch.name.slice(source.name.length);
+      if (!/^( branch| continuation)( \d+)?$/.test(suffix)) continue;
+
+      usedBranchNames.delete(branch.name);
+      while (usedBranchNames.has(`Variant ${legacyVariantIndex}`)) legacyVariantIndex += 1;
+      branch.name = `Variant ${legacyVariantIndex}`;
+      usedBranchNames.add(branch.name);
+      legacyVariantIndex += 1;
+    }
+
     activeBranchId =
       typeof branchState?.activeBranchId === 'string' && branchById(branchState.activeBranchId)
         ? branchState.activeBranchId
@@ -665,6 +687,7 @@ export function createSnapshotManager({
     createBranch,
     createBranchFromCursor,
     continuationContext,
+    restoreActiveBranchHead,
     canRecordOperation,
     recordOperation,
     syncCursorToProcessRevision,
