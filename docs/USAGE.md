@@ -135,17 +135,17 @@ Use **Project → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z d
 
 ## 9. Process history, milestones, and variants
 
-Every successful **Apply** appends a lightweight process-history node to the active variant. The tree records the operation type and the key physical/process parameters used for that step. Failed, aborted, busy, or no-change operations do not create history nodes or empty variants.
+Every successful **Apply** appends a restorable process-history node to the active variant. The tree records the operation metadata and the exact workspace state produced by that step. Click any non-HEAD process row to restore that step directly; the editor enters **Historical working state** and can either return to HEAD or continue into a new variant. Failed, aborted, busy, or no-change operations do not create history nodes or empty variants.
 
 Use **Save milestone** when a process state is worth naming. A milestone is an immutable checkpoint attached to the current process-history node and captures the complete restorable workspace state.
 
-The **Current variant** selector switches the workspace to that variant's latest **HEAD**. Restoring an older milestone or using Undo can move the editor behind HEAD; the History panel then marks the workspace as **Historical working state**. Non-process edits made there stay in the working state. If the next Apply succeeds, WaferCAD creates a new `Variant N` from that exact working state and records the successful process step there. The original variant and its HEAD remain unchanged. If Apply fails, is aborted, is busy, or produces no geometry change, no variant is created.
+The **Current variant** selector switches the workspace to that variant's latest **HEAD**. Restoring an older process step, restoring a milestone, or using Undo can move the editor behind HEAD; the History panel then shows a **Historical working state** banner. Non-process edits made there stay in the working state. If the next Apply succeeds, WaferCAD creates a new `Variant N` from that exact working state and records the successful process step there. The original variant and its HEAD remain unchanged. If Apply fails, is aborted, is busy, or produces no geometry change, no variant is created.
 
 **Variant from here** creates a process variant from a milestone. When continuation follows Undo and no milestone exists at that exact process node, WaferCAD creates a branch-point milestone attached to that historical graph position. A milestone used as a variant origin is protected from deletion so provenance cannot be silently rewritten. Non-Main leaf variants can be deleted; child variants must be removed first.
 
 Variant HEAD state also includes non-process project edits such as ROI/view/project settings. It is synchronized before persistence/export and before switching variants, so returning to a variant restores its actual latest working HEAD rather than only its last process operation.
 
-A project stores at most 100 named milestones, 32 variants, and 1000 process-history nodes. Only variant HEADs and named milestones retain complete workspace states; ordinary Apply nodes remain lightweight so process trees do not multiply large mask/model payloads. Existing projects without process-history metadata continue to open as a linear **Main** variant.
+A project stores at most 100 named milestones, 32 variants, and 1000 process-history nodes. Snapshot-branch format v3 requires every new process node to carry a restorable state. Autosave and export pack repeated layout/model assets through the shared-asset layer to reduce duplication. Older v2 projects remain readable; an old intermediate process row can only be restored when that file already contains an equivalent milestone or branch HEAD state, because earlier versions did not save every intermediate state. Existing projects without process-history metadata continue to open as a linear **Main** variant.
 
 ## 10. Save and open
 
