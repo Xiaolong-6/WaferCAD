@@ -287,7 +287,9 @@ export function createWorkspaceActionsController({
   }
 
   function bindSnapshots() {
-    $('saveSnapshotBtn').onclick = () => {
+    const legacyBookmarkButton = $('saveSnapshotBtn');
+    if (!legacyBookmarkButton) return;
+    legacyBookmarkButton.onclick = () => {
       try {
         const bookmark = snapshotManager.bookmarkCurrentStep();
         onProjectChanged();
