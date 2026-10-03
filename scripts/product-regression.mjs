@@ -821,7 +821,7 @@ try {
     }
     await checkCompactProcessLayout(page, name);
     await openFunctionPanel(page, 'snapshots');
-    assert.match(await page.locator('#saveSnapshotBtn').textContent(), /Bookmark current step/i);
+    assert.equal(await page.locator('#saveSnapshotBtn').count(), 0);
     assert.equal(await page.locator('.snapshot-other-branch').count(), 0);
     await capture(page, `${name}-history-tree`);
     await checkLayout(page);
