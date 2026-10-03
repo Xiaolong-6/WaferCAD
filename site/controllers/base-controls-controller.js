@@ -19,7 +19,7 @@ export function createBaseControlsController({
   renderAll,
   fit3d,
   status,
-  confirmRebuild = (message) => globalThis.confirm(message),
+  confirmAction = async () => false,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -56,7 +56,7 @@ export function createBaseControlsController({
     }
   }
 
-  function applyBase() {
+  async function applyBase() {
     const shape = root.querySelector('#substrateShape button.active').dataset.shape,
       width = manualMicron($('baseWidth').value),
       height = shape === 'circle' ? width : manualMicron($('baseHeight').value),
@@ -70,9 +70,13 @@ export function createBaseControlsController({
     if (
       hasMaterial(getModel()) &&
       hasProcessEdits() &&
-      !confirmRebuild(
-        'Rebuilding the base will remove the current structure and all applied operations. You can undo this change afterwards. Continue?',
-      )
+      !(await confirmAction({
+        title: 'Rebuild base?',
+        message: 'Rebuilding the base removes the current structure and all applied operations.',
+        detail: 'The change remains available through Undo and Revert.',
+        confirmLabel: 'Rebuild base',
+        danger: true,
+      }))
     ) {
       syncBaseControls();
       return;
@@ -108,7 +112,7 @@ export function createBaseControlsController({
 
   function bind() {
     bindShapeControls();
-    $('applyBaseBtn').onclick = applyBase;
+    $('applyBaseBtn').onclick = () => void applyBase();
     $('revertBaseBtn').onclick = revertBase;
   }
 
