@@ -236,6 +236,8 @@ export function prepareProjectForWorkspaceStorage(project) {
         id: record.id,
         name: record.name,
         createdAt: record.createdAt,
+        ...(record.branchId ? { branchId: record.branchId } : {}),
+        ...(record.parentId ? { parentId: record.parentId } : {}),
         state,
       };
     });
@@ -341,6 +343,8 @@ export function prepareProjectForStorage(project) {
         id: record.id,
         name: record.name,
         createdAt: record.createdAt,
+        ...(record.branchId ? { branchId: record.branchId } : {}),
+        ...(record.parentId ? { parentId: record.parentId } : {}),
         state,
       };
     });
