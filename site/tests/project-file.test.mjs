@@ -194,6 +194,52 @@ test('project storage rejects XY geometry that collapses at the 0.1 nm persisten
   assert.throws(() => serializeProject(source), /cannot be stored safely/i);
 });
 
+test('project storage rejects non-zero layout path widths that quantize to zero', () => {
+  const source = validProject(),
+    tinyWidth = PROJECT_LENGTH_QUANTUM_UM * 0.4,
+    path = {
+      kind: 'path',
+      sourceCell: 'TOP',
+      layer: 1,
+      datatype: 0,
+      width: tinyWidth,
+      points: [
+        [-1, 0],
+        [1, 0],
+      ],
+    };
+  source.layout.elements = [path];
+  source.layout.combos = [
+    { key: '1|0', cell: 'TOP', layer: 1, datatype: 0, count: 1 },
+  ];
+
+  assert.equal(validateProjectFile(source), source);
+  assert.throws(
+    () => serializeProject(source),
+    /cannot be stored safely.*layout\.elements\[0\]\.width collapses to zero/i,
+  );
+
+  const snapshotSource = validProject();
+  snapshotSource.snapshots = [
+    {
+      id: 'snapshot-path-width',
+      name: 'Tiny path',
+      createdAt: '2026-10-03T06:00:00.000Z',
+      state: structuredClone(snapshotSource),
+    },
+  ];
+  snapshotSource.snapshots[0].state.layout.elements = [structuredClone(path)];
+  snapshotSource.snapshots[0].state.layout.combos = [
+    { key: '1|0', cell: 'TOP', layer: 1, datatype: 0, count: 1 },
+  ];
+
+  assert.equal(validateProjectFile(snapshotSource), snapshotSource);
+  assert.throws(
+    () => serializeProject(snapshotSource),
+    /cannot be stored safely.*snapshots\[0\]\.state\.layout\.elements\[0\]\.width collapses to zero/i,
+  );
+});
+
 test('project storage rejects geometry that collapses at the 0.1 nm persistence quantum', () => {
   const source = validProject();
   source.model.regions[0].stack[0].z0 = 0;
