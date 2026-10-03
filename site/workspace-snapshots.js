@@ -167,6 +167,7 @@ export function createSnapshotManager({
   let cursorNodeId = null;
   let cursorSnapshotId = null;
   let cursorBaselineState = null;
+  let cursorDetachedFromHead = false;
   const cloneState = createStateCloner();
 
   function branchById(id) {
@@ -239,11 +240,25 @@ export function createSnapshotManager({
   }
 
   function isCursorAtBranchHead() {
+    if (cursorDetachedFromHead) return false;
     const branch = branchById(activeBranchId);
     if (!branch) return true;
     if (branch.headNodeId) return cursorNodeId === branch.headNodeId;
     if (cursorSnapshotId) return cursorSnapshotId === branch.headSnapshotId;
     return true;
+  }
+
+  function stateMatchesBranchHead(branch, state, nodeId = cursorNodeId) {
+    if (!branch) return true;
+    if (branch.headNodeId && nodeId !== branch.headNodeId) return false;
+    if (branch.headState) {
+      try {
+        return deepEqual(state, branch.headState);
+      } catch {
+        return false;
+      }
+    }
+    return !branch.headSnapshotId || cursorSnapshotId === branch.headSnapshotId;
   }
 
   function historicalParentSnapshotId(branch) {
@@ -289,6 +304,7 @@ export function createSnapshotManager({
     if (atHead) {
       branch.headSnapshotId = record.id;
       branch.headState = cloneState(state);
+      cursorDetachedFromHead = false;
     }
 
     return {
@@ -351,6 +367,8 @@ export function createSnapshotManager({
     cursorNodeId = record.historyNodeId || null;
     cursorSnapshotId = record.id;
     cursorBaselineState = cloneState(restoredState);
+    const branch = branchById(activeBranchId);
+    cursorDetachedFromHead = !stateMatchesBranchHead(branch, record.state, cursorNodeId);
     return true;
   }
 
@@ -368,6 +386,7 @@ export function createSnapshotManager({
     cursorNodeId = node.id;
     cursorSnapshotId = null;
     cursorBaselineState = cloneState(restoredState);
+    cursorDetachedFromHead = !stateMatchesBranchHead(branch, state, node.id);
     return true;
   }
 
@@ -417,6 +436,7 @@ export function createSnapshotManager({
     cursorNodeId = branch.headNodeId;
     cursorSnapshotId = source.id;
     cursorBaselineState = cloneState(capture());
+    cursorDetachedFromHead = false;
     return branchView(branch, activeBranchId, records, historyNodes);
   }
 
@@ -454,7 +474,8 @@ export function createSnapshotManager({
 
     cursorNodeId = branch.headNodeId || null;
     cursorSnapshotId = branch.headSnapshotId || null;
-    cursorBaselineState = restoredState || cloneState(capture());
+    cursorBaselineState = cloneState(restoredState || capture());
+    cursorDetachedFromHead = false;
     return true;
   }
 
@@ -534,6 +555,7 @@ export function createSnapshotManager({
 
     branch.headState = state;
     cursorBaselineState = cloneState(state);
+    cursorDetachedFromHead = false;
     return true;
   }
 
@@ -619,7 +641,8 @@ export function createSnapshotManager({
     branch.headState = state;
     cursorNodeId = node.id;
     cursorSnapshotId = null;
-    cursorBaselineState = null;
+    cursorBaselineState = cloneState(state);
+    cursorDetachedFromHead = false;
     return clone(node);
   }
 
@@ -634,7 +657,9 @@ export function createSnapshotManager({
       if (node.processRevision === target) {
         cursorNodeId = node.id;
         cursorSnapshotId = null;
-        cursorBaselineState = cloneState(capture());
+        const state = cloneState(capture());
+        cursorBaselineState = cloneState(state);
+        cursorDetachedFromHead = !stateMatchesBranchHead(branch, state, node.id);
         return true;
       }
       nodeId = node.parentId;
@@ -645,7 +670,9 @@ export function createSnapshotManager({
         ? branch.rootNodeId
         : null;
       cursorSnapshotId = branch.rootSnapshotId || null;
-      cursorBaselineState = cloneState(capture());
+      const state = cloneState(capture());
+      cursorBaselineState = cloneState(state);
+      cursorDetachedFromHead = !stateMatchesBranchHead(branch, state, cursorNodeId);
       return true;
     }
     return false;
@@ -659,6 +686,7 @@ export function createSnapshotManager({
     cursorNodeId = null;
     cursorSnapshotId = null;
     cursorBaselineState = null;
+    cursorDetachedFromHead = false;
   }
 
   function exportRecords() {
@@ -904,6 +932,8 @@ export function createSnapshotManager({
     const canonicalCursorState =
       cursorSnapshot?.state || stateForProcessNode(cursorNode) || capture();
     cursorBaselineState = cloneState(canonicalCursorState);
+    const liveState = capture();
+    cursorDetachedFromHead = !stateMatchesBranchHead(active, liveState, cursorNodeId);
     return records.length;
   }
 
