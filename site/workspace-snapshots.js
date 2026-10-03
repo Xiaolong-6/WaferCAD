@@ -166,21 +166,15 @@ export function createSnapshotManager({
 
   function stateForProcessNode(node) {
     if (!node) return null;
-    if (node.state && validateState(node.state)) return node.state;
+    if (node.state) return node.state;
 
     const milestone = records
-      .filter((record) => record.historyNodeId === node.id && validateState(record.state))
+      .filter((record) => record.historyNodeId === node.id)
       .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
-    if (milestone) return milestone.state;
+    if (milestone?.state) return milestone.state;
 
     const branch = branchById(node.branchId);
-    if (
-      branch?.headNodeId === node.id &&
-      branch.headState &&
-      validateState(branch.headState)
-    ) {
-      return branch.headState;
-    }
+    if (branch?.headNodeId === node.id && branch.headState) return branch.headState;
     return null;
   }
 
@@ -599,7 +593,7 @@ export function createSnapshotManager({
 
   function exportBranchState() {
     return clone({
-      version: 2,
+      version: 3,
       activeBranchId,
       cursorNodeId,
       cursorSnapshotId,
