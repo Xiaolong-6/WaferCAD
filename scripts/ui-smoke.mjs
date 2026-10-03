@@ -1615,7 +1615,7 @@ assert.match(
   /Continue from historical state/,
 );
 assert.match(
-  await page.locator('#confirmationDialogConfirm').textContent(),
+  await page.locator('[data-dialog-action="confirm"]').textContent(),
   /Create variant & apply/,
 );
 await chooseConfirmation(page);
