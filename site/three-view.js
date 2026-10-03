@@ -1011,29 +1011,36 @@ export function createThreeView({
         });
       }
 
-      // Implant remains a non-material annotation. Opaque host material writes
-      // depth and occludes buried Implant; translucent host surfaces intentionally
-      // stop writing depth so the surviving volume can be inspected.
+      // Implant is a non-material annotation volume. In opaque inspection,
+      // internal fragments are not added to the scene at all; only a fragment
+      // whose surviving outer face coincides with the current material surface
+      // receives a surface overlay. Transparent inspection adds the clipped
+      // internal body and its outer cap for volume inspection.
+      const showInternalImplants = materialState.transparent;
       for (const implant of implantSolids(model, clip)) {
-        const implantState = {
-            opacity: opacity * 0.18,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-          },
-          bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
-          bodyMaterial = new THREE.MeshStandardMaterial({
-            color: implant.color || '#D65A6F',
-            roughness: 0.7,
-            metalness: 0,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: implantState.opacity,
-            depthTest: true,
-            depthWrite: false,
-          }),
-          body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
-        if (body) body.name = implant.name || implant.implantId || 'Implant';
+        if (!showInternalImplants && !implant.surfaceExposed) continue;
+
+        if (showInternalImplants) {
+          const implantState = {
+              opacity: opacity * 0.18,
+              transparent: true,
+              depthTest: true,
+              depthWrite: false,
+            },
+            bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
+            bodyMaterial = new THREE.MeshStandardMaterial({
+              color: implant.color || '#D65A6F',
+              roughness: 0.7,
+              metalness: 0,
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: implantState.opacity,
+              depthTest: true,
+              depthWrite: false,
+            }),
+            body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
+          if (body) body.name = implant.name || implant.implantId || 'Implant';
+        }
 
         const outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
