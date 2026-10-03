@@ -549,7 +549,7 @@ try {
     );
     await page.locator('#saveSnapshotBtn').click();
     assert.ok(
-      (await page.locator('.snapshot-name').allInputValues()).includes('Regression checkpoint'),
+      (await page.locator('.snapshot-name').evaluateAll((inputs) => inputs.map((input) => input.value))).includes('Regression checkpoint'),
       'snapshot rename was lost after rerender',
     );
     await page.locator('#settingsTab').click();
