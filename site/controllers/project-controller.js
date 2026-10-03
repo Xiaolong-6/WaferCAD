@@ -30,7 +30,7 @@ export function createProjectController({
   confirmAction = async () => false,
 }) {
   const $ = (id) => root.getElementById(id);
-  const collapsedHistoryVariants = new Set();
+  const expandedHistoryVariants = new Set();
 
   function refreshAfterSnapshotLoad() {
     syncBaseControls();
@@ -651,14 +651,14 @@ export function createProjectController({
       body.className = 'history-variant-body';
 
       const collapsed =
-        collapsedHistoryVariants.has(variant.id) && !activePath.has(variant.id);
+        !activePath.has(variant.id) && !expandedHistoryVariants.has(variant.id);
       body.hidden = collapsed;
       toggle.textContent = collapsed ? '▸' : '▾';
       toggle.onclick = () => {
         body.hidden = !body.hidden;
         toggle.textContent = body.hidden ? '▸' : '▾';
-        if (body.hidden) collapsedHistoryVariants.add(variant.id);
-        else collapsedHistoryVariants.delete(variant.id);
+        if (body.hidden) expandedHistoryVariants.delete(variant.id);
+        else expandedHistoryVariants.add(variant.id);
       };
 
       section.append(header, editor, body);
