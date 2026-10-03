@@ -50,6 +50,9 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
+  assert.match(threeView, /const showInternalImplants = materialState\.transparent/);
+  assert.match(threeView, /if \(!showInternalImplants && !implant\.surfaceExposed\) continue/);
+  assert.match(threeView, /if \(showInternalImplants\)/);
   assert.match(threeView, /opacity: opacity \* 0\.18/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
   assert.match(threeView, /opacity: implantState\.opacity,\s*depthTest: true/s);
