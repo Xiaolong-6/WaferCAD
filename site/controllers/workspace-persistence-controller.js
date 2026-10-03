@@ -533,6 +533,12 @@ export function createWorkspacePersistenceController({
     }
 
     if (choice === 'load-saved' && latestSaved) {
+      if (dirty) {
+        await createWorkspaceRecoveryCheckpoint(buildProjectSnapshot(true), {
+          appCommit,
+          reason: 'pre-takeover-current',
+        });
+      }
       loadProjectSnapshot(latestSaved);
       snapshotManager.importRecords(latestSaved.snapshots || []);
       syncBaseControls();
