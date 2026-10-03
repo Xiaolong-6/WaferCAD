@@ -167,9 +167,9 @@ function geometryKernel() {
 
 function ringArea(ring) {
   let sum = 0;
-  for (let i = 1; i < ring.length; i++) {
-    const a = ring[i - 1];
-    const b = ring[i];
+  for (let index = 0; index < (ring?.length || 0); index++) {
+    const a = ring[index],
+      b = ring[(index + 1) % ring.length];
     sum += a[0] * b[1] - b[0] * a[1];
   }
   return sum / 2;
@@ -371,6 +371,9 @@ function validateLayoutElement(element, path, budget) {
     min: element.kind === 'polygon' ? 3 : 2,
     budget,
   });
+  if (element.kind === 'polygon' && !(Math.abs(ringArea(element.points)) > 0)) {
+    fail(`${path}.points`, 'must enclose non-zero area.');
+  }
   if (element.kind === 'path') assertFinite(element.width, `${path}.width`, { min: 0 });
 }
 
@@ -482,15 +485,24 @@ function validateDrawMask(drawMask) {
     if (shape.type === 'rect') {
       assertPoint(shape.a, `${path}.a`);
       assertPoint(shape.b, `${path}.b`);
+      if (
+        !(Math.abs(shape.b[0] - shape.a[0]) > 0) ||
+        !(Math.abs(shape.b[1] - shape.a[1]) > 0)
+      ) {
+        fail(path, 'rectangle must have non-zero width and height.');
+      }
       return;
     }
     if (shape.type === 'circle') {
       assertPoint(shape.c, `${path}.c`);
-      assertFinite(shape.r, `${path}.r`, { min: 0 });
+      assertFinite(shape.r, `${path}.r`, { min: 1e-12 });
       return;
     }
     if (shape.type === 'polygon') {
       validatePointArray(shape.points, `${path}.points`, { min: 3, budget: { points: 0 } });
+      if (!(Math.abs(ringArea(shape.points)) > 0)) {
+        fail(`${path}.points`, 'must enclose non-zero area.');
+      }
       return;
     }
     if (shape.type === 'ring' || shape.type === 'ring-sector') {
