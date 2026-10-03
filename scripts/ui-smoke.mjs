@@ -787,8 +787,13 @@ assert.ok(
 // Probe the trench wall x-position deep inside the continuous Base material,
 // where the process model is partitioned but the visible material is identical.
 const baseColor = saved.model.layers.find((layer) => layer.id === 'base').color;
+const baseCommonLo = Math.max(
+  ...saved.model.regions
+    .map((region) => region.stack.find((segment) => segment.layerId === 'base')?.z0)
+    .filter(Number.isFinite),
+);
 const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
-  (canvas, { color }) => {
+  (canvas, { color, baseCommonLo }) => {
     const rect = canvas.getBoundingClientRect(),
       dpr = Math.min(globalThis.devicePixelRatio || 1, 2),
       left = 27,
@@ -798,14 +803,13 @@ const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
       x = Math.round((left + t * iw) * dpr),
       z0 = Number(canvas.dataset.sectionZ0Um),
       z1 = Number(canvas.dataset.sectionZ1Um),
-      modelLo = Number(canvas.dataset.zMinUm),
       top = Number(canvas.dataset.sectionCollapseTopUm),
       bottom = Number(canvas.dataset.sectionCollapseBottomUm),
       frameTop = Number(canvas.dataset.sectionFrameTop),
       frameBottom = Number(canvas.dataset.sectionFrameBottom),
       upperY = Number(canvas.dataset.sectionCollapseUpperY),
       lowerY = Number(canvas.dataset.sectionCollapseLowerY),
-      z = (modelLo + bottom) / 2;
+      z = (baseCommonLo + bottom) / 2;
     const mapZ = (value) => {
       if (value >= top) {
         return frameTop + ((z1 - value) / Math.max(z1 - top, 1e-12)) * (upperY - frameTop);
@@ -821,7 +825,7 @@ const baseSeamPixel = await page.locator('#sectionCanvas').evaluate(
       ];
     return { actual, expected, z };
   },
-  { color: baseColor },
+  { color: baseColor, baseCommonLo },
 );
 assert.ok(
   baseSeamPixel.actual.every(
