@@ -32,7 +32,7 @@ Available commands:
 
 - `npm run lint` — ESLint over the active JavaScript only; vendored code is excluded.
 - `npm run format` — Prettier rewrite for the active application and current documentation.
-- `npm run format:check` — CI formatting gate for new/refactored project-IO/schema code and current docs.
+- `npm run format:check` — local formatting verification for the active application and current docs; the fast CI gate intentionally omits Prettier.
 - `npm test` — vector/GDS/project-schema smoke tests plus focused regression tests for XY units, GDS error handling, project files, snapshots, surface morphology, Implant clipping, palette behavior, and material boundaries.
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced, and the quantized storage representation is expanded and validated again before export. Interactive project/layout parsing, .wafercad packing/serialization, and Mask GDS/OAS serialization run in workers so large file transforms do not monopolize the UI thread. Keep worker handoff transactional: Abort/error must not replace live state or leave the shared task controller busy.
