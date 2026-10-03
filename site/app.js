@@ -308,6 +308,27 @@ const {
   renderMaskList,
 } = maskBrowser;
 
+async function runMaskLayoutExport(request) {
+  if (!processTaskController) return null;
+  const formatLabel = request?.format === 'oas' ? 'OASIS' : 'GDSII';
+  const task = await processTaskController.runWorker(
+    '../layout-export-worker.js',
+    request,
+    {
+      label: `Exporting Mask as ${formatLabel}…`,
+      abortMessage: 'Mask export aborted. No file was written.',
+      failurePrefix: `Mask ${formatLabel} export failed`,
+    },
+  );
+  if (task?.aborted) return null;
+  if (task?.busy) {
+    status('Another background task is already running.', 'warning');
+    return null;
+  }
+  if (task?.error) throw new Error(task.error);
+  return task;
+}
+
 const exportController = createExportController({
   getState: () => ({
     model,
@@ -330,6 +351,7 @@ const exportController = createExportController({
   layerKey,
   layerColor,
   formatXY,
+  runMaskLayoutExport,
   status,
 });
 const {
