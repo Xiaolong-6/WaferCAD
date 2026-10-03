@@ -1141,6 +1141,9 @@ window.addEventListener('focus', checkForBuildUpdate);
 window.addEventListener('pagehide', () => {
   void persistWorkspaceNow().finally(() => workspaceSession.stop());
 });
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) globalThis.location.reload();
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkForBuildUpdate();
   else void persistWorkspaceNow();
