@@ -12,6 +12,42 @@ export function defaultSectionCollapse(bounds) {
   };
 }
 
+export function defaultSectionCollapseForModel(model, bounds) {
+  const fallback = defaultSectionCollapse(bounds),
+    baseIntervals = [];
+
+  for (const region of model?.regions || []) {
+    const base = (region?.stack || []).find((segment) => segment?.layerId === 'base');
+    if (!base) return fallback;
+    const z0 = Number(base.z0),
+      z1 = Number(base.z1);
+    if (!Number.isFinite(z0) || !Number.isFinite(z1) || !(z1 > z0)) return fallback;
+    baseIntervals.push([z0, z1]);
+  }
+
+  if (!baseIntervals.length) return fallback;
+
+  const commonLo = Math.max(...baseIntervals.map(([z0]) => z0)),
+    commonHi = Math.min(...baseIntervals.map(([, z1]) => z1));
+  if (!(commonHi > commonLo)) return fallback;
+
+  const [rawLo, rawHi] = bounds || [],
+    lo = Number(rawLo),
+    hi = Number(rawHi),
+    totalSpan = Number.isFinite(lo) && Number.isFinite(hi) && hi > lo ? hi - lo : commonHi - commonLo,
+    commonSpan = commonHi - commonLo,
+    inset = Math.min(commonSpan * 0.08, totalSpan * 0.03),
+    top = commonHi - inset,
+    bottom = commonLo + inset;
+
+  if (!(top > bottom)) return fallback;
+  return { top, bottom };
+}
+
+export function resolveSectionCollapse(value, model, bounds) {
+  return normalizeSectionCollapse(value ?? defaultSectionCollapseForModel(model, bounds), bounds);
+}
+
 export function normalizeSectionCollapse(value, bounds) {
   const [rawLo, rawHi] = bounds || [];
   const lo = Number(rawLo),
