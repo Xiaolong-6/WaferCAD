@@ -1017,6 +1017,8 @@ export function createThreeView({
       // receives a surface overlay. Transparent inspection adds the clipped
       // internal body and its outer cap for volume inspection.
       const showInternalImplants = materialState.transparent;
+      let implantInternalCount = 0,
+        implantSurfaceCount = 0;
       for (const implant of implantSolids(model, clip)) {
         if (!showInternalImplants && !implant.surfaceExposed) continue;
 
@@ -1039,9 +1041,13 @@ export function createThreeView({
               depthWrite: false,
             }),
             body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
-          if (body) body.name = implant.name || implant.implantId || 'Implant';
+          if (body) {
+            body.name = implant.name || implant.implantId || 'Implant';
+            implantInternalCount++;
+          }
         }
 
+        implantSurfaceCount++;
         const outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
@@ -1096,6 +1102,8 @@ export function createThreeView({
         }
       }
 
+      host.dataset.implantInternalCount = String(implantInternalCount);
+      host.dataset.implantSurfaceCount = String(implantSurfaceCount);
       rebuildAdaptiveRoughGeometry();
       updateTransparentOrder();
       stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
