@@ -663,6 +663,7 @@ test('restoring an older milestone on the HEAD process node does not overwrite t
   assert.equal(manager.continuationContext().cursorNodeId, node.id);
   assert.equal(manager.continuationContext().snapshotId, milestone.id);
   assert.equal(live.view.opacity, 0.35);
+  assert.equal(manager.syncActiveHeadState(), false);
 
   // Persistence while detached must not promote the restored milestone into HEAD.
   manager.exportBranchState();
