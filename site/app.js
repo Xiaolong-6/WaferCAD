@@ -814,9 +814,11 @@ const baseControls = createBaseControlsController({
   getModel: () => model,
   setModel: (value) => {
     model = value;
+    markProjectDirty();
   },
   setSection: (value) => {
     section = value;
+    markProjectDirty();
   },
   getBaseRevertSnapshot: () => baseRevertSnapshot,
   setBaseRevertSnapshot: (value) => {
