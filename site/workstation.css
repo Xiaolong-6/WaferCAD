@@ -544,7 +544,9 @@ html.workstation-ui-v2 #toolPanel .tool-tab-content::-webkit-scrollbar-thumb {
 
 html.workstation-ui-v2 #toolPanel .tool-tab-panel {
   display: block !important;
+  height: auto;
   min-height: 0;
+  overflow: visible;
   padding: 13px 0 16px;
   border-bottom: 1px solid #d9e0e6;
   background: transparent;
