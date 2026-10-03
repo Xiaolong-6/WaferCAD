@@ -302,7 +302,17 @@ export function createWorkspacePersistenceController({
             return;
           }
         }
-        await initializeWorkspaceStart();
+        const started = await initializeWorkspaceStart();
+        if (!started && saved) {
+          loadProjectSnapshot(saved);
+          snapshotManager.importRecords(saved.snapshots || []);
+          syncBaseControls();
+          syncTransformInputs();
+          renderAll();
+          renderSnapshots();
+          fit3d();
+          status(`Welcome action failed; restored local workspace "${normalizedProjectName()}".`, 'warning');
+        }
       } else {
         const saved = await loadWorkspaceState();
         if (saved) {
