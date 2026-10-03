@@ -1012,6 +1012,7 @@ const workspaceActions = createWorkspaceActionsController({
   syncBaseControls,
   snapshotManager,
   renderSnapshots,
+  onProjectChanged: markProjectDirty,
 });
 
 const mainCanvasController = createMainCanvasController({
