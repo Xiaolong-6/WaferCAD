@@ -414,3 +414,62 @@ test('automatic branches use concise Variant names and historical state can retu
   const secondVariant = manager.createBranchFromCursor();
   assert.equal(secondVariant.name, 'Variant 2');
 });
+
+
+test('legacy milestone-derived branch names normalize to concise Variants on import', () => {
+  const sourceState = { model: { processRevision: 1 }, value: 'source' };
+  const manager = createSnapshotManager({
+    capture: () => sourceState,
+    restore: () => {},
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  const records = [
+    {
+      id: 'snapshot-source',
+      name: '00 | n++ Si substrate; 350um assumed',
+      createdAt: '2026-10-03T10:00:00.000Z',
+      branchId: 'main',
+      parentId: null,
+      historyNodeId: null,
+      state: sourceState,
+    },
+  ];
+  const branchState = {
+    version: 2,
+    activeBranchId: 'legacy-auto',
+    cursorNodeId: null,
+    cursorSnapshotId: 'snapshot-source',
+    nodes: [],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: 'snapshot-source',
+        rootNodeId: null,
+        headNodeId: null,
+        headState: sourceState,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'legacy-auto',
+        name: '00 | n++ Si substrate; 350um assumed continuation',
+        rootSnapshotId: 'snapshot-source',
+        headSnapshotId: 'snapshot-source',
+        rootNodeId: null,
+        headNodeId: null,
+        headState: sourceState,
+        createdAt: '2026-10-03T10:01:00.000Z',
+      },
+    ],
+  };
+
+  manager.importRecords(records, branchState);
+  assert.equal(manager.activeBranch().name, 'Variant 1');
+  assert.equal(manager.listBranches().find((branch) => branch.id === 'main').name, 'Main');
+
+  branchState.branches[1].name = 'Black-Si';
+  manager.importRecords(records, branchState);
+  assert.equal(manager.activeBranch().name, 'Black-Si');
+});
