@@ -225,14 +225,15 @@ export async function loadWorkspaceState() {
   if (!record?.project) return null;
   const project = structuredClone(record.project);
   expandProjectStorage(project);
-  const rawVersion = Number(project.version) || 1;
+  const rawVersion = Number(project.version) || 1,
+    migrated = validateProjectFile(migrateProjectFile(project));
   if (rawVersion < CURRENT_PROJECT_VERSION) {
-    await createWorkspaceRecoveryCheckpoint(project, {
+    await createWorkspaceRecoveryCheckpoint(migrated, {
       appCommit: metadata?.appCommit,
       reason: `pre-migration-v${rawVersion}`,
     });
   }
-  return validateProjectFile(migrateProjectFile(project));
+  return migrated;
 }
 
 export async function clearWorkspaceState() {
