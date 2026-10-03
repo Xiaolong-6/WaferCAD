@@ -292,10 +292,10 @@ export function createWorkspaceActionsController({
         const saved = snapshotManager.create();
         onProjectChanged();
         renderSnapshots();
-        status(`Saved snapshot "${saved.name}" on "${snapshotManager.activeBranch().name}".`);
+        status(`Saved milestone "${saved.name}" on "${snapshotManager.activeBranch().name}".`);
       } catch (error) {
         console.error(error);
-        status(`Snapshot failed: ${error.message}`);
+        status(`Milestone save failed: ${error.message}`);
       }
     };
   }
