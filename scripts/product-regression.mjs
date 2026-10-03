@@ -245,9 +245,11 @@ async function checkSectionCollapse(page, name) {
   await entry.click();
   assert.equal(await editor.isVisible(), true);
   close(
-    Number(await page.locator('#sectionCollapseTopValue').textContent().then((text) =>
-      Number(text.replace(/[^0-9+.-]/g, '')),
-    )),
+    Number(
+      await page.locator('#sectionCollapseTopValue').textContent().then((text) =>
+        Number(text.replace('−', '-').replace(/[^0-9+.-]/g, '')),
+      ),
+    ),
     nudgedTop,
     1e-3,
   );
