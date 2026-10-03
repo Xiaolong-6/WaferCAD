@@ -230,6 +230,22 @@ async function checkWorkstationShellLayout(page, name) {
     `${name}: Split does not fill the primary stage`,
   );
   await page.getByRole('button', { name: 'Overview' }).click();
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById('mainCanvas');
+    if (!canvas?.checkVisibility()) return false;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    return (
+      Math.abs(canvas.width - rect.width * dpr) <= 2 &&
+      Math.abs(canvas.height - rect.height * dpr) <= 2
+    );
+  });
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
 }
 
 async function checkCompactProcessLayout(page, name) {
