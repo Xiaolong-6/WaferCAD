@@ -331,7 +331,7 @@ test('V2 process history records Apply nodes and attaches snapshots as milestone
   const second = manager.recordOperation({ kind: 'etch', label: 'Etch active window' });
   assert.equal(second.parentId, first.id);
   assert.equal(manager.listHistory().length, 2);
-  assert.equal(manager.exportBranchState().version, 2);
+  assert.equal(manager.exportBranchState().version, 3);
 });
 
 test('process history steps are directly restorable without milestones and survive import', () => {
