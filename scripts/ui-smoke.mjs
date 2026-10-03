@@ -99,6 +99,75 @@ assert.equal(await navigationPage.locator('.app-shell').count(), 0);
 assert.deepEqual(navigationErrors, []);
 await navigationPage.close();
 
+// Legacy autosaves must migrate before validation blocks the recovery checkpoint.
+const legacyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const legacyPage = await legacyContext.newPage();
+const legacyErrors = [];
+legacyPage.on('pageerror', (error) => legacyErrors.push(error.message));
+const legacyWorkspace = structuredClone(welcomeProject);
+legacyWorkspace.version = 1;
+legacyWorkspace.name = 'Legacy v1 workspace';
+legacyWorkspace.model.units.z = 'relative';
+delete legacyWorkspace.roiAnchor;
+delete legacyWorkspace.display.threeOpacity;
+delete legacyWorkspace.display.threeShowBorders;
+await legacyPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await legacyPage.evaluate(
+  (project) =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('wafercad-workspace-v1', 2);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains('workspace')) {
+          database.createObjectStore('workspace', { keyPath: 'key' });
+        }
+        if (!database.objectStoreNames.contains('workspace-metadata')) {
+          database.createObjectStore('workspace-metadata', { keyPath: 'key' });
+        }
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result,
+          transaction = database.transaction(['workspace', 'workspace-metadata'], 'readwrite');
+        transaction.objectStore('workspace').put({ key: 'current', project });
+        transaction.objectStore('workspace-metadata').put({
+          key: 'current',
+          updatedAt: new Date().toISOString(),
+          appCommit: 'legacy-fixture',
+          projectVersion: 1,
+          revision: Number(project.model?.revision) || 0,
+          reason: '',
+        });
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+      };
+    }),
+  legacyWorkspace,
+);
+await legacyPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await legacyPage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+assert.equal(Number(await legacyPage.locator('#baseWidth').inputValue()), 4321);
+await legacyPage.waitForFunction(
+  () =>
+    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+      /pre-migration-v1/.test(option.textContent || ''),
+    ),
+  null,
+  { timeout: 10000 },
+);
+assert.deepEqual(legacyErrors, []);
+await legacyContext.close();
+
 // A stalled Three.js CDN must never block the editor shell. The old top-level
 // await implementation left Main/Mask blank and all tool tabs unbound here.
 const blockedThreePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
