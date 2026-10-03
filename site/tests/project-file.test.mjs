@@ -5,6 +5,8 @@ import test from 'node:test';
 import {
   MAX_PROJECT_FILE_BYTES,
   PROJECT_LENGTH_QUANTUM_UM,
+  expandProjectStorage,
+  prepareProjectForWorkspaceStorage,
   readProjectFile,
   serializeProject,
 } from '../project-io.js';
@@ -207,6 +209,30 @@ test('project storage compacts repeated snapshot assets and rounds physical leng
   assert.strictEqual(loaded.snapshots[0].state.layout, loaded.layout);
   assert.strictEqual(loaded.snapshots[0].state.model, loaded.model);
   assert.equal(validateProjectFile(loaded), loaded);
+});
+
+test('Recovery shared-asset packing is lossless below the file quantization boundary', () => {
+  const source = validProject();
+  source.section.a[0] = 0.00004;
+  source.snapshots = [
+    {
+      id: 'snapshot-lossless',
+      name: 'Lossless checkpoint',
+      createdAt: '2026-10-03T04:00:00.000Z',
+      state: structuredClone(source),
+    },
+  ];
+
+  const stored = prepareProjectForWorkspaceStorage(source);
+  assert.equal(stored.storage.encoding, 'shared-assets-v1');
+  assert.equal(stored.storage.lossless, true);
+  assert.equal(stored.section.a[0], 0.00004);
+  assert.equal(stored.snapshots[0].state.model, undefined);
+  assert.equal(stored.snapshots[0].state.layout, undefined);
+
+  expandProjectStorage(stored);
+  assert.equal(stored.section.a[0], 0.00004);
+  assert.equal(validateProjectFile(stored), stored);
 });
 
 test('project storage keeps distinct snapshot masks as shared assets', async () => {
