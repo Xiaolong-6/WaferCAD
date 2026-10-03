@@ -2,7 +2,7 @@ import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js'
 import { implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { geometryFromRoughCap, roughCapBaseTriangles } from './rough-mesh-geometry.js';
-import { difference, intersection, isEmpty } from './vector-geometry.js';
+import { intersection, isEmpty } from './vector-geometry.js';
 import {
   adaptiveRoughMeshLod,
   allocateRoughTriangleBudgets,
@@ -66,6 +66,8 @@ export function createThreeView({
   let roughOwnedObjects = new Set();
   let roughRenderContext = null;
   let roughRebuildCount = 0;
+  let roughSpatialZoneBuildCount = 0;
+  let roughBaseTriangulationCount = 0;
   let surfacePlanBuildCount = 0;
   let transparentMeshes = [];
 
@@ -138,7 +140,7 @@ export function createThreeView({
     };
   }
 
-  function focusGeometry() {
+  function focusBounds() {
     const distance = Math.max(1e-9, camera.position.distanceTo(controls.target)),
       halfHeight = distance * Math.tan((camera.fov * Math.PI) / 360) * 1.8,
       halfWidth = halfHeight * Math.max(0.2, camera.aspect),
@@ -161,11 +163,16 @@ export function createThreeView({
       }
     }
     const xs = corners.map((point) => point.x),
-      ys = corners.map((point) => point.y),
-      minX = Math.min(...xs),
-      maxX = Math.max(...xs),
-      minY = Math.min(...ys),
-      maxY = Math.max(...ys);
+      ys = corners.map((point) => point.y);
+    return {
+      minX: Math.min(...xs),
+      maxX: Math.max(...xs),
+      minY: Math.min(...ys),
+      maxY: Math.max(...ys),
+    };
+  }
+
+  function rectGeometry(minX, minY, maxX, maxY) {
     return [
       [
         [
@@ -179,44 +186,90 @@ export function createThreeView({
     ];
   }
 
-  function roughLodZones(model, clip, polys, z) {
-    const focus = focusGeometry(),
-      focused = intersection(polys, focus);
-    if (isEmpty(focused)) {
-      return [
-        {
+  function roughAxisDivisions(span, featureSize) {
+    const features = Math.max(0, Number(span) || 0) / Math.max(1e-9, Number(featureSize) || 1);
+    if (features >= 16) return 4;
+    if (features >= 8) return 3;
+    if (features >= 4) return 2;
+    return 1;
+  }
+
+  function prepareRoughSpatialZones(task) {
+    if (task.spatialZones?.length) return task.spatialZones;
+    const cap = task.cap,
+      bounds = xyBounds(cap.polys),
+      featureSize = cap.appearance?.featureSize;
+    if (!bounds) return [];
+
+    const columns = roughAxisDivisions(bounds.maxX - bounds.minX, featureSize),
+      rows = roughAxisDivisions(bounds.maxY - bounds.minY, featureSize),
+      width = (bounds.maxX - bounds.minX) / columns,
+      height = (bounds.maxY - bounds.minY) / rows,
+      zones = [];
+
+    for (let row = 0; row < rows; row++) {
+      const minY = bounds.minY + row * height,
+        maxY = row === rows - 1 ? bounds.maxY : minY + height;
+      for (let column = 0; column < columns; column++) {
+        const minX = bounds.minX + column * width,
+          maxX = column === columns - 1 ? bounds.maxX : minX + width,
+          polys =
+            columns === 1 && rows === 1
+              ? cap.polys
+              : intersection(cap.polys, rectGeometry(minX, minY, maxX, maxY));
+        if (isEmpty(polys)) continue;
+        const base = roughCapBaseTriangles(THREE, cap.z, cap.normal, polys);
+        if (!base.triangles.length) continue;
+        zones.push({
           polys,
-          lodContext: lodContextFor(model, clip, polys, z, {
-            visibleFraction: 0.04,
-            screenPriority: 0.06,
-            maxDepth: 5,
-          }),
-        },
-      ];
+          bounds: xyBounds(polys) || { minX, minY, maxX, maxY },
+          baseTriangles: base.triangles,
+          maxEdge: base.maxEdge,
+        });
+      }
     }
 
-    const zones = [
-        {
-          polys: focused,
-          lodContext: lodContextFor(model, clip, focused, z, {
-            visibleFraction: 1,
-            screenPriority: 1,
-            maxDepth: 10,
-          }),
-        },
-      ],
-      background = difference(polys, focus);
-    if (!isEmpty(background)) {
-      zones.push({
-        polys: background,
-        lodContext: lodContextFor(model, clip, background, z, {
-          visibleFraction: 0.04,
-          screenPriority: 0.06,
-          maxDepth: 5,
-        }),
-      });
+    if (!zones.length) {
+      const base = roughCapBaseTriangles(THREE, cap.z, cap.normal, cap.polys);
+      if (base.triangles.length) {
+        zones.push({
+          polys: cap.polys,
+          bounds,
+          baseTriangles: base.triangles,
+          maxEdge: base.maxEdge,
+        });
+      }
     }
+
+    task.spatialZones = zones;
+    roughSpatialZoneBuildCount++;
+    roughBaseTriangulationCount += zones.length;
     return zones;
+  }
+
+  function boundsOverlap(a, b) {
+    return Boolean(
+      a &&
+        b &&
+        a.maxX >= b.minX &&
+        a.minX <= b.maxX &&
+        a.maxY >= b.minY &&
+        a.minY <= b.maxY,
+    );
+  }
+
+  function roughZonePriority(bounds, focus) {
+    if (!bounds || !focus) return 0.06;
+    if (boundsOverlap(bounds, focus)) return 1;
+
+    const cx = (bounds.minX + bounds.maxX) / 2,
+      cy = (bounds.minY + bounds.maxY) / 2,
+      fx = (focus.minX + focus.maxX) / 2,
+      fy = (focus.minY + focus.maxY) / 2,
+      halfWidth = Math.max(1e-9, (focus.maxX - focus.minX) / 2),
+      halfHeight = Math.max(1e-9, (focus.maxY - focus.minY) / 2),
+      normalizedDistance = Math.hypot((cx - fx) / halfWidth, (cy - fy) / halfHeight);
+    return normalizedDistance <= 1.75 ? 0.28 : 0.06;
   }
 
   function adaptiveLodSignature() {
@@ -296,6 +349,8 @@ export function createThreeView({
       delete data.roughSceneTriangleBudget;
       delete data.roughRequestedSceneTriangleBudget;
       delete data.roughBaseTriangleCount;
+      delete data.roughSpatialZoneBuildCount;
+      delete data.roughBaseTriangulationCount;
       return;
     }
     data.roughLodDepthMin = String(Math.min(...depths));
@@ -624,36 +679,32 @@ export function createThreeView({
   function prepareAdaptiveRoughTasks() {
     const context = roughRenderContext;
     if (!context || !roughTasks.length) return { tasks: [], sceneBudget: 0 };
-    const requests = [],
+    const focus = focusBounds(),
+      requests = [],
       tasks = roughTasks.map((task) => {
-        const zones = roughLodZones(
-          context.model,
-          context.clip,
-          task.cap.polys,
-          task.cap.z,
-        ).map((zone) => {
-          const base = roughCapBaseTriangles(THREE, 
-              task.cap.z,
-              task.cap.normal,
-              zone.polys,
-            ),
+        const zones = prepareRoughSpatialZones(task).map((zone) => {
+          const priority = roughZonePriority(zone.bounds, focus),
+            lodContext = lodContextFor(context.model, context.clip, zone.polys, task.cap.z, {
+              visibleFraction: priority >= 0.9 ? 1 : priority >= 0.2 ? 0.2 : 0.04,
+              screenPriority: priority,
+              maxDepth: priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
+            }),
             preview = adaptiveRoughMeshLod({
-              triangleCount: base.triangles.length,
-              maxEdge: base.maxEdge,
+              triangleCount: zone.baseTriangles.length,
+              maxEdge: zone.maxEdge,
               featureSize: task.cap.appearance?.featureSize,
-              ...(zone.lodContext || {}),
+              ...lodContext,
             }),
             prepared = {
               ...zone,
-              baseTriangles: base.triangles,
-              maxEdge: base.maxEdge,
+              lodContext,
               triangleBudget: null,
             };
           requests.push({
             zone: prepared,
-            baseTriangles: Math.max(1, base.triangles.length),
+            baseTriangles: Math.max(1, zone.baseTriangles.length),
             desiredTriangles: Math.max(1, preview.desiredTriangles),
-            priority: zone.lodContext?.screenPriority ?? 1,
+            priority,
           });
           return prepared;
         });
@@ -744,6 +795,8 @@ export function createThreeView({
         data.roughSceneTriangleBudget = String(prepared.sceneBudget);
         data.roughRequestedSceneTriangleBudget = String(prepared.requestedSceneBudget);
         data.roughBaseTriangleCount = String(prepared.baseTriangleCount);
+        data.roughSpatialZoneBuildCount = String(roughSpatialZoneBuildCount);
+        data.roughBaseTriangulationCount = String(roughBaseTriangulationCount);
         data.roughRebuildCount = String(roughRebuildCount);
         data.surfacePlanBuildCount = String(surfacePlanBuildCount);
       }
