@@ -131,7 +131,7 @@ await bootPage.route('**/app.js*', async (route) => {
   appRequestedBeforeCss = true;
   await route.continue();
 });
-await bootPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+const bootNavigation = bootPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'domcontentloaded',
   timeout: 30000,
 });
@@ -149,6 +149,7 @@ assert.equal(await bootPage.locator('.workstation-rail').count(), 0);
 assert.equal(appRequestedBeforeCss, false);
 
 releaseWorkstationCss();
+await bootNavigation;
 await bootPage.waitForFunction(
   () => document.documentElement.dataset.appReady === 'true',
   null,
