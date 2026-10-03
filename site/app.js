@@ -756,6 +756,7 @@ const projectStateController = createProjectStateController({
     baseRevertSnapshot = null;
     drawMaskController?.resetInteraction();
     maskRoiController?.clearDrawingMode();
+    sectionCollapseController.close();
     markProjectDirty();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
