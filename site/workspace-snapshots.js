@@ -186,14 +186,26 @@ export function createSnapshotManager({
   }
 
   function list() {
-    return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId }) => ({
-      id,
-      name,
-      createdAt,
-      branchId,
-      parentId,
-      historyNodeId,
-    }));
+    return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId, state }) => {
+      const node = historyNodeId ? nodeById(historyNodeId) : null;
+      let legacyCheckpoint = false;
+      if (node?.state && state) {
+        try {
+          legacyCheckpoint = !deepEqual(state, node.state);
+        } catch {
+          legacyCheckpoint = true;
+        }
+      }
+      return {
+        id,
+        name,
+        createdAt,
+        branchId,
+        parentId,
+        historyNodeId,
+        legacyCheckpoint,
+      };
+    });
   }
 
   function milestoneAtProcessNode(nodeId, branchId = null) {
