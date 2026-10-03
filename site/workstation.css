@@ -261,7 +261,7 @@ html.workstation-ui-v2 .workspace {
   display: grid;
   grid-template-areas: none;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(155px, 28%);
+  grid-template-rows: minmax(0, 1fr) minmax(190px, 30%);
   grid-auto-flow: row;
   gap: 1px;
   overflow: hidden;
@@ -270,6 +270,11 @@ html.workstation-ui-v2 .workspace {
 
 html.workstation-ui-v2 .workspace.section-dock-collapsed {
   grid-template-rows: minmax(0, 1fr) 29px;
+}
+
+html.workstation-ui-v2
+  .workspace:not(.section-dock-collapsed):has(#sectionCollapseEditor:not([hidden])) {
+  grid-template-rows: minmax(0, 1fr) minmax(235px, 36%);
 }
 
 html.workstation-ui-v2 .workstation-view-stage {
@@ -682,7 +687,12 @@ html.workstation-ui-v2 .status-action:hover {
   }
 
   html.workstation-ui-v2 .workspace {
-    grid-template-rows: minmax(0, 1fr) minmax(145px, 25%);
+    grid-template-rows: minmax(0, 1fr) minmax(165px, 27%);
+  }
+
+  html.workstation-ui-v2
+    .workspace:not(.section-dock-collapsed):has(#sectionCollapseEditor:not([hidden])) {
+    grid-template-rows: minmax(0, 1fr) minmax(255px, 42%);
   }
 
   html.workstation-ui-v2 .workstation-view-stage,
