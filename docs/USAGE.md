@@ -133,20 +133,21 @@ Main and Section A–B provide **SVG** export. Mask provides **SVG, GDSII, and O
 
 Use **Project → XYZ unit** to switch nm / µm / mm. This converts X, Y and Z display/input values while canonical geometry remains stored in µm. Manual length fields are displayed and committed to **1 nm precision** (0.001 µm or 0.000001 mm). Internal calculations retain their working precision; project export normalizes persisted physical lengths and coordinates to **0.1 nm** (0.0001 µm) so floating-point tails such as `24999.999999999996` are not stored.
 
-## 9. Process history, milestones, and variants
+## 9. History: Steps, Variants, and bookmarks
 
-Every successful **Apply** appends a restorable process-history node to the active variant. The tree records the operation metadata and the exact workspace state produced by that step. Click any non-HEAD process row to restore that step directly; the editor enters **Historical working state** and can either return to HEAD or continue into a new variant. Failed, aborted, busy, or no-change operations do not create history nodes or empty variants.
+Every successful **Apply** creates one **Step** in History. A Step contains the operation metadata and the exact validated workspace state produced by that operation, so every newly created Step is directly restorable. Failed, aborted, busy, or no-change operations create no Step.
 
-Use **Save milestone** when a process state is worth naming. A milestone is an immutable checkpoint attached to the current process-history node and captures the complete restorable workspace state.
+The History panel is a process tree. **Main** is the root Variant. A Variant created from a Step is rendered directly beneath that origin Step, and child Variants can branch again from later Steps. Click a Variant name to switch to its latest **HEAD**. Use the pencil beside the Variant name, or double-click the name, to rename it inline.
 
-The **Current variant** selector switches the workspace to that variant's latest **HEAD**. Restoring an older process step, restoring a milestone, or using Undo can move the editor behind HEAD; the History panel then shows a **Historical working state** banner. Non-process edits made there stay in the working state. If the next Apply succeeds, WaferCAD creates a new `Variant N` from that exact working state and records the successful process step there. The original variant and its HEAD remain unchanged. If Apply fails, is aborted, is busy, or produces no geometry change, no variant is created.
+Click any restorable Step to inspect that exact state. The editor then shows **Historical state** and offers a route back to the current Variant HEAD. If the next Apply succeeds, WaferCAD creates a new Variant from that Step/state and records the successful operation there; the existing Variant and HEAD remain unchanged.
 
-**Variant from here** creates a process variant from a milestone. When continuation follows Undo and no milestone exists at that exact process node, WaferCAD creates a branch-point milestone attached to that historical graph position. A milestone used as a variant origin is protected from deletion so provenance cannot be silently rewritten. Non-Main leaf variants can be deleted; child variants must be removed first.
+**Variant from here** is available on each restorable Step. Variant ancestry is defined by the process graph (`rootNodeId` plus explicit parent-Variant linkage), not by bookmarks.
 
-Variant HEAD state also includes non-process project edits such as ROI/view/project settings. It is synchronized before persistence/export and before switching variants, so returning to a variant restores its actual latest working HEAD rather than only its last process operation.
+A **bookmark** is only an optional label attached to a Step. **Bookmark current step** or **Add bookmark** does not create a second history checkpoint and is not required for restore or branching. Renaming or deleting a bookmark does not remove the Step. Older project files may expose snapshot-only states under **Legacy bookmarks** so their saved states remain accessible without pretending they are modern process Steps.
 
-A project stores at most 100 named milestones, 32 variants, and 1000 process-history nodes. Snapshot-branch format v3 requires every new process node to carry a restorable state. Autosave and export pack repeated layout/model assets through the shared-asset layer to reduce duplication. Older v2 projects remain readable; an old intermediate process row can only be restored when that file already contains an equivalent milestone or branch HEAD state, because earlier versions did not save every intermediate state. Existing projects without process-history metadata continue to open as a linear **Main** variant.
+Variant HEAD state can include non-process edits such as ROI, display, or project settings. WaferCAD preserves that exact HEAD before History navigation. Merely browsing clean historical Steps does not consume Recovery slots; leaving a historical state after editing it creates a Recovery checkpoint.
 
+A project supports at most 100 bookmark records, 32 Variants, and 1000 process Steps. Snapshot-branch format v3 requires every newly written Step to carry a restorable state. Autosave and export pack repeated layout/model assets through the shared-asset layer. Older v1/v2 data remains readable; an old intermediate row that was never persisted with a state is explicitly marked unavailable unless its exact state can be recovered from legacy saved data.
 ## 10. Save and open
 
 Project includes an editable **Project name**. Export uses that name as the default `.wafercad` filename. **New** and **Open** both warn before replacing the current workspace.
@@ -155,14 +156,14 @@ The **Project** tab is first and is the default tool tab when the workspace star
 
 **Save** writes the current project into browser storage and creates an explicit local **Recovery** checkpoint. Recovery points are listed in the Project tab, can be restored later, and can be cleared manually. Clearing Recovery checkpoints does not delete the current autosaved workspace. Continuous IndexedDB autosave still protects the latest working state between manual Save checkpoints and across reloads.
 
-**Export** downloads the current project as a `.wafercad` file. Process history, milestones, variants, and their restore states are included. Repeated layout/model assets are stored through the shared-asset layer so unchanged data is not copied once per checkpoint.
+**Export** downloads the current project as a `.wafercad` file. Process Steps, Variants, bookmarks, and their restore states are included. Repeated layout/model assets are stored through the shared-asset layer so unchanged data is not copied once per checkpoint.
 
 Use **Project → Open** to restore an exported project file. Older supported project files are migrated to the current **v13** format before validation. v13 adds Pyramid morphology while preserving v12 stochastic morphology/polarity and older project semantics. Export and Open enforce the same 256 MB safety limit.
 
 
 ### Base lifecycle and Process
 
-The **Base** is a physical material in the vector stack, while `model.boundary` remains the process-domain footprint used for mask alignment and editing. Partial through-etches are valid holes. A whole-face over-etch may remove all material; the workspace remains valid so Undo, snapshots, masks, ROI and project state can still be used. Process operations are disabled until a Base is recreated when no material remains.
+The **Base** is a physical material in the vector stack, while `model.boundary` remains the process-domain footprint used for mask alignment and editing. Partial through-etches are valid holes. A whole-face over-etch may remove all material; the workspace remains valid so Undo, History, masks, ROI and project state can still be used. Process operations are disabled until a Base is recreated when no material remains.
 
 **Process → Extend** lists only layers exposed on the active face in the selected process area. **Base** is a valid Extend target whenever it is exposed. Buried layers are not offered as Extend targets.
 
