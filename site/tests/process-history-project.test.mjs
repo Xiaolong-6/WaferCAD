@@ -170,6 +170,65 @@ test('V3 restorable process history survives packed project storage', () => {
   assert.equal(workspaceStored.snapshotBranches.branches[0].headState.model.processRevision, 2);
 });
 
+test('V3 Variant parent linkage survives validation and packed storage', () => {
+  const source = validProject(1);
+  const step = validProject(1);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'variant-1',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-04T00:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Origin Step' },
+        state: step,
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: step,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'variant-1',
+        name: 'Detector path',
+        parentBranchId: 'main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: step,
+        createdAt: '2026-10-04T00:01:00.000Z',
+      },
+    ],
+  };
+
+  assert.equal(validateProjectFile(source), source);
+  const stored = JSON.parse(serializeProject(source));
+  assert.equal(stored.snapshotBranches.branches[1].parentBranchId, 'main');
+  assert.equal(stored.snapshotBranches.branches[1].rootNodeId, 'process-1');
+  expandProjectStorage(stored);
+  assert.equal(validateProjectFile(stored), stored);
+
+  source.snapshotBranches.branches[1].parentBranchId = 'missing';
+  assert.throws(
+    () => validateProjectFile(source),
+    /parentBranchId.*unknown parent variant/i,
+  );
+});
+
 test('V3 process-node restore states survive the project Open path', async () => {
   const source = validProject(2);
   const stepOne = validProject(1);
