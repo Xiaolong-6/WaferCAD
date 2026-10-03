@@ -737,6 +737,12 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
     if (branchIds.has(id)) fail(`${path}.id`, 'must be unique.');
     branchIds.add(id);
     assertString(branch.name, `${path}.name`, { max: 256 });
+    if (version >= 3 && branch.parentBranchId != null) {
+      assertString(branch.parentBranchId, `${path}.parentBranchId`, { max: 128 });
+      if (branch.parentBranchId === id) {
+        fail(`${path}.parentBranchId`, 'must not reference itself.');
+      }
+    }
     const createdAt = assertString(branch.createdAt, `${path}.createdAt`, { max: 64 });
     if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
 
@@ -766,6 +772,20 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       }
     }
   });
+
+  if (version >= 3) {
+    branches.forEach((branch, index) => {
+      if (
+        branch.parentBranchId != null &&
+        !branchIds.has(branch.parentBranchId)
+      ) {
+        fail(
+          `snapshotBranches.branches[${index}].parentBranchId`,
+          'references an unknown parent variant.',
+        );
+      }
+    });
+  }
 
   if (!branchIds.has(activeBranchId)) {
     fail('snapshotBranches.activeBranchId', 'references an unknown branch.');
