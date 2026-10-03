@@ -652,7 +652,7 @@ export function createSnapshotManager({
       const source = records.find((record) => record.id === branch.rootSnapshotId);
       if (!source || !branch.name.startsWith(source.name)) continue;
       const suffix = branch.name.slice(source.name.length);
-      if (!/^( branch| continuation)( \\d+)?$/.test(suffix)) continue;
+      if (!/^( branch| continuation)( \d+)?$/.test(suffix)) continue;
 
       usedBranchNames.delete(branch.name);
       while (usedBranchNames.has(`Variant ${legacyVariantIndex}`)) legacyVariantIndex += 1;
