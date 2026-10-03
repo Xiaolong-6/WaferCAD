@@ -9,6 +9,10 @@ const workspacePersistenceController = await readFile(
   new URL('../controllers/workspace-persistence-controller.js', import.meta.url),
   'utf8',
 );
+const workspaceSessionController = await readFile(
+  new URL('../controllers/workspace-session-controller.js', import.meta.url),
+  'utf8',
+);
 const buildController = await readFile(
   new URL('../controllers/build-controller.js', import.meta.url),
   'utf8',
