@@ -740,7 +740,7 @@ test('reloaded historical working edits remain distinguishable from the canonica
   assert.equal(reloaded.hasHistoricalWorkingEdits(), true);
 });
 
-test('branching from a restored process step reuses an existing milestone at that node', () => {
+test('branching from a restored Step uses the Step itself as the Variant origin', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
   let branchId = 0;
@@ -758,7 +758,7 @@ test('branching from a restored process step reuses an existing milestone at tha
 
   live = { model: { processRevision: 1 }, value: 'step-1' };
   const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
-  const milestone = manager.create('Named step 1');
+  const bookmark = manager.bookmarkStep(first.id, 'Named step 1');
   live = { model: { processRevision: 2 }, value: 'step-2' };
   manager.recordOperation({ kind: 'add', label: 'Step 2' });
 
@@ -767,7 +767,10 @@ test('branching from a restored process step reuses an existing milestone at tha
   const variant = manager.createBranchFromCursor('Variant from process row');
 
   assert.equal(manager.list().length, before);
-  assert.equal(variant.rootSnapshotId, milestone.id);
+  assert.equal(manager.list().some((record) => record.id === bookmark.id), true);
+  assert.equal(variant.rootSnapshotId, null);
+  assert.equal(variant.rootNodeId, first.id);
+  assert.equal(variant.parentBranchId, 'main');
 });
 
 test('restoring an older milestone requires a branch before another Apply', () => {
@@ -846,7 +849,9 @@ test('Undo cursor can branch without a pre-existing milestone', () => {
   live = { model: { processRevision: 1 }, value: 'step-1' };
   const branch = manager.createBranchFromCursor('Undo continuation');
   assert.equal(manager.activeBranch().id, branch.id);
-  assert.equal(manager.list().some((record) => record.historyNodeId === first.id), true);
+  assert.equal(branch.rootNodeId, first.id);
+  assert.equal(branch.parentBranchId, 'main');
+  assert.equal(manager.list().some((record) => record.historyNodeId === first.id), false);
 });
 
 
@@ -915,7 +920,7 @@ test('historical working edits seed an automatic continuation variant', () => {
   assert.equal(live.value, 'historical-working-edit');
 });
 
-test('Undo branching reuses a milestone already attached to the historical graph position', () => {
+test('Undo branching keeps bookmarks as annotations instead of Variant structure', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
   let branchId = 0;
@@ -933,10 +938,10 @@ test('Undo branching reuses a milestone already attached to the historical graph
 
   live = { model: { processRevision: 1 }, value: 'step-1' };
   const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
-  const firstMilestone = manager.create('After step 1');
+  const firstBookmark = manager.bookmarkStep(first.id, 'After step 1');
   live = { model: { processRevision: 2 }, value: 'step-2' };
   manager.recordOperation({ kind: 'etch', label: 'Step 2' });
-  manager.create('After step 2');
+  manager.bookmarkCurrentStep('After step 2');
 
   manager.syncCursorToProcessRevision(1);
   live = { model: { processRevision: 1 }, value: 'step-1' };
@@ -944,9 +949,70 @@ test('Undo branching reuses a milestone already attached to the historical graph
   const variant = manager.createBranchFromCursor('Undo variant');
 
   assert.equal(manager.list().length, before);
-  assert.equal(variant.rootSnapshotId, firstMilestone.id);
+  assert.equal(manager.list().some((record) => record.id === firstBookmark.id), true);
+  assert.equal(variant.rootSnapshotId, null);
   assert.equal(variant.rootNodeId, first.id);
-  assert.equal(manager.list().some((record) => record.name === 'Main branch point'), false);
+  assert.equal(variant.parentBranchId, 'main');
+  assert.equal(manager.list().some((record) => /branch point/i.test(record.name)), false);
+});
+
+test('Variant tree records explicit parent linkage and supports direct rename', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'etch', label: 'Step 2' });
+
+  const variant = manager.createBranchFromNode(first.id);
+  assert.equal(variant.rootNodeId, first.id);
+  assert.equal(variant.parentBranchId, 'main');
+  assert.equal(variant.rootSnapshotId, null);
+  assert.equal(manager.renameBranch(variant.id, 'Detector path'), true);
+  assert.equal(
+    manager.listBranches().find((item) => item.id === variant.id).name,
+    'Detector path',
+  );
+
+  live = { model: { processRevision: 2 }, value: 'variant-step' };
+  const childStep = manager.recordOperation({ kind: 'add', label: 'Variant step' });
+  const child = manager.createBranchFromNode(childStep.id, 'Child path');
+  assert.equal(child.parentBranchId, variant.id);
+  assert.equal(child.rootNodeId, childStep.id);
+});
+
+test('bookmarking a Step does not create a second restore lineage', () => {
+  let live = { model: { processRevision: 1 }, value: 'step-1' };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `bookmark-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const step = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const bookmark = manager.bookmarkCurrentStep('Important');
+  assert.equal(bookmark.historyNodeId, step.id);
+  assert.equal(manager.listHistory().length, 1);
+  assert.equal(manager.list().length, 1);
+  assert.equal(manager.currentPosition().nodeId, step.id);
+  assert.equal(manager.currentPosition().bookmarkId, null);
 });
 
 test('automatic branches use concise Variant names and historical state can return to HEAD', () => {
