@@ -1473,3 +1473,41 @@ html.workstation-ui-v2 .danger,
 html.workstation-ui-v2 .danger-zone button {
   --accent: var(--wc-danger);
 }
+
+
+html.workstation-ui-v2 #toolPanel .segmented {
+  border-color: transparent;
+  background: #eef2f5;
+}
+
+html.workstation-ui-v2
+  #toolPanel
+  .segmented
+  button:not(.primary):not(.apply-btn):not(.workstation-tool-close) {
+  border-color: transparent;
+  background: transparent;
+  color: var(--wc-text-secondary);
+  box-shadow: none;
+}
+
+html.workstation-ui-v2
+  #toolPanel
+  .segmented
+  button:not(.primary):not(.apply-btn):not(.workstation-tool-close):hover {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--wc-text);
+}
+
+html.workstation-ui-v2
+  #toolPanel
+  .segmented
+  button.active:not(.primary):not(.apply-btn):not(.workstation-tool-close) {
+  border-color: #b7cbe0;
+  background: var(--wc-accent-soft);
+  color: #315f87;
+  box-shadow:
+    inset 0 -2px 0 var(--wc-accent),
+    0 1px 2px rgba(31, 41, 51, 0.05);
+  font-weight: 680;
+}
