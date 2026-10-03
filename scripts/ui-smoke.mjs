@@ -131,6 +131,16 @@ await page.waitForFunction(
 assert.equal(await page.locator('#welcomeScreen').count(), 0);
 assert.equal(await page.locator('.app-shell').count(), 1);
 
+// The product now starts in a focused Main view. The long-lived smoke scenario
+// explicitly opts into Overview because many later assertions compare Main,
+// Mask and 3D concurrently.
+assert.equal(await page.locator('#mainPanel').isVisible(), true);
+assert.equal(await page.locator('#maskPanel').isHidden(), true);
+assert.equal(await page.locator('#threePanel').isHidden(), true);
+await page.getByRole('button', { name: 'Overview' }).click();
+await page.locator('#maskPanel').waitFor({ state: 'visible' });
+await page.locator('#threePanel').waitFor({ state: 'visible' });
+
 // Navigation semantics are checked in isolated pages so Back/Reload cannot
 // perturb the long-lived editor page used by the rest of this smoke suite.
 const navigationPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
