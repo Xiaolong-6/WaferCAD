@@ -90,7 +90,8 @@ await page.waitForFunction(
   null,
   { timeout: 30000 },
 );
-await page.locator('[data-tool-tab="mask"]').click();
+await page.locator('.workstation-rail-button[data-tool="mask"]').click();
+await page.locator('#toolPanel.workstation-tool-flyout.open').waitFor();
 
 const allFiles = (await walk(root)).sort();
 const files = allFiles.filter((file) => coreDirs.has(relativeFile(file).split('/')[0]));
