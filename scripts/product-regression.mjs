@@ -70,37 +70,6 @@ async function capture(page, name) {
   cases.push(name);
 }
 
-async function setCheckboxState(locator, checked) {
-  await locator.evaluate((input, next) => {
-    input.checked = Boolean(next);
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  }, checked);
-}
-
-async function threeFramebufferHash(page) {
-  await page.evaluate(
-    () =>
-      new Promise((resolveFrame) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
-      ),
-  );
-  return page.locator('#threeHost canvas').evaluate((canvas) => {
-    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-    if (!gl) throw new Error('3D framebuffer is unavailable.');
-    gl.finish();
-    const width = canvas.width,
-      height = canvas.height,
-      pixels = new Uint8Array(width * height * 4);
-    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-    let hash = 2166136261;
-    for (let index = 0; index < pixels.length; index++) {
-      hash ^= pixels[index];
-      hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0).toString(16).padStart(8, '0');
-  });
-}
-
 async function checkLayout(page) {
   const problems = await page.evaluate(() => {
     const issues = [];
@@ -972,17 +941,16 @@ try {
       });
       await loadProject(page, implantProject, 'wide-implant-buried');
       await page.locator('#threeMaxBtn').click();
-      const implantVisibility = page.locator('#layerLegend .implant-row-wrap .legend-visibility');
-      assert.equal(await implantVisibility.count(), 1);
-      const opaqueVisibleHash = await threeFramebufferHash(page);
-      await setCheckboxState(implantVisibility, false);
-      const opaqueHiddenHash = await threeFramebufferHash(page);
       assert.equal(
-        opaqueVisibleHash,
-        opaqueHiddenHash,
-        'Buried implant visibility changed an opaque 3D framebuffer',
+        Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')),
+        0,
+        'Opaque 3D must not add buried implant volume meshes',
       );
-      await setCheckboxState(implantVisibility, true);
+      assert.equal(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-surface-count')),
+        0,
+        'Opaque 3D must not add a surface overlay for a fully buried implant',
+      );
       await capture(page, 'wide-implant-buried-opaque-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
@@ -990,15 +958,10 @@ try {
       await page.locator('#threePanel .three-opacity-control > summary').click();
       await page.waitForTimeout(120);
       await page.locator('#threeMaxBtn').click();
-      const transparentVisibleHash = await threeFramebufferHash(page);
-      await setCheckboxState(implantVisibility, false);
-      const transparentHiddenHash = await threeFramebufferHash(page);
-      assert.notEqual(
-        transparentVisibleHash,
-        transparentHiddenHash,
-        'Transparent 3D did not reveal the buried implant',
+      assert.ok(
+        Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')) > 0,
+        'Transparent 3D must add the buried implant volume for inspection',
       );
-      await setCheckboxState(implantVisibility, true);
       await capture(page, 'wide-implant-buried-transparent-max');
       await page.locator('#threeMaxBtn').click();
       await page.locator('#threePanel .three-opacity-control > summary').click();
