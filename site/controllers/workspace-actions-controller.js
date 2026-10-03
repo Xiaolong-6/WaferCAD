@@ -257,8 +257,10 @@ export function createWorkspaceActionsController({
       getFuture().push(stateSnapshot());
       restoreSnapshot(history.pop());
       setBaseRevertSnapshot(null);
+      snapshotManager.syncCursorToProcessRevision(getModel()?.processRevision || 0);
       syncBaseControls();
       renderAll();
+      renderSnapshots();
       status('Undid operation.');
     };
 
@@ -268,8 +270,10 @@ export function createWorkspaceActionsController({
       getHistory().push(stateSnapshot());
       restoreSnapshot(future.pop());
       setBaseRevertSnapshot(null);
+      snapshotManager.syncCursorToProcessRevision(getModel()?.processRevision || 0);
       syncBaseControls();
       renderAll();
+      renderSnapshots();
       status('Redid operation.');
     };
   }
@@ -280,7 +284,7 @@ export function createWorkspaceActionsController({
         const saved = snapshotManager.create();
         onProjectChanged();
         renderSnapshots();
-        status(`Saved snapshot "${saved.name}".`);
+        status(`Saved snapshot "${saved.name}" on "${snapshotManager.activeBranch().name}".`);
       } catch (error) {
         console.error(error);
         status(`Snapshot failed: ${error.message}`);

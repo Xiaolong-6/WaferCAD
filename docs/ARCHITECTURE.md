@@ -126,7 +126,11 @@ Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm c
 
 ### `site/workspace-snapshots.js`
 
-Owns named immutable workspace checkpoints independently of the DOM and renderers. It receives capture/restore callbacks from `app.js`, so snapshot storage does not duplicate editor logic. Snapshots have timestamp defaults, can be renamed/restored/deleted, and intentionally contain no thumbnails.
+Owns the process-history graph, named immutable milestones, and branch HEAD state independently of the DOM and renderers. A successful Apply creates a lightweight node with `branchId`, `parentId`, `processRevision`, timestamp, and structured operation metadata. A snapshot stores a full validated workspace state plus the `historyNodeId` it marks.
+
+Each branch keeps independent process `rootNodeId` / `headNodeId` pointers and one validated `headState`. Ordinary process nodes do not store full models/layouts. This bounds storage growth while still allowing branch switching to restore the latest state immediately. Named milestone states and branch HEAD states are packed through the same shared model/layout asset layer during autosave, Recovery, and file export.
+
+Restoring a milestone or Undo can move the process cursor behind HEAD without changing HEAD. Before another Apply, the application must create a continuation branch; if no milestone exists at an Undo cursor, a branch-point milestone is created automatically. Existing v1 branch metadata and older snapshot-only projects import into the V2 manager without changing their saved workspace states.
 
 ### `site/gds.js`
 

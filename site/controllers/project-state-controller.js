@@ -23,6 +23,7 @@ export function createProjectStateController({
   getState,
   applyState,
   getSnapshotRecords = () => [],
+  getSnapshotBranchState = () => null,
   syncDisplayControls = () => {},
   setSectionEditEnabled,
 }) {
@@ -71,6 +72,8 @@ export function createProjectStateController({
     if (includeSnapshots) {
       project.name = state.projectName;
       project.snapshots = getSnapshotRecords();
+      const snapshotBranches = getSnapshotBranchState();
+      if (snapshotBranches) project.snapshotBranches = snapshotBranches;
     }
     return project;
   }

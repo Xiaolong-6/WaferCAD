@@ -833,3 +833,97 @@ test('project validator rejects out-of-contract implant tilt values', () => {
   source.model.nextImplantId = 2;
   assert.throws(() => validateProjectFile(source), /model\.implants\[0\]\.tilt/);
 });
+
+
+test('project storage preserves snapshot branch graph metadata', () => {
+  const source = validProject();
+  source.snapshots = [
+    {
+      id: 'snapshot-main',
+      name: 'Shared process',
+      createdAt: '2026-10-03T10:00:00.000Z',
+      branchId: 'main',
+      parentId: null,
+      state: validProject(),
+    },
+    {
+      id: 'snapshot-variant',
+      name: 'Black silicon',
+      createdAt: '2026-10-03T10:01:00.000Z',
+      branchId: 'branch-black',
+      parentId: 'snapshot-main',
+      state: validProject(),
+    },
+  ];
+  source.snapshotBranches = {
+    version: 1,
+    activeBranchId: 'branch-black',
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: 'snapshot-main',
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'branch-black',
+        name: 'Black silicon',
+        rootSnapshotId: 'snapshot-main',
+        headSnapshotId: 'snapshot-variant',
+        createdAt: '2026-10-03T10:00:30.000Z',
+      },
+    ],
+  };
+
+  const stored = JSON.parse(serializeProject(source));
+  assert.equal(stored.snapshots[1].branchId, 'branch-black');
+  assert.equal(stored.snapshots[1].parentId, 'snapshot-main');
+  assert.equal(stored.snapshotBranches.activeBranchId, 'branch-black');
+
+  expandProjectStorage(stored);
+  assert.equal(validateProjectFile(stored), stored);
+  assert.equal(stored.snapshots[1].branchId, 'branch-black');
+  assert.equal(stored.snapshotBranches.branches[1].headSnapshotId, 'snapshot-variant');
+
+  const workspaceStored = prepareProjectForWorkspaceStorage(source);
+  expandProjectStorage(workspaceStored);
+  assert.equal(workspaceStored.snapshots[1].parentId, 'snapshot-main');
+  assert.equal(workspaceStored.snapshotBranches.activeBranchId, 'branch-black');
+});
+
+
+test('project validator rejects dangling snapshot branch graph references', () => {
+  const source = validProject();
+  source.snapshots = [
+    {
+      id: 'snapshot-1',
+      name: 'Checkpoint',
+      createdAt: '2026-10-03T10:00:00.000Z',
+      branchId: 'main',
+      parentId: 'missing',
+      state: validProject(),
+    },
+  ];
+  source.snapshotBranches = {
+    version: 1,
+    activeBranchId: 'main',
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: 'snapshot-1',
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+  assert.throws(() => validateProjectFile(source), /parentId references an unknown snapshot/);
+
+  source.snapshots[0].parentId = null;
+  source.snapshotBranches.branches[0].headSnapshotId = 'missing';
+  assert.throws(
+    () => validateProjectFile(source),
+    /headSnapshotId references an unknown snapshot/,
+  );
+});

@@ -387,7 +387,7 @@ export function createWorkspacePersistenceController({
       const recovered = await loadWorkspaceRecoveryPoint(key);
       if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
       loadProjectSnapshot(recovered);
-      snapshotManager.importRecords(recovered.snapshots || []);
+      snapshotManager.importRecords(recovered.snapshots || [], recovered.snapshotBranches);
       syncBaseControls();
       syncTransformInputs();
       renderAll();
@@ -540,7 +540,7 @@ export function createWorkspacePersistenceController({
         });
       }
       loadProjectSnapshot(latestSaved);
-      snapshotManager.importRecords(latestSaved.snapshots || []);
+      snapshotManager.importRecords(latestSaved.snapshots || [], latestSaved.snapshotBranches);
       syncBaseControls();
       syncTransformInputs();
       renderAll();

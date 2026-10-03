@@ -1512,6 +1512,114 @@ await page.waitForFunction(
 );
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
+// Snapshot branches use an inline branch editor, keep independent heads, and restore
+// the selected branch head when switching through the Current branch selector.
+await page.locator('.snapshot-branch-action').first().click();
+const branchEditor = page.locator('.snapshot-branch-editor').first();
+await branchEditor.locator('input').fill('Smoke variant');
+await branchEditor.locator('.snapshot-branch-create').click();
+await page.waitForFunction(
+  () => /Created branch "Smoke variant"/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(await page.locator('#snapshotBranchSelect option').count(), 2);
+assert.notEqual(await page.locator('#snapshotBranchSelect').inputValue(), 'main');
+await page.locator('#saveSnapshotBtn').click();
+assert.match(await page.locator('#statusText').textContent(), /on "Smoke variant"/);
+await page.locator('#snapshotBranchSelect').selectOption('main');
+await page.waitForFunction(
+  () => /Switched to branch "Main"/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
+assert.equal(await page.locator('.snapshot-branch-group').count(), 2);
+
+// V2: a milestone is attached to the current process HEAD. After another Apply,
+// restoring that milestone enters historical-state mode and the next Apply must
+// create a continuation branch instead of rewriting Main.
+await page.locator('#saveSnapshotBtn').click();
+const v2MilestoneName = page
+  .locator('.snapshot-branch-group[data-active="true"] .snapshot-name')
+  .last();
+await v2MilestoneName.fill('V2 branch point');
+await v2MilestoneName.press('Enter');
+
+await openFunctionPanel(page, 'process');
+await page.locator('[data-process-mode="add"]').click();
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#growthMode').selectOption('direct');
+await page.locator('#operationThickness').fill('0.05');
+await page.locator('#layerName').fill('Main after milestone');
+await page.locator('#applyOperationBtn').click();
+await page.waitForFunction(
+  () => /Deposited Main after milestone/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+
+await openFunctionPanel(page, 'snapshots');
+assert.ok(await page.locator('.process-history-row').count());
+const v2MilestoneIndex = await page.locator('.snapshot-name').evaluateAll((inputs) =>
+  inputs.findIndex((input) => input.value === 'V2 branch point'),
+);
+assert.ok(v2MilestoneIndex >= 0);
+const v2MilestoneRow = page.locator('.snapshot-name').nth(v2MilestoneIndex).locator('..');
+await v2MilestoneRow.locator('.snapshot-action').click();
+await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /Historical state/);
+
+await openFunctionPanel(page, 'process');
+await page.locator('[data-process-mode="add"]').click();
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#growthMode').selectOption('direct');
+await page.locator('#operationThickness').fill('0.05');
+await page.locator('#layerName').fill('Continuation probe');
+await page.locator('#applyOperationBtn').click();
+await page.locator('#confirmationDialogOverlay:not([hidden])').waitFor();
+assert.match(
+  await page.locator('#confirmationDialogTitle').textContent(),
+  /Continue from historical state/,
+);
+await chooseConfirmation(page);
+await page.waitForFunction(
+  () => /Deposited Continuation probe/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+
+await openFunctionPanel(page, 'snapshots');
+assert.equal(await page.locator('.snapshot-branch-group').count(), 3);
+assert.equal(await page.locator('.snapshot-continuation-banner').count(), 0);
+assert.match(
+  await page.locator('.snapshot-branch-group[data-active="true"]').textContent(),
+  /Continuation probe/,
+);
+assert.ok(
+  await page
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Continuation probe')),
+);
+assert.equal(
+  await page
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Main after milestone')),
+  false,
+);
+
+await page.locator('#snapshotBranchSelect').selectOption('main');
+await page.waitForFunction(
+  () => /Switched to branch "Main"/.test(document.getElementById('statusText')?.textContent || ''),
+);
+assert.ok(
+  await page
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Main after milestone')),
+);
+assert.equal(
+  await page
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'Continuation probe')),
+  false,
+);
+
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await openFunctionPanel(page, 'project');
 await page.locator('#newProjectBtn').click();

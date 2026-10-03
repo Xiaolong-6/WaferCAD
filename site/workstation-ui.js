@@ -31,7 +31,7 @@ const TOOL_META = {
   base: { id: 'baseTools', label: 'Base', icon: '◇', hint: 'substrate definition' },
   mask: { id: 'maskTools', label: 'Mask', icon: '⌗', hint: 'source · layout · alignment' },
   process: { id: 'operationTools', label: 'Process', icon: '≋', hint: 'operation · target · parameters' },
-  snapshots: { id: 'snapshotsTools', label: 'Snapshots', icon: '◷', hint: 'local checkpoints' },
+  snapshots: { id: 'snapshotsTools', label: 'Snapshots', icon: '◷', hint: 'process history · branches' },
 };
 
 const VIEW_META = {

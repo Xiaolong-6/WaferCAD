@@ -14,6 +14,8 @@ const LIMITS = {
   selectedLayerKeys: 50000,
   paletteColors: 64,
   snapshots: 100,
+  snapshotBranches: 32,
+  processHistoryNodes: 1000,
   drawMaskShapes: 10000,
   implants: 10000,
   implantPatches: 200000,
@@ -630,10 +632,155 @@ function validateSnapshotRecords(snapshots, shared) {
     assertString(record.name, `${path}.name`, { max: 256 });
     const createdAt = assertString(record.createdAt, `${path}.createdAt`, { max: 64 });
     if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
+    if (record.branchId != null) assertString(record.branchId, `${path}.branchId`, { max: 128 });
+    if (record.historyNodeId != null) {
+      assertString(record.historyNodeId, `${path}.historyNodeId`, { max: 128 });
+    }
+    if (record.parentId != null) {
+      assertString(record.parentId, `${path}.parentId`, { max: 128 });
+      if (record.parentId === id) fail(`${path}.parentId`, 'must not reference itself.');
+    }
     assertObject(record.state, `${path}.state`);
     if (record.state.snapshots != null) fail(`${path}.state.snapshots`, 'must not be nested.');
+    if (record.state.snapshotBranches != null) {
+      fail(`${path}.state.snapshotBranches`, 'must not be nested.');
+    }
     validateProjectCore(record.state, false, shared);
   });
+
+  records.forEach((record, index) => {
+    if (record.parentId != null && !ids.has(record.parentId)) {
+      fail(`snapshots[${index}].parentId`, 'references an unknown snapshot.');
+    }
+  });
+}
+
+function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
+  if (snapshotBranches == null) return;
+  const value = assertObject(snapshotBranches, 'snapshotBranches');
+  const version = assertInteger(value.version, 'snapshotBranches.version', { min: 1, max: 2 });
+  const activeBranchId = assertString(value.activeBranchId, 'snapshotBranches.activeBranchId', {
+    max: 128,
+  });
+  const branches = assertArray(
+    value.branches,
+    'snapshotBranches.branches',
+    LIMITS.snapshotBranches,
+  );
+  const branchIds = new Set();
+  const snapshotIds = new Set((snapshots || []).map((record) => record?.id).filter(Boolean));
+  const nodeIds = new Set();
+
+  if (version >= 2) {
+    const nodes = assertArray(
+      value.nodes,
+      'snapshotBranches.nodes',
+      LIMITS.processHistoryNodes,
+    );
+    nodes.forEach((node, index) => {
+      const path = `snapshotBranches.nodes[${index}]`;
+      assertObject(node, path);
+      const id = assertString(node.id, `${path}.id`, { max: 128 });
+      if (nodeIds.has(id)) fail(`${path}.id`, 'must be unique.');
+      nodeIds.add(id);
+      assertString(node.branchId, `${path}.branchId`, { max: 128 });
+      if (node.parentId != null) {
+        assertString(node.parentId, `${path}.parentId`, { max: 128 });
+        if (node.parentId === id) fail(`${path}.parentId`, 'must not reference itself.');
+      }
+      const createdAt = assertString(node.createdAt, `${path}.createdAt`, { max: 64 });
+      if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
+      assertInteger(node.processRevision, `${path}.processRevision`, { min: 0, max: 2147483647 });
+      assertObject(node.operation, `${path}.operation`);
+      if (node.operation.kind != null) {
+        assertString(node.operation.kind, `${path}.operation.kind`, { max: 64 });
+      }
+      if (node.operation.label != null) {
+        assertString(node.operation.label, `${path}.operation.label`, { max: 512 });
+      }
+    });
+    nodes.forEach((node, index) => {
+      if (node.parentId != null && !nodeIds.has(node.parentId)) {
+        fail(`snapshotBranches.nodes[${index}].parentId`, 'references an unknown process node.');
+      }
+    });
+
+    if (value.cursorNodeId != null) {
+      assertString(value.cursorNodeId, 'snapshotBranches.cursorNodeId', { max: 128 });
+      if (!nodeIds.has(value.cursorNodeId)) {
+        fail('snapshotBranches.cursorNodeId', 'references an unknown process node.');
+      }
+    }
+    if (value.cursorSnapshotId != null) {
+      assertString(value.cursorSnapshotId, 'snapshotBranches.cursorSnapshotId', { max: 128 });
+      if (!snapshotIds.has(value.cursorSnapshotId)) {
+        fail('snapshotBranches.cursorSnapshotId', 'references an unknown snapshot.');
+      }
+    }
+  }
+
+  branches.forEach((branch, index) => {
+    const path = `snapshotBranches.branches[${index}]`;
+    assertObject(branch, path);
+    const id = assertString(branch.id, `${path}.id`, { max: 128 });
+    if (branchIds.has(id)) fail(`${path}.id`, 'must be unique.');
+    branchIds.add(id);
+    assertString(branch.name, `${path}.name`, { max: 256 });
+    const createdAt = assertString(branch.createdAt, `${path}.createdAt`, { max: 64 });
+    if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
+
+    for (const key of ['rootSnapshotId', 'headSnapshotId']) {
+      if (branch[key] == null) continue;
+      assertString(branch[key], `${path}.${key}`, { max: 128 });
+      if (!snapshotIds.has(branch[key])) {
+        fail(`${path}.${key}`, 'references an unknown snapshot.');
+      }
+    }
+
+    if (version >= 2) {
+      for (const key of ['rootNodeId', 'headNodeId']) {
+        if (branch[key] == null) continue;
+        assertString(branch[key], `${path}.${key}`, { max: 128 });
+        if (!nodeIds.has(branch[key])) {
+          fail(`${path}.${key}`, 'references an unknown process node.');
+        }
+      }
+      if (branch.headState != null) {
+        assertObject(branch.headState, `${path}.headState`);
+        if (branch.headState.snapshots != null) fail(`${path}.headState.snapshots`, 'must not be nested.');
+        if (branch.headState.snapshotBranches != null) {
+          fail(`${path}.headState.snapshotBranches`, 'must not be nested.');
+        }
+        validateProjectCore(branch.headState, false, shared);
+      }
+    }
+  });
+
+  if (!branchIds.has(activeBranchId)) {
+    fail('snapshotBranches.activeBranchId', 'references an unknown branch.');
+  }
+
+  for (let index = 0; index < (snapshots || []).length; index++) {
+    const record = snapshots[index];
+    if (record?.branchId != null && !branchIds.has(record.branchId)) {
+      fail(`snapshots[${index}].branchId`, 'references an unknown branch.');
+    }
+    if (
+      version >= 2 &&
+      record?.historyNodeId != null &&
+      !nodeIds.has(record.historyNodeId)
+    ) {
+      fail(`snapshots[${index}].historyNodeId`, 'references an unknown process node.');
+    }
+  }
+
+  if (version >= 2) {
+    for (let index = 0; index < value.nodes.length; index++) {
+      if (!branchIds.has(value.nodes[index].branchId)) {
+        fail(`snapshotBranches.nodes[${index}].branchId`, 'references an unknown branch.');
+      }
+    }
+  }
 }
 
 function validateProjectCore(
@@ -693,8 +840,13 @@ function validateProjectCore(
   validateSection(project.section);
   validatePlanViews(project.planViews);
   validateDisplay(project.display);
-  if (allowSnapshots) validateSnapshotRecords(project.snapshots, shared);
-  else if (project.snapshots != null) fail('snapshots', 'must not be nested.');
+  if (allowSnapshots) {
+    validateSnapshotRecords(project.snapshots, shared);
+    validateSnapshotBranches(project.snapshotBranches, project.snapshots, shared);
+  } else {
+    if (project.snapshots != null) fail('snapshots', 'must not be nested.');
+    if (project.snapshotBranches != null) fail('snapshotBranches', 'must not be nested.');
+  }
 
   return project;
 }
