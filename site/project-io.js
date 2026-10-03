@@ -220,6 +220,36 @@ function createAssetResolver(rootAsset, quantize) {
   return { resolve, shared };
 }
 
+export function prepareProjectForWorkspaceStorage(project) {
+  validateProjectFile(project);
+
+  const stored = cloneCore(project);
+  const layoutAssets = createAssetResolver(project.layout, () => {});
+  const modelAssets = createAssetResolver(project.model, () => {});
+
+  if (Array.isArray(project.snapshots)) {
+    stored.snapshots = project.snapshots.map((record) => {
+      const state = cloneCore(record.state, { model: false, layout: false });
+      state.modelRef = modelAssets.resolve(record.state.model);
+      state.layoutRef = layoutAssets.resolve(record.state.layout);
+      return {
+        id: record.id,
+        name: record.name,
+        createdAt: record.createdAt,
+        state,
+      };
+    });
+  }
+
+  if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
+  if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
+  stored.storage = {
+    encoding: STORAGE_ENCODING,
+    lossless: true,
+  };
+  return stored;
+}
+
 export function prepareProjectForStorage(project) {
   validateProjectFile(project);
 
