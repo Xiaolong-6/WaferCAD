@@ -663,15 +663,83 @@ export function createPlanRenderers({
       }
     }
   
+    // Hide all geometry inside the collapsed Z interval, then redraw only the
+    // broken frame. The true world-Z mapping remains available to every renderer.
+    ctx.fillStyle = '#fbfcfd';
+    ctx.fillRect(
+      plotLeft,
+      zTransform.upperBottom - 0.5,
+      plotWidth,
+      zTransform.breakPixels + 1,
+    );
+
     ctx.strokeStyle = '#8995a1';
     ctx.lineWidth = 0.8;
-    ctx.strokeRect(plotLeft, plotTop, plotWidth, plotHeight);
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, zTransform.frameTop);
+    ctx.lineTo(plotLeft + plotWidth, zTransform.frameTop);
+    ctx.lineTo(plotLeft + plotWidth, zTransform.upperBottom);
+    ctx.moveTo(plotLeft + plotWidth, zTransform.lowerTop);
+    ctx.lineTo(plotLeft + plotWidth, zTransform.frameBottom);
+    ctx.lineTo(plotLeft, zTransform.frameBottom);
+    ctx.lineTo(plotLeft, zTransform.lowerTop);
+    ctx.moveTo(plotLeft, zTransform.upperBottom);
+    ctx.lineTo(plotLeft, zTransform.frameTop);
+    ctx.stroke();
+
+    // Restrained break notches at the plot edges; the interactive entry point
+    // is the small DOM control over the left Z axis.
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+    ctx.strokeStyle = '#788593';
+    ctx.lineWidth = 0.8;
+    for (const [x, direction] of [
+      [plotLeft, 1],
+      [plotLeft + plotWidth, -1],
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(x, zTransform.upperBottom - 1);
+      ctx.lineTo(x + direction * 6, zTransform.upperBottom + 3);
+      ctx.lineTo(x + direction * 12, zTransform.upperBottom - 1);
+      ctx.moveTo(x, zTransform.lowerTop + 1);
+      ctx.lineTo(x + direction * 6, zTransform.lowerTop - 3);
+      ctx.lineTo(x + direction * 12, zTransform.lowerTop + 1);
+      ctx.stroke();
+    }
+    ctx.restore();
+
     ctx.fillStyle = '#707b86';
     ctx.font = '8px system-ui';
-    ctx.fillText(formatXY(z1), 3, plotTop + 7);
-    ctx.fillText(formatXY(z0), 3, plotTop + plotHeight);
-    ctx.fillText('A', plotLeft, Math.min(h - 5, plotTop + plotHeight + 15));
-    ctx.fillText('B', plotLeft + plotWidth - 7, Math.min(h - 5, plotTop + plotHeight + 15));
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const tickValues = [
+        ...niceSectionTicks(collapse.top, z1, 4),
+        ...niceSectionTicks(z0, collapse.bottom, 2),
+      ],
+      usedTickY = [];
+    for (const value of tickValues) {
+      const y = mapZ(value);
+      if (usedTickY.some((other) => Math.abs(other - y) < 10)) continue;
+      usedTickY.push(y);
+      ctx.strokeStyle = '#aab3bd';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(plotLeft - 4, y);
+      ctx.lineTo(plotLeft, y);
+      ctx.stroke();
+      ctx.fillStyle = '#707b86';
+      ctx.fillText(formatXY(value), plotLeft - 6, y);
+    }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('A', plotLeft, Math.min(h - 5, zTransform.frameBottom + 15));
+    ctx.textAlign = 'right';
+    ctx.fillText(
+      'B',
+      plotLeft + plotWidth,
+      Math.min(h - 5, zTransform.frameBottom + 15),
+    );
+    ctx.textAlign = 'left';
   
     const scaleButton = $('sectionScaleModeBtn');
     scaleButton.textContent = sectionScaleMode === 'auto' ? 'Auto' : '1:1';
@@ -690,9 +758,12 @@ export function createPlanRenderers({
       : 'Show structural borders in Section A–B';
   
     const scaleLabel =
-      sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
+      sectionScaleMode === 'auto'
+        ? `Z ×${Number(zExaggeration.toPrecision(3))} · break`
+        : '1:1 · Z break';
     $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
     $('sectionRange').textContent = `Z (${xyUnitLabel()}) ${formatXY(lo)} → ${formatXY(hi)}`;
+    getSectionCollapseController()?.sync();
   }
 
   return { renderMask, renderMain, renderSection };
