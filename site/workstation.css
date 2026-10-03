@@ -312,6 +312,7 @@ html.workstation-ui-v2 .workstation-view-stage[data-view-mode='single'] {
 html.workstation-ui-v2 .workstation-view-stage > .view-panel {
   min-width: 0;
   min-height: 0;
+  grid-area: auto;
   border: 0;
   border-radius: 0;
   background: var(--wc-canvas);
