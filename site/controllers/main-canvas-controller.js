@@ -87,7 +87,10 @@ export function createMainCanvasController({
         const dy = event.clientY - panDrag.y;
         panDrag.x = event.clientX;
         panDrag.y = event.clientY;
-        if (dx || dy) panPlanView('main', dx, dy);
+        if (dx || dy) {
+          panPlanView('main', dx, dy);
+          editor.update();
+        }
         return;
       }
       const rect = main.getBoundingClientRect(),
