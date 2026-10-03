@@ -737,16 +737,15 @@ const projectStateController = createProjectStateController({
     markProjectDirty();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
-  syncThreeControls: ({
-    maskOpacity: maskAlpha,
-    threeOpacity: opacity,
-    threeShowBorders: borders,
-  }) => {
-    $('maskOpacityRange').value = String(maskAlpha);
-    $('maskOpacityValue').value = `${Math.round(maskAlpha * 100)}%`;
-    $('threeOpacityRange').value = String(opacity);
-    $('threeOpacityValue').value = `${Math.round(opacity * 100)}%`;
-    $('threeBorders').checked = borders;
+  syncDisplayControls: () => {
+    syncBaseControls();
+    syncSectionInputs();
+    maskImportController?.syncTransformInputs();
+    $('maskOpacityRange').value = String(maskOpacity);
+    $('maskOpacityValue').value = `${Math.round(maskOpacity * 100)}%`;
+    $('threeOpacityRange').value = String(threeOpacity);
+    $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
+    $('threeBorders').checked = threeShowBorders;
   },
   setSectionEditEnabled,
 });
