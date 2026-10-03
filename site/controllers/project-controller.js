@@ -103,7 +103,8 @@ export function createProjectController({
     try {
       assertLayoutByteLength(file.size);
       status(`Reading ${file.name}…`);
-      await importLayoutBuffer(await file.arrayBuffer(), file.name, file.name);
+      const imported = await importLayoutBuffer(await file.arrayBuffer(), file.name, file.name);
+      if (!imported) return false;
       status(`Opened ${file.name}.`);
       return true;
     } catch (error) {
@@ -116,6 +117,7 @@ export function createProjectController({
   async function openProjectFile(file) {
     try {
       const project = await readProjectFileTask(file);
+      if (!project) return false;
       await checkpointBeforeReplace('pre-open-project');
       if (!project.name) {
         project.name =
