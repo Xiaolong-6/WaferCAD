@@ -58,6 +58,19 @@ async function open(viewport, touch = false) {
   return { page, context };
 }
 
+async function chooseConfirmation(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  await overlay.waitFor({ state: 'visible', timeout: 5000 });
+  await overlay.locator(`[data-dialog-action="${action}"]`).click();
+}
+
+async function confirmIfVisible(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  if (await overlay.isVisible()) {
+    await overlay.locator(`[data-dialog-action="${action}"]`).click();
+  }
+}
+
 async function capture(page, name) {
   // Allow two rendered frames after layout or model changes.
   await page.evaluate(
@@ -340,6 +353,7 @@ async function loadProject(page, project, name) {
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(project)),
   });
+  await chooseConfirmation(page);
   await page.waitForFunction(
     (filename) => document.querySelector('#statusText').textContent === `Opened ${filename}.`,
     `${name}.wafercad`,
@@ -526,6 +540,18 @@ try {
     await page.locator('#snapshotsTab').click();
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
+    const snapshotName = page.locator('.snapshot-name').first();
+    await snapshotName.fill('Regression checkpoint');
+    await page.waitForFunction(
+      () => document.querySelector('.snapshot-commit-state')?.textContent === 'Saved',
+      null,
+      { timeout: 5000 },
+    );
+    await page.locator('#saveSnapshotBtn').click();
+    assert.ok(
+      (await page.locator('.snapshot-name').allInputValues()).includes('Regression checkpoint'),
+      'snapshot rename was lost after rerender',
+    );
     await page.locator('#settingsTab').click();
     await page.locator('#xyUnitSelect').selectOption('nm');
     await page.locator('#snapshotsTab').click();
@@ -560,6 +586,7 @@ try {
       await page.locator('#baseTab').click();
       await page.locator('#baseWidth').fill(String(baseWidth));
       await page.locator('#applyBaseBtn').click();
+      await confirmIfVisible(page);
       await page.locator('#maskTab').click();
       await capture(page, `${name}-${sample}`);
       await checkLayout(page);
