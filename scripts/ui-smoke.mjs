@@ -361,7 +361,7 @@ await openFunctionPanel(historyRestorePage, 'snapshots');
 assert.equal(await historyRestorePage.locator('#snapshotsTools > .tool-context').count(), 0);
 assert.equal(await historyRestorePage.locator('.snapshot-branch-state').count(), 0);
 assert.equal(await historyRestorePage.locator('.snapshot-branch-title strong').count(), 0);
-assert.match(await historyRestorePage.locator('#saveSnapshotBtn').textContent(), /Bookmark current step/i);
+assert.equal(await historyRestorePage.locator('#saveSnapshotBtn').count(), 0);
 assert.equal(await historyRestorePage.locator('.history-tree-root').count(), 1);
 assert.equal(await historyRestorePage.locator('.history-variant[data-variant-id="main"]').count(), 1);
 const historySectionLabel = historyRestorePage
@@ -1802,7 +1802,7 @@ assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35)
 
 // History is Step-first: manual save is only a bookmark annotation.
 await openFunctionPanel(page, 'snapshots');
-assert.match(await page.locator('#saveSnapshotBtn').textContent(), /Bookmark current step/i);
+assert.equal(await page.locator('#saveSnapshotBtn').count(), 0);
 assert.equal(await page.locator('.snapshot-other-branch').count(), 0);
 
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
