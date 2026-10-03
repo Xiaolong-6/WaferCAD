@@ -256,6 +256,7 @@ export function createWorkspacePersistenceController({
 
   async function initializePersistedWorkspace() {
     const hasExplicitStart = new URLSearchParams(globalThis.location?.search || '').has('start');
+    let allowInitialAutosave = true;
     try {
       if (hasExplicitStart) {
         const saved = await loadWorkspaceState();
@@ -296,11 +297,12 @@ export function createWorkspacePersistenceController({
         }
       }
     } catch (error) {
+      allowInitialAutosave = false;
       console.warn('Workspace restore failed.', error);
-      status(`Local workspace restore failed: ${error.message}`);
+      status(`Local workspace restore failed: ${error.message}`, 'error');
     } finally {
       ready = true;
-      schedule();
+      if (allowInitialAutosave) schedule();
       void refreshRecoveryOptions();
     }
   }
