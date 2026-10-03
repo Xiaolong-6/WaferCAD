@@ -500,12 +500,18 @@ async function checkAB(page, name) {
   await closeFunctionPanel(page);
   const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
   assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
-  await page.locator('#mainZoomIn').click();
-  assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
-  await dragHandle(page, 'a', 4, 0);
-  back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
-  close((await coords(page))[0], back[0]);
-  await page.locator('#mainZoomFit').click();
+  if (name === 'phone') {
+    assert.equal(await page.locator('#mainZoomIn').isHidden(), true);
+    assert.equal(await page.locator('#mainZoomOut').isHidden(), true);
+    assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
+  } else {
+    await page.locator('#mainZoomIn').click();
+    assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
+    await dragHandle(page, 'a', 4, 0);
+    back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
+    close((await coords(page))[0], back[0]);
+    await page.locator('#mainZoomFit').click();
+  }
   await openFunctionPanel(page, 'project');
   for (const [unit, multiplier] of [
     ['nm', 1000],
