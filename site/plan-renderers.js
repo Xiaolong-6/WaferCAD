@@ -433,7 +433,25 @@ export function createPlanRenderers({
       sectionDx = section.b[0] - section.a[0],
       sectionDy = section.b[1] - section.a[1],
       sectionUnitX = sectionDx / sectionSpan,
-      sectionUnitY = sectionDy / sectionSpan;
+      sectionUnitY = sectionDy / sectionSpan,
+      filteredSectionRoughRelief = (appearance, worldX, worldY) => {
+        const featurePixels = appearance.featureSize * xScale;
+        if (featurePixels >= 2) return roughProfileOffsetAtPoint(worldX, worldY, appearance);
+
+        // Pixel-footprint filtering is a display anti-aliasing step. Keep every
+        // renderer that traces the same physical profile on this shared sampler
+        // so material, conformal coating and Implant remain visually registered.
+        const halfPixelPhysical = 0.5 / Math.max(xScale, 1e-12);
+        let sum = 0;
+        for (const offset of [-1, -0.5, 0, 0.5, 1]) {
+          sum += roughProfileOffsetAtPoint(
+            worldX + sectionUnitX * halfPixelPhysical * offset,
+            worldY + sectionUnitY * halfPixelPhysical * offset,
+            appearance,
+          );
+        }
+        return sum / 5;
+      };
   
     for (const column of roughColumns) {
       if (
@@ -472,24 +490,7 @@ export function createPlanRenderers({
         profileReliefCache = new Map(),
         profiles = boundaries.map(() => []);
   
-      const filteredRelief = (appearance, worldX, worldY) => {
-        const featurePixels = appearance.featureSize * xScale;
-        if (featurePixels >= 2) return roughProfileOffsetAtPoint(worldX, worldY, appearance);
-  
-        // Pixel-footprint filtering is a display anti-aliasing step. The physical
-        // rough profile itself is view-independent; shared profileIds therefore
-        // keep buried interfaces and inherited coatings exactly parallel.
-        const halfPixelPhysical = 0.5 / Math.max(xScale, 1e-12);
-        let sum = 0;
-        for (const offset of [-1, -0.5, 0, 0.5, 1]) {
-          sum += roughProfileOffsetAtPoint(
-            worldX + sectionUnitX * halfPixelPhysical * offset,
-            worldY + sectionUnitY * halfPixelPhysical * offset,
-            appearance,
-          );
-        }
-        return sum / 5;
-      };
+      const filteredRelief = filteredSectionRoughRelief;
   
       for (let sample = 0; sample <= samples; sample++) {
         const fraction = sample / samples,
@@ -576,7 +577,7 @@ export function createPlanRenderers({
         widthPixels = Math.max(1, Math.abs(mapT(implant.t1) - mapT(implant.t0))),
         samples =
           appearance?.kind === 'rough'
-            ? Math.max(4, Math.min(400, Math.ceil(widthPixels / 2)))
+            ? Math.max(3, Math.min(1100, Math.ceil(widthPixels / 1.5)))
             : 1,
         tiltTangent = Math.tan(((Number(implant.tilt) || 0) * Math.PI) / 180),
         outerPoints = [],
@@ -592,7 +593,7 @@ export function createPlanRenderers({
           worldY = section.a[1] + sectionDy * t,
           relief =
             appearance?.kind === 'rough'
-              ? roughProfileOffsetAtPoint(worldX, worldY, appearance)
+              ? filteredSectionRoughRelief(appearance, worldX, worldY)
               : 0,
           outerZ = implant.outerZ + faceDirection * relief,
           innerZ = implant.innerZ,

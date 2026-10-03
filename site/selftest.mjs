@@ -478,6 +478,32 @@ assert.ok(
   ),
 );
 
+// Regression: stripping a complete top film must reveal the pre-existing rough
+// conformal interface, not silently turn that surface smooth.
+const roughCoatBeforeStrip = surfaceSegment(
+    regionAt(roughConformalModel, [0, 0]).stack,
+  ).frontSurface,
+  roughTopFilm = applyOperation(roughConformalModel, {
+    type: 'add',
+    name: 'Temporary metal',
+    thickness: 0.3,
+    face: 'front',
+    area: roughConformalModel.boundary,
+    growth: 'direct',
+  });
+assert.ok(roughTopFilm.layerId);
+applyOperation(roughConformalModel, {
+  type: 'etch',
+  thickness: 0.3,
+  face: 'front',
+  area: roughConformalModel.boundary,
+});
+const reexposedRoughCoat = surfaceSegment(regionAt(roughConformalModel, [0, 0]).stack);
+assert.equal(reexposedRoughCoat.layerId, roughCoat.layerId);
+assert.equal(reexposedRoughCoat.frontSurface?.kind, 'rough');
+assert.equal(reexposedRoughCoat.frontSurface?.profileId, roughCoatBeforeStrip.profileId);
+assert.equal(reexposedRoughCoat.frontSurface?.seed, roughCoatBeforeStrip.seed);
+
 const roughRenderPlan = buildRenderSurfacePlan(roughConformalModel),
   buriedAtInheritedInterface = roughRenderPlan.caps.filter(
     (cap) => cap.buried && Math.abs(cap.z - 4) < 1e-9,
