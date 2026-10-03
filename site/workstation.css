@@ -1103,3 +1103,56 @@ html.workstation-ui-v2.workstation-compact-ui #buildCommit {
     --wc-viewbar-height: 34px;
   }
 }
+
+
+html.workstation-ui-v2 .workstation-tool-scroll-tail {
+  height: 0;
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .view-head > div:first-child {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 82px;
+  white-space: nowrap;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .view-head > div:first-child span,
+html.workstation-ui-v2.workstation-compact-ui #sectionRange {
+  display: none;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .view-head > div:first-child strong {
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .section-view-tools {
+  min-width: 0;
+  margin-left: auto;
+  overflow: visible;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .section-view-tools > .mini-btn {
+  min-width: 0;
+  padding-inline: 4px;
+  font-size: 9px;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section-layers {
+  width: 28px;
+  padding: 0;
+  font-size: 0;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section-layers::before {
+  content: '▤';
+  font-size: 12px;
+  line-height: 1;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section-collapse {
+  width: 26px;
+  padding: 0;
+}
