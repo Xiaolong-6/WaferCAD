@@ -1261,6 +1261,46 @@ await safetySecond.waitForFunction(
 assert.equal(await safetySecond.locator('.workspace').evaluate((element) => element.inert), false);
 assert.equal(await safetySecond.locator('#workspaceConflictDialog').isVisible(), true);
 assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /Autosave paused/);
+
+// A read-only tab may reset its in-memory workspace, but it must never delete
+// or overwrite the current autosave owned by the other tab.
+await safetyFirst.locator('#projectNameInput').fill('Owner survives read-only New');
+await safetyFirst.waitForFunction(
+  () => /Autosaved/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await safetySecond.locator('#newProjectBtn').click();
+await safetySecond.waitForFunction(
+  () => /New empty project/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+assert.equal(
+  await safetyFirst.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const request = indexedDB.open('wafercad-workspace-v1', 2);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result,
+            transaction = database.transaction('workspace', 'readonly'),
+            current = transaction.objectStore('workspace').get('current');
+          transaction.onerror = () => reject(transaction.error);
+          transaction.oncomplete = () => {
+            database.close();
+            resolve(current.result?.project?.name ?? null);
+          };
+        };
+      }),
+  ),
+  'Owner survives read-only New',
+);
+assert.equal(
+  await safetySecond.locator('.workspace').getAttribute('data-autosave-owner'),
+  'false',
+);
+
 await safetySecond.locator('#workspaceTakeOverBtn').click();
 await safetySecond.waitForFunction(
   () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
