@@ -192,6 +192,22 @@ export function createSnapshotManager({
     return true;
   }
 
+  function historicalParentSnapshotId(branch) {
+    if (cursorSnapshotId && recordById(cursorSnapshotId)?.branchId === branch.id) {
+      return cursorSnapshotId;
+    }
+
+    let nodeId = cursorNodeId;
+    while (nodeId) {
+      const candidates = records
+        .filter((record) => record.branchId === branch.id && record.historyNodeId === nodeId)
+        .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+      if (candidates.length) return candidates[0].id;
+      nodeId = nodeById(nodeId)?.parentId || null;
+    }
+    return branch.rootSnapshotId || null;
+  }
+
   function create(name = '') {
     if (records.length >= maxRecords) {
       throw new Error(`Snapshot limit of ${maxRecords} reached.`);
@@ -202,21 +218,22 @@ export function createSnapshotManager({
     const state = cloneState(capture());
     if (!validateState(state)) throw new Error('Cannot save an invalid workspace state.');
 
+    const atHead = isCursorAtBranchHead();
     const record = {
       id: idFactory(),
       name: cleanName(name) || defaultSnapshotName(date),
       createdAt: date.toISOString(),
       branchId: branch.id,
-      parentId: branch.headSnapshotId || null,
+      parentId: atHead ? branch.headSnapshotId || null : historicalParentSnapshotId(branch),
       historyNodeId: cursorNodeId,
       state,
     };
     records.unshift(record);
+    cursorSnapshotId = record.id;
 
-    if (isCursorAtBranchHead()) {
+    if (atHead) {
       branch.headSnapshotId = record.id;
       branch.headState = cloneState(state);
-      cursorSnapshotId = record.id;
     }
 
     return {
@@ -237,17 +254,23 @@ export function createSnapshotManager({
     return true;
   }
 
+  function branchesUsingSnapshot(id) {
+    return branches
+      .filter((branch) => branch.rootSnapshotId === id)
+      .map((branch) => branchView(branch, activeBranchId, records, historyNodes));
+  }
+
   function remove(id) {
     const index = records.findIndex((item) => item.id === id);
     if (index < 0) return false;
-    const record = records[index];
+    if (branchesUsingSnapshot(id).length) return false;
 
+    const record = records[index];
     for (const item of records) {
       if (item.parentId === id) item.parentId = record.parentId || null;
     }
     for (const branch of branches) {
       if (branch.headSnapshotId === id) branch.headSnapshotId = record.parentId || null;
-      if (branch.rootSnapshotId === id) branch.rootSnapshotId = record.parentId || null;
     }
     if (cursorSnapshotId === id) cursorSnapshotId = record.parentId || null;
 
@@ -280,7 +303,7 @@ export function createSnapshotManager({
     return `Variant ${index}`;
   }
 
-  function createBranch(snapshotId, name = '') {
+  function createBranch(snapshotId, name = '', { headState = null } = {}) {
     if (branches.length >= maxBranches) {
       throw new Error(`Branch limit of ${maxBranches} reached.`);
     }
@@ -292,6 +315,9 @@ export function createSnapshotManager({
     let id = branchIdFactory();
     while (!id || branchById(id)) id = branchIdFactory();
 
+    const seedState = headState == null ? source.state : headState;
+    if (!validateState(seedState)) throw new Error('Cannot seed a branch from an invalid workspace state.');
+
     const branch = {
       id,
       name: uniqueBranchName(name || nextVariantName()),
@@ -299,7 +325,7 @@ export function createSnapshotManager({
       headSnapshotId: source.id,
       rootNodeId: source.historyNodeId || null,
       headNodeId: source.historyNodeId || null,
-      headState: cloneState(source.state),
+      headState: cloneState(seedState),
       createdAt: date.toISOString(),
     };
     branches.push(branch);
@@ -375,11 +401,79 @@ export function createSnapshotManager({
       snapshotId = branchPoint.id;
     }
 
-    return createBranch(snapshotId, name || nextVariantName());
+    const workingState = cloneState(capture());
+    if (!validateState(workingState)) {
+      throw new Error('Cannot branch from an invalid historical working state.');
+    }
+    return createBranch(snapshotId, name || nextVariantName(), { headState: workingState });
   }
 
   function restoreActiveBranchHead() {
     return switchBranch(activeBranchId);
+  }
+
+  function syncActiveHeadState() {
+    const branch = branchById(activeBranchId);
+    if (!branch || !isCursorAtBranchHead()) return false;
+
+    const state = cloneState(capture());
+    if (!validateState(state)) return false;
+
+    const headNode = branch.headNodeId ? nodeById(branch.headNodeId) : null;
+    const processRevision = Number(state?.model?.processRevision);
+    if (
+      headNode &&
+      (!Number.isInteger(processRevision) || processRevision !== headNode.processRevision)
+    ) {
+      return false;
+    }
+
+    branch.headState = state;
+    return true;
+  }
+
+  function parentBranchId(branch) {
+    if (!branch || branch.id === MAIN_SNAPSHOT_BRANCH_ID) return null;
+    const source = branch.rootSnapshotId ? recordById(branch.rootSnapshotId) : null;
+    return branchById(source?.branchId)?.id || MAIN_SNAPSHOT_BRANCH_ID;
+  }
+
+  function removeBranch(id) {
+    if (id === MAIN_SNAPSHOT_BRANCH_ID) {
+      throw new Error('The Main variant cannot be deleted.');
+    }
+    const branch = branchById(id);
+    if (!branch) return false;
+
+    const descendants = branches.filter(
+      (candidate) => candidate.id !== id && parentBranchId(candidate) === id,
+    );
+    if (descendants.length) {
+      throw new Error('Delete child variants before deleting this variant.');
+    }
+
+    const fallbackId = parentBranchId(branch) || MAIN_SNAPSHOT_BRANCH_ID;
+    if (activeBranchId === id && !switchBranch(fallbackId)) {
+      throw new Error('Could not restore the parent variant before deletion.');
+    }
+
+    const removedRecordIds = new Set(
+      records.filter((record) => record.branchId === id).map((record) => record.id),
+    );
+    records = records.filter((record) => record.branchId !== id);
+    historyNodes = historyNodes.filter((node) => node.branchId !== id);
+    branches = branches.filter((candidate) => candidate.id !== id);
+
+    for (const record of records) {
+      if (record.parentId && removedRecordIds.has(record.parentId)) record.parentId = null;
+    }
+
+    return {
+      id,
+      name: branch.name,
+      fallbackBranchId: fallbackId,
+      removedMilestones: removedRecordIds.size,
+    };
   }
 
   function canRecordOperation() {
@@ -694,8 +788,11 @@ export function createSnapshotManager({
     switchBranch,
     rename,
     renameBranch,
+    branchesUsingSnapshot,
     remove,
+    removeBranch,
     restore: restoreById,
+    syncActiveHeadState,
     clear,
     exportRecords,
     exportBranchState,
