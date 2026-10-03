@@ -1842,7 +1842,12 @@ await projectDownloadPage.waitForFunction(
 );
 assert.equal(
   Number(await projectDownloadPage.locator('#snapshotCount').textContent()),
-  snapshotExportFixture.snapshots.length,
+  snapshotExportFixture.snapshotBranches?.nodes?.length || 0,
+);
+await openFunctionPanel(projectDownloadPage, 'snapshots');
+assert.equal(
+  await projectDownloadPage.locator('.history-legacy-bookmarks').count(),
+  snapshotExportFixture.snapshots.length ? 1 : 0,
 );
 await openFunctionPanel(projectDownloadPage, 'project');
 await projectDownloadPage.locator('#projectNameInput').fill('Snapshot export check');
