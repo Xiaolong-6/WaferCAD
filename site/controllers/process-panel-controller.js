@@ -241,7 +241,7 @@ export function createProcessPanelController({
     }
 
     const areaLabel =
-        areaMode === 'whole' ? 'Whole face' : areaMode === 'invert' ? 'Invert mask' : 'Selected mask',
+        areaMode === 'full' ? 'Whole face' : areaMode === 'invert' ? 'Invert mask' : 'Selected mask',
       targetName = targetLayerId ? layerById(model, targetLayerId)?.name || 'layer' : '',
       surfaceLabel =
         type === 'etch' && roughSurface
@@ -249,14 +249,15 @@ export function createProcessPanelController({
             ? 'Pyramid'
             : 'Rough'
           : '',
+      thicknessLabel = `${Number(thickness.toPrecision(8))} µm`,
       operationLabel =
         type === 'etch'
-          ? `Etch ${formatLengthField(thickness)}${surfaceLabel ? ` · ${surfaceLabel}` : ''}`
+          ? `Etch ${thicknessLabel}${surfaceLabel ? ` · ${surfaceLabel}` : ''}`
           : type === 'grow'
-            ? `Extend ${targetName} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${formatLengthField(thickness)}`
+            ? `Extend ${targetName} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`
             : type === 'implant'
-              ? `Implant ${name} · ${formatLengthField(thickness)}`
-              : `Deposit ${name} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${formatLengthField(thickness)}`;
+              ? `Implant ${name} · ${thicknessLabel}`
+              : `Deposit ${name} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`;
 
     recordProcessOperation({
       kind: type,
