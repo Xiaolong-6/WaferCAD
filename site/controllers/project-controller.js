@@ -599,7 +599,9 @@ export function createProjectController({
         const branchOrigin = root.createElement('span');
         branchOrigin.textContent = source
           ? `from ${source.name}`
-          : 'independent variant';
+          : branch.id === 'main'
+            ? 'root'
+            : 'independent';
         branchCopy.append(branchName, branchOrigin);
 
         const stats = root.createElement('span');
