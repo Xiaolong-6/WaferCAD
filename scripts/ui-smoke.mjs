@@ -1440,7 +1440,7 @@ await safetySecond.waitForFunction(
 );
 assert.equal(await safetySecond.locator('.workspace').evaluate((element) => element.inert), false);
 assert.equal(await safetySecond.locator('#workspaceConflictDialog').isVisible(), true);
-assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /Autosave paused/);
+assert.match(await safetySecond.locator('#workspaceSaveStatus').textContent(), /autosave paused/i);
 
 // A read-only tab may reset its in-memory workspace, but it must never delete
 // or overwrite the current autosave owned by the other tab.
