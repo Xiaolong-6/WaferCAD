@@ -104,19 +104,28 @@ async function pruneRecoveryPoints(database, keep = MAX_RECOVERY_POINTS) {
   await transactionDone(transaction);
 }
 
-export async function saveWorkspaceState(project, metadata = {}) {
+export async function saveWorkspaceState(
+  project,
+  metadata = {},
+  { canCommit = () => true } = {},
+) {
+  const preparedProject = prepareProjectForWorkspaceStorage(project);
+  if (!canCommit()) return false;
+
   const database = await openDatabase();
   try {
+    if (!canCommit()) return false;
     const updatedAt = new Date().toISOString();
     const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).put({
       key: RECORD_KEY,
-      project: prepareProjectForWorkspaceStorage(project),
+      project: preparedProject,
     });
     transaction
       .objectStore(META_STORE_NAME)
       .put(metadataRecord(RECORD_KEY, project, metadata, updatedAt));
     await transactionDone(transaction);
+    return true;
   } finally {
     database.close();
   }
