@@ -437,6 +437,13 @@ async function checkAB(page, name) {
   );
   const creationCanvas = await mainCanvas.boundingBox();
   assert.ok(creationCanvas);
+  if (name === 'phone') {
+    assert.ok(
+      Math.abs(creationCanvas.width - canvas.width) <= 2 &&
+        Math.abs(creationCanvas.height - canvas.height) <= 2,
+      'phone: opening Slice controls must not resize Main canvas',
+    );
+  }
   await page.mouse.move(
     creationCanvas.x + creationCanvas.width * 0.28,
     creationCanvas.y + creationCanvas.height * 0.42,
@@ -531,7 +538,22 @@ async function checkAB(page, name) {
   // Closing Slice hides only the parameter panel; geometry remains directly editable.
   await page.locator('#sectionControlsBtn').click();
   assert.equal(await page.locator('#sectionCoordsPanel').isHidden(), true);
-  assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
+  await page.evaluate(
+    () =>
+      new Promise((resolveFrame) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+      ),
+  );
+  await page.locator('[data-endpoint=a]').waitFor({ state: 'visible' });
+  if (name === 'phone') {
+    const closedCanvas = await mainCanvas.boundingBox();
+    assert.ok(closedCanvas);
+    assert.ok(
+      Math.abs(closedCanvas.width - canvas.width) <= 2 &&
+        Math.abs(closedCanvas.height - canvas.height) <= 2,
+      'phone: closing Slice controls must not resize Main canvas',
+    );
+  }
 }
 
 async function loadProject(page, project, name) {
