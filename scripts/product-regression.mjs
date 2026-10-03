@@ -71,6 +71,29 @@ async function confirmIfVisible(page, action = 'confirm') {
   }
 }
 
+const FUNCTION_SECTION_IDS = {
+  project: 'settingsTools',
+  base: 'baseTools',
+  mask: 'maskTools',
+  process: 'operationTools',
+  snapshots: 'snapshotsTools',
+};
+
+async function openFunctionPanel(page, name, clickOptions = {}) {
+  const button = page.locator(`.workstation-rail-button[data-tool="${name}"]`);
+  await button.waitFor({ state: 'visible', timeout: clickOptions.timeout || 5000 });
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  const isOpen = await panel.evaluate((element) => element.classList.contains('open'));
+  const isActive = await button.evaluate((element) => element.classList.contains('active'));
+  if (!isOpen || !isActive) await button.click(clickOptions);
+  await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
+  await page.evaluate((sectionName) => {
+    const scroller = document.querySelector('#toolPanel .tool-tab-content');
+    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
+    if (scroller && section) scroller.scrollTop = Math.max(0, section.offsetTop - 6);
+  }, name);
+}
+
 async function capture(page, name) {
   // Allow two rendered frames after layout or model changes.
   await page.evaluate(
@@ -123,7 +146,7 @@ async function checkLayout(page) {
 }
 
 async function checkCompactProcessLayout(page, name) {
-  await page.locator('#operationTab').click();
+  await openFunctionPanel(page, 'process');
   await page.locator('[data-process-mode="etch"]').click();
   await page.locator('#etchSurfaceMode').selectOption('rough');
 
@@ -339,7 +362,7 @@ async function checkAB(page, name) {
     moved[1] = touchMoved[1];
     await session.detach();
   }
-  await page.locator('#operationTab').click();
+  await openFunctionPanel(page, 'process');
   await page.locator('#faceToggleBtn').click();
   await dragHandle(page, 'a', 8, 0);
   const back = await coords(page);
@@ -353,7 +376,7 @@ async function checkAB(page, name) {
   back[0] = nmRoundedMicron(back[0] + 4 / (scale * 1.25));
   close((await coords(page))[0], back[0]);
   await page.locator('#mainZoomFit').click();
-  await page.locator('#settingsTab').click();
+  await openFunctionPanel(page, 'project');
   for (const [unit, multiplier] of [
     ['nm', 1000],
     ['mm', 0.001],
@@ -375,7 +398,7 @@ async function checkAB(page, name) {
 }
 
 async function loadProject(page, project, name) {
-  await page.locator('#settingsTab').click();
+  await openFunctionPanel(page, 'project');
   await page.locator('#openProjectInput').setInputFiles({
     name: `${name}.wafercad`,
     mimeType: 'application/json',
@@ -583,7 +606,7 @@ try {
       await checkLayout(page);
     }
     await checkCompactProcessLayout(page, name);
-    await page.locator('#snapshotsTab').click();
+    await openFunctionPanel(page, 'snapshots');
     await page.locator('#saveSnapshotBtn').click();
     const savedCoords = await coords(page);
     const snapshotName = page.locator('.snapshot-name').first();
@@ -602,9 +625,9 @@ try {
       ).includes('Regression checkpoint'),
       'snapshot rename was lost after rerender',
     );
-    await page.locator('#settingsTab').click();
+    await openFunctionPanel(page, 'project');
     await page.locator('#xyUnitSelect').selectOption('nm');
-    await page.locator('#snapshotsTab').click();
+    await openFunctionPanel(page, 'snapshots');
     await page.locator('.snapshot-action').first().click();
     await page.waitForFunction(
       () => /Restored snapshot/.test(document.getElementById('statusText')?.textContent || ''),
@@ -614,7 +637,7 @@ try {
     assert.equal(await page.locator('#xyUnitSelect').inputValue(), 'um');
     assert.deepEqual(await coords(page), savedCoords);
     await capture(page, `${name}-snapshot-restored`);
-    await page.locator('#maskTab').click();
+    await openFunctionPanel(page, 'mask');
     for (const sample of ['gds-alm', 'gds-basic-instances', 'oas-cblock']) {
       await page.locator('#sampleMaskSelect').selectOption(sample);
       await page.waitForFunction(
@@ -633,11 +656,11 @@ try {
       const bounds = imported.layout.bounds;
       const baseWidth =
         Math.max(1, ...['minX', 'minY', 'maxX', 'maxY'].map((key) => Math.abs(bounds[key]))) * 2.2;
-      await page.locator('#baseTab').click();
+      await openFunctionPanel(page, 'base');
       await page.locator('#baseWidth').fill(String(baseWidth));
       await page.locator('#applyBaseBtn').click();
       await confirmIfVisible(page);
-      await page.locator('#maskTab').click();
+      await openFunctionPanel(page, 'mask');
       await capture(page, `${name}-${sample}`);
       await checkLayout(page);
     }
