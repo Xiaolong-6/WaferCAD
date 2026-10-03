@@ -519,7 +519,7 @@ export function createProjectController({
         } else {
           downloadProject(project, filename);
         }
-        status(`Exported ${filename}.`);
+        status(`Download requested: ${filename}.`);
       } catch (error) {
         console.error(error);
         status(`Export failed: ${error.message}`, 'error');
