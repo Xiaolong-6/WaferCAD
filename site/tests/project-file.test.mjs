@@ -158,6 +158,42 @@ test('project serializer enforces the same size ceiling used by Open', () => {
   assert.doesNotThrow(() => serializeProject(validProject(), MAX_PROJECT_FILE_BYTES));
 });
 
+test('project validator rejects zero-area material polygon rings', () => {
+  const source = validProject();
+  source.model.regions[0].geom = [
+    [
+      [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [0, 0],
+      ],
+    ],
+  ];
+  assert.throws(() => validateProjectFile(source), /must enclose non-zero area/);
+});
+
+test('project storage rejects XY geometry that collapses at the 0.1 nm persistence quantum', () => {
+  const source = validProject(),
+    halfWidth = PROJECT_LENGTH_QUANTUM_UM * 0.2;
+  source.model.width = halfWidth * 2;
+  source.model.boundary = [
+    [
+      [
+        [-halfWidth, -50],
+        [halfWidth, -50],
+        [halfWidth, 50],
+        [-halfWidth, 50],
+        [-halfWidth, -50],
+      ],
+    ],
+  ];
+  source.model.regions[0].geom = structuredClone(source.model.boundary);
+
+  assert.equal(validateProjectFile(source), source);
+  assert.throws(() => serializeProject(source), /cannot be stored safely/i);
+});
+
 test('project storage rejects geometry that collapses at the 0.1 nm persistence quantum', () => {
   const source = validProject();
   source.model.regions[0].stack[0].z0 = 0;
