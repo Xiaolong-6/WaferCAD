@@ -133,3 +133,47 @@ test('Mask GDS/OAS export rejects geometry that collapses at the 0.1 nm DBU', ()
   assert.throws(() => serializeGDS(tinyPath), /path collapses at the selected .* database unit/);
   assert.throws(() => serializeOASIS(tinyPath), /path collapses at the selected .* database unit/);
 });
+
+test('OASIS preserves large non-negative layer numbers while GDSII rejects INT2 overflow', async () => {
+  const elements = [
+    {
+      kind: 'polygon',
+      layer: 40000,
+      datatype: 17,
+      points: [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+      ],
+    },
+  ];
+
+  assert.throws(() => serializeGDS(elements), /cannot represent layer\/datatype 40000\/17/);
+
+  const parsed = await parseOAS(serializeOASIS(elements).buffer),
+    flat = flattenGDS(parsed, parsed.root);
+  assert.equal(flat.elements.length, 1);
+  assert.equal(flat.elements[0].layer, 40000);
+  assert.equal(flat.elements[0].datatype, 17);
+});
+
+test('layout export rejects negative layer or datatype instead of silently remapping to zero', () => {
+  const polygon = {
+    kind: 'polygon',
+    layer: -1,
+    datatype: 0,
+    points: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+    ],
+  };
+  assert.throws(() => serializeGDS([polygon]), /layer is invalid/);
+  assert.throws(() => serializeOASIS([polygon]), /layer is invalid/);
+
+  polygon.layer = 1;
+  polygon.datatype = -2;
+  assert.throws(() => serializeGDS([polygon]), /datatype is invalid/);
+  assert.throws(() => serializeOASIS([polygon]), /datatype is invalid/);
+});
