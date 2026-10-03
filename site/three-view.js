@@ -1209,6 +1209,9 @@ export function createThreeView({
         sidewalls = new Map();
 
       surfacePlanBuildCount++;
+      if (renderer?.domElement?.dataset) {
+        renderer.domElement.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
+      }
       roughRenderContext = { model, clip, opacity, borders };
 
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
