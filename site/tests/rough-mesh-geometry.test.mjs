@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
+
+const {
   geometryFromRoughCap,
   roughBoundaryEdgesFromTriangles,
   subdivideRoughBaseTriangles,
-} from '../rough-mesh-geometry.js';
+} = await import('../rough-mesh-geometry.js');
 
 const a = [0, 0, 0];
 const b = [1, 0, 0];
