@@ -21,6 +21,10 @@ const projectController = await readFile(
   new URL('../controllers/project-controller.js', import.meta.url),
   'utf8',
 );
+const confirmationController = await readFile(
+  new URL('../controllers/confirmation-dialog-controller.js', import.meta.url),
+  'utf8',
+);
 
 test('Project is the first and default workspace tab and owns the XYZ unit selector', () => {
   assert.ok(html.indexOf('id="settingsTab"') < html.indexOf('id="baseTab"'));
@@ -37,8 +41,8 @@ test('Project is the first and default workspace tab and owns the XYZ unit selec
 });
 
 test('project replacement controls warn, Save is local, and Export downloads the project file', () => {
-  assert.match(projectController, /New project will replace the current workspace/);
-  assert.match(projectController, /Open project will replace the current workspace/);
+  assert.match(projectController, /Create new project\?/);
+  assert.match(projectController, /Open project\?/);
   assert.match(workspacePersistenceController, /manual-save · \$\{projectName\}/);
   assert.match(workspacePersistenceController, /createWorkspaceRecoveryCheckpoint\(project/);
   assert.match(projectController, /\$\('exportProjectBtn'\)\.onclick/);
@@ -79,6 +83,12 @@ test('workspace safety UI exposes local save state, recovery, and safe reload', 
   assert.match(persistence, /export async function clearWorkspaceRecoveryPoints/);
   assert.match(app, /workspaceSession\.start\(\)/);
   assert.match(workspacePersistenceController, /globalThis\.location\.reload\(\)/);
+  assert.match(workspacePersistenceController, /Unsaved changes · autosave paused/);
+  assert.match(workspacePersistenceController, /Workspace states differ/);
+  assert.match(confirmationController, /confirmation-overlay/);
+  for (const source of [projectController, workspacePersistenceController]) {
+    assert.doesNotMatch(source, /globalThis\.confirm/);
+  }
 });
 
 test('footer exposes repository and exact deployed commit links', () => {
