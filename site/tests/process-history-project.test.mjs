@@ -118,6 +118,7 @@ test('V2 process history and branch HEAD state survive packed project storage', 
         createdAt: '2026-10-03T10:00:00.000Z',
         processRevision: 1,
         operation: { kind: 'add', label: 'Deposit oxide' },
+        state: milestoneState,
       },
       {
         id: 'process-2',
@@ -126,6 +127,7 @@ test('V2 process history and branch HEAD state survive packed project storage', 
         createdAt: '2026-10-03T10:02:00.000Z',
         processRevision: 2,
         operation: { kind: 'etch', label: 'Etch active window' },
+        state: headState,
       },
     ],
     branches: [
@@ -148,16 +150,21 @@ test('V2 process history and branch HEAD state survive packed project storage', 
   assert.equal(stored.snapshotBranches.version, 2);
   assert.equal(stored.snapshotBranches.nodes[1].parentId, 'process-1');
   assert.equal(stored.snapshots[0].historyNodeId, 'process-1');
+  assert.equal(stored.snapshotBranches.nodes[0].state.model, undefined);
+  assert.ok(stored.snapshotBranches.nodes[0].state.modelRef != null);
   assert.equal(stored.snapshotBranches.branches[0].headState.model, undefined);
   assert.ok(stored.snapshotBranches.branches[0].headState.modelRef != null);
 
   expandProjectStorage(stored);
+  assert.equal(stored.snapshotBranches.nodes[0].state.model.processRevision, 1);
   assert.equal(stored.snapshotBranches.branches[0].headState.model.processRevision, 2);
   assert.equal(validateProjectFile(stored), stored);
 
   const workspaceStored = prepareProjectForWorkspaceStorage(source);
+  assert.ok(workspaceStored.snapshotBranches.nodes[0].state.modelRef != null);
   assert.ok(workspaceStored.snapshotBranches.branches[0].headState.modelRef != null);
   expandProjectStorage(workspaceStored);
+  assert.equal(workspaceStored.snapshotBranches.nodes[0].state.model.processRevision, 1);
   assert.equal(workspaceStored.snapshotBranches.branches[0].headState.model.processRevision, 2);
 });
 
