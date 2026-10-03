@@ -352,9 +352,11 @@ await page.locator('#operationThickness').fill('1');
 assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '1');
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
-await page.waitForFunction(() =>
-  /Etched/.test(document.getElementById('statusText')?.textContent || ''),
-);
+await page.waitForFunction(() => {
+  const text = document.getElementById('statusText')?.textContent || '';
+  return /Etched|Operation failed|Conformal geometry failed/.test(text);
+});
+assert.match(await page.locator('#statusText').textContent(), /Etched/);
 
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
