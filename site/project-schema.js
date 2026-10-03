@@ -14,6 +14,7 @@ const LIMITS = {
   selectedLayerKeys: 50000,
   paletteColors: 64,
   snapshots: 100,
+  snapshotBranches: 32,
   drawMaskShapes: 10000,
   implants: 10000,
   implantPatches: 200000,
@@ -630,10 +631,70 @@ function validateSnapshotRecords(snapshots, shared) {
     assertString(record.name, `${path}.name`, { max: 256 });
     const createdAt = assertString(record.createdAt, `${path}.createdAt`, { max: 64 });
     if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
+    if (record.branchId != null) assertString(record.branchId, `${path}.branchId`, { max: 128 });
+    if (record.parentId != null) {
+      assertString(record.parentId, `${path}.parentId`, { max: 128 });
+      if (record.parentId === id) fail(`${path}.parentId`, 'must not reference itself.');
+    }
     assertObject(record.state, `${path}.state`);
     if (record.state.snapshots != null) fail(`${path}.state.snapshots`, 'must not be nested.');
+    if (record.state.snapshotBranches != null) {
+      fail(`${path}.state.snapshotBranches`, 'must not be nested.');
+    }
     validateProjectCore(record.state, false, shared);
   });
+
+  records.forEach((record, index) => {
+    if (record.parentId != null && !ids.has(record.parentId)) {
+      fail(`snapshots[${index}].parentId`, 'references an unknown snapshot.');
+    }
+  });
+}
+
+function validateSnapshotBranches(snapshotBranches, snapshots) {
+  if (snapshotBranches == null) return;
+  const value = assertObject(snapshotBranches, 'snapshotBranches');
+  assertInteger(value.version, 'snapshotBranches.version', { min: 1, max: 1 });
+  const activeBranchId = assertString(value.activeBranchId, 'snapshotBranches.activeBranchId', {
+    max: 128,
+  });
+  const branches = assertArray(
+    value.branches,
+    'snapshotBranches.branches',
+    LIMITS.snapshotBranches,
+  );
+  const branchIds = new Set();
+  const snapshotIds = new Set((snapshots || []).map((record) => record?.id).filter(Boolean));
+
+  branches.forEach((branch, index) => {
+    const path = `snapshotBranches.branches[${index}]`;
+    assertObject(branch, path);
+    const id = assertString(branch.id, `${path}.id`, { max: 128 });
+    if (branchIds.has(id)) fail(`${path}.id`, 'must be unique.');
+    branchIds.add(id);
+    assertString(branch.name, `${path}.name`, { max: 256 });
+    const createdAt = assertString(branch.createdAt, `${path}.createdAt`, { max: 64 });
+    if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
+
+    for (const key of ['rootSnapshotId', 'headSnapshotId']) {
+      if (branch[key] == null) continue;
+      assertString(branch[key], `${path}.${key}`, { max: 128 });
+      if (!snapshotIds.has(branch[key])) {
+        fail(`${path}.${key}`, 'references an unknown snapshot.');
+      }
+    }
+  });
+
+  if (!branchIds.has(activeBranchId)) {
+    fail('snapshotBranches.activeBranchId', 'references an unknown branch.');
+  }
+
+  for (let index = 0; index < (snapshots || []).length; index++) {
+    const record = snapshots[index];
+    if (record?.branchId != null && !branchIds.has(record.branchId)) {
+      fail(`snapshots[${index}].branchId`, 'references an unknown branch.');
+    }
+  }
 }
 
 function validateProjectCore(
@@ -693,8 +754,13 @@ function validateProjectCore(
   validateSection(project.section);
   validatePlanViews(project.planViews);
   validateDisplay(project.display);
-  if (allowSnapshots) validateSnapshotRecords(project.snapshots, shared);
-  else if (project.snapshots != null) fail('snapshots', 'must not be nested.');
+  if (allowSnapshots) {
+    validateSnapshotRecords(project.snapshots, shared);
+    validateSnapshotBranches(project.snapshotBranches, project.snapshots);
+  } else {
+    if (project.snapshots != null) fail('snapshots', 'must not be nested.');
+    if (project.snapshotBranches != null) fail('snapshotBranches', 'must not be nested.');
+  }
 
   return project;
 }
