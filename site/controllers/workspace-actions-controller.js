@@ -289,13 +289,13 @@ export function createWorkspaceActionsController({
   function bindSnapshots() {
     $('saveSnapshotBtn').onclick = () => {
       try {
-        const saved = snapshotManager.create();
+        const bookmark = snapshotManager.bookmarkCurrentStep();
         onProjectChanged();
         renderSnapshots();
-        status(`Saved milestone "${saved.name}" on "${snapshotManager.activeBranch().name}".`);
+        status(`Bookmarked current Step as "${bookmark.name}".`);
       } catch (error) {
         console.error(error);
-        status(`Milestone save failed: ${error.message}`);
+        status(`Bookmark failed: ${error.message}`, 'warning');
       }
     };
   }
