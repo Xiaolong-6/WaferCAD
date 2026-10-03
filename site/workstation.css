@@ -272,11 +272,6 @@ html.workstation-ui-v2 .workspace.section-dock-collapsed {
   grid-template-rows: minmax(0, 1fr) 29px;
 }
 
-html.workstation-ui-v2
-  .workspace:not(.section-dock-collapsed):has(#sectionCollapseEditor:not([hidden])) {
-  grid-template-rows: minmax(0, 1fr) minmax(235px, 36%);
-}
-
 html.workstation-ui-v2 .workstation-view-stage {
   min-width: 0;
   min-height: 0;
@@ -688,11 +683,6 @@ html.workstation-ui-v2 .status-action:hover {
 
   html.workstation-ui-v2 .workspace {
     grid-template-rows: minmax(0, 1fr) minmax(165px, 27%);
-  }
-
-  html.workstation-ui-v2
-    .workspace:not(.section-dock-collapsed):has(#sectionCollapseEditor:not([hidden])) {
-    grid-template-rows: minmax(0, 1fr) minmax(255px, 42%);
   }
 
   html.workstation-ui-v2 .workstation-view-stage,
