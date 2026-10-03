@@ -414,6 +414,7 @@ async function checkAB(page, name) {
     const values = await coords(page);
     values.forEach((value, i) => close(value, back[i] * multiplier));
   }
+  await closeFunctionPanel(page);
   await page.locator('[data-endpoint=a]').focus();
   await page.keyboard.press('ArrowRight');
   close((await coords(page))[0], nmRoundedMicron(back[0] + 1 / scale));
@@ -437,6 +438,7 @@ async function loadProject(page, project, name) {
     (filename) => document.querySelector('#statusText').textContent === `Opened ${filename}.`,
     `${name}.wafercad`,
   );
+  await closeFunctionPanel(page);
 }
 
 async function checkSectionSeams(page, project) {
