@@ -224,6 +224,7 @@ async function checkSectionCollapse(page, name) {
   await entry.click();
   assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
   await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
+  await capture(page, `${name}-section-z-collapse-edit`);
   const handleSize = await page.locator('#sectionCollapseTopHandle').boundingBox();
   assert.ok(handleSize);
   assert.ok(
