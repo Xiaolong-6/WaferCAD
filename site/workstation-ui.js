@@ -511,6 +511,10 @@ export function createWorkstationUiController({ root = document, win = window } 
         closeTools();
       }
     });
+
+    // Reparenting the view panels changes their available canvas geometry.
+    // Refresh once after all bindUi() listeners have had a chance to attach.
+    scheduleViewportRefresh();
   }
 
   initialize();
