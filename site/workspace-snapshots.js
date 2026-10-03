@@ -212,11 +212,13 @@ export function createSnapshotManager({
     return true;
   }
 
-  function uniqueBranchName(name) {
+  function uniqueBranchName(name, excludeId = null) {
     const base = cleanName(name) || `Branch ${branches.length + 1}`;
-    if (!branches.some((branch) => branch.name === base)) return base;
+    const used = (candidate) =>
+      branches.some((branch) => branch.id !== excludeId && branch.name === candidate);
+    if (!used(base)) return base;
     let suffix = 2;
-    while (branches.some((branch) => branch.name === `${base} ${suffix}`)) suffix += 1;
+    while (used(`${base} ${suffix}`)) suffix += 1;
     return `${base} ${suffix}`;
   }
 
@@ -260,7 +262,7 @@ export function createSnapshotManager({
     const branch = branchById(id);
     const next = cleanName(name);
     if (!branch || !next) return false;
-    branch.name = uniqueBranchName(next === branch.name ? next : next);
+    branch.name = uniqueBranchName(next, branch.id);
     return true;
   }
 
