@@ -190,12 +190,12 @@ export function createWorkspaceActionsController({
       exportMaskSvg();
       closeExport('maskExportSvgBtn');
     };
-    $('maskExportGdsBtn').onclick = () => {
-      exportMaskGds();
+    $('maskExportGdsBtn').onclick = async () => {
+      await exportMaskGds();
       closeExport('maskExportGdsBtn');
     };
-    $('maskExportOasBtn').onclick = () => {
-      exportMaskOas();
+    $('maskExportOasBtn').onclick = async () => {
+      await exportMaskOas();
       closeExport('maskExportOasBtn');
     };
     $('sectionExportSvgBtn').onclick = () => {
