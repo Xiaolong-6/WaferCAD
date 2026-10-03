@@ -3600,3 +3600,241 @@ summary:focus-visible {
     height: 26px;
   }
 }
+
+
+/* Snapshot branches */
+.snapshot-branch-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  background: #f8fafb;
+}
+
+.snapshot-branch-label {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.snapshot-branch-select {
+  min-width: 0;
+  height: 24px;
+  padding: 2px 22px 2px 6px;
+  border: 1px solid #cbd4dc;
+  border-radius: 3px;
+  background: #fff;
+  color: #33414e;
+  font: inherit;
+  font-size: 9.5px;
+}
+
+.snapshot-branch-group {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  margin-top: 3px;
+  padding: 5px 5px 5px 8px;
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.snapshot-branch-group[data-active='true'] {
+  border-color: #b9c8d5;
+  background: #fbfdff;
+}
+
+.snapshot-branch-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.snapshot-branch-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: #4a5662;
+  font-size: 9px;
+}
+
+.snapshot-branch-title strong {
+  overflow: hidden;
+  font-size: 9.5px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-branch-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border: 1px solid #8fa0ae;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.snapshot-branch-group[data-active='true'] .snapshot-branch-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.snapshot-branch-count,
+.snapshot-branch-origin,
+.snapshot-branch-empty {
+  color: #7a8691;
+  font-size: 8px;
+}
+
+.snapshot-branch-origin {
+  overflow: hidden;
+  padding: 0 0 2px 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-tree {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding-left: 8px;
+}
+
+.snapshot-tree::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  border-left: 1px solid #d8dee4;
+}
+
+.snapshot-tree-node {
+  position: relative;
+  display: grid;
+  gap: 3px;
+}
+
+.snapshot-tree-row {
+  grid-template-columns: 10px minmax(0, 1fr) 44px auto;
+  gap: 3px;
+}
+
+.snapshot-tree-marker {
+  position: relative;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  justify-self: center;
+  border: 1px solid #9ba8b4;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.snapshot-tree-node[data-head='true'] .snapshot-tree-marker {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.snapshot-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.snapshot-node-actions .snapshot-action,
+.snapshot-node-actions .snapshot-branch-action,
+.snapshot-node-actions .snapshot-delete {
+  height: 23px;
+  padding: 2px 5px;
+  font-size: 8.5px;
+}
+
+.snapshot-branch-action {
+  border-color: transparent;
+  background: transparent;
+  color: #506273;
+}
+
+.snapshot-branch-action:hover {
+  border-color: var(--line);
+  background: #f5f8fa;
+}
+
+.snapshot-branch-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 3px;
+  margin-left: 10px;
+  padding: 4px;
+  border: 1px solid #d8e0e6;
+  border-radius: 3px;
+  background: #f8fafb;
+}
+
+.snapshot-branch-editor[hidden] {
+  display: none !important;
+}
+
+.snapshot-branch-editor input {
+  min-width: 0;
+  height: 24px;
+  padding: 2px 5px;
+  border: 1px solid #cbd4dc;
+  border-radius: 3px;
+  background: #fff;
+  color: #33414e;
+  font: inherit;
+  font-size: 9px;
+}
+
+.snapshot-branch-create,
+.snapshot-branch-cancel {
+  height: 24px;
+  padding: 2px 6px;
+  font-size: 8.5px;
+}
+
+.snapshot-branch-create {
+  border-color: #b9c8d5;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.snapshot-branch-empty {
+  padding: 3px 4px 3px 10px;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .snapshot-branch-bar {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .snapshot-tree-row {
+    grid-template-columns: 10px minmax(0, 1fr);
+  }
+
+  .snapshot-tree-row .snapshot-commit-state {
+    display: none;
+  }
+
+  .snapshot-node-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+
+  .snapshot-branch-editor {
+    grid-template-columns: 1fr auto auto;
+  }
+}
