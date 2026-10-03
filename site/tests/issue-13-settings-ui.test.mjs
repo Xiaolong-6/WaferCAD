@@ -45,10 +45,14 @@ test('project replacement controls warn, Save is local, and Export downloads the
 test('workspace state is restored locally after app reload', () => {
   assert.match(workspacePersistenceController, /loadWorkspaceState\(\)/);
   assert.match(workspacePersistenceController, /saveWorkspaceState\(project, \{ appCommit \}\)/);
-  assert.match(persistence, /indexedDB\.open\(DB_NAME, 1\)/);
+  assert.match(persistence, /const DB_VERSION = 2/);
+  assert.match(persistence, /indexedDB\.open\(DB_NAME, DB_VERSION\)/);
+  assert.match(persistence, /META_STORE_NAME = 'workspace-metadata'/);
   assert.match(persistence, /createWorkspaceRecoveryCheckpoint/);
   assert.match(persistence, /pre-migration-v/);
   assert.match(persistence, /validateProjectFile\(migrateProjectFile\(record\.project\)\)/);
+  assert.match(persistence, /prepareProjectForWorkspaceStorage\(project\)/);
+  assert.match(persistence, /expandProjectStorage\(project\)/);
 });
 
 test('workspace safety UI exposes local save state, recovery, and safe reload', () => {
