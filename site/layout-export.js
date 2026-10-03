@@ -287,6 +287,16 @@ function chooseDbuMicron(elements) {
   return dbu;
 }
 
+function quantizedPolygonArea2(points) {
+  let area2 = 0n;
+  for (let index = 0; index < points.length; index++) {
+    const [x0, y0] = points[index],
+      [x1, y1] = points[(index + 1) % points.length];
+    area2 += BigInt(x0) * BigInt(y1) - BigInt(x1) * BigInt(y0);
+  }
+  return area2 < 0n ? -area2 : area2;
+}
+
 function quantizeElements(elements, dbuMicron) {
   const quantize = (value) => Math.round(Number(value) / dbuMicron),
     out = [];
@@ -298,12 +308,22 @@ function quantizeElements(elements, dbuMicron) {
       if (!previous || next[0] !== previous[0] || next[1] !== previous[1]) points.push(next);
     }
     if (element.kind === 'polygon') {
-      if (points.length > 2 && points[0][0] === points.at(-1)[0] && points[0][1] === points.at(-1)[1]) {
+      if (
+        points.length > 2 &&
+        points[0][0] === points.at(-1)[0] &&
+        points[0][1] === points.at(-1)[1]
+      ) {
         points.pop();
       }
-      if (points.length < 3) continue;
+      if (points.length < 3 || quantizedPolygonArea2(points) === 0n) {
+        throw new Error(
+          `Mask export geometry collapses at the selected ${dbuMicron} µm database unit.`,
+        );
+      }
     } else if (points.length < 2) {
-      continue;
+      throw new Error(
+        `Mask export path collapses at the selected ${dbuMicron} µm database unit.`,
+      );
     }
     out.push({
       ...element,
