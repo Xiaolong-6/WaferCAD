@@ -126,7 +126,8 @@ function syncProjectNameInput() {
 }
 
 let workspacePersistenceController = null,
-  workspaceSession = null;
+  workspaceSession = null,
+  snapshotManager = null;
 
 function persistWorkspaceNow() {
   return workspacePersistenceController?.persistNow() ?? Promise.resolve(false);
@@ -137,6 +138,7 @@ function scheduleWorkspacePersistence() {
 }
 
 function markProjectDirty() {
+  snapshotManager?.syncActiveHeadState?.();
   scheduleWorkspacePersistence();
 }
 
@@ -779,7 +781,7 @@ const projectStateController = createProjectStateController({
 const { buildProjectSnapshot, loadProjectSnapshot, resetProjectState, isValidSnapshotState } =
   projectStateController;
 
-const snapshotManager = createSnapshotManager({
+snapshotManager = createSnapshotManager({
   capture: () => buildProjectSnapshot(false),
   restore: (state) => loadProjectSnapshot(state),
   validateState: isValidSnapshotState,
@@ -843,23 +845,44 @@ async function ensureWritableProcessBranch() {
   }
 
   const continuation = snapshotManager.continuationContext();
-  if (!continuation) return true;
+  if (!continuation) return { createVariant: false };
 
   const confirmed = await confirmationDialog.confirm({
     title: 'Continue from historical state?',
     message: continuation.snapshotName
-      ? `"${continuation.snapshotName}" is behind the current branch HEAD.`
-      : 'Undo moved the workspace behind the current branch HEAD.',
-    detail: 'WaferCAD will create a new variant first. The existing branch and its HEAD remain unchanged.',
+      ? `"${continuation.snapshotName}" is behind the current variant HEAD.`
+      : 'Undo moved the workspace behind the current variant HEAD.',
+    detail:
+      'If this operation succeeds, WaferCAD will create a new variant from the current historical working state. The existing variant and its HEAD remain unchanged.',
     confirmLabel: 'Create variant & apply',
   });
   if (!confirmed) return false;
 
+  return {
+    createVariant: true,
+    branchId: continuation.branchId,
+    snapshotId: continuation.snapshotId,
+    cursorNodeId: continuation.cursorNodeId,
+  };
+}
+
+function commitWritableProcessBranch(gate) {
+  if (!gate?.createVariant) return null;
+  const continuation = snapshotManager.continuationContext();
+  if (
+    !continuation ||
+    continuation.branchId !== gate.branchId ||
+    continuation.snapshotId !== gate.snapshotId ||
+    continuation.cursorNodeId !== gate.cursorNodeId
+  ) {
+    throw new Error('Historical state changed before the operation completed.');
+  }
+
   const created = snapshotManager.createBranchFromCursor();
   markProjectDirty();
   renderSnapshots();
-  status(`Created branch "${created.name}" for continued processing.`);
-  return true;
+  status(`Created variant "${created.name}" for continued processing.`);
+  return created;
 }
 
 function recordProcessOperation(operation) {
@@ -943,6 +966,7 @@ processPanelController = createProcessPanelController({
   processTaskController,
   saveHistory,
   beforeApply: ensureWritableProcessBranch,
+  commitApplyBranch: commitWritableProcessBranch,
   recordProcessOperation,
   clearBaseRevertSnapshot: () => {
     baseRevertSnapshot = null;
