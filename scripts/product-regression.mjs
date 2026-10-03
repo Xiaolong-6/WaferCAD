@@ -94,6 +94,16 @@ async function openFunctionPanel(page, name, clickOptions = {}) {
   }, name);
 }
 
+async function closeFunctionPanel(page) {
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  if (await panel.evaluate((element) => element.classList.contains('open'))) {
+    await page.locator('.workstation-tool-close').click();
+    await page.waitForFunction(
+      () => !document.getElementById('toolPanel')?.classList.contains('open'),
+    );
+  }
+}
+
 const PRIMARY_VIEW_PANEL_IDS = {
   main: 'mainPanel',
   mask: 'maskPanel',
@@ -379,6 +389,7 @@ async function checkAB(page, name) {
   }
   await openFunctionPanel(page, 'process');
   await page.locator('#faceToggleBtn').click();
+  await closeFunctionPanel(page);
   await dragHandle(page, 'a', 8, 0);
   const back = await coords(page);
   close(back[0], nmRoundedMicron(moved[0] - 8 / scale));
