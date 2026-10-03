@@ -156,6 +156,19 @@ test('project serializer enforces the same size ceiling used by Open', () => {
   assert.doesNotThrow(() => serializeProject(validProject(), MAX_PROJECT_FILE_BYTES));
 });
 
+test('project storage rejects geometry that collapses at the 0.1 nm persistence quantum', () => {
+  const source = validProject();
+  source.model.regions[0].stack[0].z0 = 0;
+  source.model.regions[0].stack[0].z1 = PROJECT_LENGTH_QUANTUM_UM * 0.4;
+  source.model.thickness = PROJECT_LENGTH_QUANTUM_UM * 0.4;
+
+  assert.equal(validateProjectFile(source), source);
+  assert.throws(
+    () => serializeProject(source),
+    /cannot be stored safely.*z1 > z0/i,
+  );
+});
+
 test('project storage compacts repeated snapshot assets and rounds physical lengths to 0.1 nm', async () => {
   const source = validProject();
   source.section.a[0] = 24999.999999999996;
