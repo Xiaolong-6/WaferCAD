@@ -441,6 +441,77 @@ test('legacy process nodes remain readable and use a milestone state when one ex
   assert.equal(live.value, 'legacy-step');
 });
 
+test('deleting the last legacy milestone on a process node preserves restore capability', () => {
+  let live = { model: { processRevision: 1 }, value: 'legacy-step' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  manager.importRecords(
+    [
+      {
+        id: 'legacy-milestone',
+        name: 'Legacy checkpoint',
+        createdAt: '2026-10-03T10:00:30.000Z',
+        branchId: 'main',
+        parentId: null,
+        historyNodeId: 'process-1',
+        state: { model: { processRevision: 1 }, value: 'legacy-step' },
+      },
+    ],
+    {
+      version: 2,
+      activeBranchId: 'main',
+      cursorNodeId: 'process-2',
+      cursorSnapshotId: null,
+      nodes: [
+        {
+          id: 'process-1',
+          branchId: 'main',
+          parentId: null,
+          createdAt: '2026-10-03T10:00:00.000Z',
+          processRevision: 1,
+          operation: { kind: 'add', label: 'Legacy step' },
+        },
+        {
+          id: 'process-2',
+          branchId: 'main',
+          parentId: 'process-1',
+          createdAt: '2026-10-03T10:01:00.000Z',
+          processRevision: 2,
+          operation: { kind: 'add', label: 'Legacy head' },
+        },
+      ],
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          rootSnapshotId: null,
+          headSnapshotId: null,
+          rootNodeId: 'process-1',
+          headNodeId: 'process-2',
+          headState: { model: { processRevision: 2 }, value: 'legacy-head' },
+          createdAt: '1970-01-01T00:00:00.000Z',
+        },
+      ],
+    },
+  );
+
+  assert.equal(manager.listHistory().find((node) => node.id === 'process-1').restorable, true);
+  assert.equal(manager.remove('legacy-milestone'), true);
+  assert.equal(manager.list().length, 0);
+  assert.equal(manager.listHistory().find((node) => node.id === 'process-1').restorable, true);
+
+  live = { model: { processRevision: 99 }, value: 'changed' };
+  assert.equal(manager.restoreProcessNode('process-1'), true);
+  assert.equal(live.value, 'legacy-step');
+  assert.equal(manager.exportBranchState().version, 3);
+});
+
 test('legacy history only upgrades to v3 when every process node is restorable', () => {
   let live = { model: { processRevision: 2 }, value: 'legacy-head' };
   const manager = createSnapshotManager({
