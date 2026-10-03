@@ -852,14 +852,14 @@ async function ensureWritableProcessBranch() {
 
   const confirmed = await confirmationDialog.confirm({
     title: 'Continue from historical state?',
-    message: continuation.snapshotName
-      ? `Milestone "${continuation.snapshotName}" is behind the current variant HEAD.`
-      : continuation.processLabel
-        ? `Process step "${continuation.processLabel}" is behind the current variant HEAD.`
-        : 'The workspace is behind the current variant HEAD.',
+    message: continuation.processLabel
+      ? `Step "${continuation.processLabel}" is behind the current Variant HEAD.`
+      : continuation.snapshotName
+        ? `Legacy bookmark "${continuation.snapshotName}" is behind the current Variant HEAD.`
+        : 'The workspace is behind the current Variant HEAD.',
     detail:
-      'If this operation succeeds, WaferCAD will create a new variant from the current historical working state. The existing variant and its HEAD remain unchanged.',
-    confirmLabel: 'Create variant & apply',
+      'If this operation succeeds, WaferCAD will create a new Variant from this historical state. The existing Variant and its HEAD remain unchanged.',
+    confirmLabel: 'Create Variant & apply',
   });
   if (!confirmed) return false;
 
