@@ -64,13 +64,14 @@ There is no application build step.
 15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface.
 16. Main/Mask morphology cues must remain subtle overlays that do not replace the underlying material/mask color language.
 17. Base rebuilds remain reversible.
-18. Snapshots are immutable milestone state; snapshot records must not recursively contain snapshots or snapshot-branch metadata.
-19. Every successful Process Apply must append exactly one lightweight process-history node. Failed, aborted, and no-change operations must append none.
-20. Process branch HEAD is independent per branch. Restore and Undo may move the cursor behind HEAD but must never rewrite HEAD; the next Apply must branch first.
-21. Branch HEAD state and named milestone state are the only complete states added by process history. Ordinary process nodes must remain metadata-only.
-22. Snapshot/process graph references must validate before live state replacement. Packed export/autosave must preserve branch HEAD state through the shared asset layer.
-23. Existing projects without branch metadata must normalize into one linear Main branch without changing snapshot state.
-24. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
+18. Milestones are immutable named workspace states; milestone records must not recursively contain milestone/variant metadata.
+19. Every successful Process Apply must append exactly one restorable process-history node. Failed, aborted, busy, and no-change operations must append none.
+20. Snapshot-branch format v3 requires a valid non-nested workspace state on every process node. v1/v2 remain readable as legacy formats but do not gain invented intermediate states.
+21. Process Variant HEAD is independent per variant. Restoring a process step, restoring a milestone, or Undo may move the cursor behind HEAD but must never rewrite HEAD; the next successful Apply must fork first.
+22. Any UI row presented as restorable must remain restorable after autosave/reload and file export/open. Packed storage must preserve process-node, milestone, and Variant HEAD states through the shared asset layer.
+23. Replacing live workspace state must also synchronize transient Undo/Redo controls so enabled buttons never point at cleared history.
+24. Existing projects without branch metadata must normalize into one linear Main variant without changing saved workspace state.
+25. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 
 ## Source style
