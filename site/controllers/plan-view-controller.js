@@ -241,6 +241,17 @@ export function createPlanViewController({
     kind === 'mask' ? renderMask() : renderMain();
   }
 
+  function panPlanView(kind, dx, dy) {
+    const state = getPlanViews()[kind];
+    const deltaX = Number(dx);
+    const deltaY = Number(dy);
+    if (!state || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return;
+    state.panX += deltaX;
+    state.panY += deltaY;
+    onChanged();
+    kind === 'mask' ? renderMask() : renderMain();
+  }
+
   function zoomPlanView(kind, canvas, factor, clientX = null, clientY = null, back = false) {
     const state = getPlanViews()[kind],
       rect = canvas.getBoundingClientRect(),
@@ -370,6 +381,7 @@ export function createPlanViewController({
     worldToCanvas,
     canvasToWorld,
     resetPlanView,
+    panPlanView,
     zoomPlanView,
     drawPlanAxes,
   };

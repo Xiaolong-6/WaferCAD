@@ -225,9 +225,9 @@ export function createWorkstationUiController({ root = document, win = window } 
   function toggleSectionDock() {
     const collapsed = refs.workspace.classList.toggle('section-dock-collapsed');
     refs.sectionPanel.classList.toggle('workstation-section-collapsed', collapsed);
-    refs.sectionCollapseButton.textContent = collapsed ? '⌃' : '⌄';
+    refs.sectionCollapseButton.textContent = collapsed ? 'Show' : 'Hide';
     refs.sectionCollapseButton.setAttribute('aria-expanded', String(!collapsed));
-    refs.sectionCollapseButton.title = collapsed ? 'Expand Section A–B' : 'Collapse Section A–B';
+    refs.sectionCollapseButton.title = collapsed ? 'Show Section A–B' : 'Hide Section A–B';
     scheduleViewportRefresh();
   }
 
@@ -415,9 +415,9 @@ export function createWorkstationUiController({ root = document, win = window } 
     });
     layersButton.setAttribute('aria-expanded', 'false');
 
-    const collapseButton = makeButton(root, 'mini-btn workstation-section-collapse', '⌄', {
-      title: 'Collapse Section A–B',
-      ariaLabel: 'Collapse Section A–B',
+    const collapseButton = makeButton(root, 'mini-btn workstation-section-collapse', 'Hide', {
+      title: 'Hide Section A–B',
+      ariaLabel: 'Show or hide Section A–B',
     });
     collapseButton.setAttribute('aria-expanded', 'true');
 

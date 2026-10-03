@@ -982,10 +982,6 @@ html.workstation-ui-v2.workstation-compact-ui .workstation-view-stage .zoom-tool
   margin-right: 0;
 }
 
-html.workstation-ui-v2.workstation-compact-ui
-  .workstation-view-stage
-  .zoom-tools
-  > button:not(:last-child),
 html.workstation-ui-v2.workstation-compact-ui .workstation-view-stage .view-max-btn {
   display: none;
 }
@@ -1008,7 +1004,6 @@ html.workstation-ui-v2.workstation-compact-ui #sectionPanel .section-view-tools 
   gap: 1px;
 }
 
-html.workstation-ui-v2.workstation-compact-ui #sectionPanel .export-control,
 html.workstation-ui-v2.workstation-compact-ui #sectionPanel .view-max-btn {
   display: none;
 }
@@ -1155,8 +1150,9 @@ html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section
 }
 
 html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section-collapse {
-  width: 26px;
-  padding: 0;
+  width: auto;
+  min-width: 34px;
+  padding-inline: 4px;
 }
 
 
@@ -1510,4 +1506,38 @@ html.workstation-ui-v2
     inset 0 -2px 0 var(--wc-accent),
     0 1px 2px rgba(31, 41, 51, 0.05);
   font-weight: 680;
+}
+
+
+html.workstation-ui-v2 #mainPanBtn.active,
+html.workstation-ui-v2 #mainPanBtn[aria-pressed='true'] {
+  border-color: #3f6482;
+  background: var(--wc-accent-soft);
+  color: #315f87;
+}
+
+html.workstation-ui-v2 #mainCanvas.plan-pan-active {
+  cursor: grab;
+  touch-action: none;
+}
+
+html.workstation-ui-v2 #mainCanvas.plan-pan-active:active {
+  cursor: grabbing;
+}
+
+html.workstation-ui-v2.workstation-compact-ui .workstation-view-stage .zoom-tools > button {
+  display: inline-flex;
+  min-width: 24px;
+  padding-inline: 4px;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #mainPanBtn {
+  min-width: 30px;
+  padding-inline: 4px;
+}
+
+html.workstation-ui-v2.workstation-compact-ui #sectionPanel .export-control {
+  display: block;
+  height: 28px;
+  min-height: 28px;
 }

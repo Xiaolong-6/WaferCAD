@@ -292,6 +292,7 @@ const {
   worldToCanvas,
   canvasToWorld,
   resetPlanView,
+  panPlanView,
   zoomPlanView,
   drawPlanAxes,
 } = planView;
@@ -1064,6 +1065,7 @@ const workspaceActions = createWorkspaceActionsController({
   renderThree,
   zoomPlanView,
   resetPlanView,
+  updateSectionEditor: () => sectionEditor?.update(),
   getHistory: () => history,
   getFuture: () => future,
   stateSnapshot,
@@ -1096,6 +1098,7 @@ const mainCanvasController = createMainCanvasController({
   worldToCanvas,
   canvasToWorld,
   zoomPlanView,
+  panPlanView,
   resetPlanView,
   xyText,
   renderMain,

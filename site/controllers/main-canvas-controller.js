@@ -14,6 +14,7 @@ export function createMainCanvasController({
   worldToCanvas,
   canvasToWorld,
   zoomPlanView,
+  panPlanView,
   resetPlanView,
   xyText,
   renderMain,
@@ -27,6 +28,18 @@ export function createMainCanvasController({
 
   function bind() {
     const main = $('mainCanvas');
+    const panButton = $('mainPanBtn');
+    let panMode = false;
+    let panDrag = null;
+
+    function setPanMode(active) {
+      panMode = Boolean(active);
+      panButton?.classList.toggle('active', panMode);
+      panButton?.setAttribute('aria-pressed', String(panMode));
+      main.classList.toggle('plan-pan-active', panMode);
+      if (!panMode) panDrag = null;
+    }
+
     const editor = createSectionEditor({
       canvas: main,
       host: $('sectionEndpointHandles'),
@@ -46,7 +59,8 @@ export function createMainCanvasController({
         };
       },
       isCreateMode: getSectionCreateMode,
-      isInteractionBlocked: isRoiDrawing,
+      isInteractionBlocked: () => isRoiDrawing() || panMode,
+      isVisibilityBlocked: isRoiDrawing,
       onChange: (next) => {
         setSection(next);
         renderMain();
@@ -56,6 +70,55 @@ export function createMainCanvasController({
       onExitCreate: cancelSectionCreate,
     });
     setSectionEditor(editor);
+
+    panButton?.addEventListener('click', () => setPanMode(!panMode));
+    $('sectionControlsBtn')?.addEventListener('click', () => setPanMode(false));
+    root.querySelectorAll('#mainPanel .roi-tool, #clearRoiBtn').forEach((button) => {
+      button.addEventListener('click', () => setPanMode(false));
+    });
+
+    main.addEventListener('pointerdown', (event) => {
+      if (!panMode || isRoiDrawing() || event.isPrimary === false) return;
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      event.preventDefault();
+      panDrag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      main.setPointerCapture?.(event.pointerId);
+    });
+
+    main.addEventListener('pointermove', (event) => {
+      if (panDrag?.pointerId === event.pointerId) {
+        const dx = event.clientX - panDrag.x;
+        const dy = event.clientY - panDrag.y;
+        panDrag.x = event.clientX;
+        panDrag.y = event.clientY;
+        if (dx || dy) {
+          panPlanView('main', dx, dy);
+          editor.update();
+        }
+        return;
+      }
+      const rect = main.getBoundingClientRect(),
+        view = viewport(rect.width, rect.height, 'main'),
+        point = canvasToWorld(
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+          view,
+          getActiveFace() === 'back',
+        );
+      $('mainCoords').textContent = `x ${xyText(point[0])} · y ${xyText(point[1])}`;
+    });
+
+    for (const type of ['pointerup', 'pointercancel']) {
+      main.addEventListener(type, (event) => {
+        if (panDrag?.pointerId !== event.pointerId) return;
+        main.releasePointerCapture?.(event.pointerId);
+        panDrag = null;
+      });
+    }
+
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && panMode) setPanMode(false);
+    });
 
     main.addEventListener(
       'wheel',
@@ -76,18 +139,6 @@ export function createMainCanvasController({
     main.addEventListener('dblclick', (event) => {
       event.preventDefault();
       resetPlanView('main');
-    });
-
-    main.addEventListener('pointermove', (event) => {
-      const rect = main.getBoundingClientRect(),
-        view = viewport(rect.width, rect.height, 'main'),
-        point = canvasToWorld(
-          event.clientX - rect.left,
-          event.clientY - rect.top,
-          view,
-          getActiveFace() === 'back',
-        );
-      $('mainCoords').textContent = `x ${xyText(point[0])} · y ${xyText(point[1])}`;
     });
 
     const resizeObserver = new ResizeObserverImpl(() => {
