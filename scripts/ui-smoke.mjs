@@ -1537,7 +1537,7 @@ milestoneRow = page.locator('.snapshot-milestone-row').first();
 await milestoneRow.locator('.snapshot-more-trigger').click();
 await milestoneRow.locator('.snapshot-more-popover button').nth(1).click();
 await page.waitForFunction(
-  () => /Created "Variant 1"/.test(document.getElementById('statusText')?.textContent || ''),
+  () => /Created variant "Variant 1"/.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.equal(await page.locator('#snapshotBranchSelect option').count(), 2);
 assert.equal(
@@ -1550,9 +1550,16 @@ await page.locator('#saveSnapshotBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /on "Variant 1"/);
 await page.locator('#snapshotBranchSelect').selectOption('main');
 await page.waitForFunction(
-  () => /Switched to branch "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
+  () => /Switched to variant "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
+
+// A milestone used as a variant origin cannot be deleted silently.
+milestoneRow = page.locator('.snapshot-milestone-row').first();
+await milestoneRow.locator('.snapshot-more-trigger').click();
+const originDelete = milestoneRow.locator('.snapshot-more-popover button').last();
+assert.equal(await originDelete.isDisabled(), true);
+await milestoneRow.locator('.snapshot-more-trigger').click();
 
 // V2: save a milestone, move Main forward, then restore the milestone.
 await page.locator('#saveSnapshotBtn').click();
@@ -1588,8 +1595,8 @@ v2MilestoneRow = page.locator('.snapshot-milestone-row').nth(v2MilestoneIndex);
 await v2MilestoneRow.locator('.snapshot-more-trigger').click();
 await v2MilestoneRow.locator('.snapshot-more-popover button').first().click();
 await page.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
-assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /Historical state/);
-assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /next Apply/i);
+assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /Historical working state/);
+assert.match(await page.locator('.snapshot-continuation-banner').textContent(), /successful Apply/i);
 assert.equal((await page.locator('.snapshot-branch-state').textContent()).trim(), 'historical');
 
 // Historical viewing has an explicit route back to the branch's autosaved HEAD.
@@ -1661,9 +1668,31 @@ assert.equal(
   false,
 );
 
+await page.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 5000 },
+);
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(page, 'snapshots');
+assert.equal(await page.locator('#snapshotBranchSelect option').count(), 3);
+assert.equal(
+  await page.locator('#snapshotBranchSelect option:checked').textContent(),
+  'Variant 2',
+);
+assert.match(await page.locator('.snapshot-branch-group').textContent(), /Continuation probe/);
+assert.equal((await page.locator('.snapshot-branch-state').textContent()).trim(), 'HEAD');
+assert.equal(await page.locator('.snapshot-continuation-banner').count(), 0);
+
+
 await page.locator('#snapshotBranchSelect').selectOption('main');
 await page.waitForFunction(
-  () => /Switched to branch "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
+  () => /Switched to variant "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.ok(
   await page
