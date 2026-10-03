@@ -320,11 +320,11 @@ export function createSnapshotManager({
     };
   }
 
-  function bookmarkCurrentStep(name = '') {
+  function bookmarkStep(nodeId, name = '') {
     if (records.length >= maxRecords) {
       throw new Error(`Bookmark limit of ${maxRecords} reached.`);
     }
-    const node = cursorNodeId ? nodeById(cursorNodeId) : null;
+    const node = nodeId ? nodeById(nodeId) : null;
     const state = stateForProcessNode(node);
     if (!node || !state || !validateState(state)) {
       throw new Error('Select a restorable process Step before adding a bookmark.');
@@ -349,6 +349,19 @@ export function createSnapshotManager({
       branchId: record.branchId,
       parentId: record.parentId,
       historyNodeId: record.historyNodeId,
+    };
+  }
+
+  function bookmarkCurrentStep(name = '') {
+    return bookmarkStep(cursorNodeId, name);
+  }
+
+  function currentPosition() {
+    return {
+      branchId: activeBranchId,
+      nodeId: cursorNodeId,
+      bookmarkId: cursorSnapshotId,
+      atHead: isCursorAtBranchHead(),
     };
   }
 
@@ -1056,7 +1069,9 @@ export function createSnapshotManager({
     listBranches,
     activeBranch,
     create,
+    bookmarkStep,
     bookmarkCurrentStep,
+    currentPosition,
     createBranch,
     createBranchFromNode,
     createBranchFromCursor,
