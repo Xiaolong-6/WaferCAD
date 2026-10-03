@@ -124,13 +124,23 @@ export function createWorkstationUiController({ root = document, win = window } 
     }
   }
 
+  function syncToolScrollTail() {
+    if (!refs.toolScrollTail || !refs.toolContent) return;
+    refs.toolScrollTail.style.height = `${Math.max(0, refs.toolContent.clientHeight - 72)}px`;
+  }
+
   function scrollToTool(name, behavior = 'smooth') {
     const section = refs.toolSections?.get(name);
     const scroller = refs.toolContent;
     if (!section || !scroller) return;
 
+    syncToolScrollTail();
+    const sectionTop =
+      scroller.scrollTop +
+      section.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top;
     const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-    const targetTop = Math.max(0, Math.min(maxTop, section.offsetTop - 6));
+    const targetTop = Math.max(0, Math.min(maxTop, sectionTop - 6));
     state.programmaticToolScroll = true;
     win.clearTimeout(state.toolScrollRelease);
     scroller.scrollTo({ top: targetTop, behavior });
@@ -384,6 +394,13 @@ export function createWorkstationUiController({ root = document, win = window } 
       refs.toolSections.set(name, section);
     }
 
+    const scrollTail = root.createElement('div');
+    scrollTail.className = 'workstation-tool-scroll-tail';
+    scrollTail.setAttribute('aria-hidden', 'true');
+    refs.toolContent.append(scrollTail);
+    refs.toolScrollTail = scrollTail;
+    syncToolScrollTail();
+
     refs.toolPanel.classList.remove('open');
     refs.toolPosition.textContent = TOOL_META[state.activeTool].label;
   }
@@ -543,6 +560,7 @@ export function createWorkstationUiController({ root = document, win = window } 
         }
         scheduleViewportRefresh();
       }
+      syncToolScrollTail();
       updateRailAnchor(state.activeTool);
     });
 
