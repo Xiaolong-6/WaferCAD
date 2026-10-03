@@ -11,6 +11,12 @@ import {
 import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from './roi-editor.js';
 import { roughLod, roughProfileOffsetAtPoint, roughVisualBoundsZ } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
+import {
+  createSectionZTransform,
+  niceSectionTicks,
+  normalizeSectionCollapse,
+  sectionVisibleZSpan,
+} from './section-z-collapse.js';
 
 export function createPlanRenderers({
   root = document,
@@ -18,6 +24,7 @@ export function createPlanRenderers({
   getDrawMaskController,
   getMaskRoiController,
   getSectionEditor,
+  getSectionCollapseController = () => null,
   setupCanvas,
   viewport,
   worldToCanvas,
@@ -323,17 +330,17 @@ export function createPlanRenderers({
     getSectionEditor()?.update();
   }
   function renderSection() {
-      const { model, section, sectionScaleMode, sectionShowBorders } = getState();
+    const { model, section, sectionScaleMode, sectionShowBorders, sectionCollapse } = getState();
     const c = $('sectionCanvas'),
       { ctx, w, h } = setupCanvas(c);
     ctx.clearRect(0, 0, w, h);
-  
+
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
       pad = Math.max(1e-9, (hi - lo) * 0.08),
       z0 = lo - pad,
       z1 = hi + pad,
-      zSpan = Math.max(z1 - z0, 1e-12),
+      collapse = normalizeSectionCollapse(sectionCollapse, [lo, hi]),
       sectionSpan = Math.max(
         Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]),
         1e-12,
@@ -345,32 +352,48 @@ export function createPlanRenderers({
       iw = w - left - right,
       ih = h - top - bottom,
       autoXScale = iw / sectionSpan,
-      autoZScale = ih / zSpan;
-  
+      breakPixels = 8;
+
     let plotLeft = left,
       plotTop = top,
       plotWidth = iw,
       plotHeight = ih;
-  
+
     if (sectionScaleMode === 'physical') {
-      const scale = Math.min(autoXScale, autoZScale);
+      const visibleZSpan = Math.max(sectionVisibleZSpan(z0, z1, collapse), 1e-12),
+        scale = Math.min(autoXScale, Math.max(1e-12, (ih - breakPixels) / visibleZSpan));
       plotWidth = sectionSpan * scale;
-      plotHeight = zSpan * scale;
+      plotHeight = visibleZSpan * scale + breakPixels;
       plotLeft = left + (iw - plotWidth) / 2;
       plotTop = top + (ih - plotHeight) / 2;
     }
-  
+
     const xScale = plotWidth / sectionSpan,
-      zScale = plotHeight / zSpan,
+      zTransform = createSectionZTransform({
+        zMin: z0,
+        zMax: z1,
+        collapse,
+        plotTop,
+        plotHeight,
+        breakPixels,
+        upperFraction: 0.8,
+        mode: sectionScaleMode,
+        xScale,
+      }),
+      zScale = zTransform.topScale,
       zExaggeration = zScale / xScale,
       mapT = (t) => plotLeft + t * plotWidth,
-      mapZ = (z) => plotTop + ((z1 - z) / zSpan) * plotHeight;
-  
+      mapZ = zTransform.mapZ;
+
     c.dataset.scaleMode = sectionScaleMode;
     c.dataset.xPxPerUm = String(xScale);
     c.dataset.zPxPerUm = String(zScale);
     c.dataset.zMinUm = String(lo);
     c.dataset.zMaxUm = String(hi);
+    c.dataset.sectionPlotLeft = String(plotLeft);
+    c.dataset.sectionCollapseBreakY = String(zTransform.breakCenter);
+    c.dataset.sectionCollapseTopUm = String(collapse.top);
+    c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
   
     ctx.fillStyle = '#fbfcfd';
     ctx.fillRect(0, 0, w, h);
