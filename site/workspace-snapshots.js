@@ -642,6 +642,25 @@ export function createSnapshotManager({
     records = next;
     historyNodes = importedNodes;
     branches = importedBranches.slice(0, maxBranches);
+
+    // V2 initially derived default branch names from the full milestone name.
+    // Normalize only that exact legacy auto-name pattern; explicit user names stay untouched.
+    const usedBranchNames = new Set(branches.map((branch) => branch.name));
+    let legacyVariantIndex = 1;
+    for (const branch of branches) {
+      if (branch.id === MAIN_SNAPSHOT_BRANCH_ID || !branch.rootSnapshotId) continue;
+      const source = records.find((record) => record.id === branch.rootSnapshotId);
+      if (!source || !branch.name.startsWith(source.name)) continue;
+      const suffix = branch.name.slice(source.name.length);
+      if (!/^( branch| continuation)( \\d+)?$/.test(suffix)) continue;
+
+      usedBranchNames.delete(branch.name);
+      while (usedBranchNames.has(`Variant ${legacyVariantIndex}`)) legacyVariantIndex += 1;
+      branch.name = `Variant ${legacyVariantIndex}`;
+      usedBranchNames.add(branch.name);
+      legacyVariantIndex += 1;
+    }
+
     activeBranchId =
       typeof branchState?.activeBranchId === 'string' && branchById(branchState.activeBranchId)
         ? branchState.activeBranchId
