@@ -462,6 +462,10 @@ export function createThreeView({
     roughInteractionCache = null;
     currentRoughMode = 'none';
     lastLodSignature = null;
+    if (renderer?.domElement?.dataset) {
+      renderer.domElement.dataset.roughMeshMode = 'none';
+      renderer.domElement.dataset.roughMeshWorker = 'false';
+    }
     const geometries = new Set(),
       materials = new Set(),
       textures = new Set();
