@@ -765,9 +765,7 @@ export function createPlanRenderers({
       : 'Show structural borders in Section A–B';
   
     const scaleLabel =
-      sectionScaleMode === 'auto'
-        ? `Z ×${Number(zExaggeration.toPrecision(3))} · break`
-        : '1:1 · Z break';
+      sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
     $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
     $('sectionRange').textContent = `Z (${xyUnitLabel()}) ${formatXY(lo)} → ${formatXY(hi)}`;
     getSectionCollapseController()?.sync();
