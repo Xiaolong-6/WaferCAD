@@ -14,7 +14,7 @@ import { unionGeometries } from './vector-geometry.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
-  normalizeSectionCollapse,
+  resolveSectionCollapse,
   sectionVisibleZSpan,
 } from './section-z-collapse.js';
 
@@ -340,7 +340,7 @@ export function createPlanRenderers({
       pad = Math.max(1e-9, (hi - lo) * 0.08),
       z0 = lo - pad,
       z1 = hi + pad,
-      collapse = normalizeSectionCollapse(sectionCollapse, [lo, hi]),
+      collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
       sectionSpan = Math.max(
         Math.hypot(section.b[0] - section.a[0], section.b[1] - section.a[1]),
         1e-12,
