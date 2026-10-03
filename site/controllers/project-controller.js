@@ -55,21 +55,25 @@ export function createProjectController({
         return true;
       }
       try {
-        await checkpointBeforeReplace('pre-snapshot-branch-switch');
+        if (snapshotManager.continuationContext()) {
+          await checkpointBeforeReplace('pre-snapshot-variant-switch');
+        } else {
+          snapshotManager.syncActiveHeadState();
+        }
       } catch (error) {
         console.error(error);
-        status(`Branch switch cancelled: ${error.message}`, 'error');
+        status(`Variant switch cancelled: ${error.message}`, 'error');
         return false;
       }
       if (!snapshotManager.switchBranch(targetId)) {
-        status('Branch switch failed validation.', 'error');
+        status('Variant switch failed validation.', 'error');
         return false;
       }
       refreshAfterSnapshotLoad();
       onProjectChanged();
       const nextBranch = snapshotManager.activeBranch();
       renderSnapshots();
-      status(`Switched to branch "${nextBranch.name}" HEAD.`);
+      status(`Switched to variant "${nextBranch.name}" HEAD.`);
       return true;
     }
 
@@ -78,12 +82,12 @@ export function createProjectController({
 
     const branchLabel = root.createElement('label');
     branchLabel.className = 'snapshot-branch-label';
-    branchLabel.textContent = 'Current branch';
+    branchLabel.textContent = 'Current variant';
 
     const branchSelect = root.createElement('select');
     branchSelect.id = 'snapshotBranchSelect';
     branchSelect.className = 'snapshot-branch-select';
-    branchSelect.title = 'Switch to another process branch HEAD';
+    branchSelect.title = 'Switch to another process variant HEAD';
     for (const branch of branches) {
       const option = root.createElement('option');
       option.value = branch.id;
@@ -111,11 +115,11 @@ export function createProjectController({
 
       const copy = root.createElement('div');
       const title = root.createElement('strong');
-      title.textContent = 'Historical state';
+      title.textContent = 'Historical working state';
       const detail = root.createElement('span');
       detail.textContent = continuation.snapshotName
-        ? `Viewing "${continuation.snapshotName}". The next Apply will create a new variant automatically.`
-        : 'Undo moved before the branch HEAD. The next Apply will create a milestone and new variant automatically.';
+        ? `Viewing "${continuation.snapshotName}". Edits here stay in this working state; a successful Apply will create a new variant from it.`
+        : 'Undo moved before the variant HEAD. Edits here stay in this working state; a successful Apply will create a milestone and new variant from it.';
       copy.append(title, detail);
 
       const returnButton = root.createElement('button');
@@ -174,7 +178,10 @@ export function createProjectController({
         button.type = 'button';
         button.textContent = item.label;
         if (item.danger) button.dataset.danger = 'true';
+        if (item.disabled) button.disabled = true;
+        if (item.title) button.title = item.title;
         button.onclick = async () => {
+          if (button.disabled) return;
           closeMenu(details);
           await item.run();
         };
@@ -194,7 +201,7 @@ export function createProjectController({
       const marker = root.createElement('span');
       marker.className = 'snapshot-milestone-marker';
       marker.textContent = '★';
-      marker.title = 'Snapshot milestone';
+      marker.title = 'Milestone';
       marker.setAttribute('aria-hidden', 'true');
 
       const body = root.createElement('div');
@@ -205,7 +212,7 @@ export function createProjectController({
       const meta = root.createElement('span');
       meta.textContent =
         record.id === activeBranch.headSnapshotId
-          ? 'milestone · latest saved'
+          ? 'milestone · latest milestone'
           : 'milestone';
       body.append(name, meta);
 
@@ -235,7 +242,7 @@ export function createProjectController({
         }
         onProjectChanged();
         renderSnapshots();
-        status(`Renamed snapshot to "${next}".`);
+        status(`Renamed milestone to "${next}".`);
       };
       saveRename.onclick = commitRename;
       cancelRename.onclick = () => {
@@ -252,29 +259,30 @@ export function createProjectController({
       };
       renameEditor.append(renameInput, saveRename, cancelRename);
 
+      const branchUsers = snapshotManager.branchesUsingSnapshot(record.id);
       const menu = createActionMenu([
         {
-          label: 'Restore',
+          label: 'Restore milestone',
           run: async () => {
             try {
               await checkpointBeforeReplace('pre-snapshot-restore');
             } catch (error) {
               console.error(error);
-              status(`Snapshot restore cancelled: ${error.message}`, 'error');
+              status(`Milestone restore cancelled: ${error.message}`, 'error');
               return;
             }
             if (!snapshotManager.restore(record.id)) {
-              status('Snapshot restore failed validation.', 'error');
+              status('Milestone restore failed validation.', 'error');
               return;
             }
             refreshAfterSnapshotLoad();
             onProjectChanged();
             renderSnapshots();
-            status(`Restored snapshot "${record.name}".`);
+            status(`Restored milestone "${record.name}".`);
           },
         },
         {
-          label: 'Branch from here',
+          label: 'Variant from here',
           run: async () => {
             try {
               await checkpointBeforeReplace('pre-snapshot-branch-create');
@@ -285,15 +293,15 @@ export function createProjectController({
               refreshAfterSnapshotLoad();
               onProjectChanged();
               renderSnapshots();
-              status(`Created "${created.name}" from "${record.name}".`);
+              status(`Created variant "${created.name}" from "${record.name}".`);
             } catch (error) {
               console.error(error);
-              status(`Branch creation failed: ${error.message}`, 'error');
+              status(`Variant creation failed: ${error.message}`, 'error');
             }
           },
         },
         {
-          label: 'Rename',
+          label: 'Rename milestone',
           run: async () => {
             renameEditor.hidden = false;
             renameInput.focus();
@@ -301,20 +309,27 @@ export function createProjectController({
           },
         },
         {
-          label: 'Delete',
+          label: 'Delete milestone',
           danger: true,
+          disabled: branchUsers.length > 0,
+          title: branchUsers.length
+            ? `Used as the origin of ${branchUsers.map((branch) => branch.name).join(', ')}.`
+            : 'Delete this milestone.',
           run: async () => {
             const confirmed = await confirmAction({
-              title: 'Delete snapshot?',
+              title: 'Delete milestone?',
               message: `Delete "${record.name}"?`,
-              detail: 'Process history remains intact. Any milestone links are reconnected.',
-              confirmLabel: 'Delete',
+              detail: 'Process history remains intact.',
+              confirmLabel: 'Delete milestone',
             });
             if (!confirmed) return;
-            snapshotManager.remove(record.id);
+            if (!snapshotManager.remove(record.id)) {
+              status('This milestone is used as a variant origin and cannot be deleted.', 'warning');
+              return;
+            }
             onProjectChanged();
             renderSnapshots();
-            status(`Deleted snapshot "${record.name}".`);
+            status(`Deleted milestone "${record.name}".`);
           },
         },
       ]);
@@ -374,19 +389,45 @@ export function createProjectController({
     count.textContent = `${activeBranch.processStepCount} step${activeBranch.processStepCount === 1 ? '' : 's'} · ${activeBranch.ownSnapshotCount} milestone${activeBranch.ownSnapshotCount === 1 ? '' : 's'}`;
     branchTitle.append(dot, title, count);
 
-    const branchMenu = createActionMenu(
-      [
-        {
-          label: 'Rename branch',
-          run: async () => {
-            branchRename.hidden = false;
-            branchRenameInput.focus();
-            branchRenameInput.select();
-          },
+    const branchMenuItems = [
+      {
+        label: 'Rename variant',
+        run: async () => {
+          branchRename.hidden = false;
+          branchRenameInput.focus();
+          branchRenameInput.select();
         },
-      ],
-      'More branch actions',
-    );
+      },
+    ];
+    if (activeBranch.id !== 'main') {
+      branchMenuItems.push({
+        label: 'Delete variant',
+        danger: true,
+        run: async () => {
+          const confirmed = await confirmAction({
+            title: 'Delete variant?',
+            message: `Delete "${activeBranch.name}" and its private process history?`,
+            detail: 'Its origin milestone is kept. Child variants must be deleted first. A Recovery checkpoint is created before deletion.',
+            confirmLabel: 'Delete variant',
+            danger: true,
+          });
+          if (!confirmed) return;
+          try {
+            await checkpointBeforeReplace('pre-snapshot-variant-delete');
+            const removed = snapshotManager.removeBranch(activeBranch.id);
+            if (!removed) throw new Error('Variant was not found.');
+            refreshAfterSnapshotLoad();
+            onProjectChanged();
+            renderSnapshots();
+            status(`Deleted variant "${removed.name}".`);
+          } catch (error) {
+            console.error(error);
+            status(`Variant deletion failed: ${error.message}`, 'error');
+          }
+        },
+      });
+    }
+    const branchMenu = createActionMenu(branchMenuItems, 'More variant actions');
 
     branchHead.append(branchTitle, branchMenu);
     activeGroup.append(branchHead);
@@ -414,7 +455,7 @@ export function createProjectController({
       if (!next || !snapshotManager.renameBranch(activeBranch.id, next)) return;
       onProjectChanged();
       renderSnapshots();
-      status(`Renamed branch to "${snapshotManager.activeBranch().name}".`);
+      status(`Renamed variant to "${snapshotManager.activeBranch().name}".`);
     };
     saveBranchRename.onclick = commitBranchRename;
     cancelBranchRename.onclick = () => {
@@ -444,15 +485,38 @@ export function createProjectController({
     timeline.className = 'snapshot-tree';
 
     const ownRecords = records.filter((record) => record.branchId === activeBranch.id),
-      ownNodes = historyNodes.filter((node) => node.branchId === activeBranch.id),
+      nodeById = new Map(historyNodes.map((node) => [node.id, node])),
+      ancestry = [];
+    let ancestryId = activeBranch.headNodeId;
+    const seenAncestry = new Set();
+    while (ancestryId && !seenAncestry.has(ancestryId)) {
+      seenAncestry.add(ancestryId);
+      const node = nodeById.get(ancestryId);
+      if (!node) break;
+      ancestry.push(node);
+      ancestryId = node.parentId;
+    }
+    ancestry.reverse();
+    const nodeOrder = new Map(ancestry.map((node, index) => [node.id, index])),
+      ownNodes = ancestry.filter((node) => node.branchId === activeBranch.id),
       events = [
-        ...ownNodes.map((node) => ({ type: 'process', createdAt: node.createdAt, value: node })),
+        ...ownNodes.map((node) => ({
+          type: 'process',
+          order: nodeOrder.get(node.id) ?? Number.POSITIVE_INFINITY,
+          createdAt: node.createdAt,
+          value: node,
+        })),
         ...ownRecords.map((record) => ({
           type: 'milestone',
+          order:
+            record.historyNodeId && nodeOrder.has(record.historyNodeId)
+              ? nodeOrder.get(record.historyNodeId) + 0.5
+              : -0.5,
           createdAt: record.createdAt,
           value: record,
         })),
       ].sort((left, right) => {
+        if (left.order !== right.order) return left.order - right.order;
         const delta = Date.parse(left.createdAt) - Date.parse(right.createdAt);
         if (delta !== 0) return delta;
         return left.type === 'process' ? -1 : 1;
@@ -463,8 +527,8 @@ export function createProjectController({
       emptyBranch.className = 'snapshot-branch-empty';
       emptyBranch.textContent =
         activeBranch.rootSnapshotId
-          ? 'Branch ready. The next successful Apply becomes its first process step.'
-          : 'No process steps or milestones on this branch yet.';
+          ? 'Variant ready. The next successful Apply becomes its first process step.'
+          : 'No process steps or milestones on this variant yet.';
       timeline.append(emptyBranch);
     }
 
@@ -483,7 +547,7 @@ export function createProjectController({
     if (otherBranches.length) {
       const otherHead = root.createElement('div');
       otherHead.className = 'snapshot-other-heading';
-      otherHead.textContent = 'Other branches';
+      otherHead.textContent = 'Other variants';
       host.append(otherHead);
 
       const otherList = root.createElement('div');
