@@ -192,18 +192,37 @@ function cloneCore(value, { model = true, layout = true } = {}) {
   return clone;
 }
 
-function createAssetResolver(rootAsset, quantize) {
+function createAssetResolver(rootAsset, quantize, keyOf = () => '') {
   const shared = [];
-  const sources = [{ source: rootAsset, ref: 'project' }];
+  const sourcesByKey = new Map();
   const refsByIdentity = new WeakMap();
-  if (isObject(rootAsset)) refsByIdentity.set(rootAsset, 'project');
+
+  const keyFor = (asset) => {
+    try {
+      return String(keyOf(asset) ?? '');
+    } catch {
+      return '';
+    }
+  };
+  const addSource = (source, ref) => {
+    const key = keyFor(source);
+    const bucket = sourcesByKey.get(key) || [];
+    bucket.push({ source, ref });
+    sourcesByKey.set(key, bucket);
+  };
+
+  if (isObject(rootAsset)) {
+    refsByIdentity.set(rootAsset, 'project');
+    addSource(rootAsset, 'project');
+  }
 
   function resolve(asset) {
     if (!isObject(asset)) throw new Error('Snapshot asset is missing.');
     const known = refsByIdentity.get(asset);
     if (known !== undefined) return known;
 
-    for (const entry of sources) {
+    const key = keyFor(asset);
+    for (const entry of sourcesByKey.get(key) || []) {
       if (!deepEqual(asset, entry.source)) continue;
       refsByIdentity.set(asset, entry.ref);
       return entry.ref;
@@ -213,12 +232,27 @@ function createAssetResolver(rootAsset, quantize) {
     quantize(stored);
     const ref = shared.length;
     shared.push(stored);
-    sources.push({ source: asset, ref });
+    addSource(asset, ref);
     refsByIdentity.set(asset, ref);
     return ref;
   }
 
   return { resolve, shared };
+}
+
+function modelAssetKey(model) {
+  if (!isObject(model)) return '';
+  return [
+    model.kernel || '',
+    Number(model.revision) || 0,
+    Number(model.processRevision) || 0,
+    Number(model.nextLayerId) || 0,
+    Number(model.nextRegionId) || 0,
+    Number(model.nextImplantId) || 0,
+    Array.isArray(model.layers) ? model.layers.length : 0,
+    Array.isArray(model.regions) ? model.regions.length : 0,
+    Array.isArray(model.implants) ? model.implants.length : 0,
+  ].join('|');
 }
 
 function packWorkspaceState(state, modelAssets, layoutAssets, { quantize = false } = {}) {
@@ -235,7 +269,7 @@ export function prepareProjectForWorkspaceStorage(project) {
 
   const stored = cloneCore(project);
   const layoutAssets = createAssetResolver(project.layout, () => {});
-  const modelAssets = createAssetResolver(project.model, () => {});
+  const modelAssets = createAssetResolver(project.model, () => {}, modelAssetKey);
 
   if (Array.isArray(project.snapshots)) {
     stored.snapshots = project.snapshots.map((record) => {
@@ -380,7 +414,7 @@ export function prepareProjectForStorage(project) {
   quantizeProjectLengths(stored);
 
   const layoutAssets = createAssetResolver(project.layout, quantizeLayout);
-  const modelAssets = createAssetResolver(project.model, quantizeModel);
+  const modelAssets = createAssetResolver(project.model, quantizeModel, modelAssetKey);
 
   if (Array.isArray(project.snapshots)) {
     stored.snapshots = project.snapshots.map((record) => {
