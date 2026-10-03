@@ -1668,9 +1668,23 @@ assert.equal(
 const expectedSnapshotCount = Number(await page.locator('#snapshotCount').textContent());
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('Snapshot export check');
-const snapshotExportPromise = page.waitForEvent('download');
+const snapshotExportPromise = page.waitForEvent('download', { timeout: 90000 });
 await page.locator('#exportProjectBtn').click();
-const snapshotExport = await snapshotExportPromise;
+let snapshotExport;
+try {
+  snapshotExport = await snapshotExportPromise;
+} catch (error) {
+  console.error(
+    'Snapshot export diagnostics:',
+    await page.evaluate(() => ({
+      status: document.getElementById('statusText')?.textContent || '',
+      taskStage: document.getElementById('processTaskStage')?.textContent || '',
+      taskHidden: Boolean(document.getElementById('processTaskDialog')?.hidden),
+      projectName: document.getElementById('projectNameInput')?.value || '',
+    })),
+  );
+  throw error;
+}
 assert.equal(snapshotExport.suggestedFilename(), 'Snapshot export check.wafercad');
 assert.match(await page.locator('#statusText').textContent(), /Download requested/);
 const snapshotExportPath = await snapshotExport.path();
