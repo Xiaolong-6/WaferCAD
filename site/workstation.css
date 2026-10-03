@@ -1150,3 +1150,18 @@ html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section
   width: 26px;
   padding: 0;
 }
+
+
+html.workstation-ui-v2.workstation-compact-ui
+  .workstation-view-stage
+  .view-head
+  .view-tools
+  > details,
+html.workstation-ui-v2.workstation-compact-ui
+  .workstation-view-stage
+  .view-head
+  .three-view-tools
+  > details {
+  height: 28px;
+  min-height: 28px;
+}
