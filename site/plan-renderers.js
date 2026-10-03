@@ -351,10 +351,10 @@ export function createPlanRenderers({
       right = 10,
       top = 10,
       bottom = 22,
-      iw = w - left - right,
-      ih = h - top - bottom,
-      autoXScale = iw / sectionSpan,
-      breakPixels = 8;
+      breakPixels = 8,
+      iw = Math.max(1, w - left - right),
+      ih = Math.max(breakPixels + 1, h - top - bottom),
+      autoXScale = iw / sectionSpan;
 
     let plotLeft = left,
       plotTop = top,
@@ -382,8 +382,8 @@ export function createPlanRenderers({
         mode: sectionScaleMode,
         xScale,
       }),
-      zScale = zTransform.topScale,
-      zExaggeration = zScale / xScale,
+      zScale = Math.max(1e-12, zTransform.topScale),
+      zExaggeration = zScale / Math.max(xScale, 1e-12),
       mapT = (t) => plotLeft + t * plotWidth,
       mapZ = zTransform.mapZ;
 
