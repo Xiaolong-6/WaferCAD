@@ -5,6 +5,7 @@ import { drawMaskGeometry } from '../draw-mask-geometry.js';
 import { maskRoiWorldGeometry, multiBounds } from '../mask-roi-geometry.js';
 import { bufferPolyline, intersection, isEmpty } from '../vector-geometry.js';
 import { roughVisualBoundsZ } from '../surface-rendering.js';
+import { DOWNLOAD_URL_REVOKE_DELAY_MS } from '../project-io.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
@@ -69,10 +70,12 @@ export function createExportController({
     const link = root.createElement('a');
     link.href = url;
     link.download = filename;
+    link.hidden = true;
     root.body.append(link);
     link.click();
     link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_DELAY_MS);
+    return { requested: true, filename, bytes: blob.size };
   }
 
   function downloadText(text, filename, type = 'image/svg+xml') {
