@@ -38,6 +38,7 @@ export function createWorkspaceActionsController({
   renderThree,
   zoomPlanView,
   resetPlanView,
+  updateSectionEditor = () => {},
   getHistory,
   getFuture,
   stateSnapshot,
@@ -140,11 +141,18 @@ export function createWorkspaceActionsController({
     $('maskZoomOut').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1 / 1.25);
     $('maskZoomIn').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1.25);
     $('maskZoomFit').onclick = () => resetPlanView('mask');
-    $('mainZoomOut').onclick = () =>
+    $('mainZoomOut').onclick = () => {
       zoomPlanView('main', $('mainCanvas'), 1 / 1.25, null, null, getActiveFace() === 'back');
-    $('mainZoomIn').onclick = () =>
+      updateSectionEditor();
+    };
+    $('mainZoomIn').onclick = () => {
       zoomPlanView('main', $('mainCanvas'), 1.25, null, null, getActiveFace() === 'back');
-    $('mainZoomFit').onclick = () => resetPlanView('main');
+      updateSectionEditor();
+    };
+    $('mainZoomFit').onclick = () => {
+      resetPlanView('main');
+      updateSectionEditor();
+    };
   }
 
   function bindOperationControls() {
