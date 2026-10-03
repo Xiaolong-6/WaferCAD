@@ -46,7 +46,7 @@ The editor uses a compact engineering/CAD workstation visual system. Information
 
 ## Post-review extensions, 2026-10-02
 
-- **Project persistence semantics** — Project is the first/default tool tab. Save creates a browser-local Recovery checkpoint, Export owns file download, and Recovery exposes Restore plus explicit Clear. Persistence v2 separates Recovery metadata from large payloads, packs repeated snapshot assets losslessly, and checkpoints the current workspace before destructive replacement. Autosave is triggered by persisted-state mutations rather than renderer side effects.
+- **Project persistence semantics** — Project is the first/default tool tab. Save creates a browser-local Recovery checkpoint, Export owns file download, and Recovery exposes Restore plus explicit Clear. Persistence v2 separates Recovery metadata from large payloads, losslessly packs repeated snapshot assets in both current autosave and Recovery, and checkpoints the current workspace before destructive replacement including Welcome explicit starts. Autosave is triggered by persisted-state mutations rather than renderer side effects; read-only tabs cannot clear the owner autosave, and page lifecycle handling prevents a stale BFCache/pagehide writer from reclaiming current state.
 
 The current feature branch extends the September review baseline in three areas that require additional visual attention before merge to `main`:
 
