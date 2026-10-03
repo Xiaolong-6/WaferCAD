@@ -22,6 +22,22 @@ const welcomeProject = projectForBenchmark({
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 
+async function processDiagnostics(page) {
+  return Promise.race([
+    page
+      .evaluate(() => ({
+        status: document.getElementById('statusText')?.textContent || '',
+        stage: document.getElementById('processTaskStage')?.textContent || '',
+        taskHidden: Boolean(document.getElementById('processTaskDialog')?.hidden),
+        applyDisabled: Boolean(document.getElementById('applyOperationBtn')?.disabled),
+        roughRebuilds: document.querySelector('#threeHost canvas')?.dataset?.roughRebuildCount || '',
+        roughZones: document.querySelector('#threeHost canvas')?.dataset?.roughLodZones || '',
+      }))
+      .catch((error) => ({ evaluateError: error.message })),
+    new Promise((resolve) => setTimeout(() => resolve({ pageUnresponsive: true }), 2000)),
+  ]);
+}
+
 async function canvasInkFraction(page, selector) {
   return page.locator(selector).evaluate((canvas) => {
     const ctx = canvas.getContext('2d'),
@@ -352,10 +368,19 @@ await page.locator('#operationThickness').fill('1');
 assert.equal(await page.locator('#roughAmplitude').getAttribute('max'), '1');
 await page.locator('#applyOperationBtn').click();
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
-await page.waitForFunction(() => {
-  const text = document.getElementById('statusText')?.textContent || '';
-  return /Etched|Operation failed|Conformal geometry failed/.test(text);
-});
+try {
+  await page.waitForFunction(
+    () => {
+      const text = document.getElementById('statusText')?.textContent || '';
+      return /Etched|Operation failed|Conformal geometry failed/.test(text);
+    },
+    null,
+    { timeout: 30000 },
+  );
+} catch (error) {
+  console.error('Rough Etch timeout diagnostics:', await processDiagnostics(page));
+  throw error;
+}
 assert.match(await page.locator('#statusText').textContent(), /Etched/);
 
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
