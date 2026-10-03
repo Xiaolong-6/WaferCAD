@@ -116,14 +116,14 @@ export function createWorkspacePersistenceController({
     }
     if (dirty) {
       setSaveStatus(
-        workspaceSession?.canWrite()
+        hasWriteAccess()
           ? 'Unsaved changes'
           : 'Unsaved changes · autosave paused',
         'dirty',
       );
       return;
     }
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       setSaveStatus('Saved copy unchanged · autosave paused', 'paused');
       return;
     }
@@ -140,6 +140,10 @@ export function createWorkspacePersistenceController({
     timer = null;
   }
 
+  function hasWriteAccess() {
+    return workspaceSession?.hasWriteLease?.() ?? hasWriteAccess() ?? false;
+  }
+
   function markDirty() {
     editVersion++;
     dirty = true;
@@ -153,7 +157,7 @@ export function createWorkspacePersistenceController({
       { appCommit },
       {
         canCommit: () =>
-          workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? true,
+          workspaceSession?.hasWriteLease?.() ?? hasWriteAccess() ?? true,
       },
     );
     if (!saved) {
@@ -166,7 +170,7 @@ export function createWorkspacePersistenceController({
   }
 
   function persistNow() {
-    if (!ready || !workspaceSession?.canWrite()) {
+    if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
       return Promise.resolve(false);
     }
@@ -206,7 +210,7 @@ export function createWorkspacePersistenceController({
 
   function schedule({ markDirty: shouldMarkDirty = true } = {}) {
     if (shouldMarkDirty) markDirty();
-    if (!ready || !workspaceSession?.canWrite()) {
+    if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
       return;
     }
@@ -237,7 +241,7 @@ export function createWorkspacePersistenceController({
           commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
         select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
       }
-      const writable = workspaceSession?.canWrite() ?? false;
+      const writable = hasWriteAccess() ?? false;
       restore.disabled = !writable;
       if (clear) clear.disabled = !writable;
     } catch (error) {
@@ -303,7 +307,7 @@ export function createWorkspacePersistenceController({
       const message = event.data || {};
       if (message.type === 'flush-request') {
         if (
-          !workspaceSession?.canWrite() ||
+          !hasWriteAccess() ||
           (message.ownerTabId && message.ownerTabId !== workspaceSession.tabId)
         ) {
           return;
@@ -359,7 +363,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function restoreSelectedRecovery() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab cannot restore Recovery until it owns local autosave.', 'warning');
       return;
     }
@@ -404,7 +408,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function reloadSafely() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab does not own autosave. Take over before reloading safely.', 'warning');
       return;
     }
@@ -449,7 +453,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function checkpointCurrent(reason = 'pre-destructive-action') {
-    if (!ready || !workspaceSession?.canWrite()) return false;
+    if (!ready || !hasWriteAccess()) return false;
     clearTimer();
     const project = buildProjectSnapshot(true);
     await createWorkspaceRecoveryCheckpoint(project, {
@@ -461,7 +465,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function saveCheckpoint() {
-    if (!workspaceSession?.canWrite()) {
+    if (!hasWriteAccess()) {
       status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
       return;
     }
@@ -590,7 +594,7 @@ export function createWorkspacePersistenceController({
     try {
       if (hasExplicitStart) {
         const saved = await loadWorkspaceState();
-        if (saved && workspaceSession?.canWrite()) {
+        if (saved && hasWriteAccess()) {
           try {
             await createWorkspaceRecoveryCheckpoint(saved, {
               appCommit,
@@ -613,7 +617,25 @@ export function createWorkspacePersistenceController({
             return;
           }
         }
-        await initializeWorkspaceStart();
+        const started = await initializeWorkspaceStart();
+        if (!started) {
+          if (saved) {
+            loadProjectSnapshot(saved);
+            snapshotManager.importRecords(saved.snapshots || []);
+            syncBaseControls();
+            syncTransformInputs();
+            renderAll();
+            renderSnapshots();
+            fit3d();
+            restoredSaved = true;
+            status(
+              `Welcome action failed; restored local workspace "${normalizedProjectName()}".`,
+              'warning',
+            );
+          } else {
+            allowInitialAutosave = false;
+          }
+        }
       } else {
         const saved = await loadWorkspaceState();
         if (saved) {
@@ -637,7 +659,7 @@ export function createWorkspacePersistenceController({
       if (allowInitialAutosave && hasExplicitStart && !restoredSaved) {
         markDirty();
         schedule({ markDirty: false });
-      } else if (allowInitialAutosave && !hasExplicitStart && !restoredSaved && workspaceSession?.canWrite()) {
+      } else if (allowInitialAutosave && !hasExplicitStart && !restoredSaved && hasWriteAccess()) {
         markDirty();
         schedule({ markDirty: false });
       } else {
@@ -653,7 +675,7 @@ export function createWorkspacePersistenceController({
     const marker = parseMarker(event.newValue);
     remoteSaveId = marker?.saveId || null;
     syncSaveStatus();
-    if (!workspaceSession?.canWrite() && marker?.saveId && marker.saveId !== baseSaveId) {
+    if (!hasWriteAccess() && marker?.saveId && marker.saveId !== baseSaveId) {
       const dialog = $('workspaceConflictDialog'),
         copy = dialog?.querySelector('span');
       if (copy) {
@@ -676,13 +698,13 @@ export function createWorkspacePersistenceController({
       void reloadSafely();
     };
     $('workspaceRecoverySelect').onchange = (event) => {
-      $('workspaceRestoreBtn').disabled = !event.target.value || !workspaceSession?.canWrite();
+      $('workspaceRestoreBtn').disabled = !event.target.value || !hasWriteAccess();
     };
     $('workspaceRestoreBtn').onclick = () => {
       void restoreSelectedRecovery();
     };
     $('workspaceRecoveryClearBtn').onclick = async () => {
-      if (!workspaceSession?.canWrite()) {
+      if (!hasWriteAccess()) {
         status('This tab cannot clear local Recovery while another tab owns browser storage.', 'warning');
         return;
       }
