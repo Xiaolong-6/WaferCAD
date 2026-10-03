@@ -1141,15 +1141,9 @@ html.workstation-ui-v2.workstation-compact-ui #sectionPanel .section-view-tools 
 }
 
 html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section-layers {
-  width: 28px;
-  padding: 0;
-  font-size: 0;
-}
-
-html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section-layers::before {
-  content: '▤';
-  font-size: 12px;
-  line-height: 1;
+  width: auto;
+  padding-inline: 4px;
+  font-size: 9px;
 }
 
 html.workstation-ui-v2.workstation-compact-ui #sectionPanel .workstation-section-collapse {
