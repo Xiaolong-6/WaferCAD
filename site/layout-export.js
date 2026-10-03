@@ -325,10 +325,18 @@ function quantizeElements(elements, dbuMicron) {
         `Mask export path collapses at the selected ${dbuMicron} µm database unit.`,
       );
     }
+    const layer = Number(element.layer),
+      datatype = Number(element.datatype);
+    if (!Number.isSafeInteger(layer) || layer < 0) {
+      throw new Error(`Mask export layer is invalid: ${element.layer}.`);
+    }
+    if (!Number.isSafeInteger(datatype) || datatype < 0) {
+      throw new Error(`Mask export datatype is invalid: ${element.datatype}.`);
+    }
     out.push({
       ...element,
-      layer: Math.max(0, Math.min(32767, Math.round(Number(element.layer) || 0))),
-      datatype: Math.max(0, Math.min(32767, Math.round(Number(element.datatype) || 0))),
+      layer,
+      datatype,
       width: quantize(Math.abs(Number(element.width) || 0)),
       points,
     });
@@ -428,6 +436,11 @@ export function serializeGDS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
     ];
 
   for (const element of quantized) {
+    if (element.layer > 32767 || element.datatype > 32767) {
+      throw new Error(
+        `GDSII export cannot represent layer/datatype ${element.layer}/${element.datatype} as INT2.`,
+      );
+    }
     if (element.kind === 'polygon') {
       if (element.points.length + 1 > 8190) {
         throw new Error('A polygon is too large for one GDSII BOUNDARY record.');
