@@ -12,6 +12,8 @@ export function createProcessPanelController({
   formatLengthField,
   processTaskController,
   saveHistory,
+  beforeApply = async () => true,
+  recordProcessOperation = () => {},
   clearBaseRevertSnapshot,
   colorNewLayer,
   colorNewImplant,
@@ -196,6 +198,8 @@ export function createProcessPanelController({
           : type === 'implant'
             ? `Marking ${name} implant…`
             : `Depositing ${name}…`;
+
+    if (!(await beforeApply())) return;
   
     const areaRequest = {
       mode: areaMode,
@@ -235,6 +239,48 @@ export function createProcessPanelController({
       colorNewImplant(result.implantId);
       $('implantName').value = `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
     }
+
+    const areaLabel =
+        areaMode === 'whole' ? 'Whole face' : areaMode === 'invert' ? 'Invert mask' : 'Selected mask',
+      targetName = targetLayerId ? layerById(model, targetLayerId)?.name || 'layer' : '',
+      surfaceLabel =
+        type === 'etch' && roughSurface
+          ? roughSurface.morphology === 'pyramid'
+            ? 'Pyramid'
+            : 'Rough'
+          : '',
+      operationLabel =
+        type === 'etch'
+          ? `Etch ${formatLengthField(thickness)}${surfaceLabel ? ` · ${surfaceLabel}` : ''}`
+          : type === 'grow'
+            ? `Extend ${targetName} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${formatLengthField(thickness)}`
+            : type === 'implant'
+              ? `Implant ${name} · ${formatLengthField(thickness)}`
+              : `Deposit ${name} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${formatLengthField(thickness)}`;
+
+    recordProcessOperation({
+      kind: type,
+      label: operationLabel,
+      face: activeFace,
+      areaMode,
+      areaLabel,
+      thickness,
+      name: type === 'grow' ? targetName : name,
+      targetLayerId: targetLayerId || null,
+      growth: type === 'etch' || type === 'implant' ? null : params.growth,
+      surface:
+        type === 'etch' && roughSurface
+          ? {
+              morphology: roughSurface.morphology,
+              polarity: roughSurface.polarity,
+              featureSize: roughSurface.featureSize,
+              meanHeight: roughSurface.meanHeight,
+            }
+          : null,
+      implantTilt: type === 'implant' ? params.tilt : null,
+      maskSourceMode,
+      maskRoi: Boolean(maskRoi),
+    });
   
     renderAll();
   
