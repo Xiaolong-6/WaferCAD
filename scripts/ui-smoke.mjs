@@ -545,7 +545,7 @@ assert.equal(await historyBRow.getAttribute('data-head'), 'true');
 await historyARow.click();
 await historyRestorePage.waitForFunction(
   () =>
-    /Viewing Step .*History A/.test(
+    /Historical Step[\s\S]*History A/.test(
       document.querySelector('.snapshot-continuation-banner')?.textContent || '',
     ),
   null,
@@ -561,7 +561,7 @@ assert.equal(await historyRestorePage.locator('#undoBtn').isDisabled(), true);
 assert.equal(await historyRestorePage.locator('#redoBtn').isDisabled(), true);
 assert.match(
   await historyRestorePage.locator('.snapshot-continuation-banner').textContent(),
-  /Viewing Step .*History A/,
+  /Historical Step[\s\S]*History A/,
 );
 assert.ok(
   await historyRestorePage
@@ -681,6 +681,8 @@ await variantCStep.locator('.snapshot-more-trigger').click();
 await variantCStep
   .locator('.snapshot-more-popover button', { hasText: 'Add bookmark' })
   .click();
+assert.equal(await variantCStep.locator('.history-bookmarks-group').count(), 1);
+assert.equal(await variantCStep.locator('.history-bookmarks-group').getAttribute('open'), null);
 assert.equal(await variantCStep.locator('.history-bookmark-row').count(), 1);
 assert.equal(
   Number(await historyRestorePage.locator('#snapshotCount').textContent()),
@@ -712,6 +714,8 @@ assert.equal(
   'Detector path',
 );
 assert.match(await reloadedChild.textContent(), /Variant C/);
+assert.equal(await reloadedChild.locator('.history-bookmarks-group').count(), 1);
+assert.equal(await reloadedChild.locator('.history-bookmarks-group').getAttribute('open'), null);
 assert.equal(await reloadedChild.locator('.history-bookmark-row').count(), 1);
 
 const historyTreeGeometry = await historyRestorePage.evaluate(() => {
@@ -728,12 +732,24 @@ const historyTreeGeometry = await historyRestorePage.evaluate(() => {
     mainVariant: box('.history-variant[data-variant-id="main"]'),
     firstStep: box('.history-step-row'),
     childVariant: box('.history-variant:not([data-variant-id="main"])'),
+    banner: box('.snapshot-continuation-banner'),
+    returnButton: box('.snapshot-return-head'),
   };
 });
 assert.equal(historyTreeGeometry.viewportWidth, 1100);
 assert.equal(historyTreeGeometry.compact, false);
 assert.ok(historyTreeGeometry.panel.width >= 295, JSON.stringify(historyTreeGeometry));
 assert.ok(historyTreeGeometry.panel.left >= 40, JSON.stringify(historyTreeGeometry));
+if (historyTreeGeometry.banner && historyTreeGeometry.returnButton) {
+  assert.ok(
+    historyTreeGeometry.returnButton.width >= 90,
+    JSON.stringify(historyTreeGeometry),
+  );
+  assert.ok(
+    historyTreeGeometry.banner.width >= historyTreeGeometry.returnButton.width,
+    JSON.stringify(historyTreeGeometry),
+  );
+}
 for (const item of [
   historyTreeGeometry.mainVariant,
   historyTreeGeometry.firstStep,
