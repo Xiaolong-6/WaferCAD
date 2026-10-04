@@ -4,6 +4,7 @@ import {
   isotropicReleaseBenchmark,
   loadGeometryKernel,
   processBenchmark,
+  projectForBenchmark,
 } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
@@ -19,6 +20,8 @@ const {
 } = await import('../vector-geometry.js');
 const { electricalRegionSolids, extrusionGroups, sectionSlices } =
   await import('../model-view-geometry.js');
+const { prepareProjectForStorage } = await import('../project-io.js');
+const { migrateProjectFile } = await import('../project-schema.js');
 
 function stackAt(model, x, y = 0) {
   return model.regions.find((r) => pointInMulti([x, y], r.geom))?.stack || [];
@@ -262,6 +265,22 @@ test('literature-scale isotropic release produces a suspended silica microdisk i
   assert.ok(
     hubIntervals.three.some(([layerId, z0, z1]) => layerId === 'base' && z1 >= 40 - 1e-9),
     '3D must keep the central silicon support at the oxide interface',
+  );
+});
+
+test('released microdisk remains valid through project migration and storage packing', async () => {
+  const benchmark = await isotropicReleaseBenchmark(),
+    project = migrateProjectFile(projectForBenchmark(benchmark)),
+    stored = prepareProjectForStorage(project);
+  assert.equal(stored.version, project.version);
+  assert.ok(stored.model.regions.length > 0);
+  assert.ok(
+    stored.model.regions.some((region) => {
+      const oxide = region.stack.find((segment) => segment.layerId === benchmark.oxideLayerId),
+        silicon = region.stack.find((segment) => segment.layerId === 'base');
+      return oxide && silicon && oxide.z0 - silicon.z1 > 10;
+    }),
+    'packed project must retain the physical release cavity',
   );
 });
 
