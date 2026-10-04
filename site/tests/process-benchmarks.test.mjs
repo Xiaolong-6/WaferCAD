@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
+import {
+  isotropicReleaseBenchmark,
+  loadGeometryKernel,
+  processBenchmark,
+} from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { applyOperation, baseCoverageState, createModel, surfaceZ } = await import('../model.js');
@@ -195,6 +199,68 @@ test('Electrical Region follows current material and is clipped by later Etch', 
   assert.equal(
     solids.some((solid) => pointInMulti([0, 0], solid.polys)),
     false,
+  );
+});
+
+test('literature-scale isotropic release produces a suspended silica microdisk in Section and 3D', async () => {
+  const benchmark = await isotropicReleaseBenchmark(),
+    { model, oxideLayerId, section, probes } = benchmark,
+    ringStack = stackAt(model, probes.ring[0], probes.ring[1]),
+    hubStack = stackAt(model, probes.hub[0], probes.hub[1]),
+    exposedStack = stackAt(model, probes.exposed[0], probes.exposed[1]),
+    ringOxide = ringStack.find((segment) => segment.layerId === oxideLayerId),
+    ringSi = ringStack.find((segment) => segment.layerId === 'base'),
+    hubOxide = hubStack.find((segment) => segment.layerId === oxideLayerId),
+    hubSi = hubStack.find((segment) => segment.layerId === 'base'),
+    exposedSi = exposedStack.find((segment) => segment.layerId === 'base');
+
+  assert.ok(ringOxide && ringSi, 'suspended ring must retain both oxide and lower silicon');
+  assert.ok(ringOxide.z0 - ringSi.z1 > 10, 'released ring must contain a true air gap');
+  assert.ok(hubOxide && hubSi, 'central support must retain oxide on silicon');
+  assert.ok(
+    Math.abs(hubOxide.z0 - hubSi.z1) < 1e-9,
+    'central support must remain mechanically attached to its silicon pedestal',
+  );
+  assert.ok(exposedSi && exposedSi.z1 < 10, 'open silicon must be etched deeply by the release');
+
+  for (let i = 0; i < model.regions.length; i++) {
+    for (let j = i + 1; j < model.regions.length; j++) {
+      assert.equal(
+        isEmpty(intersection(model.regions[i].geom, model.regions[j].geom)),
+        true,
+        'release must preserve non-overlapping XY partitions',
+      );
+    }
+  }
+
+  const slices = sectionSlices(model, section.a, section.b),
+    extrusions = extrusionGroups(model),
+    intervalsAt = (x) => {
+      const t = (x - section.a[0]) / (section.b[0] - section.a[0]);
+      return {
+        section: slices
+          .filter((slice) => t > slice.t0 + 1e-9 && t < slice.t1 - 1e-9)
+          .map((slice) => [slice.layerId, slice.z0, slice.z1])
+          .sort(),
+        three: extrusions
+          .filter((solid) => pointInMulti([x, 0], solid.polys))
+          .map((solid) => [solid.layerId, solid.z0, solid.z1])
+          .sort(),
+      };
+    };
+
+  const ringIntervals = intervalsAt(probes.ring[0]),
+    hubIntervals = intervalsAt(probes.hub[0]);
+  assert.deepEqual(ringIntervals.section, ringIntervals.three);
+  assert.deepEqual(hubIntervals.section, hubIntervals.three);
+  assert.ok(
+    ringIntervals.three.some(([layerId]) => layerId === oxideLayerId) &&
+      ringIntervals.three.some(([layerId]) => layerId === 'base'),
+    '3D must contain the suspended oxide and the lower silicon as separate solids',
+  );
+  assert.ok(
+    hubIntervals.three.some(([layerId, z0, z1]) => layerId === 'base' && z1 >= 40 - 1e-9),
+    '3D must keep the central silicon support at the oxide interface',
   );
 });
 
