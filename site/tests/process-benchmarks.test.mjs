@@ -13,7 +13,8 @@ const {
   isEmpty,
   unionGeometries,
 } = await import('../vector-geometry.js');
-const { extrusionGroups, sectionSlices } = await import('../model-view-geometry.js');
+const { electricalRegionSolids, extrusionGroups, sectionSlices } =
+  await import('../model-view-geometry.js');
 
 function stackAt(model, x, y = 0) {
   return model.regions.find((r) => pointInMulti([x, y], r.geom))?.stack || [];
@@ -130,6 +131,51 @@ for (const face of ['front', 'back']) {
     });
   }
 }
+
+test('Electrical Region follows current material and is clipped by later Etch', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const marked = applyOperation(model, {
+    type: 'electrical',
+    name: 'Al2O3-induced p inversion',
+    thickness: 2,
+    face: 'front',
+    area: rectMulti(8, 8),
+    electricalRegionType: 'p-inversion',
+    electricalRegionSource: 'induced',
+  });
+  assert.equal(marked.changed, true);
+  assert.ok(marked.electricalRegionId);
+  assert.equal(model.electricalRegions.length, 1);
+
+  let solids = electricalRegionSolids(model);
+  assert.equal(solids.length, 1);
+  assert.equal(solids[0].outerZ, 5);
+  assert.equal(solids[0].innerZ, 3);
+  assert.equal(solids[0].regionType, 'p-inversion');
+  assert.equal(solids[0].source, 'induced');
+
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 1,
+    face: 'front',
+    area: rectMulti(4, 4),
+  });
+  solids = electricalRegionSolids(model);
+  assert.ok(solids.some((solid) => solid.outerZ === 4 && solid.innerZ === 3));
+  assert.ok(solids.some((solid) => solid.outerZ === 5 && solid.innerZ === 3));
+
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 3,
+    face: 'front',
+    area: rectMulti(4, 4),
+  });
+  solids = electricalRegionSolids(model);
+  assert.equal(
+    solids.some((solid) => pointInMulti([0, 0], solid.polys)),
+    false,
+  );
+});
 
 test('material-selective Etch removes an exposed target and stops on the next material', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
