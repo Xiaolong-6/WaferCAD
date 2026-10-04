@@ -609,6 +609,20 @@ function splitByArea(model, area, mutator, merge = true) {
   model.regions = merge ? mergeRegions(model, next) : next;
 }
 
+function exposedLayerPatches(model, active, face, layerId) {
+  return exposedSurfaceGroups(model, {
+    face,
+    clip: active,
+    layerId,
+    preserveOppositeZ: true,
+  }).map(({ z, oppositeZ, appearance, geom }) => ({
+    z,
+    oppositeZ,
+    appearance,
+    geom,
+  }));
+}
+
 function conformalSourcePatchesBeforeCoating(model, active, face, amount) {
   // Capture the physical exposed surfaces before the new film is clipped by a
   // process mask. Sidewalls must originate from real topography/step
