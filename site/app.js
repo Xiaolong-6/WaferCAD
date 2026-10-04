@@ -1128,7 +1128,6 @@ const {
   openLayoutFile,
   openProjectFile,
   openBundledExample,
-  openVisualizationExample,
 } = projectController;
 
 async function ensureWritableProcessBranch() {
@@ -1498,7 +1497,6 @@ const { initializeWorkspaceStart } = createStartupController({
   openLayoutFile,
   openProjectFile,
   openBundledExample,
-  openVisualizationExample,
   status,
 });
 
