@@ -1104,6 +1104,93 @@ const implantOrder = await implantLegendRow.locator('.implant-legend-row').evalu
   [...row.children].map((child) => child.className),
 );
 assert.match(String(implantOrder.at(-1)), /legend-visibility/);
+assert.equal(await implantLegendRow.locator('.legend-profile-trigger').textContent(), '∿');
+await implantLegendRow.locator('.legend-profile-trigger').click();
+assert.equal(await implantLegendRow.locator('.legend-profile-editor').isVisible(), true);
+assert.equal(
+  await implantLegendRow.locator('.legend-profile-option.active').textContent(),
+  'Follow offset',
+);
+await mkdir(new URL('../test-results/product-review/', import.meta.url), { recursive: true });
+await page.waitForFunction(
+  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-follow.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
+await page.locator('#threePanel .three-opacity-control > summary').click();
+await page.locator('#threeOpacityRange').fill('0.5');
+await page.locator('#threeOpacityRange').dispatchEvent('input');
+await page.locator('#threePanel .three-opacity-control > summary').click();
+await page.waitForFunction(
+  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.locator('#threeMaxBtn').click();
+await page.waitForTimeout(250);
+await page.waitForFunction(
+  () =>
+    document.body.classList.contains('view-maximized') &&
+    document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-follow-3d-transparent.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
+await page.locator('#threeMaxBtn').click();
+await implantLegendRow.getByRole('button', { name: 'Smooth', exact: true }).click();
+assert.equal(await implantLegendRow.locator('.legend-profile-trigger').textContent(), '—');
+await implantLegendRow.locator('.legend-profile-trigger').click();
+assert.equal(
+  await implantLegendRow.locator('.legend-profile-option.active').textContent(),
+  'Smooth',
+);
+await page.waitForFunction(
+  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-smooth.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
+await page.locator('#threeMaxBtn').click();
+await page.waitForTimeout(250);
+await page.waitForFunction(
+  () =>
+    document.body.classList.contains('view-maximized') &&
+    document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-smooth-3d-transparent.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
+await page.locator('#threeMaxBtn').click();
+await page.locator('#threePanel .three-opacity-control > summary').click();
+await page.locator('#threeOpacityRange').fill('1');
+await page.locator('#threeOpacityRange').dispatchEvent('input');
+await page.locator('#threePanel .three-opacity-control > summary').click();
+await implantLegendRow.getByRole('button', { name: 'Follow offset', exact: true }).click();
 await implantLegendRow.locator('.implant-gradient-chip').click();
 assert.equal(await implantLegendRow.locator('.legend-palette-chip').count(), 20);
 await implantLegendRow.locator('.legend-palette-chip').nth(3).click();
@@ -1128,6 +1215,7 @@ assert.equal(implantSaved.model.implants.length, 1);
 assert.equal(implantSaved.model.implants[0].name, 'UI implant renamed');
 assert.equal(implantSaved.model.implants[0].thickness, 0.6);
 assert.equal(implantSaved.model.implants[0].tilt, 7);
+assert.equal(implantSaved.model.implants[0].depthProfile, 'follow');
 assert.equal(implantSaved.model.implants[0].visible, true);
 assert.equal('border' in implantSaved.model.implants[0], false);
 assert.equal(implantSaved.display.sectionShowBorders, true);
@@ -1158,6 +1246,18 @@ await page.waitForFunction(() =>
 const electricalLegendRow = page.locator('#layerLegend .electrical-row-wrap').first();
 assert.equal(await electricalLegendRow.count(), 1);
 assert.equal(await electricalLegendRow.locator('.legend-visibility').isChecked(), true);
+assert.equal(await electricalLegendRow.locator('.legend-profile-trigger').textContent(), '∿');
+await electricalLegendRow.locator('.legend-profile-trigger').click();
+await electricalLegendRow.getByRole('button', { name: 'Smooth', exact: true }).click();
+assert.equal(await electricalLegendRow.locator('.legend-profile-trigger').textContent(), '—');
+await electricalLegendRow.locator('.legend-profile-trigger').click();
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/electrical-depth-profile-smooth.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
 await electricalLegendRow.locator('.legend-name').fill('UI electrical renamed');
 await electricalLegendRow.locator('.legend-name').press('Tab');
 await page
@@ -1185,6 +1285,7 @@ assert.equal(electricalSaved.model.electricalRegions[0].name, 'UI electrical ren
 assert.equal(electricalSaved.model.electricalRegions[0].regionType, 'p-inversion');
 assert.equal(electricalSaved.model.electricalRegions[0].source, 'induced');
 assert.equal(electricalSaved.model.electricalRegions[0].thickness, 0.2);
+assert.equal(electricalSaved.model.electricalRegions[0].depthProfile, 'smooth');
 assert.equal(electricalSaved.model.implants.length, 1);
 await openFunctionPanel(page, 'process');
 
@@ -1385,6 +1486,47 @@ assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
 await sectionScaleButton.click();
 assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
+// Section Detail ROI keeps the global section visible while re-rendering a local
+// region at higher effective resolution. The inset can be moved out of the way.
+await page.locator('#sectionDetailRoiBtn').click();
+const sectionBox = await page.locator('#sectionCanvas').boundingBox();
+assert.ok(sectionBox);
+await page.mouse.move(
+  sectionBox.x + sectionBox.width * 0.34,
+  sectionBox.y + sectionBox.height * 0.18,
+);
+await page.mouse.down();
+await page.mouse.move(
+  sectionBox.x + sectionBox.width * 0.54,
+  sectionBox.y + sectionBox.height * 0.42,
+  { steps: 5 },
+);
+await page.mouse.up();
+await page.locator('#sectionDetailRoiOverlay').waitFor({ state: 'visible' });
+await page.locator('#sectionDetailInset').waitFor({ state: 'visible' });
+assert.ok(
+  (await canvasInkFraction(page, '#sectionDetailInsetCanvas')) > 0.01,
+  'Section Detail inset rendered blank',
+);
+const insetBefore = await page.locator('#sectionDetailInset').boundingBox();
+const insetHeadBox = await page.locator('#sectionDetailInsetHead').boundingBox();
+assert.ok(insetBefore && insetHeadBox);
+await page.mouse.move(insetHeadBox.x + 20, insetHeadBox.y + insetHeadBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(insetHeadBox.x - 45, insetHeadBox.y + 42, { steps: 4 });
+await page.mouse.up();
+const insetAfter = await page.locator('#sectionDetailInset').boundingBox();
+assert.ok(insetAfter);
+assert.ok(
+  Math.abs(insetAfter.x - insetBefore.x) > 4 || Math.abs(insetAfter.y - insetBefore.y) > 4,
+  'Section Detail inset did not move',
+);
+await page.locator('#sectionDetailShapeBtn').click();
+assert.equal(
+  await page.locator('#sectionDetailRoiOverlay').evaluate((el) => el.classList.contains('circle')),
+  true,
+);
+
 // Conformal Extend reuses the Deposit coating kernel with the existing layer id.
 await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="grow"]').click();
@@ -1405,6 +1547,9 @@ const extendDownload = await extendDownloadPromise;
 const extendSavedPath = await extendDownload.path();
 assert.ok(extendSavedPath);
 const extendSaved = JSON.parse(await readFile(extendSavedPath, 'utf8'));
+assert.equal(extendSaved.display.sectionDetailRoi?.shape, 'circle');
+assert.ok(extendSaved.display.sectionDetailRoi?.width > 0);
+assert.ok(extendSaved.display.sectionDetailRoi?.height > 0);
 const extendStackAt = (x) =>
   extendSaved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
 assert.deepEqual(

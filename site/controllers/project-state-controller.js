@@ -2,6 +2,7 @@ import { createModel } from '../model.js';
 import { CURRENT_PROJECT_VERSION, validateProjectFile } from '../project-schema.js';
 import { normalizeMaskRoi } from '../mask-roi-geometry.js';
 import { normalizeRoi } from '../roi-editor.js';
+import { normalizeSectionDetailRoi } from '../section-detail-roi.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
 
@@ -66,6 +67,7 @@ export function createProjectStateController({
         sectionScaleMode: state.sectionScaleMode,
         sectionShowBorders: state.sectionShowBorders,
         sectionCollapse: state.sectionCollapse,
+        sectionDetailRoi: state.sectionDetailRoi,
       },
     };
 
@@ -104,6 +106,7 @@ export function createProjectStateController({
         ? project.display.sectionScaleMode
         : 'auto',
       sectionShowBorders = Boolean(project.display?.sectionShowBorders),
+      sectionDetailRoi = normalizeSectionDetailRoi(project.display?.sectionDetailRoi),
       sectionCollapse =
         project.display?.sectionCollapse &&
         Number.isFinite(Number(project.display.sectionCollapse.top)) &&
@@ -144,6 +147,7 @@ export function createProjectStateController({
       threeShowBorders,
       sectionScaleMode,
       sectionShowBorders,
+      sectionDetailRoi,
       sectionCollapse,
       ...(project.name ? { projectName: project.name } : {}),
       planViews: project.planViews,
@@ -176,6 +180,7 @@ export function createProjectStateController({
       projectName: 'Untitled',
       sectionScaleMode: 'auto',
       sectionShowBorders: previous.sectionShowBorders,
+      sectionDetailRoi: null,
       sectionCollapse: null,
       xyDisplayUnit: previous.xyDisplayUnit,
       activeStructurePalette: previous.activeStructurePalette,

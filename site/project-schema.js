@@ -326,6 +326,12 @@ function validateModel(model, budget) {
       }
       assertLength(implant.thickness, `${path}.thickness`, { min: 1e-12 });
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
+      if (
+        implant.depthProfile != null &&
+        !['follow', 'smooth'].includes(implant.depthProfile)
+      ) {
+        fail(`${path}.depthProfile`, 'must be follow or smooth.');
+      }
       if (typeof implant.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
 
       const patches = assertArray(implant.patches, `${path}.patches`, LIMITS.implantPatches);
@@ -386,6 +392,12 @@ function validateModel(model, budget) {
       }
       if (!allowedSources.has(electrical.source)) {
         fail(`${path}.source`, 'is not supported.');
+      }
+      if (
+        electrical.depthProfile != null &&
+        !['follow', 'smooth'].includes(electrical.depthProfile)
+      ) {
+        fail(`${path}.depthProfile`, 'must be follow or smooth.');
       }
       if (typeof electrical.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
 
@@ -665,6 +677,24 @@ function validateDisplay(display) {
   }
   if (display.sectionShowBorders != null && typeof display.sectionShowBorders !== 'boolean') {
     fail('display.sectionShowBorders', 'must be boolean.');
+  }
+  if (display.sectionDetailRoi != null) {
+    const roi = assertObject(display.sectionDetailRoi, 'display.sectionDetailRoi');
+    assertFinite(roi.x, 'display.sectionDetailRoi.x', { min: 0, max: 1 });
+    assertFinite(roi.y, 'display.sectionDetailRoi.y', { min: 0, max: 1 });
+    assertFinite(roi.width, 'display.sectionDetailRoi.width', { min: 0, max: 1 });
+    assertFinite(roi.height, 'display.sectionDetailRoi.height', { min: 0, max: 1 });
+    if (
+      !(roi.width > 0) ||
+      !(roi.height > 0) ||
+      roi.x + roi.width > 1.000001 ||
+      roi.y + roi.height > 1.000001
+    ) {
+      fail('display.sectionDetailRoi', 'must stay inside the Section canvas.');
+    }
+    if (roi.shape != null && !['rect', 'circle'].includes(roi.shape)) {
+      fail('display.sectionDetailRoi.shape', 'must be rect or circle.');
+    }
   }
   if (display.sectionCollapse != null) {
     const collapse = assertObject(display.sectionCollapse, 'display.sectionCollapse');

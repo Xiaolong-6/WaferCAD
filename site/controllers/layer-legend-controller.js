@@ -8,7 +8,9 @@ import {
   renameElectricalRegion,
   renameImplant,
   renameLayer,
+  setElectricalRegionDepthProfile,
   setElectricalRegionVisible,
+  setImplantDepthProfile,
   setImplantVisible,
 } from '../model.js';
 
@@ -223,6 +225,68 @@ export function createLayerLegendController({
     }
   }
 
+  function buildDepthProfileEditor(item, setProfile, kindLabel) {
+    const mode = item.depthProfile === 'smooth' ? 'smooth' : 'follow',
+      trigger = root.createElement('button'),
+      panel = root.createElement('div'),
+      label = root.createElement('span'),
+      options = root.createElement('div');
+
+    trigger.type = 'button';
+    trigger.className = 'legend-profile-trigger';
+    trigger.textContent = mode === 'follow' ? '∿' : '—';
+    trigger.title =
+      mode === 'follow'
+        ? 'Depth profile: Follow offset'
+        : 'Depth profile: Smooth';
+    trigger.setAttribute('aria-label', `Edit depth profile for ${item.name}`);
+    trigger.setAttribute('aria-expanded', 'false');
+
+    panel.className = 'legend-profile-editor';
+    panel.hidden = true;
+    label.className = 'legend-profile-label';
+    label.textContent = 'Depth profile';
+    options.className = 'legend-profile-options';
+
+    for (const [value, text, title] of [
+      [
+        'follow',
+        'Follow offset',
+        'Inner boundary follows the same surface morphology at the selected depth.',
+      ],
+      [
+        'smooth',
+        'Smooth',
+        'Keep the inner boundary planar while the entry surface still follows morphology.',
+      ],
+    ]) {
+      const button = root.createElement('button');
+      button.type = 'button';
+      button.className = 'legend-profile-option';
+      button.textContent = text;
+      button.title = title;
+      button.classList.toggle('active', mode === value);
+      button.setAttribute('aria-pressed', String(mode === value));
+      button.onclick = () => {
+        if (!setProfile(getModel(), item.id, value)) return;
+        onChanged();
+        renderLayerLegend();
+        renderSection();
+        renderThree();
+      };
+      options.append(button);
+    }
+
+    trigger.onclick = () => {
+      panel.hidden = !panel.hidden;
+      trigger.setAttribute('aria-expanded', String(!panel.hidden));
+    };
+
+    panel.title = `${kindLabel} depth-boundary display`;
+    panel.append(label, options);
+    return { trigger, panel };
+  }
+
   function renderLayerLegend() {
     const host = $('layerLegend'),
       model = getModel();
@@ -432,8 +496,14 @@ export function createLayerLegendController({
         renderAll();
       };
 
-      main.append(color, name, visible);
-      row.append(main);
+      const profileEditor = buildDepthProfileEditor(
+        implant,
+        setImplantDepthProfile,
+        'Implant',
+      );
+
+      main.append(color, name, profileEditor.trigger, visible);
+      row.append(main, profileEditor.panel);
 
       if (getOpenLayerPaletteId() === implant.id) {
         const grid = root.createElement('div');
@@ -507,8 +577,14 @@ export function createLayerLegendController({
         renderAll();
       };
 
-      main.append(color, name, visible);
-      row.append(main);
+      const profileEditor = buildDepthProfileEditor(
+        electrical,
+        setElectricalRegionDepthProfile,
+        'Electrical Region',
+      );
+
+      main.append(color, name, profileEditor.trigger, visible);
+      row.append(main, profileEditor.panel);
 
       if (getOpenLayerPaletteId() === electrical.id) {
         const grid = root.createElement('div');

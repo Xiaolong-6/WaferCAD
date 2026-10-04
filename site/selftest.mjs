@@ -1033,6 +1033,25 @@ const invalidCollapseProject = structuredClone(validProject);
 invalidCollapseProject.display.sectionCollapse = { top: -9.5, bottom: -0.5 };
 assert.throws(() => validateProjectFile(invalidCollapseProject), /sectionCollapse/);
 
+const detailRoiProject = structuredClone(validProject);
+detailRoiProject.display.sectionDetailRoi = {
+  x: 0.2,
+  y: 0.15,
+  width: 0.3,
+  height: 0.25,
+  shape: 'circle',
+};
+assert.equal(validateProjectFile(detailRoiProject), detailRoiProject);
+const invalidDetailRoiProject = structuredClone(validProject);
+invalidDetailRoiProject.display.sectionDetailRoi = {
+  x: 0.9,
+  y: 0.1,
+  width: 0.2,
+  height: 0.2,
+  shape: 'rect',
+};
+assert.throws(() => validateProjectFile(invalidDetailRoiProject), /sectionDetailRoi/);
+
 const roughProject = structuredClone(validProject);
 roughProject.model.regions[0].stack[0].frontSurface = {
   kind: 'rough',
@@ -1081,8 +1100,12 @@ assert.equal(implantModel.implants.length, 1);
 assert.equal(implantModel.implants[0].name, 'B marker');
 assert.equal(implantModel.implants[0].thickness, 1.25);
 assert.equal(implantModel.implants[0].tilt, 12);
+assert.equal(implantModel.implants[0].depthProfile, 'follow');
 assert.equal(implantModel.implants[0].visible, true);
 assert.ok(implantModel.implants[0].patches.length > 0);
+assert.equal(modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'smooth'), true);
+assert.equal(implantSectionBands(implantModel, [-8, 0], [8, 0])[0]?.depthProfile, 'smooth');
+assert.equal(modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'follow'), true);
 assert.equal(implantModel.regions.length, 1);
 assert.equal(implantSolids(implantModel)[0]?.surfaceExposed, true);
 
@@ -1130,7 +1153,36 @@ const roughImplantResult = applyOperation(roughImplantModel, {
   tilt: 0,
 });
 assert.equal(roughImplantResult.changed, true);
+assert.equal(roughImplantModel.implants[0].depthProfile, 'follow');
 assert.equal(roughImplantModel.implants[0].patches[0].surfaceAppearance?.kind, 'rough');
+assert.equal(implantSectionBands(roughImplantModel, [-8, 0], [8, 0])[0]?.depthProfile, 'follow');
+
+const electricalProfileModel = createModel({
+  shape: 'rect',
+  width: 20,
+  height: 20,
+  thickness: 10,
+});
+const electricalProfileResult = applyOperation(electricalProfileModel, {
+  type: 'electrical',
+  name: 'Field marker',
+  thickness: 0.4,
+  face: 'front',
+  area: rectMulti(20, 20),
+  electricalRegionType: 'p-inversion',
+  electricalRegionSource: 'induced',
+});
+assert.equal(electricalProfileResult.changed, true);
+assert.equal(electricalProfileModel.electricalRegions[0].depthProfile, 'follow');
+assert.equal(
+  modelApi.setElectricalRegionDepthProfile(
+    electricalProfileModel,
+    electricalProfileModel.electricalRegions[0].id,
+    'smooth',
+  ),
+  true,
+);
+assert.equal(electricalProfileModel.electricalRegions[0].depthProfile, 'smooth');
 
 const etchedImplantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(etchedImplantModel, {

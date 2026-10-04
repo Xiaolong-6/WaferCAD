@@ -206,6 +206,14 @@ export function setElectricalRegionVisible(model, id, visible) {
   return true;
 }
 
+export function setElectricalRegionDepthProfile(model, id, profile) {
+  const region = electricalRegionById(model, id);
+  if (!region || !['follow', 'smooth'].includes(profile)) return false;
+  region.depthProfile = profile;
+  model.revision++;
+  return true;
+}
+
 export function renameImplant(model, id, name) {
   const implant = implantById(model, id);
   if (!implant) return false;
@@ -228,6 +236,14 @@ export function setImplantVisible(model, id, visible) {
   const implant = implantById(model, id);
   if (!implant) return false;
   implant.visible = Boolean(visible);
+  model.revision++;
+  return true;
+}
+
+export function setImplantDepthProfile(model, id, profile) {
+  const implant = implantById(model, id);
+  if (!implant || !['follow', 'smooth'].includes(profile)) return false;
+  implant.depthProfile = profile;
   model.revision++;
   return true;
 }
@@ -1001,6 +1017,7 @@ function applyOperationImpl(
           face,
           thickness: amount,
           tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
+          depthProfile: 'follow',
           visible: true,
           patches,
         };
@@ -1042,6 +1059,7 @@ function applyOperationImpl(
         thickness: amount,
         regionType: electricalRegionType,
         source: electricalRegionSource,
+        depthProfile: 'follow',
         visible: true,
         patches,
       };

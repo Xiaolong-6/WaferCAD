@@ -132,6 +132,7 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
             color: item.color,
             face: item.face,
             thickness,
+            depthProfile: item.depthProfile === 'smooth' ? 'smooth' : 'follow',
             tilt: kind === 'implant' ? Number(item.tilt) || 0 : 0,
             ...(kind === 'electrical'
               ? {

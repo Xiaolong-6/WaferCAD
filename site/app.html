@@ -1066,6 +1066,15 @@
               >
                 Border
               </button>
+              <button
+                id="sectionDetailRoiBtn"
+                class="mini-btn"
+                type="button"
+                aria-pressed="false"
+                title="Magnify a local area of Section A–B"
+              >
+                Detail
+              </button>
               <details class="export-control">
                 <summary class="mini-btn" title="Export Section A–B">Export</summary>
                 <div class="export-popover view-popover-surface">
@@ -1173,6 +1182,69 @@
                   </div>
                 </div>
               </div>
+            </div>
+            <div
+              id="sectionDetailRoiOverlay"
+              class="section-detail-roi-overlay"
+              aria-label="Section detail ROI"
+              hidden
+            >
+              <button
+                class="section-detail-roi-handle nw"
+                type="button"
+                data-detail-handle="nw"
+                aria-label="Resize detail ROI from top left"
+              ></button>
+              <button
+                class="section-detail-roi-handle ne"
+                type="button"
+                data-detail-handle="ne"
+                aria-label="Resize detail ROI from top right"
+              ></button>
+              <button
+                class="section-detail-roi-handle sw"
+                type="button"
+                data-detail-handle="sw"
+                aria-label="Resize detail ROI from bottom left"
+              ></button>
+              <button
+                class="section-detail-roi-handle se"
+                type="button"
+                data-detail-handle="se"
+                aria-label="Resize detail ROI from bottom right"
+              ></button>
+            </div>
+            <div id="sectionDetailInset" class="section-detail-inset" hidden>
+              <div
+                id="sectionDetailInsetHead"
+                class="section-detail-inset-head"
+                title="Drag to reposition; double-click to reset"
+              >
+                <div>
+                  <strong>Detail</strong>
+                  <span id="sectionDetailZoom">×1</span>
+                </div>
+                <div>
+                  <button
+                    id="sectionDetailShapeBtn"
+                    class="section-detail-inset-btn"
+                    type="button"
+                    title="Use circular ROI"
+                  >
+                    □
+                  </button>
+                  <button
+                    id="sectionDetailCloseBtn"
+                    class="section-detail-inset-btn"
+                    type="button"
+                    aria-label="Hide Section detail ROI"
+                    title="Hide detail ROI"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <canvas id="sectionDetailInsetCanvas" aria-label="Magnified Section detail"></canvas>
             </div>
             <aside id="layerLegend" class="layer-legend" aria-label="Structure layers"></aside>
           </div>

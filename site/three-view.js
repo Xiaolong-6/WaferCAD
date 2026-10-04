@@ -1432,6 +1432,13 @@ export function createThreeView({
       for (const implant of implantSolids(model, clip)) {
         if (!showInternalImplants && !implant.surfaceExposed) continue;
 
+        const outerNormal = implant.face === 'front' ? 1 : -1,
+          appearance =
+            implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
+          followDepthProfile = Boolean(
+            appearance && implant.depthProfile !== 'smooth',
+          );
+
         if (showInternalImplants) {
           const implantState = {
               opacity: opacity * 0.18,
@@ -1439,7 +1446,14 @@ export function createThreeView({
               depthTest: true,
               depthWrite: false,
             },
-            bodyGeometry = shearImplantGeometry(geometryFromSolid(implant), implant),
+            bodyGeometry = shearImplantGeometry(
+              geometryFromSolid(
+                followDepthProfile
+                  ? { slabs: implant.slabs, caps: [] }
+                  : implant,
+              ),
+              implant,
+            ),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: implant.color || '#D65A6F',
               roughness: 0.7,
@@ -1455,13 +1469,39 @@ export function createThreeView({
             body.name = implant.name || implant.implantId || 'Implant';
             implantInternalCount++;
           }
+
+          if (followDepthProfile) {
+            roughTasks.push({
+              kind: 'implant-depth',
+              cap: {
+                type: 'cap',
+                layerId: implant.layerId || implant.implantId || 'implant',
+                z: implant.innerZ,
+                normal: -outerNormal,
+                polys: implant.polys,
+                appearance,
+                profileNormal: outerNormal,
+                buried: true,
+                solidIndex: 0,
+              },
+              layer: { color: implant.color || '#D65A6F' },
+              state: {
+                opacity: opacity * 0.24,
+                transparent: true,
+                depthTest: true,
+                depthWrite: false,
+              },
+              sortBias: 31,
+              closeToIdeal: false,
+              includeBorders: false,
+              implant,
+              name: `${implant.name || implant.implantId || 'Implant'} depth boundary`,
+            });
+          }
         }
 
         implantSurfaceCount++;
-        const outerNormal = implant.face === 'front' ? 1 : -1,
-          appearance =
-            implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
-          capState = {
+        const capState = {
             opacity: opacity * 0.3,
             transparent: true,
             depthTest: true,
@@ -1524,6 +1564,15 @@ export function createThreeView({
       for (const electrical of electricalRegionSolids(model, clip)) {
         if (!showInternalElectrical && !electrical.surfaceExposed) continue;
 
+        const outerNormal = electrical.face === 'front' ? 1 : -1,
+          appearance =
+            electrical.surfaceAppearance?.kind === 'rough'
+              ? electrical.surfaceAppearance
+              : null,
+          followDepthProfile = Boolean(
+            appearance && electrical.depthProfile !== 'smooth',
+          );
+
         if (showInternalElectrical) {
           const electricalState = {
               opacity: opacity * 0.14,
@@ -1531,7 +1580,11 @@ export function createThreeView({
               depthTest: true,
               depthWrite: false,
             },
-            bodyGeometry = geometryFromSolid(electrical),
+            bodyGeometry = geometryFromSolid(
+              followDepthProfile
+                ? { slabs: electrical.slabs, caps: [] }
+                : electrical,
+            ),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
               roughness: 0.82,
@@ -1548,15 +1601,42 @@ export function createThreeView({
               electrical.name || electrical.electricalRegionId || 'Electrical Region';
             electricalRegionInternalCount++;
           }
+
+          if (followDepthProfile) {
+            roughTasks.push({
+              kind: 'electrical-depth',
+              cap: {
+                type: 'cap',
+                layerId:
+                  electrical.layerId ||
+                  electrical.electricalRegionId ||
+                  'electrical-region',
+                z: electrical.innerZ,
+                normal: -outerNormal,
+                polys: electrical.polys,
+                appearance,
+                profileNormal: outerNormal,
+                buried: true,
+                solidIndex: 0,
+              },
+              layer: { color: electrical.color || '#7A6FD0' },
+              state: {
+                opacity: opacity * 0.2,
+                transparent: true,
+                depthTest: true,
+                depthWrite: false,
+              },
+              sortBias: 35,
+              closeToIdeal: false,
+              includeBorders: false,
+              name:
+                `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} depth boundary`,
+            });
+          }
         }
 
         electricalRegionSurfaceCount++;
-        const outerNormal = electrical.face === 'front' ? 1 : -1,
-          appearance =
-            electrical.surfaceAppearance?.kind === 'rough'
-              ? electrical.surfaceAppearance
-              : null,
-          capState = {
+        const capState = {
             opacity: opacity * 0.24,
             transparent: true,
             depthTest: true,
