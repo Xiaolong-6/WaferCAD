@@ -658,7 +658,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
 }
 
 
-const ISOTROPIC_ETCH_SLICES = 32;
+const ISOTROPIC_ETCH_SLICES = 8;
 
 function removeLayerInterval(stack, targetLayerIds, z0, z1) {
   const targets = new Set((targetLayerIds || []).filter(Boolean));
