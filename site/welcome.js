@@ -307,6 +307,10 @@ globalThis.addEventListener('message', (event) => {
   if (event.data?.type === 'wafercad-preview-ready') {
     host?.classList.add('ready');
     host?.classList.remove('error');
+    frame.contentWindow?.postMessage(
+      { type: 'wafercad-preview-view', view: host?.dataset.view || 'main' },
+      globalThis.location.origin,
+    );
   } else if (event.data?.type === 'wafercad-preview-error') {
     host?.classList.add('error');
     host?.classList.remove('ready');
