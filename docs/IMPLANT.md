@@ -1,6 +1,6 @@
-# Experimental Implant structural marker
+# Implant structural annotation
 
-> **Status: experimental.** This feature is intentionally a structural/process-visualization primitive. It is not a dopant-physics or TCAD model and its output must not be interpreted as a predicted concentration profile.
+> **Scope.** Implant is a production structural/process-visualization primitive. It is not a dopant-physics or TCAD model and its output must not be interpreted as a predicted concentration profile.
 
 ## Purpose
 
@@ -53,9 +53,9 @@ implant
 
 This separation prevents an implant from being mistaken for deposited material and leaves room for a future scalar-field implementation without changing the material stack contract.
 
-## Experimental limitations
+## Modeling limits
 
-The v1 marker is intentionally lightweight.
+The current structural model is intentionally lightweight.
 
 - Later material operations do not model transport, diffusion, activation, or damage. They only geometrically clip the stored implant volume against the current material structure.
 - The stored patch geometry represents the exposed surface state at Apply time; later deposition does not create new implant above that original volume.

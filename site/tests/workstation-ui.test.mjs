@@ -25,11 +25,14 @@ test('workstation tool order keeps the continuous function flow', () => {
   ]);
 });
 
-test('workstation starts focused and restores an explicit remembered view', () => {
+test('workstation defaults wide screens to Overview and restores explicit remembered views', () => {
   assert.equal(preferredWorkstationViewMode(390), 'main');
   assert.equal(preferredWorkstationViewMode(820), 'main');
   assert.equal(preferredWorkstationViewMode(821), 'main');
-  assert.equal(preferredWorkstationViewMode(1440), 'main');
+  assert.equal(preferredWorkstationViewMode(1120), 'main');
+  assert.equal(preferredWorkstationViewMode(1121), 'overview');
+  assert.equal(preferredWorkstationViewMode(1440), 'overview');
+  assert.equal(preferredWorkstationViewMode(1440, 'main'), 'main');
   assert.equal(preferredWorkstationViewMode(1440, 'overview'), 'overview');
   assert.equal(preferredWorkstationViewMode(1440, 'split'), 'split');
   assert.equal(preferredWorkstationViewMode(1440, 'three'), 'three');

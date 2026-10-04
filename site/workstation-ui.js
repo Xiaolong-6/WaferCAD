@@ -15,11 +15,14 @@ export function getAdjacentToolName(current, direction, order = WORKSTATION_TOOL
 const WORKSTATION_VIEW_MODE_STORAGE_KEY = 'wafercad.workstation-view-mode.v1';
 const SINGLE_VIEW_MODES = new Set(['main', 'mask', 'three']);
 const DESKTOP_VIEW_MODES = new Set(['main', 'mask', 'three', 'overview', 'split']);
+const WIDE_OVERVIEW_MIN_WIDTH = 1121;
 
 export function preferredWorkstationViewMode(width, rememberedMode = '') {
-  const compact = Number(width) <= 820;
+  const numericWidth = Number(width),
+    compact = numericWidth <= 820;
   if (compact) return SINGLE_VIEW_MODES.has(rememberedMode) ? rememberedMode : 'main';
-  return DESKTOP_VIEW_MODES.has(rememberedMode) ? rememberedMode : 'main';
+  if (DESKTOP_VIEW_MODES.has(rememberedMode)) return rememberedMode;
+  return numericWidth >= WIDE_OVERVIEW_MIN_WIDTH ? 'overview' : 'main';
 }
 
 function storedWorkstationViewMode(winLike) {
@@ -133,6 +136,9 @@ export function createWorkstationUiController({ root = document, win = window } 
         'aria-pressed',
         String(toolName === name && refs.toolPanel.classList.contains('open')),
       );
+    }
+    for (const [toolName, section] of refs.toolSections || []) {
+      section.classList.toggle('workstation-section-active', toolName === name);
     }
     if (refs.toolPosition) refs.toolPosition.textContent = TOOL_META[name]?.label || '';
     updateRailAnchor(name);

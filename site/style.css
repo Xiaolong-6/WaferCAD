@@ -1313,10 +1313,6 @@ canvas {
     white-space: nowrap;
   }
 
-  .process-mode .experimental-tag {
-    display: none;
-  }
-
   .param-grid-2 {
     grid-template-columns: minmax(0, 1fr);
     gap: 3px;
@@ -3267,17 +3263,6 @@ summary:focus-visible {
     top: auto;
     width: auto;
   }
-}
-
-.experimental-tag {
-  font-size: 7px;
-  line-height: 1;
-  padding: 1px 3px;
-  border-radius: 3px;
-  background: #fff0d8;
-  color: #8a5a12;
-  border: 1px solid #efd09a;
-  font-weight: 750;
 }
 .inline-check {
   display: inline-flex !important;
