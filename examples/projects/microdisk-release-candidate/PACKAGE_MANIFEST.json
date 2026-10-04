@@ -47,5 +47,10 @@
     "minimum_sampled_air_gap_um": 13.5,
     "maximum_sampled_air_gap_um": 36,
     "center_si_oxide_contact_z_um": 40
+  },
+  "welcome_preview": {
+    "source": "WaferCAD_microdisk_overview.png",
+    "delivery_path": "site/example-previews/microdisk-release.jpg",
+    "kind": "real WaferCAD screenshot"
   }
 }
