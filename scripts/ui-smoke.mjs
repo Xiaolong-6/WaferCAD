@@ -246,6 +246,21 @@ for (const [view, panelId] of [
   const box = await preview.locator(`#${panelId}`).boundingBox();
   assert.ok(box?.width > 20 && box?.height > 20, `${view} preview must have visible area`);
 
+  if (view === 'three') {
+    await preview.locator('#threeHost').evaluate(
+      (host) =>
+        new Promise((resolve, reject) => {
+          const deadline = performance.now() + 20000;
+          const check = () => {
+            if (host.dataset.renderState === 'ready') return resolve(true);
+            if (performance.now() > deadline) return reject(new Error('3D preview did not render'));
+            requestAnimationFrame(check);
+          };
+          check();
+        }),
+    );
+  }
+
   for (const otherId of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
     if (otherId === panelId) continue;
     assert.equal(
@@ -256,11 +271,13 @@ for (const [view, panelId] of [
   }
 }
 
-await preview.locator('#threeHost').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-await preview.locator('html[data-preview-view="main"]').waitFor({ state: 'attached' }).catch(() => {});
 await photodetectorCard
   .locator('.welcome-example-view-tab[data-preview-view="main"]')
   .click();
+await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
+  state: 'attached',
+  timeout: 10000,
+});
 
 for (const selector of [
   '.view-head',
@@ -273,6 +290,7 @@ for (const selector of [
   '#drawShapeEditor',
   '#sectionDetailRoiOverlay',
   '#sectionDetailInset',
+  '#sectionCollapseOverlay',
 ]) {
   assert.equal(await preview.locator(selector).first().isVisible(), false, `${selector} must stay hidden in preview`);
 }
