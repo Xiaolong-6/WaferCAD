@@ -650,6 +650,98 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   }
 }
 
+
+const ISOTROPIC_ETCH_SLICES = 40;
+
+function removeLayerInterval(stack, targetLayerIds, z0, z1) {
+  const targets = new Set((targetLayerIds || []).filter(Boolean));
+  if (!targets.size || !(z1 > z0 + 1e-9)) {
+    return (stack || []).map((segment) => ({ ...segment }));
+  }
+
+  const out = [];
+  for (const segment of stack || []) {
+    if (
+      !targets.has(segment.layerId) ||
+      segment.z1 <= z0 + 1e-9 ||
+      segment.z0 >= z1 - 1e-9
+    ) {
+      out.push({ ...segment });
+      continue;
+    }
+
+    const cut0 = Math.max(segment.z0, z0),
+      cut1 = Math.min(segment.z1, z1);
+    if (segment.z0 < cut0 - 1e-9) {
+      const lower = { ...segment, z1: cut0 };
+      delete lower.frontSurface;
+      out.push(lower);
+    }
+    if (cut1 < segment.z1 - 1e-9) {
+      const upper = { ...segment, z0: cut1 };
+      delete upper.backSurface;
+      out.push(upper);
+    }
+  }
+  return normalizeStack(out);
+}
+
+function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
+  const targets = new Set((targetLayerIds || []).filter(Boolean));
+  if (!targets.size) {
+    return {
+      changed: false,
+      error: 'Isotropic release requires a selected material.',
+    };
+  }
+
+  const seeds = exposedSurfaceGroups(model, {
+    face,
+    clip: active,
+    preserveOppositeZ: false,
+  }).filter((patch) => targets.has(patch.layerId));
+  if (!seeds.length) {
+    return {
+      changed: false,
+      error: 'The selected release material is not exposed in the selected area.',
+    };
+  }
+
+  let changed = false;
+  for (const seed of seeds) {
+    for (let index = 0; index < ISOTROPIC_ETCH_SLICES; index++) {
+      const d0 = (amount * index) / ISOTROPIC_ETCH_SLICES,
+        d1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
+        depth = (d0 + d1) / 2,
+        lateral = Math.sqrt(Math.max(0, amount * amount - depth * depth)),
+        rawFootprint = bufferMulti(seed.geom, lateral, 24),
+        footprint = intersection(rawFootprint, model.boundary);
+      if (isEmpty(footprint)) continue;
+
+      const z0 = face === 'front' ? seed.z - d1 : seed.z + d0,
+        z1 = face === 'front' ? seed.z - d0 : seed.z + d1;
+      splitByArea(
+        model,
+        footprint,
+        (stack) => {
+          const next = removeLayerInterval(stack, [...targets], z0, z1);
+          if (stackKey(next) !== stackKey(stack)) changed = true;
+          return next;
+        },
+        false,
+      );
+    }
+  }
+
+  model.regions = mergeRegions(model, model.regions);
+  return changed
+    ? { changed: true }
+    : {
+        changed: false,
+        error: 'The isotropic release did not intersect the selected material.',
+      };
+}
+
 function applyOperationImpl(
   model,
   {
@@ -657,6 +749,7 @@ function applyOperationImpl(
     name,
     targetLayerId,
     etchTargetLayerIds = [],
+    etchProfile = 'directional',
     thickness,
     face = 'front',
     area,
@@ -667,6 +760,15 @@ function applyOperationImpl(
   },
 ) {
   const amount = Math.max(1e-5, Number(thickness) || 0);
+  if (type === 'etch' && !['directional', 'isotropic'].includes(etchProfile)) {
+    return { changed: false, error: 'Unsupported Etch profile.' };
+  }
+  if (type === 'etch' && etchProfile === 'isotropic' && surface?.kind === 'rough') {
+    return {
+      changed: false,
+      error: 'Isotropic release uses physical undercut geometry and cannot combine with Rough/Pyramid display morphology.',
+    };
+  }
   if (type === 'etch' && surface?.kind === 'rough') {
     const roughHeight = Number(surface.meanHeight ?? surface.amplitude),
       featureCv = Number(surface.featureCv ?? 0),
@@ -770,24 +872,39 @@ function applyOperationImpl(
 
   if (type === 'etch') {
     const selectiveTargets = [...new Set((etchTargetLayerIds || []).filter(Boolean))];
+    if (etchProfile === 'isotropic' && !selectiveTargets.length) {
+      return {
+        changed: false,
+        error: 'Isotropic release requires a selected material.',
+      };
+    }
     if (selectiveTargets.length) {
       const exposed = new Set(exposedLayerIds(model, active, face));
       if (!selectiveTargets.some((layerId) => exposed.has(layerId))) {
         return {
           changed: false,
-          error: 'None of the selected etch materials are exposed in the selected area.',
+          error:
+            etchProfile === 'isotropic'
+              ? 'The selected release material is not exposed in the selected area.'
+              : 'None of the selected etch materials are exposed in the selected area.',
         };
       }
     }
-    splitByArea(model, active, (stack) =>
-      mutateStack(stack, {
-        type,
-        amount,
-        face,
-        appearance,
-        etchTargetLayerIds: selectiveTargets,
-      }),
-    );
+
+    if (etchProfile === 'isotropic') {
+      const release = applyIsotropicEtch(model, active, selectiveTargets, amount, face);
+      if (!release.changed) return release;
+    } else {
+      splitByArea(model, active, (stack) =>
+        mutateStack(stack, {
+          type,
+          amount,
+          face,
+          appearance,
+          etchTargetLayerIds: selectiveTargets,
+        }),
+      );
+    }
   } else if (growth === 'conformal') {
     applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
   } else {
@@ -805,16 +922,23 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
-  const rollback = params?.growth === 'conformal' ? cloneModel(model) : null;
+  const safeGeometryOperation =
+      params?.growth === 'conformal' ||
+      (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
+    rollback = safeGeometryOperation ? cloneModel(model) : null;
   try {
     return applyOperationImpl(model, params);
   } catch (error) {
     if (!rollback) throw error;
     for (const key of Object.keys(model)) delete model[key];
     Object.assign(model, rollback);
+    const prefix =
+      params?.growth === 'conformal'
+        ? 'Conformal geometry failed safely'
+        : 'Isotropic etch geometry failed safely';
     return {
       changed: false,
-      error: `Conformal geometry failed safely: ${error?.message || 'unknown geometry error'}`,
+      error: `${prefix}: ${error?.message || 'unknown geometry error'}`,
     };
   }
 }
