@@ -178,9 +178,22 @@ export function prepareMorphologyExportTasks(
         priority: 1,
       })),
     ),
-    budgets = allocateRoughTriangleBudgets(requests, {
-      totalBudget: Math.max(24000, Number(totalTriangleBudget) || MORPHOLOGY_EXPORT_TRIANGLE_BUDGET),
-    });
+    hardBudget = Math.max(
+      1,
+      Math.floor(Number(totalTriangleBudget) || MORPHOLOGY_EXPORT_TRIANGLE_BUDGET),
+    ),
+    minimumTriangles = requests.reduce(
+      (sum, request) => sum + Math.max(1, Math.floor(Number(request.baseTriangles) || 1)),
+      0,
+    );
+
+  if (minimumTriangles > hardBudget) {
+    throw new RangeError(
+      `Morphology export needs at least ${minimumTriangles.toLocaleString()} base triangles, exceeding the ${hardBudget.toLocaleString()} triangle hard cap. Narrow the 3D ROI or simplify the visible morphology before exporting.`,
+    );
+  }
+
+  const budgets = allocateRoughTriangleBudgets(requests, { totalBudget: hardBudget });
 
   let index = 0;
   return tasks.map((task) => ({
