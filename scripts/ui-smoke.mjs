@@ -205,7 +205,7 @@ const photodetectorCard = page.locator(
 );
 assert.equal((await photodetectorCard.locator('h3').textContent()).trim(), 'Photodetectors with nanopatterns');
 assert.equal(await photodetectorCard.locator('.welcome-example-sources a').count(), 2);
-assert.equal(
+assert.deepEqual(
   await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
   ['Main', 'Mask', '3D', 'Section'],
 );
