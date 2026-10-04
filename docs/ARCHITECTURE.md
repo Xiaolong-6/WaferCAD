@@ -55,7 +55,7 @@ Owns the derived XY geometry used by Process and 3D inspection: selected File/Dr
 
 ### `site/controllers/process-panel-controller.js`
 
-Owns Process panel presentation state, exposed Extend target refresh, input normalization/validation, worker request construction, and post-Apply model handoff/status messaging. It deliberately does not implement process geometry: canonical Deposit/Extend/Etch/Implant semantics remain in `model.js` / the process worker path.
+Owns Process panel presentation state, exposed Extend and material-selective Etch target refresh, input normalization/validation, worker request construction, non-geometric Record-step creation, and post-action model handoff/status messaging. It deliberately does not implement process geometry: canonical Deposit/Extend/Etch/Implant semantics remain in `model.js` / the process worker path. Record steps advance History/process revision while leaving material geometry unchanged.
 
 ### `site/plan-renderers.js`
 
@@ -73,7 +73,7 @@ Owns the canonical region-stack model and process mutation semantics. Surface/vo
 - stable layer IDs;
 - Deposit (`add` internally);
 - Extend (`grow` internally);
-- Etch;
+- Etch, including optional exposed-material targeting with stop-on-next-material behavior;
 - Directional/Conformal coverage behavior;
 - front/back surface access;
 - stochastic Rough / Pyramid surface-appearance normalization and polarity;
@@ -126,13 +126,13 @@ Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm c
 
 ### `site/workspace-snapshots.js`
 
-Owns the canonical process-History graph. A successful Apply creates one **Step node** with `branchId`, `parentId`, `processRevision`, timestamp, structured operation metadata, and the exact validated workspace state produced by that operation. In snapshot-branch format v3 every newly written Step is restorable.
+Owns the canonical process-History graph. A successful Process action creates one **Step node** with `branchId`, `parentId`, `processRevision`, timestamp, structured operation metadata, and the exact validated workspace state produced by that action. Geometry-changing Deposit/Extend/Etch/Implant actions record the worker result; Record actions create an explicit non-geometric fabrication Step. In snapshot-branch format v3 every newly written Step is restorable.
 
 A **Variant** is a path through that Step graph. Each Variant stores `parentBranchId`, `rootNodeId`, `headNodeId`, and an exact `headState`. `rootNodeId` points to the Step where the Variant diverged; it may belong to the parent Variant. A new process Step on the child Variant points back to that origin Step through `parentId`. Variant topology therefore never depends on a snapshot/bookmark record.
 
 Legacy `rootSnapshotId` / `headSnapshotId` fields remain readable for old files, but new Step-first branching does not create or require them. Snapshot records are treated as **bookmarks/legacy checkpoints**. A modern bookmark is an annotation attached to a Step through `historyNodeId`; restore and branching are properties of the Step itself.
 
-Restoring a Step or Undo can move the cursor behind the active Variant HEAD without rewriting HEAD. Apply uses a two-phase continuation transaction: the process worker runs first, and a new Variant is committed only after a successful geometry-changing result. Failed, aborted, busy, and no-change operations cannot leave empty Variants.
+Restoring a Step or Undo can move the cursor behind the active Variant HEAD without rewriting HEAD. Geometry-changing Apply uses a two-phase continuation transaction: the process worker runs first, and a new Variant is committed only after a successful changed result. Failed, aborted, busy, and no-change operations cannot leave empty Variants. Record actions do not invoke the geometry worker; once their continuation gate succeeds, they advance process revision and append a restorable metadata Step.
 
 The manager distinguishes process position from exact workspace HEAD state. Two states may share the same `processRevision` / Step while differing in display, ROI, mask, or project settings; restoring an older state at the HEAD Step must not silently overwrite the Variant HEAD. Clean History browsing does not consume Recovery slots, while edited historical working state is checkpointed before replacement.
 
@@ -177,7 +177,7 @@ Directional coverage preserves the selected XY footprint.
 
 Conformal coverage uses one shared coating kernel for Deposit and Extend. Stage 1 coats topology-v2 exposed horizontal faces in the selected area by the requested physical thickness: Deposit uses a newly created layer id, while Extend reuses the selected target layer id so contiguous material merges during stack normalization. Directional Extend remains narrower and only thickens locations where the target layer is already exposed. Conformal Extend still requires the target to be exposed somewhere in the selected area before it can be continued. Stage 2 re-reads the newly coated source faces, constructs local edge bands, and asks topology v2 to classify only genuine `material-wall` and `void-wall` targets. Same-height computational partitions never become walls. Sub-grid `numerical-crack` voids are healed before true-void classification.
 
-Etch performs physical vertical subtraction and does not accept a coverage mode. The optional Surface mode can attach render-only Stochastic Rough or Pyramid morphology to the newly exposed face, with Normal/Inverted polarity. That appearance metadata does not modify the canonical Z stack. Supported material-geometry fixtures and the through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
+Etch performs physical vertical subtraction and does not accept a coverage mode. With no material target it removes exposed materials in stack order. With a selected exposed target layer it attacks only that material and stops when a different material becomes exposed; covered/buried targets are not reached through overlying layers. The optional Surface mode can attach render-only Stochastic Rough or Pyramid morphology to the newly exposed target face, with Normal/Inverted polarity. That appearance metadata does not modify the canonical Z stack. Supported material-geometry fixtures and the through-void limitation are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
 
 ## Views
 
