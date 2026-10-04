@@ -153,6 +153,27 @@ test('Electrical Region follows current material and is clipped by later Etch', 
   assert.equal(solids[0].innerZ, 3);
   assert.equal(solids[0].regionType, 'p-inversion');
   assert.equal(solids[0].source, 'induced');
+  assert.equal(solids[0].hostLayerId, 'base');
+
+  const cap = applyOperation(model, {
+    type: 'add',
+    name: 'Passivation',
+    thickness: 0.5,
+    face: 'front',
+    area: model.boundary,
+  });
+  solids = electricalRegionSolids(model);
+  assert.equal(solids.length, 1);
+  assert.equal(solids[0].hostLayerId, 'base');
+  assert.equal(solids[0].outerZ, 5);
+  assert.equal(solids[0].surfaceExposed, false);
+  applyOperation(model, {
+    type: 'etch',
+    thickness: 1,
+    face: 'front',
+    area: model.boundary,
+    etchTargetLayerIds: [cap.layerId],
+  });
 
   applyOperation(model, {
     type: 'etch',
