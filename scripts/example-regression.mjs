@@ -170,24 +170,40 @@ assert.ok(
   '3D scene generation must remain observable for regression diagnostics',
 );
 
-await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
-await page
-  .locator('.welcome-example-card[data-example-id="visualization"] .welcome-example-open')
-  .click();
-await page.waitForURL(/start=example.*example=visualization/, { timeout: 30000 });
-await page.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').includes('Visualization'),
-  null,
-  { timeout: 30000 },
-);
-await page.waitForFunction(
-  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
-  null,
-  { timeout: 30000 },
-);
-assert.ok((await page.locator('#mainCanvas').getAttribute('width')) !== '0');
-assert.ok((await page.locator('#maskCanvas').getAttribute('width')) !== '0');
-assert.ok((await page.locator('#sectionCanvas').getAttribute('width')) !== '0');
+for (const example of [
+  {
+    id: 'perc-point-contact-solar-cell',
+    filename: 'perc-solar-cells-point-contacts.wafercad',
+  },
+  {
+    id: 'suspended-silica-microdisk',
+    filename: 'suspended-silica-microdisks.wafercad',
+  },
+]) {
+  await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await page
+    .locator(`.welcome-example-card[data-example-id="${example.id}"] .welcome-example-open`)
+    .click();
+  await page.waitForFunction(
+    (id) => new URL(location.href).searchParams.get('example') === id,
+    example.id,
+    { timeout: 30000 },
+  );
+  await page.waitForFunction(
+    (filename) =>
+      (document.getElementById('statusText')?.textContent || '') === `Opened ${filename}.`,
+    example.filename,
+    { timeout: 30000 },
+  );
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+    null,
+    { timeout: 30000 },
+  );
+  assert.ok((await page.locator('#mainCanvas').getAttribute('width')) !== '0');
+  assert.ok((await page.locator('#maskCanvas').getAttribute('width')) !== '0');
+  assert.ok((await page.locator('#sectionCanvas').getAttribute('width')) !== '0');
+}
 
 assert.deepEqual(pageErrors, []);
 await browser.close();
