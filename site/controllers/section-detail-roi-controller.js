@@ -208,7 +208,7 @@ export function createSectionDetailRoiController({
   }
 
   function beginInsetMove(event) {
-    if (event.button !== 0 || drawing || event.target.closest('button')) return;
+    if (event.button !== 0 || drawing || event.target?.closest?.('button')) return;
     const inset = $('sectionDetailInset');
     if (!inset || inset.hidden) return;
     drag = {
