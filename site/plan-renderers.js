@@ -608,7 +608,9 @@ export function createPlanRenderers({
               ? filteredSectionRoughRelief(appearance, worldX, worldY)
               : 0,
           outerZ = electrical.outerZ + faceDirection * relief,
-          innerZ = electrical.innerZ;
+          innerZ =
+            electrical.innerZ +
+            (electrical.depthProfile === 'follow' ? faceDirection * relief : 0);
         if (!(Math.abs(outerZ - innerZ) > 1e-12)) continue;
         outerPoints.push([mapT(t), mapZ(outerZ)]);
         innerPoints.push([mapT(t), mapZ(innerZ)]);
@@ -661,7 +663,9 @@ export function createPlanRenderers({
               ? filteredSectionRoughRelief(appearance, worldX, worldY)
               : 0,
           outerZ = implant.outerZ + faceDirection * relief,
-          innerZ = implant.innerZ,
+          innerZ =
+            implant.innerZ +
+            (implant.depthProfile === 'follow' ? faceDirection * relief : 0),
           outerDepth = Math.max(
             0,
             implant.face === 'front' ? implant.sourceZ - outerZ : outerZ - implant.sourceZ,
