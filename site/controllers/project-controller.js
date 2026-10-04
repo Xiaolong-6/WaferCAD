@@ -793,11 +793,7 @@ export function createProjectController({
         throw new Error(`HTTP ${response.status}`);
       }
       const arrayBuffer = await response.arrayBuffer(),
-        file = {
-          name: example.filename,
-          size: arrayBuffer.byteLength,
-          arrayBuffer: async () => arrayBuffer,
-        };
+        file = new File([arrayBuffer], example.filename, { type: 'application/json' });
       return await openProjectFile(file);
     } catch (error) {
       console.error(error);
