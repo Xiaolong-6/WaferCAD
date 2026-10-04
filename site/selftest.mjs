@@ -99,10 +99,10 @@ applyOperation(layeredCollapseModel, {
 const safeDefaultCollapse = defaultSectionCollapseForModel(layeredCollapseModel, [-5, 6]);
 assert.ok(safeDefaultCollapse.top < 5, 'default collapse must stay inside Base bulk');
 assert.ok(safeDefaultCollapse.bottom > -5, 'default collapse must preserve the Base bottom');
-assert.deepEqual(
-  resolveSectionCollapse(null, layeredCollapseModel, [-5, 6]),
-  normalizeSectionCollapse(safeDefaultCollapse, [-5, 6]),
-);
+assert.deepEqual(resolveSectionCollapse(null, layeredCollapseModel, [-5, 6]), {
+  ...normalizeSectionCollapse(safeDefaultCollapse, [-5, 6]),
+  enabled: true,
+});
 
 assert.equal(roughLod(0).detail, 0);
 assert.equal(roughLod(20).micro, 1);
