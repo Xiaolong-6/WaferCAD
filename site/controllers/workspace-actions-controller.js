@@ -51,6 +51,7 @@ export function createWorkspaceActionsController({
   getModel = () => null,
 }) {
   const $ = (id) => root.getElementById(id);
+  let glbAbortController = null;
 
   function syncRoughHeightLimit() {
     const depth = Number($('operationThickness')?.value);
@@ -232,21 +233,57 @@ export function createWorkspaceActionsController({
       closeExport('sectionExportSvgBtn');
     };
 
-    $('threeExportModelBtn').onclick = async () => {
+    const glbButton = $('threeExportModelBtn'),
+      glbCancelButton = $('threeExportCancelBtn'),
+      pngButton = $('threeExportPngBtn'),
+      setGlbBusy = (busy, progress = null) => {
+        glbButton.disabled = busy;
+        pngButton.disabled = busy;
+        glbCancelButton.hidden = !busy;
+        glbCancelButton.disabled = !busy;
+        glbButton.setAttribute('aria-busy', String(busy));
+        glbButton.textContent =
+          busy && Number.isFinite(progress)
+            ? `GLB · ${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`
+            : 'GLB · physical';
+      };
+
+    glbCancelButton.onclick = () => {
+      glbAbortController?.abort();
+    };
+
+    glbButton.onclick = async () => {
+      if (glbAbortController) return;
+      glbAbortController = new AbortController();
+      setGlbBusy(true, 0);
       try {
-        const blob = await getThreeView()?.exportGlb();
+        const blob = await getThreeView()?.exportGlb({
+          signal: glbAbortController.signal,
+          onProgress: (progress, label) => {
+            setGlbBusy(true, progress);
+            status(
+              `Exporting ${getRoi() ? 'ROI' : 'full'} GLB… ${Math.round(progress * 100)}%${label ? ` · ${label}` : ''}`,
+            );
+          },
+        });
         if (!blob) throw new Error('3D export is unavailable.');
         downloadBlob(blob, 'wafercad-model.glb');
         status(
           modelHasDisplayMorphology()
-            ? `Exported ${getRoi() ? 'ROI' : 'full'} GLB using canonical ideal process geometry; displayed Rough/Pyramid morphology is not embedded.`
+            ? `Exported ${getRoi() ? 'ROI' : 'full'} GLB in physical metres with Rough/Pyramid morphology embedded.`
             : `Exported ${getRoi() ? 'ROI' : 'full'} 3D model as GLB (physical metres).`,
           'success',
         );
       } catch (error) {
-        console.error(error);
-        status(`3D model export failed: ${error.message}`, 'error');
+        if (error?.name === 'AbortError') {
+          status('3D GLB export cancelled.');
+        } else {
+          console.error(error);
+          status(`3D model export failed: ${error.message}`, 'error');
+        }
       } finally {
+        glbAbortController = null;
+        setGlbBusy(false);
         closeExport('threeExportModelBtn');
       }
     };
