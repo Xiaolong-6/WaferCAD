@@ -879,7 +879,7 @@ async function beginHistoricalStepEdit(node) {
   }
 
   const actions = [{ value: 'cancel', label: 'Cancel' }];
-  if (context.canReplaceCurrentVariant) {
+  if (context.canReplaceCurrentVariant && downstreamReplayable) {
     actions.push({
       value: 'update-recompute',
       label: context.downstreamCount ? 'Update & recompute' : 'Update current Variant',
