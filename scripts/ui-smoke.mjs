@@ -1064,7 +1064,7 @@ await page.locator('[data-process-mode="implant"]').click();
 assert.equal(await page.locator('#implantNameRow').isVisible(), true);
 assert.equal(await page.locator('#implantTiltRow').isVisible(), true);
 assert.equal(await page.locator('#implantColor').count(), 0);
-assert.match(await page.locator('#operationNote').textContent(), /Experimental structural marker/);
+assert.match(await page.locator('#operationNote').textContent(), /Structural implant annotation/);
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#operationThickness').fill('0.6');
 await page.locator('#implantName').fill('UI implant');
