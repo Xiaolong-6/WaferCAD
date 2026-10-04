@@ -609,18 +609,22 @@ function splitByArea(model, area, mutator, merge = true) {
   model.regions = merge ? mergeRegions(model, next) : next;
 }
 
-function exposedLayerPatches(model, active, face, layerId) {
+function conformalSourcePatchesBeforeCoating(model, active, face, amount) {
+  // Capture the physical exposed surfaces before the new film is clipped by a
+  // process mask. Sidewalls must originate from real topography/step
+  // boundaries, not from the artificial XY edge introduced by active.
   return exposedSurfaceGroups(model, {
     face,
-    clip: active,
-    layerId,
+    clip: model.boundary,
     preserveOppositeZ: true,
-  }).map(({ z, oppositeZ, appearance, geom }) => ({
-    z,
-    oppositeZ,
-    appearance,
-    geom,
-  }));
+  })
+    .filter(({ geom }) => !isEmpty(intersection(geom, active)))
+    .map(({ z, oppositeZ, appearance, geom }) => ({
+      z: face === 'front' ? z + amount : z - amount,
+      oppositeZ,
+      appearance,
+      geom,
+    }));
 }
 
 function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null) {
@@ -751,6 +755,11 @@ function applyConformalCoating(model, active, layerId, amount, face) {
     model.regions = mergeRegions(model, model.regions);
   }
 
+  // Capture the source topography before the horizontal coating is clipped to
+  // the process area. This is the key ownership rule for masked conformal
+  // deposition: the mask boundary itself is not a physical sidewall.
+  const sources = conformalSourcePatchesBeforeCoating(model, active, face, amount);
+
   // Deposit and Extend share one conformal kernel. Extend simply reuses the
   // selected layer id, so contiguous material merges during stack normalization.
   //
@@ -762,14 +771,13 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // Stage 1: coat every exposed horizontal surface in the selected area.
   splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face), false);
 
-  // Stage 2: coat genuine vertical boundaries. Work ring-by-ring instead of
-  // buffering the union of an entire height patch. This keeps polygon clipping
-  // local and avoids the large output-ring failures seen on imported wafers with
-  // many circular/nested features.
-  const sources = exposedLayerPatches(model, active, face, layerId);
+  // Stage 2: coat only physical vertical boundaries from the pre-coating
+  // topography. Intersect each boundary band with active so real steps inside a
+  // mask opening still receive conformal coverage while the mask edge remains a
+  // hard clip.
   for (const source of sources) {
     for (const rawBand of conformalBoundaryBands(source.geom, amount)) {
-      const band = intersection(rawBand, model.boundary);
+      const band = intersection(intersection(rawBand, active), model.boundary);
       if (isEmpty(band)) continue;
 
       // Topology v2 classifies this symmetric edge band once. Equal-height
