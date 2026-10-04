@@ -1860,9 +1860,9 @@ a.welcome-action {
 
 .welcome-example-card {
   min-width: 0;
-  min-height: 274px;
-  display: grid;
-  grid-template-columns: minmax(190px, 0.78fr) minmax(0, 1.22fr);
+  min-height: 394px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid #cfd7df;
   border-radius: 7px;
@@ -1871,15 +1871,49 @@ a.welcome-action {
 }
 
 .welcome-example-visual {
+  position: relative;
   min-width: 0;
-  min-height: 220px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
   padding: 12px;
-  border-right: 1px solid #e3e8ed;
+  border-bottom: 1px solid #e3e8ed;
   background:
     linear-gradient(rgba(82, 107, 132, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(82, 107, 132, 0.025) 1px, transparent 1px),
     #f7f9fb;
   background-size: 18px 18px;
+}
+
+.welcome-example-visual.has-image {
+  padding: 0;
+  background: #111923;
+}
+
+.welcome-example-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  background: #111923;
+}
+
+.welcome-example-image-caption {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  padding: 3px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  background: rgba(20, 29, 38, 0.78);
+  color: #f6f8fa;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.1px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(3px);
 }
 
 .welcome-example-canvas {
@@ -2114,7 +2148,7 @@ body.welcome-open {
   }
 
   .welcome-example-card {
-    grid-template-columns: minmax(210px, 0.72fr) minmax(0, 1.28fr);
+    min-height: 0;
   }
 }
 
@@ -2147,13 +2181,11 @@ body.welcome-open {
   }
 
   .welcome-example-card {
-    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
   }
 
   .welcome-example-visual {
-    min-height: 176px;
-    border-right: 0;
-    border-bottom: 1px solid #e3e8ed;
+    aspect-ratio: 4 / 3;
   }
 
   .welcome-example-canvas {
