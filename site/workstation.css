@@ -1786,8 +1786,15 @@ html.welcome-project-preview #sectionPanel {
   box-shadow: none;
 }
 
-html.welcome-project-preview .workstation-view-stage > .view-panel:not([hidden]) {
-  display: grid;
+html.welcome-project-preview .workstation-view-stage > .view-panel,
+html.welcome-project-preview #sectionPanel {
+  display: none !important;
+}
+
+html.welcome-project-preview[data-preview-view='main'] #mainPanel,
+html.welcome-project-preview[data-preview-view='mask'] #maskPanel,
+html.welcome-project-preview[data-preview-view='three'] #threePanel {
+  display: grid !important;
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -1822,4 +1829,32 @@ html.welcome-project-preview #threeHost {
 
 html.welcome-project-preview #sectionCollapseOverlay {
   pointer-events: none;
+}
+
+html.welcome-project-preview #sectionEndpointHandles,
+html.welcome-project-preview #sectionCoordsPanel,
+html.welcome-project-preview #focusEditor,
+html.welcome-project-preview #roiEditor,
+html.welcome-project-preview #maskRoiEditor,
+html.welcome-project-preview #drawMaskToolbar,
+html.welcome-project-preview #drawShapeEditor,
+html.welcome-project-preview #sectionDetailRoiOverlay,
+html.welcome-project-preview #sectionDetailInset {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+html.welcome-project-preview #mainCanvas,
+html.welcome-project-preview #maskCanvas {
+  cursor: grab;
+  touch-action: none;
+}
+
+html.welcome-project-preview #mainCanvas.preview-panning,
+html.welcome-project-preview #maskCanvas.preview-panning {
+  cursor: grabbing;
+}
+
+html.welcome-project-preview #sectionCanvas {
+  cursor: default;
 }
