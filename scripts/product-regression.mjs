@@ -992,6 +992,16 @@ try {
       await page.waitForTimeout(150);
       await capture(page, 'wide-isotropic-release-section-max');
       await page.locator('#sectionMaxBtn').click();
+      await page.waitForFunction(() => {
+        const canvas = document.getElementById('sectionCanvas');
+        if (!canvas?.checkVisibility()) return false;
+        const rect = canvas.getBoundingClientRect(),
+          dpr = Math.min(devicePixelRatio || 1, 2);
+        return (
+          Math.abs(canvas.width - rect.width * dpr) <= 2 &&
+          Math.abs(canvas.height - rect.height * dpr) <= 2
+        );
+      });
       await checkLayout(page);
     }
 
