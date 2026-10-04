@@ -645,8 +645,18 @@ assert.equal(
   true,
 );
 
-// Variant rename is a first-class inline action, not hidden in the overflow menu.
-await childVariant.locator('.history-variant-rename-trigger').click();
+// Variant rename remains accessible even when narrow History hides the inline pencil.
+const renameTrigger = childVariant.locator('.history-variant-rename-trigger');
+if (await renameTrigger.isVisible()) {
+  await renameTrigger.click();
+} else {
+  await childVariant.locator(':scope > .history-variant-head .snapshot-more-trigger').click();
+  await childVariant
+    .locator(':scope > .history-variant-head .snapshot-more-popover button', {
+      hasText: 'Rename Variant',
+    })
+    .click();
+}
 const variantEditor = childVariant.locator('.history-variant-editor:not([hidden])');
 await variantEditor.locator('input').fill('Detector path');
 await variantEditor.locator('button').first().click();
