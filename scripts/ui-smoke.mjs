@@ -1104,6 +1104,36 @@ const implantOrder = await implantLegendRow.locator('.implant-legend-row').evalu
   [...row.children].map((child) => child.className),
 );
 assert.match(String(implantOrder.at(-1)), /legend-visibility/);
+assert.equal(await implantLegendRow.locator('.legend-profile-trigger').textContent(), '∿');
+await implantLegendRow.locator('.legend-profile-trigger').click();
+assert.equal(await implantLegendRow.locator('.legend-profile-editor').isVisible(), true);
+assert.equal(
+  await implantLegendRow.locator('.legend-profile-option.active').textContent(),
+  'Follow offset',
+);
+await mkdir(new URL('../test-results/product-review/', import.meta.url), { recursive: true });
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-follow.png',
+    import.meta.url,
+  ),
+  fullPage: true,
+});
+await implantLegendRow.getByRole('button', { name: 'Smooth', exact: true }).click();
+assert.equal(await implantLegendRow.locator('.legend-profile-trigger').textContent(), '—');
+await implantLegendRow.locator('.legend-profile-trigger').click();
+assert.equal(
+  await implantLegendRow.locator('.legend-profile-option.active').textContent(),
+  'Smooth',
+);
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-smooth.png',
+    import.meta.url,
+  ),
+  fullPage: true,
+});
+await implantLegendRow.getByRole('button', { name: 'Follow offset', exact: true }).click();
 await implantLegendRow.locator('.implant-gradient-chip').click();
 assert.equal(await implantLegendRow.locator('.legend-palette-chip').count(), 20);
 await implantLegendRow.locator('.legend-palette-chip').nth(3).click();
@@ -1128,6 +1158,7 @@ assert.equal(implantSaved.model.implants.length, 1);
 assert.equal(implantSaved.model.implants[0].name, 'UI implant renamed');
 assert.equal(implantSaved.model.implants[0].thickness, 0.6);
 assert.equal(implantSaved.model.implants[0].tilt, 7);
+assert.equal(implantSaved.model.implants[0].depthProfile, 'follow');
 assert.equal(implantSaved.model.implants[0].visible, true);
 assert.equal('border' in implantSaved.model.implants[0], false);
 assert.equal(implantSaved.display.sectionShowBorders, true);
@@ -1158,6 +1189,18 @@ await page.waitForFunction(() =>
 const electricalLegendRow = page.locator('#layerLegend .electrical-row-wrap').first();
 assert.equal(await electricalLegendRow.count(), 1);
 assert.equal(await electricalLegendRow.locator('.legend-visibility').isChecked(), true);
+assert.equal(await electricalLegendRow.locator('.legend-profile-trigger').textContent(), '∿');
+await electricalLegendRow.locator('.legend-profile-trigger').click();
+await electricalLegendRow.getByRole('button', { name: 'Smooth', exact: true }).click();
+assert.equal(await electricalLegendRow.locator('.legend-profile-trigger').textContent(), '—');
+await electricalLegendRow.locator('.legend-profile-trigger').click();
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/electrical-depth-profile-smooth.png',
+    import.meta.url,
+  ),
+  fullPage: true,
+});
 await electricalLegendRow.locator('.legend-name').fill('UI electrical renamed');
 await electricalLegendRow.locator('.legend-name').press('Tab');
 await page
@@ -1185,6 +1228,7 @@ assert.equal(electricalSaved.model.electricalRegions[0].name, 'UI electrical ren
 assert.equal(electricalSaved.model.electricalRegions[0].regionType, 'p-inversion');
 assert.equal(electricalSaved.model.electricalRegions[0].source, 'induced');
 assert.equal(electricalSaved.model.electricalRegions[0].thickness, 0.2);
+assert.equal(electricalSaved.model.electricalRegions[0].depthProfile, 'smooth');
 assert.equal(electricalSaved.model.implants.length, 1);
 await openFunctionPanel(page, 'process');
 
