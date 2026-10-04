@@ -8,12 +8,6 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['Black-Si · FINAL / QA', 'Ge Fig. 15 · A / B'],
     path: './examples/photodetector-literature-examples.wafercad',
     filename: 'photodetector-literature-examples.wafercad',
-    preview: {
-      path: './example-previews/photodetector-literature.jpg',
-      alt: 'WaferCAD reconstruction of the boron-implanted black-silicon photodetector with Main, Mask, and Section views visible.',
-      label: 'Real WaferCAD reconstruction',
-      position: '50% 42%',
-    },
     summary:
       'Nanostructured Si and Ge photodiodes reconstructed as one branch-based project, covering rough surfaces, conformal passivation, implants, and induced electrical regions.',
     sources: [
@@ -41,12 +35,6 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['Corrected source-order process', 'Alternative reconstruction branches'],
     path: './examples/perc-solar-cells-point-contacts.wafercad',
     filename: 'perc-solar-cells-point-contacts.wafercad',
-    preview: {
-      path: './example-previews/perc-blakers-1989.jpg',
-      alt: 'WaferCAD reconstruction of a PERC solar cell with local rear point contacts.',
-      label: 'Project preview',
-      position: '50% 50%',
-    },
     summary:
       'Texturing, diffusion regions, front and rear passivation, local rear openings, and metallization reconstructed as a branch-based PERC process project.',
     sources: [
@@ -68,12 +56,6 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: [],
     path: './examples/suspended-silica-microdisks.wafercad',
     filename: 'suspended-silica-microdisks.wafercad',
-    preview: {
-      path: './example-previews/microdisk-release.jpg',
-      alt: 'WaferCAD reconstruction of a released suspended silica microdisk with a central silicon support.',
-      label: 'Project preview',
-      position: '50% 50%',
-    },
     summary:
       'A spoked silica microdisk released from silicon with a real annular air gap and surviving central support pedestal.',
     sources: [
