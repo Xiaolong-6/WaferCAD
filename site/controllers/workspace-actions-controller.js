@@ -248,6 +248,8 @@ export function createWorkspaceActionsController({
             : 'GLB · physical';
       };
 
+    setGlbBusy(false);
+
     glbCancelButton.onclick = () => {
       glbAbortController?.abort();
     };
