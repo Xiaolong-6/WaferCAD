@@ -992,6 +992,71 @@ test('Variant tree records explicit parent linkage and supports direct rename', 
   assert.equal(child.rootNodeId, childStep.id);
 });
 
+test('bookmarking a historical Step keeps its process state but captures the current inspection view', () => {
+  let live = {
+    model: { processRevision: 0 },
+    value: 'base',
+    roi: null,
+    section: { a: [-1, 0], b: [1, 0] },
+    planViews: { main: { zoom: 1, panX: 0, panY: 0 } },
+    display: { sectionCollapse: null, threeCamera: null },
+  };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `bookmark-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = {
+    ...live,
+    model: { processRevision: 1 },
+    value: 'step-1',
+  };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+
+  live = {
+    ...live,
+    model: { processRevision: 2 },
+    value: 'step-2',
+  };
+  manager.recordOperation({ kind: 'etch', label: 'Step 2' });
+
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  live = {
+    ...live,
+    roi: { type: 'rect', a: [-0.2, -0.2], b: [0.2, 0.2] },
+    section: { a: [-0.4, 0], b: [0.4, 0] },
+    planViews: { main: { zoom: 4, panX: 12, panY: -3 } },
+    display: {
+      sectionCollapse: { top: 0.8, bottom: -0.8 },
+      threeCamera: {
+        position: [3, -4, 5],
+        target: [0, 0, 0],
+        fov: 34,
+      },
+    },
+  };
+
+  const bookmark = manager.bookmarkStep(first.id, 'Micro inspection');
+  live = {
+    model: { processRevision: 99 },
+    value: 'changed',
+  };
+  assert.equal(manager.restore(bookmark.id), true);
+  assert.equal(live.model.processRevision, 1);
+  assert.equal(live.value, 'step-1');
+  assert.deepEqual(live.section, { a: [-0.4, 0], b: [0.4, 0] });
+  assert.equal(live.planViews.main.zoom, 4);
+  assert.deepEqual(live.display.sectionCollapse, { top: 0.8, bottom: -0.8 });
+  assert.deepEqual(live.display.threeCamera.position, [3, -4, 5]);
+});
+
 test('bookmarking a Step does not create a second restore lineage', () => {
   let live = { model: { processRevision: 1 }, value: 'step-1' };
   let snapshotId = 0;
