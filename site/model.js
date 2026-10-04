@@ -716,30 +716,29 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
 
   let changed = false;
   for (const seed of seeds) {
+    // Work from the protected complement rather than repeatedly unioning a
+    // large exposed domain with its dilation. The undercut strip inside the
+    // protected footprint is disjoint from the exposed seed, which avoids
+    // near-coincident slivers at mask edges.
+    const protectedGeom = difference(model.boundary, seed.geom);
+
     for (let index = 0; index < ISOTROPIC_ETCH_SLICES; index++) {
       const d0 = (amount * index) / ISOTROPIC_ETCH_SLICES,
         d1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
         depth = (d0 + d1) / 2,
         lateral = Math.sqrt(Math.max(0, amount * amount - depth * depth)),
-        bands = lateral > 1e-9 ? conformalBoundaryBands(seed.geom, lateral) : [],
-        rawParts = [seed.geom, ...bands];
-      let footprints;
-      try {
-        const merged = unionGeometries(rawParts);
-        footprints = isEmpty(merged) ? [] : [merged];
-      } catch {
-        // Large release masks can make a one-shot polygon union numerically
-        // fragile. Subtraction is idempotent, so applying the same seed/bands
-        // as smaller pieces preserves the release front without failing the
-        // whole operation.
-        footprints = rawParts;
+        footprints = [seed.geom];
+
+      if (lateral > 1e-9 && !isEmpty(protectedGeom)) {
+        for (const band of conformalBoundaryBands(protectedGeom, lateral)) {
+          const undercut = intersection(band, protectedGeom);
+          if (!isEmpty(undercut)) footprints.push(undercut);
+        }
       }
 
       const z0 = face === 'front' ? seed.z - d1 : seed.z + d0,
         z1 = face === 'front' ? seed.z - d0 : seed.z + d1;
-      for (const rawFootprint of footprints) {
-        const footprint = intersection(rawFootprint, model.boundary);
-        if (isEmpty(footprint)) continue;
+      for (const footprint of footprints) {
         splitByArea(
           model,
           footprint,
