@@ -18,8 +18,10 @@ function drawVisualizationPreview(canvas) {
 
   previewLayout ||= createVisualizationLayout();
   const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
-  canvas.width = Math.max(1, Math.round(rect.width * dpr));
-  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  const pixelWidth = Math.max(1, Math.round(rect.width * dpr)),
+    pixelHeight = Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, rect.width, rect.height);
@@ -113,7 +115,7 @@ function renderExampleCards() {
       canvas.setAttribute('aria-label', example.title + ' preview');
       visual.append(canvas);
       const observer = new ResizeObserver(() => drawVisualizationPreview(canvas));
-      observer.observe(canvas);
+      observer.observe(visual);
       queueMicrotask(() => drawVisualizationPreview(canvas));
     } else {
       visual.append(createProjectVariantPreview(example));
