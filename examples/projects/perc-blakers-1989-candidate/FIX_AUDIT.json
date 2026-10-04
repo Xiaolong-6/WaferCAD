@@ -1,0 +1,32 @@
+{
+  "source_project": "PERC_Blakers1989_Fig1.wafercad",
+  "source_sha256": "e56e10e938e940558f189cf650eb3886d3fa393563327c0df5ab2ac4d7018773",
+  "fixed_project": "PERC_Blakers1989_Fig1_fixed.wafercad",
+  "fixed_sha256": "8ee1d4c9bb99dd3b234dd0d4737546117774c5e85697a0e4d98cd28637723ef1",
+  "schema_version": 14,
+  "active_branch": "PERC Fig. 1 · corrected source-order process",
+  "repair": {
+    "models": [
+      "sharedModels[0]",
+      "sharedModels[1]",
+      "sharedModels[2]",
+      "sharedModels[3]",
+      "sharedModels[4]",
+      "sharedModels[5]",
+      "sharedModels[6]",
+      "sharedModels[7]",
+      "sharedModels[8]",
+      "project"
+    ],
+    "removed_polygons_per_model": 8,
+    "removed_host_layer": "layer-2",
+    "implant": "C09 - Light phosphorus surface diffusion · 250 Ω/□ · 0.5 µm geometry proxy",
+    "material_geometry_changed": false,
+    "process_history_changed": false,
+    "exploratory_branches_changed": false
+  },
+  "acceptance": {
+    "corrected_branch_c09_and_later_non_base_light_p_hosts": 0,
+    "corrected_branch_light_p_base_patch_preserved": true
+  }
+}

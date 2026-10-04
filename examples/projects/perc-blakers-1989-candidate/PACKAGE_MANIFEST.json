@@ -1,0 +1,60 @@
+{
+  "source_package": {
+    "name": "PERC_Blakers1989_reconstruction_package.zip",
+    "sha256": "c5e72f2f206c089ad95491b006dd96f7598a1899a27e507f5c50582c062f98de",
+    "supplied_files": [
+      "PERC_Blakers1989_Fig1.wafercad",
+      "PERC_Blakers1989_masks.gds",
+      "PERC_Blakers1989_make_masks.py",
+      "PERC_Blakers1989_mask_map.md",
+      "PERC_Blakers1989_reconstruction.md",
+      "PERC_export_audit.json",
+      "PERC_visibility_audit.md",
+      "PERC_corrected_rear_openings.jpg",
+      "PERC_front_stripe_ROI_3D.jpg",
+      "PERC_rear_windows_before_Al.jpg",
+      "PERC_rear_window_section_before_Al.jpg"
+    ]
+  },
+  "candidate_project": {
+    "name": "PERC_Blakers1989_Fig1.wafercad",
+    "sha256": "e56e10e938e940558f189cf650eb3886d3fa393563327c0df5ab2ac4d7018773",
+    "schema_version": 14,
+    "branches": 6,
+    "process_nodes": 40,
+    "bookmarks": 40,
+    "active_process_revision": 18,
+    "active_branch_name": "PERC Fig. 1 · corrected source-order process",
+    "fixed_sha256": "8ee1d4c9bb99dd3b234dd0d4737546117774c5e85697a0e4d98cd28637723ef1"
+  },
+  "mask_gds": {
+    "name": "PERC_Blakers1989_masks.gds",
+    "sha256": "9de5edbcbbb6f580e62441aff1c22340347356400faf05a043278edb6c21ed41",
+    "layers": [
+      "1/0 texture openings",
+      "2/0 heavy-P stripes",
+      "3/0 front metal stripes",
+      "4/0 front passivation windows",
+      "5/0 rear point-contact holes",
+      "6/0 rear Al reference footprints"
+    ]
+  },
+  "promotion_status": "repaired_staging",
+  "blocker": null,
+  "welcome_registered": false,
+  "pr_opened": false,
+  "ci_requested": false,
+  "repair": {
+    "scope": "Corrected source-order branch only, C09 and later",
+    "action": "Remove C09 light-P Implant polygons whose host layer is temporary second oxide layer-2",
+    "material_geometry_changed": false,
+    "process_history_changed": false,
+    "fixed_project_sha256": "8ee1d4c9bb99dd3b234dd0d4737546117774c5e85697a0e4d98cd28637723ef1",
+    "verification": "C09 light-P patches in corrected branch are base-hosted only; source project hash is pinned by repair_stale_implant.py"
+  },
+  "welcome_preview": {
+    "source": "PERC_corrected_rear_openings.jpg",
+    "delivery_path": "site/example-previews/perc-blakers-1989.jpg",
+    "kind": "real WaferCAD screenshot"
+  }
+}

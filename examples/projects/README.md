@@ -19,6 +19,16 @@ The current literature family is:
 
 The family project opens on the Black-Si FINAL Variant while retaining the complete restorable Variant tree. This structure is intentional: future examples should normally add a new family project (for example solar cell, MEMS, MOS, microfluidic) rather than adding one Welcome card for every publication.
 
+## Welcome preview contract
+
+Every Welcome example card should use a **representative screenshot from the real WaferCAD UI**. Literature examples must not use a schematic branch diagram, generated illustration, or paper figure as their primary card image.
+
+- Store compact delivery assets under `site/example-previews/`; retain the original capture in the candidate/review package when available.
+- Prefer a stable final or diagnostically useful restored state that makes the device recognizable at card size. Overview screenshots with Main / Mask / 3D / Section are preferred; a focused 3D or Section view is acceptable when that is the defining geometry.
+- Cropping, resizing, and JPEG/WebP compression are presentation-only. Do not redraw or synthesize the device for the Welcome card.
+- Define preview path, alt text, caption, and optional object position in `site/bundled-examples.js`. The renderer falls back to the legacy generated preview only when an example has no screenshot metadata.
+- Screenshot pixels are presentation assets, not regression truth. Structural/process invariants remain the acceptance contract.
+
 ## Regression contract
 
 Bundled examples are production acceptance fixtures, not presentation-only files.
