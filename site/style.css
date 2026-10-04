@@ -1915,14 +1915,6 @@ a.welcome-action {
   backdrop-filter: blur(3px);
 }
 
-.welcome-example-canvas {
-  width: 100%;
-  height: 100%;
-  min-height: 196px;
-  display: block;
-  background: transparent;
-}
-
 .welcome-example-visual.has-project-preview {
   padding: 0;
   background: #111923;
@@ -2364,11 +2356,8 @@ body.welcome-open {
   }
 
   .welcome-example-visual {
+    height: auto;
     aspect-ratio: 4 / 3;
-  }
-
-  .welcome-example-canvas {
-    min-height: 152px;
   }
 
   .welcome-capability-strip {
