@@ -357,7 +357,7 @@ test('Conformal sidewall offsets outward by the requested distance after Direct 
   );
 });
 
-test('partial-area Conformal keeps its footprint-edge buffer', () => {
+test('partial-area Conformal keeps the process-mask edge hard-clipped', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const coat = applyOperation(model, {
     type: 'add',
@@ -368,8 +368,12 @@ test('partial-area Conformal keeps its footprint-edge buffer', () => {
   });
   assert.equal(coat.changed, true);
   assert.deepEqual(
+    stackAt(model, 1.5).find((s) => s.layerId === coat.layerId),
+    { layerId: coat.layerId, z0: 5, z1: 6 },
+  );
+  assert.equal(
     stackAt(model, 2.5).find((s) => s.layerId === coat.layerId),
-    { layerId: coat.layerId, z0: 5, z1: 6, role: 'conformal-sidewall' },
+    undefined,
   );
   assert.equal(
     stackAt(model, 3).find((s) => s.layerId === coat.layerId),

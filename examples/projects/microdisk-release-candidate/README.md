@@ -68,8 +68,8 @@ When promoted:
 - create a dedicated `.wafercad` project under `site/examples/`;
 - preserve a compact process history from oxide growth through release;
 - save three useful presentation states: full overview, 3D release view, and A–B Section across the annulus + central pedestal;
-- use the real WaferCAD overview capture as the Welcome source image, delivered as `site/example-previews/microdisk-release.jpg`; do not replace it with a schematic or paper figure;
-- add a new literature family appropriate to MEMS / optomechanical / ultrasound devices rather than mixing it into the photodetector family;
+- register the Welcome title as **Suspended silica microdisks** and use the live read-only Main / Mask / 3D / Section mini viewer as the primary preview; keep the existing screenshot only as a loading/error fallback;
+- cite Basiri-Esfahani et al., *Nature Communications* 10, 132 (2019), DOI `10.1038/s41467-018-08038-4`, directly on the Welcome card;
 - add structural example regression that asserts a true annular air gap and surviving center support.
 
 No Welcome-page registration or CI-triggering PR is part of this staging step. CI remains intentionally unrequested on this candidate branch.

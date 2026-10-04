@@ -96,6 +96,58 @@ function cleanName(value) {
   return String(value ?? '').trim();
 }
 
+const BOOKMARK_VIEW_KEYS = [
+  'selectedLayerKeys',
+  'activeCell',
+  'maskTransform',
+  'maskRoi',
+  'maskRoiAnchor',
+  'activeFace',
+  'roi',
+  'roiAnchor',
+  'section',
+  'planViews',
+  'display',
+];
+
+function withCurrentInspectionView(baseState, currentState, cloneState) {
+  const merged = cloneState(baseState);
+  for (const key of BOOKMARK_VIEW_KEYS) {
+    if (!Object.hasOwn(currentState || {}, key)) continue;
+    merged[key] = clone(currentState[key]);
+  }
+  return merged;
+}
+
+const INSPECTION_ONLY_KEYS = new Set([
+  'selectedLayerKeys',
+  'activeCell',
+  'activeFace',
+  'roi',
+  'roiAnchor',
+  'section',
+  'planViews',
+  'display',
+]);
+
+function withoutInspectionView(state) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return state;
+  const core = {};
+  for (const [key, value] of Object.entries(state)) {
+    if (INSPECTION_ONLY_KEYS.has(key)) continue;
+    core[key] = value;
+  }
+  return core;
+}
+
+function processStateEqual(left, right) {
+  try {
+    return deepEqual(withoutInspectionView(left), withoutInspectionView(right));
+  } catch {
+    return false;
+  }
+}
+
 export function defaultSnapshotName(date = new Date()) {
   const value = date instanceof Date ? date : new Date(date);
   const pad = (number) => String(number).padStart(2, '0');
@@ -241,6 +293,7 @@ export function createSnapshotManager({
         processRevision,
         operation: clone(operation),
         restorable: Boolean(stateForProcessNode(node)),
+        replayable: operation?.replay?.version === 1,
       };
     });
   }
@@ -266,13 +319,7 @@ export function createSnapshotManager({
   function stateMatchesBranchHead(branch, state, nodeId = cursorNodeId) {
     if (!branch) return true;
     if (branch.headNodeId && nodeId !== branch.headNodeId) return false;
-    if (branch.headState) {
-      try {
-        return deepEqual(state, branch.headState);
-      } catch {
-        return false;
-      }
-    }
+    if (branch.headState) return processStateEqual(state, branch.headState);
     return !branch.headSnapshotId || cursorSnapshotId === branch.headSnapshotId;
   }
 
@@ -336,8 +383,13 @@ export function createSnapshotManager({
     if (records.length >= maxRecords) {
       throw new Error(`Bookmark limit of ${maxRecords} reached.`);
     }
-    const node = nodeId ? nodeById(nodeId) : null;
-    const state = stateForProcessNode(node);
+    const node = nodeId ? nodeById(nodeId) : null,
+      processState = stateForProcessNode(node),
+      currentState = capture(),
+      state =
+        node && processState
+          ? withCurrentInspectionView(processState, currentState, cloneState)
+          : null;
     if (!node || !state || !validateState(state)) {
       throw new Error('Select a restorable process Step before adding a bookmark.');
     }
@@ -351,7 +403,7 @@ export function createSnapshotManager({
       branchId: node.branchId,
       parentId: null,
       historyNodeId: node.id,
-      state: cloneState(state),
+      state,
     };
     records.unshift(record);
     return {
@@ -466,6 +518,10 @@ export function createSnapshotManager({
     return `Variant ${index}`;
   }
 
+  function canCreateVariant() {
+    return branches.length < maxBranches;
+  }
+
   function createVariant({
     originNodeId = null,
     parentVariantId = activeBranchId,
@@ -473,7 +529,7 @@ export function createSnapshotManager({
     name = '',
     headState = null,
   } = {}) {
-    if (branches.length >= maxBranches) {
+    if (!canCreateVariant()) {
       throw new Error(`Variant limit of ${maxBranches} reached.`);
     }
 
@@ -634,14 +690,187 @@ export function createSnapshotManager({
     return switchBranch(activeBranchId);
   }
 
+  function branchTailFromNode(nodeId) {
+    const target = nodeById(nodeId);
+    const branch = target ? branchById(target.branchId) : null;
+    if (!target || !branch || !branch.headNodeId) return null;
+
+    const reverse = [];
+    const seen = new Set();
+    let currentId = branch.headNodeId;
+    while (currentId && !seen.has(currentId)) {
+      seen.add(currentId);
+      const current = nodeById(currentId);
+      if (!current) break;
+      reverse.push(current);
+      if (current.id === target.id) break;
+      currentId = current.parentId;
+    }
+    if (reverse.at(-1)?.id !== target.id) return null;
+    return reverse.reverse();
+  }
+
+  function stepEditContext(nodeId, { includeReplayStates = false } = {}) {
+    const node = nodeById(nodeId);
+    const branch = node ? branchById(node.branchId) : null;
+    const tail = node ? branchTailFromNode(node.id) : null;
+    const parentNode = node?.parentId ? nodeById(node.parentId) : null;
+    const parentState = stateForProcessNode(parentNode);
+    const nodeState = stateForProcessNode(node);
+
+    if (!node || !branch || !tail) {
+      return {
+        editable: false,
+        reason: 'This Step is not on a current Variant history path.',
+      };
+    }
+    if (!nodeState || !parentNode || !parentState) {
+      return {
+        editable: false,
+        reason: 'This Step does not have a restorable predecessor state.',
+        nodeId: node.id,
+        branchId: branch.id,
+      };
+    }
+
+    const removedNodeIds = new Set(tail.map((item) => item.id));
+    const dependentVariants = branches
+      .filter(
+        (candidate) =>
+          candidate.id !== branch.id &&
+          candidate.rootNodeId &&
+          removedNodeIds.has(candidate.rootNodeId),
+      )
+      .map((candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+        rootNodeId: candidate.rootNodeId,
+      }));
+
+    return {
+      editable: true,
+      nodeId: node.id,
+      branchId: branch.id,
+      branchName: branch.name,
+      parentNodeId: parentNode.id,
+      downstreamCount: Math.max(0, tail.length - 1),
+      downstream: tail.slice(1).map((item) => ({
+        id: item.id,
+        operation: clone(item.operation),
+        processRevision: item.processRevision,
+        ...(includeReplayStates ? { state: cloneState(stateForProcessNode(item)) } : {}),
+      })),
+      canReplaceCurrentVariant: dependentVariants.length === 0,
+      dependentVariants,
+      replayable: node.operation?.replay?.version === 1,
+      downstreamReplayable: tail
+        .slice(1)
+        .every((item) => item.operation?.replay?.version === 1),
+    };
+  }
+
+  function restoreStepInput(nodeId) {
+    const context = stepEditContext(nodeId);
+    if (!context.editable) return false;
+
+    const node = nodeById(nodeId);
+    const parentNode = nodeById(context.parentNodeId);
+    const parentState = stateForProcessNode(parentNode);
+    const nodeState = stateForProcessNode(node);
+    const branch = branchById(context.branchId);
+    if (!nodeState || !parentState || !branch) return false;
+
+    // Use the selected Step's workspace/mask/display context, but roll the
+    // physical model back to its predecessor. This makes editing deterministic
+    // even when mask selection or ROI changed between adjacent process Steps.
+    const editState = cloneState(nodeState);
+    editState.model = clone(parentState.model);
+    if (!validateState(editState)) return false;
+
+    activeBranchId = branch.id;
+    restore(cloneState(editState));
+    cursorNodeId = parentNode.id;
+    cursorSnapshotId = null;
+    cursorBaselineState = cloneState(editState);
+    cursorDetachedFromHead = true;
+    return clone(context);
+  }
+
+  function replaceBranchTailFrom(nodeId) {
+    const context = stepEditContext(nodeId);
+    if (!context.editable) {
+      throw new Error(context.reason || 'This Step cannot be replaced.');
+    }
+    if (!context.canReplaceCurrentVariant) {
+      const names = context.dependentVariants.map((item) => item.name).join(', ');
+      throw new Error(
+        `This Step is an origin for child Variant${context.dependentVariants.length === 1 ? '' : 's'}${names ? ` (${names})` : ''}. Create a new Variant instead.`,
+      );
+    }
+
+    const tail = branchTailFromNode(nodeId);
+    const branch = branchById(context.branchId);
+    const parentNode = nodeById(context.parentNodeId);
+    if (!tail || !branch || !parentNode) {
+      throw new Error('The Step history changed before replacement could start.');
+    }
+
+    const removedNodeIds = new Set(tail.map((item) => item.id));
+    const removedRecordIds = new Set(
+      records
+        .filter((record) => record.historyNodeId && removedNodeIds.has(record.historyNodeId))
+        .map((record) => record.id),
+    );
+    const externallyReferencedRecord = branches.find(
+      (candidate) =>
+        candidate.id !== branch.id &&
+        ((candidate.rootSnapshotId && removedRecordIds.has(candidate.rootSnapshotId)) ||
+          (candidate.headSnapshotId && removedRecordIds.has(candidate.headSnapshotId))),
+    );
+    if (externallyReferencedRecord) {
+      throw new Error(
+        `A removed bookmark is still referenced by Variant "${externallyReferencedRecord.name}". Create a new Variant instead.`,
+      );
+    }
+
+    historyNodes = historyNodes.filter((item) => !removedNodeIds.has(item.id));
+    records = records.filter((record) => !removedRecordIds.has(record.id));
+    for (const record of records) {
+      if (record.parentId && removedRecordIds.has(record.parentId)) record.parentId = null;
+    }
+
+    branch.headNodeId = parentNode.id;
+    if (branch.headSnapshotId && removedRecordIds.has(branch.headSnapshotId)) {
+      branch.headSnapshotId =
+        branch.rootSnapshotId && !removedRecordIds.has(branch.rootSnapshotId)
+          ? branch.rootSnapshotId
+          : null;
+    }
+
+    const workingState = cloneState(capture());
+    if (!validateState(workingState)) {
+      throw new Error('Cannot replace process history from an invalid working state.');
+    }
+    branch.headState = workingState;
+    activeBranchId = branch.id;
+    cursorNodeId = parentNode.id;
+    cursorSnapshotId = null;
+    cursorBaselineState = cloneState(workingState);
+    cursorDetachedFromHead = false;
+
+    return {
+      branchId: branch.id,
+      branchName: branch.name,
+      parentNodeId: parentNode.id,
+      removedNodeCount: removedNodeIds.size,
+      removedBookmarkCount: removedRecordIds.size,
+    };
+  }
+
   function hasHistoricalWorkingEdits() {
     if (!continuationContext()) return false;
     if (!cursorBaselineState) return true;
-    try {
-      return !deepEqual(capture(), cursorBaselineState);
-    } catch {
-      return true;
-    }
+    return !processStateEqual(capture(), cursorBaselineState);
   }
 
   function syncActiveHeadState() {
@@ -715,8 +944,9 @@ export function createSnapshotManager({
     };
   }
 
-  function canRecordOperation() {
-    return historyNodes.length < maxHistoryNodes;
+  function canRecordOperation(count = 1) {
+    const required = Math.max(1, Math.floor(Number(count) || 1));
+    return historyNodes.length + required <= maxHistoryNodes;
   }
 
   function recordOperation(operation = {}) {
@@ -1090,6 +1320,10 @@ export function createSnapshotManager({
     createBranchFromCursor,
     continuationContext,
     restoreActiveBranchHead,
+    canCreateVariant,
+    stepEditContext,
+    restoreStepInput,
+    replaceBranchTailFrom,
     canRecordOperation,
     recordOperation,
     syncCursorToProcessRevision,

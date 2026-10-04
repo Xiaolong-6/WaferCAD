@@ -199,6 +199,34 @@ assert.match(
   await page.locator('#welcomeScreen').textContent(),
   /Mask[\s\S]*Process[\s\S]*Inspect/,
 );
+
+const photodetectorCard = page.locator(
+  '.welcome-example-card[data-example-id="photodetector-literature"]',
+);
+assert.equal((await photodetectorCard.locator('h3').textContent()).trim(), 'Photodetectors with nanopatterns');
+assert.equal(await photodetectorCard.locator('.welcome-example-sources a').count(), 2);
+assert.deepEqual(
+  await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
+  ['Main', 'Mask', '3D', 'Section'],
+);
+const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
+await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
+const preview = page.frameLocator(
+  '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-project-frame',
+);
+await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
+  state: 'attached',
+  timeout: 30000,
+});
+await photodetectorCard
+  .locator('.welcome-example-view-tab[data-preview-view="section"]')
+  .click();
+await preview.locator('html.welcome-project-preview[data-preview-view="section"]').waitFor({
+  state: 'attached',
+  timeout: 10000,
+});
+assert.equal(await preview.locator('#sectionPanel').isVisible(), true);
+
 await page.locator('#welcomeEmptyBtn').click();
 await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await page.waitForLoadState('networkidle');
@@ -430,7 +458,14 @@ assert.equal(await historyBRow.count(), 1);
 assert.equal(await historyARow.getAttribute('role'), 'button');
 assert.equal(await historyBRow.getAttribute('data-head'), 'true');
 await historyARow.click();
-await historyRestorePage.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+await historyRestorePage.waitForFunction(
+  () =>
+    /Viewing Step .*History A/.test(
+      document.querySelector('.snapshot-continuation-banner')?.textContent || '',
+    ),
+  null,
+  { timeout: 5000 },
+);
 assert.equal(
   await historyRestorePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
     options.some((option) => /pre-process-history-restore/.test(option.textContent || '')),
@@ -488,13 +523,14 @@ await historyRestorePage.locator('.snapshot-return-head').click();
 await historyRestorePage.waitForFunction(
   () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
 );
-await historyRestorePage.waitForFunction(
-  () =>
-    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
-      /pre-snapshot-return-head/.test(option.textContent || ''),
-    ),
-  null,
-  { timeout: 5000 },
+// Navigation-only inspection changes (camera/ROI/Section/zoom) no longer count
+// as historical process edits, so returning to HEAD must not create a recovery
+// checkpoint solely for those view changes.
+assert.equal(
+  await historyRestorePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
+    options.some((option) => /pre-snapshot-return-head/.test(option.textContent || '')),
+  ),
+  false,
 );
 assert.ok(
   await historyRestorePage
@@ -634,6 +670,100 @@ await historyRestorePage.screenshot({
 
 assert.deepEqual(historyRestoreErrors, []);
 await historyRestoreContext.close();
+
+// Historical Step editing offers all three strategies and Branch & recompute
+// replays the actual downstream worker requests on a preserved child Variant.
+const historyRecomputeContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyRecomputePage = await historyRecomputeContext.newPage();
+const historyRecomputeErrors = [];
+historyRecomputePage.on('pageerror', (error) => historyRecomputeErrors.push(error.message));
+await historyRecomputePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await historyRecomputePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'history-recompute-base.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await historyRecomputePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyRecomputePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-recompute-base.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyRecomputePage, 'process');
+await historyRecomputePage.locator('[data-process-mode="add"]').click();
+await historyRecomputePage.locator('#operationArea').selectOption('full');
+await historyRecomputePage.locator('#growthMode').selectOption('direct');
+await historyRecomputePage.locator('#operationThickness').fill('0.05');
+for (const name of ['Replay A', 'Replay B', 'Replay C']) {
+  await historyRecomputePage.locator('#layerName').fill(name);
+  await historyRecomputePage.locator('#applyOperationBtn').click();
+  await historyRecomputePage.waitForFunction(
+    (expected) =>
+      (document.getElementById('statusText')?.textContent || '').includes(`Deposited ${expected}`),
+    name,
+    { timeout: 30000 },
+  );
+}
+
+await openFunctionPanel(historyRecomputePage, 'snapshots');
+const replayBStep = historyRecomputePage.locator('.history-step-wrap', { hasText: 'Replay B' }).first();
+await replayBStep.locator('.snapshot-more-trigger').click();
+await replayBStep.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+await historyRecomputePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+for (const action of ['update-recompute', 'branch-here', 'branch-recompute']) {
+  assert.equal(
+    await historyRecomputePage
+      .locator(`#confirmationDialogActions [data-dialog-action="${action}"]`)
+      .count(),
+    1,
+  );
+}
+await chooseConfirmation(historyRecomputePage, 'branch-recompute');
+
+await historyRecomputePage.waitForFunction(
+  () => /Editing "Deposit Replay B/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+await historyRecomputePage.locator('.snapshot-continuation-banner[data-editing-step="true"]').waitFor();
+assert.equal(await historyRecomputePage.locator('#layerName').inputValue(), 'Replay B');
+assert.equal(Number(await historyRecomputePage.locator('#operationThickness').inputValue()), 0.05);
+await historyRecomputePage.locator('#layerName').fill('Replay B edited');
+await historyRecomputePage.locator('#operationThickness').fill('0.08');
+await historyRecomputePage.locator('#applyOperationBtn').click();
+await historyRecomputePage.waitForFunction(
+  () => /Recomputed 1 downstream Step in Variant "Variant 1"/.test(
+    document.getElementById('statusText')?.textContent || '',
+  ),
+  null,
+  { timeout: 30000 },
+);
+
+await openFunctionPanel(historyRecomputePage, 'snapshots');
+assert.equal(await historyRecomputePage.locator('.history-variant').count(), 2);
+const recomputeMain = historyRecomputePage.locator('.history-variant[data-variant-id="main"]');
+const recomputeChild = historyRecomputePage.locator('.history-variant[data-active="true"]');
+const mainOwnSteps = recomputeMain.locator(':scope > .history-variant-body > .history-step-wrap');
+const childOwnSteps = recomputeChild.locator(':scope > .history-variant-body > .history-step-wrap');
+assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay B/);
+assert.doesNotMatch(
+  await mainOwnSteps.allTextContents().then((items) => items.join(' ')),
+  /Replay B edited/,
+);
+assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
+assert.match(
+  await childOwnSteps.allTextContents().then((items) => items.join(' ')),
+  /Replay B edited/,
+);
+assert.match(await childOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
+assert.equal(
+  await historyRecomputePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
+    options.some((option) => /pre-history-step-edit/.test(option.textContent || '')),
+  ),
+  true,
+);
+assert.deepEqual(historyRecomputeErrors, []);
+await historyRecomputeContext.close();
 
 const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];
@@ -1001,9 +1131,13 @@ assert.match(await page.locator('#operationNote').textContent(), /maximum etch d
 await page.locator('#etchSurfaceMode').selectOption('pyramid');
 assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Pyramid XY');
 assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height');
-assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), false);
-assert.equal(await page.locator('#roughHeightCvRow').isVisible(), false);
-assert.match(await page.locator('#operationNote').textContent(), /Pyramid XY is the square pitch/);
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughSeedRow').isVisible(), true);
+await page.locator('#roughFeatureCv').fill('30');
+await page.locator('#roughHeightCv').fill('20');
+await page.locator('#roughSeed').fill('2018');
+assert.match(await page.locator('#operationNote').textContent(), /Seed makes the random field reproducible/);
 await page.locator('#etchSurfaceMode').selectOption('rough');
 assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Feature XY');
 assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height mean');
@@ -1017,6 +1151,7 @@ await page.locator('#roughFeatureSize').fill('0.4');
 await page.locator('#roughFeatureCv').fill('35');
 await page.locator('#roughAmplitude').fill('0.8');
 await page.locator('#roughHeightCv').fill('40');
+await page.locator('#roughSeed').fill('4242');
 await page.locator('#applyOperationBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /Height cannot exceed Etch Depth/);
 await page.locator('#operationThickness').fill('1');
@@ -1042,16 +1177,19 @@ assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+assert.equal(await page.locator('#roughSeed').inputValue(), '4242');
 await page.locator('#undoBtn').click();
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+assert.equal(await page.locator('#roughSeed').inputValue(), '4242');
 await page.locator('#redoBtn').click();
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+assert.equal(await page.locator('#roughSeed').inputValue(), '4242');
 
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI rough project');
@@ -1073,6 +1211,7 @@ assert.ok(
       Math.abs(segment.frontSurface.meanHeight - 0.8) < 1e-12 &&
       Math.abs(segment.frontSurface.featureCv - 0.35) < 1e-12 &&
       Math.abs(segment.frontSurface.heightCv - 0.4) < 1e-12 &&
+      segment.frontSurface.seed === 4242 &&
       typeof segment.frontSurface.profileId === 'string' &&
       Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
@@ -1090,7 +1229,6 @@ await page.locator('#operationThickness').fill('0.6');
 await page.locator('#implantName').fill('UI implant');
 await page.locator('#implantTilt').fill('7');
 await page.locator('#applyOperationBtn').click();
-assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 await page.waitForFunction(() =>
   /Marked implant UI implant/.test(document.getElementById('statusText')?.textContent || ''),
 );
@@ -1203,6 +1341,22 @@ await implantLegendRow.locator('.legend-visibility').uncheck();
 assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), false);
 await implantLegendRow.locator('.legend-visibility').check();
 
+// Orbiting the 3D view is inspection state and must persist with the project.
+const threeCanvasBox = await page.locator('#threeHost canvas').boundingBox();
+assert.ok(threeCanvasBox);
+await page.mouse.move(
+  threeCanvasBox.x + threeCanvasBox.width * 0.62,
+  threeCanvasBox.y + threeCanvasBox.height * 0.48,
+);
+await page.mouse.down();
+await page.mouse.move(
+  threeCanvasBox.x + threeCanvasBox.width * 0.52,
+  threeCanvasBox.y + threeCanvasBox.height * 0.39,
+  { steps: 5 },
+);
+await page.mouse.up();
+await page.waitForTimeout(120);
+
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI implant project');
 const implantDownloadPromise = page.waitForEvent('download');
@@ -1219,6 +1373,11 @@ assert.equal(implantSaved.model.implants[0].depthProfile, 'follow');
 assert.equal(implantSaved.model.implants[0].visible, true);
 assert.equal('border' in implantSaved.model.implants[0], false);
 assert.equal(implantSaved.display.sectionShowBorders, true);
+assert.equal(implantSaved.display.threeCamera.position.length, 3);
+assert.equal(implantSaved.display.threeCamera.target.length, 3);
+assert.ok(implantSaved.display.threeCamera.position.every(Number.isFinite));
+assert.ok(implantSaved.display.threeCamera.target.every(Number.isFinite));
+assert.ok(implantSaved.display.threeCamera.fov > 1);
 assert.equal(implantSaved.display.customStructurePalette.length, 20);
 assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color));
 assert.ok(implantSaved.model.implants[0].patches.length > 0);

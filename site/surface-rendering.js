@@ -266,19 +266,87 @@ function roughNoise2D(x, y, featureSize, seed) {
 function pyramidProfileOffsetAtPoint(x, y, appearance) {
   const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
     depth = roughMaxRelief(appearance),
-    height = Math.min(
+    meanHeight = Math.min(
       depth,
       Math.max(0, Number(appearance?.meanHeight ?? appearance?.amplitude) || feature),
     ),
-    wrap = (value) => {
-      const unit = Number(value) / feature;
-      return unit - Math.floor(unit + 0.5);
-    },
-    localX = wrap(x),
-    localY = wrap(y),
-    tent = Math.max(0, 1 - 2 * Math.max(Math.abs(localX), Math.abs(localY))),
-    normalOffset = height * tent,
-    offset = appearance?.polarity === 'normal' ? normalOffset : depth - normalOffset;
+    featureCv = Math.max(0, Math.min(1, Number(appearance?.featureCv) || 0)),
+    heightCv = Math.max(0, Math.min(1, Number(appearance?.heightCv) || 0));
+
+  // Preserve the original perfectly periodic profile for legacy projects and
+  // for users who explicitly choose zero variation.
+  if (featureCv <= 1e-12 && heightCv <= 1e-12) {
+    const wrap = (value) => {
+        const unit = Number(value) / feature;
+        return unit - Math.floor(unit + 0.5);
+      },
+      localX = wrap(x),
+      localY = wrap(y),
+      tent = Math.max(0, 1 - 2 * Math.max(Math.abs(localX), Math.abs(localY))),
+      normalOffset = meanHeight * tent,
+      offset = appearance?.polarity === 'normal' ? normalOffset : depth - normalOffset;
+    return Object.is(offset, -0) ? 0 : offset;
+  }
+
+  // Random KOH-style reconstruction: keep a stable mean cell pitch so the
+  // height field remains deterministic, then vary each pyramid's center, base
+  // width and height from hashed cell coordinates. Taking the upper envelope
+  // of nearby square pyramids avoids discontinuities at nominal cell borders.
+  const seed = Number(appearance?.seed) >>> 0,
+    gx = Number(x) / feature,
+    gy = Number(y) / feature,
+    ix = Math.round(gx),
+    iy = Math.round(gy),
+    jitterFraction = Math.min(0.22, featureCv * 0.28);
+  let normalOffset = 0;
+
+  // With widthFactor <= 1.8 and center jitter <= 0.22 pitch, a pyramid
+  // cannot reach across more than one neighboring mean cell. A 3×3 search is
+  // therefore complete and avoids multiplying every height sample by 25.
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const cxIndex = ix + dx,
+        cyIndex = iy + dy,
+        widthFactor = Math.max(
+          0.45,
+          Math.min(
+            1.8,
+            lognormalFactor(
+              featureCv,
+              gaussianHash((seed ^ 0x51ed270b) >>> 0, cxIndex, cyIndex, 1),
+            ),
+          ),
+        ),
+        heightFactor = Math.max(
+          0.35,
+          Math.min(
+            1.9,
+            lognormalFactor(
+              heightCv,
+              gaussianHash((seed ^ 0x9e3779b9) >>> 0, cxIndex, cyIndex, 2),
+            ),
+          ),
+        ),
+        jitterX =
+          (hashUnit((seed ^ Math.imul(cyIndex + 31, 0x85ebca6b)) >>> 0, cxIndex + 17) * 2 - 1) *
+          jitterFraction *
+          feature,
+        jitterY =
+          (hashUnit((seed ^ Math.imul(cxIndex + 47, 0xc2b2ae35)) >>> 0, cyIndex + 23) * 2 - 1) *
+          jitterFraction *
+          feature,
+        centerX = cxIndex * feature + jitterX,
+        centerY = cyIndex * feature + jitterY,
+        halfWidth = Math.max(feature * 0.12, (feature * widthFactor) / 2),
+        nx = Math.abs(Number(x) - centerX) / halfWidth,
+        ny = Math.abs(Number(y) - centerY) / halfWidth,
+        tent = Math.max(0, 1 - Math.max(nx, ny)),
+        localHeight = Math.min(depth, meanHeight * heightFactor);
+      normalOffset = Math.max(normalOffset, localHeight * tent);
+    }
+  }
+
+  const offset = appearance?.polarity === 'normal' ? normalOffset : depth - normalOffset;
   return Object.is(offset, -0) ? 0 : offset;
 }
 
