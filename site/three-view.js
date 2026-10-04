@@ -81,6 +81,8 @@ export function createThreeView({
   let roughRefineTimer = null;
   let roughInteractionCache = null;
   let currentRoughMode = 'none';
+  let sceneGeneration = 0;
+  let pendingRender = false;
 
   function showUnavailable({
     status = '3D unavailable',
@@ -854,9 +856,22 @@ export function createThreeView({
     };
   }
 
-  function applyRoughMeshResults(results, diagnostics, mode, signature = null) {
+  function applyRoughMeshResults(
+    results,
+    diagnostics,
+    mode,
+    signature = null,
+    sceneToken = roughRenderContext?.sceneGeneration ?? null,
+  ) {
     const context = roughRenderContext;
-    if (!context) return false;
+    if (
+      !context ||
+      sceneToken == null ||
+      context.sceneGeneration !== sceneToken ||
+      sceneGeneration !== sceneToken
+    ) {
+      return false;
+    }
     clearAdaptiveRoughObjects();
 
     for (const result of results || []) {
@@ -924,6 +939,8 @@ export function createThreeView({
     updateTransparentOrder();
     updateRoughDiagnostics();
     if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
+    host.dataset.renderState = 'ready';
+    stats.textContent = hasMaterial(context.model) ? (context.clip ? 'ROI' : 'full model') : 'no material';
     scheduleFrame();
     return true;
   }
@@ -956,7 +973,8 @@ export function createThreeView({
     { force = false, refineAfter = false } = {},
   ) {
     if (!roughRenderContext || !roughTasks.length || rendering) return Promise.resolve(false);
-    const interactive = mode === 'interactive',
+    const sceneToken = roughRenderContext.sceneGeneration,
+      interactive = mode === 'interactive',
       signature = adaptiveLodSignature();
     if (
       !interactive &&
@@ -982,7 +1000,7 @@ export function createThreeView({
       worker = new Worker(workerUrl);
     } catch (error) {
       console.warn('Rough mesh worker unavailable; using synchronous fallback.', error);
-      if (!interactive) return Promise.resolve(rebuildAdaptiveRoughGeometrySync());
+      if (!interactive) return Promise.resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
       return Promise.resolve(false);
     }
 
@@ -1011,7 +1029,7 @@ export function createThreeView({
         if (message.type === 'error') {
           console.warn('Rough mesh worker failed.', message.message);
           finish();
-          if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync());
+          if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
           else resolve(false);
           return;
         }
@@ -1026,6 +1044,7 @@ export function createThreeView({
           roughInteractionCache = {
             results: message.results,
             diagnostics,
+            sceneGeneration: sceneToken,
           };
         }
         const applied = applyRoughMeshResults(
@@ -1033,6 +1052,7 @@ export function createThreeView({
           diagnostics,
           mode,
           interactive ? null : signature,
+          sceneToken,
         );
         if (interactive && refineAfter && !interacting) scheduleDetailedRoughBuild(60);
         resolve(applied);
@@ -1046,7 +1066,7 @@ export function createThreeView({
         }
         console.warn('Rough mesh worker failed.', event.message || event);
         finish();
-        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync());
+        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
         else resolve(false);
       };
 
@@ -1059,16 +1079,27 @@ export function createThreeView({
       } catch (error) {
         console.warn('Could not start rough mesh worker task.', error);
         finish();
-        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync());
+        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
         else resolve(false);
       }
     });
   }
 
-  function rebuildAdaptiveRoughGeometrySync({ interactive = false } = {}) {
+  function rebuildAdaptiveRoughGeometrySync({
+    interactive = false,
+    sceneToken = roughRenderContext?.sceneGeneration ?? null,
+  } = {}) {
     const context = roughRenderContext;
+    if (
+      !context ||
+      sceneToken == null ||
+      context.sceneGeneration !== sceneToken ||
+      sceneGeneration !== sceneToken
+    ) {
+      return false;
+    }
     clearAdaptiveRoughObjects();
-    if (!context || !roughTasks.length) {
+    if (!roughTasks.length) {
       lastLodSignature = null;
       updateRoughDiagnostics();
       return false;
@@ -1197,11 +1228,16 @@ export function createThreeView({
             interacting = true;
             clearRoughRefineTimer();
             terminateRoughWorker({ invalidate: true });
-            if (roughInteractionCache) {
+            if (
+              roughInteractionCache &&
+              roughInteractionCache.sceneGeneration === sceneGeneration
+            ) {
               applyRoughMeshResults(
                 roughInteractionCache.results,
                 roughInteractionCache.diagnostics,
                 'interactive',
+                null,
+                roughInteractionCache.sceneGeneration,
               );
             } else if (roughTasks.length) {
               void requestRoughGeometry('interactive');
@@ -1264,9 +1300,21 @@ export function createThreeView({
   }
 
   function render() {
-    if (!ready || rendering) return;
+    if (!ready) return;
+    if (rendering) {
+      pendingRender = true;
+      return;
+    }
     const model = getModel();
     if (!model) return;
+
+    const renderGeneration = ++sceneGeneration;
+    pendingRender = false;
+    host.dataset.renderState = 'building';
+    host.dataset.sceneGeneration = String(renderGeneration);
+    host.dataset.modelRevision = String(model.revision ?? 0);
+    host.dataset.processRevision = String(model.processRevision ?? 0);
+    stats.textContent = 'rebuilding 3D…';
 
     rendering = true;
     try {
@@ -1294,7 +1342,15 @@ export function createThreeView({
       if (renderer?.domElement?.dataset) {
         renderer.domElement.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
       }
-      roughRenderContext = { model, clip, opacity, borders };
+      roughRenderContext = {
+        model,
+        clip,
+        opacity,
+        borders,
+        sceneGeneration: renderGeneration,
+        modelRevision: model.revision ?? 0,
+        processRevision: model.processRevision ?? 0,
+      };
 
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
         bucketKey = (part, state) => {
@@ -1459,11 +1515,26 @@ export function createThreeView({
       host.dataset.implantInternalCount = String(implantInternalCount);
       host.dataset.implantSurfaceCount = String(implantSurfaceCount);
       updateTransparentOrder();
-      stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
+      if (!roughTasks.length) {
+        host.dataset.renderState = 'ready';
+        stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
+      }
     } finally {
       rendering = false;
     }
-    if (roughTasks.length) void requestRoughGeometry('interactive', { refineAfter: true });
+
+    if (pendingRender) {
+      queueMicrotask(() => {
+        if (!rendering && pendingRender) render();
+      });
+      scheduleFrame();
+      return;
+    }
+
+    if (roughTasks.length) {
+      host.dataset.renderState = 'refining';
+      void requestRoughGeometry('interactive', { refineAfter: true });
+    }
     scheduleFrame();
   }
 
