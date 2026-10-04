@@ -773,6 +773,53 @@ const c = applyOperation(conformal, {
 });
 assert.equal(surfaceSegment(regionAt(conformal, [2.5, 0]).stack).layerId, c.layerId);
 
+const maskedConformal = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const maskedFilm = applyOperation(maskedConformal, {
+  type: 'add',
+  name: 'Masked conformal',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(4, 20),
+  growth: 'conformal',
+});
+assert.equal(surfaceSegment(regionAt(maskedConformal, [0, 0]).stack).layerId, maskedFilm.layerId);
+assert.equal(
+  regionAt(maskedConformal, [2.5, 0]).stack.some((segment) => segment.layerId === maskedFilm.layerId),
+  false,
+  'Conformal deposition must not wrap around an artificial mask edge',
+);
+
+const maskedConformalStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(maskedConformalStep, {
+  type: 'add',
+  name: 'Inner ridge',
+  thickness: 2,
+  face: 'front',
+  area: rectMulti(2, 20),
+  growth: 'direct',
+});
+const maskedStepFilm = applyOperation(maskedConformalStep, {
+  type: 'add',
+  name: 'Masked conformal over step',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(8, 20),
+  growth: 'conformal',
+});
+const maskedPhysicalSide = regionAt(maskedConformalStep, [1.5, 0]).stack.find(
+  (segment) => segment.layerId === maskedStepFilm.layerId,
+);
+assert.equal(maskedPhysicalSide?.role, 'conformal-sidewall');
+assert.equal(maskedPhysicalSide?.z0, 5);
+assert.equal(maskedPhysicalSide?.z1, 8);
+assert.equal(
+  regionAt(maskedConformalStep, [4.5, 0]).stack.some(
+    (segment) => segment.layerId === maskedStepFilm.layerId,
+  ),
+  false,
+  'Masked conformal coating must remain hard-clipped at the selected area boundary',
+);
+
 const directStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(directStep, {
   type: 'add',
