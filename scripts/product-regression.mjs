@@ -253,7 +253,19 @@ async function checkWorkstationShellLayout(page, name) {
   }
 
   assert.equal(compact, false, `${name}: desktop viewport should not be compact`);
-  await page.getByRole('button', { name: 'Split' }).click();
+
+  const viewbarOrder = await page
+    .locator('.workstation-view-tabs > button')
+    .allTextContents();
+  assert.deepEqual(
+    viewbarOrder.map((text) => text.trim()),
+    ['Overview', 'Main', 'Mask', '3D', 'Split'],
+    `${name}: viewbar layout buttons are not in the requested order`,
+  );
+
+  const splitButton = page.getByRole('button', { name: 'Split' });
+  await splitButton.click();
+  assert.equal(await splitButton.getAttribute('aria-pressed'), 'true');
   await page.evaluate(
     () =>
       new Promise((resolveFrame) =>
@@ -282,7 +294,39 @@ async function checkWorkstationShellLayout(page, name) {
       Math.abs(split.three.right - split.stage.right) <= 2,
     `${name}: Split does not fill the primary stage`,
   );
-  await page.getByRole('button', { name: 'Overview' }).click();
+
+  // Each visible Split pane title is a selector. Replace the left Main pane
+  // with Mask, then restore the default Main + 3D pair.
+  const leftMainSelector = page.locator(
+    '#mainPanel .workstation-split-view-selector[data-split-slot="left"]',
+  );
+  await leftMainSelector.locator('summary').click();
+  await leftMainSelector.locator('[data-view="mask"]').click();
+  assert.equal(await page.locator('#mainPanel').isHidden(), true);
+  assert.equal(await page.locator('#maskPanel').isVisible(), true);
+  assert.equal(await page.locator('#threePanel').isVisible(), true);
+  const maskThreeOrder = await page.evaluate(() => ({
+    mask: document.getElementById('maskPanel').getBoundingClientRect().left,
+    three: document.getElementById('threePanel').getBoundingClientRect().left,
+    left: document.querySelector('.workstation-view-stage')?.dataset.splitLeft,
+    right: document.querySelector('.workstation-view-stage')?.dataset.splitRight,
+  }));
+  assert.equal(maskThreeOrder.left, 'mask');
+  assert.equal(maskThreeOrder.right, 'three');
+  assert.ok(maskThreeOrder.mask < maskThreeOrder.three, `${name}: Split left/right order was lost`);
+
+  const leftMaskSelector = page.locator(
+    '#maskPanel .workstation-split-view-selector[data-split-slot="left"]',
+  );
+  await leftMaskSelector.locator('summary').click();
+  await leftMaskSelector.locator('[data-view="main"]').click();
+  assert.equal(await page.locator('#mainPanel').isVisible(), true);
+  assert.equal(await page.locator('#maskPanel').isHidden(), true);
+  assert.equal(await page.locator('#threePanel').isVisible(), true);
+
+  const overviewButton = page.getByRole('button', { name: 'Overview' });
+  await overviewButton.click();
+  assert.equal(await overviewButton.getAttribute('aria-pressed'), 'true');
   await page.waitForFunction(() => {
     const canvas = document.getElementById('mainCanvas');
     if (!canvas?.checkVisibility()) return false;
