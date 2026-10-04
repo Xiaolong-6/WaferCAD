@@ -715,16 +715,20 @@
                   <button type="button" data-process-mode="implant" aria-pressed="false">
                     Implant <span class="experimental-tag">EXP</span>
                   </button>
+                  <button type="button" data-process-mode="record" aria-pressed="false">
+                    Record
+                  </button>
                 </div>
                 <select id="operationType" class="visually-hidden" aria-label="Process action">
                   <option value="add">Deposit new layer</option>
                   <option value="grow">Extend existing layer</option>
                   <option value="etch">Etch / subtract</option>
                   <option value="implant">Implant (experimental)</option>
+                  <option value="record">Record process step</option>
                 </select>
 
                 <div class="param-grid-2 process-area-grid">
-                  <label class="param-field">
+                  <label id="operationAreaRow" class="param-field">
                     <span>Area</span>
                     <select id="operationArea">
                       <option value="mask">Selected mask</option>
@@ -785,6 +789,42 @@
                     <span><b id="processThicknessLabel">Z</b></span>
                     <input id="operationThickness" type="number" value="3" min="0" step="any" />
                     <b id="operationThicknessUnit" class="field-unit">µm</b>
+                  </label>
+                </div>
+
+                <div id="recordProcessParams" class="param-grid-2 record-process-grid hidden">
+                  <label class="param-field">
+                    <span>Process</span>
+                    <select id="recordProcessType">
+                      <option value="anneal">Anneal</option>
+                      <option value="clean">Clean</option>
+                      <option value="oxidation">Oxidation</option>
+                      <option value="surface-treatment">Surface treatment</option>
+                      <option value="activation">Activation</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  <label class="param-field">
+                    <span>Label</span>
+                    <input id="recordProcessLabel" value="Anneal" maxlength="160" />
+                  </label>
+                  <label class="param-field">
+                    <span>Temp.</span>
+                    <input id="recordTemperature" type="number" step="any" placeholder="optional" />
+                    <b class="field-unit">°C</b>
+                  </label>
+                  <label class="param-field">
+                    <span>Time</span>
+                    <input id="recordDuration" type="number" min="0" step="any" placeholder="optional" />
+                    <b class="field-unit">min</b>
+                  </label>
+                  <label class="param-field">
+                    <span>Ambient</span>
+                    <input id="recordAmbient" maxlength="120" placeholder="e.g. O₂, N₂, forming gas" />
+                  </label>
+                  <label class="param-field">
+                    <span>Note</span>
+                    <input id="recordNote" maxlength="240" placeholder="optional" />
                   </label>
                 </div>
 
