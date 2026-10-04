@@ -98,11 +98,7 @@ function implantFragments(model, clip = null) {
 
         const currentLow = region.stack[0].z0,
           currentHigh = region.stack.at(-1).z1,
-          z0 = Math.max(sourceLow, currentLow),
-          z1 = Math.min(sourceHigh, currentHigh);
-        if (!(z1 > z0 + 1e-12)) continue;
-
-        const surfaceSegment =
+          surfaceSegment =
             implant.face === 'front' ? region.stack.at(-1) : region.stack[0],
           currentSurfaceZ = implant.face === 'front' ? currentHigh : currentLow,
           sourceSurfaceZ = Number(patch.z),
@@ -113,28 +109,38 @@ function implantFragments(model, clip = null) {
           currentAppearance =
             implant.face === 'front'
               ? surfaceSegment?.frontSurface
-              : surfaceSegment?.backSurface,
-          outerZ = implant.face === 'front' ? z1 : z0,
-          innerZ = implant.face === 'front' ? z0 : z1,
-          surfaceExposed = Math.abs(currentSurfaceZ - outerZ) <= 1e-9;
+              : surfaceSegment?.backSurface;
 
-        fragments.push({
-          implantId: implant.id,
-          name: implant.name,
-          color: implant.color,
-          face: implant.face,
-          thickness,
-          tilt: Number(implant.tilt) || 0,
-          sourceZ: sourceSurfaceZ,
-          outerZ,
-          innerZ,
-          surfaceExposed,
-          z0,
-          z1,
-          surfaceAppearance:
-            (currentCutsImplant ? currentAppearance : patch.surfaceAppearance) || null,
-          polys: geom,
-        });
+        // A released region can contain true Z gaps. Clip the annotation to
+        // each surviving material interval rather than spanning from the first
+        // to the last segment and visually filling an air cavity.
+        for (const materialSegment of region.stack) {
+          const z0 = Math.max(sourceLow, materialSegment.z0),
+            z1 = Math.min(sourceHigh, materialSegment.z1);
+          if (!(z1 > z0 + 1e-12)) continue;
+
+          const outerZ = implant.face === 'front' ? z1 : z0,
+            innerZ = implant.face === 'front' ? z0 : z1,
+            surfaceExposed = Math.abs(currentSurfaceZ - outerZ) <= 1e-9;
+
+          fragments.push({
+            implantId: implant.id,
+            name: implant.name,
+            color: implant.color,
+            face: implant.face,
+            thickness,
+            tilt: Number(implant.tilt) || 0,
+            sourceZ: sourceSurfaceZ,
+            outerZ,
+            innerZ,
+            surfaceExposed,
+            z0,
+            z1,
+            surfaceAppearance:
+              (currentCutsImplant ? currentAppearance : patch.surfaceAppearance) || null,
+            polys: geom,
+          });
+        }
       }
     }
   }
