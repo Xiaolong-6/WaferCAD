@@ -1212,6 +1212,22 @@ await implantLegendRow.locator('.legend-visibility').uncheck();
 assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), false);
 await implantLegendRow.locator('.legend-visibility').check();
 
+// Orbiting the 3D view is inspection state and must persist with the project.
+const threeCanvasBox = await page.locator('#threeHost canvas').boundingBox();
+assert.ok(threeCanvasBox);
+await page.mouse.move(
+  threeCanvasBox.x + threeCanvasBox.width * 0.62,
+  threeCanvasBox.y + threeCanvasBox.height * 0.48,
+);
+await page.mouse.down();
+await page.mouse.move(
+  threeCanvasBox.x + threeCanvasBox.width * 0.52,
+  threeCanvasBox.y + threeCanvasBox.height * 0.39,
+  { steps: 5 },
+);
+await page.mouse.up();
+await page.waitForTimeout(120);
+
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI implant project');
 const implantDownloadPromise = page.waitForEvent('download');
@@ -1228,6 +1244,11 @@ assert.equal(implantSaved.model.implants[0].depthProfile, 'follow');
 assert.equal(implantSaved.model.implants[0].visible, true);
 assert.equal('border' in implantSaved.model.implants[0], false);
 assert.equal(implantSaved.display.sectionShowBorders, true);
+assert.equal(implantSaved.display.threeCamera.position.length, 3);
+assert.equal(implantSaved.display.threeCamera.target.length, 3);
+assert.ok(implantSaved.display.threeCamera.position.every(Number.isFinite));
+assert.ok(implantSaved.display.threeCamera.target.every(Number.isFinite));
+assert.ok(implantSaved.display.threeCamera.fov > 1);
 assert.equal(implantSaved.display.customStructurePalette.length, 20);
 assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color));
 assert.ok(implantSaved.model.implants[0].patches.length > 0);
