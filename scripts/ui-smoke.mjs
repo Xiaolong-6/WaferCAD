@@ -1308,7 +1308,7 @@ assert.match(await page.locator('#statusText').textContent(), /morphology embedd
 // must keep both the exposed inherited morphology and the buried rough
 // interface without falling back to flat canonical caps.
 await openFunctionPanel(page, 'process');
-await page.locator('[data-process-mode="deposit"]').click();
+await page.locator('[data-process-mode="add"]').click();
 await page.locator('#growthMode').selectOption('conformal');
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#operationThickness').fill('0.1');
@@ -1330,13 +1330,34 @@ const conformalGlb = parseGlbJson(await readFile(conformalGlbPath)),
     (node) => node.extras?.wafercadMorphology,
   );
 assert.ok(conformalMorphologyNodes.length >= 2);
+const conformalBuriedMorphology = conformalMorphologyNodes.filter(
+    (node) => node.extras?.wafercadBuriedInterface === true,
+  ),
+  conformalExposedMorphology = conformalMorphologyNodes.filter(
+    (node) => node.extras?.wafercadBuriedInterface === false,
+  );
 assert.ok(
-  conformalMorphologyNodes.some((node) => node.extras?.wafercadBuriedInterface === true),
+  conformalBuriedMorphology.length > 0,
   'conformal morphology GLB must retain a buried rough interface',
 );
 assert.ok(
-  conformalMorphologyNodes.some((node) => node.extras?.wafercadBuriedInterface === false),
+  conformalExposedMorphology.length > 0,
   'conformal morphology GLB must retain the exposed inherited rough surface',
+);
+assert.ok(
+  conformalBuriedMorphology.every(
+    (node) =>
+      node.extras?.wafercadSurfaceOwnership === 'interface' &&
+      node.extras?.wafercadInterfaceLayerId &&
+      node.extras?.wafercadRoughBorderVertexCount === 0,
+  ),
+  'buried conformal morphology must not generate ideal-plane closure skirts',
+);
+assert.ok(
+  conformalExposedMorphology.some(
+    (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) > 0,
+  ),
+  'exposed morphology should retain only its physical outer-boundary closure',
 );
 await page.locator('#undoBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /Undid operation/);
