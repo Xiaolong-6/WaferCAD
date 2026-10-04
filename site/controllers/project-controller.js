@@ -29,6 +29,9 @@ export function createProjectController({
   clearMaskRoiDrawingMode,
   buildProjectSnapshot,
   confirmAction = async () => false,
+  beginHistoricalStepEdit = async () => false,
+  getHistoricalStepEdit = () => null,
+  cancelHistoricalStepEdit = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
   const expandedHistoryVariants = new Set();
@@ -47,6 +50,7 @@ export function createProjectController({
       branches = snapshotManager.listBranches(),
       activeBranch = snapshotManager.activeBranch(),
       continuation = snapshotManager.continuationContext(),
+      historyEdit = getHistoricalStepEdit(),
       position = snapshotManager.currentPosition(),
       nodeById = new Map(historyNodes.map((node) => [node.id, node])),
       branchById = new Map(branches.map((variant) => [variant.id, variant])),
@@ -67,6 +71,7 @@ export function createProjectController({
     host.innerHTML = '';
 
     async function prepareHistoryReplacement(reason, label = 'History navigation') {
+      if (getHistoricalStepEdit()) cancelHistoricalStepEdit();
       const currentContinuation = snapshotManager.continuationContext();
       if (!currentContinuation) {
         if (!snapshotManager.syncActiveHeadState()) {
@@ -117,20 +122,31 @@ export function createProjectController({
     if (continuation) {
       const banner = root.createElement('div');
       banner.className = 'snapshot-continuation-banner';
+      if (historyEdit) banner.dataset.editingStep = 'true';
 
       const copy = root.createElement('div');
       const title = root.createElement('strong');
-      title.textContent = 'Historical state';
+      title.textContent = historyEdit ? 'Editing historical Step' : 'Historical state';
       const detail = root.createElement('span');
-      detail.textContent = continuation.processLabel
-        ? `Viewing Step "${continuation.processLabel}". Edits stay here; a successful Apply creates a new Variant from this Step.`
-        : 'Viewing an older state. Edits stay here; a successful Apply creates a new Variant.';
+      if (historyEdit) {
+        const modeText =
+          historyEdit.mode === 'update-recompute'
+            ? `Apply replaces this Step in "${historyEdit.branchName}" and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+            : historyEdit.mode === 'branch-recompute'
+              ? `Apply creates a new Variant and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+              : 'Apply creates a new Variant from this edited Step without carrying downstream Steps.';
+        detail.textContent = `Editing "${historyEdit.originalLabel}". ${modeText}`;
+      } else {
+        detail.textContent = continuation.processLabel
+          ? `Viewing Step "${continuation.processLabel}". Edits stay here; a successful Apply creates a new Variant from this Step.`
+          : 'Viewing an older state. Edits stay here; a successful Apply creates a new Variant.';
+      }
       copy.append(title, detail);
 
       const returnButton = root.createElement('button');
       returnButton.type = 'button';
       returnButton.className = 'snapshot-return-head';
-      returnButton.textContent = `Return to ${activeBranch.name}`;
+      returnButton.textContent = historyEdit ? 'Cancel edit' : `Return to ${activeBranch.name}`;
       returnButton.onclick = async () => {
         if (
           !(await prepareHistoryReplacement(
@@ -403,6 +419,17 @@ export function createProjectController({
 
       const actions = [];
       if (node.restorable) {
+        const editContext = snapshotManager.stepEditContext(node.id);
+        actions.push({
+          label: 'Edit Step…',
+          disabled: !node.replayable || !editContext?.editable,
+          title: !node.replayable
+            ? 'This Step predates replay metadata and cannot be deterministically recalculated.'
+            : !editContext?.editable
+              ? editContext?.reason || 'This Step cannot be edited in place.'
+              : 'Edit this Step and choose how downstream process history should be handled.',
+          run: () => beginHistoricalStepEdit(node),
+        });
         actions.push({
           label: 'Variant from here',
           run: () => createVariantFromStep(node),
@@ -757,6 +784,7 @@ export function createProjectController({
       const project = await readProjectFileTask(file);
       if (!project) return false;
       await checkpointBeforeReplace('pre-open-project');
+      cancelHistoricalStepEdit();
       if (!project.name) {
         project.name =
           String(file.name || '')
@@ -806,6 +834,7 @@ export function createProjectController({
     try {
       status('Building example…');
       const project = validateProjectFile(migrateProjectFile(createVisualizationExample()));
+      cancelHistoricalStepEdit();
       if (!project.name) project.name = 'Visualization example';
       loadProjectSnapshot(project);
       snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
@@ -859,6 +888,7 @@ export function createProjectController({
       }
       try {
         await checkpointBeforeReplace('pre-new-project');
+        cancelHistoricalStepEdit();
         resetProjectState();
         resetRoughDraftControls();
         clearRoiDrawingMode();
