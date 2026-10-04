@@ -27,16 +27,13 @@ test('normalizes a section detail ROI into the canvas', () => {
 });
 
 test('creates a ROI from drag points regardless of drag direction', () => {
-  assert.deepEqual(
-    sectionDetailRoiFromPoints({ x: 0.7, y: 0.8 }, { x: 0.2, y: 0.3 }),
-    {
-      x: 0.2,
-      y: 0.3,
-      width: 0.5,
-      height: 0.5,
-      shape: 'rect',
-    },
-  );
+  const roi = sectionDetailRoiFromPoints({ x: 0.7, y: 0.8 }, { x: 0.2, y: 0.3 });
+  assert.ok(roi);
+  assert.equal(roi.x, 0.2);
+  assert.equal(roi.y, 0.3);
+  assert.ok(Math.abs(roi.width - 0.5) < 1e-12);
+  assert.ok(Math.abs(roi.height - 0.5) < 1e-12);
+  assert.equal(roi.shape, 'rect');
 });
 
 test('moves a ROI while keeping it within the canvas', () => {
