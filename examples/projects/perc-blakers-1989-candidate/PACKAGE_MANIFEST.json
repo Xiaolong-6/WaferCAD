@@ -24,7 +24,8 @@
     "process_nodes": 40,
     "bookmarks": 40,
     "active_process_revision": 18,
-    "active_branch_name": "PERC Fig. 1 · corrected source-order process"
+    "active_branch_name": "PERC Fig. 1 · corrected source-order process",
+    "fixed_sha256": "8ee1d4c9bb99dd3b234dd0d4737546117774c5e85697a0e4d98cd28637723ef1"
   },
   "mask_gds": {
     "name": "PERC_Blakers1989_masks.gds",
@@ -38,9 +39,17 @@
       "6/0 rear Al reference footprints"
     ]
   },
-  "promotion_status": "blocked",
-  "blocker": "Light-P Implant retains 8 patches hosted by stripped temporary layer-2.",
+  "promotion_status": "repaired_staging",
+  "blocker": null,
   "welcome_registered": false,
   "pr_opened": false,
-  "ci_requested": false
+  "ci_requested": false,
+  "repair": {
+    "scope": "Corrected source-order branch only, C09 and later",
+    "action": "Remove C09 light-P Implant polygons whose host layer is temporary second oxide layer-2",
+    "material_geometry_changed": false,
+    "process_history_changed": false,
+    "fixed_project_sha256": "8ee1d4c9bb99dd3b234dd0d4737546117774c5e85697a0e4d98cd28637723ef1",
+    "verification": "C09 light-P patches in corrected branch are base-hosted only; source project hash is pinned by repair_stale_implant.py"
+  }
 }
