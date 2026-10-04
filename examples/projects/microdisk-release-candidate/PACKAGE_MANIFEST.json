@@ -1,0 +1,20 @@
+{
+  "candidate": "suspended-silica-microdisk",
+  "source": "Basiri-Esfahani et al., Nature Communications 2019, Precision ultrasound sensing on a chip",
+  "status": "staging",
+  "baseline_feature": "PR #89 isotropic release / undercut etch",
+  "paper_geometry_um": {
+    "outer_radius": 148,
+    "inner_radius": 82,
+    "thermal_oxide_thickness": 1.8
+  },
+  "reconstruction_parameters_um": {
+    "hub_radius": 55,
+    "spoke_width": 10,
+    "spoke_span": 180,
+    "isotropic_release_radius": 36
+  },
+  "welcome_registered": false,
+  "pr_opened": false,
+  "ci_requested": false
+}
