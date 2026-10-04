@@ -938,6 +938,7 @@ export function createThreeView({
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
+      material?.dispose?.();
       return null;
     }
     const mesh = new THREE.Mesh(geometry, material),
@@ -1706,7 +1707,7 @@ export function createThreeView({
             implantInternalCount++;
           }
 
-          if (followDepthProfile) {
+          if (followDepthProfile && zIsVisible(implant.innerZ)) {
             roughTasks.push({
               kind: 'implant-depth',
               cap: {
@@ -1745,7 +1746,7 @@ export function createThreeView({
           },
           capName = `${implant.name || implant.implantId || 'Implant'} surface`;
 
-        if (appearance) {
+        if (appearance && zIsVisible(implant.outerZ)) {
           roughTasks.push({
             kind: 'implant',
             cap: {
@@ -1841,7 +1842,7 @@ export function createThreeView({
             electricalRegionInternalCount++;
           }
 
-          if (followDepthProfile) {
+          if (followDepthProfile && zIsVisible(electrical.innerZ)) {
             roughTasks.push({
               kind: 'electrical-depth',
               cap: {
@@ -1884,7 +1885,7 @@ export function createThreeView({
           capName =
             `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
 
-        if (appearance) {
+        if (appearance && zIsVisible(electrical.outerZ)) {
           roughTasks.push({
             kind: 'electrical',
             cap: {
