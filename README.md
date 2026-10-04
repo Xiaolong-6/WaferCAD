@@ -45,8 +45,11 @@ Available actions:
 - Extend existing layer
 - Etch / subtract
 - Implant **(experimental)**
+- Record process step (non-geometric fabrication metadata)
 
-Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Etch is vertical subtraction and has no coverage mode; its Surface setting can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
+Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Etch is vertical subtraction and has no coverage mode; it can either remove exposed materials in stack order or target one currently exposed material and stop when the next different material is reached. Its Surface setting can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
+
+**Record** adds fabrication metadata such as Anneal, Clean, Oxidation, Surface treatment, Activation, or a custom process directly to History without changing material geometry. This keeps literature/process-flow reconstructions chronological without pretending that WaferCAD simulates thermal chemistry or diffusion.
 
 The experimental Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and creates a user-named implant zone with an empirical depth and signed X tilt. Color is assigned after Apply from the active 20-color structure palette and can be changed from the Layers legend. Main uses a light overlay, Section shows the gradient volume, and 3D shows the surviving internal volume. Later Etch operations geometrically clip that existing implant, including rough-profile display, without modeling dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT_EXPERIMENTAL.md`.
 
@@ -56,7 +59,7 @@ Rebuilding the base is treated as a reversible operation. If a processed structu
 
 ## Repository layout
 
-- `site/` — deployed browser application
+- `site/` — deployed browser application, including the data-driven Welcome example-family catalog and bundled editable examples
 - `docs/` — current architecture, usage, and development documentation
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
