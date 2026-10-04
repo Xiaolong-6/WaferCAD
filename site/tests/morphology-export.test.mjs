@@ -115,3 +115,27 @@ test('morphology export triangle budget is shared across multiple rough caps', (
   assert.equal(tasks.length, 2);
   assert.ok(allocated <= 80000);
 });
+
+test('morphology export rejects geometry whose base mesh exceeds the hard cap', () => {
+  const appearance = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 2,
+    meanHeight: 1,
+    etchDepth: 1,
+    featureCv: 0,
+    heightCv: 0,
+    seed: 7,
+  };
+
+  assert.throws(
+    () =>
+      prepareMorphologyExportTasks(
+        THREE,
+        [{ z: 0, normal: 1, profileNormal: 1, polys: square, appearance }],
+        { totalTriangleBudget: 1 },
+      ),
+    /triangle hard cap/i,
+  );
+});
