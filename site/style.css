@@ -573,6 +573,9 @@ button:hover,
   user-select: none;
   white-space: nowrap;
 }
+.three-control[hidden] {
+  display: none;
+}
 button.three-control:hover,
 .three-control:hover {
   border-color: var(--line);
