@@ -89,3 +89,30 @@ test('welcome example catalog groups literature detectors into one branch-based 
     false,
   );
 });
+
+
+test('literature examples expose traceable source citations on Welcome', () => {
+  const literatureExamples = BUNDLED_EXAMPLES.filter(
+    (example) => example.kind === 'project' && /literature/i.test(example.level || ''),
+  );
+  assert.ok(literatureExamples.length > 0);
+
+  for (const example of literatureExamples) {
+    assert.ok(example.sources?.length > 0, `${example.id}: literature source list missing`);
+    for (const source of example.sources) {
+      assert.ok(source.citation?.trim(), `${example.id}: citation text missing`);
+      assert.match(source.href || '', /^https:\/\/doi\.org\//);
+      assert.ok(source.doi?.trim(), `${example.id}: DOI missing`);
+      assert.ok(
+        source.href.endsWith(source.doi),
+        `${example.id}: DOI link must resolve the declared DOI`,
+      );
+    }
+  }
+});
+
+test('photodetector family uses the device-oriented Welcome title', () => {
+  const example = BUNDLED_EXAMPLES.find((entry) => entry.id === 'photodetector-literature');
+  assert.equal(example?.title, 'Photodetectors with nanopatterns');
+  assert.equal(example?.sources?.length, 2);
+});
