@@ -213,7 +213,10 @@ const sectionCollapseController = createSectionCollapseController({
     sectionCollapse = value;
   },
   renderSection,
-  onChanged: markProjectDirty,
+  onChanged: () => {
+    markProjectDirty();
+    threeView?.updateZCollapse();
+  },
   formatXY,
   xyUnitLabel: () => xyUnit().label,
 });
@@ -667,6 +670,7 @@ function initThree() {
     getModel: () => model,
     getClipGeometry: roiGeometry,
     getInspection: () => ({ opacity: threeOpacity, borders: threeShowBorders }),
+    getZCollapse: () => sectionCollapse,
   });
   threeView.init();
 }
