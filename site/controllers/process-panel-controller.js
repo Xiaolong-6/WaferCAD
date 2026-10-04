@@ -67,12 +67,16 @@ export function createProcessPanelController({
       button.setAttribute('aria-pressed', String(active));
     });
   
+    const recordOnly = t === 'record';
     $('layerNameRow').classList.toggle('hidden', t !== 'add');
     $('implantNameRow').classList.toggle('hidden', t !== 'implant');
     $('implantTiltRow').classList.toggle('hidden', t !== 'implant');
     $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
     $('etchTargetLayerRow').classList.toggle('hidden', t !== 'etch');
-    $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
+    $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant' || recordOnly);
+    $('operationAreaRow').classList.toggle('hidden', recordOnly);
+    $('operationThicknessRow').classList.toggle('hidden', recordOnly);
+    $('recordProcessParams').classList.toggle('hidden', !recordOnly);
     $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
     const surfaceMode = $('etchSurfaceMode').value,
       texturedEtch = t === 'etch' && surfaceMode !== 'smooth',
@@ -93,10 +97,13 @@ export function createProcessPanelController({
     const model = getModel(),
       activeFace = getActiveFace(),
       materialExists = hasMaterial(model);
-    $('applyOperationBtn').disabled = !materialExists || Boolean(processTaskController?.isBusy());
+    $('applyOperationBtn').disabled =
+      (!materialExists && !recordOnly) || Boolean(processTaskController?.isBusy());
+    $('applyOperationBtn').textContent = recordOnly ? 'Record' : 'Apply';
     const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
-    $('processSummary').textContent =
-      `${faceLabel} · ${
+    $('processSummary').textContent = recordOnly
+      ? 'Process · Record step'
+      : `${faceLabel} · ${
         t === 'add'
           ? 'Deposit layer'
           : t === 'grow'
@@ -106,11 +113,13 @@ export function createProcessPanelController({
               : 'Etch'
       }`;
   
-    $('operationNote').hidden = !materialExists;
-    if (!materialExists) return;
+    $('operationNote').hidden = !materialExists && !recordOnly;
+    if (!materialExists && !recordOnly) return;
   
     $('operationNote').textContent =
-      t === 'implant'
+      recordOnly
+        ? 'Records fabrication metadata in History without changing material geometry.'
+        : t === 'implant'
         ? 'Experimental structural marker: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt.'
         : t === 'etch'
           ? stochasticEtch
@@ -127,6 +136,65 @@ export function createProcessPanelController({
             : 'Directional coverage follows the selected footprint.';
   }
 
+  function optionalNumber(id, label) {
+    const raw = String($(id)?.value ?? '').trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) throw new Error(`${label} must be a number or left blank.`);
+    return value;
+  }
+
+  async function recordProcessStep() {
+    const applyGate = await beforeApply();
+    if (!applyGate) return;
+
+    let temperatureC;
+    let durationMin;
+    try {
+      temperatureC = optionalNumber('recordTemperature', 'Temperature');
+      durationMin = optionalNumber('recordDuration', 'Time');
+    } catch (error) {
+      return status(error.message, 'error');
+    }
+    if (durationMin != null && durationMin < 0) {
+      return status('Time must be zero or greater.', 'error');
+    }
+
+    try {
+      await commitApplyBranch(applyGate);
+    } catch (error) {
+      console.error(error);
+      return status(`Variant creation failed: ${error.message}`, 'error');
+    }
+
+    const model = getModel(),
+      processType = $('recordProcessType').value || 'custom',
+      defaultLabel = $('recordProcessType').selectedOptions?.[0]?.textContent || 'Process step',
+      label = $('recordProcessLabel').value.trim() || defaultLabel,
+      ambient = $('recordAmbient').value.trim(),
+      note = $('recordNote').value.trim();
+
+    saveHistory();
+    clearBaseRevertSnapshot();
+    const nextModel = structuredClone(model);
+    nextModel.revision = (Number(nextModel.revision) || 0) + 1;
+    nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+    setModel(nextModel);
+
+    recordProcessOperation({
+      kind: 'record',
+      label,
+      processType,
+      geometryChanged: false,
+      temperatureC,
+      durationMin,
+      ambient: ambient || null,
+      note: note || null,
+    });
+    renderAll();
+    status(`Recorded process Step “${label}” without changing geometry.`, 'success');
+  }
+
   async function applyOperation() {
     let model = getModel();
     const activeFace = getActiveFace(),
@@ -136,8 +204,10 @@ export function createProcessPanelController({
       return;
     }
   
-    const type = $('operationType').value,
-      thickness = manualMicron($('operationThickness').value);
+    const type = $('operationType').value;
+    if (type === 'record') return recordProcessStep();
+
+    const thickness = manualMicron($('operationThickness').value);
     $('operationThickness').value = formatLengthField(thickness);
     if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
   
