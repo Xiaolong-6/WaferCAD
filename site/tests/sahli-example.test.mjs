@@ -10,6 +10,7 @@ const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
 
+const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
 
 const project = JSON.parse(
@@ -18,6 +19,7 @@ const project = JSON.parse(
     'utf8',
   ),
 );
+expandProjectStorage(project);
 
 test('Sahli regression fixture uses bookmarks instead of VIEW fabrication Steps', () => {
   assert.equal(validateProjectFile(project), project);
