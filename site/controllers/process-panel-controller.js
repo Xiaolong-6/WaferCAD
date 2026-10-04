@@ -158,8 +158,8 @@ export function createProcessPanelController({
                       : 'Etch removes exposed material vertically in stack order and may create through-holes.'
           : $('growthMode').value === 'conformal'
             ? t === 'grow'
-              ? 'Conformal Extend continues the target material over every exposed surface in the selected area, then follows steps and sidewalls. On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.'
-              : 'Conformal coverage follows exposed surfaces, steps, and sidewalls. On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.'
+              ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
+              : `Conformal coverage follows exposed surfaces, physical steps, and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
             : 'Directional coverage follows the selected footprint.';
   }
 
