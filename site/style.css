@@ -4598,6 +4598,13 @@ summary:focus-visible {
   color: #4c5966;
   font-size: 9px;
   line-height: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.section-detail-inset-head.dragging {
+  cursor: grabbing;
 }
 
 .section-detail-inset-head > div {
