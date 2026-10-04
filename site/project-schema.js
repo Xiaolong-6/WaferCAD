@@ -709,6 +709,9 @@ function validateDisplay(display) {
     if (!(collapse.top > collapse.bottom)) {
       fail('display.sectionCollapse', 'top must be greater than bottom.');
     }
+    if (collapse.enabled != null && typeof collapse.enabled !== 'boolean') {
+      fail('display.sectionCollapse.enabled', 'must be boolean.');
+    }
   }
   if (
     display.sectionScaleMode != null &&
