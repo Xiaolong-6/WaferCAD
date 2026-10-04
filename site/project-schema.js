@@ -1179,6 +1179,14 @@ export function migrateProjectFile(project) {
       if (isObject(record) && isObject(record.state)) migrateProjectCore(record.state);
     }
   }
+  if (isObject(migrated.snapshotBranches)) {
+    for (const node of migrated.snapshotBranches.nodes || []) {
+      if (isObject(node) && isObject(node.state)) migrateProjectCore(node.state);
+    }
+    for (const branch of migrated.snapshotBranches.branches || []) {
+      if (isObject(branch) && isObject(branch.headState)) migrateProjectCore(branch.headState);
+    }
+  }
   return migrated;
 }
 
