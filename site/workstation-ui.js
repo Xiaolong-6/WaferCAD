@@ -134,6 +134,9 @@ export function createWorkstationUiController({ root = document, win = window } 
         String(toolName === name && refs.toolPanel.classList.contains('open')),
       );
     }
+    for (const [toolName, section] of refs.toolSections || []) {
+      section.classList.toggle('workstation-section-active', toolName === name);
+    }
     if (refs.toolPosition) refs.toolPosition.textContent = TOOL_META[name]?.label || '';
     updateRailAnchor(name);
   }
