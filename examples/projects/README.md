@@ -19,6 +19,22 @@ The current literature family is:
 
 The family project opens on the Black-Si FINAL Variant while retaining the complete restorable Variant tree. This structure is intentional: future examples should normally add a new family project (for example solar cell, MEMS, MOS, microfluidic) rather than adding one Welcome card for every publication.
 
+## Regression contract
+
+Bundled examples are production acceptance fixtures, not presentation-only files.
+
+`site/tests/example-regression.test.mjs` validates every restorable literature Step and Variant HEAD against the current project schema and renderer-facing geometry. It also locks the known high-value process invariants:
+
+- Black-Si FINAL strips most blanket front Al without removing the protected ALD;
+- front roughness remains on Front and cannot ghost onto Back;
+- the QA overetch branch remains intentionally destructive;
+- Ge Fig. 15 A/B keeps real B/P implants as Implant while induced inversion/accumulation remain Electrical Regions;
+- Electrical Regions remain constrained to their original Ge host material.
+
+`scripts/example-regression.mjs` complements this with a real Chromium path: open the bundled family from Welcome, switch Variants, restore representative Steps, and require the 3D scene/model/process revision to settle on the restored state.
+
+When a new example family is added, add family-specific structural invariants here rather than relying only on screenshots. Pixel-perfect screenshots are deliberately not the primary contract because renderer and typography changes should not invalidate correct process topology.
+
 ## Black-Si photodiode regression fixture — ACS Photonics 2023
 
 `black-si-photodiode-acs-photonics-2023.wafercad` is the recovered process project supplied during the rough-surface regression investigation.
