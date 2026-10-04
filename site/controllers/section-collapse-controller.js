@@ -14,6 +14,7 @@ export function createSectionCollapseController({
   setSectionCollapse,
   renderSection,
   onChanged = () => {},
+  onSettled = () => {},
   formatXY,
   xyUnitLabel,
 }) {
@@ -36,10 +37,11 @@ export function createSectionCollapseController({
     return resolveSectionCollapse(getSectionCollapse(), getModel(), bounds());
   }
 
-  function setCurrent(value) {
+  function setCurrent(value, { settled = false } = {}) {
     setSectionCollapse(normalizeSectionCollapse(value, bounds()));
     onChanged();
     renderSection();
+    if (settled) onSettled();
   }
 
   function zToRulerY(z) {
@@ -179,10 +181,10 @@ export function createSectionCollapseController({
     } else if (activeTarget === 'bottom') {
       value.bottom = Math.min(value.top - minGap, Math.max(lo, value.bottom + step));
     } else {
-      setCurrent(translateSectionCollapse(value, step, [lo, hi]));
+      setCurrent(translateSectionCollapse(value, step, [lo, hi]), { settled: true });
       return;
     }
-    setCurrent(value);
+    setCurrent(value, { settled: true });
   }
 
   function startDrag(which, event) {
@@ -224,6 +226,7 @@ export function createSectionCollapseController({
     $('sectionCollapseTopHandle').classList.remove('dragging');
     $('sectionCollapseBottomHandle').classList.remove('dragging');
     drag = null;
+    onSettled();
   }
 
   function bind() {
