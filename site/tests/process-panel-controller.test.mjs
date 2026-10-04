@@ -196,6 +196,7 @@ test('Record process step advances History without running geometry worker', asy
     durationMin: 30,
     ambient: 'forming gas',
     note: 'contact anneal',
+    replay: { version: 1, kind: 'record' },
   });
 });
 
@@ -238,4 +239,115 @@ test('Electrical process mode sends typed annotation metadata through the worker
   assert.equal(recorded[0].kind, 'electrical');
   assert.equal(recorded[0].electricalRegionType, 'p-inversion');
   assert.equal(recorded[0].electricalRegionSource, 'induced');
+});
+
+
+test('successful geometry Apply stores a deterministic replay request', async () => {
+  const events = [],
+    recorded = [],
+    controller = controllerForTask(
+      (model) => ({
+        result: { changed: true, layerId: 'layer-1' },
+        model: {
+          ...model,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      }),
+      events,
+      { mode: 'add', recorded },
+    );
+
+  controller.__root.getElementById('operationThickness').value = '0.25';
+  controller.__root.getElementById('operationArea').value = 'full';
+  controller.__root.getElementById('growthMode').value = 'conformal';
+
+  await controller.applyOperation();
+
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].replay.version, 1);
+  assert.deepEqual(recorded[0].replay.params, {
+    type: 'add',
+    name: 'Probe',
+    targetLayerId: '',
+    thickness: 0.25,
+    face: 'front',
+    growth: 'conformal',
+  });
+  assert.equal(recorded[0].replay.areaRequest.mode, 'full');
+  assert.equal(recorded[0].replay.areaRequest.maskSourceMode, 'file');
+  assert.deepEqual(recorded[0].replay.areaRequest.elements, []);
+});
+
+test('replayOperations re-runs saved geometry requests and preserves record-only Steps', async () => {
+  const events = [],
+    recorded = [],
+    controller = controllerForTask(
+      (model) => ({
+        result: { changed: true, layerId: 'layer-replayed' },
+        model: {
+          ...model,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      }),
+      events,
+      { mode: 'add', recorded },
+    );
+
+  const geometry = {
+    kind: 'add',
+    label: 'Deposit replayed layer',
+    replay: {
+      version: 1,
+      params: {
+        type: 'add',
+        name: 'Replayed',
+        targetLayerId: '',
+        thickness: 0.2,
+        face: 'front',
+        growth: 'direct',
+      },
+      areaRequest: {
+        mode: 'full',
+        maskSourceMode: 'file',
+        maskRoi: null,
+        maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+        elements: [],
+      },
+    },
+  };
+  const recordOnly = {
+    kind: 'record',
+    label: 'Anneal',
+    replay: { version: 1, kind: 'record' },
+  };
+
+  const result = await controller.replayOperations([geometry, recordOnly]);
+
+  assert.deepEqual(result, { ok: true, completed: 2 });
+  assert.equal(controller.__getModel().processRevision, 2);
+  assert.deepEqual(
+    recorded.map((operation) => operation.label),
+    ['Deposit replayed layer', 'Anneal'],
+  );
+  assert.equal(events.filter((event) => event === 'save-history').length, 2);
+  assert.equal(events.filter((event) => event === 'record-operation').length, 2);
+});
+
+test('legacy downstream Step stops replay without guessing missing parameters', async () => {
+  const events = [],
+    controller = controllerForTask(
+      () => {
+        throw new Error('legacy operation must not reach worker');
+      },
+      events,
+    );
+
+  const result = await controller.replayOperations([{ kind: 'etch', label: 'Legacy etch' }]);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.completed, 0);
+  assert.match(result.error, /predates replay metadata/i);
+  assert.equal(events.includes('run-worker'), false);
 });
