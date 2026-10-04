@@ -60,6 +60,16 @@ import { createPlanRenderers } from './plan-renderers.js';
 import { createSelectionGeometry } from './selection-geometry.js';
 
 const $ = (id) => document.getElementById(id);
+const APP_PARAMS = new URLSearchParams(globalThis.location?.search || '');
+const EMBEDDED_PREVIEW = APP_PARAMS.get('preview') === '1';
+let embeddedPreviewView = ['main', 'mask', 'three', 'section'].includes(APP_PARAMS.get('view'))
+  ? APP_PARAMS.get('view')
+  : 'main';
+
+if (EMBEDDED_PREVIEW) {
+  document.documentElement.classList.add('welcome-project-preview');
+  document.documentElement.dataset.previewView = embeddedPreviewView;
+}
 const MASK_PALETTE = [
   '#4F86C6',
   '#4FAF9F',
@@ -140,6 +150,7 @@ function scheduleWorkspacePersistence() {
 }
 
 function markProjectDirty() {
+  if (EMBEDDED_PREVIEW) return;
   scheduleWorkspacePersistence();
 }
 
@@ -661,10 +672,12 @@ function renderSection() {
 
 let maskOpacity = 0.65,
   threeView = null,
+  pendingThreeCamera = null,
   threeOpacity = 1,
   threeShowBorders = false;
 
 function initThree() {
+  if (threeView) return threeView;
   threeView = createThreeView({
     host: $('threeHost'),
     stats: $('threeStats'),
@@ -672,8 +685,14 @@ function initThree() {
     getClipGeometry: roiGeometry,
     getInspection: () => ({ opacity: threeOpacity, borders: threeShowBorders }),
     getZCollapse: () => sectionCollapse,
+    onViewChanged: (viewState) => {
+      pendingThreeCamera = viewState ? structuredClone(viewState) : null;
+      markProjectDirty();
+    },
   });
   threeView.init();
+  if (pendingThreeCamera) threeView.setViewState?.(pendingThreeCamera);
+  return threeView;
 }
 
 function renderThree() {
@@ -710,7 +729,8 @@ function syncMaskSourceSummary() {
   workspaceViewController?.syncMaskSourceSummary();
 }
 
-let processPanelController = null;
+let processPanelController = null,
+  pendingHistoryStepEdit = null;
 
 function updateOperationUI() {
   processPanelController?.updateUi();
@@ -748,6 +768,7 @@ const projectStateController = createProjectStateController({
     maskOpacity,
     threeOpacity,
     threeShowBorders,
+    threeCamera: threeView?.getViewState?.() || pendingThreeCamera || null,
   }),
   applyState: (next) => {
     model = next.model;
@@ -778,6 +799,9 @@ const projectStateController = createProjectStateController({
     maskOpacity = next.maskOpacity;
     threeOpacity = next.threeOpacity;
     threeShowBorders = next.threeShowBorders;
+    pendingThreeCamera = next.threeCamera ? structuredClone(next.threeCamera) : null;
+    if (pendingThreeCamera) threeView?.setViewState?.(pendingThreeCamera);
+    else threeView?.fit?.({ notify: false });
     Object.assign(planViews.mask, next.planViews.mask);
     Object.assign(planViews.main, next.planViews.main);
     parsedLayout = null;
@@ -817,6 +841,236 @@ snapshotManager = createSnapshotManager({
   restore: (state) => loadProjectSnapshot(state),
   validateState: isValidSnapshotState,
 });
+
+function cancelHistoricalStepEdit() {
+  pendingHistoryStepEdit = null;
+}
+
+function currentHistoricalStepEdit() {
+  if (!pendingHistoryStepEdit) return null;
+  const {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    downstreamCount,
+  } = pendingHistoryStepEdit;
+  return {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    downstreamCount,
+  };
+}
+
+function refreshAfterHistoricalEditLoad() {
+  syncBaseControls();
+  maskImportController?.syncTransformInputs();
+  renderAll();
+  fit3d();
+}
+
+async function beginHistoricalStepEdit(node) {
+  const context = snapshotManager.stepEditContext(node?.id);
+  if (!context?.editable) {
+    status(context?.reason || 'This Step cannot be edited from History.', 'warning');
+    return false;
+  }
+  if (!node?.replayable || !processPanelController?.canReplayOperation(node.operation)) {
+    status(
+      'This Step predates replay metadata. Restore it or create a Variant from here instead.',
+      'warning',
+    );
+    return false;
+  }
+
+  const downstreamReplayable = context.downstreamReplayable;
+  const detailParts = [
+    `${context.downstreamCount} downstream Step${context.downstreamCount === 1 ? '' : 's'} follow this Step.`,
+  ];
+  if (!context.canReplaceCurrentVariant) {
+    detailParts.push(
+      `Update current Variant is unavailable because ${context.dependentVariants
+        .map((item) => `"${item.name}"`)
+        .join(', ')} depend on this history tail.`,
+    );
+  }
+  if (!downstreamReplayable && context.downstreamCount) {
+    detailParts.push(
+      'Some downstream Steps predate replay metadata, so automatic downstream recompute is unavailable.',
+    );
+  }
+
+  const actions = [{ value: 'cancel', label: 'Cancel' }];
+  if (context.canReplaceCurrentVariant && downstreamReplayable) {
+    actions.push({
+      value: 'update-recompute',
+      label: context.downstreamCount ? 'Update & recompute' : 'Update current Variant',
+    });
+  }
+
+  const canCreateVariant = snapshotManager.canCreateVariant();
+  const canBranchHere = canCreateVariant && snapshotManager.canRecordOperation(1);
+  const canBranchRecompute =
+    canCreateVariant &&
+    downstreamReplayable &&
+    snapshotManager.canRecordOperation(1 + context.downstreamCount);
+  if (!canCreateVariant) {
+    detailParts.push('The Variant limit has been reached, so branching is unavailable.');
+  } else if (!canBranchHere) {
+    detailParts.push('Process History has no capacity for another Variant Step.');
+  }
+
+  if (canBranchHere) {
+    actions.push({ value: 'branch-here', label: 'Branch from here' });
+  }
+  if (canBranchRecompute) {
+    actions.push({
+      value: 'branch-recompute',
+      label: context.downstreamCount ? 'Branch & recompute' : 'Branch & apply',
+      kind: 'primary',
+      default: true,
+    });
+  } else if (
+    canBranchHere &&
+    (!downstreamReplayable || !snapshotManager.canRecordOperation(1 + context.downstreamCount))
+  ) {
+    actions[actions.length - 1].kind = 'primary';
+    actions[actions.length - 1].default = true;
+  } else if (actions.length > 1 && !actions.some((action) => action.default)) {
+    actions[actions.length - 1].kind = 'primary';
+    actions[actions.length - 1].default = true;
+  }
+
+  if (actions.length === 1) {
+    status('No safe edit strategy is available at the current History/Variant limits.', 'warning');
+    return false;
+  }
+
+  const choice = await confirmationDialog.ask({
+    title: 'Edit historical Step',
+    message: `Edit "${node.operation?.label || node.operation?.kind || 'Process step'}"?`,
+    detail: detailParts.join(' '),
+    actions,
+    cancelValue: 'cancel',
+  });
+  if (choice === 'cancel') return false;
+
+  if (
+    (choice === 'update-recompute' || choice === 'branch-recompute') &&
+    !downstreamReplayable
+  ) {
+    status('Automatic downstream recompute is unavailable for this legacy history tail.', 'warning');
+    return false;
+  }
+
+  const replayContext =
+    choice === 'branch-here' || context.downstreamCount === 0
+      ? context
+      : snapshotManager.stepEditContext(node.id, { includeReplayStates: true });
+  if (!replayContext?.editable) {
+    status('Historical Step replay context could not be prepared.', 'error');
+    return false;
+  }
+
+  await checkpointWorkspace('pre-history-step-edit');
+  const restored = snapshotManager.restoreStepInput(node.id);
+  if (!restored) {
+    status('Could not restore the input state for this Step.', 'error');
+    return false;
+  }
+
+  pendingHistoryStepEdit = {
+    nodeId: node.id,
+    branchId: context.branchId,
+    branchName: context.branchName,
+    parentNodeId: context.parentNodeId,
+    mode: choice,
+    originalLabel: node.operation?.label || node.operation?.kind || 'Process step',
+    downstreamCount: context.downstreamCount,
+    downstream:
+      choice === 'branch-here'
+        ? []
+        : replayContext.downstream.map((item) => structuredClone(item)),
+  };
+
+  refreshAfterHistoricalEditLoad();
+  if (!processPanelController.loadOperationForEdit(node.operation)) {
+    pendingHistoryStepEdit = null;
+    snapshotManager.restoreActiveBranchHead();
+    refreshAfterHistoricalEditLoad();
+    status('This Step cannot be loaded into the current Process editor.', 'error');
+    return false;
+  }
+
+  markProjectDirty();
+  renderSnapshots();
+  document.querySelector('.workstation-rail-button[data-tool="process"]')?.click();
+  const modeLabel =
+    choice === 'update-recompute'
+      ? 'update this Variant and recompute its downstream Steps'
+      : choice === 'branch-recompute'
+        ? 'create a Variant and recompute its downstream Steps'
+        : 'create a Variant from this Step without downstream Steps';
+  status(`Editing "${pendingHistoryStepEdit.originalLabel}". Apply to ${modeLabel}.`, 'success');
+  return true;
+}
+
+async function finishHistoricalStepEdit({ applyGate, branchCommit } = {}) {
+  if (!applyGate?.historyStepEdit) return false;
+  const edit = pendingHistoryStepEdit;
+  if (
+    !edit ||
+    edit.nodeId !== applyGate.nodeId ||
+    edit.branchId !== applyGate.branchId ||
+    edit.parentNodeId !== applyGate.parentNodeId
+  ) {
+    status('Historical Step edit context changed before completion.', 'error');
+    pendingHistoryStepEdit = null;
+    return true;
+  }
+
+  const downstream = edit.downstream.map((step) => structuredClone(step));
+  const mode = edit.mode;
+  const targetVariant = snapshotManager.activeBranch().name;
+  pendingHistoryStepEdit = null;
+
+  if (mode === 'branch-here' || downstream.length === 0) {
+    markProjectDirty();
+    renderSnapshots();
+    status(
+      mode === 'branch-here'
+        ? `Created Variant "${branchCommit?.name || targetVariant}" from the edited Step.`
+        : `Updated "${targetVariant}". No downstream Steps required recompute.`,
+      'success',
+    );
+    return true;
+  }
+
+  const replay = await processPanelController.replayOperations(downstream);
+  markProjectDirty();
+  renderSnapshots();
+  if (!replay.ok) {
+    const failedLabel =
+      replay.failedOperation?.label || replay.failedOperation?.kind || 'downstream Step';
+    status(
+      `Recompute stopped after ${replay.completed}/${downstream.length} downstream Steps at "${failedLabel}": ${replay.error} A Recovery checkpoint was saved before the edit.`,
+      'warning',
+    );
+    return true;
+  }
+
+  status(
+    `Recomputed ${replay.completed} downstream Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`,
+    'success',
+  );
+  return true;
+}
 
 async function exportProjectFileTask(project, filename) {
   if (!processTaskController) return false;
@@ -865,6 +1119,9 @@ const projectController = createProjectController({
   clearMaskRoiDrawingMode: () => maskRoiController.clearDrawingMode(),
   buildProjectSnapshot,
   confirmAction: (options) => confirmationDialog.confirm(options),
+  beginHistoricalStepEdit,
+  getHistoricalStepEdit: currentHistoricalStepEdit,
+  cancelHistoricalStepEdit,
 });
 const {
   renderSnapshots,
@@ -875,12 +1132,46 @@ const {
 } = projectController;
 
 async function ensureWritableProcessBranch() {
+  const continuation = snapshotManager.continuationContext();
+  if (pendingHistoryStepEdit) {
+    const edit = pendingHistoryStepEdit;
+    if (
+      !continuation ||
+      continuation.branchId !== edit.branchId ||
+      continuation.cursorNodeId !== edit.parentNodeId
+    ) {
+      pendingHistoryStepEdit = null;
+      status('Historical Step edit context changed. Start the edit again from History.', 'error');
+      return false;
+    }
+    const requiredSteps =
+      edit.mode === 'update-recompute'
+        ? 0
+        : edit.mode === 'branch-recompute'
+          ? 1 + edit.downstreamCount
+          : 1;
+    if (requiredSteps && !snapshotManager.canRecordOperation(requiredSteps)) {
+      status('Process history limit reached before this edit could be committed.', 'error');
+      return false;
+    }
+    if (edit.mode !== 'update-recompute' && !snapshotManager.canCreateVariant()) {
+      status('Variant limit reached before this edit could be committed.', 'error');
+      return false;
+    }
+    return {
+      historyStepEdit: true,
+      nodeId: edit.nodeId,
+      branchId: edit.branchId,
+      parentNodeId: edit.parentNodeId,
+      mode: edit.mode,
+    };
+  }
+
   if (!snapshotManager.canRecordOperation()) {
     status('Process history limit reached. Delete or export this project before adding more steps.', 'error');
     return false;
   }
 
-  const continuation = snapshotManager.continuationContext();
   if (!continuation) return { createVariant: false };
 
   const confirmed = await confirmationDialog.confirm({
@@ -905,6 +1196,32 @@ async function ensureWritableProcessBranch() {
 }
 
 function commitWritableProcessBranch(gate) {
+  if (gate?.historyStepEdit) {
+    const edit = pendingHistoryStepEdit;
+    const continuation = snapshotManager.continuationContext();
+    if (
+      !edit ||
+      edit.nodeId !== gate.nodeId ||
+      edit.branchId !== gate.branchId ||
+      edit.parentNodeId !== gate.parentNodeId ||
+      !continuation ||
+      continuation.branchId !== edit.branchId ||
+      continuation.cursorNodeId !== edit.parentNodeId
+    ) {
+      throw new Error('Historical Step edit context changed before the operation completed.');
+    }
+
+    let created = null;
+    if (edit.mode === 'update-recompute') {
+      snapshotManager.replaceBranchTailFrom(edit.nodeId);
+    } else {
+      created = snapshotManager.createBranchFromCursor();
+    }
+    markProjectDirty();
+    renderSnapshots();
+    return created;
+  }
+
   if (!gate?.createVariant) return null;
   const continuation = snapshotManager.continuationContext();
   if (
@@ -924,9 +1241,10 @@ function commitWritableProcessBranch(gate) {
 }
 
 function recordProcessOperation(operation) {
-  snapshotManager.recordOperation(operation);
+  const recorded = snapshotManager.recordOperation(operation);
   markProjectDirty();
   renderSnapshots();
+  return recorded;
 }
 
 const maskImportController = createMaskImportController({
@@ -990,6 +1308,10 @@ processPanelController = createProcessPanelController({
     markProjectDirty();
   },
   getActiveFace: () => activeFace,
+  setActiveFace: (value) => {
+    activeFace = value === 'back' ? 'back' : 'front';
+    markProjectDirty();
+  },
   getMaskState: () => ({
     maskSourceMode,
     maskRoi,
@@ -1006,6 +1328,7 @@ processPanelController = createProcessPanelController({
   beforeApply: ensureWritableProcessBranch,
   commitApplyBranch: commitWritableProcessBranch,
   recordProcessOperation,
+  afterApply: finishHistoricalStepEdit,
   clearBaseRevertSnapshot: () => {
     baseRevertSnapshot = null;
   },
@@ -1215,6 +1538,46 @@ workspacePersistenceController = createWorkspacePersistenceController({
 
 const workstationUiController = createWorkstationUiController({ root: document, win: window });
 
+function applyEmbeddedPreviewView(view) {
+  if (!EMBEDDED_PREVIEW) return;
+  const next = ['main', 'mask', 'three', 'section'].includes(view) ? view : 'main';
+  embeddedPreviewView = next;
+  document.documentElement.dataset.previewView = next;
+
+  if (next === 'section') {
+    $('mainPanel').hidden = true;
+    $('maskPanel').hidden = true;
+    $('threePanel').hidden = true;
+    $('sectionPanel').hidden = false;
+    renderSection();
+  } else {
+    $('sectionPanel').hidden = true;
+    workstationUiController.applyViewMode(next, { refresh: false, remember: false });
+    if (next === 'three') {
+      initThree();
+      renderThree();
+      if (pendingThreeCamera) threeView?.setViewState?.(pendingThreeCamera);
+      else fit3d();
+    } else if (next === 'main') {
+      renderMain();
+    } else if (next === 'mask') {
+      renderMask();
+    }
+  }
+
+  requestAnimationFrame(() => globalThis.dispatchEvent(new Event('resize')));
+}
+
+function bindEmbeddedPreviewBridge() {
+  if (!EMBEDDED_PREVIEW) return;
+  globalThis.addEventListener('message', (event) => {
+    if (event.source !== globalThis.parent) return;
+    const message = event.data;
+    if (message?.type !== 'wafercad-preview-view') return;
+    applyEmbeddedPreviewView(message.view);
+  });
+}
+
 function bindUi() {
   workstationUiController.bind();
   viewPopovers.bind();
@@ -1230,7 +1593,7 @@ function bindUi() {
   drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
-  workspacePersistenceController.bind();
+  if (!EMBEDDED_PREVIEW) workspacePersistenceController.bind();
 
   projectController.bind();
 }
@@ -1272,29 +1635,33 @@ planRenderers = createPlanRenderers({
   xyUnitLabel: () => xyUnit().label,
 });
 
-workspaceSession.start();
+if (!EMBEDDED_PREVIEW) workspaceSession.start();
 bindUi();
+bindEmbeddedPreviewBridge();
 loadBuildCommit();
-window.addEventListener('focus', checkForBuildUpdate);
-window.addEventListener('pagehide', () => {
-  void persistWorkspaceNow()
-    .catch(() => false)
-    .finally(() => workspaceSession.stop());
-});
-window.addEventListener('pageshow', (event) => {
-  if (event.persisted) globalThis.location.reload();
-});
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') checkForBuildUpdate();
-  else void persistWorkspaceNow();
-});
+if (!EMBEDDED_PREVIEW) {
+  window.addEventListener('focus', checkForBuildUpdate);
+  window.addEventListener('pagehide', () => {
+    void persistWorkspaceNow()
+      .catch(() => false)
+      .finally(() => workspaceSession.stop());
+  });
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) globalThis.location.reload();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkForBuildUpdate();
+    else void persistWorkspaceNow();
+  });
+}
 renderSnapshots();
-initThree();
+if (!EMBEDDED_PREVIEW || embeddedPreviewView === 'three') initThree();
 syncBaseControls();
 updateOperationUI();
 maskImportController.syncTransformInputs();
 renderAll();
-fit3d();
+if (threeView) fit3d();
+if (EMBEDDED_PREVIEW) applyEmbeddedPreviewView(embeddedPreviewView);
 
 if (
   !document.documentElement.classList.contains('workstation-ui-v2') ||
@@ -1307,5 +1674,25 @@ if (
 document.documentElement.dataset.appReady = 'true';
 document.documentElement.classList.remove('workstation-boot');
 document.getElementById('workstationBootScreen')?.setAttribute('aria-hidden', 'true');
-status('Ready. Create a base or import a layout.');
-void workspacePersistenceController.initializePersistedWorkspace();
+
+if (EMBEDDED_PREVIEW) {
+  void initializeWorkspaceStart()
+    .then((started) => {
+      if (!started) throw new Error('Example preview could not be opened.');
+      applyEmbeddedPreviewView(embeddedPreviewView);
+      globalThis.parent?.postMessage(
+        { type: 'wafercad-preview-ready', view: embeddedPreviewView },
+        globalThis.location.origin,
+      );
+    })
+    .catch((error) => {
+      console.error(error);
+      globalThis.parent?.postMessage(
+        { type: 'wafercad-preview-error', message: error.message },
+        globalThis.location.origin,
+      );
+    });
+} else {
+  status('Ready. Create a base or import a layout.');
+  void workspacePersistenceController.initializePersistedWorkspace();
+}
