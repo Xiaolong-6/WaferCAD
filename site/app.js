@@ -867,17 +867,43 @@ async function beginHistoricalStepEdit(node) {
       label: context.downstreamCount ? 'Update & recompute' : 'Update current Variant',
     });
   }
-  actions.push({ value: 'branch-here', label: 'Branch from here' });
-  if (downstreamReplayable) {
+
+  const canCreateVariant = snapshotManager.canCreateVariant();
+  const canBranchHere = canCreateVariant && snapshotManager.canRecordOperation(1);
+  const canBranchRecompute =
+    canCreateVariant &&
+    downstreamReplayable &&
+    snapshotManager.canRecordOperation(1 + context.downstreamCount);
+  if (!canCreateVariant) {
+    detailParts.push('The Variant limit has been reached, so branching is unavailable.');
+  } else if (!canBranchHere) {
+    detailParts.push('Process History has no capacity for another Variant Step.');
+  }
+
+  if (canBranchHere) {
+    actions.push({ value: 'branch-here', label: 'Branch from here' });
+  }
+  if (canBranchRecompute) {
     actions.push({
       value: 'branch-recompute',
       label: context.downstreamCount ? 'Branch & recompute' : 'Branch & apply',
       kind: 'primary',
       default: true,
     });
-  } else {
+  } else if (
+    canBranchHere &&
+    (!downstreamReplayable || !snapshotManager.canRecordOperation(1 + context.downstreamCount))
+  ) {
     actions[actions.length - 1].kind = 'primary';
     actions[actions.length - 1].default = true;
+  } else if (actions.length > 1 && !actions.some((action) => action.default)) {
+    actions[actions.length - 1].kind = 'primary';
+    actions[actions.length - 1].default = true;
+  }
+
+  if (actions.length === 1) {
+    status('No safe edit strategy is available at the current History/Variant limits.', 'warning');
+    return false;
   }
 
   const choice = await confirmationDialog.ask({
@@ -1048,11 +1074,6 @@ const {
 } = projectController;
 
 async function ensureWritableProcessBranch() {
-  if (!snapshotManager.canRecordOperation()) {
-    status('Process history limit reached. Delete or export this project before adding more steps.', 'error');
-    return false;
-  }
-
   const continuation = snapshotManager.continuationContext();
   if (pendingHistoryStepEdit) {
     const edit = pendingHistoryStepEdit;
@@ -1065,6 +1086,20 @@ async function ensureWritableProcessBranch() {
       status('Historical Step edit context changed. Start the edit again from History.', 'error');
       return false;
     }
+    const requiredSteps =
+      edit.mode === 'update-recompute'
+        ? 0
+        : edit.mode === 'branch-recompute'
+          ? 1 + edit.downstreamCount
+          : 1;
+    if (requiredSteps && !snapshotManager.canRecordOperation(requiredSteps)) {
+      status('Process history limit reached before this edit could be committed.', 'error');
+      return false;
+    }
+    if (edit.mode !== 'update-recompute' && !snapshotManager.canCreateVariant()) {
+      status('Variant limit reached before this edit could be committed.', 'error');
+      return false;
+    }
     return {
       historyStepEdit: true,
       nodeId: edit.nodeId,
@@ -1072,6 +1107,11 @@ async function ensureWritableProcessBranch() {
       parentNodeId: edit.parentNodeId,
       mode: edit.mode,
     };
+  }
+
+  if (!snapshotManager.canRecordOperation()) {
+    status('Process history limit reached. Delete or export this project before adding more steps.', 'error');
+    return false;
   }
 
   if (!continuation) return { createVariant: false };
