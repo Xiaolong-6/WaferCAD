@@ -2059,6 +2059,7 @@ export function createThreeView({
                 Number(cap.appearance.featureSize) || 0;
               mesh.userData.wafercadMorphologyPolarity = cap.appearance.polarity || 'normal';
               mesh.userData.wafercadBuriedInterface = Boolean(cap.buried);
+              mesh.userData.wafercadLayerId = cap.layerId || null;
               mesh.userData.wafercadSurfaceOwnership = cap.ownership || 'exterior';
               mesh.userData.wafercadInterfaceLayerId = cap.interfaceLayerId || null;
               mesh.userData.wafercadSurfaceFace = cap.face || (cap.normal > 0 ? 'front' : 'back');
@@ -2076,6 +2077,7 @@ export function createThreeView({
             cap.layerId,
           );
           if (mesh) {
+            mesh.userData.wafercadLayerId = cap.layerId || null;
             mesh.userData.wafercadSurfaceOwnership = cap.ownership || 'exterior';
             mesh.userData.wafercadInterfaceLayerId = cap.interfaceLayerId || null;
             mesh.userData.wafercadBuriedInterface = Boolean(cap.buried);
