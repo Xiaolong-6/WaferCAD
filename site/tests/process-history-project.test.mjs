@@ -318,6 +318,81 @@ test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
   );
 });
 
+test('V3 schema rejects a Variant HEAD path that does not descend from its origin Step', () => {
+  const source = validProject(3);
+  const originState = validProject(1);
+  const childState = validProject(2);
+  const foreignState = validProject(3);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'variant-a',
+    cursorNodeId: 'process-a',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-main',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-04T00:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Origin' },
+        state: originState,
+      },
+      {
+        id: 'process-a',
+        branchId: 'variant-a',
+        parentId: 'process-main',
+        createdAt: '2026-10-04T00:01:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'add', label: 'A Step' },
+        state: childState,
+      },
+      {
+        id: 'process-foreign',
+        branchId: 'main',
+        parentId: 'process-main',
+        createdAt: '2026-10-04T00:02:00.000Z',
+        processRevision: 3,
+        operation: { kind: 'etch', label: 'Foreign Step' },
+        state: foreignState,
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-foreign',
+        headState: foreignState,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'variant-a',
+        name: 'A',
+        parentBranchId: 'main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-a',
+        headState: childState,
+        createdAt: '2026-10-04T00:01:00.000Z',
+      },
+    ],
+  };
+
+  assert.equal(validateProjectFile(source), source);
+
+  source.snapshotBranches.branches[1].headNodeId = 'process-foreign';
+  source.snapshotBranches.branches[1].headState = foreignState;
+  assert.throws(
+    () => validateProjectFile(source),
+    /headNodeId.*owned by this Variant|headNodeId.*origin Step/i,
+  );
+});
+
 test('V3 process-node restore states survive the project Open path', async () => {
   const source = validProject(2);
   const stepOne = validProject(1);
