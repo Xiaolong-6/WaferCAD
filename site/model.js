@@ -381,6 +381,13 @@ function trimStack(stack, amount, face, appearance = null, targetLayerIds = null
     if (left >= height - 1e-9) {
       left -= height;
       out.splice(idx, 1);
+      const next = face === 'front' ? out.at(-1) : out[0],
+        crossesVoid =
+          next &&
+          (face === 'front'
+            ? seg.z0 - next.z1 > 1e-9
+            : next.z0 - seg.z1 > 1e-9);
+      if (crossesVoid) left = 0;
     } else {
       if (face === 'front') seg.z1 -= left;
       else seg.z0 += left;
