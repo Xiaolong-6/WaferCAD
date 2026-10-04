@@ -8,7 +8,8 @@ const $ = (id) => document.getElementById(id);
 let previewLayout = null;
 const previewCanvases = new Set();
 const projectPreviewFrames = new Set();
-let previewResizeTimer = 0;
+let previewResizeTimer = 0,
+  autoProjectPreviewAssigned = false;
 
 function status(message) {
   $('welcomeStatus').textContent = message;
@@ -121,17 +122,26 @@ function createProjectPreview(example) {
 
   const loading = document.createElement('div');
   loading.className = 'welcome-example-project-loading';
-  loading.textContent = 'Loading project preview…';
+  loading.textContent = 'Interactive preview · choose a view to load';
   stage.append(loading);
 
   const frame = document.createElement('iframe');
   frame.className = 'welcome-example-project-frame';
   frame.title = `${example.title} interactive WaferCAD preview`;
   frame.loading = 'lazy';
-  frame.src = previewUrl(example);
+  frame.dataset.previewSrc = previewUrl(example);
   frame.setAttribute('aria-label', frame.title);
   stage.append(frame);
   projectPreviewFrames.add(frame);
+
+  const activatePreview = () => {
+    if (frame.getAttribute('src')) return;
+    loading.textContent = 'Loading project preview…';
+    frame.src = frame.dataset.previewSrc;
+  };
+
+  host.addEventListener('pointerenter', activatePreview, { once: true });
+  host.addEventListener('focusin', activatePreview, { once: true });
 
   const tabs = document.createElement('div');
   tabs.className = 'welcome-example-view-tabs';
@@ -153,6 +163,7 @@ function createProjectPreview(example) {
     button.setAttribute('aria-selected', String(view === 'main'));
     button.addEventListener('click', () => {
       host.dataset.view = view;
+      activatePreview();
       for (const sibling of tabs.querySelectorAll('.welcome-example-view-tab')) {
         const active = sibling.dataset.previewView === view;
         sibling.classList.toggle('active', active);
@@ -168,6 +179,10 @@ function createProjectPreview(example) {
   }
 
   host.append(stage, tabs);
+  if (!autoProjectPreviewAssigned) {
+    autoProjectPreviewAssigned = true;
+    requestAnimationFrame(activatePreview);
+  }
   return host;
 }
 
