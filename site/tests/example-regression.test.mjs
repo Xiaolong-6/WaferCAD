@@ -197,12 +197,15 @@ test('literature example keeps the intended Variant ancestry and HEADs', async (
   assert.equal(branches.get('ge-fig15-a')?.parentBranchId, 'ge-fig15-common');
   assert.equal(branches.get('ge-fig15-b')?.parentBranchId, 'ge-fig15-common');
 
-  assert.equal(branches.get('black-si-fig1a')?.processStepCount, 11);
-  assert.equal(branches.get('black-si-fig1a-final')?.processStepCount, 1);
-  assert.equal(branches.get('black-si-fig1a-qa')?.processStepCount, 1);
-  assert.equal(branches.get('ge-fig15-common')?.processStepCount, 1);
-  assert.equal(branches.get('ge-fig15-a')?.processStepCount, 8);
-  assert.equal(branches.get('ge-fig15-b')?.processStepCount, 9);
+  const ownStepCount = (branchId) =>
+    project.snapshotBranches.nodes.filter((node) => node.branchId === branchId).length;
+  assert.equal(ownStepCount('main'), 1);
+  assert.equal(ownStepCount('black-si-fig1a'), 11);
+  assert.equal(ownStepCount('black-si-fig1a-final'), 1);
+  assert.equal(ownStepCount('black-si-fig1a-qa'), 1);
+  assert.equal(ownStepCount('ge-fig15-common'), 1);
+  assert.equal(ownStepCount('ge-fig15-a'), 8);
+  assert.equal(ownStepCount('ge-fig15-b'), 9);
 });
 
 test('Black-Si FINAL preserves ALD and front roughness while removing blanket Al', async () => {
