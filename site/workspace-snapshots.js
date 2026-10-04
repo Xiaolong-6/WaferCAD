@@ -119,6 +119,35 @@ function withCurrentInspectionView(baseState, currentState, cloneState) {
   return merged;
 }
 
+const INSPECTION_ONLY_KEYS = new Set([
+  'selectedLayerKeys',
+  'activeCell',
+  'activeFace',
+  'roi',
+  'roiAnchor',
+  'section',
+  'planViews',
+  'display',
+]);
+
+function withoutInspectionView(state) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return state;
+  const core = {};
+  for (const [key, value] of Object.entries(state)) {
+    if (INSPECTION_ONLY_KEYS.has(key)) continue;
+    core[key] = value;
+  }
+  return core;
+}
+
+function processStateEqual(left, right) {
+  try {
+    return deepEqual(withoutInspectionView(left), withoutInspectionView(right));
+  } catch {
+    return false;
+  }
+}
+
 export function defaultSnapshotName(date = new Date()) {
   const value = date instanceof Date ? date : new Date(date);
   const pad = (number) => String(number).padStart(2, '0');
@@ -289,13 +318,7 @@ export function createSnapshotManager({
   function stateMatchesBranchHead(branch, state, nodeId = cursorNodeId) {
     if (!branch) return true;
     if (branch.headNodeId && nodeId !== branch.headNodeId) return false;
-    if (branch.headState) {
-      try {
-        return deepEqual(state, branch.headState);
-      } catch {
-        return false;
-      }
-    }
+    if (branch.headState) return processStateEqual(state, branch.headState);
     return !branch.headSnapshotId || cursorSnapshotId === branch.headSnapshotId;
   }
 
@@ -665,11 +688,7 @@ export function createSnapshotManager({
   function hasHistoricalWorkingEdits() {
     if (!continuationContext()) return false;
     if (!cursorBaselineState) return true;
-    try {
-      return !deepEqual(capture(), cursorBaselineState);
-    } catch {
-      return true;
-    }
+    return !processStateEqual(capture(), cursorBaselineState);
   }
 
   function syncActiveHeadState() {
