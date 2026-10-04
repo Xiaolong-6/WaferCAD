@@ -217,7 +217,7 @@ assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await page.locator('.app-shell').count(), 0);
 assert.match(
   await page.locator('#welcomeScreen').textContent(),
-  /Mask[\s\S]*Process[\s\S]*Inspect/,
+  /Turn a fabrication sequence into an inspectable device structure\.[\s\S]*Example families[\s\S]*How WaferCAD works[\s\S]*Built for structural reasoning/,
 );
 
 const photodetectorCard = page.locator(
@@ -230,7 +230,7 @@ assert.deepEqual(
   ['Main', 'Mask', '3D', 'Section'],
 );
 const previewFrames = page.locator('.welcome-example-project-frame');
-assert.equal(await previewFrames.count(), 3);
+assert.equal(await previewFrames.count(), 4);
 await page.waitForFunction(
   () => document.querySelector('.welcome-example-project-frame')?.getAttribute('src')?.includes('app.html'),
   null,
@@ -239,6 +239,7 @@ await page.waitForFunction(
 assert.match(await previewFrames.nth(0).getAttribute('src'), /app\.html\?/);
 assert.equal(await previewFrames.nth(1).getAttribute('src'), null);
 assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
+assert.equal(await previewFrames.nth(3).getAttribute('src'), null);
 
 const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
 await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
@@ -249,17 +250,107 @@ await preview.locator('html.welcome-project-preview[data-preview-view="main"]').
   state: 'attached',
   timeout: 30000,
 });
+
+for (const [view, panelId] of [
+  ['main', 'mainPanel'],
+  ['mask', 'maskPanel'],
+  ['three', 'threePanel'],
+  ['section', 'sectionPanel'],
+]) {
+  await photodetectorCard
+    .locator(`.welcome-example-view-tab[data-preview-view="${view}"]`)
+    .click();
+  await preview.locator(`html.welcome-project-preview[data-preview-view="${view}"]`).waitFor({
+    state: 'attached',
+    timeout: 10000,
+  });
+  await preview.locator(`#${panelId}`).waitFor({ state: 'visible', timeout: 10000 });
+  const box = await preview.locator(`#${panelId}`).boundingBox();
+  assert.ok(box?.width > 20 && box?.height > 20, `${view} preview must have visible area`);
+
+  if (view === 'three') {
+    await preview.locator('#threeHost').evaluate(
+      (host) =>
+        new Promise((resolve, reject) => {
+          const deadline = performance.now() + 20000;
+          const check = () => {
+            if (host.dataset.renderState === 'ready') return resolve(true);
+            if (performance.now() > deadline) return reject(new Error('3D preview did not render'));
+            requestAnimationFrame(check);
+          };
+          check();
+        }),
+    );
+  }
+
+  for (const otherId of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+    if (otherId === panelId) continue;
+    assert.equal(
+      await preview.locator(`#${otherId}`).isVisible(),
+      false,
+      `${view} preview must hide ${otherId}`,
+    );
+  }
+}
+
 await photodetectorCard
-  .locator('.welcome-example-view-tab[data-preview-view="section"]')
+  .locator('.welcome-example-view-tab[data-preview-view="main"]')
   .click();
-await preview.locator('html.welcome-project-preview[data-preview-view="section"]').waitFor({
+await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
   state: 'attached',
   timeout: 10000,
 });
-assert.equal(await preview.locator('#sectionPanel').isVisible(), true);
+
+for (const selector of [
+  '.view-head',
+  '#sectionEndpointHandles',
+  '#sectionCoordsPanel',
+  '#focusEditor',
+  '#roiEditor',
+  '#maskRoiEditor',
+  '#drawMaskToolbar',
+  '#drawShapeEditor',
+  '#sectionDetailRoiOverlay',
+  '#sectionDetailInset',
+  '#sectionCollapseOverlay',
+]) {
+  assert.equal(
+    await preview.locator(selector).first().isVisible(),
+    false,
+    `${selector} must stay hidden in preview`,
+  );
+}
+
+const previewMainBefore = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+await preview.locator('#mainCanvas').dispatchEvent('wheel', {
+  deltaY: -120,
+  clientX: 120,
+  clientY: 80,
+});
+await preview.locator('#mainCanvas').evaluate(
+  () =>
+    new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    ),
+);
+const previewMainAfter = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+assert.notEqual(
+  previewMainAfter,
+  previewMainBefore,
+  'Welcome Main preview wheel zoom must remain available',
+);
 
 // A dormant preview must accept a view choice before its iframe is ready.
 // The ready handshake then replays the selected view rather than regressing to Main.
+const tandemCard = page.locator(
+  '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"]',
+);
+assert.equal((await tandemCard.locator('h3').textContent()).trim(), 'Fully textured perovskite–silicon tandems');
+assert.match(
+  await tandemCard.locator('.welcome-example-sources a').first().getAttribute('href'),
+  /10\.1038\/s41563-018-0115-4/,
+);
+
 const percCard = page.locator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"]',
 );
