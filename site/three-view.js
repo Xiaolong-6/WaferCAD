@@ -1967,18 +1967,30 @@ export function createThreeView({
     scheduleFrame();
   }
 
-  async function exportGlb() {
+  async function exportGlb({ signal = null, onProgress = null } = {}) {
     if (!ready || !THREE) throw new Error('3D view is unavailable.');
     const model = getModel();
     if (!model) throw new Error('No model to export.');
 
-    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js'),
-      exportGroup = new THREE.Group(),
-      clip = getClipGeometry(),
-      surfacePlan = buildRenderSurfacePlan(model, clip),
-      roughCaps = surfacePlan.caps.filter((cap) => cap.appearance?.kind === 'rough'),
-      roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
-      roughByCap = new Map(roughTasks.map((task) => [task.cap, task.lodZones])),
+    const throwIfAborted = () => {
+        if (signal?.aborted) throw new DOMException('GLB export cancelled.', 'AbortError');
+      },
+      reportProgress = (progress, label = '') => {
+        throwIfAborted();
+        if (typeof onProgress === 'function') {
+          onProgress(Math.max(0, Math.min(1, Number(progress) || 0)), label);
+        }
+      },
+      yieldToUi = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        throwIfAborted();
+      };
+
+    reportProgress(0, 'Preparing exporter');
+    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+    throwIfAborted();
+
+    const exportGroup = new THREE.Group(),
       disposable = [];
     exportGroup.name = 'WaferCAD';
     // glTF uses metres. Canonical WaferCAD geometry is stored in micrometres.
@@ -2005,51 +2017,84 @@ export function createThreeView({
         return mesh;
       };
 
-    // Export the same topology-owned surface plan used by the interactive 3D
-    // renderer. Rough/Pyramid caps use a deterministic, camera-independent
-    // mesh policy, so GLB no longer falls back to ideal flat canonical caps.
-    for (const cap of surfacePlan.caps) {
-      if (cap.appearance?.kind === 'rough') {
-        const lodZones = roughByCap.get(cap);
-        if (!lodZones?.length) continue;
-        const geometry = geometryFromRoughCap(THREE, {
-          z: cap.z,
-          normal: cap.normal,
-          polys: cap.polys,
-          appearance: cap.appearance,
-          closeToIdeal: !cap.buried,
-          profileNormal: cap.profileNormal,
-          lodZones,
-        });
-        const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
-        if (mesh) {
-          mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
-          mesh.userData.wafercadMorphologySeed = Number(cap.appearance.seed) >>> 0;
-          mesh.userData.wafercadMorphologyFeatureSizeUm =
-            Number(cap.appearance.featureSize) || 0;
+    try {
+      reportProgress(0.04, 'Resolving surface ownership');
+      const clip = getClipGeometry(),
+        surfacePlan = buildRenderSurfacePlan(model, clip),
+        roughCaps = surfacePlan.caps.filter((cap) => cap.appearance?.kind === 'rough');
+
+      await yieldToUi();
+      reportProgress(0.08, 'Allocating morphology mesh');
+      const roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
+        roughByCap = new Map(roughTasks.map((task) => [task.cap, task.lodZones])),
+        capCount = Math.max(1, surfacePlan.caps.length);
+
+      // Export the same topology-owned surface plan used by the interactive 3D
+      // renderer. Rough/Pyramid caps use a deterministic, camera-independent
+      // mesh policy, so GLB does not fall back to ideal flat canonical caps.
+      for (let capIndex = 0; capIndex < surfacePlan.caps.length; capIndex++) {
+        throwIfAborted();
+        const cap = surfacePlan.caps[capIndex];
+        if (cap.appearance?.kind === 'rough') {
+          // Yield before each morphology cap. Large deterministic heightfields
+          // remain main-thread Three.js work, but this keeps Cancel/UI feedback
+          // responsive between bounded export chunks.
+          await yieldToUi();
+          const lodZones = roughByCap.get(cap);
+          if (lodZones?.length) {
+            const geometry = geometryFromRoughCap(THREE, {
+              z: cap.z,
+              normal: cap.normal,
+              polys: cap.polys,
+              appearance: cap.appearance,
+              closeToIdeal: !cap.buried,
+              profileNormal: cap.profileNormal,
+              lodZones,
+            });
+            const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
+            if (mesh) {
+              mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
+              mesh.userData.wafercadMorphologySeed = Number(cap.appearance.seed) >>> 0;
+              mesh.userData.wafercadMorphologyFeatureSizeUm =
+                Number(cap.appearance.featureSize) || 0;
+              mesh.userData.wafercadMorphologyPolarity = cap.appearance.polarity || 'normal';
+              mesh.userData.wafercadBuriedInterface = Boolean(cap.buried);
+            }
+          }
+        } else {
+          addExportMesh(
+            geometryFromSolid({
+              slabs: [],
+              caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
+            }),
+            cap.layerId,
+          );
         }
-        continue;
+        reportProgress(0.1 + 0.65 * ((capIndex + 1) / capCount), 'Building surfaces');
       }
 
-      addExportMesh(
-        geometryFromSolid({
-          slabs: [],
-          caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
-        }),
-        cap.layerId,
-      );
-    }
+      throwIfAborted();
+      const sidewallsByLayer = new Map();
+      for (const sidewall of surfacePlan.sidewalls) {
+        if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
+        sidewallsByLayer.get(sidewall.layerId).push(sidewall);
+      }
 
-    const sidewallsByLayer = new Map();
-    for (const sidewall of surfacePlan.sidewalls) {
-      if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
-      sidewallsByLayer.get(sidewall.layerId).push(sidewall);
-    }
-    for (const [layerId, parts] of sidewallsByLayer) {
-      addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
-    }
+      let sidewallIndex = 0;
+      const sidewallGroupCount = Math.max(1, sidewallsByLayer.size);
+      for (const [layerId, parts] of sidewallsByLayer) {
+        throwIfAborted();
+        addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
+        sidewallIndex++;
+        reportProgress(
+          0.76 + 0.12 * (sidewallIndex / sidewallGroupCount),
+          'Building sidewalls',
+        );
+        if (sidewallIndex % 2 === 0) await yieldToUi();
+      }
 
-    try {
+      await yieldToUi();
+      reportProgress(0.9, 'Encoding GLB');
       const exporter = new GLTFExporter();
       const result = await new Promise((resolve, reject) =>
         exporter.parse(exportGroup, resolve, reject, {
@@ -2058,6 +2103,8 @@ export function createThreeView({
           trs: false,
         }),
       );
+      throwIfAborted();
+      reportProgress(1, 'Complete');
       return new Blob([result], { type: 'model/gltf-binary' });
     } finally {
       for (const object of disposable) {
