@@ -653,6 +653,27 @@ assert.equal(
   'canonical topology must contain an overhang/cavity stack, not a render-only illusion',
 );
 
+// Compatibility: legacy directional etch must remove the oxide above a released
+// cavity and stop at the void instead of jumping across air into the lower Si.
+const postReleaseDirectional = structuredClone(releaseModel),
+  postReleaseBeforeSi = regionAt(postReleaseDirectional, [115, 0]).stack.find(
+    (segment) => segment.layerId === 'base',
+  ).z1,
+  postReleaseStrip = applyOperation(postReleaseDirectional, {
+    type: 'etch',
+    thickness: 5,
+    face: 'front',
+    area: rectMulti(2, 2, 115, 0),
+  });
+assert.equal(postReleaseStrip.changed, true);
+const postReleaseStack = regionAt(postReleaseDirectional, [115, 0]).stack,
+  postReleaseSi = postReleaseStack.find((segment) => segment.layerId === 'base');
+assert.equal(
+  postReleaseStack.some((segment) => segment.layerId === releaseOxide.layerId),
+  false,
+);
+assert.equal(postReleaseSi.z1, postReleaseBeforeSi);
+
 const releaseWithoutTarget = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const releaseWithoutTargetResult = applyOperation(releaseWithoutTarget, {
   type: 'etch',
