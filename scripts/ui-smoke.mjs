@@ -545,6 +545,37 @@ assert.equal(
 );
 assert.match(await reloadedChild.textContent(), /Variant C/);
 assert.equal(await reloadedChild.locator('.history-bookmark-row').count(), 1);
+
+const historyTreeGeometry = await historyRestorePage.evaluate(() => {
+  const box = (selector) => {
+    const element = document.querySelector(selector);
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, width: rect.width };
+  };
+  return {
+    viewportWidth: innerWidth,
+    compact: document.documentElement.classList.contains('workstation-compact-ui'),
+    panel: box('#toolPanel.workstation-tool-flyout'),
+    mainVariant: box('.history-variant[data-variant-id="main"]'),
+    firstStep: box('.history-step-row'),
+    childVariant: box('.history-variant:not([data-variant-id="main"])'),
+  };
+});
+assert.equal(historyTreeGeometry.viewportWidth, 1100);
+assert.equal(historyTreeGeometry.compact, false);
+assert.ok(historyTreeGeometry.panel.width >= 295);
+assert.ok(historyTreeGeometry.panel.left >= 45);
+for (const item of [
+  historyTreeGeometry.mainVariant,
+  historyTreeGeometry.firstStep,
+  historyTreeGeometry.childVariant,
+]) {
+  assert.ok(item);
+  assert.ok(item.left >= historyTreeGeometry.panel.left + 8);
+  assert.ok(item.right <= historyTreeGeometry.panel.right - 6);
+}
+
 await mkdir(new URL('../test-results/product-review/', import.meta.url), { recursive: true });
 await historyRestorePage.screenshot({
   path: new URL(
