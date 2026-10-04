@@ -724,7 +724,9 @@ await welcomeCheckpointPage.waitForFunction(
   { timeout: 5000 },
 );
 await welcomeCheckpointPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
-await welcomeCheckpointPage.locator('#welcomeExampleBtn').click();
+await welcomeCheckpointPage
+  .locator('.welcome-example-card[data-example-id="visualization"] .welcome-example-open')
+  .click();
 await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await welcomeCheckpointPage.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '') === 'Opened Visualization example.',
