@@ -71,6 +71,24 @@ function drawVisualizationPreview(canvas) {
   }
 }
 
+function createImagePreview(example) {
+  const image = document.createElement('img');
+  image.className = 'welcome-example-image';
+  image.src = example.preview.path;
+  image.alt = example.preview.alt || `${example.title} WaferCAD screenshot`;
+  image.loading = 'lazy';
+  image.decoding = 'async';
+  if (example.preview.position) image.style.objectPosition = example.preview.position;
+
+  const caption = document.createElement('span');
+  caption.className = 'welcome-example-image-caption';
+  caption.textContent = example.preview.label || 'WaferCAD screenshot';
+
+  const fragment = document.createDocumentFragment();
+  fragment.append(image, caption);
+  return fragment;
+}
+
 function createProjectVariantPreview(example) {
   const host = document.createElement('div');
   host.className = 'welcome-family-preview';
@@ -111,7 +129,10 @@ function renderExampleCards() {
 
     const visual = document.createElement('div');
     visual.className = 'welcome-example-visual';
-    if (example.kind === 'generated') {
+    if (example.preview?.path) {
+      visual.classList.add('has-image');
+      visual.append(createImagePreview(example));
+    } else if (example.kind === 'generated') {
       const canvas = document.createElement('canvas');
       canvas.className = 'welcome-example-canvas';
       canvas.setAttribute('aria-label', example.title + ' preview');
