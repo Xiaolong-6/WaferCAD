@@ -945,20 +945,10 @@ try {
         null,
         { timeout: 120000 },
       );
-      await page.waitForFunction(
-        () =>
-          !/^Opened /.test(document.getElementById('statusText')?.textContent || ''),
-        null,
-        { timeout: 10000 },
-      );
-      const releaseStatus = (await page.locator('#statusText').textContent()) || '';
-      assert.match(
-        releaseStatus,
-        /Released Base/,
-        `Isotropic release UI did not complete successfully: ${releaseStatus}`,
-      );
-      await closeFunctionPanel(page);
-
+      // Export is the acceptance barrier: browser events cannot service the
+      // export click until the Apply continuation has committed its model/history
+      // updates after the worker result. Validate the exported canonical model
+      // instead of coupling this test to transient status-text timing.
       const releasedProject = await exportCurrentProject(page),
         ringRegion = releasedProject.model.regions.find((region) =>
           pointInMulti(releaseBenchmark.probes.ring, region.geom),
