@@ -856,11 +856,11 @@ await welcomeCheckpointPage.waitForFunction(
 );
 await welcomeCheckpointPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 await welcomeCheckpointPage
-  .locator('.welcome-example-card[data-example-id="visualization"] .welcome-example-open')
+  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
   .click();
 await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await welcomeCheckpointPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '') === 'Opened Visualization example.',
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened photodetector-literature-examples.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -876,7 +876,7 @@ await welcomeCheckpointPage.waitForFunction(() => {
 });
 assert.ok(
   (await canvasInkFraction(welcomeCheckpointPage, '#sectionCanvas')) > 0.005,
-  'Visualization example Section A–B rendered blank',
+  'Photodetector example Section A–B rendered blank',
 );
 await welcomeCheckpointPage.waitForFunction(
   () =>
