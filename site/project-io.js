@@ -67,9 +67,9 @@ function quantizeModel(model) {
       }
     }
   }
-  for (const implant of model.implants || []) {
-    implant.thickness = quantizeLength(implant.thickness);
-    for (const patch of implant.patches || []) {
+  const quantizeAnnotationVolume = (annotation) => {
+    annotation.thickness = quantizeLength(annotation.thickness);
+    for (const patch of annotation.patches || []) {
       quantizeMultiPolygon(patch.geom);
       patch.z = quantizeLength(patch.z);
       patch.zMin = quantizeLength(patch.zMin);
@@ -82,7 +82,9 @@ function quantizeModel(model) {
         }
       }
     }
-  }
+  };
+  for (const implant of model.implants || []) quantizeAnnotationVolume(implant);
+  for (const electrical of model.electricalRegions || []) quantizeAnnotationVolume(electrical);
   model.thickness = quantizeLength(model.thickness);
   const bounds = multiBounds(model.boundary);
   if (bounds) {
@@ -253,9 +255,11 @@ function modelAssetKey(model) {
     Number(model.nextLayerId) || 0,
     Number(model.nextRegionId) || 0,
     Number(model.nextImplantId) || 0,
+    Number(model.nextElectricalRegionId) || 0,
     Array.isArray(model.layers) ? model.layers.length : 0,
     Array.isArray(model.regions) ? model.regions.length : 0,
     Array.isArray(model.implants) ? model.implants.length : 0,
+    Array.isArray(model.electricalRegions) ? model.electricalRegions.length : 0,
   ].join('|');
 }
 
