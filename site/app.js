@@ -1593,7 +1593,7 @@ function bindEmbeddedPreviewBridge() {
 function bindEmbeddedPreviewInteractions() {
   if (!EMBEDDED_PREVIEW) return;
 
-  const bindPlanCanvas = (kind, canvas, back = false) => {
+  const bindPlanCanvas = (kind, canvas, back = () => false) => {
     let drag = null;
 
     canvas.addEventListener(
@@ -1606,7 +1606,7 @@ function bindEmbeddedPreviewInteractions() {
           event.deltaY < 0 ? 1.35 : 1 / 1.35,
           event.clientX,
           event.clientY,
-          back,
+          back(),
         );
       },
       { passive: false },
@@ -1651,7 +1651,7 @@ function bindEmbeddedPreviewInteractions() {
     }
   };
 
-  bindPlanCanvas('main', $('mainCanvas'), activeFace === 'back');
+  bindPlanCanvas('main', $('mainCanvas'), () => activeFace === 'back');
   bindPlanCanvas('mask', $('maskCanvas'));
 
   const observer = new ResizeObserver(() => renderEmbeddedPreviewView());
