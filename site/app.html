@@ -1291,6 +1291,20 @@
       </span>
     </footer>
     <script>
+      const reportBootFailure = (error) => {
+        if (!document.documentElement.classList.contains('workstation-boot')) return;
+        const message = document.getElementById('workstationBootMessage');
+        const host = document.getElementById('statusText');
+        const detail = error instanceof Error ? error.message : String(error || 'Unknown startup error');
+        document.getElementById('workstationBootScreen')?.setAttribute('data-error', 'true');
+        if (message) message.textContent = `Startup failed: ${detail}`;
+        if (host) host.textContent = `Startup failed: ${detail}`;
+      };
+      globalThis.addEventListener('error', (event) => reportBootFailure(event.error || event.message));
+      globalThis.addEventListener('unhandledrejection', (event) =>
+        reportBootFailure(event.reason || 'Unhandled startup rejection'),
+      );
+
       (async () => {
         let version = String(Date.now());
         try {
