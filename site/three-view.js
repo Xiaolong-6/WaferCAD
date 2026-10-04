@@ -269,6 +269,99 @@ export function createThreeView({
     return Boolean(applyZDisplayState());
   }
 
+  function zIsVisible(z, state = currentZDisplay) {
+    const value = Number(z);
+    if (!state || !Number.isFinite(value)) return true;
+    return value >= state.top || value <= state.bottom;
+  }
+
+  function visibleZIntervals(z0, z1, state = currentZDisplay) {
+    const start = Number(z0),
+      end = Number(z1);
+    if (!state || !Number.isFinite(start) || !Number.isFinite(end)) return [[start, end]];
+
+    const ascending = end >= start,
+      lo = Math.min(start, end),
+      hi = Math.max(start, end),
+      intervals = [];
+
+    if (lo < state.bottom) {
+      const upper = Math.min(hi, state.bottom);
+      if (upper > lo) intervals.push([lo, upper]);
+    }
+    if (hi > state.top) {
+      const lower = Math.max(lo, state.top);
+      if (hi > lower) intervals.push([lower, hi]);
+    }
+
+    if (lo === state.bottom && hi === lo) intervals.push([lo, hi]);
+    if (lo === state.top && hi === lo) intervals.push([lo, hi]);
+
+    return ascending ? intervals : intervals.map(([a, b]) => [b, a]);
+  }
+
+  function displaySolidForZCollapse(solid, state = currentZDisplay) {
+    if (!solid || !state) return solid;
+    const slabs = [];
+    for (const slab of solid.slabs || []) {
+      for (const [z0, z1] of visibleZIntervals(slab.z0, slab.z1, state)) {
+        if (z0 === z1) continue;
+        slabs.push({ ...slab, z0, z1 });
+      }
+    }
+    return {
+      ...solid,
+      slabs,
+      caps: (solid.caps || []).filter((cap) => zIsVisible(cap.z, state)),
+    };
+  }
+
+  function displaySidewallParts(parts, state = currentZDisplay) {
+    if (!state) return parts || [];
+    const visible = [];
+    for (const part of parts || []) {
+      for (const [z0, z1] of visibleZIntervals(part.z0, part.z1, state)) {
+        if (z0 === z1) continue;
+        visible.push({ ...part, z0, z1 });
+      }
+    }
+    return visible;
+  }
+
+  function displayBorderPositions(positions, state = currentZDisplay) {
+    if (!state || !positions?.length) return positions || [];
+    const out = [],
+      lerpPoint = (a, b, t) => [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+      ];
+
+    for (let index = 0; index + 5 < positions.length; index += 6) {
+      const a = [positions[index], positions[index + 1], positions[index + 2]],
+        b = [positions[index + 3], positions[index + 4], positions[index + 5]],
+        dz = b[2] - a[2],
+        cuts = [0, 1];
+
+      if (Math.abs(dz) > 1e-12) {
+        for (const boundary of [state.bottom, state.top]) {
+          const t = (boundary - a[2]) / dz;
+          if (t > 0 && t < 1) cuts.push(t);
+        }
+      }
+
+      cuts.sort((left, right) => left - right);
+      for (let part = 0; part < cuts.length - 1; part++) {
+        const t0 = cuts[part],
+          t1 = cuts[part + 1],
+          middleZ = a[2] + dz * ((t0 + t1) / 2);
+        if (!zIsVisible(middleZ, state)) continue;
+        out.push(...lerpPoint(a, b, t0), ...lerpPoint(a, b, t1));
+      }
+    }
+    return out;
+  }
+
   function visibleBounds(model, clip) {
     const modelBounds = {
         minX: -model.width / 2,
@@ -314,7 +407,7 @@ export function createThreeView({
         ? new THREE.Vector3(
             (patchBounds.minX + patchBounds.maxX) / 2,
             (patchBounds.minY + patchBounds.maxY) / 2,
-            z * (group?.scale?.z || 1),
+            (currentZDisplay?.mapZ?.(z) ?? z) * (group?.scale?.z || 1),
           )
         : controls.target.clone(),
       distance = Math.max(1e-9, camera.position.distanceTo(center));
@@ -1504,6 +1597,7 @@ export function createThreeView({
         };
 
       for (const cap of plan.caps) {
+        if (!zIsVisible(cap.z)) continue;
         const state = stateFor(cap);
         if (!state) continue;
         const layer = layerById(model, cap.layerId);
@@ -1525,11 +1619,12 @@ export function createThreeView({
       }
 
       for (const bucket of smoothCaps.values()) {
-        const state = stateFor(bucket.part);
-        if (!state) continue;
+        const state = stateFor(bucket.part),
+          visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
+        if (!state || !visibleCaps.length) continue;
         const geometry = geometryFromSolid({
             slabs: [],
-            caps: bucket.items.map((part) => ({
+            caps: visibleCaps.map((part) => ({
               z: part.z,
               normal: part.normal,
               polys: part.polys,
@@ -1545,15 +1640,16 @@ export function createThreeView({
         pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
-        const state = stateFor(bucket.part);
-        if (!state) continue;
-        const geometry = geometryFromSidewallParts(bucket.items),
+        const state = stateFor(bucket.part),
+          visibleParts = displaySidewallParts(bucket.items);
+        if (!state || !visibleParts.length) continue;
+        const geometry = geometryFromSidewallParts(visibleParts),
           material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
         addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
       }
 
       if (borders) {
-        addBorderPositions(plan.borderLines.flat(2), {
+        addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
           order: 100000,
           opacity,
         });
@@ -1586,9 +1682,11 @@ export function createThreeView({
             },
             bodyGeometry = shearImplantGeometry(
               geometryFromSolid(
-                followDepthProfile
-                  ? { slabs: implant.slabs, caps: [] }
-                  : implant,
+                displaySolidForZCollapse(
+                  followDepthProfile
+                    ? { slabs: implant.slabs, caps: [] }
+                    : implant,
+                ),
               ),
               implant,
             ),
@@ -1671,6 +1769,7 @@ export function createThreeView({
             name: capName,
           });
         } else {
+          if (!zIsVisible(implant.outerZ)) continue;
           const capGeometry = shearImplantGeometry(
               geometryFromSolid({
                 slabs: [],
@@ -1719,9 +1818,11 @@ export function createThreeView({
               depthWrite: false,
             },
             bodyGeometry = geometryFromSolid(
-              followDepthProfile
-                ? { slabs: electrical.slabs, caps: [] }
-                : electrical,
+              displaySolidForZCollapse(
+                followDepthProfile
+                  ? { slabs: electrical.slabs, caps: [] }
+                  : electrical,
+              ),
             ),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
@@ -1809,6 +1910,7 @@ export function createThreeView({
             name: capName,
           });
         } else {
+          if (!zIsVisible(electrical.outerZ)) continue;
           const capGeometry = geometryFromSolid({
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
