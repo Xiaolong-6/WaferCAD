@@ -1141,7 +1141,7 @@ assert.equal(await electricalLegendRow.locator('.legend-visibility').isChecked()
 await electricalLegendRow.locator('.legend-name').fill('UI electrical renamed');
 await electricalLegendRow.locator('.legend-name').press('Tab');
 await page
-  .locator('.three-opacity-control > summary')
+  .locator('#threePanel .three-opacity-control > summary')
   .click();
 await page.locator('#threeOpacityRange').fill('0.5');
 await page.locator('#threeOpacityRange').dispatchEvent('input');
