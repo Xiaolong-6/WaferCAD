@@ -365,6 +365,52 @@ for (const [x, y] of [
   assert.ok(Math.abs(normal + inverted - pyramidAppearance.etchDepth) < 1e-12);
 }
 
+const randomPyramidAppearance = {
+  ...pyramidAppearance,
+  featureCv: 0.3,
+  heightCv: 0.25,
+  seed: 2018,
+};
+const randomPyramidSamples = [
+  [0.13, 0.21],
+  [0.91, -0.42],
+  [2.37, 1.14],
+  [-1.55, 3.08],
+].map(([x, y]) => roughProfileOffsetAtPoint(x, y, randomPyramidAppearance));
+assert.deepEqual(
+  randomPyramidSamples,
+  [
+    [0.13, 0.21],
+    [0.91, -0.42],
+    [2.37, 1.14],
+    [-1.55, 3.08],
+  ].map(([x, y]) => roughProfileOffsetAtPoint(x, y, randomPyramidAppearance)),
+  'Random pyramid morphology must be deterministic for a fixed seed',
+);
+assert.notDeepEqual(
+  randomPyramidSamples,
+  [
+    [0.13, 0.21],
+    [0.91, -0.42],
+    [2.37, 1.14],
+    [-1.55, 3.08],
+  ].map(([x, y]) =>
+    roughProfileOffsetAtPoint(x, y, { ...randomPyramidAppearance, seed: 2019 }),
+  ),
+  'Changing the pyramid seed must change the reconstructed morphology',
+);
+for (const [x, y] of [
+  [0.13, 0.21],
+  [0.91, -0.42],
+  [2.37, 1.14],
+]) {
+  const normal = roughProfileOffsetAtPoint(x, y, randomPyramidAppearance),
+    inverted = roughProfileOffsetAtPoint(x, y, {
+      ...randomPyramidAppearance,
+      polarity: 'inverted',
+    });
+  assert.ok(Math.abs(normal + inverted - randomPyramidAppearance.etchDepth) < 1e-12);
+}
 
 const defaults = createModel();
 assert.equal(defaults.width, 100000);
