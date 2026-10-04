@@ -207,7 +207,7 @@ assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await page.locator('.app-shell').count(), 0);
 assert.match(
   await page.locator('#welcomeScreen').textContent(),
-  /Mask[\s\S]*Process[\s\S]*Inspect/,
+  /Turn a fabrication sequence into an inspectable device structure\.[\s\S]*Example families[\s\S]*How WaferCAD works[\s\S]*Built for structural reasoning/,
 );
 
 const photodetectorCard = page.locator(
