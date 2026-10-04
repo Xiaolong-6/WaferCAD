@@ -1651,10 +1651,13 @@ assert.deepEqual(
   stackAtSaved(sideX).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 4, z1: 7, role: 'conformal-sidewall' },
 );
-assert.deepEqual(
-  stackAtSaved(0).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 4, z1: 5 },
-);
+const centerCoat = stackAtSaved(0).find((segment) => segment.layerId === coatId);
+assert.ok(centerCoat);
+assert.equal(centerCoat.layerId, coatId);
+assert.equal(centerCoat.z0, 4);
+assert.equal(centerCoat.z1, 5);
+assert.equal(centerCoat.frontSurface?.profileId, 'rough-conformal-export-probe');
+assert.equal(centerCoat.frontSurface?.morphology, 'stochastic');
 assert.deepEqual(
   stackAtSaved(5001).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 6, z1: 7 },
