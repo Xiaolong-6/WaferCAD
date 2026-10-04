@@ -359,6 +359,29 @@ function sanitizeProcessGeometry(geom, areaEpsilon = 1e-18) {
   return out;
 }
 
+const RELEASE_GEOMETRY_GRID_UM = 1e-4;
+
+function snapReleaseGeometry(geom) {
+  const snap = (value) => Math.round(Number(value) / RELEASE_GEOMETRY_GRID_UM) * RELEASE_GEOMETRY_GRID_UM,
+    samePoint = (a, b) => a && b && a[0] === b[0] && a[1] === b[1],
+    snapRing = (ring) => {
+      const points = [];
+      for (const point of ring || []) {
+        if (!Array.isArray(point) || point.length < 2) continue;
+        const next = [snap(point[0]), snap(point[1])];
+        if (!samePoint(points.at(-1), next)) points.push(next);
+      }
+      if (points.length && samePoint(points[0], points.at(-1))) points.pop();
+      if (points.length < 3) return [];
+      points.push([...points[0]]);
+      return points;
+    };
+
+  return (geom || [])
+    .map((poly) => (poly || []).map(snapRing).filter((ring) => ring.length >= 4))
+    .filter((poly) => poly.length && ringAreaAbs(poly[0]) > 1e-18);
+}
+
 function processGeometryArea(geom) {
   let total = 0;
   for (const poly of geom || []) {
@@ -374,7 +397,7 @@ function canonicalizeReleasePartition(model, regions) {
     overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15);
 
   for (const region of regions || []) {
-    let geom = sanitizeProcessGeometry(region.geom);
+    let geom = sanitizeProcessGeometry(snapReleaseGeometry(region.geom));
     if (isEmpty(geom)) continue;
 
     for (const previous of out) {
