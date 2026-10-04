@@ -8,7 +8,7 @@ import {
   subdivideRoughBaseTriangles,
 } from './rough-mesh-geometry.js';
 
-export const MORPHOLOGY_EXPORT_TRIANGLE_BUDGET = 900000;
+export const MORPHOLOGY_EXPORT_TRIANGLE_HARD_CAP = 900000;
 
 export function xyBoundsOfGeometry(geometry) {
   let minX = Infinity,
@@ -152,7 +152,7 @@ function exportLodContext(appearance, zone) {
 export function prepareMorphologyExportTasks(
   THREE,
   roughCaps,
-  { totalTriangleBudget = MORPHOLOGY_EXPORT_TRIANGLE_BUDGET } = {},
+  { totalTriangleBudget = MORPHOLOGY_EXPORT_TRIANGLE_HARD_CAP } = {},
 ) {
   const tasks = [];
   for (const cap of roughCaps || []) {
@@ -180,7 +180,7 @@ export function prepareMorphologyExportTasks(
     ),
     hardBudget = Math.max(
       1,
-      Math.floor(Number(totalTriangleBudget) || MORPHOLOGY_EXPORT_TRIANGLE_BUDGET),
+      Math.floor(Number(totalTriangleBudget) || MORPHOLOGY_EXPORT_TRIANGLE_HARD_CAP),
     ),
     minimumTriangles = requests.reduce(
       (sum, request) => sum + Math.max(1, Math.floor(Number(request.baseTriangles) || 1)),
