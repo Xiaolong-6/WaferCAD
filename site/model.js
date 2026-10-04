@@ -359,6 +359,42 @@ function sanitizeProcessGeometry(geom, areaEpsilon = 1e-18) {
   return out;
 }
 
+function processGeometryArea(geom) {
+  let total = 0;
+  for (const poly of geom || []) {
+    if (!poly?.length) continue;
+    total += ringAreaAbs(poly[0]);
+    for (const hole of poly.slice(1)) total -= ringAreaAbs(hole);
+  }
+  return Math.max(0, total);
+}
+
+function canonicalizeReleasePartition(model, regions) {
+  const out = [],
+    overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15);
+
+  for (const region of regions || []) {
+    let geom = sanitizeProcessGeometry(region.geom);
+    if (isEmpty(geom)) continue;
+
+    for (const previous of out) {
+      const overlap = intersection(geom, previous.geom);
+      if (isEmpty(overlap)) continue;
+      const overlapArea = processGeometryArea(overlap);
+      if (overlapArea > overlapTolerance) {
+        throw new Error(
+          `Isotropic release produced overlapping regions (${overlapArea} µm²).`,
+        );
+      }
+      geom = sanitizeProcessGeometry(difference(geom, previous.geom));
+      if (isEmpty(geom)) break;
+    }
+
+    if (!isEmpty(geom)) out.push({ ...region, geom });
+  }
+  return out;
+}
+
 function stackKey(stack) {
   return (stack || [])
     .map((seg) =>
@@ -1041,9 +1077,7 @@ function applyOperationImpl(
     model.regions = mergeRegions(model, model.regions);
   }
   if (type === 'etch' && etchProfile === 'isotropic') {
-    model.regions = model.regions
-      .map((region) => ({ ...region, geom: sanitizeProcessGeometry(region.geom) }))
-      .filter((region) => !isEmpty(region.geom));
+    model.regions = canonicalizeReleasePartition(model, model.regions);
   }
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
