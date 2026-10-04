@@ -113,33 +113,6 @@ export function createProjectController({
       return true;
     }
 
-    const branchBar = root.createElement('div');
-    branchBar.className = 'snapshot-branch-bar';
-
-    const branchLabel = root.createElement('label');
-    branchLabel.className = 'snapshot-branch-label';
-    branchLabel.textContent = 'Current variant';
-
-    const branchSelect = root.createElement('select');
-    branchSelect.id = 'snapshotBranchSelect';
-    branchSelect.className = 'snapshot-branch-select';
-    branchSelect.title = 'Switch to another Variant HEAD';
-    for (const variant of branches) {
-      const option = root.createElement('option');
-      option.value = variant.id;
-      option.textContent = variant.name;
-      branchSelect.append(option);
-    }
-    branchSelect.value = activeBranch.id;
-    branchSelect.onchange = async () => {
-      const selected = branchSelect.value;
-      const ok = await switchToBranch(selected);
-      if (!ok) branchSelect.value = snapshotManager.activeBranch().id;
-    };
-
-    branchBar.append(branchLabel, branchSelect);
-    host.append(branchBar);
-
     if (continuation) {
       const banner = root.createElement('div');
       banner.className = 'snapshot-continuation-banner';
