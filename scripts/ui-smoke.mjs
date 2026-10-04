@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 
@@ -543,6 +543,14 @@ assert.equal(
 );
 assert.match(await reloadedChild.textContent(), /Variant C/);
 assert.equal(await reloadedChild.locator('.history-bookmark-row').count(), 1);
+await mkdir(new URL('../test-results/product-review/', import.meta.url), { recursive: true });
+await historyRestorePage.screenshot({
+  path: new URL(
+    '../test-results/product-review/history-variant-tree-populated.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
 
 assert.deepEqual(historyRestoreErrors, []);
 await historyRestoreContext.close();
