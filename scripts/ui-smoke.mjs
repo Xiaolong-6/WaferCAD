@@ -702,11 +702,19 @@ await openFunctionPanel(historyRecomputePage, 'snapshots');
 assert.equal(await historyRecomputePage.locator('.history-variant').count(), 2);
 const recomputeMain = historyRecomputePage.locator('.history-variant[data-variant-id="main"]');
 const recomputeChild = historyRecomputePage.locator('.history-variant[data-active="true"]');
-assert.match(await recomputeMain.textContent(), /Replay B/);
-assert.doesNotMatch(await recomputeMain.textContent(), /Replay B edited/);
-assert.match(await recomputeMain.textContent(), /Replay C/);
-assert.match(await recomputeChild.textContent(), /Replay B edited/);
-assert.match(await recomputeChild.textContent(), /Replay C/);
+const mainOwnSteps = recomputeMain.locator(':scope > .history-variant-body > .history-step-wrap');
+const childOwnSteps = recomputeChild.locator(':scope > .history-variant-body > .history-step-wrap');
+assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay B/);
+assert.doesNotMatch(
+  await mainOwnSteps.allTextContents().then((items) => items.join(' ')),
+  /Replay B edited/,
+);
+assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
+assert.match(
+  await childOwnSteps.allTextContents().then((items) => items.join(' ')),
+  /Replay B edited/,
+);
+assert.match(await childOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
 assert.equal(
   await historyRecomputePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
     options.some((option) => /pre-history-step-edit/.test(option.textContent || '')),
