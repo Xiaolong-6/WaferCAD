@@ -482,8 +482,9 @@ await childVariant.locator('.history-variant-rename-trigger').click();
 const variantEditor = childVariant.locator('.history-variant-editor:not([hidden])');
 await variantEditor.locator('input').fill('Detector path');
 await variantEditor.locator('button').first().click();
+assert.equal(await historyRestorePage.locator('#snapshotBranchSelect').count(), 0);
 assert.equal(
-  await historyRestorePage.locator('#snapshotBranchSelect option:checked').textContent(),
+  (await historyRestorePage.locator('.history-variant[data-active="true"] .history-variant-name').textContent()).trim(),
   'Detector path',
 );
 assert.equal(
@@ -531,8 +532,9 @@ await historyRestorePage.waitForFunction(
   { timeout: 30000 },
 );
 await openFunctionPanel(historyRestorePage, 'snapshots');
+assert.equal(await historyRestorePage.locator('#snapshotBranchSelect').count(), 0);
 assert.equal(
-  await historyRestorePage.locator('#snapshotBranchSelect option:checked').textContent(),
+  (await historyRestorePage.locator('.history-variant[data-active="true"] .history-variant-name').textContent()).trim(),
   'Detector path',
 );
 assert.equal(await historyRestorePage.locator('.history-variant').count(), 2);
