@@ -1,0 +1,46 @@
+{
+  "source_package": {
+    "name": "PERC_Blakers1989_reconstruction_package.zip",
+    "sha256": "c5e72f2f206c089ad95491b006dd96f7598a1899a27e507f5c50582c062f98de",
+    "supplied_files": [
+      "PERC_Blakers1989_Fig1.wafercad",
+      "PERC_Blakers1989_masks.gds",
+      "PERC_Blakers1989_make_masks.py",
+      "PERC_Blakers1989_mask_map.md",
+      "PERC_Blakers1989_reconstruction.md",
+      "PERC_export_audit.json",
+      "PERC_visibility_audit.md",
+      "PERC_corrected_rear_openings.jpg",
+      "PERC_front_stripe_ROI_3D.jpg",
+      "PERC_rear_windows_before_Al.jpg",
+      "PERC_rear_window_section_before_Al.jpg"
+    ]
+  },
+  "candidate_project": {
+    "name": "PERC_Blakers1989_Fig1.wafercad",
+    "sha256": "e56e10e938e940558f189cf650eb3886d3fa393563327c0df5ab2ac4d7018773",
+    "schema_version": 14,
+    "branches": 6,
+    "process_nodes": 40,
+    "bookmarks": 40,
+    "active_process_revision": 18,
+    "active_branch_name": "PERC Fig. 1 · corrected source-order process"
+  },
+  "mask_gds": {
+    "name": "PERC_Blakers1989_masks.gds",
+    "sha256": "9de5edbcbbb6f580e62441aff1c22340347356400faf05a043278edb6c21ed41",
+    "layers": [
+      "1/0 texture openings",
+      "2/0 heavy-P stripes",
+      "3/0 front metal stripes",
+      "4/0 front passivation windows",
+      "5/0 rear point-contact holes",
+      "6/0 rear Al reference footprints"
+    ]
+  },
+  "promotion_status": "blocked",
+  "blocker": "Light-P Implant retains 8 patches hosted by stripped temporary layer-2.",
+  "welcome_registered": false,
+  "pr_opened": false,
+  "ci_requested": false
+}
