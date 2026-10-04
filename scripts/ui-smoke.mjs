@@ -1116,6 +1116,54 @@ assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.mode
 assert.ok(implantSaved.model.implants[0].patches.length > 0);
 await openFunctionPanel(page, 'process');
 
+// Electrical Region is a separate annotation semantic: no Implant tilt/gradient
+// controls, typed metadata, independent legend row, and persisted v14 state.
+await page.locator('[data-process-mode="electrical"]').click();
+assert.equal(await page.locator('#electricalNameRow').isVisible(), true);
+assert.equal(await page.locator('#electricalRegionParams').isVisible(), true);
+assert.equal(await page.locator('#implantTiltRow').isHidden(), true);
+assert.match(await page.locator('#operationNote').textContent(), /Non-material electrical annotation/);
+await page.locator('#operationArea').selectOption('full');
+await page.locator('#operationThickness').fill('0.2');
+await page.locator('#electricalName').fill('UI induced inversion');
+await page.locator('#electricalRegionType').selectOption('p-inversion');
+await page.locator('#electricalRegionSource').selectOption('induced');
+await page.locator('#applyOperationBtn').click();
+await page.waitForFunction(() =>
+  /Marked electrical region UI induced inversion/.test(
+    document.getElementById('statusText')?.textContent || '',
+  ),
+);
+
+const electricalLegendRow = page.locator('#layerLegend .electrical-row-wrap').first();
+assert.equal(await electricalLegendRow.count(), 1);
+assert.equal(await electricalLegendRow.locator('.legend-visibility').isChecked(), true);
+await electricalLegendRow.locator('.legend-name').fill('UI electrical renamed');
+await electricalLegendRow.locator('.legend-name').press('Tab');
+await page.locator('#threeOpacityRange').fill('0.5');
+await page.locator('#threeOpacityRange').dispatchEvent('input');
+await page.waitForFunction(
+  () => Number(document.getElementById('threeHost')?.dataset?.electricalRegionInternalCount || 0) > 0,
+  null,
+  { timeout: 30000 },
+);
+
+await openFunctionPanel(page, 'project');
+const electricalDownloadPromise = page.waitForEvent('download');
+await page.locator('#exportProjectBtn').click();
+const electricalDownload = await electricalDownloadPromise;
+const electricalSavedPath = await electricalDownload.path();
+assert.ok(electricalSavedPath);
+const electricalSaved = JSON.parse(await readFile(electricalSavedPath, 'utf8'));
+assert.equal(electricalSaved.version, 14);
+assert.equal(electricalSaved.model.electricalRegions.length, 1);
+assert.equal(electricalSaved.model.electricalRegions[0].name, 'UI electrical renamed');
+assert.equal(electricalSaved.model.electricalRegions[0].regionType, 'p-inversion');
+assert.equal(electricalSaved.model.electricalRegions[0].source, 'induced');
+assert.equal(electricalSaved.model.electricalRegions[0].thickness, 0.2);
+assert.equal(electricalSaved.model.implants.length, 1);
+await openFunctionPanel(page, 'process');
+
 // Extend targets follow the exposed surface and include Base when it is exposed.
 await page.locator('[data-process-mode="grow"]').click();
 await page.locator('#operationArea').selectOption('full');
