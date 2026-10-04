@@ -20,7 +20,8 @@ export function createStartupController({
     if (start === 'empty') return true;
 
     if (start === 'example') {
-      const exampleId = params.get('example') || 'visualization';
+      const exampleId = params.get('example') || 'photodetector-literature';
+      // Keep the old generated demo as an explicit legacy deep link only.
       if (exampleId === 'visualization') return Boolean(await openVisualizationExample());
       return Boolean(await openBundledExample(exampleId));
     }
