@@ -684,7 +684,12 @@ for (const action of ['update-recompute', 'branch-here', 'branch-recompute']) {
 }
 await chooseConfirmation(historyRecomputePage, 'branch-recompute');
 
-await historyRecomputePage.locator('#operationTools:not([hidden])').waitFor();
+await historyRecomputePage.waitForFunction(
+  () => /Editing "Deposit Replay B/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+await historyRecomputePage.locator('.snapshot-continuation-banner[data-editing-step="true"]').waitFor();
 assert.equal(await historyRecomputePage.locator('#layerName').inputValue(), 'Replay B');
 assert.equal(Number(await historyRecomputePage.locator('#operationThickness').inputValue()), 0.05);
 await historyRecomputePage.locator('#layerName').fill('Replay B edited');
