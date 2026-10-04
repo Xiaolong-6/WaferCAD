@@ -296,6 +296,7 @@ $('welcomeLayoutInput').onchange = (event) => stageAndOpen(event.target.files?.[
 $('welcomeProjectInput').onchange = (event) => stageAndOpen(event.target.files?.[0], 'project');
 
 renderExampleCards();
+document.documentElement.dataset.welcomeReady = 'true';
 
 globalThis.addEventListener('message', (event) => {
   if (event.origin !== globalThis.location.origin) return;
