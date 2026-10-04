@@ -814,6 +814,46 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
         seenParents.add(parentId);
         parentId = branchById.get(parentId)?.parentBranchId ?? null;
       }
+
+      if (branch.headNodeId != null && branch.rootNodeId == null) {
+        fail(
+          `snapshotBranches.branches[${index}].rootNodeId`,
+          'is required when a Variant has a process HEAD.',
+        );
+      }
+      if (branch.rootNodeId != null && branch.headNodeId != null) {
+        const visited = new Set();
+        let nodeId = branch.headNodeId;
+        let reachedRoot = false;
+        while (nodeId != null) {
+          if (visited.has(nodeId)) {
+            fail(
+              `snapshotBranches.branches[${index}].headNodeId`,
+              'must not traverse a cyclic Step chain.',
+            );
+          }
+          visited.add(nodeId);
+          const node = nodesById.get(nodeId);
+          if (!node) break;
+          if (nodeId === branch.rootNodeId) {
+            reachedRoot = true;
+            break;
+          }
+          if (node.branchId !== branch.id) {
+            fail(
+              `snapshotBranches.branches[${index}].headNodeId`,
+              'must reach the origin through Steps owned by this Variant.',
+            );
+          }
+          nodeId = node.parentId;
+        }
+        if (!reachedRoot) {
+          fail(
+            `snapshotBranches.branches[${index}].headNodeId`,
+            'must descend from the Variant origin Step.',
+          );
+        }
+      }
     });
   }
 
