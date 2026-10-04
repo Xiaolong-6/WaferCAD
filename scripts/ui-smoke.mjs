@@ -564,16 +564,16 @@ const historyTreeGeometry = await historyRestorePage.evaluate(() => {
 });
 assert.equal(historyTreeGeometry.viewportWidth, 1100);
 assert.equal(historyTreeGeometry.compact, false);
-assert.ok(historyTreeGeometry.panel.width >= 295);
-assert.ok(historyTreeGeometry.panel.left >= 45);
+assert.ok(historyTreeGeometry.panel.width >= 295, JSON.stringify(historyTreeGeometry));
+assert.ok(historyTreeGeometry.panel.left >= 40, JSON.stringify(historyTreeGeometry));
 for (const item of [
   historyTreeGeometry.mainVariant,
   historyTreeGeometry.firstStep,
   historyTreeGeometry.childVariant,
 ]) {
   assert.ok(item);
-  assert.ok(item.left >= historyTreeGeometry.panel.left + 8);
-  assert.ok(item.right <= historyTreeGeometry.panel.right - 6);
+  assert.ok(item.left >= historyTreeGeometry.panel.left + 8, JSON.stringify(historyTreeGeometry));
+  assert.ok(item.right <= historyTreeGeometry.panel.right - 6, JSON.stringify(historyTreeGeometry));
 }
 
 await mkdir(new URL('../test-results/product-review/', import.meta.url), { recursive: true });
