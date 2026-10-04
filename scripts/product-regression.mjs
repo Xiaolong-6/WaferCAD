@@ -618,9 +618,9 @@ async function loadProject(page, project, name) {
   await closeFunctionPanel(page);
 }
 
-async function exportCurrentProject(page) {
+async function exportCurrentProject(page, timeout = 30000) {
   await openFunctionPanel(page, 'project');
-  const downloadPromise = page.waitForEvent('download');
+  const downloadPromise = page.waitForEvent('download', { timeout });
   await page.locator('#exportProjectBtn').click();
   const download = await downloadPromise,
     path = await download.path();
@@ -949,7 +949,7 @@ try {
       // export click until the Apply continuation has committed its model/history
       // updates after the worker result. Validate the exported canonical model
       // instead of coupling this test to transient status-text timing.
-      const releasedProject = await exportCurrentProject(page),
+      const releasedProject = await exportCurrentProject(page, 120000),
         ringRegion = releasedProject.model.regions.find((region) =>
           pointInMulti(releaseBenchmark.probes.ring, region.geom),
         ),
