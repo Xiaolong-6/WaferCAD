@@ -1,76 +1,14 @@
 import { BUNDLED_EXAMPLES } from './bundled-examples.js';
 import { MAX_LAYOUT_FILE_BYTES } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES } from './project-io.js';
-import { createVisualizationLayout } from './welcome-example.js';
 import { stageStartupFile } from './startup-file.js';
 
 const $ = (id) => document.getElementById(id);
-let previewLayout = null;
-const previewCanvases = new Set();
 const projectPreviewFrames = new Set();
-let previewResizeTimer = 0,
-  autoProjectPreviewAssigned = false;
+let autoProjectPreviewAssigned = false;
 
 function status(message) {
   $('welcomeStatus').textContent = message;
-}
-
-function drawVisualizationPreview(canvas) {
-  if (!canvas?.isConnected) return;
-  const rect = canvas.getBoundingClientRect();
-  if (!(rect.width > 0 && rect.height > 0)) return;
-
-  previewLayout ||= createVisualizationLayout();
-  const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
-  const pixelWidth = Math.max(1, Math.round(rect.width * dpr)),
-    pixelHeight = Math.max(1, Math.round(rect.height * dpr));
-  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
-  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, rect.width, rect.height);
-  ctx.fillStyle = '#f7f9fb';
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  const bounds = previewLayout.bounds;
-  const scale = Math.min(
-    (rect.width * 0.82) / Math.max(bounds.width, 1),
-    (rect.height * 0.82) / Math.max(bounds.height, 1),
-  );
-  const cx = rect.width / 2,
-    cy = rect.height / 2,
-    layerStyle = {
-      1: ['rgba(92, 112, 137, 0.10)', 'rgba(92, 112, 137, 0.26)'],
-      2: ['rgba(203, 119, 108, 0.46)', 'rgba(173, 91, 80, 0.66)'],
-      3: ['rgba(123, 213, 160, 0.42)', 'rgba(77, 169, 116, 0.66)'],
-      4: ['rgba(104, 178, 207, 0.46)', 'rgba(67, 139, 168, 0.70)'],
-    },
-    point = ([x, y]) => [cx + x * scale, cy - y * scale];
-
-  for (const element of previewLayout.elements) {
-    if (!element.points?.length) continue;
-    const style = layerStyle[element.layer] || layerStyle[1];
-    ctx.beginPath();
-    element.points.forEach((p, index) => {
-      const [x, y] = point(p);
-      if (index === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-
-    if (element.sourceCell === '50mm') {
-      ctx.strokeStyle = '#87939f';
-      ctx.lineWidth = 1.1;
-      ctx.stroke();
-      continue;
-    }
-
-    ctx.fillStyle = style[0];
-    ctx.strokeStyle = style[1];
-    ctx.lineWidth = element.layer === 1 ? 0.45 : 0.7;
-    ctx.fill();
-    ctx.stroke();
-  }
 }
 
 function createImagePreview(example, { fallback = false } = {}) {
@@ -237,13 +175,6 @@ function renderExampleCards() {
     } else if (example.preview?.path) {
       visual.classList.add('has-image');
       visual.append(createImagePreview(example));
-    } else if (example.kind === 'generated') {
-      const canvas = document.createElement('canvas');
-      canvas.className = 'welcome-example-canvas';
-      canvas.setAttribute('aria-label', example.title + ' preview');
-      visual.append(canvas);
-      previewCanvases.add(canvas);
-      requestAnimationFrame(() => drawVisualizationPreview(canvas));
     }
 
     const body = document.createElement('div');
@@ -332,9 +263,4 @@ globalThis.addEventListener('message', (event) => {
   }
 });
 
-globalThis.addEventListener('resize', () => {
-  clearTimeout(previewResizeTimer);
-  previewResizeTimer = setTimeout(() => {
-    for (const canvas of previewCanvases) drawVisualizationPreview(canvas);
-  }, 80);
-});
+
