@@ -3,7 +3,6 @@ export function createStartupController({
   openLayoutFile,
   openProjectFile,
   openBundledExample,
-  openVisualizationExample,
   status,
   locationRef = globalThis.location,
   historyRef = globalThis.history,
@@ -21,8 +20,6 @@ export function createStartupController({
 
     if (start === 'example') {
       const exampleId = params.get('example') || 'photodetector-literature';
-      // Keep the old generated demo as an explicit legacy deep link only.
-      if (exampleId === 'visualization') return Boolean(await openVisualizationExample());
       return Boolean(await openBundledExample(exampleId));
     }
 
