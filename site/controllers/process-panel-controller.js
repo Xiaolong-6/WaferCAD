@@ -94,10 +94,11 @@ export function createProcessPanelController({
       stochasticEtch = texturedEtch && surfaceMode === 'rough',
       pyramidEtch = texturedEtch && surfaceMode === 'pyramid';
     $('roughPolarityRow').classList.toggle('hidden', !texturedEtch);
+    $('roughSeedRow').classList.toggle('hidden', !texturedEtch);
     $('roughFeatureRow').classList.toggle('hidden', !texturedEtch);
-    $('roughFeatureCvRow').classList.toggle('hidden', !stochasticEtch);
+    $('roughFeatureCvRow').classList.toggle('hidden', !texturedEtch);
     $('roughHeightRow').classList.toggle('hidden', !texturedEtch);
-    $('roughHeightCvRow').classList.toggle('hidden', !stochasticEtch);
+    $('roughHeightCvRow').classList.toggle('hidden', !texturedEtch);
     $('roughFeatureLabel').textContent = pyramidEtch ? 'Pyramid XY' : 'Feature XY';
     $('roughHeightLabel').textContent = pyramidEtch ? 'Height' : 'Height mean';
     $('processThicknessLabel').textContent =
@@ -151,7 +152,7 @@ export function createProcessPanelController({
                 : stochasticEtch
                   ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only: canonical process geometry and GLB export remain ideal.`
                   : pyramidEtch
-                    ? `Pyramid XY is the square pitch/base width and Height is apex-to-base relief within the Etch Depth envelope. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only: canonical process geometry and GLB export remain ideal.`
+                    ? `Pyramid XY and Height are means; CV controls deterministic base-size/position and height variation, and Seed makes the random field reproducible. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only: canonical process geometry and GLB export remain ideal.`
                     : $('etchTargetLayer').value
                       ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
                       : 'Etch removes exposed material vertically in stack order and may create through-holes.'
@@ -262,10 +263,12 @@ export function createProcessPanelController({
       const pyramid = etchSurfaceMode === 'pyramid',
         featureSize = manualMicron($('roughFeatureSize').value),
         meanHeight = manualMicron($('roughAmplitude').value),
-        featureCvPercent = pyramid ? 0 : Number($('roughFeatureCv').value),
-        heightCvPercent = pyramid ? 0 : Number($('roughHeightCv').value),
+        featureCvPercent = Number($('roughFeatureCv').value),
+        heightCvPercent = Number($('roughHeightCv').value),
         featureCv = featureCvPercent / 100,
-        heightCv = heightCvPercent / 100;
+        heightCv = heightCvPercent / 100,
+        seedText = String($('roughSeed')?.value ?? '').trim(),
+        seedValue = seedText === '' ? null : Number(seedText);
       $('roughFeatureSize').value = formatLengthField(featureSize);
       $('roughAmplitude').value = formatLengthField(meanHeight);
       if (!(featureSize > 0) || !(meanHeight > 0)) {
@@ -294,6 +297,12 @@ export function createProcessPanelController({
       ) {
         return status('Rough Feature CV and Height CV must be between 0% and 100%.', 'error');
       }
+      if (
+        seedValue != null &&
+        (!Number.isInteger(seedValue) || seedValue < 0 || seedValue > 0xffffffff)
+      ) {
+        return status('Surface Seed must be an integer from 0 to 4294967295, or left blank.', 'error');
+      }
       roughSurface = {
         kind: 'rough',
         morphology: pyramid ? 'pyramid' : 'stochastic',
@@ -302,6 +311,7 @@ export function createProcessPanelController({
         meanHeight,
         featureCv,
         heightCv,
+        ...(seedValue == null ? {} : { seed: seedValue >>> 0 }),
         geometryMode: 'ideal',
       };
     }
@@ -433,6 +443,9 @@ export function createProcessPanelController({
               polarity: roughSurface.polarity,
               featureSize: roughSurface.featureSize,
               meanHeight: roughSurface.meanHeight,
+              featureCv: roughSurface.featureCv,
+              heightCv: roughSurface.heightCv,
+              seed: roughSurface.seed ?? null,
             }
           : null,
       implantTilt: type === 'implant' ? params.tilt : null,
