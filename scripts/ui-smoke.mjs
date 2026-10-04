@@ -1116,7 +1116,7 @@ await page.screenshot({
   path: new URL(
     '../test-results/product-review/annotation-depth-profile-follow.png',
     import.meta.url,
-  ),
+  ).pathname,
   fullPage: true,
 });
 await implantLegendRow.getByRole('button', { name: 'Smooth', exact: true }).click();
@@ -1130,7 +1130,7 @@ await page.screenshot({
   path: new URL(
     '../test-results/product-review/annotation-depth-profile-smooth.png',
     import.meta.url,
-  ),
+  ).pathname,
   fullPage: true,
 });
 await implantLegendRow.getByRole('button', { name: 'Follow offset', exact: true }).click();
@@ -1198,7 +1198,7 @@ await page.screenshot({
   path: new URL(
     '../test-results/product-review/electrical-depth-profile-smooth.png',
     import.meta.url,
-  ),
+  ).pathname,
   fullPage: true,
 });
 await electricalLegendRow.locator('.legend-name').fill('UI electrical renamed');
