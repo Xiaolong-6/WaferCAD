@@ -98,48 +98,59 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
 
         const currentLow = region.stack[0].z0,
           currentHigh = region.stack.at(-1).z1,
-          z0 = Math.max(sourceLow, currentLow),
-          z1 = Math.min(sourceHigh, currentHigh);
-        if (!(z1 > z0 + 1e-12)) continue;
+          hostSegments =
+            kind === 'electrical'
+              ? region.stack.filter((segment) => segment.layerId === patch.layerId)
+              : [{ z0: currentLow, z1: currentHigh, layerId: patch.layerId }];
 
-        const currentSurfaceSegment =
-            item.face === 'front' ? region.stack.at(-1) : region.stack[0],
-          currentSurfaceZ = item.face === 'front' ? currentHigh : currentLow,
-          sourceSurfaceZ = Number(patch.z),
-          currentCutsAnnotation =
-            item.face === 'front'
-              ? currentSurfaceZ < sourceSurfaceZ - 1e-9
-              : currentSurfaceZ > sourceSurfaceZ + 1e-9,
-          currentAppearance =
-            item.face === 'front'
-              ? currentSurfaceSegment?.frontSurface
-              : currentSurfaceSegment?.backSurface,
-          outerZ = item.face === 'front' ? z1 : z0,
-          innerZ = item.face === 'front' ? z0 : z1,
-          surfaceExposed = Math.abs(currentSurfaceZ - outerZ) <= 1e-9;
+        for (const hostSegment of hostSegments) {
+          const z0 = Math.max(sourceLow, hostSegment.z0),
+            z1 = Math.min(sourceHigh, hostSegment.z1);
+          if (!(z1 > z0 + 1e-12)) continue;
 
-        fragments.push({
-          annotationKind: kind,
-          annotationId: item.id,
-          ...(kind === 'implant' ? { implantId: item.id } : { electricalRegionId: item.id }),
-          name: item.name,
-          color: item.color,
-          face: item.face,
-          thickness,
-          tilt: kind === 'implant' ? Number(item.tilt) || 0 : 0,
-          ...(kind === 'electrical'
-            ? { regionType: item.regionType, source: item.source }
-            : {}),
-          sourceZ: sourceSurfaceZ,
-          outerZ,
-          innerZ,
-          surfaceExposed,
-          z0,
-          z1,
-          surfaceAppearance:
-            (currentCutsAnnotation ? currentAppearance : patch.surfaceAppearance) || null,
-          polys: geom,
-        });
+          const currentSurfaceSegment =
+              item.face === 'front' ? region.stack.at(-1) : region.stack[0],
+            currentSurfaceZ = item.face === 'front' ? currentHigh : currentLow,
+            sourceSurfaceZ = Number(patch.z),
+            currentCutsAnnotation =
+              item.face === 'front'
+                ? currentSurfaceZ < sourceSurfaceZ - 1e-9
+                : currentSurfaceZ > sourceSurfaceZ + 1e-9,
+            currentAppearance =
+              item.face === 'front'
+                ? currentSurfaceSegment?.frontSurface
+                : currentSurfaceSegment?.backSurface,
+            outerZ = item.face === 'front' ? z1 : z0,
+            innerZ = item.face === 'front' ? z0 : z1,
+            surfaceExposed = Math.abs(currentSurfaceZ - outerZ) <= 1e-9;
+
+          fragments.push({
+            annotationKind: kind,
+            annotationId: item.id,
+            ...(kind === 'implant' ? { implantId: item.id } : { electricalRegionId: item.id }),
+            name: item.name,
+            color: item.color,
+            face: item.face,
+            thickness,
+            tilt: kind === 'implant' ? Number(item.tilt) || 0 : 0,
+            ...(kind === 'electrical'
+              ? {
+                  regionType: item.regionType,
+                  source: item.source,
+                  hostLayerId: patch.layerId,
+                }
+              : {}),
+            sourceZ: sourceSurfaceZ,
+            outerZ,
+            innerZ,
+            surfaceExposed,
+            z0,
+            z1,
+            surfaceAppearance:
+              (currentCutsAnnotation ? currentAppearance : patch.surfaceAppearance) || null,
+            polys: geom,
+          });
+        }
       }
     }
   }
