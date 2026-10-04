@@ -89,7 +89,7 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /color: layer\?\.color \|\| '#999'/);
   assert.doesNotMatch(threeView, /0x24282c/);
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
-  assert.match(threeView, /async function exportGlb\(\)/);
+  assert.match(threeView, /async function exportGlb\(/);
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
   assert.match(threeView, /preserveDrawingBuffer: false/);
   assert.match(
