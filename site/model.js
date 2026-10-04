@@ -721,22 +721,36 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
         d1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
         depth = (d0 + d1) / 2,
         lateral = Math.sqrt(Math.max(0, amount * amount - depth * depth)),
-        rawFootprint = bufferMulti(seed.geom, lateral, 24),
-        footprint = intersection(rawFootprint, model.boundary);
-      if (isEmpty(footprint)) continue;
+        bands = lateral > 1e-9 ? conformalBoundaryBands(seed.geom, lateral) : [],
+        rawParts = [seed.geom, ...bands];
+      let footprints;
+      try {
+        const merged = unionGeometries(rawParts);
+        footprints = isEmpty(merged) ? [] : [merged];
+      } catch {
+        // Large release masks can make a one-shot polygon union numerically
+        // fragile. Subtraction is idempotent, so applying the same seed/bands
+        // as smaller pieces preserves the release front without failing the
+        // whole operation.
+        footprints = rawParts;
+      }
 
       const z0 = face === 'front' ? seed.z - d1 : seed.z + d0,
         z1 = face === 'front' ? seed.z - d0 : seed.z + d1;
-      splitByArea(
-        model,
-        footprint,
-        (stack) => {
-          const next = removeLayerInterval(stack, [...targets], z0, z1);
-          if (stackKey(next) !== stackKey(stack)) changed = true;
-          return next;
-        },
-        false,
-      );
+      for (const rawFootprint of footprints) {
+        const footprint = intersection(rawFootprint, model.boundary);
+        if (isEmpty(footprint)) continue;
+        splitByArea(
+          model,
+          footprint,
+          (stack) => {
+            const next = removeLayerInterval(stack, [...targets], z0, z1);
+            if (stackKey(next) !== stackKey(stack)) changed = true;
+            return next;
+          },
+          false,
+        );
+      }
     }
   }
 
