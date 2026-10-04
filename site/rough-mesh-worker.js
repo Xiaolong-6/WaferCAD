@@ -12,7 +12,7 @@ function roughModule() {
 }
 
 self.onmessage = async (event) => {
-  const { id, generation, tasks } = event.data || {};
+  const { id, generation, tasks, reportProgress = false } = event.data || {};
   if (!id || !Array.isArray(tasks)) return;
 
   try {
@@ -37,13 +37,15 @@ self.onmessage = async (event) => {
         data.normals.buffer,
         data.roughBorderPositions.buffer,
       );
-      self.postMessage({
-        id,
-        type: 'progress',
-        generation,
-        completed: index + 1,
-        total: tasks.length,
-      });
+      if (reportProgress) {
+        self.postMessage({
+          id,
+          type: 'progress',
+          generation,
+          completed: index + 1,
+          total: tasks.length,
+        });
+      }
     }
 
     self.postMessage(
