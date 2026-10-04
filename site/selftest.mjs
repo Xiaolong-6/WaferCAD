@@ -365,6 +365,52 @@ for (const [x, y] of [
   assert.ok(Math.abs(normal + inverted - pyramidAppearance.etchDepth) < 1e-12);
 }
 
+const randomPyramidAppearance = {
+  ...pyramidAppearance,
+  featureCv: 0.3,
+  heightCv: 0.25,
+  seed: 2018,
+};
+const randomPyramidSamples = [
+  [0.13, 0.21],
+  [0.91, -0.42],
+  [2.37, 1.14],
+  [-1.55, 3.08],
+].map(([x, y]) => roughProfileOffsetAtPoint(x, y, randomPyramidAppearance));
+assert.deepEqual(
+  randomPyramidSamples,
+  [
+    [0.13, 0.21],
+    [0.91, -0.42],
+    [2.37, 1.14],
+    [-1.55, 3.08],
+  ].map(([x, y]) => roughProfileOffsetAtPoint(x, y, randomPyramidAppearance)),
+  'Random pyramid morphology must be deterministic for a fixed seed',
+);
+assert.notDeepEqual(
+  randomPyramidSamples,
+  [
+    [0.13, 0.21],
+    [0.91, -0.42],
+    [2.37, 1.14],
+    [-1.55, 3.08],
+  ].map(([x, y]) =>
+    roughProfileOffsetAtPoint(x, y, { ...randomPyramidAppearance, seed: 2019 }),
+  ),
+  'Changing the pyramid seed must change the reconstructed morphology',
+);
+for (const [x, y] of [
+  [0.13, 0.21],
+  [0.91, -0.42],
+  [2.37, 1.14],
+]) {
+  const normal = roughProfileOffsetAtPoint(x, y, randomPyramidAppearance),
+    inverted = roughProfileOffsetAtPoint(x, y, {
+      ...randomPyramidAppearance,
+      polarity: 'inverted',
+    });
+  assert.ok(Math.abs(normal + inverted - randomPyramidAppearance.etchDepth) < 1e-12);
+}
 
 const defaults = createModel();
 assert.equal(defaults.width, 100000);
@@ -771,7 +817,58 @@ const c = applyOperation(conformal, {
   area,
   growth: 'conformal',
 });
-assert.equal(surfaceSegment(regionAt(conformal, [2.5, 0]).stack).layerId, c.layerId);
+assert.notEqual(
+  surfaceSegment(regionAt(conformal, [2.5, 0]).stack).layerId,
+  c.layerId,
+  'A flat mask boundary must stay hard-clipped even for conformal deposition',
+);
+
+const maskedConformal = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const maskedFilm = applyOperation(maskedConformal, {
+  type: 'add',
+  name: 'Masked conformal',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(4, 20),
+  growth: 'conformal',
+});
+assert.equal(surfaceSegment(regionAt(maskedConformal, [0, 0]).stack).layerId, maskedFilm.layerId);
+assert.equal(
+  regionAt(maskedConformal, [2.5, 0]).stack.some((segment) => segment.layerId === maskedFilm.layerId),
+  false,
+  'Conformal deposition must not wrap around an artificial mask edge',
+);
+
+const maskedConformalStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+applyOperation(maskedConformalStep, {
+  type: 'add',
+  name: 'Inner ridge',
+  thickness: 2,
+  face: 'front',
+  area: rectMulti(2, 20),
+  growth: 'direct',
+});
+const maskedStepFilm = applyOperation(maskedConformalStep, {
+  type: 'add',
+  name: 'Masked conformal over step',
+  thickness: 1,
+  face: 'front',
+  area: rectMulti(8, 20),
+  growth: 'conformal',
+});
+const maskedPhysicalSide = regionAt(maskedConformalStep, [1.5, 0]).stack.find(
+  (segment) => segment.layerId === maskedStepFilm.layerId,
+);
+assert.equal(maskedPhysicalSide?.role, 'conformal-sidewall');
+assert.equal(maskedPhysicalSide?.z0, 5);
+assert.equal(maskedPhysicalSide?.z1, 8);
+assert.equal(
+  regionAt(maskedConformalStep, [4.5, 0]).stack.some(
+    (segment) => segment.layerId === maskedStepFilm.layerId,
+  ),
+  false,
+  'Masked conformal coating must remain hard-clipped at the selected area boundary',
+);
 
 const directStep = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(directStep, {
@@ -1058,6 +1155,21 @@ invalidDetailRoiProject.display.sectionDetailRoi = {
   shape: 'rect',
 };
 assert.throws(() => validateProjectFile(invalidDetailRoiProject), /sectionDetailRoi/);
+
+const cameraProject = structuredClone(validProject);
+cameraProject.display.threeCamera = {
+  position: [120, -95, 80],
+  target: [0, 0, 4],
+  fov: 34,
+};
+assert.equal(validateProjectFile(cameraProject), cameraProject);
+const invalidCameraProject = structuredClone(validProject);
+invalidCameraProject.display.threeCamera = {
+  position: [1, 2],
+  target: [0, 0, 0],
+  fov: 34,
+};
+assert.throws(() => validateProjectFile(invalidCameraProject), /threeCamera/);
 
 const roughProject = structuredClone(validProject);
 roughProject.model.regions[0].stack[0].frontSurface = {
