@@ -175,6 +175,10 @@ export function createProjectController({
       summary.setAttribute('aria-label', label);
       summary.title = label;
       summary.onclick = (event) => event.stopPropagation();
+      // Keyboard activation of a nested menu must not bubble into a restorable
+      // History row, otherwise Enter/Space can restore the Step instead of
+      // opening or using the menu.
+      details.onkeydown = (event) => event.stopPropagation();
 
       const menu = root.createElement('div');
       menu.className = 'snapshot-more-popover';
