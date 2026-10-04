@@ -131,6 +131,53 @@ for (const face of ['front', 'back']) {
   }
 }
 
+test('material-selective Etch removes an exposed target and stops on the next material', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const ald = applyOperation(model, {
+    type: 'add',
+    name: 'Al2O3',
+    thickness: 1,
+    area: model.boundary,
+  });
+  const metal = applyOperation(model, {
+    type: 'add',
+    name: 'Al',
+    thickness: 2,
+    area: model.boundary,
+  });
+  const aldVolume = volume(model, ald.layerId);
+
+  const etched = applyOperation(model, {
+    type: 'etch',
+    thickness: 5,
+    area: model.boundary,
+    etchTargetLayerIds: [metal.layerId],
+  });
+  assert.equal(etched.changed, true);
+  assert.equal(stackAt(model, 0).some((segment) => segment.layerId === metal.layerId), false);
+  assert.ok(stackAt(model, 0).some((segment) => segment.layerId === ald.layerId));
+  assert.equal(surfaceZ(stackAt(model, 0)), 6);
+  assert.ok(Math.abs(volume(model, ald.layerId) - aldVolume) < 1e-9);
+
+  const covered = applyOperation(model, {
+    type: 'add',
+    name: 'Cap',
+    thickness: 1,
+    area: model.boundary,
+  });
+  const before = structuredClone(model);
+  const blocked = applyOperation(model, {
+    type: 'etch',
+    thickness: 1,
+    area: model.boundary,
+    etchTargetLayerIds: [ald.layerId],
+  });
+  assert.equal(blocked.changed, false);
+  assert.match(blocked.error, /selected etch materials are exposed/);
+  assert.deepEqual(model, before);
+  assert.ok(covered.layerId);
+});
+
 test('Conformal sidewall offsets outward by the requested distance after Direct growth', () => {
   const model = createModel({ shape: 'rect', width: 100000, height: 100000, thickness: 10 });
   applyOperation(model, {
