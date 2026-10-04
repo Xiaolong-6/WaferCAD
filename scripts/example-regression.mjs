@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const vendorSource = await readFile(
@@ -38,6 +38,8 @@ assert.ok(roughStep?.state?.model);
 assert.ok(geBInversionStep?.state?.model);
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
+const reviewDir = new URL('../test-results/product-review/', import.meta.url);
+await mkdir(reviewDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
 const pageErrors = [];
@@ -150,6 +152,11 @@ await waitRendererForState(
   branches.get('black-si-fig1a-final').headState,
   'initial Black-Si FINAL',
 );
+await page.screenshot({
+  path: new URL('../test-results/product-review/example-photodetector-literature.png', import.meta.url)
+    .pathname,
+  fullPage: true,
+});
 assert.equal(await page.locator('#layerLegend .implant-row-wrap').count(), 2);
 assert.equal(await page.locator('#layerLegend .electrical-row-wrap').count(), 0);
 
@@ -203,6 +210,13 @@ for (const example of [
   assert.ok((await page.locator('#mainCanvas').getAttribute('width')) !== '0');
   assert.ok((await page.locator('#maskCanvas').getAttribute('width')) !== '0');
   assert.ok((await page.locator('#sectionCanvas').getAttribute('width')) !== '0');
+  await page.screenshot({
+    path: new URL(
+      `../test-results/product-review/example-${example.id}.png`,
+      import.meta.url,
+    ).pathname,
+    fullPage: true,
+  });
 }
 
 assert.deepEqual(pageErrors, []);
