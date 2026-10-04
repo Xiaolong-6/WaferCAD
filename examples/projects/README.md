@@ -6,9 +6,9 @@ This directory keeps project fixtures that are useful for regression and develop
 
 The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundled examples live under `site/examples/` and should be grouped by **device/application family**, not one card per paper.
 
-The current literature family is:
+The current production literature families are:
 
-- `site/examples/photodetector-literature-examples.wafercad`
+- **Photodetectors with nanopatterns** — `site/examples/photodetector-literature-examples.wafercad`
   - **Black-Si Fig. 1a** common process
     - FINAL · protected active ALD
     - QA · overetch
@@ -16,8 +16,14 @@ The current literature family is:
     - A · full-area Al₂O₃
     - B · inactive SiO₂/Al₂O₃
     - induced p-type inversion / n-type accumulation are stored as first-class Electrical Regions, not Implant placeholders
+- **PERC solar cells with point contacts** — `site/examples/perc-solar-cells-point-contacts.wafercad`
+  - corrected source-order process is the default active Variant;
+  - alternative reconstruction branches remain available for process comparison.
+- **Suspended silica microdisks** — `site/examples/suspended-silica-microdisks.wafercad`
+  - released annular air gap is canonical geometry;
+  - the central silicon support remains physically connected to the silica disk.
 
-The family project opens on the Black-Si FINAL Variant while retaining the complete restorable Variant tree. This structure is intentional: future examples should normally add a new family project (for example solar cell, MEMS, MOS, microfluidic) rather than adding one Welcome card for every publication.
+The photodetector family opens on the Black-Si FINAL Variant while retaining the complete restorable Variant tree. This structure is intentional: future examples should normally add a new family project rather than adding one Welcome card for every publication.
 
 ## Welcome preview and literature-source contract
 
@@ -54,6 +60,18 @@ Bundled examples are production acceptance fixtures, not presentation-only files
 `scripts/example-regression.mjs` complements this with a real Chromium path: open the bundled family from Welcome, switch Variants, restore representative Steps, and require the 3D scene/model/process revision to settle on the restored state.
 
 When a new example family is added, add family-specific structural invariants here rather than relying only on screenshots. Pixel-perfect screenshots are deliberately not the primary contract because renderer and typography changes should not invalidate correct process topology.
+
+## Sahli 2018 textured tandem regression fixture
+
+`sahli-2018-fully-textured-tandem.wafercad` is a process-regression fixture for the fully textured perovskite/silicon tandem reconstruction.
+
+It is intentionally kept outside the three-card Welcome catalog. Its acceptance contract focuses on:
+
+- deterministic front/back Pyramid morphology with explicit CV/seed reconstruction parameters;
+- real fabrication History ending at `20_final_tandem`;
+- Ag-finger cross-section and micro-section stored as inspection bookmarks attached to the final Step rather than fake `VIEW_*` fabrication Steps;
+- persisted 3D camera state and Section Z collapse;
+- morphology-aware GLB export using the same rough/Pyramid surface definition as the interactive 3D renderer.
 
 ## Black-Si photodiode regression fixture — ACS Photonics 2023
 
