@@ -2,6 +2,7 @@ export function createStartupController({
   takeStartupFile,
   openLayoutFile,
   openProjectFile,
+  openBundledExample,
   openVisualizationExample,
   status,
   locationRef = globalThis.location,
@@ -19,7 +20,9 @@ export function createStartupController({
     if (start === 'empty') return true;
 
     if (start === 'example') {
-      return Boolean(await openVisualizationExample());
+      const exampleId = params.get('example') || 'visualization';
+      if (exampleId === 'visualization') return Boolean(await openVisualizationExample());
+      return Boolean(await openBundledExample(exampleId));
     }
 
     if (start !== 'staged') return false;
