@@ -945,6 +945,12 @@ try {
         null,
         { timeout: 120000 },
       );
+      await page.waitForFunction(
+        () =>
+          !/^Opened /.test(document.getElementById('statusText')?.textContent || ''),
+        null,
+        { timeout: 10000 },
+      );
       const releaseStatus = (await page.locator('#statusText').textContent()) || '';
       assert.match(
         releaseStatus,
