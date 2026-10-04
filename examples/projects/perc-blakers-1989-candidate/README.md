@@ -47,6 +47,8 @@ A full-wafer fit hides the 25 um front stripes, so the production example should
 
 The supplied screenshots also show occasional stale-frame timing after restore/ROI/maximize. Treat that as a separate renderer/UI timing investigation; do not encode screenshot pixels as the example contract.
 
+For Welcome promotion, use the supplied real WaferCAD capture `PERC_corrected_rear_openings.jpg` as the representative source image (or a later cleaner recapture of the same final device state). The delivery asset should be `site/example-previews/perc-blakers-1989.jpg`; no generated illustration or paper figure should replace the real UI capture.
+
 ## Promotion plan
 
 When this repaired staging candidate is promoted:
