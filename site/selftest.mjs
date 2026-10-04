@@ -623,7 +623,7 @@ const releaseResult = applyOperation(releaseModel, {
   face: 'front',
   area: releaseModel.boundary,
 });
-assert.equal(releaseResult.changed, true);
+assert.equal(releaseResult.changed, true, releaseResult.error || 'release changed=false');
 
 const releasedRing = regionAt(releaseModel, [115, 0]).stack,
   releasedRingOxide = releasedRing.find((segment) => segment.layerId === releaseOxide.layerId),
