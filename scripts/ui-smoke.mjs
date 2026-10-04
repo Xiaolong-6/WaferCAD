@@ -1304,64 +1304,6 @@ assert.ok(
 );
 assert.match(await page.locator('#statusText').textContent(), /morphology embedded/i);
 
-// Add a thin conformal layer on the rough state and export again. The exporter
-// must keep both the exposed inherited morphology and the buried rough
-// interface without falling back to flat canonical caps.
-await openFunctionPanel(page, 'process');
-await page.locator('[data-process-mode="add"]').click();
-await page.locator('#growthMode').selectOption('conformal');
-await page.locator('#operationArea').selectOption('full');
-await page.locator('#operationThickness').fill('0.1');
-await page.locator('#layerName').fill('Rough conformal export probe');
-await page.locator('#applyOperationBtn').click();
-await page.waitForFunction(
-  () => /Deposited Rough conformal export probe/.test(document.getElementById('statusText')?.textContent || ''),
-  null,
-  { timeout: 30000 },
-);
-await page.locator('#threePanel .export-control > summary').click();
-const conformalGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
-await page.locator('#threeExportModelBtn').click();
-const conformalGlbDownload = await conformalGlbDownloadPromise,
-  conformalGlbPath = await conformalGlbDownload.path();
-assert.ok(conformalGlbPath);
-const conformalGlb = parseGlbJson(await readFile(conformalGlbPath)),
-  conformalMorphologyNodes = (conformalGlb.nodes || []).filter(
-    (node) => node.extras?.wafercadMorphology,
-  );
-assert.ok(conformalMorphologyNodes.length >= 2);
-const conformalBuriedMorphology = conformalMorphologyNodes.filter(
-    (node) => node.extras?.wafercadBuriedInterface === true,
-  ),
-  conformalExposedMorphology = conformalMorphologyNodes.filter(
-    (node) => node.extras?.wafercadBuriedInterface === false,
-  );
-assert.ok(
-  conformalBuriedMorphology.length > 0,
-  'conformal morphology GLB must retain a buried rough interface',
-);
-assert.ok(
-  conformalExposedMorphology.length > 0,
-  'conformal morphology GLB must retain the exposed inherited rough surface',
-);
-assert.ok(
-  conformalBuriedMorphology.every(
-    (node) =>
-      node.extras?.wafercadSurfaceOwnership === 'interface' &&
-      node.extras?.wafercadInterfaceLayerId &&
-      node.extras?.wafercadRoughBorderVertexCount === 0,
-  ),
-  'buried conformal morphology must not generate ideal-plane closure skirts',
-);
-assert.ok(
-  conformalExposedMorphology.some(
-    (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) > 0,
-  ),
-  'exposed morphology should retain only its physical outer-boundary closure',
-);
-await page.locator('#undoBtn').click();
-assert.match(await page.locator('#statusText').textContent(), /Undid operation/);
-
 await openFunctionPanel(page, 'process');
 
 // Implant uses the same process area but records a structural annotation only.
@@ -1611,6 +1553,18 @@ applyOperation(conformalFixture, {
   type: 'etch',
   thickness: 2,
   area: circleMulti(10000),
+  surface: {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'normal',
+    featureSize: 4000,
+    meanHeight: 0.4,
+    featureCv: 0.2,
+    heightCv: 0.2,
+    seed: 7001,
+    profileId: 'rough-conformal-export-probe',
+    geometryMode: 'ideal',
+  },
 });
 const conformalProject = projectForBenchmark({
   model: conformalFixture,
@@ -1642,6 +1596,41 @@ await page.waitForFunction(() =>
 );
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
+
+// The conformal layer inherits the rough trench surface. Export it through the
+// real 3D path and verify the buried shared profile is not closed to the ideal plane.
+await page.locator('#threePanel .export-control > summary').click();
+const conformalGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+await page.locator('#threeExportModelBtn').click();
+const conformalGlbDownload = await conformalGlbDownloadPromise,
+  conformalGlbPath = await conformalGlbDownload.path();
+assert.ok(conformalGlbPath);
+const conformalGlb = parseGlbJson(await readFile(conformalGlbPath)),
+  conformalMorphologyNodes = (conformalGlb.nodes || []).filter(
+    (node) => node.extras?.wafercadMorphology,
+  ),
+  conformalBuriedMorphology = conformalMorphologyNodes.filter(
+    (node) => node.extras?.wafercadBuriedInterface === true,
+  ),
+  conformalExposedMorphology = conformalMorphologyNodes.filter(
+    (node) => node.extras?.wafercadBuriedInterface === false,
+  );
+assert.ok(conformalBuriedMorphology.length > 0);
+assert.ok(conformalExposedMorphology.length > 0);
+assert.ok(
+  conformalBuriedMorphology.every(
+    (node) =>
+      node.extras?.wafercadSurfaceOwnership === 'interface' &&
+      node.extras?.wafercadInterfaceLayerId &&
+      node.extras?.wafercadRoughBorderVertexCount === 0,
+  ),
+  'buried conformal morphology must remain single-owner without ideal-plane closure skirts',
+);
+assert.ok(
+  conformalExposedMorphology.some(
+    (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) > 0,
+  ),
+);
 
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI conformal project');
