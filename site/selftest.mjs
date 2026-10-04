@@ -1081,8 +1081,12 @@ assert.equal(implantModel.implants.length, 1);
 assert.equal(implantModel.implants[0].name, 'B marker');
 assert.equal(implantModel.implants[0].thickness, 1.25);
 assert.equal(implantModel.implants[0].tilt, 12);
+assert.equal(implantModel.implants[0].depthProfile, 'follow');
 assert.equal(implantModel.implants[0].visible, true);
 assert.ok(implantModel.implants[0].patches.length > 0);
+assert.equal(modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'smooth'), true);
+assert.equal(implantSectionBands(implantModel, [-8, 0], [8, 0])[0]?.depthProfile, 'smooth');
+assert.equal(modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'follow'), true);
 assert.equal(implantModel.regions.length, 1);
 assert.equal(implantSolids(implantModel)[0]?.surfaceExposed, true);
 
@@ -1130,7 +1134,36 @@ const roughImplantResult = applyOperation(roughImplantModel, {
   tilt: 0,
 });
 assert.equal(roughImplantResult.changed, true);
+assert.equal(roughImplantModel.implants[0].depthProfile, 'follow');
 assert.equal(roughImplantModel.implants[0].patches[0].surfaceAppearance?.kind, 'rough');
+assert.equal(implantSectionBands(roughImplantModel, [-8, 0], [8, 0])[0]?.depthProfile, 'follow');
+
+const electricalProfileModel = createModel({
+  shape: 'rect',
+  width: 20,
+  height: 20,
+  thickness: 10,
+});
+const electricalProfileResult = applyOperation(electricalProfileModel, {
+  type: 'electrical',
+  name: 'Field marker',
+  thickness: 0.4,
+  face: 'front',
+  area: rectMulti(20, 20),
+  electricalRegionType: 'p-inversion',
+  electricalRegionSource: 'induced',
+});
+assert.equal(electricalProfileResult.changed, true);
+assert.equal(electricalProfileModel.electricalRegions[0].depthProfile, 'follow');
+assert.equal(
+  modelApi.setElectricalRegionDepthProfile(
+    electricalProfileModel,
+    electricalProfileModel.electricalRegions[0].id,
+    'smooth',
+  ),
+  true,
+);
+assert.equal(electricalProfileModel.electricalRegions[0].depthProfile, 'smooth');
 
 const etchedImplantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 applyOperation(etchedImplantModel, {
