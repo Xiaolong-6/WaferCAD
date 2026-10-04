@@ -268,7 +268,12 @@ await gotoWelcome(navigationPage);
 await navigationPage.locator('#welcomeEmptyBtn').click();
 await navigationPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await navigationPage.waitForLoadState('networkidle');
-await navigationPage.goBack({ waitUntil: 'networkidle' });
+await navigationPage.goBack({ waitUntil: 'domcontentloaded' });
+await navigationPage.waitForFunction(
+  () => document.documentElement.dataset.welcomeReady === 'true',
+  null,
+  { timeout: 10000 },
+);
 assert.equal(await navigationPage.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await navigationPage.locator('.app-shell').count(), 0);
 assert.deepEqual(navigationErrors, []);
