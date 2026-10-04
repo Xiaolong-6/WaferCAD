@@ -2070,7 +2070,7 @@ export function createThreeView({
           };
 
           try {
-            worker.postMessage({ id, generation, tasks: payload });
+            worker.postMessage({ id, generation, tasks: payload, reportProgress: true });
           } catch (error) {
             if (!finish()) return;
             reject(error);
