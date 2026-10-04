@@ -653,6 +653,30 @@ assert.equal(
   'canonical topology must contain an overhang/cavity stack, not a render-only illusion',
 );
 
+// Implant rendering must respect the same canonical void instead of filling the
+// air gap between the suspended oxide and lower silicon.
+const gapImplant = applyOperation(releaseModel, {
+  type: 'implant',
+  name: 'Release gap probe',
+  thickness: 50,
+  face: 'front',
+  area: rectMulti(2, 2, 115, 0),
+});
+assert.equal(gapImplant.changed, true);
+const gapImplantIntervals = implantSolids(releaseModel, rectMulti(2, 2, 115, 0))
+  .filter((solid) => solid.implantId === gapImplant.implantId)
+  .map((solid) => [solid.z0, solid.z1])
+  .sort((a, b) => a[0] - b[0]);
+assert.ok(gapImplantIntervals.length >= 2);
+assert.ok(
+  gapImplantIntervals.some(
+    (interval, index) =>
+      index < gapImplantIntervals.length - 1 &&
+      gapImplantIntervals[index + 1][0] - interval[1] > 1,
+  ),
+  'implant fragments must preserve the physical release gap',
+);
+
 // Compatibility: legacy directional etch must remove the oxide above a released
 // cavity and stop at the void instead of jumping across air into the lower Si.
 const postReleaseDirectional = structuredClone(releaseModel),
