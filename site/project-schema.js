@@ -326,6 +326,12 @@ function validateModel(model, budget) {
       }
       assertLength(implant.thickness, `${path}.thickness`, { min: 1e-12 });
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
+      if (
+        implant.depthProfile != null &&
+        !['follow', 'smooth'].includes(implant.depthProfile)
+      ) {
+        fail(`${path}.depthProfile`, 'must be follow or smooth.');
+      }
       if (typeof implant.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
 
       const patches = assertArray(implant.patches, `${path}.patches`, LIMITS.implantPatches);
@@ -386,6 +392,12 @@ function validateModel(model, budget) {
       }
       if (!allowedSources.has(electrical.source)) {
         fail(`${path}.source`, 'is not supported.');
+      }
+      if (
+        electrical.depthProfile != null &&
+        !['follow', 'smooth'].includes(electrical.depthProfile)
+      ) {
+        fail(`${path}.depthProfile`, 'must be follow or smooth.');
       }
       if (typeof electrical.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
 
