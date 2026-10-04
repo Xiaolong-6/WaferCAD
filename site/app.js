@@ -224,6 +224,7 @@ const sectionDetailRoiController = createSectionDetailRoiController({
   setRoi: (value) => {
     sectionDetailRoi = value;
   },
+  renderDetail: (canvas, roi) => planRenderers?.renderSectionDetail(canvas, roi),
   onChanged: markProjectDirty,
   status,
 });
