@@ -21,7 +21,8 @@ export function createSectionCollapseController({
   const $ = (id) => root.getElementById(id);
   let editorOpen = false,
     activeTarget = 'top',
-    drag = null;
+    drag = null,
+    entryClickTimer = null;
 
   function bounds() {
     const canvas = $('sectionCanvas'),
@@ -251,13 +252,19 @@ export function createSectionCollapseController({
   function bind() {
     $('sectionCollapseAxisBtn').addEventListener('click', (event) => {
       event.stopPropagation();
-      if (event.detail >= 2) {
-        event.preventDefault();
-        toggleEnabled();
-        return;
-      }
       if (current().enabled === false) return;
-      toggle();
+      clearTimeout(entryClickTimer);
+      entryClickTimer = setTimeout(() => {
+        entryClickTimer = null;
+        toggle();
+      }, 180);
+    });
+    $('sectionCollapseAxisBtn').addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearTimeout(entryClickTimer);
+      entryClickTimer = null;
+      toggleEnabled();
     });
     $('sectionCollapseClose').addEventListener('click', close);
     $('sectionCollapseTarget').addEventListener('change', (event) => {
