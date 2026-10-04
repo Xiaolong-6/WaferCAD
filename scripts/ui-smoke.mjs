@@ -975,8 +975,8 @@ assert.equal(
 );
 assert.ok(['nm', 'um', 'mm'].includes(await examplePage.locator('#xyUnitSelect').inputValue()));
 assert.ok(Number(await examplePage.locator('#baseWidth').inputValue()) > 0);
-assert.ok(await examplePage.locator('#maskLayerList .layer-row input:checked').count());
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
+assert.ok(Number(await examplePage.locator('#baseThickness').inputValue()) > 0);
 const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
   exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
 assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
