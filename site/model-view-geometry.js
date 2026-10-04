@@ -79,16 +79,16 @@ export function solidBorders(solid, thresholdDegrees = 20) {
   return solidBordersFromTopology(solid, thresholdDegrees);
 }
 
-function implantFragments(model, clip = null) {
+function annotationVolumeFragments(items, model, clip = null, kind = 'annotation') {
   const fragments = [];
-  for (const implant of model?.implants || []) {
-    if (implant.visible === false) continue;
-    const thickness = Math.max(0, Number(implant.thickness) || 0);
+  for (const item of items || []) {
+    if (item.visible === false) continue;
+    const thickness = Math.max(0, Number(item.thickness) || 0);
     if (!(thickness > 1e-12)) continue;
 
-    for (const patch of implant.patches || []) {
-      const sourceLow = implant.face === 'front' ? patch.z - thickness : patch.z,
-        sourceHigh = implant.face === 'front' ? patch.z : patch.z + thickness;
+    for (const patch of item.patches || []) {
+      const sourceLow = item.face === 'front' ? patch.z - thickness : patch.z,
+        sourceHigh = item.face === 'front' ? patch.z : patch.z + thickness;
 
       for (const region of model.regions || []) {
         if (!region.stack?.length) continue;
@@ -98,58 +98,74 @@ function implantFragments(model, clip = null) {
 
         const currentLow = region.stack[0].z0,
           currentHigh = region.stack.at(-1).z1,
-          z0 = Math.max(sourceLow, currentLow),
-          z1 = Math.min(sourceHigh, currentHigh);
-        if (!(z1 > z0 + 1e-12)) continue;
+          hostSegments =
+            kind === 'electrical'
+              ? region.stack.filter((segment) => segment.layerId === patch.layerId)
+              : [{ z0: currentLow, z1: currentHigh, layerId: patch.layerId }];
 
-        const surfaceSegment =
-            implant.face === 'front' ? region.stack.at(-1) : region.stack[0],
-          currentSurfaceZ = implant.face === 'front' ? currentHigh : currentLow,
-          sourceSurfaceZ = Number(patch.z),
-          currentCutsImplant =
-            implant.face === 'front'
-              ? currentSurfaceZ < sourceSurfaceZ - 1e-9
-              : currentSurfaceZ > sourceSurfaceZ + 1e-9,
-          currentAppearance =
-            implant.face === 'front'
-              ? surfaceSegment?.frontSurface
-              : surfaceSegment?.backSurface,
-          outerZ = implant.face === 'front' ? z1 : z0,
-          innerZ = implant.face === 'front' ? z0 : z1,
-          surfaceExposed = Math.abs(currentSurfaceZ - outerZ) <= 1e-9;
+        for (const hostSegment of hostSegments) {
+          const z0 = Math.max(sourceLow, hostSegment.z0),
+            z1 = Math.min(sourceHigh, hostSegment.z1);
+          if (!(z1 > z0 + 1e-12)) continue;
 
-        fragments.push({
-          implantId: implant.id,
-          name: implant.name,
-          color: implant.color,
-          face: implant.face,
-          thickness,
-          tilt: Number(implant.tilt) || 0,
-          sourceZ: sourceSurfaceZ,
-          outerZ,
-          innerZ,
-          surfaceExposed,
-          z0,
-          z1,
-          surfaceAppearance:
-            (currentCutsImplant ? currentAppearance : patch.surfaceAppearance) || null,
-          polys: geom,
-        });
+          const currentSurfaceSegment =
+              item.face === 'front' ? region.stack.at(-1) : region.stack[0],
+            currentSurfaceZ = item.face === 'front' ? currentHigh : currentLow,
+            sourceSurfaceZ = Number(patch.z),
+            currentCutsAnnotation =
+              item.face === 'front'
+                ? currentSurfaceZ < sourceSurfaceZ - 1e-9
+                : currentSurfaceZ > sourceSurfaceZ + 1e-9,
+            currentAppearance =
+              item.face === 'front'
+                ? currentSurfaceSegment?.frontSurface
+                : currentSurfaceSegment?.backSurface,
+            outerZ = item.face === 'front' ? z1 : z0,
+            innerZ = item.face === 'front' ? z0 : z1,
+            surfaceExposed = Math.abs(currentSurfaceZ - outerZ) <= 1e-9;
+
+          fragments.push({
+            annotationKind: kind,
+            annotationId: item.id,
+            ...(kind === 'implant' ? { implantId: item.id } : { electricalRegionId: item.id }),
+            name: item.name,
+            color: item.color,
+            face: item.face,
+            thickness,
+            tilt: kind === 'implant' ? Number(item.tilt) || 0 : 0,
+            ...(kind === 'electrical'
+              ? {
+                  regionType: item.regionType,
+                  source: item.source,
+                  hostLayerId: patch.layerId,
+                }
+              : {}),
+            sourceZ: sourceSurfaceZ,
+            outerZ,
+            innerZ,
+            surfaceExposed,
+            z0,
+            z1,
+            surfaceAppearance:
+              (currentCutsAnnotation ? currentAppearance : patch.surfaceAppearance) || null,
+            polys: geom,
+          });
+        }
       }
     }
   }
   return fragments;
 }
 
-export function implantSurfaceGroups(model, clip = null) {
-  return implantFragments(model, clip).map((fragment) => ({
+function annotationSurfaceGroups(fragments) {
+  return fragments.map((fragment) => ({
     ...fragment,
     z: fragment.outerZ,
   }));
 }
 
-export function implantSolids(model, clip = null) {
-  return implantFragments(model, clip).map((fragment) => ({
+function annotationSolids(fragments) {
+  return fragments.map((fragment) => ({
     ...fragment,
     slabs: [{ z0: fragment.z0, z1: fragment.z1, polys: fragment.polys }],
     caps: [
@@ -159,16 +175,45 @@ export function implantSolids(model, clip = null) {
   }));
 }
 
-export function implantSectionBands(model, a, b) {
+function annotationSectionBands(fragments, a, b) {
   const bands = [];
-  for (const fragment of implantFragments(model)) {
+  for (const fragment of fragments) {
     for (const [t0, t1] of lineIntervalsInMulti(a, b, fragment.polys)) {
-      bands.push({
-        ...fragment,
-        t0,
-        t1,
-      });
+      bands.push({ ...fragment, t0, t1 });
     }
   }
   return bands;
 }
+
+function implantFragments(model, clip = null) {
+  return annotationVolumeFragments(model?.implants, model, clip, 'implant');
+}
+
+function electricalRegionFragments(model, clip = null) {
+  return annotationVolumeFragments(model?.electricalRegions, model, clip, 'electrical');
+}
+
+export function implantSurfaceGroups(model, clip = null) {
+  return annotationSurfaceGroups(implantFragments(model, clip));
+}
+
+export function implantSolids(model, clip = null) {
+  return annotationSolids(implantFragments(model, clip));
+}
+
+export function implantSectionBands(model, a, b) {
+  return annotationSectionBands(implantFragments(model), a, b);
+}
+
+export function electricalRegionSurfaceGroups(model, clip = null) {
+  return annotationSurfaceGroups(electricalRegionFragments(model, clip));
+}
+
+export function electricalRegionSolids(model, clip = null) {
+  return annotationSolids(electricalRegionFragments(model, clip));
+}
+
+export function electricalRegionSectionBands(model, a, b) {
+  return annotationSectionBands(electricalRegionFragments(model), a, b);
+}
+

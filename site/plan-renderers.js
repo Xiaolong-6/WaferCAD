@@ -1,5 +1,7 @@
 import { layerById, modelBoundsZ } from './model.js';
 import {
+  electricalRegionSectionBands,
+  electricalRegionSurfaceGroups,
   implantSectionBands,
   implantSurfaceGroups,
   sectionColumns,
@@ -312,6 +314,18 @@ export function createPlanRenderers({
       ctx.fill('evenodd');
       ctx.restore();
     }
+    for (const electrical of electricalRegionSurfaceGroups(model)) {
+      if (electrical.face !== activeFace) continue;
+      ctx.save();
+      canvasPathMulti(ctx, electrical.polys, v, back);
+      ctx.fillStyle = rgbaColor(electrical.color, 0.1);
+      ctx.fill('evenodd');
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = rgbaColor(electrical.color, 0.78);
+      ctx.lineWidth = 0.85;
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.save();
     ctx.setLineDash([5, 4]);
     canvasPathMulti(ctx, model.boundary, v, back);
@@ -573,6 +587,55 @@ export function createPlanRenderers({
       });
     }
   
+    for (const electrical of electricalRegionSectionBands(model, section.a, section.b)) {
+      const appearance = electrical.surfaceAppearance,
+        faceDirection = electrical.face === 'back' ? -1 : 1,
+        widthPixels = Math.max(1, Math.abs(mapT(electrical.t1) - mapT(electrical.t0))),
+        samples =
+          appearance?.kind === 'rough'
+            ? Math.max(3, Math.min(1100, Math.ceil(widthPixels / 1.5)))
+            : 1,
+        outerPoints = [],
+        innerPoints = [];
+
+      for (let sample = 0; sample <= samples; sample++) {
+        const fraction = sample / samples,
+          t = electrical.t0 + (electrical.t1 - electrical.t0) * fraction,
+          worldX = section.a[0] + sectionDx * t,
+          worldY = section.a[1] + sectionDy * t,
+          relief =
+            appearance?.kind === 'rough'
+              ? filteredSectionRoughRelief(appearance, worldX, worldY)
+              : 0,
+          outerZ = electrical.outerZ + faceDirection * relief,
+          innerZ = electrical.innerZ;
+        if (!(Math.abs(outerZ - innerZ) > 1e-12)) continue;
+        outerPoints.push([mapT(t), mapZ(outerZ)]);
+        innerPoints.push([mapT(t), mapZ(innerZ)]);
+      }
+      if (outerPoints.length < 2) continue;
+
+      ctx.save();
+      ctx.beginPath();
+      outerPoints.forEach(([x, y], index) => {
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      for (let index = innerPoints.length - 1; index >= 0; index--) {
+        ctx.lineTo(...innerPoints[index]);
+      }
+      ctx.closePath();
+      ctx.fillStyle = rgbaColor(electrical.color, 0.22);
+      ctx.fill();
+      if (sectionShowBorders) {
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = rgbaColor(electrical.color, 0.95);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     for (const implant of implantSectionBands(model, section.a, section.b)) {
       const appearance = implant.surfaceAppearance,
         faceDirection = implant.face === 'back' ? -1 : 1,

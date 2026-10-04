@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 13;
+export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
 export const PROJECT_LENGTH_LIMIT_UM = PROJECT_COORDINATE_LIMIT_UM * 2;
 
@@ -19,6 +19,8 @@ const LIMITS = {
   drawMaskShapes: 10000,
   implants: 10000,
   implantPatches: 200000,
+  electricalRegions: 10000,
+  electricalRegionPatches: 200000,
 };
 
 function fail(path, message) {
@@ -347,10 +349,78 @@ function validateModel(model, budget) {
     });
   }
 
+  if (model.electricalRegions != null) {
+    const regions = assertArray(
+        model.electricalRegions,
+        'model.electricalRegions',
+        LIMITS.electricalRegions,
+      ),
+      ids = new Set(),
+      allowedTypes = new Set([
+        'p-type',
+        'n-type',
+        'p-inversion',
+        'n-inversion',
+        'p-accumulation',
+        'n-accumulation',
+        'depletion',
+        'custom',
+      ]),
+      allowedSources = new Set(['induced', 'doped', 'interface', 'custom']);
+    regions.forEach((electrical, regionIndex) => {
+      const path = `model.electricalRegions[${regionIndex}]`;
+      assertObject(electrical, path);
+      const id = assertString(electrical.id, `${path}.id`, { max: 128 });
+      if (ids.has(id)) fail(`${path}.id`, 'must be unique.');
+      ids.add(id);
+      assertString(electrical.name, `${path}.name`, { max: 256 });
+      if (typeof electrical.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(electrical.color)) {
+        fail(`${path}.color`, 'must be a six-digit hexadecimal color.');
+      }
+      if (!['front', 'back'].includes(electrical.face)) {
+        fail(`${path}.face`, 'must be front or back.');
+      }
+      assertLength(electrical.thickness, `${path}.thickness`, { min: 1e-12 });
+      if (!allowedTypes.has(electrical.regionType)) {
+        fail(`${path}.regionType`, 'is not supported.');
+      }
+      if (!allowedSources.has(electrical.source)) {
+        fail(`${path}.source`, 'is not supported.');
+      }
+      if (typeof electrical.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
+
+      const patches = assertArray(
+        electrical.patches,
+        `${path}.patches`,
+        LIMITS.electricalRegionPatches,
+      );
+      patches.forEach((patch, patchIndex) => {
+        const patchPath = `${path}.patches[${patchIndex}]`;
+        assertObject(patch, patchPath);
+        validateMultiPolygon(patch.geom, `${patchPath}.geom`, budget);
+        if (patch.geom.length === 0) fail(`${patchPath}.geom`, 'must not be empty.');
+        assertCoordinate(patch.z, `${patchPath}.z`);
+        assertCoordinate(patch.zMin, `${patchPath}.zMin`);
+        assertCoordinate(patch.zMax, `${patchPath}.zMax`);
+        if (patch.zMax < patch.zMin) fail(patchPath, 'must have zMax >= zMin.');
+        if (patch.z < patch.zMin - 1e-9 || patch.z > patch.zMax + 1e-9) {
+          fail(`${patchPath}.z`, 'must lie within zMin/zMax.');
+        }
+        assertString(patch.layerId, `${patchPath}.layerId`, { max: 128 });
+        if (patch.surfaceAppearance != null) {
+          validateSurfaceAppearance(patch.surfaceAppearance, `${patchPath}.surfaceAppearance`);
+        }
+      });
+    });
+  }
+
   validateModelGeometry(model);
 
   if (model.nextImplantId != null) {
     assertInteger(model.nextImplantId, 'model.nextImplantId', { min: 1 });
+  }
+  if (model.nextElectricalRegionId != null) {
+    assertInteger(model.nextElectricalRegionId, 'model.nextElectricalRegionId', { min: 1 });
   }
   assertInteger(model.nextLayerId, 'model.nextLayerId', { min: 1 });
   assertInteger(model.nextRegionId, 'model.nextRegionId', { min: 1 });
@@ -1060,6 +1130,15 @@ function migrateProjectCore(project) {
       project.model.nextImplantId = project.model.implants.length + 1;
     }
   }
+  if (version < 14 && isObject(project.model)) {
+    if (!Array.isArray(project.model.electricalRegions)) project.model.electricalRegions = [];
+    if (
+      !Number.isInteger(project.model.nextElectricalRegionId) ||
+      project.model.nextElectricalRegionId < 1
+    ) {
+      project.model.nextElectricalRegionId = project.model.electricalRegions.length + 1;
+    }
+  }
   if (version < 11) {
     if (project.display == null) project.display = {};
     if (isObject(project.display) && project.display.sectionShowBorders == null) {
@@ -1098,6 +1177,14 @@ export function migrateProjectFile(project) {
   if (Array.isArray(migrated.snapshots)) {
     for (const record of migrated.snapshots) {
       if (isObject(record) && isObject(record.state)) migrateProjectCore(record.state);
+    }
+  }
+  if (isObject(migrated.snapshotBranches)) {
+    for (const node of migrated.snapshotBranches.nodes || []) {
+      if (isObject(node) && isObject(node.state)) migrateProjectCore(node.state);
+    }
+    for (const branch of migrated.snapshotBranches.branches || []) {
+      if (isObject(branch) && isObject(branch.headState)) migrateProjectCore(branch.headState);
     }
   }
   return migrated;

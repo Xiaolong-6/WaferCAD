@@ -1,5 +1,5 @@
 import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
-import { implantSolids, materialSolids } from './model-view-geometry.js';
+import { electricalRegionSolids, implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
   geometryFromRoughCap,
@@ -1514,6 +1514,101 @@ export function createThreeView({
 
       host.dataset.implantInternalCount = String(implantInternalCount);
       host.dataset.implantSurfaceCount = String(implantSurfaceCount);
+
+      // Electrical regions are first-class non-material annotations. Their
+      // volume is visible through transparent host material; an exposed/cut
+      // region may also contribute a restrained surface cap in opaque mode.
+      const showInternalElectrical = materialState.transparent;
+      let electricalRegionInternalCount = 0,
+        electricalRegionSurfaceCount = 0;
+      for (const electrical of electricalRegionSolids(model, clip)) {
+        if (!showInternalElectrical && !electrical.surfaceExposed) continue;
+
+        if (showInternalElectrical) {
+          const electricalState = {
+              opacity: opacity * 0.14,
+              transparent: true,
+              depthTest: true,
+              depthWrite: false,
+            },
+            bodyGeometry = geometryFromSolid(electrical),
+            bodyMaterial = new THREE.MeshStandardMaterial({
+              color: electrical.color || '#7A6FD0',
+              roughness: 0.82,
+              metalness: 0,
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: electricalState.opacity,
+              depthTest: true,
+              depthWrite: false,
+            }),
+            body = addSurfaceMesh(bodyGeometry, bodyMaterial, electricalState, null, 34);
+          if (body) {
+            body.name =
+              electrical.name || electrical.electricalRegionId || 'Electrical Region';
+            electricalRegionInternalCount++;
+          }
+        }
+
+        electricalRegionSurfaceCount++;
+        const outerNormal = electrical.face === 'front' ? 1 : -1,
+          appearance =
+            electrical.surfaceAppearance?.kind === 'rough'
+              ? electrical.surfaceAppearance
+              : null,
+          capState = {
+            opacity: opacity * 0.24,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+          },
+          capName =
+            `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
+
+        if (appearance) {
+          roughTasks.push({
+            kind: 'electrical',
+            cap: {
+              type: 'cap',
+              layerId:
+                electrical.layerId ||
+                electrical.electricalRegionId ||
+                'electrical-region',
+              z: electrical.outerZ,
+              normal: outerNormal,
+              polys: electrical.polys,
+              appearance,
+              profileNormal: outerNormal,
+              buried: false,
+              solidIndex: 0,
+            },
+            layer: { color: electrical.color || '#7A6FD0' },
+            state: capState,
+            sortBias: 44,
+            closeToIdeal: false,
+            includeBorders: false,
+            polygonOffset: true,
+            name: capName,
+          });
+        } else {
+          const capGeometry = geometryFromSolid({
+              slabs: [],
+              caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
+            }),
+            capMaterial = createSurfaceMaterial(
+              { color: electrical.color || '#7A6FD0' },
+              capState,
+            );
+          capMaterial.polygonOffset = true;
+          capMaterial.polygonOffsetFactor = -1;
+          capMaterial.polygonOffsetUnits = -1;
+          const cap = addSurfaceMesh(capGeometry, capMaterial, capState, null, 44);
+          if (cap) cap.name = capName;
+        }
+      }
+
+      host.dataset.electricalRegionInternalCount = String(electricalRegionInternalCount);
+      host.dataset.electricalRegionSurfaceCount = String(electricalRegionSurfaceCount);
       updateTransparentOrder();
       if (!roughTasks.length) {
         host.dataset.renderState = 'ready';

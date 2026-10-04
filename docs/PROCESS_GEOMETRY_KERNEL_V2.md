@@ -14,7 +14,8 @@ The canonical model remains:
 - an ordered Z stack for each region;
 - stable material-layer IDs;
 - optional surface-appearance metadata;
-- Implant annotations stored separately from material solids.
+- Implant annotations stored separately from material solids;
+- Electrical Region annotations stored separately from both material solids and Implant.
 
 `site/process-topology.js` derives physical topology from that model. Derived topology is disposable and can always be recomputed from canonical geometry.
 
@@ -125,6 +126,10 @@ The permanent test suite protects these properties:
 - rough Etch followed by Conformal cannot create sidewall material below the etched floor;
 - front/back Step/Trench/Island and through-void Conformal benchmarks remain unchanged.
 
+## Annotation clipping contract
+
+Implant and Electrical Region volumes are canonical annotations rather than material. Their stored source patches remain attached to the process state where they were created. Implant view geometry intersects those patches/depth intervals with current surviving material. Electrical Region geometry is stricter: it is additionally constrained to the original host `layerId`, so a semiconductor inversion/accumulation marker cannot survive inside a replacement dielectric or metal after its host material is removed. A later Etch therefore clips an existing annotation, exposes its current cut surface when appropriate, and removes it from an area when no annotated host depth survives. Electrical Region type/source metadata does not participate in material topology or process chemistry.
+
 ## Non-goals
 
 Kernel v2 intentionally does not add:
@@ -132,8 +137,8 @@ Kernel v2 intentionally does not add:
 - arbitrary 3D solids or a general B-rep;
 - overhang/re-entrant geometry;
 - process-physics calibration;
-- material-selective etch chemistry;
-- diffusion, implantation physics, stress, thermal flow, or electrical simulation;
+- calibrated material-selectivity ratios or etch chemistry (the current target-material stop rule is geometric/process intent only);
+- diffusion, implantation physics, stress, thermal flow, electrostatics, carrier transport, or predictive electrical simulation;
 - canonical Rough/Pyramid microgeometry.
 
 Those would change WaferCAD's product class. Kernel v2 instead makes the current visual/geometric process model internally consistent and easier to extend safely.

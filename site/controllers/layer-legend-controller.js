@@ -2,10 +2,13 @@ import {
   deleteExposedLayer,
   isLayerExposed,
   layerPresent,
+  recolorElectricalRegion,
   recolorImplant,
   recolorLayer,
+  renameElectricalRegion,
   renameImplant,
   renameLayer,
+  setElectricalRegionVisible,
   setImplantVisible,
 } from '../model.js';
 
@@ -182,6 +185,10 @@ export function createLayerLegendController({
       recolorImplant(model, implant.id, palette[index % palette.length]);
       index++;
     }
+    for (const electrical of model.electricalRegions || []) {
+      recolorElectricalRegion(model, electrical.id, palette[index % palette.length]);
+      index++;
+    }
   }
 
   function colorNewLayer(layerId) {
@@ -198,6 +205,21 @@ export function createLayerLegendController({
       palette = structurePalette();
     if (implantIndex >= 0) {
       recolorImplant(model, implantId, palette[(layerCount + implantIndex) % palette.length]);
+    }
+  }
+
+  function colorNewElectricalRegion(regionId) {
+    const model = getModel(),
+      layerCount = model.layers.filter((layer) => layer.id !== 'base').length,
+      implantCount = (model.implants || []).length,
+      regionIndex = (model.electricalRegions || []).findIndex((region) => region.id === regionId),
+      palette = structurePalette();
+    if (regionIndex >= 0) {
+      recolorElectricalRegion(
+        model,
+        regionId,
+        palette[(layerCount + implantCount + regionIndex) % palette.length],
+      );
     }
   }
 
@@ -438,6 +460,82 @@ export function createLayerLegendController({
 
       host.append(row);
     }
+
+    for (const electrical of model.electricalRegions || []) {
+      const row = root.createElement('div');
+      row.className = 'legend-row-wrap electrical-row-wrap';
+      row.classList.toggle('electrical-hidden', electrical.visible === false);
+
+      const main = root.createElement('div');
+      main.className = 'legend-row electrical-legend-row';
+
+      const color = root.createElement('button');
+      color.type = 'button';
+      color.className = 'legend-color-chip electrical-region-chip';
+      color.style.background =
+        `linear-gradient(135deg, ${electrical.color} 0%, ${electrical.color} 52%, ${electrical.color}38 52%, ${electrical.color}38 100%)`;
+      color.title = 'Choose electrical-region color from the active palette';
+      color.onclick = () => {
+        setOpenLayerPaletteId(getOpenLayerPaletteId() === electrical.id ? null : electrical.id);
+        renderLayerLegend();
+      };
+
+      const name = root.createElement('input');
+      name.type = 'text';
+      name.className = 'legend-name electrical-legend-name';
+      name.value = electrical.name;
+      name.title = `${electrical.regionType} · ${electrical.source} — rename electrical region`;
+      name.onchange = () => {
+        if (!renameElectricalRegion(model, electrical.id, name.value)) name.value = electrical.name;
+        onChanged();
+        renderLayerLegend();
+        renderMain();
+        renderSection();
+        renderThree();
+      };
+
+      const visible = root.createElement('input');
+      visible.type = 'checkbox';
+      visible.className = 'legend-visibility';
+      visible.checked = electrical.visible !== false;
+      visible.title = visible.checked ? 'Hide electrical region' : 'Show electrical region';
+      visible.setAttribute('aria-label', `Toggle visibility for ${electrical.name}`);
+      visible.onchange = () => {
+        setElectricalRegionVisible(model, electrical.id, visible.checked);
+        onChanged();
+        renderLayerLegend();
+        renderAll();
+      };
+
+      main.append(color, name, visible);
+      row.append(main);
+
+      if (getOpenLayerPaletteId() === electrical.id) {
+        const grid = root.createElement('div');
+        grid.className = 'legend-palette-grid';
+        for (const value of palette) {
+          const chip = root.createElement('button');
+          chip.type = 'button';
+          chip.className = 'legend-palette-chip';
+          chip.style.background =
+            `linear-gradient(135deg, ${value} 0%, ${value} 52%, ${value}38 52%, ${value}38 100%)`;
+          chip.title = value;
+          chip.onclick = () => {
+            recolorElectricalRegion(model, electrical.id, value);
+            onChanged();
+            setOpenLayerPaletteId(null);
+            renderLayerLegend();
+            renderMain();
+            renderSection();
+            renderThree();
+          };
+          grid.append(chip);
+        }
+        row.append(grid);
+      }
+
+      host.append(row);
+    }
   }
 
   return {
@@ -446,5 +544,6 @@ export function createLayerLegendController({
     applyStructurePalette,
     colorNewLayer,
     colorNewImplant,
+    colorNewElectricalRegion,
   };
 }

@@ -64,7 +64,9 @@ export function createModel({
       },
     ],
     implants: [],
+    electricalRegions: [],
     nextImplantId: 1,
+    nextElectricalRegionId: 1,
     nextLayerId: 1,
     nextRegionId: 2,
     revision: 1,
@@ -172,6 +174,36 @@ export function recolorLayer(model, id, color) {
 
 export function implantById(model, id) {
   return (model?.implants || []).find((implant) => implant.id === id) || null;
+}
+
+export function electricalRegionById(model, id) {
+  return (model?.electricalRegions || []).find((region) => region.id === id) || null;
+}
+
+export function renameElectricalRegion(model, id, name) {
+  const region = electricalRegionById(model, id);
+  if (!region) return false;
+  const clean = String(name || '').trim();
+  if (!clean) return false;
+  region.name = clean;
+  model.revision++;
+  return true;
+}
+
+export function recolorElectricalRegion(model, id, color) {
+  const region = electricalRegionById(model, id);
+  if (!region || !/^#[0-9a-f]{6}$/i.test(color || '')) return false;
+  region.color = color;
+  model.revision++;
+  return true;
+}
+
+export function setElectricalRegionVisible(model, id, visible) {
+  const region = electricalRegionById(model, id);
+  if (!region) return false;
+  region.visible = Boolean(visible);
+  model.revision++;
+  return true;
 }
 
 export function renameImplant(model, id, name) {
@@ -664,6 +696,8 @@ function applyOperationImpl(
     surface,
     color,
     tilt = 0,
+    electricalRegionType = 'custom',
+    electricalRegionSource = 'custom',
   },
 ) {
   const amount = Math.max(1e-5, Number(thickness) || 0);
@@ -713,7 +747,7 @@ function applyOperationImpl(
   if (!touchesMaterial) {
     return { changed: false, error: 'The selected area contains no material.' };
   }
-  if (type === 'implant') {
+  if (type === 'implant' || type === 'electrical') {
     const patches = [];
     for (const region of model.regions) {
       const segment = surfaceSegment(region.stack, face),
@@ -729,28 +763,76 @@ function applyOperationImpl(
       });
     }
     if (!patches.length) {
-      return { changed: false, error: 'No exposed surface is available for Implant.' };
+      return {
+        changed: false,
+        error:
+          type === 'implant'
+            ? 'No exposed surface is available for Implant.'
+            : 'No exposed surface is available for Electrical Region.',
+      };
     }
 
-    if (!Array.isArray(model.implants)) model.implants = [];
-    if (!Number.isInteger(model.nextImplantId) || model.nextImplantId < 1) {
-      model.nextImplantId = model.implants.length + 1;
+    if (type === 'implant') {
+      if (!Array.isArray(model.implants)) model.implants = [];
+      if (!Number.isInteger(model.nextImplantId) || model.nextImplantId < 1) {
+        model.nextImplantId = model.implants.length + 1;
+      }
+      const ordinal = model.nextImplantId++,
+        implant = {
+          id: `implant-${ordinal}`,
+          name: String(name || `Implant ${ordinal}`).trim() || `Implant ${ordinal}`,
+          color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#D65A6F',
+          face,
+          thickness: amount,
+          tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
+          visible: true,
+          patches,
+        };
+      model.implants.push(implant);
+      model.revision++;
+      model.processRevision = (model.processRevision || 0) + 1;
+      return { changed: true, implantId: implant.id };
     }
-    const ordinal = model.nextImplantId++,
-      implant = {
-        id: `implant-${ordinal}`,
-        name: String(name || `Implant ${ordinal}`).trim() || `Implant ${ordinal}`,
-        color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#D65A6F',
+
+    const allowedTypes = new Set([
+        'p-type',
+        'n-type',
+        'p-inversion',
+        'n-inversion',
+        'p-accumulation',
+        'n-accumulation',
+        'depletion',
+        'custom',
+      ]),
+      allowedSources = new Set(['induced', 'doped', 'interface', 'custom']);
+    if (!allowedTypes.has(electricalRegionType)) {
+      return { changed: false, error: 'Unsupported Electrical Region type.' };
+    }
+    if (!allowedSources.has(electricalRegionSource)) {
+      return { changed: false, error: 'Unsupported Electrical Region source.' };
+    }
+    if (!Array.isArray(model.electricalRegions)) model.electricalRegions = [];
+    if (!Number.isInteger(model.nextElectricalRegionId) || model.nextElectricalRegionId < 1) {
+      model.nextElectricalRegionId = model.electricalRegions.length + 1;
+    }
+    const ordinal = model.nextElectricalRegionId++,
+      electricalRegion = {
+        id: `electrical-${ordinal}`,
+        name:
+          String(name || `Electrical Region ${ordinal}`).trim() ||
+          `Electrical Region ${ordinal}`,
+        color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#7A6FD0',
         face,
         thickness: amount,
-        tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
+        regionType: electricalRegionType,
+        source: electricalRegionSource,
         visible: true,
         patches,
       };
-    model.implants.push(implant);
+    model.electricalRegions.push(electricalRegion);
     model.revision++;
     model.processRevision = (model.processRevision || 0) + 1;
-    return { changed: true, implantId: implant.id };
+    return { changed: true, electricalRegionId: electricalRegion.id };
   }
 
   let layer = null;
