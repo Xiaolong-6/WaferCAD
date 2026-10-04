@@ -219,6 +219,12 @@ assert.deepEqual(
   await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
   ['Main', 'Mask', '3D', 'Section'],
 );
+const previewFrames = page.locator('.welcome-example-project-frame');
+assert.equal(await previewFrames.count(), 3);
+assert.match(await previewFrames.nth(0).getAttribute('src'), /app\.html\?/);
+assert.equal(await previewFrames.nth(1).getAttribute('src'), null);
+assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
+
 const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
 await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
 const preview = page.frameLocator(
@@ -236,6 +242,23 @@ await preview.locator('html.welcome-project-preview[data-preview-view="section"]
   timeout: 10000,
 });
 assert.equal(await preview.locator('#sectionPanel').isVisible(), true);
+
+// A dormant preview must accept a view choice before its iframe is ready.
+// The ready handshake then replays the selected view rather than regressing to Main.
+const percCard = page.locator(
+  '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"]',
+);
+await percCard.locator('.welcome-example-view-tab[data-preview-view="three"]').click();
+assert.match(await previewFrames.nth(1).getAttribute('src'), /app\.html\?/);
+assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
+const percPreview = page.frameLocator(
+  '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"] .welcome-example-project-frame',
+);
+await percPreview.locator('html.welcome-project-preview[data-preview-view="three"]').waitFor({
+  state: 'attached',
+  timeout: 30000,
+});
+assert.equal(await percPreview.locator('#threePanel').isVisible(), true);
 
 await page.locator('#welcomeEmptyBtn').click();
 await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
