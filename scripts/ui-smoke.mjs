@@ -1150,6 +1150,7 @@ await page.waitForFunction(
   null,
   { timeout: 30000 },
 );
+await page.locator('#threePanel .three-opacity-control > summary').click();
 
 await openFunctionPanel(page, 'project');
 const electricalDownloadPromise = page.waitForEvent('download');
