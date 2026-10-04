@@ -817,7 +817,11 @@ const c = applyOperation(conformal, {
   area,
   growth: 'conformal',
 });
-assert.equal(surfaceSegment(regionAt(conformal, [2.5, 0]).stack).layerId, c.layerId);
+assert.notEqual(
+  surfaceSegment(regionAt(conformal, [2.5, 0]).stack).layerId,
+  c.layerId,
+  'A flat mask boundary must stay hard-clipped even for conformal deposition',
+);
 
 const maskedConformal = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const maskedFilm = applyOperation(maskedConformal, {
