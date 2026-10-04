@@ -3552,6 +3552,23 @@ summary:focus-visible {
   transform: scaleY(-1);
 }
 
+.section-collapse-axis-btn.collapse-disabled .section-collapse-axis-glyph {
+  opacity: 0.72;
+}
+
+.section-collapse-axis-btn.collapse-disabled .section-collapse-axis-glyph::before {
+  left: 10px;
+  right: auto;
+  top: 2px;
+  width: 1px;
+  height: 16px;
+  background: #8d99a4;
+}
+
+.section-collapse-axis-btn.collapse-disabled .section-collapse-axis-glyph::after {
+  display: none;
+}
+
 .section-collapse-editor {
   position: absolute;
   z-index: 12;
