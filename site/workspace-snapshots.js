@@ -659,7 +659,7 @@ export function createSnapshotManager({
     return reverse.reverse();
   }
 
-  function stepEditContext(nodeId) {
+  function stepEditContext(nodeId, { includeReplayStates = false } = {}) {
     const node = nodeById(nodeId);
     const branch = node ? branchById(node.branchId) : null;
     const tail = node ? branchTailFromNode(node.id) : null;
@@ -707,6 +707,7 @@ export function createSnapshotManager({
         id: item.id,
         operation: clone(item.operation),
         processRevision: item.processRevision,
+        ...(includeReplayStates ? { state: cloneState(stateForProcessNode(item)) } : {}),
       })),
       canReplaceCurrentVariant: dependentVariants.length === 0,
       dependentVariants,
