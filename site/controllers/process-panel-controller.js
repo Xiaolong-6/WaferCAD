@@ -4,6 +4,7 @@ export function createProcessPanelController({
   root = document,
   getModel,
   getActiveFace,
+  setActiveFace = () => {},
   getMaskState,
   setModel,
   operationAreaGeometry,
@@ -15,6 +16,7 @@ export function createProcessPanelController({
   beforeApply = async () => true,
   commitApplyBranch = async () => null,
   recordProcessOperation = () => {},
+  afterApply = async () => false,
   clearBaseRevertSnapshot,
   colorNewLayer,
   colorNewImplant,
@@ -171,6 +173,236 @@ export function createProcessPanelController({
     return value;
   }
 
+  function replayDescriptor(operation) {
+    return operation?.replay?.version === 1 ? operation.replay : null;
+  }
+
+  function canReplayOperation(operation) {
+    return Boolean(replayDescriptor(operation));
+  }
+
+  function loadOperationForEdit(operation = {}) {
+    const replay = replayDescriptor(operation);
+    if (!replay) return false;
+
+    const params = replay.params || {};
+    const kind = operation.kind || params.type;
+    if (!['add', 'grow', 'etch', 'implant', 'electrical', 'record'].includes(kind)) {
+      return false;
+    }
+
+    $('operationType').value = kind;
+    if (operation.face || params.face) setActiveFace(operation.face || params.face);
+
+    if (kind === 'record') {
+      $('recordProcessType').value = operation.processType || 'custom';
+      $('recordProcessLabel').value = operation.label || '';
+      $('recordTemperature').value =
+        operation.temperatureC == null ? '' : String(operation.temperatureC);
+      $('recordDuration').value =
+        operation.durationMin == null ? '' : String(operation.durationMin);
+      $('recordAmbient').value = operation.ambient || '';
+      $('recordNote').value = operation.note || '';
+      updateOperationUI();
+      return true;
+    }
+
+    const thickness = Number(params.thickness ?? operation.thickness);
+    if (Number.isFinite(thickness)) $('operationThickness').value = formatLengthField(thickness);
+    $('operationArea').value = replay.areaMode || operation.areaMode || 'full';
+
+    if (kind === 'add') {
+      $('layerName').value = params.name || operation.name || '';
+      $('growthMode').value = params.growth || operation.growth || 'direct';
+    } else if (kind === 'grow') {
+      $('growthMode').value = params.growth || operation.growth || 'direct';
+    } else if (kind === 'implant') {
+      $('implantName').value = params.name || operation.name || '';
+      $('implantTilt').value = String(params.tilt ?? operation.implantTilt ?? 0);
+    } else if (kind === 'electrical') {
+      $('electricalName').value = params.name || operation.name || '';
+      $('electricalRegionType').value =
+        params.electricalRegionType || operation.electricalRegionType || 'inversion';
+      $('electricalRegionSource').value =
+        params.electricalRegionSource || operation.electricalRegionSource || 'induced';
+    } else if (kind === 'etch') {
+      $('etchProfile').value = params.etchProfile || operation.etchProfile || 'directional';
+      const surface = params.surface || operation.surface || null;
+      $('etchSurfaceMode').value = surface
+        ? surface.morphology === 'pyramid'
+          ? 'pyramid'
+          : 'rough'
+        : 'smooth';
+      if (surface) {
+        $('roughPolarity').value = surface.polarity === 'normal' ? 'normal' : 'inverted';
+        if (Number.isFinite(Number(surface.featureSize))) {
+          $('roughFeatureSize').value = formatLengthField(Number(surface.featureSize));
+        }
+        if (Number.isFinite(Number(surface.meanHeight))) {
+          $('roughAmplitude').value = formatLengthField(Number(surface.meanHeight));
+        }
+        $('roughFeatureCv').value = String(Math.round(Number(surface.featureCv || 0) * 100));
+        $('roughHeightCv').value = String(Math.round(Number(surface.heightCv || 0) * 100));
+        if ($('roughSeed')) $('roughSeed').value = surface.seed == null ? '' : String(surface.seed);
+      }
+    }
+
+    updateOperationUI();
+
+    if (kind === 'grow' && params.targetLayerId) {
+      $('targetLayer').value = params.targetLayerId;
+    }
+    if (kind === 'etch') {
+      const target = params.etchTargetLayerIds?.[0] || operation.etchTargetLayerIds?.[0] || '';
+      $('etchTargetLayer').value = target;
+    }
+    updateOperationUI();
+    return true;
+  }
+
+  function replayScopeCells(state) {
+    const activeCell = state?.activeCell;
+    const hierarchy = state?.layout?.hierarchy || {};
+    if (!activeCell) return new Set();
+    const out = new Set();
+    const walk = (name) => {
+      if (!name || out.has(name)) return;
+      out.add(name);
+      for (const child of hierarchy?.[name]?.children || []) walk(child?.name);
+    };
+    walk(activeCell);
+    return out;
+  }
+
+  function replayAreaRequest(operation, state) {
+    const replay = replayDescriptor(operation);
+    if (!replay || !state) {
+      throw new Error('This Step does not contain the workspace state required for replay.');
+    }
+    const mode = replay.areaMode || operation.areaMode || 'full',
+      maskSourceMode = state.maskSourceMode === 'draw' ? 'draw' : 'file',
+      maskRoi = state.maskRoi ? structuredClone(state.maskRoi) : null;
+
+    if (maskSourceMode === 'draw') {
+      return {
+        mode,
+        maskSourceMode,
+        maskRoi,
+        drawMask: structuredClone(state.drawMask || { nextShapeId: 1, shapes: [] }),
+      };
+    }
+
+    const selectedLayers = new Set(state.selectedLayerKeys || []),
+      scope = replayScopeCells(state),
+      elements = (state.layout?.elements || [])
+        .filter(
+          (element) =>
+            scope.has(element.sourceCell) &&
+            selectedLayers.has(`${element.layer}|${element.datatype}`),
+        )
+        .map((element) => ({
+          kind: element.kind,
+          width: element.width,
+          points: element.points,
+        }));
+
+    return {
+      mode,
+      maskSourceMode,
+      maskRoi,
+      maskTransform: { ...(state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }) },
+      elements,
+    };
+  }
+
+  async function replayOperations(steps = []) {
+    let completed = 0;
+    for (const sourceStep of steps) {
+      const operation = structuredClone(sourceStep?.operation || sourceStep || {}),
+        sourceState = sourceStep?.operation ? sourceStep.state : null,
+        replay = replayDescriptor(operation);
+      if (!replay) {
+        return {
+          ok: false,
+          completed,
+          failedOperation: operation,
+          error: 'This downstream Step predates replay metadata.',
+        };
+      }
+
+      if (operation.kind === 'record') {
+        saveHistory();
+        clearBaseRevertSnapshot();
+        const nextModel = structuredClone(getModel());
+        nextModel.revision = (Number(nextModel.revision) || 0) + 1;
+        nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+        setModel(nextModel);
+        recordProcessOperation(operation);
+        completed += 1;
+        continue;
+      }
+
+      if (processTaskController?.isBusy()) {
+        return {
+          ok: false,
+          completed,
+          failedOperation: operation,
+          error: 'Another process task is already running.',
+        };
+      }
+
+      const params = structuredClone(replay.params || {});
+      let areaRequest;
+      try {
+        areaRequest = replayAreaRequest(operation, sourceState);
+      } catch (error) {
+        return {
+          ok: false,
+          completed,
+          failedOperation: operation,
+          error: error?.message || 'Replay area could not be reconstructed.',
+        };
+      }
+      const task = await processTaskController.run(
+        getModel(),
+        params,
+        `Replaying ${operation.label || operation.kind || 'process Step'}…`,
+        areaRequest,
+      );
+      if (task?.aborted || task?.error || task?.busy) {
+        return {
+          ok: false,
+          completed,
+          failedOperation: operation,
+          error: task?.error || (task?.aborted ? 'Replay aborted.' : 'Replay worker is busy.'),
+        };
+      }
+      if (!task.result?.changed) {
+        return {
+          ok: false,
+          completed,
+          failedOperation: operation,
+          error: task.result?.error || 'The replayed operation did not change the model.',
+        };
+      }
+
+      saveHistory();
+      clearBaseRevertSnapshot();
+      setModel(task.model);
+      if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
+      else if (operation.kind === 'implant' && task.result.implantId) {
+        colorNewImplant(task.result.implantId);
+      } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
+        colorNewElectricalRegion(task.result.electricalRegionId);
+      }
+      recordProcessOperation(operation);
+      completed += 1;
+    }
+
+    renderAll();
+    return { ok: true, completed };
+  }
+
   async function recordProcessStep() {
     const applyGate = await beforeApply();
     if (!applyGate) return;
@@ -187,8 +419,9 @@ export function createProcessPanelController({
       return status('Time must be zero or greater.', 'error');
     }
 
+    let branchCommit = null;
     try {
-      await commitApplyBranch(applyGate);
+      branchCommit = await commitApplyBranch(applyGate);
     } catch (error) {
       console.error(error);
       return status(`Variant creation failed: ${error.message}`, 'error');
@@ -208,7 +441,7 @@ export function createProcessPanelController({
     nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
     setModel(nextModel);
 
-    recordProcessOperation({
+    const operation = {
       kind: 'record',
       label,
       processType,
@@ -217,8 +450,11 @@ export function createProcessPanelController({
       durationMin,
       ambient: ambient || null,
       note: note || null,
-    });
+      replay: { version: 1, kind: 'record' },
+    };
+    recordProcessOperation(operation);
     renderAll();
+    if (await afterApply({ applyGate, branchCommit, operation })) return;
     status(`Recorded process Step “${label}” without changing geometry.`, 'success');
   }
 
@@ -376,8 +612,9 @@ export function createProcessPanelController({
       return status(result?.error || 'The operation did not change the model.', 'warning');
     }
 
+    let branchCommit = null;
     try {
-      await commitApplyBranch(applyGate);
+      branchCommit = await commitApplyBranch(applyGate);
     } catch (error) {
       console.error(error);
       return status(`Variant creation failed: ${error.message}`, 'error');
@@ -424,7 +661,7 @@ export function createProcessPanelController({
                 ? `Electrical ${name} · ${params.electricalRegionType} · ${thicknessLabel}`
                 : `Deposit ${name} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`;
 
-    recordProcessOperation({
+    const operation = {
       kind: type,
       label: operationLabel,
       face: activeFace,
@@ -453,9 +690,16 @@ export function createProcessPanelController({
       electricalRegionSource: type === 'electrical' ? params.electricalRegionSource : null,
       maskSourceMode,
       maskRoi: Boolean(maskRoi),
-    });
+      replay: {
+        version: 1,
+        params: structuredClone(params),
+        areaMode,
+      },
+    };
+    recordProcessOperation(operation);
   
     renderAll();
+    if (await afterApply({ applyGate, branchCommit, operation, result })) return;
   
     if (!hasMaterial(model)) {
       return status(
@@ -501,5 +745,8 @@ export function createProcessPanelController({
   return {
     updateUi: updateOperationUI,
     applyOperation,
+    loadOperationForEdit,
+    replayOperations,
+    canReplayOperation,
   };
 }

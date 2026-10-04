@@ -1224,3 +1224,151 @@ test('legacy milestone-derived branch names normalize to concise Variants on imp
   manager.importRecords(records, branchState);
   assert.equal(manager.activeBranch().name, 'Black-Si');
 });
+
+
+test('historical Step edit restores predecessor geometry while preserving selected Step workspace context', () => {
+  let live = { model: { processRevision: 0, marker: 'base' }, mask: 'base-mask' };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1, marker: 'step-1' }, mask: 'mask-1' };
+  const first = manager.recordOperation({
+    kind: 'add',
+    label: 'Step 1',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+  live = { model: { processRevision: 2, marker: 'step-2' }, mask: 'mask-2' };
+  const second = manager.recordOperation({
+    kind: 'etch',
+    label: 'Step 2',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+  live = { model: { processRevision: 3, marker: 'step-3' }, mask: 'mask-3' };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Step 3',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+
+  const context = manager.stepEditContext(second.id);
+  assert.equal(context.editable, true);
+  assert.equal(context.parentNodeId, first.id);
+  assert.equal(context.downstreamCount, 1);
+  assert.equal(context.downstreamReplayable, true);
+
+  assert.ok(manager.restoreStepInput(second.id));
+  assert.equal(live.model.processRevision, 1);
+  assert.equal(live.model.marker, 'step-1');
+  assert.equal(live.mask, 'mask-2');
+  assert.equal(manager.currentPosition().nodeId, first.id);
+  assert.ok(manager.continuationContext());
+});
+
+test('replaceBranchTailFrom removes the edited tail and lets a recalculated chain take its place', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({
+    kind: 'add',
+    label: 'Step 1',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  const second = manager.recordOperation({
+    kind: 'etch',
+    label: 'Step 2',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+  live = { model: { processRevision: 3 }, value: 'step-3' };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Step 3',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+
+  manager.restoreStepInput(second.id);
+  const replaced = manager.replaceBranchTailFrom(second.id);
+  assert.equal(replaced.removedNodeCount, 2);
+  assert.deepEqual(
+    manager.listHistory().map((node) => node.operation.label),
+    ['Step 1'],
+  );
+  assert.equal(manager.activeBranch().headNodeId, first.id);
+
+  live = { model: { processRevision: 2 }, value: 'edited-step-2' };
+  manager.recordOperation({
+    kind: 'etch',
+    label: 'Edited Step 2',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+  live = { model: { processRevision: 3 }, value: 'replayed-step-3' };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Step 3 replayed',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+
+  assert.deepEqual(
+    manager.listHistory().map((node) => node.operation.label),
+    ['Step 1', 'Edited Step 2', 'Step 3 replayed'],
+  );
+});
+
+test('current Variant tail replacement is blocked when a child Variant depends on that tail', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Step 1',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  const second = manager.recordOperation({
+    kind: 'etch',
+    label: 'Step 2',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+  live = { model: { processRevision: 3 }, value: 'step-3' };
+  const third = manager.recordOperation({
+    kind: 'add',
+    label: 'Step 3',
+    replay: { version: 1, params: {}, areaRequest: {} },
+  });
+
+  manager.createBranchFromNode(third.id, 'Dependent child');
+  manager.switchBranch('main');
+  manager.restoreStepInput(second.id);
+
+  const context = manager.stepEditContext(second.id);
+  assert.equal(context.canReplaceCurrentVariant, false);
+  assert.deepEqual(context.dependentVariants.map((item) => item.name), ['Dependent child']);
+  assert.throws(() => manager.replaceBranchTailFrom(second.id), /child Variant/i);
+});

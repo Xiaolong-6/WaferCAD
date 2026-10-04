@@ -671,6 +671,100 @@ await historyRestorePage.screenshot({
 assert.deepEqual(historyRestoreErrors, []);
 await historyRestoreContext.close();
 
+// Historical Step editing offers all three strategies and Branch & recompute
+// replays the actual downstream worker requests on a preserved child Variant.
+const historyRecomputeContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyRecomputePage = await historyRecomputeContext.newPage();
+const historyRecomputeErrors = [];
+historyRecomputePage.on('pageerror', (error) => historyRecomputeErrors.push(error.message));
+await historyRecomputePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await historyRecomputePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'history-recompute-base.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await historyRecomputePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyRecomputePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-recompute-base.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyRecomputePage, 'process');
+await historyRecomputePage.locator('[data-process-mode="add"]').click();
+await historyRecomputePage.locator('#operationArea').selectOption('full');
+await historyRecomputePage.locator('#growthMode').selectOption('direct');
+await historyRecomputePage.locator('#operationThickness').fill('0.05');
+for (const name of ['Replay A', 'Replay B', 'Replay C']) {
+  await historyRecomputePage.locator('#layerName').fill(name);
+  await historyRecomputePage.locator('#applyOperationBtn').click();
+  await historyRecomputePage.waitForFunction(
+    (expected) =>
+      (document.getElementById('statusText')?.textContent || '').includes(`Deposited ${expected}`),
+    name,
+    { timeout: 30000 },
+  );
+}
+
+await openFunctionPanel(historyRecomputePage, 'snapshots');
+const replayBStep = historyRecomputePage.locator('.history-step-wrap', { hasText: 'Replay B' }).first();
+await replayBStep.locator('.snapshot-more-trigger').click();
+await replayBStep.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+await historyRecomputePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+for (const action of ['update-recompute', 'branch-here', 'branch-recompute']) {
+  assert.equal(
+    await historyRecomputePage
+      .locator(`#confirmationDialogActions [data-dialog-action="${action}"]`)
+      .count(),
+    1,
+  );
+}
+await chooseConfirmation(historyRecomputePage, 'branch-recompute');
+
+await historyRecomputePage.waitForFunction(
+  () => /Editing "Deposit Replay B/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+await historyRecomputePage.locator('.snapshot-continuation-banner[data-editing-step="true"]').waitFor();
+assert.equal(await historyRecomputePage.locator('#layerName').inputValue(), 'Replay B');
+assert.equal(Number(await historyRecomputePage.locator('#operationThickness').inputValue()), 0.05);
+await historyRecomputePage.locator('#layerName').fill('Replay B edited');
+await historyRecomputePage.locator('#operationThickness').fill('0.08');
+await historyRecomputePage.locator('#applyOperationBtn').click();
+await historyRecomputePage.waitForFunction(
+  () => /Recomputed 1 downstream Step in Variant "Variant 1"/.test(
+    document.getElementById('statusText')?.textContent || '',
+  ),
+  null,
+  { timeout: 30000 },
+);
+
+await openFunctionPanel(historyRecomputePage, 'snapshots');
+assert.equal(await historyRecomputePage.locator('.history-variant').count(), 2);
+const recomputeMain = historyRecomputePage.locator('.history-variant[data-variant-id="main"]');
+const recomputeChild = historyRecomputePage.locator('.history-variant[data-active="true"]');
+const mainOwnSteps = recomputeMain.locator(':scope > .history-variant-body > .history-step-wrap');
+const childOwnSteps = recomputeChild.locator(':scope > .history-variant-body > .history-step-wrap');
+assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay B/);
+assert.doesNotMatch(
+  await mainOwnSteps.allTextContents().then((items) => items.join(' ')),
+  /Replay B edited/,
+);
+assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
+assert.match(
+  await childOwnSteps.allTextContents().then((items) => items.join(' ')),
+  /Replay B edited/,
+);
+assert.match(await childOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
+assert.equal(
+  await historyRecomputePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
+    options.some((option) => /pre-history-step-edit/.test(option.textContent || '')),
+  ),
+  true,
+);
+assert.deepEqual(historyRecomputeErrors, []);
+await historyRecomputeContext.close();
+
 const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];
 refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));

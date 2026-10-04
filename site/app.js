@@ -724,7 +724,8 @@ function syncMaskSourceSummary() {
   workspaceViewController?.syncMaskSourceSummary();
 }
 
-let processPanelController = null;
+let processPanelController = null,
+  pendingHistoryStepEdit = null;
 
 function updateOperationUI() {
   processPanelController?.updateUi();
@@ -836,6 +837,236 @@ snapshotManager = createSnapshotManager({
   validateState: isValidSnapshotState,
 });
 
+function cancelHistoricalStepEdit() {
+  pendingHistoryStepEdit = null;
+}
+
+function currentHistoricalStepEdit() {
+  if (!pendingHistoryStepEdit) return null;
+  const {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    downstreamCount,
+  } = pendingHistoryStepEdit;
+  return {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    downstreamCount,
+  };
+}
+
+function refreshAfterHistoricalEditLoad() {
+  syncBaseControls();
+  maskImportController?.syncTransformInputs();
+  renderAll();
+  fit3d();
+}
+
+async function beginHistoricalStepEdit(node) {
+  const context = snapshotManager.stepEditContext(node?.id);
+  if (!context?.editable) {
+    status(context?.reason || 'This Step cannot be edited from History.', 'warning');
+    return false;
+  }
+  if (!node?.replayable || !processPanelController?.canReplayOperation(node.operation)) {
+    status(
+      'This Step predates replay metadata. Restore it or create a Variant from here instead.',
+      'warning',
+    );
+    return false;
+  }
+
+  const downstreamReplayable = context.downstreamReplayable;
+  const detailParts = [
+    `${context.downstreamCount} downstream Step${context.downstreamCount === 1 ? '' : 's'} follow this Step.`,
+  ];
+  if (!context.canReplaceCurrentVariant) {
+    detailParts.push(
+      `Update current Variant is unavailable because ${context.dependentVariants
+        .map((item) => `"${item.name}"`)
+        .join(', ')} depend on this history tail.`,
+    );
+  }
+  if (!downstreamReplayable && context.downstreamCount) {
+    detailParts.push(
+      'Some downstream Steps predate replay metadata, so automatic downstream recompute is unavailable.',
+    );
+  }
+
+  const actions = [{ value: 'cancel', label: 'Cancel' }];
+  if (context.canReplaceCurrentVariant && downstreamReplayable) {
+    actions.push({
+      value: 'update-recompute',
+      label: context.downstreamCount ? 'Update & recompute' : 'Update current Variant',
+    });
+  }
+
+  const canCreateVariant = snapshotManager.canCreateVariant();
+  const canBranchHere = canCreateVariant && snapshotManager.canRecordOperation(1);
+  const canBranchRecompute =
+    canCreateVariant &&
+    downstreamReplayable &&
+    snapshotManager.canRecordOperation(1 + context.downstreamCount);
+  if (!canCreateVariant) {
+    detailParts.push('The Variant limit has been reached, so branching is unavailable.');
+  } else if (!canBranchHere) {
+    detailParts.push('Process History has no capacity for another Variant Step.');
+  }
+
+  if (canBranchHere) {
+    actions.push({ value: 'branch-here', label: 'Branch from here' });
+  }
+  if (canBranchRecompute) {
+    actions.push({
+      value: 'branch-recompute',
+      label: context.downstreamCount ? 'Branch & recompute' : 'Branch & apply',
+      kind: 'primary',
+      default: true,
+    });
+  } else if (
+    canBranchHere &&
+    (!downstreamReplayable || !snapshotManager.canRecordOperation(1 + context.downstreamCount))
+  ) {
+    actions[actions.length - 1].kind = 'primary';
+    actions[actions.length - 1].default = true;
+  } else if (actions.length > 1 && !actions.some((action) => action.default)) {
+    actions[actions.length - 1].kind = 'primary';
+    actions[actions.length - 1].default = true;
+  }
+
+  if (actions.length === 1) {
+    status('No safe edit strategy is available at the current History/Variant limits.', 'warning');
+    return false;
+  }
+
+  const choice = await confirmationDialog.ask({
+    title: 'Edit historical Step',
+    message: `Edit "${node.operation?.label || node.operation?.kind || 'Process step'}"?`,
+    detail: detailParts.join(' '),
+    actions,
+    cancelValue: 'cancel',
+  });
+  if (choice === 'cancel') return false;
+
+  if (
+    (choice === 'update-recompute' || choice === 'branch-recompute') &&
+    !downstreamReplayable
+  ) {
+    status('Automatic downstream recompute is unavailable for this legacy history tail.', 'warning');
+    return false;
+  }
+
+  const replayContext =
+    choice === 'branch-here' || context.downstreamCount === 0
+      ? context
+      : snapshotManager.stepEditContext(node.id, { includeReplayStates: true });
+  if (!replayContext?.editable) {
+    status('Historical Step replay context could not be prepared.', 'error');
+    return false;
+  }
+
+  await checkpointWorkspace('pre-history-step-edit');
+  const restored = snapshotManager.restoreStepInput(node.id);
+  if (!restored) {
+    status('Could not restore the input state for this Step.', 'error');
+    return false;
+  }
+
+  pendingHistoryStepEdit = {
+    nodeId: node.id,
+    branchId: context.branchId,
+    branchName: context.branchName,
+    parentNodeId: context.parentNodeId,
+    mode: choice,
+    originalLabel: node.operation?.label || node.operation?.kind || 'Process step',
+    downstreamCount: context.downstreamCount,
+    downstream:
+      choice === 'branch-here'
+        ? []
+        : replayContext.downstream.map((item) => structuredClone(item)),
+  };
+
+  refreshAfterHistoricalEditLoad();
+  if (!processPanelController.loadOperationForEdit(node.operation)) {
+    pendingHistoryStepEdit = null;
+    snapshotManager.restoreActiveBranchHead();
+    refreshAfterHistoricalEditLoad();
+    status('This Step cannot be loaded into the current Process editor.', 'error');
+    return false;
+  }
+
+  markProjectDirty();
+  renderSnapshots();
+  document.querySelector('.workstation-rail-button[data-tool="process"]')?.click();
+  const modeLabel =
+    choice === 'update-recompute'
+      ? 'update this Variant and recompute its downstream Steps'
+      : choice === 'branch-recompute'
+        ? 'create a Variant and recompute its downstream Steps'
+        : 'create a Variant from this Step without downstream Steps';
+  status(`Editing "${pendingHistoryStepEdit.originalLabel}". Apply to ${modeLabel}.`, 'success');
+  return true;
+}
+
+async function finishHistoricalStepEdit({ applyGate, branchCommit } = {}) {
+  if (!applyGate?.historyStepEdit) return false;
+  const edit = pendingHistoryStepEdit;
+  if (
+    !edit ||
+    edit.nodeId !== applyGate.nodeId ||
+    edit.branchId !== applyGate.branchId ||
+    edit.parentNodeId !== applyGate.parentNodeId
+  ) {
+    status('Historical Step edit context changed before completion.', 'error');
+    pendingHistoryStepEdit = null;
+    return true;
+  }
+
+  const downstream = edit.downstream.map((step) => structuredClone(step));
+  const mode = edit.mode;
+  const targetVariant = snapshotManager.activeBranch().name;
+  pendingHistoryStepEdit = null;
+
+  if (mode === 'branch-here' || downstream.length === 0) {
+    markProjectDirty();
+    renderSnapshots();
+    status(
+      mode === 'branch-here'
+        ? `Created Variant "${branchCommit?.name || targetVariant}" from the edited Step.`
+        : `Updated "${targetVariant}". No downstream Steps required recompute.`,
+      'success',
+    );
+    return true;
+  }
+
+  const replay = await processPanelController.replayOperations(downstream);
+  markProjectDirty();
+  renderSnapshots();
+  if (!replay.ok) {
+    const failedLabel =
+      replay.failedOperation?.label || replay.failedOperation?.kind || 'downstream Step';
+    status(
+      `Recompute stopped after ${replay.completed}/${downstream.length} downstream Steps at "${failedLabel}": ${replay.error} A Recovery checkpoint was saved before the edit.`,
+      'warning',
+    );
+    return true;
+  }
+
+  status(
+    `Recomputed ${replay.completed} downstream Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`,
+    'success',
+  );
+  return true;
+}
+
 async function exportProjectFileTask(project, filename) {
   if (!processTaskController) return false;
   const task = await processTaskController.runWorker(
@@ -883,6 +1114,9 @@ const projectController = createProjectController({
   clearMaskRoiDrawingMode: () => maskRoiController.clearDrawingMode(),
   buildProjectSnapshot,
   confirmAction: (options) => confirmationDialog.confirm(options),
+  beginHistoricalStepEdit,
+  getHistoricalStepEdit: currentHistoricalStepEdit,
+  cancelHistoricalStepEdit,
 });
 const {
   renderSnapshots,
@@ -893,12 +1127,46 @@ const {
 } = projectController;
 
 async function ensureWritableProcessBranch() {
+  const continuation = snapshotManager.continuationContext();
+  if (pendingHistoryStepEdit) {
+    const edit = pendingHistoryStepEdit;
+    if (
+      !continuation ||
+      continuation.branchId !== edit.branchId ||
+      continuation.cursorNodeId !== edit.parentNodeId
+    ) {
+      pendingHistoryStepEdit = null;
+      status('Historical Step edit context changed. Start the edit again from History.', 'error');
+      return false;
+    }
+    const requiredSteps =
+      edit.mode === 'update-recompute'
+        ? 0
+        : edit.mode === 'branch-recompute'
+          ? 1 + edit.downstreamCount
+          : 1;
+    if (requiredSteps && !snapshotManager.canRecordOperation(requiredSteps)) {
+      status('Process history limit reached before this edit could be committed.', 'error');
+      return false;
+    }
+    if (edit.mode !== 'update-recompute' && !snapshotManager.canCreateVariant()) {
+      status('Variant limit reached before this edit could be committed.', 'error');
+      return false;
+    }
+    return {
+      historyStepEdit: true,
+      nodeId: edit.nodeId,
+      branchId: edit.branchId,
+      parentNodeId: edit.parentNodeId,
+      mode: edit.mode,
+    };
+  }
+
   if (!snapshotManager.canRecordOperation()) {
     status('Process history limit reached. Delete or export this project before adding more steps.', 'error');
     return false;
   }
 
-  const continuation = snapshotManager.continuationContext();
   if (!continuation) return { createVariant: false };
 
   const confirmed = await confirmationDialog.confirm({
@@ -923,6 +1191,32 @@ async function ensureWritableProcessBranch() {
 }
 
 function commitWritableProcessBranch(gate) {
+  if (gate?.historyStepEdit) {
+    const edit = pendingHistoryStepEdit;
+    const continuation = snapshotManager.continuationContext();
+    if (
+      !edit ||
+      edit.nodeId !== gate.nodeId ||
+      edit.branchId !== gate.branchId ||
+      edit.parentNodeId !== gate.parentNodeId ||
+      !continuation ||
+      continuation.branchId !== edit.branchId ||
+      continuation.cursorNodeId !== edit.parentNodeId
+    ) {
+      throw new Error('Historical Step edit context changed before the operation completed.');
+    }
+
+    let created = null;
+    if (edit.mode === 'update-recompute') {
+      snapshotManager.replaceBranchTailFrom(edit.nodeId);
+    } else {
+      created = snapshotManager.createBranchFromCursor();
+    }
+    markProjectDirty();
+    renderSnapshots();
+    return created;
+  }
+
   if (!gate?.createVariant) return null;
   const continuation = snapshotManager.continuationContext();
   if (
@@ -942,9 +1236,10 @@ function commitWritableProcessBranch(gate) {
 }
 
 function recordProcessOperation(operation) {
-  snapshotManager.recordOperation(operation);
+  const recorded = snapshotManager.recordOperation(operation);
   markProjectDirty();
   renderSnapshots();
+  return recorded;
 }
 
 const maskImportController = createMaskImportController({
@@ -1008,6 +1303,10 @@ processPanelController = createProcessPanelController({
     markProjectDirty();
   },
   getActiveFace: () => activeFace,
+  setActiveFace: (value) => {
+    activeFace = value === 'back' ? 'back' : 'front';
+    markProjectDirty();
+  },
   getMaskState: () => ({
     maskSourceMode,
     maskRoi,
@@ -1024,6 +1323,7 @@ processPanelController = createProcessPanelController({
   beforeApply: ensureWritableProcessBranch,
   commitApplyBranch: commitWritableProcessBranch,
   recordProcessOperation,
+  afterApply: finishHistoricalStepEdit,
   clearBaseRevertSnapshot: () => {
     baseRevertSnapshot = null;
   },
