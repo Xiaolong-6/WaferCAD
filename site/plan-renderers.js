@@ -245,7 +245,7 @@ export function createPlanRenderers({
   }
   
   function renderMask() {
-      const { activeFace, maskSourceMode, layout, maskOpacity } = getState();
+      const { activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
     const c = $('maskCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'mask');
@@ -267,7 +267,7 @@ export function createPlanRenderers({
       ctx.restore();
     }
   
-    getMaskRoiController()?.render(ctx, v);
+    if (!readOnlyPreview) getMaskRoiController()?.render(ctx, v);
     drawPlanAxes(ctx, v, w, h, false);
   }
   function shadeColor(hex, delta) {
@@ -284,7 +284,7 @@ export function createPlanRenderers({
   }
   
   function renderMain() {
-      const { model, activeFace, section } = getState();
+      const { model, activeFace, section, readOnlyPreview } = getState();
     const c = $('mainCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'main'),
@@ -333,18 +333,20 @@ export function createPlanRenderers({
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.restore();
-    drawRoi(ctx, v, back);
-    const a = worldToCanvas(section.a, v, back),
-      b = worldToCanvas(section.b, v, back);
-    ctx.strokeStyle = '#cc5062';
-    ctx.lineWidth = 2.3;
-    ctx.beginPath();
-    ctx.moveTo(...a);
-    ctx.lineTo(...b);
-    ctx.stroke();
+    if (!readOnlyPreview) {
+      drawRoi(ctx, v, back);
+      const a = worldToCanvas(section.a, v, back),
+        b = worldToCanvas(section.b, v, back);
+      ctx.strokeStyle = '#cc5062';
+      ctx.lineWidth = 2.3;
+      ctx.beginPath();
+      ctx.moveTo(...a);
+      ctx.lineTo(...b);
+      ctx.stroke();
+      syncSectionInputs();
+      getSectionEditor()?.update();
+    }
     drawPlanAxes(ctx, v, w, h, back);
-    syncSectionInputs();
-    getSectionEditor()?.update();
   }
   function renderSection(targetCanvas = null, detailRoi = null) {
     const { model, section, sectionScaleMode, sectionShowBorders, sectionCollapse } = getState();
