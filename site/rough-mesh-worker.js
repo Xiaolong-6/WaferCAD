@@ -20,8 +20,9 @@ self.onmessage = async (event) => {
     const results = [];
     const transfer = [];
 
-    for (const task of tasks) {
-      const data = roughMeshDataFromPreparedCap(task.geometry || {});
+    for (let index = 0; index < tasks.length; index++) {
+      const task = tasks[index],
+        data = roughMeshDataFromPreparedCap(task.geometry || {});
       results.push({
         taskId: task.taskId,
         data: {
@@ -36,6 +37,13 @@ self.onmessage = async (event) => {
         data.normals.buffer,
         data.roughBorderPositions.buffer,
       );
+      self.postMessage({
+        id,
+        type: 'progress',
+        generation,
+        completed: index + 1,
+        total: tasks.length,
+      });
     }
 
     self.postMessage(
