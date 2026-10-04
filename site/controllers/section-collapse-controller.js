@@ -251,13 +251,13 @@ export function createSectionCollapseController({
   function bind() {
     $('sectionCollapseAxisBtn').addEventListener('click', (event) => {
       event.stopPropagation();
+      if (event.detail >= 2) {
+        event.preventDefault();
+        toggleEnabled();
+        return;
+      }
       if (current().enabled === false) return;
       toggle();
-    });
-    $('sectionCollapseAxisBtn').addEventListener('dblclick', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleEnabled();
     });
     $('sectionCollapseClose').addEventListener('click', close);
     $('sectionCollapseTarget').addEventListener('change', (event) => {
