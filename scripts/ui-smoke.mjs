@@ -296,16 +296,23 @@ for (const selector of [
 }
 
 const previewMainBefore = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
-const previewMainBox = await preview.locator('#mainCanvas').boundingBox();
-assert.ok(previewMainBox);
-await page.mouse.move(
-  previewMainBox.x + previewMainBox.width * 0.5,
-  previewMainBox.y + previewMainBox.height * 0.5,
+await preview.locator('#mainCanvas').dispatchEvent('wheel', {
+  deltaY: -120,
+  clientX: 120,
+  clientY: 80,
+});
+await preview.locator('#mainCanvas').evaluate(
+  () =>
+    new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    ),
 );
-await page.mouse.wheel(0, -120);
-await preview.locator('#mainCanvas').evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
 const previewMainAfter = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
-assert.notEqual(previewMainAfter, previewMainBefore, 'Welcome Main preview wheel zoom must remain available');
+assert.notEqual(
+  previewMainAfter,
+  previewMainBefore,
+  'Welcome Main preview wheel zoom must remain available',
+);
 
 await page.locator('#welcomeEmptyBtn').click();
 await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
