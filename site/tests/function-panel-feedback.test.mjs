@@ -53,7 +53,8 @@ test('function panel uses Process and Project labels with segmented process mode
   }
   assert.match(html, />\s*Deposit\s*<\/button>/);
   assert.match(html, />\s*Extend\s*<\/button>/);
-  assert.match(html, /Implant[\s\S]*experimental-tag[\s\S]*EXP/);
+  assert.match(html, /data-process-mode="implant"[\s\S]*?>\s*Implant\s*<\/button>/);
+  assert.doesNotMatch(html, /experimental-tag|>\s*EXP\s*</);
   assert.match(html, /data-process-mode="electrical"[\s\S]*?>\s*Electrical\s*<\/button>/);
   assert.match(html, /data-process-mode="record"[\s\S]*?>\s*Record\s*<\/button>/);
   assert.match(html, /<span>Coverage<\/span\s*>/);
