@@ -1145,6 +1145,21 @@ invalidDetailRoiProject.display.sectionDetailRoi = {
 };
 assert.throws(() => validateProjectFile(invalidDetailRoiProject), /sectionDetailRoi/);
 
+const cameraProject = structuredClone(validProject);
+cameraProject.display.threeCamera = {
+  position: [120, -95, 80],
+  target: [0, 0, 4],
+  fov: 34,
+};
+assert.equal(validateProjectFile(cameraProject), cameraProject);
+const invalidCameraProject = structuredClone(validProject);
+invalidCameraProject.display.threeCamera = {
+  position: [1, 2],
+  target: [0, 0, 0],
+  fov: 34,
+};
+assert.throws(() => validateProjectFile(invalidCameraProject), /threeCamera/);
+
 const roughProject = structuredClone(validProject);
 roughProject.model.regions[0].stack[0].frontSurface = {
   kind: 'rough',
