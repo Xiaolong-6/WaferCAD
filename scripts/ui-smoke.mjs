@@ -1502,8 +1502,8 @@ await page.mouse.move(
   { steps: 5 },
 );
 await page.mouse.up();
-await expectVisible(page, '#sectionDetailRoiOverlay');
-await expectVisible(page, '#sectionDetailInset');
+await page.locator('#sectionDetailRoiOverlay').waitFor({ state: 'visible' });
+await page.locator('#sectionDetailInset').waitFor({ state: 'visible' });
 assert.ok(
   (await canvasInkFraction(page, '#sectionDetailInsetCanvas')) > 0.01,
   'Section Detail inset rendered blank',
