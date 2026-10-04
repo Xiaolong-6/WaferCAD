@@ -4,6 +4,8 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     title: 'Photodetector literature examples',
     figure: 'Black-Si Fig. 1a · Ge Fig. 15',
     kind: 'project',
+    level: 'Literature reconstruction',
+    variants: ['Black-Si · FINAL / QA', 'Ge Fig. 15 · A / B'],
     path: './examples/photodetector-literature-examples.wafercad',
     filename: 'photodetector-literature-examples.wafercad',
     summary:
@@ -15,6 +17,8 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     title: 'Visualization mask',
     figure: 'Layout demo',
     kind: 'generated',
+    level: 'Beginner',
+    variants: [],
     path: null,
     filename: null,
     summary:
