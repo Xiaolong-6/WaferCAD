@@ -1134,6 +1134,7 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 await page.locator('#threeMaxBtn').click();
+await page.waitForTimeout(250);
 await page.waitForFunction(
   () =>
     document.body.classList.contains('view-maximized') &&
@@ -1169,6 +1170,7 @@ await page.screenshot({
   fullPage: true,
 });
 await page.locator('#threeMaxBtn').click();
+await page.waitForTimeout(250);
 await page.waitForFunction(
   () =>
     document.body.classList.contains('view-maximized') &&
