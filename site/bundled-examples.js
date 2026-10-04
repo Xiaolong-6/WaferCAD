@@ -9,8 +9,8 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     path: './examples/photodetector-literature-examples.wafercad',
     filename: 'photodetector-literature-examples.wafercad',
     summary:
-      'One branch-based project containing two closely related detector reconstructions. Black-Si retains FINAL/QA variants; Ge retains its Fig. 15 A/B device variants.',
-    tags: ['Literature', 'Rough surfaces', 'ALD', 'Implant', 'Variants'],
+      'One branch-based project containing two closely related detector reconstructions. Black-Si retains FINAL/QA variants; Ge Fig. 15 uses first-class induced inversion/accumulation Electrical Regions across A/B variants.',
+    tags: ['Literature', 'Rough surfaces', 'ALD', 'Implant', 'Electrical', 'Variants'],
   },
   {
     id: 'visualization',

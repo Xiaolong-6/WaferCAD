@@ -494,7 +494,12 @@ const layerLegendController = createLayerLegendController({
   status,
   confirmAction: (options) => confirmationDialog.confirm(options),
 });
-const { renderLayerLegend, colorNewLayer, colorNewImplant } = layerLegendController;
+const {
+  renderLayerLegend,
+  colorNewLayer,
+  colorNewImplant,
+  colorNewElectricalRegion,
+} = layerLegendController;
 
 const selectionGeometry = createSelectionGeometry({
   getState: () => ({
@@ -983,6 +988,7 @@ processPanelController = createProcessPanelController({
   },
   colorNewLayer,
   colorNewImplant,
+  colorNewElectricalRegion,
   renderAll,
   status,
 });

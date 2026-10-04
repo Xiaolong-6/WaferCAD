@@ -71,4 +71,21 @@ test('welcome example catalog groups literature detectors into one branch-based 
   assert.equal(packed.snapshotBranches.branches.length, 7);
   assert.equal(packed.snapshotBranches.nodes.length, 32);
   assert.equal(packed.snapshots.length, 47);
+
+  const allModels = [
+    packed.model,
+    ...packed.snapshotBranches.nodes.map((node) => node.state?.model).filter(Boolean),
+    ...packed.snapshotBranches.branches.map((branch) => branch.headState?.model).filter(Boolean),
+  ];
+  const geElectrical = allModels
+    .flatMap((model) => model?.electricalRegions || [])
+    .filter((region) => /Induced .*type/i.test(region.name));
+  assert.ok(geElectrical.some((region) => region.regionType === 'p-inversion'));
+  assert.ok(geElectrical.some((region) => region.regionType === 'n-accumulation'));
+  assert.equal(
+    allModels
+      .flatMap((model) => model?.implants || [])
+      .some((implant) => /^INDUCED/i.test(implant.name)),
+    false,
+  );
 });

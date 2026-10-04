@@ -25,6 +25,9 @@ function fakeRoot() {
     growthMode: 'direct',
     implantName: 'Implant 1',
     implantTilt: '0',
+    electricalName: 'Electrical Region 1',
+    electricalRegionType: 'p-inversion',
+    electricalRegionSource: 'induced',
     roughFeatureSize: '1',
     roughAmplitude: '1',
     roughFeatureCv: '0',
@@ -112,6 +115,7 @@ function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } =
     clearBaseRevertSnapshot: () => {},
     colorNewLayer: () => {},
     colorNewImplant: () => {},
+    colorNewElectricalRegion: () => events.push('color-electrical'),
     renderAll: () => events.push('render'),
     status: () => {},
   });
@@ -193,4 +197,45 @@ test('Record process step advances History without running geometry worker', asy
     ambient: 'forming gas',
     note: 'contact anneal',
   });
+});
+
+
+test('Electrical process mode sends typed annotation metadata through the worker path', async () => {
+  const events = [],
+    recorded = [],
+    controller = controllerForTask(
+      (model) => ({
+        result: { changed: true, electricalRegionId: 'electrical-1' },
+        model: {
+          ...model,
+          electricalRegions: [
+            {
+              id: 'electrical-1',
+              name: 'Electrical Region 1',
+              color: '#7A6FD0',
+              face: 'front',
+              thickness: 0.1,
+              regionType: 'p-inversion',
+              source: 'induced',
+              visible: true,
+              patches: [],
+            },
+          ],
+          nextElectricalRegionId: 2,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      }),
+      events,
+      { mode: 'electrical', recorded },
+    );
+
+  await controller.applyOperation();
+
+  assert.ok(events.includes('run-worker'));
+  assert.ok(events.includes('color-electrical'));
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].kind, 'electrical');
+  assert.equal(recorded[0].electricalRegionType, 'p-inversion');
+  assert.equal(recorded[0].electricalRegionSource, 'induced');
 });

@@ -48,12 +48,13 @@ const viewPopoverController = await readFile(
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
   assert.match(html, /id="settingsTab"[\s\S]*?>\s*Project\s*<\/button>/);
-  for (const mode of ['add', 'grow', 'etch', 'implant', 'record']) {
+  for (const mode of ['add', 'grow', 'etch', 'implant', 'electrical', 'record']) {
     assert.match(html, new RegExp(`data-process-mode="${mode}"`));
   }
   assert.match(html, />\s*Deposit\s*<\/button>/);
   assert.match(html, />\s*Extend\s*<\/button>/);
   assert.match(html, /Implant[\s\S]*experimental-tag[\s\S]*EXP/);
+  assert.match(html, /data-process-mode="electrical"[\s\S]*?>\s*Electrical\s*<\/button>/);
   assert.match(html, /data-process-mode="record"[\s\S]*?>\s*Record\s*<\/button>/);
   assert.match(html, /<span>Coverage<\/span\s*>/);
   assert.match(html, />Directional<\/option>/);
@@ -97,6 +98,20 @@ test('Process UI is driven by material presence and exposed Extend targets', () 
   assert.match(html, /id="etchTargetLayer"/);
   assert.match(processPanelController, /params\.etchTargetLayerIds/);
   assert.match(processPanelController, /Material-selective Etch/);
+});
+
+test('Process panel exposes first-class electrical region semantics', () => {
+  assert.match(html, /id="electricalName"/);
+  assert.match(html, /id="electricalRegionType"/);
+  assert.match(html, /value="p-inversion"/);
+  assert.match(html, /value="n-accumulation"/);
+  assert.match(html, /id="electricalRegionSource"/);
+  assert.match(processPanelController, /params\.electricalRegionType/);
+  assert.match(processPanelController, /params\.electricalRegionSource/);
+  assert.match(processPanelController, /colorNewElectricalRegion\(result\.electricalRegionId\)/);
+  assert.match(planRenderers, /electricalRegionSurfaceGroups/);
+  assert.match(planRenderers, /electricalRegionSectionBands/);
+  assert.match(threeView, /electricalRegionSolids/);
 });
 
 test('Process panel can record non-geometric fabrication steps', () => {

@@ -15,6 +15,7 @@ The current literature family is:
   - **Ge Fig. 15** common nanostructured Ge
     - A · full-area Al₂O₃
     - B · inactive SiO₂/Al₂O₃
+    - induced p-type inversion / n-type accumulation are stored as first-class Electrical Regions, not Implant placeholders
 
 The family project opens on the Black-Si FINAL Variant while retaining the complete restorable Variant tree. This structure is intentional: future examples should normally add a new family project (for example solar cell, MEMS, MOS, microfluidic) rather than adding one Welcome card for every publication.
 

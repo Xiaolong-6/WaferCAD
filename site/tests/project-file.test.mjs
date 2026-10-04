@@ -101,6 +101,50 @@ test('project JSON round-trip remains valid', () => {
   assert.deepEqual(loaded, source);
 });
 
+test('v13 projects migrate electrical region defaults into v14', () => {
+  const source = validProject();
+  source.version = 13;
+  delete source.model.electricalRegions;
+  delete source.model.nextElectricalRegionId;
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.deepEqual(migrated.model.electricalRegions, []);
+  assert.equal(migrated.model.nextElectricalRegionId, 1);
+  assert.equal(validateProjectFile(migrated), migrated);
+});
+
+test('project validator accepts typed electrical region annotation volumes', () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.model.electricalRegions = [
+    {
+      id: 'electrical-1',
+      name: 'Al2O3-induced p inversion',
+      color: '#7A6FD0',
+      face: 'front',
+      thickness: 0.05,
+      regionType: 'p-inversion',
+      source: 'induced',
+      visible: true,
+      patches: [
+        {
+          geom: structuredClone(source.model.boundary),
+          z: 4,
+          zMin: -4,
+          zMax: 4,
+          layerId: 'base',
+          surfaceAppearance: null,
+        },
+      ],
+    },
+  ];
+  source.model.nextElectricalRegionId = 2;
+  assert.equal(validateProjectFile(source), source);
+
+  source.model.electricalRegions[0].regionType = 'magic-junction';
+  assert.throws(() => validateProjectFile(source), /electricalRegions\[0\]\.regionType.*not supported/);
+});
+
 test('project validator rejects malformed stack structure', () => {
   const source = validProject();
   source.model.regions[0].stack[0].z1 = -5;

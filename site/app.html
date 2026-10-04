@@ -715,6 +715,9 @@
                   <button type="button" data-process-mode="implant" aria-pressed="false">
                     Implant <span class="experimental-tag">EXP</span>
                   </button>
+                  <button type="button" data-process-mode="electrical" aria-pressed="false">
+                    Electrical
+                  </button>
                   <button type="button" data-process-mode="record" aria-pressed="false">
                     Record
                   </button>
@@ -724,6 +727,7 @@
                   <option value="grow">Extend existing layer</option>
                   <option value="etch">Etch / subtract</option>
                   <option value="implant">Implant (experimental)</option>
+                  <option value="electrical">Electrical region</option>
                   <option value="record">Record process step</option>
                 </select>
 
@@ -796,10 +800,39 @@
                     <span>Name</span>
                     <input id="implantName" value="Implant 1" />
                   </label>
+                  <label id="electricalNameRow" class="param-field hidden">
+                    <span>Name</span>
+                    <input id="electricalName" value="Electrical Region 1" />
+                  </label>
                   <label id="operationThicknessRow" class="param-field">
                     <span><b id="processThicknessLabel">Z</b></span>
                     <input id="operationThickness" type="number" value="3" min="0" step="any" />
                     <b id="operationThicknessUnit" class="field-unit">µm</b>
+                  </label>
+                </div>
+
+                <div id="electricalRegionParams" class="param-grid-2 electrical-region-grid hidden">
+                  <label class="param-field">
+                    <span>Type</span>
+                    <select id="electricalRegionType">
+                      <option value="p-type">p-type</option>
+                      <option value="n-type">n-type</option>
+                      <option value="p-inversion">p-type inversion</option>
+                      <option value="n-inversion">n-type inversion</option>
+                      <option value="p-accumulation">p-type accumulation</option>
+                      <option value="n-accumulation">n-type accumulation</option>
+                      <option value="depletion">Depletion</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  <label class="param-field">
+                    <span>Source</span>
+                    <select id="electricalRegionSource">
+                      <option value="induced">Induced</option>
+                      <option value="doped">Doped</option>
+                      <option value="interface">Interface</option>
+                      <option value="custom">Custom</option>
+                    </select>
                   </label>
                 </div>
 
