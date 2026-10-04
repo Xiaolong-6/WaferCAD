@@ -1,6 +1,10 @@
-import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
+import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import { electricalRegionSolids, implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  createCollapsedZDisplayTransform,
+  resolveSectionCollapse,
+} from './section-z-collapse.js';
 import {
   geometryFromRoughCap,
   geometryFromRoughMeshData,
@@ -49,6 +53,7 @@ export function createThreeView({
   getModel,
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
+  getZCollapse = () => null,
 } = {}) {
   if (!host) throw new TypeError('3D host is required.');
   if (!stats) throw new TypeError('3D stats host is required.');
@@ -83,6 +88,8 @@ export function createThreeView({
   let currentRoughMode = 'none';
   let sceneGeneration = 0;
   let pendingRender = false;
+  let zDisplayObjects = new Set();
+  let currentZDisplay = null;
 
   function showUnavailable({
     status = '3D unavailable',
@@ -131,6 +138,135 @@ export function createThreeView({
       height: Math.max(2, renderer?.domElement?.clientHeight || host.clientHeight || 2),
       pixelRatio: Math.max(0.25, renderer?.getPixelRatio?.() || 1),
     };
+  }
+
+  function zDisplayState(model) {
+    const [idealLo, idealHi] = modelBoundsZ(model),
+      [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
+      collapse = resolveSectionCollapse(getZCollapse(), model, [lo, hi]),
+      transform = createCollapsedZDisplayTransform({
+        zMin: lo,
+        zMax: hi,
+        collapse,
+      }),
+      xySpan = Math.max(Number(model.width) || 0, Number(model.height) || 0, 1e-12),
+      scale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12);
+
+    return {
+      ...transform,
+      scale,
+    };
+  }
+
+  function objectZRecord(object) {
+    return object?.userData?.waferCadZDisplay || null;
+  }
+
+  function trackZDisplayObject(object) {
+    const positions = object?.geometry?.getAttribute?.('position');
+    if (!positions?.count) return object;
+
+    let minZ = Infinity,
+      maxZ = -Infinity;
+    for (let index = 0; index < positions.count; index++) {
+      const z = positions.getZ(index);
+      minZ = Math.min(minZ, z);
+      maxZ = Math.max(maxZ, z);
+    }
+    if (![minZ, maxZ].every(Number.isFinite)) return object;
+
+    object.userData.waferCadZDisplay = {
+      minZ,
+      maxZ,
+      canonicalZ: null,
+      mode: 'canonical',
+    };
+    zDisplayObjects.add(object);
+    if (currentZDisplay) applyZDisplayToObject(object, currentZDisplay);
+    return object;
+  }
+
+  function ensureCanonicalZ(record, positions) {
+    if (record.canonicalZ) return record.canonicalZ;
+    const values = new Float32Array(positions.count);
+    for (let index = 0; index < positions.count; index++) values[index] = positions.getZ(index);
+    record.canonicalZ = values;
+    return values;
+  }
+
+  function restoreCanonicalZ(record, positions) {
+    if (!record.canonicalZ) return;
+    for (let index = 0; index < positions.count; index++) {
+      positions.setZ(index, record.canonicalZ[index]);
+    }
+    positions.needsUpdate = true;
+  }
+
+  function refreshGeometryBounds(object) {
+    object.geometry?.computeBoundingBox?.();
+    object.geometry?.computeBoundingSphere?.();
+  }
+
+  function applyZDisplayToObject(object, state) {
+    const record = objectZRecord(object),
+      positions = object?.geometry?.getAttribute?.('position');
+    if (!record || !positions?.count || !state) return;
+
+    const fullyUpper = record.minZ >= state.top,
+      fullyLower = record.maxZ <= state.bottom;
+
+    if (fullyUpper || fullyLower) {
+      if (record.mode === 'mapped') {
+        restoreCanonicalZ(record, positions);
+        refreshGeometryBounds(object);
+      }
+      const sample = fullyUpper ? record.minZ : record.maxZ;
+      object.position.z = state.mapZ(sample) - sample;
+      record.mode = 'translated';
+      return;
+    }
+
+    const canonicalZ = ensureCanonicalZ(record, positions);
+    object.position.z = 0;
+    for (let index = 0; index < positions.count; index++) {
+      positions.setZ(index, state.mapZ(canonicalZ[index]));
+    }
+    positions.needsUpdate = true;
+    if (object.isMesh && object.geometry.getAttribute('normal')) {
+      object.geometry.computeVertexNormals();
+    }
+    refreshGeometryBounds(object);
+    record.mode = 'mapped';
+  }
+
+  function displayedObjectCenter(object) {
+    const center = geometryCenter(object.geometry);
+    center.add(object.position);
+    center.z *= group?.scale?.z || 1;
+    return center;
+  }
+
+  function applyZDisplayState(model = getModel()) {
+    if (!model || !group) return null;
+    currentZDisplay = zDisplayState(model);
+    group.scale.z = currentZDisplay.scale;
+    for (const object of zDisplayObjects) applyZDisplayToObject(object, currentZDisplay);
+
+    host.dataset.zCollapseFollow = 'section';
+    host.dataset.zCollapseTopUm = String(currentZDisplay.top);
+    host.dataset.zCollapseBottomUm = String(currentZDisplay.bottom);
+    host.dataset.zCollapseGapUm = String(currentZDisplay.gap);
+    host.dataset.zDisplayScale = String(currentZDisplay.scale);
+
+    updateTransparentOrder();
+    updateRoughMaterialLod();
+    scheduleFrame();
+    return currentZDisplay;
+  }
+
+  function updateZCollapse() {
+    if (!ready || !group) return false;
+    return Boolean(applyZDisplayState());
   }
 
   function visibleBounds(model, clip) {
@@ -389,8 +525,7 @@ export function createThreeView({
     if (!camera || !renderer || !roughMeshes.length) return;
     const viewport = currentViewport();
     for (const entry of roughMeshes) {
-      const point = entry.center.clone();
-      point.z *= group?.scale?.z || 1;
+      const point = displayedObjectCenter(entry.mesh);
       const distance = Math.max(1e-9, camera.position.distanceTo(point)),
         pxPerUm = projectedPixelsPerUnit({
           distance,
@@ -522,6 +657,8 @@ export function createThreeView({
       }
     }
     group.clear();
+    zDisplayObjects = new Set();
+    currentZDisplay = null;
     for (const geometry of geometries) geometry.dispose();
     for (const texture of textures) texture.dispose();
     for (const material of materials) material.dispose();
@@ -675,10 +812,8 @@ export function createThreeView({
   function updateTransparentOrder() {
     if (!camera || !group || !transparentMeshes.length) return;
     camera.updateMatrixWorld();
-    const zScale = group.scale.z || 1;
     for (const entry of transparentMeshes) {
-      const point = entry.center.clone();
-      point.z *= zScale;
+      const point = displayedObjectCenter(entry.mesh);
       point.applyMatrix4(camera.matrixWorldInverse);
       entry.depth = point.z;
     }
@@ -716,6 +851,7 @@ export function createThreeView({
       center = geometryCenter(geometry);
     mesh.renderOrder = materialState.transparent ? 100 : 0;
     group.add(mesh);
+    trackZDisplayObject(mesh);
     if (materialState.transparent) {
       transparentMeshes.push({
         mesh,
@@ -783,6 +919,7 @@ export function createThreeView({
       edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     edges.renderOrder = order;
     group.add(edges);
+    trackZDisplayObject(edges);
     if (adaptiveRough) roughOwnedObjects.add(edges);
     return edges;
   }
@@ -1319,7 +1456,8 @@ export function createThreeView({
     rendering = true;
     try {
       disposeGroup();
-      group.scale.z = zDisplayScale(model);
+      currentZDisplay = zDisplayState(model);
+      group.scale.z = currentZDisplay.scale;
 
       const clip = getClipGeometry(),
         inspection = getInspection() || {},
@@ -1718,10 +1856,9 @@ export function createThreeView({
     const model = getModel();
     if (!model) return;
 
-    const [idealLo, idealHi] = modelBoundsZ(model),
-      [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      zScale = zDisplayScale(model),
-      zSpan = (hi - lo) * zScale,
+    const zState = applyZDisplayState(model) || zDisplayState(model),
+      zScale = zState.scale,
+      zSpan = zState.displaySpan * zScale,
       clipBounds = xyBounds(getClipGeometry()),
       modelBounds = {
         minX: -model.width / 2,
@@ -1753,7 +1890,11 @@ export function createThreeView({
     camera.near = Math.max(1e-6, radius / 200);
     camera.far = Math.max(camera.near * 1000, distance + radius * 20);
     camera.updateProjectionMatrix();
-    controls.target.set(centerX, centerY, ((lo + hi) / 2) * zScale);
+    controls.target.set(
+      centerX,
+      centerY,
+      ((zState.displayMin + zState.displayMax) / 2) * zScale,
+    );
     camera.position.copy(
       new THREE.Vector3(1.05, -1.15, 0.82)
         .normalize()
@@ -1856,6 +1997,7 @@ export function createThreeView({
     init,
     render,
     fit,
+    updateZCollapse,
     exportGlb,
     capturePng,
     get ready() {
