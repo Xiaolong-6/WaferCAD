@@ -300,8 +300,11 @@ function pyramidProfileOffsetAtPoint(x, y, appearance) {
     jitterFraction = Math.min(0.22, featureCv * 0.28);
   let normalOffset = 0;
 
-  for (let dy = -2; dy <= 2; dy++) {
-    for (let dx = -2; dx <= 2; dx++) {
+  // With widthFactor <= 1.8 and center jitter <= 0.22 pitch, a pyramid
+  // cannot reach across more than one neighboring mean cell. A 3×3 search is
+  // therefore complete and avoids multiplying every height sample by 25.
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
       const cxIndex = ix + dx,
         cyIndex = iy + dy,
         widthFactor = Math.max(
