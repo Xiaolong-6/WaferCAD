@@ -38,6 +38,7 @@ import { createLayerLegendController } from './controllers/layer-legend-controll
 import { createProjectController } from './controllers/project-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
 import { createSectionCollapseController } from './controllers/section-collapse-controller.js';
+import { createSectionDetailRoiController } from './controllers/section-detail-roi-controller.js';
 import { createBaseControlsController } from './controllers/base-controls-controller.js';
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
@@ -97,6 +98,7 @@ let projectName = 'Untitled',
   sectionScaleMode = 'auto',
   sectionShowBorders = false,
   sectionCollapse = null,
+  sectionDetailRoi = null,
   sectionEditEnabled = false,
   sectionEditor = null,
   history = [],
@@ -214,6 +216,16 @@ const sectionCollapseController = createSectionCollapseController({
   onChanged: markProjectDirty,
   formatXY,
   xyUnitLabel: () => xyUnit().label,
+});
+
+const sectionDetailRoiController = createSectionDetailRoiController({
+  root: document,
+  getRoi: () => sectionDetailRoi,
+  setRoi: (value) => {
+    sectionDetailRoi = value;
+  },
+  onChanged: markProjectDirty,
+  status,
 });
 
 function xyUnit() {
@@ -639,6 +651,7 @@ function renderMain() {
 
 function renderSection() {
   planRenderers?.renderSection();
+  sectionDetailRoiController?.sync();
 }
 
 let maskOpacity = 0.65,
@@ -721,6 +734,7 @@ const projectStateController = createProjectStateController({
     sectionScaleMode,
     sectionShowBorders,
     sectionCollapse,
+    sectionDetailRoi,
     planViews,
     xyDisplayUnit,
     activeStructurePalette,
@@ -751,6 +765,7 @@ const projectStateController = createProjectStateController({
     if (next.sectionScaleMode) sectionScaleMode = next.sectionScaleMode;
     sectionShowBorders = Boolean(next.sectionShowBorders);
     sectionCollapse = next.sectionCollapse || null;
+    sectionDetailRoi = next.sectionDetailRoi || null;
     if (next.xyDisplayUnit) xyDisplayUnit = next.xyDisplayUnit;
     if (next.activeStructurePalette) activeStructurePalette = next.activeStructurePalette;
     customStructurePalette = next.customStructurePalette;
@@ -767,6 +782,7 @@ const projectStateController = createProjectStateController({
     drawMaskController?.resetInteraction();
     maskRoiController?.clearDrawingMode();
     sectionCollapseController.close();
+    sectionDetailRoiController.cancelDrawing();
     markProjectDirty();
   },
   getSnapshotRecords: () => snapshotManager.exportRecords(),
@@ -783,6 +799,7 @@ const projectStateController = createProjectStateController({
     $('threeOpacityRange').value = String(threeOpacity);
     $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
     $('threeBorders').checked = threeShowBorders;
+    sectionDetailRoiController.sync();
   },
   setSectionEditEnabled,
 });
@@ -1200,6 +1217,7 @@ function bindUi() {
   processTaskController.bind();
   sectionControls.bind();
   sectionCollapseController.bind();
+  sectionDetailRoiController.bind();
   baseControls.bind();
   maskImportController.bind();
   maskRoiController.bind();
