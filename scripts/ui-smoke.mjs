@@ -1849,18 +1849,20 @@ assert.ok(extendSaved.display.sectionDetailRoi?.width > 0);
 assert.ok(extendSaved.display.sectionDetailRoi?.height > 0);
 const extendStackAt = (x) =>
   extendSaved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
-assert.deepEqual(
-  extendStackAt(0).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 4, z1: 6 },
-);
-assert.deepEqual(
-  extendStackAt(7000).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 6, z1: 8 },
-);
-assert.deepEqual(
-  extendStackAt(sideX).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 4, z1: 8, role: 'conformal-sidewall' },
-);
+const extendedCenter = extendStackAt(0).find((segment) => segment.layerId === coatId),
+  extendedOuter = extendStackAt(7000).find((segment) => segment.layerId === coatId),
+  extendedSidewall = extendStackAt(sideX).find((segment) => segment.layerId === coatId);
+assert.ok(extendedCenter);
+assert.equal(extendedCenter.z0, 4);
+assert.equal(extendedCenter.z1, 6);
+assert.equal(extendedCenter.frontSurface?.profileId, 'rough-conformal-export-probe');
+assert.ok(extendedOuter);
+assert.equal(extendedOuter.z0, 6);
+assert.equal(extendedOuter.z1, 8);
+assert.ok(extendedSidewall);
+assert.equal(extendedSidewall.z0, 4);
+assert.equal(extendedSidewall.z1, 8);
+assert.equal(extendedSidewall.role, 'conformal-sidewall');
 
 await closeFunctionPanel(page);
 
