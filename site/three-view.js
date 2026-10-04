@@ -49,6 +49,7 @@ export function createThreeView({
   getModel,
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
+  onViewChanged = () => {},
 } = {}) {
   if (!host) throw new TypeError('3D host is required.');
   if (!stats) throw new TypeError('3D stats host is required.');
@@ -83,6 +84,50 @@ export function createThreeView({
   let currentRoughMode = 'none';
   let sceneGeneration = 0;
   let pendingRender = false;
+  let pendingViewState = null;
+
+  function normalizeViewState(value) {
+    if (!value || typeof value !== 'object') return null;
+    const position = Array.isArray(value.position) ? value.position.map(Number) : null,
+      target = Array.isArray(value.target) ? value.target.map(Number) : null,
+      fov = Number(value.fov);
+    if (
+      position?.length !== 3 ||
+      target?.length !== 3 ||
+      !position.every(Number.isFinite) ||
+      !target.every(Number.isFinite) ||
+      !Number.isFinite(fov) ||
+      !(fov > 1 && fov < 179)
+    ) {
+      return null;
+    }
+    return { position, target, fov };
+  }
+
+  function getViewState() {
+    if (!ready || !camera || !controls) {
+      return pendingViewState ? structuredClone(pendingViewState) : null;
+    }
+    return {
+      position: [camera.position.x, camera.position.y, camera.position.z],
+      target: [controls.target.x, controls.target.y, controls.target.z],
+      fov: camera.fov,
+    };
+  }
+
+  function setViewState(value) {
+    const normalized = normalizeViewState(value);
+    pendingViewState = normalized;
+    if (!normalized || !ready || !camera || !controls) return Boolean(normalized);
+
+    camera.position.set(...normalized.position);
+    controls.target.set(...normalized.target);
+    camera.fov = normalized.fov;
+    camera.updateProjectionMatrix();
+    controls.update();
+    scheduleFrame();
+    return true;
+  }
 
   function showUnavailable({
     status = '3D unavailable',
@@ -1251,6 +1296,8 @@ export function createThreeView({
           controls.addEventListener('end', () => {
             interacting = false;
             scheduleDetailedRoughBuild();
+            pendingViewState = getViewState();
+            onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
             scheduleFrame();
           });
 
@@ -1270,7 +1317,7 @@ export function createThreeView({
           new ResizeObserver(resize).observe(host);
           ready = true;
           resize();
-          fit();
+          if (!setViewState(pendingViewState)) fit({ notify: false });
           render();
           scheduleFrame();
           return true;
@@ -1713,7 +1760,7 @@ export function createThreeView({
     scheduleFrame();
   }
 
-  function fit() {
+  function fit({ notify = true } = {}) {
     if (!ready || !camera || !controls || !axesHelper) return;
     const model = getModel();
     if (!model) return;
@@ -1762,6 +1809,8 @@ export function createThreeView({
     );
     controls.update();
     axesHelper.scale.setScalar(Math.max(0.6, size / 100));
+    pendingViewState = getViewState();
+    if (notify) onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
     scheduleFrame();
   }
 
@@ -1856,6 +1905,8 @@ export function createThreeView({
     init,
     render,
     fit,
+    getViewState,
+    setViewState,
     exportGlb,
     capturePng,
     get ready() {
