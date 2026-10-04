@@ -32,7 +32,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     figure: 'Blakers et al. · Fig. 1 reconstruction',
     kind: 'project',
     level: 'Solar-cell literature',
-    variants: ['Corrected source-order process', 'Alternative reconstruction branches'],
+    variants: ['Source-order reconstruction', 'GDS-patterned contacts'],
     path: './examples/perc-solar-cells-point-contacts.wafercad',
     filename: 'perc-solar-cells-point-contacts.wafercad',
     summary:
