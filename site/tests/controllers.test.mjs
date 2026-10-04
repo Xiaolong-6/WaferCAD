@@ -266,7 +266,7 @@ test('startup controller reports a staged open failure so persistence can restor
   assert.equal(await controller.initializeWorkspaceStart(), false);
 });
 
-test('startup controller opens the example without touching staged files', async () => {
+test('startup controller defaults example intent to the promoted literature project', async () => {
   const calls = [];
   const controller = createStartupController({
     takeStartupFile: async () => {
@@ -275,7 +275,8 @@ test('startup controller opens the example without touching staged files', async
     },
     openLayoutFile: async () => calls.push(['layout']),
     openProjectFile: async () => calls.push(['project']),
-    openVisualizationExample: () => calls.push(['example']),
+    openBundledExample: async (id) => calls.push(['bundled', id]),
+    openVisualizationExample: () => calls.push(['legacy-example']),
     status: (message) => calls.push(['status', message]),
     locationRef: { search: '?start=example' },
     historyRef: { replaceState: (...args) => calls.push(['history', ...args]) },
@@ -283,7 +284,10 @@ test('startup controller opens the example without touching staged files', async
 
   await controller.initializeWorkspaceStart();
 
-  assert.deepEqual(calls, [['history', null, '', './app.html'], ['example']]);
+  assert.deepEqual(calls, [
+    ['history', null, '', './app.html'],
+    ['bundled', 'photodetector-literature'],
+  ]);
 });
 
 test('plan view controller preserves coordinate round-trips and resets in place', () => {
