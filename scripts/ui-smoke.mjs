@@ -827,7 +827,9 @@ const exampleErrors = [];
 examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
 examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await examplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
-await examplePage.locator('#welcomeExampleBtn').click();
+await examplePage
+  .locator('.welcome-example-card[data-example-id="visualization"] .welcome-example-open')
+  .click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await examplePage.waitForFunction(
   () =>
