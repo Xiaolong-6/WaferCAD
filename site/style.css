@@ -3306,6 +3306,10 @@ summary:focus-visible {
   width: 100%;
 }
 
+.export-popover [hidden] {
+  display: none !important;
+}
+
 .export-action-row {
   display: flex;
   gap: 5px;
