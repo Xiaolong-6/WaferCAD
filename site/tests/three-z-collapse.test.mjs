@@ -37,7 +37,7 @@ test('collapsed Z display is monotonic through the compressed interval', () => {
   }
 });
 
-test('3D is wired to the same Section collapse state and keeps GLB canonical', async () => {
+test('3D follows Section collapse while GLB keeps canonical Z and exported morphology', async () => {
   const root = new URL('../', import.meta.url);
   const [app, threeView, collapseController] = await Promise.all([
     readFile(new URL('app.js', root), 'utf8'),
@@ -52,7 +52,10 @@ test('3D is wired to the same Section collapse state and keeps GLB canonical', a
   assert.match(threeView, /zCollapseFollow = 'section'/);
   assert.match(threeView, /displaySidewallParts/);
   assert.match(threeView, /displayBorderPositions/);
-  assert.match(threeView, /for \(const item of materialSolids\(model, clip\)\)/);
+  assert.match(threeView, /buildRenderSurfacePlan\(model, clip\)/);
+  assert.match(threeView, /prepareMorphologyExportTasks\(THREE, roughCaps\)/);
+  assert.match(threeView, /geometryFromRoughCap\(THREE,/);
+  assert.match(threeView, /exportGroup\.scale\.setScalar\(1e-6\)/);
 
   const model = {
     regions: [

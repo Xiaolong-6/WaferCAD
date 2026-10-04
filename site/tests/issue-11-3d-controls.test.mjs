@@ -17,6 +17,10 @@ const roughMeshGeometry = await readFile(
   new URL('../rough-mesh-geometry.js', import.meta.url),
   'utf8',
 );
+const morphologyMeshPolicy = await readFile(
+  new URL('../morphology-mesh-policy.js', import.meta.url),
+  'utf8',
+);
 
 test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(html, /id="threeOpacityRange"[^>]*value="1"/s);
@@ -38,10 +42,11 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(roughMeshGeometry, /function geometryFromRoughCap\(/);
   assert.match(threeView, /adaptiveRoughMeshLod\(/);
   assert.match(threeView, /function prepareRoughSpatialZones\(/);
-  assert.match(threeView, /task\.spatialZones = \[\.\.\.buckets\.values\(\)\]\.map/);
+  assert.match(threeView, /task\.spatialZones = buildRoughSpatialZones\(THREE, task\.cap\)/);
+  assert.match(morphologyMeshPolicy, /return \[\.\.\.buckets\.values\(\)\]\.map/);
   assert.match(threeView, /roughBaseTriangulationCount\+\+/);
-  assert.match(threeView, /subdivideRoughBaseTriangles\(base\.triangles, depth\)/);
-  assert.match(threeView, /roughBoundaryEdgesFromTriangles\(baseTriangles\)/);
+  assert.match(morphologyMeshPolicy, /subdivideRoughBaseTriangles\(base\.triangles, depth\)/);
+  assert.match(morphologyMeshPolicy, /roughBoundaryEdgesFromTriangles\(baseTriangles\)/);
   assert.doesNotMatch(threeView, /intersection\(cap\.polys/);
   assert.match(threeView, /function roughZonePriority\(/);
   assert.doesNotMatch(threeView, /function maybeRebuildAdaptiveGeometry\(/);

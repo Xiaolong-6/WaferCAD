@@ -34,6 +34,16 @@ const welcomeProject = projectForBenchmark({
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 
+async function gotoWelcome(targetPage) {
+  await targetPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await targetPage.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 10000 });
+  await targetPage.waitForFunction(
+    () => document.documentElement.dataset.welcomeReady === 'true',
+    null,
+    { timeout: 10000 },
+  );
+}
+
 async function processDiagnostics(page) {
   return Promise.race([
     page
@@ -192,7 +202,7 @@ const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('dialog', (dialog) => { errors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 
-await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(page);
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await page.locator('.app-shell').count(), 0);
 assert.match(
@@ -254,11 +264,16 @@ await page.locator('#threePanel').waitFor({ state: 'visible' });
 const navigationPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const navigationErrors = [];
 navigationPage.on('pageerror', (error) => navigationErrors.push(error.message));
-await navigationPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(navigationPage);
 await navigationPage.locator('#welcomeEmptyBtn').click();
 await navigationPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await navigationPage.waitForLoadState('networkidle');
-await navigationPage.goBack({ waitUntil: 'networkidle' });
+await navigationPage.goBack({ waitUntil: 'domcontentloaded' });
+await navigationPage.waitForFunction(
+  () => document.documentElement.dataset.welcomeReady === 'true',
+  null,
+  { timeout: 10000 },
+);
 assert.equal(await navigationPage.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await navigationPage.locator('.app-shell').count(), 0);
 assert.deepEqual(navigationErrors, []);
@@ -269,7 +284,7 @@ await navigationPage.close();
 const familyExamplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const familyExampleErrors = [];
 familyExamplePage.on('pageerror', (error) => familyExampleErrors.push(error.message));
-await familyExamplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(familyExamplePage);
 await familyExamplePage
   .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
   .click();
@@ -312,7 +327,7 @@ legacyWorkspace.model.units.z = 'relative';
 delete legacyWorkspace.roiAnchor;
 delete legacyWorkspace.display.threeOpacity;
 delete legacyWorkspace.display.threeShowBorders;
-await legacyPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(legacyPage);
 await legacyPage.evaluate(
   (project) =>
     new Promise((resolve, reject) => {
@@ -398,7 +413,7 @@ const historyRestoreContext = await browser.newContext({ viewport: { width: 1100
 const historyRestorePage = await historyRestoreContext.newPage();
 const historyRestoreErrors = [];
 historyRestorePage.on('pageerror', (error) => historyRestoreErrors.push(error.message));
-await historyRestorePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(historyRestorePage);
 await historyRestorePage.locator('#welcomeProjectInput').setInputFiles({
   name: 'history-restore-base.wafercad',
   mimeType: 'application/json',
@@ -677,7 +692,7 @@ const historyRecomputeContext = await browser.newContext({ viewport: { width: 11
 const historyRecomputePage = await historyRecomputeContext.newPage();
 const historyRecomputeErrors = [];
 historyRecomputePage.on('pageerror', (error) => historyRecomputeErrors.push(error.message));
-await historyRecomputePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(historyRecomputePage);
 await historyRecomputePage.locator('#welcomeProjectInput').setInputFiles({
   name: 'history-recompute-base.wafercad',
   mimeType: 'application/json',
@@ -792,7 +807,7 @@ await refreshPage.close();
 const layoutHandoffPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const layoutHandoffErrors = [];
 layoutHandoffPage.on('pageerror', (error) => layoutHandoffErrors.push(error.message));
-await layoutHandoffPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(layoutHandoffPage);
 await layoutHandoffPage.locator('#welcomeLayoutInput').setInputFiles({
   name: 'welcome-layout.oas',
   mimeType: 'application/octet-stream',
@@ -812,7 +827,7 @@ await layoutHandoffPage.close();
 const projectHandoffPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const projectHandoffErrors = [];
 projectHandoffPage.on('pageerror', (error) => projectHandoffErrors.push(error.message));
-await projectHandoffPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(projectHandoffPage);
 await projectHandoffPage.locator('#welcomeProjectInput').setInputFiles({
   name: 'welcome-project.wafercad',
   mimeType: 'application/json',
@@ -854,13 +869,13 @@ await welcomeCheckpointPage.waitForFunction(
   null,
   { timeout: 5000 },
 );
-await welcomeCheckpointPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(welcomeCheckpointPage);
 await welcomeCheckpointPage
-  .locator('.welcome-example-card[data-example-id="visualization"] .welcome-example-open')
+  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
   .click();
 await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await welcomeCheckpointPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '') === 'Opened Visualization example.',
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened photodetector-literature-examples.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -876,7 +891,7 @@ await welcomeCheckpointPage.waitForFunction(() => {
 });
 assert.ok(
   (await canvasInkFraction(welcomeCheckpointPage, '#sectionCanvas')) > 0.005,
-  'Visualization example Section A–B rendered blank',
+  'Photodetector example Section A–B rendered blank',
 );
 await welcomeCheckpointPage.waitForFunction(
   () =>
@@ -929,7 +944,7 @@ await failedWelcomePage.waitForFunction(
   null,
   { timeout: 5000 },
 );
-await failedWelcomePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(failedWelcomePage);
 await failedWelcomePage.locator('#welcomeProjectInput').setInputFiles({
   name: 'broken.wafercad',
   mimeType: 'application/json',
@@ -957,15 +972,15 @@ const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760
 const exampleErrors = [];
 examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
 examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
-await examplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(examplePage);
 await examplePage
-  .locator('.welcome-example-card[data-example-id="visualization"] .welcome-example-open')
+  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
   .click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await examplePage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
-    'Opened Visualization example.',
+    'Opened photodetector-literature-examples.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -973,10 +988,10 @@ assert.equal(
   await examplePage.locator('.workspace').evaluate((element) => element.inert),
   false,
 );
-assert.equal(await examplePage.locator('#xyUnitSelect').inputValue(), 'mm');
-assert.equal(Number(await examplePage.locator('#baseWidth').inputValue()), 100);
-assert.ok(await examplePage.locator('#maskLayerList .layer-row input:checked').count());
+assert.ok(['nm', 'um', 'mm'].includes(await examplePage.locator('#xyUnitSelect').inputValue()));
+assert.ok(Number(await examplePage.locator('#baseWidth').inputValue()) > 0);
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
+assert.ok(Number(await examplePage.locator('#baseThickness').inputValue()) > 0);
 const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
   exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
 assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
@@ -2301,7 +2316,7 @@ const projectDownloadContext = await browser.newContext({
 const projectDownloadPage = await projectDownloadContext.newPage();
 const projectDownloadErrors = [];
 projectDownloadPage.on('pageerror', (error) => projectDownloadErrors.push(error.message));
-await projectDownloadPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(projectDownloadPage);
 await projectDownloadPage.locator('#welcomeProjectInput').setInputFiles({
   name: 'snapshot-export-fixture.wafercad',
   mimeType: 'application/json',

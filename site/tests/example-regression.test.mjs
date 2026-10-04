@@ -10,7 +10,7 @@ const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
 
-const { createVisualizationExample } = await import('../welcome-example.js');
+const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
 const {
@@ -23,16 +23,20 @@ const {
   surfaceGroups,
 } = await import('../model-view-geometry.js');
 
-const literatureUrl = new URL(
-  '../examples/photodetector-literature-examples.wafercad',
-  import.meta.url,
-);
-
-async function loadLiteratureProject() {
-  const project = JSON.parse(await readFile(literatureUrl, 'utf8'));
+async function loadBundledProject(id) {
+  const example = BUNDLED_EXAMPLES.find((entry) => entry.id === id);
+  assert.ok(example?.path, `missing bundled project ${id}`);
+  const fileName = example.path.split('/').at(-1),
+    project = JSON.parse(
+      await readFile(new URL(`../examples/${fileName}`, import.meta.url), 'utf8'),
+    );
   expandProjectStorage(project);
   validateProjectFile(project);
   return project;
+}
+
+async function loadLiteratureProject() {
+  return loadBundledProject('photodetector-literature');
 }
 
 function branchMap(project) {
@@ -163,26 +167,27 @@ function assertRendererReadyState(state, label) {
 }
 
 test('bundled examples remain valid renderer-ready regression fixtures', async () => {
-  const visualization = migrateProjectFile(createVisualizationExample());
-  validateProjectFile(visualization);
-  assertRendererReadyState(visualization, 'Visualization');
+  for (const example of BUNDLED_EXAMPLES) {
+    const project = await loadBundledProject(example.id);
+    assertRendererReadyState(project, `${example.id} current state`);
+
+    for (const node of project.snapshotBranches?.nodes || []) {
+      assert.notEqual(node.restorable, false, `${node.id}: production Step must remain restorable`);
+      assert.ok(node.state?.model, `${node.id}: restorable Step lost its model`);
+      assertRendererReadyState(node.state, `${example.id} Step ${node.operation?.label || node.id}`);
+    }
+
+    for (const variant of project.snapshotBranches?.branches || []) {
+      assert.ok(variant.headState?.model, `${example.id}/${variant.id}: Variant HEAD model missing`);
+      assertRendererReadyState(variant.headState, `${example.id} Variant ${variant.id} HEAD`);
+    }
+  }
 
   const literature = await loadLiteratureProject();
   assert.equal(literature.version, 14);
   assert.equal(literature.snapshotBranches.nodes.length, 32);
   assert.equal(literature.snapshotBranches.branches.length, 7);
   assert.equal(literature.snapshots.length, 47);
-
-  for (const node of literature.snapshotBranches.nodes) {
-    assert.notEqual(node.restorable, false, `${node.id}: production Step must remain restorable`);
-    assert.ok(node.state?.model, `${node.id}: restorable Step lost its model`);
-    assertRendererReadyState(node.state, `Step ${node.operation?.label || node.id}`);
-  }
-
-  for (const branch of literature.snapshotBranches.branches) {
-    assert.ok(branch.headState?.model, `${branch.id}: Variant HEAD model missing`);
-    assertRendererReadyState(branch.headState, `Variant ${branch.id} HEAD`);
-  }
 });
 
 test('literature example keeps the intended Variant ancestry and HEADs', async () => {
@@ -309,4 +314,48 @@ test('Ge Fig. 15 A/B preserve Electrical semantics and host-material ownership',
 
   assert.equal(roughSurfaceCounts(modelA).back, 0);
   assert.equal(roughSurfaceCounts(modelB).back, 0);
+});
+
+
+test('PERC example keeps the corrected source-order process as its active reconstruction', async () => {
+  const project = await loadBundledProject('perc-point-contact-solar-cell'),
+    active = branchMap(project).get(project.snapshotBranches.activeBranchId);
+
+  assert.ok(active);
+  assert.match(active.name, /corrected source-order process/i);
+  assert.equal(project.model.processRevision, 18);
+  assert.equal(project.model.implants.length, 2);
+  assert.ok(project.model.layers.some((layer) => /Front passivation SiO2/i.test(layer.name)));
+  assert.ok(project.model.layers.some((layer) => /Rear passivation SiO2/i.test(layer.name)));
+  assert.ok(project.model.layers.some((layer) => /rear contact/i.test(layer.name)));
+});
+
+test('microdisk example contains a canonical suspended air gap and central Si support', async () => {
+  const project = await loadBundledProject('suspended-silica-microdisk'),
+    model = project.model,
+    oxideId = model.layers.find((layer) => /Thermal SiO/i.test(layer.name))?.id;
+
+  assert.equal(model.processRevision, 9);
+  assert.equal(project.snapshotBranches.nodes.length, 9);
+  assert.equal(project.snapshots.length, 9);
+  assert.ok(oxideId);
+
+  const oxideSegments = model.regions.flatMap((region) =>
+      region.stack.filter((segment) => segment.layerId === oxideId),
+    ),
+    suspended = model.regions.filter((region) => {
+      const oxide = region.stack.find((segment) => segment.layerId === oxideId),
+        silicon = region.stack.find((segment) => segment.layerId === 'base');
+      return oxide && silicon && oxide.z0 - silicon.z1 > 30;
+    }),
+    supported = model.regions.filter((region) => {
+      const oxide = region.stack.find((segment) => segment.layerId === oxideId),
+        silicon = region.stack.find((segment) => segment.layerId === 'base');
+      return oxide && silicon && Math.abs(oxide.z0 - silicon.z1) < 1e-9;
+    });
+
+  assert.ok(oxideSegments.length >= 2);
+  assert.ok(oxideSegments.every((segment) => Math.abs(segment.z1 - segment.z0 - 1.8) < 1e-9));
+  assert.ok(suspended.length > 0, 'released annulus must retain a real canonical air gap');
+  assert.ok(supported.length > 0, 'central silica support must remain in contact with Si');
 });

@@ -112,6 +112,11 @@ function createProjectPreview(example) {
   const stage = document.createElement('div');
   stage.className = 'welcome-example-project-stage';
 
+  const badge = document.createElement('span');
+  badge.className = 'welcome-example-project-badge';
+  badge.textContent = 'Project preview';
+  stage.append(badge);
+
   if (example.preview?.path) stage.append(createImagePreview(example, { fallback: true }));
 
   const loading = document.createElement('div');
@@ -172,27 +177,26 @@ function createSourceList(example) {
   host.className = 'welcome-example-sources';
 
   const label = document.createElement('strong');
-  label.textContent = example.sources.length > 1 ? 'Sources' : 'Source';
+  label.textContent = example.sources.length > 1 ? 'Sources:' : 'Source:';
   host.append(label);
 
-  const list = document.createElement('ol');
   for (const source of example.sources) {
-    const item = document.createElement('li');
+    const row = document.createElement('div');
+    row.className = 'welcome-example-source-row';
     const citation = document.createElement('span');
     citation.textContent = source.citation;
-    item.append(citation);
+    row.append(citation);
 
     if (source.href) {
       const link = document.createElement('a');
       link.href = source.href;
       link.target = '_blank';
       link.rel = 'noreferrer noopener';
-      link.textContent = source.doi ? `DOI ${source.doi}` : 'Source';
-      item.append(link);
+      link.textContent = source.doi || 'Source';
+      row.append(document.createTextNode(' · '), link);
     }
-    list.append(item);
+    host.append(row);
   }
-  host.append(list);
   return host;
 }
 
@@ -257,7 +261,7 @@ function renderExampleCards() {
     const action = document.createElement('button');
     action.type = 'button';
     action.className = 'welcome-example-open';
-    action.textContent = 'Open example';
+    action.textContent = 'Open example →';
     action.onclick = () => openExample(example.id);
 
     body.append(meta, title, summary);
@@ -292,6 +296,7 @@ $('welcomeLayoutInput').onchange = (event) => stageAndOpen(event.target.files?.[
 $('welcomeProjectInput').onchange = (event) => stageAndOpen(event.target.files?.[0], 'project');
 
 renderExampleCards();
+document.documentElement.dataset.welcomeReady = 'true';
 
 globalThis.addEventListener('message', (event) => {
   if (event.origin !== globalThis.location.origin) return;
@@ -302,6 +307,10 @@ globalThis.addEventListener('message', (event) => {
   if (event.data?.type === 'wafercad-preview-ready') {
     host?.classList.add('ready');
     host?.classList.remove('error');
+    frame.contentWindow?.postMessage(
+      { type: 'wafercad-preview-view', view: host?.dataset.view || 'main' },
+      globalThis.location.origin,
+    );
   } else if (event.data?.type === 'wafercad-preview-error') {
     host?.classList.add('error');
     host?.classList.remove('ready');

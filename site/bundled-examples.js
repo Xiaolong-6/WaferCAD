@@ -8,12 +8,6 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['Black-Si · FINAL / QA', 'Ge Fig. 15 · A / B'],
     path: './examples/photodetector-literature-examples.wafercad',
     filename: 'photodetector-literature-examples.wafercad',
-    preview: {
-      path: './example-previews/photodetector-literature.jpg',
-      alt: 'WaferCAD reconstruction of the boron-implanted black-silicon photodetector with Main, Mask, and Section views visible.',
-      label: 'Real WaferCAD reconstruction',
-      position: '50% 42%',
-    },
     summary:
       'Nanostructured Si and Ge photodiodes reconstructed as one branch-based project, covering rough surfaces, conformal passivation, implants, and induced electrical regions.',
     sources: [
@@ -33,23 +27,46 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     tags: ['Literature', 'Rough surfaces', 'ALD', 'Implant', 'Electrical', 'Variants'],
   },
   {
-    id: 'visualization',
-    title: 'Visualization mask',
-    figure: 'Layout demo',
-    kind: 'generated',
-    level: 'Beginner',
-    variants: [],
-    path: null,
-    filename: null,
-    preview: {
-      path: './example-previews/visualization-mask.jpg',
-      alt: 'WaferCAD layout example shown in the real Main, Mask, 3D, and Section workspace.',
-      label: 'Real WaferCAD workspace',
-      position: '50% 48%',
-    },
+    id: 'perc-point-contact-solar-cell',
+    title: 'PERC solar cells with point contacts',
+    figure: 'Blakers et al. · Fig. 1 reconstruction',
+    kind: 'project',
+    level: 'Solar-cell literature',
+    variants: ['Corrected source-order process', 'Alternative reconstruction branches'],
+    path: './examples/perc-solar-cells-point-contacts.wafercad',
+    filename: 'perc-solar-cells-point-contacts.wafercad',
     summary:
-      '50 mm synthetic hierarchy for learning GDS-style cells, layers, mask alignment, and the four synchronized views.',
-    tags: ['Beginner', 'Mask', 'Hierarchy', '50 mm'],
+      'Texturing, diffusion regions, front and rear passivation, local rear openings, and metallization reconstructed as a branch-based PERC process project.',
+    sources: [
+      {
+        citation:
+          'A. W. Blakers et al., “22.8% efficient silicon solar cell,” Applied Physics Letters 55, 1363–1365 (1989).',
+        doi: '10.1063/1.101596',
+        href: 'https://doi.org/10.1063/1.101596',
+      },
+    ],
+    tags: ['Literature', 'Solar cell', 'Point contacts', 'Front / Back', 'Variants'],
+  },
+  {
+    id: 'suspended-silica-microdisk',
+    title: 'Suspended silica microdisks',
+    figure: 'Basiri-Esfahani et al. · Fig. 2 reconstruction',
+    kind: 'project',
+    level: 'MEMS / photonics literature',
+    variants: [],
+    path: './examples/suspended-silica-microdisks.wafercad',
+    filename: 'suspended-silica-microdisks.wafercad',
+    summary:
+      'A spoked silica microdisk released from silicon with a real annular air gap and surviving central support pedestal.',
+    sources: [
+      {
+        citation:
+          'S. Basiri-Esfahani et al., “Precision ultrasound sensing on a chip,” Nature Communications 10, 132 (2019).',
+        doi: '10.1038/s41467-018-08038-4',
+        href: 'https://doi.org/10.1038/s41467-018-08038-4',
+      },
+    ],
+    tags: ['Literature', 'Release', 'Undercut', 'Suspended structure'],
   },
 ]);
 

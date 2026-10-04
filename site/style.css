@@ -1855,25 +1855,24 @@ a.welcome-action {
 .welcome-example-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .welcome-example-card {
   min-width: 0;
-  min-height: 394px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #cfd7df;
+  border: 1px solid #cfd8e0;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 8px 24px rgba(31, 41, 51, 0.04);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(43, 55, 66, 0.025);
 }
 
 .welcome-example-visual {
   position: relative;
   min-width: 0;
-  aspect-ratio: 16 / 9;
+  height: 238px;
   overflow: hidden;
   padding: 12px;
   border-bottom: 1px solid #e3e8ed;
@@ -1932,10 +1931,10 @@ a.welcome-action {
 .welcome-example-project-preview {
   width: 100%;
   height: 100%;
-  min-height: 196px;
+  min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 27px;
-  background: #111923;
+  grid-template-rows: minmax(0, 1fr) 32px;
+  background: #f3f6f8;
 }
 
 .welcome-example-project-stage {
@@ -1943,7 +1942,22 @@ a.welcome-action {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #f8fafb;
+  background: #eef2f5;
+}
+
+.welcome-example-project-badge {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 5;
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #506273;
+  font-size: 9px;
+  font-weight: 750;
+  pointer-events: none;
 }
 
 .welcome-example-project-frame,
@@ -2013,20 +2027,20 @@ a.welcome-action {
   z-index: 4;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid #303a44;
-  background: #1f272e;
+  border-top: 1px solid #dfe5ea;
+  background: #fff;
 }
 
 .welcome-example-view-tab {
   min-width: 0;
   border: 0;
-  border-right: 1px solid #303a44;
+  border-right: 1px solid #e8edf1;
   border-radius: 0;
-  background: transparent;
-  color: #95a2ad;
+  background: #fff;
+  color: #697680;
   padding: 0 4px;
-  font-size: 8.5px;
-  font-weight: 650;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .welcome-example-view-tab:last-child {
@@ -2035,83 +2049,69 @@ a.welcome-action {
 
 .welcome-example-view-tab:hover,
 .welcome-example-view-tab:focus-visible {
-  background: #28323a;
-  color: #e0e7ec;
+  background: #f6f8fa;
+  color: #4a6176;
   outline: none;
 }
 
 .welcome-example-view-tab.active {
-  background: #2c3740;
-  color: #f1f5f7;
-  box-shadow: inset 0 2px #8bb4d8;
+  background: #edf3f8;
+  color: #3d5874;
+  font-weight: 750;
+  box-shadow: inset 0 -2px #718da8;
 }
 
 .welcome-example-sources {
-  margin: 1px 0 8px;
-  padding: 7px 8px;
-  border: 1px solid #e0e5ea;
-  border-radius: 5px;
-  background: #f8fafb;
+  margin: 0 0 8px;
+  color: #53616d;
+  font-size: 9.6px;
+  line-height: 1.45;
 }
 
 .welcome-example-sources > strong {
-  display: block;
-  margin-bottom: 4px;
-  color: #566572;
-  font-size: 8.5px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  color: #3e4d59;
+  font-size: inherit;
 }
 
-.welcome-example-sources ol {
-  margin: 0;
-  padding-left: 17px;
+.welcome-example-source-row {
+  margin-top: 3px;
 }
 
-.welcome-example-sources li {
-  margin: 0 0 5px;
-  color: #66737f;
-  font-size: 8.5px;
-  line-height: 1.42;
-}
-
-.welcome-example-sources li:last-child {
-  margin-bottom: 0;
-}
-
-.welcome-example-sources li span {
-  display: block;
+.welcome-example-source-row span {
+  color: #53616d;
 }
 
 .welcome-example-sources a {
-  display: inline-block;
-  margin-top: 2px;
-  color: #476d8e;
-  font-size: 8.2px;
+  color: #446d91;
   font-weight: 650;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: #a8bfd2;
+  text-underline-offset: 2px;
 }
 
 .welcome-example-sources a:hover,
 .welcome-example-sources a:focus-visible {
-  text-decoration: underline;
+  text-decoration-color: #446d91;
 }
 
 .welcome-example-body {
   min-width: 0;
+  min-height: 238px;
   display: flex;
   flex-direction: column;
-  padding: 14px;
+  gap: 8px;
+  padding: 14px 15px 15px;
 }
 
 .welcome-example-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 9px;
-  margin-bottom: 9px;
-  color: #7a8792;
-  font-size: 8.8px;
+  gap: 12px;
+  margin: 0;
+  color: #697680;
+  font-size: 10px;
+  line-height: 1.35;
 }
 
 .welcome-example-meta span:first-child {
@@ -2126,44 +2126,50 @@ a.welcome-action {
 .welcome-example-body h3 {
   margin: 0;
   color: #27333e;
-  font-size: 14px;
-  letter-spacing: -0.15px;
+  font-size: 16px;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
 }
 
 .welcome-example-body > p {
-  margin: 7px 0 10px;
+  margin: 0;
   color: #687581;
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.52;
 }
 
 .welcome-example-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 5px;
   margin-top: auto;
-  padding-top: 6px;
+  padding-top: 2px;
 }
 
 .welcome-example-tags span {
-  padding: 2px 5px;
-  border: 1px solid #e0e5ea;
-  border-radius: 3px;
-  background: #fafbfc;
-  color: #6a7783;
-  font-size: 8.5px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: #edf3f8;
+  color: #4c6479;
+  font-size: 9.5px;
 }
 
 .welcome-example-open {
   align-self: flex-start;
-  min-height: 28px;
-  margin-top: 10px;
-  padding: 5px 9px;
-  border-color: #bdc8d2;
-  background: #f8fafb;
-  color: #40566c;
-  font-size: 10px;
-  font-weight: 700;
+  min-height: 33px;
+  margin-top: 2px;
+  padding: 7px 10px;
+  border-color: #bdc9d3;
+  background: #fff;
+  color: #3f5e78;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.welcome-example-open:hover {
+  border-color: #9eb0bf;
+  background: #f7fafc;
 }
 
 .welcome-family-preview {
