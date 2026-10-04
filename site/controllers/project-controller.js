@@ -1,7 +1,6 @@
 import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
-import { createVisualizationExample } from '../welcome-example.js';
 import { bundledExampleById } from '../bundled-examples.js';
 
 export function createProjectController({
@@ -832,29 +831,6 @@ export function createProjectController({
     }
   }
 
-  function openVisualizationExample() {
-    try {
-      status('Building example…');
-      const project = validateProjectFile(migrateProjectFile(createVisualizationExample()));
-      cancelHistoricalStepEdit();
-      if (!project.name) project.name = 'Visualization example';
-      loadProjectSnapshot(project);
-      snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
-      syncBaseControls();
-      syncTransformInputs();
-      renderAll();
-      renderSnapshots();
-      fit3d();
-      status('Opened Visualization example.');
-      return true;
-    } catch (error) {
-      console.error(error);
-      status(`Example failed: ${error.message}`);
-      return false;
-    }
-  }
-
-
   function projectExportFilename() {
     const stem = normalizedProjectName(getProjectName())
       .replace(/[<>:"|?*\u0000-\u001f]/g, '-')
@@ -952,6 +928,5 @@ export function createProjectController({
     openLayoutFile,
     openProjectFile,
     openBundledExample,
-    openVisualizationExample,
   };
 }
