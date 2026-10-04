@@ -114,6 +114,7 @@ export function createProjectStateController({
           ? {
               top: Number(project.display.sectionCollapse.top),
               bottom: Number(project.display.sectionCollapse.bottom),
+              enabled: project.display.sectionCollapse.enabled !== false,
             }
           : null;
 
