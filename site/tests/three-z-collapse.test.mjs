@@ -64,5 +64,19 @@ test('3D is wired to the same Section collapse state and keeps GLB canonical', a
   assert.deepEqual(resolveSectionCollapse({ top: 30, bottom: -20 }, model, [-50, 50]), {
     top: 30,
     bottom: -20,
+    enabled: true,
   });
+});
+
+test('disabled Z collapse becomes an identity full-Z display transform', () => {
+  const transform = createCollapsedZDisplayTransform({
+    zMin: -50,
+    zMax: 50,
+    collapse: { top: 30, bottom: -20, enabled: false },
+  });
+
+  assert.equal(transform.enabled, false);
+  assert.equal(transform.gap, 0);
+  assert.equal(transform.displaySpan, 100);
+  for (const z of [-50, -20, 0, 30, 50]) assert.equal(transform.mapZ(z), z);
 });
