@@ -975,7 +975,12 @@ await page.locator('#etchProfile').selectOption('isotropic');
 assert.equal(await page.locator('#etchSurfaceRow').isVisible(), false);
 assert.equal((await page.locator('#processThicknessLabel').textContent()).trim(), 'Radius');
 assert.match(await page.locator('#operationNote').textContent(), /Choose one exposed material/);
-await page.locator('#etchTargetLayer').selectOption('base');
+const isotropicTarget = await page
+  .locator('#etchTargetLayer option:not([value=""])')
+  .first()
+  .getAttribute('value');
+assert.ok(isotropicTarget, 'Isotropic release should list at least one exposed material');
+await page.locator('#etchTargetLayer').selectOption(isotropicTarget);
 assert.match(await page.locator('#operationNote').textContent(), /laterally under masks/);
 
 await page.locator('#etchProfile').selectOption('directional');
