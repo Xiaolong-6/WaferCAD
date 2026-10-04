@@ -296,9 +296,12 @@ for (const selector of [
 }
 
 const previewMainBefore = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
-const mainBox = await preview.locator('#mainCanvas').boundingBox();
-assert.ok(mainBox);
-await page.mouse.move(mainBox.x + mainBox.width * 0.5, mainBox.y + mainBox.height * 0.5);
+const previewMainBox = await preview.locator('#mainCanvas').boundingBox();
+assert.ok(previewMainBox);
+await page.mouse.move(
+  previewMainBox.x + previewMainBox.width * 0.5,
+  previewMainBox.y + previewMainBox.height * 0.5,
+);
 await page.mouse.wheel(0, -120);
 await preview.locator('#mainCanvas').evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
 const previewMainAfter = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
