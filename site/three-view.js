@@ -212,8 +212,12 @@ export function createThreeView({
       positions = object?.geometry?.getAttribute?.('position');
     if (!record || !positions?.count || !state) return;
 
-    const fullyUpper = record.minZ >= state.top,
+    const fullyHidden = record.minZ > state.bottom && record.maxZ < state.top,
+      fullyUpper = record.minZ >= state.top,
       fullyLower = record.maxZ <= state.bottom;
+
+    object.visible = !fullyHidden;
+    if (fullyHidden) return;
 
     if (fullyUpper || fullyLower) {
       if (record.mode === 'mapped') {
