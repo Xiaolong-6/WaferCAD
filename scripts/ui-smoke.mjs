@@ -76,6 +76,16 @@ async function openFunctionPanel(page, name, clickOptions = {}) {
   const isActive = await button.evaluate((element) => element.classList.contains('active'));
   if (!isOpen || !isActive) await button.click(clickOptions);
   await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
+  await page.waitForFunction(
+    () => {
+      const panel = document.getElementById('toolPanel');
+      if (!panel?.classList.contains('open')) return false;
+      const rect = panel.getBoundingClientRect();
+      return rect.left >= 40 && rect.right > rect.left;
+    },
+    null,
+    { timeout: clickOptions.timeout || 5000 },
+  );
   await page.evaluate((sectionName) => {
     const scroller = document.querySelector('#toolPanel .tool-tab-content');
     const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
