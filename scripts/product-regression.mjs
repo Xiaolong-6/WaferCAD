@@ -968,7 +968,7 @@ try {
       );
 
       await page.getByRole('button', { name: 'Overview' }).click();
-      await page.locator('#threeFitBtn').click();
+      await page.locator('#fit3dBtn').click();
       await capture(page, 'wide-isotropic-release-overview');
       await checkLayout(page);
 
