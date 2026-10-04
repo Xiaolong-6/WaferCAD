@@ -359,7 +359,10 @@ export function createPlanRenderers({
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
       collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
-      edgeSpan = Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005),
+      collapseEnabled = collapse.enabled !== false,
+      edgeSpan = collapseEnabled
+        ? Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005)
+        : hi - lo,
       pad = Math.max(1e-9, Math.min((hi - lo) * 0.08, edgeSpan * 0.12)),
       z0 = lo - pad,
       z1 = hi + pad,
@@ -371,7 +374,7 @@ export function createPlanRenderers({
       right = 10,
       top = 10,
       bottom = 22,
-      breakPixels = 8,
+      breakPixels = collapseEnabled ? 8 : 0,
       iw = Math.max(1, viewW - left - right),
       ih = Math.max(breakPixels + 1, viewH - top - bottom),
       autoXScale = iw / sectionSpan;
@@ -431,6 +434,7 @@ export function createPlanRenderers({
       c.dataset.sectionZ0Um = String(z0);
       c.dataset.sectionZ1Um = String(z1);
       c.dataset.sectionBottomPxPerUm = String(zTransform.bottomScale);
+      c.dataset.sectionCollapseEnabled = String(collapseEnabled);
       c.dataset.sectionCollapseTopUm = String(collapse.top);
       c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
     }
@@ -757,19 +761,21 @@ export function createPlanRenderers({
       }
     }
   
-    // Hide all geometry inside the collapsed Z interval. Detail rendering uses
-    // the exact same display-space crop, so the inset stays registered with the main view.
-    ctx.fillStyle = '#fbfcfd';
-    const collapseLeft = screenX(plotLeft),
-      collapseRight = screenX(plotLeft + plotWidth),
-      collapseTop = screenY(zTransform.upperBottom - 0.5),
-      collapseBottom = screenY(zTransform.lowerTop + 0.5);
-    ctx.fillRect(
-      Math.min(collapseLeft, collapseRight),
-      Math.min(collapseTop, collapseBottom),
-      Math.abs(collapseRight - collapseLeft),
-      Math.abs(collapseBottom - collapseTop),
-    );
+    // Hide all geometry inside the collapsed Z interval. With collapse disabled,
+    // Section is one continuous physical-Z view and nothing is masked.
+    if (collapseEnabled) {
+      ctx.fillStyle = '#fbfcfd';
+      const collapseLeft = screenX(plotLeft),
+        collapseRight = screenX(plotLeft + plotWidth),
+        collapseTop = screenY(zTransform.upperBottom - 0.5),
+        collapseBottom = screenY(zTransform.lowerTop + 0.5);
+      ctx.fillRect(
+        Math.min(collapseLeft, collapseRight),
+        Math.min(collapseTop, collapseBottom),
+        Math.abs(collapseRight - collapseLeft),
+        Math.abs(collapseBottom - collapseTop),
+      );
+    }
 
     if (detailRoi) {
       ctx.strokeStyle = 'rgba(137,149,161,.5)';
@@ -780,47 +786,53 @@ export function createPlanRenderers({
 
     ctx.strokeStyle = '#8995a1';
     ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(plotLeft, zTransform.frameTop);
-    ctx.lineTo(plotLeft + plotWidth, zTransform.frameTop);
-    ctx.lineTo(plotLeft + plotWidth, zTransform.upperBottom);
-    ctx.moveTo(plotLeft + plotWidth, zTransform.lowerTop);
-    ctx.lineTo(plotLeft + plotWidth, zTransform.frameBottom);
-    ctx.lineTo(plotLeft, zTransform.frameBottom);
-    ctx.lineTo(plotLeft, zTransform.lowerTop);
-    ctx.moveTo(plotLeft, zTransform.upperBottom);
-    ctx.lineTo(plotLeft, zTransform.frameTop);
-    ctx.stroke();
-
-    // Restrained break notches at the plot edges; the interactive entry point
-    // is the small DOM control over the left Z axis.
-    ctx.save();
-    ctx.globalAlpha = 0.72;
-    ctx.strokeStyle = '#788593';
-    ctx.lineWidth = 0.8;
-    for (const [x, direction] of [
-      [plotLeft, 1],
-      [plotLeft + plotWidth, -1],
-    ]) {
+    if (collapseEnabled) {
       ctx.beginPath();
-      ctx.moveTo(x, zTransform.upperBottom - 1);
-      ctx.lineTo(x + direction * 6, zTransform.upperBottom + 3);
-      ctx.lineTo(x + direction * 12, zTransform.upperBottom - 1);
-      ctx.moveTo(x, zTransform.lowerTop + 1);
-      ctx.lineTo(x + direction * 6, zTransform.lowerTop - 3);
-      ctx.lineTo(x + direction * 12, zTransform.lowerTop + 1);
+      ctx.moveTo(plotLeft, zTransform.frameTop);
+      ctx.lineTo(plotLeft + plotWidth, zTransform.frameTop);
+      ctx.lineTo(plotLeft + plotWidth, zTransform.upperBottom);
+      ctx.moveTo(plotLeft + plotWidth, zTransform.lowerTop);
+      ctx.lineTo(plotLeft + plotWidth, zTransform.frameBottom);
+      ctx.lineTo(plotLeft, zTransform.frameBottom);
+      ctx.lineTo(plotLeft, zTransform.lowerTop);
+      ctx.moveTo(plotLeft, zTransform.upperBottom);
+      ctx.lineTo(plotLeft, zTransform.frameTop);
       ctx.stroke();
+
+      // Restrained break notches at the plot edges; the interactive entry point
+      // is the small DOM control over the left Z axis.
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      ctx.strokeStyle = '#788593';
+      ctx.lineWidth = 0.8;
+      for (const [x, direction] of [
+        [plotLeft, 1],
+        [plotLeft + plotWidth, -1],
+      ]) {
+        ctx.beginPath();
+        ctx.moveTo(x, zTransform.upperBottom - 1);
+        ctx.lineTo(x + direction * 6, zTransform.upperBottom + 3);
+        ctx.lineTo(x + direction * 12, zTransform.upperBottom - 1);
+        ctx.moveTo(x, zTransform.lowerTop + 1);
+        ctx.lineTo(x + direction * 6, zTransform.lowerTop - 3);
+        ctx.lineTo(x + direction * 12, zTransform.lowerTop + 1);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else {
+      ctx.strokeRect(plotLeft, zTransform.frameTop, plotWidth, zTransform.frameHeight);
     }
-    ctx.restore();
 
     ctx.fillStyle = '#707b86';
     ctx.font = '8px system-ui';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    const tickValues = [
-        ...niceSectionTicks(collapse.top, z1, 4),
-        ...niceSectionTicks(z0, collapse.bottom, 2),
-      ],
+    const tickValues = collapseEnabled
+        ? [
+            ...niceSectionTicks(collapse.top, z1, 4),
+            ...niceSectionTicks(z0, collapse.bottom, 2),
+          ]
+        : niceSectionTicks(z0, z1, 6),
       usedTickY = [];
     for (const value of tickValues) {
       const y = mapZ(value);
