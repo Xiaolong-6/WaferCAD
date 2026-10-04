@@ -14,13 +14,15 @@ export function createSectionCollapseController({
   setSectionCollapse,
   renderSection,
   onChanged = () => {},
+  onSettled = () => {},
   formatXY,
   xyUnitLabel,
 }) {
   const $ = (id) => root.getElementById(id);
   let editorOpen = false,
     activeTarget = 'top',
-    drag = null;
+    drag = null,
+    entryClickTimer = null;
 
   function bounds() {
     const canvas = $('sectionCanvas'),
@@ -36,10 +38,21 @@ export function createSectionCollapseController({
     return resolveSectionCollapse(getSectionCollapse(), getModel(), bounds());
   }
 
-  function setCurrent(value) {
-    setSectionCollapse(normalizeSectionCollapse(value, bounds()));
+  function setCurrent(value, { settled = false } = {}) {
+    setSectionCollapse({
+      ...normalizeSectionCollapse(value, bounds()),
+      enabled: value?.enabled !== false,
+    });
     onChanged();
     renderSection();
+    if (settled) onSettled();
+  }
+
+  function toggleEnabled() {
+    const value = current();
+    value.enabled = value.enabled === false;
+    if (value.enabled === false) close();
+    setCurrent(value, { settled: true });
   }
 
   function zToRulerY(z) {
@@ -127,9 +140,17 @@ export function createSectionCollapseController({
       breakY = Number(canvas.dataset.sectionCollapseBreakY);
     if (Number.isFinite(left)) entry.style.left = `${left}px`;
     if (Number.isFinite(breakY)) entry.style.top = `${breakY}px`;
+    const enabled = current().enabled !== false;
     entry.classList.toggle('active', editorOpen);
+    entry.classList.toggle('collapse-disabled', !enabled);
     entry.setAttribute('aria-expanded', String(editorOpen));
-    entry.title = editorOpen ? 'Close Z collapse editor' : 'Adjust Z collapse';
+    entry.setAttribute('aria-pressed', String(enabled));
+    entry.dataset.collapseEnabled = String(enabled);
+    entry.title = enabled
+      ? editorOpen
+        ? 'Close Z collapse editor · double-click to disable collapse'
+        : 'Adjust Z collapse · double-click to show full Z'
+      : 'Z collapse off · double-click to restore';
 
     const popover = $('sectionCollapseEditor');
     if (editorOpen && globalThis.innerWidth > 600) {
@@ -146,6 +167,7 @@ export function createSectionCollapseController({
   }
 
   function open() {
+    if (current().enabled === false) return;
     editorOpen = true;
     activeTarget = 'top';
     $('sectionCollapseTarget').value = activeTarget;
@@ -179,10 +201,10 @@ export function createSectionCollapseController({
     } else if (activeTarget === 'bottom') {
       value.bottom = Math.min(value.top - minGap, Math.max(lo, value.bottom + step));
     } else {
-      setCurrent(translateSectionCollapse(value, step, [lo, hi]));
+      setCurrent(translateSectionCollapse(value, step, [lo, hi]), { settled: true });
       return;
     }
-    setCurrent(value);
+    setCurrent(value, { settled: true });
   }
 
   function startDrag(which, event) {
@@ -224,12 +246,25 @@ export function createSectionCollapseController({
     $('sectionCollapseTopHandle').classList.remove('dragging');
     $('sectionCollapseBottomHandle').classList.remove('dragging');
     drag = null;
+    onSettled();
   }
 
   function bind() {
     $('sectionCollapseAxisBtn').addEventListener('click', (event) => {
       event.stopPropagation();
-      toggle();
+      if (current().enabled === false) return;
+      clearTimeout(entryClickTimer);
+      entryClickTimer = setTimeout(() => {
+        entryClickTimer = null;
+        toggle();
+      }, 180);
+    });
+    $('sectionCollapseAxisBtn').addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearTimeout(entryClickTimer);
+      entryClickTimer = null;
+      toggleEnabled();
     });
     $('sectionCollapseClose').addEventListener('click', close);
     $('sectionCollapseTarget').addEventListener('change', (event) => {

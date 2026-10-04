@@ -13,9 +13,16 @@ export function getAdjacentToolName(current, direction, order = WORKSTATION_TOOL
 }
 
 const WORKSTATION_VIEW_MODE_STORAGE_KEY = 'wafercad.workstation-view-mode.v1';
+const WORKSTATION_SPLIT_VIEWS_STORAGE_KEY = 'wafercad.workstation-split-views.v1';
 const SINGLE_VIEW_MODES = new Set(['main', 'mask', 'three']);
 const DESKTOP_VIEW_MODES = new Set(['main', 'mask', 'three', 'overview', 'split']);
 const WIDE_OVERVIEW_MIN_WIDTH = 1121;
+const DEFAULT_SPLIT_VIEWS = Object.freeze(['main', 'three']);
+const VIEW_LABELS = Object.freeze({
+  main: 'Main',
+  mask: 'Mask',
+  three: '3D',
+});
 
 export function preferredWorkstationViewMode(width, rememberedMode = '') {
   const numericWidth = Number(width),
@@ -37,6 +44,49 @@ function rememberWorkstationViewMode(winLike, mode) {
   if (!DESKTOP_VIEW_MODES.has(mode)) return;
   try {
     winLike?.sessionStorage?.setItem(WORKSTATION_VIEW_MODE_STORAGE_KEY, mode);
+  } catch {}
+}
+
+export function normalizeSplitViews(value) {
+  const source = Array.isArray(value) ? value : [],
+    left = SINGLE_VIEW_MODES.has(source[0]) ? source[0] : DEFAULT_SPLIT_VIEWS[0],
+    requestedRight = SINGLE_VIEW_MODES.has(source[1]) ? source[1] : DEFAULT_SPLIT_VIEWS[1],
+    right =
+      requestedRight !== left
+        ? requestedRight
+        : [...SINGLE_VIEW_MODES].find((name) => name !== left) || DEFAULT_SPLIT_VIEWS[1];
+  return [left, right];
+}
+
+export function replaceSplitSlotView(splitViews, slot, name) {
+  const current = normalizeSplitViews(splitViews);
+  if (!SINGLE_VIEW_MODES.has(name)) return current;
+  const index = slot === 'right' || slot === 1 ? 1 : 0,
+    otherIndex = index === 0 ? 1 : 0;
+  if (current[index] === name) return current;
+  if (current[otherIndex] === name) {
+    return index === 0 ? [name, current[0]] : [current[1], name];
+  }
+  const next = [...current];
+  next[index] = name;
+  return next;
+}
+
+function storedSplitViews(winLike) {
+  try {
+    const raw = winLike?.sessionStorage?.getItem(WORKSTATION_SPLIT_VIEWS_STORAGE_KEY);
+    return normalizeSplitViews(raw ? JSON.parse(raw) : null);
+  } catch {
+    return [...DEFAULT_SPLIT_VIEWS];
+  }
+}
+
+function rememberSplitViews(winLike, splitViews) {
+  try {
+    winLike?.sessionStorage?.setItem(
+      WORKSTATION_SPLIT_VIEWS_STORAGE_KEY,
+      JSON.stringify(normalizeSplitViews(splitViews)),
+    );
   } catch {}
 }
 
@@ -63,7 +113,6 @@ const VIEW_META = {
   mask: 'Mask layout',
   three: '3D structure',
   overview: 'Main + Mask + 3D',
-  split: 'Main + 3D',
 };
 
 function makeButton(root, className, text, attrs = {}) {
@@ -86,7 +135,8 @@ function makeButton(root, className, text, attrs = {}) {
 }
 
 export function createWorkstationUiController({ root = document, win = window } = {}) {
-  const rememberedViewMode = storedWorkstationViewMode(win);
+  const rememberedViewMode = storedWorkstationViewMode(win),
+    rememberedSplitViews = storedSplitViews(win);
   const state = {
     initialized: false,
     bound: false,
@@ -94,6 +144,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     currentSingleView: SINGLE_VIEW_MODES.has(rememberedViewMode) ? rememberedViewMode : 'main',
     desktopViewMode: preferredWorkstationViewMode(win.innerWidth, rememberedViewMode),
     viewMode: 'single',
+    splitViews: rememberedSplitViews,
     wasMobile: isCompactWorkstationViewport(win),
     programmaticToolScroll: false,
     toolScrollRelease: 0,
@@ -111,7 +162,37 @@ export function createWorkstationUiController({ root = document, win = window } 
 
   function updateViewMeta(mode = state.viewMode) {
     if (!refs.viewMeta) return;
-    refs.viewMeta.textContent = VIEW_META[mode] || VIEW_META[state.currentSingleView] || '';
+    refs.viewMeta.textContent =
+      mode === 'split'
+        ? state.splitViews.map((name) => VIEW_LABELS[name]).join(' + ')
+        : VIEW_META[mode] || VIEW_META[state.currentSingleView] || '';
+  }
+
+  function closeSplitViewSelectors(except = null) {
+    for (const details of refs.splitSelectors?.values?.() || []) {
+      if (details !== except) details.open = false;
+    }
+  }
+
+  function syncSplitViewSelectors() {
+    for (const [name, details] of refs.splitSelectors || []) {
+      const panel = refs.viewPanels?.get(name),
+        slot = panel?.dataset.splitSlot || '';
+      details.dataset.splitSlot = slot;
+      details.classList.toggle('active', state.viewMode === 'split' && Boolean(slot));
+      details.querySelector('summary')?.setAttribute(
+        'aria-label',
+        slot ? `Choose ${slot} Split view; currently ${VIEW_LABELS[name]}` : VIEW_LABELS[name],
+      );
+      if (state.viewMode !== 'split' || !slot) details.open = false;
+    }
+  }
+
+  function setSplitSlotView(slot, name) {
+    const next = replaceSplitSlotView(state.splitViews, slot, name);
+    state.splitViews = next;
+    rememberSplitViews(win, next);
+    applyViewMode('split', { remember: true });
   }
 
   function updateRailAnchor(name) {
@@ -230,28 +311,45 @@ export function createWorkstationUiController({ root = document, win = window } 
         win,
         state.viewMode === 'single' ? state.currentSingleView : state.viewMode,
       );
+      if (state.viewMode === 'split') rememberSplitViews(win, state.splitViews);
     }
 
-    const visible =
-      state.viewMode === 'overview'
-        ? new Set(['main', 'mask', 'three'])
-        : state.viewMode === 'split'
-          ? new Set(['main', 'three'])
-          : new Set([state.currentSingleView]);
+    const splitVisible = new Set(state.splitViews),
+      visible =
+        state.viewMode === 'overview'
+          ? new Set(['main', 'mask', 'three'])
+          : state.viewMode === 'split'
+            ? splitVisible
+            : new Set([state.currentSingleView]);
 
     refs.viewStage.dataset.viewMode = state.viewMode;
+    refs.viewStage.dataset.splitLeft = state.splitViews[0];
+    refs.viewStage.dataset.splitRight = state.splitViews[1];
+
     for (const [name, panel] of refs.viewPanels) {
       panel.hidden = !visible.has(name);
+      panel.style.gridColumn = '';
+      delete panel.dataset.splitSlot;
+      if (state.viewMode === 'split') {
+        const splitIndex = state.splitViews.indexOf(name);
+        if (splitIndex >= 0) {
+          panel.style.gridColumn = String(splitIndex + 1);
+          panel.dataset.splitSlot = splitIndex === 0 ? 'left' : 'right';
+        }
+      }
     }
 
     for (const [name, button] of refs.viewTabs) {
       const active = state.viewMode === 'single' && name === state.currentSingleView;
       button.classList.toggle('active', active);
-      button.setAttribute('aria-selected', String(active));
+      button.setAttribute('aria-pressed', String(active));
     }
 
     refs.overviewButton?.classList.toggle('active', state.viewMode === 'overview');
+    refs.overviewButton?.setAttribute('aria-pressed', String(state.viewMode === 'overview'));
     refs.splitButton?.classList.toggle('active', state.viewMode === 'split');
+    refs.splitButton?.setAttribute('aria-pressed', String(state.viewMode === 'split'));
+    syncSplitViewSelectors();
     updateViewMeta(state.viewMode === 'single' ? state.currentSingleView : state.viewMode);
 
     if (refresh) scheduleViewportRefresh();
@@ -299,23 +397,32 @@ export function createWorkstationUiController({ root = document, win = window } 
 
     const tabs = root.createElement('div');
     tabs.className = 'workstation-view-tabs';
-    tabs.setAttribute('role', 'tablist');
-    tabs.setAttribute('aria-label', 'Primary views');
+    tabs.setAttribute('role', 'toolbar');
+    tabs.setAttribute('aria-label', 'Primary views and layouts');
+
+    const overview = makeButton(root, 'workstation-view-tab workstation-layout-tab', 'Overview', {
+      title: 'Show Main, Mask and 3D together',
+      ariaLabel: 'Overview',
+    });
+    overview.setAttribute('aria-pressed', 'false');
+    tabs.append(overview);
 
     const viewTabs = new Map();
-    for (const [name, label] of [
-      ['main', 'Main'],
-      ['mask', 'Mask'],
-      ['three', '3D'],
-    ]) {
+    for (const [name, label] of Object.entries(VIEW_LABELS)) {
       const button = makeButton(root, 'workstation-view-tab', label, {
         dataset: { view: name },
       });
-      button.setAttribute('role', 'tab');
-      button.setAttribute('aria-selected', 'false');
+      button.setAttribute('aria-pressed', 'false');
       tabs.append(button);
       viewTabs.set(name, button);
     }
+
+    const split = makeButton(root, 'workstation-view-tab workstation-layout-tab', 'Split', {
+      title: 'Compare any two of Main, Mask and 3D',
+      ariaLabel: 'Split',
+    });
+    split.setAttribute('aria-pressed', 'false');
+    tabs.append(split);
 
     const divider = root.createElement('span');
     divider.className = 'workstation-view-divider';
@@ -328,6 +435,8 @@ export function createWorkstationUiController({ root = document, win = window } 
 
     refs.viewbar = viewbar;
     refs.viewTabs = viewTabs;
+    refs.overviewButton = overview;
+    refs.splitButton = split;
     refs.viewMeta = meta;
   }
 
@@ -341,22 +450,8 @@ export function createWorkstationUiController({ root = document, win = window } 
     const spacer = root.createElement('div');
     spacer.className = 'workstation-top-spacer';
 
-    const actions = root.createElement('div');
-    actions.className = 'workstation-layout-actions';
-
-    const overview = makeButton(root, 'workstation-chrome-btn', 'Overview', {
-      title: 'Show Main, Mask and 3D together',
-    });
-    const split = makeButton(root, 'workstation-chrome-btn', 'Split', {
-      title: 'Compare Main and 3D',
-    });
-
-    actions.append(overview, split);
-    topbar.append(meta, spacer, actions);
-
+    topbar.append(meta, spacer);
     refs.topMeta = meta;
-    refs.overviewButton = overview;
-    refs.splitButton = split;
     updateProjectMeta();
   }
 
@@ -375,6 +470,57 @@ export function createWorkstationUiController({ root = document, win = window } 
       ['mask', refs.maskPanel],
       ['three', refs.threePanel],
     ]);
+  }
+
+  function setupSplitViewSelectors() {
+    refs.splitSelectors = new Map();
+
+    for (const [name, panel] of refs.viewPanels) {
+      const titleHost = panel.querySelector('.view-head > div:first-child'),
+        strong = titleHost?.querySelector(':scope > strong');
+      if (!titleHost || !strong) continue;
+
+      const details = root.createElement('details'),
+        summary = root.createElement('summary'),
+        menu = root.createElement('div');
+      details.className = 'workstation-split-view-selector';
+      summary.textContent = VIEW_LABELS[name];
+      summary.title = 'Choose this Split pane view';
+      menu.className = 'workstation-split-view-menu';
+
+      for (const [viewName, label] of Object.entries(VIEW_LABELS)) {
+        const option = makeButton(root, 'workstation-split-view-option', label, {
+          dataset: { view: viewName },
+        });
+        option.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const slot = details.dataset.splitSlot;
+          details.open = false;
+          if (slot) setSplitSlotView(slot, viewName);
+        });
+        menu.append(option);
+      }
+
+      details.addEventListener('toggle', () => {
+        if (!details.open) return;
+        if (state.viewMode !== 'split' || !details.dataset.splitSlot) {
+          details.open = false;
+          return;
+        }
+        closeSplitViewSelectors(details);
+      });
+
+      summary.addEventListener('click', (event) => {
+        if (state.viewMode !== 'split' || !details.dataset.splitSlot) {
+          event.preventDefault();
+        }
+      });
+
+      details.append(summary, menu);
+      strong.replaceWith(details);
+      refs.splitSelectors.set(name, details);
+    }
   }
 
   function setupToolFlyout() {
@@ -490,6 +636,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     createViewbar();
     createTopbarControls();
     createViewStage();
+    setupSplitViewSelectors();
     setupToolFlyout();
     setupSectionDock();
 
@@ -611,10 +758,16 @@ export function createWorkstationUiController({ root = document, win = window } 
       }
     });
 
-    root.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && refs.toolPanel.classList.contains('open')) {
-        closeTools();
+    root.addEventListener('pointerdown', (event) => {
+      if (!event.target.closest?.('.workstation-split-view-selector')) {
+        closeSplitViewSelectors();
       }
+    });
+
+    root.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      closeSplitViewSelectors();
+      if (refs.toolPanel.classList.contains('open')) closeTools();
     });
 
     // Reparenting the view panels changes their available canvas geometry.

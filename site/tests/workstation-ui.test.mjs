@@ -5,7 +5,9 @@ import {
   WORKSTATION_TOOL_ORDER,
   getAdjacentToolName,
   isCompactWorkstationViewport,
+  normalizeSplitViews,
   preferredWorkstationViewMode,
+  replaceSplitSlotView,
 } from '../workstation-ui.js';
 
 test('workstation tool navigation moves one section and clamps at ends', () => {
@@ -61,4 +63,19 @@ test('compact detection survives a desktop-sized CSS viewport on a phone', () =>
   assert.equal(isCompactWorkstationViewport(mobileDesktopSite), true);
   assert.equal(isCompactWorkstationViewport(desktopTouchscreen), false);
   assert.equal(isCompactWorkstationViewport(narrowMouse), true);
+});
+
+
+test('Split view keeps two distinct panes and allows arbitrary left/right replacement', () => {
+  assert.deepEqual(normalizeSplitViews(), ['main', 'three']);
+  assert.deepEqual(normalizeSplitViews(['mask', 'main']), ['mask', 'main']);
+  assert.deepEqual(normalizeSplitViews(['main', 'main']), ['main', 'mask']);
+
+  assert.deepEqual(replaceSplitSlotView(['main', 'three'], 'left', 'mask'), ['mask', 'three']);
+  assert.deepEqual(replaceSplitSlotView(['main', 'three'], 'right', 'mask'), ['main', 'mask']);
+
+  // Choosing the view already used by the other side swaps the panes instead
+  // of creating an impossible duplicate DOM view.
+  assert.deepEqual(replaceSplitSlotView(['main', 'three'], 'left', 'three'), ['three', 'main']);
+  assert.deepEqual(replaceSplitSlotView(['main', 'three'], 'right', 'main'), ['three', 'main']);
 });

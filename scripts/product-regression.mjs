@@ -253,7 +253,19 @@ async function checkWorkstationShellLayout(page, name) {
   }
 
   assert.equal(compact, false, `${name}: desktop viewport should not be compact`);
-  await page.getByRole('button', { name: 'Split' }).click();
+
+  const viewbarOrder = await page
+    .locator('.workstation-view-tabs > button')
+    .allTextContents();
+  assert.deepEqual(
+    viewbarOrder.map((text) => text.trim()),
+    ['Overview', 'Main', 'Mask', '3D', 'Split'],
+    `${name}: viewbar layout buttons are not in the requested order`,
+  );
+
+  const splitButton = page.getByRole('button', { name: 'Split' });
+  await splitButton.click();
+  assert.equal(await splitButton.getAttribute('aria-pressed'), 'true');
   await page.evaluate(
     () =>
       new Promise((resolveFrame) =>
@@ -282,7 +294,39 @@ async function checkWorkstationShellLayout(page, name) {
       Math.abs(split.three.right - split.stage.right) <= 2,
     `${name}: Split does not fill the primary stage`,
   );
-  await page.getByRole('button', { name: 'Overview' }).click();
+
+  // Each visible Split pane title is a selector. Replace the left Main pane
+  // with Mask, then restore the default Main + 3D pair.
+  const leftMainSelector = page.locator(
+    '#mainPanel .workstation-split-view-selector[data-split-slot="left"]',
+  );
+  await leftMainSelector.locator('summary').click();
+  await leftMainSelector.locator('[data-view="mask"]').click();
+  assert.equal(await page.locator('#mainPanel').isHidden(), true);
+  assert.equal(await page.locator('#maskPanel').isVisible(), true);
+  assert.equal(await page.locator('#threePanel').isVisible(), true);
+  const maskThreeOrder = await page.evaluate(() => ({
+    mask: document.getElementById('maskPanel').getBoundingClientRect().left,
+    three: document.getElementById('threePanel').getBoundingClientRect().left,
+    left: document.querySelector('.workstation-view-stage')?.dataset.splitLeft,
+    right: document.querySelector('.workstation-view-stage')?.dataset.splitRight,
+  }));
+  assert.equal(maskThreeOrder.left, 'mask');
+  assert.equal(maskThreeOrder.right, 'three');
+  assert.ok(maskThreeOrder.mask < maskThreeOrder.three, `${name}: Split left/right order was lost`);
+
+  const leftMaskSelector = page.locator(
+    '#maskPanel .workstation-split-view-selector[data-split-slot="left"]',
+  );
+  await leftMaskSelector.locator('summary').click();
+  await leftMaskSelector.locator('[data-view="main"]').click();
+  assert.equal(await page.locator('#mainPanel').isVisible(), true);
+  assert.equal(await page.locator('#maskPanel').isHidden(), true);
+  assert.equal(await page.locator('#threePanel').isVisible(), true);
+
+  const overviewButton = page.getByRole('button', { name: 'Overview' });
+  await overviewButton.click();
+  assert.equal(await overviewButton.getAttribute('aria-pressed'), 'true');
   await page.waitForFunction(() => {
     const canvas = document.getElementById('mainCanvas');
     if (!canvas?.checkVisibility()) return false;
@@ -412,6 +456,7 @@ async function checkSectionCollapse(page, name) {
   assert.ok(Number.isFinite(before.breakY));
 
   await entry.click();
+  await editor.waitFor({ state: 'visible', timeout: 1000 });
   assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
   await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
   await capture(page, `${name}-section-z-collapse-edit`);
@@ -440,6 +485,7 @@ async function checkSectionCollapse(page, name) {
   close(closedTop, nudgedTop, 1e-9);
 
   await entry.click();
+  await editor.waitFor({ state: 'visible', timeout: 1000 });
   assert.equal(await editor.isVisible(), true);
   close(
     Number(
@@ -455,6 +501,30 @@ async function checkSectionCollapse(page, name) {
 
   const afterBreakY = Number(await canvas.getAttribute('data-section-collapse-break-y'));
   close(afterBreakY, before.breakY, 1e-9);
+
+  await entry.dblclick();
+  assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'false');
+  assert.equal(await entry.getAttribute('aria-pressed'), 'false');
+  assert.equal(await editor.isHidden(), true);
+  assert.equal(
+    await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'),
+    'false',
+  );
+  await capture(page, `${name}-section-z-full`);
+
+  // Single click stays inert while collapse is off; double-click restores the
+  // saved break bounds without losing the user's previous adjustment.
+  await entry.click();
+  assert.equal(await editor.isHidden(), true);
+  await entry.dblclick();
+  assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'true');
+  assert.equal(await entry.getAttribute('aria-pressed'), 'true');
+  assert.equal(
+    await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'),
+    'true',
+  );
+  close(Number(await canvas.getAttribute('data-section-collapse-top-um')), nudgedTop, 1e-9);
+
   await capture(page, `${name}-section-z-collapse`);
 }
 

@@ -224,7 +224,11 @@ const sectionCollapseController = createSectionCollapseController({
     sectionCollapse = value;
   },
   renderSection,
-  onChanged: markProjectDirty,
+  onChanged: () => {
+    markProjectDirty();
+    threeView?.updateZCollapse();
+  },
+  onSettled: renderThree,
   formatXY,
   xyUnitLabel: () => xyUnit().label,
 });
@@ -680,6 +684,7 @@ function initThree() {
     getModel: () => model,
     getClipGeometry: roiGeometry,
     getInspection: () => ({ opacity: threeOpacity, borders: threeShowBorders }),
+    getZCollapse: () => sectionCollapse,
     onViewChanged: (viewState) => {
       pendingThreeCamera = viewState ? structuredClone(viewState) : null;
       markProjectDirty();

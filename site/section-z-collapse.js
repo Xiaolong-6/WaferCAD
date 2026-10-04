@@ -45,7 +45,96 @@ export function defaultSectionCollapseForModel(model, bounds) {
 }
 
 export function resolveSectionCollapse(value, model, bounds) {
-  return normalizeSectionCollapse(value ?? defaultSectionCollapseForModel(model, bounds), bounds);
+  const source = value ?? defaultSectionCollapseForModel(model, bounds),
+    normalized = normalizeSectionCollapse(source, bounds);
+  return {
+    ...normalized,
+    enabled: source?.enabled !== false,
+  };
+}
+
+export function createCollapsedZDisplayTransform({
+  zMin,
+  zMax,
+  collapse,
+  breakFraction = 0.04,
+} = {}) {
+  const min = Number(zMin),
+    max = Number(zMax);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) {
+    return {
+      mapZ: (value) => Number(value),
+      zMin: min,
+      zMax: max,
+      top: max,
+      bottom: min,
+      displayTop: max,
+      displayBottom: min,
+      gap: 0,
+      displayMin: min,
+      displayMax: max,
+      displaySpan: Math.max(0, max - min),
+    };
+  }
+
+  const normalized = normalizeSectionCollapse(collapse, [min, max]),
+    enabled = collapse?.enabled !== false;
+
+  if (!enabled) {
+    return {
+      mapZ: (value) => Number(value),
+      enabled: false,
+      zMin: min,
+      zMax: max,
+      top: normalized.top,
+      bottom: normalized.bottom,
+      displayTop: normalized.top,
+      displayBottom: normalized.bottom,
+      gap: 0,
+      displayMin: min,
+      displayMax: max,
+      displaySpan: max - min,
+    };
+  }
+
+  const hiddenSpan = Math.max(normalized.top - normalized.bottom, 1e-12),
+    upperSpan = Math.max(0, max - normalized.top),
+    lowerSpan = Math.max(0, normalized.bottom - min),
+    visibleSpan = Math.max(upperSpan + lowerSpan, (max - min) * 0.02),
+    fraction = Math.max(0.01, Math.min(0.12, Number(breakFraction) || 0.04)),
+    gap = Math.min(
+      hiddenSpan,
+      Math.max((max - min) * 1e-6, visibleSpan * fraction),
+    ),
+    center = (normalized.top + normalized.bottom) / 2,
+    displayBottom = center - gap / 2,
+    displayTop = center + gap / 2;
+
+  const mapZ = (value) => {
+    const z = Number(value);
+    if (!Number.isFinite(z)) return z;
+    if (z >= normalized.top) return z - (normalized.top - displayTop);
+    if (z <= normalized.bottom) return z + (displayBottom - normalized.bottom);
+    return displayBottom + ((z - normalized.bottom) / hiddenSpan) * gap;
+  };
+
+  const displayMin = mapZ(min),
+    displayMax = mapZ(max);
+
+  return {
+    mapZ,
+    enabled: true,
+    zMin: min,
+    zMax: max,
+    top: normalized.top,
+    bottom: normalized.bottom,
+    displayTop,
+    displayBottom,
+    gap,
+    displayMin,
+    displayMax,
+    displaySpan: Math.max(1e-12, displayMax - displayMin),
+  };
 }
 
 export function normalizeSectionCollapse(value, bounds) {
@@ -107,6 +196,7 @@ export function translateSectionCollapse(value, delta, bounds) {
 }
 
 export function sectionVisibleZSpan(zMin, zMax, collapse) {
+  if (collapse?.enabled === false) return Math.max(0, zMax - zMin);
   return Math.max(0, zMax - collapse.top) + Math.max(0, collapse.bottom - zMin);
 }
 
@@ -124,7 +214,36 @@ export function createSectionZTransform({
   const min = Number(zMin),
     max = Number(zMax),
     height = Math.max(1, Number(plotHeight) || 1),
-    gap = Math.max(4, Math.min(Number(breakPixels) || 8, height * 0.12)),
+    enabled = collapse?.enabled !== false;
+
+  if (!enabled) {
+    const worldSpan = Math.max(1e-12, max - min),
+      scale =
+        mode === 'physical'
+          ? Math.max(1e-12, Math.min(Number(xScale) || 1, height / worldSpan))
+          : height / worldSpan,
+      frameHeight = worldSpan * scale,
+      frameTop = (Number(plotTop) || 0) + (height - frameHeight) / 2,
+      frameBottom = frameTop + frameHeight,
+      center = frameTop + frameHeight / 2;
+
+    return {
+      mapZ: (z) => frameTop + ((max - Number(z)) / worldSpan) * frameHeight,
+      frameTop,
+      frameBottom,
+      frameHeight,
+      upperBottom: center,
+      lowerTop: center,
+      breakCenter: center,
+      breakPixels: 0,
+      topScale: scale,
+      bottomScale: scale,
+      enabled: false,
+      isHidden: () => false,
+    };
+  }
+
+  const gap = Math.max(4, Math.min(Number(breakPixels) || 8, height * 0.12)),
     upperWorld = Math.max(1e-12, max - collapse.top),
     lowerWorld = Math.max(1e-12, collapse.bottom - min);
 
@@ -178,6 +297,7 @@ export function createSectionZTransform({
     breakPixels: gap,
     topScale,
     bottomScale,
+    enabled: true,
     isHidden: (z) => z < collapse.top && z > collapse.bottom,
   };
 }

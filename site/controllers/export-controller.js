@@ -433,7 +433,10 @@ export function createExportController({
       [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
       collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
-      edgeSpan = Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005),
+      collapseEnabled = collapse.enabled !== false,
+      edgeSpan = collapseEnabled
+        ? Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005)
+        : hi - lo,
       pad = Math.max(1e-9, Math.min((hi - lo) * 0.08, edgeSpan * 0.12)),
       z0 = lo - pad,
       z1 = hi + pad,
@@ -448,7 +451,7 @@ export function createExportController({
       innerWidth = width - left - right,
       innerHeight = height - top - bottom,
       autoXScale = innerWidth / sectionSpan,
-      breakPixels = 8;
+      breakPixels = collapseEnabled ? 8 : 0;
 
     let plotLeft = left,
       plotTop = top,
@@ -505,46 +508,56 @@ export function createExportController({
       )}" height="${svgNumber(sy1 - sy0)}" fill="${layer.color}"/>`;
     }
 
-    body += `<rect x="${svgNumber(plotLeft)}" y="${svgNumber(
-      zTransform.upperBottom,
-    )}" width="${svgNumber(plotWidth)}" height="${svgNumber(
-      zTransform.breakPixels,
-    )}" fill="#fbfcfd"/>`;
-    body += `<path d="M${svgNumber(plotLeft)} ${svgNumber(
-      zTransform.frameTop,
-    )}H${svgNumber(plotLeft + plotWidth)}V${svgNumber(
-      zTransform.upperBottom,
-    )}M${svgNumber(plotLeft + plotWidth)} ${svgNumber(
-      zTransform.lowerTop,
-    )}V${svgNumber(zTransform.frameBottom)}H${svgNumber(plotLeft)}V${svgNumber(
-      zTransform.lowerTop,
-    )}M${svgNumber(plotLeft)} ${svgNumber(
-      zTransform.upperBottom,
-    )}V${svgNumber(zTransform.frameTop)}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
+    if (collapseEnabled) {
+      body += `<rect x="${svgNumber(plotLeft)}" y="${svgNumber(
+        zTransform.upperBottom,
+      )}" width="${svgNumber(plotWidth)}" height="${svgNumber(
+        zTransform.breakPixels,
+      )}" fill="#fbfcfd"/>`;
+      body += `<path d="M${svgNumber(plotLeft)} ${svgNumber(
+        zTransform.frameTop,
+      )}H${svgNumber(plotLeft + plotWidth)}V${svgNumber(
+        zTransform.upperBottom,
+      )}M${svgNumber(plotLeft + plotWidth)} ${svgNumber(
+        zTransform.lowerTop,
+      )}V${svgNumber(zTransform.frameBottom)}H${svgNumber(plotLeft)}V${svgNumber(
+        zTransform.lowerTop,
+      )}M${svgNumber(plotLeft)} ${svgNumber(
+        zTransform.upperBottom,
+      )}V${svgNumber(zTransform.frameTop)}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
 
-    for (const [x, direction] of [
-      [plotLeft, 1],
-      [plotLeft + plotWidth, -1],
-    ]) {
-      body += `<path d="M${svgNumber(x)} ${svgNumber(
-        zTransform.upperBottom - 1,
-      )}L${svgNumber(x + direction * 6)} ${svgNumber(
-        zTransform.upperBottom + 3,
-      )}L${svgNumber(x + direction * 12)} ${svgNumber(
-        zTransform.upperBottom - 1,
-      )}M${svgNumber(x)} ${svgNumber(
-        zTransform.lowerTop + 1,
-      )}L${svgNumber(x + direction * 6)} ${svgNumber(
-        zTransform.lowerTop - 3,
-      )}L${svgNumber(x + direction * 12)} ${svgNumber(
-        zTransform.lowerTop + 1,
-      )}" fill="none" stroke="#788593" stroke-width=".8" opacity=".72"/>`;
+      for (const [x, direction] of [
+        [plotLeft, 1],
+        [plotLeft + plotWidth, -1],
+      ]) {
+        body += `<path d="M${svgNumber(x)} ${svgNumber(
+          zTransform.upperBottom - 1,
+        )}L${svgNumber(x + direction * 6)} ${svgNumber(
+          zTransform.upperBottom + 3,
+        )}L${svgNumber(x + direction * 12)} ${svgNumber(
+          zTransform.upperBottom - 1,
+        )}M${svgNumber(x)} ${svgNumber(
+          zTransform.lowerTop + 1,
+        )}L${svgNumber(x + direction * 6)} ${svgNumber(
+          zTransform.lowerTop - 3,
+        )}L${svgNumber(x + direction * 12)} ${svgNumber(
+          zTransform.lowerTop + 1,
+        )}" fill="none" stroke="#788593" stroke-width=".8" opacity=".72"/>`;
+      }
+    } else {
+      body += `<rect x="${svgNumber(plotLeft)}" y="${svgNumber(
+        zTransform.frameTop,
+      )}" width="${svgNumber(plotWidth)}" height="${svgNumber(
+        zTransform.frameHeight,
+      )}" fill="none" stroke="#8995a1" stroke-width=".8"/>`;
     }
 
-    const tickValues = [
-      ...niceSectionTicks(collapse.top, z1, 4),
-      ...niceSectionTicks(z0, collapse.bottom, 2),
-    ];
+    const tickValues = collapseEnabled
+      ? [
+          ...niceSectionTicks(collapse.top, z1, 4),
+          ...niceSectionTicks(z0, collapse.bottom, 2),
+        ]
+      : niceSectionTicks(z0, z1, 6);
     let lastTickY = -Infinity;
     for (const value of tickValues) {
       const y = zTransform.mapZ(value);

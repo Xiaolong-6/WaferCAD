@@ -1,6 +1,10 @@
-import { hasMaterial, layerById, modelBoundsZ, zDisplayScale } from './model.js';
+import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import { electricalRegionSolids, implantSolids, materialSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  createCollapsedZDisplayTransform,
+  resolveSectionCollapse,
+} from './section-z-collapse.js';
 import {
   geometryFromRoughCap,
   geometryFromRoughMeshData,
@@ -49,6 +53,7 @@ export function createThreeView({
   getModel,
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
+  getZCollapse = () => null,
   onViewChanged = () => {},
 } = {}) {
   if (!host) throw new TypeError('3D host is required.');
@@ -85,6 +90,8 @@ export function createThreeView({
   let sceneGeneration = 0;
   let pendingRender = false;
   let pendingViewState = null;
+  let zDisplayObjects = new Set();
+  let currentZDisplay = null;
 
   function normalizeViewState(value) {
     if (!value || typeof value !== 'object') return null;
@@ -178,6 +185,236 @@ export function createThreeView({
     };
   }
 
+  function zDisplayState(model) {
+    const [idealLo, idealHi] = modelBoundsZ(model),
+      [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
+      collapse = resolveSectionCollapse(getZCollapse(), model, [lo, hi]),
+      transform = createCollapsedZDisplayTransform({
+        zMin: lo,
+        zMax: hi,
+        collapse,
+      }),
+      xySpan = Math.max(Number(model.width) || 0, Number(model.height) || 0, 1e-12),
+      scale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12);
+
+    return {
+      ...transform,
+      scale,
+    };
+  }
+
+  function objectZRecord(object) {
+    return object?.userData?.waferCadZDisplay || null;
+  }
+
+  function trackZDisplayObject(object) {
+    const positions = object?.geometry?.getAttribute?.('position');
+    if (!positions?.count) return object;
+
+    let minZ = Infinity,
+      maxZ = -Infinity;
+    for (let index = 0; index < positions.count; index++) {
+      const z = positions.getZ(index);
+      minZ = Math.min(minZ, z);
+      maxZ = Math.max(maxZ, z);
+    }
+    if (![minZ, maxZ].every(Number.isFinite)) return object;
+
+    object.userData.waferCadZDisplay = {
+      minZ,
+      maxZ,
+      canonicalZ: null,
+      mode: 'canonical',
+    };
+    zDisplayObjects.add(object);
+    if (currentZDisplay) applyZDisplayToObject(object, currentZDisplay);
+    return object;
+  }
+
+  function ensureCanonicalZ(record, positions) {
+    if (record.canonicalZ) return record.canonicalZ;
+    const values = new Float32Array(positions.count);
+    for (let index = 0; index < positions.count; index++) values[index] = positions.getZ(index);
+    record.canonicalZ = values;
+    return values;
+  }
+
+  function restoreCanonicalZ(record, positions) {
+    if (!record.canonicalZ) return;
+    for (let index = 0; index < positions.count; index++) {
+      positions.setZ(index, record.canonicalZ[index]);
+    }
+    positions.needsUpdate = true;
+  }
+
+  function refreshGeometryBounds(object) {
+    object.geometry?.computeBoundingBox?.();
+    object.geometry?.computeBoundingSphere?.();
+  }
+
+  function applyZDisplayToObject(object, state) {
+    const record = objectZRecord(object),
+      positions = object?.geometry?.getAttribute?.('position');
+    if (!record || !positions?.count || !state) return;
+
+    const fullyHidden =
+        state.enabled !== false && record.minZ > state.bottom && record.maxZ < state.top,
+      fullyUpper = record.minZ >= state.top,
+      fullyLower = record.maxZ <= state.bottom;
+
+    object.visible = !fullyHidden;
+    if (fullyHidden) return;
+
+    if (fullyUpper || fullyLower) {
+      if (record.mode === 'mapped') {
+        restoreCanonicalZ(record, positions);
+        refreshGeometryBounds(object);
+      }
+      const sample = fullyUpper ? record.minZ : record.maxZ;
+      object.position.z = state.mapZ(sample) - sample;
+      record.mode = 'translated';
+      return;
+    }
+
+    const canonicalZ = ensureCanonicalZ(record, positions);
+    object.position.z = 0;
+    for (let index = 0; index < positions.count; index++) {
+      positions.setZ(index, state.mapZ(canonicalZ[index]));
+    }
+    positions.needsUpdate = true;
+    if (object.isMesh && object.geometry.getAttribute('normal')) {
+      object.geometry.computeVertexNormals();
+    }
+    refreshGeometryBounds(object);
+    record.mode = 'mapped';
+  }
+
+  function displayedObjectCenter(object) {
+    const center = geometryCenter(object.geometry);
+    center.add(object.position);
+    center.z *= group?.scale?.z || 1;
+    return center;
+  }
+
+  function applyZDisplayState(model = getModel()) {
+    if (!model || !group) return null;
+    currentZDisplay = zDisplayState(model);
+    group.scale.z = currentZDisplay.scale;
+    for (const object of zDisplayObjects) applyZDisplayToObject(object, currentZDisplay);
+
+    host.dataset.zCollapseFollow = 'section';
+    host.dataset.zCollapseEnabled = String(currentZDisplay.enabled !== false);
+    host.dataset.zCollapseTopUm = String(currentZDisplay.top);
+    host.dataset.zCollapseBottomUm = String(currentZDisplay.bottom);
+    host.dataset.zCollapseGapUm = String(currentZDisplay.gap);
+    host.dataset.zDisplayScale = String(currentZDisplay.scale);
+
+    updateTransparentOrder();
+    updateRoughMaterialLod();
+    scheduleFrame();
+    return currentZDisplay;
+  }
+
+  function updateZCollapse() {
+    if (!ready || !group) return false;
+    return Boolean(applyZDisplayState());
+  }
+
+  function zIsVisible(z, state = currentZDisplay) {
+    const value = Number(z);
+    if (!state || state.enabled === false || !Number.isFinite(value)) return true;
+    return value >= state.top || value <= state.bottom;
+  }
+
+  function visibleZIntervals(z0, z1, state = currentZDisplay) {
+    const start = Number(z0),
+      end = Number(z1);
+    if (!state || state.enabled === false || !Number.isFinite(start) || !Number.isFinite(end)) {
+      return [[start, end]];
+    }
+
+    const ascending = end >= start,
+      lo = Math.min(start, end),
+      hi = Math.max(start, end),
+      intervals = [];
+
+    if (lo < state.bottom) {
+      const upper = Math.min(hi, state.bottom);
+      if (upper > lo) intervals.push([lo, upper]);
+    }
+    if (hi > state.top) {
+      const lower = Math.max(lo, state.top);
+      if (hi > lower) intervals.push([lower, hi]);
+    }
+
+    if (lo === state.bottom && hi === lo) intervals.push([lo, hi]);
+    if (lo === state.top && hi === lo) intervals.push([lo, hi]);
+
+    return ascending ? intervals : intervals.map(([a, b]) => [b, a]);
+  }
+
+  function displaySolidForZCollapse(solid, state = currentZDisplay) {
+    if (!solid || !state) return solid;
+    const slabs = [];
+    for (const slab of solid.slabs || []) {
+      for (const [z0, z1] of visibleZIntervals(slab.z0, slab.z1, state)) {
+        if (z0 === z1) continue;
+        slabs.push({ ...slab, z0, z1 });
+      }
+    }
+    return {
+      ...solid,
+      slabs,
+      caps: (solid.caps || []).filter((cap) => zIsVisible(cap.z, state)),
+    };
+  }
+
+  function displaySidewallParts(parts, state = currentZDisplay) {
+    if (!state) return parts || [];
+    const visible = [];
+    for (const part of parts || []) {
+      for (const [z0, z1] of visibleZIntervals(part.z0, part.z1, state)) {
+        if (z0 === z1) continue;
+        visible.push({ ...part, z0, z1 });
+      }
+    }
+    return visible;
+  }
+
+  function displayBorderPositions(positions, state = currentZDisplay) {
+    if (!state || !positions?.length) return positions || [];
+    const out = [],
+      lerpPoint = (a, b, t) => [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+      ];
+
+    for (let index = 0; index + 5 < positions.length; index += 6) {
+      const a = [positions[index], positions[index + 1], positions[index + 2]],
+        b = [positions[index + 3], positions[index + 4], positions[index + 5]],
+        dz = b[2] - a[2],
+        cuts = [0, 1];
+
+      if (Math.abs(dz) > 1e-12) {
+        for (const boundary of [state.bottom, state.top]) {
+          const t = (boundary - a[2]) / dz;
+          if (t > 0 && t < 1) cuts.push(t);
+        }
+      }
+
+      cuts.sort((left, right) => left - right);
+      for (let part = 0; part < cuts.length - 1; part++) {
+        const t0 = cuts[part],
+          t1 = cuts[part + 1],
+          middleZ = a[2] + dz * ((t0 + t1) / 2);
+        if (!zIsVisible(middleZ, state)) continue;
+        out.push(...lerpPoint(a, b, t0), ...lerpPoint(a, b, t1));
+      }
+    }
+    return out;
+  }
+
   function visibleBounds(model, clip) {
     const modelBounds = {
         minX: -model.width / 2,
@@ -223,7 +460,7 @@ export function createThreeView({
         ? new THREE.Vector3(
             (patchBounds.minX + patchBounds.maxX) / 2,
             (patchBounds.minY + patchBounds.maxY) / 2,
-            z * (group?.scale?.z || 1),
+            (currentZDisplay?.mapZ?.(z) ?? z) * (group?.scale?.z || 1),
           )
         : controls.target.clone(),
       distance = Math.max(1e-9, camera.position.distanceTo(center));
@@ -434,8 +671,7 @@ export function createThreeView({
     if (!camera || !renderer || !roughMeshes.length) return;
     const viewport = currentViewport();
     for (const entry of roughMeshes) {
-      const point = entry.center.clone();
-      point.z *= group?.scale?.z || 1;
+      const point = displayedObjectCenter(entry.mesh);
       const distance = Math.max(1e-9, camera.position.distanceTo(point)),
         pxPerUm = projectedPixelsPerUnit({
           distance,
@@ -567,6 +803,8 @@ export function createThreeView({
       }
     }
     group.clear();
+    zDisplayObjects = new Set();
+    currentZDisplay = null;
     for (const geometry of geometries) geometry.dispose();
     for (const texture of textures) texture.dispose();
     for (const material of materials) material.dispose();
@@ -720,10 +958,8 @@ export function createThreeView({
   function updateTransparentOrder() {
     if (!camera || !group || !transparentMeshes.length) return;
     camera.updateMatrixWorld();
-    const zScale = group.scale.z || 1;
     for (const entry of transparentMeshes) {
-      const point = entry.center.clone();
-      point.z *= zScale;
+      const point = displayedObjectCenter(entry.mesh);
       point.applyMatrix4(camera.matrixWorldInverse);
       entry.depth = point.z;
     }
@@ -755,12 +991,14 @@ export function createThreeView({
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
+      material?.dispose?.();
       return null;
     }
     const mesh = new THREE.Mesh(geometry, material),
       center = geometryCenter(geometry);
     mesh.renderOrder = materialState.transparent ? 100 : 0;
     group.add(mesh);
+    trackZDisplayObject(mesh);
     if (materialState.transparent) {
       transparentMeshes.push({
         mesh,
@@ -800,6 +1038,7 @@ export function createThreeView({
     const owned = new Set(roughOwnedObjects);
     transparentMeshes = transparentMeshes.filter((entry) => !owned.has(entry.mesh));
     for (const object of owned) {
+      zDisplayObjects.delete(object);
       group?.remove(object);
       disposeObjectResources(object);
     }
@@ -828,6 +1067,7 @@ export function createThreeView({
       edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     edges.renderOrder = order;
     group.add(edges);
+    trackZDisplayObject(edges);
     if (adaptiveRough) roughOwnedObjects.add(edges);
     return edges;
   }
@@ -1366,7 +1606,7 @@ export function createThreeView({
     rendering = true;
     try {
       disposeGroup();
-      group.scale.z = zDisplayScale(model);
+      applyZDisplayState(model);
 
       const clip = getClipGeometry(),
         inspection = getInspection() || {},
@@ -1413,6 +1653,7 @@ export function createThreeView({
         };
 
       for (const cap of plan.caps) {
+        if (!zIsVisible(cap.z)) continue;
         const state = stateFor(cap);
         if (!state) continue;
         const layer = layerById(model, cap.layerId);
@@ -1434,11 +1675,12 @@ export function createThreeView({
       }
 
       for (const bucket of smoothCaps.values()) {
-        const state = stateFor(bucket.part);
-        if (!state) continue;
+        const state = stateFor(bucket.part),
+          visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
+        if (!state || !visibleCaps.length) continue;
         const geometry = geometryFromSolid({
             slabs: [],
-            caps: bucket.items.map((part) => ({
+            caps: visibleCaps.map((part) => ({
               z: part.z,
               normal: part.normal,
               polys: part.polys,
@@ -1454,15 +1696,16 @@ export function createThreeView({
         pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
-        const state = stateFor(bucket.part);
-        if (!state) continue;
-        const geometry = geometryFromSidewallParts(bucket.items),
+        const state = stateFor(bucket.part),
+          visibleParts = displaySidewallParts(bucket.items);
+        if (!state || !visibleParts.length) continue;
+        const geometry = geometryFromSidewallParts(visibleParts),
           material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
         addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
       }
 
       if (borders) {
-        addBorderPositions(plan.borderLines.flat(2), {
+        addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
           order: 100000,
           opacity,
         });
@@ -1495,9 +1738,11 @@ export function createThreeView({
             },
             bodyGeometry = shearImplantGeometry(
               geometryFromSolid(
-                followDepthProfile
-                  ? { slabs: implant.slabs, caps: [] }
-                  : implant,
+                displaySolidForZCollapse(
+                  followDepthProfile
+                    ? { slabs: implant.slabs, caps: [] }
+                    : implant,
+                ),
               ),
               implant,
             ),
@@ -1517,7 +1762,7 @@ export function createThreeView({
             implantInternalCount++;
           }
 
-          if (followDepthProfile) {
+          if (followDepthProfile && zIsVisible(implant.innerZ)) {
             roughTasks.push({
               kind: 'implant-depth',
               cap: {
@@ -1556,7 +1801,7 @@ export function createThreeView({
           },
           capName = `${implant.name || implant.implantId || 'Implant'} surface`;
 
-        if (appearance) {
+        if (appearance && zIsVisible(implant.outerZ)) {
           roughTasks.push({
             kind: 'implant',
             cap: {
@@ -1580,6 +1825,7 @@ export function createThreeView({
             name: capName,
           });
         } else {
+          if (!zIsVisible(implant.outerZ)) continue;
           const capGeometry = shearImplantGeometry(
               geometryFromSolid({
                 slabs: [],
@@ -1628,9 +1874,11 @@ export function createThreeView({
               depthWrite: false,
             },
             bodyGeometry = geometryFromSolid(
-              followDepthProfile
-                ? { slabs: electrical.slabs, caps: [] }
-                : electrical,
+              displaySolidForZCollapse(
+                followDepthProfile
+                  ? { slabs: electrical.slabs, caps: [] }
+                  : electrical,
+              ),
             ),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
@@ -1649,7 +1897,7 @@ export function createThreeView({
             electricalRegionInternalCount++;
           }
 
-          if (followDepthProfile) {
+          if (followDepthProfile && zIsVisible(electrical.innerZ)) {
             roughTasks.push({
               kind: 'electrical-depth',
               cap: {
@@ -1692,7 +1940,7 @@ export function createThreeView({
           capName =
             `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
 
-        if (appearance) {
+        if (appearance && zIsVisible(electrical.outerZ)) {
           roughTasks.push({
             kind: 'electrical',
             cap: {
@@ -1718,6 +1966,7 @@ export function createThreeView({
             name: capName,
           });
         } else {
+          if (!zIsVisible(electrical.outerZ)) continue;
           const capGeometry = geometryFromSolid({
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
@@ -1765,10 +2014,9 @@ export function createThreeView({
     const model = getModel();
     if (!model) return;
 
-    const [idealLo, idealHi] = modelBoundsZ(model),
-      [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      zScale = zDisplayScale(model),
-      zSpan = (hi - lo) * zScale,
+    const zState = applyZDisplayState(model) || zDisplayState(model),
+      zScale = zState.scale,
+      zSpan = zState.displaySpan * zScale,
       clipBounds = xyBounds(getClipGeometry()),
       modelBounds = {
         minX: -model.width / 2,
@@ -1800,7 +2048,11 @@ export function createThreeView({
     camera.near = Math.max(1e-6, radius / 200);
     camera.far = Math.max(camera.near * 1000, distance + radius * 20);
     camera.updateProjectionMatrix();
-    controls.target.set(centerX, centerY, ((lo + hi) / 2) * zScale);
+    controls.target.set(
+      centerX,
+      centerY,
+      ((zState.displayMin + zState.displayMax) / 2) * zScale,
+    );
     camera.position.copy(
       new THREE.Vector3(1.05, -1.15, 0.82)
         .normalize()
@@ -1907,6 +2159,7 @@ export function createThreeView({
     fit,
     getViewState,
     setViewState,
+    updateZCollapse,
     exportGlb,
     capturePng,
     get ready() {
