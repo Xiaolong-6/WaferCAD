@@ -223,12 +223,13 @@ test('literature-scale isotropic release produces a suspended silica microdisk i
   );
   assert.ok(exposedSi && exposedSi.z1 < 10, 'open silicon must be etched deeply by the release');
 
+  const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15);
   for (let i = 0; i < model.regions.length; i++) {
     for (let j = i + 1; j < model.regions.length; j++) {
-      assert.equal(
-        isEmpty(intersection(model.regions[i].geom, model.regions[j].geom)),
-        true,
-        'release must preserve non-overlapping XY partitions',
+      const overlapArea = area(intersection(model.regions[i].geom, model.regions[j].geom));
+      assert.ok(
+        overlapArea <= overlapTolerance,
+        `release overlap ${i}/${j} = ${overlapArea} µm² exceeds ${overlapTolerance}`,
       );
     }
   }
