@@ -658,7 +658,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
 }
 
 
-const ISOTROPIC_ETCH_SLICES = 40;
+const ISOTROPIC_ETCH_SLICES = 32;
 
 function removeLayerInterval(stack, targetLayerIds, z0, z1) {
   const targets = new Set((targetLayerIds || []).filter(Boolean));
@@ -750,10 +750,13 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
           false,
         );
       }
+
+      // Release produces many neighboring stacks with the same Z interval.
+      // Consolidate after each depth band so region count stays bounded before
+      // the next clipping pass.
+      model.regions = mergeRegions(model, model.regions);
     }
   }
-
-  model.regions = mergeRegions(model, model.regions);
   return changed
     ? { changed: true }
     : {
