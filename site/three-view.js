@@ -212,7 +212,8 @@ export function createThreeView({
       positions = object?.geometry?.getAttribute?.('position');
     if (!record || !positions?.count || !state) return;
 
-    const fullyHidden = record.minZ > state.bottom && record.maxZ < state.top,
+    const fullyHidden =
+        state.enabled !== false && record.minZ > state.bottom && record.maxZ < state.top,
       fullyUpper = record.minZ >= state.top,
       fullyLower = record.maxZ <= state.bottom;
 
@@ -257,6 +258,7 @@ export function createThreeView({
     for (const object of zDisplayObjects) applyZDisplayToObject(object, currentZDisplay);
 
     host.dataset.zCollapseFollow = 'section';
+    host.dataset.zCollapseEnabled = String(currentZDisplay.enabled !== false);
     host.dataset.zCollapseTopUm = String(currentZDisplay.top);
     host.dataset.zCollapseBottomUm = String(currentZDisplay.bottom);
     host.dataset.zCollapseGapUm = String(currentZDisplay.gap);
@@ -275,14 +277,16 @@ export function createThreeView({
 
   function zIsVisible(z, state = currentZDisplay) {
     const value = Number(z);
-    if (!state || !Number.isFinite(value)) return true;
+    if (!state || state.enabled === false || !Number.isFinite(value)) return true;
     return value >= state.top || value <= state.bottom;
   }
 
   function visibleZIntervals(z0, z1, state = currentZDisplay) {
     const start = Number(z0),
       end = Number(z1);
-    if (!state || !Number.isFinite(start) || !Number.isFinite(end)) return [[start, end]];
+    if (!state || state.enabled === false || !Number.isFinite(start) || !Number.isFinite(end)) {
+      return [[start, end]];
+    }
 
     const ascending = end >= start,
       lo = Math.min(start, end),
