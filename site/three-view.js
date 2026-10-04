@@ -1,17 +1,15 @@
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
-import { electricalRegionSolids, implantSolids, materialSolids } from './model-view-geometry.js';
+import { electricalRegionSolids, implantSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
   createCollapsedZDisplayTransform,
   resolveSectionCollapse,
 } from './section-z-collapse.js';
+import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import {
-  geometryFromRoughCap,
-  geometryFromRoughMeshData,
-  roughBoundaryEdgesFromTriangles,
-  roughCapBaseTriangles,
-  subdivideRoughBaseTriangles,
-} from './rough-mesh-geometry.js';
+  buildRoughSpatialZones,
+  prepareMorphologyExportTasks,
+} from './morphology-mesh-policy.js';
 import {
   adaptiveRoughMeshLod,
   allocateRoughTriangleBudgets,
@@ -513,107 +511,10 @@ export function createThreeView({
     };
   }
 
-  function roughAxisDivisions(span, featureSize) {
-    const features = Math.max(0, Number(span) || 0) / Math.max(1e-9, Number(featureSize) || 1);
-    if (features >= 16) return 4;
-    if (features >= 8) return 3;
-    if (features >= 4) return 2;
-    return 1;
-  }
-
-  function triangleSetBounds(triangles) {
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    for (const triangle of triangles || []) {
-      for (const point of triangle || []) {
-        minX = Math.min(minX, Number(point?.[0]));
-        minY = Math.min(minY, Number(point?.[1]));
-        maxX = Math.max(maxX, Number(point?.[0]));
-        maxY = Math.max(maxY, Number(point?.[1]));
-      }
-    }
-    return [minX, minY, maxX, maxY].every(Number.isFinite)
-      ? { minX, minY, maxX, maxY }
-      : null;
-  }
-
-  function triangleSetMaxEdge(triangles) {
-    let maxEdge = 0;
-    for (const triangle of triangles || []) {
-      for (const [a, b] of [
-        [triangle[0], triangle[1]],
-        [triangle[1], triangle[2]],
-        [triangle[2], triangle[0]],
-      ]) {
-        maxEdge = Math.max(maxEdge, Math.hypot(a[0] - b[0], a[1] - b[1]));
-      }
-    }
-    return maxEdge;
-  }
-
-  function spatialBaseDepth(base, bounds, columns, rows) {
-    const cellSpan = Math.max(
-        (bounds.maxX - bounds.minX) / Math.max(1, columns),
-        (bounds.maxY - bounds.minY) / Math.max(1, rows),
-        1e-9,
-      ),
-      desired = base.maxEdge > cellSpan ? Math.ceil(Math.log2(base.maxEdge / cellSpan)) : 0;
-    let depth = Math.min(2, Math.max(0, desired));
-    while (depth > 0 && base.triangles.length * 4 ** depth > 8192) depth--;
-    return depth;
-  }
-
   function prepareRoughSpatialZones(task) {
     if (task.spatialZones !== undefined) return task.spatialZones;
-    const cap = task.cap,
-      bounds = xyBounds(cap.polys),
-      featureSize = cap.appearance?.featureSize;
-    if (!bounds) {
-      task.spatialZones = [];
-      return task.spatialZones;
-    }
-
-    const base = roughCapBaseTriangles(THREE, cap.z, cap.normal, cap.polys);
+    task.spatialZones = buildRoughSpatialZones(THREE, task.cap);
     roughBaseTriangulationCount++;
-    if (!base.triangles.length) {
-      task.spatialZones = [];
-      roughSpatialZoneBuildCount++;
-      return task.spatialZones;
-    }
-
-    const columns = roughAxisDivisions(bounds.maxX - bounds.minX, featureSize),
-      rows = roughAxisDivisions(bounds.maxY - bounds.minY, featureSize),
-      depth = spatialBaseDepth(base, bounds, columns, rows),
-      spatialTriangles = subdivideRoughBaseTriangles(base.triangles, depth),
-      spanX = Math.max(1e-12, bounds.maxX - bounds.minX),
-      spanY = Math.max(1e-12, bounds.maxY - bounds.minY),
-      buckets = new Map();
-
-    for (const triangle of spatialTriangles) {
-      const cx = (triangle[0][0] + triangle[1][0] + triangle[2][0]) / 3,
-        cy = (triangle[0][1] + triangle[1][1] + triangle[2][1]) / 3,
-        column = Math.max(
-          0,
-          Math.min(columns - 1, Math.floor(((cx - bounds.minX) / spanX) * columns)),
-        ),
-        row = Math.max(
-          0,
-          Math.min(rows - 1, Math.floor(((cy - bounds.minY) / spanY) * rows)),
-        ),
-        key = `${row}|${column}`;
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key).push(triangle);
-    }
-
-    task.spatialZones = [...buckets.values()].map((baseTriangles) => ({
-      polys: null,
-      bounds: triangleSetBounds(baseTriangles),
-      baseTriangles,
-      maxEdge: triangleSetMaxEdge(baseTriangles),
-      edges: roughBoundaryEdgesFromTriangles(baseTriangles),
-    }));
     roughSpatialZoneBuildCount++;
     return task.spatialZones;
   }
@@ -2071,25 +1972,81 @@ export function createThreeView({
     const model = getModel();
     if (!model) throw new Error('No model to export.');
 
-    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
-    const exportGroup = new THREE.Group();
+    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js'),
+      exportGroup = new THREE.Group(),
+      clip = getClipGeometry(),
+      surfacePlan = buildRenderSurfacePlan(model, clip),
+      roughCaps = surfacePlan.caps.filter((cap) => cap.appearance?.kind === 'rough'),
+      roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
+      roughByCap = new Map(roughTasks.map((task) => [task.cap, task.lodZones])),
+      disposable = [];
     exportGroup.name = 'WaferCAD';
     // glTF uses metres. Canonical WaferCAD geometry is stored in micrometres.
     exportGroup.scale.setScalar(1e-6);
 
-    const clip = getClipGeometry();
-    for (const item of materialSolids(model, clip)) {
-      const geometry = geometryFromSolid(item);
-      const layer = layerById(model, item.layerId);
-      const material = new THREE.MeshStandardMaterial({
-        color: layer?.color || '#999',
-        roughness: 0.78,
-        metalness: 0.015,
-        side: THREE.DoubleSide,
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = layer?.name || item.layerId || 'Layer';
-      exportGroup.add(mesh);
+    const exportMaterial = (layer) =>
+        new THREE.MeshStandardMaterial({
+          color: layer?.color || '#999',
+          roughness: 0.78,
+          metalness: 0.015,
+          side: THREE.DoubleSide,
+        }),
+      addExportMesh = (geometry, layerId, suffix = '') => {
+        if (!geometry?.getAttribute?.('position')?.count) {
+          geometry?.dispose?.();
+          return null;
+        }
+        const layer = layerById(model, layerId),
+          material = exportMaterial(layer),
+          mesh = new THREE.Mesh(geometry, material);
+        mesh.name = `${layer?.name || layerId || 'Layer'}${suffix}`;
+        exportGroup.add(mesh);
+        disposable.push(mesh);
+        return mesh;
+      };
+
+    // Export the same topology-owned surface plan used by the interactive 3D
+    // renderer. Rough/Pyramid caps use a deterministic, camera-independent
+    // mesh policy, so GLB no longer falls back to ideal flat canonical caps.
+    for (const cap of surfacePlan.caps) {
+      if (cap.appearance?.kind === 'rough') {
+        const lodZones = roughByCap.get(cap);
+        if (!lodZones?.length) continue;
+        const geometry = geometryFromRoughCap(THREE, {
+          z: cap.z,
+          normal: cap.normal,
+          polys: cap.polys,
+          appearance: cap.appearance,
+          closeToIdeal: !cap.buried,
+          profileNormal: cap.profileNormal,
+          lodZones,
+        });
+        const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
+        if (mesh) {
+          mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
+          mesh.userData.wafercadMorphologySeed = Number(cap.appearance.seed) >>> 0;
+          mesh.userData.wafercadMorphologyFeatureSizeUm =
+            Number(cap.appearance.featureSize) || 0;
+        }
+        continue;
+      }
+
+      addExportMesh(
+        geometryFromSolid({
+          slabs: [],
+          caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
+        }),
+        cap.layerId,
+      );
+    }
+
+    const sidewallsByLayer = new Map();
+    for (const sidewall of surfacePlan.sidewalls) {
+      if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
+      sidewallsByLayer.get(sidewall.layerId).push(sidewall);
+    }
+    for (const [layerId, parts] of sidewallsByLayer) {
+      addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
     }
 
     try {
@@ -2103,7 +2060,7 @@ export function createThreeView({
       );
       return new Blob([result], { type: 'model/gltf-binary' });
     } finally {
-      for (const object of exportGroup.children) {
+      for (const object of disposable) {
         object.geometry?.dispose();
         object.material?.dispose();
       }
