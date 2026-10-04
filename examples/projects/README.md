@@ -19,6 +19,11 @@ The current production literature families are:
 - **PERC solar cells with point contacts** — `site/examples/perc-solar-cells-point-contacts.wafercad`
   - corrected source-order process is the default active Variant;
   - alternative reconstruction branches remain available for process comparison.
+- **Fully textured perovskite–silicon tandems** — `site/examples/fully-textured-perovskite-silicon-tandem.wafercad`
+  - double-sided deterministic Pyramid texture;
+  - SHJ bottom cell plus nc-Si:H record-device / ITO control branches;
+  - conformal top-cell stack, ALD SnO₂, IZO, and surrogate Ag grid;
+  - Ag-finger inspection bookmarks preserve Section and 3D camera state.
 - **Suspended silica microdisks** — `site/examples/suspended-silica-microdisks.wafercad`
   - released annular air gap is canonical geometry;
   - the central silicon support remains physically connected to the silica disk.
@@ -35,6 +40,7 @@ The Welcome page uses each bundled `.wafercad` project itself as the primary pre
 - A stored screenshot may remain as a loading/error fallback, but screenshot pixels are not the normal preview surface and are never regression truth.
 - `Open example` enters the complete editable workspace with History and Variants.
 - Preview iframes must not acquire workspace ownership, write autosaves, create Recovery checkpoints, or alter process lineage.
+- Embedded previews expose inspection only: Main/Mask can pan and zoom, 3D can orbit/zoom, and Section is display-only. Slice A/B editing, ROI tools, Mask Draw/editing, process controls, exports, bookmarks, and all other mutation controls stay unbound and hidden.
 
 Every literature reconstruction must also expose traceable source metadata directly on the Welcome card:
 
@@ -61,11 +67,11 @@ Bundled examples are production acceptance fixtures, not presentation-only files
 
 When a new example family is added, add family-specific structural invariants here rather than relying only on screenshots. Pixel-perfect screenshots are deliberately not the primary contract because renderer and typography changes should not invalidate correct process topology.
 
-## Sahli 2018 textured tandem regression fixture
+## Sahli 2018 textured tandem source fixture
 
-`sahli-2018-fully-textured-tandem.wafercad` is a process-regression fixture for the fully textured perovskite/silicon tandem reconstruction.
+`sahli-2018-fully-textured-tandem.wafercad` remains the development/source fixture for the promoted Welcome copy at `site/examples/fully-textured-perovskite-silicon-tandem.wafercad`.
 
-It is intentionally kept outside the three-card Welcome catalog. Its acceptance contract focuses on:
+Its acceptance contract focuses on:
 
 - deterministic front/back Pyramid morphology with explicit CV/seed reconstruction parameters;
 - real fabrication History ending at `20_final_tandem`;
