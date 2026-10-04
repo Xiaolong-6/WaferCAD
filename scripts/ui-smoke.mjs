@@ -430,7 +430,14 @@ assert.equal(await historyBRow.count(), 1);
 assert.equal(await historyARow.getAttribute('role'), 'button');
 assert.equal(await historyBRow.getAttribute('data-head'), 'true');
 await historyARow.click();
-await historyRestorePage.locator('.snapshot-continuation-banner').waitFor({ state: 'visible' });
+await historyRestorePage.waitForFunction(
+  () =>
+    /Viewing Step .*History A/.test(
+      document.querySelector('.snapshot-continuation-banner')?.textContent || '',
+    ),
+  null,
+  { timeout: 5000 },
+);
 assert.equal(
   await historyRestorePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
     options.some((option) => /pre-process-history-restore/.test(option.textContent || '')),
