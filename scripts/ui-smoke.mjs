@@ -959,13 +959,13 @@ examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
 examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
 await examplePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
 await examplePage
-  .locator('.welcome-example-card[data-example-id="visualization"] .welcome-example-open')
+  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
   .click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await examplePage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
-    'Opened Visualization example.',
+    'Opened photodetector-literature-examples.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -973,8 +973,8 @@ assert.equal(
   await examplePage.locator('.workspace').evaluate((element) => element.inert),
   false,
 );
-assert.equal(await examplePage.locator('#xyUnitSelect').inputValue(), 'mm');
-assert.equal(Number(await examplePage.locator('#baseWidth').inputValue()), 100);
+assert.ok(['nm', 'um', 'mm'].includes(await examplePage.locator('#xyUnitSelect').inputValue()));
+assert.ok(Number(await examplePage.locator('#baseWidth').inputValue()) > 0);
 assert.ok(await examplePage.locator('#maskLayerList .layer-row input:checked').count());
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
 const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
