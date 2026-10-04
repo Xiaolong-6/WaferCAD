@@ -499,6 +499,30 @@ async function checkSectionCollapse(page, name) {
 
   const afterBreakY = Number(await canvas.getAttribute('data-section-collapse-break-y'));
   close(afterBreakY, before.breakY, 1e-9);
+
+  await entry.dblclick();
+  assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'false');
+  assert.equal(await entry.getAttribute('aria-pressed'), 'false');
+  assert.equal(await editor.isHidden(), true);
+  assert.equal(
+    await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'),
+    'false',
+  );
+  await capture(page, `${name}-section-z-full`);
+
+  // Single click stays inert while collapse is off; double-click restores the
+  // saved break bounds without losing the user's previous adjustment.
+  await entry.click();
+  assert.equal(await editor.isHidden(), true);
+  await entry.dblclick();
+  assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'true');
+  assert.equal(await entry.getAttribute('aria-pressed'), 'true');
+  assert.equal(
+    await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'),
+    'true',
+  );
+  close(Number(await canvas.getAttribute('data-section-collapse-top-um')), nudgedTop, 1e-9);
+
   await capture(page, `${name}-section-z-collapse`);
 }
 
