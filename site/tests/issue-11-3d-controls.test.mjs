@@ -90,6 +90,10 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(threeView, /0x24282c/);
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
   assert.match(threeView, /async function exportGlb\(\{ signal = null, onProgress = null \} = \{\}\)/);
+  assert.match(threeView, /buildExportRoughMeshData/);
+  assert.match(threeView, /new Worker\(workerUrl\)/);
+  assert.match(threeView, /GLB morphology worker failed; using synchronous fallback/);
+  assert.match(threeView, /geometryFromRoughMeshData\(THREE, meshData\)/);
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
   assert.match(threeView, /preserveDrawingBuffer: false/);
   assert.match(
