@@ -456,6 +456,7 @@ async function checkSectionCollapse(page, name) {
   assert.ok(Number.isFinite(before.breakY));
 
   await entry.click();
+  await editor.waitFor({ state: 'visible', timeout: 1000 });
   assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
   await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
   await capture(page, `${name}-section-z-collapse-edit`);
