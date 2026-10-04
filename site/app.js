@@ -744,6 +744,7 @@ const projectStateController = createProjectStateController({
     maskOpacity,
     threeOpacity,
     threeShowBorders,
+    threeCamera: threeView?.getViewState?.() || null,
   }),
   applyState: (next) => {
     model = next.model;
