@@ -891,6 +891,7 @@ export function createThreeView({
     const owned = new Set(roughOwnedObjects);
     transparentMeshes = transparentMeshes.filter((entry) => !owned.has(entry.mesh));
     for (const object of owned) {
+      zDisplayObjects.delete(object);
       group?.remove(object);
       disposeObjectResources(object);
     }
@@ -1456,8 +1457,7 @@ export function createThreeView({
     rendering = true;
     try {
       disposeGroup();
-      currentZDisplay = zDisplayState(model);
-      group.scale.z = currentZDisplay.scale;
+      applyZDisplayState(model);
 
       const clip = getClipGeometry(),
         inspection = getInspection() || {},
