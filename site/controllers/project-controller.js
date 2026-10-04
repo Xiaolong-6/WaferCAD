@@ -629,7 +629,16 @@ export function createProjectController({
         input.select();
       };
 
-      const menuItems = [];
+      const menuItems = [
+        {
+          label: 'Rename Variant',
+          run: async () => {
+            editor.hidden = false;
+            input.focus();
+            input.select();
+          },
+        },
+      ];
       if (variant.id !== 'main') {
         menuItems.push({
           label: 'Delete Variant',
@@ -658,9 +667,7 @@ export function createProjectController({
           },
         });
       }
-      const menu = menuItems.length
-        ? createActionMenu(menuItems, 'Variant actions')
-        : null;
+      const menu = createActionMenu(menuItems, 'Variant actions');
 
       header.append(toggle, nameButton, stats, renameButton);
       if (menu) header.append(menu);
