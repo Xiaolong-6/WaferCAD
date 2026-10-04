@@ -331,7 +331,446 @@ test('V2 process history records Apply nodes and attaches snapshots as milestone
   const second = manager.recordOperation({ kind: 'etch', label: 'Etch active window' });
   assert.equal(second.parentId, first.id);
   assert.equal(manager.listHistory().length, 2);
-  assert.equal(manager.exportBranchState().version, 2);
+  assert.equal(manager.exportBranchState().version, 3);
+});
+
+test('process history steps are directly restorable without milestones and survive import', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Deposit first' });
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'add', label: 'Deposit second' });
+
+  assert.equal(manager.list().length, 0);
+  assert.equal(manager.listHistory().find((node) => node.id === first.id).restorable, true);
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(live.value, 'step-1');
+  assert.equal(manager.continuationContext().processLabel, 'Deposit first');
+
+  const branchState = manager.exportBranchState();
+  const imported = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+  imported.importRecords([], branchState);
+
+  live = { model: { processRevision: 99 }, value: 'changed' };
+  assert.equal(imported.restoreProcessNode(first.id), true);
+  assert.equal(live.value, 'step-1');
+  assert.equal(imported.listHistory().find((node) => node.id === first.id).restorable, true);
+});
+
+test('legacy process nodes remain readable and use a milestone state when one exists', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  const milestoneState = { model: { processRevision: 1 }, value: 'legacy-step' };
+  manager.importRecords(
+    [
+      {
+        id: 'snapshot-legacy',
+        name: 'Legacy checkpoint',
+        createdAt: '2026-10-03T10:00:00.000Z',
+        branchId: 'main',
+        parentId: null,
+        historyNodeId: 'process-1',
+        state: milestoneState,
+      },
+    ],
+    {
+      version: 2,
+      activeBranchId: 'main',
+      cursorNodeId: 'process-2',
+      cursorSnapshotId: null,
+      nodes: [
+        {
+          id: 'process-1',
+          branchId: 'main',
+          parentId: null,
+          createdAt: '2026-10-03T10:00:00.000Z',
+          processRevision: 1,
+          operation: { kind: 'add', label: 'Legacy first' },
+        },
+        {
+          id: 'process-2',
+          branchId: 'main',
+          parentId: 'process-1',
+          createdAt: '2026-10-03T10:01:00.000Z',
+          processRevision: 2,
+          operation: { kind: 'add', label: 'Legacy head' },
+        },
+      ],
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          rootSnapshotId: 'snapshot-legacy',
+          headSnapshotId: 'snapshot-legacy',
+          rootNodeId: 'process-1',
+          headNodeId: 'process-2',
+          headState: { model: { processRevision: 2 }, value: 'legacy-head' },
+          createdAt: '1970-01-01T00:00:00.000Z',
+        },
+      ],
+    },
+  );
+
+  const history = manager.listHistory();
+  assert.equal(history.find((node) => node.id === 'process-1').restorable, true);
+  assert.equal(history.find((node) => node.id === 'process-2').restorable, true);
+  assert.equal(manager.restoreProcessNode('process-1'), true);
+  assert.equal(live.value, 'legacy-step');
+});
+
+test('advancing a legacy branch preserves the previous HEAD restore state', () => {
+  let live = { model: { processRevision: 2 }, value: 'legacy-head' };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `new-process-${++nodeId}`,
+  });
+
+  manager.importRecords([], {
+    version: 2,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-2',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Legacy first' },
+      },
+      {
+        id: 'process-2',
+        branchId: 'main',
+        parentId: 'process-1',
+        createdAt: '2026-10-03T10:01:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'add', label: 'Legacy head' },
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-2',
+        headState: { model: { processRevision: 2 }, value: 'legacy-head' },
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  });
+
+  assert.equal(manager.listHistory().find((node) => node.id === 'process-2').restorable, true);
+
+  live = { model: { processRevision: 3 }, value: 'new-head' };
+  manager.recordOperation({ kind: 'etch', label: 'New step' });
+
+  live = { model: { processRevision: 99 }, value: 'changed' };
+  assert.equal(manager.restoreProcessNode('process-2'), true);
+  assert.equal(live.value, 'legacy-head');
+});
+
+test('deleting the last legacy milestone on a process node preserves restore capability', () => {
+  let live = { model: { processRevision: 1 }, value: 'legacy-step' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  manager.importRecords(
+    [
+      {
+        id: 'legacy-milestone',
+        name: 'Legacy checkpoint',
+        createdAt: '2026-10-03T10:00:30.000Z',
+        branchId: 'main',
+        parentId: null,
+        historyNodeId: 'process-1',
+        state: { model: { processRevision: 1 }, value: 'legacy-step' },
+      },
+    ],
+    {
+      version: 2,
+      activeBranchId: 'main',
+      cursorNodeId: 'process-2',
+      cursorSnapshotId: null,
+      nodes: [
+        {
+          id: 'process-1',
+          branchId: 'main',
+          parentId: null,
+          createdAt: '2026-10-03T10:00:00.000Z',
+          processRevision: 1,
+          operation: { kind: 'add', label: 'Legacy step' },
+        },
+        {
+          id: 'process-2',
+          branchId: 'main',
+          parentId: 'process-1',
+          createdAt: '2026-10-03T10:01:00.000Z',
+          processRevision: 2,
+          operation: { kind: 'add', label: 'Legacy head' },
+        },
+      ],
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          rootSnapshotId: null,
+          headSnapshotId: null,
+          rootNodeId: 'process-1',
+          headNodeId: 'process-2',
+          headState: { model: { processRevision: 2 }, value: 'legacy-head' },
+          createdAt: '1970-01-01T00:00:00.000Z',
+        },
+      ],
+    },
+  );
+
+  assert.equal(manager.listHistory().find((node) => node.id === 'process-1').restorable, true);
+  assert.equal(manager.remove('legacy-milestone'), true);
+  assert.equal(manager.list().length, 0);
+  assert.equal(manager.listHistory().find((node) => node.id === 'process-1').restorable, true);
+
+  live = { model: { processRevision: 99 }, value: 'changed' };
+  assert.equal(manager.restoreProcessNode('process-1'), true);
+  assert.equal(live.value, 'legacy-step');
+  assert.equal(manager.exportBranchState().version, 3);
+});
+
+test('legacy history only upgrades to v3 when every process node is restorable', () => {
+  let live = { model: { processRevision: 2 }, value: 'legacy-head' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+
+  manager.importRecords([], {
+    version: 2,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-2',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Legacy unavailable' },
+      },
+      {
+        id: 'process-2',
+        branchId: 'main',
+        parentId: 'process-1',
+        createdAt: '2026-10-03T10:01:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'add', label: 'Legacy head' },
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-2',
+        headState: { model: { processRevision: 2 }, value: 'legacy-head' },
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  });
+
+  const legacyExport = manager.exportBranchState();
+  assert.equal(legacyExport.version, 2);
+  assert.equal(legacyExport.nodes[0].state, null);
+  assert.equal(legacyExport.nodes[1].state.value, 'legacy-head');
+
+  const milestone = {
+    id: 'legacy-step-1',
+    name: 'Recovered legacy step',
+    createdAt: '2026-10-03T10:00:30.000Z',
+    branchId: 'main',
+    parentId: null,
+    historyNodeId: 'process-1',
+    state: { model: { processRevision: 1 }, value: 'legacy-step-1' },
+  };
+  manager.importRecords([milestone], legacyExport);
+  const upgraded = manager.exportBranchState();
+  assert.equal(upgraded.version, 3);
+  assert.equal(upgraded.nodes[0].state.value, 'legacy-step-1');
+  assert.equal(upgraded.nodes[1].state.value, 'legacy-head');
+});
+
+test('restoring an older milestone on the HEAD process node does not overwrite the exact HEAD state', () => {
+  let live = { model: { processRevision: 1 }, value: 'process-head', view: { opacity: 0.35 } };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const node = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const milestone = manager.create('Before display edit');
+
+  live = { model: { processRevision: 1 }, value: 'process-head', view: { opacity: 0.2 } };
+  assert.equal(manager.syncActiveHeadState(), true);
+
+  assert.equal(manager.restore(milestone.id), true);
+  assert.equal(manager.continuationContext().cursorNodeId, node.id);
+  assert.equal(manager.continuationContext().snapshotId, milestone.id);
+  assert.equal(live.view.opacity, 0.35);
+  assert.equal(manager.syncActiveHeadState(), false);
+
+  // Persistence while detached must not promote the restored milestone into HEAD.
+  manager.exportBranchState();
+  assert.equal(manager.restoreActiveBranchHead(), true);
+  assert.equal(live.view.opacity, 0.2);
+});
+
+test('history browsing distinguishes an exact restored state from edited historical work', () => {
+  let live = { model: { processRevision: 0 }, value: 'base', view: { zoom: 1 } };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1', view: { zoom: 1 } };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  live = { model: { processRevision: 2 }, value: 'step-2', view: { zoom: 1 } };
+  manager.recordOperation({ kind: 'add', label: 'Step 2' });
+
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+
+  live.view.zoom = 2;
+  assert.equal(manager.hasHistoricalWorkingEdits(), true);
+
+  manager.create('Edited historical milestone');
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+
+  assert.equal(manager.restoreActiveBranchHead(), true);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+});
+
+test('reloaded historical working edits remain distinguishable from the canonical process state', () => {
+  let live = { model: { processRevision: 0 }, value: 'base', view: { zoom: 1 } };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1', view: { zoom: 1 } };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  live = { model: { processRevision: 2 }, value: 'step-2', view: { zoom: 1 } };
+  manager.recordOperation({ kind: 'add', label: 'Step 2' });
+
+  manager.restoreProcessNode(first.id);
+  live.view.zoom = 2;
+  const persistedWorkingState = structuredClone(live);
+  const branchState = manager.exportBranchState();
+
+  let reloadedLive = persistedWorkingState;
+  const reloaded = createSnapshotManager({
+    capture: () => reloadedLive,
+    restore: (value) => {
+      reloadedLive = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+  reloaded.importRecords([], branchState);
+
+  assert.ok(reloaded.continuationContext());
+  assert.equal(reloaded.hasHistoricalWorkingEdits(), true);
+});
+
+test('branching from a restored Step uses the Step itself as the Variant origin', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const bookmark = manager.bookmarkStep(first.id, 'Named step 1');
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'add', label: 'Step 2' });
+
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  const before = manager.list().length;
+  const variant = manager.createBranchFromCursor('Variant from process row');
+
+  assert.equal(manager.list().length, before);
+  assert.equal(manager.list().some((record) => record.id === bookmark.id), true);
+  assert.equal(variant.rootSnapshotId, null);
+  assert.equal(variant.rootNodeId, first.id);
+  assert.equal(variant.parentBranchId, 'main');
 });
 
 test('restoring an older milestone requires a branch before another Apply', () => {
@@ -410,7 +849,9 @@ test('Undo cursor can branch without a pre-existing milestone', () => {
   live = { model: { processRevision: 1 }, value: 'step-1' };
   const branch = manager.createBranchFromCursor('Undo continuation');
   assert.equal(manager.activeBranch().id, branch.id);
-  assert.equal(manager.list().some((record) => record.historyNodeId === first.id), true);
+  assert.equal(branch.rootNodeId, first.id);
+  assert.equal(branch.parentBranchId, 'main');
+  assert.equal(manager.list().some((record) => record.historyNodeId === first.id), false);
 });
 
 
@@ -479,7 +920,7 @@ test('historical working edits seed an automatic continuation variant', () => {
   assert.equal(live.value, 'historical-working-edit');
 });
 
-test('a milestone created from an Undo cursor is attached to the historical graph position', () => {
+test('Undo branching keeps bookmarks as annotations instead of Variant structure', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let snapshotId = 0;
   let branchId = 0;
@@ -497,21 +938,81 @@ test('a milestone created from an Undo cursor is attached to the historical grap
 
   live = { model: { processRevision: 1 }, value: 'step-1' };
   const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
-  const firstMilestone = manager.create('After step 1');
+  const firstBookmark = manager.bookmarkStep(first.id, 'After step 1');
   live = { model: { processRevision: 2 }, value: 'step-2' };
   manager.recordOperation({ kind: 'etch', label: 'Step 2' });
-  manager.create('After step 2');
+  manager.bookmarkCurrentStep('After step 2');
 
   manager.syncCursorToProcessRevision(1);
   live = { model: { processRevision: 1 }, value: 'step-1' };
-  manager.createBranchFromCursor('Undo variant');
+  const before = manager.list().length;
+  const variant = manager.createBranchFromCursor('Undo variant');
 
-  const branchPoint = manager
-    .list()
-    .find((record) => record.name === 'Main branch point');
-  assert.ok(branchPoint);
-  assert.equal(branchPoint.historyNodeId, first.id);
-  assert.equal(branchPoint.parentId, firstMilestone.id);
+  assert.equal(manager.list().length, before);
+  assert.equal(manager.list().some((record) => record.id === firstBookmark.id), true);
+  assert.equal(variant.rootSnapshotId, null);
+  assert.equal(variant.rootNodeId, first.id);
+  assert.equal(variant.parentBranchId, 'main');
+  assert.equal(manager.list().some((record) => /branch point/i.test(record.name)), false);
+});
+
+test('Variant tree records explicit parent linkage and supports direct rename', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  live = { model: { processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({ kind: 'etch', label: 'Step 2' });
+
+  const variant = manager.createBranchFromNode(first.id);
+  assert.equal(variant.rootNodeId, first.id);
+  assert.equal(variant.parentBranchId, 'main');
+  assert.equal(variant.rootSnapshotId, null);
+  assert.equal(manager.renameBranch(variant.id, 'Detector path'), true);
+  assert.equal(
+    manager.listBranches().find((item) => item.id === variant.id).name,
+    'Detector path',
+  );
+
+  live = { model: { processRevision: 2 }, value: 'variant-step' };
+  const childStep = manager.recordOperation({ kind: 'add', label: 'Variant step' });
+  const child = manager.createBranchFromNode(childStep.id, 'Child path');
+  assert.equal(child.parentBranchId, variant.id);
+  assert.equal(child.rootNodeId, childStep.id);
+});
+
+test('bookmarking a Step does not create a second restore lineage', () => {
+  let live = { model: { processRevision: 1 }, value: 'step-1' };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `bookmark-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const step = manager.recordOperation({ kind: 'add', label: 'Step 1' });
+  const bookmark = manager.bookmarkCurrentStep('Important');
+  assert.equal(bookmark.historyNodeId, step.id);
+  assert.equal(manager.listHistory().length, 1);
+  assert.equal(manager.list().length, 1);
+  assert.equal(manager.currentPosition().nodeId, step.id);
+  assert.equal(manager.currentPosition().bookmarkId, null);
 });
 
 test('automatic branches use concise Variant names and historical state can return to HEAD', () => {

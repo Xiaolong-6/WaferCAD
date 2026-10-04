@@ -126,14 +126,17 @@ Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm c
 
 ### `site/workspace-snapshots.js`
 
-Owns the process-history graph, named immutable milestones, and variant/branch HEAD state independently of the DOM and renderers. A successful Apply creates a lightweight node with `branchId`, `parentId`, `processRevision`, timestamp, and structured operation metadata. A milestone stores a full validated workspace state plus the `historyNodeId` it marks.
+Owns the canonical process-History graph. A successful Apply creates one **Step node** with `branchId`, `parentId`, `processRevision`, timestamp, structured operation metadata, and the exact validated workspace state produced by that operation. In snapshot-branch format v3 every newly written Step is restorable.
 
-Each variant keeps independent process `rootNodeId` / `headNodeId` pointers and one validated `headState`. Ordinary process nodes do not store full models/layouts. This bounds storage growth while still allowing variant switching to restore the latest state immediately. HEAD state is synchronized lazily at persistence/export and variant-switch boundaries so non-process edits are retained without cloning the full workspace on every UI input. Named milestone states and variant HEAD states are packed through the same shared model/layout asset layer during autosave, Recovery, and file export.
+A **Variant** is a path through that Step graph. Each Variant stores `parentBranchId`, `rootNodeId`, `headNodeId`, and an exact `headState`. `rootNodeId` points to the Step where the Variant diverged; it may belong to the parent Variant. A new process Step on the child Variant points back to that origin Step through `parentId`. Variant topology therefore never depends on a snapshot/bookmark record.
 
-Restoring a milestone or Undo can move the process cursor behind HEAD without changing HEAD. The resulting historical working state may be inspected or edited. Apply uses a two-phase continuation transaction: the process worker runs first, and a new variant is committed only after a successful geometry-changing result. Failed, aborted, busy, and no-change operations therefore cannot leave empty variants. The new variant is seeded from the actual historical working state. If no milestone exists at an Undo cursor, a branch-point milestone is created at that graph position automatically.
+Legacy `rootSnapshotId` / `headSnapshotId` fields remain readable for old files, but new Step-first branching does not create or require them. Snapshot records are treated as **bookmarks/legacy checkpoints**. A modern bookmark is an annotation attached to a Step through `historyNodeId`; restore and branching are properties of the Step itself.
 
-Milestones referenced as variant origins cannot be deleted, which preserves provenance. Non-Main leaf variants can be deleted after a Recovery checkpoint; variants with child variants must be reduced from the leaves first. Existing v1 branch metadata and older snapshot-only projects import into the V2 manager without changing their saved workspace states.
+Restoring a Step or Undo can move the cursor behind the active Variant HEAD without rewriting HEAD. Apply uses a two-phase continuation transaction: the process worker runs first, and a new Variant is committed only after a successful geometry-changing result. Failed, aborted, busy, and no-change operations cannot leave empty Variants.
 
+The manager distinguishes process position from exact workspace HEAD state. Two states may share the same `processRevision` / Step while differing in display, ROI, mask, or project settings; restoring an older state at the HEAD Step must not silently overwrite the Variant HEAD. Clean History browsing does not consume Recovery slots, while edited historical working state is checkpointed before replacement.
+
+Process-node states, bookmark states kept for compatibility, and Variant HEAD states all use shared model/layout asset packing during autosave, Recovery, and file export. v1/v2 metadata remains accepted; recoverable legacy states are materialized into their Step nodes when possible, without inventing states that were never saved.
 ### `site/gds.js`
 
 Parses GDSII directly in the browser:

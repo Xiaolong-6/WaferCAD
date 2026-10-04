@@ -180,30 +180,53 @@ function deepEqual(left, right) {
   return true;
 }
 
-function cloneCore(value, { model = true, layout = true } = {}) {
+function cloneCore(
+  value,
+  { model = true, layout = true, snapshotBranches = true } = {},
+) {
   const clone = {};
   for (const [key, item] of Object.entries(value || {})) {
     if (key === 'snapshots' || key === 'sharedLayouts' || key === 'sharedModels' || key === 'storage')
       continue;
     if (!model && key === 'model') continue;
     if (!layout && key === 'layout') continue;
+    if (!snapshotBranches && key === 'snapshotBranches') continue;
     clone[key] = structuredClone(item);
   }
   return clone;
 }
 
-function createAssetResolver(rootAsset, quantize) {
+function createAssetResolver(rootAsset, quantize, keyOf = () => '') {
   const shared = [];
-  const sources = [{ source: rootAsset, ref: 'project' }];
+  const sourcesByKey = new Map();
   const refsByIdentity = new WeakMap();
-  if (isObject(rootAsset)) refsByIdentity.set(rootAsset, 'project');
+
+  const keyFor = (asset) => {
+    try {
+      return String(keyOf(asset) ?? '');
+    } catch {
+      return '';
+    }
+  };
+  const addSource = (source, ref) => {
+    const key = keyFor(source);
+    const bucket = sourcesByKey.get(key) || [];
+    bucket.push({ source, ref });
+    sourcesByKey.set(key, bucket);
+  };
+
+  if (isObject(rootAsset)) {
+    refsByIdentity.set(rootAsset, 'project');
+    addSource(rootAsset, 'project');
+  }
 
   function resolve(asset) {
     if (!isObject(asset)) throw new Error('Snapshot asset is missing.');
     const known = refsByIdentity.get(asset);
     if (known !== undefined) return known;
 
-    for (const entry of sources) {
+    const key = keyFor(asset);
+    for (const entry of sourcesByKey.get(key) || []) {
       if (!deepEqual(asset, entry.source)) continue;
       refsByIdentity.set(asset, entry.ref);
       return entry.ref;
@@ -213,7 +236,7 @@ function createAssetResolver(rootAsset, quantize) {
     quantize(stored);
     const ref = shared.length;
     shared.push(stored);
-    sources.push({ source: asset, ref });
+    addSource(asset, ref);
     refsByIdentity.set(asset, ref);
     return ref;
   }
@@ -221,18 +244,40 @@ function createAssetResolver(rootAsset, quantize) {
   return { resolve, shared };
 }
 
+function modelAssetKey(model) {
+  if (!isObject(model)) return '';
+  return [
+    model.kernel || '',
+    Number(model.revision) || 0,
+    Number(model.processRevision) || 0,
+    Number(model.nextLayerId) || 0,
+    Number(model.nextRegionId) || 0,
+    Number(model.nextImplantId) || 0,
+    Array.isArray(model.layers) ? model.layers.length : 0,
+    Array.isArray(model.regions) ? model.regions.length : 0,
+    Array.isArray(model.implants) ? model.implants.length : 0,
+  ].join('|');
+}
+
+function packWorkspaceState(state, modelAssets, layoutAssets, { quantize = false } = {}) {
+  if (!isObject(state)) return null;
+  const packed = cloneCore(state, { model: false, layout: false });
+  if (quantize) quantizeProjectLengths(packed);
+  packed.modelRef = modelAssets.resolve(state.model);
+  packed.layoutRef = layoutAssets.resolve(state.layout);
+  return packed;
+}
+
 export function prepareProjectForWorkspaceStorage(project) {
   validateProjectFile(project);
 
-  const stored = cloneCore(project);
+  const stored = cloneCore(project, { snapshotBranches: false });
   const layoutAssets = createAssetResolver(project.layout, () => {});
-  const modelAssets = createAssetResolver(project.model, () => {});
+  const modelAssets = createAssetResolver(project.model, () => {}, modelAssetKey);
 
   if (Array.isArray(project.snapshots)) {
     stored.snapshots = project.snapshots.map((record) => {
-      const state = cloneCore(record.state, { model: false, layout: false });
-      state.modelRef = modelAssets.resolve(record.state.model);
-      state.layoutRef = layoutAssets.resolve(record.state.layout);
+      const state = packWorkspaceState(record.state, modelAssets, layoutAssets);
       return {
         id: record.id,
         name: record.name,
@@ -246,14 +291,19 @@ export function prepareProjectForWorkspaceStorage(project) {
   }
 
   if (isObject(project.snapshotBranches)) {
-    stored.snapshotBranches = structuredClone(project.snapshotBranches);
-    stored.snapshotBranches.branches = (project.snapshotBranches.branches || []).map((branch) => {
+    const { nodes = [], branches = [], ...branchMetadata } = project.snapshotBranches;
+    stored.snapshotBranches = structuredClone(branchMetadata);
+    stored.snapshotBranches.nodes = nodes.map((node) => {
+      const storedNode = structuredClone(node);
+      if (isObject(node.state)) {
+        storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets);
+      }
+      return storedNode;
+    });
+    stored.snapshotBranches.branches = branches.map((branch) => {
       const storedBranch = structuredClone(branch);
       if (isObject(branch.headState)) {
-        const state = cloneCore(branch.headState, { model: false, layout: false });
-        state.modelRef = modelAssets.resolve(branch.headState.model);
-        state.layoutRef = layoutAssets.resolve(branch.headState.layout);
-        storedBranch.headState = state;
+        storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets);
       }
       return storedBranch;
     });
@@ -339,6 +389,17 @@ function assertQuantizedProjectGeometryPreserved(before, after) {
     );
   }
 
+  const originalNodes = before?.snapshotBranches?.nodes || [],
+    storedNodes = after?.snapshotBranches?.nodes || [];
+  for (let index = 0; index < originalNodes.length; index++) {
+    if (!originalNodes[index]?.state) continue;
+    assertLayoutGeometryPreserved(
+      originalNodes[index]?.state?.layout,
+      storedNodes[index]?.state?.layout,
+      `snapshotBranches.nodes[${index}].state.layout`,
+    );
+  }
+
   const originalBranches = before?.snapshotBranches?.branches || [],
     storedBranches = after?.snapshotBranches?.branches || [];
   for (let index = 0; index < originalBranches.length; index++) {
@@ -354,18 +415,15 @@ function assertQuantizedProjectGeometryPreserved(before, after) {
 export function prepareProjectForStorage(project) {
   validateProjectFile(project);
 
-  const stored = cloneCore(project);
+  const stored = cloneCore(project, { snapshotBranches: false });
   quantizeProjectLengths(stored);
 
   const layoutAssets = createAssetResolver(project.layout, quantizeLayout);
-  const modelAssets = createAssetResolver(project.model, quantizeModel);
+  const modelAssets = createAssetResolver(project.model, quantizeModel, modelAssetKey);
 
   if (Array.isArray(project.snapshots)) {
     stored.snapshots = project.snapshots.map((record) => {
-      const state = cloneCore(record.state, { model: false, layout: false });
-      quantizeProjectLengths(state);
-      state.modelRef = modelAssets.resolve(record.state.model);
-      state.layoutRef = layoutAssets.resolve(record.state.layout);
+      const state = packWorkspaceState(record.state, modelAssets, layoutAssets, { quantize: true });
       return {
         id: record.id,
         name: record.name,
@@ -379,15 +437,19 @@ export function prepareProjectForStorage(project) {
   }
 
   if (isObject(project.snapshotBranches)) {
-    stored.snapshotBranches = structuredClone(project.snapshotBranches);
-    stored.snapshotBranches.branches = (project.snapshotBranches.branches || []).map((branch) => {
+    const { nodes = [], branches = [], ...branchMetadata } = project.snapshotBranches;
+    stored.snapshotBranches = structuredClone(branchMetadata);
+    stored.snapshotBranches.nodes = nodes.map((node) => {
+      const storedNode = structuredClone(node);
+      if (isObject(node.state)) {
+        storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets, { quantize: true });
+      }
+      return storedNode;
+    });
+    stored.snapshotBranches.branches = branches.map((branch) => {
       const storedBranch = structuredClone(branch);
       if (isObject(branch.headState)) {
-        const state = cloneCore(branch.headState, { model: false, layout: false });
-        quantizeProjectLengths(state);
-        state.modelRef = modelAssets.resolve(branch.headState.model);
-        state.layoutRef = layoutAssets.resolve(branch.headState.layout);
-        storedBranch.headState = state;
+        storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets, { quantize: true });
       }
       return storedBranch;
     });
@@ -439,9 +501,8 @@ export function expandProjectStorage(project) {
     delete state.modelRef;
   }
 
-  for (const branch of project.snapshotBranches?.branches || []) {
-    const state = branch?.headState;
-    if (!isObject(state)) continue;
+  const expandState = (state) => {
+    if (!isObject(state)) return;
     if (state.layout == null && state.layoutRef != null) {
       state.layout = resolveAsset(state.layoutRef, project.layout, sharedLayouts, 'layout');
     }
@@ -450,7 +511,10 @@ export function expandProjectStorage(project) {
     }
     delete state.layoutRef;
     delete state.modelRef;
-  }
+  };
+
+  for (const node of project.snapshotBranches?.nodes || []) expandState(node?.state);
+  for (const branch of project.snapshotBranches?.branches || []) expandState(branch?.headState);
 
   delete project.sharedLayouts;
   delete project.sharedModels;

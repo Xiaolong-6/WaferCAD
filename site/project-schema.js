@@ -658,7 +658,7 @@ function validateSnapshotRecords(snapshots, shared) {
 function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   if (snapshotBranches == null) return;
   const value = assertObject(snapshotBranches, 'snapshotBranches');
-  const version = assertInteger(value.version, 'snapshotBranches.version', { min: 1, max: 2 });
+  const version = assertInteger(value.version, 'snapshotBranches.version', { min: 1, max: 3 });
   const activeBranchId = assertString(value.activeBranchId, 'snapshotBranches.activeBranchId', {
     max: 128,
   });
@@ -670,6 +670,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   const branchIds = new Set();
   const snapshotIds = new Set((snapshots || []).map((record) => record?.id).filter(Boolean));
   const nodeIds = new Set();
+  const nodesById = new Map();
 
   if (version >= 2) {
     const nodes = assertArray(
@@ -683,6 +684,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       const id = assertString(node.id, `${path}.id`, { max: 128 });
       if (nodeIds.has(id)) fail(`${path}.id`, 'must be unique.');
       nodeIds.add(id);
+      nodesById.set(id, node);
       assertString(node.branchId, `${path}.branchId`, { max: 128 });
       if (node.parentId != null) {
         assertString(node.parentId, `${path}.parentId`, { max: 128 });
@@ -697,6 +699,17 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       }
       if (node.operation.label != null) {
         assertString(node.operation.label, `${path}.operation.label`, { max: 512 });
+      }
+      if (version >= 3 && node.state == null) {
+        fail(`${path}.state`, 'is required for restorable process history.');
+      }
+      if (node.state != null) {
+        assertObject(node.state, `${path}.state`);
+        if (node.state.snapshots != null) fail(`${path}.state.snapshots`, 'must not be nested.');
+        if (node.state.snapshotBranches != null) {
+          fail(`${path}.state.snapshotBranches`, 'must not be nested.');
+        }
+        validateProjectCore(node.state, false, shared);
       }
     });
     nodes.forEach((node, index) => {
@@ -726,6 +739,12 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
     if (branchIds.has(id)) fail(`${path}.id`, 'must be unique.');
     branchIds.add(id);
     assertString(branch.name, `${path}.name`, { max: 256 });
+    if (version >= 3 && branch.parentBranchId != null) {
+      assertString(branch.parentBranchId, `${path}.parentBranchId`, { max: 128 });
+      if (branch.parentBranchId === id) {
+        fail(`${path}.parentBranchId`, 'must not reference itself.');
+      }
+    }
     const createdAt = assertString(branch.createdAt, `${path}.createdAt`, { max: 64 });
     if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
 
@@ -755,6 +774,88 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       }
     }
   });
+
+  if (version >= 3) {
+    const branchById = new Map(branches.map((branch) => [branch.id, branch]));
+    branches.forEach((branch, index) => {
+      if (
+        branch.parentBranchId != null &&
+        !branchIds.has(branch.parentBranchId)
+      ) {
+        fail(
+          `snapshotBranches.branches[${index}].parentBranchId`,
+          'references an unknown parent variant.',
+        );
+      }
+
+      if (
+        branch.id !== 'main' &&
+        branch.parentBranchId != null &&
+        branch.rootNodeId != null
+      ) {
+        const origin = nodesById.get(branch.rootNodeId);
+        if (origin && origin.branchId !== branch.parentBranchId) {
+          fail(
+            `snapshotBranches.branches[${index}].rootNodeId`,
+            'must reference a Step owned by the parent Variant.',
+          );
+        }
+      }
+
+      const seenParents = new Set([branch.id]);
+      let parentId = branch.parentBranchId;
+      while (parentId != null) {
+        if (seenParents.has(parentId)) {
+          fail(
+            `snapshotBranches.branches[${index}].parentBranchId`,
+            'must not create a Variant ancestry cycle.',
+          );
+        }
+        seenParents.add(parentId);
+        parentId = branchById.get(parentId)?.parentBranchId ?? null;
+      }
+
+      if (branch.headNodeId != null && branch.rootNodeId == null) {
+        fail(
+          `snapshotBranches.branches[${index}].rootNodeId`,
+          'is required when a Variant has a process HEAD.',
+        );
+      }
+      if (branch.rootNodeId != null && branch.headNodeId != null) {
+        const visited = new Set();
+        let nodeId = branch.headNodeId;
+        let reachedRoot = false;
+        while (nodeId != null) {
+          if (visited.has(nodeId)) {
+            fail(
+              `snapshotBranches.branches[${index}].headNodeId`,
+              'must not traverse a cyclic Step chain.',
+            );
+          }
+          visited.add(nodeId);
+          const node = nodesById.get(nodeId);
+          if (!node) break;
+          if (nodeId === branch.rootNodeId) {
+            reachedRoot = true;
+            break;
+          }
+          if (node.branchId !== branch.id) {
+            fail(
+              `snapshotBranches.branches[${index}].headNodeId`,
+              'must reach the origin through Steps owned by this Variant.',
+            );
+          }
+          nodeId = node.parentId;
+        }
+        if (!reachedRoot) {
+          fail(
+            `snapshotBranches.branches[${index}].headNodeId`,
+            'must descend from the Variant origin Step.',
+          );
+        }
+      }
+    });
+  }
 
   if (!branchIds.has(activeBranchId)) {
     fail('snapshotBranches.activeBranchId', 'references an unknown branch.');

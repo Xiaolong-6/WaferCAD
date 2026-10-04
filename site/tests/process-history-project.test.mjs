@@ -5,9 +5,11 @@ import test from 'node:test';
 import {
   expandProjectStorage,
   prepareProjectForWorkspaceStorage,
+  readProjectFile,
   serializeProject,
 } from '../project-io.js';
 import { validateProjectFile } from '../project-schema.js';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendorSource = readFileSync(
   new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
@@ -89,7 +91,7 @@ function validProject(processRevision = 0) {
   };
 }
 
-test('V2 process history and branch HEAD state survive packed project storage', () => {
+test('V3 restorable process history survives packed project storage', () => {
   const source = validProject(2);
   const milestoneState = validProject(1);
   const headState = validProject(2);
@@ -106,7 +108,7 @@ test('V2 process history and branch HEAD state survive packed project storage', 
     },
   ];
   source.snapshotBranches = {
-    version: 2,
+    version: 3,
     activeBranchId: 'main',
     cursorNodeId: 'process-2',
     cursorSnapshotId: null,
@@ -118,6 +120,7 @@ test('V2 process history and branch HEAD state survive packed project storage', 
         createdAt: '2026-10-03T10:00:00.000Z',
         processRevision: 1,
         operation: { kind: 'add', label: 'Deposit oxide' },
+        state: milestoneState,
       },
       {
         id: 'process-2',
@@ -126,6 +129,7 @@ test('V2 process history and branch HEAD state survive packed project storage', 
         createdAt: '2026-10-03T10:02:00.000Z',
         processRevision: 2,
         operation: { kind: 'etch', label: 'Etch active window' },
+        state: headState,
       },
     ],
     branches: [
@@ -145,20 +149,388 @@ test('V2 process history and branch HEAD state survive packed project storage', 
   assert.equal(validateProjectFile(source), source);
 
   const stored = JSON.parse(serializeProject(source));
-  assert.equal(stored.snapshotBranches.version, 2);
+  assert.equal(stored.snapshotBranches.version, 3);
   assert.equal(stored.snapshotBranches.nodes[1].parentId, 'process-1');
   assert.equal(stored.snapshots[0].historyNodeId, 'process-1');
+  assert.equal(stored.snapshotBranches.nodes[0].state.model, undefined);
+  assert.ok(stored.snapshotBranches.nodes[0].state.modelRef != null);
   assert.equal(stored.snapshotBranches.branches[0].headState.model, undefined);
   assert.ok(stored.snapshotBranches.branches[0].headState.modelRef != null);
 
   expandProjectStorage(stored);
+  assert.equal(stored.snapshotBranches.nodes[0].state.model.processRevision, 1);
   assert.equal(stored.snapshotBranches.branches[0].headState.model.processRevision, 2);
   assert.equal(validateProjectFile(stored), stored);
 
   const workspaceStored = prepareProjectForWorkspaceStorage(source);
+  assert.ok(workspaceStored.snapshotBranches.nodes[0].state.modelRef != null);
   assert.ok(workspaceStored.snapshotBranches.branches[0].headState.modelRef != null);
   expandProjectStorage(workspaceStored);
+  assert.equal(workspaceStored.snapshotBranches.nodes[0].state.model.processRevision, 1);
   assert.equal(workspaceStored.snapshotBranches.branches[0].headState.model.processRevision, 2);
+});
+
+test('V3 Variant parent linkage survives validation and packed storage', () => {
+  const source = validProject(1);
+  const step = validProject(1);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'variant-1',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-04T00:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Origin Step' },
+        state: step,
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: step,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'variant-1',
+        name: 'Detector path',
+        parentBranchId: 'main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: step,
+        createdAt: '2026-10-04T00:01:00.000Z',
+      },
+    ],
+  };
+
+  assert.equal(validateProjectFile(source), source);
+  const stored = JSON.parse(serializeProject(source));
+  assert.equal(stored.snapshotBranches.branches[1].parentBranchId, 'main');
+  assert.equal(stored.snapshotBranches.branches[1].rootNodeId, 'process-1');
+  expandProjectStorage(stored);
+  assert.equal(validateProjectFile(stored), stored);
+
+  source.snapshotBranches.branches[1].parentBranchId = 'missing';
+  assert.throws(
+    () => validateProjectFile(source),
+    /parentBranchId.*unknown parent variant/i,
+  );
+});
+
+test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
+  const source = validProject(1);
+  const step = validProject(1);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'variant-a',
+    cursorNodeId: 'process-main',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-main',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-04T00:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Main Step' },
+        state: step,
+      },
+      {
+        id: 'process-a',
+        branchId: 'variant-a',
+        parentId: 'process-main',
+        createdAt: '2026-10-04T00:01:30.000Z',
+        processRevision: 2,
+        operation: { kind: 'add', label: 'A Step' },
+        state: validProject(2),
+      },
+      {
+        id: 'process-b',
+        branchId: 'variant-b',
+        parentId: 'process-a',
+        createdAt: '2026-10-04T00:02:00.000Z',
+        processRevision: 3,
+        operation: { kind: 'etch', label: 'B Step' },
+        state: validProject(3),
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-main',
+        headState: step,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'variant-a',
+        name: 'A',
+        parentBranchId: 'main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-a',
+        headState: validProject(2),
+        createdAt: '2026-10-04T00:01:00.000Z',
+      },
+      {
+        id: 'variant-b',
+        name: 'B',
+        parentBranchId: 'variant-a',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-b',
+        headNodeId: 'process-b',
+        headState: validProject(3),
+        createdAt: '2026-10-04T00:02:00.000Z',
+      },
+    ],
+  };
+
+  assert.throws(
+    () => validateProjectFile(source),
+    /rootNodeId.*owned by the parent Variant/i,
+  );
+
+  source.snapshotBranches.branches[2].rootNodeId = 'process-a';
+  source.snapshotBranches.branches[2].parentBranchId = 'variant-a';
+  source.snapshotBranches.branches[1].rootNodeId = 'process-b';
+  source.snapshotBranches.branches[1].parentBranchId = 'variant-b';
+  assert.throws(
+    () => validateProjectFile(source),
+    /parentBranchId.*ancestry cycle/i,
+  );
+});
+
+test('V3 schema rejects a Variant HEAD path that does not descend from its origin Step', () => {
+  const source = validProject(3);
+  const originState = validProject(1);
+  const childState = validProject(2);
+  const foreignState = validProject(3);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'variant-a',
+    cursorNodeId: 'process-a',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-main',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-04T00:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Origin' },
+        state: originState,
+      },
+      {
+        id: 'process-a',
+        branchId: 'variant-a',
+        parentId: 'process-main',
+        createdAt: '2026-10-04T00:01:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'add', label: 'A Step' },
+        state: childState,
+      },
+      {
+        id: 'process-foreign',
+        branchId: 'main',
+        parentId: 'process-main',
+        createdAt: '2026-10-04T00:02:00.000Z',
+        processRevision: 3,
+        operation: { kind: 'etch', label: 'Foreign Step' },
+        state: foreignState,
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-foreign',
+        headState: foreignState,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'variant-a',
+        name: 'A',
+        parentBranchId: 'main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-main',
+        headNodeId: 'process-a',
+        headState: childState,
+        createdAt: '2026-10-04T00:01:00.000Z',
+      },
+    ],
+  };
+
+  assert.equal(validateProjectFile(source), source);
+
+  source.snapshotBranches.branches[1].headNodeId = 'process-foreign';
+  source.snapshotBranches.branches[1].headState = foreignState;
+  assert.throws(
+    () => validateProjectFile(source),
+    /headNodeId.*owned by this Variant|headNodeId.*origin Step/i,
+  );
+});
+
+test('V3 process-node restore states survive the project Open path', async () => {
+  const source = validProject(2);
+  const stepOne = validProject(1);
+  const stepTwo = validProject(2);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-2',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Step one' },
+        state: stepOne,
+      },
+      {
+        id: 'process-2',
+        branchId: 'main',
+        parentId: 'process-1',
+        createdAt: '2026-10-03T10:01:00.000Z',
+        processRevision: 2,
+        operation: { kind: 'etch', label: 'Step two' },
+        state: stepTwo,
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-2',
+        headState: stepTwo,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  const text = serializeProject(source);
+  const loaded = await readProjectFile({
+    size: Buffer.byteLength(text),
+    text: async () => text,
+  });
+  assert.equal(loaded.snapshotBranches.version, 3);
+  assert.equal(loaded.snapshotBranches.nodes[0].state.model.processRevision, 1);
+  assert.equal(loaded.snapshotBranches.nodes[1].state.model.processRevision, 2);
+
+  let live = loaded;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => {
+      try {
+        validateProjectFile(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  });
+  manager.importRecords(loaded.snapshots || [], loaded.snapshotBranches);
+  assert.equal(manager.restoreProcessNode('process-1'), true);
+  assert.equal(live.model.processRevision, 1);
+});
+
+test('V2 process history without node restore states remains backward compatible', () => {
+  const source = validProject(1);
+  source.snapshotBranches = {
+    version: 2,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Legacy process step' },
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: validProject(1),
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  assert.equal(validateProjectFile(source), source);
+});
+
+test('V3 schema rejects process nodes without restore states', () => {
+  const source = validProject(1);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-03T10:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'add', label: 'Missing state' },
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: validProject(1),
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  assert.throws(() => validateProjectFile(source), /state.*required for restorable process history/i);
 });
 
 test('V2 schema rejects dangling process history references', () => {

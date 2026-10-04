@@ -64,14 +64,17 @@ There is no application build step.
 15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface.
 16. Main/Mask morphology cues must remain subtle overlays that do not replace the underlying material/mask color language.
 17. Base rebuilds remain reversible.
-18. Snapshots are immutable milestone state; snapshot records must not recursively contain snapshots or snapshot-branch metadata.
-19. Every successful Process Apply must append exactly one lightweight process-history node. Failed, aborted, and no-change operations must append none.
-20. Process branch HEAD is independent per branch. Restore and Undo may move the cursor behind HEAD but must never rewrite HEAD; the next Apply must branch first.
-21. Branch HEAD state and named milestone state are the only complete states added by process history. Ordinary process nodes must remain metadata-only.
-22. Snapshot/process graph references must validate before live state replacement. Packed export/autosave must preserve branch HEAD state through the shared asset layer.
-23. Existing projects without branch metadata must normalize into one linear Main branch without changing snapshot state.
-24. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
-
+18. Every successful Process Apply must append exactly one restorable **Step** node. Failed, aborted, busy, and no-change operations must append none.
+19. Snapshot-branch format v3 requires a valid non-nested workspace state on every new Step. v1/v2 remain readable as legacy formats but must not gain invented intermediate states.
+20. Variant topology is Step-first: `parentBranchId` + `rootNodeId` define ancestry. New Variant creation must not require or synthesize a snapshot/bookmark record.
+21. Bookmarks are annotations on Steps. Adding, renaming, or deleting a modern bookmark must not add/remove a Step or change Variant ancestry.
+22. Variant HEAD is independent per Variant. Restoring a Step or Undo may move the cursor behind HEAD but must never rewrite HEAD; the next successful Apply must fork first.
+23. Process position and exact workspace HEAD are distinct. A same-revision historical state must not overwrite HEAD display/ROI/project edits.
+24. Any Step presented as restorable must remain restorable after autosave/reload and file export/open. Packed storage must preserve Step and Variant HEAD states through the shared asset layer.
+25. Replacing live workspace state must synchronize transient Undo/Redo controls so enabled buttons never point at cleared history.
+26. History UI must render Variant ancestry as a tree at the actual origin Step. A flat “Other variants” list is not an acceptable substitute.
+27. Existing projects without branch metadata must normalize into one linear Main Variant without changing saved workspace state.
+28. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 ## Source style
 
