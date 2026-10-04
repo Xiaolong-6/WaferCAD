@@ -11,17 +11,22 @@
       <div class="welcome-shell">
         <header class="welcome-hero">
           <div class="welcome-copy">
-            <div class="welcome-kicker">Local-first 2.5D wafer process CAD</div>
-            <h1>WaferCAD</h1>
+            <div class="welcome-kicker">WaferCAD · Visual Process CAD</div>
+            <h1>Turn a fabrication sequence into an inspectable device structure.</h1>
             <p class="welcome-lead">
-              Reconstruct fabrication flows, edit process geometry, and inspect wafer structures in
-              synchronized Main, Mask, 3D, and Section views.
+              Import masks, build a process flow, and inspect the evolving geometry in synchronized
+              Main, Mask, 3D, and arbitrary Section views — directly in the browser.
+            </p>
+            <p class="welcome-positioning">
+              Built for rapid structural reasoning between layout viewing and full physics-based
+              process TCAD.
             </p>
           </div>
 
           <div class="welcome-launch-panel" aria-label="Start a WaferCAD workspace">
             <strong>Start</strong>
-            <button id="welcomeImportBtn" class="welcome-action primary" type="button">
+            <a class="welcome-action primary" href="#welcomeExamples">Open an example</a>
+            <button id="welcomeImportBtn" class="welcome-action" type="button">
               Import GDS / OAS
             </button>
             <button id="welcomeProjectBtn" class="welcome-action" type="button">
@@ -30,13 +35,15 @@
             <a id="welcomeEmptyBtn" class="welcome-action" href="./app.html?start=empty">
               Start empty
             </a>
-            <span>Projects stay local in your browser unless you export them.</span>
+            <span>
+              Local-first. Browser storage can be cleared; export projects you want to keep.
+            </span>
           </div>
         </header>
 
         <p id="welcomeStatus" class="welcome-status" role="status" aria-live="polite"></p>
 
-        <section class="welcome-examples" aria-labelledby="welcomeExamplesTitle">
+        <section id="welcomeExamples" class="welcome-examples" aria-labelledby="welcomeExamplesTitle">
           <div class="welcome-section-head">
             <div>
               <span>Examples</span>
@@ -50,23 +57,99 @@
           <div id="welcomeExampleGrid" class="welcome-example-grid"></div>
         </section>
 
-        <section class="welcome-capability-strip" aria-label="WaferCAD capabilities">
-          <article>
-            <strong>Mask</strong>
-            <span>GDSII / OASIS · cells · layers · ROI</span>
-          </article>
-          <article>
-            <strong>Process</strong>
-            <span>Deposit · conformal · etch · implant · record</span>
-          </article>
-          <article>
-            <strong>History</strong>
-            <span>Restorable Steps · bookmarks · Variants</span>
-          </article>
-          <article>
-            <strong>Inspect</strong>
-            <span>Main · Mask · 3D · Section A–B</span>
-          </article>
+        <section class="welcome-guide" aria-labelledby="welcomeWorkflowTitle">
+          <div class="welcome-section-head">
+            <div>
+              <span>Workflow</span>
+              <h2 id="welcomeWorkflowTitle">How WaferCAD works</h2>
+            </div>
+            <p>
+              The process sequence is the central object: each applied or recorded step advances
+              the same editable geometric structure.
+            </p>
+          </div>
+
+          <div class="welcome-workflow-grid" role="list" aria-label="WaferCAD workflow">
+            <article class="welcome-workflow-step" role="listitem">
+              <span class="welcome-step-number" aria-hidden="true">01</span>
+              <h3>Import or draw</h3>
+              <p>Load GDSII / OASIS, browse cells and layers, or draw a process mask directly.</p>
+            </article>
+            <article class="welcome-workflow-step" role="listitem">
+              <span class="welcome-step-number" aria-hidden="true">02</span>
+              <h3>Build the process</h3>
+              <p>
+                Deposit, extend, etch, implant, define electrical regions, and record
+                non-geometric steps.
+              </p>
+            </article>
+            <article class="welcome-workflow-step emphasis" role="listitem">
+              <span class="welcome-step-number" aria-hidden="true">03</span>
+              <h3>Inspect each state</h3>
+              <p>
+                Main, Mask, 3D, and Section consume the same current process state and stay
+                synchronized.
+              </p>
+            </article>
+            <article class="welcome-workflow-step" role="listitem">
+              <span class="welcome-step-number" aria-hidden="true">04</span>
+              <h3>Explore alternatives</h3>
+              <p>
+                Restore process states, bookmark inspection milestones, or branch an alternative
+                Variant.
+              </p>
+            </article>
+          </div>
+
+          <p class="welcome-guide-note">
+            <abbr
+              title="XY geometry stays vector-based while material thicknesses and interfaces are represented along Z"
+              >Vector 2.5D</abbr
+            >
+            keeps process geometry lightweight and editable. Workspace controls explain terms such
+            as Extend, Front / Back, Variants, and Recovery where they first appear.
+          </p>
+        </section>
+
+        <section class="welcome-guide welcome-scope" aria-labelledby="welcomeScopeTitle">
+          <div class="welcome-section-head">
+            <div>
+              <span>Scope</span>
+              <h2 id="welcomeScopeTitle">Built for structural reasoning</h2>
+            </div>
+            <p>
+              WaferCAD focuses on evolving fabrication geometry and explicit structural annotations,
+              without presenting visual approximations as calibrated process or device physics.
+            </p>
+          </div>
+
+          <div class="welcome-scope-grid">
+            <article class="welcome-scope-box">
+              <h3>Designed for</h3>
+              <div class="welcome-scope-chips" aria-label="WaferCAD use cases">
+                <span>Process development</span>
+                <span>Literature reconstruction</span>
+                <span>Device design</span>
+                <span>Teaching</span>
+                <span>Technical communication</span>
+              </div>
+            </article>
+            <article class="welcome-scope-box welcome-scope-boundary">
+              <h3>Model boundary</h3>
+              <p>
+                <strong>Geometric process model.</strong> No calibrated plasma, chemistry,
+                diffusion, or activation solver.
+              </p>
+              <p>
+                <strong>Structural annotations.</strong> Implant and electrical regions do not
+                solve electrostatics or carrier transport.
+              </p>
+              <p>
+                <strong>Layout is an input.</strong> WaferCAD is not a replacement for a full IC
+                layout editor.
+              </p>
+            </article>
+          </div>
         </section>
 
         <footer class="welcome-footer">
