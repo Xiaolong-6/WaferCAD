@@ -45,11 +45,14 @@ Available actions:
 - Extend existing layer
 - Etch / subtract
 - Implant **(experimental)**
+- Electrical Region (non-material induced/doped/interface annotation)
 - Record process step (non-geometric fabrication metadata)
 
 Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Etch is vertical subtraction and has no coverage mode; it can either remove exposed materials in stack order or target one currently exposed material and stop when the next different material is reached. Its Surface setting can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
 
 **Record** adds fabrication metadata such as Anneal, Clean, Oxidation, Surface treatment, Activation, or a custom process directly to History without changing material geometry. This keeps literature/process-flow reconstructions chronological without pretending that WaferCAD simulates thermal chemistry or diffusion.
+
+Electrical Region is a separate non-material annotation for schematic p/n regions, inversion, accumulation, depletion, and interface/induced/doped regions. It is anchored to the selected exposed process surface, uses a display depth, follows later Etch by clipping against surviving material, and can be renamed/recolored/hidden from Layers. It does not solve electrostatics, carrier concentration, junction fields, or transport.
 
 The experimental Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and creates a user-named implant zone with an empirical depth and signed X tilt. Color is assigned after Apply from the active 20-color structure palette and can be changed from the Layers legend. Main uses a light overlay, Section shows the gradient volume, and 3D shows the surviving internal volume. Later Etch operations geometrically clip that existing implant, including rough-profile display, without modeling dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT_EXPERIMENTAL.md`.
 
@@ -82,7 +85,7 @@ npm run check
 
 ## Project-file safety
 
-Project JSON is versioned and migrated before it can replace the current editor state. The current format is **v13**. The **Project** tab opens first; **Save** creates a local browser Recovery checkpoint, while **Export** downloads the `.wafercad` file. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, surface morphology, Implant records, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Earlier formats, including the v6 File/Draw-mask introduction and v12 stochastic-surface format, migrate forward deterministically; v13 adds Pyramid morphology. Repeated snapshot layout/model assets are shared and persisted physical coordinates are normalized to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
+Project JSON is versioned and migrated before it can replace the current editor state. The current format is **v14**. The **Project** tab opens first; **Save** creates a local browser Recovery checkpoint, while **Export** downloads the `.wafercad` file. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, surface morphology, Implant records, Electrical Region records, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Earlier formats, including the v6 File/Draw-mask introduction and v12 stochastic-surface format, migrate forward deterministically; v13 adds Pyramid morphology and v14 adds first-class Electrical Region annotations. Repeated snapshot layout/model assets are shared and persisted physical coordinates are normalized to 0.1 nm. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
 
 See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
 
