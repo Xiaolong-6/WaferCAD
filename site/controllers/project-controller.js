@@ -40,7 +40,9 @@ export function createProjectController({
     syncBaseControls();
     syncTransformInputs();
     renderAll();
-    fit3d();
+    // loadProjectSnapshot restores the saved 3D camera (or fits when no camera
+    // exists). Fitting again here would overwrite inspection view state and
+    // make a freshly restored History Step look edited.
   }
 
   function renderSnapshots() {
