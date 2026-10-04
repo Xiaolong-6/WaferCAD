@@ -467,6 +467,10 @@ export function createSnapshotManager({
     return `Variant ${index}`;
   }
 
+  function canCreateVariant() {
+    return branches.length < maxBranches;
+  }
+
   function createVariant({
     originNodeId = null,
     parentVariantId = activeBranchId,
@@ -474,7 +478,7 @@ export function createSnapshotManager({
     name = '',
     headState = null,
   } = {}) {
-    if (branches.length >= maxBranches) {
+    if (!canCreateVariant()) {
       throw new Error(`Variant limit of ${maxBranches} reached.`);
     }
 
@@ -892,8 +896,9 @@ export function createSnapshotManager({
     };
   }
 
-  function canRecordOperation() {
-    return historyNodes.length < maxHistoryNodes;
+  function canRecordOperation(count = 1) {
+    const required = Math.max(1, Math.floor(Number(count) || 1));
+    return historyNodes.length + required <= maxHistoryNodes;
   }
 
   function recordOperation(operation = {}) {
@@ -1267,6 +1272,7 @@ export function createSnapshotManager({
     createBranchFromCursor,
     continuationContext,
     restoreActiveBranchHead,
+    canCreateVariant,
     stepEditContext,
     restoreStepInput,
     replaceBranchTailFrom,
