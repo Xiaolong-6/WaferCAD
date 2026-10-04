@@ -9,6 +9,7 @@ export function createSectionDetailRoiController({
   root = document,
   getRoi,
   setRoi,
+  renderDetail = null,
   onChanged = () => {},
   status = () => {},
 }) {
@@ -56,8 +57,20 @@ export function createSectionDetailRoiController({
     if (!source || !target || !roi) return;
 
     const cssWidth = Math.max(120, target.clientWidth || 190),
-      cssHeight = Math.max(120, target.clientHeight || 190),
-      dpr = Math.max(1, Number(globalThis.devicePixelRatio) || 1),
+      cssHeight = Math.max(120, target.clientHeight || 190);
+
+    if (typeof renderDetail === 'function') {
+      renderDetail(target, roi);
+      const zoom = $('sectionDetailZoom'),
+        sourceCssWidth = roi.width * source.getBoundingClientRect().width,
+        zoomFactor = cssWidth / Math.max(1, sourceCssWidth);
+      if (zoom) {
+        zoom.textContent = `×${zoomFactor < 10 ? zoomFactor.toFixed(1) : Math.round(zoomFactor)}`;
+      }
+      return;
+    }
+
+    const dpr = Math.max(1, Number(globalThis.devicePixelRatio) || 1),
       width = Math.max(1, Math.round(cssWidth * dpr)),
       height = Math.max(1, Math.round(cssHeight * dpr));
 
