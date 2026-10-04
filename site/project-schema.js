@@ -678,6 +678,24 @@ function validateDisplay(display) {
   if (display.sectionShowBorders != null && typeof display.sectionShowBorders !== 'boolean') {
     fail('display.sectionShowBorders', 'must be boolean.');
   }
+  if (display.sectionDetailRoi != null) {
+    const roi = assertObject(display.sectionDetailRoi, 'display.sectionDetailRoi');
+    assertFinite(roi.x, 'display.sectionDetailRoi.x', { min: 0, max: 1 });
+    assertFinite(roi.y, 'display.sectionDetailRoi.y', { min: 0, max: 1 });
+    assertFinite(roi.width, 'display.sectionDetailRoi.width', { min: 0, max: 1 });
+    assertFinite(roi.height, 'display.sectionDetailRoi.height', { min: 0, max: 1 });
+    if (
+      !(roi.width > 0) ||
+      !(roi.height > 0) ||
+      roi.x + roi.width > 1.000001 ||
+      roi.y + roi.height > 1.000001
+    ) {
+      fail('display.sectionDetailRoi', 'must stay inside the Section canvas.');
+    }
+    if (roi.shape != null && !['rect', 'circle'].includes(roi.shape)) {
+      fail('display.sectionDetailRoi.shape', 'must be rect or circle.');
+    }
+  }
   if (display.sectionCollapse != null) {
     const collapse = assertObject(display.sectionCollapse, 'display.sectionCollapse');
     assertFinite(collapse.top, 'display.sectionCollapse.top', {

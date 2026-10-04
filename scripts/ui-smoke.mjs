@@ -1486,6 +1486,47 @@ assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
 await sectionScaleButton.click();
 assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
+// Section Detail ROI keeps the global section visible while re-rendering a local
+// region at higher effective resolution. The inset can be moved out of the way.
+await page.locator('#sectionDetailRoiBtn').click();
+const sectionBox = await page.locator('#sectionCanvas').boundingBox();
+assert.ok(sectionBox);
+await page.mouse.move(
+  sectionBox.x + sectionBox.width * 0.34,
+  sectionBox.y + sectionBox.height * 0.18,
+);
+await page.mouse.down();
+await page.mouse.move(
+  sectionBox.x + sectionBox.width * 0.54,
+  sectionBox.y + sectionBox.height * 0.42,
+  { steps: 5 },
+);
+await page.mouse.up();
+await page.locator('#sectionDetailRoiOverlay').waitFor({ state: 'visible' });
+await page.locator('#sectionDetailInset').waitFor({ state: 'visible' });
+assert.ok(
+  (await canvasInkFraction(page, '#sectionDetailInsetCanvas')) > 0.01,
+  'Section Detail inset rendered blank',
+);
+const insetBefore = await page.locator('#sectionDetailInset').boundingBox();
+const insetHeadBox = await page.locator('#sectionDetailInsetHead').boundingBox();
+assert.ok(insetBefore && insetHeadBox);
+await page.mouse.move(insetHeadBox.x + 20, insetHeadBox.y + insetHeadBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(insetHeadBox.x - 45, insetHeadBox.y + 42, { steps: 4 });
+await page.mouse.up();
+const insetAfter = await page.locator('#sectionDetailInset').boundingBox();
+assert.ok(insetAfter);
+assert.ok(
+  Math.abs(insetAfter.x - insetBefore.x) > 4 || Math.abs(insetAfter.y - insetBefore.y) > 4,
+  'Section Detail inset did not move',
+);
+await page.locator('#sectionDetailShapeBtn').click();
+assert.equal(
+  await page.locator('#sectionDetailRoiOverlay').evaluate((el) => el.classList.contains('circle')),
+  true,
+);
+
 // Conformal Extend reuses the Deposit coating kernel with the existing layer id.
 await openFunctionPanel(page, 'process');
 await page.locator('[data-process-mode="grow"]').click();
@@ -1506,6 +1547,9 @@ const extendDownload = await extendDownloadPromise;
 const extendSavedPath = await extendDownload.path();
 assert.ok(extendSavedPath);
 const extendSaved = JSON.parse(await readFile(extendSavedPath, 'utf8'));
+assert.equal(extendSaved.display.sectionDetailRoi?.shape, 'circle');
+assert.ok(extendSaved.display.sectionDetailRoi?.width > 0);
+assert.ok(extendSaved.display.sectionDetailRoi?.height > 0);
 const extendStackAt = (x) =>
   extendSaved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
 assert.deepEqual(

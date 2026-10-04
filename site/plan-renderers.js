@@ -346,10 +346,14 @@ export function createPlanRenderers({
     syncSectionInputs();
     getSectionEditor()?.update();
   }
-  function renderSection() {
+  function renderSection(targetCanvas = null, detailRoi = null) {
     const { model, section, sectionScaleMode, sectionShowBorders, sectionCollapse } = getState();
-    const c = $('sectionCanvas'),
-      { ctx, w, h } = setupCanvas(c);
+    const mainCanvas = $('sectionCanvas'),
+      c = targetCanvas || mainCanvas,
+      { ctx, w, h } = setupCanvas(c),
+      mainRect = mainCanvas.getBoundingClientRect(),
+      viewW = detailRoi ? Math.max(2, mainRect.width) : w,
+      viewH = detailRoi ? Math.max(2, mainRect.height) : h;
     ctx.clearRect(0, 0, w, h);
 
     const [idealLo, idealHi] = modelBoundsZ(model),
@@ -368,8 +372,8 @@ export function createPlanRenderers({
       top = 10,
       bottom = 22,
       breakPixels = 8,
-      iw = Math.max(1, w - left - right),
-      ih = Math.max(breakPixels + 1, h - top - bottom),
+      iw = Math.max(1, viewW - left - right),
+      ih = Math.max(breakPixels + 1, viewH - top - bottom),
       autoXScale = iw / sectionSpan;
 
     let plotLeft = left,
@@ -400,26 +404,37 @@ export function createPlanRenderers({
       }),
       zScale = Math.max(1e-12, zTransform.topScale),
       zExaggeration = zScale / Math.max(xScale, 1e-12),
-      mapT = (t) => plotLeft + t * plotWidth,
-      mapZ = zTransform.mapZ;
+      detailX = detailRoi ? detailRoi.x * viewW : 0,
+      detailY = detailRoi ? detailRoi.y * viewH : 0,
+      detailScaleX = detailRoi ? w / Math.max(1, detailRoi.width * viewW) : 1,
+      detailScaleY = detailRoi ? h / Math.max(1, detailRoi.height * viewH) : 1,
+      screenX = (value) => (value - detailX) * detailScaleX,
+      screenY = (value) => (value - detailY) * detailScaleY,
+      baseMapT = (t) => plotLeft + t * plotWidth,
+      baseMapZ = zTransform.mapZ,
+      mapT = (t) => screenX(baseMapT(t)),
+      mapZ = (z) => screenY(baseMapZ(z)),
+      effectiveXScale = xScale * detailScaleX;
 
-    c.dataset.scaleMode = sectionScaleMode;
-    c.dataset.xPxPerUm = String(xScale);
-    c.dataset.zPxPerUm = String(zScale);
-    c.dataset.zMinUm = String(lo);
-    c.dataset.zMaxUm = String(hi);
-    c.dataset.sectionPlotLeft = String(plotLeft);
-    c.dataset.sectionCollapseBreakY = String(zTransform.breakCenter);
-    c.dataset.sectionCollapseUpperY = String(zTransform.upperBottom);
-    c.dataset.sectionCollapseLowerY = String(zTransform.lowerTop);
-    c.dataset.sectionFrameTop = String(zTransform.frameTop);
-    c.dataset.sectionFrameBottom = String(zTransform.frameBottom);
-    c.dataset.sectionZ0Um = String(z0);
-    c.dataset.sectionZ1Um = String(z1);
-    c.dataset.sectionBottomPxPerUm = String(zTransform.bottomScale);
-    c.dataset.sectionCollapseTopUm = String(collapse.top);
-    c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
-  
+    if (!detailRoi) {
+      c.dataset.scaleMode = sectionScaleMode;
+      c.dataset.xPxPerUm = String(xScale);
+      c.dataset.zPxPerUm = String(zScale);
+      c.dataset.zMinUm = String(lo);
+      c.dataset.zMaxUm = String(hi);
+      c.dataset.sectionPlotLeft = String(plotLeft);
+      c.dataset.sectionCollapseBreakY = String(zTransform.breakCenter);
+      c.dataset.sectionCollapseUpperY = String(zTransform.upperBottom);
+      c.dataset.sectionCollapseLowerY = String(zTransform.lowerTop);
+      c.dataset.sectionFrameTop = String(zTransform.frameTop);
+      c.dataset.sectionFrameBottom = String(zTransform.frameBottom);
+      c.dataset.sectionZ0Um = String(z0);
+      c.dataset.sectionZ1Um = String(z1);
+      c.dataset.sectionBottomPxPerUm = String(zTransform.bottomScale);
+      c.dataset.sectionCollapseTopUm = String(collapse.top);
+      c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
+    }
+
     ctx.fillStyle = '#fbfcfd';
     ctx.fillRect(0, 0, w, h);
     for (const contour of sectionContours(model, section.a, section.b)) {
@@ -451,13 +466,13 @@ export function createPlanRenderers({
       sectionUnitX = sectionDx / sectionSpan,
       sectionUnitY = sectionDy / sectionSpan,
       filteredSectionRoughRelief = (appearance, worldX, worldY) => {
-        const featurePixels = appearance.featureSize * xScale;
+        const featurePixels = appearance.featureSize * effectiveXScale;
         if (featurePixels >= 2) return roughProfileOffsetAtPoint(worldX, worldY, appearance);
 
         // Pixel-footprint filtering is a display anti-aliasing step. Keep every
         // renderer that traces the same physical profile on this shared sampler
         // so material, conformal coating and Implant remain visually registered.
-        const halfPixelPhysical = 0.5 / Math.max(xScale, 1e-12);
+        const halfPixelPhysical = 0.5 / Math.max(effectiveXScale, 1e-12);
         let sum = 0;
         for (const offset of [-1, -0.5, 0, 0.5, 1]) {
           sum += roughProfileOffsetAtPoint(
@@ -565,7 +580,7 @@ export function createPlanRenderers({
       boundaries.forEach((boundary, boundaryIndex) => {
         if (boundary.appearance?.kind !== 'rough') return;
         const profile = profiles[boundaryIndex],
-          lod = roughLod(boundary.appearance.featureSize * xScale);
+          lod = roughLod(boundary.appearance.featureSize * effectiveXScale);
         ctx.beginPath();
         profile.forEach(([x, y], index) => {
           const drawX = index === 0 ? x - 0.65 : index === profile.length - 1 ? x + 0.65 : x;
@@ -742,15 +757,26 @@ export function createPlanRenderers({
       }
     }
   
-    // Hide all geometry inside the collapsed Z interval, then redraw only the
-    // broken frame. The true world-Z mapping remains available to every renderer.
+    // Hide all geometry inside the collapsed Z interval. Detail rendering uses
+    // the exact same display-space crop, so the inset stays registered with the main view.
     ctx.fillStyle = '#fbfcfd';
+    const collapseLeft = screenX(plotLeft),
+      collapseRight = screenX(plotLeft + plotWidth),
+      collapseTop = screenY(zTransform.upperBottom - 0.5),
+      collapseBottom = screenY(zTransform.lowerTop + 0.5);
     ctx.fillRect(
-      plotLeft,
-      zTransform.upperBottom - 0.5,
-      plotWidth,
-      zTransform.breakPixels + 1,
+      Math.min(collapseLeft, collapseRight),
+      Math.min(collapseTop, collapseBottom),
+      Math.abs(collapseRight - collapseLeft),
+      Math.abs(collapseBottom - collapseTop),
     );
+
+    if (detailRoi) {
+      ctx.strokeStyle = 'rgba(137,149,161,.5)';
+      ctx.lineWidth = 0.7;
+      ctx.strokeRect(0.35, 0.35, Math.max(0, w - 0.7), Math.max(0, h - 0.7));
+      return;
+    }
 
     ctx.strokeStyle = '#8995a1';
     ctx.lineWidth = 0.8;
@@ -843,5 +869,10 @@ export function createPlanRenderers({
     getSectionCollapseController()?.sync();
   }
 
-  return { renderMask, renderMain, renderSection };
+  function renderSectionDetail(canvas, roi) {
+    if (!canvas || !roi) return;
+    renderSection(canvas, roi);
+  }
+
+  return { renderMask, renderMain, renderSection, renderSectionDetail };
 }
