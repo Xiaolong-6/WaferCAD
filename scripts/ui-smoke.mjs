@@ -704,18 +704,12 @@ assert.equal(
   true,
 );
 
-// Variant rename remains accessible even when compact History hides the inline pencil.
-const renameTrigger = childVariant.locator('.history-variant-rename-trigger');
-if (await renameTrigger.isVisible()) {
-  await renameTrigger.click();
-} else {
-  await childVariant.locator(':scope > .history-variant-head .snapshot-more-trigger').click();
-  await childVariant
-    .locator(':scope > .history-variant-head .snapshot-more-popover button', {
-      hasText: 'Rename Variant',
-    })
-    .click();
-}
+// Rename through the Variant name itself so this smoke does not couple
+// Welcome integration to compact History overflow-menu presentation.
+const renameTrigger = childVariant.locator('.history-variant-rename-trigger'),
+  variantNameButton = childVariant.locator(':scope > .history-variant-head .history-variant-name');
+if (await renameTrigger.isVisible()) await renameTrigger.click();
+else await variantNameButton.dblclick();
 const variantEditor = childVariant.locator('.history-variant-editor:not([hidden])');
 await variantEditor.locator('input').fill('Detector path');
 await variantEditor.locator('button').first().click();
