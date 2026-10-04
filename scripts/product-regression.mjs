@@ -935,10 +935,21 @@ try {
       await page.locator('#etchTargetLayer').selectOption('base');
       await page.locator('#operationThickness').fill(String(releaseBenchmark.releaseRadius));
       await page.locator('#applyOperationBtn').click();
+      assert.equal(
+        await page.locator('#processTaskDialog').evaluate((element) => element.hidden),
+        false,
+        'Isotropic release must run through the process worker task UI',
+      );
       await page.waitForFunction(
-        () => /Released Base/.test(document.getElementById('statusText')?.textContent || ''),
+        () => Boolean(document.getElementById('processTaskDialog')?.hidden),
         null,
-        { timeout: 30000 },
+        { timeout: 120000 },
+      );
+      const releaseStatus = (await page.locator('#statusText').textContent()) || '';
+      assert.match(
+        releaseStatus,
+        /Released Base/,
+        `Isotropic release UI did not complete successfully: ${releaseStatus}`,
       );
       await closeFunctionPanel(page);
 
