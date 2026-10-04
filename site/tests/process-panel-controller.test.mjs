@@ -274,9 +274,8 @@ test('successful geometry Apply stores a deterministic replay request', async ()
     face: 'front',
     growth: 'conformal',
   });
-  assert.equal(recorded[0].replay.areaRequest.mode, 'full');
-  assert.equal(recorded[0].replay.areaRequest.maskSourceMode, 'file');
-  assert.deepEqual(recorded[0].replay.areaRequest.elements, []);
+  assert.equal(recorded[0].replay.areaMode, 'full');
+  assert.equal('areaRequest' in recorded[0].replay, false);
 });
 
 test('replayOperations re-runs saved geometry requests and preserves record-only Steps', async () => {
@@ -296,25 +295,29 @@ test('replayOperations re-runs saved geometry requests and preserves record-only
     );
 
   const geometry = {
-    kind: 'add',
-    label: 'Deposit replayed layer',
-    replay: {
-      version: 1,
-      params: {
-        type: 'add',
-        name: 'Replayed',
-        targetLayerId: '',
-        thickness: 0.2,
-        face: 'front',
-        growth: 'direct',
+    operation: {
+      kind: 'add',
+      label: 'Deposit replayed layer',
+      replay: {
+        version: 1,
+        params: {
+          type: 'add',
+          name: 'Replayed',
+          targetLayerId: '',
+          thickness: 0.2,
+          face: 'front',
+          growth: 'direct',
+        },
+        areaMode: 'full',
       },
-      areaRequest: {
-        mode: 'full',
-        maskSourceMode: 'file',
-        maskRoi: null,
-        maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-        elements: [],
-      },
+    },
+    state: {
+      maskSourceMode: 'file',
+      maskRoi: null,
+      maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+      selectedLayerKeys: [],
+      activeCell: null,
+      layout: { elements: [], hierarchy: {} },
     },
   };
   const recordOnly = {
