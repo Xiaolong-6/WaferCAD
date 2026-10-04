@@ -1001,9 +1001,13 @@ assert.match(await page.locator('#operationNote').textContent(), /maximum etch d
 await page.locator('#etchSurfaceMode').selectOption('pyramid');
 assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Pyramid XY');
 assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height');
-assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), false);
-assert.equal(await page.locator('#roughHeightCvRow').isVisible(), false);
-assert.match(await page.locator('#operationNote').textContent(), /Pyramid XY is the square pitch/);
+assert.equal(await page.locator('#roughFeatureCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughHeightCvRow').isVisible(), true);
+assert.equal(await page.locator('#roughSeedRow').isVisible(), true);
+await page.locator('#roughFeatureCv').fill('30');
+await page.locator('#roughHeightCv').fill('20');
+await page.locator('#roughSeed').fill('2018');
+assert.match(await page.locator('#operationNote').textContent(), /Seed makes the random field reproducible/);
 await page.locator('#etchSurfaceMode').selectOption('rough');
 assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Feature XY');
 assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height mean');
@@ -1017,6 +1021,7 @@ await page.locator('#roughFeatureSize').fill('0.4');
 await page.locator('#roughFeatureCv').fill('35');
 await page.locator('#roughAmplitude').fill('0.8');
 await page.locator('#roughHeightCv').fill('40');
+await page.locator('#roughSeed').fill('4242');
 await page.locator('#applyOperationBtn').click();
 assert.match(await page.locator('#statusText').textContent(), /Height cannot exceed Etch Depth/);
 await page.locator('#operationThickness').fill('1');
@@ -1042,16 +1047,19 @@ assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+assert.equal(await page.locator('#roughSeed').inputValue(), '4242');
 await page.locator('#undoBtn').click();
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+assert.equal(await page.locator('#roughSeed').inputValue(), '4242');
 await page.locator('#redoBtn').click();
 assert.equal(await page.locator('#roughFeatureSize').inputValue(), '0.4');
 assert.equal(await page.locator('#roughAmplitude').inputValue(), '0.8');
 assert.equal(await page.locator('#roughFeatureCv').inputValue(), '35');
 assert.equal(await page.locator('#roughHeightCv').inputValue(), '40');
+assert.equal(await page.locator('#roughSeed').inputValue(), '4242');
 
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI rough project');
@@ -1073,6 +1081,7 @@ assert.ok(
       Math.abs(segment.frontSurface.meanHeight - 0.8) < 1e-12 &&
       Math.abs(segment.frontSurface.featureCv - 0.35) < 1e-12 &&
       Math.abs(segment.frontSurface.heightCv - 0.4) < 1e-12 &&
+      segment.frontSurface.seed === 4242 &&
       typeof segment.frontSurface.profileId === 'string' &&
       Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
