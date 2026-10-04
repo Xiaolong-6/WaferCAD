@@ -4495,3 +4495,183 @@ summary:focus-visible {
 .electrical-region-chip {
   box-shadow: inset 0 0 0 1px rgba(45, 54, 66, 0.16);
 }
+
+
+/* Section detail ROI: one lightweight inspection window over the Section canvas. */
+#sectionDetailRoiBtn.active {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+#sectionCanvas.section-detail-drawing {
+  cursor: crosshair;
+}
+
+.section-detail-roi-overlay {
+  position: absolute;
+  z-index: 5;
+  min-width: 12px;
+  min-height: 12px;
+  border: 1px solid rgba(55, 111, 160, 0.92);
+  background: rgba(79, 134, 198, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.82),
+    0 0 0 2px rgba(55, 111, 160, 0.3);
+  cursor: move;
+  touch-action: none;
+}
+
+.section-detail-roi-overlay.preview {
+  pointer-events: none;
+}
+
+.section-detail-roi-overlay.circle {
+  border-radius: 50%;
+}
+
+.section-detail-roi-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  background: #4f86c6;
+  box-shadow: 0 0 0 1px rgba(55, 111, 160, 0.55);
+}
+
+.section-detail-roi-handle.nw {
+  left: -5px;
+  top: -5px;
+  cursor: nwse-resize;
+}
+
+.section-detail-roi-handle.ne {
+  right: -5px;
+  top: -5px;
+  cursor: nesw-resize;
+}
+
+.section-detail-roi-handle.sw {
+  left: -5px;
+  bottom: -5px;
+  cursor: nesw-resize;
+}
+
+.section-detail-roi-handle.se {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+}
+
+.section-detail-inset {
+  position: absolute;
+  z-index: 6;
+  display: grid;
+  grid-template-rows: 24px minmax(0, 1fr);
+  width: 210px;
+  height: 210px;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  overflow: hidden;
+  border: 1px solid #bfc9d3;
+  border-radius: 4px;
+  background: #fbfcfd;
+  box-shadow: 0 5px 18px rgba(31, 43, 54, 0.14);
+}
+
+.section-detail-inset[hidden],
+.section-detail-roi-overlay[hidden] {
+  display: none;
+}
+
+.section-detail-inset-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 4px 2px 7px;
+  border-bottom: 1px solid var(--line2);
+  background: rgba(255, 255, 255, 0.96);
+  color: #4c5966;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.section-detail-inset-head > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.section-detail-inset-head strong {
+  font-size: 9px;
+}
+
+#sectionDetailZoom {
+  color: #7b8792;
+  font-variant-numeric: tabular-nums;
+}
+
+.section-detail-inset-btn {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: #65717d;
+  font: inherit;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.section-detail-inset-btn:hover,
+.section-detail-inset-btn:focus-visible {
+  border-color: #c5ced7;
+  background: #f0f4f7;
+  color: #36424d;
+  outline: none;
+}
+
+#sectionDetailInsetCanvas {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: #fbfcfd;
+}
+
+@media (max-width: 600px) {
+  .section-detail-inset {
+    width: 160px;
+    height: 160px;
+  }
+
+  .section-detail-roi-handle {
+    width: 12px;
+    height: 12px;
+  }
+
+  .section-detail-roi-handle.nw {
+    left: -7px;
+    top: -7px;
+  }
+
+  .section-detail-roi-handle.ne {
+    right: -7px;
+    top: -7px;
+  }
+
+  .section-detail-roi-handle.sw {
+    left: -7px;
+    bottom: -7px;
+  }
+
+  .section-detail-roi-handle.se {
+    right: -7px;
+    bottom: -7px;
+  }
+}
