@@ -34,6 +34,16 @@ const welcomeProject = projectForBenchmark({
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 
+function parseGlbJson(buffer) {
+  assert.equal(buffer.readUInt32LE(0), 0x46546c67, 'GLB magic');
+  assert.equal(buffer.readUInt32LE(4), 2, 'GLB version');
+  assert.equal(buffer.readUInt32LE(8), buffer.length, 'GLB byte length');
+  const jsonLength = buffer.readUInt32LE(12),
+    jsonType = buffer.readUInt32LE(16);
+  assert.equal(jsonType, 0x4e4f534a, 'first GLB chunk must be JSON');
+  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
+}
+
 async function gotoWelcome(targetPage) {
   await targetPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await targetPage.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 10000 });
@@ -2257,9 +2267,36 @@ assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeTogg
 await page.locator('#fit3dBtn').click();
 
 await page.locator('#threePanel .export-control > summary').click();
+assert.equal(await page.locator('#threeExportCancelBtn').isHidden(), true);
 const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
-assert.equal((await glbDownloadPromise).suggestedFilename(), 'wafercad-model.glb');
+const glbDownload = await glbDownloadPromise;
+assert.equal(glbDownload.suggestedFilename(), 'wafercad-model.glb');
+const glbPath = await glbDownload.path();
+assert.ok(glbPath);
+const glb = parseGlbJson(await readFile(glbPath)),
+  waferCadRoot = (glb.nodes || []).find((node) => node.name === 'WaferCAD'),
+  rootScale =
+    waferCadRoot?.scale ||
+    (waferCadRoot?.matrix
+      ? [waferCadRoot.matrix[0], waferCadRoot.matrix[5], waferCadRoot.matrix[10]]
+      : []),
+  morphologyNodes = (glb.nodes || []).filter(
+    (node) => node.extras?.wafercadMorphology,
+  );
+assert.equal(rootScale.length, 3);
+assert.ok(rootScale.every((value) => Math.abs(value - 1e-6) < 1e-12));
+assert.ok(morphologyNodes.length > 0, 'GLB must contain exported morphology meshes');
+assert.ok(
+  morphologyNodes.some((node) => node.extras?.wafercadMorphologySeed === 4242),
+  'GLB must retain the deterministic rough morphology seed',
+);
+assert.ok(
+  morphologyNodes.every((node) =>
+    ['normal', 'inverted'].includes(node.extras?.wafercadMorphologyPolarity),
+  ),
+);
+assert.match(await page.locator('#statusText').textContent(), /morphology embedded/i);
 await page.locator('#threePanel .export-control > summary').click();
 const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportPngBtn').click();
