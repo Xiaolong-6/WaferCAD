@@ -2235,7 +2235,7 @@ body.welcome-open {
 }
 
 .process-mode {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 4px 0 6px;
 }
 .process-mode button {
@@ -4440,4 +4440,16 @@ summary:focus-visible {
   .snapshot-other-stats {
     padding-left: 0;
   }
+}
+
+.electrical-row-wrap.electrical-hidden {
+  opacity: 0.48;
+}
+
+.electrical-legend-row .legend-name {
+  font-style: italic;
+}
+
+.electrical-region-chip {
+  box-shadow: inset 0 0 0 1px rgba(45, 54, 66, 0.16);
 }
