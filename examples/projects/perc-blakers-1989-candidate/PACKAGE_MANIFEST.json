@@ -51,5 +51,10 @@
     "process_history_changed": false,
     "fixed_project_sha256": "8ee1d4c9bb99dd3b234dd0d4737546117774c5e85697a0e4d98cd28637723ef1",
     "verification": "C09 light-P patches in corrected branch are base-hosted only; source project hash is pinned by repair_stale_implant.py"
+  },
+  "welcome_preview": {
+    "source": "PERC_corrected_rear_openings.jpg",
+    "delivery_path": "site/example-previews/perc-blakers-1989.jpg",
+    "kind": "real WaferCAD screenshot"
   }
 }
