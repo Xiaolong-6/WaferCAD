@@ -78,9 +78,6 @@ function createProjectPreview(example) {
     frame.src = frame.dataset.previewSrc;
   };
 
-  host.addEventListener('pointerenter', activatePreview, { once: true });
-  host.addEventListener('focusin', activatePreview, { once: true });
-
   const tabs = document.createElement('div');
   tabs.className = 'welcome-example-view-tabs';
   tabs.setAttribute('role', 'tablist');
