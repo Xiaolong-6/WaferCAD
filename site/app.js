@@ -217,6 +217,7 @@ const sectionCollapseController = createSectionCollapseController({
     markProjectDirty();
     threeView?.updateZCollapse();
   },
+  onSettled: renderThree,
   formatXY,
   xyUnitLabel: () => xyUnit().label,
 });
