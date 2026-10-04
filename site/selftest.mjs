@@ -1033,6 +1033,25 @@ const invalidCollapseProject = structuredClone(validProject);
 invalidCollapseProject.display.sectionCollapse = { top: -9.5, bottom: -0.5 };
 assert.throws(() => validateProjectFile(invalidCollapseProject), /sectionCollapse/);
 
+const detailRoiProject = structuredClone(validProject);
+detailRoiProject.display.sectionDetailRoi = {
+  x: 0.2,
+  y: 0.15,
+  width: 0.3,
+  height: 0.25,
+  shape: 'circle',
+};
+assert.equal(validateProjectFile(detailRoiProject), detailRoiProject);
+const invalidDetailRoiProject = structuredClone(validProject);
+invalidDetailRoiProject.display.sectionDetailRoi = {
+  x: 0.9,
+  y: 0.1,
+  width: 0.2,
+  height: 0.2,
+  shape: 'rect',
+};
+assert.throws(() => validateProjectFile(invalidDetailRoiProject), /sectionDetailRoi/);
+
 const roughProject = structuredClone(validProject);
 roughProject.model.regions[0].stack[0].frontSurface = {
   kind: 'rough',
