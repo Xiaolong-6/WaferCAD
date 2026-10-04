@@ -1538,34 +1538,46 @@ workspacePersistenceController = createWorkspacePersistenceController({
 
 const workstationUiController = createWorkstationUiController({ root: document, win: window });
 
+function renderEmbeddedPreviewView(view = embeddedPreviewView) {
+  if (!EMBEDDED_PREVIEW) return;
+  if (view === 'three') {
+    initThree();
+    renderThree();
+    if (pendingThreeCamera) threeView?.setViewState?.(pendingThreeCamera);
+    else fit3d();
+    return;
+  }
+  if (view === 'mask') {
+    renderMask();
+    return;
+  }
+  if (view === 'section') {
+    renderSection();
+    return;
+  }
+  renderMain();
+}
+
 function applyEmbeddedPreviewView(view) {
   if (!EMBEDDED_PREVIEW) return;
   const next = ['main', 'mask', 'three', 'section'].includes(view) ? view : 'main';
   embeddedPreviewView = next;
   document.documentElement.dataset.previewView = next;
 
-  if (next === 'section') {
-    $('mainPanel').hidden = true;
-    $('maskPanel').hidden = true;
-    $('threePanel').hidden = true;
-    $('sectionPanel').hidden = false;
-    renderSection();
-  } else {
-    $('sectionPanel').hidden = true;
-    workstationUiController.applyViewMode(next, { refresh: false, remember: false });
-    if (next === 'three') {
-      initThree();
-      renderThree();
-      if (pendingThreeCamera) threeView?.setViewState?.(pendingThreeCamera);
-      else fit3d();
-    } else if (next === 'main') {
-      renderMain();
-    } else if (next === 'mask') {
-      renderMask();
-    }
-  }
+  $('mainPanel').hidden = next !== 'main';
+  $('maskPanel').hidden = next !== 'mask';
+  $('threePanel').hidden = next !== 'three';
+  $('sectionPanel').hidden = next !== 'section';
 
-  requestAnimationFrame(() => globalThis.dispatchEvent(new Event('resize')));
+  // The production workstation controller owns desktop/split layouts. Welcome
+  // previews intentionally bypass that state machine so each external tab maps
+  // to exactly one visible renderer.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      globalThis.dispatchEvent(new Event('resize'));
+      renderEmbeddedPreviewView(next);
+    });
+  });
 }
 
 function bindEmbeddedPreviewBridge() {
@@ -1578,8 +1590,85 @@ function bindEmbeddedPreviewBridge() {
   });
 }
 
+function bindEmbeddedPreviewInteractions() {
+  if (!EMBEDDED_PREVIEW) return;
+
+  const bindPlanCanvas = (kind, canvas, back = false) => {
+    let drag = null;
+
+    canvas.addEventListener(
+      'wheel',
+      (event) => {
+        event.preventDefault();
+        zoomPlanView(
+          kind,
+          canvas,
+          event.deltaY < 0 ? 1.35 : 1 / 1.35,
+          event.clientX,
+          event.clientY,
+          back,
+        );
+      },
+      { passive: false },
+    );
+
+    canvas.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      resetPlanView(kind);
+    });
+
+    canvas.addEventListener('pointerdown', (event) => {
+      if (event.isPrimary === false) return;
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      drag = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+      };
+      canvas.setPointerCapture?.(event.pointerId);
+      canvas.classList.add('preview-panning');
+      event.preventDefault();
+    });
+
+    canvas.addEventListener('pointermove', (event) => {
+      if (drag?.pointerId !== event.pointerId) return;
+      const dx = event.clientX - drag.x,
+        dy = event.clientY - drag.y;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      if (dx || dy) panPlanView(kind, dx, dy);
+      event.preventDefault();
+    });
+
+    for (const type of ['pointerup', 'pointercancel']) {
+      canvas.addEventListener(type, (event) => {
+        if (drag?.pointerId !== event.pointerId) return;
+        canvas.releasePointerCapture?.(event.pointerId);
+        drag = null;
+        canvas.classList.remove('preview-panning');
+        event.preventDefault();
+      });
+    }
+  };
+
+  bindPlanCanvas('main', $('mainCanvas'), activeFace === 'back');
+  bindPlanCanvas('mask', $('maskCanvas'));
+
+  const observer = new ResizeObserver(() => renderEmbeddedPreviewView());
+  observer.observe($('mainCanvas'));
+  observer.observe($('maskCanvas'));
+  observer.observe($('sectionCanvas'));
+  observer.observe($('threeHost'));
+}
+
 function bindUi() {
   workstationUiController.bind();
+
+  if (EMBEDDED_PREVIEW) {
+    bindEmbeddedPreviewInteractions();
+    return;
+  }
+
   viewPopovers.bind();
   viewMaximizeController.bind();
   roiController.bind();
@@ -1593,8 +1682,7 @@ function bindUi() {
   drawMaskController.bind();
   workspaceActions.bind();
   mainCanvasController.bind();
-  if (!EMBEDDED_PREVIEW) workspacePersistenceController.bind();
-
+  workspacePersistenceController.bind();
   projectController.bind();
 }
 
@@ -1616,6 +1704,7 @@ planRenderers = createPlanRenderers({
     sectionShowBorders,
     sectionCollapse,
     maskOpacity,
+    readOnlyPreview: EMBEDDED_PREVIEW,
   }),
   getDrawMaskController: () => drawMaskController,
   getMaskRoiController: () => maskRoiController,
