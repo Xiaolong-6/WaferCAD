@@ -44,7 +44,7 @@ Available actions:
 - Deposit new layer
 - Extend existing layer
 - Etch / subtract
-- Implant **(experimental)**
+- Implant
 - Electrical Region (non-material induced/doped/interface annotation)
 - Record process step (non-geometric fabrication metadata)
 
@@ -54,7 +54,7 @@ Deposit and Extend support Directional and Conformal coverage. Conformal Extend 
 
 Electrical Region is a separate non-material annotation for schematic p/n regions, inversion, accumulation, depletion, and interface/induced/doped regions. It is anchored to the selected exposed process surface, uses a display depth, follows later Etch by clipping against surviving material, and can be renamed/recolored/hidden from Layers. It does not solve electrostatics, carrier concentration, junction fields, or transport.
 
-The experimental Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and creates a user-named implant zone with an empirical depth and signed X tilt. Color is assigned after Apply from the active 20-color structure palette and can be changed from the Layers legend. Main uses a light overlay, Section shows the gradient volume, and 3D shows the surviving internal volume. Later Etch operations geometrically clip that existing implant, including rough-profile display, without modeling dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT_EXPERIMENTAL.md`.
+The Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and creates a user-named implant zone with an empirical depth and signed X tilt. Color is assigned after Apply from the active 20-color structure palette and can be changed from the Layers legend. Main uses a light overlay, Section shows the gradient volume, and 3D shows the surviving internal volume. Later Etch operations geometrically clip that existing implant, including rough-profile display, without modeling dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/IMPLANT.md`.
 
 ## Safety
 
