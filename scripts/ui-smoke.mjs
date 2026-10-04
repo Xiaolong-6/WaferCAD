@@ -231,6 +231,11 @@ assert.deepEqual(
 );
 const previewFrames = page.locator('.welcome-example-project-frame');
 assert.equal(await previewFrames.count(), 3);
+await page.waitForFunction(
+  () => document.querySelector('.welcome-example-project-frame')?.getAttribute('src')?.includes('app.html'),
+  null,
+  { timeout: 10000 },
+);
 assert.match(await previewFrames.nth(0).getAttribute('src'), /app\.html\?/);
 assert.equal(await previewFrames.nth(1).getAttribute('src'), null);
 assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
