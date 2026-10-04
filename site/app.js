@@ -667,6 +667,7 @@ function initThree() {
     getModel: () => model,
     getClipGeometry: roiGeometry,
     getInspection: () => ({ opacity: threeOpacity, borders: threeShowBorders }),
+    onViewChanged: () => markProjectDirty(),
   });
   threeView.init();
 }
@@ -773,6 +774,8 @@ const projectStateController = createProjectStateController({
     maskOpacity = next.maskOpacity;
     threeOpacity = next.threeOpacity;
     threeShowBorders = next.threeShowBorders;
+    if (next.threeCamera) threeView?.setViewState?.(next.threeCamera);
+    else threeView?.fit?.({ notify: false });
     Object.assign(planViews.mask, next.planViews.mask);
     Object.assign(planViews.main, next.planViews.main);
     parsedLayout = null;
