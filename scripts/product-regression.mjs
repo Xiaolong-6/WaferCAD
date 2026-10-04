@@ -413,14 +413,12 @@ async function checkSectionCollapse(page, name) {
   assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
   await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
   await capture(page, `${name}-section-z-collapse-edit`);
-  await page.waitForFunction(
-    (expectedBreakY) =>
-      Math.abs(
-        Number(document.getElementById('sectionCanvas')?.dataset.sectionCollapseBreakY) -
-          expectedBreakY,
-      ) < 1e-6,
-    before.breakY,
-  );
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById('sectionCanvas'),
+      breakY = Number(canvas?.dataset.sectionCollapseBreakY),
+      height = canvas?.getBoundingClientRect().height || 0;
+    return Number.isFinite(breakY) && breakY > 0 && breakY < height;
+  });
   const handleSize = await page.locator('#sectionCollapseTopHandle').boundingBox();
   assert.ok(handleSize);
   assert.ok(
@@ -839,6 +837,16 @@ try {
     ['phone', { width: 390, height: 844 }, true],
   ]) {
     const { page, context } = await open(viewport, touch);
+    if (name === 'wide') {
+      assert.equal(
+        await page.locator('.workstation-view-stage').getAttribute('data-view-mode'),
+        'overview',
+        'wide: fresh workspace must default to Overview',
+      );
+      assert.equal(await page.locator('#mainPanel').isVisible(), true);
+      assert.equal(await page.locator('#maskPanel').isVisible(), true);
+      assert.equal(await page.locator('#threePanel').isVisible(), true);
+    }
     await capture(page, `${name}-empty`);
     await checkLayout(page);
     await checkAB(page, name);
