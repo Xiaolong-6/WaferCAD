@@ -6,6 +6,8 @@ import { stageStartupFile } from './startup-file.js';
 
 const $ = (id) => document.getElementById(id);
 let previewLayout = null;
+const previewCanvases = new Set();
+let previewResizeTimer = 0;
 
 function status(message) {
   $('welcomeStatus').textContent = message;
@@ -114,9 +116,8 @@ function renderExampleCards() {
       canvas.className = 'welcome-example-canvas';
       canvas.setAttribute('aria-label', example.title + ' preview');
       visual.append(canvas);
-      const observer = new ResizeObserver(() => drawVisualizationPreview(canvas));
-      observer.observe(visual);
-      queueMicrotask(() => drawVisualizationPreview(canvas));
+      previewCanvases.add(canvas);
+      requestAnimationFrame(() => drawVisualizationPreview(canvas));
     } else {
       visual.append(createProjectVariantPreview(example));
     }
@@ -182,3 +183,10 @@ $('welcomeLayoutInput').onchange = (event) => stageAndOpen(event.target.files?.[
 $('welcomeProjectInput').onchange = (event) => stageAndOpen(event.target.files?.[0], 'project');
 
 renderExampleCards();
+
+globalThis.addEventListener('resize', () => {
+  clearTimeout(previewResizeTimer);
+  previewResizeTimer = setTimeout(() => {
+    for (const canvas of previewCanvases) drawVisualizationPreview(canvas);
+  }, 80);
+});
