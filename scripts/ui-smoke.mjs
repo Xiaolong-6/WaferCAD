@@ -495,13 +495,14 @@ await historyRestorePage.locator('.snapshot-return-head').click();
 await historyRestorePage.waitForFunction(
   () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
 );
-await historyRestorePage.waitForFunction(
-  () =>
-    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
-      /pre-snapshot-return-head/.test(option.textContent || ''),
-    ),
-  null,
-  { timeout: 5000 },
+// Navigation-only inspection changes (camera/ROI/Section/zoom) no longer count
+// as historical process edits, so returning to HEAD must not create a recovery
+// checkpoint solely for those view changes.
+assert.equal(
+  await historyRestorePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
+    options.some((option) => /pre-snapshot-return-head/.test(option.textContent || '')),
+  ),
+  false,
 );
 assert.ok(
   await historyRestorePage
