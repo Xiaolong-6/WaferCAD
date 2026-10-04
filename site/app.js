@@ -819,7 +819,25 @@ function cancelHistoricalStepEdit() {
 }
 
 function currentHistoricalStepEdit() {
-  return pendingHistoryStepEdit ? structuredClone(pendingHistoryStepEdit) : null;
+  if (!pendingHistoryStepEdit) return null;
+  const {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    downstreamCount,
+  } = pendingHistoryStepEdit;
+  return {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    downstreamCount,
+  };
 }
 
 function refreshAfterHistoricalEditLoad() {
@@ -923,6 +941,15 @@ async function beginHistoricalStepEdit(node) {
     return false;
   }
 
+  const replayContext =
+    choice === 'branch-here' || context.downstreamCount === 0
+      ? context
+      : snapshotManager.stepEditContext(node.id, { includeReplayStates: true });
+  if (!replayContext?.editable) {
+    status('Historical Step replay context could not be prepared.', 'error');
+    return false;
+  }
+
   await checkpointWorkspace('pre-history-step-edit');
   const restored = snapshotManager.restoreStepInput(node.id);
   if (!restored) {
@@ -938,7 +965,10 @@ async function beginHistoricalStepEdit(node) {
     mode: choice,
     originalLabel: node.operation?.label || node.operation?.kind || 'Process step',
     downstreamCount: context.downstreamCount,
-    downstream: context.downstream.map((item) => structuredClone(item.operation)),
+    downstream:
+      choice === 'branch-here'
+        ? []
+        : replayContext.downstream.map((item) => structuredClone(item)),
   };
 
   refreshAfterHistoricalEditLoad();
@@ -977,7 +1007,7 @@ async function finishHistoricalStepEdit({ applyGate, branchCommit } = {}) {
     return true;
   }
 
-  const downstream = edit.downstream.map((operation) => structuredClone(operation));
+  const downstream = edit.downstream.map((step) => structuredClone(step));
   const mode = edit.mode;
   const targetVariant = snapshotManager.activeBranch().name;
   pendingHistoryStepEdit = null;
