@@ -1264,6 +1264,41 @@ assert.ok(
       Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
 );
+
+// Export the actual rough state and parse the GLB contract, rather than only
+// checking that a file downloaded. This locks physical units, deterministic
+// morphology metadata, and the real exporter path together.
+await page.locator('#threePanel .export-control > summary').click();
+const roughGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+await page.locator('#threeExportModelBtn').click();
+const roughGlbDownload = await roughGlbDownloadPromise;
+assert.equal(roughGlbDownload.suggestedFilename(), 'wafercad-model.glb');
+const roughGlbPath = await roughGlbDownload.path();
+assert.ok(roughGlbPath);
+const roughGlb = parseGlbJson(await readFile(roughGlbPath)),
+  roughGlbRoot = (roughGlb.nodes || []).find((node) => node.name === 'WaferCAD'),
+  roughGlbScale =
+    roughGlbRoot?.scale ||
+    (roughGlbRoot?.matrix
+      ? [roughGlbRoot.matrix[0], roughGlbRoot.matrix[5], roughGlbRoot.matrix[10]]
+      : []),
+  roughGlbMorphologyNodes = (roughGlb.nodes || []).filter(
+    (node) => node.extras?.wafercadMorphology,
+  );
+assert.equal(roughGlbScale.length, 3);
+assert.ok(roughGlbScale.every((value) => Math.abs(value - 1e-6) < 1e-12));
+assert.ok(roughGlbMorphologyNodes.length > 0, 'GLB must contain exported morphology meshes');
+assert.ok(
+  roughGlbMorphologyNodes.some(
+    (node) =>
+      node.extras?.wafercadMorphology === 'stochastic' &&
+      node.extras?.wafercadMorphologySeed === 4242 &&
+      node.extras?.wafercadMorphologyPolarity === 'normal',
+  ),
+  'GLB must retain deterministic rough morphology metadata',
+);
+assert.match(await page.locator('#statusText').textContent(), /morphology embedded/i);
+
 await openFunctionPanel(page, 'process');
 
 // Implant uses the same process area but records a structural annotation only.
@@ -2272,31 +2307,7 @@ const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
 const glbDownload = await glbDownloadPromise;
 assert.equal(glbDownload.suggestedFilename(), 'wafercad-model.glb');
-const glbPath = await glbDownload.path();
-assert.ok(glbPath);
-const glb = parseGlbJson(await readFile(glbPath)),
-  waferCadRoot = (glb.nodes || []).find((node) => node.name === 'WaferCAD'),
-  rootScale =
-    waferCadRoot?.scale ||
-    (waferCadRoot?.matrix
-      ? [waferCadRoot.matrix[0], waferCadRoot.matrix[5], waferCadRoot.matrix[10]]
-      : []),
-  morphologyNodes = (glb.nodes || []).filter(
-    (node) => node.extras?.wafercadMorphology,
-  );
-assert.equal(rootScale.length, 3);
-assert.ok(rootScale.every((value) => Math.abs(value - 1e-6) < 1e-12));
-assert.ok(morphologyNodes.length > 0, 'GLB must contain exported morphology meshes');
-assert.ok(
-  morphologyNodes.some((node) => node.extras?.wafercadMorphologySeed === 4242),
-  'GLB must retain the deterministic rough morphology seed',
-);
-assert.ok(
-  morphologyNodes.every((node) =>
-    ['normal', 'inverted'].includes(node.extras?.wafercadMorphologyPolarity),
-  ),
-);
-assert.match(await page.locator('#statusText').textContent(), /morphology embedded/i);
+assert.ok(await glbDownload.path());
 await page.locator('#threePanel .export-control > summary').click();
 const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportPngBtn').click();
