@@ -1,7 +1,7 @@
 {
   "candidate": "suspended-silica-microdisk",
   "source": "Basiri-Esfahani et al., Nature Communications 2019, Precision ultrasound sensing on a chip",
-  "status": "staging",
+  "status": "reviewed_staging",
   "baseline_feature": "PR #89 isotropic release / undercut etch",
   "paper_geometry_um": {
     "outer_radius": 148,
@@ -16,5 +16,36 @@
   },
   "welcome_registered": false,
   "pr_opened": false,
-  "ci_requested": false
+  "ci_requested": false,
+  "source_package": {
+    "name": "Microdisk_BasiriEsfahani2019_package.zip",
+    "sha256": "8c06054cd1172d0ca177e931fcb9b152601a920694364ce9b132d3f669930dea"
+  },
+  "candidate_project": {
+    "name": "Microdisk_BasiriEsfahani2019_Fig2.wafercad",
+    "sha256": "b155dd0624c92c18fa329b1e2b1dfc6b737cb589f2a025159b0369dba5d792da",
+    "schema_version": 14,
+    "branches": 1,
+    "process_nodes": 9,
+    "bookmarks": 9,
+    "process_revision": 9
+  },
+  "mask_gds": {
+    "name": "microdisk_release_mask.gds",
+    "sha256": "fc9bf4343e43005dfdc8ff28e5fa50c2f6c950baf3e9a68fbc71ef81c4cde0d3",
+    "cell": "MICRODISK_RELEASE_MASK",
+    "layer": "1/0"
+  },
+  "validation": {
+    "ui_import_verified": true,
+    "ui_restore_verified": [
+      "M05 before release",
+      "M09 final"
+    ],
+    "roundtrip_identity_preserved": true,
+    "sampled_annulus_points_with_real_air_gap": 72,
+    "minimum_sampled_air_gap_um": 13.5,
+    "maximum_sampled_air_gap_um": 36,
+    "center_si_oxide_contact_z_um": 40
+  }
 }
