@@ -48,6 +48,70 @@ export function resolveSectionCollapse(value, model, bounds) {
   return normalizeSectionCollapse(value ?? defaultSectionCollapseForModel(model, bounds), bounds);
 }
 
+export function createCollapsedZDisplayTransform({
+  zMin,
+  zMax,
+  collapse,
+  breakFraction = 0.04,
+} = {}) {
+  const min = Number(zMin),
+    max = Number(zMax);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) {
+    return {
+      mapZ: (value) => Number(value),
+      zMin: min,
+      zMax: max,
+      top: max,
+      bottom: min,
+      displayTop: max,
+      displayBottom: min,
+      gap: 0,
+      displayMin: min,
+      displayMax: max,
+      displaySpan: Math.max(0, max - min),
+    };
+  }
+
+  const normalized = normalizeSectionCollapse(collapse, [min, max]),
+    hiddenSpan = Math.max(normalized.top - normalized.bottom, 1e-12),
+    upperSpan = Math.max(0, max - normalized.top),
+    lowerSpan = Math.max(0, normalized.bottom - min),
+    visibleSpan = Math.max(upperSpan + lowerSpan, (max - min) * 0.02),
+    fraction = Math.max(0.01, Math.min(0.12, Number(breakFraction) || 0.04)),
+    gap = Math.min(
+      hiddenSpan,
+      Math.max((max - min) * 1e-6, visibleSpan * fraction),
+    ),
+    center = (normalized.top + normalized.bottom) / 2,
+    displayBottom = center - gap / 2,
+    displayTop = center + gap / 2;
+
+  const mapZ = (value) => {
+    const z = Number(value);
+    if (!Number.isFinite(z)) return z;
+    if (z >= normalized.top) return z - (normalized.top - displayTop);
+    if (z <= normalized.bottom) return z + (displayBottom - normalized.bottom);
+    return displayBottom + ((z - normalized.bottom) / hiddenSpan) * gap;
+  };
+
+  const displayMin = mapZ(min),
+    displayMax = mapZ(max);
+
+  return {
+    mapZ,
+    zMin: min,
+    zMax: max,
+    top: normalized.top,
+    bottom: normalized.bottom,
+    displayTop,
+    displayBottom,
+    gap,
+    displayMin,
+    displayMax,
+    displaySpan: Math.max(1e-12, displayMax - displayMin),
+  };
+}
+
 export function normalizeSectionCollapse(value, bounds) {
   const [rawLo, rawHi] = bounds || [];
   const lo = Number(rawLo),
