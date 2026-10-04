@@ -43,7 +43,7 @@ Available actions:
 
 - Deposit new layer
 - Extend existing layer
-- Etch / subtract
+- Etch / subtract — directional, material-selective, and isotropic release/undercut
 - Implant
 - Electrical Region (non-material induced/doped/interface annotation)
 - Record process step (non-geometric fabrication metadata)

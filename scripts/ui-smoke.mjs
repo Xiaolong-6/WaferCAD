@@ -964,9 +964,28 @@ await face.click();
 assert.equal((await face.textContent()).trim(), 'Back');
 await face.click();
 
-// Rough etch is render-only metadata; the ideal process geometry stays canonical.
+// Etch defaults to the legacy directional path. Isotropic release is an explicit
+// opt-in profile with material selection and no Rough/Pyramid appearance mode.
 await page.locator('[data-process-mode="etch"]').click();
+assert.equal(await page.locator('#etchProfileRow').isVisible(), true);
+assert.equal(await page.locator('#etchProfile').inputValue(), 'directional');
 assert.equal(await page.locator('#etchSurfaceRow').isVisible(), true);
+assert.equal((await page.locator('#processThicknessLabel').textContent()).trim(), 'Depth');
+
+await page.locator('#etchProfile').selectOption('isotropic');
+assert.equal(await page.locator('#etchSurfaceRow').isVisible(), false);
+assert.equal((await page.locator('#processThicknessLabel').textContent()).trim(), 'Radius');
+assert.match(await page.locator('#operationNote').textContent(), /Choose one exposed material/);
+assert.match(
+  await page.locator('#etchTargetLayer option').first().textContent(),
+  /Select material/,
+);
+
+await page.locator('#etchProfile').selectOption('directional');
+assert.equal(await page.locator('#etchSurfaceRow').isVisible(), true);
+assert.equal((await page.locator('#processThicknessLabel').textContent()).trim(), 'Depth');
+
+// Rough etch remains render-only metadata; the ideal process geometry stays canonical.
 assert.equal(await page.locator('#roughFeatureRow').isVisible(), false);
 await page.locator('#etchSurfaceMode').selectOption('rough');
 assert.equal(await page.locator('#roughPolarityRow').isVisible(), true);

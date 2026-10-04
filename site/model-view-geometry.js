@@ -101,7 +101,7 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
           hostSegments =
             kind === 'electrical'
               ? region.stack.filter((segment) => segment.layerId === patch.layerId)
-              : [{ z0: currentLow, z1: currentHigh, layerId: patch.layerId }];
+              : region.stack;
 
         for (const hostSegment of hostSegments) {
           const z0 = Math.max(sourceLow, hostSegment.z0),

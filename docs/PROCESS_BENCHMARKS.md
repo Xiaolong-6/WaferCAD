@@ -4,7 +4,7 @@ These benchmarks verify the current geometric contract. They do not validate a d
 
 ## Coordinates and model scope
 
-X, Y and Z are stored in µm. The model consists of non-overlapping XY regions with ordered physical material intervals in Z. It represents vertical steps and trenches, without arbitrary overhangs or a full solid surface solver.
+X, Y and Z are stored in µm. The model consists of non-overlapping XY regions with ordered physical material intervals in Z. A region stack may contain true Z gaps, so the canonical model can represent released cavities, suspended films, and mask-under-cut overhangs in addition to ordinary vertical steps and trenches. It is still a geometric process model rather than a general-purpose solid/physics solver.
 
 Directional coverage adds the requested Z amount on the local exposed face inside the operation footprint. Extend requires the target material to be exposed on that face.
 
@@ -12,7 +12,9 @@ Conformal is evaluated with one shared coating kernel for Deposit and Extend and
 
 The lateral offset equals the physical Z thickness: Z = 1 µm produces a 1 µm XY normal offset. Section and 3D may exaggerate Z for visibility, but that display scaling is never fed back into process geometry.
 
-Etch removes material vertically from the active face, crossing layer boundaries as necessary. It is not material-selective and has no lateral or conformal mode.
+Directional Etch removes material vertically from the active face, crossing contiguous layer boundaries as necessary. With a Material target it is selective: only the selected exposed material is removed and the etch stops when a different material becomes exposed. Directional Etch also stops at a true Z void instead of jumping across a released cavity.
+
+Isotropic release requires one selected exposed material. The selected exposed surface is the etch seed; the geometric front advances by the requested Radius using a bounded Z-sliced Euclidean-distance approximation, and its XY footprint expands laterally beyond the seed/mask opening. Only the selected material is subtracted, which permits undercut beneath non-target masks while retaining support regions that lie outside the chosen radius. The resulting gaps are canonical material geometry consumed directly by Section and 3D. This is geometric selectivity, not a calibrated XeF₂/HF chemistry or transport model.
 
 Rough and Pyramid Etch surface modes attach deterministic render-only appearance metadata to the newly exposed ideal face. They do not change the canonical material intervals used by these geometry benchmarks. Section and 3D consume the same morphology field, while Main/Mask use only subtle plan-view darkening. Experimental Implant is likewise stored separately from material layers; its surviving annotation volume is clipped against the current material structure after later Etch operations. These display/annotation contracts are tested separately from the material-volume benchmark values below.
 

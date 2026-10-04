@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { chromium } from 'playwright';
 import {
+  isotropicReleaseBenchmark,
   loadGeometryKernel,
   processBenchmark,
   projectForBenchmark,
@@ -11,6 +12,7 @@ import { sampleById } from '../site/sample-layouts.js';
 
 await loadGeometryKernel();
 const { parseLayoutFile } = await import('../site/layout-io.js');
+const { pointInMulti } = await import('../site/vector-geometry.js');
 
 const output = resolve(process.env.WAFERCAD_REVIEW_DIR || 'test-results/product-review');
 await mkdir(output, { recursive: true });
@@ -655,6 +657,18 @@ async function loadProject(page, project, name) {
   await closeFunctionPanel(page);
 }
 
+async function exportCurrentProject(page, timeout = 30000) {
+  await openFunctionPanel(page, 'project');
+  const downloadPromise = page.waitForEvent('download', { timeout });
+  await page.locator('#exportProjectBtn').click();
+  const download = await downloadPromise,
+    path = await download.path();
+  assert.ok(path, 'Project export must produce a readable file.');
+  const project = JSON.parse(await readFile(path, 'utf8'));
+  await closeFunctionPanel(page);
+  return project;
+}
+
 async function checkSectionSeams(page, project) {
   // Probe a row inside the Base interval shared by all material regions.
   // This remains valid when back-side coatings extend below the Base.
@@ -957,6 +971,90 @@ try {
         }
       }
     }
+    if (name === 'wide') {
+      // Literature acceptance path: open the pre-release spoked silica disk,
+      // execute Isotropic release through the real Process/worker UI, verify the
+      // exported canonical cavity, then capture both Section and 3D.
+      const releaseBenchmark = await isotropicReleaseBenchmark({ released: false }),
+        releaseProject = projectForBenchmark(releaseBenchmark);
+      await loadProject(page, releaseProject, 'wide-isotropic-release-pre');
+      await openFunctionPanel(page, 'process');
+      await page.locator('[data-process-mode="etch"]').click();
+      await page.locator('#operationArea').selectOption('full');
+      await page.locator('#etchProfile').selectOption('isotropic');
+      await page.locator('#etchTargetLayer').selectOption('base');
+      await page.locator('#operationThickness').fill(String(releaseBenchmark.releaseRadius));
+      await page.locator('#applyOperationBtn').click();
+      assert.equal(
+        await page.locator('#processTaskDialog').evaluate((element) => element.hidden),
+        false,
+        'Isotropic release must run through the process worker task UI',
+      );
+      await page.waitForFunction(
+        () => Boolean(document.getElementById('processTaskDialog')?.hidden),
+        null,
+        { timeout: 120000 },
+      );
+      // Export is the acceptance barrier: browser events cannot service the
+      // export click until the Apply continuation has committed its model/history
+      // updates after the worker result. Validate the exported canonical model
+      // instead of coupling this test to transient status-text timing.
+      const releasedProject = await exportCurrentProject(page, 120000),
+        ringRegion = releasedProject.model.regions.find((region) =>
+          pointInMulti(releaseBenchmark.probes.ring, region.geom),
+        ),
+        hubRegion = releasedProject.model.regions.find((region) =>
+          pointInMulti(releaseBenchmark.probes.hub, region.geom),
+        ),
+        ringOxide = ringRegion?.stack.find(
+          (segment) => segment.layerId === releaseBenchmark.oxideLayerId,
+        ),
+        ringSi = ringRegion?.stack.find((segment) => segment.layerId === 'base'),
+        hubOxide = hubRegion?.stack.find(
+          (segment) => segment.layerId === releaseBenchmark.oxideLayerId,
+        ),
+        hubSi = hubRegion?.stack.find((segment) => segment.layerId === 'base');
+
+      assert.equal(releasedProject.version, 14);
+      assert.ok(ringOxide && ringSi, 'UI release export must retain oxide over lower silicon');
+      assert.ok(ringOxide.z0 - ringSi.z1 > 10, 'UI release export must contain a true air gap');
+      assert.ok(hubOxide && hubSi, 'UI release export must retain the central support');
+      assert.ok(
+        Math.abs(hubOxide.z0 - hubSi.z1) < 1e-9,
+        'UI release export must keep the support mechanically attached',
+      );
+
+      await page.getByRole('button', { name: 'Overview' }).click();
+      await page.locator('#fit3dBtn').click();
+      await capture(page, 'wide-isotropic-release-overview');
+      await checkLayout(page);
+
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeOpacityRange').fill('0.55');
+      await page.locator('#threeOpacityRange').dispatchEvent('input');
+      await page.locator('#threePanel .three-opacity-control > summary').click();
+      await page.locator('#threeMaxBtn').click();
+      await page.waitForTimeout(250);
+      await capture(page, 'wide-isotropic-release-3d-max');
+      await page.locator('#threeMaxBtn').click();
+
+      await page.locator('#sectionMaxBtn').click();
+      await page.waitForTimeout(150);
+      await capture(page, 'wide-isotropic-release-section-max');
+      await page.locator('#sectionMaxBtn').click();
+      await page.waitForFunction(() => {
+        const canvas = document.getElementById('sectionCanvas');
+        if (!canvas?.checkVisibility()) return false;
+        const rect = canvas.getBoundingClientRect(),
+          dpr = Math.min(devicePixelRatio || 1, 2);
+        return (
+          Math.abs(canvas.width - rect.width * dpr) <= 2 &&
+          Math.abs(canvas.height - rect.height * dpr) <= 2
+        );
+      });
+      await checkLayout(page);
+    }
+
     if (name === 'wide') {
       const { applyOperation, createModel } = await import('../site/model.js');
       const { rectMulti } = await import('../site/vector-geometry.js');

@@ -338,6 +338,98 @@ export function normalizeStack(stack) {
   return out;
 }
 
+function ringAreaAbs(ring) {
+  if (!Array.isArray(ring) || ring.length < 4) return 0;
+  let twiceArea = 0;
+  for (let i = 0; i < ring.length - 1; i++) {
+    twiceArea += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+  }
+  return Math.abs(twiceArea) / 2;
+}
+
+function sanitizeProcessGeometry(geom, areaEpsilon = 1e-18) {
+  const out = [];
+  for (const poly of geom || []) {
+    if (!Array.isArray(poly) || !poly.length) continue;
+    const outer = poly[0];
+    if (ringAreaAbs(outer) <= areaEpsilon) continue;
+    const holes = poly.slice(1).filter((ring) => ringAreaAbs(ring) > areaEpsilon);
+    out.push([outer, ...holes]);
+  }
+  return out;
+}
+
+const RELEASE_GEOMETRY_GRID_UM = 1e-4;
+
+function snapReleaseGeometry(geom) {
+  const snap = (value) => Math.round(Number(value) / RELEASE_GEOMETRY_GRID_UM) * RELEASE_GEOMETRY_GRID_UM,
+    samePoint = (a, b) => a && b && a[0] === b[0] && a[1] === b[1],
+    snapRing = (ring) => {
+      const points = [];
+      for (const point of ring || []) {
+        if (!Array.isArray(point) || point.length < 2) continue;
+        const next = [snap(point[0]), snap(point[1])];
+        if (!samePoint(points.at(-1), next)) points.push(next);
+      }
+      if (points.length && samePoint(points[0], points.at(-1))) points.pop();
+      if (points.length < 3) return [];
+      points.push([...points[0]]);
+      return points;
+    };
+
+  return (geom || [])
+    .map((poly) => (poly || []).map(snapRing).filter((ring) => ring.length >= 4))
+    .filter((poly) => poly.length && ringAreaAbs(poly[0]) > 1e-18);
+}
+
+function processGeometryArea(geom) {
+  let total = 0;
+  for (const poly of geom || []) {
+    if (!poly?.length) continue;
+    total += ringAreaAbs(poly[0]);
+    for (const hole of poly.slice(1)) total -= ringAreaAbs(hole);
+  }
+  return Math.max(0, total);
+}
+
+function partitionReleaseRegions(regions, rejectOverlapAbove = null) {
+  const out = [];
+  for (const region of regions || []) {
+    let geom = sanitizeProcessGeometry(region.geom);
+    if (isEmpty(geom)) continue;
+
+    for (const previous of out) {
+      const overlap = intersection(geom, previous.geom);
+      if (isEmpty(overlap)) continue;
+      const overlapArea = processGeometryArea(overlap);
+      if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
+        throw new Error(
+          `Isotropic release produced overlapping regions (${overlapArea} µm²).`,
+        );
+      }
+      geom = sanitizeProcessGeometry(difference(geom, previous.geom));
+      if (isEmpty(geom)) break;
+    }
+
+    if (!isEmpty(geom)) out.push({ ...region, geom });
+  }
+  return out;
+}
+
+function canonicalizeReleasePartition(model, regions) {
+  const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15),
+    canonical = partitionReleaseRegions(regions, overlapTolerance),
+    snapped = canonical.map((region) => ({
+      ...region,
+      geom: sanitizeProcessGeometry(snapReleaseGeometry(region.geom)),
+    }));
+
+  // Runtime geometry is checked before snapping. Any overlap in this second
+  // pass is therefore introduced only by the 0.1 nm persistence grid and can
+  // be deterministically assigned without masking a real kernel overlap.
+  return partitionReleaseRegions(snapped);
+}
+
 function stackKey(stack) {
   return (stack || [])
     .map((seg) =>
@@ -413,6 +505,13 @@ function trimStack(stack, amount, face, appearance = null, targetLayerIds = null
     if (left >= height - 1e-9) {
       left -= height;
       out.splice(idx, 1);
+      const next = face === 'front' ? out.at(-1) : out[0],
+        crossesVoid =
+          next &&
+          (face === 'front'
+            ? seg.z0 - next.z1 > 1e-9
+            : next.z0 - seg.z1 > 1e-9);
+      if (crossesVoid) left = 0;
     } else {
       if (face === 'front') seg.z1 -= left;
       else seg.z0 += left;
@@ -682,6 +781,113 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   }
 }
 
+const ISOTROPIC_ETCH_SLICES = 8;
+
+function removeLayerInterval(stack, targetLayerIds, z0, z1) {
+  const targets = new Set((targetLayerIds || []).filter(Boolean));
+  if (!targets.size || !(z1 > z0 + 1e-9)) {
+    return (stack || []).map((segment) => ({ ...segment }));
+  }
+
+  const out = [];
+  for (const segment of stack || []) {
+    if (
+      !targets.has(segment.layerId) ||
+      segment.z1 <= z0 + 1e-9 ||
+      segment.z0 >= z1 - 1e-9
+    ) {
+      out.push({ ...segment });
+      continue;
+    }
+
+    const cut0 = Math.max(segment.z0, z0),
+      cut1 = Math.min(segment.z1, z1);
+    if (segment.z0 < cut0 - 1e-9) {
+      const lower = { ...segment, z1: cut0 };
+      delete lower.frontSurface;
+      out.push(lower);
+    }
+    if (cut1 < segment.z1 - 1e-9) {
+      const upper = { ...segment, z0: cut1 };
+      delete upper.backSurface;
+      out.push(upper);
+    }
+  }
+  return normalizeStack(out);
+}
+
+function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
+  const targets = new Set((targetLayerIds || []).filter(Boolean));
+  if (!targets.size) {
+    return {
+      changed: false,
+      error: 'Isotropic release requires a selected material.',
+    };
+  }
+
+  const seeds = exposedSurfaceGroups(model, {
+    face,
+    clip: active,
+    preserveOppositeZ: false,
+  }).filter((patch) => targets.has(patch.layerId));
+  if (!seeds.length) {
+    return {
+      changed: false,
+      error: 'The selected release material is not exposed in the selected area.',
+    };
+  }
+
+  let changed = false;
+  for (const seed of seeds) {
+    // Work from the protected complement rather than repeatedly unioning a
+    // large exposed domain with its dilation. The undercut strip inside the
+    // protected footprint is disjoint from the exposed seed, which avoids
+    // near-coincident slivers at mask edges.
+    const protectedGeom = difference(model.boundary, seed.geom);
+
+    for (let index = 0; index < ISOTROPIC_ETCH_SLICES; index++) {
+      const d0 = (amount * index) / ISOTROPIC_ETCH_SLICES,
+        d1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
+        depth = (d0 + d1) / 2,
+        lateral = Math.sqrt(Math.max(0, amount * amount - depth * depth)),
+        footprints = [seed.geom];
+
+      if (lateral > 1e-9 && !isEmpty(protectedGeom)) {
+        for (const band of conformalBoundaryBands(protectedGeom, lateral)) {
+          const undercut = intersection(band, protectedGeom);
+          if (!isEmpty(undercut)) footprints.push(undercut);
+        }
+      }
+
+      const z0 = face === 'front' ? seed.z - d1 : seed.z + d0,
+        z1 = face === 'front' ? seed.z - d0 : seed.z + d1;
+      for (const footprint of footprints) {
+        splitByArea(
+          model,
+          footprint,
+          (stack) => {
+            const next = removeLayerInterval(stack, [...targets], z0, z1);
+            if (stackKey(next) !== stackKey(stack)) changed = true;
+            return next;
+          },
+          false,
+        );
+      }
+
+      // Release produces many neighboring stacks with the same Z interval.
+      // Consolidate after each depth band so region count stays bounded before
+      // the next clipping pass.
+      model.regions = mergeRegions(model, model.regions);
+    }
+  }
+  return changed
+    ? { changed: true }
+    : {
+        changed: false,
+        error: 'The isotropic release did not intersect the selected material.',
+      };
+}
+
 function applyOperationImpl(
   model,
   {
@@ -689,6 +895,7 @@ function applyOperationImpl(
     name,
     targetLayerId,
     etchTargetLayerIds = [],
+    etchProfile = 'directional',
     thickness,
     face = 'front',
     area,
@@ -701,6 +908,15 @@ function applyOperationImpl(
   },
 ) {
   const amount = Math.max(1e-5, Number(thickness) || 0);
+  if (type === 'etch' && !['directional', 'isotropic'].includes(etchProfile)) {
+    return { changed: false, error: 'Unsupported Etch profile.' };
+  }
+  if (type === 'etch' && etchProfile === 'isotropic' && surface?.kind === 'rough') {
+    return {
+      changed: false,
+      error: 'Isotropic release uses physical undercut geometry and cannot combine with Rough/Pyramid display morphology.',
+    };
+  }
   if (type === 'etch' && surface?.kind === 'rough') {
     const roughHeight = Number(surface.meanHeight ?? surface.amplitude),
       featureCv = Number(surface.featureCv ?? 0),
@@ -852,24 +1068,38 @@ function applyOperationImpl(
 
   if (type === 'etch') {
     const selectiveTargets = [...new Set((etchTargetLayerIds || []).filter(Boolean))];
+    if (etchProfile === 'isotropic' && !selectiveTargets.length) {
+      return {
+        changed: false,
+        error: 'Isotropic release requires a selected material.',
+      };
+    }
     if (selectiveTargets.length) {
       const exposed = new Set(exposedLayerIds(model, active, face));
       if (!selectiveTargets.some((layerId) => exposed.has(layerId))) {
         return {
           changed: false,
-          error: 'None of the selected etch materials are exposed in the selected area.',
+          error:
+            etchProfile === 'isotropic'
+              ? 'The selected release material is not exposed in the selected area.'
+              : 'None of the selected etch materials are exposed in the selected area.',
         };
       }
     }
-    splitByArea(model, active, (stack) =>
-      mutateStack(stack, {
-        type,
-        amount,
-        face,
-        appearance,
-        etchTargetLayerIds: selectiveTargets,
-      }),
-    );
+    if (etchProfile === 'isotropic') {
+      const release = applyIsotropicEtch(model, active, selectiveTargets, amount, face);
+      if (!release.changed) return release;
+    } else {
+      splitByArea(model, active, (stack) =>
+        mutateStack(stack, {
+          type,
+          amount,
+          face,
+          appearance,
+          etchTargetLayerIds: selectiveTargets,
+        }),
+      );
+    }
   } else if (growth === 'conformal') {
     applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
   } else {
@@ -881,22 +1111,32 @@ function applyOperationImpl(
   if (healNumericalCoverageCracks(model)) {
     model.regions = mergeRegions(model, model.regions);
   }
+  if (type === 'etch' && etchProfile === 'isotropic') {
+    model.regions = canonicalizeReleasePartition(model, model.regions);
+  }
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };
 }
 
 export function applyOperation(model, params) {
-  const rollback = params?.growth === 'conformal' ? cloneModel(model) : null;
+  const safeGeometryOperation =
+      params?.growth === 'conformal' ||
+      (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
+    rollback = safeGeometryOperation ? cloneModel(model) : null;
   try {
     return applyOperationImpl(model, params);
   } catch (error) {
     if (!rollback) throw error;
     for (const key of Object.keys(model)) delete model[key];
     Object.assign(model, rollback);
+    const prefix =
+      params?.growth === 'conformal'
+        ? 'Conformal geometry failed safely'
+        : 'Isotropic etch geometry failed safely';
     return {
       changed: false,
-      error: `Conformal geometry failed safely: ${error?.message || 'unknown geometry error'}`,
+      error: `${prefix}: ${error?.message || 'unknown geometry error'}`,
     };
   }
 }

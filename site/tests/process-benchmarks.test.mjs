@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadGeometryKernel, processBenchmark } from '../../scripts/process-benchmarks.mjs';
+import {
+  isotropicReleaseBenchmark,
+  loadGeometryKernel,
+  processBenchmark,
+  projectForBenchmark,
+} from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { applyOperation, baseCoverageState, createModel, surfaceZ } = await import('../model.js');
@@ -15,6 +20,8 @@ const {
 } = await import('../vector-geometry.js');
 const { electricalRegionSolids, extrusionGroups, sectionSlices } =
   await import('../model-view-geometry.js');
+const { prepareProjectForStorage } = await import('../project-io.js');
+const { migrateProjectFile } = await import('../project-schema.js');
 
 function stackAt(model, x, y = 0) {
   return model.regions.find((r) => pointInMulti([x, y], r.geom))?.stack || [];
@@ -195,6 +202,85 @@ test('Electrical Region follows current material and is clipped by later Etch', 
   assert.equal(
     solids.some((solid) => pointInMulti([0, 0], solid.polys)),
     false,
+  );
+});
+
+test('literature-scale isotropic release produces a suspended silica microdisk in Section and 3D', async () => {
+  const benchmark = await isotropicReleaseBenchmark(),
+    { model, oxideLayerId, section, probes } = benchmark,
+    ringStack = stackAt(model, probes.ring[0], probes.ring[1]),
+    hubStack = stackAt(model, probes.hub[0], probes.hub[1]),
+    exposedStack = stackAt(model, probes.exposed[0], probes.exposed[1]),
+    ringOxide = ringStack.find((segment) => segment.layerId === oxideLayerId),
+    ringSi = ringStack.find((segment) => segment.layerId === 'base'),
+    hubOxide = hubStack.find((segment) => segment.layerId === oxideLayerId),
+    hubSi = hubStack.find((segment) => segment.layerId === 'base'),
+    exposedSi = exposedStack.find((segment) => segment.layerId === 'base');
+
+  assert.ok(ringOxide && ringSi, 'suspended ring must retain both oxide and lower silicon');
+  assert.ok(ringOxide.z0 - ringSi.z1 > 10, 'released ring must contain a true air gap');
+  assert.ok(hubOxide && hubSi, 'central support must retain oxide on silicon');
+  assert.ok(
+    Math.abs(hubOxide.z0 - hubSi.z1) < 1e-9,
+    'central support must remain mechanically attached to its silicon pedestal',
+  );
+  assert.ok(exposedSi && exposedSi.z1 < 10, 'open silicon must be etched deeply by the release');
+
+  const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15);
+  for (let i = 0; i < model.regions.length; i++) {
+    for (let j = i + 1; j < model.regions.length; j++) {
+      const overlapArea = area(intersection(model.regions[i].geom, model.regions[j].geom));
+      assert.ok(
+        overlapArea <= overlapTolerance,
+        `release overlap ${i}/${j} = ${overlapArea} µm² exceeds ${overlapTolerance}`,
+      );
+    }
+  }
+
+  const slices = sectionSlices(model, section.a, section.b),
+    extrusions = extrusionGroups(model),
+    intervalsAt = (x) => {
+      const t = (x - section.a[0]) / (section.b[0] - section.a[0]);
+      return {
+        section: slices
+          .filter((slice) => t > slice.t0 + 1e-9 && t < slice.t1 - 1e-9)
+          .map((slice) => [slice.layerId, slice.z0, slice.z1])
+          .sort(),
+        three: extrusions
+          .filter((solid) => pointInMulti([x, 0], solid.polys))
+          .map((solid) => [solid.layerId, solid.z0, solid.z1])
+          .sort(),
+      };
+    };
+
+  const ringIntervals = intervalsAt(probes.ring[0]),
+    hubIntervals = intervalsAt(probes.hub[0]);
+  assert.deepEqual(ringIntervals.section, ringIntervals.three);
+  assert.deepEqual(hubIntervals.section, hubIntervals.three);
+  assert.ok(
+    ringIntervals.three.some(([layerId]) => layerId === oxideLayerId) &&
+      ringIntervals.three.some(([layerId]) => layerId === 'base'),
+    '3D must contain the suspended oxide and the lower silicon as separate solids',
+  );
+  assert.ok(
+    hubIntervals.three.some(([layerId, z0, z1]) => layerId === 'base' && z1 >= 40 - 1e-9),
+    '3D must keep the central silicon support at the oxide interface',
+  );
+});
+
+test('released microdisk remains valid through project migration and storage packing', async () => {
+  const benchmark = await isotropicReleaseBenchmark(),
+    project = migrateProjectFile(projectForBenchmark(benchmark)),
+    stored = prepareProjectForStorage(project);
+  assert.equal(stored.version, project.version);
+  assert.ok(stored.model.regions.length > 0);
+  assert.ok(
+    stored.model.regions.some((region) => {
+      const oxide = region.stack.find((segment) => segment.layerId === benchmark.oxideLayerId),
+        silicon = region.stack.find((segment) => segment.layerId === 'base');
+      return oxide && silicon && oxide.z0 - silicon.z1 > 10;
+    }),
+    'packed project must retain the physical release cavity',
   );
 });
 
