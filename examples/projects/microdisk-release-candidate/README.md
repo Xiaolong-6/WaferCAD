@@ -68,6 +68,7 @@ When promoted:
 - create a dedicated `.wafercad` project under `site/examples/`;
 - preserve a compact process history from oxide growth through release;
 - save three useful presentation states: full overview, 3D release view, and A–B Section across the annulus + central pedestal;
+- use the real WaferCAD overview capture as the Welcome source image, delivered as `site/example-previews/microdisk-release.jpg`; do not replace it with a schematic or paper figure;
 - add a new literature family appropriate to MEMS / optomechanical / ultrasound devices rather than mixing it into the photodetector family;
 - add structural example regression that asserts a true annular air gap and surviving center support.
 
