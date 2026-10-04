@@ -20,6 +20,7 @@ function fakeRoot() {
     operationArea: 'full',
     layerName: 'Probe',
     targetLayer: '',
+    etchTargetLayer: '',
     etchSurfaceMode: 'smooth',
     growthMode: 'direct',
     implantName: 'Implant 1',
@@ -29,6 +30,12 @@ function fakeRoot() {
     roughFeatureCv: '0',
     roughHeightCv: '0',
     roughPolarity: 'inverted',
+    recordProcessType: 'anneal',
+    recordProcessLabel: 'Anneal',
+    recordTemperature: '',
+    recordDuration: '',
+    recordAmbient: '',
+    recordNote: '',
   };
   const elements = new Map(
     Object.entries(values).map(([id, value]) => [
@@ -42,6 +49,7 @@ function fakeRoot() {
       },
     ]),
   );
+  elements.get('recordProcessType').selectedOptions = [{ textContent: 'Anneal' }];
   return {
     getElementById(id) {
       if (!elements.has(id)) {
@@ -61,9 +69,10 @@ function fakeRoot() {
   };
 }
 
-function controllerForTask(taskResult, events) {
+function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } = {}) {
   let model = createModel();
   const root = fakeRoot();
+  root.getElementById('operationType').value = mode;
   const controller = createProcessPanelController({
     root,
     getModel: () => model,
@@ -96,13 +105,18 @@ function controllerForTask(taskResult, events) {
       return { createVariant: true };
     },
     commitApplyBranch: async () => events.push('commit-variant'),
-    recordProcessOperation: () => events.push('record-operation'),
+    recordProcessOperation: (operation) => {
+      events.push('record-operation');
+      recorded.push(operation);
+    },
     clearBaseRevertSnapshot: () => {},
     colorNewLayer: () => {},
     colorNewImplant: () => {},
     renderAll: () => events.push('render'),
     status: () => {},
   });
+  controller.__root = root;
+  controller.__getModel = () => model;
   return controller;
 }
 
@@ -142,4 +156,41 @@ test('historical Apply commits the variant only after a successful changed worke
   assert.ok(events.indexOf('commit-variant') > events.indexOf('run-worker'));
   assert.ok(events.indexOf('set-model') > events.indexOf('commit-variant'));
   assert.ok(events.indexOf('record-operation') > events.indexOf('set-model'));
+});
+
+
+test('Record process step advances History without running geometry worker', async () => {
+  const events = [],
+    recorded = [],
+    controller = controllerForTask(
+      () => {
+        throw new Error('record-only step must not run the geometry worker');
+      },
+      events,
+      { mode: 'record', recorded },
+    );
+  controller.__root.getElementById('recordTemperature').value = '425';
+  controller.__root.getElementById('recordDuration').value = '30';
+  controller.__root.getElementById('recordAmbient').value = 'forming gas';
+  controller.__root.getElementById('recordNote').value = 'contact anneal';
+
+  await controller.applyOperation();
+
+  assert.equal(events.includes('run-worker'), false);
+  assert.ok(events.indexOf('commit-variant') > events.indexOf('prepare-variant'));
+  assert.ok(events.indexOf('save-history') > events.indexOf('commit-variant'));
+  assert.ok(events.indexOf('set-model') > events.indexOf('save-history'));
+  assert.ok(events.indexOf('record-operation') > events.indexOf('set-model'));
+  assert.equal(controller.__getModel().processRevision, 1);
+  assert.equal(recorded.length, 1);
+  assert.deepEqual(recorded[0], {
+    kind: 'record',
+    label: 'Anneal',
+    processType: 'anneal',
+    geometryChanged: false,
+    temperatureC: 425,
+    durationMin: 30,
+    ambient: 'forming gas',
+    note: 'contact anneal',
+  });
 });
