@@ -208,7 +208,7 @@ export function createProcessPanelController({
 
     const thickness = Number(params.thickness ?? operation.thickness);
     if (Number.isFinite(thickness)) $('operationThickness').value = formatLengthField(thickness);
-    $('operationArea').value = replay.areaRequest?.mode || operation.areaMode || 'full';
+    $('operationArea').value = replay.areaMode || operation.areaMode || 'full';
 
     if (kind === 'add') {
       $('layerName').value = params.name || operation.name || '';
@@ -258,11 +258,67 @@ export function createProcessPanelController({
     return true;
   }
 
-  async function replayOperations(operations = []) {
+  function replayScopeCells(state) {
+    const activeCell = state?.activeCell;
+    const hierarchy = state?.layout?.hierarchy || {};
+    if (!activeCell) return new Set();
+    const out = new Set();
+    const walk = (name) => {
+      if (!name || out.has(name)) return;
+      out.add(name);
+      for (const child of hierarchy?.[name]?.children || []) walk(child?.name);
+    };
+    walk(activeCell);
+    return out;
+  }
+
+  function replayAreaRequest(operation, state) {
+    const replay = replayDescriptor(operation);
+    if (!replay || !state) {
+      throw new Error('This Step does not contain the workspace state required for replay.');
+    }
+    const mode = replay.areaMode || operation.areaMode || 'full',
+      maskSourceMode = state.maskSourceMode === 'draw' ? 'draw' : 'file',
+      maskRoi = state.maskRoi ? structuredClone(state.maskRoi) : null;
+
+    if (maskSourceMode === 'draw') {
+      return {
+        mode,
+        maskSourceMode,
+        maskRoi,
+        drawMask: structuredClone(state.drawMask || { nextShapeId: 1, shapes: [] }),
+      };
+    }
+
+    const selectedLayers = new Set(state.selectedLayerKeys || []),
+      scope = replayScopeCells(state),
+      elements = (state.layout?.elements || [])
+        .filter(
+          (element) =>
+            scope.has(element.sourceCell) &&
+            selectedLayers.has(`${element.layer}|${element.datatype}`),
+        )
+        .map((element) => ({
+          kind: element.kind,
+          width: element.width,
+          points: element.points,
+        }));
+
+    return {
+      mode,
+      maskSourceMode,
+      maskRoi,
+      maskTransform: { ...(state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }) },
+      elements,
+    };
+  }
+
+  async function replayOperations(steps = []) {
     let completed = 0;
-    for (const sourceOperation of operations) {
-      const operation = structuredClone(sourceOperation || {});
-      const replay = replayDescriptor(operation);
+    for (const sourceStep of steps) {
+      const operation = structuredClone(sourceStep?.operation || sourceStep || {}),
+        sourceState = sourceStep?.operation ? sourceStep.state : null,
+        replay = replayDescriptor(operation);
       if (!replay) {
         return {
           ok: false,
@@ -294,7 +350,17 @@ export function createProcessPanelController({
       }
 
       const params = structuredClone(replay.params || {});
-      const areaRequest = replay.areaRequest ? structuredClone(replay.areaRequest) : null;
+      let areaRequest;
+      try {
+        areaRequest = replayAreaRequest(operation, sourceState);
+      } catch (error) {
+        return {
+          ok: false,
+          completed,
+          failedOperation: operation,
+          error: error?.message || 'Replay area could not be reconstructed.',
+        };
+      }
       const task = await processTaskController.run(
         getModel(),
         params,
@@ -615,7 +681,7 @@ export function createProcessPanelController({
       replay: {
         version: 1,
         params: structuredClone(params),
-        areaRequest: structuredClone(areaRequest),
+        areaMode,
       },
     };
     recordProcessOperation(operation);
