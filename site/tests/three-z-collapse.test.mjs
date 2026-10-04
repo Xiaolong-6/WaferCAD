@@ -39,14 +39,19 @@ test('collapsed Z display is monotonic through the compressed interval', () => {
 
 test('3D is wired to the same Section collapse state and keeps GLB canonical', async () => {
   const root = new URL('../', import.meta.url);
-  const [app, threeView] = await Promise.all([
+  const [app, threeView, collapseController] = await Promise.all([
     readFile(new URL('app.js', root), 'utf8'),
     readFile(new URL('three-view.js', root), 'utf8'),
+    readFile(new URL('controllers/section-collapse-controller.js', root), 'utf8'),
   ]);
 
   assert.match(app, /getZCollapse:\s*\(\) => sectionCollapse/);
   assert.match(app, /threeView\?\.updateZCollapse\(\)/);
+  assert.match(app, /onSettled:\s*renderThree/);
+  assert.match(collapseController, /onSettled\(\)/);
   assert.match(threeView, /zCollapseFollow = 'section'/);
+  assert.match(threeView, /displaySidewallParts/);
+  assert.match(threeView, /displayBorderPositions/);
   assert.match(threeView, /for \(const item of materialSolids\(model, clip\)\)/);
 
   const model = {
