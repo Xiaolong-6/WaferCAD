@@ -47,6 +47,20 @@ The release implementation was accepted before merge with:
 - project export/restore path accepted by the v14 schema
 - Quality, UI smoke, product regression and KLayout compatibility green on PR #89
 
+## Supplied package now staged
+
+The uploaded reconstruction package has been reviewed and pinned by hash.
+
+- package SHA-256: `8c06054cd1172d0ca177e931fcb9b152601a920694364ce9b132d3f669930dea`
+- project: `Microdisk_BasiriEsfahani2019_Fig2.wafercad`
+- project SHA-256: `b155dd0624c92c18fa329b1e2b1dfc6b737cb589f2a025159b0369dba5d792da`
+- mask GDS SHA-256: `fc9bf4343e43005dfdc8ff28e5fa50c2f6c950baf3e9a68fbc71ef81c4cde0d3`
+- schema v14, one linear branch, nine process nodes and nine bookmarks
+- package audit reports 72 annulus probe points with a real canonical air gap, sampled 13.5–36 µm, and a center Si/SiO2 contact at z = 40 µm
+- package audit also records successful UI import/restore and project round-trip identity checks
+
+The package README and process-flow note are copied into this staging directory for provenance. The large project binary and screenshots remain outside production `site/examples/` until the example is promoted.
+
 ## Production-example plan
 
 When promoted:
@@ -57,4 +71,4 @@ When promoted:
 - add a new literature family appropriate to MEMS / optomechanical / ultrasound devices rather than mixing it into the photodetector family;
 - add structural example regression that asserts a true annular air gap and surviving center support.
 
-No Welcome-page registration or CI-triggering PR is part of this staging step.
+No Welcome-page registration or CI-triggering PR is part of this staging step. CI remains intentionally unrequested on this candidate branch.
