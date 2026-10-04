@@ -338,6 +338,27 @@ export function normalizeStack(stack) {
   return out;
 }
 
+function ringAreaAbs(ring) {
+  if (!Array.isArray(ring) || ring.length < 4) return 0;
+  let twiceArea = 0;
+  for (let i = 0; i < ring.length - 1; i++) {
+    twiceArea += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+  }
+  return Math.abs(twiceArea) / 2;
+}
+
+function sanitizeProcessGeometry(geom, areaEpsilon = 1e-18) {
+  const out = [];
+  for (const poly of geom || []) {
+    if (!Array.isArray(poly) || !poly.length) continue;
+    const outer = poly[0];
+    if (ringAreaAbs(outer) <= areaEpsilon) continue;
+    const holes = poly.slice(1).filter((ring) => ringAreaAbs(ring) > areaEpsilon);
+    out.push([outer, ...holes]);
+  }
+  return out;
+}
+
 function stackKey(stack) {
   return (stack || [])
     .map((seg) =>
@@ -1018,6 +1039,11 @@ function applyOperationImpl(
   model.regions = mergeRegions(model, model.regions);
   if (healNumericalCoverageCracks(model)) {
     model.regions = mergeRegions(model, model.regions);
+  }
+  if (type === 'etch' && etchProfile === 'isotropic') {
+    model.regions = model.regions
+      .map((region) => ({ ...region, geom: sanitizeProcessGeometry(region.geom) }))
+      .filter((region) => !isEmpty(region.geom));
   }
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
