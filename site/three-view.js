@@ -2150,6 +2150,13 @@ export function createThreeView({
                   profileNormal: cap.profileNormal,
                   lodZones: task.lodZones,
                 });
+            const roughBorderVertexCount = Math.floor(
+              (geometry.userData?.roughBorderPositions?.length || 0) / 3,
+            );
+            // Renderer-only LOD/debug metadata can include large typed arrays.
+            // Keep GLB extras compact and publish only the stable export contract
+            // on the mesh itself.
+            geometry.userData = {};
             const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
             if (mesh) {
               mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
@@ -2163,8 +2170,7 @@ export function createThreeView({
               mesh.userData.wafercadInterfaceLayerId = cap.interfaceLayerId || null;
               mesh.userData.wafercadSurfaceFace = cap.face || (cap.normal > 0 ? 'front' : 'back');
               mesh.userData.wafercadSurfaceZUm = Number(cap.z) || 0;
-              mesh.userData.wafercadRoughBorderVertexCount =
-                Math.floor((geometry.userData?.roughBorderPositions?.length || 0) / 3);
+              mesh.userData.wafercadRoughBorderVertexCount = roughBorderVertexCount;
             }
           }
         } else {
