@@ -199,6 +199,34 @@ assert.match(
   await page.locator('#welcomeScreen').textContent(),
   /Mask[\s\S]*Process[\s\S]*Inspect/,
 );
+
+const photodetectorCard = page.locator(
+  '.welcome-example-card[data-example-id="photodetector-literature"]',
+);
+assert.equal((await photodetectorCard.locator('h3').textContent()).trim(), 'Photodetectors with nanopatterns');
+assert.equal(await photodetectorCard.locator('.welcome-example-sources a').count(), 2);
+assert.equal(
+  await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
+  ['Main', 'Mask', '3D', 'Section'],
+);
+const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
+await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
+const preview = page.frameLocator(
+  '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-project-frame',
+);
+await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
+  state: 'attached',
+  timeout: 30000,
+});
+await photodetectorCard
+  .locator('.welcome-example-view-tab[data-preview-view="section"]')
+  .click();
+await preview.locator('html.welcome-project-preview[data-preview-view="section"]').waitFor({
+  state: 'attached',
+  timeout: 10000,
+});
+assert.equal(await preview.locator('#sectionPanel').isVisible(), true);
+
 await page.locator('#welcomeEmptyBtn').click();
 await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await page.waitForLoadState('networkidle');
