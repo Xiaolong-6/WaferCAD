@@ -342,7 +342,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     for (const [name, button] of refs.viewTabs) {
       const active = state.viewMode === 'single' && name === state.currentSingleView;
       button.classList.toggle('active', active);
-      button.setAttribute('aria-selected', String(active));
+      button.setAttribute('aria-pressed', String(active));
     }
 
     refs.overviewButton?.classList.toggle('active', state.viewMode === 'overview');
@@ -397,6 +397,7 @@ export function createWorkstationUiController({ root = document, win = window } 
 
     const tabs = root.createElement('div');
     tabs.className = 'workstation-view-tabs';
+    tabs.setAttribute('role', 'toolbar');
     tabs.setAttribute('aria-label', 'Primary views and layouts');
 
     const overview = makeButton(root, 'workstation-view-tab workstation-layout-tab', 'Overview', {
@@ -411,8 +412,7 @@ export function createWorkstationUiController({ root = document, win = window } 
       const button = makeButton(root, 'workstation-view-tab', label, {
         dataset: { view: name },
       });
-      button.setAttribute('role', 'tab');
-      button.setAttribute('aria-selected', 'false');
+      button.setAttribute('aria-pressed', 'false');
       tabs.append(button);
       viewTabs.set(name, button);
     }
