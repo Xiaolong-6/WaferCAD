@@ -484,6 +484,7 @@ async function checkSectionCollapse(page, name) {
   close(closedTop, nudgedTop, 1e-9);
 
   await entry.click();
+  await editor.waitFor({ state: 'visible', timeout: 1000 });
   assert.equal(await editor.isVisible(), true);
   close(
     Number(
