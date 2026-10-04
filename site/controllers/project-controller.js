@@ -2,6 +2,7 @@ import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { createVisualizationExample } from '../welcome-example.js';
+import { bundledExampleById } from '../bundled-examples.js';
 
 export function createProjectController({
   root = document,
@@ -778,6 +779,33 @@ export function createProjectController({
     }
   }
 
+  async function openBundledExample(exampleId) {
+    const example = bundledExampleById(exampleId);
+    if (!example || example.kind !== 'project' || !example.path) {
+      status('Bundled example was not found.', 'error');
+      return false;
+    }
+
+    try {
+      status(`Loading ${example.title}…`);
+      const response = await fetch(example.path, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const arrayBuffer = await response.arrayBuffer(),
+        file = {
+          name: example.filename,
+          size: arrayBuffer.byteLength,
+          arrayBuffer: async () => arrayBuffer,
+        };
+      return await openProjectFile(file);
+    } catch (error) {
+      console.error(error);
+      status(`Example failed: ${error.message}`, 'error');
+      return false;
+    }
+  }
+
   function openVisualizationExample() {
     try {
       status('Building example…');
@@ -895,6 +923,7 @@ export function createProjectController({
     renderSnapshots,
     openLayoutFile,
     openProjectFile,
+    openBundledExample,
     openVisualizationExample,
   };
 }
