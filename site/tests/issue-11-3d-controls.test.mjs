@@ -48,6 +48,14 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /function requestRoughGeometry\(/);
   assert.match(threeView, /new Worker\(workerUrl/);
   assert.match(threeView, /roughInteractionCache/);
+  assert.match(threeView, /let sceneGeneration = 0/);
+  assert.match(threeView, /let pendingRender = false/);
+  assert.match(threeView, /if \(rendering\) \{\s*pendingRender = true;/);
+  assert.match(threeView, /sceneGeneration: renderGeneration/);
+  assert.match(threeView, /context\.sceneGeneration !== sceneToken/);
+  assert.match(threeView, /host\.dataset\.modelRevision/);
+  assert.match(threeView, /host\.dataset\.processRevision/);
+  assert.match(threeView, /host\.dataset\.renderState = 'refining'/);
   assert.match(threeView, /roughMeshMode = mode/);
   assert.match(threeView, /controls\.addEventListener\('start'/);
   assert.match(threeView, /controls\.addEventListener\('end'/);
