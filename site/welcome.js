@@ -1,3 +1,4 @@
+import { BUNDLED_EXAMPLES } from './bundled-examples.js';
 import { MAX_LAYOUT_FILE_BYTES } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES } from './project-io.js';
 import { createVisualizationLayout } from './welcome-example.js';
@@ -10,8 +11,7 @@ function status(message) {
   $('welcomeStatus').textContent = message;
 }
 
-function drawPreview() {
-  const canvas = $('welcomePreview');
+function drawVisualizationPreview(canvas) {
   if (!canvas?.isConnected) return;
   const rect = canvas.getBoundingClientRect();
   if (!(rect.width > 0 && rect.height > 0)) return;
@@ -28,8 +28,8 @@ function drawPreview() {
 
   const bounds = previewLayout.bounds;
   const scale = Math.min(
-    (rect.width * 0.84) / Math.max(bounds.width, 1),
-    (rect.height * 0.84) / Math.max(bounds.height, 1),
+    (rect.width * 0.82) / Math.max(bounds.width, 1),
+    (rect.height * 0.82) / Math.max(bounds.height, 1),
   );
   const cx = rect.width / 2,
     cy = rect.height / 2,
@@ -54,7 +54,7 @@ function drawPreview() {
 
     if (element.sourceCell === '50mm') {
       ctx.strokeStyle = '#87939f';
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.1;
       ctx.stroke();
       continue;
     }
@@ -64,6 +64,95 @@ function drawPreview() {
     ctx.lineWidth = element.layer === 1 ? 0.45 : 0.7;
     ctx.fill();
     ctx.stroke();
+  }
+}
+
+function createProjectVariantPreview(example) {
+  const host = document.createElement('div');
+  host.className = 'welcome-family-preview';
+  const root = document.createElement('div');
+  root.className = 'welcome-family-root';
+  root.textContent = 'Photodetector family';
+  host.append(root);
+
+  const branches = document.createElement('div');
+  branches.className = 'welcome-family-branches';
+  for (const line of example.variants || []) {
+    const branch = document.createElement('div');
+    branch.className = 'welcome-family-branch';
+    const marker = document.createElement('span');
+    marker.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('strong');
+    label.textContent = line;
+    branch.append(marker, label);
+    branches.append(branch);
+  }
+  host.append(branches);
+  return host;
+}
+
+function openExample(exampleId) {
+  globalThis.location.href =
+    './app.html?start=example&example=' + encodeURIComponent(exampleId);
+}
+
+function renderExampleCards() {
+  const grid = $('welcomeExampleGrid');
+  grid.innerHTML = '';
+
+  for (const example of BUNDLED_EXAMPLES) {
+    const card = document.createElement('article');
+    card.className = 'welcome-example-card';
+    card.dataset.exampleId = example.id;
+
+    const visual = document.createElement('div');
+    visual.className = 'welcome-example-visual';
+    if (example.kind === 'generated') {
+      const canvas = document.createElement('canvas');
+      canvas.className = 'welcome-example-canvas';
+      canvas.setAttribute('aria-label', example.title + ' preview');
+      visual.append(canvas);
+      const observer = new ResizeObserver(() => drawVisualizationPreview(canvas));
+      observer.observe(canvas);
+      queueMicrotask(() => drawVisualizationPreview(canvas));
+    } else {
+      visual.append(createProjectVariantPreview(example));
+    }
+
+    const body = document.createElement('div');
+    body.className = 'welcome-example-body';
+
+    const meta = document.createElement('div');
+    meta.className = 'welcome-example-meta';
+    const level = document.createElement('span');
+    level.textContent = example.level || 'Example';
+    const figure = document.createElement('span');
+    figure.textContent = example.figure;
+    meta.append(level, figure);
+
+    const title = document.createElement('h3');
+    title.textContent = example.title;
+
+    const summary = document.createElement('p');
+    summary.textContent = example.summary;
+
+    const tags = document.createElement('div');
+    tags.className = 'welcome-example-tags';
+    for (const tag of example.tags || []) {
+      const chip = document.createElement('span');
+      chip.textContent = tag;
+      tags.append(chip);
+    }
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'welcome-example-open';
+    action.textContent = 'Open example';
+    action.onclick = () => openExample(example.id);
+
+    body.append(meta, title, summary, tags, action);
+    card.append(visual, body);
+    grid.append(card);
   }
 }
 
@@ -87,11 +176,7 @@ async function stageAndOpen(file, kind) {
 
 $('welcomeImportBtn').onclick = () => $('welcomeLayoutInput').click();
 $('welcomeProjectBtn').onclick = () => $('welcomeProjectInput').click();
-$('welcomeExampleBtn').onclick = () => {
-  globalThis.location.href = './app.html?start=example';
-};
 $('welcomeLayoutInput').onchange = (event) => stageAndOpen(event.target.files?.[0], 'layout');
 $('welcomeProjectInput').onchange = (event) => stageAndOpen(event.target.files?.[0], 'project');
 
-drawPreview();
-new ResizeObserver(drawPreview).observe($('welcomePreview'));
+renderExampleCards();
