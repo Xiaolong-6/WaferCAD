@@ -1828,7 +1828,8 @@ html.welcome-project-preview #threeHost {
 }
 
 html.welcome-project-preview #sectionCollapseOverlay {
-  pointer-events: none;
+  display: none !important;
+  pointer-events: none !important;
 }
 
 html.welcome-project-preview #sectionEndpointHandles,
