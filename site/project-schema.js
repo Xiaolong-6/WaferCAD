@@ -684,7 +684,12 @@ function validateDisplay(display) {
     assertFinite(roi.y, 'display.sectionDetailRoi.y', { min: 0, max: 1 });
     assertFinite(roi.width, 'display.sectionDetailRoi.width', { min: 0, max: 1 });
     assertFinite(roi.height, 'display.sectionDetailRoi.height', { min: 0, max: 1 });
-    if (!(roi.width > 0) || !(roi.height > 0) || roi.x + roi.width > 1.000001 || roi.y + roi.height > 1.000001) {
+    if (
+      !(roi.width > 0) ||
+      !(roi.height > 0) ||
+      roi.x + roi.width > 1.000001 ||
+      roi.y + roi.height > 1.000001
+    ) {
       fail('display.sectionDetailRoi', 'must stay inside the Section canvas.');
     }
     if (roi.shape != null && !['rect', 'circle'].includes(roi.shape)) {
