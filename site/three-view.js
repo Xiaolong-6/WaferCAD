@@ -1984,6 +1984,98 @@ export function createThreeView({
       yieldToUi = async () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
         throwIfAborted();
+      },
+      buildExportRoughMeshData = (tasks) => {
+        if (!tasks.length) return Promise.resolve(new Map());
+
+        let worker;
+        try {
+          const workerUrl = new URL('./rough-mesh-worker.js', import.meta.url),
+            currentModuleUrl = new URL(import.meta.url);
+          workerUrl.search = currentModuleUrl.search;
+          worker = new Worker(workerUrl);
+        } catch (error) {
+          console.warn('GLB morphology worker unavailable; using synchronous fallback.', error);
+          return Promise.resolve(null);
+        }
+
+        const id = 'glb-export',
+          generation = 1,
+          payload = tasks.map((task, taskId) => ({
+            taskId,
+            geometry: {
+              z: task.cap.z,
+              normal: task.cap.normal,
+              appearance: task.cap.appearance,
+              closeToIdeal: !task.cap.buried,
+              profileNormal: task.cap.profileNormal,
+              lodZones: task.lodZones.map((zone) => ({
+                baseTriangles: zone.baseTriangles,
+                maxEdge: zone.maxEdge,
+                edges: zone.edges,
+                lodContext: zone.lodContext,
+                triangleBudget: zone.triangleBudget,
+              })),
+            },
+          }));
+
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = () => {
+              if (settled) return false;
+              settled = true;
+              signal?.removeEventListener?.('abort', onAbort);
+              worker.terminate();
+              return true;
+            },
+            onAbort = () => {
+              if (!finish()) return;
+              reject(new DOMException('GLB export cancelled.', 'AbortError'));
+            };
+
+          signal?.addEventListener?.('abort', onAbort, { once: true });
+          if (signal?.aborted) {
+            onAbort();
+            return;
+          }
+
+          worker.onmessage = (event) => {
+            const message = event.data || {};
+            if (message.id !== id || message.generation !== generation || settled) return;
+            if (message.type === 'progress') {
+              const total = Math.max(1, Number(message.total) || tasks.length),
+                completed = Math.max(0, Number(message.completed) || 0);
+              reportProgress(0.1 + 0.46 * Math.min(1, completed / total), 'Building morphology');
+              return;
+            }
+            if (message.type === 'error') {
+              if (!finish()) return;
+              reject(new Error(message.message || 'Morphology worker failed.'));
+              return;
+            }
+            if (message.type !== 'done') return;
+
+            const byCap = new Map();
+            for (const result of message.results || []) {
+              const task = tasks[result.taskId];
+              if (task?.cap && result.data) byCap.set(task.cap, result.data);
+            }
+            if (!finish()) return;
+            resolve(byCap);
+          };
+
+          worker.onerror = (event) => {
+            if (!finish()) return;
+            reject(new Error(event.message || 'Morphology worker failed.'));
+          };
+
+          try {
+            worker.postMessage({ id, generation, tasks: payload });
+          } catch (error) {
+            if (!finish()) return;
+            reject(error);
+          }
+        });
       };
 
     reportProgress(0, 'Preparing exporter');
@@ -2026,8 +2118,15 @@ export function createThreeView({
       await yieldToUi();
       reportProgress(0.08, 'Allocating morphology mesh');
       const roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
-        roughByCap = new Map(roughTasks.map((task) => [task.cap, task.lodZones])),
         capCount = Math.max(1, surfacePlan.caps.length);
+      let roughMeshDataByCap = null;
+      try {
+        roughMeshDataByCap = await buildExportRoughMeshData(roughTasks);
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error;
+        console.warn('GLB morphology worker failed; using synchronous fallback.', error);
+      }
+      throwIfAborted();
 
       // Export the same topology-owned surface plan used by the interactive 3D
       // renderer. Rough/Pyramid caps use a deterministic, camera-independent
@@ -2036,21 +2135,21 @@ export function createThreeView({
         throwIfAborted();
         const cap = surfacePlan.caps[capIndex];
         if (cap.appearance?.kind === 'rough') {
-          // Yield before each morphology cap. Large deterministic heightfields
-          // remain main-thread Three.js work, but this keeps Cancel/UI feedback
-          // responsive between bounded export chunks.
-          await yieldToUi();
-          const lodZones = roughByCap.get(cap);
-          if (lodZones?.length) {
-            const geometry = geometryFromRoughCap(THREE, {
-              z: cap.z,
-              normal: cap.normal,
-              polys: cap.polys,
-              appearance: cap.appearance,
-              closeToIdeal: !cap.buried,
-              profileNormal: cap.profileNormal,
-              lodZones,
-            });
+          const task = roughTasks.find((entry) => entry.cap === cap),
+            meshData = roughMeshDataByCap?.get(cap) || null;
+          if (task?.lodZones?.length) {
+            if (!meshData) await yieldToUi();
+            const geometry = meshData
+              ? geometryFromRoughMeshData(THREE, meshData)
+              : geometryFromRoughCap(THREE, {
+                  z: cap.z,
+                  normal: cap.normal,
+                  polys: cap.polys,
+                  appearance: cap.appearance,
+                  closeToIdeal: !cap.buried,
+                  profileNormal: cap.profileNormal,
+                  lodZones: task.lodZones,
+                });
             const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
             if (mesh) {
               mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
@@ -2085,7 +2184,7 @@ export function createThreeView({
             mesh.userData.wafercadSurfaceZUm = Number(cap.z) || 0;
           }
         }
-        reportProgress(0.1 + 0.65 * ((capIndex + 1) / capCount), 'Building surfaces');
+        reportProgress(0.58 + 0.2 * ((capIndex + 1) / capCount), 'Building surfaces');
       }
 
       throwIfAborted();
@@ -2102,14 +2201,14 @@ export function createThreeView({
         addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
         sidewallIndex++;
         reportProgress(
-          0.76 + 0.12 * (sidewallIndex / sidewallGroupCount),
+          0.79 + 0.1 * (sidewallIndex / sidewallGroupCount),
           'Building sidewalls',
         );
         if (sidewallIndex % 2 === 0) await yieldToUi();
       }
 
       await yieldToUi();
-      reportProgress(0.9, 'Encoding GLB');
+      reportProgress(0.91, 'Encoding GLB');
       const exporter = new GLTFExporter();
       const result = await new Promise((resolve, reject) =>
         exporter.parse(exportGroup, resolve, reject, {
