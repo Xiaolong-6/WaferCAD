@@ -96,6 +96,29 @@ function cleanName(value) {
   return String(value ?? '').trim();
 }
 
+const BOOKMARK_VIEW_KEYS = [
+  'selectedLayerKeys',
+  'activeCell',
+  'maskTransform',
+  'maskRoi',
+  'maskRoiAnchor',
+  'activeFace',
+  'roi',
+  'roiAnchor',
+  'section',
+  'planViews',
+  'display',
+];
+
+function withCurrentInspectionView(baseState, currentState, cloneState) {
+  const merged = cloneState(baseState);
+  for (const key of BOOKMARK_VIEW_KEYS) {
+    if (!Object.hasOwn(currentState || {}, key)) continue;
+    merged[key] = clone(currentState[key]);
+  }
+  return merged;
+}
+
 export function defaultSnapshotName(date = new Date()) {
   const value = date instanceof Date ? date : new Date(date);
   const pad = (number) => String(number).padStart(2, '0');
@@ -336,8 +359,13 @@ export function createSnapshotManager({
     if (records.length >= maxRecords) {
       throw new Error(`Bookmark limit of ${maxRecords} reached.`);
     }
-    const node = nodeId ? nodeById(nodeId) : null;
-    const state = stateForProcessNode(node);
+    const node = nodeId ? nodeById(nodeId) : null,
+      processState = stateForProcessNode(node),
+      currentState = capture(),
+      state =
+        node && processState
+          ? withCurrentInspectionView(processState, currentState, cloneState)
+          : null;
     if (!node || !state || !validateState(state)) {
       throw new Error('Select a restorable process Step before adding a bookmark.');
     }
@@ -351,7 +379,7 @@ export function createSnapshotManager({
       branchId: node.branchId,
       parentId: null,
       historyNodeId: node.id,
-      state: cloneState(state),
+      state,
     };
     records.unshift(record);
     return {
