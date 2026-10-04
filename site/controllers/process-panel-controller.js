@@ -127,7 +127,7 @@ export function createProcessPanelController({
           : t === 'grow'
             ? 'Extend layer'
             : t === 'implant'
-              ? 'Implant · EXP'
+              ? 'Implant'
               : electrical
                 ? 'Electrical region'
                 : 'Etch'
@@ -140,7 +140,7 @@ export function createProcessPanelController({
       recordOnly
         ? 'Records fabrication metadata in History without changing material geometry.'
         : t === 'implant'
-          ? 'Experimental structural marker: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt.'
+          ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
           : electrical
             ? 'Non-material electrical annotation: marks an induced, doped, or interface region from the selected exposed surface. It follows later Etch geometry but does not solve carrier transport or electrostatics.'
             : t === 'etch'
@@ -476,7 +476,7 @@ export function createProcessPanelController({
           : type === 'grow'
             ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
             : type === 'implant'
-              ? `Marked implant ${name} (experimental)`
+              ? `Marked implant ${name}`
               : type === 'electrical'
                 ? `Marked electrical region ${name}`
                 : `Deposited ${name}`

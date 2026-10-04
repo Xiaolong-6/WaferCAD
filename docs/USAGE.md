@@ -86,7 +86,7 @@ Choose an action:
 - Deposit new layer;
 - Extend existing layer;
 - Etch / subtract;
-- Implant **(experimental)**;
+- Implant;
 - Electrical Region.
 
 Choose an area:
@@ -112,7 +112,7 @@ Electrical Region is a separate schematic annotation for p/n regions, inversion,
 
 Implant is a structural visualization primitive rather than a dopant-physics solver. Set Name, Area, Depth, and optional signed **Tilt X**; Apply records the existing exposed implant volume without creating a material layer. Color is assigned from the active 20-color structure palette after Apply and is edited from the Layers legend. Later Etch operations clip the surviving Implant volume instead of regenerating a new full-depth marker.
 
-Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness; Directional Etch, Implant, and Electrical Region use it as depth; Isotropic release uses the same field as a physical etch radius. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md), [surface morphology](ROUGHNESS_MORPHOLOGY.md), and [experimental Implant](IMPLANT_EXPERIMENTAL.md).
+Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness; Directional Etch, Implant, and Electrical Region use it as depth; Isotropic release uses the same field as a physical etch radius. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md), [surface morphology](ROUGHNESS_MORPHOLOGY.md), and [Implant modeling scope](IMPLANT.md).
 
 ## 7. Manage layers
 

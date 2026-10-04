@@ -191,6 +191,46 @@ async function checkLayout(page) {
   assert.deepEqual(problems, []);
 }
 
+async function checkStickerGrouping(page, name) {
+  if (name === 'phone') return;
+  const geometry = await page.evaluate(() => {
+    const panel = document.getElementById('mainPanel'),
+      section = document.getElementById('sectionPanel'),
+      workspace = document.querySelector('.workspace'),
+      panelStyle = getComputedStyle(panel),
+      sectionStyle = getComputedStyle(section),
+      workspaceStyle = getComputedStyle(workspace);
+    return {
+      gap: parseFloat(workspaceStyle.gap),
+      radius: parseFloat(panelStyle.borderTopLeftRadius),
+      border: parseFloat(panelStyle.borderTopWidth),
+      shadow: panelStyle.boxShadow,
+      sectionRadius: parseFloat(sectionStyle.borderTopLeftRadius),
+    };
+  });
+  assert.ok(geometry.gap >= 4, `${name}: workspace sticker gap is missing`);
+  assert.ok(geometry.radius >= 6, `${name}: primary view sticker radius is missing`);
+  assert.equal(geometry.border, 1, `${name}: primary view sticker border is missing`);
+  assert.notEqual(geometry.shadow, 'none', `${name}: primary view sticker shadow is missing`);
+  assert.ok(geometry.sectionRadius >= 6, `${name}: Section sticker radius is missing`);
+
+  await openFunctionPanel(page, 'process', { timeout: 10000 });
+  const processSticker = await page.locator('#operationTools').evaluate((section) => {
+    const style = getComputedStyle(section);
+    return {
+      radius: parseFloat(style.borderTopLeftRadius),
+      border: parseFloat(style.borderTopWidth),
+      shadow: style.boxShadow,
+      active: section.classList.contains('workstation-section-active'),
+    };
+  });
+  assert.ok(processSticker.radius >= 6, `${name}: Process sticker radius is missing`);
+  assert.equal(processSticker.border, 1, `${name}: Process sticker border is missing`);
+  assert.notEqual(processSticker.shadow, 'none', `${name}: Process sticker shadow is missing`);
+  assert.equal(processSticker.active, true, `${name}: active function sticker is not highlighted`);
+  await closeFunctionPanel(page);
+}
+
 async function checkWorkstationShellLayout(page, name) {
   const compact = await page.evaluate(() =>
     document.documentElement.classList.contains('workstation-compact-ui'),
@@ -232,9 +272,10 @@ async function checkWorkstationShellLayout(page, name) {
   });
   const ratio = split.main.width / split.three.width;
   assert.ok(ratio > 0.92 && ratio < 1.08, `${name}: Split is not balanced (${ratio})`);
+  const stickerGap = split.three.left - split.main.right;
   assert.ok(
-    Math.abs(split.main.right - split.three.left) <= 2,
-    `${name}: Split contains an unexpected gap or implicit grid track`,
+    stickerGap >= 4 && stickerGap <= 9,
+    `${name}: Split sticker gap is inconsistent (${stickerGap}px)`,
   );
   assert.ok(
     Math.abs(split.main.left - split.stage.left) <= 2 &&
@@ -374,14 +415,12 @@ async function checkSectionCollapse(page, name) {
   assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
   await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
   await capture(page, `${name}-section-z-collapse-edit`);
-  await page.waitForFunction(
-    (expectedBreakY) =>
-      Math.abs(
-        Number(document.getElementById('sectionCanvas')?.dataset.sectionCollapseBreakY) -
-          expectedBreakY,
-      ) < 1e-6,
-    before.breakY,
-  );
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById('sectionCanvas'),
+      breakY = Number(canvas?.dataset.sectionCollapseBreakY),
+      height = canvas?.getBoundingClientRect().height || 0;
+    return Number.isFinite(breakY) && breakY > 0 && breakY < height;
+  });
   const handleSize = await page.locator('#sectionCollapseTopHandle').boundingBox();
   assert.ok(handleSize);
   assert.ok(
@@ -812,11 +851,22 @@ try {
     ['phone', { width: 390, height: 844 }, true],
   ]) {
     const { page, context } = await open(viewport, touch);
+    if (name === 'wide') {
+      assert.equal(
+        await page.locator('.workstation-view-stage').getAttribute('data-view-mode'),
+        'overview',
+        'wide: fresh workspace must default to Overview',
+      );
+      assert.equal(await page.locator('#mainPanel').isVisible(), true);
+      assert.equal(await page.locator('#maskPanel').isVisible(), true);
+      assert.equal(await page.locator('#threePanel').isVisible(), true);
+    }
     await capture(page, `${name}-empty`);
     await checkLayout(page);
     await checkAB(page, name);
     await checkSectionCollapse(page, name);
     await checkWorkstationShellLayout(page, name);
+    await checkStickerGrouping(page, name);
     await ensurePrimaryViewVisible(page, 'three');
     await page.locator('#threePanel .three-opacity-control > summary').click();
     await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');

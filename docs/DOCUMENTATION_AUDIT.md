@@ -1,6 +1,6 @@
 # Documentation audit — 2026-10-02
 
-This audit reconciles the current feature-branch documentation with the merged compact Function panel, surface-morphology work, experimental Implant follow-up, and the final 3D roughness/opacity fixes prepared for merge to `main`.
+This audit reconciles the current feature-branch documentation with the merged compact Function panel, surface-morphology work, Implant structural-annotation follow-up, and the final 3D roughness/opacity fixes prepared for merge to `main`.
 
 ## Audited product contracts
 
@@ -27,7 +27,7 @@ This audit reconciles the current feature-branch documentation with the merged c
 - `docs/PRODUCT_REVIEW.md`
 - `docs/MASK_DRAW_PLAN.md`
 - `docs/COMPETITIVE_LANDSCAPE.md`
-- `docs/IMPLANT_EXPERIMENTAL.md`
+- `docs/IMPLANT.md`
 - `docs/ROUGHNESS_MORPHOLOGY.md`
 
 ## Documents reviewed without contract changes
