@@ -16,7 +16,8 @@ export function createSectionDetailRoiController({
   const $ = (id) => root.getElementById(id);
   let drawing = false,
     drag = null,
-    previewRoi = null;
+    previewRoi = null,
+    insetPosition = null;
 
   function canvasPoint(event) {
     const canvas = $('sectionCanvas'),
@@ -117,12 +118,26 @@ export function createSectionDetailRoiController({
 
     inset.hidden = false;
     const insetWidth = inset.offsetWidth || 202,
-      insetLeft = Math.max(
-        canvasRect.left - bodyRect.left + 6,
-        canvasRect.right - bodyRect.left - insetWidth - 8,
-      );
-    inset.style.left = `${insetLeft}px`;
-    inset.style.top = `${canvasRect.top - bodyRect.top + 8}px`;
+      insetHeight = inset.offsetHeight || 202,
+      minLeft = canvasRect.left - bodyRect.left + 6,
+      minTop = canvasRect.top - bodyRect.top + 6,
+      maxLeft = Math.max(minLeft, canvasRect.right - bodyRect.left - insetWidth - 6),
+      maxTop = Math.max(minTop, canvasRect.bottom - bodyRect.top - insetHeight - 6);
+
+    if (!insetPosition) {
+      insetPosition = {
+        left: maxLeft,
+        top: minTop,
+      };
+    } else {
+      insetPosition = {
+        left: Math.max(minLeft, Math.min(maxLeft, insetPosition.left)),
+        top: Math.max(minTop, Math.min(maxTop, insetPosition.top)),
+      };
+    }
+
+    inset.style.left = `${insetPosition.left}px`;
+    inset.style.top = `${insetPosition.top}px`;
   }
 
   function sync() {
@@ -192,6 +207,26 @@ export function createSectionDetailRoiController({
     event.stopPropagation();
   }
 
+  function beginInsetMove(event) {
+    if (event.button !== 0 || drawing || event.target.closest('button')) return;
+    const inset = $('sectionDetailInset');
+    if (!inset || inset.hidden) return;
+    drag = {
+      mode: 'inset',
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      initialPosition: insetPosition || {
+        left: Number.parseFloat(inset.style.left) || 0,
+        top: Number.parseFloat(inset.style.top) || 0,
+      },
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.currentTarget.classList.add('dragging');
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   function beginResize(corner, event) {
     if (event.button !== 0 || drawing) return;
     const roi = normalizeSectionDetailRoi(getRoi());
@@ -241,14 +276,25 @@ export function createSectionDetailRoiController({
       );
     } else if (drag.mode === 'resize') {
       previewRoi = resizedRoi(drag.initial, drag.corner, point);
+    } else if (drag.mode === 'inset') {
+      insetPosition = {
+        left: drag.initialPosition.left + event.clientX - drag.startClientX,
+        top: drag.initialPosition.top + event.clientY - drag.startClientY,
+      };
     }
     sync();
   }
 
   function endDrag(event) {
     if (!drag || (event?.pointerId != null && event.pointerId !== drag.pointerId)) return;
-    const completed = previewRoi;
+    const completed = previewRoi,
+      completedMode = drag.mode;
     drag = null;
+    $('sectionDetailInsetHead')?.classList.remove('dragging');
+    if (completedMode === 'inset') {
+      sync();
+      return;
+    }
     if (!completed) {
       sync();
       return;
@@ -288,7 +334,8 @@ export function createSectionDetailRoiController({
 
   function bind() {
     const canvas = $('sectionCanvas'),
-      overlay = $('sectionDetailRoiOverlay');
+      overlay = $('sectionDetailRoiOverlay'),
+      insetHead = $('sectionDetailInsetHead');
 
     $('sectionDetailRoiBtn').addEventListener('click', () => {
       if (drawing) {
@@ -302,6 +349,12 @@ export function createSectionDetailRoiController({
 
     $('sectionDetailCloseBtn').addEventListener('click', clear);
     $('sectionDetailShapeBtn').addEventListener('click', toggleShape);
+    insetHead.addEventListener('pointerdown', beginInsetMove);
+    insetHead.addEventListener('dblclick', () => {
+      insetPosition = null;
+      sync();
+      status('Section detail inset position reset.');
+    });
     canvas.addEventListener('pointerdown', beginDraw);
     overlay.addEventListener('pointerdown', beginMove);
     overlay.querySelectorAll('[data-detail-handle]').forEach((handle) => {
