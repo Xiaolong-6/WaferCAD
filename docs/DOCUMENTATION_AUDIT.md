@@ -27,7 +27,7 @@ This audit reconciles the current feature-branch documentation with the merged c
 - `docs/PRODUCT_REVIEW.md`
 - `docs/MASK_DRAW_PLAN.md`
 - `docs/COMPETITIVE_LANDSCAPE.md`
-- `docs/IMPLANT_EXPERIMENTAL.md`
+- `docs/IMPLANT.md`
 - `docs/ROUGHNESS_MORPHOLOGY.md`
 
 ## Documents reviewed without contract changes
