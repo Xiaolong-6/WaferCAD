@@ -210,14 +210,15 @@ await page.waitForFunction(
 assert.equal(await page.locator('#welcomeScreen').count(), 0);
 assert.equal(await page.locator('.app-shell').count(), 1);
 
-// The product now starts in a focused Main view. The long-lived smoke scenario
-// explicitly opts into Overview because many later assertions compare Main,
-// Mask and 3D concurrently.
+// Wide workspaces default to Overview so the three primary views are visible
+// immediately. Narrow/compact workspaces still start in focused Main.
 assert.equal(await page.locator('#mainPanel').isVisible(), true);
-assert.equal(await page.locator('#maskPanel').isHidden(), true);
-assert.equal(await page.locator('#threePanel').isHidden(), true);
-await page.getByRole('button', { name: 'Overview' }).click();
-await page.locator('#maskPanel').waitFor({ state: 'visible' });
+assert.equal(await page.locator('#maskPanel').isVisible(), true);
+assert.equal(await page.locator('#threePanel').isVisible(), true);
+assert.equal(
+  await page.locator('.workstation-view-stage').getAttribute('data-view-mode'),
+  'overview',
+);
 await page.locator('#threePanel').waitFor({ state: 'visible' });
 
 // Navigation semantics are checked in isolated pages so Back/Reload cannot
