@@ -1112,6 +1112,11 @@ assert.equal(
   'Follow offset',
 );
 await mkdir(new URL('../test-results/product-review/', import.meta.url), { recursive: true });
+await page.waitForFunction(
+  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
 await page.screenshot({
   path: new URL(
     '../test-results/product-review/annotation-depth-profile-follow.png',
@@ -1119,12 +1124,42 @@ await page.screenshot({
   ).pathname,
   fullPage: true,
 });
+await page.locator('#threePanel .three-opacity-control > summary').click();
+await page.locator('#threeOpacityRange').fill('0.5');
+await page.locator('#threeOpacityRange').dispatchEvent('input');
+await page.locator('#threePanel .three-opacity-control > summary').click();
+await page.waitForFunction(
+  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.locator('#threeMaxBtn').click();
+await page.waitForFunction(
+  () =>
+    document.body.classList.contains('view-maximized') &&
+    document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-follow-3d-transparent.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
+await page.locator('#threeMaxBtn').click();
 await implantLegendRow.getByRole('button', { name: 'Smooth', exact: true }).click();
 assert.equal(await implantLegendRow.locator('.legend-profile-trigger').textContent(), '—');
 await implantLegendRow.locator('.legend-profile-trigger').click();
 assert.equal(
   await implantLegendRow.locator('.legend-profile-option.active').textContent(),
   'Smooth',
+);
+await page.waitForFunction(
+  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
 );
 await page.screenshot({
   path: new URL(
@@ -1133,6 +1168,26 @@ await page.screenshot({
   ).pathname,
   fullPage: true,
 });
+await page.locator('#threeMaxBtn').click();
+await page.waitForFunction(
+  () =>
+    document.body.classList.contains('view-maximized') &&
+    document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.screenshot({
+  path: new URL(
+    '../test-results/product-review/annotation-depth-profile-smooth-3d-transparent.png',
+    import.meta.url,
+  ).pathname,
+  fullPage: true,
+});
+await page.locator('#threeMaxBtn').click();
+await page.locator('#threePanel .three-opacity-control > summary').click();
+await page.locator('#threeOpacityRange').fill('1');
+await page.locator('#threeOpacityRange').dispatchEvent('input');
+await page.locator('#threePanel .three-opacity-control > summary').click();
 await implantLegendRow.getByRole('button', { name: 'Follow offset', exact: true }).click();
 await implantLegendRow.locator('.implant-gradient-chip').click();
 assert.equal(await implantLegendRow.locator('.legend-palette-chip').count(), 20);
