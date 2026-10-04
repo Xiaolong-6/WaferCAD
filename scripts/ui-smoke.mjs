@@ -1059,7 +1059,7 @@ assert.ok(
 );
 await openFunctionPanel(page, 'process');
 
-// Experimental Implant uses the same process area but records a structural annotation only.
+// Implant uses the same process area but records a structural annotation only.
 await page.locator('[data-process-mode="implant"]').click();
 assert.equal(await page.locator('#implantNameRow').isVisible(), true);
 assert.equal(await page.locator('#implantTiltRow').isVisible(), true);
