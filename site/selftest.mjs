@@ -1027,8 +1027,15 @@ const validProject = {
 assert.equal(validateProjectFile(validProject), validProject);
 
 const collapseProject = structuredClone(validProject);
-collapseProject.display.sectionCollapse = { top: -0.5, bottom: -9.5 };
+collapseProject.display.sectionCollapse = { top: -0.5, bottom: -9.5, enabled: false };
 assert.equal(validateProjectFile(collapseProject), collapseProject);
+const invalidCollapseEnabledProject = structuredClone(validProject);
+invalidCollapseEnabledProject.display.sectionCollapse = {
+  top: -0.5,
+  bottom: -9.5,
+  enabled: 'no',
+};
+assert.throws(() => validateProjectFile(invalidCollapseEnabledProject), /sectionCollapse.enabled/);
 const invalidCollapseProject = structuredClone(validProject);
 invalidCollapseProject.display.sectionCollapse = { top: -9.5, bottom: -0.5 };
 assert.throws(() => validateProjectFile(invalidCollapseProject), /sectionCollapse/);
