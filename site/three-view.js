@@ -2059,16 +2059,29 @@ export function createThreeView({
                 Number(cap.appearance.featureSize) || 0;
               mesh.userData.wafercadMorphologyPolarity = cap.appearance.polarity || 'normal';
               mesh.userData.wafercadBuriedInterface = Boolean(cap.buried);
+              mesh.userData.wafercadSurfaceOwnership = cap.ownership || 'exterior';
+              mesh.userData.wafercadInterfaceLayerId = cap.interfaceLayerId || null;
+              mesh.userData.wafercadSurfaceFace = cap.face || (cap.normal > 0 ? 'front' : 'back');
+              mesh.userData.wafercadSurfaceZUm = Number(cap.z) || 0;
+              mesh.userData.wafercadRoughBorderVertexCount =
+                Math.floor((geometry.userData?.roughBorderPositions?.length || 0) / 3);
             }
           }
         } else {
-          addExportMesh(
+          const mesh = addExportMesh(
             geometryFromSolid({
               slabs: [],
               caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
             }),
             cap.layerId,
           );
+          if (mesh) {
+            mesh.userData.wafercadSurfaceOwnership = cap.ownership || 'exterior';
+            mesh.userData.wafercadInterfaceLayerId = cap.interfaceLayerId || null;
+            mesh.userData.wafercadBuriedInterface = Boolean(cap.buried);
+            mesh.userData.wafercadSurfaceFace = cap.face || (cap.normal > 0 ? 'front' : 'back');
+            mesh.userData.wafercadSurfaceZUm = Number(cap.z) || 0;
+          }
         }
         reportProgress(0.1 + 0.65 * ((capIndex + 1) / capCount), 'Building surfaces');
       }
