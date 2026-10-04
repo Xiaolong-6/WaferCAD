@@ -41,6 +41,24 @@ export function createProcessPanelController({
     select.disabled = !select.options.length;
   }
   
+  function updateEtchTargets() {
+    const select = $('etchTargetLayer');
+    if (!select) return;
+    const previous = select.value;
+    select.innerHTML = '';
+    select.add(new Option('All exposed materials', ''));
+
+    const model = getModel(),
+      activeFace = getActiveFace(),
+      area = operationAreaGeometry($('operationArea').value),
+      exposed = new Set(exposedLayerIds(model, area, activeFace));
+    for (const layer of model.layers) {
+      if (!exposed.has(layer.id)) continue;
+      select.add(new Option(layer.name, layer.id));
+    }
+    if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+  }
+
   function updateOperationUI() {
     const t = $('operationType').value;
     root.querySelectorAll('[data-process-mode]').forEach((button) => {
@@ -53,6 +71,7 @@ export function createProcessPanelController({
     $('implantNameRow').classList.toggle('hidden', t !== 'implant');
     $('implantTiltRow').classList.toggle('hidden', t !== 'implant');
     $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
+    $('etchTargetLayerRow').classList.toggle('hidden', t !== 'etch');
     $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
     $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
     const surfaceMode = $('etchSurfaceMode').value,
@@ -69,6 +88,7 @@ export function createProcessPanelController({
     $('processThicknessLabel').textContent = t === 'etch' || t === 'implant' ? 'Depth' : 'Z';
   
     if (t === 'grow') updateGrowTargets();
+    if (t === 'etch') updateEtchTargets();
   
     const model = getModel(),
       activeFace = getActiveFace(),
@@ -97,7 +117,9 @@ export function createProcessPanelController({
             ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only: canonical process geometry and GLB export remain ideal.`
             : pyramidEtch
               ? `Pyramid XY is the square pitch/base width and Height is apex-to-base relief within the Etch Depth envelope. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only: canonical process geometry and GLB export remain ideal.`
-              : 'Etch removes material vertically and may create through-holes.'
+              : $('etchTargetLayer').value
+                ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
+                : 'Etch removes exposed material vertically in stack order and may create through-holes.'
           : $('growthMode').value === 'conformal'
             ? t === 'grow'
               ? 'Conformal Extend continues the target material over every exposed surface in the selected area, then follows steps and sidewalls. On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.'
@@ -125,7 +147,8 @@ export function createProcessPanelController({
         type === 'implant'
           ? $('implantName').value.trim() || `Implant ${model.nextImplantId || 1}`
           : $('layerName').value.trim() || `Layer ${model.layers.length}`,
-      targetLayerId = $('targetLayer').value;
+      targetLayerId = $('targetLayer').value,
+      etchTargetLayerId = $('etchTargetLayer')?.value || '';
     if (type === 'grow' && !targetLayerId) {
       return status('No exposed target layer is available to Extend.', 'warning');
     }
@@ -182,7 +205,10 @@ export function createProcessPanelController({
   
     const beforeBase = baseCoverageState(model),
       params = { type, name, targetLayerId, thickness, face: activeFace };
-    if (type === 'etch') params.surface = roughSurface;
+    if (type === 'etch') {
+      params.surface = roughSurface;
+      params.etchTargetLayerIds = etchTargetLayerId ? [etchTargetLayerId] : [];
+    }
     else if (type === 'implant') {
       const tilt = Number($('implantTilt').value);
       if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
@@ -252,6 +278,9 @@ export function createProcessPanelController({
     const areaLabel =
         areaMode === 'full' ? 'Whole face' : areaMode === 'invert' ? 'Invert mask' : 'Selected mask',
       targetName = targetLayerId ? layerById(model, targetLayerId)?.name || 'layer' : '',
+      etchTargetName = etchTargetLayerId
+        ? layerById(model, etchTargetLayerId)?.name || 'selected material'
+        : '',
       surfaceLabel =
         type === 'etch' && roughSurface
           ? roughSurface.morphology === 'pyramid'
@@ -261,7 +290,7 @@ export function createProcessPanelController({
       thicknessLabel = `${Number(thickness.toPrecision(8))} µm`,
       operationLabel =
         type === 'etch'
-          ? `Etch ${thicknessLabel}${surfaceLabel ? ` · ${surfaceLabel}` : ''}`
+          ? `Etch${etchTargetName ? ` ${etchTargetName}` : ''} · ${thicknessLabel}${surfaceLabel ? ` · ${surfaceLabel}` : ''}`
           : type === 'grow'
             ? `Extend ${targetName} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`
             : type === 'implant'
@@ -277,6 +306,7 @@ export function createProcessPanelController({
       thickness,
       name: type === 'grow' ? targetName : name,
       targetLayerId: targetLayerId || null,
+      etchTargetLayerIds: type === 'etch' ? params.etchTargetLayerIds : null,
       growth: type === 'etch' || type === 'implant' ? null : params.growth,
       surface:
         type === 'etch' && roughSurface
@@ -318,7 +348,9 @@ export function createProcessPanelController({
     status(
       `${
         type === 'etch'
-          ? 'Etched'
+          ? etchTargetName
+            ? `Etched ${etchTargetName}`
+            : 'Etched'
           : type === 'grow'
             ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
             : type === 'implant'
