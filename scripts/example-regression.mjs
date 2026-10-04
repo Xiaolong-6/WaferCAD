@@ -12,6 +12,10 @@ globalThis.polygonClipping = commonJsModule.exports;
 
 const { expandProjectStorage } = await import('../site/project-io.js');
 
+const sahliProjectBuffer = await readFile(
+  new URL('../examples/projects/sahli-2018-fully-textured-tandem.wafercad', import.meta.url),
+);
+
 const packedLiterature = JSON.parse(
   await readFile(
     new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
@@ -40,6 +44,39 @@ assert.ok(geBInversionStep?.state?.model);
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 const reviewDir = new URL('../test-results/product-review/', import.meta.url);
 await mkdir(reviewDir, { recursive: true });
+
+function parseGlbJson(buffer) {
+  assert.equal(buffer.readUInt32LE(0), 0x46546c67, 'GLB magic');
+  assert.equal(buffer.readUInt32LE(4), 2, 'GLB version');
+  assert.equal(buffer.readUInt32LE(8), buffer.length, 'GLB byte length');
+  const jsonLength = buffer.readUInt32LE(12),
+    jsonType = buffer.readUInt32LE(16);
+  assert.equal(jsonType, 0x4e4f534a, 'first GLB chunk must be JSON');
+  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
+}
+
+function glbPositionBounds(json) {
+  const bounds = [];
+  for (const node of json.nodes || []) {
+    if (!Number.isInteger(node.mesh)) continue;
+    const mesh = json.meshes?.[node.mesh];
+    for (const primitive of mesh?.primitives || []) {
+      const accessorIndex = primitive.attributes?.POSITION;
+      if (!Number.isInteger(accessorIndex)) continue;
+      const accessor = json.accessors?.[accessorIndex];
+      if (accessor?.min?.length === 3 && accessor?.max?.length === 3) {
+        bounds.push({
+          node,
+          count: Number(accessor.count) || 0,
+          min: accessor.min.map(Number),
+          max: accessor.max.map(Number),
+        });
+      }
+    }
+  }
+  return bounds;
+}
+
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
 const pageErrors = [];
@@ -218,6 +255,116 @@ for (const example of [
     fullPage: true,
   });
 }
+
+// Sahli is not a Welcome card, but it is the strongest morphology-export
+// integration fixture: both faces use deterministic Pyramid fields, the active
+// ROI is 40×40 µm, and inherited/buried interfaces reuse those profiles.
+await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+await page.locator('#welcomeProjectInput').setInputFiles({
+  name: 'sahli-2018-fully-textured-tandem.wafercad',
+  mimeType: 'application/json',
+  buffer: sahliProjectBuffer,
+});
+await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await page.waitForFunction(
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened sahli-2018-fully-textured-tandem.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+await page.waitForFunction(
+  () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 30000 },
+);
+await page.locator('#threePanel .export-control > summary').click();
+const sahliGlbDownloadPromise = page.waitForEvent('download', { timeout: 60000 });
+await page.locator('#threeExportModelBtn').click();
+const sahliGlbDownload = await sahliGlbDownloadPromise,
+  sahliGlbPath = await sahliGlbDownload.path();
+assert.ok(sahliGlbPath);
+const sahliGlb = parseGlbJson(await readFile(sahliGlbPath)),
+  sahliRoot = (sahliGlb.nodes || []).find((node) => node.name === 'WaferCAD'),
+  sahliScale =
+    sahliRoot?.scale ||
+    (sahliRoot?.matrix
+      ? [sahliRoot.matrix[0], sahliRoot.matrix[5], sahliRoot.matrix[10]]
+      : []),
+  sahliMorphologyNodes = (sahliGlb.nodes || []).filter(
+    (node) => node.extras?.wafercadMorphology,
+  ),
+  sahliBounds = glbPositionBounds(sahliGlb);
+
+assert.equal(sahliScale.length, 3);
+assert.ok(sahliScale.every((value) => Math.abs(value - 1e-6) < 1e-12));
+assert.ok(sahliMorphologyNodes.length > 0);
+assert.ok(
+  sahliMorphologyNodes.some(
+    (node) =>
+      node.extras.wafercadMorphology === 'pyramid' &&
+      node.extras.wafercadMorphologySeed === 2018 &&
+      node.extras.wafercadSurfaceFace === 'front',
+  ),
+);
+assert.ok(
+  sahliMorphologyNodes.some(
+    (node) =>
+      node.extras.wafercadMorphology === 'pyramid' &&
+      node.extras.wafercadMorphologySeed === 2019 &&
+      node.extras.wafercadSurfaceFace === 'back',
+  ),
+);
+assert.ok(
+  sahliMorphologyNodes.every(
+    (node) => node.extras.wafercadMorphologyPolarity === 'normal',
+  ),
+);
+
+const buriedMorphology = sahliMorphologyNodes.filter(
+  (node) => node.extras.wafercadBuriedInterface,
+);
+assert.ok(buriedMorphology.length > 0, 'Sahli GLB must include inherited buried morphology');
+assert.ok(
+  buriedMorphology.every(
+    (node) =>
+      node.extras.wafercadSurfaceOwnership === 'interface' &&
+      node.extras.wafercadInterfaceLayerId &&
+      node.extras.wafercadRoughBorderVertexCount === 0,
+  ),
+  'buried morphology must stay owned once and must not close to the ideal plane',
+);
+
+assert.ok(sahliBounds.length > 0);
+for (const bound of sahliBounds) {
+  assert.ok(bound.min[0] >= -20.0001 && bound.max[0] <= 20.0001, 'ROI X clip leaked in GLB');
+  assert.ok(bound.min[1] >= -20.0001 && bound.max[1] <= 20.0001, 'ROI Y clip leaked in GLB');
+}
+
+const interfaceDiagnostics = sahliBounds
+  .filter((entry) => entry.node.extras?.wafercadSurfaceOwnership === 'interface')
+  .map((entry) => {
+    const extras = entry.node.extras,
+      pair = [extras.wafercadLayerId, extras.wafercadInterfaceLayerId].sort().join('|');
+    return [
+      pair,
+      Number(extras.wafercadSurfaceZUm).toFixed(6),
+      ...entry.min.map((value) => Number(value).toFixed(6)),
+      ...entry.max.map((value) => Number(value).toFixed(6)),
+      entry.count,
+    ].join(':');
+  });
+assert.equal(
+  new Set(interfaceDiagnostics).size,
+  interfaceDiagnostics.length,
+  'GLB must not duplicate an owned material interface mesh',
+);
+
+await page.screenshot({
+  path: new URL('../test-results/product-review/example-sahli-glb-export.png', import.meta.url)
+    .pathname,
+  fullPage: true,
+});
 
 assert.deepEqual(pageErrors, []);
 await browser.close();
