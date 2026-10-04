@@ -392,19 +392,17 @@ function processGeometryArea(geom) {
   return Math.max(0, total);
 }
 
-function canonicalizeReleasePartition(model, regions) {
-  const out = [],
-    overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15);
-
+function partitionReleaseRegions(regions, rejectOverlapAbove = null) {
+  const out = [];
   for (const region of regions || []) {
-    let geom = sanitizeProcessGeometry(snapReleaseGeometry(region.geom));
+    let geom = sanitizeProcessGeometry(region.geom);
     if (isEmpty(geom)) continue;
 
     for (const previous of out) {
       const overlap = intersection(geom, previous.geom);
       if (isEmpty(overlap)) continue;
       const overlapArea = processGeometryArea(overlap);
-      if (overlapArea > overlapTolerance) {
+      if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
         throw new Error(
           `Isotropic release produced overlapping regions (${overlapArea} µm²).`,
         );
@@ -416,6 +414,20 @@ function canonicalizeReleasePartition(model, regions) {
     if (!isEmpty(geom)) out.push({ ...region, geom });
   }
   return out;
+}
+
+function canonicalizeReleasePartition(model, regions) {
+  const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15),
+    canonical = partitionReleaseRegions(regions, overlapTolerance),
+    snapped = canonical.map((region) => ({
+      ...region,
+      geom: sanitizeProcessGeometry(snapReleaseGeometry(region.geom)),
+    }));
+
+  // Runtime geometry is checked before snapping. Any overlap in this second
+  // pass is therefore introduced only by the 0.1 nm persistence grid and can
+  // be deterministically assigned without masking a real kernel overlap.
+  return partitionReleaseRegions(snapped);
 }
 
 function stackKey(stack) {
