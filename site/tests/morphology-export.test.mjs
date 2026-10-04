@@ -134,8 +134,29 @@ test('morphology export preserves front/back profile direction and inverted pola
 
   assert.ok(frontNormal.max > 0.1);
   assert.ok(frontNormal.min >= -1e-9);
-  assert.ok(frontInverted.min < -0.1);
-  assert.ok(frontInverted.max <= 1e-9);
+  assert.ok(frontInverted.max > 0.1);
+  assert.ok(frontInverted.min >= -1e-9);
+
+  const frontNormalMesh = meshFor({
+      z: 0,
+      normal: 1,
+      profileNormal: 1,
+      polarity: 'normal',
+    }),
+    frontInvertedMesh = meshFor({
+      z: 0,
+      normal: 1,
+      profileNormal: 1,
+      polarity: 'inverted',
+    });
+  assert.equal(frontNormalMesh.positions.length, frontInvertedMesh.positions.length);
+  for (let index = 2; index < frontNormalMesh.positions.length; index += 3) {
+    assert.ok(
+      Math.abs(frontNormalMesh.positions[index] + frontInvertedMesh.positions[index] - 1) <
+        1e-5,
+    );
+  }
+
   assert.ok(backNormal.min < -3.1);
   assert.ok(backNormal.max <= -3 + 1e-9);
 });
