@@ -37,6 +37,11 @@ const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 async function gotoWelcome(targetPage) {
   await targetPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await targetPage.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 10000 });
+  await targetPage.waitForFunction(
+    () => document.documentElement.dataset.welcomeReady === 'true',
+    null,
+    { timeout: 10000 },
+  );
 }
 
 async function processDiagnostics(page) {
