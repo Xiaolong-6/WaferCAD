@@ -1723,3 +1723,103 @@ html.workstation-ui-v2 #sectionPanel .view-head {
     border-radius: 6px;
   }
 }
+
+
+/* Welcome-page project previews reuse the real workspace renderers in a read-only,
+   chrome-free iframe. The parent welcome card owns the view tabs. */
+html.welcome-project-preview,
+html.welcome-project-preview body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--wc-canvas);
+}
+
+html.welcome-project-preview .topbar,
+html.welcome-project-preview .statusbar,
+html.welcome-project-preview .workstation-rail,
+html.welcome-project-preview .workstation-viewbar,
+html.welcome-project-preview #toolPanel,
+html.welcome-project-preview .view-head,
+html.welcome-project-preview .section-detail-roi-overlay,
+html.welcome-project-preview .section-detail-inset {
+  display: none !important;
+}
+
+html.welcome-project-preview .app-shell {
+  display: block;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  background: var(--wc-canvas);
+}
+
+html.welcome-project-preview .workspace {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--wc-canvas);
+}
+
+html.welcome-project-preview .workstation-view-stage {
+  position: absolute;
+  inset: 0;
+  display: block !important;
+  overflow: hidden;
+}
+
+html.welcome-project-preview .workstation-view-stage > .view-panel,
+html.welcome-project-preview #sectionPanel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html.welcome-project-preview .workstation-view-stage > .view-panel:not([hidden]) {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+html.welcome-project-preview[data-preview-view='section'] .workstation-view-stage {
+  display: none !important;
+}
+
+html.welcome-project-preview[data-preview-view='section'] #sectionPanel {
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+html.welcome-project-preview[data-preview-view='section'] #sectionPanel .section-body {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html.welcome-project-preview #sectionPanel .layer-legend {
+  display: none !important;
+}
+
+html.welcome-project-preview #mainCanvas,
+html.welcome-project-preview #maskCanvas,
+html.welcome-project-preview #sectionCanvas,
+html.welcome-project-preview #threeHost {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+html.welcome-project-preview #sectionCollapseOverlay {
+  pointer-events: none;
+}
