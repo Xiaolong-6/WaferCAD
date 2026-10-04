@@ -361,14 +361,23 @@ function mergeRegions(model, regions) {
   return out;
 }
 
-function trimStack(stack, amount, face, appearance = null) {
+function trimStack(stack, amount, face, appearance = null, targetLayerIds = null) {
   let left = amount,
     cutIntoSegment = false,
+    removedMaterial = false,
     out = stack.map((seg) => ({ ...seg }));
+  const targets = new Set((targetLayerIds || []).filter(Boolean)),
+    selective = targets.size > 0;
+
   while (left > 1e-9 && out.length) {
     const idx = face === 'front' ? out.length - 1 : 0,
-      seg = out[idx],
-      height = seg.z1 - seg.z0;
+      seg = out[idx];
+    // A material-selective etch only attacks an exposed selected material and
+    // stops immediately when the next material is not selected.
+    if (selective && !targets.has(seg.layerId)) break;
+
+    const height = seg.z1 - seg.z0;
+    removedMaterial = true;
     if (left >= height - 1e-9) {
       left -= height;
       out.splice(idx, 1);
@@ -381,7 +390,17 @@ function trimStack(stack, amount, face, appearance = null) {
   }
 
   const normalized = normalizeStack(out);
-  if (appearance) return withSurfaceAppearance(normalized, face, appearance);
+  if (!removedMaterial) return normalized;
+
+  if (appearance) {
+    const exposed = surfaceSegment(normalized, face);
+    // If a selective etch fully removes its target and stops on a different
+    // material, do not stamp the target's morphology onto the stop layer.
+    if (!selective || cutIntoSegment || (exposed && targets.has(exposed.layerId))) {
+      return withSurfaceAppearance(normalized, face, appearance);
+    }
+    return normalized;
+  }
 
   // A smooth etch that cuts into a material creates a new smooth cut face.
   // If it removes one or more whole layers and lands exactly on an existing
@@ -414,8 +433,13 @@ function growSurfaceLayer(stack, targetLayerId, amount, face) {
   return normalizeStack(out);
 }
 
-function mutateStack(stack, { type, layerId, targetLayerId, amount, face, appearance }) {
-  if (type === 'etch') return trimStack(stack, amount, face, appearance);
+function mutateStack(
+  stack,
+  { type, layerId, targetLayerId, etchTargetLayerIds, amount, face, appearance },
+) {
+  if (type === 'etch') {
+    return trimStack(stack, amount, face, appearance, etchTargetLayerIds);
+  }
   if (type === 'grow') return growSurfaceLayer(stack, targetLayerId, amount, face);
   return addLayerToSurface(stack, layerId, amount, face);
 }
@@ -632,6 +656,7 @@ function applyOperationImpl(
     type,
     name,
     targetLayerId,
+    etchTargetLayerIds = [],
     thickness,
     face = 'front',
     area,
@@ -744,8 +769,24 @@ function applyOperationImpl(
   }
 
   if (type === 'etch') {
+    const selectiveTargets = [...new Set((etchTargetLayerIds || []).filter(Boolean))];
+    if (selectiveTargets.length) {
+      const exposed = new Set(exposedLayerIds(model, active, face));
+      if (!selectiveTargets.some((layerId) => exposed.has(layerId))) {
+        return {
+          changed: false,
+          error: 'None of the selected etch materials are exposed in the selected area.',
+        };
+      }
+    }
     splitByArea(model, active, (stack) =>
-      mutateStack(stack, { type, amount, face, appearance }),
+      mutateStack(stack, {
+        type,
+        amount,
+        face,
+        appearance,
+        etchTargetLayerIds: selectiveTargets,
+      }),
     );
   } else if (growth === 'conformal') {
     applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
