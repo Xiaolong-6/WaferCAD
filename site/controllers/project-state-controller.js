@@ -64,6 +64,7 @@ export function createProjectStateController({
         maskOpacity: state.maskOpacity,
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
+        threeCamera: state.threeCamera,
         sectionScaleMode: state.sectionScaleMode,
         sectionShowBorders: state.sectionShowBorders,
         sectionCollapse: state.sectionCollapse,
@@ -102,6 +103,10 @@ export function createProjectStateController({
       ),
       threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1)),
       threeShowBorders = Boolean(project.display?.threeShowBorders),
+      threeCamera =
+        project.display?.threeCamera && typeof project.display.threeCamera === 'object'
+          ? structuredClone(project.display.threeCamera)
+          : null,
       sectionScaleMode = ['auto', 'physical'].includes(project.display?.sectionScaleMode)
         ? project.display.sectionScaleMode
         : 'auto',
@@ -145,6 +150,7 @@ export function createProjectStateController({
       maskOpacity,
       threeOpacity,
       threeShowBorders,
+      threeCamera,
       sectionScaleMode,
       sectionShowBorders,
       sectionDetailRoi,
@@ -188,6 +194,7 @@ export function createProjectStateController({
       maskOpacity: previous.maskOpacity,
       threeOpacity: previous.threeOpacity,
       threeShowBorders: previous.threeShowBorders,
+      threeCamera: null,
       planViews: {
         mask: { zoom: 1, panX: 0, panY: 0 },
         main: { zoom: 1, panX: 0, panY: 0 },

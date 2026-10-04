@@ -7,6 +7,7 @@ import { stageStartupFile } from './startup-file.js';
 const $ = (id) => document.getElementById(id);
 let previewLayout = null;
 const previewCanvases = new Set();
+const projectPreviewFrames = new Set();
 let previewResizeTimer = 0;
 
 function status(message) {
@@ -71,45 +72,127 @@ function drawVisualizationPreview(canvas) {
   }
 }
 
-function createImagePreview(example) {
+function createImagePreview(example, { fallback = false } = {}) {
   const image = document.createElement('img');
-  image.className = 'welcome-example-image';
+  image.className = fallback
+    ? 'welcome-example-image welcome-example-project-fallback'
+    : 'welcome-example-image';
   image.src = example.preview.path;
   image.alt = example.preview.alt || `${example.title} WaferCAD screenshot`;
   image.loading = 'lazy';
   image.decoding = 'async';
   if (example.preview.position) image.style.objectPosition = example.preview.position;
 
-  const caption = document.createElement('span');
-  caption.className = 'welcome-example-image-caption';
-  caption.textContent = example.preview.label || 'WaferCAD screenshot';
-
   const fragment = document.createDocumentFragment();
-  fragment.append(image, caption);
+  fragment.append(image);
+  if (!fallback) {
+    const caption = document.createElement('span');
+    caption.className = 'welcome-example-image-caption';
+    caption.textContent = example.preview.label || 'WaferCAD screenshot';
+    fragment.append(caption);
+  }
   return fragment;
 }
 
-function createProjectVariantPreview(example) {
-  const host = document.createElement('div');
-  host.className = 'welcome-family-preview';
-  const root = document.createElement('div');
-  root.className = 'welcome-family-root';
-  root.textContent = 'Photodetector family';
-  host.append(root);
+function previewUrl(example, view = 'main') {
+  const params = new URLSearchParams({
+    preview: '1',
+    start: 'example',
+    example: example.id,
+    view,
+  });
+  return `./app.html?${params.toString()}`;
+}
 
-  const branches = document.createElement('div');
-  branches.className = 'welcome-family-branches';
-  for (const line of example.variants || []) {
-    const branch = document.createElement('div');
-    branch.className = 'welcome-family-branch';
-    const marker = document.createElement('span');
-    marker.setAttribute('aria-hidden', 'true');
-    const label = document.createElement('strong');
-    label.textContent = line;
-    branch.append(marker, label);
-    branches.append(branch);
+function createProjectPreview(example) {
+  const host = document.createElement('div');
+  host.className = 'welcome-example-project-preview';
+  host.dataset.view = 'main';
+
+  const stage = document.createElement('div');
+  stage.className = 'welcome-example-project-stage';
+
+  if (example.preview?.path) stage.append(createImagePreview(example, { fallback: true }));
+
+  const loading = document.createElement('div');
+  loading.className = 'welcome-example-project-loading';
+  loading.textContent = 'Loading project preview…';
+  stage.append(loading);
+
+  const frame = document.createElement('iframe');
+  frame.className = 'welcome-example-project-frame';
+  frame.title = `${example.title} interactive WaferCAD preview`;
+  frame.loading = 'lazy';
+  frame.src = previewUrl(example);
+  frame.setAttribute('aria-label', frame.title);
+  stage.append(frame);
+  projectPreviewFrames.add(frame);
+
+  const tabs = document.createElement('div');
+  tabs.className = 'welcome-example-view-tabs';
+  tabs.setAttribute('role', 'tablist');
+  tabs.setAttribute('aria-label', `${example.title} preview views`);
+
+  for (const [view, label] of [
+    ['main', 'Main'],
+    ['mask', 'Mask'],
+    ['three', '3D'],
+    ['section', 'Section'],
+  ]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'welcome-example-view-tab';
+    button.dataset.previewView = view;
+    button.textContent = label;
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-selected', String(view === 'main'));
+    button.addEventListener('click', () => {
+      host.dataset.view = view;
+      for (const sibling of tabs.querySelectorAll('.welcome-example-view-tab')) {
+        const active = sibling.dataset.previewView === view;
+        sibling.classList.toggle('active', active);
+        sibling.setAttribute('aria-selected', String(active));
+      }
+      frame.contentWindow?.postMessage(
+        { type: 'wafercad-preview-view', view },
+        globalThis.location.origin,
+      );
+    });
+    if (view === 'main') button.classList.add('active');
+    tabs.append(button);
   }
-  host.append(branches);
+
+  host.append(stage, tabs);
+  return host;
+}
+
+function createSourceList(example) {
+  if (!example.sources?.length) return null;
+  const host = document.createElement('div');
+  host.className = 'welcome-example-sources';
+
+  const label = document.createElement('strong');
+  label.textContent = example.sources.length > 1 ? 'Sources' : 'Source';
+  host.append(label);
+
+  const list = document.createElement('ol');
+  for (const source of example.sources) {
+    const item = document.createElement('li');
+    const citation = document.createElement('span');
+    citation.textContent = source.citation;
+    item.append(citation);
+
+    if (source.href) {
+      const link = document.createElement('a');
+      link.href = source.href;
+      link.target = '_blank';
+      link.rel = 'noreferrer noopener';
+      link.textContent = source.doi ? `DOI ${source.doi}` : 'Source';
+      item.append(link);
+    }
+    list.append(item);
+  }
+  host.append(list);
   return host;
 }
 
@@ -129,7 +212,10 @@ function renderExampleCards() {
 
     const visual = document.createElement('div');
     visual.className = 'welcome-example-visual';
-    if (example.preview?.path) {
+    if (example.kind === 'project') {
+      visual.classList.add('has-project-preview');
+      visual.append(createProjectPreview(example));
+    } else if (example.preview?.path) {
       visual.classList.add('has-image');
       visual.append(createImagePreview(example));
     } else if (example.kind === 'generated') {
@@ -139,8 +225,6 @@ function renderExampleCards() {
       visual.append(canvas);
       previewCanvases.add(canvas);
       requestAnimationFrame(() => drawVisualizationPreview(canvas));
-    } else {
-      visual.append(createProjectVariantPreview(example));
     }
 
     const body = document.createElement('div');
@@ -160,6 +244,8 @@ function renderExampleCards() {
     const summary = document.createElement('p');
     summary.textContent = example.summary;
 
+    const sources = createSourceList(example);
+
     const tags = document.createElement('div');
     tags.className = 'welcome-example-tags';
     for (const tag of example.tags || []) {
@@ -174,7 +260,9 @@ function renderExampleCards() {
     action.textContent = 'Open example';
     action.onclick = () => openExample(example.id);
 
-    body.append(meta, title, summary, tags, action);
+    body.append(meta, title, summary);
+    if (sources) body.append(sources);
+    body.append(tags, action);
     card.append(visual, body);
     grid.append(card);
   }
@@ -204,6 +292,21 @@ $('welcomeLayoutInput').onchange = (event) => stageAndOpen(event.target.files?.[
 $('welcomeProjectInput').onchange = (event) => stageAndOpen(event.target.files?.[0], 'project');
 
 renderExampleCards();
+
+globalThis.addEventListener('message', (event) => {
+  if (event.origin !== globalThis.location.origin) return;
+  const frame = [...projectPreviewFrames].find((candidate) => candidate.contentWindow === event.source);
+  if (!frame) return;
+
+  const host = frame.closest('.welcome-example-project-preview');
+  if (event.data?.type === 'wafercad-preview-ready') {
+    host?.classList.add('ready');
+    host?.classList.remove('error');
+  } else if (event.data?.type === 'wafercad-preview-error') {
+    host?.classList.add('error');
+    host?.classList.remove('ready');
+  }
+});
 
 globalThis.addEventListener('resize', () => {
   clearTimeout(previewResizeTimer);

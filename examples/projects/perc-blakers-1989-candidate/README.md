@@ -47,14 +47,14 @@ A full-wafer fit hides the 25 um front stripes, so the production example should
 
 The supplied screenshots also show occasional stale-frame timing after restore/ROI/maximize. Treat that as a separate renderer/UI timing investigation; do not encode screenshot pixels as the example contract.
 
-For Welcome promotion, use the supplied real WaferCAD capture `PERC_corrected_rear_openings.jpg` as the representative source image (or a later cleaner recapture of the same final device state). The delivery asset should be `site/example-previews/perc-blakers-1989.jpg`; no generated illustration or paper figure should replace the real UI capture.
+For Welcome promotion, register the title as **PERC solar cells with point contacts** and use the project-backed read-only Main / Mask / 3D / Section mini viewer as the primary preview. `site/example-previews/perc-blakers-1989.jpg` may remain only as a loading/error fallback; paper figures are not used as preview assets.
 
 ## Promotion plan
 
 When this repaired staging candidate is promoted:
 
 - place the final project under `site/examples/`;
-- add a **solar-cell literature** family entry to `site/bundled-examples.js` rather than mixing it into the photodetector family;
+- add a **solar-cell literature** entry to `site/bundled-examples.js`, citing Blakers et al., *Applied Physics Letters* 55, 1363–1365 (1989), DOI `10.1063/1.101596`, directly on the Welcome card;
 - add structural invariants to `site/tests/example-regression.test.mjs`;
 - add a Chromium restore/variant check to `scripts/example-regression.mjs`;
 - only then open the branch as a PR and run CI.

@@ -1,7 +1,7 @@
 export const BUNDLED_EXAMPLES = Object.freeze([
   {
     id: 'photodetector-literature',
-    title: 'Photodetector literature examples',
+    title: 'Photodetectors with nanopatterns',
     figure: 'Black-Si Fig. 1a · Ge Fig. 15',
     kind: 'project',
     level: 'Literature reconstruction',
@@ -15,7 +15,21 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       position: '50% 42%',
     },
     summary:
-      'One branch-based project containing two closely related detector reconstructions. Black-Si retains FINAL/QA variants; Ge Fig. 15 uses first-class induced inversion/accumulation Electrical Regions across A/B variants.',
+      'Nanostructured Si and Ge photodiodes reconstructed as one branch-based project, covering rough surfaces, conformal passivation, implants, and induced electrical regions.',
+    sources: [
+      {
+        citation:
+          'O. E. Setälä et al., “Boron-Implanted Black Silicon Photodiode with Close-to-Ideal Responsivity from 200 to 1000 nm,” ACS Photonics 10, 1735–1741 (2023).',
+        doi: '10.1021/acsphotonics.2c01984',
+        href: 'https://doi.org/10.1021/acsphotonics.2c01984',
+      },
+      {
+        citation:
+          'H. Liu et al., “Near-infrared germanium PIN-photodiodes with >1A/W responsivity,” Light: Science & Applications 14, 9 (2025).',
+        doi: '10.1038/s41377-024-01670-4',
+        href: 'https://doi.org/10.1038/s41377-024-01670-4',
+      },
+    ],
     tags: ['Literature', 'Rough surfaces', 'ALD', 'Implant', 'Electrical', 'Variants'],
   },
   {

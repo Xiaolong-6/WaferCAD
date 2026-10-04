@@ -19,15 +19,25 @@ The current literature family is:
 
 The family project opens on the Black-Si FINAL Variant while retaining the complete restorable Variant tree. This structure is intentional: future examples should normally add a new family project (for example solar cell, MEMS, MOS, microfluidic) rather than adding one Welcome card for every publication.
 
-## Welcome preview contract
+## Welcome preview and literature-source contract
 
-Every Welcome example card should use a **representative screenshot from the real WaferCAD UI**. Literature examples must not use a schematic branch diagram, generated illustration, or paper figure as their primary card image.
+The Welcome page uses each bundled `.wafercad` project itself as the primary preview source.
 
-- Store compact delivery assets under `site/example-previews/`; retain the original capture in the candidate/review package when available.
-- Prefer a stable final or diagnostically useful restored state that makes the device recognizable at card size. Overview screenshots with Main / Mask / 3D / Section are preferred; a focused 3D or Section view is acceptable when that is the defining geometry.
-- Cropping, resizing, and JPEG/WebP compression are presentation-only. Do not redraw or synthesize the device for the Welcome card.
-- Define preview path, alt text, caption, and optional object position in `site/bundled-examples.js`. The renderer falls back to the legacy generated preview only when an example has no screenshot metadata.
-- Screenshot pixels are presentation assets, not regression truth. Structural/process invariants remain the acceptance contract.
+- Project cards embed a read-only mini WaferCAD viewer in the preview area.
+- The viewer exposes `Main / Mask / 3D / Section` tabs and reuses the production renderers.
+- 3D is initialized only when the 3D tab is requested, so the Welcome page does not create multiple WebGL scenes up front.
+- A stored screenshot may remain as a loading/error fallback, but screenshot pixels are not the normal preview surface and are never regression truth.
+- `Open example` enters the complete editable workspace with History and Variants.
+- Preview iframes must not acquire workspace ownership, write autosaves, create Recovery checkpoints, or alter process lineage.
+
+Every literature reconstruction must also expose traceable source metadata directly on the Welcome card:
+
+- publication title;
+- author or first author + et al.;
+- journal / venue and publication year;
+- DOI link when a DOI exists.
+
+If one bundled family combines multiple publications, list every source represented by that project. Paper figures are not copied into the Welcome preview; the interactive views are rendered from the WaferCAD reconstruction itself.
 
 ## Regression contract
 
