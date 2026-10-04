@@ -42,10 +42,14 @@ test('Visualization welcome example migrates into the current interactive projec
 });
 
 
-test('welcome example catalog groups literature detectors into one branch-based project family', async () => {
+test('welcome example catalog promotes three literature-backed project families', async () => {
   assert.deepEqual(
     BUNDLED_EXAMPLES.map((example) => example.id),
-    ['photodetector-literature', 'visualization'],
+    [
+      'photodetector-literature',
+      'perc-point-contact-solar-cell',
+      'suspended-silica-microdisk',
+    ],
   );
   const literature = BUNDLED_EXAMPLES[0];
   assert.equal(literature.kind, 'project');
@@ -115,4 +119,31 @@ test('photodetector family uses the device-oriented Welcome title', () => {
   const example = BUNDLED_EXAMPLES.find((entry) => entry.id === 'photodetector-literature');
   assert.equal(example?.title, 'Photodetectors with nanopatterns');
   assert.equal(example?.sources?.length, 2);
+});
+
+
+
+test('all promoted Welcome examples are valid project files', async () => {
+  for (const example of BUNDLED_EXAMPLES) {
+    assert.equal(example.kind, 'project', `${example.id}: Welcome examples must be projects`);
+    assert.ok(example.path?.endsWith('.wafercad'), `${example.id}: project path missing`);
+
+    const fileName = example.path.split('/').at(-1);
+    const packed = JSON.parse(
+      await readFile(new URL(`../examples/${fileName}`, import.meta.url), 'utf8'),
+    );
+    expandProjectStorage(packed);
+    assert.equal(validateProjectFile(packed), packed, `${example.id}: invalid project`);
+  }
+});
+
+test('PERC and microdisk examples use device-oriented titles and explicit provenance', () => {
+  const perc = BUNDLED_EXAMPLES.find((entry) => entry.id === 'perc-point-contact-solar-cell'),
+    microdisk = BUNDLED_EXAMPLES.find((entry) => entry.id === 'suspended-silica-microdisk');
+
+  assert.equal(perc?.title, 'PERC solar cells with point contacts');
+  assert.equal(perc?.sources?.[0]?.doi, '10.1063/1.101596');
+  assert.equal(microdisk?.title, 'Suspended silica microdisks');
+  assert.equal(microdisk?.sources?.[0]?.doi, '10.1038/s41467-018-08038-4');
+  assert.equal(BUNDLED_EXAMPLES.some((entry) => entry.id === 'visualization'), false);
 });
