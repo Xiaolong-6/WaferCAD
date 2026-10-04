@@ -128,7 +128,7 @@ The permanent test suite protects these properties:
 
 ## Annotation clipping contract
 
-Implant and Electrical Region volumes are canonical annotations rather than material. Their stored source patches remain attached to the process state where they were created; view geometry intersects those patches and depth intervals with the **current surviving material**. A later Etch therefore clips an existing annotation, exposes its current cut surface when appropriate, and removes it from an area when no annotated depth survives. Electrical Region type/source metadata does not participate in material topology or process chemistry.
+Implant and Electrical Region volumes are canonical annotations rather than material. Their stored source patches remain attached to the process state where they were created. Implant view geometry intersects those patches/depth intervals with current surviving material. Electrical Region geometry is stricter: it is additionally constrained to the original host `layerId`, so a semiconductor inversion/accumulation marker cannot survive inside a replacement dielectric or metal after its host material is removed. A later Etch therefore clips an existing annotation, exposes its current cut surface when appropriate, and removes it from an area when no annotated host depth survives. Electrical Region type/source metadata does not participate in material topology or process chemistry.
 
 ## Non-goals
 
