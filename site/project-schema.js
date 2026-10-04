@@ -675,6 +675,27 @@ function validateDisplay(display) {
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
   }
+  if (display.threeCamera != null) {
+    const view = assertObject(display.threeCamera, 'display.threeCamera'),
+      position = assertArray(view.position, 'display.threeCamera.position', 3),
+      target = assertArray(view.target, 'display.threeCamera.target', 3);
+    if (position.length !== 3 || target.length !== 3) {
+      fail('display.threeCamera', 'position and target must each contain exactly three values.');
+    }
+    position.forEach((value, index) =>
+      assertFinite(value, `display.threeCamera.position[${index}]`, {
+        min: -PROJECT_COORDINATE_LIMIT_UM * 100,
+        max: PROJECT_COORDINATE_LIMIT_UM * 100,
+      }),
+    );
+    target.forEach((value, index) =>
+      assertFinite(value, `display.threeCamera.target[${index}]`, {
+        min: -PROJECT_COORDINATE_LIMIT_UM * 100,
+        max: PROJECT_COORDINATE_LIMIT_UM * 100,
+      }),
+    );
+    assertFinite(view.fov, 'display.threeCamera.fov', { min: 1.000001, max: 178.999999 });
+  }
   if (display.sectionShowBorders != null && typeof display.sectionShowBorders !== 'boolean') {
     fail('display.sectionShowBorders', 'must be boolean.');
   }
