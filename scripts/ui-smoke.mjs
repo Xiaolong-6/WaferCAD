@@ -221,21 +221,70 @@ assert.deepEqual(
 );
 const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
 await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
-const preview = page.frameLocator(
-  '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-project-frame',
-);
-await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
+await photodetectorCard.locator('.welcome-example-project-preview.ready').waitFor({
   state: 'attached',
   timeout: 30000,
 });
+const preview = page.frameLocator(
+  '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-project-frame',
+);
+
+for (const [view, panelId] of [
+  ['main', 'mainPanel'],
+  ['mask', 'maskPanel'],
+  ['three', 'threePanel'],
+  ['section', 'sectionPanel'],
+]) {
+  await photodetectorCard
+    .locator(`.welcome-example-view-tab[data-preview-view="${view}"]`)
+    .click();
+  await preview.locator(`html.welcome-project-preview[data-preview-view="${view}"]`).waitFor({
+    state: 'attached',
+    timeout: 10000,
+  });
+  await preview.locator(`#${panelId}`).waitFor({ state: 'visible', timeout: 10000 });
+  const box = await preview.locator(`#${panelId}`).boundingBox();
+  assert.ok(box?.width > 20 && box?.height > 20, `${view} preview must have visible area`);
+
+  for (const otherId of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+    if (otherId === panelId) continue;
+    assert.equal(
+      await preview.locator(`#${otherId}`).isVisible(),
+      false,
+      `${view} preview must hide ${otherId}`,
+    );
+  }
+}
+
+await preview.locator('#threeHost').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+await preview.locator('html[data-preview-view="main"]').waitFor({ state: 'attached' }).catch(() => {});
 await photodetectorCard
-  .locator('.welcome-example-view-tab[data-preview-view="section"]')
+  .locator('.welcome-example-view-tab[data-preview-view="main"]')
   .click();
-await preview.locator('html.welcome-project-preview[data-preview-view="section"]').waitFor({
-  state: 'attached',
-  timeout: 10000,
-});
-assert.equal(await preview.locator('#sectionPanel').isVisible(), true);
+
+for (const selector of [
+  '.view-head',
+  '#sectionEndpointHandles',
+  '#sectionCoordsPanel',
+  '#focusEditor',
+  '#roiEditor',
+  '#maskRoiEditor',
+  '#drawMaskToolbar',
+  '#drawShapeEditor',
+  '#sectionDetailRoiOverlay',
+  '#sectionDetailInset',
+]) {
+  assert.equal(await preview.locator(selector).first().isVisible(), false, `${selector} must stay hidden in preview`);
+}
+
+const previewMainBefore = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+const mainBox = await preview.locator('#mainCanvas').boundingBox();
+assert.ok(mainBox);
+await page.mouse.move(mainBox.x + mainBox.width * 0.5, mainBox.y + mainBox.height * 0.5);
+await page.mouse.wheel(0, -120);
+await preview.locator('#mainCanvas').evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+const previewMainAfter = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+assert.notEqual(previewMainAfter, previewMainBefore, 'Welcome Main preview wheel zoom must remain available');
 
 await page.locator('#welcomeEmptyBtn').click();
 await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
