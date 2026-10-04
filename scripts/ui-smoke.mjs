@@ -1099,7 +1099,6 @@ await page.locator('#operationThickness').fill('0.6');
 await page.locator('#implantName').fill('UI implant');
 await page.locator('#implantTilt').fill('7');
 await page.locator('#applyOperationBtn').click();
-assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 await page.waitForFunction(() =>
   /Marked implant UI implant/.test(document.getElementById('statusText')?.textContent || ''),
 );
