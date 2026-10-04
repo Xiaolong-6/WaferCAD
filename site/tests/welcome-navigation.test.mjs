@@ -14,6 +14,8 @@ test('welcome and workspace are separate browser pages', () => {
   assert.match(welcomeHtml, /id="welcomeScreen"/);
   assert.doesNotMatch(welcomeHtml, /class="app-shell"/);
   assert.match(welcomeHtml, /href="\.\/app\.html\?start=empty"/);
+  assert.match(welcomeHtml, /id="welcomeExampleGrid"/);
+  assert.match(welcomeHtml, /Example families/);
 
   assert.match(appHtml, /class="app-shell"/);
   assert.doesNotMatch(appHtml, /id="welcomeScreen"/);
@@ -25,6 +27,9 @@ test('workspace startup consumes welcome-page intents without embedding welcome 
   assert.match(appJs, /initializeWorkspaceStart/);
   assert.match(appJs, /takeStartupFile/);
   assert.match(appJs, /openVisualizationExample/);
+  assert.match(appJs, /openBundledExample/);
+  assert.match(welcomeJs, /BUNDLED_EXAMPLES/);
+  assert.match(welcomeJs, /start=example&example=/);
   assert.doesNotMatch(appJs, /wafercad\.welcome\.seen/);
   assert.doesNotMatch(appJs, /setWelcomeVisible/);
 });
