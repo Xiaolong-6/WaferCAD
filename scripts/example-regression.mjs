@@ -220,6 +220,10 @@ for (const example of [
     filename: 'perc-solar-cells-point-contacts.wafercad',
   },
   {
+    id: 'fully-textured-perovskite-silicon-tandem',
+    filename: 'fully-textured-perovskite-silicon-tandem.wafercad',
+  },
+  {
     id: 'suspended-silica-microdisk',
     filename: 'suspended-silica-microdisks.wafercad',
   },
