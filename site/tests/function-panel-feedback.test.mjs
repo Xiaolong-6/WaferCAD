@@ -48,12 +48,13 @@ const viewPopoverController = await readFile(
 test('function panel uses Process and Project labels with segmented process modes', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
   assert.match(html, /id="settingsTab"[\s\S]*?>\s*Project\s*<\/button>/);
-  for (const mode of ['add', 'grow', 'etch', 'implant']) {
+  for (const mode of ['add', 'grow', 'etch', 'implant', 'record']) {
     assert.match(html, new RegExp(`data-process-mode="${mode}"`));
   }
   assert.match(html, />\s*Deposit\s*<\/button>/);
   assert.match(html, />\s*Extend\s*<\/button>/);
   assert.match(html, /Implant[\s\S]*experimental-tag[\s\S]*EXP/);
+  assert.match(html, /data-process-mode="record"[\s\S]*?>\s*Record\s*<\/button>/);
   assert.match(html, /<span>Coverage<\/span\s*>/);
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
@@ -93,6 +94,20 @@ test('Process UI is driven by material presence and exposed Extend targets', () 
   assert.match(processPanelController, /exposedLayerIds\(model, area, activeFace\)/);
   assert.match(processPanelController, /All material has been removed/);
   assert.match(processPanelController, /Base fully removed/);
+  assert.match(html, /id="etchTargetLayer"/);
+  assert.match(processPanelController, /params\.etchTargetLayerIds/);
+  assert.match(processPanelController, /Material-selective Etch/);
+});
+
+test('Process panel can record non-geometric fabrication steps', () => {
+  assert.match(html, /id="recordProcessParams"/);
+  assert.match(html, /id="recordProcessType"/);
+  assert.match(html, /id="recordTemperature"/);
+  assert.match(html, /id="recordDuration"/);
+  assert.match(processPanelController, /async function recordProcessStep\(\)/);
+  assert.match(processPanelController, /geometryChanged: false/);
+  assert.match(processPanelController, /nextModel\.processRevision/);
+  assert.match(processPanelController, /without changing material geometry/);
 });
 
 

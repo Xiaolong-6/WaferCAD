@@ -185,6 +185,42 @@ test('buried rough material interfaces are marked so 3D does not close them to t
   assert.equal(filmInterface?.profileNormal, 1);
 });
 
+test('plan-face roughness excludes buried interfaces from the opposite surface', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  model.layers.push(
+    { id: 'front-film', name: 'Front film', color: '#55aacc' },
+    { id: 'rear-metal', name: 'Rear metal', color: '#999999' },
+  );
+  const rough = {
+    kind: 'rough',
+    featureSize: 0.4,
+    meanHeight: 0.4,
+    featureCv: 0.25,
+    heightCv: 0.25,
+    etchDepth: 0.8,
+    seed: 23,
+    profileId: 'front-only-roughness',
+    geometryMode: 'ideal',
+    morphology: 'stochastic',
+    polarity: 'inverted',
+  };
+  model.regions[0].stack = [
+    { layerId: 'rear-metal', z0: -6, z1: -5 },
+    { layerId: 'base', z0: -5, z1: 0, frontSurface: rough },
+    { layerId: 'front-film', z0: 0, z1: 1, frontSurface: rough },
+  ];
+
+  assert.ok(
+    appearanceSurfaceGroups(model).some((group) => group.buried && group.face === 'back'),
+    'buried interface metadata may legitimately expose a back-oriented rough face to 3D',
+  );
+  assert.equal(
+    surfaceGroups(model, 'back').some((group) => group.appearance?.kind === 'rough'),
+    false,
+    'the externally visible rear surface must remain smooth',
+  );
+});
+
 test('same color does not erase distinct materials, holes or separated islands', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const left = rectMulti(4, 4, -5),

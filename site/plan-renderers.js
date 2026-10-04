@@ -1,6 +1,5 @@
 import { layerById, modelBoundsZ } from './model.js';
 import {
-  appearanceSurfaceGroups,
   implantSectionBands,
   implantSurfaceGroups,
   sectionColumns,
@@ -229,12 +228,15 @@ export function createPlanRenderers({
   }
   
   function fillRoughPlanOverlay(ctx, v, back, alpha = 0.08) {
-      const { model, activeFace } = getState();
+    const { model, activeFace } = getState();
     ctx.save();
     ctx.fillStyle = `rgba(17,24,32,${Math.max(0, Math.min(0.2, alpha))})`;
-    for (const patch of appearanceSurfaceGroups(model)) {
-      if (patch.face !== activeFace) continue;
-      canvasPathMulti(ctx, patch.polys, v, back);
+    // Plan views describe the currently exposed process face. Buried rough
+    // interfaces are useful to Section/3D inspection, but must never leak into
+    // the opposite Main/Mask face as a ghost topography overlay.
+    for (const patch of surfaceGroups(model, activeFace)) {
+      if (patch.appearance?.kind !== 'rough') continue;
+      canvasPathMulti(ctx, patch.geom, v, back);
       ctx.fill('evenodd');
     }
     ctx.restore();

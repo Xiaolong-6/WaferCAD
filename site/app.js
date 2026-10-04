@@ -838,8 +838,13 @@ const projectController = createProjectController({
   buildProjectSnapshot,
   confirmAction: (options) => confirmationDialog.confirm(options),
 });
-const { renderSnapshots, openLayoutFile, openProjectFile, openVisualizationExample } =
-  projectController;
+const {
+  renderSnapshots,
+  openLayoutFile,
+  openProjectFile,
+  openBundledExample,
+  openVisualizationExample,
+} = projectController;
 
 async function ensureWritableProcessBranch() {
   if (!snapshotManager.canRecordOperation()) {
@@ -1140,6 +1145,7 @@ const { initializeWorkspaceStart } = createStartupController({
   takeStartupFile,
   openLayoutFile,
   openProjectFile,
+  openBundledExample,
   openVisualizationExample,
   status,
 });

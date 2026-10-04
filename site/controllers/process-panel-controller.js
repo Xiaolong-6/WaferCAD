@@ -41,6 +41,24 @@ export function createProcessPanelController({
     select.disabled = !select.options.length;
   }
   
+  function updateEtchTargets() {
+    const select = $('etchTargetLayer');
+    if (!select) return;
+    const previous = select.value;
+    select.innerHTML = '';
+    select.add(new Option('All exposed materials', ''));
+
+    const model = getModel(),
+      activeFace = getActiveFace(),
+      area = operationAreaGeometry($('operationArea').value),
+      exposed = new Set(exposedLayerIds(model, area, activeFace));
+    for (const layer of model.layers) {
+      if (!exposed.has(layer.id)) continue;
+      select.add(new Option(layer.name, layer.id));
+    }
+    if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+  }
+
   function updateOperationUI() {
     const t = $('operationType').value;
     root.querySelectorAll('[data-process-mode]').forEach((button) => {
@@ -49,11 +67,16 @@ export function createProcessPanelController({
       button.setAttribute('aria-pressed', String(active));
     });
   
+    const recordOnly = t === 'record';
     $('layerNameRow').classList.toggle('hidden', t !== 'add');
     $('implantNameRow').classList.toggle('hidden', t !== 'implant');
     $('implantTiltRow').classList.toggle('hidden', t !== 'implant');
     $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
-    $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant');
+    $('etchTargetLayerRow').classList.toggle('hidden', t !== 'etch');
+    $('growthModeRow').classList.toggle('hidden', t === 'etch' || t === 'implant' || recordOnly);
+    $('operationAreaRow').classList.toggle('hidden', recordOnly);
+    $('operationThicknessRow').classList.toggle('hidden', recordOnly);
+    $('recordProcessParams').classList.toggle('hidden', !recordOnly);
     $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch');
     const surfaceMode = $('etchSurfaceMode').value,
       texturedEtch = t === 'etch' && surfaceMode !== 'smooth',
@@ -69,14 +92,18 @@ export function createProcessPanelController({
     $('processThicknessLabel').textContent = t === 'etch' || t === 'implant' ? 'Depth' : 'Z';
   
     if (t === 'grow') updateGrowTargets();
+    if (t === 'etch') updateEtchTargets();
   
     const model = getModel(),
       activeFace = getActiveFace(),
       materialExists = hasMaterial(model);
-    $('applyOperationBtn').disabled = !materialExists || Boolean(processTaskController?.isBusy());
+    $('applyOperationBtn').disabled =
+      (!materialExists && !recordOnly) || Boolean(processTaskController?.isBusy());
+    $('applyOperationBtn').textContent = recordOnly ? 'Record' : 'Apply';
     const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
-    $('processSummary').textContent =
-      `${faceLabel} · ${
+    $('processSummary').textContent = recordOnly
+      ? 'Process · Record step'
+      : `${faceLabel} · ${
         t === 'add'
           ? 'Deposit layer'
           : t === 'grow'
@@ -86,23 +113,86 @@ export function createProcessPanelController({
               : 'Etch'
       }`;
   
-    $('operationNote').hidden = !materialExists;
-    if (!materialExists) return;
+    $('operationNote').hidden = !materialExists && !recordOnly;
+    if (!materialExists && !recordOnly) return;
   
     $('operationNote').textContent =
-      t === 'implant'
+      recordOnly
+        ? 'Records fabrication metadata in History without changing material geometry.'
+        : t === 'implant'
         ? 'Experimental structural marker: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt.'
         : t === 'etch'
           ? stochasticEtch
             ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only: canonical process geometry and GLB export remain ideal.`
             : pyramidEtch
               ? `Pyramid XY is the square pitch/base width and Height is apex-to-base relief within the Etch Depth envelope. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only: canonical process geometry and GLB export remain ideal.`
-              : 'Etch removes material vertically and may create through-holes.'
+              : $('etchTargetLayer').value
+                ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
+                : 'Etch removes exposed material vertically in stack order and may create through-holes.'
           : $('growthMode').value === 'conformal'
             ? t === 'grow'
               ? 'Conformal Extend continues the target material over every exposed surface in the selected area, then follows steps and sidewalls. On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.'
               : 'Conformal coverage follows exposed surfaces, steps, and sidewalls. On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.'
             : 'Directional coverage follows the selected footprint.';
+  }
+
+  function optionalNumber(id, label) {
+    const raw = String($(id)?.value ?? '').trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) throw new Error(`${label} must be a number or left blank.`);
+    return value;
+  }
+
+  async function recordProcessStep() {
+    const applyGate = await beforeApply();
+    if (!applyGate) return;
+
+    let temperatureC;
+    let durationMin;
+    try {
+      temperatureC = optionalNumber('recordTemperature', 'Temperature');
+      durationMin = optionalNumber('recordDuration', 'Time');
+    } catch (error) {
+      return status(error.message, 'error');
+    }
+    if (durationMin != null && durationMin < 0) {
+      return status('Time must be zero or greater.', 'error');
+    }
+
+    try {
+      await commitApplyBranch(applyGate);
+    } catch (error) {
+      console.error(error);
+      return status(`Variant creation failed: ${error.message}`, 'error');
+    }
+
+    const model = getModel(),
+      processType = $('recordProcessType').value || 'custom',
+      defaultLabel = $('recordProcessType').selectedOptions?.[0]?.textContent || 'Process step',
+      label = $('recordProcessLabel').value.trim() || defaultLabel,
+      ambient = $('recordAmbient').value.trim(),
+      note = $('recordNote').value.trim();
+
+    saveHistory();
+    clearBaseRevertSnapshot();
+    const nextModel = structuredClone(model);
+    nextModel.revision = (Number(nextModel.revision) || 0) + 1;
+    nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+    setModel(nextModel);
+
+    recordProcessOperation({
+      kind: 'record',
+      label,
+      processType,
+      geometryChanged: false,
+      temperatureC,
+      durationMin,
+      ambient: ambient || null,
+      note: note || null,
+    });
+    renderAll();
+    status(`Recorded process Step “${label}” without changing geometry.`, 'success');
   }
 
   async function applyOperation() {
@@ -114,8 +204,10 @@ export function createProcessPanelController({
       return;
     }
   
-    const type = $('operationType').value,
-      thickness = manualMicron($('operationThickness').value);
+    const type = $('operationType').value;
+    if (type === 'record') return recordProcessStep();
+
+    const thickness = manualMicron($('operationThickness').value);
     $('operationThickness').value = formatLengthField(thickness);
     if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
   
@@ -125,7 +217,8 @@ export function createProcessPanelController({
         type === 'implant'
           ? $('implantName').value.trim() || `Implant ${model.nextImplantId || 1}`
           : $('layerName').value.trim() || `Layer ${model.layers.length}`,
-      targetLayerId = $('targetLayer').value;
+      targetLayerId = $('targetLayer').value,
+      etchTargetLayerId = $('etchTargetLayer')?.value || '';
     if (type === 'grow' && !targetLayerId) {
       return status('No exposed target layer is available to Extend.', 'warning');
     }
@@ -182,7 +275,10 @@ export function createProcessPanelController({
   
     const beforeBase = baseCoverageState(model),
       params = { type, name, targetLayerId, thickness, face: activeFace };
-    if (type === 'etch') params.surface = roughSurface;
+    if (type === 'etch') {
+      params.surface = roughSurface;
+      params.etchTargetLayerIds = etchTargetLayerId ? [etchTargetLayerId] : [];
+    }
     else if (type === 'implant') {
       const tilt = Number($('implantTilt').value);
       if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
@@ -252,6 +348,9 @@ export function createProcessPanelController({
     const areaLabel =
         areaMode === 'full' ? 'Whole face' : areaMode === 'invert' ? 'Invert mask' : 'Selected mask',
       targetName = targetLayerId ? layerById(model, targetLayerId)?.name || 'layer' : '',
+      etchTargetName = etchTargetLayerId
+        ? layerById(model, etchTargetLayerId)?.name || 'selected material'
+        : '',
       surfaceLabel =
         type === 'etch' && roughSurface
           ? roughSurface.morphology === 'pyramid'
@@ -261,7 +360,7 @@ export function createProcessPanelController({
       thicknessLabel = `${Number(thickness.toPrecision(8))} µm`,
       operationLabel =
         type === 'etch'
-          ? `Etch ${thicknessLabel}${surfaceLabel ? ` · ${surfaceLabel}` : ''}`
+          ? `Etch${etchTargetName ? ` ${etchTargetName}` : ''} · ${thicknessLabel}${surfaceLabel ? ` · ${surfaceLabel}` : ''}`
           : type === 'grow'
             ? `Extend ${targetName} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`
             : type === 'implant'
@@ -277,6 +376,7 @@ export function createProcessPanelController({
       thickness,
       name: type === 'grow' ? targetName : name,
       targetLayerId: targetLayerId || null,
+      etchTargetLayerIds: type === 'etch' ? params.etchTargetLayerIds : null,
       growth: type === 'etch' || type === 'implant' ? null : params.growth,
       surface:
         type === 'etch' && roughSurface
@@ -318,7 +418,9 @@ export function createProcessPanelController({
     status(
       `${
         type === 'etch'
-          ? 'Etched'
+          ? etchTargetName
+            ? `Etched ${etchTargetName}`
+            : 'Etched'
           : type === 'grow'
             ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
             : type === 'implant'

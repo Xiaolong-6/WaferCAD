@@ -168,6 +168,11 @@ export function createWorkspaceActionsController({
     $('growthMode').onchange = updateOperationUI;
     $('etchSurfaceMode').onchange = updateOperationUI;
     $('roughPolarity').onchange = updateOperationUI;
+    $('etchTargetLayer').onchange = updateOperationUI;
+    $('recordProcessType').onchange = () => {
+      $('recordProcessLabel').value = $('recordProcessType').selectedOptions?.[0]?.textContent || '';
+      updateOperationUI();
+    };
     $('applyOperationBtn').onclick = applyOperation;
     $('fit3dBtn').onclick = fit3d;
   }
