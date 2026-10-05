@@ -8,6 +8,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "site/**"
+      - "examples/**"
       - "scripts/ui-smoke.mjs"
       - "scripts/workstation-regression.mjs"
       - "scripts/history-regression.mjs"
