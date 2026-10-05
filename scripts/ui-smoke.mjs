@@ -627,6 +627,17 @@ assert.equal(await historyARow.count(), 1);
 assert.equal(await historyBRow.count(), 1);
 assert.equal(await historyARow.getAttribute('role'), 'button');
 assert.equal(await historyBRow.getAttribute('data-head'), 'true');
+
+// History action popovers are exclusive: opening another Step menu closes the first.
+const historyAPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History A' });
+const historyBPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History B' });
+await historyAPopoverStep.locator('.snapshot-more-trigger').click();
+assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
+await historyBPopoverStep.locator('.snapshot-more-trigger').click();
+assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), null);
+assert.equal(await historyBPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
+await historyBPopoverStep.locator('.snapshot-more-trigger').click();
+
 await historyARow.click();
 await historyRestorePage.waitForFunction(
   () =>
