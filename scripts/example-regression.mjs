@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { launchBrowser, newUiPage } from './test-helpers/ui.mjs';
 
 const vendorSource = await readFile(
   new URL('../site/vendor/polygon-clipping.umd.js', import.meta.url),
@@ -77,8 +77,8 @@ function glbPositionBounds(json) {
   return bounds;
 }
 
-const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+const browser = await launchBrowser();
+const { page, context } = await newUiPage(browser, { viewport: { width: 1280, height: 860 } });
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
 
@@ -371,6 +371,7 @@ await page.screenshot({
 });
 
 assert.deepEqual(pageErrors, []);
+await context.close();
 await browser.close();
 
 console.log('Example regression browser harness passed.');
