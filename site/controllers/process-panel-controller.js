@@ -329,7 +329,11 @@ export function createProcessPanelController({
     const walk = (name) => {
       if (!name || out.has(name)) return;
       out.add(name);
-      for (const child of hierarchy?.[name]?.children || []) walk(child?.name);
+      const entry = hierarchy?.[name],
+        children = Array.isArray(entry) ? entry : entry?.children || [];
+      for (const child of children) {
+        walk(typeof child === 'string' ? child : child?.name);
+      }
     };
     walk(activeCell);
     return out;
