@@ -867,6 +867,123 @@ export function createSnapshotManager({
     };
   }
 
+  function truncateBranchAfter(nodeId) {
+    const target = nodeById(nodeId);
+    const branch = target ? branchById(target.branchId) : null;
+    const targetState = stateForProcessNode(target);
+    const tail = target ? branchTailFromNode(target.id) : null;
+    if (!target || !branch || !targetState || !tail) {
+      throw new Error('This Step cannot become the Variant HEAD.');
+    }
+
+    const removedNodes = tail.slice(1);
+    const removedNodeIds = new Set(removedNodes.map((item) => item.id));
+    const dependentVariants = branches.filter(
+      (candidate) =>
+        candidate.id !== branch.id &&
+        candidate.rootNodeId &&
+        removedNodeIds.has(candidate.rootNodeId),
+    );
+    if (dependentVariants.length) {
+      throw new Error(
+        `Delete dependent Variant${dependentVariants.length === 1 ? '' : 's'} first: ${dependentVariants
+          .map((candidate) => candidate.name)
+          .join(', ')}.`,
+      );
+    }
+
+    const removedRecordIds = new Set(
+      records
+        .filter((record) => record.historyNodeId && removedNodeIds.has(record.historyNodeId))
+        .map((record) => record.id),
+    );
+    historyNodes = historyNodes.filter((item) => !removedNodeIds.has(item.id));
+    records = records.filter((record) => !removedRecordIds.has(record.id));
+    for (const record of records) {
+      if (record.parentId && removedRecordIds.has(record.parentId)) record.parentId = null;
+    }
+
+    const targetBookmark = records
+      .filter((record) => record.historyNodeId === target.id && record.branchId === branch.id)
+      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
+
+    branch.headNodeId = target.id;
+    branch.headSnapshotId = targetBookmark?.id || null;
+    branch.headState = cloneState(targetState);
+    activeBranchId = branch.id;
+    restore(cloneState(targetState));
+    cursorNodeId = target.id;
+    cursorSnapshotId = branch.headSnapshotId;
+    cursorBaselineState = cloneState(targetState);
+    cursorDetachedFromHead = false;
+
+    return {
+      branchId: branch.id,
+      branchName: branch.name,
+      headNodeId: target.id,
+      removedNodeCount: removedNodeIds.size,
+      removedBookmarkCount: removedRecordIds.size,
+    };
+  }
+
+  function removeHeadStep(nodeId) {
+    const target = nodeById(nodeId);
+    const branch = target ? branchById(target.branchId) : null;
+    if (!target || !branch || branch.headNodeId !== target.id) {
+      throw new Error('Only the current Variant HEAD Step can be deleted.');
+    }
+    const parent = target.parentId ? nodeById(target.parentId) : null;
+    const parentState = stateForProcessNode(parent);
+    if (!parent || !parentState) {
+      throw new Error('The first Main Step has no restorable predecessor and cannot be deleted.');
+    }
+
+    const dependentVariants = branches.filter(
+      (candidate) =>
+        candidate.id !== branch.id && candidate.rootNodeId === target.id,
+    );
+    if (dependentVariants.length) {
+      throw new Error(
+        `Delete dependent Variant${dependentVariants.length === 1 ? '' : 's'} first: ${dependentVariants
+          .map((candidate) => candidate.name)
+          .join(', ')}.`,
+      );
+    }
+
+    const removedRecordIds = new Set(
+      records
+        .filter((record) => record.historyNodeId === target.id)
+        .map((record) => record.id),
+    );
+    historyNodes = historyNodes.filter((item) => item.id !== target.id);
+    records = records.filter((record) => !removedRecordIds.has(record.id));
+    for (const record of records) {
+      if (record.parentId && removedRecordIds.has(record.parentId)) record.parentId = null;
+    }
+
+    const parentBookmark = records
+      .filter((record) => record.historyNodeId === parent.id)
+      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
+
+    branch.headNodeId = parent.id;
+    branch.headSnapshotId = parentBookmark?.id || null;
+    branch.headState = cloneState(parentState);
+    activeBranchId = branch.id;
+    restore(cloneState(parentState));
+    cursorNodeId = parent.id;
+    cursorSnapshotId = branch.headSnapshotId;
+    cursorBaselineState = cloneState(parentState);
+    cursorDetachedFromHead = false;
+
+    return {
+      branchId: branch.id,
+      branchName: branch.name,
+      removedNodeId: target.id,
+      removedBookmarkCount: removedRecordIds.size,
+      headNodeId: parent.id,
+    };
+  }
+
   function hasHistoricalWorkingEdits() {
     if (!continuationContext()) return false;
     if (!cursorBaselineState) return true;
@@ -1324,6 +1441,8 @@ export function createSnapshotManager({
     stepEditContext,
     restoreStepInput,
     replaceBranchTailFrom,
+    truncateBranchAfter,
+    removeHeadStep,
     canRecordOperation,
     recordOperation,
     syncCursorToProcessRevision,
