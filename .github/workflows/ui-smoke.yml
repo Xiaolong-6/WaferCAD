@@ -8,6 +8,7 @@ on:
       - "site/**"
       - "scripts/ui-smoke.mjs"
       - "scripts/ui-regression.mjs"
+      - "scripts/history-regression.mjs"
       - "scripts/test-helpers/**"
       - "scripts/example-regression.mjs"
       - "scripts/product-regression.mjs"
@@ -55,6 +56,9 @@ jobs:
 
       - name: Run fast browser smoke
         run: npm run test:ui:smoke
+
+      - name: Run History regression
+        run: npm run test:ui:history
 
       - name: Run full browser regression
         run: npm run test:ui:regression
