@@ -66,6 +66,10 @@ Owns the transient History edit/insert state machine and its two-phase Apply tra
 
 Owns the synchronized Canvas 2D drawing path for Mask, Main, and Section A–B. It consumes canonical model/view state through narrow getters and reuses `model-view-geometry.js` plus the shared rough-surface profile field. Keeping rendering here prevents display-only morphology, Implant gradients, viewport drawing, and Section visibility aids from accumulating in the application composition root.
 
+### `site/annotation-rendering.js`
+
+Owns the shared Implant depth-gradient constants used by both Section A–B and 3D. The current visualization falloff is outer depth 0 / alpha 0.72, mid depth 0.48 / alpha 0.40, and inner depth 1 / alpha 0.04. 3D normalizes these values to its per-object opacity before shader interpolation, while Section uses the same absolute alpha stops on Canvas. Keeping the numbers in one module prevents the two views from drifting apart. The curve is display semantics only and does not represent dopant concentration.
+
 ### `site/process-topology.js`
 
 Owns Process Geometry Kernel v2: exposed horizontal faces, buried material interfaces, Rough/Pyramid appearance ownership, true-void vs numerical-crack classification, Conformal material-wall/void-wall targets, Section columns/slices, exact-Z slabs/caps, and deterministic ownership of horizontal interfaces, vertical sidewalls, and physical border lines consumed by 3D. Complex same-material slab unions used only for derived rendering ownership use a fail-soft recursive union path. Process-critical uncovered-domain classification is fail-loud: a Boolean-kernel failure aborts the worker operation instead of being interpreted as “no void,” so the live model remains unchanged. It is a pure derived layer over the canonical region-stack model and is never serialized. See [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md).
