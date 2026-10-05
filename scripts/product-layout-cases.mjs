@@ -10,6 +10,7 @@ import {
   confirmIfVisible,
   ensurePrimaryViewVisible,
   openFunctionPanel,
+  waitForPaint,
 } from './test-helpers/product.mjs';
 import {
   checkSectionSeams,
@@ -178,7 +179,7 @@ export async function runProductLayoutCases({
           steps: 12,
         });
         await page.mouse.up();
-        await page.waitForTimeout(400);
+        await waitForPaint(page);
         await capture(page, `${name}-${kind}-${growth}-back`);
         await checkSectionSeams(page, back);
       }
