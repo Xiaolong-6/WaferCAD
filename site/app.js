@@ -1536,6 +1536,13 @@ workspacePersistenceController = createWorkspacePersistenceController({
 
 const workstationUiController = createWorkstationUiController({ root: document, win: window });
 
+function resetEmbeddedPreviewPlanFraming() {
+  if (!EMBEDDED_PREVIEW) return;
+  Object.assign(planViews.main, { zoom: 1, panX: 0, panY: 0 });
+  Object.assign(planViews.mask, { zoom: 1, panX: 0, panY: 0 });
+  document.documentElement.dataset.previewPlanFraming = 'fit';
+}
+
 function renderEmbeddedPreviewView(view = embeddedPreviewView) {
   if (!EMBEDDED_PREVIEW) return;
   if (view === 'three') {
@@ -1761,6 +1768,7 @@ if (EMBEDDED_PREVIEW) {
   void initializeWorkspaceStart()
     .then((started) => {
       if (!started) throw new Error('Example preview could not be opened.');
+      resetEmbeddedPreviewPlanFraming();
       applyEmbeddedPreviewView(embeddedPreviewView);
       globalThis.parent?.postMessage(
         { type: 'wafercad-preview-ready', view: embeddedPreviewView },
