@@ -1,4 +1,4 @@
-import { intersection, isEmpty, lineIntervalsInMulti, unionGeometries } from './vector-geometry.js';
+import { difference, intersection, isEmpty, lineIntervalsInMulti, unionGeometries } from './vector-geometry.js';
 import { visibleMaterialModel } from './model.js';
 import {
   appearanceSurfaceGroupsFromTopology,
@@ -97,6 +97,8 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
       for (const region of model.regions || []) {
         if (!region.stack?.length) continue;
         let geom = intersection(patch.geom, region.geom);
+        const unclippedGeom = geom,
+          viewClipped = Boolean(clip) && !isEmpty(geom) && !isEmpty(difference(geom, clip));
         if (clip && !isEmpty(geom)) geom = intersection(geom, clip);
         if (isEmpty(geom)) continue;
 
@@ -149,6 +151,7 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
             outerZ,
             innerZ,
             surfaceExposed,
+            viewClipped,
             z0,
             z1,
             surfaceAppearance:
