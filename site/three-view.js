@@ -1178,6 +1178,7 @@ export function createThreeView({
           normal: cap.normal,
           appearance: cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
+          sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
           lodZones: task.zones.map((zone) => ({
             baseTriangles: zone.baseTriangles,
@@ -1340,6 +1341,7 @@ export function createThreeView({
           polys: cap.polys,
           appearance: cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
+          sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
           lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
           lodZones: task.zones,
@@ -2045,6 +2047,7 @@ export function createThreeView({
               normal: task.cap.normal,
               appearance: task.cap.appearance,
               closeToIdeal: !task.cap.buried,
+              sidewallBoundaryIntervals: task.cap.sidewallBoundaryIntervals,
               profileNormal: task.cap.profileNormal,
               lodZones: task.lodZones.map((zone) => ({
                 baseTriangles: zone.baseTriangles,
@@ -2184,6 +2187,7 @@ export function createThreeView({
                   polys: cap.polys,
                   appearance: cap.appearance,
                   closeToIdeal: !cap.buried,
+                  sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
                   profileNormal: cap.profileNormal,
                   lodZones: task.lodZones,
                 });
