@@ -31,6 +31,12 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+### Deterministic browser dependencies
+
+The Browser regression workflow installs the pinned `three@0.179.1` npm package and exposes it through `WAFERCAD_THREE_DIR`. Normal browser contexts intercept the matching jsDelivr URLs and serve those modules from the local package, so CDN availability is not part of ordinary regression reliability. The dedicated resilience suite intentionally bypasses this route when testing CDN/WebGL failure behavior.
+
+GitHub Actions caches both npm downloads and the Playwright Chromium browser directory. The suite remains a single job so those setup costs are paid once; focused test steps still preserve failure ownership without duplicating browser installation.
+
 ## Fast smoke contract
 
 The fast smoke should stay deliberately small. It currently proves that:
