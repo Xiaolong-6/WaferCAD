@@ -89,7 +89,9 @@ function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } =
       maskRoi: null,
       drawMask: { shapes: [] },
       maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-      layout: { elements: [] },
+      layout: { root: 'TOP', elements: [] },
+      activeCell: 'TOP',
+      selectedLayerKeys: ['7|0', '8|2'],
     }),
     operationAreaGeometry: () => [],
     selectedElement: () => true,
@@ -275,6 +277,14 @@ test('successful geometry Apply stores a deterministic replay request', async ()
     growth: 'conformal',
   });
   assert.equal(recorded[0].replay.areaMode, 'full');
+  assert.deepEqual(recorded[0].maskContext, {
+    sourceMode: 'file',
+    cell: 'TOP',
+    layerKeys: ['7|0', '8|2'],
+    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    roi: null,
+  });
+  assert.deepEqual(recorded[0].replay.maskContext, recorded[0].maskContext);
   assert.equal('areaRequest' in recorded[0].replay, false);
 });
 
