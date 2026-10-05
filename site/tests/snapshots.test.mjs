@@ -1804,3 +1804,116 @@ test('History display labels stay scoped when independent Variants reuse the sam
     'Deposit Variant ITO · Directional · 0.2 µm',
   );
 });
+
+
+test('History insertion topology supports current rewrite, branch start, branch carry, and dependency protection', () => {
+  const createChain = () => {
+    let live = {
+      model: {
+        revision: 0,
+        processRevision: 0,
+        layers: [{ id: 'base', name: 'Base' }],
+        implants: [],
+        electricalRegions: [],
+      },
+      tag: 'base',
+    };
+    let nodeId = 0,
+      branchId = 0;
+    const manager = createSnapshotManager({
+      capture: () => live,
+      restore: (value) => {
+        live = value;
+      },
+      validateState: (value) => Number.isInteger(value?.model?.processRevision),
+      nodeIdFactory: () => `process-${++nodeId}`,
+      branchIdFactory: () => `variant-${++branchId}`,
+    });
+    const append = (label, revision) => {
+      live = {
+        ...live,
+        model: {
+          ...live.model,
+          revision,
+          processRevision: revision,
+        },
+        tag: label,
+      };
+      return manager.recordOperation({
+        kind: 'record',
+        label,
+        replay: { version: 1, kind: 'record' },
+      });
+    };
+    const a = append('A', 1),
+      b = append('B', 2),
+      c = append('C', 3);
+    return {
+      manager,
+      append,
+      a,
+      b,
+      c,
+      getLive: () => live,
+      setLive: (value) => {
+        live = value;
+      },
+    };
+  };
+
+  const current = createChain();
+  assert.equal(current.manager.restoreStepInput(current.b.id), true);
+  current.manager.replaceBranchTailFrom(current.b.id);
+  const inserted = current.append('X', 2),
+    replayedB = current.append('B', 3),
+    replayedC = current.append('C', 4);
+  assert.deepEqual(
+    current.manager
+      .listHistory()
+      .filter((node) => node.branchId === 'main')
+      .map((node) => node.id),
+    [current.a.id, inserted.id, replayedB.id, replayedC.id],
+  );
+
+  const branchStart = createChain();
+  assert.equal(branchStart.manager.restoreStepInput(branchStart.b.id), true);
+  const startVariant = branchStart.manager.createBranchFromCursor('Start');
+  const startInserted = branchStart.append('X', 2);
+  const startBranches = branchStart.manager.listBranches(),
+    startMain = startBranches.find((branch) => branch.id === 'main'),
+    startChild = startBranches.find((branch) => branch.id === startVariant.id);
+  assert.equal(startMain.headNodeId, branchStart.c.id);
+  assert.equal(startChild.rootNodeId, branchStart.a.id);
+  assert.equal(startChild.headNodeId, startInserted.id);
+
+  const branchCarry = createChain();
+  assert.equal(branchCarry.manager.restoreStepInput(branchCarry.b.id), true);
+  const carryVariant = branchCarry.manager.createBranchFromCursor('Carry');
+  const carryInserted = branchCarry.append('X', 2),
+    carryB = branchCarry.append('B', 3),
+    carryC = branchCarry.append('C', 4);
+  const carryBranches = branchCarry.manager.listBranches(),
+    carryMain = carryBranches.find((branch) => branch.id === 'main'),
+    carryChild = carryBranches.find((branch) => branch.id === carryVariant.id);
+  assert.equal(carryMain.headNodeId, branchCarry.c.id);
+  assert.equal(carryChild.rootNodeId, branchCarry.a.id);
+  assert.equal(carryChild.headNodeId, carryC.id);
+  assert.deepEqual(
+    branchCarry.manager
+      .listHistory()
+      .filter((node) => node.branchId === carryVariant.id)
+      .map((node) => node.id),
+    [carryInserted.id, carryB.id, carryC.id],
+  );
+
+  const protectedChain = createChain();
+  protectedChain.manager.createBranchFromNode(protectedChain.b.id, 'Dependent');
+  assert.equal(protectedChain.manager.switchBranch('main'), true);
+  const protectedContext = protectedChain.manager.insertBeforeContext(protectedChain.b.id);
+  assert.equal(protectedContext.canReplaceCurrentVariant, false);
+  assert.equal(protectedContext.dependentVariants.length, 1);
+  assert.throws(
+    () => protectedChain.manager.replaceBranchTailFrom(protectedChain.b.id),
+    /Create a new Variant instead/,
+  );
+});
