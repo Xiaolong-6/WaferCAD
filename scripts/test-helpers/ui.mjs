@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { chromium } from 'playwright';
 
 export const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
@@ -20,6 +22,29 @@ export function observePageErrors(page) {
 
 export async function launchBrowser() {
   return chromium.launch(launchOptions);
+}
+
+export async function installPinnedThreeRoute(target) {
+  if (!process.env.WAFERCAD_THREE_DIR) return;
+  await target.route('https://cdn.jsdelivr.net/npm/three@0.179.1/**', async (route) => {
+    const path = new URL(route.request().url()).pathname.split('/three@0.179.1/')[1];
+    await route.fulfill({
+      contentType: 'text/javascript',
+      body: await readFile(join(process.env.WAFERCAD_THREE_DIR, path)),
+    });
+  });
+}
+
+export async function newUiContext(browser, options = {}) {
+  const context = await browser.newContext(options);
+  await installPinnedThreeRoute(context);
+  return context;
+}
+
+export async function newUiPage(browser, options = {}) {
+  const context = await newUiContext(browser, options);
+  const page = await context.newPage();
+  return { context, page };
 }
 
 export async function gotoWelcome(page) {
