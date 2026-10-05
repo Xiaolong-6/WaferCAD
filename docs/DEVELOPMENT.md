@@ -74,6 +74,9 @@ There is no application build step.
 25. Replacing live workspace state must synchronize transient Undo/Redo controls so enabled buttons never point at cleared history.
 26. History UI must render Variant ancestry as a tree at the actual origin Step. A flat “Other variants” list is not an acceptable substitute.
 27. Existing projects without branch metadata must normalize into one linear Main Variant without changing saved workspace state.
+28. History labels that reference material/Implant/Electrical Region entities must resolve through stable IDs; renaming an entity must not leave stale labels or stale replay names on the same entity lineage.
+29. History **Insert before…** must be transactional: failed/no-change inserted operations leave the original process tree untouched; current-Variant insertion may rewrite a tail only when dependency checks pass; child-Variant insertion must leave the source Variant unchanged.
+30. When insertion causes replayed Deposit Steps to receive new layer IDs, all downstream replayable layer references must be remapped before the worker request is issued.
 28. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 ## Source style
