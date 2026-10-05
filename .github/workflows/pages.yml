@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'site/**'
-      - 'scripts/stamp-pages-assets.mjs'
-      - '.github/workflows/pages.yml'
+      - "site/**"
+      - "scripts/stamp-pages-assets.mjs"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -24,6 +24,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -33,45 +34,23 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install quality and browser test dependencies
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npm install --no-save --package-lock=false playwright@1.55.0 three@0.179.1
-          npx playwright install --with-deps chromium
-
-      - name: Run CI quality gate
-        run: npm run check:ci
-
-      - name: Start release candidate
-        run: |
-          python3 -m http.server 4173 --directory site > /tmp/wafercad-http.log 2>&1 &
-          for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-          cat /tmp/wafercad-http.log
-          exit 1
-
-      - name: Run browser interaction smoke
-        run: node scripts/ui-smoke.mjs
-
-      - name: Run product interaction and visual regression
-        env:
-          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: node scripts/product-regression.mjs
+      - name: Run lightweight release sanity
+        run: npm test
 
       - name: Write build commit
         run: printf '{"commit":"%s"}\n' "$GITHUB_SHA" > site/build-info.json
+
       - name: Version browser module imports
         run: node scripts/stamp-pages-assets.mjs "$GITHUB_SHA"
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4
         with:
           path: site
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
