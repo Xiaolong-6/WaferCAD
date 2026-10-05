@@ -9,7 +9,12 @@
     "format:check": "prettier --check \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
     "check": "npm run lint && npm run format:check && npm test",
     "check:ci": "npm run lint && npm test",
-    "precommit": "npm run format && npm run lint && npm test"
+    "precommit": "npm run format && npm run lint && npm test",
+    "test:ui:smoke": "node scripts/ui-smoke.mjs",
+    "test:ui:regression": "node scripts/ui-regression.mjs",
+    "test:ui:examples": "node scripts/example-regression.mjs",
+    "test:ui:product": "node scripts/product-regression.mjs",
+    "test:ui:all": "npm run test:ui:smoke && npm run test:ui:regression && npm run test:ui:examples && npm run test:ui:product"
   },
   "devDependencies": {
     "eslint": "10.11.0",
