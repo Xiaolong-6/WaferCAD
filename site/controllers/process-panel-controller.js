@@ -18,6 +18,7 @@ export function createProcessPanelController({
   recordProcessOperation = () => {},
   afterApply = async () => false,
   getHistoricalStepEdit = () => null,
+  getHistoricalStepInsert = () => null,
   clearBaseRevertSnapshot,
   colorNewLayer,
   colorNewImplant,
@@ -123,9 +124,11 @@ export function createProcessPanelController({
       (!materialExists && !recordOnly) || Boolean(processTaskController?.isBusy());
     $('applyOperationBtn').textContent = getHistoricalStepEdit()
       ? 'Save edited Step'
-      : recordOnly
-        ? 'Record'
-        : 'Apply';
+      : getHistoricalStepInsert()
+        ? 'Insert Step'
+        : recordOnly
+          ? 'Record'
+          : 'Apply';
     const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
     $('processSummary').textContent = recordOnly
       ? 'Process · Record step'
@@ -320,8 +323,38 @@ export function createProcessPanelController({
     };
   }
 
+  function remapReplayOperation(operation, params, layerIdMap) {
+    const remapLayerId = (id) => (id && layerIdMap.has(id) ? layerIdMap.get(id) : id);
+
+    if (params.targetLayerId) params.targetLayerId = remapLayerId(params.targetLayerId);
+    if (Array.isArray(params.etchTargetLayerIds)) {
+      params.etchTargetLayerIds = params.etchTargetLayerIds.map(remapLayerId);
+    }
+
+    if (operation.targetLayerId) operation.targetLayerId = remapLayerId(operation.targetLayerId);
+    if (Array.isArray(operation.etchTargetLayerIds)) {
+      operation.etchTargetLayerIds = operation.etchTargetLayerIds.map(remapLayerId);
+    }
+    if (operation.replay?.version === 1) operation.replay.params = structuredClone(params);
+  }
+
+  function applyReplayResultRefs(operation, sourceStep, result, layerIdMap) {
+    const refs = sourceStep?.entityRefs || {};
+    if (operation.kind === 'add' && result?.layerId) {
+      const previousId = refs.resultLayerId || operation.resultLayerId || null;
+      if (previousId) layerIdMap.set(previousId, result.layerId);
+      operation.resultLayerId = result.layerId;
+    } else if (operation.kind === 'implant' && result?.implantId) {
+      operation.resultImplantId = result.implantId;
+    } else if (operation.kind === 'electrical' && result?.electricalRegionId) {
+      operation.resultElectricalRegionId = result.electricalRegionId;
+    }
+  }
+
   async function replayOperations(steps = []) {
     let completed = 0;
+    const layerIdMap = new Map();
+
     for (const sourceStep of steps) {
       const operation = structuredClone(sourceStep?.operation || sourceStep || {}),
         sourceState = sourceStep?.operation ? sourceStep.state : null,
@@ -357,6 +390,8 @@ export function createProcessPanelController({
       }
 
       const params = structuredClone(replay.params || {});
+      remapReplayOperation(operation, params, layerIdMap);
+
       let areaRequest;
       try {
         areaRequest = replayAreaRequest(operation, sourceState);
@@ -394,6 +429,7 @@ export function createProcessPanelController({
       saveHistory();
       clearBaseRevertSnapshot();
       setModel(task.model);
+      applyReplayResultRefs(operation, sourceStep, task.result, layerIdMap);
       if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
       else if (operation.kind === 'implant' && task.result.implantId) {
         colorNewImplant(task.result.implantId);
@@ -695,6 +731,10 @@ export function createProcessPanelController({
       electricalRegionSource: type === 'electrical' ? params.electricalRegionSource : null,
       maskSourceMode,
       maskRoi: Boolean(maskRoi),
+      resultLayerId: type === 'add' ? result.layerId || null : null,
+      resultImplantId: type === 'implant' ? result.implantId || null : null,
+      resultElectricalRegionId:
+        type === 'electrical' ? result.electricalRegionId || null : null,
       replay: {
         version: 1,
         params: structuredClone(params),
