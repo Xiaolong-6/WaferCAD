@@ -1,3 +1,4 @@
+import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import { electricalRegionSolids, implantSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
@@ -366,6 +367,15 @@ export function createThreeView({
     if (!state) return parts || [];
     const visible = [];
     for (const part of parts || []) {
+      const hasDepth =
+          Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth)),
+        depthAt = (z) => {
+          if (!hasDepth) return null;
+          const span = part.z1 - part.z0;
+          if (Math.abs(span) < 1e-12) return Number(part.lowerDepth);
+          const t = Math.max(0, Math.min(1, (z - part.z0) / span));
+          return Number(part.lowerDepth) + (Number(part.upperDepth) - Number(part.lowerDepth)) * t;
+        };
       for (const [z0, z1] of visibleZIntervals(part.z0, part.z1, state)) {
         if (z0 === z1) continue;
         visible.push({
@@ -374,6 +384,7 @@ export function createThreeView({
           z1,
           lowerSurface: Math.abs(z0 - part.z0) <= 1e-10 ? part.lowerSurface : null,
           upperSurface: Math.abs(z1 - part.z1) <= 1e-10 ? part.upperSurface : null,
+          ...(hasDepth ? { lowerDepth: depthAt(z0), upperDepth: depthAt(z1) } : {}),
         });
       }
     }
@@ -812,6 +823,69 @@ export function createThreeView({
     return geometry;
   }
 
+  function annotationDepthFraction(annotation, z) {
+    const outer = Number(annotation?.outerZ),
+      inner = Number(annotation?.innerZ),
+      value = Number(z),
+      span = inner - outer;
+    if (![outer, inner, value].every(Number.isFinite) || Math.abs(span) < 1e-12) return 0;
+    return Math.max(0, Math.min(1, (value - outer) / span));
+  }
+
+  function setAnnotationDepthAttribute(geometry, annotation, constantDepth = null) {
+    const positions = geometry?.getAttribute?.('position');
+    if (!positions?.count) return geometry;
+    const hasFixedDepth = constantDepth != null && Number.isFinite(Number(constantDepth)),
+      fixedDepth = hasFixedDepth ? Number(constantDepth) : null,
+      values = new Float32Array(positions.count);
+    for (let index = 0; index < positions.count; index++) {
+      values[index] = hasFixedDepth
+        ? Math.max(0, Math.min(1, fixedDepth))
+        : annotationDepthFraction(annotation, positions.getZ(index));
+    }
+    geometry.setAttribute('annotationDepth', new THREE.Float32BufferAttribute(values, 1));
+    return geometry;
+  }
+
+  function annotationSidewallParts(annotation) {
+    const appearance =
+        annotation?.surfaceAppearance?.kind === 'rough' ? annotation.surfaceAppearance : null,
+      faceDirection = annotation?.face === 'back' ? -1 : 1,
+      outerSurface = appearance ? { appearance, profileNormal: faceDirection } : null,
+      innerSurface =
+        appearance && annotation?.depthProfile !== 'smooth'
+          ? { appearance, profileNormal: faceDirection }
+          : null,
+      front = annotation?.face !== 'back',
+      lowerSurface = front ? innerSurface : outerSurface,
+      upperSurface = front ? outerSurface : innerSurface,
+      lowerDepth = front ? 1 : 0,
+      upperDepth = front ? 0 : 1,
+      parts = [];
+
+    for (const poly of annotation?.polys || []) {
+      for (const closed of poly || []) {
+        const ring = closed.slice(0, -1);
+        for (let index = 0; index < ring.length; index++) {
+          const p = ring[index],
+            q = ring[(index + 1) % ring.length];
+          if (!p || !q || (p[0] === q[0] && p[1] === q[1])) continue;
+          parts.push({
+            p,
+            q,
+            z0: annotation.z0,
+            z1: annotation.z1,
+            lowerSurface,
+            upperSurface,
+            lowerDepth,
+            upperDepth,
+          });
+        }
+      }
+    }
+    return parts;
+  }
+
   function geometryCenter(geometry) {
     geometry.computeBoundingBox();
     const center = new THREE.Vector3();
@@ -821,9 +895,10 @@ export function createThreeView({
 
   function geometryFromSidewallParts(parts) {
     const positions = [],
-      normals = [];
+      normals = [],
+      annotationDepths = [];
 
-    const triangle = (a, b, c) => {
+    const triangle = (a, b, c, depths = null) => {
         const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
           ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
           normal = [
@@ -835,6 +910,7 @@ export function createThreeView({
           unit = normal.map((value) => value / magnitude);
         positions.push(...a, ...b, ...c);
         normals.push(...unit, ...unit, ...unit);
+        if (depths) annotationDepths.push(...depths);
       },
       displacedZ = (point, z, surface) =>
         surface?.appearance?.kind === 'rough'
@@ -856,7 +932,11 @@ export function createThreeView({
           .filter((value) => Number.isFinite(value) && value > 0),
         targetStep = featureSizes.length ? Math.max(1e-6, Math.min(...featureSizes) / 4) : length,
         segments = Math.max(1, Math.min(512, Math.ceil(length / targetStep))),
-        pointAt = (t) => [p[0] + dx * t, p[1] + dy * t];
+        pointAt = (t) => [p[0] + dx * t, p[1] + dy * t],
+        hasDepth =
+          Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth)),
+        lowerDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.lowerDepth))) : null,
+        upperDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.upperDepth))) : null;
 
       for (let segment = 0; segment < segments; segment++) {
         const t0 = segment / segments,
@@ -866,15 +946,23 @@ export function createThreeView({
           lower0 = [...p0, displacedZ(p0, part.z0, part.lowerSurface)],
           lower1 = [...p1, displacedZ(p1, part.z0, part.lowerSurface)],
           upper1 = [...p1, displacedZ(p1, part.z1, part.upperSurface)],
-          upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)];
-        triangle(lower0, lower1, upper1);
-        triangle(lower0, upper1, upper0);
+          upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
+          firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
+          secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
+        triangle(lower0, lower1, upper1, firstDepths);
+        triangle(lower0, upper1, upper0, secondDepths);
       }
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    if (annotationDepths.length === positions.length / 3 && annotationDepths.length) {
+      geometry.setAttribute(
+        'annotationDepth',
+        new THREE.Float32BufferAttribute(annotationDepths, 1),
+      );
+    }
     return geometry;
   }
 
@@ -902,6 +990,52 @@ export function createThreeView({
       side: THREE.DoubleSide,
       ...materialState,
     });
+  }
+
+  function createAnnotationGradientMaterial(
+    annotation,
+    materialState,
+    { roughness = 0.72, metalness = 0 } = {},
+  ) {
+    const { midDepth, outerAlpha, midAlpha, innerAlpha } = IMPLANT_DEPTH_GRADIENT,
+      midScale = midAlpha / outerAlpha,
+      innerScale = innerAlpha / outerAlpha,
+      material = new THREE.MeshStandardMaterial({
+        color: annotation?.color || '#D65A6F',
+        roughness,
+        metalness,
+        side: THREE.DoubleSide,
+        ...materialState,
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+      });
+    material.userData.waferCadAnnotationGradient = 'section-depth';
+    material.customProgramCacheKey = () => 'wafercad-annotation-depth-gradient-v1';
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader.replace(
+        'void main() {',
+        `attribute float annotationDepth;
+varying float vWaferCadAnnotationDepth;
+void main() {
+  vWaferCadAnnotationDepth = annotationDepth;`,
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'void main() {',
+        `varying float vWaferCadAnnotationDepth;
+void main() {`,
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+float waferCadDepth = clamp(vWaferCadAnnotationDepth, 0.0, 1.0);
+float waferCadAlphaScale = waferCadDepth <= ${midDepth}
+  ? mix(1.0, ${midScale}, waferCadDepth / ${midDepth})
+  : mix(${midScale}, ${innerScale}, (waferCadDepth - ${midDepth}) / ${1 - midDepth});
+diffuseColor.a *= waferCadAlphaScale;`,
+      );
+    };
+    return material;
   }
 
   function addSurfaceMesh(
@@ -1091,9 +1225,16 @@ export function createThreeView({
             }
           : result.data;
       let geometry = geometryFromRoughMeshData(THREE, meshData);
-      if (task.implant) geometry = shearImplantGeometry(geometry, task.implant);
+      if (task.implant) {
+        setAnnotationDepthAttribute(geometry, task.implant, task.kind === 'implant-depth' ? 1 : 0);
+        geometry = shearImplantGeometry(geometry, task.implant);
+      }
 
-      const material = createSurfaceMaterial(task.layer, task.state, cap.appearance);
+      const material = task.implant
+        ? createAnnotationGradientMaterial(task.implant, task.state, {
+            roughness: cap.appearance ? 0.84 : 0.72,
+          })
+        : createSurfaceMaterial(task.layer, task.state, cap.appearance);
       if (task.polygonOffset) {
         material.polygonOffset = true;
         material.polygonOffsetFactor = -1;
@@ -1329,9 +1470,20 @@ export function createThreeView({
           lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
           lodZones: task.zones,
         });
-        if (task.implant) geometry = shearImplantGeometry(geometry, task.implant);
+        if (task.implant) {
+          setAnnotationDepthAttribute(
+            geometry,
+            task.implant,
+            task.kind === 'implant-depth' ? 1 : 0,
+          );
+          geometry = shearImplantGeometry(geometry, task.implant);
+        }
 
-        const material = createSurfaceMaterial(task.layer, task.state, cap.appearance);
+        const material = task.implant
+          ? createAnnotationGradientMaterial(task.implant, task.state, {
+              roughness: cap.appearance ? 0.84 : 0.72,
+            })
+          : createSurfaceMaterial(task.layer, task.state, cap.appearance);
         if (task.polygonOffset) {
           material.polygonOffset = true;
           material.polygonOffsetFactor = -1;
@@ -1635,51 +1787,75 @@ export function createThreeView({
         });
       }
 
-      // Implant is a non-material annotation volume. In opaque inspection,
-      // internal fragments are not added to the scene at all; only a fragment
-      // whose surviving outer face coincides with the current material surface
-      // receives a surface overlay. Transparent inspection adds the clipped
-      // internal body and its outer cap for volume inspection.
+      // Implant is a non-material annotation volume. Opaque inspection still
+      // hides buried volume, but an ROI clip creates a real inspection cut face:
+      // the clipped sidewall is rendered on top of the material cut with the same
+      // surface-to-depth gradient used by Section A–B. Transparent inspection
+      // additionally shows the full clipped internal volume.
       const showInternalImplants = materialState.transparent;
       let implantInternalCount = 0,
-        implantSurfaceCount = 0;
+        implantSurfaceCount = 0,
+        implantCutCount = 0,
+        implantGradientMeshCount = 0;
       for (const implant of implantSolids(model, clip)) {
-        if (!showInternalImplants && !implant.surfaceExposed) continue;
+        if (!showInternalImplants && !implant.surfaceExposed && !implant.viewClipped) continue;
 
         const outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
-          followDepthProfile = Boolean(appearance && implant.depthProfile !== 'smooth');
+          followDepthProfile = Boolean(appearance && implant.depthProfile !== 'smooth'),
+          sidewallGeometry = () =>
+            shearImplantGeometry(
+              geometryFromSidewallParts(displaySidewallParts(annotationSidewallParts(implant))),
+              implant,
+            );
 
-        if (showInternalImplants) {
-          const implantState = {
-              opacity: opacity * 0.18,
+        if (implant.viewClipped) {
+          const cutState = {
+              opacity:
+                opacity * (materialState.transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
               transparent: true,
               depthTest: true,
               depthWrite: false,
             },
-            bodyGeometry = shearImplantGeometry(
-              geometryFromSolid(
-                displaySolidForZCollapse(
-                  followDepthProfile ? { slabs: implant.slabs, caps: [] } : implant,
-                ),
-              ),
-              implant,
-            ),
-            bodyMaterial = new THREE.MeshStandardMaterial({
-              color: implant.color || '#D65A6F',
+            cutGeometry = sidewallGeometry(),
+            cutMaterial = createAnnotationGradientMaterial(implant, cutState, {
+              roughness: appearance ? 0.8 : 0.72,
+            });
+          cutMaterial.polygonOffset = true;
+          cutMaterial.polygonOffsetFactor = -2;
+          cutMaterial.polygonOffsetUnits = -2;
+          cutMaterial.depthFunc = THREE.LessEqualDepth;
+          const cut = addSurfaceMesh(cutGeometry, cutMaterial, cutState, null, 46);
+          if (cut) {
+            cut.name = `${implant.name || implant.implantId || 'Implant'} ROI cut`;
+            implantCutCount++;
+            implantGradientMeshCount++;
+          }
+        }
+
+        if (showInternalImplants) {
+          const implantState = {
+            opacity: opacity * 0.18,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+          };
+          let bodyGeometry = followDepthProfile
+            ? sidewallGeometry()
+            : geometryFromSolid(displaySolidForZCollapse(implant));
+          if (!followDepthProfile) {
+            setAnnotationDepthAttribute(bodyGeometry, implant);
+            bodyGeometry = shearImplantGeometry(bodyGeometry, implant);
+          }
+          const bodyMaterial = createAnnotationGradientMaterial(implant, implantState, {
               roughness: 0.7,
-              metalness: 0,
-              side: THREE.DoubleSide,
-              transparent: true,
-              opacity: implantState.opacity,
-              depthTest: true,
-              depthWrite: false,
             }),
             body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
           if (body) {
             body.name = implant.name || implant.implantId || 'Implant';
             implantInternalCount++;
+            implantGradientMeshCount++;
           }
 
           if (followDepthProfile && zIsVisible(implant.innerZ)) {
@@ -1711,6 +1887,11 @@ export function createThreeView({
             });
           }
         }
+
+        // A clipped sidewall is not a physical top/bottom surface. In opaque
+        // mode it is enough to show the ROI cut; only a genuinely exposed
+        // surviving outer face receives the horizontal surface overlay.
+        if (!showInternalImplants && !implant.surfaceExposed) continue;
 
         implantSurfaceCount++;
         const capState = {
@@ -1746,24 +1927,31 @@ export function createThreeView({
           });
         } else {
           if (!zIsVisible(implant.outerZ)) continue;
-          const capGeometry = shearImplantGeometry(
-              geometryFromSolid({
-                slabs: [],
-                caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
-              }),
-              implant,
-            ),
-            capMaterial = createSurfaceMaterial({ color: implant.color || '#D65A6F' }, capState);
+          let capGeometry = geometryFromSolid({
+            slabs: [],
+            caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
+          });
+          setAnnotationDepthAttribute(capGeometry, implant, 0);
+          capGeometry = shearImplantGeometry(capGeometry, implant);
+          const capMaterial = createAnnotationGradientMaterial(implant, capState, {
+            roughness: 0.72,
+          });
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
           const cap = addSurfaceMesh(capGeometry, capMaterial, capState, null, 40);
-          if (cap) cap.name = capName;
+          if (cap) {
+            cap.name = capName;
+            implantGradientMeshCount++;
+          }
         }
       }
 
       host.dataset.implantInternalCount = String(implantInternalCount);
       host.dataset.implantSurfaceCount = String(implantSurfaceCount);
+      host.dataset.implantCutCount = String(implantCutCount);
+      host.dataset.implantGradientMeshCount = String(implantGradientMeshCount);
+      host.dataset.implantGradient = 'section-depth';
 
       // Electrical regions are first-class non-material annotations. Their
       // volume is visible through transparent host material; an exposed/cut

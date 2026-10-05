@@ -512,6 +512,7 @@ export async function runRendererProductCases({ page, capture }) {
     model: implantModel,
     section: { a: [-9, 0], b: [9, 0] },
   });
+  implantProject.roi = { type: 'rect', a: [-4, -5], b: [4, 5] };
   await loadProject(page, implantProject, 'wide-implant-buried');
   await page.locator('#threeMaxBtn').click();
   assert.equal(
@@ -522,7 +523,20 @@ export async function runRendererProductCases({ page, capture }) {
   assert.equal(
     Number(await page.locator('#threeHost').getAttribute('data-implant-surface-count')),
     0,
-    'Opaque 3D must not add a surface overlay for a fully buried implant',
+    'Opaque 3D must not add a horizontal surface overlay for a fully buried implant',
+  );
+  assert.ok(
+    Number(await page.locator('#threeHost').getAttribute('data-implant-cut-count')) > 0,
+    'Opaque 3D ROI must expose the buried implant on the inspection cut face',
+  );
+  assert.ok(
+    Number(await page.locator('#threeHost').getAttribute('data-implant-gradient-mesh-count')) > 0,
+    '3D ROI cut must use an implant depth-gradient mesh',
+  );
+  assert.equal(
+    await page.locator('#threeHost').getAttribute('data-implant-gradient'),
+    'section-depth',
+    '3D Implant gradient contract must match Section depth semantics',
   );
   await capture(page, 'wide-implant-buried-opaque-max');
   await page.locator('#threeMaxBtn').click();
@@ -534,6 +548,10 @@ export async function runRendererProductCases({ page, capture }) {
   assert.ok(
     Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')) > 0,
     'Transparent 3D must add the buried implant volume for inspection',
+  );
+  assert.ok(
+    Number(await page.locator('#threeHost').getAttribute('data-implant-gradient-mesh-count')) > 1,
+    'Transparent 3D must keep depth gradients on both the cut face and internal volume',
   );
   await capture(page, 'wide-implant-buried-transparent-max');
   await page.locator('#threeMaxBtn').click();

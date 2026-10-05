@@ -5,6 +5,10 @@ import test from 'node:test';
 const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
+const annotationRendering = await readFile(
+  new URL('../annotation-rendering.js', import.meta.url),
+  'utf8',
+);
 const rendererGeometry = await readFile(
   new URL('../renderer-geometry.js', import.meta.url),
   'utf8',
@@ -76,11 +80,29 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
   assert.match(threeView, /const showInternalImplants = materialState\.transparent/);
-  assert.match(threeView, /if \(!showInternalImplants && !implant\.surfaceExposed\) continue/);
+  assert.match(
+    threeView,
+    /if \(!showInternalImplants && !implant\.surfaceExposed && !implant\.viewClipped\) continue/,
+  );
+  assert.match(threeView, /if \(implant\.viewClipped\)/);
   assert.match(threeView, /if \(showInternalImplants\)/);
   assert.match(threeView, /opacity: opacity \* 0\.18/);
+  assert.match(threeView, /IMPLANT_DEPTH_GRADIENT\.outerAlpha/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
-  assert.match(threeView, /opacity: implantState\.opacity,\s*depthTest: true/s);
+  assert.match(threeView, /constantDepth != null && Number\.isFinite\(Number\(constantDepth\)\)/);
+  assert.match(threeView, /function createAnnotationGradientMaterial\(/);
+  assert.match(threeView, /attribute float annotationDepth/);
+  assert.match(threeView, /midScale = midAlpha \/ outerAlpha/);
+  assert.match(threeView, /innerScale = innerAlpha \/ outerAlpha/);
+  assert.match(annotationRendering, /outerAlpha: 0\.72/);
+  assert.match(annotationRendering, /midDepth: 0\.48/);
+  assert.match(annotationRendering, /midAlpha: 0\.4/);
+  assert.match(annotationRendering, /innerAlpha: 0\.04/);
+  assert.match(threeView, /function annotationSidewallParts\(/);
+  assert.match(threeView, /lowerDepth: depthAt\(z0\), upperDepth: depthAt\(z1\)/);
+  assert.match(threeView, /displaySidewallParts\(annotationSidewallParts\(implant\)\)/);
+  assert.match(threeView, /cutMaterial\.polygonOffset = true/);
+  assert.match(threeView, /cutMaterial\.depthFunc = THREE\.LessEqualDepth/);
   assert.match(threeView, /capState = \{[\s\S]*?depthTest: true/);
   assert.match(threeView, /capMaterial\.polygonOffset = true/);
   assert.match(threeView, /capMaterial\.polygonOffsetFactor = -1/);

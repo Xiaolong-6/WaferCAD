@@ -170,6 +170,16 @@ test('Project schema and annotation contracts', () => {
     growth: 'direct',
   });
   assert.equal(implantSolids(buriedImplantModel)[0]?.surfaceExposed, false);
+  assert.equal(
+    implantSolids(buriedImplantModel, rectMulti(4, 10))[0]?.viewClipped,
+    true,
+    'ROI clipping must mark a buried Implant fragment as an inspection cut',
+  );
+  assert.equal(
+    implantSolids(buriedImplantModel, rectMulti(12, 12))[0]?.viewClipped,
+    false,
+    'an ROI that fully contains the Implant must not create a cut-face marker',
+  );
 
   const roughImplantModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   applyOperation(roughImplantModel, {

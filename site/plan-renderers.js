@@ -1,3 +1,4 @@
+import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { layerById, modelBoundsZ } from './model.js';
 import {
   electricalRegionSectionBands,
@@ -708,9 +709,18 @@ export function createPlanRenderers({
         0,
         mapZ(innerZSum / activeSamples),
       );
-      gradient.addColorStop(0, rgbaColor(implant.color, 0.72));
-      gradient.addColorStop(0.48, rgbaColor(implant.color, 0.4));
-      gradient.addColorStop(1, rgbaColor(implant.color, 0.04));
+      gradient.addColorStop(
+        IMPLANT_DEPTH_GRADIENT.outerDepth,
+        rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.outerAlpha),
+      );
+      gradient.addColorStop(
+        IMPLANT_DEPTH_GRADIENT.midDepth,
+        rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.midAlpha),
+      );
+      gradient.addColorStop(
+        IMPLANT_DEPTH_GRADIENT.innerDepth,
+        rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.innerAlpha),
+      );
 
       ctx.save();
       ctx.beginPath();

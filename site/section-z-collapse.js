@@ -1,3 +1,16 @@
+function sectionCollapseEdgeEpsilon(bounds) {
+  const [rawLo, rawHi] = bounds || [];
+  const lo = Number(rawLo),
+    hi = Number(rawHi);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || !(hi > lo)) return 1e-12;
+
+  // Keep only a sub-nanometre-scale numerical guard at normal wafer thicknesses.
+  // A percentage-of-span margin makes thick substrates trap the collapse handle
+  // several micrometres away from the physical surface.
+  const span = hi - lo;
+  return Math.min(1e-3, Math.max(1e-9, span * 1e-6));
+}
+
 export function defaultSectionCollapse(bounds) {
   const [rawLo, rawHi] = bounds || [];
   const lo = Number(rawLo),
@@ -144,7 +157,7 @@ export function normalizeSectionCollapse(value, bounds) {
   }
 
   const span = hi - lo,
-    minVisible = Math.max(span * 0.01, 1e-12),
+    minVisible = sectionCollapseEdgeEpsilon([lo, hi]),
     minCollapsed = Math.max(span * 0.02, 1e-12),
     fallback = defaultSectionCollapse([lo, hi]);
 
@@ -181,8 +194,7 @@ export function translateSectionCollapse(value, delta, bounds) {
     return normalized;
   }
 
-  const span = hi - lo,
-    minVisible = Math.max(span * 0.01, 1e-12),
+  const minVisible = sectionCollapseEdgeEpsilon([lo, hi]),
     minBottom = lo + minVisible,
     maxTop = hi - minVisible,
     applied = Math.max(minBottom - normalized.bottom, Math.min(maxTop - normalized.top, requested));

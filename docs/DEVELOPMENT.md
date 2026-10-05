@@ -55,13 +55,13 @@ There is no application build step.
 6. Mask alignment transform is explicit and defaults to identity.
 7. Cells define hierarchy scope; Layers is global.
 8. Zero-width linework is not an operable mask.
-9. The 3D ROI is render-only.
+9. The 3D ROI is render-only. Its perimeter defines 3D inspection cut faces and remains independent from the Section A–B line; neither view may silently move the other.
 10. All four views derive from the same region-stack model.
 11. Layers are referenced by stable internal ID, not by user-visible name.
 12. Structure and Implant colors come from curated or generated harmonious 20-color palettes; arbitrary color-picker input is intentionally hidden from Process.
 13. Etch has no growth mode.
 14. Rough/Pyramid morphology is deterministic appearance metadata; Section and 3D must consume the same profile field and canonical material geometry remains ideal.
-15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface.
+15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface. Section and 3D must consume the shared Implant depth-gradient contract; opaque 3D may expose only the ROI-cut face of a buried Implant, never the full buried volume.
 16. Main/Mask morphology cues must remain subtle overlays that do not replace the underlying material/mask color language.
 17. Base rebuilds remain reversible.
 18. Every successful Process Apply must append exactly one restorable **Step** node. Failed, aborted, busy, and no-change operations must append none.

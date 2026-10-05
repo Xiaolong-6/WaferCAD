@@ -39,8 +39,14 @@ test('Section collapse and surface rendering contracts', () => {
   const collapseWidth = normalizedCollapse.top - normalizedCollapse.bottom,
     translatedToTop = translateSectionCollapse(normalizedCollapse, 1000, [-350, 30]),
     translatedToBottom = translateSectionCollapse(normalizedCollapse, -1000, [-350, 30]);
-  assert.ok(Math.abs(translatedToTop.top - 26.2) < 1e-9);
-  assert.ok(Math.abs(translatedToBottom.bottom + 346.2) < 1e-9);
+  assert.ok(
+    translatedToTop.top < 30 && 30 - translatedToTop.top < 0.001,
+    'translated collapse must approach the top surface within 1 nm',
+  );
+  assert.ok(
+    translatedToBottom.bottom > -350 && translatedToBottom.bottom + 350 < 0.001,
+    'translated collapse must approach the bottom surface within 1 nm',
+  );
   assert.ok(Math.abs(translatedToTop.top - translatedToTop.bottom - collapseWidth) < 1e-9);
   assert.ok(Math.abs(translatedToBottom.top - translatedToBottom.bottom - collapseWidth) < 1e-9);
   const collapseTransform = createSectionZTransform({
