@@ -270,8 +270,11 @@ export function createProcessPanelController({
 
   function replayScopeCells(state) {
     const hierarchy = state?.layout?.hierarchy || {},
+      requestedCell = state?.activeCell || null,
       activeCell =
-        state?.activeCell ||
+        (requestedCell && (requestedCell in hierarchy || requestedCell === state?.layout?.root)
+          ? requestedCell
+          : null) ||
         state?.layout?.root ||
         Object.keys(hierarchy)[0] ||
         null;
