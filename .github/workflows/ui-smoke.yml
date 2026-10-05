@@ -16,6 +16,8 @@ on:
       - "scripts/test-helpers/**"
       - "scripts/example-regression.mjs"
       - "scripts/product-regression.mjs"
+      - "scripts/product-layout-cases.mjs"
+      - "scripts/renderer-product-cases.mjs"
       - "scripts/product-layout-regression.mjs"
       - "scripts/renderer-product-regression.mjs"
       - "scripts/process-benchmarks.mjs"
