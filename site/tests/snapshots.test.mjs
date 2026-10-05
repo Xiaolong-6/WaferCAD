@@ -1746,6 +1746,24 @@ test('renaming an entity propagates through restorable History states and replay
 
   assert.equal(manager.restoreProcessNode(deposit.id), true);
   assert.equal(live.model.layers.find((layer) => layer.id === 'layer-6').name, 'ITO');
+
+  const exported = manager.exportBranchState();
+  let importedLive = structuredClone(live);
+  const imported = createSnapshotManager({
+    capture: () => importedLive,
+    restore: (value) => {
+      importedLive = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+  imported.importRecords([], exported);
+  const importedDeposit = imported.listHistory().find((node) => node.id === deposit.id);
+  assert.equal(importedDeposit.displayLabel, 'Deposit ITO · Directional · 0.2 µm');
+  assert.equal(imported.restoreProcessNode(deposit.id), true);
+  assert.equal(
+    importedLive.model.layers.find((layer) => layer.id === 'layer-6').name,
+    'ITO',
+  );
 });
 
 
