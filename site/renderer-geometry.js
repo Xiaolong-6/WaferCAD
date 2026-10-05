@@ -16,8 +16,8 @@ function boundaryKey(layerId, z, line) {
 
 function capBoundaryIndex(caps) {
   const index = new Map();
-  for (const cap of caps || []) {
-    if (cap.appearance?.kind !== 'rough') continue;
+  (caps || []).forEach((cap, capIndex) => {
+    if (cap.appearance?.kind !== 'rough') return;
     const layerIds = [...new Set([cap.layerId, cap.interfaceLayerId].filter(Boolean))];
     for (const poly of cap.polys || []) {
       for (const closed of poly || []) {
@@ -37,6 +37,7 @@ function capBoundaryIndex(caps) {
             const key = boundaryKey(layerId, cap.z, line);
             if (!index.has(key)) index.set(key, []);
             index.get(key).push({
+              capIndex,
               line,
               appearance: { ...cap.appearance },
               profileNormal: Number(cap.profileNormal) || Number(cap.normal) || 1,
@@ -45,7 +46,7 @@ function capBoundaryIndex(caps) {
         }
       }
     }
-  }
+  });
   return index;
 }
 
@@ -56,11 +57,11 @@ function sidewallBoundaryAppearance(index, part, z) {
   if (!candidates.length) return null;
 
   const full = candidates.find(
-    (candidate) =>
-      candidate.line.t0 <= line.t0 + SIDEWALL_APPEARANCE_EPSILON &&
-      candidate.line.t1 >= line.t1 - SIDEWALL_APPEARANCE_EPSILON,
-  );
-  const midpoint = (line.t0 + line.t1) / 2,
+      (candidate) =>
+        candidate.line.t0 <= line.t0 + SIDEWALL_APPEARANCE_EPSILON &&
+        candidate.line.t1 >= line.t1 - SIDEWALL_APPEARANCE_EPSILON,
+    ),
+    midpoint = (line.t0 + line.t1) / 2,
     match =
       full ||
       candidates.find(
@@ -72,17 +73,54 @@ function sidewallBoundaryAppearance(index, part, z) {
   return {
     appearance: { ...match.appearance },
     profileNormal: match.profileNormal,
+    capIndex: match.capIndex,
   };
 }
 
-function decorateSidewallsWithMorphology(caps, sidewalls) {
+function decorateSurfacePlan(caps, sidewalls) {
   const index = capBoundaryIndex(caps);
-  if (!index.size) return sidewalls;
-  return (sidewalls || []).map((part) => ({
-    ...part,
-    lowerSurface: sidewallBoundaryAppearance(index, part, part.z0),
-    upperSurface: sidewallBoundaryAppearance(index, part, part.z1),
-  }));
+  if (!index.size) return { caps, sidewalls };
+
+  const sidewallIntervalsByCap = new Map(),
+    decoratedSidewalls = (sidewalls || []).map((part) => {
+      const line = part.line || canonicalLineInterval(part.p, part.q),
+        lowerSurface = sidewallBoundaryAppearance(index, part, part.z0),
+        upperSurface = sidewallBoundaryAppearance(index, part, part.z1);
+
+      for (const surface of [lowerSurface, upperSurface]) {
+        if (!line || surface?.capIndex == null) continue;
+        if (!sidewallIntervalsByCap.has(surface.capIndex)) {
+          sidewallIntervalsByCap.set(surface.capIndex, []);
+        }
+        sidewallIntervalsByCap.get(surface.capIndex).push({
+          key: lineIntervalKey(line),
+          t0: line.t0,
+          t1: line.t1,
+        });
+      }
+
+      return {
+        ...part,
+        lowerSurface: lowerSurface
+          ? {
+              appearance: lowerSurface.appearance,
+              profileNormal: lowerSurface.profileNormal,
+            }
+          : null,
+        upperSurface: upperSurface
+          ? {
+              appearance: upperSurface.appearance,
+              profileNormal: upperSurface.profileNormal,
+            }
+          : null,
+      };
+    }),
+    decoratedCaps = (caps || []).map((cap, capIndex) => ({
+      ...cap,
+      sidewallBoundaryIntervals: sidewallIntervalsByCap.get(capIndex) || [],
+    }));
+
+  return { caps: decoratedCaps, sidewalls: decoratedSidewalls };
 }
 
 // Renderer-facing adapter. Physical ownership is derived once by Process
@@ -90,9 +128,10 @@ function decorateSidewallsWithMorphology(caps, sidewalls) {
 // metadata needed to make exposed/cut sidewalls follow the same deterministic
 // profile as their horizontal caps.
 export function buildRenderSurfacePlan(model, clip = null) {
-  const plan = ownedMaterialSurfacesFromTopology(model, clip);
+  const plan = ownedMaterialSurfacesFromTopology(model, clip),
+    decorated = decorateSurfacePlan(plan.caps, plan.sidewalls);
   return {
     ...plan,
-    sidewalls: decorateSidewallsWithMorphology(plan.caps, plan.sidewalls),
+    ...decorated,
   };
 }
