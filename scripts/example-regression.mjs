@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
-import { launchBrowser, newUiPage } from './test-helpers/ui.mjs';
+import { launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
 import { checkSectionSeams } from './test-helpers/product-scientific.mjs';
 import {
   assertAnnotationKeepsMaterialTopology,
@@ -95,8 +95,7 @@ function glbPositionBounds(json) {
 
 const browser = await launchBrowser();
 const { page, context } = await newUiPage(browser, { viewport: { width: 1280, height: 860 } });
-const pageErrors = [];
-page.on('pageerror', (error) => pageErrors.push(error.message));
+const pageErrors = observePageErrors(page);
 
 const FUNCTION_SECTION_IDS = {
   snapshots: 'snapshotsTools',
