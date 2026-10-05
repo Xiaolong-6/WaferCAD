@@ -20,6 +20,7 @@ import {
   unitMeta,
 } from './units.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
+import { historyOperationLabel } from './history-operation-label.js';
 import { takeStartupFile } from './startup-file.js';
 import { createBuildController } from './controllers/build-controller.js';
 import { createFeedbackController } from './controllers/feedback-controller.js';
@@ -519,6 +520,7 @@ const layerLegendController = createLayerLegendController({
   renderAll,
   updateOperationUI,
   onChanged: markProjectDirty,
+  onNameChanged: () => renderSnapshots(),
   status,
   confirmAction: (options) => confirmationDialog.confirm(options),
 });
@@ -730,7 +732,8 @@ function syncMaskSourceSummary() {
 }
 
 let processPanelController = null,
-  pendingHistoryStepEdit = null;
+  pendingHistoryStepEdit = null,
+  pendingHistoryStepInsert = null;
 
 function updateOperationUI() {
   processPanelController?.updateUi();
@@ -846,6 +849,32 @@ function cancelHistoricalStepEdit() {
   pendingHistoryStepEdit = null;
 }
 
+function cancelHistoricalStepInsert() {
+  pendingHistoryStepInsert = null;
+}
+
+function currentHistoricalStepInsert() {
+  if (!pendingHistoryStepInsert) return null;
+  const {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    laterStepCount,
+  } = pendingHistoryStepInsert;
+  return {
+    nodeId,
+    branchId,
+    branchName,
+    parentNodeId,
+    mode,
+    originalLabel,
+    laterStepCount,
+  };
+}
+
 function currentHistoricalStepEdit() {
   if (!pendingHistoryStepEdit) return null;
   const {
@@ -930,7 +959,177 @@ async function beginHistoricalStepEdit(node) {
   return true;
 }
 
+async function beginHistoricalStepInsert(node) {
+  const context = snapshotManager.insertBeforeContext(node?.id, { includeReplayStates: true });
+  if (!context?.editable) {
+    status(context?.reason || 'This Step cannot accept an inserted predecessor Step.', 'warning');
+    return false;
+  }
+
+  const currentLabel = historyOperationLabel(node, model),
+    replayableTail =
+      context.replayableTail &&
+      context.replaySteps.every((step) =>
+        processPanelController?.canReplayOperation(step.operation),
+      ),
+    canCurrentReplay =
+      context.canReplaceCurrentVariant &&
+      replayableTail &&
+      snapshotManager.canRecordOperation(1),
+    canBranchStart =
+      snapshotManager.canCreateVariant() && snapshotManager.canRecordOperation(1),
+    canBranchReplay =
+      canBranchStart &&
+      replayableTail &&
+      snapshotManager.canRecordOperation(context.replaySteps.length + 1),
+    actions = [{ value: 'cancel', label: 'Cancel' }];
+
+  if (canCurrentReplay) {
+    actions.push({
+      value: 'current-replay',
+      label: 'Update current Variant',
+      kind: 'primary',
+      default: true,
+    });
+  }
+  if (canBranchReplay) {
+    actions.push({
+      value: 'branch-replay',
+      label: 'New Variant · Carry later Steps',
+      kind: canCurrentReplay ? undefined : 'primary',
+      default: !canCurrentReplay,
+    });
+  }
+  if (canBranchStart) {
+    actions.push({
+      value: 'branch-start',
+      label: 'New Variant · Start from here',
+      kind: !canCurrentReplay && !canBranchReplay ? 'primary' : undefined,
+      default: !canCurrentReplay && !canBranchReplay,
+    });
+  }
+
+  if (actions.length === 1) {
+    status('No safe insertion strategy is available for this Step.', 'warning');
+    return false;
+  }
+
+  const detail = [
+    `The new Step will be applied immediately before this Step using its saved workspace/mask context and predecessor geometry. ${context.laterStepCount} existing Step${context.laterStepCount === 1 ? '' : 's'} follow the insertion point.`,
+    !context.canReplaceCurrentVariant
+      ? `The current Variant cannot be rewritten because ${context.dependentVariants
+          .map((item) => `"${item.name}"`)
+          .join(', ')} depend on this history tail.`
+      : '',
+    !replayableTail
+      ? 'Some existing Steps predate deterministic replay metadata, so carrying them forward is unavailable.'
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const mode = await confirmationDialog.ask({
+    title: 'Insert before Step',
+    message: `Insert a new process Step before "${currentLabel}"?`,
+    detail,
+    actions,
+    cancelValue: 'cancel',
+  });
+  if (mode === 'cancel') return false;
+
+  await checkpointWorkspace('pre-history-step-insert');
+  const restored = snapshotManager.restoreStepInput(node.id);
+  if (!restored) {
+    status('Could not restore the input state for this insertion point.', 'error');
+    return false;
+  }
+
+  pendingHistoryStepInsert = {
+    nodeId: node.id,
+    branchId: context.branchId,
+    branchName: context.branchName,
+    parentNodeId: context.parentNodeId,
+    mode,
+    originalLabel: currentLabel,
+    laterStepCount: context.laterStepCount,
+    replaySteps: context.replaySteps.map((item) => structuredClone(item)),
+    canReplaceCurrentVariant: context.canReplaceCurrentVariant,
+  };
+
+  refreshAfterHistoricalEditLoad();
+  markProjectDirty();
+  renderSnapshots();
+  document.querySelector('.workstation-rail-button[data-tool="process"]')?.click();
+  updateOperationUI();
+  status(
+    mode === 'current-replay'
+      ? `Insert mode: add a Step before "${currentLabel}", then the current Variant will recompute its later Steps.`
+      : mode === 'branch-replay'
+        ? `Insert mode: add a Step in a new Variant before "${currentLabel}", then carry and recompute the later Steps.`
+        : `Insert mode: start a new Variant before "${currentLabel}" without carrying later Steps.`,
+    'success',
+  );
+  return true;
+}
+
+async function finishHistoricalStepInsert({ applyGate, branchCommit } = {}) {
+  if (!applyGate?.historyStepInsert) return false;
+  const insert = pendingHistoryStepInsert;
+  if (
+    !insert ||
+    insert.nodeId !== applyGate.nodeId ||
+    insert.branchId !== applyGate.branchId ||
+    insert.parentNodeId !== applyGate.parentNodeId ||
+    insert.mode !== applyGate.mode
+  ) {
+    status('History insertion context changed before completion.', 'error');
+    pendingHistoryStepInsert = null;
+    updateOperationUI();
+    return true;
+  }
+
+  const replaySteps = insert.replaySteps.map((step) => structuredClone(step)),
+    mode = insert.mode,
+    targetVariant = snapshotManager.activeBranch().name;
+  pendingHistoryStepInsert = null;
+  updateOperationUI();
+
+  if (mode === 'branch-start') {
+    markProjectDirty();
+    renderSnapshots();
+    status(
+      `Inserted the Step and started new Variant "${branchCommit?.name || targetVariant}" from this point.`,
+      'success',
+    );
+    return true;
+  }
+
+  const replay = await processPanelController.replayOperations(replaySteps);
+  markProjectDirty();
+  renderSnapshots();
+  if (!replay.ok) {
+    const failedLabel =
+      replay.failedOperation?.label || replay.failedOperation?.kind || 'later Step';
+    status(
+      `Recompute stopped after ${replay.completed}/${replaySteps.length} existing Steps at "${failedLabel}": ${replay.error} A Recovery checkpoint was saved before insertion.`,
+      'warning',
+    );
+    return true;
+  }
+
+  status(
+    mode === 'current-replay'
+      ? `Inserted the Step and recomputed ${replay.completed} existing Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`
+      : `Inserted the Step in new Variant "${branchCommit?.name || snapshotManager.activeBranch().name}" and recomputed ${replay.completed} existing Step${replay.completed === 1 ? '' : 's'}.`,
+    'success',
+  );
+  return true;
+}
+
 async function finishHistoricalStepEdit({ applyGate, branchCommit } = {}) {
+  if (applyGate?.historyStepInsert) {
+    return finishHistoricalStepInsert({ applyGate, branchCommit });
+  }
   if (!applyGate?.historyStepEdit) return false;
   const edit = pendingHistoryStepEdit;
   if (
@@ -1010,6 +1209,7 @@ const projectController = createProjectController({
   importLayoutBuffer,
   loadProjectSnapshot,
   snapshotManager,
+  getModel: () => model,
   syncBaseControls,
   syncTransformInputs: () => maskImportController.syncTransformInputs(),
   renderAll,
@@ -1035,6 +1235,9 @@ const projectController = createProjectController({
   beginHistoricalStepEdit,
   getHistoricalStepEdit: currentHistoricalStepEdit,
   cancelHistoricalStepEdit,
+  beginHistoricalStepInsert,
+  getHistoricalStepInsert: currentHistoricalStepInsert,
+  cancelHistoricalStepInsert,
 });
 const {
   renderSnapshots,
@@ -1045,6 +1248,44 @@ const {
 
 async function ensureWritableProcessBranch() {
   const continuation = snapshotManager.continuationContext();
+
+  if (pendingHistoryStepInsert) {
+    const insert = pendingHistoryStepInsert;
+    if (
+      !continuation ||
+      continuation.branchId !== insert.branchId ||
+      continuation.cursorNodeId !== insert.parentNodeId
+    ) {
+      pendingHistoryStepInsert = null;
+      updateOperationUI();
+      status('History insertion context changed. Start the insertion again from History.', 'error');
+      return false;
+    }
+
+    if (
+      insert.mode === 'current-replay' &&
+      (!insert.canReplaceCurrentVariant || !snapshotManager.canRecordOperation(1))
+    ) {
+      status('The current Variant can no longer be safely rewritten at this insertion point.', 'error');
+      return false;
+    }
+    if (
+      insert.mode !== 'current-replay' &&
+      (!snapshotManager.canCreateVariant() || !snapshotManager.canRecordOperation(1))
+    ) {
+      status('Variant or History capacity was exhausted before insertion could complete.', 'error');
+      return false;
+    }
+
+    return {
+      historyStepInsert: true,
+      nodeId: insert.nodeId,
+      branchId: insert.branchId,
+      parentNodeId: insert.parentNodeId,
+      mode: insert.mode,
+    };
+  }
+
   if (pendingHistoryStepEdit) {
     const edit = pendingHistoryStepEdit;
     if (
@@ -1165,6 +1406,31 @@ async function ensureWritableProcessBranch() {
 }
 
 function commitWritableProcessBranch(gate) {
+  if (gate?.historyStepInsert) {
+    const insert = pendingHistoryStepInsert;
+    const continuation = snapshotManager.continuationContext();
+    if (
+      !insert ||
+      insert.nodeId !== gate.nodeId ||
+      insert.branchId !== gate.branchId ||
+      insert.parentNodeId !== gate.parentNodeId ||
+      insert.mode !== gate.mode ||
+      !continuation ||
+      continuation.branchId !== insert.branchId ||
+      continuation.cursorNodeId !== insert.parentNodeId
+    ) {
+      throw new Error('History insertion context changed before the operation completed.');
+    }
+
+    const created =
+      insert.mode === 'current-replay'
+        ? (snapshotManager.replaceBranchTailFrom(insert.nodeId), null)
+        : snapshotManager.createBranchFromCursor();
+    markProjectDirty();
+    renderSnapshots();
+    return created;
+  }
+
   if (gate?.historyStepEdit) {
     const edit = pendingHistoryStepEdit;
     const continuation = snapshotManager.continuationContext();
@@ -1299,6 +1565,7 @@ processPanelController = createProcessPanelController({
   recordProcessOperation,
   afterApply: finishHistoricalStepEdit,
   getHistoricalStepEdit: currentHistoricalStepEdit,
+  getHistoricalStepInsert: currentHistoricalStepInsert,
   clearBaseRevertSnapshot: () => {
     baseRevertSnapshot = null;
   },
