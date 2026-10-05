@@ -1619,6 +1619,8 @@ processPanelController = createProcessPanelController({
     drawMask,
     maskTransform,
     layout,
+    activeCell,
+    selectedLayerKeys: [...selectedLayerKeys],
   }),
   operationAreaGeometry,
   selectedElement,
