@@ -49,7 +49,7 @@ export async function assertVisualBaseline(
   }
 
   const comparison = await page.evaluate(
-    async ({ actualBase64, expectedBase64, channelThreshold }) => {
+    async ({ actualBase64, expectedBase64, channelThreshold, maxDiffRatio }) => {
       const decode = async (base64) => {
         const response = await fetch(`data:image/png;base64,${base64}`);
         return createImageBitmap(await response.blob());
@@ -104,7 +104,6 @@ export async function assertVisualBaseline(
           Math.abs(actualPixels[offset + 2] - expectedPixels[offset + 2]),
           Math.abs(actualPixels[offset + 3] - expectedPixels[offset + 3]),
         );
-        const pixel = offset / 4;
         if (delta > channelThreshold) {
           diffPixels += 1;
           diff.data[offset] = 255;
@@ -121,10 +120,14 @@ export async function assertVisualBaseline(
           diff.data[offset + 2] = gray;
           diff.data[offset + 3] = 70;
         }
-        void pixel;
       }
 
-      diffContext.putImageData(diff, 0, 0);
+      const diffRatio = diffPixels / Math.max(1, width * height);
+      let diffPngBase64 = null;
+      if (diffRatio > maxDiffRatio) {
+        diffContext.putImageData(diff, 0, 0);
+        diffPngBase64 = diffCanvas.toDataURL('image/png').split(',')[1];
+      }
       return {
         sameSize: true,
         actualWidth: width,
@@ -132,14 +135,15 @@ export async function assertVisualBaseline(
         expectedWidth: width,
         expectedHeight: height,
         diffPixels,
-        diffRatio: diffPixels / Math.max(1, width * height),
-        diffPngBase64: diffCanvas.toDataURL('image/png').split(',')[1],
+        diffRatio,
+        diffPngBase64,
       };
     },
     {
       actualBase64: actual.toString('base64'),
       expectedBase64: expected.toString('base64'),
       channelThreshold,
+      maxDiffRatio,
     },
   );
 
