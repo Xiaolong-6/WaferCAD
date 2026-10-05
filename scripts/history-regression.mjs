@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
-import { mkdir, readFile } from 'node:fs/promises';
-import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+import {
+  mkdir,
+  readFile } from 'node:fs/promises';
+import { loadGeometryKernel,
+  projectForBenchmark } from './process-benchmarks.mjs';
 import {
   chooseConfirmation,
   gotoWelcome,
   launchBrowser,
   openFunctionPanel,
+  newUiContext,
 } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
@@ -38,7 +42,7 @@ const browser = await launchBrowser();
 
 // Every successful process Step is a restorable History node. The restore state
 // must also survive local autosave + full reload.
-const historyRestoreContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyRestoreContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const historyRestorePage = await historyRestoreContext.newPage();
 const historyRestoreErrors = [];
 historyRestorePage.on('pageerror', (error) => historyRestoreErrors.push(error.message));
@@ -358,7 +362,7 @@ await historyRestoreContext.close();
 
 // Historical Step editing enters the Process editor immediately. The downstream
 // strategy is chosen only when the edited Step is actually saved.
-const historyRecomputeContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyRecomputeContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const historyRecomputePage = await historyRecomputeContext.newPage();
 const historyRecomputeErrors = [];
 historyRecomputePage.on('pageerror', (error) => historyRecomputeErrors.push(error.message));
@@ -446,7 +450,7 @@ await historyRecomputeContext.close();
 
 // Replay is transactional: if a later Step fails after earlier replay Steps
 // succeeded, the original Variant and geometry are restored automatically.
-const historyReplayFailureContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyReplayFailureContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const historyReplayFailurePage = await historyReplayFailureContext.newPage();
 const historyReplayFailureErrors = [];
 historyReplayFailurePage.on('pageerror', (error) => historyReplayFailureErrors.push(error.message));
@@ -533,7 +537,7 @@ await historyReplayFailureContext.close();
 
 // Project delivery gate: use a fresh browser context so accumulated download state
 // from the long smoke scenario cannot mask whether one user-requested export works.
-const projectDownloadContext = await browser.newContext({
+const projectDownloadContext = await newUiContext(browser, {
   viewport: { width: 1100, height: 760 },
   acceptDownloads: true,
 });
