@@ -406,6 +406,14 @@ export function createProjectController({
         status('This Step is already the Variant HEAD.', 'warning');
         return;
       }
+      if (
+        !(await prepareHistoryReplacement(
+          'pre-history-truncate-navigation',
+          'Continue from Step',
+        ))
+      ) {
+        return;
+      }
       const confirmed = await confirmAction({
         title: 'Continue from this Step?',
         message: `Make "${node.operation?.label || node.operation?.kind || 'Process step'}" the new HEAD of "${branch.name}"?`,
@@ -438,6 +446,14 @@ export function createProjectController({
       const branch = branchById.get(node.branchId);
       if (!branch || branch.headNodeId !== node.id) {
         status('Only the current Variant HEAD Step can be deleted.', 'warning');
+        return;
+      }
+      if (
+        !(await prepareHistoryReplacement(
+          'pre-history-head-delete-navigation',
+          'Last Step deletion',
+        ))
+      ) {
         return;
       }
       const confirmed = await confirmAction({
