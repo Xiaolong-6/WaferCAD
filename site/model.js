@@ -316,10 +316,7 @@ function cloneAppearance(appearance) {
 function normalizedRoughSurface(surface, processRevision = 0, etchDepth = null) {
   if (surface?.kind !== 'rough') return null;
   const featureSize = Math.max(1e-6, Number(surface.featureSize) || 0.5),
-    meanHeight = Math.max(
-      1e-6,
-      Number(surface.meanHeight ?? surface.amplitude) || featureSize,
-    ),
+    meanHeight = Math.max(1e-6, Number(surface.meanHeight ?? surface.amplitude) || featureSize),
     featureCv = Math.max(0, Math.min(1, Number(surface.featureCv) || 0)),
     heightCv = Math.max(0, Math.min(1, Number(surface.heightCv) || 0)),
     morphology = ['stochastic', 'pyramid'].includes(surface.morphology)
@@ -328,7 +325,7 @@ function normalizedRoughSurface(surface, processRevision = 0, etchDepth = null) 
     polarity = surface.polarity === 'normal' ? 'normal' : 'inverted',
     seed = Number.isInteger(surface.seed)
       ? Math.max(0, surface.seed)
-      : ((Math.max(1, processRevision) * 2654435761) >>> 0),
+      : (Math.max(1, processRevision) * 2654435761) >>> 0,
     profileId =
       typeof surface.profileId === 'string' && surface.profileId
         ? surface.profileId
@@ -403,7 +400,8 @@ function sanitizeProcessGeometry(geom, areaEpsilon = 1e-18) {
 const RELEASE_GEOMETRY_GRID_UM = 1e-4;
 
 function snapReleaseGeometry(geom) {
-  const snap = (value) => Math.round(Number(value) / RELEASE_GEOMETRY_GRID_UM) * RELEASE_GEOMETRY_GRID_UM,
+  const snap = (value) =>
+      Math.round(Number(value) / RELEASE_GEOMETRY_GRID_UM) * RELEASE_GEOMETRY_GRID_UM,
     samePoint = (a, b) => a && b && a[0] === b[0] && a[1] === b[1],
     snapRing = (ring) => {
       const points = [];
@@ -444,9 +442,7 @@ function partitionReleaseRegions(regions, rejectOverlapAbove = null) {
       if (isEmpty(overlap)) continue;
       const overlapArea = processGeometryArea(overlap);
       if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
-        throw new Error(
-          `Isotropic release produced overlapping regions (${overlapArea} µm²).`,
-        );
+        throw new Error(`Isotropic release produced overlapping regions (${overlapArea} µm²).`);
       }
       geom = sanitizeProcessGeometry(difference(geom, previous.geom));
       if (isEmpty(geom)) break;
@@ -494,10 +490,7 @@ function safeUnionParts(geometries) {
     return isEmpty(merged) ? [] : [merged];
   } catch {
     const middle = Math.ceil(geoms.length / 2);
-    return [
-      ...safeUnionParts(geoms.slice(0, middle)),
-      ...safeUnionParts(geoms.slice(middle)),
-    ];
+    return [...safeUnionParts(geoms.slice(0, middle)), ...safeUnionParts(geoms.slice(middle))];
   }
 }
 
@@ -548,10 +541,7 @@ function trimStack(stack, amount, face, appearance = null, targetLayerIds = null
       out.splice(idx, 1);
       const next = face === 'front' ? out.at(-1) : out[0],
         crossesVoid =
-          next &&
-          (face === 'front'
-            ? seg.z0 - next.z1 > 1e-9
-            : next.z0 - seg.z1 > 1e-9);
+          next && (face === 'front' ? seg.z0 - next.z1 > 1e-9 : next.z0 - seg.z1 > 1e-9);
       if (crossesVoid) left = 0;
     } else {
       if (face === 'front') seg.z1 -= left;
@@ -587,9 +577,7 @@ function addLayerToSurface(stack, layerId, amount, face) {
   if (z == null) return stack;
   const out = stack.map((seg) => ({ ...seg })),
     added =
-      face === 'front'
-        ? { layerId, z0: z, z1: z + amount }
-        : { layerId, z0: z - amount, z1: z };
+      face === 'front' ? { layerId, z0: z, z1: z + amount } : { layerId, z0: z - amount, z1: z };
   if (inherited) added[surfaceField(face)] = inherited;
   if (face === 'front') out.push(added);
   else out.unshift(added);
@@ -687,14 +675,7 @@ function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null
   return normalizeStack(out);
 }
 
-function applyConformalMaterialWalls(
-  model,
-  materialWalls,
-  layerId,
-  face,
-  sourceZ,
-  appearance,
-) {
+function applyConformalMaterialWalls(model, materialWalls, layerId, face, sourceZ, appearance) {
   const targets = new Map((materialWalls || []).map((target) => [target.regionId, target])),
     next = [];
 
@@ -827,14 +808,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
         source,
         voidDomain: uncovered,
       });
-      applyConformalMaterialWalls(
-        model,
-        materialWalls,
-        layerId,
-        face,
-        source.z,
-        source.appearance,
-      );
+      applyConformalMaterialWalls(model, materialWalls, layerId, face, source.z, source.appearance);
 
       for (const wall of voidWalls) {
         addVoidConformalSidewall(model, wall.geom, layerId, face, source);
@@ -854,11 +828,7 @@ function removeLayerInterval(stack, targetLayerIds, z0, z1) {
 
   const out = [];
   for (const segment of stack || []) {
-    if (
-      !targets.has(segment.layerId) ||
-      segment.z1 <= z0 + 1e-9 ||
-      segment.z0 >= z1 - 1e-9
-    ) {
+    if (!targets.has(segment.layerId) || segment.z1 <= z0 + 1e-9 || segment.z0 >= z1 - 1e-9) {
       out.push({ ...segment });
       continue;
     }
@@ -977,7 +947,8 @@ function applyOperationImpl(
   if (type === 'etch' && etchProfile === 'isotropic' && surface?.kind === 'rough') {
     return {
       changed: false,
-      error: 'Isotropic release uses physical undercut geometry and cannot combine with Rough/Pyramid display morphology.',
+      error:
+        'Isotropic release uses physical undercut geometry and cannot combine with Rough/Pyramid display morphology.',
     };
   }
   if (type === 'etch' && surface?.kind === 'rough') {
@@ -1099,8 +1070,7 @@ function applyOperationImpl(
       electricalRegion = {
         id: `electrical-${ordinal}`,
         name:
-          String(name || `Electrical Region ${ordinal}`).trim() ||
-          `Electrical Region ${ordinal}`,
+          String(name || `Electrical Region ${ordinal}`).trim() || `Electrical Region ${ordinal}`,
         color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#7A6FD0',
         face,
         thickness: amount,

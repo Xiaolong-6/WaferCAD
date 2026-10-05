@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  captureHistoryReplayResult,
-  remapHistoryReplayOperation,
-} from '../history-replay.js';
+import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
 
 test('History replay remaps recreated material IDs into downstream Grow and Etch targets', () => {
   const layerIdMap = new Map();

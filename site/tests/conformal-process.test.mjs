@@ -4,21 +4,10 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 
-const {
-  applyOperation,
-  createModel,
-  layerById,
-  recolorLayer,
-  renameLayer,
-  surfaceSegment,
-} = await import('../model.js');
-const {
-  difference,
-  intersection,
-  isEmpty,
-  pointInMulti,
-  rectMulti,
-} = await import('../vector-geometry.js');
+const { applyOperation, createModel, layerById, recolorLayer, renameLayer, surfaceSegment } =
+  await import('../model.js');
+const { difference, intersection, isEmpty, pointInMulti, rectMulti } =
+  await import('../vector-geometry.js');
 
 function regionAt(model, point) {
   return model.regions.find((region) => pointInMulti(point, region.geom)) || null;
@@ -64,7 +53,9 @@ test('Direct/conformal growth and material topology contracts', () => {
   });
   assert.equal(surfaceSegment(regionAt(maskedConformal, [0, 0]).stack).layerId, maskedFilm.layerId);
   assert.equal(
-    regionAt(maskedConformal, [2.5, 0]).stack.some((segment) => segment.layerId === maskedFilm.layerId),
+    regionAt(maskedConformal, [2.5, 0]).stack.some(
+      (segment) => segment.layerId === maskedFilm.layerId,
+    ),
     false,
     'Conformal deposition must not wrap around an artificial mask edge',
   );

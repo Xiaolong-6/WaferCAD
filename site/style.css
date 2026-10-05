@@ -1716,8 +1716,7 @@ body.view-maximized .view-panel.is-maximized .section-body {
   overflow: auto;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(238, 242, 246, 0.94)),
-    radial-gradient(circle at 84% 8%, rgba(82, 107, 132, 0.09), transparent 34%),
-    var(--bg);
+    radial-gradient(circle at 84% 8%, rgba(82, 107, 132, 0.09), transparent 34%), var(--bg);
 }
 
 .welcome-screen[hidden] {
@@ -2413,7 +2412,6 @@ body.welcome-open {
   }
 }
 
-
 /* Function panel system */
 .visually-hidden {
   position: absolute !important;
@@ -2473,7 +2471,6 @@ body.welcome-open {
   height: 27px;
   font-size: 11px;
 }
-
 
 #applyOperationBtn:disabled {
   opacity: 0.45;
@@ -2536,7 +2533,6 @@ body.welcome-open {
   color: #923746;
 }
 
-
 @media (max-width: 900px) {
   .tool-tab-panel .field-row {
     grid-template-columns: 62px minmax(0, 1fr);
@@ -2545,7 +2541,6 @@ body.welcome-open {
     margin-left: 67px;
   }
 }
-
 
 /* Workstation visual system
    Visual-only hierarchy for the editor. Keep density and geometry/layout intact. */
@@ -2909,7 +2904,6 @@ summary:focus-visible {
   color: #74818d;
 }
 
-
 /* Keep semantic feedback noticeable without turning the status bar into a banner. */
 .statusbar[data-level='success'] {
   background: #f4faf6;
@@ -2928,7 +2922,6 @@ summary:focus-visible {
   background: #fff2f3;
   border-top-color: #dfb5bb;
 }
-
 
 /* Phone scientific-toolbar compaction.
    The workstation visual layer is declared after the base responsive rules,
@@ -2953,7 +2946,6 @@ summary:focus-visible {
     margin-right: 0;
   }
 }
-
 
 /* Unified scientific header controls */
 .view-head > .view-tools,
@@ -3054,7 +3046,6 @@ summary:focus-visible {
     font-size: 8px;
   }
 }
-
 
 /* View header controls share one physical box model. Native button/summary/label
    baselines differ across browsers, so align the containers as boxes rather than
@@ -3196,7 +3187,6 @@ summary:focus-visible {
   }
 }
 
-
 .draw-shape-editor {
   position: absolute;
   z-index: 6;
@@ -3304,7 +3294,6 @@ summary:focus-visible {
     width: auto;
   }
 }
-
 
 /* Export popovers and process task dialog */
 .export-control {
@@ -3419,7 +3408,11 @@ summary:focus-visible {
 
 #processTaskElapsed {
   color: #5e6b77;
-  font: 9px ui-monospace, SFMono-Regular, Consolas, monospace;
+  font:
+    9px ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
 }
 
 .process-task-stage {
@@ -3448,7 +3441,6 @@ summary:focus-visible {
     width: calc(100vw - 16px);
   }
 }
-
 
 /* Unified view popovers: one visual shell across Main / Mask / 3D / Section. */
 .view-popover-surface {
@@ -3495,7 +3487,6 @@ summary:focus-visible {
   min-height: 28px;
   background: #f8fafb;
 }
-
 
 @media (max-width: 900px) {
   .section-coords-panel {
@@ -3596,7 +3587,6 @@ summary:focus-visible {
   opacity: 0.48;
 }
 
-
 /* In-page destructive-action dialog. Keeps automation and keyboard interaction in DOM. */
 .confirmation-overlay {
   position: fixed;
@@ -3693,7 +3683,6 @@ summary:focus-visible {
   }
 }
 
-
 .three-export-popover {
   width: min(270px, 76vw);
 }
@@ -3703,7 +3692,6 @@ summary:focus-visible {
   font-size: 8.5px;
   line-height: 1.35;
 }
-
 
 /* Section Z collapse: the axis break is the only normal-state entry point. */
 .section-collapse-overlay {
@@ -3751,14 +3739,13 @@ summary:focus-visible {
   left: 3px;
   right: 3px;
   height: 5px;
-  background:
-    linear-gradient(
-        135deg,
-        transparent 0 39%,
-        var(--accent) 41% 49%,
-        transparent 51% 100%
-      )
-      0 0 / 10px 5px repeat-x;
+  background: linear-gradient(
+      135deg,
+      transparent 0 39%,
+      var(--accent) 41% 49%,
+      transparent 51% 100%
+    )
+    0 0 / 10px 5px repeat-x;
 }
 
 .section-collapse-axis-glyph::before {
@@ -4058,7 +4045,6 @@ summary:focus-visible {
     height: 26px;
   }
 }
-
 
 /* Snapshot process history */
 .snapshot-continuation-banner {
@@ -4495,7 +4481,6 @@ summary:focus-visible {
   }
 }
 
-
 /* History v3: Step-first Variant tree */
 .history-tree-root {
   display: grid;
@@ -4751,7 +4736,6 @@ summary:focus-visible {
   border: 1px dashed #d8dee3;
 }
 
-
 @container history-panel (max-width: 340px) {
   .snapshot-continuation-banner {
     grid-template-columns: minmax(0, 1fr);
@@ -4891,7 +4875,6 @@ summary:focus-visible {
 .electrical-region-chip {
   box-shadow: inset 0 0 0 1px rgba(45, 54, 66, 0.16);
 }
-
 
 /* Section detail ROI: one lightweight inspection window over the Section canvas. */
 #sectionDetailRoiBtn.active {

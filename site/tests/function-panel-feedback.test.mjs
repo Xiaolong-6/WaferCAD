@@ -15,7 +15,10 @@ const projectState = await readFile(
 );
 const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
 const planRenderers = await readFile(new URL('../plan-renderers.js', import.meta.url), 'utf8');
-const selectionGeometry = await readFile(new URL('../selection-geometry.js', import.meta.url), 'utf8');
+const selectionGeometry = await readFile(
+  new URL('../selection-geometry.js', import.meta.url),
+  'utf8',
+);
 const roiController = await readFile(
   new URL('../controllers/roi-controller.js', import.meta.url),
   'utf8',
@@ -63,7 +66,10 @@ test('function panel uses Process and Project labels with segmented process mode
 });
 
 test('function panel groups related engineering parameters compactly', () => {
-  assert.match(html, /class="tool-context process-context"[\s\S]*?id="processSummary"[\s\S]*?id="faceToggleBtn"/);
+  assert.match(
+    html,
+    /class="tool-context process-context"[\s\S]*?id="processSummary"[\s\S]*?id="faceToggleBtn"/,
+  );
   assert.match(
     html,
     /class="param-grid-2 rough-param-grid"[\s\S]*?id="roughFeatureRow"[\s\S]*?id="roughFeatureCvRow"/,
@@ -75,8 +81,14 @@ test('function panel groups related engineering parameters compactly', () => {
   assert.match(html, /id="operationThicknessRow" class="param-field"/);
   assert.match(html, /workspace-recovery-controls compact-action-row/);
   assert.match(style, /\.param-grid-2 \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(style, /\.param-field \{[\s\S]*?grid-template-columns: max-content minmax\(0, 1fr\) auto/);
-  assert.match(style, /@media \(max-width: 600px\)[\s\S]*?\.param-grid-2 \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(
+    style,
+    /\.param-field \{[\s\S]*?grid-template-columns: max-content minmax\(0, 1fr\) auto/,
+  );
+  assert.match(
+    style,
+    /@media \(max-width: 600px\)[\s\S]*?\.param-grid-2 \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/,
+  );
 });
 
 test('typed feedback is centralized in the status bar', () => {
@@ -126,7 +138,6 @@ test('Process panel can record non-geometric fabrication steps', () => {
   assert.match(processPanelController, /without changing material geometry/);
 });
 
-
 test('Mask alignment view overlays neutral structure outlines beneath adjustable mask opacity', () => {
   assert.match(html, /id="maskOpacityRange"/);
   assert.match(html, /id="maskOpacityValue"/);
@@ -135,7 +146,6 @@ test('Mask alignment view overlays neutral structure outlines beneath adjustable
   assert.match(planRenderers, /ctx\.globalAlpha = maskOpacity/);
   assert.match(planRenderers, /drawMaskStructureReference\(ctx, v\)/);
 });
-
 
 test('Mask alignment opacity is persisted and applies only to the mask overlay', () => {
   assert.match(html, /id="maskOpacityRange"/);
@@ -178,8 +188,6 @@ test('Mask topography reference is dashed and all scientific header controls sha
   assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
 });
 
-
-
 test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
   const mainStart = html.indexOf('id="mainPanel"');
   const maskStart = html.indexOf('id="maskPanel"');
@@ -187,9 +195,24 @@ test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
   assert.ok(mainStart >= 0 && maskStart > mainStart && threeStart > maskStart);
   assert.ok(html.indexOf('id="focusEditor"') > mainStart);
   assert.ok(html.indexOf('id="focusEditor"') < maskStart);
-  assert.doesNotMatch(planRenderers.slice(planRenderers.indexOf('function renderMask()'), planRenderers.indexOf('function shadeColor')), /drawRoi/);
-  assert.match(planRenderers.slice(planRenderers.indexOf('function renderMain()'), planRenderers.indexOf('function renderSection()')), /drawRoi\(ctx, v, back\)/);
-  assert.match(roiController, /canvas\.addEventListener\('dblclick'[\s\S]*?resetPlanView\('mask'\)/);
+  assert.doesNotMatch(
+    planRenderers.slice(
+      planRenderers.indexOf('function renderMask()'),
+      planRenderers.indexOf('function shadeColor'),
+    ),
+    /drawRoi/,
+  );
+  assert.match(
+    planRenderers.slice(
+      planRenderers.indexOf('function renderMain()'),
+      planRenderers.indexOf('function renderSection()'),
+    ),
+    /drawRoi\(ctx, v, back\)/,
+  );
+  assert.match(
+    roiController,
+    /canvas\.addEventListener\('dblclick'[\s\S]*?resetPlanView\('mask'\)/,
+  );
 });
 
 test('3D borders are derived from owned surfaces and stay depth-tested', () => {
@@ -207,7 +230,6 @@ test('3D borders are derived from owned surfaces and stay depth-tested', () => {
   );
   assert.match(threeView, /order: 100000/);
 });
-
 
 test('Mask File Draw source is explicit and Draw feeds Process geometry', () => {
   assert.match(html, /id="maskSourceToggleBtn"/);
@@ -235,11 +257,10 @@ test('Draw mode and File mode keep separate UI contexts', () => {
   assert.match(style, /\.draw-shape-editor/);
 });
 
-
 test('Mask owns an independent Square/Circle ROI for Process and export', () => {
   assert.match(html, /id="maskRoiEditor"/);
-  assert.match(html, /data-tool="rect"[^>]*>Square</);
-  assert.match(html, /data-tool="circle"[^>]*>Circle</);
+  assert.match(html, /data-tool="rect"[^>]*>\s*Square\s*</);
+  assert.match(html, /data-tool="circle"[^>]*>\s*Circle\s*</);
   assert.match(html, /id="maskRoiSize"/);
   assert.match(selectionGeometry, /function maskRoiGeometry\(\)/);
   assert.match(selectionGeometry, /return limiter \? intersection\(area, limiter\) : area/);
@@ -249,8 +270,8 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
 });
 
 test('each view uses one shared exclusive popover surface', () => {
-  assert.match(html, /class="section-coords-panel view-popover-surface" data-view-popover-panel/);
-  assert.match(html, /class="draw-shape-editor view-popover-surface" data-view-popover-panel/);
+  assert.match(html, /class="section-coords-panel view-popover-surface"\s+data-view-popover-panel/);
+  assert.match(html, /class="draw-shape-editor view-popover-surface"\s+data-view-popover-panel/);
   assert.match(html, /class="focus-popover[^"]*view-popover-surface"/);
   assert.match(html, /class="three-opacity-popover[^"]*view-popover-surface"/);
   assert.match(html, /class="export-popover[^"]*view-popover-surface"/);
@@ -266,7 +287,10 @@ test('Apply runs as a single cancelable task with elapsed time and Abort', () =>
   assert.match(html, /id="processTaskDialog"[^>]*hidden/);
   assert.match(html, /id="processTaskElapsed"/);
   assert.match(html, /id="processTaskAbortBtn"[^>]*>Abort</);
-  assert.match(processPanelController, /processTaskController\.run\(model, params, taskLabel, areaRequest\)/);
+  assert.match(
+    processPanelController,
+    /processTaskController\.run\(model, params, taskLabel, areaRequest\)/,
+  );
   assert.match(processPanelController, /processTaskController\?\.isBusy\(\)/);
   assert.match(processTaskController, /new Worker\(/);
   assert.match(processTaskController, /setInterval\(syncDialog, 100\)/);
@@ -290,7 +314,6 @@ test('all view headers expose one Export menu and Mask export filters Cells Laye
   assert.match(workspaceActions, /syncMaskExportOptions\(\)/);
 });
 
-
 test('experimental Implant keeps process inputs structural and display styling in views', () => {
   assert.match(html, /id="implantName"/);
   assert.match(html, /id="implantTilt"/);
@@ -302,7 +325,6 @@ test('experimental Implant keeps process inputs structural and display styling i
   assert.match(processPanelController, /colorNewImplant\(result\.implantId\)/);
   assert.doesNotMatch(html, /implantDose|implantEnergy|dopantSpecies/i);
 });
-
 
 test('buried rough interfaces do not create ideal-plane skirts in 3D', () => {
   assert.match(threeView, /closeToIdeal: !cap\.buried/);

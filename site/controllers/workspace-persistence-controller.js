@@ -122,9 +122,7 @@ export function createWorkspacePersistenceController({
     }
     if (dirty) {
       setSaveStatus(
-        hasWriteAccess()
-          ? 'Unsaved changes'
-          : 'Unsaved changes · autosave paused',
+        hasWriteAccess() ? 'Unsaved changes' : 'Unsaved changes · autosave paused',
         'dirty',
       );
       return;
@@ -176,12 +174,15 @@ export function createWorkspacePersistenceController({
   function pulseInteraction(delay = TRANSIENT_INTERACTION_MS) {
     clearTimer();
     clearTransientTimer();
-    transientTimer = setTimeout(() => {
-      transientTimer = null;
-      if (!interactionDepth && dirty) {
-        schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
-      }
-    }, Math.max(0, Number(delay) || TRANSIENT_INTERACTION_MS));
+    transientTimer = setTimeout(
+      () => {
+        transientTimer = null;
+        if (!interactionDepth && dirty) {
+          schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
+        }
+      },
+      Math.max(0, Number(delay) || TRANSIENT_INTERACTION_MS),
+    );
   }
 
   function markDirty() {
@@ -201,11 +202,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function saveCurrentProject(project) {
-    const saved = await saveWorkspaceState(
-      project,
-      { appCommit },
-      { canCommit: hasWriteAccess },
-    );
+    const saved = await saveWorkspaceState(project, { appCommit }, { canCommit: hasWriteAccess });
     if (!saved) {
       saving = false;
       dirty = true;
@@ -258,10 +255,7 @@ export function createWorkspacePersistenceController({
     return write;
   }
 
-  function schedule({
-    markDirty: shouldMarkDirty = true,
-    delay = AUTOSAVE_IDLE_MS,
-  } = {}) {
+  function schedule({ markDirty: shouldMarkDirty = true, delay = AUTOSAVE_IDLE_MS } = {}) {
     if (shouldMarkDirty) markDirty();
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
@@ -269,10 +263,13 @@ export function createWorkspacePersistenceController({
     }
     clearTimer();
     if (interactionDepth > 0 || transientTimer != null) return;
-    timer = setTimeout(() => {
-      timer = null;
-      void persistNow();
-    }, Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS));
+    timer = setTimeout(
+      () => {
+        timer = null;
+        void persistNow();
+      },
+      Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS),
+    );
   }
 
   async function refreshRecoveryOptions() {
@@ -679,7 +676,10 @@ export function createWorkspacePersistenceController({
       if (savedChanged && !dirty) markDirty();
       const persisted = dirty ? await persistNow({ force: true }) : true;
       if (!persisted || !hasWriteAccess()) {
-        status('Workspace takeover was interrupted by another tab before this state could be saved.', 'error');
+        status(
+          'Workspace takeover was interrupted by another tab before this state could be saved.',
+          'error',
+        );
         syncSaveStatus();
         return;
       }
@@ -797,11 +797,7 @@ export function createWorkspacePersistenceController({
     root?.addEventListener?.('pointerdown', beginInteraction, true);
     windowRef?.addEventListener?.('pointerup', endInteraction, true);
     windowRef?.addEventListener?.('pointercancel', endInteraction, true);
-    root?.addEventListener?.(
-      'wheel',
-      () => pulseInteraction(),
-      { capture: true, passive: true },
-    );
+    root?.addEventListener?.('wheel', () => pulseInteraction(), { capture: true, passive: true });
     root?.addEventListener?.(
       'input',
       (event) => {
@@ -825,7 +821,10 @@ export function createWorkspacePersistenceController({
     };
     $('workspaceRecoveryClearBtn').onclick = async () => {
       if (!hasWriteAccess()) {
-        status('This tab cannot clear local Recovery while another tab owns browser storage.', 'warning');
+        status(
+          'This tab cannot clear local Recovery while another tab owns browser storage.',
+          'warning',
+        );
         return;
       }
       if (

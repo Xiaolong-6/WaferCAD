@@ -122,7 +122,6 @@ test('buried Base is not offered as a Grow target and cannot grow through a cove
   assert.match(grow.error, /not exposed/);
 });
 
-
 test('fully etched empty-material state remains a valid persisted project', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   applyOperation(model, {

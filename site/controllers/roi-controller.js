@@ -147,9 +147,11 @@ export function createRoiController({
   }
 
   function bindControls() {
-    $('focusEditor').querySelector('summary')?.addEventListener('click', () => {
-      if (!$('focusEditor').open) closeSliceControls();
-    });
+    $('focusEditor')
+      .querySelector('summary')
+      ?.addEventListener('click', () => {
+        if (!$('focusEditor').open) closeSliceControls();
+      });
     $('focusEditor').addEventListener('toggle', () => {
       if ($('focusEditor').open) closeSliceControls();
     });

@@ -20,10 +20,7 @@ function finitePoint(point) {
 
 function radialPoint(center, radius, angleDeg) {
   const angle = (Number(angleDeg) * Math.PI) / 180;
-  return [
-    center[0] + Math.cos(angle) * radius,
-    center[1] + Math.sin(angle) * radius,
-  ];
+  return [center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius];
 }
 
 export function drawSectorSweepDegrees(startDeg, endDeg) {
@@ -75,11 +72,7 @@ export function normalizeDrawShape(shape) {
       x1 = Math.max(Number(shape.a[0]), Number(shape.b[0])),
       y0 = Math.min(Number(shape.a[1]), Number(shape.b[1])),
       y1 = Math.max(Number(shape.a[1]), Number(shape.b[1]));
-    if (
-      ![x0, x1, y0, y1].every(Number.isFinite) ||
-      x1 - x0 <= EPS ||
-      y1 - y0 <= EPS
-    ) {
+    if (![x0, x1, y0, y1].every(Number.isFinite) || x1 - x0 <= EPS || y1 - y0 <= EPS) {
       return null;
     }
     return { id, type: 'rect', a: [x0, y0], b: [x1, y1] };
@@ -95,9 +88,7 @@ export function normalizeDrawShape(shape) {
 
   if (shape.type === 'polygon') {
     const points = Array.isArray(shape.points)
-      ? shape.points
-          .filter(finitePoint)
-          .map((point) => [Number(point[0]), Number(point[1])])
+      ? shape.points.filter(finitePoint).map((point) => [Number(point[0]), Number(point[1])])
       : [];
     if (points.length < 3) return null;
     return { id, type: 'polygon', points };
@@ -154,13 +145,7 @@ function ringSectorMulti(shape, circleSegments = 96) {
     );
     const inner =
       shape.innerR > EPS
-        ? circleMulti(
-            shape.innerR * 2,
-            shape.innerR * 2,
-            circleSegments,
-            shape.c[0],
-            shape.c[1],
-          )
+        ? circleMulti(shape.innerR * 2, shape.innerR * 2, circleSegments, shape.c[0], shape.c[1])
         : [];
     return inner.length ? difference(outer, inner) : outer;
   }
@@ -168,23 +153,11 @@ function ringSectorMulti(shape, circleSegments = 96) {
   const steps = Math.max(2, Math.ceil((Math.max(8, circleSegments) * sweep) / 360)),
     points = [];
   for (let index = 0; index <= steps; index++) {
-    points.push(
-      radialPoint(
-        shape.c,
-        shape.outerR,
-        shape.startDeg + (sweep * index) / steps,
-      ),
-    );
+    points.push(radialPoint(shape.c, shape.outerR, shape.startDeg + (sweep * index) / steps));
   }
   if (shape.innerR > EPS) {
     for (let index = steps; index >= 0; index--) {
-      points.push(
-        radialPoint(
-          shape.c,
-          shape.innerR,
-          shape.startDeg + (sweep * index) / steps,
-        ),
-      );
+      points.push(radialPoint(shape.c, shape.innerR, shape.startDeg + (sweep * index) / steps));
     }
   } else {
     points.push([...shape.c]);
@@ -272,9 +245,7 @@ export function drawShapeHandles(shape) {
   }
 
   if (normalized.type === 'polygon') {
-    return Object.fromEntries(
-      normalized.points.map((point, index) => [`v${index}`, point]),
-    );
+    return Object.fromEntries(normalized.points.map((point, index) => [`v${index}`, point]));
   }
 
   if (normalized.type === 'ring') {
@@ -352,26 +323,16 @@ export function resizeDrawShape(shape, handle, point) {
 
   if (normalized.type === 'ring' || normalized.type === 'ring-sector') {
     if (handle === 'inner') {
-      const innerR = Math.min(
-        radiusFromPoint(normalized, point),
-        normalized.outerR - EPS * 10,
-      );
+      const innerR = Math.min(radiusFromPoint(normalized, point), normalized.outerR - EPS * 10);
       return normalizeDrawShape({ ...normalized, innerR }) || normalized;
     }
     if (handle === 'outer') {
-      const outerR = Math.max(
-        radiusFromPoint(normalized, point),
-        normalized.innerR + EPS * 10,
-      );
+      const outerR = Math.max(radiusFromPoint(normalized, point), normalized.innerR + EPS * 10);
       return normalizeDrawShape({ ...normalized, outerR }) || normalized;
     }
     if (normalized.type === 'ring-sector' && ['start', 'end'].includes(handle)) {
       const raw =
-        (Math.atan2(
-          Number(point[1]) - normalized.c[1],
-          Number(point[0]) - normalized.c[0],
-        ) *
-          180) /
+        (Math.atan2(Number(point[1]) - normalized.c[1], Number(point[0]) - normalized.c[0]) * 180) /
         Math.PI;
       const angle = ((raw % 360) + 360) % 360;
       return (
@@ -401,11 +362,13 @@ export function resizeDrawShape(shape, handle, point) {
 }
 
 export function drawShapeTypeLabel(shape) {
-  return {
-    rect: 'Rectangle',
-    circle: 'Circle',
-    polygon: 'Polygon',
-    ring: 'Ring',
-    'ring-sector': 'Ring Sector',
-  }[shape?.type] || 'Shape';
+  return (
+    {
+      rect: 'Rectangle',
+      circle: 'Circle',
+      polygon: 'Polygon',
+      ring: 'Ring',
+      'ring-sector': 'Ring Sector',
+    }[shape?.type] || 'Shape'
+  );
 }

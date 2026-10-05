@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  installPinnedThreeRoute,
-  waitForCanvasSizeSync,
-  waitForPaint,
-} from './ui.mjs';
+import { join } from 'node:path';
+import { installPinnedThreeRoute, waitForCanvasSizeSync, waitForPaint } from './ui.mjs';
 
 export { waitForCanvasSizeSync, waitForPaint };
 
@@ -74,15 +71,14 @@ export async function openFunctionPanel(page, name, clickOptions = {}) {
   });
 
   await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
-  await page.waitForFunction(
-    (sectionName) => {
-      const scroller = document.querySelector('#toolPanel .tool-tab-content');
-      const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
-      if (!scroller || !section) return false;
-      return Math.abs(section.getBoundingClientRect().top - scroller.getBoundingClientRect().top) <= 14;
-    },
-    name,
-  );
+  await page.waitForFunction((sectionName) => {
+    const scroller = document.querySelector('#toolPanel .tool-tab-content');
+    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
+    if (!scroller || !section) return false;
+    return (
+      Math.abs(section.getBoundingClientRect().top - scroller.getBoundingClientRect().top) <= 14
+    );
+  }, name);
 }
 
 export async function closeFunctionPanel(page) {
@@ -142,7 +138,10 @@ export async function checkLayout(page) {
         '.view-head button, .view-head summary, .three-border-toggle',
       )) {
         const rect = element.getBoundingClientRect();
-        if (!element.checkVisibility() || element.closest('.focus-popover, .three-opacity-popover')) {
+        if (
+          !element.checkVisibility() ||
+          element.closest('.focus-popover, .three-opacity-popover')
+        ) {
           continue;
         }
         if (!rect.width || !rect.height) continue;

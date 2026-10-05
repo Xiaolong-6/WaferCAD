@@ -5,10 +5,9 @@ import { createProcessTaskController } from '../controllers/process-task-control
 
 function fakeRoot() {
   const elements = new Map(
-    ['processTaskDialog', 'processTaskTitle', 'processTaskStage', 'processTaskElapsed'].map((id) => [
-      id,
-      { hidden: true, textContent: '' },
-    ]),
+    ['processTaskDialog', 'processTaskTitle', 'processTaskStage', 'processTaskElapsed'].map(
+      (id) => [id, { hidden: true, textContent: '' }],
+    ),
   );
   return { getElementById: (id) => elements.get(id) || null };
 }
@@ -76,7 +75,6 @@ test('postMessage failures terminate the worker and clear busy state', async () 
   }
 });
 
-
 test('grouped task keeps one busy transaction across multiple worker steps', async () => {
   const originalWorker = globalThis.Worker,
     disabled = [];
@@ -122,15 +120,23 @@ test('grouped task keeps one busy transaction across multiple worker steps', asy
       result = await controller.runTask(
         async ({ runWorker, updateStage }) => {
           updateStage('Step 1/2');
-          const first = await runWorker('../synthetic-worker.js', { model: { revision: 1 } }, {
-            stagePrefix: 'Step 1/2',
-          });
+          const first = await runWorker(
+            '../synthetic-worker.js',
+            { model: { revision: 1 } },
+            {
+              stagePrefix: 'Step 1/2',
+            },
+          );
           assert.equal(first.result.changed, true);
 
           updateStage('Step 2/2');
-          const second = await runWorker('../synthetic-worker.js', { model: { revision: 2 } }, {
-            stagePrefix: 'Step 2/2',
-          });
+          const second = await runWorker(
+            '../synthetic-worker.js',
+            { model: { revision: 2 } },
+            {
+              stagePrefix: 'Step 2/2',
+            },
+          );
           assert.equal(second.result.changed, true);
           return { ok: true, completed: 2 };
         },

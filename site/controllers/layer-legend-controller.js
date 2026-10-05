@@ -230,10 +230,7 @@ export function createLayerLegendController({
     trigger.type = 'button';
     trigger.className = 'legend-profile-trigger';
     trigger.textContent = mode === 'follow' ? '∿' : '—';
-    trigger.title =
-      mode === 'follow'
-        ? 'Depth profile: Follow offset'
-        : 'Depth profile: Smooth';
+    trigger.title = mode === 'follow' ? 'Depth profile: Follow offset' : 'Depth profile: Smooth';
     trigger.setAttribute('aria-label', `Edit depth profile for ${item.name}`);
     trigger.setAttribute('aria-expanded', 'false');
 
@@ -360,7 +357,9 @@ export function createLayerLegendController({
       color.className = 'legend-color-chip';
       color.style.background = layer.color;
       color.disabled = !present;
-      color.title = present ? 'Choose from the active palette' : 'Layer is not present in the model';
+      color.title = present
+        ? 'Choose from the active palette'
+        : 'Layer is not present in the model';
       color.onclick = () => {
         setOpenLayerPaletteId(getOpenLayerPaletteId() === layer.id ? null : layer.id);
         renderLayerLegend();
@@ -481,11 +480,7 @@ export function createLayerLegendController({
         renderAll();
       };
 
-      const profileEditor = buildDepthProfileEditor(
-        implant,
-        setImplantDepthProfile,
-        'Implant',
-      );
+      const profileEditor = buildDepthProfileEditor(implant, setImplantDepthProfile, 'Implant');
 
       main.append(color, name, profileEditor.trigger, visible);
       row.append(main, profileEditor.panel);
@@ -527,8 +522,7 @@ export function createLayerLegendController({
       const color = root.createElement('button');
       color.type = 'button';
       color.className = 'legend-color-chip electrical-region-chip';
-      color.style.background =
-        `linear-gradient(135deg, ${electrical.color} 0%, ${electrical.color} 52%, ${electrical.color}38 52%, ${electrical.color}38 100%)`;
+      color.style.background = `linear-gradient(135deg, ${electrical.color} 0%, ${electrical.color} 52%, ${electrical.color}38 52%, ${electrical.color}38 100%)`;
       color.title = 'Choose electrical-region color from the active palette';
       color.onclick = () => {
         setOpenLayerPaletteId(getOpenLayerPaletteId() === electrical.id ? null : electrical.id);
@@ -582,8 +576,7 @@ export function createLayerLegendController({
           const chip = root.createElement('button');
           chip.type = 'button';
           chip.className = 'legend-palette-chip';
-          chip.style.background =
-            `linear-gradient(135deg, ${value} 0%, ${value} 52%, ${value}38 52%, ${value}38 100%)`;
+          chip.style.background = `linear-gradient(135deg, ${value} 0%, ${value} 52%, ${value}38 52%, ${value}38 100%)`;
           chip.title = value;
           chip.onclick = () => {
             recolorElectricalRegion(model, electrical.id, value);

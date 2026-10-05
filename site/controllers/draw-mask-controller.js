@@ -86,10 +86,7 @@ export function createDrawMaskController({
     textarea.id = 'drawShapePoints';
     textarea.spellcheck = false;
     textarea.value = shape.points
-      .map(
-        ([x, y]) =>
-          `${formatLengthField(x)}, ${formatLengthField(y)}`,
-      )
+      .map(([x, y]) => `${formatLengthField(x)}, ${formatLengthField(y)}`)
       .join('\n');
     row.append(labelText, textarea);
     return row;
@@ -130,25 +127,14 @@ export function createDrawMaskController({
       body.append(polygonRow(shape));
       const help = root.createElement('p');
       help.className = 'draw-shape-editor-help';
-      help.textContent =
-        'Example: 12.5, -4.0. At least three coordinate rows are required.';
+      help.textContent = 'Example: 12.5, -4.0. At least three coordinate rows are required.';
       body.append(help);
     } else {
       body.append(
         fieldRow('Center X', 'drawShapeCx', formatLengthField(shape.c[0]), unit),
         fieldRow('Center Y', 'drawShapeCy', formatLengthField(shape.c[1]), unit),
-        fieldRow(
-          'Inner radius',
-          'drawShapeInnerRadius',
-          formatLengthField(shape.innerR),
-          unit,
-        ),
-        fieldRow(
-          'Outer radius',
-          'drawShapeOuterRadius',
-          formatLengthField(shape.outerR),
-          unit,
-        ),
+        fieldRow('Inner radius', 'drawShapeInnerRadius', formatLengthField(shape.innerR), unit),
+        fieldRow('Outer radius', 'drawShapeOuterRadius', formatLengthField(shape.outerR), unit),
       );
       if (shape.type === 'ring-sector') {
         body.append(
@@ -181,9 +167,7 @@ export function createDrawMaskController({
     } else if (shape.type === 'polygon') {
       setValue(
         'drawShapePoints',
-        shape.points
-          .map(([x, y]) => `${formatLengthField(x)}, ${formatLengthField(y)}`)
-          .join('\n'),
+        shape.points.map(([x, y]) => `${formatLengthField(x)}, ${formatLengthField(y)}`).join('\n'),
       );
     } else {
       setValue('drawShapeCx', formatLengthField(shape.c[0]));
@@ -412,10 +396,7 @@ export function createDrawMaskController({
     const out = [];
     for (const point of points || []) {
       const previous = out.at(-1);
-      if (
-        !previous ||
-        Math.hypot(point[0] - previous[0], point[1] - previous[1]) > 1e-9
-      ) {
+      if (!previous || Math.hypot(point[0] - previous[0], point[1] - previous[1]) > 1e-9) {
         out.push(point);
       }
     }
@@ -507,8 +488,7 @@ export function createDrawMaskController({
     ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
     for (const shape of mask.shapes) {
       traceShape(ctx, shape, view);
-      ctx.fillStyle =
-        shape.id === selectedId ? 'rgba(72,105,135,.34)' : 'rgba(72,105,135,.22)';
+      ctx.fillStyle = shape.id === selectedId ? 'rgba(72,105,135,.34)' : 'rgba(72,105,135,.22)';
       ctx.strokeStyle = shape.id === selectedId ? '#344f68' : '#526b84';
       ctx.lineWidth = shape.id === selectedId ? 1.5 : 1.05;
       ctx.fill('evenodd');
@@ -552,8 +532,7 @@ export function createDrawMaskController({
         ctx.arc(q[0], q[1], 4.5, 0, Math.PI * 2);
         ctx.fillStyle = '#fff';
         ctx.fill();
-        ctx.strokeStyle =
-          name === 'start' ? '#d39b2e' : name === 'end' ? '#5b8fc9' : '#344f68';
+        ctx.strokeStyle = name === 'start' ? '#d39b2e' : name === 'end' ? '#5b8fc9' : '#344f68';
         ctx.stroke();
       } else {
         ctx.fillStyle = '#fff';
@@ -577,8 +556,7 @@ export function createDrawMaskController({
   }
 
   function bind() {
-    $('maskSourceToggleBtn').onclick = () =>
-      setSourceMode(getMode() === 'draw' ? 'file' : 'draw');
+    $('maskSourceToggleBtn').onclick = () => setSourceMode(getMode() === 'draw' ? 'file' : 'draw');
 
     root.querySelectorAll('.draw-mask-tool').forEach((button) => {
       button.onclick = () => setTool(button.dataset.drawTool || null);
@@ -628,42 +606,27 @@ export function createDrawMaskController({
           };
           renderMask();
         } else if (drag?.mode === 'create-ring' || drag?.mode === 'create-ring-sector') {
-          const outerR = Math.hypot(
-            point[0] - drag.start[0],
-            point[1] - drag.start[1],
-          );
+          const outerR = Math.hypot(point[0] - drag.start[0], point[1] - drag.start[1]);
           draft = {
             type: drag.mode === 'create-ring' ? 'ring' : 'ring-sector',
             c: drag.start,
             innerR: outerR / 2,
             outerR,
-            ...(drag.mode === 'create-ring-sector'
-              ? { startDeg: 0, endDeg: 90 }
-              : {}),
+            ...(drag.mode === 'create-ring-sector' ? { startDeg: 0, endDeg: 90 } : {}),
           };
           renderMask();
         } else if (drag?.mode === 'move') {
-          if (
-            Math.hypot(screen[0] - drag.startScreen[0], screen[1] - drag.startScreen[1]) >
-            3
-          ) {
+          if (Math.hypot(screen[0] - drag.startScreen[0], screen[1] - drag.startScreen[1]) > 3) {
             drag.moved = true;
           }
           replaceShape(
             drag.original.id,
-            translateDrawShape(
-              drag.original,
-              point[0] - drag.start[0],
-              point[1] - drag.start[1],
-            ),
+            translateDrawShape(drag.original, point[0] - drag.start[0], point[1] - drag.start[1]),
           );
           syncOpenEditorValues();
           renderMask();
         } else if (drag?.mode === 'resize') {
-          if (
-            Math.hypot(screen[0] - drag.startScreen[0], screen[1] - drag.startScreen[1]) >
-            3
-          ) {
+          if (Math.hypot(screen[0] - drag.startScreen[0], screen[1] - drag.startScreen[1]) > 3) {
             drag.moved = true;
           }
           replaceShape(drag.original.id, resizeDrawShape(drag.original, drag.handle, point));
@@ -675,12 +638,7 @@ export function createDrawMaskController({
         } else if (!tool) {
           const selected = selectedShape(),
             handle = selected
-              ? nearestHandle(
-                  selected,
-                  screen,
-                  view,
-                  event.pointerType === 'touch' ? 18 : 9,
-                )
+              ? nearestHandle(selected, screen, view, event.pointerType === 'touch' ? 18 : 9)
               : null,
             hit = hitShape(point);
           if (handle) canvas.style.cursor = 'nwse-resize';
@@ -714,8 +672,7 @@ export function createDrawMaskController({
             closesAtStart =
               polygonDraft.length >= 3 &&
               firstScreen &&
-              Math.hypot(screen[0] - firstScreen[0], screen[1] - firstScreen[1]) <=
-                closeRadius;
+              Math.hypot(screen[0] - firstScreen[0], screen[1] - firstScreen[1]) <= closeRadius;
 
           if (closesAtStart) {
             ignoreNextDoubleClick = event.detail >= 2;
@@ -758,12 +715,7 @@ export function createDrawMaskController({
         } else {
           const selected = selectedShape(),
             handle = selected
-              ? nearestHandle(
-                  selected,
-                  screen,
-                  view,
-                  event.pointerType === 'touch' ? 18 : 9,
-                )
+              ? nearestHandle(selected, screen, view, event.pointerType === 'touch' ? 18 : 9)
               : null;
           if (selected && handle) {
             drag = {
@@ -778,9 +730,7 @@ export function createDrawMaskController({
             const hit = hitShape(point),
               previousSelectedId = selectedId,
               keepEditorOpen =
-                Boolean(hit) &&
-                hit.id === previousSelectedId &&
-                !$('drawShapeEditor').hidden;
+                Boolean(hit) && hit.id === previousSelectedId && !$('drawShapeEditor').hidden;
             selectedId = hit?.id || null;
             if (!keepEditorOpen) closeEditor();
             syncUi({ preserveEditor: keepEditorOpen });
@@ -828,10 +778,7 @@ export function createDrawMaskController({
           syncUi();
           renderMask();
           onMaskChanged();
-          if (
-            (completed.mode === 'move' || completed.mode === 'resize') &&
-            !completed.moved
-          ) {
+          if ((completed.mode === 'move' || completed.mode === 'resize') && !completed.moved) {
             openEditor(selectedShape());
           }
         }

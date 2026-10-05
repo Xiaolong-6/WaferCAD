@@ -171,8 +171,7 @@ function createSourceList(example) {
 }
 
 function openExample(exampleId) {
-  globalThis.location.href =
-    './app.html?start=example&example=' + encodeURIComponent(exampleId);
+  globalThis.location.href = './app.html?start=example&example=' + encodeURIComponent(exampleId);
 }
 
 function renderExampleCards() {
@@ -268,7 +267,9 @@ document.documentElement.dataset.welcomeReady = 'true';
 
 globalThis.addEventListener('message', (event) => {
   if (event.origin !== globalThis.location.origin) return;
-  const frame = [...projectPreviewFrames].find((candidate) => candidate.contentWindow === event.source);
+  const frame = [...projectPreviewFrames].find(
+    (candidate) => candidate.contentWindow === event.source,
+  );
   if (!frame) return;
 
   const host = frame.closest('.welcome-example-project-preview');
@@ -284,5 +285,3 @@ globalThis.addEventListener('message', (event) => {
     host?.classList.remove('ready');
   }
 });
-
-

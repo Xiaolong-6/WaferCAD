@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
-import { launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
+import { gotoWelcome, launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
 import { checkSectionSeams } from './test-helpers/product-scientific.mjs';
 import {
   assertAnnotationKeepsMaterialTopology,
@@ -16,6 +17,7 @@ new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.e
 globalThis.polygonClipping = commonJsModule.exports;
 
 const { expandProjectStorage } = await import('../site/project-io.js');
+const { intersection, rectMulti } = await import('../site/vector-geometry.js');
 
 const sahliProjectBuffer = await readFile(
   new URL('../examples/projects/sahli-2018-fully-textured-tandem.wafercad', import.meta.url),
@@ -57,7 +59,6 @@ const branches = new Map(
 assert.ok(roughStep?.state?.model);
 assert.ok(geBInversionStep?.state?.model);
 
-const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 const reviewDir = new URL('../test-results/product-review/', import.meta.url);
 await mkdir(reviewDir, { recursive: true });
 
@@ -68,7 +69,12 @@ function parseGlbJson(buffer) {
   const jsonLength = buffer.readUInt32LE(12),
     jsonType = buffer.readUInt32LE(16);
   assert.equal(jsonType, 0x4e4f534a, 'first GLB chunk must be JSON');
-  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
+  return JSON.parse(
+    buffer
+      .subarray(20, 20 + jsonLength)
+      .toString('utf8')
+      .trim(),
+  );
 }
 
 function glbPositionBounds(json) {
@@ -168,8 +174,10 @@ async function restoreStep(node) {
   await row.waitFor({ state: 'visible', timeout: 10000 });
   await row.click();
   await page.waitForFunction(
-    (label) => (document.getElementById('statusText')?.textContent || '').includes(label),
-    node.operation?.label || node.operation?.kind || 'Process step',
+    (id) =>
+      document.querySelector(`.history-step-wrap[data-step-id="${id}"] > .history-step-row`)
+        ?.dataset.cursor === 'true',
+    node.id,
     { timeout: 10000 },
   );
   const data = await waitRendererForState(node.state, `Step ${node.operation?.label || node.id}`);
@@ -179,9 +187,11 @@ async function restoreStep(node) {
   );
 }
 
-await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+await gotoWelcome(page);
 await page
-  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
+  .locator(
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+  )
   .click();
 await page.waitForURL(/start=example.*example=photodetector-literature/, { timeout: 30000 });
 await page.waitForFunction(
@@ -206,8 +216,9 @@ await waitRendererForState(
 );
 await checkSectionSeams(page, packedLiterature);
 await page.screenshot({
-  path: new URL('../test-results/product-review/example-photodetector-literature.png', import.meta.url)
-    .pathname,
+  path: fileURLToPath(
+    new URL('../test-results/product-review/example-photodetector-literature.png', import.meta.url),
+  ),
   fullPage: true,
 });
 assert.equal(await page.locator('#layerLegend .implant-row-wrap').count(), 2);
@@ -244,7 +255,7 @@ for (const example of [
     filename: 'suspended-silica-microdisks.wafercad',
   },
 ]) {
-  await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await gotoWelcome(page);
   await page
     .locator(`.welcome-example-card[data-example-id="${example.id}"] .welcome-example-open`)
     .click();
@@ -268,10 +279,9 @@ for (const example of [
   assert.ok((await page.locator('#maskCanvas').getAttribute('width')) !== '0');
   assert.ok((await page.locator('#sectionCanvas').getAttribute('width')) !== '0');
   await page.screenshot({
-    path: new URL(
-      `../test-results/product-review/example-${example.id}.png`,
-      import.meta.url,
-    ).pathname,
+    path: fileURLToPath(
+      new URL(`../test-results/product-review/example-${example.id}.png`, import.meta.url),
+    ),
     fullPage: true,
   });
   if (example.id === 'fully-textured-perovskite-silicon-tandem') {
@@ -282,27 +292,39 @@ for (const example of [
     const path = await download.path();
     assert.ok(path);
     const glb = parseGlbJson(await readFile(path));
-    const morphologyNodes = (glb.nodes || []).filter(
-      (node) => node.extras?.wafercadMorphology,
-    );
+    const morphologyNodes = (glb.nodes || []).filter((node) => node.extras?.wafercadMorphology);
     const morphologyLayerIds = new Set(
       morphologyNodes.flatMap((node) =>
-        [
-          node.extras?.wafercadLayerId,
-          node.extras?.wafercadInterfaceLayerId,
-        ].filter(Boolean),
+        [node.extras?.wafercadLayerId, node.extras?.wafercadInterfaceLayerId].filter(Boolean),
       ),
     );
+    // GLB exports the active 40 x 40 um ROI, not the full wafer. The Ag grid
+    // lies outside this central crop and must not be expected in its export.
+    assert.equal(tandemProject.roi.type, 'rect');
+    const { a, b } = tandemProject.roi;
+    const exportRoi = rectMulti(
+      Math.abs(b[0] - a[0]),
+      Math.abs(b[1] - a[1]),
+      (a[0] + b[0]) / 2,
+      (a[1] + b[1]) / 2,
+    );
     const expectedTexturedLayerIds = new Set(
-      tandemProject.model.regions.flatMap((region) =>
-        (region.stack || [])
-          .filter(
-            (segment) =>
-              segment.layerId !== 'base' &&
-              (segment.frontSurface?.profileId || segment.backSurface?.profileId),
-          )
-          .map((segment) => segment.layerId),
-      ),
+      tandemProject.model.regions
+        .filter((region) => intersection(region.geom, exportRoi).length)
+        .flatMap((region) =>
+          (region.stack || [])
+            .filter(
+              (segment) =>
+                segment.layerId !== 'base' &&
+                (segment.frontSurface?.profileId || segment.backSurface?.profileId),
+            )
+            .map((segment) => segment.layerId),
+        ),
+    );
+    assert.equal(
+      expectedTexturedLayerIds.size,
+      15,
+      'Central tandem ROI must retain 15 textured films',
     );
     for (const layerId of expectedTexturedLayerIds) {
       assert.ok(
@@ -316,7 +338,7 @@ for (const example of [
 // Sahli is not a Welcome card, but it is the strongest morphology-export
 // integration fixture: both faces use deterministic Pyramid fields, the active
 // ROI is 40×40 µm, and inherited/buried interfaces reuse those profiles.
-await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+await gotoWelcome(page);
 await page.locator('#welcomeProjectInput').setInputFiles({
   name: 'sahli-2018-fully-textured-tandem.wafercad',
   mimeType: 'application/json',
@@ -345,12 +367,8 @@ const sahliGlb = parseGlbJson(await readFile(sahliGlbPath)),
   sahliRoot = (sahliGlb.nodes || []).find((node) => node.name === 'WaferCAD'),
   sahliScale =
     sahliRoot?.scale ||
-    (sahliRoot?.matrix
-      ? [sahliRoot.matrix[0], sahliRoot.matrix[5], sahliRoot.matrix[10]]
-      : []),
-  sahliMorphologyNodes = (sahliGlb.nodes || []).filter(
-    (node) => node.extras?.wafercadMorphology,
-  ),
+    (sahliRoot?.matrix ? [sahliRoot.matrix[0], sahliRoot.matrix[5], sahliRoot.matrix[10]] : []),
+  sahliMorphologyNodes = (sahliGlb.nodes || []).filter((node) => node.extras?.wafercadMorphology),
   sahliBounds = glbPositionBounds(sahliGlb);
 
 assert.equal(sahliScale.length, 3);
@@ -373,14 +391,10 @@ assert.ok(
   ),
 );
 assert.ok(
-  sahliMorphologyNodes.every(
-    (node) => node.extras.wafercadMorphologyPolarity === 'normal',
-  ),
+  sahliMorphologyNodes.every((node) => node.extras.wafercadMorphologyPolarity === 'normal'),
 );
 
-const buriedMorphology = sahliMorphologyNodes.filter(
-  (node) => node.extras.wafercadBuriedInterface,
-);
+const buriedMorphology = sahliMorphologyNodes.filter((node) => node.extras.wafercadBuriedInterface);
 assert.ok(buriedMorphology.length > 0, 'Sahli GLB must include inherited buried morphology');
 assert.ok(
   buriedMorphology.every(
@@ -418,8 +432,9 @@ assert.equal(
 );
 
 await page.screenshot({
-  path: new URL('../test-results/product-review/example-sahli-glb-export.png', import.meta.url)
-    .pathname,
+  path: fileURLToPath(
+    new URL('../test-results/product-review/example-sahli-glb-export.png', import.meta.url),
+  ),
   fullPage: true,
 });
 

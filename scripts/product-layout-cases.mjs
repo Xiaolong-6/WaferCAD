@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import {
-  processBenchmark,
-  projectForBenchmark,
-} from './process-benchmarks.mjs';
+import { processBenchmark, projectForBenchmark } from './process-benchmarks.mjs';
 import {
   checkLayout,
   confirmIfVisible,
@@ -12,18 +9,10 @@ import {
   openFunctionPanel,
   waitForPaint,
 } from './test-helpers/product.mjs';
-import {
-  checkSectionSeams,
-  loadProject,
-} from './test-helpers/product-scientific.mjs';
+import { checkSectionSeams, loadProject } from './test-helpers/product-scientific.mjs';
 import { sampleById } from '../site/sample-layouts.js';
 
-export async function runProductLayoutCases({
-  open,
-  capture,
-  output,
-  checks,
-}) {
+export async function runProductLayoutCases({ open, capture, output, checks }) {
   const { parseLayoutFile } = await import('../site/layout-io.js');
   const { applyOperation } = await import('../site/model.js');
   const { rectMulti } = await import('../site/vector-geometry.js');
@@ -40,9 +29,7 @@ export async function runProductLayoutCases({
   const sampleCases = [];
   for (const sample of ['gds-alm', 'gds-basic-instances', 'oas-cblock']) {
     const descriptor = sampleById(sample);
-    const bytes = await readFile(
-      new URL(`../site/${descriptor.path.slice(2)}`, import.meta.url),
-    );
+    const bytes = await readFile(new URL(`../site/${descriptor.path.slice(2)}`, import.meta.url));
     const imported = await parseLayoutFile(
       bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
       descriptor.path,
@@ -52,10 +39,7 @@ export async function runProductLayoutCases({
       id: sample,
       label: descriptor.label,
       baseWidth:
-        Math.max(
-          1,
-          ...['minX', 'minY', 'maxX', 'maxY'].map((key) => Math.abs(bounds[key])),
-        ) * 2.2,
+        Math.max(1, ...['minX', 'minY', 'maxX', 'maxY'].map((key) => Math.abs(bounds[key]))) * 2.2,
     });
   }
 
@@ -63,9 +47,7 @@ export async function runProductLayoutCases({
   for (const kind of ['step', 'trench', 'island']) {
     for (const growth of ['direct', 'conformal']) {
       const project = projectForBenchmark(await processBenchmark(kind, growth));
-      const back = projectForBenchmark(
-        await processBenchmark(kind, growth, 'back'),
-      );
+      const back = projectForBenchmark(await processBenchmark(kind, growth, 'back'));
       back.activeFace = 'back';
 
       const etched = structuredClone(project);
@@ -76,10 +58,7 @@ export async function runProductLayoutCases({
         face: 'front',
       });
 
-      await writeFile(
-        join(output, `${kind}-${growth}.wafercad`),
-        JSON.stringify(project, null, 2),
-      );
+      await writeFile(join(output, `${kind}-${growth}.wafercad`), JSON.stringify(project, null, 2));
       await writeFile(
         join(output, `${kind}-${growth}-etch.wafercad`),
         JSON.stringify(etched, null, 2),
@@ -198,9 +177,7 @@ export async function runProductLayoutCases({
     await ensurePrimaryViewVisible(page, 'main');
     await checkROI(page, name);
     await context.close();
-    console.log(
-      `${name}: A/B, units, ROI, tabs, imports and six process views passed`,
-    );
+    console.log(`${name}: A/B, units, ROI, tabs, imports and six process views passed`);
   }
 
   for (const width of [600, 601, 900, 901]) {

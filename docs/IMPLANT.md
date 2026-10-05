@@ -16,7 +16,7 @@ Inputs:
 - **Area** — Selected mask, Invert mask, or Whole face, with Mask ROI limiting the operation when active.
 - **Depth** — empirical physical depth in the current display unit. Internally stored in µm.
 - **Tilt X** — signed geometric display tilt from the surface normal toward +X, limited to -80°…+80°.
-Apply records the exposed surface patches intersected by the requested area. It does **not** create a material layer and does not modify the underlying layer stack.
+  Apply records the exposed surface patches intersected by the requested area. It does **not** create a material layer and does not modify the underlying layer stack.
 
 ## Rendering
 

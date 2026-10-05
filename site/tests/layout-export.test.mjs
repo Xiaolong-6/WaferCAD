@@ -6,7 +6,8 @@ await loadGeometryKernel();
 
 const { flattenGDS, parseGDS } = await import('../gds.js');
 const { parseOAS } = await import('../oasis.js');
-const { collectMaskExportElements, serializeGDS, serializeOASIS } = await import('../layout-export.js');
+const { collectMaskExportElements, serializeGDS, serializeOASIS } =
+  await import('../layout-export.js');
 
 function bounds(elements) {
   let minX = Infinity,
@@ -73,7 +74,10 @@ test('Mask layout export applies Cell/Layer filters and crops geometry to Mask R
   const gdsBounds = bounds(gdsFlat.elements);
   assert.ok(Math.abs(gdsBounds.minX - 5) <= 0.00011);
   assert.ok(Math.abs(gdsBounds.maxX - 9) <= 0.00011);
-  assert.equal(new Set(gdsFlat.elements.map((element) => `${element.layer}|${element.datatype}`)).size, 1);
+  assert.equal(
+    new Set(gdsFlat.elements.map((element) => `${element.layer}|${element.datatype}`)).size,
+    1,
+  );
 
   const oas = await parseOAS(serializeOASIS(selected.elements).buffer);
   const oasFlat = flattenGDS(oas, oas.root);
@@ -157,7 +161,10 @@ test('Mask GDS/OAS export rejects geometry below each format DBU precision', () 
       ],
     },
   ];
-  assert.throws(() => serializeOASIS(oasTinyPath), /path collapses at the selected .* database unit/);
+  assert.throws(
+    () => serializeOASIS(oasTinyPath),
+    /path collapses at the selected .* database unit/,
+  );
 });
 
 test('OASIS preserves a 0.1 nm PATH width exactly through integer half-width encoding', async () => {

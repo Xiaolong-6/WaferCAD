@@ -6,13 +6,8 @@ await loadGeometryKernel();
 
 const { applyOperation, createModel, surfaceSegment } = await import('../model.js');
 const { implantSolids } = await import('../model-view-geometry.js');
-const {
-  circleMulti,
-  difference,
-  pointInMulti,
-  rectMulti,
-  unionGeometries,
-} = await import('../vector-geometry.js');
+const { circleMulti, difference, pointInMulti, rectMulti, unionGeometries } =
+  await import('../vector-geometry.js');
 
 function regionAt(model, point) {
   return model.regions.find((region) => pointInMulti(point, region.geom)) || null;
@@ -38,12 +33,7 @@ test('Isotropic release preserves canonical cavity topology', () => {
     releaseHub = circleMulti(110, 110, 96),
     releaseSpokeH = rectMulti(180, 10),
     releaseSpokeV = rectMulti(10, 180),
-    releasePad = unionGeometries([
-      releaseAnnulus,
-      releaseHub,
-      releaseSpokeH,
-      releaseSpokeV,
-    ]),
+    releasePad = unionGeometries([releaseAnnulus, releaseHub, releaseSpokeH, releaseSpokeV]),
     oxideOpen = difference(releaseModel.boundary, releasePad);
 
   const oxidePattern = applyOperation(releaseModel, {
@@ -55,7 +45,10 @@ test('Isotropic release preserves canonical cavity topology', () => {
     area: oxideOpen,
   });
   assert.equal(oxidePattern.changed, true);
-  assert.equal(surfaceSegment(regionAt(releaseModel, [115, 0]).stack).layerId, releaseOxide.layerId);
+  assert.equal(
+    surfaceSegment(regionAt(releaseModel, [115, 0]).stack).layerId,
+    releaseOxide.layerId,
+  );
   assert.equal(surfaceSegment(regionAt(releaseModel, [170, 0]).stack).layerId, 'base');
 
   const releaseResult = applyOperation(releaseModel, {

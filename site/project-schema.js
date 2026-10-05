@@ -326,10 +326,7 @@ function validateModel(model, budget) {
       }
       assertLength(implant.thickness, `${path}.thickness`, { min: 1e-12 });
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
-      if (
-        implant.depthProfile != null &&
-        !['follow', 'smooth'].includes(implant.depthProfile)
-      ) {
+      if (implant.depthProfile != null && !['follow', 'smooth'].includes(implant.depthProfile)) {
         fail(`${path}.depthProfile`, 'must be follow or smooth.');
       }
       if (typeof implant.visible !== 'boolean') fail(`${path}.visible`, 'must be boolean.');
@@ -584,10 +581,7 @@ function validateDrawMask(drawMask) {
     if (shape.type === 'rect') {
       assertPoint(shape.a, `${path}.a`);
       assertPoint(shape.b, `${path}.b`);
-      if (
-        !(Math.abs(shape.b[0] - shape.a[0]) > 0) ||
-        !(Math.abs(shape.b[1] - shape.a[1]) > 0)
-      ) {
+      if (!(Math.abs(shape.b[0] - shape.a[0]) > 0) || !(Math.abs(shape.b[1] - shape.a[1]) > 0)) {
         fail(path, 'rectangle must have non-zero width and height.');
       }
       return;
@@ -797,11 +791,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   const nodesById = new Map();
 
   if (version >= 2) {
-    const nodes = assertArray(
-      value.nodes,
-      'snapshotBranches.nodes',
-      LIMITS.processHistoryNodes,
-    );
+    const nodes = assertArray(value.nodes, 'snapshotBranches.nodes', LIMITS.processHistoryNodes);
     nodes.forEach((node, index) => {
       const path = `snapshotBranches.nodes[${index}]`;
       assertObject(node, path);
@@ -815,7 +805,8 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
         if (node.parentId === id) fail(`${path}.parentId`, 'must not reference itself.');
       }
       const createdAt = assertString(node.createdAt, `${path}.createdAt`, { max: 64 });
-      if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
+      if (!Number.isFinite(Date.parse(createdAt)))
+        fail(`${path}.createdAt`, 'must be a valid date.');
       assertInteger(node.processRevision, `${path}.processRevision`, { min: 0, max: 2147483647 });
       assertObject(node.operation, `${path}.operation`);
       if (node.operation.kind != null) {
@@ -890,7 +881,8 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       }
       if (branch.headState != null) {
         assertObject(branch.headState, `${path}.headState`);
-        if (branch.headState.snapshots != null) fail(`${path}.headState.snapshots`, 'must not be nested.');
+        if (branch.headState.snapshots != null)
+          fail(`${path}.headState.snapshots`, 'must not be nested.');
         if (branch.headState.snapshotBranches != null) {
           fail(`${path}.headState.snapshotBranches`, 'must not be nested.');
         }
@@ -902,21 +894,14 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   if (version >= 3) {
     const branchById = new Map(branches.map((branch) => [branch.id, branch]));
     branches.forEach((branch, index) => {
-      if (
-        branch.parentBranchId != null &&
-        !branchIds.has(branch.parentBranchId)
-      ) {
+      if (branch.parentBranchId != null && !branchIds.has(branch.parentBranchId)) {
         fail(
           `snapshotBranches.branches[${index}].parentBranchId`,
           'references an unknown parent variant.',
         );
       }
 
-      if (
-        branch.id !== 'main' &&
-        branch.parentBranchId != null &&
-        branch.rootNodeId != null
-      ) {
+      if (branch.id !== 'main' && branch.parentBranchId != null && branch.rootNodeId != null) {
         const origin = nodesById.get(branch.rootNodeId);
         if (origin && origin.branchId !== branch.parentBranchId) {
           fail(
@@ -990,11 +975,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
     if (record?.branchId != null && !branchIds.has(record.branchId)) {
       fail(`snapshots[${index}].branchId`, 'references an unknown branch.');
     }
-    if (
-      version >= 2 &&
-      record?.historyNodeId != null &&
-      !nodeIds.has(record.historyNodeId)
-    ) {
+    if (version >= 2 && record?.historyNodeId != null && !nodeIds.has(record.historyNodeId)) {
       fail(`snapshots[${index}].historyNodeId`, 'references an unknown process node.');
     }
   }
@@ -1052,7 +1033,9 @@ function validateProjectCore(
   validateMaskRoi(project.maskRoi);
   if (
     project.maskRoiAnchor != null &&
-    !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(project.maskRoiAnchor)
+    !['center', 'top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(
+      project.maskRoiAnchor,
+    )
   ) {
     fail('maskRoiAnchor', 'must be a supported ROI reference point.');
   }
@@ -1214,8 +1197,7 @@ function migrateProjectCore(project) {
           });
           const stack = match?.stack || [];
           const segment = implant.face === 'back' ? stack[0] : stack.at(-1);
-          const appearance =
-            implant.face === 'back' ? segment?.backSurface : segment?.frontSurface;
+          const appearance = implant.face === 'back' ? segment?.backSurface : segment?.frontSurface;
           patch.surfaceAppearance = isObject(appearance) ? structuredClone(appearance) : null;
         }
       }

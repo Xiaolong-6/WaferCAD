@@ -4,17 +4,17 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 
 ## Test tiers
 
-| Tier | Entry point | Purpose | Expected style |
-| --- | --- | --- | --- |
-| Fast UI smoke | `npm run test:ui:smoke` | Product gate for boot, workstation readiness, one real process operation, persistence, and project export | Small, independent, fail fast |
-| History regression | `npm run test:ui:history` | History restore, Variants, bookmarks, historical Step editing/replay, rollback, and History export | Independent History scenarios; fault injection allowed |
-| Persistence regression | `npm run test:ui:persistence` | Autosave, migration, recovery checkpoints, Welcome staged handoff, refresh restore, and multi-tab ownership/takeover | Storage/profile scenarios isolated from process geometry |
-| Process geometry regression | `npm run test:ui:process` | Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, GLB morphology, and Section geometry contracts | Scientific/process geometry coverage with real UI + export paths |
-| Workstation regression | `npm run test:ui:workstation` | Welcome/boot gating, navigation semantics, example-family loading, default tool shell, and basic workstation integration | Shell-level integration; no process-specific geometry |
-| Interaction regression | `npm run test:ui:interaction` | Slice/ROI, Mask Draw and shape editors, mask ROI/alignment, exports, maximize/restore, and 3D controls | Pointer/keyboard interaction and view-control contracts |
-| Resilience regression | `npm run test:ui:resilience` | Missing Three.js CDN and unavailable WebGL behavior | Explicit degraded-mode diagnostics while 2D remains usable |
-| Bundled examples | `npm run test:ui:examples` | Literature/example structural contracts and restore behavior | Example-specific geometry/render invariants |
-| Product/visual review | `npm run test:ui:product` | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots | Multiple viewports; deterministic renderer inputs in CI |
+| Tier                        | Entry point                   | Purpose                                                                                                                  | Expected style                                                   |
+| --------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Fast UI smoke               | `npm run test:ui:smoke`       | Product gate for boot, workstation readiness, one real process operation, persistence, and project export                | Small, independent, fail fast                                    |
+| History regression          | `npm run test:ui:history`     | History restore, Variants, bookmarks, historical Step editing/replay, rollback, and History export                       | Independent History scenarios; fault injection allowed           |
+| Persistence regression      | `npm run test:ui:persistence` | Autosave, migration, recovery checkpoints, Welcome staged handoff, refresh restore, and multi-tab ownership/takeover     | Storage/profile scenarios isolated from process geometry         |
+| Process geometry regression | `npm run test:ui:process`     | Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, GLB morphology, and Section geometry contracts         | Scientific/process geometry coverage with real UI + export paths |
+| Workstation regression      | `npm run test:ui:workstation` | Welcome/boot gating, navigation semantics, example-family loading, default tool shell, and basic workstation integration | Shell-level integration; no process-specific geometry            |
+| Interaction regression      | `npm run test:ui:interaction` | Slice/ROI, Mask Draw and shape editors, mask ROI/alignment, exports, maximize/restore, and 3D controls                   | Pointer/keyboard interaction and view-control contracts          |
+| Resilience regression       | `npm run test:ui:resilience`  | Missing Three.js CDN and unavailable WebGL behavior                                                                      | Explicit degraded-mode diagnostics while 2D remains usable       |
+| Bundled examples            | `npm run test:ui:examples`    | Literature/example structural contracts and restore behavior                                                             | Example-specific geometry/render invariants                      |
+| Product/visual review       | `npm run test:ui:product`     | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots                                    | Multiple viewports; deterministic renderer inputs in CI          |
 
 The former 2993-line UI smoke has been fully decomposed into focused browser suites. New coverage should go directly into the suite that owns the behavior; there is no generic catch-all UI regression file anymore.
 
@@ -33,7 +33,16 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 
 ### Deterministic browser dependencies
 
-The Browser regression workflow installs the pinned `three@0.179.1` npm package and exposes it through `WAFERCAD_THREE_DIR`. Normal browser contexts intercept the matching jsDelivr URLs and serve those modules from the local package, so CDN availability is not part of ordinary regression reliability. The dedicated resilience suite intentionally bypasses this route when testing CDN/WebGL failure behavior.
+Playwright `1.55.0` and Three `0.179.1` are pinned devDependencies in `package-lock.json`. Install them with `npm ci`, then install Chromium with `npx playwright install chromium` (`--with-deps` on Linux). Serve `site/` locally and set `WAFERCAD_THREE_DIR` to the project's `node_modules/three` directory before running browser tests:
+
+```powershell
+$env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+npm run test:ui:all
+```
+
+On POSIX shells, use `WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:ui:all`.
+
+The Browser regression workflow exposes the same local Three package through `WAFERCAD_THREE_DIR`. Normal browser contexts intercept the matching jsDelivr URLs and serve those modules from the local package, so CDN availability is not part of ordinary regression reliability. The dedicated CDN resilience case intentionally bypasses this route; the WebGL-unavailable case still uses pinned Three so it isolates WebGL failure.
 
 GitHub Actions caches both npm downloads and the Playwright Chromium browser directory. The suite remains a single job so those setup costs are paid once; focused test steps still preserve failure ownership without duplicating browser installation.
 
@@ -41,7 +50,7 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 
 - Quality skips documentation-only pull requests and uses the npm cache.
 - Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes.
-- Browser regression runs `npm test` immediately after `npm ci`; Playwright/Chromium installation happens only after that fast Node gate passes.
+- Browser regression runs `npm test` immediately after `npm ci`; Chromium installation happens only after that fast Node gate passes.
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
 - The heavyweight browser suites remain sequential in one job; splitting them into parallel jobs would duplicate Chromium/setup cost and consume more Actions minutes.
 
@@ -125,6 +134,8 @@ The former 1600+ line product regression has now been decomposed into:
 
 The browser workflow keeps these product scopes as separate steps while sharing one job, avoiding duplicate Chromium installation and unnecessary GitHub Actions minutes. npm and Playwright browser assets are cached to reduce setup time.
 
+By default, layout review writes to `test-results/product-review/`, and renderer review writes to `test-results/product-review/renderer/`. Each directory contains its own `index.html` gallery and `report.json`; the renderer scope preserves the layout artifacts.
+
 ## Visual baseline staging
 
 A dependency-free visual comparator is available in `test-helpers/visual.mjs`. It decodes PNGs in Chromium, compares per-channel differences, enforces a maximum changed-pixel ratio, and writes actual/expected/diff artifacts on failure.
@@ -141,5 +152,7 @@ Commands:
 
 - `npm run update:ui:visual` generates/replaces the baseline PNGs under `tests/visual-baselines/`.
 - `npm run test:ui:visual` compares against committed baselines.
+
+For unapproved local review captures, set `WAFERCAD_VISUAL_BASELINE_DIR` to an ignored artifact directory such as `test-results/visual-review-windows` before running `npm run update:ui:visual`. These captures are candidates for human review, not approved Linux baselines.
 
 Visual baselines are intentionally **not** part of `test:ui:all` or the GitHub Actions gate yet. Generate them in a controlled Chromium/Linux environment, review the PNGs, commit only approved baselines, then enable the gate in a separate change. WebGL screenshots remain review artifacts until cross-run raster stability is characterized.

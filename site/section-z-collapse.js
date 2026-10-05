@@ -34,7 +34,8 @@ export function defaultSectionCollapseForModel(model, bounds) {
   const [rawLo, rawHi] = bounds || [],
     lo = Number(rawLo),
     hi = Number(rawHi),
-    totalSpan = Number.isFinite(lo) && Number.isFinite(hi) && hi > lo ? hi - lo : commonHi - commonLo,
+    totalSpan =
+      Number.isFinite(lo) && Number.isFinite(hi) && hi > lo ? hi - lo : commonHi - commonLo,
     commonSpan = commonHi - commonLo,
     inset = Math.min(commonSpan * 0.08, totalSpan * 0.03),
     top = commonHi - inset,
@@ -102,10 +103,7 @@ export function createCollapsedZDisplayTransform({
     lowerSpan = Math.max(0, normalized.bottom - min),
     visibleSpan = Math.max(upperSpan + lowerSpan, (max - min) * 0.02),
     fraction = Math.max(0.01, Math.min(0.12, Number(breakFraction) || 0.04)),
-    gap = Math.min(
-      hiddenSpan,
-      Math.max((max - min) * 1e-6, visibleSpan * fraction),
-    ),
+    gap = Math.min(hiddenSpan, Math.max((max - min) * 1e-6, visibleSpan * fraction)),
     center = (normalized.top + normalized.bottom) / 2,
     displayBottom = center - gap / 2,
     displayTop = center + gap / 2;
@@ -161,7 +159,10 @@ export function normalizeSectionCollapse(value, bounds) {
   bottom = Math.max(lo + minVisible, Math.min(hi - minVisible - minCollapsed, bottom));
 
   if (!(top > bottom + minCollapsed)) {
-    const center = Math.max(lo + minVisible + minCollapsed / 2, Math.min(hi - minVisible - minCollapsed / 2, (top + bottom) / 2));
+    const center = Math.max(
+      lo + minVisible + minCollapsed / 2,
+      Math.min(hi - minVisible - minCollapsed / 2, (top + bottom) / 2),
+    );
     top = center + minCollapsed / 2;
     bottom = center - minCollapsed / 2;
   }
@@ -184,10 +185,7 @@ export function translateSectionCollapse(value, delta, bounds) {
     minVisible = Math.max(span * 0.01, 1e-12),
     minBottom = lo + minVisible,
     maxTop = hi - minVisible,
-    applied = Math.max(
-      minBottom - normalized.bottom,
-      Math.min(maxTop - normalized.top, requested),
-    );
+    applied = Math.max(minBottom - normalized.bottom, Math.min(maxTop - normalized.top, requested));
 
   return {
     top: normalized.top + applied,

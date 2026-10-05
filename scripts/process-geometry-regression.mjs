@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 import {
@@ -16,7 +17,7 @@ import {
 } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel, modelBoundsZ } = await import('../site/model.js');
+const { applyOperation, createModel } = await import('../site/model.js');
 const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 function parseGlbJson(buffer) {
@@ -26,7 +27,12 @@ function parseGlbJson(buffer) {
   const jsonLength = buffer.readUInt32LE(12);
   const jsonType = buffer.readUInt32LE(16);
   assert.equal(jsonType, 0x4e4f534a, 'first GLB chunk must be JSON');
-  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
+  return JSON.parse(
+    buffer
+      .subarray(20, 20 + jsonLength)
+      .toString('utf8')
+      .trim(),
+  );
 }
 
 async function processDiagnostics(page) {
@@ -37,7 +43,8 @@ async function processDiagnostics(page) {
         stage: document.getElementById('processTaskStage')?.textContent || '',
         taskHidden: Boolean(document.getElementById('processTaskDialog')?.hidden),
         applyDisabled: Boolean(document.getElementById('applyOperationBtn')?.disabled),
-        roughRebuilds: document.querySelector('#threeHost canvas')?.dataset?.roughRebuildCount || '',
+        roughRebuilds:
+          document.querySelector('#threeHost canvas')?.dataset?.roughRebuildCount || '',
         roughZones: document.querySelector('#threeHost canvas')?.dataset?.roughLodZones || '',
         operationType: document.getElementById('operationType')?.value || '',
         growthMode: document.getElementById('growthMode')?.value || '',
@@ -108,7 +115,10 @@ assert.equal(await page.locator('#roughSeedRow').isVisible(), true);
 await page.locator('#roughFeatureCv').fill('30');
 await page.locator('#roughHeightCv').fill('20');
 await page.locator('#roughSeed').fill('2018');
-assert.match(await page.locator('#operationNote').textContent(), /Seed makes the random field reproducible/);
+assert.match(
+  await page.locator('#operationNote').textContent(),
+  /Seed makes the random field reproducible/,
+);
 await page.locator('#etchSurfaceMode').selectOption('rough');
 assert.equal((await page.locator('#roughFeatureLabel').textContent()).trim(), 'Feature XY');
 assert.equal((await page.locator('#roughHeightLabel').textContent()).trim(), 'Height mean');
@@ -244,9 +254,9 @@ const implantLegendRow = page.locator('#layerLegend .implant-row-wrap').first();
 assert.equal(await implantLegendRow.count(), 1);
 assert.equal(await implantLegendRow.locator('.legend-visibility').isChecked(), true);
 assert.doesNotMatch(await implantLegendRow.textContent(), /EXP/);
-const implantOrder = await implantLegendRow.locator('.implant-legend-row').evaluate((row) =>
-  [...row.children].map((child) => child.className),
-);
+const implantOrder = await implantLegendRow
+  .locator('.implant-legend-row')
+  .evaluate((row) => [...row.children].map((child) => child.className));
 assert.match(String(implantOrder.at(-1)), /legend-visibility/);
 assert.equal(await implantLegendRow.locator('.legend-profile-trigger').textContent(), '∿');
 await implantLegendRow.locator('.legend-profile-trigger').click();
@@ -262,10 +272,9 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 await page.screenshot({
-  path: new URL(
-    '../test-results/product-review/annotation-depth-profile-follow.png',
-    import.meta.url,
-  ).pathname,
+  path: fileURLToPath(
+    new URL('../test-results/product-review/annotation-depth-profile-follow.png', import.meta.url),
+  ),
   fullPage: true,
 });
 await page.locator('#threePanel .three-opacity-control > summary').click();
@@ -286,10 +295,12 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 await page.screenshot({
-  path: new URL(
-    '../test-results/product-review/annotation-depth-profile-follow-3d-transparent.png',
-    import.meta.url,
-  ).pathname,
+  path: fileURLToPath(
+    new URL(
+      '../test-results/product-review/annotation-depth-profile-follow-3d-transparent.png',
+      import.meta.url,
+    ),
+  ),
   fullPage: true,
 });
 await page.locator('#threeMaxBtn').click();
@@ -306,10 +317,9 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 await page.screenshot({
-  path: new URL(
-    '../test-results/product-review/annotation-depth-profile-smooth.png',
-    import.meta.url,
-  ).pathname,
+  path: fileURLToPath(
+    new URL('../test-results/product-review/annotation-depth-profile-smooth.png', import.meta.url),
+  ),
   fullPage: true,
 });
 await page.locator('#threeMaxBtn').click();
@@ -321,10 +331,12 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 await page.screenshot({
-  path: new URL(
-    '../test-results/product-review/annotation-depth-profile-smooth-3d-transparent.png',
-    import.meta.url,
-  ).pathname,
+  path: fileURLToPath(
+    new URL(
+      '../test-results/product-review/annotation-depth-profile-smooth-3d-transparent.png',
+      import.meta.url,
+    ),
+  ),
   fullPage: true,
 });
 await page.locator('#threeMaxBtn').click();
@@ -383,7 +395,9 @@ assert.ok(implantSaved.display.threeCamera.position.every(Number.isFinite));
 assert.ok(implantSaved.display.threeCamera.target.every(Number.isFinite));
 assert.ok(implantSaved.display.threeCamera.fov > 1);
 assert.equal(implantSaved.display.customStructurePalette.length, 20);
-assert.ok(implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color));
+assert.ok(
+  implantSaved.display.customStructurePalette.includes(implantSaved.model.implants[0].color),
+);
 assert.ok(implantSaved.model.implants[0].patches.length > 0);
 await openFunctionPanel(page, 'process');
 
@@ -393,7 +407,10 @@ await page.locator('[data-process-mode="electrical"]').click();
 assert.equal(await page.locator('#electricalNameRow').isVisible(), true);
 assert.equal(await page.locator('#electricalRegionParams').isVisible(), true);
 assert.equal(await page.locator('#implantTiltRow').isHidden(), true);
-assert.match(await page.locator('#operationNote').textContent(), /Non-material electrical annotation/);
+assert.match(
+  await page.locator('#operationNote').textContent(),
+  /Non-material electrical annotation/,
+);
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#operationThickness').fill('0.2');
 await page.locator('#electricalName').fill('UI induced inversion');
@@ -415,21 +432,19 @@ await electricalLegendRow.getByRole('button', { name: 'Smooth', exact: true }).c
 assert.equal(await electricalLegendRow.locator('.legend-profile-trigger').textContent(), '—');
 await electricalLegendRow.locator('.legend-profile-trigger').click();
 await page.screenshot({
-  path: new URL(
-    '../test-results/product-review/electrical-depth-profile-smooth.png',
-    import.meta.url,
-  ).pathname,
+  path: fileURLToPath(
+    new URL('../test-results/product-review/electrical-depth-profile-smooth.png', import.meta.url),
+  ),
   fullPage: true,
 });
 await electricalLegendRow.locator('.legend-name').fill('UI electrical renamed');
 await electricalLegendRow.locator('.legend-name').press('Tab');
-await page
-  .locator('#threePanel .three-opacity-control > summary')
-  .click();
+await page.locator('#threePanel .three-opacity-control > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
 await page.locator('#threeOpacityRange').dispatchEvent('input');
 await page.waitForFunction(
-  () => Number(document.getElementById('threeHost')?.dataset?.electricalRegionInternalCount || 0) > 0,
+  () =>
+    Number(document.getElementById('threeHost')?.dataset?.electricalRegionInternalCount || 0) > 0,
   null,
   { timeout: 30000 },
 );
@@ -580,10 +595,6 @@ assert.deepEqual(
   { layerId: coatId, z0: 6, z1: 7 },
 );
 const coatColor = saved.model.layers.find((layer) => layer.id === coatId).color;
-const [savedLo, savedHi] = modelBoundsZ(saved.model);
-const savedPad = Math.max(1e-9, (savedHi - savedLo) * 0.08);
-const sectionZ0 = savedLo - savedPad;
-const sectionZ1 = savedHi + savedPad;
 const sidewallPixel = await page.locator('#sectionCanvas').evaluate(
   (canvas, { color, sideX }) => {
     const rect = canvas.getBoundingClientRect(),
@@ -751,7 +762,9 @@ await page.locator('#operationThickness').fill('1');
 assert.match(await page.locator('#operationNote').textContent(), /every exposed surface/);
 await page.locator('#applyOperationBtn').click();
 await page.waitForFunction(() =>
-  /Extended UI conformal · Conformal/.test(document.getElementById('statusText')?.textContent || ''),
+  /Extended UI conformal · Conformal/.test(
+    document.getElementById('statusText')?.textContent || '',
+  ),
 );
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI conformal extend project');

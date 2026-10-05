@@ -1,9 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  checkLayout,
-  closeFunctionPanel,
-  openFunctionPanel,
-} from './product.mjs';
+import { checkLayout, closeFunctionPanel, openFunctionPanel } from './product.mjs';
 import { processBenchmark, projectForBenchmark } from '../process-benchmarks.mjs';
 import { loadProject } from './product-scientific.mjs';
 
@@ -50,7 +46,11 @@ export function createProductLayoutChecks({ capture }) {
     assert.ok(processSticker.radius >= 6, `${name}: Process sticker radius is missing`);
     assert.equal(processSticker.border, 1, `${name}: Process sticker border is missing`);
     assert.notEqual(processSticker.shadow, 'none', `${name}: Process sticker shadow is missing`);
-    assert.equal(processSticker.active, true, `${name}: active function sticker is not highlighted`);
+    assert.equal(
+      processSticker.active,
+      true,
+      `${name}: active function sticker is not highlighted`,
+    );
     await closeFunctionPanel(page);
   }
 
@@ -77,9 +77,7 @@ export function createProductLayoutChecks({ capture }) {
 
     assert.equal(compact, false, `${name}: desktop viewport should not be compact`);
 
-    const viewbarOrder = await page
-      .locator('.workstation-view-tabs > button')
-      .allTextContents();
+    const viewbarOrder = await page.locator('.workstation-view-tabs > button').allTextContents();
     assert.deepEqual(
       viewbarOrder.map((text) => text.trim()),
       ['Overview', 'Main', 'Mask', '3D', 'Split'],
@@ -136,7 +134,10 @@ export function createProductLayoutChecks({ capture }) {
     }));
     assert.equal(maskThreeOrder.left, 'mask');
     assert.equal(maskThreeOrder.right, 'three');
-    assert.ok(maskThreeOrder.mask < maskThreeOrder.three, `${name}: Split left/right order was lost`);
+    assert.ok(
+      maskThreeOrder.mask < maskThreeOrder.three,
+      `${name}: Split left/right order was lost`,
+    );
 
     const leftMaskSelector = page.locator(
       '#maskPanel .workstation-split-view-selector[data-split-slot="left"]',
@@ -193,7 +194,10 @@ export function createProductLayoutChecks({ capture }) {
       };
     });
 
-    assert.ok(metrics.overflow <= 1, `${name}: Process panel horizontal overflow ${metrics.overflow}px`);
+    assert.ok(
+      metrics.overflow <= 1,
+      `${name}: Process panel horizontal overflow ${metrics.overflow}px`,
+    );
     if (name === 'phone') {
       assert.ok(
         Math.abs(metrics.featureTop - metrics.featureCvTop) > 4,
@@ -220,10 +224,13 @@ export function createProductLayoutChecks({ capture }) {
     await capture(page, `${name}-tab-operation-rough`);
 
     await page.locator('[data-process-mode="implant"]').click();
-    const implantOverflow = await page.locator('#operationTools').evaluate(
-      (panel) => panel.scrollWidth - panel.clientWidth,
+    const implantOverflow = await page
+      .locator('#operationTools')
+      .evaluate((panel) => panel.scrollWidth - panel.clientWidth);
+    assert.ok(
+      implantOverflow <= 1,
+      `${name}: Implant panel horizontal overflow ${implantOverflow}px`,
     );
-    assert.ok(implantOverflow <= 1, `${name}: Implant panel horizontal overflow ${implantOverflow}px`);
     await capture(page, `${name}-tab-operation-implant`);
   }
 
@@ -267,7 +274,11 @@ export function createProductLayoutChecks({ capture }) {
       await canvas.waitFor({ state: 'visible' });
     }
     assert.equal(await entry.isVisible(), true, `${name}: Z collapse axis entry is missing`);
-    assert.equal(await editor.isHidden(), true, `${name}: collapse editor should be hidden normally`);
+    assert.equal(
+      await editor.isHidden(),
+      true,
+      `${name}: collapse editor should be hidden normally`,
+    );
 
     const before = {
       top: Number(await canvas.getAttribute('data-section-collapse-top-um')),
@@ -312,9 +323,10 @@ export function createProductLayoutChecks({ capture }) {
     assert.equal(await editor.isVisible(), true);
     close(
       Number(
-        await page.locator('#sectionCollapseTopValue').textContent().then((text) =>
-          Number(text.replace('−', '-').replace(/[^0-9+.-]/g, '')),
-        ),
+        await page
+          .locator('#sectionCollapseTopValue')
+          .textContent()
+          .then((text) => Number(text.replace('−', '-').replace(/[^0-9+.-]/g, ''))),
       ),
       nudgedTop,
       1e-3,
@@ -329,10 +341,7 @@ export function createProductLayoutChecks({ capture }) {
     assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'false');
     assert.equal(await entry.getAttribute('aria-pressed'), 'false');
     assert.equal(await editor.isHidden(), true);
-    assert.equal(
-      await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'),
-      'false',
-    );
+    assert.equal(await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'), 'false');
     await capture(page, `${name}-section-z-full`);
 
     // Single click stays inert while collapse is off; double-click restores the
@@ -342,10 +351,7 @@ export function createProductLayoutChecks({ capture }) {
     await entry.dblclick();
     assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'true');
     assert.equal(await entry.getAttribute('aria-pressed'), 'true');
-    assert.equal(
-      await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'),
-      'true',
-    );
+    assert.equal(await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'), 'true');
     close(Number(await canvas.getAttribute('data-section-collapse-top-um')), nudgedTop, 1e-9);
 
     await capture(page, `${name}-section-z-collapse`);
@@ -457,7 +463,10 @@ export function createProductLayoutChecks({ capture }) {
     await page.locator('#faceToggleBtn').click();
     await closeFunctionPanel(page);
     const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
-    assert.ok(handleSize <= (name === 'phone' ? 32 : 24), `A/B handle is too large: ${handleSize}px`);
+    assert.ok(
+      handleSize <= (name === 'phone' ? 32 : 24),
+      `A/B handle is too large: ${handleSize}px`,
+    );
     await page.locator('#mainZoomIn').click();
     assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
     await dragHandle(page, 'a', 4, 0);
@@ -472,7 +481,10 @@ export function createProductLayoutChecks({ capture }) {
       assert.ok(handleBeforePan && panCanvas);
       await panButton.click();
       assert.equal(await panButton.getAttribute('aria-pressed'), 'true');
-      await page.mouse.move(panCanvas.x + panCanvas.width * 0.55, panCanvas.y + panCanvas.height * 0.55);
+      await page.mouse.move(
+        panCanvas.x + panCanvas.width * 0.55,
+        panCanvas.y + panCanvas.height * 0.55,
+      );
       await page.mouse.down();
       await page.mouse.move(
         panCanvas.x + panCanvas.width * 0.55 + 24,
@@ -540,7 +552,7 @@ export function createProductLayoutChecks({ capture }) {
     const project = projectForBenchmark(benchmark);
     project.display.xyUnit = 'nm';
     // 10 nm features in a 100 nm base, with a high screen zoom.
-    project.model = (await import('../site/model.js')).createModel({
+    project.model = (await import('../../site/model.js')).createModel({
       shape: 'rect',
       width: 0.1,
       height: 0.1,

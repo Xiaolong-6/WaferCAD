@@ -61,7 +61,6 @@ test('a layer exposed on the back face is also deletable', () => {
   );
 });
 
-
 test('material visibility hides render geometry without deleting process geometry', () => {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 10 });
   const coating = createLayer(model, 'Inspection coating');

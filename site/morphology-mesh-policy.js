@@ -1,7 +1,4 @@
-import {
-  adaptiveRoughMeshLod,
-  allocateRoughTriangleBudgets,
-} from './surface-rendering.js';
+import { adaptiveRoughMeshLod, allocateRoughTriangleBudgets } from './surface-rendering.js';
 import {
   roughBoundaryEdgesFromTriangles,
   roughCapBaseTriangles,
@@ -25,14 +22,11 @@ export function xyBoundsOfGeometry(geometry) {
       }
     }
   }
-  return [minX, minY, maxX, maxY].every(Number.isFinite)
-    ? { minX, minY, maxX, maxY }
-    : null;
+  return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
 }
 
 export function roughAxisDivisions(span, featureSize) {
-  const features =
-    Math.max(0, Number(span) || 0) / Math.max(1e-9, Number(featureSize) || 1);
+  const features = Math.max(0, Number(span) || 0) / Math.max(1e-9, Number(featureSize) || 1);
   if (features >= 16) return 4;
   if (features >= 8) return 3;
   if (features >= 4) return 2;
@@ -52,9 +46,7 @@ export function triangleSetBounds(triangles) {
       maxY = Math.max(maxY, Number(point?.[1]));
     }
   }
-  return [minX, minY, maxX, maxY].every(Number.isFinite)
-    ? { minX, minY, maxX, maxY }
-    : null;
+  return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
 }
 
 export function triangleSetMaxEdge(triangles) {
@@ -115,10 +107,7 @@ export function buildRoughSpatialZones(THREE, cap) {
         0,
         Math.min(columns - 1, Math.floor(((cx - bounds.minX) / spanX) * columns)),
       ),
-      row = Math.max(
-        0,
-        Math.min(rows - 1, Math.floor(((cy - bounds.minY) / spanY) * rows)),
-      ),
+      row = Math.max(0, Math.min(rows - 1, Math.floor(((cy - bounds.minY) / spanY) * rows))),
       key = `${row}|${column}`;
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key).push(triangle);

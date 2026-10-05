@@ -158,8 +158,7 @@ export function createWorkspaceSessionController({
   function handleStorage(event) {
     if (event?.key !== LEASE_KEY) return;
     const lease = parseLease(event.newValue);
-    const nextWritable =
-      writable && (!leaseIsActive(lease) || lease?.tabId === resolvedTabId);
+    const nextWritable = writable && (!leaseIsActive(lease) || lease?.tabId === resolvedTabId);
     if (nextWritable !== writable) {
       writable = nextWritable;
       emit();

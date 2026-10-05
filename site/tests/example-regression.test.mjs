@@ -174,11 +174,17 @@ test('bundled examples remain valid renderer-ready regression fixtures', async (
     for (const node of project.snapshotBranches?.nodes || []) {
       assert.notEqual(node.restorable, false, `${node.id}: production Step must remain restorable`);
       assert.ok(node.state?.model, `${node.id}: restorable Step lost its model`);
-      assertRendererReadyState(node.state, `${example.id} Step ${node.operation?.label || node.id}`);
+      assertRendererReadyState(
+        node.state,
+        `${example.id} Step ${node.operation?.label || node.id}`,
+      );
     }
 
     for (const variant of project.snapshotBranches?.branches || []) {
-      assert.ok(variant.headState?.model, `${example.id}/${variant.id}: Variant HEAD model missing`);
+      assert.ok(
+        variant.headState?.model,
+        `${example.id}/${variant.id}: Variant HEAD model missing`,
+      );
       assertRendererReadyState(variant.headState, `${example.id} Variant ${variant.id} HEAD`);
     }
   }
@@ -316,7 +322,6 @@ test('Ge Fig. 15 A/B preserve Electrical semantics and host-material ownership',
   assert.equal(roughSurfaceCounts(modelB).back, 0);
 });
 
-
 test('PERC example exposes only curated reconstruction variants with a saved inspection view', async () => {
   const project = await loadBundledProject('perc-point-contact-solar-cell'),
     active = branchMap(project).get(project.snapshotBranches.activeBranchId),
@@ -330,7 +335,10 @@ test('PERC example exposes only curated reconstruction variants with a saved ins
     'PERC Fig. 1 · GDS-patterned contacts',
     'PERC Fig. 1 · source-order reconstruction',
   ]);
-  assert.equal(branchNames.some((name) => /test|proxy|check/i.test(name)), false);
+  assert.equal(
+    branchNames.some((name) => /test|proxy|check/i.test(name)),
+    false,
+  );
   assert.equal(project.model.processRevision, 18);
   assert.equal(project.model.implants.length, 2);
   assert.ok(project.model.layers.some((layer) => /Front passivation SiO2/i.test(layer.name)));

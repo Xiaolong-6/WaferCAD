@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test site/tests/*.test.mjs",
-    "lint": "eslint \"site/**/*.{js,mjs}\"",
-    "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"*.md\" \"*.json\"",
+    "lint": "eslint \"site/**/*.{js,mjs}\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"*.md\" \"*.json\" \"eslint.config.js\"",
     "format:check": "prettier --check \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
     "check": "npm run lint && npm run format:check && npm test",
     "check:ci": "npm run lint && npm test",
@@ -31,6 +31,8 @@
   },
   "devDependencies": {
     "eslint": "10.11.0",
-    "prettier": "3.9.9"
+    "playwright": "1.55.0",
+    "prettier": "3.9.9",
+    "three": "0.179.1"
   }
 }

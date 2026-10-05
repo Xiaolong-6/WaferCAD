@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 import {
@@ -40,7 +41,9 @@ const browser = await launchBrowser();
 
 // Every successful process Step is a restorable History node. The restore state
 // must also survive local autosave + full reload.
-const historyRestoreContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
+const historyRestoreContext = await newUiContext(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const historyRestorePage = await historyRestoreContext.newPage();
 const historyRestoreErrors = observePageErrors(historyRestorePage);
 await gotoWelcome(historyRestorePage);
@@ -51,7 +54,9 @@ await historyRestorePage.locator('#welcomeProjectInput').setInputFiles({
 });
 await historyRestorePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await historyRestorePage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-restore-base.wafercad.',
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened history-restore-base.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -81,7 +86,10 @@ await historyRestorePage.waitForFunction(
 );
 await historyRestorePage.reload({ waitUntil: 'networkidle' });
 await historyRestorePage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  () =>
+    (document.getElementById('statusText')?.textContent || '').startsWith(
+      'Restored local workspace',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -91,9 +99,13 @@ assert.equal(await historyRestorePage.locator('.snapshot-branch-state').count(),
 assert.equal(await historyRestorePage.locator('.snapshot-branch-title strong').count(), 0);
 assert.equal(await historyRestorePage.locator('#saveSnapshotBtn').count(), 0);
 assert.equal(await historyRestorePage.locator('.history-tree-root').count(), 1);
-assert.equal(await historyRestorePage.locator('.history-variant[data-variant-id="main"]').count(), 1);
-const historySectionLabel = historyRestorePage
-  .locator('#snapshotsTools > .workstation-section-label strong');
+assert.equal(
+  await historyRestorePage.locator('.history-variant[data-variant-id="main"]').count(),
+  1,
+);
+const historySectionLabel = historyRestorePage.locator(
+  '#snapshotsTools > .workstation-section-label strong',
+);
 assert.equal((await historySectionLabel.textContent()).trim(), 'History');
 
 const historyARow = historyRestorePage.locator('.process-history-row', { hasText: 'History A' });
@@ -104,8 +116,12 @@ assert.equal(await historyARow.getAttribute('role'), 'button');
 assert.equal(await historyBRow.getAttribute('data-head'), 'true');
 
 // History action popovers are exclusive: opening another Step menu closes the first.
-const historyAPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History A' });
-const historyBPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History B' });
+const historyAPopoverStep = historyRestorePage.locator('.history-step-wrap', {
+  hasText: 'History A',
+});
+const historyBPopoverStep = historyRestorePage.locator('.history-step-wrap', {
+  hasText: 'History B',
+});
 await historyAPopoverStep.locator('.snapshot-more-trigger').click();
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
 // Trigger the second menu through its native summary activation without
@@ -116,8 +132,10 @@ await historyRestorePage.waitForFunction(() => {
   const steps = [...document.querySelectorAll('.history-step-wrap')];
   const historyA = steps.find((step) => /History A/.test(step.textContent || ''));
   const historyB = steps.find((step) => /History B/.test(step.textContent || ''));
-  return !historyA?.querySelector('.snapshot-more-menu')?.open &&
-    Boolean(historyB?.querySelector('.snapshot-more-menu')?.open);
+  return (
+    !historyA?.querySelector('.snapshot-more-menu')?.open &&
+    Boolean(historyB?.querySelector('.snapshot-more-menu')?.open)
+  );
 });
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), null);
 assert.equal(await historyBPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
@@ -133,9 +151,11 @@ await historyRestorePage.waitForFunction(
   { timeout: 5000 },
 );
 assert.equal(
-  await historyRestorePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
-    options.some((option) => /pre-process-history-restore/.test(option.textContent || '')),
-  ),
+  await historyRestorePage
+    .locator('#workspaceRecoverySelect option')
+    .evaluateAll((options) =>
+      options.some((option) => /pre-process-history-restore/.test(option.textContent || '')),
+    ),
   false,
 );
 assert.equal(await historyRestorePage.locator('#undoBtn').isDisabled(), true);
@@ -167,7 +187,10 @@ await historyRestorePage.waitForFunction(
 );
 await historyRestorePage.reload({ waitUntil: 'networkidle' });
 await historyRestorePage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  () =>
+    (document.getElementById('statusText')?.textContent || '').startsWith(
+      'Restored local workspace',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -186,16 +209,18 @@ assert.equal(
   false,
 );
 await historyRestorePage.locator('.snapshot-return-head').click();
-await historyRestorePage.waitForFunction(
-  () => /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
+await historyRestorePage.waitForFunction(() =>
+  /Returned to "Main" HEAD/.test(document.getElementById('statusText')?.textContent || ''),
 );
 // Navigation-only inspection changes (camera/ROI/Section/zoom) no longer count
 // as historical process edits, so returning to HEAD must not create a recovery
 // checkpoint solely for those view changes.
 assert.equal(
-  await historyRestorePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
-    options.some((option) => /pre-snapshot-return-head/.test(option.textContent || '')),
-  ),
+  await historyRestorePage
+    .locator('#workspaceRecoverySelect option')
+    .evaluateAll((options) =>
+      options.some((option) => /pre-snapshot-return-head/.test(option.textContent || '')),
+    ),
   false,
 );
 assert.ok(
@@ -211,16 +236,18 @@ await historyAStep.locator('.snapshot-more-trigger').click();
 await historyAStep
   .locator('.snapshot-more-popover button', { hasText: 'Variant from here' })
   .click();
-await historyRestorePage.waitForFunction(
-  () => /Created Variant "Variant 1"/.test(document.getElementById('statusText')?.textContent || ''),
+await historyRestorePage.waitForFunction(() =>
+  /Created Variant "Variant 1"/.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.equal(await historyRestorePage.locator('.history-variant').count(), 2);
-const childVariant = historyRestorePage.locator('.history-variant:not([data-variant-id="main"])').first();
+const childVariant = historyRestorePage
+  .locator('.history-variant:not([data-variant-id="main"])')
+  .first();
 assert.equal(
   await childVariant.evaluate((section) =>
     Boolean(
       section.previousElementSibling?.classList.contains('history-step-wrap') &&
-        /History A/.test(section.previousElementSibling.textContent || ''),
+      /History A/.test(section.previousElementSibling.textContent || ''),
     ),
   ),
   true,
@@ -237,11 +264,19 @@ await variantEditor.locator('input').fill('Detector path');
 await variantEditor.locator('button').first().click();
 assert.equal(await historyRestorePage.locator('#snapshotBranchSelect').count(), 0);
 assert.equal(
-  (await historyRestorePage.locator('.history-variant[data-active="true"] .history-variant-name').textContent()).trim(),
+  (
+    await historyRestorePage
+      .locator('.history-variant[data-active="true"] .history-variant-name')
+      .textContent()
+  ).trim(),
   'Detector path',
 );
 assert.equal(
-  (await historyRestorePage.locator('.history-variant[data-active="true"] .history-variant-name').textContent()).trim(),
+  (
+    await historyRestorePage
+      .locator('.history-variant[data-active="true"] .history-variant-name')
+      .textContent()
+  ).trim(),
   'Detector path',
 );
 
@@ -263,16 +298,11 @@ await historyRestorePage.waitForFunction(
 await openFunctionPanel(historyRestorePage, 'snapshots');
 const variantCStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'Variant C' });
 await variantCStep.locator('.snapshot-more-trigger').click();
-await variantCStep
-  .locator('.snapshot-more-popover button', { hasText: 'Add bookmark' })
-  .click();
+await variantCStep.locator('.snapshot-more-popover button', { hasText: 'Add bookmark' }).click();
 assert.equal(await variantCStep.locator('.history-bookmarks-group').count(), 1);
 assert.equal(await variantCStep.locator('.history-bookmarks-group').getAttribute('open'), null);
 assert.equal(await variantCStep.locator('.history-bookmark-row').count(), 1);
-assert.equal(
-  Number(await historyRestorePage.locator('#snapshotCount').textContent()),
-  3,
-);
+assert.equal(Number(await historyRestorePage.locator('#snapshotCount').textContent()), 3);
 
 // Autosave/reload preserves the Step tree, Variant name, origin, and bookmark.
 await historyRestorePage.waitForFunction(
@@ -282,18 +312,27 @@ await historyRestorePage.waitForFunction(
 );
 await historyRestorePage.reload({ waitUntil: 'networkidle' });
 await historyRestorePage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  () =>
+    (document.getElementById('statusText')?.textContent || '').startsWith(
+      'Restored local workspace',
+    ),
   null,
   { timeout: 30000 },
 );
 await openFunctionPanel(historyRestorePage, 'snapshots');
 assert.equal(await historyRestorePage.locator('#snapshotBranchSelect').count(), 0);
 assert.equal(
-  (await historyRestorePage.locator('.history-variant[data-active="true"] .history-variant-name').textContent()).trim(),
+  (
+    await historyRestorePage
+      .locator('.history-variant[data-active="true"] .history-variant-name')
+      .textContent()
+  ).trim(),
   'Detector path',
 );
 assert.equal(await historyRestorePage.locator('.history-variant').count(), 2);
-const reloadedChild = historyRestorePage.locator('.history-variant:not([data-variant-id="main"])').first();
+const reloadedChild = historyRestorePage
+  .locator('.history-variant:not([data-variant-id="main"])')
+  .first();
 assert.equal(
   (await reloadedChild.locator('.history-variant-name').textContent()).trim(),
   'Detector path',
@@ -326,10 +365,7 @@ assert.equal(historyTreeGeometry.compact, false);
 assert.ok(historyTreeGeometry.panel.width >= 295, JSON.stringify(historyTreeGeometry));
 assert.ok(historyTreeGeometry.panel.left >= 40, JSON.stringify(historyTreeGeometry));
 if (historyTreeGeometry.banner && historyTreeGeometry.returnButton) {
-  assert.ok(
-    historyTreeGeometry.returnButton.width >= 90,
-    JSON.stringify(historyTreeGeometry),
-  );
+  assert.ok(historyTreeGeometry.returnButton.width >= 90, JSON.stringify(historyTreeGeometry));
   assert.ok(
     historyTreeGeometry.banner.width >= historyTreeGeometry.returnButton.width,
     JSON.stringify(historyTreeGeometry),
@@ -347,10 +383,9 @@ for (const item of [
 
 await mkdir(new URL('../test-results/product-review/', import.meta.url), { recursive: true });
 await historyRestorePage.screenshot({
-  path: new URL(
-    '../test-results/product-review/history-variant-tree-populated.png',
-    import.meta.url,
-  ).pathname,
+  path: fileURLToPath(
+    new URL('../test-results/product-review/history-variant-tree-populated.png', import.meta.url),
+  ),
   fullPage: true,
 });
 
@@ -359,7 +394,9 @@ await historyRestoreContext.close();
 
 // Historical Step editing enters the Process editor immediately. The downstream
 // strategy is chosen only when the edited Step is actually saved.
-const historyRecomputeContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
+const historyRecomputeContext = await newUiContext(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const historyRecomputePage = await historyRecomputeContext.newPage();
 const historyRecomputeErrors = observePageErrors(historyRecomputePage);
 await gotoWelcome(historyRecomputePage);
@@ -370,7 +407,9 @@ await historyRecomputePage.locator('#welcomeProjectInput').setInputFiles({
 });
 await historyRecomputePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await historyRecomputePage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-recompute-base.wafercad.',
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened history-recompute-base.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -391,7 +430,9 @@ for (const name of ['Replay A', 'Replay B', 'Replay C']) {
 }
 
 await openFunctionPanel(historyRecomputePage, 'snapshots');
-const replayBStep = historyRecomputePage.locator('.history-step-wrap', { hasText: 'Replay B' }).first();
+const replayBStep = historyRecomputePage
+  .locator('.history-step-wrap', { hasText: 'Replay B' })
+  .first();
 await replayBStep.locator('.snapshot-more-trigger').click();
 await replayBStep.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
 await historyRecomputePage.waitForFunction(
@@ -399,11 +440,19 @@ await historyRecomputePage.waitForFunction(
   null,
   { timeout: 10000 },
 );
-assert.equal(await historyRecomputePage.locator('#confirmationDialogOverlay:not([hidden])').count(), 0);
-await historyRecomputePage.locator('.snapshot-continuation-banner[data-editing-step="true"]').waitFor();
+assert.equal(
+  await historyRecomputePage.locator('#confirmationDialogOverlay:not([hidden])').count(),
+  0,
+);
+await historyRecomputePage
+  .locator('.snapshot-continuation-banner[data-editing-step="true"]')
+  .waitFor();
 assert.equal(await historyRecomputePage.locator('#layerName').inputValue(), 'Replay B');
 assert.equal(Number(await historyRecomputePage.locator('#operationThickness').inputValue()), 0.05);
-assert.equal((await historyRecomputePage.locator('#applyOperationBtn').textContent()).trim(), 'Save edited Step');
+assert.equal(
+  (await historyRecomputePage.locator('#applyOperationBtn').textContent()).trim(),
+  'Save edited Step',
+);
 
 await historyRecomputePage.locator('#layerName').fill('Replay B edited');
 await historyRecomputePage.locator('#operationThickness').fill('0.08');
@@ -419,9 +468,10 @@ for (const action of ['replace-discard', 'replace-replay', 'branch-edit']) {
 }
 await chooseConfirmation(historyRecomputePage, 'replace-replay');
 await historyRecomputePage.waitForFunction(
-  () => /Replayed 1 later Step in Variant "Main"/.test(
-    document.getElementById('statusText')?.textContent || '',
-  ),
+  () =>
+    /Replayed 1 later Step in Variant "Main"/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -436,9 +486,11 @@ assert.match(
 );
 assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
 assert.equal(
-  await historyRecomputePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
-    options.some((option) => /pre-history-step-edit/.test(option.textContent || '')),
-  ),
+  await historyRecomputePage
+    .locator('#workspaceRecoverySelect option')
+    .evaluateAll((options) =>
+      options.some((option) => /pre-history-step-edit/.test(option.textContent || '')),
+    ),
   true,
 );
 assert.deepEqual(historyRecomputeErrors, []);
@@ -446,7 +498,9 @@ await historyRecomputeContext.close();
 
 // Replay is transactional: if a later Step fails after earlier replay Steps
 // succeeded, the original Variant and geometry are restored automatically.
-const historyReplayFailureContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
+const historyReplayFailureContext = await newUiContext(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const historyReplayFailurePage = await historyReplayFailureContext.newPage();
 const historyReplayFailureErrors = observePageErrors(historyReplayFailurePage);
 await gotoWelcome(historyReplayFailurePage);
@@ -457,7 +511,9 @@ await historyReplayFailurePage.locator('#welcomeProjectInput').setInputFiles({
 });
 await historyReplayFailurePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await historyReplayFailurePage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-replay-failure-base.wafercad.',
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened history-replay-failure-base.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -478,7 +534,9 @@ for (const name of ['Fail Seed', 'Fail A', 'Fail B', 'Fail C', 'Fail D', 'Fail E
 }
 
 await openFunctionPanel(historyReplayFailurePage, 'snapshots');
-const failAStep = historyReplayFailurePage.locator('.history-step-wrap', { hasText: 'Fail A' }).first();
+const failAStep = historyReplayFailurePage
+  .locator('.history-step-wrap', { hasText: 'Fail A' })
+  .first();
 await failAStep.locator('.snapshot-more-trigger').click();
 await failAStep.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
 await historyReplayFailurePage.waitForFunction(
@@ -511,7 +569,10 @@ await historyReplayFailurePage.locator('#applyOperationBtn').click();
 await historyReplayFailurePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
 await chooseConfirmation(historyReplayFailurePage, 'replace-replay');
 await historyReplayFailurePage.waitForFunction(
-  () => /Replay stopped after 2\/4 later Steps/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Replay stopped after 2\/4 later Steps/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -567,10 +628,7 @@ const snapshotExportPromise = projectDownloadPage.waitForEvent('download', { tim
 await projectDownloadPage.locator('#exportProjectBtn').click();
 const snapshotExport = await snapshotExportPromise;
 assert.equal(snapshotExport.suggestedFilename(), 'Snapshot export check.wafercad');
-assert.match(
-  await projectDownloadPage.locator('#statusText').textContent(),
-  /Download requested/,
-);
+assert.match(await projectDownloadPage.locator('#statusText').textContent(), /Download requested/);
 const snapshotExportPath = await snapshotExport.path();
 assert.ok(snapshotExportPath);
 const snapshotExportedProject = JSON.parse(await readFile(snapshotExportPath, 'utf8'));

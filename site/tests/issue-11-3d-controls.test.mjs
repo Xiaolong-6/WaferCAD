@@ -9,10 +9,7 @@ const rendererGeometry = await readFile(
   new URL('../renderer-geometry.js', import.meta.url),
   'utf8',
 );
-const processTopology = await readFile(
-  new URL('../process-topology.js', import.meta.url),
-  'utf8',
-);
+const processTopology = await readFile(new URL('../process-topology.js', import.meta.url), 'utf8');
 const roughMeshGeometry = await readFile(
   new URL('../rough-mesh-geometry.js', import.meta.url),
   'utf8',
@@ -98,7 +95,10 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /color: layer\?\.color \|\| '#999'/);
   assert.doesNotMatch(threeView, /0x24282c/);
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
-  assert.match(threeView, /async function exportGlb\(\{ signal = null, onProgress = null \} = \{\}\)/);
+  assert.match(
+    threeView,
+    /async function exportGlb\(\{ signal = null, onProgress = null \} = \{\}\)/,
+  );
   assert.match(threeView, /buildExportRoughMeshData/);
   assert.match(threeView, /new Worker\(workerUrl\)/);
   assert.match(threeView, /GLB morphology worker failed; using synchronous fallback/);

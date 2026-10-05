@@ -22,12 +22,7 @@ function closePoints(points) {
   const ring = points.map(([x, y]) => [Number(x), Number(y)]);
   const first = ring[0],
     last = ring.at(-1);
-  if (
-    !first ||
-    !last ||
-    !first.every(Number.isFinite) ||
-    !last.every(Number.isFinite)
-  ) {
+  if (!first || !last || !first.every(Number.isFinite) || !last.every(Number.isFinite)) {
     return [];
   }
   if (Math.abs(first[0] - last[0]) > GEOM_EPS || Math.abs(first[1] - last[1]) > GEOM_EPS) {
@@ -154,10 +149,7 @@ function clipPolyline(points, clip) {
   const pieces = [];
   let current = null;
   const same = (a, b) =>
-    a &&
-    b &&
-    Math.abs(a[0] - b[0]) <= GEOM_EPS &&
-    Math.abs(a[1] - b[1]) <= GEOM_EPS;
+    a && b && Math.abs(a[0] - b[0]) <= GEOM_EPS && Math.abs(a[1] - b[1]) <= GEOM_EPS;
 
   for (let index = 1; index < points.length; index++) {
     const a = points[index - 1],
@@ -326,9 +318,7 @@ function quantizeElements(elements, dbuMicron) {
         );
       }
     } else if (points.length < 2) {
-      throw new Error(
-        `Mask export path collapses at the selected ${dbuMicron} µm database unit.`,
-      );
+      throw new Error(`Mask export path collapses at the selected ${dbuMicron} µm database unit.`);
     }
     const layer = Number(element.layer),
       datatype = Number(element.datatype);
@@ -460,7 +450,8 @@ export function serializeGDS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
         gdsRecord(0x11, 0x00),
       );
     } else {
-      if (element.points.length > 8190) throw new Error('A path is too large for one GDSII PATH record.');
+      if (element.points.length > 8190)
+        throw new Error('A path is too large for one GDSII PATH record.');
       records.push(
         gdsRecord(0x09, 0x00),
         gdsRecord(0x0d, 0x02, gdsInt16([element.layer])),
@@ -476,7 +467,8 @@ export function serializeGDS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
 }
 
 function oasisUint(value) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error('OASIS export integer is invalid.');
+  if (!Number.isSafeInteger(value) || value < 0)
+    throw new Error('OASIS export integer is invalid.');
   const out = [];
   let remaining = value;
   do {
@@ -529,11 +521,7 @@ function oasisPointList(points, closed) {
 export function serializeOASIS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
   // OASIS PATH stores half-width as an integer. A half-size base DBU keeps
   // 0.1 nm full-width increments exactly representable.
-  const dbuMicron = chooseDbuMicron(
-      elements,
-      DBU_TARGET_MICRON / 2,
-      OAS_COORD_LIMIT,
-    ),
+  const dbuMicron = chooseDbuMicron(elements, DBU_TARGET_MICRON / 2, OAS_COORD_LIMIT),
     quantized = quantizeElements(elements, dbuMicron),
     parts = [
       new TextEncoder().encode('%SEMI-OASIS\r\n'),

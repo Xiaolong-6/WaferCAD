@@ -61,7 +61,6 @@ export function historyOperationLabel(node, model) {
   return fallback;
 }
 
-
 function normalizedLayerKeyLabel(value) {
   const [layer, datatype = '0'] = String(value || '').split(/[|/]/, 2);
   return layer ? `${layer}/${datatype || '0'}` : '';

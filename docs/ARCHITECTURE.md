@@ -147,6 +147,7 @@ History insertion reuses the same transaction. **Insert before…** restores the
 The manager distinguishes process position from exact workspace HEAD state. Two states may share the same `processRevision` / Step while differing in display, ROI, mask, or project settings; restoring an older state at the HEAD Step must not silently overwrite the Variant HEAD. Clean History browsing does not consume Recovery slots, while edited historical working state is checkpointed before replacement.
 
 Process-node states, bookmark states kept for compatibility, and Variant HEAD states all use shared model/layout asset packing during autosave, Recovery, and file export. v1/v2 metadata remains accepted; recoverable legacy states are materialized into their Step nodes when possible, without inventing states that were never saved.
+
 ### `site/gds.js`
 
 Parses GDSII directly in the browser:

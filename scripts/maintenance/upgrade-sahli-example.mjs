@@ -6,7 +6,9 @@ import path from 'node:path';
 
 const [inputPath, outputPathArg] = process.argv.slice(2);
 if (!inputPath) {
-  console.error('Usage: node scripts/maintenance/upgrade-sahli-example.mjs <input.wafercad> [output.wafercad]');
+  console.error(
+    'Usage: node scripts/maintenance/upgrade-sahli-example.mjs <input.wafercad> [output.wafercad]',
+  );
   process.exit(1);
 }
 
@@ -23,9 +25,7 @@ const project = JSON.parse(await readFile(inputPath, 'utf8')),
   snapshots = project.snapshots || [],
   removeLabels = new Set(['VIEW_Ag_finger_cross_section', 'VIEW_Ag_finger_micro_section']),
   removeIds = new Set(
-    nodes
-      .filter((node) => removeLabels.has(node.operation?.label))
-      .map((node) => node.id),
+    nodes.filter((node) => removeLabels.has(node.operation?.label)).map((node) => node.id),
   ),
   finalNode = nodes.find((node) => node.operation?.label === '20_final_tandem'),
   mgfNode = nodes.find((node) => node.operation?.label?.startsWith('Deposit MgF2 AR')),
@@ -76,12 +76,12 @@ const cameraFor = {
     target: [0, 0, 0],
     fov: 34,
   },
-  'VIEW_Ag_finger_cross_section': {
+  VIEW_Ag_finger_cross_section: {
     position: [72, 1928, 58],
     target: [0, 2000, 0],
     fov: 34,
   },
-  'VIEW_Ag_finger_micro_section': {
+  VIEW_Ag_finger_micro_section: {
     position: [38, 1967, 28],
     target: [0, 2003.2, 0],
     fov: 34,

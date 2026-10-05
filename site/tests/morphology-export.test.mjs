@@ -82,7 +82,8 @@ test('morphology export policy creates deterministic detailed Pyramid mesh data'
   assert.equal(first.positions.length, first.normals.length);
 
   const zValues = [];
-  for (let index = 2; index < first.positions.length; index += 3) zValues.push(first.positions[index]);
+  for (let index = 2; index < first.positions.length; index += 3)
+    zValues.push(first.positions[index]);
   assert.ok(Math.max(...zValues) > Math.min(...zValues) + 0.1);
   assert.ok(first.metadata.roughSubdivisionDepth > 0);
 });
@@ -122,15 +123,9 @@ test('morphology export preserves front/back profile direction and inverted pola
       }
       return { min: Math.min(...values), max: Math.max(...values) };
     },
-    frontNormal = zRange(
-      meshFor({ z: 0, normal: 1, profileNormal: 1, polarity: 'normal' }),
-    ),
-    frontInverted = zRange(
-      meshFor({ z: 0, normal: 1, profileNormal: 1, polarity: 'inverted' }),
-    ),
-    backNormal = zRange(
-      meshFor({ z: -3, normal: -1, profileNormal: -1, polarity: 'normal' }),
-    );
+    frontNormal = zRange(meshFor({ z: 0, normal: 1, profileNormal: 1, polarity: 'normal' })),
+    frontInverted = zRange(meshFor({ z: 0, normal: 1, profileNormal: 1, polarity: 'inverted' })),
+    backNormal = zRange(meshFor({ z: -3, normal: -1, profileNormal: -1, polarity: 'normal' }));
 
   assert.ok(frontNormal.max > 0.1);
   assert.ok(frontNormal.min >= -1e-9);
@@ -152,8 +147,7 @@ test('morphology export preserves front/back profile direction and inverted pola
   assert.equal(frontNormalMesh.positions.length, frontInvertedMesh.positions.length);
   for (let index = 2; index < frontNormalMesh.positions.length; index += 3) {
     assert.ok(
-      Math.abs(frontNormalMesh.positions[index] + frontInvertedMesh.positions[index] - 1) <
-        1e-5,
+      Math.abs(frontNormalMesh.positions[index] + frontInvertedMesh.positions[index] - 1) < 1e-5,
     );
   }
 
@@ -181,10 +175,9 @@ test('morphology export triangle budget is shared across multiple rough caps', (
       ],
       { totalTriangleBudget: 80000 },
     ),
-    allocated = tasks.flatMap((task) => task.lodZones).reduce(
-      (sum, zone) => sum + Number(zone.triangleBudget || 0),
-      0,
-    );
+    allocated = tasks
+      .flatMap((task) => task.lodZones)
+      .reduce((sum, zone) => sum + Number(zone.triangleBudget || 0), 0);
 
   assert.equal(tasks.length, 2);
   assert.ok(allocated <= 80000);

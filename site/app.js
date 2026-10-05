@@ -1,15 +1,7 @@
 import { parseLayoutFile } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
-import {
-  cloneModel,
-  createModel,
-  hasMaterial,
-  surfaceSegment,
-  surfaceZ,
-} from './model.js';
-import {
-  transformMulti,
-} from './vector-geometry.js';
+import { cloneModel, createModel, hasMaterial, surfaceSegment, surfaceZ } from './model.js';
+import { transformMulti } from './vector-geometry.js';
 import { createThreeView } from './three-view.js';
 import {
   formatLengthInput,
@@ -48,10 +40,7 @@ import { createWorkspaceSessionController } from './controllers/workspace-sessio
 import { createWorkspacePersistenceController } from './controllers/workspace-persistence-controller.js';
 import { createWorkspaceViewController } from './controllers/workspace-view-controller.js';
 import { createDrawMaskController } from './controllers/draw-mask-controller.js';
-import {
-  createEmptyDrawMask,
-  drawShapeContainsPoint,
-} from './draw-mask-geometry.js';
+import { createEmptyDrawMask, drawShapeContainsPoint } from './draw-mask-geometry.js';
 import {
   createEmptyLayout,
   createProjectStateController,
@@ -128,14 +117,20 @@ function status(message, level = 'auto') {
 }
 
 function normalizedProjectName(value = projectName) {
-  return String(value ?? '').trim().slice(0, 256) || 'Untitled';
+  return (
+    String(value ?? '')
+      .trim()
+      .slice(0, 256) || 'Untitled'
+  );
 }
 
 function syncProjectNameInput() {
   const value = normalizedProjectName();
   const input = $('projectNameInput');
   if (input && document.activeElement !== input) input.value = value;
-  document.dispatchEvent(new CustomEvent('wafercad:project-name-sync', { detail: { name: value } }));
+  document.dispatchEvent(
+    new CustomEvent('wafercad:project-name-sync', { detail: { name: value } }),
+  );
 }
 
 let workspacePersistenceController = null,
@@ -363,15 +358,11 @@ const {
 async function runMaskLayoutExport(request) {
   if (!processTaskController) return null;
   const formatLabel = request?.format === 'oas' ? 'OASIS' : 'GDSII';
-  const task = await processTaskController.runWorker(
-    '../layout-export-worker.js',
-    request,
-    {
-      label: `Exporting Mask as ${formatLabel}…`,
-      abortMessage: 'Mask export aborted. No file was written.',
-      failurePrefix: `Mask ${formatLabel} export failed`,
-    },
-  );
+  const task = await processTaskController.runWorker('../layout-export-worker.js', request, {
+    label: `Exporting Mask as ${formatLabel}…`,
+    abortMessage: 'Mask export aborted. No file was written.',
+    failurePrefix: `Mask ${formatLabel} export failed`,
+  });
   if (task?.aborted) return null;
   if (task?.busy) {
     status('Another background task is already running.', 'warning');
@@ -476,9 +467,7 @@ maskRoiController = createMaskRoiController({
     markProjectDirty();
   },
   getTransform: () =>
-    maskSourceMode === 'file'
-      ? { ...maskTransform }
-      : { x: 0, y: 0, scale: 1, rotation: 0 },
+    maskSourceMode === 'file' ? { ...maskTransform } : { x: 0, y: 0, scale: 1, rotation: 0 },
   xyUnitLabel: () => xyUnit().label,
   formatLengthField,
   formatNumericField,
@@ -530,12 +519,8 @@ const layerLegendController = createLayerLegendController({
   status,
   confirmAction: (options) => confirmationDialog.confirm(options),
 });
-const {
-  renderLayerLegend,
-  colorNewLayer,
-  colorNewImplant,
-  colorNewElectricalRegion,
-} = layerLegendController;
+const { renderLayerLegend, colorNewLayer, colorNewImplant, colorNewElectricalRegion } =
+  layerLegendController;
 
 const selectionGeometry = createSelectionGeometry({
   getState: () => ({
@@ -960,12 +945,7 @@ projectController = createProjectController({
   getHistoricalStepInsert: historyMutationController.currentInsert,
   cancelHistoricalStepInsert: historyMutationController.cancelInsert,
 });
-const {
-  renderSnapshots,
-  openLayoutFile,
-  openProjectFile,
-  openBundledExample,
-} = projectController;
+const { renderSnapshots, openLayoutFile, openProjectFile, openBundledExample } = projectController;
 
 function recordProcessOperation(operation) {
   const recorded = snapshotManager.recordOperation(operation);
@@ -1266,7 +1246,6 @@ workspacePersistenceController = createWorkspacePersistenceController({
   confirmAction: (options) => confirmationDialog.confirm(options),
   chooseAction: (options) => confirmationDialog.ask(options),
 });
-
 
 const workstationUiController = createWorkstationUiController({ root: document, win: window });
 

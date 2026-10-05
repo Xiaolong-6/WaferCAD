@@ -23,10 +23,10 @@ Rough and Pyramid Etch surface modes attach deterministic render-only appearance
 All fixtures use a 20 × 20 µm rectangular base, Z thickness 10 (`−5 … +5`), a feature height/depth of 2, a coating amount of 1, and a Section from `(−9, 0)` to `(9, 0)`.
 
 | Fixture         | Initial feature                         | Directional coating at probe | Conformal coating at probe | Front probe |
-| --------------- | --------------------------------------- | ----------------------- | -------------------------- | ----------- |
-| Step            | Left half raised to Z = 7               | Z = 5 … 6               | Z = 5 … 8                  | `(0.1, 0)`  |
-| Trench          | Central 4 µm strip etched to Z = 3      | Z = 3 … 4               | Z = 3 … 6                  | `(1.9, 0)`  |
-| Isolated island | Central 4 × 4 µm island raised to Z = 7 | Z = 5 … 6               | Z = 5 … 8                  | `(2.1, 0)`  |
+| --------------- | --------------------------------------- | ---------------------------- | -------------------------- | ----------- |
+| Step            | Left half raised to Z = 7               | Z = 5 … 6                    | Z = 5 … 8                  | `(0.1, 0)`  |
+| Trench          | Central 4 µm strip etched to Z = 3      | Z = 3 … 4                    | Z = 3 … 6                  | `(1.9, 0)`  |
+| Isolated island | Central 4 × 4 µm island raised to Z = 7 | Z = 5 … 6                    | Z = 5 … 8                  | `(2.1, 0)`  |
 
 Back fixtures mirror these intervals about Z = 0. Tests also check the upper face, far field, both island side directions, and the rounded corner outside the buffer.
 
@@ -63,6 +63,5 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 - XY display-unit changes convert inputs and labels only. They do not recalibrate Z, rescale geometry, or change process results.
 
 Changes to these boundaries require an explicit geometry-contract update and new benchmarks.
-
 
 The full topology ownership and non-goals are documented in [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md).

@@ -242,9 +242,18 @@ test('Section slices and 3D solid caps share topology v2 boundaries', () => {
     step = solids.find((solid) => solid.layerId !== 'base');
   assert.ok(base);
   assert.ok(step);
-  assert.equal(base.caps.some((cap) => cap.z === 4 && cap.normal === 1), true);
-  assert.equal(step.caps.some((cap) => cap.z === 4 && cap.normal === -1), true);
-  assert.equal(step.caps.some((cap) => cap.z === 6 && cap.normal === 1), true);
+  assert.equal(
+    base.caps.some((cap) => cap.z === 4 && cap.normal === 1),
+    true,
+  );
+  assert.equal(
+    step.caps.some((cap) => cap.z === 4 && cap.normal === -1),
+    true,
+  );
+  assert.equal(
+    step.caps.some((cap) => cap.z === 6 && cap.normal === 1),
+    true,
+  );
 });
 
 test('material solid topology removes internal caps across computational partitions', () => {
@@ -311,9 +320,7 @@ test('owned material surfaces emit one horizontal owner for a shared material in
   ];
 
   const plan = ownedMaterialSurfacesFromTopology(model),
-    shared = plan.caps.filter(
-      (cap) => Math.abs(cap.z) < 1e-12 && cap.ownership === 'interface',
-    );
+    shared = plan.caps.filter((cap) => Math.abs(cap.z) < 1e-12 && cap.ownership === 'interface');
 
   assert.equal(shared.length, 1);
   assert.equal(shared[0].buried, true);

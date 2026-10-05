@@ -12,11 +12,7 @@ import {
   resolveSectionCollapse,
   sectionVisibleZSpan,
 } from '../section-z-collapse.js';
-import {
-  collectMaskExportElements,
-  serializeGDS,
-  serializeOASIS,
-} from '../layout-export.js';
+import { collectMaskExportElements, serializeGDS, serializeOASIS } from '../layout-export.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -212,7 +208,11 @@ export function createExportController({
       const option = root.createElement('option');
       option.value = name;
       option.textContent = name;
-      option.selected = oldCells.size ? oldCells.has(name) : activeCell ? name === activeCell : true;
+      option.selected = oldCells.size
+        ? oldCells.has(name)
+        : activeCell
+          ? name === activeCell
+          : true;
       cellsSelect.append(option);
     }
     if (![...cellsSelect.options].some((option) => option.selected)) {
@@ -230,7 +230,7 @@ export function createExportController({
         ? oldLayers.has(key)
         : Array.isArray(selectedLayerKeys)
           ? selectedLayerKeys.includes(key)
-          : selectedLayerKeys?.has?.(key) ?? true;
+          : (selectedLayerKeys?.has?.(key) ?? true);
       layersSelect.append(option);
     }
     if (![...layersSelect.options].some((option) => option.selected)) {
@@ -243,9 +243,7 @@ export function createExportController({
   function maskExportContext() {
     const { layout, maskTransform, maskSourceMode, drawMask, maskRoi } = getState(),
       roiTransform =
-        maskSourceMode === 'file'
-          ? maskTransform
-          : { x: 0, y: 0, scale: 1, rotation: 0 },
+        maskSourceMode === 'file' ? maskTransform : { x: 0, y: 0, scale: 1, rotation: 0 },
       roiGeometry = maskRoi ? maskRoiWorldGeometry(maskRoi, roiTransform, 128) : null,
       cells = selectedOptions('maskExportCells'),
       layers = selectedOptions('maskExportLayers');
@@ -336,9 +334,7 @@ export function createExportController({
       width = Math.max(2, rect.width),
       height = Math.max(2, rect.height),
       roiTransform =
-        maskSourceMode === 'file'
-          ? maskTransform
-          : { x: 0, y: 0, scale: 1, rotation: 0 },
+        maskSourceMode === 'file' ? maskTransform : { x: 0, y: 0, scale: 1, rotation: 0 },
       roiGeom = maskRoi ? maskRoiWorldGeometry(maskRoi, roiTransform, 128) : null,
       view = maskView(width, height, roiGeom),
       map = (point) => worldToCanvas(point, view),
@@ -366,7 +362,8 @@ export function createExportController({
           !Array.isArray(element.points) ||
           !cells.has(element.sourceCell || layout.root || 'ROOT') ||
           !layers.has(key)
-        ) continue;
+        )
+          continue;
 
         let geometry =
           element.kind === 'polygon'
@@ -394,11 +391,13 @@ export function createExportController({
             element.points.length < 2 ||
             !cells.has(element.sourceCell || layout.root || 'ROOT') ||
             !layers.has(key)
-          ) continue;
+          )
+            continue;
           const points = element.points.map(maskPoint).map(map),
             d = points
-              .map((point, index) =>
-                `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
+              .map(
+                (point, index) =>
+                  `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
               )
               .join('');
           body += `<path d="${d}" fill="none" stroke="${layerColor(
@@ -553,10 +552,7 @@ export function createExportController({
     }
 
     const tickValues = collapseEnabled
-      ? [
-          ...niceSectionTicks(collapse.top, z1, 4),
-          ...niceSectionTicks(z0, collapse.bottom, 2),
-        ]
+      ? [...niceSectionTicks(collapse.top, z1, 4), ...niceSectionTicks(z0, collapse.bottom, 2)]
       : niceSectionTicks(z0, z1, 6);
     let lastTickY = -Infinity;
     for (const value of tickValues) {
@@ -567,9 +563,7 @@ export function createExportController({
         y,
       )}" x2="${svgNumber(plotLeft)}" y2="${svgNumber(
         y,
-      )}" stroke="#aab3bd" stroke-width=".7"/><text x="${svgNumber(
-        plotLeft - 6,
-      )}" y="${svgNumber(
+      )}" stroke="#aab3bd" stroke-width=".7"/><text x="${svgNumber(plotLeft - 6)}" y="${svgNumber(
         y + 2.5,
       )}" text-anchor="end" font-family="system-ui,sans-serif" font-size="8" fill="#707b86">${formatXY(
         value,

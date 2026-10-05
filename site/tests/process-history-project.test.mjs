@@ -223,10 +223,7 @@ test('V3 Variant parent linkage survives validation and packed storage', () => {
   assert.equal(validateProjectFile(stored), stored);
 
   source.snapshotBranches.branches[1].parentBranchId = 'missing';
-  assert.throws(
-    () => validateProjectFile(source),
-    /parentBranchId.*unknown parent variant/i,
-  );
+  assert.throws(() => validateProjectFile(source), /parentBranchId.*unknown parent variant/i);
 });
 
 test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
@@ -303,19 +300,13 @@ test('V3 schema rejects Variant cycles and mismatched origin ownership', () => {
     ],
   };
 
-  assert.throws(
-    () => validateProjectFile(source),
-    /rootNodeId.*owned by the parent Variant/i,
-  );
+  assert.throws(() => validateProjectFile(source), /rootNodeId.*owned by the parent Variant/i);
 
   source.snapshotBranches.branches[2].rootNodeId = 'process-a';
   source.snapshotBranches.branches[2].parentBranchId = 'variant-a';
   source.snapshotBranches.branches[1].rootNodeId = 'process-b';
   source.snapshotBranches.branches[1].parentBranchId = 'variant-b';
-  assert.throws(
-    () => validateProjectFile(source),
-    /parentBranchId.*ancestry cycle/i,
-  );
+  assert.throws(() => validateProjectFile(source), /parentBranchId.*ancestry cycle/i);
 });
 
 test('V3 schema rejects a Variant HEAD path that does not descend from its origin Step', () => {
@@ -530,7 +521,10 @@ test('V3 schema rejects process nodes without restore states', () => {
     ],
   };
 
-  assert.throws(() => validateProjectFile(source), /state.*required for restorable process history/i);
+  assert.throws(
+    () => validateProjectFile(source),
+    /state.*required for restorable process history/i,
+  );
 });
 
 test('V2 schema rejects dangling process history references', () => {
@@ -571,8 +565,5 @@ test('V2 schema rejects dangling process history references', () => {
 
   source.snapshotBranches.cursorNodeId = 'process-1';
   source.snapshotBranches.nodes[0].parentId = 'missing';
-  assert.throws(
-    () => validateProjectFile(source),
-    /parentId references an unknown process node/,
-  );
+  assert.throws(() => validateProjectFile(source), /parentId references an unknown process node/);
 });

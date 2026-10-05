@@ -55,10 +55,7 @@ test('Section collapse and surface rendering contracts', () => {
   assert.ok(collapseTransform.mapZ(30) < collapseTransform.mapZ(10));
   assert.ok(collapseTransform.mapZ(10) < collapseTransform.mapZ(-330));
   assert.ok(collapseTransform.mapZ(-330) < collapseTransform.mapZ(-350));
-  assert.equal(
-    Math.round(collapseTransform.lowerTop - collapseTransform.upperBottom),
-    8,
-  );
+  assert.equal(Math.round(collapseTransform.lowerTop - collapseTransform.upperBottom), 8);
   assert.ok(niceSectionTicks(10, 30, 4).length >= 2);
   const collapseSnapModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   assert.ok(sectionCollapseSnapValues(collapseSnapModel, [-10, 0]).includes(-10));
@@ -286,19 +283,14 @@ test('Section collapse and surface rendering contracts', () => {
   ];
   assert.equal(appearanceSurfaceGroups(appearanceGroupModel).length, 3);
   const roughProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance);
-  assert.equal(
-    roughProfileSample,
-    roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance),
-  );
+  assert.equal(roughProfileSample, roughProfileOffsetAtPoint(1.25, -0.75, roughAppearance));
   assert.ok(roughProfileSample >= -1e-12);
   assert.ok(roughProfileSample <= roughAppearance.etchDepth + 1e-12);
   const normalProfileSample = roughProfileOffsetAtPoint(1.25, -0.75, {
     ...roughAppearance,
     polarity: 'normal',
   });
-  assert.ok(
-    Math.abs(normalProfileSample + roughProfileSample - roughAppearance.etchDepth) < 1e-12,
-  );
+  assert.ok(Math.abs(normalProfileSample + roughProfileSample - roughAppearance.etchDepth) < 1e-12);
   const zeroCvAppearance = { ...roughAppearance, featureCv: 0, heightCv: 0 };
   assert.equal(
     roughProfileOffsetAtPoint(1.25, -0.75, zeroCvAppearance),
@@ -320,13 +312,10 @@ test('Section collapse and surface rendering contracts', () => {
   assert.equal(roughProfileOffsetAtPoint(1, 0, pyramidAppearance), 0);
   assert.ok(
     Math.abs(
-      roughProfileOffsetAtPoint(0, 0, { ...pyramidAppearance, polarity: 'inverted' }) - 0.2
+      roughProfileOffsetAtPoint(0, 0, { ...pyramidAppearance, polarity: 'inverted' }) - 0.2,
     ) < 1e-12,
   );
-  assert.equal(
-    roughProfileOffsetAtPoint(1, 0, { ...pyramidAppearance, polarity: 'inverted' }),
-    1,
-  );
+  assert.equal(roughProfileOffsetAtPoint(1, 0, { ...pyramidAppearance, polarity: 'inverted' }), 1);
   for (const [x, y] of [
     [0, 0],
     [0.25, 0.4],
@@ -370,9 +359,7 @@ test('Section collapse and surface rendering contracts', () => {
       [0.91, -0.42],
       [2.37, 1.14],
       [-1.55, 3.08],
-    ].map(([x, y]) =>
-      roughProfileOffsetAtPoint(x, y, { ...randomPyramidAppearance, seed: 2019 }),
-    ),
+    ].map(([x, y]) => roughProfileOffsetAtPoint(x, y, { ...randomPyramidAppearance, seed: 2019 })),
     'Changing the pyramid seed must change the reconstructed morphology',
   );
   for (const [x, y] of [

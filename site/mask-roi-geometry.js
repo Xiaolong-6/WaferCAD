@@ -283,7 +283,5 @@ export function multiBounds(geometry) {
         maxX = Math.max(maxX, Number(point[0]));
         maxY = Math.max(maxY, Number(point[1]));
       }
-  return [minX, minY, maxX, maxY].every(Number.isFinite)
-    ? { minX, minY, maxX, maxY }
-    : null;
+  return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
 }

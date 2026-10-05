@@ -51,7 +51,7 @@ export function createPlanRenderers({
         });
   }
   function drawBaseOutline(ctx, v, { fill = true, back = false } = {}) {
-      const { model } = getState();
+    const { model } = getState();
     ctx.save();
     canvasPathMulti(ctx, model.boundary, v, back);
     if (fill) {
@@ -66,7 +66,7 @@ export function createPlanRenderers({
     ctx.restore();
   }
   function traceElement(ctx, e, v, selected) {
-      const { hoveredLayerKey, maskTransform } = getState();
+    const { hoveredLayerKey, maskTransform } = getState();
     const key = layerKey(e.layer, e.datatype),
       hovered = hoveredLayerKey === key;
     ctx.beginPath();
@@ -96,7 +96,7 @@ export function createPlanRenderers({
     }
   }
   function drawRoi(ctx, v, back = false) {
-      const { roi, roiDraft, sectionEditEnabled, roiTool } = getState();
+    const { roi, roiDraft, sectionEditEnabled, roiTool } = getState();
     if (!roi && !roiDraft) return;
     const r = roiDraft || roi;
     ctx.save();
@@ -123,7 +123,7 @@ export function createPlanRenderers({
     }
     ctx.fill();
     ctx.stroke();
-  
+
     if (!roiDraft && roi && !sectionEditEnabled && !roiTool) {
       ctx.setLineDash([]);
       ctx.lineWidth = 1;
@@ -149,7 +149,7 @@ export function createPlanRenderers({
     }
     ctx.restore();
   }
-  
+
   let maskStructureCache = {
     model: null,
     revision: null,
@@ -157,9 +157,9 @@ export function createPlanRenderers({
     face: null,
     patches: [],
   };
-  
+
   function maskStructurePatches() {
-      const { model, activeFace } = getState();
+    const { model, activeFace } = getState();
     if (
       maskStructureCache.model === model &&
       maskStructureCache.revision === model.revision &&
@@ -168,7 +168,7 @@ export function createPlanRenderers({
     ) {
       return maskStructureCache.patches;
     }
-  
+
     // Collapse same-height surface groups across materials. The Mask reference
     // is topography-only: material/color boundaries at the same Z are omitted.
     const byHeight = new Map();
@@ -182,7 +182,7 @@ export function createPlanRenderers({
       z: Number(z),
       geom: unionGeometries(geoms),
     }));
-  
+
     maskStructureCache = {
       model,
       revision: model.revision,
@@ -192,7 +192,7 @@ export function createPlanRenderers({
     };
     return patches;
   }
-  
+
   function strokeClosedGeometry(ctx, geom, v, back = false) {
     ctx.beginPath();
     for (const polygon of geom || []) {
@@ -207,28 +207,28 @@ export function createPlanRenderers({
     }
     ctx.stroke();
   }
-  
+
   function drawMaskStructureReference(ctx, v) {
-      const { model, activeFace } = getState();
+    const { model, activeFace } = getState();
     ctx.save();
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.setLineDash([4, 3]);
     ctx.strokeStyle = 'rgba(86, 100, 114, .58)';
     ctx.lineWidth = 0.8;
-  
+
     const back = activeFace === 'back';
     for (const patch of maskStructurePatches()) {
       strokeClosedGeometry(ctx, patch.geom, v, back);
     }
-  
+
     ctx.setLineDash([7, 4]);
     ctx.strokeStyle = 'rgba(139, 150, 161, .56)';
     ctx.lineWidth = 0.85;
     strokeClosedGeometry(ctx, model.boundary, v, back);
     ctx.restore();
   }
-  
+
   function fillRoughPlanOverlay(ctx, v, back, alpha = 0.08) {
     const { model, activeFace } = getState();
     ctx.save();
@@ -243,20 +243,20 @@ export function createPlanRenderers({
     }
     ctx.restore();
   }
-  
+
   function renderMask() {
-      const { activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
+    const { activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
     const c = $('maskCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'mask');
     ctx.clearRect(0, 0, w, h);
-  
+
     // Alignment reference: current process surface topology. Rough areas get a
     // subtle neutral darkening so they read as wafer topography without changing
     // the mask palette or material hue.
     drawMaskStructureReference(ctx, v);
     fillRoughPlanOverlay(ctx, v, activeFace === 'back', 0.07);
-  
+
     if (maskSourceMode === 'draw') {
       getDrawMaskController()?.render(ctx, v, maskOpacity);
     } else {
@@ -266,7 +266,7 @@ export function createPlanRenderers({
       for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
       ctx.restore();
     }
-  
+
     if (!readOnlyPreview) getMaskRoiController()?.render(ctx, v);
     drawPlanAxes(ctx, v, w, h, false);
   }
@@ -282,9 +282,9 @@ export function createPlanRenderers({
       n = parseInt(value.slice(1), 16);
     return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
   }
-  
+
   function renderMain() {
-      const { model, activeFace, section, readOnlyPreview } = getState();
+    const { model, activeFace, section, readOnlyPreview } = getState();
     const c = $('mainCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'main'),
@@ -465,7 +465,7 @@ export function createPlanRenderers({
         ctx.stroke();
       }
     }
-  
+
     const roughColumns = sectionColumns(model, section.a, section.b),
       sectionDx = section.b[0] - section.a[0],
       sectionDy = section.b[1] - section.a[1],
@@ -489,16 +489,17 @@ export function createPlanRenderers({
         }
         return sum / 5;
       };
-  
+
     for (const column of roughColumns) {
       if (
         !column.stack.some(
-          (segment) => segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough',
+          (segment) =>
+            segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough',
         )
       ) {
         continue;
       }
-  
+
       const boundaries = [];
       for (let index = 0; index <= column.stack.length; index++) {
         const below = index > 0 ? column.stack[index - 1] : null,
@@ -520,21 +521,21 @@ export function createPlanRenderers({
               : below.z1;
         boundaries.push({ z, appearance, sourceFace });
       }
-  
+
       const roughBoundaries = boundaries.filter((boundary) => boundary.appearance),
         widthPixels = Math.max(1, Math.abs(mapT(column.t1) - mapT(column.t0))),
         samples = Math.max(3, Math.min(1100, Math.ceil(widthPixels / 1.5))),
         profileReliefCache = new Map(),
         profiles = boundaries.map(() => []);
-  
+
       const filteredRelief = filteredSectionRoughRelief;
-  
+
       for (let sample = 0; sample <= samples; sample++) {
         const fraction = sample / samples,
           t = column.t0 + (column.t1 - column.t0) * fraction,
           worldX = section.a[0] + sectionDx * t,
           worldY = section.a[1] + sectionDy * t;
-  
+
         boundaries.forEach((boundary, boundaryIndex) => {
           let profileZ = boundary.z;
           if (boundary.appearance) {
@@ -543,10 +544,7 @@ export function createPlanRenderers({
                 `legacy-${boundary.appearance.seed}-${boundary.appearance.featureSize}`,
               cacheKey = `${profileId}:${sample}`;
             if (!profileReliefCache.has(cacheKey)) {
-              profileReliefCache.set(
-                cacheKey,
-                filteredRelief(boundary.appearance, worldX, worldY),
-              );
+              profileReliefCache.set(cacheKey, filteredRelief(boundary.appearance, worldX, worldY));
             }
             const relief = profileReliefCache.get(cacheKey),
               direction = boundary.sourceFace === 'back' ? -1 : 1;
@@ -555,21 +553,20 @@ export function createPlanRenderers({
           profiles[boundaryIndex].push([mapT(t), mapZ(profileZ)]);
         });
       }
-  
+
       const x0 = mapT(column.t0),
         x1 = mapT(column.t1);
-  
+
       for (let segmentIndex = 0; segmentIndex < column.stack.length; segmentIndex++) {
         const segment = column.stack[segmentIndex],
           layer = layerById(model, segment.layerId),
           bottomProfile = profiles[segmentIndex],
           topProfile = profiles[segmentIndex + 1];
         if (!layer) continue;
-  
+
         ctx.beginPath();
         bottomProfile.forEach(([x, y], index) => {
-          const drawX =
-            index === 0 ? x - 0.65 : index === bottomProfile.length - 1 ? x + 0.65 : x;
+          const drawX = index === 0 ? x - 0.65 : index === bottomProfile.length - 1 ? x + 0.65 : x;
           if (index === 0) ctx.moveTo(drawX, y);
           else ctx.lineTo(drawX, y);
         });
@@ -582,7 +579,7 @@ export function createPlanRenderers({
         ctx.fillStyle = layer.color;
         ctx.fill();
       }
-  
+
       boundaries.forEach((boundary, boundaryIndex) => {
         if (boundary.appearance?.kind !== 'rough') return;
         const profile = profiles[boundaryIndex],
@@ -607,7 +604,7 @@ export function createPlanRenderers({
         }
       });
     }
-  
+
     for (const electrical of electricalRegionSectionBands(model, section.a, section.b)) {
       const appearance = electrical.surfaceAppearance,
         faceDirection = electrical.face === 'back' ? -1 : 1,
@@ -630,8 +627,7 @@ export function createPlanRenderers({
               : 0,
           outerZ = electrical.outerZ + faceDirection * relief,
           innerZ =
-            electrical.innerZ +
-            (electrical.depthProfile === 'follow' ? faceDirection * relief : 0);
+            electrical.innerZ + (electrical.depthProfile === 'follow' ? faceDirection * relief : 0);
         if (!(Math.abs(outerZ - innerZ) > 1e-12)) continue;
         outerPoints.push([mapT(t), mapZ(outerZ)]);
         innerPoints.push([mapT(t), mapZ(innerZ)]);
@@ -673,7 +669,7 @@ export function createPlanRenderers({
       let outerZSum = 0,
         innerZSum = 0,
         activeSamples = 0;
-  
+
       for (let sample = 0; sample <= samples; sample++) {
         const fraction = sample / samples,
           t = implant.t0 + (implant.t1 - implant.t0) * fraction,
@@ -685,8 +681,7 @@ export function createPlanRenderers({
               : 0,
           outerZ = implant.outerZ + faceDirection * relief,
           innerZ =
-            implant.innerZ +
-            (implant.depthProfile === 'follow' ? faceDirection * relief : 0),
+            implant.innerZ + (implant.depthProfile === 'follow' ? faceDirection * relief : 0),
           outerDepth = Math.max(
             0,
             implant.face === 'front' ? implant.sourceZ - outerZ : outerZ - implant.sourceZ,
@@ -697,7 +692,7 @@ export function createPlanRenderers({
           ),
           outerDeltaT = (tiltTangent * outerDepth * sectionUnitX) / sectionSpan,
           innerDeltaT = (tiltTangent * innerDepth * sectionUnitX) / sectionSpan;
-  
+
         if (!(Math.abs(outerZ - innerZ) > 1e-12)) continue;
         outerPoints.push([mapT(t + outerDeltaT), mapZ(outerZ)]);
         innerPoints.push([mapT(t + innerDeltaT), mapZ(innerZ)]);
@@ -706,7 +701,7 @@ export function createPlanRenderers({
         activeSamples++;
       }
       if (outerPoints.length < 2 || !activeSamples) continue;
-  
+
       const gradient = ctx.createLinearGradient(
         0,
         mapZ(outerZSum / activeSamples),
@@ -716,7 +711,7 @@ export function createPlanRenderers({
       gradient.addColorStop(0, rgbaColor(implant.color, 0.72));
       gradient.addColorStop(0.48, rgbaColor(implant.color, 0.4));
       gradient.addColorStop(1, rgbaColor(implant.color, 0.04));
-  
+
       ctx.save();
       ctx.beginPath();
       outerPoints.forEach(([x, y], index) => {
@@ -737,7 +732,7 @@ export function createPlanRenderers({
       }
       ctx.restore();
     }
-  
+
     // Auto mode keeps sub-pixel physical sidewalls legible. Draw this last so the
     // visibility aid cannot be erased by rough-surface compositing.
     for (const slice of sectionSlices(model, section.a, section.b)) {
@@ -762,7 +757,7 @@ export function createPlanRenderers({
         ctx.strokeRect(sx0, sy0, sideWidth, sy1 - sy0);
       }
     }
-  
+
     // Hide all geometry inside the collapsed Z interval. With collapse disabled,
     // Section is one continuous physical-Z view and nothing is masked.
     if (collapseEnabled) {
@@ -830,10 +825,7 @@ export function createPlanRenderers({
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     const tickValues = collapseEnabled
-        ? [
-            ...niceSectionTicks(collapse.top, z1, 4),
-            ...niceSectionTicks(z0, collapse.bottom, 2),
-          ]
+        ? [...niceSectionTicks(collapse.top, z1, 4), ...niceSectionTicks(z0, collapse.bottom, 2)]
         : niceSectionTicks(z0, z1, 6),
       usedTickY = [];
     for (const value of tickValues) {
@@ -853,13 +845,9 @@ export function createPlanRenderers({
     ctx.textBaseline = 'alphabetic';
     ctx.fillText('A', plotLeft, Math.min(h - 5, zTransform.frameBottom + 15));
     ctx.textAlign = 'right';
-    ctx.fillText(
-      'B',
-      plotLeft + plotWidth,
-      Math.min(h - 5, zTransform.frameBottom + 15),
-    );
+    ctx.fillText('B', plotLeft + plotWidth, Math.min(h - 5, zTransform.frameBottom + 15));
     ctx.textAlign = 'left';
-  
+
     const scaleButton = $('sectionScaleModeBtn');
     scaleButton.textContent = sectionScaleMode === 'auto' ? 'Auto' : '1:1';
     scaleButton.classList.toggle('active', sectionScaleMode === 'physical');
@@ -868,14 +856,14 @@ export function createPlanRenderers({
       sectionScaleMode === 'auto'
         ? 'Auto: X and Z fit independently. Click for physical 1:1 X:Z scale.'
         : 'Physical 1:1: X and Z use the same px/µm. Click for Auto fit.';
-  
+
     const borderButton = $('sectionBordersBtn');
     borderButton.classList.toggle('active', sectionShowBorders);
     borderButton.setAttribute('aria-pressed', String(sectionShowBorders));
     borderButton.title = sectionShowBorders
       ? 'Hide structural borders in Section A–B'
       : 'Show structural borders in Section A–B';
-  
+
     const scaleLabel =
       sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
     $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;

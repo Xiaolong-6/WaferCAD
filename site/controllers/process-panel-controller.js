@@ -1,8 +1,5 @@
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
-import {
-  captureHistoryReplayResult,
-  remapHistoryReplayOperation,
-} from '../history-replay.js';
+import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
 
 export function createProcessPanelController({
   root = document,
@@ -50,10 +47,7 @@ export function createProcessPanelController({
       };
     }
 
-    const requestedLayerKeys = Array.from(
-        selectedLayerKeys || [],
-        (value) => String(value),
-      ),
+    const requestedLayerKeys = Array.from(selectedLayerKeys || [], (value) => String(value)),
       effectiveLayerKeys =
         areaMode === 'full'
           ? requestedLayerKeys
@@ -79,7 +73,7 @@ export function createProcessPanelController({
     if (!select) return;
     const previous = select.value;
     select.innerHTML = '';
-  
+
     const model = getModel(),
       activeFace = getActiveFace(),
       area = operationAreaGeometry($('operationArea').value),
@@ -91,7 +85,7 @@ export function createProcessPanelController({
     if ([...select.options].some((option) => option.value === previous)) select.value = previous;
     select.disabled = !select.options.length;
   }
-  
+
   function updateEtchTargets() {
     const select = $('etchTargetLayer');
     if (!select) return;
@@ -118,7 +112,7 @@ export function createProcessPanelController({
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', String(active));
     });
-  
+
     const recordOnly = t === 'record',
       electrical = t === 'electrical';
     $('layerNameRow').classList.toggle('hidden', t !== 'add');
@@ -159,10 +153,10 @@ export function createProcessPanelController({
         : t === 'implant' || electrical
           ? 'Depth'
           : 'Z';
-  
+
     if (t === 'grow') updateGrowTargets();
     if (t === 'etch') updateEtchTargets();
-  
+
     const model = getModel(),
       activeFace = getActiveFace(),
       materialExists = hasMaterial(model);
@@ -179,44 +173,43 @@ export function createProcessPanelController({
     $('processSummary').textContent = recordOnly
       ? 'Process · Record step'
       : `${faceLabel} · ${
-        t === 'add'
-          ? 'Deposit layer'
-          : t === 'grow'
-            ? 'Extend layer'
-            : t === 'implant'
-              ? 'Implant'
-              : electrical
-                ? 'Electrical region'
-                : 'Etch'
-      }`;
-  
+          t === 'add'
+            ? 'Deposit layer'
+            : t === 'grow'
+              ? 'Extend layer'
+              : t === 'implant'
+                ? 'Implant'
+                : electrical
+                  ? 'Electrical region'
+                  : 'Etch'
+        }`;
+
     $('operationNote').hidden = !materialExists && !recordOnly;
     if (!materialExists && !recordOnly) return;
-  
-    $('operationNote').textContent =
-      recordOnly
-        ? 'Records fabrication metadata in History without changing material geometry.'
-        : t === 'implant'
-          ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
-          : electrical
-            ? 'Non-material electrical annotation: marks an induced, doped, or interface region from the selected exposed surface. It follows later Etch geometry but does not solve carrier transport or electrostatics.'
-            : t === 'etch'
-              ? isotropicEtch
-                ? $('etchTargetLayer').value
-                  ? 'Isotropic release propagates from the selected exposed material into the solid with the chosen radius, including lateral undercut beneath other materials. The selected etch material is removed; masks and stop materials remain.'
-                  : 'Choose one exposed material for Isotropic release. This mode creates physical undercut/cavity geometry and does not combine with Rough/Pyramid display morphology.'
-                : stochasticEtch
-                  ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
-                  : pyramidEtch
-                    ? `Pyramid XY and Height are means; CV controls deterministic base-size/position and height variation, and Seed makes the random field reproducible. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
-                    : $('etchTargetLayer').value
-                      ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
-                      : 'Etch removes exposed material vertically in stack order and may create through-holes.'
-          : $('growthMode').value === 'conformal'
-            ? t === 'grow'
-              ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
-              : `Conformal coverage follows exposed surfaces, physical steps, and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
-            : 'Directional coverage follows the selected footprint.';
+
+    $('operationNote').textContent = recordOnly
+      ? 'Records fabrication metadata in History without changing material geometry.'
+      : t === 'implant'
+        ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
+        : electrical
+          ? 'Non-material electrical annotation: marks an induced, doped, or interface region from the selected exposed surface. It follows later Etch geometry but does not solve carrier transport or electrostatics.'
+          : t === 'etch'
+            ? isotropicEtch
+              ? $('etchTargetLayer').value
+                ? 'Isotropic release propagates from the selected exposed material into the solid with the chosen radius, including lateral undercut beneath other materials. The selected etch material is removed; masks and stop materials remain.'
+                : 'Choose one exposed material for Isotropic release. This mode creates physical undercut/cavity geometry and does not combine with Rough/Pyramid display morphology.'
+              : stochasticEtch
+                ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
+                : pyramidEtch
+                  ? `Pyramid XY and Height are means; CV controls deterministic base-size/position and height variation, and Seed makes the random field reproducible. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
+                  : $('etchTargetLayer').value
+                    ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
+                    : 'Etch removes exposed material vertically in stack order and may create through-holes.'
+            : $('growthMode').value === 'conformal'
+              ? t === 'grow'
+                ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
+                : `Conformal coverage follows exposed surfaces, physical steps, and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
+              : 'Directional coverage follows the selected footprint.';
   }
 
   function optionalNumber(id, label) {
@@ -392,9 +385,7 @@ export function createProcessPanelController({
       maskSourceMode,
       maskRoi,
       maskTransform: {
-        ...(maskContext?.transform ||
-          state.maskTransform ||
-          { x: 0, y: 0, scale: 1, rotation: 0 }),
+        ...(maskContext?.transform || state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }),
       },
       elements,
     };
@@ -524,8 +515,7 @@ export function createProcessPanelController({
 
     const result = await processTaskController.runTask(executeReplay, {
       label:
-        taskLabel ||
-        `Recalculating ${steps.length} later Step${steps.length === 1 ? '' : 's'}…`,
+        taskLabel || `Recalculating ${steps.length} later Step${steps.length === 1 ? '' : 's'}…`,
       abortMessage: 'History recalculation aborted. The previous Variant will be restored.',
       failurePrefix: 'History recalculation failed',
     });
@@ -598,27 +588,20 @@ export function createProcessPanelController({
   async function applyOperation() {
     let model = getModel();
     const activeFace = getActiveFace(),
-      {
-        maskSourceMode,
-        maskRoi,
-        drawMask,
-        maskTransform,
-        layout,
-        activeCell,
-        selectedLayerKeys,
-      } = getMaskState();
+      { maskSourceMode, maskRoi, drawMask, maskTransform, layout, activeCell, selectedLayerKeys } =
+        getMaskState();
     if (processTaskController?.isBusy()) {
       status('An operation is already running. Abort it before starting another.', 'warning');
       return;
     }
-  
+
     const type = $('operationType').value;
     if (type === 'record') return recordProcessStep();
 
     const thickness = manualMicron($('operationThickness').value);
     $('operationThickness').value = formatLengthField(thickness);
     if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
-  
+
     const areaMode = $('operationArea').value,
       maskContext = normalizedMaskContext({
         maskSourceMode,
@@ -630,7 +613,7 @@ export function createProcessPanelController({
         selectedLayerKeys,
         areaMode,
       });
-  
+
     const name =
         type === 'implant'
           ? $('implantName').value.trim() || `Implant ${model.nextImplantId || 1}`
@@ -647,7 +630,7 @@ export function createProcessPanelController({
     if (type === 'etch' && etchProfile === 'isotropic' && !etchTargetLayerId) {
       return status('Choose one exposed material for Isotropic release.', 'warning');
     }
-  
+
     let roughSurface = null;
     const etchSurfaceMode = $('etchSurfaceMode').value;
     if (type === 'etch' && etchProfile === 'directional' && etchSurfaceMode !== 'smooth') {
@@ -692,7 +675,10 @@ export function createProcessPanelController({
         seedValue != null &&
         (!Number.isInteger(seedValue) || seedValue < 0 || seedValue > 0xffffffff)
       ) {
-        return status('Surface Seed must be an integer from 0 to 4294967295, or left blank.', 'error');
+        return status(
+          'Surface Seed must be an integer from 0 to 4294967295, or left blank.',
+          'error',
+        );
       }
       roughSurface = {
         kind: 'rough',
@@ -706,15 +692,14 @@ export function createProcessPanelController({
         geometryMode: 'ideal',
       };
     }
-  
+
     const beforeBase = baseCoverageState(model),
       params = { type, name, targetLayerId, thickness, face: activeFace };
     if (type === 'etch') {
       params.surface = roughSurface;
       params.etchProfile = etchProfile;
       params.etchTargetLayerIds = etchTargetLayerId ? [etchTargetLayerId] : [];
-    }
-    else if (type === 'implant') {
+    } else if (type === 'implant') {
       const tilt = Number($('implantTilt').value);
       if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
         return status('Implant Tilt X must be between -80° and 80°.', 'error');
@@ -724,7 +709,7 @@ export function createProcessPanelController({
       params.electricalRegionType = $('electricalRegionType').value;
       params.electricalRegionSource = $('electricalRegionSource').value;
     } else params.growth = $('growthMode').value;
-  
+
     const taskLabel =
       type === 'etch'
         ? etchProfile === 'isotropic'
@@ -740,7 +725,7 @@ export function createProcessPanelController({
 
     const applyGate = await beforeApply();
     if (!applyGate) return;
-  
+
     const areaRequest = {
       mode: areaMode,
       maskSourceMode,
@@ -749,19 +734,17 @@ export function createProcessPanelController({
         ? { drawMask: structuredClone(drawMask) }
         : {
             maskTransform: { ...maskTransform },
-            elements: (layout.elements || [])
-              .filter(selectedElement)
-              .map((element) => ({
-                kind: element.kind,
-                width: element.width,
-                points: element.points,
-              })),
+            elements: (layout.elements || []).filter(selectedElement).map((element) => ({
+              kind: element.kind,
+              width: element.width,
+              points: element.points,
+            })),
           }),
     };
-  
+
     const task = await processTaskController.run(model, params, taskLabel, areaRequest);
     if (task?.aborted || task?.error || task?.busy) return;
-  
+
     const result = task.result;
     if (!result?.changed) {
       return status(result?.error || 'The operation did not change the model.', 'warning');
@@ -774,18 +757,19 @@ export function createProcessPanelController({
       console.error(error);
       return status(`Variant creation failed: ${error.message}`, 'error');
     }
-  
+
     saveHistory();
     clearBaseRevertSnapshot();
     setModel(task.model);
     model = task.model;
-  
+
     if (type === 'add' && result.layerId) {
       colorNewLayer(result.layerId);
       $('layerName').value = `Layer ${model.nextLayerId}`;
     } else if (type === 'implant' && result.implantId) {
       colorNewImplant(result.implantId);
-      $('implantName').value = `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
+      $('implantName').value =
+        `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
     } else if (type === 'electrical' && result.electricalRegionId) {
       colorNewElectricalRegion(result.electricalRegionId);
       $('electricalName').value =
@@ -793,7 +777,11 @@ export function createProcessPanelController({
     }
 
     const areaLabel =
-        areaMode === 'full' ? 'Whole face' : areaMode === 'invert' ? 'Invert mask' : 'Selected mask',
+        areaMode === 'full'
+          ? 'Whole face'
+          : areaMode === 'invert'
+            ? 'Invert mask'
+            : 'Selected mask',
       targetName = targetLayerId ? layerById(model, targetLayerId)?.name || 'layer' : '',
       etchTargetName = etchTargetLayerId
         ? layerById(model, etchTargetLayerId)?.name || 'selected material'
@@ -848,8 +836,7 @@ export function createProcessPanelController({
       maskContext: structuredClone(maskContext),
       resultLayerId: type === 'add' ? result.layerId || null : null,
       resultImplantId: type === 'implant' ? result.implantId || null : null,
-      resultElectricalRegionId:
-        type === 'electrical' ? result.electricalRegionId || null : null,
+      resultElectricalRegionId: type === 'electrical' ? result.electricalRegionId || null : null,
       replay: {
         version: 1,
         params: structuredClone(params),
@@ -858,17 +845,17 @@ export function createProcessPanelController({
       },
     };
     recordProcessOperation(operation);
-  
+
     renderAll();
     if (await afterApply({ applyGate, branchCommit, operation, result })) return;
-  
+
     if (!hasMaterial(model)) {
       return status(
         'All material has been removed. Undo, restore a History step, or recreate the Base.',
         'warning',
       );
     }
-  
+
     const afterBase = baseCoverageState(model);
     if (type === 'etch' && beforeBase !== 'removed' && afterBase === 'removed') {
       return status(
@@ -876,7 +863,7 @@ export function createProcessPanelController({
         'warning',
       );
     }
-  
+
     const growthLabel =
       type === 'etch' || type === 'implant' || type === 'electrical'
         ? ''

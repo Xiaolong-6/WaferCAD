@@ -142,7 +142,10 @@ test('project validator accepts typed electrical region annotation volumes', () 
   assert.equal(validateProjectFile(source), source);
 
   source.model.electricalRegions[0].regionType = 'magic-junction';
-  assert.throws(() => validateProjectFile(source), /electricalRegions\[0\]\.regionType.*not supported/);
+  assert.throws(
+    () => validateProjectFile(source),
+    /electricalRegions\[0\]\.regionType.*not supported/,
+  );
 });
 
 test('project validator rejects malformed stack structure', () => {
@@ -299,9 +302,7 @@ test('project storage rejects non-zero layout path widths that quantize to zero'
       ],
     };
   source.layout.elements = [path];
-  source.layout.combos = [
-    { key: '1|0', cell: 'TOP', layer: 1, datatype: 0, count: 1 },
-  ];
+  source.layout.combos = [{ key: '1|0', cell: 'TOP', layer: 1, datatype: 0, count: 1 }];
 
   assert.equal(validateProjectFile(source), source);
   assert.throws(
@@ -336,10 +337,7 @@ test('project storage rejects geometry that collapses at the 0.1 nm persistence 
   source.model.regions[0].stack[0].z1 = PROJECT_LENGTH_QUANTUM_UM * 0.4;
 
   assert.equal(validateProjectFile(source), source);
-  assert.throws(
-    () => serializeProject(source),
-    /cannot be stored safely.*z1 > z0/i,
-  );
+  assert.throws(() => serializeProject(source), /cannot be stored safely.*z1 > z0/i);
 });
 
 test('project storage compacts repeated snapshot assets and rounds physical lengths to 0.1 nm', async () => {
@@ -590,7 +588,6 @@ test('project validator accepts persisted sector ROI', () => {
   assert.equal(validateProjectFile(source), source);
 });
 
-
 test('project v8 persists and quantizes mask-local rotated Square ROI', async () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION;
@@ -780,7 +777,6 @@ test('v6 migration defaults independent Mask ROI state', () => {
   assert.equal(validateProjectFile(migrated), migrated);
 });
 
-
 test('v9 projects migrate to the experimental implant model without changing material geometry', () => {
   const source = validProject();
   source.version = 9;
@@ -793,8 +789,6 @@ test('v9 projects migrate to the experimental implant model without changing mat
   assert.equal(migrated.model.nextImplantId, 1);
   assert.equal(validateProjectFile(migrated), migrated);
 });
-
-
 
 test('v10 implant metadata migrates border styling to view state and keeps overlays visible', () => {
   const source = validProject();
@@ -878,7 +872,6 @@ test('project validator rejects out-of-contract implant tilt values', () => {
   assert.throws(() => validateProjectFile(source), /model\.implants\[0\]\.tilt/);
 });
 
-
 test('project storage preserves snapshot branch graph metadata', () => {
   const source = validProject();
   source.snapshots = [
@@ -936,7 +929,6 @@ test('project storage preserves snapshot branch graph metadata', () => {
   assert.equal(workspaceStored.snapshotBranches.activeBranchId, 'branch-black');
 });
 
-
 test('project validator rejects dangling snapshot branch graph references', () => {
   const source = validProject();
   source.snapshots = [
@@ -966,8 +958,5 @@ test('project validator rejects dangling snapshot branch graph references', () =
 
   source.snapshots[0].parentId = null;
   source.snapshotBranches.branches[0].headSnapshotId = 'missing';
-  assert.throws(
-    () => validateProjectFile(source),
-    /headSnapshotId references an unknown snapshot/,
-  );
+  assert.throws(() => validateProjectFile(source), /headSnapshotId references an unknown snapshot/);
 });

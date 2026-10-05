@@ -9,15 +9,8 @@ import {
 
 await loadGeometryKernel();
 const { applyOperation, baseCoverageState, createModel, surfaceZ } = await import('../model.js');
-const {
-  circleMulti,
-  difference,
-  pointInMulti,
-  rectMulti,
-  intersection,
-  isEmpty,
-  unionGeometries,
-} = await import('../vector-geometry.js');
+const { circleMulti, difference, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
+  await import('../vector-geometry.js');
 const { electricalRegionSolids, extrusionGroups, sectionSlices } =
   await import('../model-view-geometry.js');
 const { prepareProjectForStorage } = await import('../project-io.js');
@@ -307,7 +300,10 @@ test('material-selective Etch removes an exposed target and stops on the next ma
     etchTargetLayerIds: [metal.layerId],
   });
   assert.equal(etched.changed, true);
-  assert.equal(stackAt(model, 0).some((segment) => segment.layerId === metal.layerId), false);
+  assert.equal(
+    stackAt(model, 0).some((segment) => segment.layerId === metal.layerId),
+    false,
+  );
   assert.ok(stackAt(model, 0).some((segment) => segment.layerId === ald.layerId));
   assert.equal(surfaceZ(stackAt(model, 0)), 6);
   assert.ok(Math.abs(volume(model, ald.layerId) - aldVolume) < 1e-9);

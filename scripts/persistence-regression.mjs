@@ -104,7 +104,10 @@ await legacyPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   timeout: 30000,
 });
 await legacyPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  () =>
+    (document.getElementById('statusText')?.textContent || '').startsWith(
+      'Restored local workspace',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -122,7 +125,9 @@ await legacyContext.close();
 
 // Autosave must not serialize a large workspace while the user is actively
 // dragging the 3D camera. A pending dirty save is held until pointer release.
-const interactionAutosaveContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
+const interactionAutosaveContext = await newUiContext(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const interactionAutosavePage = await interactionAutosaveContext.newPage();
 const interactionAutosaveErrors = [];
 interactionAutosavePage.on('pageerror', (error) => interactionAutosaveErrors.push(error.message));
@@ -262,11 +267,16 @@ await projectHandoffContext.close();
 
 // A Welcome explicit start must checkpoint an existing autosaved workspace before
 // replacing it, and that checkpoint must be actually restorable.
-const welcomeCheckpointContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
+const welcomeCheckpointContext = await newUiContext(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const welcomeCheckpointPage = await welcomeCheckpointContext.newPage();
 const welcomeCheckpointErrors = [];
 welcomeCheckpointPage.on('pageerror', (error) => welcomeCheckpointErrors.push(error.message));
-welcomeCheckpointPage.on('dialog', (dialog) => { welcomeCheckpointErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
+welcomeCheckpointPage.on('dialog', (dialog) => {
+  welcomeCheckpointErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
+  void dialog.dismiss();
+});
 await welcomeCheckpointPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
@@ -284,11 +294,15 @@ await welcomeCheckpointPage.waitForFunction(
 );
 await gotoWelcome(welcomeCheckpointPage);
 await welcomeCheckpointPage
-  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
+  .locator(
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+  )
   .click();
 await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await welcomeCheckpointPage.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '') === 'Opened photodetector-literature-examples.wafercad.',
+  () =>
+    (document.getElementById('statusText')?.textContent || '') ===
+    'Opened photodetector-literature-examples.wafercad.',
   null,
   { timeout: 30000 },
 );
@@ -324,7 +338,10 @@ await welcomeCheckpointPage.locator('#workspaceRecoverySelect').selectOption(wel
 await welcomeCheckpointPage.locator('#workspaceRestoreBtn').click();
 await chooseConfirmation(welcomeCheckpointPage);
 await welcomeCheckpointPage.waitForFunction(
-  () => /Restored local recovery checkpoint/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Restored local recovery checkpoint/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 10000 },
 );
@@ -337,11 +354,16 @@ await welcomeCheckpointContext.close();
 
 // A failed staged project from Welcome must restore the previous current workspace
 // instead of autosaving the default empty editor over it.
-const failedWelcomeContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
+const failedWelcomeContext = await newUiContext(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const failedWelcomePage = await failedWelcomeContext.newPage();
 const failedWelcomeErrors = [];
 failedWelcomePage.on('pageerror', (error) => failedWelcomeErrors.push(error.message));
-failedWelcomePage.on('dialog', (dialog) => { failedWelcomeErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
+failedWelcomePage.on('dialog', (dialog) => {
+  failedWelcomeErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
+  void dialog.dismiss();
+});
 await failedWelcomePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
@@ -386,10 +408,15 @@ const { page: examplePage, context: exampleContext } = await newUiPage(browser, 
 });
 const exampleErrors = [];
 examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
-examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
+examplePage.on('dialog', (dialog) => {
+  exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
+  void dialog.dismiss();
+});
 await gotoWelcome(examplePage);
 await examplePage
-  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
+  .locator(
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+  )
   .click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
 await examplePage.waitForFunction(
@@ -399,10 +426,7 @@ await examplePage.waitForFunction(
   null,
   { timeout: 30000 },
 );
-assert.equal(
-  await examplePage.locator('.workspace').evaluate((element) => element.inert),
-  false,
-);
+assert.equal(await examplePage.locator('.workspace').evaluate((element) => element.inert), false);
 assert.ok(['nm', 'um', 'mm'].includes(await examplePage.locator('#xyUnitSelect').inputValue()));
 assert.ok(Number(await examplePage.locator('#baseWidth').inputValue()) > 0);
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
@@ -418,8 +442,7 @@ await examplePage.locator('#gdsInput').setInputFiles({
 });
 await examplePage.waitForFunction(
   () =>
-    (document.getElementById('statusText')?.textContent || '') ===
-    'Opened example-reimport.oas.',
+    (document.getElementById('statusText')?.textContent || '') === 'Opened example-reimport.oas.',
   null,
   { timeout: 30000 },
 );
@@ -427,13 +450,19 @@ assert.ok(await examplePage.locator('#maskLayerList .layer-row').count());
 assert.deepEqual(exampleErrors, []);
 await exampleContext.close();
 
+await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI local checkpoint');
 await page.locator('#saveProjectBtn').click();
 await page.waitForFunction(() =>
-  /Saved "UI local checkpoint" locally/.test(document.getElementById('statusText')?.textContent || ''),
+  /Saved "UI local checkpoint" locally/.test(
+    document.getElementById('statusText')?.textContent || '',
+  ),
 );
-assert.ok(await page.locator('#workspaceRecoverySelect option').count() > 0);
-assert.match(await page.locator('#workspaceRecoverySelect option').first().textContent(), /manual-save/);
+assert.ok((await page.locator('#workspaceRecoverySelect option').count()) > 0);
+assert.match(
+  await page.locator('#workspaceRecoverySelect option').first().textContent(),
+  /manual-save/,
+);
 assert.equal(await page.locator('#workspaceRecoveryClearBtn').isDisabled(), false);
 const persistenceStores = await page.evaluate(
   () =>
@@ -476,7 +505,10 @@ await page.waitForFunction(
     ),
 );
 assert.equal(
-  await page.locator('#workspaceRecoverySelect option').filter({ hasText: /manual-save/ }).count(),
+  await page
+    .locator('#workspaceRecoverySelect option')
+    .filter({ hasText: /manual-save/ })
+    .count(),
   0,
 );
 
@@ -519,7 +551,10 @@ assert.equal(storedMaskOpacity.maskOpacity, 0.35);
 assert.equal(storedMaskOpacity.storageEncoding, 'shared-assets-v1');
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForFunction(
-  () => (document.getElementById('statusText')?.textContent || '').startsWith('Restored local workspace'),
+  () =>
+    (document.getElementById('statusText')?.textContent || '').startsWith(
+      'Restored local workspace',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -530,11 +565,10 @@ assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35)
 await openFunctionPanel(page, 'project');
 await page.locator('#newProjectBtn').click();
 await chooseConfirmation(page);
-await page.waitForFunction(
-  () =>
-    [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
-      /pre-new-project/.test(option.textContent || ''),
-    ),
+await page.waitForFunction(() =>
+  [...(document.getElementById('workspaceRecoverySelect')?.options || [])].some((option) =>
+    /pre-new-project/.test(option.textContent || ''),
+  ),
 );
 assert.match(await page.locator('#statusText').textContent(), /New empty project/);
 
@@ -546,7 +580,10 @@ const safetySecond = await safetyContext.newPage();
 const safetyErrors = [];
 for (const safetyPage of [safetyFirst, safetySecond]) {
   safetyPage.on('pageerror', (error) => safetyErrors.push(error.message));
-  safetyPage.on('dialog', (dialog) => { safetyErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
+  safetyPage.on('dialog', (dialog) => {
+    safetyErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
+    void dialog.dismiss();
+  });
 }
 await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'networkidle',
@@ -606,10 +643,7 @@ assert.equal(
   ),
   'Owner survives read-only New',
 );
-assert.equal(
-  await safetySecond.locator('.workspace').getAttribute('data-autosave-owner'),
-  'false',
-);
+assert.equal(await safetySecond.locator('.workspace').getAttribute('data-autosave-owner'), 'false');
 assert.match(
   await safetySecond.locator('#workspaceSaveStatus').textContent(),
   /Unsaved changes · autosave paused/,

@@ -106,12 +106,7 @@ export function createProjectController({
       ) {
         return true;
       }
-      if (
-        !(await prepareHistoryReplacement(
-          'pre-snapshot-variant-switch',
-          'Variant switch',
-        ))
-      ) {
+      if (!(await prepareHistoryReplacement('pre-snapshot-variant-switch', 'Variant switch'))) {
         return false;
       }
       if (!snapshotManager.switchBranch(targetId)) {
@@ -149,14 +144,13 @@ export function createProjectController({
       const hint = root.createElement('span');
       hint.className = 'snapshot-continuation-hint';
       if (historyEdit) {
-        hint.textContent =
-          !historyEdit.mode
-            ? 'Modify the Process parameters, then choose Save edited Step.'
-            : historyEdit.mode === 'replace-replay'
-              ? `Saving replaces this Step and replays ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
-              : historyEdit.mode === 'replace-discard'
-                ? `Saving replaces this Step and discards ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
-                : 'Saving creates a new Variant from the edited Step.';
+        hint.textContent = !historyEdit.mode
+          ? 'Modify the Process parameters, then choose Save edited Step.'
+          : historyEdit.mode === 'replace-replay'
+            ? `Saving replaces this Step and replays ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+            : historyEdit.mode === 'replace-discard'
+              ? `Saving replaces this Step and discards ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+              : 'Saving creates a new Variant from the edited Step.';
       } else if (historyInsert) {
         hint.textContent =
           historyInsert.mode === 'current-replay'
@@ -184,10 +178,7 @@ export function createProjectController({
           : `Return to ${activeBranch.name} HEAD`;
       returnButton.onclick = async () => {
         if (
-          !(await prepareHistoryReplacement(
-            'pre-snapshot-return-head',
-            'Return to Variant HEAD',
-          ))
+          !(await prepareHistoryReplacement('pre-snapshot-return-head', 'Return to Variant HEAD'))
         ) {
           return;
         }
@@ -390,12 +381,7 @@ export function createProjectController({
     }
 
     async function restoreStep(node) {
-      if (
-        !(await prepareHistoryReplacement(
-          'pre-process-history-restore',
-          'Step restore',
-        ))
-      ) {
+      if (!(await prepareHistoryReplacement('pre-process-history-restore', 'Step restore'))) {
         return;
       }
       if (!snapshotManager.restoreProcessNode(node.id)) {
@@ -405,16 +391,13 @@ export function createProjectController({
       refreshAfterSnapshotLoad();
       onProjectChanged();
       renderSnapshots();
-      status(`Restored Step "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}".`);
+      status(
+        `Restored Step "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}".`,
+      );
     }
 
     async function createVariantFromStep(node) {
-      if (
-        !(await prepareHistoryReplacement(
-          'pre-history-variant-create',
-          'Variant creation',
-        ))
-      ) {
+      if (!(await prepareHistoryReplacement('pre-history-variant-create', 'Variant creation'))) {
         return;
       }
       try {
@@ -431,7 +414,6 @@ export function createProjectController({
       }
     }
 
-
     async function continueFromStep(node) {
       const branch = branchById.get(node.branchId);
       if (!branch || node.id === branch.headNodeId) {
@@ -439,10 +421,7 @@ export function createProjectController({
         return;
       }
       if (
-        !(await prepareHistoryReplacement(
-          'pre-history-truncate-navigation',
-          'Continue from Step',
-        ))
+        !(await prepareHistoryReplacement('pre-history-truncate-navigation', 'Continue from Step'))
       ) {
         return;
       }
@@ -530,7 +509,8 @@ export function createProjectController({
       const body = root.createElement('div');
       body.className = 'process-history-body';
       const label = root.createElement('strong');
-      label.textContent = node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step';
+      label.textContent =
+        node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step';
 
       const meta = root.createElement('span');
       const face = node.operation?.face
@@ -751,7 +731,9 @@ export function createProjectController({
         if (!next || !snapshotManager.renameBranch(variant.id, next)) return;
         onProjectChanged();
         renderSnapshots();
-        status(`Renamed Variant to "${snapshotManager.listBranches().find((item) => item.id === variant.id)?.name || next}".`);
+        status(
+          `Renamed Variant to "${snapshotManager.listBranches().find((item) => item.id === variant.id)?.name || next}".`,
+        );
       };
       save.onclick = commit;
       cancel.onclick = () => {
@@ -841,8 +823,7 @@ export function createProjectController({
       const body = root.createElement('div');
       body.className = 'history-variant-body';
 
-      const collapsed =
-        !activePath.has(variant.id) && !expandedHistoryVariants.has(variant.id);
+      const collapsed = !activePath.has(variant.id) && !expandedHistoryVariants.has(variant.id);
       body.hidden = collapsed;
       toggle.textContent = collapsed ? '▸' : '▾';
       toggle.onclick = () => {

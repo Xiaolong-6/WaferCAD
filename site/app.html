@@ -32,7 +32,13 @@
         background: #11171c;
         color: #dce4ea;
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
       }
 
       html.workstation-boot #workstationBootScreen {
@@ -57,7 +63,7 @@
         font-size: 10px;
       }
 
-      #workstationBootScreen[data-error="true"] .workstation-boot-card span {
+      #workstationBootScreen[data-error='true'] .workstation-boot-card span {
         color: #d6a4a4;
       }
     </style>
@@ -257,7 +263,8 @@
           </div>
           <div
             id="sectionCoordsPanel"
-            class="section-coords-panel view-popover-surface" data-view-popover-panel
+            class="section-coords-panel view-popover-surface"
+            data-view-popover-panel
             aria-label="A–B coordinates"
             hidden
           >
@@ -291,11 +298,20 @@
                 File
               </button>
               <details id="maskRoiEditor" class="focus-editor mask-roi-control">
-                <summary class="mini-btn" title="Limit Mask processing/export to a Rect or Circle ROI">ROI</summary>
+                <summary
+                  class="mini-btn"
+                  title="Limit Mask processing/export to a Rect or Circle ROI"
+                >
+                  ROI
+                </summary>
                 <div class="focus-popover mask-roi-popover view-popover-surface">
                   <div class="focus-popover-actions">
-                    <button class="mask-roi-tool mini-btn" data-tool="rect" type="button">Square</button>
-                    <button class="mask-roi-tool mini-btn" data-tool="circle" type="button">Circle</button>
+                    <button class="mask-roi-tool mini-btn" data-tool="rect" type="button">
+                      Square
+                    </button>
+                    <button class="mask-roi-tool mini-btn" data-tool="circle" type="button">
+                      Circle
+                    </button>
                     <button id="clearMaskRoiBtn" class="mini-btn" type="button">Clear</button>
                   </div>
                   <div id="maskRoiFields" class="roi-editor" hidden>
@@ -304,11 +320,19 @@
                       <span id="maskRoiUnitLabel">µm</span>
                     </div>
                     <div id="maskRoiRectFields">
-                      <label class="roi-field"><span>Size</span><input id="maskRoiSize" type="number" min="0" step="any" /></label>
-                      <label class="roi-field"><span>Rotation °</span><input id="maskRoiRotation" type="number" step="any" value="0" /></label>
+                      <label class="roi-field"
+                        ><span>Size</span><input id="maskRoiSize" type="number" min="0" step="any"
+                      /></label>
+                      <label class="roi-field"
+                        ><span>Rotation °</span
+                        ><input id="maskRoiRotation" type="number" step="any" value="0"
+                      /></label>
                     </div>
                     <div id="maskRoiCircleFields" hidden>
-                      <label class="roi-field"><span>Radius</span><input id="maskRoiRadius" type="number" min="0" step="any" /></label>
+                      <label class="roi-field"
+                        ><span>Radius</span
+                        ><input id="maskRoiRadius" type="number" min="0" step="any"
+                      /></label>
                     </div>
                     <label class="roi-field">
                       <span>Reference</span>
@@ -374,14 +398,26 @@
                   <div id="maskExportFilterGroup">
                     <label class="export-field">
                       <span>Cells</span>
-                      <select id="maskExportCells" multiple size="5" aria-label="Cells to export"></select>
+                      <select
+                        id="maskExportCells"
+                        multiple
+                        size="5"
+                        aria-label="Cells to export"
+                      ></select>
                     </label>
                     <label class="export-field">
                       <span>Layers</span>
-                      <select id="maskExportLayers" multiple size="5" aria-label="Layers to export"></select>
+                      <select
+                        id="maskExportLayers"
+                        multiple
+                        size="5"
+                        aria-label="Layers to export"
+                      ></select>
                     </label>
                   </div>
-                  <p id="maskExportDrawNote" class="export-note" hidden>Draw source exports all drawn shapes.</p>
+                  <p id="maskExportDrawNote" class="export-note" hidden>
+                    Draw source exports all drawn shapes.
+                  </p>
                   <div class="export-action-row">
                     <button id="maskExportSvgBtn" class="mini-btn" type="button">SVG</button>
                     <button id="maskExportGdsBtn" class="mini-btn" type="button">GDS</button>
@@ -404,9 +440,15 @@
           </div>
           <canvas id="maskCanvas"></canvas>
           <div id="drawMaskToolbar" class="draw-mask-toolbar" hidden>
-            <button class="mini-btn draw-mask-tool active" data-draw-tool="" type="button">Select</button>
-            <button class="mini-btn draw-mask-tool" data-draw-tool="rect" type="button">Rect</button>
-            <button class="mini-btn draw-mask-tool" data-draw-tool="circle" type="button">Circle</button>
+            <button class="mini-btn draw-mask-tool active" data-draw-tool="" type="button">
+              Select
+            </button>
+            <button class="mini-btn draw-mask-tool" data-draw-tool="rect" type="button">
+              Rect
+            </button>
+            <button class="mini-btn draw-mask-tool" data-draw-tool="circle" type="button">
+              Circle
+            </button>
             <button
               class="mini-btn draw-mask-tool"
               data-draw-tool="polygon"
@@ -436,14 +478,28 @@
             <button id="drawMaskClearBtn" class="mini-btn" type="button" disabled>Clear</button>
             <span id="drawMaskHint" class="draw-mask-hint">0 shapes</span>
           </div>
-          <div id="drawShapeEditor" class="draw-shape-editor view-popover-surface" data-view-popover-panel hidden>
+          <div
+            id="drawShapeEditor"
+            class="draw-shape-editor view-popover-surface"
+            data-view-popover-panel
+            hidden
+          >
             <div class="draw-shape-editor-head">
               <strong id="drawShapeEditorTitle">Shape</strong>
-              <button id="drawShapeEditorClose" class="quiet" type="button" aria-label="Close shape editor">×</button>
+              <button
+                id="drawShapeEditorClose"
+                class="quiet"
+                type="button"
+                aria-label="Close shape editor"
+              >
+                ×
+              </button>
             </div>
             <div id="drawShapeEditorBody" class="draw-shape-editor-body"></div>
             <div class="draw-shape-editor-actions">
-              <button id="drawShapeEditorApply" class="primary compact-btn" type="button">Apply</button>
+              <button id="drawShapeEditorApply" class="primary compact-btn" type="button">
+                Apply
+              </button>
               <button id="drawShapeEditorDelete" class="compact-btn" type="button">Delete</button>
             </div>
           </div>
@@ -483,15 +539,29 @@
                 <input id="threeBorders" type="checkbox" />
                 <span>Border</span>
               </label>
-              <button id="fit3dBtn" class="mini-btn three-control" title="Fit the 3D model">Fit</button>
+              <button id="fit3dBtn" class="mini-btn three-control" title="Fit the 3D model">
+                Fit
+              </button>
               <details class="export-control">
                 <summary class="mini-btn three-control" title="Export 3D">Export</summary>
                 <div class="export-popover three-export-popover view-popover-surface">
-                  <button id="threeExportModelBtn" class="mini-btn three-control" type="button">GLB · physical</button>
-                  <button id="threeExportCancelBtn" class="mini-btn three-control" type="button" hidden>Cancel GLB</button>
-                  <button id="threeExportPngBtn" class="mini-btn three-control" type="button">PNG 3× · rendered</button>
+                  <button id="threeExportModelBtn" class="mini-btn three-control" type="button">
+                    GLB · physical
+                  </button>
+                  <button
+                    id="threeExportCancelBtn"
+                    class="mini-btn three-control"
+                    type="button"
+                    hidden
+                  >
+                    Cancel GLB
+                  </button>
+                  <button id="threeExportPngBtn" class="mini-btn three-control" type="button">
+                    PNG 3× · rendered
+                  </button>
                   <div class="export-note">
-                    GLB uses physical metre units and exports the topology-owned 3D surfaces. Rough/Pyramid relief is embedded with a bounded, camera-independent export mesh.
+                    GLB uses physical metre units and exports the topology-owned 3D surfaces.
+                    Rough/Pyramid relief is embedded with a bounded, camera-independent export mesh.
                   </div>
                 </div>
               </details>
@@ -711,9 +781,13 @@
                   <button type="button" class="active" data-process-mode="add" aria-pressed="true">
                     Deposit
                   </button>
-                  <button type="button" data-process-mode="grow" aria-pressed="false">Extend</button>
+                  <button type="button" data-process-mode="grow" aria-pressed="false">
+                    Extend
+                  </button>
                   <button type="button" data-process-mode="etch" aria-pressed="false">Etch</button>
-                  <button type="button" data-process-mode="implant" aria-pressed="false">Implant</button>
+                  <button type="button" data-process-mode="implant" aria-pressed="false">
+                    Implant
+                  </button>
                   <button type="button" data-process-mode="electrical" aria-pressed="false">
                     Electrical
                   </button>
@@ -858,12 +932,22 @@
                   </label>
                   <label class="param-field">
                     <span>Time</span>
-                    <input id="recordDuration" type="number" min="0" step="any" placeholder="optional" />
+                    <input
+                      id="recordDuration"
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="optional"
+                    />
                     <b class="field-unit">min</b>
                   </label>
                   <label class="param-field">
                     <span>Ambient</span>
-                    <input id="recordAmbient" maxlength="120" placeholder="e.g. O₂, N₂, forming gas" />
+                    <input
+                      id="recordAmbient"
+                      maxlength="120"
+                      placeholder="e.g. O₂, N₂, forming gas"
+                    />
                   </label>
                   <label class="param-field">
                     <span>Note</span>
@@ -887,7 +971,14 @@
                     title="Coefficient of variation of the lateral feature size"
                   >
                     <span>Feature CV</span>
-                    <input id="roughFeatureCv" type="number" value="25" min="0" max="100" step="1" />
+                    <input
+                      id="roughFeatureCv"
+                      type="number"
+                      value="25"
+                      min="0"
+                      max="100"
+                      step="1"
+                    />
                     <b class="field-unit">%</b>
                   </label>
                 </div>
@@ -1188,7 +1279,9 @@
                     <div class="section-collapse-fine-row">
                       <span>Adjust</span>
                       <button id="sectionCollapseMinus" class="mini-btn" type="button">−</button>
-                      <output id="sectionCollapseFineValue" class="section-collapse-fine-value">—</output>
+                      <output id="sectionCollapseFineValue" class="section-collapse-fine-value"
+                        >—</output
+                      >
                       <button id="sectionCollapsePlus" class="mini-btn" type="button">+</button>
                     </div>
                     <label class="section-collapse-check">
@@ -1284,14 +1377,18 @@
     >
       <div>
         <strong>This workspace is open in another tab.</strong>
-        <span>Editing stays available, but local autosave is paused here to prevent conflicts.</span>
+        <span
+          >Editing stays available, but local autosave is paused here to prevent conflicts.</span
+        >
       </div>
       <button id="workspaceTakeOverBtn" class="compact-btn" type="button">Take over</button>
     </div>
     <footer id="statusBar" class="statusbar" data-level="passive" role="status">
       <span id="statusText">Starting…</span>
       <span class="status-links">
-        <span id="workspaceSaveStatus" title="Browser workspace autosave status">Local autosave starting…</span>
+        <span id="workspaceSaveStatus" title="Browser workspace autosave status"
+          >Local autosave starting…</span
+        >
         <span aria-hidden="true">·</span>
         <button id="safeReloadBtn" class="status-action" type="button" hidden>Reload safely</button>
         <span id="safeReloadSeparator" aria-hidden="true" hidden>·</span>
@@ -1311,12 +1408,15 @@
         if (!document.documentElement.classList.contains('workstation-boot')) return;
         const message = document.getElementById('workstationBootMessage');
         const host = document.getElementById('statusText');
-        const detail = error instanceof Error ? error.message : String(error || 'Unknown startup error');
+        const detail =
+          error instanceof Error ? error.message : String(error || 'Unknown startup error');
         document.getElementById('workstationBootScreen')?.setAttribute('data-error', 'true');
         if (message) message.textContent = `Startup failed: ${detail}`;
         if (host) host.textContent = `Startup failed: ${detail}`;
       };
-      globalThis.addEventListener('error', (event) => reportBootFailure(event.error || event.message));
+      globalThis.addEventListener('error', (event) =>
+        reportBootFailure(event.error || event.message),
+      );
       globalThis.addEventListener('unhandledrejection', (event) =>
         reportBootFailure(event.reason || 'Unhandled startup rejection'),
       );

@@ -83,10 +83,18 @@ test('snapshot manager never creates more records than the project schema can pe
   assert.throws(() => manager.create(), /Milestone limit of 100 reached/);
 });
 
-
 test('snapshot manager shares unchanged large model and layout assets internally', () => {
   const model = { revision: 7, processRevision: 3, payload: { heavy: [1, 2, 3] } };
-  const elements = [{ kind: 'polygon', points: [[0, 0], [1, 0], [1, 1]] }];
+  const elements = [
+    {
+      kind: 'polygon',
+      points: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ],
+    },
+  ];
   const layout = {
     name: 'large-mask.gds',
     root: 'TOP',
@@ -123,7 +131,6 @@ test('snapshot manager shares unchanged large model and layout assets internally
   assert.strictEqual(exported[0].state.model, exported[1].state.model);
 });
 
-
 test('snapshot preserves Draw mask source independently from imported layout assets', () => {
   let live = {
     maskSourceMode: 'draw',
@@ -148,7 +155,6 @@ test('snapshot preserves Draw mask source independently from imported layout ass
   assert.equal(restored.maskSourceMode, 'draw');
   assert.deepEqual(restored.drawMask.shapes[0].b, [1, 1]);
 });
-
 
 test('snapshot branches keep independent heads and restore the selected branch head', () => {
   let live = { value: 1 };
@@ -271,8 +277,14 @@ test('branch origin milestones are protected and deleting a leaf variant keeps i
   assert.equal(removed.name, 'Variant');
   assert.equal(manager.activeBranch().id, 'main');
   assert.equal(live.value, 2);
-  assert.equal(manager.list().some((record) => record.id === child.id), false);
-  assert.equal(manager.list().some((record) => record.id === origin.id), true);
+  assert.equal(
+    manager.list().some((record) => record.id === child.id),
+    false,
+  );
+  assert.equal(
+    manager.list().some((record) => record.id === origin.id),
+    true,
+  );
   assert.equal(manager.remove(origin.id), true);
 });
 
@@ -302,7 +314,6 @@ test('variant deletion requires child variants to be removed first', () => {
   assert.equal(manager.removeBranch(parent.id).name, 'Parent');
   assert.equal(manager.listBranches().length, 1);
 });
-
 
 test('V2 process history records Apply nodes and attaches snapshots as milestones', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
@@ -767,7 +778,10 @@ test('branching from a restored Step uses the Step itself as the Variant origin'
   const variant = manager.createBranchFromCursor('Variant from process row');
 
   assert.equal(manager.list().length, before);
-  assert.equal(manager.list().some((record) => record.id === bookmark.id), true);
+  assert.equal(
+    manager.list().some((record) => record.id === bookmark.id),
+    true,
+  );
   assert.equal(variant.rootSnapshotId, null);
   assert.equal(variant.rootNodeId, first.id);
   assert.equal(variant.parentBranchId, 'main');
@@ -851,10 +865,11 @@ test('Undo cursor can branch without a pre-existing milestone', () => {
   assert.equal(manager.activeBranch().id, branch.id);
   assert.equal(branch.rootNodeId, first.id);
   assert.equal(branch.parentBranchId, 'main');
-  assert.equal(manager.list().some((record) => record.historyNodeId === first.id), false);
+  assert.equal(
+    manager.list().some((record) => record.historyNodeId === first.id),
+    false,
+  );
 });
-
-
 
 test('HEAD state tracks non-process edits without advancing process history', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
@@ -949,11 +964,17 @@ test('Undo branching keeps bookmarks as annotations instead of Variant structure
   const variant = manager.createBranchFromCursor('Undo variant');
 
   assert.equal(manager.list().length, before);
-  assert.equal(manager.list().some((record) => record.id === firstBookmark.id), true);
+  assert.equal(
+    manager.list().some((record) => record.id === firstBookmark.id),
+    true,
+  );
   assert.equal(variant.rootSnapshotId, null);
   assert.equal(variant.rootNodeId, first.id);
   assert.equal(variant.parentBranchId, 'main');
-  assert.equal(manager.list().some((record) => /branch point/i.test(record.name)), false);
+  assert.equal(
+    manager.list().some((record) => /branch point/i.test(record.name)),
+    false,
+  );
 });
 
 test('Variant tree records explicit parent linkage and supports direct rename', () => {
@@ -980,10 +1001,7 @@ test('Variant tree records explicit parent linkage and supports direct rename', 
   assert.equal(variant.parentBranchId, 'main');
   assert.equal(variant.rootSnapshotId, null);
   assert.equal(manager.renameBranch(variant.id, 'Detector path'), true);
-  assert.equal(
-    manager.listBranches().find((item) => item.id === variant.id).name,
-    'Detector path',
-  );
+  assert.equal(manager.listBranches().find((item) => item.id === variant.id).name, 'Detector path');
 
   live = { model: { processRevision: 2 }, value: 'variant-step' };
   const childStep = manager.recordOperation({ kind: 'add', label: 'Variant step' });
@@ -1166,7 +1184,6 @@ test('automatic branches use concise Variant names and historical state can retu
   assert.equal(secondVariant.name, 'Variant 2');
 });
 
-
 test('legacy milestone-derived branch names normalize to concise Variants on import', () => {
   const sourceState = { model: { processRevision: 1 }, value: 'source' };
   const manager = createSnapshotManager({
@@ -1224,7 +1241,6 @@ test('legacy milestone-derived branch names normalize to concise Variants on imp
   manager.importRecords(records, branchState);
   assert.equal(manager.activeBranch().name, 'Black-Si');
 });
-
 
 test('historical Step edit restores predecessor geometry while preserving selected Step workspace context', () => {
   let live = { model: { processRevision: 0, marker: 'base' }, mask: 'base-mask' };
@@ -1369,10 +1385,12 @@ test('current Variant tail replacement is blocked when a child Variant depends o
 
   const context = manager.stepEditContext(second.id);
   assert.equal(context.canReplaceCurrentVariant, false);
-  assert.deepEqual(context.dependentVariants.map((item) => item.name), ['Dependent child']);
+  assert.deepEqual(
+    context.dependentVariants.map((item) => item.name),
+    ['Dependent child'],
+  );
   assert.throws(() => manager.replaceBranchTailFrom(second.id), /child Variant/i);
 });
-
 
 test('truncateBranchAfter keeps the selected Step and removes only the later tail', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
@@ -1493,17 +1511,13 @@ test('history truncation refuses to orphan a dependent child Variant', () => {
   manager.createBranchFromNode(third.id, 'Dependent child');
   manager.switchBranch('main');
 
-  assert.throws(
-    () => manager.truncateBranchAfter(second.id),
-    /dependent Variant/i,
-  );
+  assert.throws(() => manager.truncateBranchAfter(second.id), /dependent Variant/i);
   assert.equal(manager.activeBranch().headNodeId, third.id);
   assert.deepEqual(
     manager.listHistory().map((node) => node.operation.label),
     ['A', 'B', 'C'],
   );
 });
-
 
 test('insertBeforeContext carries the selected Step and later replay tail with stable entity refs', () => {
   let live = {
@@ -1703,12 +1717,8 @@ test('renaming an entity propagates through restorable History states and replay
   const importedDeposit = imported.listHistory().find((node) => node.id === deposit.id);
   assert.equal(importedDeposit.displayLabel, 'Deposit ITO · Directional · 0.2 µm');
   assert.equal(imported.restoreProcessNode(deposit.id), true);
-  assert.equal(
-    importedLive.model.layers.find((layer) => layer.id === 'layer-6').name,
-    'ITO',
-  );
+  assert.equal(importedLive.model.layers.find((layer) => layer.id === 'layer-6').name, 'ITO');
 });
-
 
 test('History display labels stay scoped when independent Variants reuse the same internal layer ID', () => {
   let live = {
@@ -1804,7 +1814,6 @@ test('History display labels stay scoped when independent Variants reuse the sam
     'Deposit Variant ITO · Directional · 0.2 µm',
   );
 });
-
 
 test('History insertion topology supports current rewrite, branch start, branch carry, and dependency protection', () => {
   const createChain = () => {
@@ -1956,10 +1965,7 @@ test('process History pins and restores the exact file-mask Cell and Layer combi
   });
 
   const listed = manager.listHistory().find((item) => item.id === node.id);
-  assert.equal(
-    listed.areaLabel,
-    'Cell TOP · Layers 7/0, 8/2',
-  );
+  assert.equal(listed.areaLabel, 'Cell TOP · Layers 7/0, 8/2');
 
   live = {
     ...live,

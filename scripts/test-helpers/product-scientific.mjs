@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import {
-  chooseConfirmation,
-  closeFunctionPanel,
-  openFunctionPanel,
-} from './product.mjs';
+import { chooseConfirmation, closeFunctionPanel, openFunctionPanel } from './product.mjs';
 
 export async function loadProject(page, project, name) {
   await openFunctionPanel(page, 'project');

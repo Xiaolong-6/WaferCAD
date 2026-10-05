@@ -12,11 +12,7 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 
-export function createSelectionGeometry({
-  getState,
-  selectedElement,
-  maskPoint,
-}) {
+export function createSelectionGeometry({ getState, selectedElement, maskPoint }) {
   function selectedFileMaskGeometry() {
     const { layout, maskTransform } = getState(),
       geoms = [];
@@ -50,9 +46,7 @@ export function createSelectionGeometry({
     const { maskRoi, maskSourceMode, maskTransform } = getState();
     if (!maskRoi) return null;
     const transform =
-      maskSourceMode === 'file'
-        ? maskTransform
-        : { x: 0, y: 0, scale: 1, rotation: 0 };
+      maskSourceMode === 'file' ? maskTransform : { x: 0, y: 0, scale: 1, rotation: 0 };
     return maskRoiWorldGeometry(maskRoi, transform, 96);
   }
 

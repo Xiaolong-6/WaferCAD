@@ -1,15 +1,9 @@
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import { electricalRegionSolids, implantSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
-import {
-  createCollapsedZDisplayTransform,
-  resolveSectionCollapse,
-} from './section-z-collapse.js';
+import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
-import {
-  buildRoughSpatialZones,
-  prepareMorphologyExportTasks,
-} from './morphology-mesh-policy.js';
+import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morphology-mesh-policy.js';
 import {
   adaptiveRoughMeshLod,
   allocateRoughTriangleBudgets,
@@ -528,12 +522,7 @@ export function createThreeView({
 
   function boundsOverlap(a, b) {
     return Boolean(
-      a &&
-        b &&
-        a.maxX >= b.minX &&
-        a.minX <= b.maxX &&
-        a.maxY >= b.minY &&
-        a.minY <= b.maxY,
+      a && b && a.maxX >= b.minX && a.minX <= b.maxX && a.maxY >= b.minY && a.minY <= b.maxY,
     );
   }
 
@@ -659,10 +648,13 @@ export function createThreeView({
   function scheduleDetailedRoughBuild(delay = 140) {
     if (!ready || interacting || rendering || !roughTasks.length) return;
     clearRoughRefineTimer();
-    roughRefineTimer = setTimeout(() => {
-      roughRefineTimer = null;
-      if (!interacting) void requestRoughGeometry('detailed');
-    }, Math.max(0, Number(delay) || 0));
+    roughRefineTimer = setTimeout(
+      () => {
+        roughRefineTimer = null;
+        if (!interacting) void requestRoughGeometry('detailed');
+      },
+      Math.max(0, Number(delay) || 0),
+    );
   }
 
   function scheduleFrame() {
@@ -750,9 +742,7 @@ export function createThreeView({
         }
       }
     }
-    return [minX, minY, maxX, maxY].every(Number.isFinite)
-      ? { minX, minY, maxX, maxY }
-      : null;
+    return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
   }
 
   function geometryFromSolid({ slabs, caps }) {
@@ -812,10 +802,7 @@ export function createThreeView({
     if (!positions || Math.abs(tangent) < 1e-12) return geometry;
     for (let index = 0; index < positions.count; index++) {
       const z = positions.getZ(index),
-        depth = Math.max(
-          0,
-          implant.face === 'front' ? implant.sourceZ - z : z - implant.sourceZ,
-        );
+        depth = Math.max(0, implant.face === 'front' ? implant.sourceZ - z : z - implant.sourceZ);
       positions.setX(index, positions.getX(index) + tangent * depth);
     }
     positions.needsUpdate = true;
@@ -867,9 +854,7 @@ export function createThreeView({
       const featureSizes = [part.lowerSurface, part.upperSurface]
           .map((surface) => Number(surface?.appearance?.featureSize))
           .filter((value) => Number.isFinite(value) && value > 0),
-        targetStep = featureSizes.length
-          ? Math.max(1e-6, Math.min(...featureSizes) / 4)
-          : length,
+        targetStep = featureSizes.length ? Math.max(1e-6, Math.min(...featureSizes) / 4) : length,
         segments = Math.max(1, Math.min(512, Math.ceil(length / targetStep))),
         pointAt = (t) => [p[0] + dx * t, p[1] + dy * t];
 
@@ -990,10 +975,7 @@ export function createThreeView({
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
-    edgeGeometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(positions, 3),
-    );
+    edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     const edgeMaterial = new THREE.LineBasicMaterial({
         color: 0x111820,
         transparent: opacity < 0.999,
@@ -1163,7 +1145,11 @@ export function createThreeView({
     updateRoughDiagnostics();
     if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
     host.dataset.renderState = 'ready';
-    stats.textContent = hasMaterial(context.model) ? (context.clip ? 'ROI' : 'full model') : 'no material';
+    stats.textContent = hasMaterial(context.model)
+      ? context.clip
+        ? 'ROI'
+        : 'full model'
+      : 'no material';
     scheduleFrame();
     return true;
   }
@@ -1192,10 +1178,7 @@ export function createThreeView({
     });
   }
 
-  function requestRoughGeometry(
-    mode = 'detailed',
-    { force = false, refineAfter = false } = {},
-  ) {
+  function requestRoughGeometry(mode = 'detailed', { force = false, refineAfter = false } = {}) {
     if (!roughRenderContext || !roughTasks.length || rendering) return Promise.resolve(false);
     const sceneToken = roughRenderContext.sceneGeneration,
       interactive = mode === 'interactive',
@@ -1418,7 +1401,8 @@ export function createThreeView({
           return showUnavailable({
             status: 'dependency unavailable',
             reason: 'dependency',
-            detail: 'Three.js resources could not be loaded. Main, Mask, and Section remain available.',
+            detail:
+              'Three.js resources could not be loaded. Main, Mask, and Section remain available.',
             warning: '3D dependencies unavailable; continuing without the 3D view.',
             error: dependencyError,
           });
@@ -1665,9 +1649,7 @@ export function createThreeView({
         const outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
-          followDepthProfile = Boolean(
-            appearance && implant.depthProfile !== 'smooth',
-          );
+          followDepthProfile = Boolean(appearance && implant.depthProfile !== 'smooth');
 
         if (showInternalImplants) {
           const implantState = {
@@ -1679,9 +1661,7 @@ export function createThreeView({
             bodyGeometry = shearImplantGeometry(
               geometryFromSolid(
                 displaySolidForZCollapse(
-                  followDepthProfile
-                    ? { slabs: implant.slabs, caps: [] }
-                    : implant,
+                  followDepthProfile ? { slabs: implant.slabs, caps: [] } : implant,
                 ),
               ),
               implant,
@@ -1773,10 +1753,7 @@ export function createThreeView({
               }),
               implant,
             ),
-            capMaterial = createSurfaceMaterial(
-              { color: implant.color || '#D65A6F' },
-              capState,
-            );
+            capMaterial = createSurfaceMaterial({ color: implant.color || '#D65A6F' }, capState);
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
@@ -1799,12 +1776,8 @@ export function createThreeView({
 
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
-            electrical.surfaceAppearance?.kind === 'rough'
-              ? electrical.surfaceAppearance
-              : null,
-          followDepthProfile = Boolean(
-            appearance && electrical.depthProfile !== 'smooth',
-          );
+            electrical.surfaceAppearance?.kind === 'rough' ? electrical.surfaceAppearance : null,
+          followDepthProfile = Boolean(appearance && electrical.depthProfile !== 'smooth');
 
         if (showInternalElectrical) {
           const electricalState = {
@@ -1815,9 +1788,7 @@ export function createThreeView({
             },
             bodyGeometry = geometryFromSolid(
               displaySolidForZCollapse(
-                followDepthProfile
-                  ? { slabs: electrical.slabs, caps: [] }
-                  : electrical,
+                followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
               ),
             ),
             bodyMaterial = new THREE.MeshStandardMaterial({
@@ -1832,8 +1803,7 @@ export function createThreeView({
             }),
             body = addSurfaceMesh(bodyGeometry, bodyMaterial, electricalState, null, 34);
           if (body) {
-            body.name =
-              electrical.name || electrical.electricalRegionId || 'Electrical Region';
+            body.name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
             electricalRegionInternalCount++;
           }
 
@@ -1842,10 +1812,7 @@ export function createThreeView({
               kind: 'electrical-depth',
               cap: {
                 type: 'cap',
-                layerId:
-                  electrical.layerId ||
-                  electrical.electricalRegionId ||
-                  'electrical-region',
+                layerId: electrical.layerId || electrical.electricalRegionId || 'electrical-region',
                 z: electrical.innerZ,
                 normal: -outerNormal,
                 polys: electrical.polys,
@@ -1864,8 +1831,7 @@ export function createThreeView({
               sortBias: 35,
               closeToIdeal: false,
               includeBorders: false,
-              name:
-                `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} depth boundary`,
+              name: `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} depth boundary`,
             });
           }
         }
@@ -1877,18 +1843,14 @@ export function createThreeView({
             depthTest: true,
             depthWrite: false,
           },
-          capName =
-            `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
+          capName = `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
 
         if (appearance && zIsVisible(electrical.outerZ)) {
           roughTasks.push({
             kind: 'electrical',
             cap: {
               type: 'cap',
-              layerId:
-                electrical.layerId ||
-                electrical.electricalRegionId ||
-                'electrical-region',
+              layerId: electrical.layerId || electrical.electricalRegionId || 'electrical-region',
               z: electrical.outerZ,
               normal: outerNormal,
               polys: electrical.polys,
@@ -1911,10 +1873,7 @@ export function createThreeView({
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
             }),
-            capMaterial = createSurfaceMaterial(
-              { color: electrical.color || '#7A6FD0' },
-              capState,
-            );
+            capMaterial = createSurfaceMaterial({ color: electrical.color || '#7A6FD0' }, capState);
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
@@ -1988,11 +1947,7 @@ export function createThreeView({
     camera.near = Math.max(1e-6, radius / 200);
     camera.far = Math.max(camera.near * 1000, distance + radius * 20);
     camera.updateProjectionMatrix();
-    controls.target.set(
-      centerX,
-      centerY,
-      ((zState.displayMin + zState.displayMax) / 2) * zScale,
-    );
+    controls.target.set(centerX, centerY, ((zState.displayMin + zState.displayMax) / 2) * zScale);
     camera.position.copy(
       new THREE.Vector3(1.05, -1.15, 0.82)
         .normalize()
@@ -2247,10 +2202,7 @@ export function createThreeView({
         throwIfAborted();
         addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
         sidewallIndex++;
-        reportProgress(
-          0.79 + 0.1 * (sidewallIndex / sidewallGroupCount),
-          'Building sidewalls',
-        );
+        reportProgress(0.79 + 0.1 * (sidewallIndex / sidewallGroupCount), 'Building sidewalls');
         if (sidewallIndex % 2 === 0) await yieldToUi();
       }
 

@@ -221,4 +221,3 @@ export function electricalRegionSolids(model, clip = null) {
 export function electricalRegionSectionBands(model, a, b) {
   return annotationSectionBands(electricalRegionFragments(model), a, b);
 }
-

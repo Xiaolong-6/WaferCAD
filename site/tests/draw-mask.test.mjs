@@ -65,8 +65,14 @@ test('Draw mask unions overlapping temporary shapes', () => {
   });
 
   assert.ok(geometry.length > 0);
-  assert.equal(drawShapeContainsPoint({ id: 'shape-1', type: 'rect', a: [-5, -5], b: [2, 5] }, [0, 0]), true);
-  assert.equal(drawShapeContainsPoint({ id: 'shape-1', type: 'rect', a: [-5, -5], b: [2, 5] }, [4, 0]), false);
+  assert.equal(
+    drawShapeContainsPoint({ id: 'shape-1', type: 'rect', a: [-5, -5], b: [2, 5] }, [0, 0]),
+    true,
+  );
+  assert.equal(
+    drawShapeContainsPoint({ id: 'shape-1', type: 'rect', a: [-5, -5], b: [2, 5] }, [4, 0]),
+    false,
+  );
 });
 
 test('Draw shapes remain editable after creation', () => {
@@ -106,7 +112,6 @@ test('Draw shape IDs are monotonic and survive normalization', () => {
   });
   assert.equal(normalized.nextShapeId, 8);
 });
-
 
 test('Ring geometry contains the annulus but excludes its hole', () => {
   const ring = { id: 'shape-1', type: 'ring', c: [0, 0], innerR: 2, outerR: 5 };

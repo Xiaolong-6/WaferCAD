@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import {
-  createCollapsedZDisplayTransform,
-  resolveSectionCollapse,
-} from '../section-z-collapse.js';
+import { createCollapsedZDisplayTransform, resolveSectionCollapse } from '../section-z-collapse.js';
 
 test('collapsed Z display preserves the visible top and bottom spans', () => {
   const transform = createCollapsedZDisplayTransform({
@@ -19,9 +16,9 @@ test('collapsed Z display preserves the visible top and bottom spans', () => {
   assert.ok(transform.gap > 0);
   assert.ok(transform.gap < transform.top - transform.bottom);
 
-  assert.ok(Math.abs((transform.mapZ(140) - transform.mapZ(130)) - 10) < 1e-12);
-  assert.ok(Math.abs((transform.mapZ(-130) - transform.mapZ(-140)) - 10) < 1e-12);
-  assert.ok(Math.abs((transform.mapZ(130) - transform.mapZ(-130)) - transform.gap) < 1e-12);
+  assert.ok(Math.abs(transform.mapZ(140) - transform.mapZ(130) - 10) < 1e-12);
+  assert.ok(Math.abs(transform.mapZ(-130) - transform.mapZ(-140) - 10) < 1e-12);
+  assert.ok(Math.abs(transform.mapZ(130) - transform.mapZ(-130) - transform.gap) < 1e-12);
   assert.ok(transform.displaySpan < 280);
 });
 

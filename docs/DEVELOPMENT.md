@@ -77,7 +77,7 @@ There is no application build step.
 28. History labels that reference material/Implant/Electrical Region entities must resolve through stable IDs; renaming an entity must not leave stale labels or stale replay names on the same entity lineage.
 29. History **Insert before…** must be transactional: failed/no-change inserted operations leave the original process tree untouched; current-Variant insertion may rewrite a tail only when dependency checks pass; child-Variant insertion must leave the source Variant unchanged.
 30. When insertion causes replayed Deposit Steps to receive new layer IDs, all downstream replayable layer references must be remapped before the worker request is issued.
-28. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
+31. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 ## Source style
 
@@ -109,4 +109,3 @@ WaferCAD should read as a compact engineering/CAD workstation rather than a coll
 - runtime feedback is centralized in the bottom status bar; semantic colors are reserved for success, information/progress, warning and error states. Do not duplicate the same message in panel hints or toast overlays.
 
 Do not create a one-off visual language for a new panel or control when an existing workstation control pattern fits.
-

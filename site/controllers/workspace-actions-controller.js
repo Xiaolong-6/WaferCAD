@@ -189,7 +189,8 @@ export function createWorkspaceActionsController({
     $('electricalRegionType').onchange = updateOperationUI;
     $('electricalRegionSource').onchange = updateOperationUI;
     $('recordProcessType').onchange = () => {
-      $('recordProcessLabel').value = $('recordProcessType').selectedOptions?.[0]?.textContent || '';
+      $('recordProcessLabel').value =
+        $('recordProcessType').selectedOptions?.[0]?.textContent || '';
       updateOperationUI();
     };
     $('applyOperationBtn').onclick = applyOperation;
@@ -328,7 +329,6 @@ export function createWorkspaceActionsController({
       downloadBlob(result.blob, 'wafercad-3d-3x.png');
       status('Exported 3× high-resolution 3D PNG.');
     };
-
   }
 
   function bindHistory() {

@@ -47,7 +47,10 @@ test('Project schema and annotation contracts', () => {
     bottom: -9.5,
     enabled: 'no',
   };
-  assert.throws(() => validateProjectFile(invalidCollapseEnabledProject), /sectionCollapse.enabled/);
+  assert.throws(
+    () => validateProjectFile(invalidCollapseEnabledProject),
+    /sectionCollapse.enabled/,
+  );
   const invalidCollapseProject = structuredClone(validProject);
   invalidCollapseProject.display.sectionCollapse = { top: -9.5, bottom: -0.5 };
   assert.throws(() => validateProjectFile(invalidCollapseProject), /sectionCollapse/);
@@ -137,9 +140,15 @@ test('Project schema and annotation contracts', () => {
   assert.equal(implantModel.implants[0].depthProfile, 'follow');
   assert.equal(implantModel.implants[0].visible, true);
   assert.ok(implantModel.implants[0].patches.length > 0);
-  assert.equal(modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'smooth'), true);
+  assert.equal(
+    modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'smooth'),
+    true,
+  );
   assert.equal(implantSectionBands(implantModel, [-8, 0], [8, 0])[0]?.depthProfile, 'smooth');
-  assert.equal(modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'follow'), true);
+  assert.equal(
+    modelApi.setImplantDepthProfile(implantModel, implantModel.implants[0].id, 'follow'),
+    true,
+  );
   assert.equal(implantModel.regions.length, 1);
   assert.equal(implantSolids(implantModel)[0]?.surfaceExposed, true);
 

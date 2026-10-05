@@ -132,7 +132,7 @@ The state should be:
 Replace the current File-specific process dependency with one source-neutral entry point:
 
 ```js
-activeMaskGeometry()
+activeMaskGeometry();
 ```
 
 Conceptually:

@@ -25,9 +25,7 @@ export function roughCapBaseTriangles(THREE, z, normal, polys) {
   const triangles = [];
   let maxEdge = 0;
   for (const poly of polys || []) {
-    const rings = poly.map((ring) =>
-        ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)),
-      ),
+    const rings = poly.map((ring) => ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y))),
       points = rings.flat();
     if (!rings[0]?.length) continue;
     for (const indices of THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1))) {
@@ -90,9 +88,7 @@ export function roughBoundaryEdgesFromTriangles(triangles) {
     }
   }
 
-  return [...entries.values()]
-    .filter((entry) => entry.count === 1)
-    .map((entry) => entry.edge);
+  return [...entries.values()].filter((entry) => entry.count === 1).map((entry) => entry.edge);
 }
 
 function roughPoint(point, z, profileNormal, appearance) {
@@ -159,9 +155,7 @@ export function roughMeshDataFromPreparedCap({
       return edges;
     },
     globalTAtLocal = (line, t) =>
-      line.forward
-        ? line.t0 + (line.t1 - line.t0) * t
-        : line.t1 - (line.t1 - line.t0) * t,
+      line.forward ? line.t0 + (line.t1 - line.t0) * t : line.t1 - (line.t1 - line.t0) * t,
     pushTriangle = (a, b, c) => {
       const faceNormal = triangleNormal(a, b, c);
       positions.push(...a, ...b, ...c);
@@ -175,13 +169,8 @@ export function roughMeshDataFromPreparedCap({
         ...roughPointNormal(c, normal, profileNormal, appearance),
       );
     },
-    pointAlongEdge = (p, q, t) => [
-      p[0] + (q[0] - p[0]) * t,
-      p[1] + (q[1] - p[1]) * t,
-      z,
-    ],
-    roughAlongEdge = (p, q, t) =>
-      roughPoint(pointAlongEdge(p, q, t), z, profileNormal, appearance),
+    pointAlongEdge = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, z],
+    roughAlongEdge = (p, q, t) => roughPoint(pointAlongEdge(p, q, t), z, profileNormal, appearance),
     coarseApproxAlongEdge = (p, q, t, coarseDepth) => {
       const segments = 2 ** coarseDepth,
         scaled = Math.max(0, Math.min(segments, t * segments)),
@@ -245,9 +234,7 @@ export function roughMeshDataFromPreparedCap({
 
   const edgeSeams = (edge) => seamSpansByKey.get(edge.key) || [],
     isSeamAt = (edge, globalT) =>
-      edgeSeams(edge).some(
-        (span) => globalT >= span.t0 - 1e-10 && globalT <= span.t1 + 1e-10,
-      ),
+      edgeSeams(edge).some((span) => globalT >= span.t0 - 1e-10 && globalT <= span.t1 + 1e-10),
     hasPhysicalSidewallAt = (edge, globalT) =>
       (sidewallBoundaryIntervals || []).some(
         (span) =>

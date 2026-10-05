@@ -1,7 +1,6 @@
 const versionQuery = self.location.search || '';
 self.importScripts(`./vendor/polygon-clipping.umd.js${versionQuery}`);
 
-
 function versioned(path) {
   const url = new URL(path, self.location.href);
   url.search = versionQuery;
@@ -41,7 +40,13 @@ self.onmessage = async (event) => {
       selectedLayerKeys,
     });
     if (!exported.elements.length) {
-      self.postMessage({ id, type: 'done', empty: true, source: exported.source, roiApplied: exported.roiApplied });
+      self.postMessage({
+        id,
+        type: 'done',
+        empty: true,
+        source: exported.source,
+        roiApplied: exported.roiApplied,
+      });
       return;
     }
 

@@ -62,10 +62,8 @@ jobs:
       - name: Run fast Node test gate
         run: npm test
 
-      - name: Install browser-only dependencies
-        run: |
-          npm install --no-save --package-lock=false playwright@1.55.0 three@0.179.1
-          npx playwright install --with-deps chromium
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Start WaferCAD
         run: |

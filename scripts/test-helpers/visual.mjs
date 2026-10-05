@@ -112,8 +112,7 @@ export async function assertVisualBaseline(
           diff.data[offset + 3] = 255;
         } else {
           const gray = Math.round(
-            (expectedPixels[offset] + expectedPixels[offset + 1] + expectedPixels[offset + 2]) /
-              3,
+            (expectedPixels[offset] + expectedPixels[offset + 1] + expectedPixels[offset + 2]) / 3,
           );
           diff.data[offset] = gray;
           diff.data[offset + 1] = gray;
@@ -147,8 +146,7 @@ export async function assertVisualBaseline(
     },
   );
 
-  const failed =
-    !comparison.sameSize || comparison.diffRatio > maxDiffRatio;
+  const failed = !comparison.sameSize || comparison.diffRatio > maxDiffRatio;
 
   if (failed) {
     await mkdir(artifactDir, { recursive: true });

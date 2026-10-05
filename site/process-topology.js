@@ -46,10 +46,7 @@ function safeUnionParts(geometries) {
     return isEmpty(merged) ? [] : [merged];
   } catch {
     const middle = Math.ceil(geoms.length / 2);
-    return [
-      ...safeUnionParts(geoms.slice(0, middle)),
-      ...safeUnionParts(geoms.slice(middle)),
-    ];
+    return [...safeUnionParts(geoms.slice(0, middle)), ...safeUnionParts(geoms.slice(middle))];
   }
 }
 
@@ -413,9 +410,7 @@ function ownHorizontalMaterialCaps(rawCaps, layerOrder) {
 function normalizeBoundaryRing(closed, isHole) {
   const points = Array.isArray(closed) ? closed : [],
     isClosed =
-      points.length > 1 &&
-      points[0][0] === points.at(-1)[0] &&
-      points[0][1] === points.at(-1)[1],
+      points.length > 1 && points[0][0] === points.at(-1)[0] && points[0][1] === points.at(-1)[1],
     ring = (isClosed ? points.slice(0, -1) : points.slice()).map(([x, y]) => [x, y]);
   if (ring.length < 2) return [];
 
@@ -423,7 +418,7 @@ function normalizeBoundaryRing(closed, isHole) {
     const next = ring[(index + 1) % ring.length];
     return sum + point[0] * next[1] - point[1] * next[0];
   }, 0);
-  if ((signedArea > 0) !== !isHole) ring.reverse();
+  if (signedArea > 0 !== !isHole) ring.reverse();
   return ring;
 }
 
@@ -470,9 +465,7 @@ function ownVerticalMaterialSidewalls(solids, layerOrder) {
           z1 = zLevels[zIndex + 1];
         if (!(z1 > z0 + TOPOLOGY_EPSILON_UM)) continue;
         const covering = xyCovering.filter(
-          (entry) =>
-            entry.z0 <= z0 + TOPOLOGY_EPSILON_UM &&
-            entry.z1 >= z1 - TOPOLOGY_EPSILON_UM,
+          (entry) => entry.z0 <= z0 + TOPOLOGY_EPSILON_UM && entry.z1 >= z1 - TOPOLOGY_EPSILON_UM,
         );
         if (!covering.length) continue;
 
@@ -546,9 +539,7 @@ function ownedVerticalBorderLines(solids) {
 
   const lines = [];
   for (const entries of groups.values()) {
-    const levels = [
-      ...new Set(entries.flatMap((entry) => [entry.z0, entry.z1]).map(topologyZKey)),
-    ]
+    const levels = [...new Set(entries.flatMap((entry) => [entry.z0, entry.z1]).map(topologyZKey))]
       .map(Number)
       .sort((a, b) => a - b);
     for (let index = 0; index < levels.length - 1; index++) {
@@ -556,9 +547,7 @@ function ownedVerticalBorderLines(solids) {
         z1 = levels[index + 1];
       if (!(z1 > z0 + TOPOLOGY_EPSILON_UM)) continue;
       const covering = entries.filter(
-          (entry) =>
-            entry.z0 <= z0 + TOPOLOGY_EPSILON_UM &&
-            entry.z1 >= z1 - TOPOLOGY_EPSILON_UM,
+          (entry) => entry.z0 <= z0 + TOPOLOGY_EPSILON_UM && entry.z1 >= z1 - TOPOLOGY_EPSILON_UM,
         ),
         uniqueLayers = new Set(covering.map((entry) => entry.layerId));
       if (uniqueLayers.size !== 1 || !covering.length) continue;
@@ -594,9 +583,7 @@ function ownedMaterialBorderLines(solids, caps) {
 }
 
 export function ownedMaterialSurfacesFromTopology(model, clip = null) {
-  const layerOrder = new Map(
-      (model?.layers || []).map((layer, index) => [layer.id, index]),
-    ),
+  const layerOrder = new Map((model?.layers || []).map((layer, index) => [layer.id, index])),
     solids = materialSolidsFromTopology(model, clip),
     roughMap = appearanceMapFromTopology(model, clip),
     rawCaps = [];
@@ -616,9 +603,7 @@ export function ownedMaterialSurfacesFromTopology(model, clip = null) {
 export function exposedLayerIdsFromTopology(model, area = model?.boundary, face = 'front') {
   if (!model || isEmpty(area)) return [];
   return [
-    ...new Set(
-      regionSurfaceFaces(model, { face, clip: area }).map((patch) => patch.layerId),
-    ),
+    ...new Set(regionSurfaceFaces(model, { face, clip: area }).map((patch) => patch.layerId)),
   ];
 }
 
@@ -635,13 +620,7 @@ export function materialInterfaceGroups(model, { clip = null } = {}) {
       const z = (lower.z1 + upper.z0) / 2,
         lowerAppearance = cloneAppearance(lower.frontSurface),
         upperAppearance = cloneAppearance(upper.backSurface),
-        key = JSON.stringify([
-          lower.layerId,
-          upper.layerId,
-          z,
-          lowerAppearance,
-          upperAppearance,
-        ]);
+        key = JSON.stringify([lower.layerId, upper.layerId, z, lowerAppearance, upperAppearance]);
       if (!groups.has(key)) {
         groups.set(key, {
           kind: 'material-interface',
@@ -664,15 +643,7 @@ export function materialInterfaceGroups(model, { clip = null } = {}) {
 
 export function appearanceSurfaceGroupsFromTopology(model, clip = null) {
   const groups = new Map();
-  const addAppearance = ({
-    layerId,
-    z,
-    face,
-    profileNormal,
-    appearance,
-    geom,
-    buried,
-  }) => {
+  const addAppearance = ({ layerId, z, face, profileNormal, appearance, geom, buried }) => {
     if (appearance?.kind !== 'rough' || isEmpty(geom)) return;
     const key = JSON.stringify([
       layerId,
@@ -715,12 +686,8 @@ export function appearanceSurfaceGroupsFromTopology(model, clip = null) {
       const segment = stack[index],
         below = stack[index - 1] || null,
         above = stack[index + 1] || null,
-        frontBuried = Boolean(
-          above && Math.abs(above.z0 - segment.z1) <= INTERFACE_EPSILON_UM,
-        ),
-        backBuried = Boolean(
-          below && Math.abs(below.z1 - segment.z0) <= INTERFACE_EPSILON_UM,
-        ),
+        frontBuried = Boolean(above && Math.abs(above.z0 - segment.z1) <= INTERFACE_EPSILON_UM),
+        backBuried = Boolean(below && Math.abs(below.z1 - segment.z0) <= INTERFACE_EPSILON_UM),
         frontAppearance =
           segment.frontSurface?.kind === 'rough'
             ? segment.frontSurface
@@ -806,10 +773,7 @@ function geometryArea(geometry) {
 
 export function classifyCoverageVoids(
   model,
-  {
-    clip = model?.boundary,
-    crackTolerance = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM,
-  } = {},
+  { clip = model?.boundary, crackTolerance = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM } = {},
 ) {
   const all = uncoveredDomain(model, clip),
     cracks = [],
@@ -819,8 +783,7 @@ export function classifyCoverageVoids(
     const geom = [polygon],
       bounds = multiBounds(geom),
       area = geometryArea(geom),
-      narrow =
-        Math.min(bounds.width, bounds.height) <= crackTolerance + TOPOLOGY_EPSILON_UM,
+      narrow = Math.min(bounds.width, bounds.height) <= crackTolerance + TOPOLOGY_EPSILON_UM,
       tiny = area <= crackTolerance ** 2 * 4,
       item = {
         kind: narrow || tiny ? 'numerical-crack' : 'true-void',
@@ -889,11 +852,7 @@ export function conformalBoundaryBands(geom, amount) {
   return packDisjointBands(bands);
 }
 
-export function conformalMaterialWallTargets(
-  model,
-  band,
-  { face = 'front', sourceZ } = {},
-) {
+export function conformalMaterialWallTargets(model, band, { face = 'front', sourceZ } = {}) {
   const out = [];
   if (!model || isEmpty(band) || !Number.isFinite(sourceZ)) return out;
 
@@ -923,20 +882,14 @@ export function conformalMaterialWallTargets(
 export function conformalWallTargets(
   model,
   band,
-  {
-    face = 'front',
-    source,
-    voidDomain = [],
-  } = {},
+  { face = 'front', source, voidDomain = [] } = {},
 ) {
   const sourceZ = Number(source?.z),
-    materialWalls = conformalMaterialWallTargets(model, band, { face, sourceZ }).map(
-      (target) => ({
-        ...target,
-        z0: Math.min(target.localZ, target.sourceZ),
-        z1: Math.max(target.localZ, target.sourceZ),
-      }),
-    ),
+    materialWalls = conformalMaterialWallTargets(model, band, { face, sourceZ }).map((target) => ({
+      ...target,
+      z0: Math.min(target.localZ, target.sourceZ),
+      z1: Math.max(target.localZ, target.sourceZ),
+    })),
     voidWalls = [];
 
   if (

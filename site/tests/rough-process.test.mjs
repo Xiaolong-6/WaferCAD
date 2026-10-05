@@ -172,7 +172,11 @@ test('Core and rough process contracts', () => {
   assert.equal(buriedAtInheritedInterface.length, 1);
   assert.equal(buriedAtInheritedInterface[0].appearance?.kind, 'rough');
   assert.equal(buriedHorizontalBorders.length, 0);
-  assert.ok(roughRenderPlan.sidewalls.every((part) => part.ownership === 'exterior' || part.ownership === 'interface'));
+  assert.ok(
+    roughRenderPlan.sidewalls.every(
+      (part) => part.ownership === 'exterior' || part.ownership === 'interface',
+    ),
+  );
   const pyramidEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const pyramidResult = applyOperation(pyramidEtch, {
     type: 'etch',
@@ -198,7 +202,6 @@ test('Core and rough process contracts', () => {
   assert.equal(pyramidSurface.heightCv, 0);
   assert.equal(pyramidSurface.meanHeight, 0.7);
   assert.equal(pyramidSurface.etchDepth, 1);
-
 
   const invalidRoughEtch = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const invalidRoughResult = applyOperation(invalidRoughEtch, {

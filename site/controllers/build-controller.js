@@ -23,7 +23,9 @@ export function createBuildController({
         host.title = `Loaded ${buildVersion.slice(0, 7)}; deployed ${current.slice(0, 7)}. Save, then reload.`;
       }
       onUpdateAvailable(current);
-      status(`Update ${current.slice(0, 7)} available. Use Reload safely to update without losing the workspace.`);
+      status(
+        `Update ${current.slice(0, 7)} available. Use Reload safely to update without losing the workspace.`,
+      );
     } catch {}
   }
 

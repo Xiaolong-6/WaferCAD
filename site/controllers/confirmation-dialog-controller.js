@@ -89,7 +89,10 @@ export function createConfirmationDialogController({ root = document } = {}) {
         button.dataset.dialogAction = String(action.value);
         button.onclick = () => close(action.value);
         actionsHost.append(button);
-        if (action.default || (!actions.some((item) => item.default) && index === actions.length - 1)) {
+        if (
+          action.default ||
+          (!actions.some((item) => item.default) && index === actions.length - 1)
+        ) {
           queueMicrotask(() => button.focus());
         }
       }

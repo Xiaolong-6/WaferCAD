@@ -5,10 +5,7 @@ import { chromium } from 'playwright';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { runProductLayoutCases } from './product-layout-cases.mjs';
 import { runRendererProductCases } from './renderer-product-cases.mjs';
-import {
-  captureProductReview,
-  openProductPage,
-} from './test-helpers/product.mjs';
+import { captureProductReview, openProductPage } from './test-helpers/product.mjs';
 import { createProductLayoutChecks } from './test-helpers/product-layout.mjs';
 
 await loadGeometryKernel();
@@ -26,17 +23,13 @@ await mkdir(output, { recursive: true });
 
 const browser = await chromium.launch({
   headless: true,
-  ...(process.env.WAFERCAD_CHROMIUM
-    ? { executablePath: process.env.WAFERCAD_CHROMIUM }
-    : {}),
+  ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
   args: ['--enable-unsafe-swiftshader'],
 });
 const cases = [];
 const errors = [];
-const open = (viewport, touch = false) =>
-  openProductPage(browser, viewport, touch, errors);
-const capture = (page, name) =>
-  captureProductReview(page, name, output, cases);
+const open = (viewport, touch = false) => openProductPage(browser, viewport, touch, errors);
+const capture = (page, name) => captureProductReview(page, name, output, cases);
 const layoutChecks = createProductLayoutChecks({ capture });
 
 try {
@@ -81,9 +74,7 @@ try {
     `<!doctype html><meta charset="utf-8"><title>WaferCAD product review</title><style>body{font:14px system-ui;margin:24px;background:#f4f6f8}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}figure{margin:0;background:white;padding:10px}img{width:100%;height:280px;object-fit:contain}figcaption{margin-top:8px}</style><h1>WaferCAD product review</h1><p>${cases.length} captures · ${scopeDescription}. Open each image to inspect full resolution.</p><main>${cards}</main>`,
   );
 
-  console.log(
-    `WaferCAD product ${productScope} regression: OK (${cases.length} captures)`,
-  );
+  console.log(`WaferCAD product ${productScope} regression: OK (${cases.length} captures)`);
 } finally {
   await browser.close();
 }

@@ -25,10 +25,7 @@ export function createSectionEditor({
       dy = b[1] - a[1],
       length2 = dx * dx + dy * dy;
     if (length2 <= 1e-12) return Math.hypot(point[0] - a[0], point[1] - a[1]);
-    const t = Math.max(
-      0,
-      Math.min(1, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / length2),
-    );
+    const t = Math.max(0, Math.min(1, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / length2));
     return Math.hypot(point[0] - (a[0] + t * dx), point[1] - (a[1] + t * dy));
   };
 
@@ -135,121 +132,107 @@ export function createSectionEditor({
     });
   }
 
-  canvas.addEventListener(
-    'pointermove',
-    (event) => {
-      if (isInteractionBlocked() && !drag) return;
-      const frame = getFrame(),
-        local = screenPoint(event);
+  canvas.addEventListener('pointermove', (event) => {
+    if (isInteractionBlocked() && !drag) return;
+    const frame = getFrame(),
+      local = screenPoint(event);
 
-      if (!drag) {
-        if (isCreateMode()) {
-          canvas.style.cursor = 'crosshair';
-          event.preventDefault();
-          return;
-        }
-        const section = getSection(),
-          a = frame.toScreen(section.a),
-          b = frame.toScreen(section.b),
-          threshold = event.pointerType === 'touch' ? 16 : 7;
-        if (distanceToSegment(local, a, b) <= threshold) {
-          canvas.style.cursor = 'grab';
-          event.preventDefault();
-        }
-        return;
-      }
-
-      if (!['line', 'create'].includes(drag.mode) || drag.pointerId !== event.pointerId) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const point = frame.toWorld(local);
-
-      if (drag.mode === 'create') {
-        onChange({ a: drag.start, b: point });
-        return;
-      }
-
-      const dx = point[0] - drag.start[0],
-        dy = point[1] - drag.start[1];
-      onChange({
-        a: [drag.before.a[0] + dx, drag.before.a[1] + dy],
-        b: [drag.before.b[0] + dx, drag.before.b[1] + dy],
-      });
-    },
-  );
-
-  canvas.addEventListener(
-    'pointerdown',
-    (event) => {
-      if (event.button !== 0 || drag || isInteractionBlocked() || event.defaultPrevented) return;
-      const frame = getFrame(),
-        local = screenPoint(event),
-        point = frame.toWorld(local),
-        before = structuredClone(getSection());
-
+    if (!drag) {
       if (isCreateMode()) {
+        canvas.style.cursor = 'crosshair';
         event.preventDefault();
-        event.stopImmediatePropagation();
-        drag = {
-          mode: 'create',
-          pointerId: event.pointerId,
-          before,
-          start: point,
-        };
-        onChange({ a: point, b: point });
-        canvas.setPointerCapture(event.pointerId);
         return;
       }
-
-      const a = frame.toScreen(before.a),
-        b = frame.toScreen(before.b),
+      const section = getSection(),
+        a = frame.toScreen(section.a),
+        b = frame.toScreen(section.b),
         threshold = event.pointerType === 'touch' ? 16 : 7;
-      if (distanceToSegment(local, a, b) > threshold) return;
+      if (distanceToSegment(local, a, b) <= threshold) {
+        canvas.style.cursor = 'grab';
+        event.preventDefault();
+      }
+      return;
+    }
 
+    if (!['line', 'create'].includes(drag.mode) || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const point = frame.toWorld(local);
+
+    if (drag.mode === 'create') {
+      onChange({ a: drag.start, b: point });
+      return;
+    }
+
+    const dx = point[0] - drag.start[0],
+      dy = point[1] - drag.start[1];
+    onChange({
+      a: [drag.before.a[0] + dx, drag.before.a[1] + dy],
+      b: [drag.before.b[0] + dx, drag.before.b[1] + dy],
+    });
+  });
+
+  canvas.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || drag || isInteractionBlocked() || event.defaultPrevented) return;
+    const frame = getFrame(),
+      local = screenPoint(event),
+      point = frame.toWorld(local),
+      before = structuredClone(getSection());
+
+    if (isCreateMode()) {
       event.preventDefault();
       event.stopImmediatePropagation();
       drag = {
-        mode: 'line',
+        mode: 'create',
         pointerId: event.pointerId,
         before,
         start: point,
       };
-      canvas.style.cursor = 'grabbing';
+      onChange({ a: point, b: point });
       canvas.setPointerCapture(event.pointerId);
-    },
-  );
+      return;
+    }
 
-  canvas.addEventListener(
-    'pointerup',
-    (event) => {
-      if (!drag || drag.button || drag.pointerId !== event.pointerId) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const previous = drag;
-      if (
-        previous.mode === 'create' &&
-        Math.hypot(
-          getSection().b[0] - getSection().a[0],
-          getSection().b[1] - getSection().a[1],
-        ) <= 1e-9
-      ) {
-        finish(true);
-        return;
-      }
-      finish();
-      canvas.style.cursor = 'default';
-    },
-  );
+    const a = frame.toScreen(before.a),
+      b = frame.toScreen(before.b),
+      threshold = event.pointerType === 'touch' ? 16 : 7;
+    if (distanceToSegment(local, a, b) > threshold) return;
 
-  canvas.addEventListener(
-    'pointercancel',
-    (event) => {
-      if (!drag || drag.button || drag.pointerId !== event.pointerId) return;
-      event.stopImmediatePropagation();
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    drag = {
+      mode: 'line',
+      pointerId: event.pointerId,
+      before,
+      start: point,
+    };
+    canvas.style.cursor = 'grabbing';
+    canvas.setPointerCapture(event.pointerId);
+  });
+
+  canvas.addEventListener('pointerup', (event) => {
+    if (!drag || drag.button || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const previous = drag;
+    if (
+      previous.mode === 'create' &&
+      Math.hypot(getSection().b[0] - getSection().a[0], getSection().b[1] - getSection().a[1]) <=
+        1e-9
+    ) {
       finish(true);
-      canvas.style.cursor = 'default';
-    },
-  );
+      return;
+    }
+    finish();
+    canvas.style.cursor = 'default';
+  });
+
+  canvas.addEventListener('pointercancel', (event) => {
+    if (!drag || drag.button || drag.pointerId !== event.pointerId) return;
+    event.stopImmediatePropagation();
+    finish(true);
+    canvas.style.cursor = 'default';
+  });
 
   window.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;

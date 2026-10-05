@@ -1,7 +1,4 @@
-import {
-  historyOperationAreaLabel,
-  historyOperationLabel,
-} from './history-operation-label.js';
+import { historyOperationAreaLabel, historyOperationLabel } from './history-operation-label.js';
 
 function clone(value) {
   return structuredClone(value);
@@ -292,12 +289,15 @@ export function createSnapshotManager({
 
   function milestoneAtProcessNode(nodeId, branchId = null) {
     if (!nodeId) return null;
-    return records
-      .filter(
-        (record) =>
-          record.historyNodeId === nodeId && (!branchId || record.branchId === branchId),
-      )
-      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0] || null;
+    return (
+      records
+        .filter(
+          (record) =>
+            record.historyNodeId === nodeId && (!branchId || record.branchId === branchId),
+        )
+        .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0] ||
+      null
+    );
   }
 
   function stateForProcessNode(node) {
@@ -634,8 +634,7 @@ export function createSnapshotManager({
     const branch = {
       id,
       name: uniqueBranchName(name || nextVariantName()),
-      parentBranchId:
-        parent?.id && parent.id !== id ? parent.id : MAIN_SNAPSHOT_BRANCH_ID,
+      parentBranchId: parent?.id && parent.id !== id ? parent.id : MAIN_SNAPSHOT_BRANCH_ID,
       rootSnapshotId: legacySnapshotId || null,
       headSnapshotId: legacySnapshotId || null,
       rootNodeId: originNode?.id || null,
@@ -661,8 +660,7 @@ export function createSnapshotManager({
       parentVariantId: source.branchId,
       name,
       headState:
-        headState ||
-        stateWithOperationMaskContext(stateForProcessNode(source), source.operation),
+        headState || stateWithOperationMaskContext(stateForProcessNode(source), source.operation),
     });
   }
 
@@ -768,15 +766,11 @@ export function createSnapshotManager({
     const next = cleanName(name);
     if (!id || !next || !['layer', 'implant', 'electrical'].includes(kind)) return 0;
 
-    const refsByNode = new Map(
-        historyNodes.map((node) => [node.id, operationEntityRefs(node)]),
-      ),
+    const refsByNode = new Map(historyNodes.map((node) => [node.id, operationEntityRefs(node)])),
       creator = historyEntityCreator(kind, id),
       activePathNodeId = cursorNodeId || branchById(activeBranchId)?.headNodeId || null,
       inScopeNode = (nodeId) =>
-        creator
-          ? nodeDescendsFrom(nodeId, creator.id)
-          : nodeDescendsFrom(activePathNodeId, nodeId),
+        creator ? nodeDescendsFrom(nodeId, creator.id) : nodeDescendsFrom(activePathNodeId, nodeId),
       collectionKey =
         kind === 'layer' ? 'layers' : kind === 'implant' ? 'implants' : 'electricalRegions';
 
@@ -814,8 +808,7 @@ export function createSnapshotManager({
           (kind === 'implant' && refs.resultImplantId === id) ||
           (kind === 'electrical' && refs.resultElectricalRegionId === id),
         targetMatches =
-          kind === 'layer' &&
-          (refs.targetLayerId === id || refs.etchTargetLayerIds?.includes(id));
+          kind === 'layer' && (refs.targetLayerId === id || refs.etchTargetLayerIds?.includes(id));
 
       if (resultMatches || targetMatches) {
         if (resultMatches || operation.kind === 'grow') operation.name = next;
@@ -948,9 +941,7 @@ export function createSnapshotManager({
       canReplaceCurrentVariant: dependentVariants.length === 0,
       dependentVariants,
       replayable: node.operation?.replay?.version === 1,
-      downstreamReplayable: tail
-        .slice(1)
-        .every((item) => item.operation?.replay?.version === 1),
+      downstreamReplayable: tail.slice(1).every((item) => item.operation?.replay?.version === 1),
     };
   }
 
@@ -1150,8 +1141,7 @@ export function createSnapshotManager({
     }
 
     const dependentVariants = branches.filter(
-      (candidate) =>
-        candidate.id !== branch.id && candidate.rootNodeId === target.id,
+      (candidate) => candidate.id !== branch.id && candidate.rootNodeId === target.id,
     );
     if (dependentVariants.length) {
       throw new Error(
@@ -1162,9 +1152,7 @@ export function createSnapshotManager({
     }
 
     const removedRecordIds = new Set(
-      records
-        .filter((record) => record.historyNodeId === target.id)
-        .map((record) => record.id),
+      records.filter((record) => record.historyNodeId === target.id).map((record) => record.id),
     );
     historyNodes = historyNodes.filter((item) => item.id !== target.id);
     records = records.filter((record) => !removedRecordIds.has(record.id));
@@ -1173,11 +1161,7 @@ export function createSnapshotManager({
     }
 
     const parentBookmark = records
-      .filter(
-        (record) =>
-          record.historyNodeId === parent.id &&
-          record.branchId === branch.id,
-      )
+      .filter((record) => record.historyNodeId === parent.id && record.branchId === branch.id)
       .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
 
     const restoredParentState = stateWithOperationMaskContext(parentState, parent.operation);
@@ -1342,9 +1326,10 @@ export function createSnapshotManager({
     }
 
     if (target === 0) {
-      cursorNodeId = branch.rootNodeId && nodeById(branch.rootNodeId)?.processRevision === 0
-        ? branch.rootNodeId
-        : null;
+      cursorNodeId =
+        branch.rootNodeId && nodeById(branch.rootNodeId)?.processRevision === 0
+          ? branch.rootNodeId
+          : null;
       cursorSnapshotId = branch.rootSnapshotId || null;
       const state = cloneState(capture());
       cursorBaselineState = cloneState(state);
@@ -1580,7 +1565,9 @@ export function createSnapshotManager({
       for (const branch of importedBranches) {
         if (!branch.headSnapshotId) {
           branch.headSnapshotId =
-            next.find((record) => record.branchId === branch.id)?.id || branch.rootSnapshotId || null;
+            next.find((record) => record.branchId === branch.id)?.id ||
+            branch.rootSnapshotId ||
+            null;
         }
       }
     }

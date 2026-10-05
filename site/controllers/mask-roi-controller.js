@@ -87,12 +87,7 @@ export function createMaskRoiController({
               x,
               y,
             )
-          : circleMaskRoiFromAnchor(
-              manualMicron($('maskRoiRadius').value),
-              anchor,
-              x,
-              y,
-            );
+          : circleMaskRoiFromAnchor(manualMicron($('maskRoiRadius').value), anchor, x, y);
 
     if (!next) {
       syncEditor();
@@ -144,10 +139,7 @@ export function createMaskRoiController({
       ctx.closePath();
     } else {
       const center = worldToCanvas(maskLocalToWorld(shape.c, transform), view),
-        radius =
-          shape.r *
-          Math.max(1e-12, Math.abs(Number(transform.scale) || 1)) *
-          view.s;
+        radius = shape.r * Math.max(1e-12, Math.abs(Number(transform.scale) || 1)) * view.s;
       ctx.arc(center[0], center[1], radius, 0, Math.PI * 2);
     }
 
@@ -286,23 +278,14 @@ export function createMaskRoiController({
         }
 
         if (drag.mode === 'resize') {
-          const adjusted = [
-            local[0] - drag.offset[0],
-            local[1] - drag.offset[1],
-          ];
+          const adjusted = [local[0] - drag.offset[0], local[1] - drag.offset[1]];
           setRoi(resizeMaskRoiFromHandle(drag.original, drag.handle, adjusted));
           syncEditor();
           renderMask();
           return;
         }
 
-        setRoi(
-          translateMaskRoi(
-            drag.original,
-            local[0] - drag.start[0],
-            local[1] - drag.start[1],
-          ),
-        );
+        setRoi(translateMaskRoi(drag.original, local[0] - drag.start[0], local[1] - drag.start[1]));
         syncEditor();
         renderMask();
       },
@@ -364,9 +347,7 @@ export function createMaskRoiController({
 
         if (drag.mode === 'create') {
           const next = normalizeMaskRoi(getDraft()),
-            valid =
-              next &&
-              (next.type === 'circle' ? next.r > 1e-9 : next.size > 1e-9);
+            valid = next && (next.type === 'circle' ? next.r > 1e-9 : next.size > 1e-9);
           if (valid) {
             setRoi(next);
             setAnchor('center');
@@ -380,7 +361,8 @@ export function createMaskRoiController({
           onChanged();
         }
 
-        if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+        if (canvas.hasPointerCapture(event.pointerId))
+          canvas.releasePointerCapture(event.pointerId);
         drag = null;
         renderMask();
       },
@@ -395,7 +377,8 @@ export function createMaskRoiController({
         setDraft(null);
         syncEditor();
         drag = null;
-        if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+        if (canvas.hasPointerCapture(event.pointerId))
+          canvas.releasePointerCapture(event.pointerId);
         renderMask();
         event.stopImmediatePropagation();
       },

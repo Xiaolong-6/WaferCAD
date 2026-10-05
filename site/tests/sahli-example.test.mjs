@@ -33,7 +33,10 @@ test('Sahli regression fixture uses bookmarks instead of VIEW fabrication Steps'
 
   assert.ok(finalNode);
   assert.equal(nodes.length, 24);
-  assert.equal(nodes.some((node) => /^VIEW_Ag_finger_/.test(node.operation?.label || '')), false);
+  assert.equal(
+    nodes.some((node) => /^VIEW_Ag_finger_/.test(node.operation?.label || '')),
+    false,
+  );
   assert.equal(viewSnapshots.length, 2);
   assert.ok(viewSnapshots.every((snapshot) => snapshot.historyNodeId === finalNode.id));
   assert.ok(
@@ -61,7 +64,6 @@ test('Sahli Pyramid reconstruction is deterministic and explicitly non-periodic'
   assert.ok(appearances.some((appearance) => appearance.seed === 2018));
   assert.ok(appearances.some((appearance) => appearance.seed === 2019));
 });
-
 
 test('Sahli 3D ROI sidewalls inherit the front and back Pyramid interfaces', () => {
   const clip = [
@@ -97,16 +99,12 @@ test('Sahli 3D ROI sidewalls inherit the front and back Pyramid interfaces', () 
   assert.ok(backConformal.length > 0);
   assert.ok(
     frontConformal.every(
-      (part) =>
-        part.lowerSurface.profileNormal === 1 &&
-        part.upperSurface.profileNormal === 1,
+      (part) => part.lowerSurface.profileNormal === 1 && part.upperSurface.profileNormal === 1,
     ),
   );
   assert.ok(
     backConformal.every(
-      (part) =>
-        part.lowerSurface.profileNormal === -1 &&
-        part.upperSurface.profileNormal === -1,
+      (part) => part.lowerSurface.profileNormal === -1 && part.upperSurface.profileNormal === -1,
     ),
   );
 });

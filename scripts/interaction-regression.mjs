@@ -66,8 +66,8 @@ await page.mouse.move(mainBox.x + mainBox.width * 0.72, mainBox.y + mainBox.heig
   steps: 5,
 });
 await page.mouse.up();
-await page.waitForFunction(
-  () => /^Slice created\./.test(document.getElementById('statusText')?.textContent || ''),
+await page.waitForFunction(() =>
+  /^Slice created\./.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.match(await page.locator('#statusText').textContent(), /^Slice created\./);
 assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
@@ -107,8 +107,8 @@ await page.mouse.move(mainBox.x + mainBox.width * 0.6, mainBox.y + mainBox.heigh
   steps: 4,
 });
 await page.mouse.up();
-await page.waitForFunction(
-  () => /^ROI created\./.test(document.getElementById('statusText')?.textContent || ''),
+await page.waitForFunction(() =>
+  /^ROI created\./.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.deepEqual(errors, [], 'Rectangle ROI creation must not raise a browser error.');
 assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
@@ -138,8 +138,8 @@ await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sector
   steps: 4,
 });
 await page.mouse.up();
-await page.waitForFunction(
-  () => /^ROI created\./.test(document.getElementById('statusText')?.textContent || ''),
+await page.waitForFunction(() =>
+  /^ROI created\./.test(document.getElementById('statusText')?.textContent || ''),
 );
 assert.deepEqual(errors, [], 'Sector ROI creation must not raise a browser error.');
 assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
@@ -213,10 +213,7 @@ await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
 assert.equal(await page.locator('#drawMaskToolbar').isVisible(), true);
 assert.equal(await page.locator('#maskFileControls').isHidden(), true);
-assert.equal(
-  await page.locator('#maskDrawInfo').evaluate((element) => element.hidden),
-  false,
-);
+assert.equal(await page.locator('#maskDrawInfo').evaluate((element) => element.hidden), false);
 
 const drawBox = await page.locator('#maskCanvas').boundingBox();
 assert.ok(drawBox);
@@ -227,8 +224,8 @@ await page.mouse.move(drawBox.x + drawBox.width * 0.57, drawBox.y + drawBox.heig
   steps: 4,
 });
 await page.mouse.up();
-await page.waitForFunction(
-  () => /^1 shape/.test(document.getElementById('drawMaskHint')?.textContent || ''),
+await page.waitForFunction(() =>
+  /^1 shape/.test(document.getElementById('drawMaskHint')?.textContent || ''),
 );
 assert.match(await page.locator('#drawMaskHint').textContent(), /^1 shape/);
 
@@ -279,8 +276,8 @@ await page.mouse.click(polygonStart.x, polygonStart.y);
 await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.3);
 await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.38);
 await page.mouse.click(polygonStart.x, polygonStart.y);
-await page.waitForFunction(
-  () => /^2 shapes/.test(document.getElementById('drawMaskHint')?.textContent || ''),
+await page.waitForFunction(() =>
+  /^2 shapes/.test(document.getElementById('drawMaskHint')?.textContent || ''),
 );
 assert.match(await page.locator('#drawMaskHint').textContent(), /^2 shapes/);
 
@@ -376,10 +373,7 @@ assert.match(await page.locator('#statusText').textContent(), /Deposited Draw pr
 // Switching sources never destroys either source.
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'File');
-assert.equal(
-  await page.locator('#maskFileControls').evaluate((element) => element.hidden),
-  false,
-);
+assert.equal(await page.locator('#maskFileControls').evaluate((element) => element.hidden), false);
 await sourceToggle.click();
 assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
 assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
@@ -461,17 +455,19 @@ for (const [button, filename] of [
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), filename);
 }
-const headerToolAlignment = await page.locator('.view-head .view-tools').evaluateAll((groups) =>
-  groups.map((group) => getComputedStyle(group).alignItems),
-);
+const headerToolAlignment = await page
+  .locator('.view-head .view-tools')
+  .evaluateAll((groups) => groups.map((group) => getComputedStyle(group).alignItems));
 assert.ok(headerToolAlignment.length >= 4);
 assert.ok(headerToolAlignment.every((value) => value === 'center'));
 
 const headerControlBoxes = await page.locator('.view-panel').evaluateAll((panels) =>
   panels.flatMap((panel) => {
-    const controls = [...panel.querySelectorAll(
-      '.view-head button, .view-head summary, .view-head .three-border-toggle',
-    )].filter(
+    const controls = [
+      ...panel.querySelectorAll(
+        '.view-head button, .view-head summary, .view-head .three-border-toggle',
+      ),
+    ].filter(
       (element) =>
         element.checkVisibility() &&
         !element.closest('.focus-popover, .three-opacity-popover, .export-popover'),

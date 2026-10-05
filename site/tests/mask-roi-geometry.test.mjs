@@ -36,7 +36,9 @@ test('Square ROI keeps size and rotation in mask-local space', () => {
   const corners = maskSquareCorners(square);
   for (const point of Object.values(corners)) {
     assert.equal(maskRoiContainsPoint(square, point), true);
-    assert.ok(Math.abs(Math.hypot(point[0] - square.c[0], point[1] - square.c[1]) - Math.SQRT2 * 2) < 1e-10);
+    assert.ok(
+      Math.abs(Math.hypot(point[0] - square.c[0], point[1] - square.c[1]) - Math.SQRT2 * 2) < 1e-10,
+    );
   }
 
   const anchor = maskRoiAnchorPoint(square, 'top-left'),
@@ -57,7 +59,9 @@ test('rotated Square ROI world geometry follows the mask transform', () => {
   const center = maskLocalToWorld(square.c, transform),
     expectedRadius = (square.size * transform.scale * Math.SQRT2) / 2;
   for (const point of ring.slice(0, -1)) {
-    assert.ok(Math.abs(Math.hypot(point[0] - center[0], point[1] - center[1]) - expectedRadius) < 1e-9);
+    assert.ok(
+      Math.abs(Math.hypot(point[0] - center[0], point[1] - center[1]) - expectedRadius) < 1e-9,
+    );
   }
 });
 

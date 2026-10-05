@@ -27,15 +27,8 @@ export function createHistoryMutationController({
 
   function currentInsert() {
     if (!pendingInsert) return null;
-    const {
-      nodeId,
-      branchId,
-      branchName,
-      parentNodeId,
-      mode,
-      originalLabel,
-      laterStepCount,
-    } = pendingInsert;
+    const { nodeId, branchId, branchName, parentNodeId, mode, originalLabel, laterStepCount } =
+      pendingInsert;
     return {
       nodeId,
       branchId,
@@ -49,15 +42,8 @@ export function createHistoryMutationController({
 
   function currentEdit() {
     if (!pendingEdit) return null;
-    const {
-      nodeId,
-      branchId,
-      branchName,
-      parentNodeId,
-      mode,
-      originalLabel,
-      downstreamCount,
-    } = pendingEdit;
+    const { nodeId, branchId, branchName, parentNodeId, mode, originalLabel, downstreamCount } =
+      pendingEdit;
     return {
       nodeId,
       branchId,
@@ -146,11 +132,8 @@ export function createHistoryMutationController({
           processPanelController?.canReplayOperation(step.operation),
         ),
       canCurrentReplay =
-        context.canReplaceCurrentVariant &&
-        replayableTail &&
-        snapshotManager.canRecordOperation(1),
-      canBranchStart =
-        snapshotManager.canCreateVariant() && snapshotManager.canRecordOperation(1),
+        context.canReplaceCurrentVariant && replayableTail && snapshotManager.canRecordOperation(1),
+      canBranchStart = snapshotManager.canCreateVariant() && snapshotManager.canRecordOperation(1),
       canBranchReplay =
         canBranchStart &&
         replayableTail &&
@@ -395,7 +378,10 @@ export function createHistoryMutationController({
       ) {
         pendingInsert = null;
         updateOperationUI();
-        status('History insertion context changed. Start the insertion again from History.', 'error');
+        status(
+          'History insertion context changed. Start the insertion again from History.',
+          'error',
+        );
         return false;
       }
 
@@ -525,7 +511,10 @@ export function createHistoryMutationController({
     }
 
     if (!snapshotManager.canRecordOperation()) {
-      status('Process history limit reached. Delete or export this project before adding more steps.', 'error');
+      status(
+        'Process history limit reached. Delete or export this project before adding more steps.',
+        'error',
+      );
       return false;
     }
 

@@ -1,7 +1,4 @@
-import {
-  canonicalLineInterval,
-  lineIntervalKey,
-} from './line-intervals.js';
+import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
 import { ownedMaterialSurfacesFromTopology } from './process-topology.js';
 import { visibleMaterialModel } from './model.js';
 
@@ -29,10 +26,7 @@ function capBoundaryIndex(caps) {
             ? closed.slice(0, -1)
             : closed.slice();
         for (let edgeIndex = 0; edgeIndex < ring.length; edgeIndex++) {
-          const line = canonicalLineInterval(
-            ring[edgeIndex],
-            ring[(edgeIndex + 1) % ring.length],
-          );
+          const line = canonicalLineInterval(ring[edgeIndex], ring[(edgeIndex + 1) % ring.length]);
           if (!line) continue;
           for (const layerId of layerIds) {
             const key = boundaryKey(layerId, cap.z, line);

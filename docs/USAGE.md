@@ -167,6 +167,7 @@ A **bookmark** is only an optional label attached to a Step. **Bookmark current 
 Variant HEAD state can include non-process edits such as ROI, display, or project settings. WaferCAD preserves that exact HEAD before History navigation. Merely browsing clean historical Steps does not consume Recovery slots; leaving a historical state after editing it creates a Recovery checkpoint.
 
 A project supports at most 100 bookmark records, 32 Variants, and 1000 process Steps. Snapshot-branch format v3 requires every newly written Step to carry a restorable state. Autosave and export pack repeated layout/model assets through the shared-asset layer. Older v1/v2 data remains readable; an old intermediate row that was never persisted with a state is explicitly marked unavailable unless its exact state can be recovered from legacy saved data.
+
 ## 10. Save and open
 
 Project includes an editable **Project name**. Export uses that name as the default `.wafercad` filename. **New** and **Open** both warn before replacing the current workspace.
@@ -178,7 +179,6 @@ The **Project** tab is first and is the default tool tab when the workspace star
 **Export** downloads the current project as a `.wafercad` file. Process Steps, Variants, bookmarks, and their restore states are included. Repeated layout/model assets are stored through the shared-asset layer so unchanged data is not copied once per checkpoint.
 
 Use **Project → Open** to restore an exported project file. Older supported project files are migrated to the current **v14** format before validation. v13 adds Pyramid morphology; v14 adds Electrical Region annotations while preserving v12 stochastic morphology/polarity and older project semantics. Export and Open enforce the same 256 MB safety limit.
-
 
 ### Base lifecycle and Process
 

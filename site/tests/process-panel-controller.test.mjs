@@ -164,7 +164,6 @@ test('historical Apply commits the variant only after a successful changed worke
   assert.ok(events.indexOf('record-operation') > events.indexOf('set-model'));
 });
 
-
 test('Record process step advances History without running geometry worker', async () => {
   const events = [],
     recorded = [],
@@ -201,7 +200,6 @@ test('Record process step advances History without running geometry worker', asy
     replay: { version: 1, kind: 'record' },
   });
 });
-
 
 test('Electrical process mode sends typed annotation metadata through the worker path', async () => {
   const events = [],
@@ -242,7 +240,6 @@ test('Electrical process mode sends typed annotation metadata through the worker
   assert.equal(recorded[0].electricalRegionType, 'p-inversion');
   assert.equal(recorded[0].electricalRegionSource, 'induced');
 });
-
 
 test('successful geometry Apply stores a deterministic replay request', async () => {
   const events = [],
@@ -350,12 +347,9 @@ test('replayOperations re-runs saved geometry requests and preserves record-only
 
 test('legacy downstream Step stops replay without guessing missing parameters', async () => {
   const events = [],
-    controller = controllerForTask(
-      () => {
-        throw new Error('legacy operation must not reach worker');
-      },
-      events,
-    );
+    controller = controllerForTask(() => {
+      throw new Error('legacy operation must not reach worker');
+    }, events);
 
   const result = await controller.replayOperations([{ kind: 'etch', label: 'Legacy etch' }]);
 
@@ -365,24 +359,20 @@ test('legacy downstream Step stops replay without guessing missing parameters', 
   assert.equal(events.includes('run-worker'), false);
 });
 
-
 test('replay selected mask traverses the saved Cell hierarchy and pinned Layer context', async () => {
   const events = [],
     capturedAreas = [],
-    controller = controllerForTask(
-      (model, _workerModel, _params, _label, areaRequest) => {
-        capturedAreas.push(areaRequest);
-        return {
-          result: { changed: true, layerId: 'layer-root-replay' },
-          model: {
-            ...model,
-            revision: model.revision + 1,
-            processRevision: model.processRevision + 1,
-          },
-        };
-      },
-      events,
-    );
+    controller = controllerForTask((model, _workerModel, _params, _label, areaRequest) => {
+      capturedAreas.push(areaRequest);
+      return {
+        result: { changed: true, layerId: 'layer-root-replay' },
+        model: {
+          ...model,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      };
+    }, events);
 
   const maskContext = {
     sourceMode: 'file',
@@ -449,4 +439,3 @@ test('replay selected mask traverses the saved Cell hierarchy and pinned Layer c
   assert.equal(capturedAreas[0].elements.length, 1);
   assert.deepEqual(capturedAreas[0].maskTransform, maskContext.transform);
 });
-

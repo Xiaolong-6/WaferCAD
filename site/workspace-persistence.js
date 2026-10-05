@@ -1,8 +1,9 @@
+import { expandProjectStorage, prepareProjectForWorkspaceStorage } from './project-io.js';
 import {
-  expandProjectStorage,
-  prepareProjectForWorkspaceStorage,
-} from './project-io.js';
-import { CURRENT_PROJECT_VERSION, migrateProjectFile, validateProjectFile } from './project-schema.js';
+  CURRENT_PROJECT_VERSION,
+  migrateProjectFile,
+  validateProjectFile,
+} from './project-schema.js';
 
 const DB_NAME = 'wafercad-workspace-v1';
 const DB_VERSION = 2;
@@ -104,11 +105,7 @@ async function pruneRecoveryPoints(database, keep = MAX_RECOVERY_POINTS) {
   await transactionDone(transaction);
 }
 
-export async function saveWorkspaceState(
-  project,
-  metadata = {},
-  { canCommit = () => true } = {},
-) {
+export async function saveWorkspaceState(project, metadata = {}, { canCommit = () => true } = {}) {
   const preparedProject = prepareProjectForWorkspaceStorage(project);
   if (!canCommit()) return false;
 
@@ -141,9 +138,7 @@ export async function createWorkspaceRecoveryCheckpoint(project, metadata = {}) 
       key,
       project: prepareProjectForWorkspaceStorage(project),
     });
-    transaction
-      .objectStore(META_STORE_NAME)
-      .put(metadataRecord(key, project, metadata, updatedAt));
+    transaction.objectStore(META_STORE_NAME).put(metadataRecord(key, project, metadata, updatedAt));
     await transactionDone(transaction);
     await pruneRecoveryPoints(database);
     return key;

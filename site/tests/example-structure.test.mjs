@@ -17,9 +17,7 @@ test('Photodetector annotation steps preserve material topology', async () => {
 });
 
 test('Fully textured tandem propagates deterministic pyramid profiles through every layer', async () => {
-  const project = await readJson(
-    '../examples/fully-textured-perovskite-silicon-tandem.wafercad',
-  );
+  const project = await readJson('../examples/fully-textured-perovskite-silicon-tandem.wafercad');
   const result = assertTandemTextureContract(project);
   assert.equal(result.backLayerCount, 4);
   assert.equal(result.frontLayerCount, 12);

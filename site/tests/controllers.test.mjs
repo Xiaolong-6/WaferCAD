@@ -13,9 +13,8 @@ globalThis.polygonClipping = commonJsModule.exports;
 const { createBuildController } = await import('../controllers/build-controller.js');
 const { createPlanViewController } = await import('../controllers/plan-view-controller.js');
 const { createStartupController } = await import('../controllers/startup-controller.js');
-const { createWorkspaceSessionController } = await import(
-  '../controllers/workspace-session-controller.js'
-);
+const { createWorkspaceSessionController } =
+  await import('../controllers/workspace-session-controller.js');
 
 function buildHost() {
   return {

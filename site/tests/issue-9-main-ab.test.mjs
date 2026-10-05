@@ -40,5 +40,8 @@ test('Slice is always editable and the Slice button starts one-shot A–B creati
 
 test('ROI and Slice controls are mutually exclusive in the Main header', () => {
   assert.match(sectionControls, /if \(visible\) closeRoiControls\(\)/);
-  assert.match(app, /closeSliceControls: \(\) => setSectionPanelVisible\(false, \{ create: false \}\)/);
+  assert.match(
+    app,
+    /closeSliceControls: \(\) => setSectionPanelVisible\(false, \{ create: false \}\)/,
+  );
 });

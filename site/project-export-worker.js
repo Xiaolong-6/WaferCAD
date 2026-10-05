@@ -29,7 +29,9 @@ self.onmessage = async (event) => {
       );
     }
     const arrayBuffer = bytes.buffer;
-    self.postMessage({ id, type: 'done', arrayBuffer, byteLength: bytes.byteLength }, [arrayBuffer]);
+    self.postMessage({ id, type: 'done', arrayBuffer, byteLength: bytes.byteLength }, [
+      arrayBuffer,
+    ]);
   } catch (error) {
     self.postMessage({
       id,

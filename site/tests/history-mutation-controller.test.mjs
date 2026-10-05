@@ -151,7 +151,6 @@ test('Start-from-here insertion only requires capacity for the new Step', async 
   assert.equal(gate.mode, 'branch-start');
 });
 
-
 test('failed replay restores the pre-edit transaction and closes the persistence interaction gate', async () => {
   const statuses = [];
   let restoredTransaction = null,

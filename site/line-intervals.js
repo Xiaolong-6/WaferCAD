@@ -38,10 +38,7 @@ export function lineIntervalKey(line, precision = 13) {
 }
 
 export function pointAtLineT(line, t) {
-  return [
-    line.ux * Number(t) + line.nx * line.offset,
-    line.uy * Number(t) + line.ny * line.offset,
-  ];
+  return [line.ux * Number(t) + line.nx * line.offset, line.uy * Number(t) + line.ny * line.offset];
 }
 
 export function localParameterAtLineT(line, t) {
@@ -52,10 +49,7 @@ export function localParameterAtLineT(line, t) {
 
 export function partitionLineIntervals(
   entries,
-  {
-    lineOf = (entry) => entry?.line,
-    epsilon = LINE_INTERVAL_EPSILON,
-  } = {},
+  { lineOf = (entry) => entry?.line, epsilon = LINE_INTERVAL_EPSILON } = {},
 ) {
   const valid = (entries || []).filter((entry) => lineOf(entry));
   if (!valid.length) return [];

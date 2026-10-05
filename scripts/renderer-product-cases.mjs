@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  isotropicReleaseBenchmark,
-  projectForBenchmark,
-} from './process-benchmarks.mjs';
+import { isotropicReleaseBenchmark, projectForBenchmark } from './process-benchmarks.mjs';
 import {
   checkLayout,
   openFunctionPanel,
@@ -169,7 +166,9 @@ export async function runRendererProductCases({ page, capture }) {
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector('#threeHost canvas');
-      return canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true';
+      return (
+        canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true'
+      );
     },
     null,
     { timeout: 10000 },
@@ -179,15 +178,9 @@ export async function runRendererProductCases({ page, capture }) {
     fitSubdivisionTriangles = Number(
       await roughCanvas.getAttribute('data-rough-subdivision-triangle-count'),
     ),
-    fitSceneBudget = Number(
-      await roughCanvas.getAttribute('data-rough-scene-triangle-budget'),
-    ),
-    fitPlanBuilds = Number(
-      await roughCanvas.getAttribute('data-surface-plan-build-count'),
-    ),
-    fitRoughRebuilds = Number(
-      await roughCanvas.getAttribute('data-rough-rebuild-count'),
-    ),
+    fitSceneBudget = Number(await roughCanvas.getAttribute('data-rough-scene-triangle-budget')),
+    fitPlanBuilds = Number(await roughCanvas.getAttribute('data-surface-plan-build-count')),
+    fitRoughRebuilds = Number(await roughCanvas.getAttribute('data-rough-rebuild-count')),
     fitSpatialZoneBuilds = Number(
       await roughCanvas.getAttribute('data-rough-spatial-zone-build-count'),
     ),
@@ -202,7 +195,10 @@ export async function runRendererProductCases({ page, capture }) {
   );
   assert.ok(fitPlanBuilds >= 1, `surface plan build diagnostics missing: ${fitPlanBuilds}`);
   assert.ok(fitRoughRebuilds >= 1, `rough rebuild diagnostics missing: ${fitRoughRebuilds}`);
-  assert.ok(fitSpatialZoneBuilds >= 1, `rough spatial zones were not prepared: ${fitSpatialZoneBuilds}`);
+  assert.ok(
+    fitSpatialZoneBuilds >= 1,
+    `rough spatial zones were not prepared: ${fitSpatialZoneBuilds}`,
+  );
   assert.ok(
     fitBaseTriangulations >= fitSpatialZoneBuilds,
     `rough base triangulation cache is incomplete: ${fitBaseTriangulations} < ${fitSpatialZoneBuilds}`,
@@ -223,15 +219,11 @@ export async function runRendererProductCases({ page, capture }) {
     null,
     { timeout: 5000 },
   );
-  const dragStartRebuilds = Number(
-    await roughCanvas.getAttribute('data-rough-rebuild-count'),
-  );
+  const dragStartRebuilds = Number(await roughCanvas.getAttribute('data-rough-rebuild-count'));
   for (let step = 1; step <= 12; step++) {
     await page.mouse.move(dragX + 4 + step * 5, dragY - step * 2);
   }
-  const dragMoveRebuilds = Number(
-    await roughCanvas.getAttribute('data-rough-rebuild-count'),
-  );
+  const dragMoveRebuilds = Number(await roughCanvas.getAttribute('data-rough-rebuild-count'));
   assert.equal(
     dragMoveRebuilds,
     dragStartRebuilds,
@@ -269,15 +261,9 @@ export async function runRendererProductCases({ page, capture }) {
     zoomSubdivisionTriangles = Number(
       await roughCanvas.getAttribute('data-rough-subdivision-triangle-count'),
     ),
-    zoomSceneBudget = Number(
-      await roughCanvas.getAttribute('data-rough-scene-triangle-budget'),
-    ),
-    zoomPlanBuilds = Number(
-      await roughCanvas.getAttribute('data-surface-plan-build-count'),
-    ),
-    zoomRoughRebuilds = Number(
-      await roughCanvas.getAttribute('data-rough-rebuild-count'),
-    ),
+    zoomSceneBudget = Number(await roughCanvas.getAttribute('data-rough-scene-triangle-budget')),
+    zoomPlanBuilds = Number(await roughCanvas.getAttribute('data-surface-plan-build-count')),
+    zoomRoughRebuilds = Number(await roughCanvas.getAttribute('data-rough-rebuild-count')),
     zoomSpatialZoneBuilds = Number(
       await roughCanvas.getAttribute('data-rough-spatial-zone-build-count'),
     ),
@@ -373,23 +359,19 @@ export async function runRendererProductCases({ page, capture }) {
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector('#threeHost canvas');
-      return canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true';
+      return (
+        canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true'
+      );
     },
     null,
     { timeout: 10000 },
   );
-  const stressBudget = Number(
-      await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
-    ),
+  const stressBudget = Number(await stressCanvas.getAttribute('data-rough-scene-triangle-budget')),
     stressSubdivision = Number(
       await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
     ),
-    stressPlanBuilds = Number(
-      await stressCanvas.getAttribute('data-surface-plan-build-count'),
-    ),
-    stressRebuilds = Number(
-      await stressCanvas.getAttribute('data-rough-rebuild-count'),
-    ),
+    stressPlanBuilds = Number(await stressCanvas.getAttribute('data-surface-plan-build-count')),
+    stressRebuilds = Number(await stressCanvas.getAttribute('data-rough-rebuild-count')),
     stressSpatialZoneBuilds = Number(
       await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
     ),
@@ -417,12 +399,8 @@ export async function runRendererProductCases({ page, capture }) {
   const stressZoomPlanBuilds = Number(
       await stressCanvas.getAttribute('data-surface-plan-build-count'),
     ),
-    stressZoomRebuilds = Number(
-      await stressCanvas.getAttribute('data-rough-rebuild-count'),
-    ),
-    stressZoomBudget = Number(
-      await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
-    ),
+    stressZoomRebuilds = Number(await stressCanvas.getAttribute('data-rough-rebuild-count')),
+    stressZoomBudget = Number(await stressCanvas.getAttribute('data-rough-scene-triangle-budget')),
     stressZoomSubdivision = Number(
       await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
     ),

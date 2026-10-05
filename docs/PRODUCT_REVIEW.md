@@ -58,11 +58,10 @@ The permanent UI smoke checks Pyramid control switching, removal of the Implant 
 
 ## Reproduce the review
 
-Install development dependencies, then the browser review dependencies:
+Install the locked development and browser review dependencies:
 
 ```bash
 npm ci
-npm install --no-save --package-lock=false playwright@1.55.0 three@0.179.1
 npx playwright install chromium
 python3 -m http.server 4173 --directory site
 ```
@@ -94,6 +93,5 @@ Representative final captures:
 - [Back Conformal island, viewed from below](review/island-back.png)
 
 The CI artifact contains the full gallery, 12 reopenable Direct/Conformal/Etch fixtures, and `preview/`. To run the tested preview after downloading the artifact, serve that directory with `python3 -m http.server 8000 --directory preview`, then open `http://localhost:8000`. The preview footer identifies the tested commit.
-
 
 The real-WebGL review also includes `wide-rough-conformal-3d-opaque-max` and `wide-rough-conformal-3d-transparent-max`, reproducing rough Etch followed by whole-face Conformal coverage so buried-interface rendering regressions are visible in the standard artifact set.

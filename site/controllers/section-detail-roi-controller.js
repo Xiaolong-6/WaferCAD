@@ -96,7 +96,8 @@ export function createSectionDetailRoiController({
     const zoom = $('sectionDetailZoom'),
       sourceCssWidth = roi.width * source.getBoundingClientRect().width,
       zoomFactor = cssWidth / Math.max(1, sourceCssWidth);
-    if (zoom) zoom.textContent = `×${zoomFactor < 10 ? zoomFactor.toFixed(1) : Math.round(zoomFactor)}`;
+    if (zoom)
+      zoom.textContent = `×${zoomFactor < 10 ? zoomFactor.toFixed(1) : Math.round(zoomFactor)}`;
   }
 
   function syncPosition(roi) {
@@ -168,8 +169,7 @@ export function createSectionDetailRoiController({
     overlay.classList.toggle('preview', Boolean(previewRoi));
     if (shapeButton) {
       shapeButton.textContent = roi.shape === 'circle' ? '○' : '□';
-      shapeButton.title =
-        roi.shape === 'circle' ? 'Use rectangular ROI' : 'Use circular ROI';
+      shapeButton.title = roi.shape === 'circle' ? 'Use rectangular ROI' : 'Use circular ROI';
     }
 
     syncPosition(roi);
@@ -326,9 +326,7 @@ export function createSectionDetailRoiController({
     if (!roi) return;
     commit(
       { ...roi, shape: roi.shape === 'circle' ? 'rect' : 'circle' },
-      roi.shape === 'circle'
-        ? 'Section detail ROI: rectangular.'
-        : 'Section detail ROI: circular.',
+      roi.shape === 'circle' ? 'Section detail ROI: rectangular.' : 'Section detail ROI: circular.',
     );
   }
 

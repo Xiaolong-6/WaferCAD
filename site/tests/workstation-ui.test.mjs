@@ -18,13 +18,7 @@ test('workstation tool navigation moves one section and clamps at ends', () => {
 });
 
 test('workstation tool order keeps the continuous function flow', () => {
-  assert.deepEqual(WORKSTATION_TOOL_ORDER, [
-    'project',
-    'base',
-    'mask',
-    'process',
-    'snapshots',
-  ]);
+  assert.deepEqual(WORKSTATION_TOOL_ORDER, ['project', 'base', 'mask', 'process', 'snapshots']);
 });
 
 test('workstation defaults wide screens to Overview and restores explicit remembered views', () => {
@@ -41,7 +35,6 @@ test('workstation defaults wide screens to Overview and restores explicit rememb
   assert.equal(preferredWorkstationViewMode(390, 'three'), 'three');
   assert.equal(preferredWorkstationViewMode(390, 'overview'), 'main');
 });
-
 
 test('compact detection survives a desktop-sized CSS viewport on a phone', () => {
   const mobileDesktopSite = {
@@ -64,7 +57,6 @@ test('compact detection survives a desktop-sized CSS viewport on a phone', () =>
   assert.equal(isCompactWorkstationViewport(desktopTouchscreen), false);
   assert.equal(isCompactWorkstationViewport(narrowMouse), true);
 });
-
 
 test('Split view keeps two distinct panes and allows arbitrary left/right replacement', () => {
   assert.deepEqual(normalizeSplitViews(), ['main', 'three']);

@@ -80,9 +80,7 @@ export function allocateRoughTriangleBudgets(requests, { totalBudget = 900000 } 
     if (remaining === before) break;
   }
 
-  return normalized
-    .sort((a, b) => a.index - b.index)
-    .map((item) => item.allocated);
+  return normalized.sort((a, b) => a.index - b.index).map((item) => item.allocated);
 }
 
 export function adaptiveRoughMeshLod({
@@ -120,8 +118,7 @@ export function adaptiveRoughMeshLod({
       feature / samplesPerFeature,
       1.75 / Math.max(1e-12, pxPerUnit * Math.sqrt(priority)),
     ),
-    desiredDepth =
-      edge > targetEdge ? Math.max(0, Math.ceil(Math.log2(edge / targetEdge))) : 0,
+    desiredDepth = edge > targetEdge ? Math.max(0, Math.ceil(Math.log2(edge / targetEdge))) : 0,
     occupancy = Math.sqrt(clamp01(visibleFraction)),
     roiFocus = 1 + 0.45 * (1 - Math.sqrt(clamp01(roiFraction))),
     viewportPixels = width * height * ratio * ratio,
@@ -255,9 +252,7 @@ function roughNoise2D(x, y, featureSize, seed) {
     sx = tx * tx * (3 - 2 * tx),
     sy = ty * ty * (3 - 2 * ty),
     sample = (dx, dy) =>
-      hashUnit((Number(seed) >>> 0) ^ Math.imul((iy + dy) | 0, 0x85ebca6b), (ix + dx) | 0) *
-        2 -
-      1,
+      hashUnit((Number(seed) >>> 0) ^ Math.imul((iy + dy) | 0, 0x85ebca6b), (ix + dx) | 0) * 2 - 1,
     a = sample(0, 0) + (sample(1, 0) - sample(0, 0)) * sx,
     b = sample(0, 1) + (sample(1, 1) - sample(0, 1)) * sx;
   return a + (b - a) * sy;
@@ -321,10 +316,7 @@ function pyramidProfileOffsetAtPoint(x, y, appearance) {
           0.35,
           Math.min(
             1.9,
-            lognormalFactor(
-              heightCv,
-              gaussianHash((seed ^ 0x9e3779b9) >>> 0, cxIndex, cyIndex, 2),
-            ),
+            lognormalFactor(heightCv, gaussianHash((seed ^ 0x9e3779b9) >>> 0, cxIndex, cyIndex, 2)),
           ),
         ),
         jitterX =

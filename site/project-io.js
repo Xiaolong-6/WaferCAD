@@ -46,9 +46,7 @@ function multiBounds(geometry) {
       }
     }
   }
-  return [minX, minY, maxX, maxY].every(Number.isFinite)
-    ? { minX, minY, maxX, maxY }
-    : null;
+  return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
 }
 
 function quantizeModel(model) {
@@ -63,7 +61,8 @@ function quantizeModel(model) {
         if (!isObject(appearance)) continue;
         appearance.featureSize = quantizeLength(appearance.featureSize);
         appearance.meanHeight = quantizeLength(appearance.meanHeight);
-        if (appearance.etchDepth != null) appearance.etchDepth = quantizeLength(appearance.etchDepth);
+        if (appearance.etchDepth != null)
+          appearance.etchDepth = quantizeLength(appearance.etchDepth);
       }
     }
   }
@@ -182,13 +181,15 @@ function deepEqual(left, right) {
   return true;
 }
 
-function cloneCore(
-  value,
-  { model = true, layout = true, snapshotBranches = true } = {},
-) {
+function cloneCore(value, { model = true, layout = true, snapshotBranches = true } = {}) {
   const clone = {};
   for (const [key, item] of Object.entries(value || {})) {
-    if (key === 'snapshots' || key === 'sharedLayouts' || key === 'sharedModels' || key === 'storage')
+    if (
+      key === 'snapshots' ||
+      key === 'sharedLayouts' ||
+      key === 'sharedModels' ||
+      key === 'storage'
+    )
       continue;
     if (!model && key === 'model') continue;
     if (!layout && key === 'layout') continue;
@@ -336,9 +337,12 @@ function pathSpansDistance(points) {
   const first = points?.[0];
   return Boolean(
     first &&
-      points
-        .slice(1)
-        .some((point) => Number(point?.[0]) !== Number(first[0]) || Number(point?.[1]) !== Number(first[1])),
+    points
+      .slice(1)
+      .some(
+        (point) =>
+          Number(point?.[0]) !== Number(first[0]) || Number(point?.[1]) !== Number(first[1]),
+      ),
   );
 }
 
@@ -350,11 +354,7 @@ function assertLayoutGeometryPreserved(before, after, path = 'layout') {
       const source = original[index],
         quantized = stored[index],
         itemPath = `${path}.${key}[${index}]`;
-      if (
-        source?.kind === 'path' &&
-        Number(source.width) > 0 &&
-        !(Number(quantized?.width) > 0)
-      ) {
+      if (source?.kind === 'path' && Number(source.width) > 0 && !(Number(quantized?.width) > 0)) {
         throw new Error(
           `${itemPath}.width collapses to zero at ${PROJECT_LENGTH_QUANTUM_UM} µm precision.`,
         );
@@ -446,14 +446,18 @@ export function prepareProjectForStorage(project) {
     stored.snapshotBranches.nodes = nodes.map((node) => {
       const storedNode = structuredClone(node);
       if (isObject(node.state)) {
-        storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets, { quantize: true });
+        storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets, {
+          quantize: true,
+        });
       }
       return storedNode;
     });
     stored.snapshotBranches.branches = branches.map((branch) => {
       const storedBranch = structuredClone(branch);
       if (isObject(branch.headState)) {
-        storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets, { quantize: true });
+        storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets, {
+          quantize: true,
+        });
       }
       return storedBranch;
     });

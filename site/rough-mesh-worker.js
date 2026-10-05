@@ -32,11 +32,7 @@ self.onmessage = async (event) => {
           metadata: data.metadata,
         },
       });
-      transfer.push(
-        data.positions.buffer,
-        data.normals.buffer,
-        data.roughBorderPositions.buffer,
-      );
+      transfer.push(data.positions.buffer, data.normals.buffer, data.roughBorderPositions.buffer);
       if (reportProgress) {
         self.postMessage({
           id,

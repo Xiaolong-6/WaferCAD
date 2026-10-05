@@ -55,11 +55,9 @@ assert.equal(appRequestedBeforeCss, false);
 
 releaseWorkstationCss();
 await bootNavigation;
-await bootPage.waitForFunction(
-  () => document.documentElement.dataset.appReady === 'true',
-  null,
-  { timeout: 30000 },
-);
+await bootPage.waitForFunction(() => document.documentElement.dataset.appReady === 'true', null, {
+  timeout: 30000,
+});
 assert.equal(
   await bootPage.evaluate(() => document.documentElement.classList.contains('workstation-boot')),
   false,
@@ -89,7 +87,10 @@ assert.match(
 const photodetectorCard = page.locator(
   '.welcome-example-card[data-example-id="photodetector-literature"]',
 );
-assert.equal((await photodetectorCard.locator('h3').textContent()).trim(), 'Photodetectors with nanopatterns');
+assert.equal(
+  (await photodetectorCard.locator('h3').textContent()).trim(),
+  'Photodetectors with nanopatterns',
+);
 assert.equal(await photodetectorCard.locator('.welcome-example-sources a').count(), 2);
 assert.equal(await photodetectorCard.locator('.welcome-example-meta').count(), 0);
 assert.doesNotMatch(
@@ -116,10 +117,12 @@ assert.ok(
   (await photodetectorCard.locator('.welcome-example-tags span').count()) <= 4,
   'example cards should show at most three tags plus one overflow count',
 );
-assert.deepEqual(
-  await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
-  ['Main', 'Mask', '3D', 'Section'],
-);
+assert.deepEqual(await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(), [
+  'Main',
+  'Mask',
+  '3D',
+  'Section',
+]);
 const welcomeTabsBox = await photodetectorCard.locator('.welcome-example-view-tabs').boundingBox();
 assert.ok(welcomeTabsBox);
 assert.ok(
@@ -163,9 +166,7 @@ for (const [view, panelId] of [
   ['three', 'threePanel'],
   ['section', 'sectionPanel'],
 ]) {
-  await photodetectorCard
-    .locator(`.welcome-example-view-tab[data-preview-view="${view}"]`)
-    .click();
+  await photodetectorCard.locator(`.welcome-example-view-tab[data-preview-view="${view}"]`).click();
   await preview.locator(`html.welcome-project-preview[data-preview-view="${view}"]`).waitFor({
     state: 'attached',
     timeout: 10000,
@@ -199,9 +200,7 @@ for (const [view, panelId] of [
   }
 }
 
-await photodetectorCard
-  .locator('.welcome-example-view-tab[data-preview-view="main"]')
-  .click();
+await photodetectorCard.locator('.welcome-example-view-tab[data-preview-view="main"]').click();
 await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
   state: 'attached',
   timeout: 10000,
@@ -227,19 +226,22 @@ for (const selector of [
   );
 }
 
-const previewMainBefore = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+const previewMainBefore = await preview
+  .locator('#mainCanvas')
+  .evaluate((canvas) => canvas.toDataURL());
 await preview.locator('#mainCanvas').dispatchEvent('wheel', {
   deltaY: -120,
   clientX: 120,
   clientY: 80,
 });
-await preview.locator('#mainCanvas').evaluate(
-  () =>
-    new Promise((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(resolve)),
-    ),
-);
-const previewMainAfter = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+await preview
+  .locator('#mainCanvas')
+  .evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+const previewMainAfter = await preview
+  .locator('#mainCanvas')
+  .evaluate((canvas) => canvas.toDataURL());
 assert.notEqual(
   previewMainAfter,
   previewMainBefore,
@@ -250,7 +252,10 @@ assert.notEqual(
 const tandemCard = page.locator(
   '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"]',
 );
-assert.equal((await tandemCard.locator('h3').textContent()).trim(), 'Fully textured perovskite–silicon tandems');
+assert.equal(
+  (await tandemCard.locator('h3').textContent()).trim(),
+  'Fully textured perovskite–silicon tandems',
+);
 assert.match(
   await tandemCard.locator('.welcome-example-sources a').first().getAttribute('href'),
   /10\.1038\/s41563-018-0115-4/,
@@ -322,7 +327,9 @@ const { page: familyExamplePage, context: familyExampleContext } = await newUiPa
 const familyExampleErrors = observePageErrors(familyExamplePage);
 await gotoWelcome(familyExamplePage);
 await familyExamplePage
-  .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
+  .locator(
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+  )
   .click();
 await familyExamplePage.waitForURL(/start=example.*example=photodetector-literature/, {
   timeout: 30000,
@@ -343,9 +350,7 @@ assert.equal(
   'true',
 );
 assert.equal(
-  await familyExamplePage
-    .locator('.history-variant[data-variant-id="ge-fig15-a"]')
-    .count(),
+  await familyExamplePage.locator('.history-variant[data-variant-id="ge-fig15-a"]').count(),
   1,
 );
 assert.deepEqual(familyExampleErrors, []);

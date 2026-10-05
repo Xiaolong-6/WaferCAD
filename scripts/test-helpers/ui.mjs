@@ -50,19 +50,37 @@ export async function newUiPage(browser, options = {}) {
 export async function gotoWelcome(page) {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 10000 });
-  await page.waitForFunction(
-    () => document.documentElement.dataset.welcomeReady === 'true',
-    null,
-    { timeout: 10000 },
-  );
+  await page.waitForFunction(() => document.documentElement.dataset.welcomeReady === 'true', null, {
+    timeout: 10000,
+  });
 }
 
 export async function waitForAppReady(page) {
-  await page.waitForFunction(
-    () => document.documentElement.dataset.appReady === 'true',
-    null,
-    { timeout: 30000 },
+  await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true', null, {
+    timeout: 30000,
+  });
+}
+
+export async function waitForPaint(page) {
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
   );
+}
+
+export async function waitForCanvasSizeSync(page, selector) {
+  await page.waitForFunction((selector) => {
+    const canvas = document.querySelector(selector);
+    if (!canvas?.checkVisibility()) return false;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      Math.abs(canvas.width - rect.width * dpr) <= 2 &&
+      Math.abs(canvas.height - rect.height * dpr) <= 2
+    );
+  }, selector);
+  await waitForPaint(page);
 }
 
 const FUNCTION_SECTION_IDS = {

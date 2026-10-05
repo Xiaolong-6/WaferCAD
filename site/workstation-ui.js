@@ -104,7 +104,12 @@ const TOOL_META = {
   project: { id: 'settingsTools', label: 'Project', icon: '▣', hint: 'file · recovery · display' },
   base: { id: 'baseTools', label: 'Base', icon: '◇', hint: 'substrate definition' },
   mask: { id: 'maskTools', label: 'Mask', icon: '⌗', hint: 'source · layout · alignment' },
-  process: { id: 'operationTools', label: 'Process', icon: '≋', hint: 'operation · target · parameters' },
+  process: {
+    id: 'operationTools',
+    label: 'Process',
+    icon: '≋',
+    hint: 'operation · target · parameters',
+  },
   snapshots: { id: 'snapshotsTools', label: 'History', icon: '◷', hint: 'steps · variants' },
 };
 
@@ -180,10 +185,12 @@ export function createWorkstationUiController({ root = document, win = window } 
         slot = panel?.dataset.splitSlot || '';
       details.dataset.splitSlot = slot;
       details.classList.toggle('active', state.viewMode === 'split' && Boolean(slot));
-      details.querySelector('summary')?.setAttribute(
-        'aria-label',
-        slot ? `Choose ${slot} Split view; currently ${VIEW_LABELS[name]}` : VIEW_LABELS[name],
-      );
+      details
+        .querySelector('summary')
+        ?.setAttribute(
+          'aria-label',
+          slot ? `Choose ${slot} Split view; currently ${VIEW_LABELS[name]}` : VIEW_LABELS[name],
+        );
       if (state.viewMode !== 'split' || !slot) details.open = false;
     }
   }
@@ -253,10 +260,13 @@ export function createWorkstationUiController({ root = document, win = window } 
     state.programmaticToolScroll = true;
     win.clearTimeout(state.toolScrollRelease);
     scroller.scrollTo({ top: targetTop, behavior });
-    state.toolScrollRelease = win.setTimeout(() => {
-      state.programmaticToolScroll = false;
-      setActiveRail(name);
-    }, behavior === 'smooth' ? 340 : 40);
+    state.toolScrollRelease = win.setTimeout(
+      () => {
+        state.programmaticToolScroll = false;
+        setActiveRail(name);
+      },
+      behavior === 'smooth' ? 340 : 40,
+    );
   }
 
   function openTool(name, { toggle = false, behavior = 'smooth' } = {}) {

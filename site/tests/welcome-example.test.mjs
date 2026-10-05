@@ -29,14 +29,15 @@ test('welcome example catalog promotes four literature-backed project families',
   assert.match(literature.path, /photodetector-literature-examples\.wafercad$/);
 
   const packed = JSON.parse(
-    await readFile(new URL('../examples/photodetector-literature-examples.wafercad', import.meta.url), 'utf8'),
+    await readFile(
+      new URL('../examples/photodetector-literature-examples.wafercad', import.meta.url),
+      'utf8',
+    ),
   );
   expandProjectStorage(packed);
   assert.equal(validateProjectFile(packed), packed);
 
-  const branches = new Map(
-    packed.snapshotBranches.branches.map((branch) => [branch.id, branch]),
-  );
+  const branches = new Map(packed.snapshotBranches.branches.map((branch) => [branch.id, branch]));
   assert.equal(packed.snapshotBranches.activeBranchId, 'black-si-fig1a-final');
   assert.equal(branches.get('black-si-fig1a')?.parentBranchId, 'main');
   assert.equal(branches.get('black-si-fig1a-final')?.parentBranchId, 'black-si-fig1a');
@@ -67,7 +68,6 @@ test('welcome example catalog promotes four literature-backed project families',
   );
 });
 
-
 test('literature examples expose traceable source citations on Welcome', () => {
   const literatureExamples = BUNDLED_EXAMPLES.filter(
     (example) => example.kind === 'project' && /literature/i.test(example.level || ''),
@@ -93,8 +93,6 @@ test('photodetector family uses the device-oriented Welcome title', () => {
   assert.equal(example?.title, 'Photodetectors with nanopatterns');
   assert.equal(example?.sources?.length, 2);
 });
-
-
 
 test('all promoted Welcome examples are valid project files', async () => {
   for (const example of BUNDLED_EXAMPLES) {
@@ -123,5 +121,8 @@ test('promoted device examples use device-oriented titles and explicit provenanc
   assert.equal(tandem?.sources?.[0]?.doi, '10.1038/s41563-018-0115-4');
   assert.equal(microdisk?.title, 'Suspended silica microdisks');
   assert.equal(microdisk?.sources?.[0]?.doi, '10.1038/s41467-018-08038-4');
-  assert.equal(BUNDLED_EXAMPLES.some((entry) => entry.id === 'visualization'), false);
+  assert.equal(
+    BUNDLED_EXAMPLES.some((entry) => entry.id === 'visualization'),
+    false,
+  );
 });

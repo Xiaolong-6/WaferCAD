@@ -273,7 +273,9 @@ export function createSectionCollapseController({
     });
     $('sectionCollapseMinus').addEventListener('click', () => nudge(-1));
     $('sectionCollapsePlus').addEventListener('click', () => nudge(1));
-    $('sectionCollapseTopHandle').addEventListener('pointerdown', (event) => startDrag('top', event));
+    $('sectionCollapseTopHandle').addEventListener('pointerdown', (event) =>
+      startDrag('top', event),
+    );
     $('sectionCollapseBottomHandle').addEventListener('pointerdown', (event) =>
       startDrag('bottom', event),
     );
