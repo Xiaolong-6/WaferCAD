@@ -6,9 +6,103 @@ await loadGeometryKernel();
 
 const modelApi = await import('../model.js');
 const { applyOperation, createModel } = modelApi;
-const { implantSectionBands, implantSolids } = await import('../model-view-geometry.js');
+const { annotationInspectionCutSegments, implantSectionBands, implantSolids } =
+  await import('../model-view-geometry.js');
 const { validateProjectFile } = await import('../project-schema.js');
 const { rectMulti } = await import('../vector-geometry.js');
+
+test('Implant inspection faces include only overlapping ROI edges, never host partition edges', () => {
+  const clip = [
+      [
+        [
+          [0, 0],
+          [4, 0],
+          [4, 4],
+          [0, 4],
+          [0, 0],
+        ],
+      ],
+    ],
+    fragment = {
+      polys: [
+        [
+          [
+            [0, 0],
+            [2, 0],
+            [2, 4],
+            [0, 4],
+            [0, 0],
+          ],
+        ],
+      ],
+    },
+    before = structuredClone(fragment),
+    cuts = annotationInspectionCutSegments(fragment, clip);
+  assert.equal(cuts.length, 3);
+  assert.ok(
+    cuts.every(({ p, q }) => !(p[0] === 2 && q[0] === 2)),
+    'buried x=2 partition must not become an inspection face',
+  );
+  assert.equal(
+    cuts.reduce((sum, { p, q }) => sum + Math.hypot(q[0] - p[0], q[1] - p[1]), 0),
+    8,
+  );
+  assert.deepEqual(fragment, before);
+  assert.deepEqual(annotationInspectionCutSegments(fragment, null), []);
+  assert.deepEqual(
+    annotationInspectionCutSegments({ polys: rectMulti(1, 1) }, rectMulti(10, 10)),
+    [],
+  );
+});
+
+test('ROI cut edges retain partial overlaps and hole boundaries without duplicated segments', () => {
+  const fragment = {
+      polys: [
+        [
+          [
+            [0, 0],
+            [6, 0],
+            [6, 2],
+            [0, 2],
+            [0, 0],
+          ],
+        ],
+      ],
+    },
+    clip = [
+      [
+        [
+          [1, 0],
+          [3, 0],
+          [5, 0],
+          [5, 3],
+          [1, 3],
+          [1, 0],
+        ],
+      ],
+    ],
+    cuts = annotationInspectionCutSegments(fragment, clip);
+  assert.deepEqual(cuts, [{ p: [1, 0], q: [5, 0] }]);
+  const holeClip = [
+    [
+      [
+        [0, 0],
+        [8, 0],
+        [8, 8],
+        [0, 8],
+        [0, 0],
+      ],
+      [
+        [2, 2],
+        [2, 4],
+        [4, 4],
+        [4, 2],
+        [2, 2],
+      ],
+    ],
+  ];
+  assert.equal(annotationInspectionCutSegments({ polys: holeClip }, holeClip).length, 8);
+});
 
 test('Project schema and annotation contracts', () => {
   const validProject = {

@@ -254,6 +254,69 @@ export function implantSolids(model, clip = null) {
   return annotationSolids(implantFragments(model, clip));
 }
 
+// An ROI inspection face belongs to the ROI boundary, not every boundary of
+// the host-region fragment. A fragment may also contain internal bookkeeping
+// seams and the annotation's own perimeter, both of which remain buried.
+export function annotationInspectionCutSegments(annotation, clip) {
+  if (!clip || !annotation) return [];
+  const clipEdges = [];
+  for (const poly of clip) {
+    for (const ring of poly) {
+      for (let index = 1; index < ring.length; index++) {
+        clipEdges.push([ring[index - 1], ring[index]]);
+      }
+    }
+  }
+
+  const segments = [];
+  for (const poly of annotation.polys || []) {
+    for (const ring of poly) {
+      for (let index = 1; index < ring.length; index++) {
+        const p = ring[index - 1],
+          q = ring[index],
+          dx = q[0] - p[0],
+          dy = q[1] - p[1],
+          length = Math.hypot(dx, dy);
+        if (!(length > 1e-12)) continue;
+        const tolerance = Math.max(
+            1e-8,
+            Math.max(Math.abs(p[0]), Math.abs(p[1]), Math.abs(q[0]), Math.abs(q[1])) *
+              Number.EPSILON *
+              32,
+          ),
+          intervals = [];
+        for (const [a, b] of clipEdges) {
+          const distance = (point) =>
+            Math.abs(dx * (point[1] - p[1]) - dy * (point[0] - p[0])) / length;
+          if (distance(a) > tolerance || distance(b) > tolerance) continue;
+          const parameter = (point) =>
+              ((point[0] - p[0]) * dx + (point[1] - p[1]) * dy) / (length * length),
+            ta = parameter(a),
+            tb = parameter(b),
+            lo = Math.max(0, Math.min(ta, tb)),
+            hi = Math.min(1, Math.max(ta, tb));
+          if ((hi - lo) * length > tolerance) intervals.push([lo, hi]);
+        }
+        intervals.sort((a, b) => a[0] - b[0]);
+        const merged = [];
+        for (const interval of intervals) {
+          const previous = merged.at(-1);
+          if (previous && interval[0] <= previous[1] + tolerance / length) {
+            previous[1] = Math.max(previous[1], interval[1]);
+          } else merged.push([...interval]);
+        }
+        for (const [lo, hi] of merged) {
+          segments.push({
+            p: [p[0] + dx * lo, p[1] + dy * lo],
+            q: [p[0] + dx * hi, p[1] + dy * hi],
+          });
+        }
+      }
+    }
+  }
+  return segments;
+}
+
 export function implantSectionBands(model, a, b) {
   return annotationSectionBands(implantFragments(model), a, b);
 }

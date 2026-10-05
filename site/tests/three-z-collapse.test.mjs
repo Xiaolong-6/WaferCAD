@@ -39,6 +39,22 @@ test('collapsed Z display is monotonic through the compressed interval', () => {
   }
 });
 
+test('3D can join the retained Z spans without inventing a substrate air gap', () => {
+  const transform = createCollapsedZDisplayTransform({
+    zMin: -176,
+    zMax: 175.7,
+    collapse: { top: 172.4305, bottom: -172.4805 },
+    breakFraction: 0,
+  });
+  assert.equal(transform.gap, 0);
+  assert.equal(transform.mapZ(transform.top), transform.mapZ(transform.bottom));
+  assert.ok(
+    Math.abs(transform.displaySpan - (175.7 - transform.top + transform.bottom + 176)) < 1e-10,
+  );
+  // A physical cavity outside the hidden interval retains its own thickness.
+  assert.ok(Math.abs(transform.mapZ(175) - transform.mapZ(174) - 1) < 1e-10);
+});
+
 test('thick substrates let the collapse handle approach the physical Z surface', () => {
   const bounds = [-151, 151.35],
     normalized = normalizeSectionCollapse({ top: bounds[1], bottom: -130 }, bounds);

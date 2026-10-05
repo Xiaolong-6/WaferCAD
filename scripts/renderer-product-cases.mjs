@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { isotropicReleaseBenchmark, projectForBenchmark } from './process-benchmarks.mjs';
 import {
   checkLayout,
@@ -600,6 +601,84 @@ export async function runRendererProductCases({ page, capture }) {
     'Opaque 3D must keep an Implant overlay after Etch exposes its surviving surface',
   );
   await capture(page, 'wide-implant-etched-exposed-opaque-max');
+  await page.locator('#threeMaxBtn').click();
+
+  // Clipping an Implant with a partial Etch must neither restart its gradient
+  // nor stroke the shared host partition below the real etched step.
+  const partitionModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 10 });
+  applyOperation(partitionModel, {
+    type: 'implant',
+    name: 'Continuous profile',
+    face: 'front',
+    thickness: 2,
+    area: partitionModel.boundary,
+    color: '#9B5DE5',
+  });
+  applyOperation(partitionModel, {
+    type: 'etch',
+    face: 'front',
+    thickness: 0.5,
+    area: rectMulti(10, 12, -5, 0),
+  });
+  const partitionProject = projectForBenchmark({
+    model: partitionModel,
+    section: { a: [-9, 0], b: [9, 0] },
+  });
+  partitionProject.display.sectionCollapse = { top: 4, bottom: -4, enabled: false };
+  partitionProject.display.sectionShowBorders = true;
+  await loadProject(page, partitionProject, 'wide-implant-partition-gradient');
+  await page.locator('#sectionMaxBtn').click();
+  await waitForCanvasSizeSync(page, '#sectionCanvas');
+  await waitForPaint(page);
+  const colorRange = await page.evaluate(() => {
+    const canvas = document.getElementById('sectionCanvas'),
+      dpr = Math.min(devicePixelRatio || 1, 2),
+      x =
+        Number(canvas.dataset.sectionPlotLeft) +
+        (canvas.width / dpr - Number(canvas.dataset.sectionPlotLeft) - 10) / 2,
+      y =
+        Number(canvas.dataset.sectionFrameTop) +
+        (Number(canvas.dataset.sectionZ1Um) - 3.8) * Number(canvas.dataset.zPxPerUm),
+      pixels = canvas
+        .getContext('2d')
+        .getImageData(Math.round(x * dpr) - 8, Math.round(y * dpr), 17, 1).data;
+    return [0, 1, 2].map((channel) => {
+      const values = Array.from({ length: 17 }, (_, index) => pixels[index * 4 + channel]);
+      return Math.max(...values) - Math.min(...values);
+    });
+  });
+  assert.ok(
+    colorRange.every((range) => range <= 2),
+    `Implant partition gradient/border seam: ${colorRange}`,
+  );
+  await capture(page, 'wide-implant-partition-gradient-section');
+  await page.locator('#sectionMaxBtn').click();
+
+  const literature = JSON.parse(
+    await readFile(
+      new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
+      'utf8',
+    ),
+  );
+  literature.roi = { type: 'sector', c: [0, 0], r: 3400, startDeg: 0, endDeg: 90 };
+  literature.section = { a: [-2900, 0], b: [2900, 0] };
+  literature.display.sectionShowBorders = true;
+  literature.display.threeShowBorders = true;
+  await loadProject(page, literature, 'wide-photodetector-quarter-roi');
+  await page.getByRole('button', { name: 'Overview', exact: true }).click();
+  await page.locator('#fit3dBtn').click();
+  await capture(page, 'wide-photodetector-quarter-roi-overview');
+  assert.equal(Number(await page.locator('#threeHost').getAttribute('data-z-collapse-gap-um')), 0);
+  assert.ok(Number(await page.locator('#threeHost').getAttribute('data-implant-cut-count')) > 0);
+  await page.locator('#threeMaxBtn').click();
+  const bounds = await page.locator('#threeHost canvas').boundingBox();
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 75, {
+    steps: 15,
+  });
+  await page.mouse.up();
+  await capture(page, 'wide-photodetector-quarter-roi-low-angle');
   await page.locator('#threeMaxBtn').click();
 
   await checkLayout(page);

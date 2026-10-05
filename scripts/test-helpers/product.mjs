@@ -106,6 +106,18 @@ export async function ensurePrimaryViewVisible(page, name) {
 }
 
 export async function captureProductReview(page, name, output, cases) {
+  await page.waitForFunction(
+    () => {
+      const host = document.getElementById('threeHost');
+      if (!host?.checkVisibility() || host.classList.contains('three-unavailable')) return true;
+      const mode = host.querySelector('canvas')?.dataset.roughMeshMode;
+      return (
+        host.dataset.renderState === 'ready' && (!mode || mode === 'none' || mode === 'detailed')
+      );
+    },
+    null,
+    { timeout: 120000 },
+  );
   await page.evaluate(
     () =>
       new Promise((resolveFrame) =>

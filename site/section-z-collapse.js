@@ -115,8 +115,11 @@ export function createCollapsedZDisplayTransform({
     upperSpan = Math.max(0, max - normalized.top),
     lowerSpan = Math.max(0, normalized.bottom - min),
     visibleSpan = Math.max(upperSpan + lowerSpan, (max - min) * 0.02),
-    fraction = Math.max(0.01, Math.min(0.12, Number(breakFraction) || 0.04)),
-    gap = Math.min(hiddenSpan, Math.max((max - min) * 1e-6, visibleSpan * fraction)),
+    fraction = Math.max(0, Math.min(0.12, Number(breakFraction) || 0)),
+    gap =
+      fraction === 0
+        ? 0
+        : Math.min(hiddenSpan, Math.max((max - min) * 1e-6, visibleSpan * fraction)),
     center = (normalized.top + normalized.bottom) / 2,
     displayBottom = center - gap / 2,
     displayTop = center + gap / 2;

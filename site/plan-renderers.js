@@ -656,6 +656,7 @@ export function createPlanRenderers({
       ctx.restore();
     }
 
+    const implantBorderPolygons = new Map();
     for (const implant of implantSectionBands(model, section.a, section.b)) {
       const appearance = implant.surfaceAppearance,
         faceDirection = implant.face === 'back' ? -1 : 1,
@@ -703,11 +704,13 @@ export function createPlanRenderers({
       }
       if (outerPoints.length < 2 || !activeSamples) continue;
 
+      const outerRelief = outerZSum / activeSamples - implant.outerZ,
+        innerRelief = innerZSum / activeSamples - implant.innerZ;
       const gradient = ctx.createLinearGradient(
         0,
-        mapZ(outerZSum / activeSamples),
+        mapZ(implant.sourceZ + outerRelief),
         0,
-        mapZ(innerZSum / activeSamples),
+        mapZ(implant.sourceZ - faceDirection * implant.thickness + innerRelief),
       );
       gradient.addColorStop(
         IMPLANT_DEPTH_GRADIENT.outerDepth,
@@ -735,11 +738,32 @@ export function createPlanRenderers({
       ctx.fillStyle = gradient;
       ctx.fill();
       if (sectionShowBorders) {
-        ctx.setLineDash([5, 4]);
-        ctx.strokeStyle = '#111820';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        const key = implant.implantId;
+        if (!implantBorderPolygons.has(key)) implantBorderPolygons.set(key, []);
+        const ring = [...outerPoints, ...innerPoints.toReversed(), outerPoints[0]];
+        implantBorderPolygons.get(key).push([[ring]]);
       }
+      ctx.restore();
+    }
+
+    // Union the outline across host-layer/depth fragments. Their internal edges
+    // are bookkeeping boundaries, not boundaries of the surviving Implant.
+    for (const polygons of implantBorderPolygons.values()) {
+      ctx.save();
+      ctx.beginPath();
+      for (const poly of unionGeometries(polygons)) {
+        for (const ring of poly) {
+          ring.forEach(([x, y], index) => {
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+        }
+      }
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = '#111820';
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.restore();
     }
 
