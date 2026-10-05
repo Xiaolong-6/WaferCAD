@@ -158,6 +158,7 @@ export function createLayerLegendController({
   renderAll,
   updateOperationUI,
   onChanged = () => {},
+  onNameChanged = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -372,7 +373,11 @@ export function createLayerLegendController({
       name.disabled = !present;
       name.title = present ? 'Rename layer' : 'Layer is not present in the model';
       name.onchange = () => {
-        if (!renameLayer(model, layer.id, name.value)) name.value = layer.name;
+        if (!renameLayer(model, layer.id, name.value)) {
+          name.value = layer.name;
+        } else {
+          onNameChanged({ kind: 'layer', id: layer.id, name: name.value });
+        }
         onChanged();
         renderLayerLegend();
         renderMain();
@@ -451,7 +456,11 @@ export function createLayerLegendController({
       name.value = implant.name;
       name.title = 'Rename implant overlay';
       name.onchange = () => {
-        if (!renameImplant(model, implant.id, name.value)) name.value = implant.name;
+        if (!renameImplant(model, implant.id, name.value)) {
+          name.value = implant.name;
+        } else {
+          onNameChanged({ kind: 'implant', id: implant.id, name: name.value });
+        }
         onChanged();
         renderLayerLegend();
         renderMain();
@@ -532,7 +541,11 @@ export function createLayerLegendController({
       name.value = electrical.name;
       name.title = `${electrical.regionType} · ${electrical.source} — rename electrical region`;
       name.onchange = () => {
-        if (!renameElectricalRegion(model, electrical.id, name.value)) name.value = electrical.name;
+        if (!renameElectricalRegion(model, electrical.id, name.value)) {
+          name.value = electrical.name;
+        } else {
+          onNameChanged({ kind: 'electrical', id: electrical.id, name: name.value });
+        }
         onChanged();
         renderLayerLegend();
         renderMain();
