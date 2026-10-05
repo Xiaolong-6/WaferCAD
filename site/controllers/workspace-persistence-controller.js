@@ -9,6 +9,9 @@ import {
 
 const PERSIST_MARKER_KEY = 'wafercad.workspace.persisted.v1';
 const CHANNEL_NAME = 'wafercad.workspace.sync.v1';
+const AUTOSAVE_IDLE_MS = 1800;
+const INTERACTION_SETTLE_MS = 1400;
+const TRANSIENT_INTERACTION_MS = 450;
 
 function parseMarker(raw) {
   try {
@@ -46,6 +49,7 @@ export function createWorkspacePersistenceController({
   getProjectName,
   setProjectName,
   syncProjectNameInput,
+  taskController = null,
   confirmAction = async () => false,
   chooseAction = async () => 'cancel',
   storage = globalThis.localStorage,
@@ -67,7 +71,9 @@ export function createWorkspacePersistenceController({
     remoteSaveId = null,
     ownerTabId = null,
     channel = null,
-    channelSequence = 0;
+    channelSequence = 0,
+    interactionDepth = 0,
+    transientTimer = null;
   const flushWaiters = new Map();
 
   function readMarker() {
@@ -149,6 +155,35 @@ export function createWorkspacePersistenceController({
     timer = null;
   }
 
+  function clearTransientTimer() {
+    if (transientTimer == null) return;
+    clearTimeout(transientTimer);
+    transientTimer = null;
+  }
+
+  function beginInteraction() {
+    interactionDepth += 1;
+    clearTimer();
+  }
+
+  function endInteraction() {
+    interactionDepth = Math.max(0, interactionDepth - 1);
+    if (!interactionDepth && transientTimer == null && dirty) {
+      schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
+    }
+  }
+
+  function pulseInteraction(delay = TRANSIENT_INTERACTION_MS) {
+    clearTimer();
+    clearTransientTimer();
+    transientTimer = setTimeout(() => {
+      transientTimer = null;
+      if (!interactionDepth && dirty) {
+        schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
+      }
+    }, Math.max(0, Number(delay) || TRANSIENT_INTERACTION_MS));
+  }
+
   function markDirty() {
     editVersion++;
     dirty = true;
@@ -171,7 +206,7 @@ export function createWorkspacePersistenceController({
     return true;
   }
 
-  function persistNow() {
+  function persistNow({ force = false } = {}) {
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
       return Promise.resolve(false);
@@ -179,6 +214,10 @@ export function createWorkspacePersistenceController({
     if (!dirty && !saving) {
       syncSaveStatus();
       return Promise.resolve(true);
+    }
+    if (!force && (interactionDepth > 0 || transientTimer != null)) {
+      syncSaveStatus();
+      return Promise.resolve(false);
     }
 
     clearTimer();
@@ -210,17 +249,21 @@ export function createWorkspacePersistenceController({
     return write;
   }
 
-  function schedule({ markDirty: shouldMarkDirty = true } = {}) {
+  function schedule({
+    markDirty: shouldMarkDirty = true,
+    delay = AUTOSAVE_IDLE_MS,
+  } = {}) {
     if (shouldMarkDirty) markDirty();
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
       return;
     }
     clearTimer();
+    if (interactionDepth > 0 || transientTimer != null) return;
     timer = setTimeout(() => {
       timer = null;
       void persistNow();
-    }, 800);
+    }, Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS));
   }
 
   async function refreshRecoveryOptions() {
@@ -314,7 +357,7 @@ export function createWorkspacePersistenceController({
         ) {
           return;
         }
-        void persistNow().finally(() => {
+        void persistNow({ force: true }).finally(() => {
           try {
             channel?.postMessage({
               type: 'flush-response',
@@ -398,7 +441,7 @@ export function createWorkspacePersistenceController({
       renderSnapshots();
       fit3d();
       markDirty();
-      const persisted = await persistNow();
+      const persisted = await persistNow({ force: true });
       if (!persisted) throw new Error('Another tab took over local autosave.');
       await refreshRecoveryOptions();
       status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
@@ -474,7 +517,7 @@ export function createWorkspacePersistenceController({
       const projectName = normalizedProjectName(getProjectName());
       setProjectName(projectName);
       syncProjectNameInput();
-      const persisted = await persistNow();
+      const persisted = await persistNow({ force: true });
       if (!persisted) throw new Error('Another tab took over local autosave.');
       const project = buildProjectSnapshot(true);
       await createWorkspaceRecoveryCheckpoint(project, {
@@ -564,7 +607,7 @@ export function createWorkspacePersistenceController({
         });
       }
       if (savedChanged && !dirty) markDirty();
-      const persisted = dirty ? await persistNow() : true;
+      const persisted = dirty ? await persistNow({ force: true }) : true;
       if (!persisted || !hasWriteAccess()) {
         status('Workspace takeover was interrupted by another tab before this state could be saved.', 'error');
         syncSaveStatus();
@@ -681,6 +724,21 @@ export function createWorkspacePersistenceController({
   function bind() {
     ensureChannel();
     windowRef?.addEventListener?.('storage', handlePersistStorage);
+    root?.addEventListener?.('pointerdown', beginInteraction, true);
+    windowRef?.addEventListener?.('pointerup', endInteraction, true);
+    windowRef?.addEventListener?.('pointercancel', endInteraction, true);
+    root?.addEventListener?.(
+      'wheel',
+      () => pulseInteraction(),
+      { capture: true, passive: true },
+    );
+    root?.addEventListener?.(
+      'input',
+      (event) => {
+        if (event.target?.type === 'range') pulseInteraction();
+      },
+      true,
+    );
 
     $('workspaceTakeOverBtn').onclick = () => {
       void takeOverWorkspace();
@@ -738,6 +796,10 @@ export function createWorkspacePersistenceController({
     syncSessionState,
     setUpdateCommit,
     initializePersistedWorkspace,
+    beginInteraction,
+    endInteraction,
+    pulseInteraction,
+    isInteracting: () => interactionDepth > 0 || transientTimer != null,
     isDirty: () => dirty,
     getBaseSaveId: () => baseSaveId,
     getRemoteSaveId: () => remoteSaveId,
