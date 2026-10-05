@@ -36,6 +36,9 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(rendererGeometry, /function capBoundaryIndex\(/);
   assert.match(rendererGeometry, /lowerSurface: sidewallBoundaryAppearance\(/);
   assert.match(rendererGeometry, /upperSurface: sidewallBoundaryAppearance\(/);
+  assert.match(rendererGeometry, /sidewallBoundaryIntervals:/);
+  assert.match(roughMeshGeometry, /hasPhysicalSidewallAt/);
+  assert.match(threeView, /sidewallBoundaryIntervals: cap\.sidewallBoundaryIntervals/);
   assert.match(threeView, /roughProfileOffsetAtPoint\(/);
   assert.match(threeView, /part\.lowerSurface/);
   assert.match(threeView, /part\.upperSurface/);
