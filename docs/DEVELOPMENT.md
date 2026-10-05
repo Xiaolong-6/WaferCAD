@@ -37,11 +37,11 @@ Available commands:
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced, and the quantized storage representation is expanded and validated again before export. Interactive project/layout parsing, .wafercad packing/serialization, and Mask GDS/OAS serialization run in workers so large file transforms do not monopolize the UI thread. Keep worker handoff transactional: Abort/error must not replace live state or leave the shared task controller busy.
 
-UI orchestration that does not own canonical geometry lives under `site/controllers/`. Process input/state and Apply orchestration belong to `process-panel-controller.js`; browser autosave/Recovery/cross-tab lease/safe-reload behavior belongs to `workspace-persistence-controller.js`; synchronized view/base summaries belong to `workspace-view-controller.js`; Project toolbar actions belong to `project-controller.js`; Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Derived process/ROI selection geometry lives in `site/selection-geometry.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, process-form validation/request assembly, persistence workflows, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
+UI orchestration that does not own canonical geometry lives under `site/controllers/`. Process input/state and worker request assembly belong to `process-panel-controller.js`; History edit/insert strategy, branching gates, and replay transactions belong to `history-mutation-controller.js`; browser autosave/Recovery/cross-tab lease/safe-reload behavior belongs to `workspace-persistence-controller.js`; synchronized view/base summaries belong to `workspace-view-controller.js`; Project toolbar and History-tree presentation belong to `project-controller.js`; Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Derived process/ROI selection geometry lives in `site/selection-geometry.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, process-form validation/request assembly, History transaction state, persistence workflows, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
 
 ## Deployment
 
-`.github/workflows/pages.yml` deploys `site/` to GitHub Pages when `main` changes. The deploy job repeats the Quality checks and Chromium/product regression before publishing, so a failing editor build is not released.
+`.github/workflows/pages.yml` deploys `site/` to GitHub Pages when `main` changes. Full Quality/browser regression belongs to pull-request CI; superseded PR runs are cancelled. Pages performs only a lightweight release sanity check plus asset stamping/deployment, avoiding a second full browser regression after an already-validated merge. KLayout compatibility is path-scoped to layout parser/export changes and remains manually runnable for broader corpus checks.
 
 There is no application build step.
 
@@ -74,6 +74,9 @@ There is no application build step.
 25. Replacing live workspace state must synchronize transient Undo/Redo controls so enabled buttons never point at cleared history.
 26. History UI must render Variant ancestry as a tree at the actual origin Step. A flat “Other variants” list is not an acceptable substitute.
 27. Existing projects without branch metadata must normalize into one linear Main Variant without changing saved workspace state.
+28. History labels that reference material/Implant/Electrical Region entities must resolve through stable IDs; renaming an entity must not leave stale labels or stale replay names on the same entity lineage.
+29. History **Insert before…** must be transactional: failed/no-change inserted operations leave the original process tree untouched; current-Variant insertion may rewrite a tail only when dependency checks pass; child-Variant insertion must leave the source Variant unchanged.
+30. When insertion causes replayed Deposit Steps to receive new layer IDs, all downstream replayable layer references must be remapped before the worker request is issued.
 28. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 
 ## Source style

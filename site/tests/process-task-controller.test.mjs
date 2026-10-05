@@ -75,3 +75,73 @@ test('postMessage failures terminate the worker and clear busy state', async () 
     globalThis.Worker = originalWorker;
   }
 });
+
+
+test('grouped task keeps one busy transaction across multiple worker steps', async () => {
+  const originalWorker = globalThis.Worker,
+    disabled = [];
+  let workerCount = 0;
+
+  globalThis.Worker = class {
+    constructor() {
+      workerCount += 1;
+      this.terminated = false;
+      this.onmessage = null;
+      this.onerror = null;
+    }
+    postMessage(message) {
+      queueMicrotask(() => {
+        this.onmessage?.({
+          data: {
+            id: message.id,
+            type: 'progress',
+            stage: 'Synthetic progress',
+          },
+        });
+        this.onmessage?.({
+          data: {
+            id: message.id,
+            type: 'done',
+            result: { changed: true },
+            model: message.model || {},
+          },
+        });
+      });
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  };
+
+  try {
+    const controller = createProcessTaskController({
+        root: fakeRoot(),
+        status: () => {},
+        setApplyDisabled: (value) => disabled.push(value),
+      }),
+      result = await controller.runTask(
+        async ({ runWorker, updateStage }) => {
+          updateStage('Step 1/2');
+          const first = await runWorker('../synthetic-worker.js', { model: { revision: 1 } }, {
+            stagePrefix: 'Step 1/2',
+          });
+          assert.equal(first.result.changed, true);
+
+          updateStage('Step 2/2');
+          const second = await runWorker('../synthetic-worker.js', { model: { revision: 2 } }, {
+            stagePrefix: 'Step 2/2',
+          });
+          assert.equal(second.result.changed, true);
+          return { ok: true, completed: 2 };
+        },
+        { label: 'Grouped replay' },
+      );
+
+    assert.deepEqual(result, { ok: true, completed: 2 });
+    assert.equal(workerCount, 2);
+    assert.deepEqual(disabled, [true, false]);
+    assert.equal(controller.isBusy(), false);
+  } finally {
+    globalThis.Worker = originalWorker;
+  }
+});

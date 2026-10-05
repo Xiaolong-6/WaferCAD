@@ -31,6 +31,9 @@ export function createProjectController({
   beginHistoricalStepEdit = async () => false,
   getHistoricalStepEdit = () => null,
   cancelHistoricalStepEdit = () => {},
+  beginHistoricalStepInsert = async () => false,
+  getHistoricalStepInsert = () => null,
+  cancelHistoricalStepInsert = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
   const expandedHistoryVariants = new Set();
@@ -52,6 +55,8 @@ export function createProjectController({
       activeBranch = snapshotManager.activeBranch(),
       continuation = snapshotManager.continuationContext(),
       historyEdit = getHistoricalStepEdit(),
+      historyInsert = getHistoricalStepInsert(),
+      historyMutation = historyEdit || historyInsert,
       position = snapshotManager.currentPosition(),
       nodeById = new Map(historyNodes.map((node) => [node.id, node])),
       branchById = new Map(branches.map((variant) => [variant.id, variant])),
@@ -73,6 +78,7 @@ export function createProjectController({
 
     async function prepareHistoryReplacement(reason, label = 'History navigation') {
       if (getHistoricalStepEdit()) cancelHistoricalStepEdit();
+      if (getHistoricalStepInsert()) cancelHistoricalStepInsert();
       const currentContinuation = snapshotManager.continuationContext();
       if (!currentContinuation) {
         if (!snapshotManager.syncActiveHeadState()) {
@@ -123,16 +129,20 @@ export function createProjectController({
     if (continuation) {
       const banner = root.createElement('div');
       banner.className = 'snapshot-continuation-banner';
-      if (historyEdit) banner.dataset.editingStep = 'true';
+      if (historyMutation) banner.dataset.editingStep = 'true';
 
       const copy = root.createElement('div');
       const title = root.createElement('strong');
-      title.textContent = historyEdit ? 'Editing historical Step' : 'Historical Step';
+      title.textContent = historyEdit
+        ? 'Editing historical Step'
+        : historyInsert
+          ? 'Inserting before Step'
+          : 'Historical Step';
 
       const context = root.createElement('span');
       context.className = 'snapshot-continuation-context';
-      context.textContent = historyEdit
-        ? historyEdit.originalLabel
+      context.textContent = historyMutation
+        ? historyMutation.originalLabel
         : continuation.processLabel || 'Older process state';
       context.title = context.textContent;
 
@@ -147,6 +157,13 @@ export function createProjectController({
               : historyEdit.mode === 'replace-discard'
                 ? `Saving replaces this Step and discards ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
                 : 'Saving creates a new Variant from the edited Step.';
+      } else if (historyInsert) {
+        hint.textContent =
+          historyInsert.mode === 'current-replay'
+            ? `Insert here and recompute ${historyInsert.laterStepCount} existing Step${historyInsert.laterStepCount === 1 ? '' : 's'} in the current Variant.`
+            : historyInsert.mode === 'branch-replay'
+              ? `Insert in a new Variant and recompute ${historyInsert.laterStepCount} existing Step${historyInsert.laterStepCount === 1 ? '' : 's'}.`
+              : 'Insert in a new Variant and start a clean process path from here.';
       } else {
         hint.textContent = `Viewing ${activeBranch.name}. The next successful Apply creates a Variant from here.`;
       }
@@ -155,10 +172,16 @@ export function createProjectController({
       const returnButton = root.createElement('button');
       returnButton.type = 'button';
       returnButton.className = 'snapshot-return-head';
-      returnButton.textContent = historyEdit ? 'Cancel edit' : 'Return to Variant HEAD';
+      returnButton.textContent = historyEdit
+        ? 'Cancel edit'
+        : historyInsert
+          ? 'Cancel insert'
+          : 'Return to Variant HEAD';
       returnButton.title = historyEdit
         ? 'Cancel historical Step editing'
-        : `Return to ${activeBranch.name} HEAD`;
+        : historyInsert
+          ? 'Cancel Step insertion'
+          : `Return to ${activeBranch.name} HEAD`;
       returnButton.onclick = async () => {
         if (
           !(await prepareHistoryReplacement(
@@ -382,7 +405,7 @@ export function createProjectController({
       refreshAfterSnapshotLoad();
       onProjectChanged();
       renderSnapshots();
-      status(`Restored Step "${node.operation?.label || node.operation?.kind || 'Process step'}".`);
+      status(`Restored Step "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}".`);
     }
 
     async function createVariantFromStep(node) {
@@ -400,7 +423,7 @@ export function createProjectController({
         onProjectChanged();
         renderSnapshots();
         status(
-          `Created Variant "${created.name}" from Step "${node.operation?.label || node.operation?.kind || 'Process step'}".`,
+          `Created Variant "${created.name}" from Step "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}".`,
         );
       } catch (error) {
         console.error(error);
@@ -425,7 +448,7 @@ export function createProjectController({
       }
       const confirmed = await confirmAction({
         title: 'Continue from this Step?',
-        message: `Make "${node.operation?.label || node.operation?.kind || 'Process step'}" the new HEAD of "${branch.name}"?`,
+        message: `Make "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}" the new HEAD of "${branch.name}"?`,
         detail:
           'All later Steps on this Variant, and bookmarks attached to those removed Steps, will be deleted. Other Variants are preserved unless they depend on the removed tail.',
         confirmLabel: 'Delete later Steps',
@@ -467,7 +490,7 @@ export function createProjectController({
       }
       const confirmed = await confirmAction({
         title: 'Delete last Step?',
-        message: `Delete "${node.operation?.label || node.operation?.kind || 'Process step'}" from "${branch.name}"?`,
+        message: `Delete "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}" from "${branch.name}"?`,
         detail:
           'The Variant will return to the preceding restorable Step. This is independent of the legacy Undo stack.',
         confirmLabel: 'Delete last Step',
@@ -507,21 +530,22 @@ export function createProjectController({
       const body = root.createElement('div');
       body.className = 'process-history-body';
       const label = root.createElement('strong');
-      label.textContent = node.operation?.label || node.operation?.kind || 'Process step';
+      label.textContent = node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step';
 
       const meta = root.createElement('span');
       const face = node.operation?.face
         ? node.operation.face[0].toUpperCase() + node.operation.face.slice(1)
         : '';
-      const area = node.operation?.areaLabel || '';
+      const area = node.areaLabel || node.operation?.areaLabel || '';
       meta.textContent = [
-        face,
         area,
+        face,
         `r${node.processRevision}`,
         !node.restorable ? 'legacy · unavailable' : '',
       ]
         .filter(Boolean)
         .join(' · ');
+      meta.title = meta.textContent;
       body.append(label, meta);
 
       const actions = [];
@@ -536,6 +560,16 @@ export function createProjectController({
               ? editContext?.reason || 'This Step cannot be edited in place.'
               : 'Load this Step into Process using its predecessor as the input structure.',
           run: () => beginHistoricalStepEdit(node),
+        });
+
+        const insertContext = snapshotManager.insertBeforeContext(node.id);
+        actions.push({
+          label: 'Insert before…',
+          disabled: !insertContext?.editable,
+          title: insertContext?.editable
+            ? 'Insert a new process Step before this Step, either in this Variant or a new Variant.'
+            : insertContext?.reason || 'This Step has no restorable predecessor.',
+          run: () => beginHistoricalStepInsert(node),
         });
         if (!isVariantHead) {
           actions.push({

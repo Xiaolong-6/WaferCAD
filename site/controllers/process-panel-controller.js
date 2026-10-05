@@ -1,4 +1,8 @@
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
+import {
+  captureHistoryReplayResult,
+  remapHistoryReplayOperation,
+} from '../history-replay.js';
 
 export function createProcessPanelController({
   root = document,
@@ -18,6 +22,7 @@ export function createProcessPanelController({
   recordProcessOperation = () => {},
   afterApply = async () => false,
   getHistoricalStepEdit = () => null,
+  getHistoricalStepInsert = () => null,
   clearBaseRevertSnapshot,
   colorNewLayer,
   colorNewImplant,
@@ -26,6 +31,48 @@ export function createProcessPanelController({
   status,
 }) {
   const $ = (id) => root.getElementById(id);
+
+  function normalizedMaskContext({
+    maskSourceMode,
+    maskRoi,
+    drawMask,
+    maskTransform,
+    layout,
+    activeCell,
+    selectedLayerKeys,
+    areaMode,
+  }) {
+    if (maskSourceMode === 'draw') {
+      return {
+        sourceMode: 'draw',
+        shapeCount: Array.isArray(drawMask?.shapes) ? drawMask.shapes.length : 0,
+        roi: maskRoi ? structuredClone(maskRoi) : null,
+      };
+    }
+
+    const requestedLayerKeys = Array.from(
+        selectedLayerKeys || [],
+        (value) => String(value),
+      ),
+      effectiveLayerKeys =
+        areaMode === 'full'
+          ? requestedLayerKeys
+          : [
+              ...new Set(
+                (layout?.elements || [])
+                  .filter(selectedElement)
+                  .map((element) => `${element.layer}|${element.datatype}`),
+              ),
+            ];
+
+    return {
+      sourceMode: 'file',
+      cell: activeCell || layout?.root || null,
+      layerKeys: effectiveLayerKeys.length ? effectiveLayerKeys : requestedLayerKeys,
+      transform: { ...(maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }) },
+      roi: maskRoi ? structuredClone(maskRoi) : null,
+    };
+  }
 
   function updateGrowTargets() {
     const select = $('targetLayer');
@@ -123,9 +170,11 @@ export function createProcessPanelController({
       (!materialExists && !recordOnly) || Boolean(processTaskController?.isBusy());
     $('applyOperationBtn').textContent = getHistoricalStepEdit()
       ? 'Save edited Step'
-      : recordOnly
-        ? 'Record'
-        : 'Apply';
+      : getHistoricalStepInsert()
+        ? 'Insert Step'
+        : recordOnly
+          ? 'Record'
+          : 'Apply';
     const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
     $('processSummary').textContent = recordOnly
       ? 'Process · Record step'
@@ -265,15 +314,26 @@ export function createProcessPanelController({
     return true;
   }
 
-  function replayScopeCells(state) {
-    const activeCell = state?.activeCell;
-    const hierarchy = state?.layout?.hierarchy || {};
+  function replayScopeCells(state, requestedCell = null) {
+    const hierarchy = state?.layout?.hierarchy || {},
+      savedCell = requestedCell || state?.activeCell || null,
+      activeCell =
+        (savedCell && (savedCell in hierarchy || savedCell === state?.layout?.root)
+          ? savedCell
+          : null) ||
+        state?.layout?.root ||
+        Object.keys(hierarchy)[0] ||
+        null;
     if (!activeCell) return new Set();
     const out = new Set();
     const walk = (name) => {
       if (!name || out.has(name)) return;
       out.add(name);
-      for (const child of hierarchy?.[name]?.children || []) walk(child?.name);
+      const entry = hierarchy?.[name],
+        children = Array.isArray(entry) ? entry : entry?.children || [];
+      for (const child of children) {
+        walk(typeof child === 'string' ? child : child?.name);
+      }
     };
     walk(activeCell);
     return out;
@@ -285,8 +345,20 @@ export function createProcessPanelController({
       throw new Error('This Step does not contain the workspace state required for replay.');
     }
     const mode = replay.areaMode || operation.areaMode || 'full',
-      maskSourceMode = state.maskSourceMode === 'draw' ? 'draw' : 'file',
-      maskRoi = state.maskRoi ? structuredClone(state.maskRoi) : null;
+      maskContext = replay.maskContext || operation.maskContext || null,
+      maskSourceMode =
+        maskContext?.sourceMode === 'draw'
+          ? 'draw'
+          : maskContext?.sourceMode === 'file'
+            ? 'file'
+            : state.maskSourceMode === 'draw'
+              ? 'draw'
+              : 'file',
+      maskRoi = maskContext?.roi
+        ? structuredClone(maskContext.roi)
+        : state.maskRoi
+          ? structuredClone(state.maskRoi)
+          : null;
 
     if (maskSourceMode === 'draw') {
       return {
@@ -297,8 +369,12 @@ export function createProcessPanelController({
       };
     }
 
-    const selectedLayers = new Set(state.selectedLayerKeys || []),
-      scope = replayScopeCells(state),
+    const selectedLayers = new Set(
+        Array.isArray(maskContext?.layerKeys)
+          ? maskContext.layerKeys
+          : state.selectedLayerKeys || [],
+      ),
+      scope = replayScopeCells(state, maskContext?.cell || null),
       elements = (state.layout?.elements || [])
         .filter(
           (element) =>
@@ -315,97 +391,153 @@ export function createProcessPanelController({
       mode,
       maskSourceMode,
       maskRoi,
-      maskTransform: { ...(state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }) },
+      maskTransform: {
+        ...(maskContext?.transform ||
+          state.maskTransform ||
+          { x: 0, y: 0, scale: 1, rotation: 0 }),
+      },
       elements,
     };
   }
 
-  async function replayOperations(steps = []) {
-    let completed = 0;
-    for (const sourceStep of steps) {
-      const operation = structuredClone(sourceStep?.operation || sourceStep || {}),
-        sourceState = sourceStep?.operation ? sourceStep.state : null,
-        replay = replayDescriptor(operation);
-      if (!replay) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: 'This downstream Step predates replay metadata.',
-        };
-      }
+  async function replayOperations(steps = [], { taskLabel = '' } = {}) {
+    const executeReplay = async (taskContext = null) => {
+      let completed = 0;
+      const layerIdMap = new Map(),
+        total = steps.length;
 
-      if (operation.kind === 'record') {
+      for (let index = 0; index < steps.length; index += 1) {
+        if (taskContext?.signal?.aborted) {
+          return {
+            ok: false,
+            aborted: true,
+            completed,
+            failedOperation: null,
+            error: 'Replay aborted.',
+          };
+        }
+
+        const sourceStep = steps[index],
+          operation = structuredClone(sourceStep?.operation || sourceStep || {}),
+          sourceState = sourceStep?.operation ? sourceStep.state : null,
+          replay = replayDescriptor(operation),
+          stepLabel = operation.label || operation.kind || 'process Step',
+          stagePrefix = `Step ${index + 1}/${total} · ${stepLabel}`;
+
+        taskContext?.updateStage?.(stagePrefix);
+
+        if (!replay) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: 'This downstream Step predates replay metadata.',
+          };
+        }
+
+        if (operation.kind === 'record') {
+          saveHistory();
+          clearBaseRevertSnapshot();
+          const nextModel = structuredClone(getModel());
+          nextModel.revision = (Number(nextModel.revision) || 0) + 1;
+          nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+          setModel(nextModel);
+          recordProcessOperation(operation);
+          completed += 1;
+          continue;
+        }
+
+        if (!taskContext && processTaskController?.isBusy()) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: 'Another process task is already running.',
+          };
+        }
+
+        const params = structuredClone(replay.params || {});
+        remapHistoryReplayOperation(operation, params, layerIdMap);
+
+        let areaRequest;
+        try {
+          areaRequest = replayAreaRequest(operation, sourceState);
+        } catch (error) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: error?.message || 'Replay area could not be reconstructed.',
+          };
+        }
+
+        const task = taskContext
+          ? await taskContext.runWorker(
+              '../process-worker.js',
+              { model: getModel(), params, areaRequest },
+              { stagePrefix },
+            )
+          : await processTaskController.run(
+              getModel(),
+              params,
+              `Replaying ${stepLabel}…`,
+              areaRequest,
+            );
+
+        if (task?.aborted || task?.error || task?.busy) {
+          return {
+            ok: false,
+            aborted: Boolean(task?.aborted),
+            completed,
+            failedOperation: operation,
+            error: task?.error || (task?.aborted ? 'Replay aborted.' : 'Replay worker is busy.'),
+          };
+        }
+        if (!task.result?.changed) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: task.result?.error || 'The replayed operation did not change the model.',
+          };
+        }
+
         saveHistory();
         clearBaseRevertSnapshot();
-        const nextModel = structuredClone(getModel());
-        nextModel.revision = (Number(nextModel.revision) || 0) + 1;
-        nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
-        setModel(nextModel);
+        setModel(task.model);
+        captureHistoryReplayResult(operation, sourceStep, task.result, layerIdMap);
+        if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
+        else if (operation.kind === 'implant' && task.result.implantId) {
+          colorNewImplant(task.result.implantId);
+        } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
+          colorNewElectricalRegion(task.result.electricalRegionId);
+        }
         recordProcessOperation(operation);
         completed += 1;
-        continue;
       }
 
-      if (processTaskController?.isBusy()) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: 'Another process task is already running.',
-        };
-      }
+      renderAll();
+      return { ok: true, completed };
+    };
 
-      const params = structuredClone(replay.params || {});
-      let areaRequest;
-      try {
-        areaRequest = replayAreaRequest(operation, sourceState);
-      } catch (error) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: error?.message || 'Replay area could not be reconstructed.',
-        };
-      }
-      const task = await processTaskController.run(
-        getModel(),
-        params,
-        `Replaying ${operation.label || operation.kind || 'process Step'}…`,
-        areaRequest,
-      );
-      if (task?.aborted || task?.error || task?.busy) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: task?.error || (task?.aborted ? 'Replay aborted.' : 'Replay worker is busy.'),
-        };
-      }
-      if (!task.result?.changed) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: task.result?.error || 'The replayed operation did not change the model.',
-        };
-      }
+    if (!processTaskController?.runTask) return executeReplay();
 
-      saveHistory();
-      clearBaseRevertSnapshot();
-      setModel(task.model);
-      if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
-      else if (operation.kind === 'implant' && task.result.implantId) {
-        colorNewImplant(task.result.implantId);
-      } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
-        colorNewElectricalRegion(task.result.electricalRegionId);
-      }
-      recordProcessOperation(operation);
-      completed += 1;
+    const result = await processTaskController.runTask(executeReplay, {
+      label:
+        taskLabel ||
+        `Recalculating ${steps.length} later Step${steps.length === 1 ? '' : 's'}…`,
+      abortMessage: 'History recalculation aborted. The previous Variant will be restored.',
+      failurePrefix: 'History recalculation failed',
+    });
+    if (result?.busy) {
+      return {
+        ok: false,
+        completed: 0,
+        failedOperation: null,
+        error: 'Another background task is already running.',
+      };
     }
-
-    renderAll();
-    return { ok: true, completed };
+    return result;
   }
 
   async function recordProcessStep() {
@@ -466,7 +598,15 @@ export function createProcessPanelController({
   async function applyOperation() {
     let model = getModel();
     const activeFace = getActiveFace(),
-      { maskSourceMode, maskRoi, drawMask, maskTransform, layout } = getMaskState();
+      {
+        maskSourceMode,
+        maskRoi,
+        drawMask,
+        maskTransform,
+        layout,
+        activeCell,
+        selectedLayerKeys,
+      } = getMaskState();
     if (processTaskController?.isBusy()) {
       status('An operation is already running. Abort it before starting another.', 'warning');
       return;
@@ -479,7 +619,17 @@ export function createProcessPanelController({
     $('operationThickness').value = formatLengthField(thickness);
     if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
   
-    const areaMode = $('operationArea').value;
+    const areaMode = $('operationArea').value,
+      maskContext = normalizedMaskContext({
+        maskSourceMode,
+        maskRoi,
+        drawMask,
+        maskTransform,
+        layout,
+        activeCell,
+        selectedLayerKeys,
+        areaMode,
+      });
   
     const name =
         type === 'implant'
@@ -695,10 +845,16 @@ export function createProcessPanelController({
       electricalRegionSource: type === 'electrical' ? params.electricalRegionSource : null,
       maskSourceMode,
       maskRoi: Boolean(maskRoi),
+      maskContext: structuredClone(maskContext),
+      resultLayerId: type === 'add' ? result.layerId || null : null,
+      resultImplantId: type === 'implant' ? result.implantId || null : null,
+      resultElectricalRegionId:
+        type === 'electrical' ? result.electricalRegionId || null : null,
       replay: {
         version: 1,
         params: structuredClone(params),
         areaMode,
+        maskContext: structuredClone(maskContext),
       },
     };
     recordProcessOperation(operation);

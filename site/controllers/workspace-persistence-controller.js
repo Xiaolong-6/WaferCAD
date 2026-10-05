@@ -9,6 +9,9 @@ import {
 
 const PERSIST_MARKER_KEY = 'wafercad.workspace.persisted.v1';
 const CHANNEL_NAME = 'wafercad.workspace.sync.v1';
+const AUTOSAVE_IDLE_MS = 1800;
+const INTERACTION_SETTLE_MS = 1400;
+const TRANSIENT_INTERACTION_MS = 450;
 
 function parseMarker(raw) {
   try {
@@ -46,6 +49,7 @@ export function createWorkspacePersistenceController({
   getProjectName,
   setProjectName,
   syncProjectNameInput,
+  taskController = null,
   confirmAction = async () => false,
   chooseAction = async () => 'cancel',
   storage = globalThis.localStorage,
@@ -67,7 +71,9 @@ export function createWorkspacePersistenceController({
     remoteSaveId = null,
     ownerTabId = null,
     channel = null,
-    channelSequence = 0;
+    channelSequence = 0,
+    interactionDepth = 0,
+    transientTimer = null;
   const flushWaiters = new Map();
 
   function readMarker() {
@@ -149,11 +155,49 @@ export function createWorkspacePersistenceController({
     timer = null;
   }
 
+  function clearTransientTimer() {
+    if (transientTimer == null) return;
+    clearTimeout(transientTimer);
+    transientTimer = null;
+  }
+
+  function beginInteraction() {
+    interactionDepth += 1;
+    clearTimer();
+  }
+
+  function endInteraction() {
+    interactionDepth = Math.max(0, interactionDepth - 1);
+    if (!interactionDepth && transientTimer == null && dirty) {
+      schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
+    }
+  }
+
+  function pulseInteraction(delay = TRANSIENT_INTERACTION_MS) {
+    clearTimer();
+    clearTransientTimer();
+    transientTimer = setTimeout(() => {
+      transientTimer = null;
+      if (!interactionDepth && dirty) {
+        schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
+      }
+    }, Math.max(0, Number(delay) || TRANSIENT_INTERACTION_MS));
+  }
+
   function markDirty() {
     editVersion++;
     dirty = true;
     failed = false;
     syncSaveStatus();
+  }
+
+  async function runVisibleTask(executor, options) {
+    if (taskController?.runTask) return taskController.runTask(executor, options);
+    try {
+      return await executor({ updateStage() {} });
+    } catch (error) {
+      return { error: error?.message || String(error || 'Task failed.') };
+    }
   }
 
   async function saveCurrentProject(project) {
@@ -171,7 +215,7 @@ export function createWorkspacePersistenceController({
     return true;
   }
 
-  function persistNow() {
+  function persistNow({ force = false } = {}) {
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
       return Promise.resolve(false);
@@ -179,6 +223,10 @@ export function createWorkspacePersistenceController({
     if (!dirty && !saving) {
       syncSaveStatus();
       return Promise.resolve(true);
+    }
+    if (!force && (interactionDepth > 0 || transientTimer != null)) {
+      syncSaveStatus();
+      return Promise.resolve(false);
     }
 
     clearTimer();
@@ -210,17 +258,21 @@ export function createWorkspacePersistenceController({
     return write;
   }
 
-  function schedule({ markDirty: shouldMarkDirty = true } = {}) {
+  function schedule({
+    markDirty: shouldMarkDirty = true,
+    delay = AUTOSAVE_IDLE_MS,
+  } = {}) {
     if (shouldMarkDirty) markDirty();
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
       return;
     }
     clearTimer();
+    if (interactionDepth > 0 || transientTimer != null) return;
     timer = setTimeout(() => {
       timer = null;
       void persistNow();
-    }, 800);
+    }, Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS));
   }
 
   async function refreshRecoveryOptions() {
@@ -314,7 +366,7 @@ export function createWorkspacePersistenceController({
         ) {
           return;
         }
-        void persistNow().finally(() => {
+        void persistNow({ force: true }).finally(() => {
           try {
             channel?.postMessage({
               type: 'flush-response',
@@ -383,29 +435,50 @@ export function createWorkspacePersistenceController({
       return;
     }
 
-    try {
-      const current = buildProjectSnapshot(true);
-      await createWorkspaceRecoveryCheckpoint(current, {
-        appCommit,
-        reason: 'pre-restore',
-      });
-      const recovered = await loadWorkspaceRecoveryPoint(key);
-      if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
-      loadProjectWithSnapshotHistory(recovered);
-      syncBaseControls();
-      syncTransformInputs();
-      renderAll();
-      renderSnapshots();
-      fit3d();
-      markDirty();
-      const persisted = await persistNow();
-      if (!persisted) throw new Error('Another tab took over local autosave.');
-      await refreshRecoveryOptions();
-      status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
-    } catch (error) {
-      console.error(error);
-      status(`Recovery restore failed: ${error.message}`, 'error');
+    const result = await runVisibleTask(
+      async ({ updateStage }) => {
+        updateStage('Protecting current workspace…');
+        const current = buildProjectSnapshot(true);
+        await createWorkspaceRecoveryCheckpoint(current, {
+          appCommit,
+          reason: 'pre-restore',
+        });
+
+        updateStage('Loading Recovery checkpoint…');
+        const recovered = await loadWorkspaceRecoveryPoint(key);
+        if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
+        loadProjectWithSnapshotHistory(recovered);
+        syncBaseControls();
+        syncTransformInputs();
+        renderAll();
+        renderSnapshots();
+        fit3d();
+        markDirty();
+
+        updateStage('Saving restored workspace…');
+        const persisted = await persistNow({ force: true });
+        if (!persisted) throw new Error('Another tab took over local autosave.');
+        await refreshRecoveryOptions();
+        return { ok: true };
+      },
+      {
+        label: 'Restoring Recovery checkpoint…',
+        failurePrefix: 'Recovery restore failed',
+        abortable: false,
+      },
+    );
+
+    if (result?.busy) {
+      status('Another background task is already running.', 'warning');
+      return;
     }
+    if (result?.error || !result?.ok) {
+      if (result?.error && !taskController?.runTask) {
+        status(`Recovery restore failed: ${result.error}`, 'error');
+      }
+      return;
+    }
+    status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
   }
 
   async function reloadSafely() {
@@ -456,12 +529,30 @@ export function createWorkspacePersistenceController({
   async function checkpointCurrent(reason = 'pre-destructive-action') {
     if (!ready || !hasWriteAccess()) return false;
     clearTimer();
-    const project = buildProjectSnapshot(true);
-    await createWorkspaceRecoveryCheckpoint(project, {
-      appCommit,
-      reason,
-    });
-    await refreshRecoveryOptions();
+
+    const result = await runVisibleTask(
+      async ({ updateStage }) => {
+        updateStage('Protecting current workspace…');
+        const project = buildProjectSnapshot(true);
+        await createWorkspaceRecoveryCheckpoint(project, {
+          appCommit,
+          reason,
+        });
+        await refreshRecoveryOptions();
+        return { ok: true };
+      },
+      {
+        label: 'Creating Recovery checkpoint…',
+        failurePrefix: 'Recovery checkpoint failed',
+        abortable: false,
+      },
+    );
+
+    if (result?.busy) {
+      status('Another background task is already running.', 'warning');
+      return false;
+    }
+    if (result?.error || !result?.ok) return false;
     return true;
   }
 
@@ -470,26 +561,48 @@ export function createWorkspacePersistenceController({
       status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
       return;
     }
-    try {
-      const projectName = normalizedProjectName(getProjectName());
-      setProjectName(projectName);
-      syncProjectNameInput();
-      const persisted = await persistNow();
-      if (!persisted) throw new Error('Another tab took over local autosave.');
-      const project = buildProjectSnapshot(true);
-      await createWorkspaceRecoveryCheckpoint(project, {
-        appCommit,
-        reason: `manual-save · ${projectName}`,
-      });
-      await refreshRecoveryOptions();
-      setSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`, 'saved');
-      status(`Saved "${projectName}" locally. It is available in Recovery.`);
-    } catch (error) {
-      console.error(error);
+
+    const projectName = normalizedProjectName(getProjectName());
+    setProjectName(projectName);
+    syncProjectNameInput();
+
+    const result = await runVisibleTask(
+      async ({ updateStage }) => {
+        updateStage('Saving current workspace…');
+        const persisted = await persistNow({ force: true });
+        if (!persisted) throw new Error('Another tab took over local autosave.');
+
+        updateStage('Creating Recovery checkpoint…');
+        const project = buildProjectSnapshot(true);
+        await createWorkspaceRecoveryCheckpoint(project, {
+          appCommit,
+          reason: `manual-save · ${projectName}`,
+        });
+        await refreshRecoveryOptions();
+        return { ok: true };
+      },
+      {
+        label: `Saving "${projectName}"…`,
+        failurePrefix: 'Local Save failed',
+        abortable: false,
+      },
+    );
+
+    if (result?.busy) {
+      status('Another background task is already running.', 'warning');
+      return;
+    }
+    if (result?.error || !result?.ok) {
       failed = true;
       syncSaveStatus();
-      status(`Local Save failed: ${error.message}`, 'error');
+      if (result?.error && !taskController?.runTask) {
+        status(`Local Save failed: ${result.error}`, 'error');
+      }
+      return;
     }
+
+    setSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`, 'saved');
+    status(`Saved "${projectName}" locally. It is available in Recovery.`);
   }
 
   async function takeOverWorkspace() {
@@ -564,7 +677,7 @@ export function createWorkspacePersistenceController({
         });
       }
       if (savedChanged && !dirty) markDirty();
-      const persisted = dirty ? await persistNow() : true;
+      const persisted = dirty ? await persistNow({ force: true }) : true;
       if (!persisted || !hasWriteAccess()) {
         status('Workspace takeover was interrupted by another tab before this state could be saved.', 'error');
         syncSaveStatus();
@@ -681,6 +794,21 @@ export function createWorkspacePersistenceController({
   function bind() {
     ensureChannel();
     windowRef?.addEventListener?.('storage', handlePersistStorage);
+    root?.addEventListener?.('pointerdown', beginInteraction, true);
+    windowRef?.addEventListener?.('pointerup', endInteraction, true);
+    windowRef?.addEventListener?.('pointercancel', endInteraction, true);
+    root?.addEventListener?.(
+      'wheel',
+      () => pulseInteraction(),
+      { capture: true, passive: true },
+    );
+    root?.addEventListener?.(
+      'input',
+      (event) => {
+        if (event.target?.type === 'range') pulseInteraction();
+      },
+      true,
+    );
 
     $('workspaceTakeOverBtn').onclick = () => {
       void takeOverWorkspace();
@@ -711,18 +839,31 @@ export function createWorkspacePersistenceController({
       ) {
         return;
       }
-      try {
-        const removed = await clearWorkspaceRecoveryPoints();
-        await refreshRecoveryOptions();
-        status(
-          removed
-            ? `Cleared ${removed} local Recovery checkpoint${removed === 1 ? '' : 's'}.`
-            : 'Recovery is already empty.',
-        );
-      } catch (error) {
-        console.error(error);
-        status(`Could not clear Recovery: ${error.message}`, 'error');
+      const result = await runVisibleTask(
+        async ({ updateStage }) => {
+          updateStage('Removing local Recovery checkpoints…');
+          const removed = await clearWorkspaceRecoveryPoints();
+          await refreshRecoveryOptions();
+          return { ok: true, removed };
+        },
+        {
+          label: 'Clearing Recovery…',
+          failurePrefix: 'Could not clear Recovery',
+          abortable: false,
+        },
+      );
+
+      if (result?.busy) {
+        status('Another background task is already running.', 'warning');
+        return;
       }
+      if (result?.error || !result?.ok) return;
+
+      status(
+        result.removed
+          ? `Cleared ${result.removed} local Recovery checkpoint${result.removed === 1 ? '' : 's'}.`
+          : 'Recovery is already empty.',
+      );
     };
     $('saveProjectBtn').onclick = () => {
       void saveCheckpoint();
@@ -738,6 +879,10 @@ export function createWorkspacePersistenceController({
     syncSessionState,
     setUpdateCommit,
     initializePersistedWorkspace,
+    beginInteraction,
+    endInteraction,
+    pulseInteraction,
+    isInteracting: () => interactionDepth > 0 || transientTimer != null,
     isDirty: () => dirty,
     getBaseSaveId: () => baseSaveId,
     getRemoteSaveId: () => remoteSaveId,

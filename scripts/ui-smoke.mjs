@@ -241,12 +241,25 @@ assert.ok(
   'desktop example card should place preview to the left of copy',
 );
 assert.ok(
-  Math.abs(welcomeStageBox.width - welcomeStageBox.height) <= 2,
-  'project preview stage should stay square',
+  Math.abs(welcomeStageBox.height - welcomeVisualBox.height) <= 2,
+  'project preview stage should fill the visual column',
+);
+assert.ok(welcomeStageBox.height >= 280, 'project preview should keep a useful inspection height');
+assert.equal(await photodetectorCard.locator('.welcome-example-project-badge').count(), 0);
+assert.ok(
+  (await photodetectorCard.locator('.welcome-example-tags span').count()) <= 4,
+  'example cards should show at most three tags plus one overflow count',
 );
 assert.deepEqual(
   await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
   ['Main', 'Mask', '3D', 'Section'],
+);
+const welcomeTabsBox = await photodetectorCard.locator('.welcome-example-view-tabs').boundingBox();
+assert.ok(welcomeTabsBox);
+assert.ok(
+  welcomeTabsBox.y >= welcomeStageBox.y &&
+    welcomeTabsBox.y + welcomeTabsBox.height <= welcomeStageBox.y + welcomeStageBox.height + 1,
+  'preview view switcher should stay inside the project preview',
 );
 const previewFrames = page.locator('.welcome-example-project-frame');
 assert.equal(await previewFrames.count(), 4);
@@ -969,6 +982,160 @@ assert.equal(
 );
 assert.deepEqual(historyRecomputeErrors, []);
 await historyRecomputeContext.close();
+
+// Replay is transactional: if a later Step fails after earlier replay Steps
+// succeeded, the original Variant and geometry are restored automatically.
+const historyReplayFailureContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyReplayFailurePage = await historyReplayFailureContext.newPage();
+const historyReplayFailureErrors = [];
+historyReplayFailurePage.on('pageerror', (error) => historyReplayFailureErrors.push(error.message));
+await gotoWelcome(historyReplayFailurePage);
+await historyReplayFailurePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'history-replay-failure-base.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await historyReplayFailurePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyReplayFailurePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-replay-failure-base.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyReplayFailurePage, 'process');
+await historyReplayFailurePage.locator('[data-process-mode="add"]').click();
+await historyReplayFailurePage.locator('#operationArea').selectOption('full');
+await historyReplayFailurePage.locator('#growthMode').selectOption('direct');
+await historyReplayFailurePage.locator('#operationThickness').fill('0.05');
+for (const name of ['Fail Seed', 'Fail A', 'Fail B', 'Fail C', 'Fail D', 'Fail E']) {
+  await historyReplayFailurePage.locator('#layerName').fill(name);
+  await historyReplayFailurePage.locator('#applyOperationBtn').click();
+  await historyReplayFailurePage.waitForFunction(
+    (expected) =>
+      (document.getElementById('statusText')?.textContent || '').includes(`Deposited ${expected}`),
+    name,
+    { timeout: 30000 },
+  );
+}
+
+await openFunctionPanel(historyReplayFailurePage, 'snapshots');
+const failAStep = historyReplayFailurePage.locator('.history-step-wrap', { hasText: 'Fail A' }).first();
+await failAStep.locator('.snapshot-more-trigger').click();
+await failAStep.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+await historyReplayFailurePage.waitForFunction(
+  () => /Editing "Deposit Fail A/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+await historyReplayFailurePage.locator('#layerName').fill('Fail A edited');
+
+// The edited Step itself is the first process worker after this point. Let two
+// downstream replay workers finish, then fail the third downstream worker.
+await historyReplayFailurePage.evaluate(() => {
+  const NativeWorker = globalThis.Worker;
+  let processWorkerCount = 0;
+  globalThis.Worker = new Proxy(NativeWorker, {
+    construct(Target, args) {
+      const url = String(args[0] || '');
+      if (url.includes('process-worker.js')) {
+        processWorkerCount += 1;
+        if (processWorkerCount === 4) {
+          throw new Error('synthetic replay worker failure');
+        }
+      }
+      return Reflect.construct(Target, args);
+    },
+  });
+});
+
+await historyReplayFailurePage.locator('#applyOperationBtn').click();
+await historyReplayFailurePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+await chooseConfirmation(historyReplayFailurePage, 'replace-replay');
+await historyReplayFailurePage.waitForFunction(
+  () => /Replay stopped after 2\/4 later Steps/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+assert.match(
+  await historyReplayFailurePage.locator('#statusText').textContent(),
+  /Original Variant restored/,
+);
+await openFunctionPanel(historyReplayFailurePage, 'snapshots');
+const failedReplayText = await historyReplayFailurePage
+  .locator('.history-variant[data-variant-id="main"]')
+  .textContent();
+for (const name of ['Fail A', 'Fail B', 'Fail C', 'Fail D', 'Fail E']) {
+  assert.match(failedReplayText, new RegExp(name));
+}
+assert.doesNotMatch(failedReplayText, /Fail A edited/);
+assert.deepEqual(historyReplayFailureErrors, []);
+await historyReplayFailureContext.close();
+
+// Autosave must not serialize a large workspace while the user is actively
+// dragging the 3D camera. A pending dirty save is held until pointer release.
+const interactionAutosaveContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const interactionAutosavePage = await interactionAutosaveContext.newPage();
+const interactionAutosaveErrors = [];
+interactionAutosavePage.on('pageerror', (error) => interactionAutosaveErrors.push(error.message));
+await gotoWelcome(interactionAutosavePage);
+await interactionAutosavePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'interaction-autosave-base.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await interactionAutosavePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await interactionAutosavePage.waitForFunction(
+  () => document.documentElement.dataset.appReady === 'true',
+  null,
+  { timeout: 30000 },
+);
+await interactionAutosavePage.waitForFunction(
+  () => document.querySelector('#threeHost canvas'),
+  null,
+  { timeout: 30000 },
+);
+await interactionAutosavePage.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.55';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await interactionAutosavePage.waitForFunction(
+  () => /Unsaved changes/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 3000 },
+);
+await interactionAutosavePage.evaluate(() => {
+  const target = document.getElementById('threeHost');
+  target.dispatchEvent(
+    new PointerEvent('pointerdown', {
+      bubbles: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons: 1,
+    }),
+  );
+});
+await interactionAutosavePage.waitForTimeout(2300);
+assert.match(
+  await interactionAutosavePage.locator('#workspaceSaveStatus').textContent(),
+  /Unsaved changes/,
+);
+await interactionAutosavePage.evaluate(() => {
+  window.dispatchEvent(
+    new PointerEvent('pointerup', {
+      bubbles: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons: 0,
+    }),
+  );
+});
+await interactionAutosavePage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 8000 },
+);
+assert.deepEqual(interactionAutosaveErrors, []);
+await interactionAutosaveContext.close();
 
 const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];

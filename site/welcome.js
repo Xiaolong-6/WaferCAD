@@ -73,11 +73,6 @@ function createProjectPreview(example) {
   const stage = document.createElement('div');
   stage.className = 'welcome-example-project-stage';
 
-  const badge = document.createElement('span');
-  badge.className = 'welcome-example-project-badge';
-  badge.textContent = 'Project preview';
-  stage.append(badge);
-
   if (example.preview?.path) stage.append(createImagePreview(example, { fallback: true }));
 
   const loading = document.createElement('div');
@@ -129,7 +124,8 @@ function createProjectPreview(example) {
     tabs.append(button);
   }
 
-  host.append(stage, tabs);
+  stage.append(tabs);
+  host.append(stage);
   requestAnimationFrame(() => {
     if (projectPreviewObserver) projectPreviewObserver.observe(host);
     else activateProjectPreviewFrame(frame);
@@ -137,29 +133,37 @@ function createProjectPreview(example) {
   return host;
 }
 
+function compactSourceLabel(source) {
+  const citation = String(source?.citation || '').trim(),
+    author = citation.match(/^(.+?et al\.)/)?.[1] || citation.split(',')[0]?.trim(),
+    year = citation.match(/\((\d{4})\)/)?.[1];
+  return [author, year].filter(Boolean).join(' · ') || source?.doi || 'Source';
+}
+
 function createSourceList(example) {
   if (!example.sources?.length) return null;
   const host = document.createElement('div');
   host.className = 'welcome-example-sources';
-
-  const label = document.createElement('strong');
-  label.textContent = example.sources.length > 1 ? 'Sources:' : 'Source:';
-  host.append(label);
+  host.setAttribute('aria-label', example.sources.length > 1 ? 'Sources' : 'Source');
 
   for (const source of example.sources) {
     const row = document.createElement('div');
     row.className = 'welcome-example-source-row';
-    const citation = document.createElement('span');
-    citation.textContent = source.citation;
-    row.append(citation);
+    const label = compactSourceLabel(source);
 
     if (source.href) {
       const link = document.createElement('a');
       link.href = source.href;
       link.target = '_blank';
       link.rel = 'noreferrer noopener';
-      link.textContent = source.doi || 'Source';
-      row.append(document.createTextNode(' · '), link);
+      link.textContent = label;
+      link.title = source.citation || source.doi || label;
+      row.append(link);
+    } else {
+      const citation = document.createElement('span');
+      citation.textContent = label;
+      citation.title = source.citation || label;
+      row.append(citation);
     }
     host.append(row);
   }
@@ -203,10 +207,23 @@ function renderExampleCards() {
 
     const tags = document.createElement('div');
     tags.className = 'welcome-example-tags';
-    for (const tag of example.tags || []) {
+    const exampleTags = example.tags || [],
+      visibleTags = exampleTags.slice(0, 3);
+    for (const tag of visibleTags) {
       const chip = document.createElement('span');
       chip.textContent = tag;
       tags.append(chip);
+    }
+    if (exampleTags.length > visibleTags.length) {
+      const more = document.createElement('span');
+      more.className = 'welcome-example-tag-more';
+      more.textContent = `+${exampleTags.length - visibleTags.length}`;
+      more.title = exampleTags.slice(visibleTags.length).join(', ');
+      more.setAttribute(
+        'aria-label',
+        `${exampleTags.length - visibleTags.length} more tags: ${more.title}`,
+      );
+      tags.append(more);
     }
 
     const action = document.createElement('button');

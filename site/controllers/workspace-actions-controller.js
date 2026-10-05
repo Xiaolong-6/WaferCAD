@@ -49,9 +49,24 @@ export function createWorkspaceActionsController({
   renderSnapshots,
   onProjectChanged = () => {},
   getModel = () => null,
+  taskController = null,
 }) {
   const $ = (id) => root.getElementById(id);
-  let glbAbortController = null;
+
+  async function runVisibleTask(executor, options) {
+    if (taskController?.runTask) return taskController.runTask(executor, options);
+    try {
+      const abortController = new AbortController();
+      return await executor({
+        signal: abortController.signal,
+        updateStage() {},
+      });
+    } catch (error) {
+      const message = error?.message || String(error || 'Task failed.');
+      status(`${options?.failurePrefix || 'Task failed'}: ${message}`, 'error');
+      return { error: message };
+    }
+  }
 
   function syncRoughHeightLimit() {
     const depth = Number($('operationThickness')?.value);
@@ -236,73 +251,84 @@ export function createWorkspaceActionsController({
     const glbButton = $('threeExportModelBtn'),
       glbCancelButton = $('threeExportCancelBtn'),
       pngButton = $('threeExportPngBtn'),
-      setGlbBusy = (busy, progress = null) => {
+      setThreeExportBusy = (busy) => {
         glbButton.disabled = busy;
         pngButton.disabled = busy;
-        glbCancelButton.hidden = !busy;
-        glbCancelButton.disabled = !busy;
         glbButton.setAttribute('aria-busy', String(busy));
-        glbButton.textContent =
-          busy && Number.isFinite(progress)
-            ? `GLB · ${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`
-            : 'GLB · physical';
+        if (glbCancelButton) {
+          glbCancelButton.hidden = true;
+          glbCancelButton.disabled = true;
+        }
       };
 
-    setGlbBusy(false);
-
-    glbCancelButton.onclick = () => {
-      glbAbortController?.abort();
-    };
+    setThreeExportBusy(false);
 
     glbButton.onclick = async () => {
-      if (glbAbortController) return;
-      glbAbortController = new AbortController();
-      setGlbBusy(true, 0);
-      try {
-        const blob = await getThreeView()?.exportGlb({
-          signal: glbAbortController.signal,
-          onProgress: (progress, label) => {
-            setGlbBusy(true, progress);
-            status(
-              `Exporting ${getRoi() ? 'ROI' : 'full'} GLB… ${Math.round(progress * 100)}%${label ? ` · ${label}` : ''}`,
-            );
-          },
-        });
-        if (!blob) throw new Error('3D export is unavailable.');
-        downloadBlob(blob, 'wafercad-model.glb');
-        status(
-          modelHasDisplayMorphology()
-            ? `Exported ${getRoi() ? 'ROI' : 'full'} GLB in physical metres with Rough/Pyramid morphology embedded.`
-            : `Exported ${getRoi() ? 'ROI' : 'full'} 3D model as GLB (physical metres).`,
-          'success',
-        );
-      } catch (error) {
-        if (error?.name === 'AbortError') {
-          status('3D GLB export cancelled.');
-        } else {
-          console.error(error);
-          status(`3D model export failed: ${error.message}`, 'error');
-        }
-      } finally {
-        glbAbortController = null;
-        setGlbBusy(false);
-        closeExport('threeExportModelBtn');
+      setThreeExportBusy(true);
+      const result = await runVisibleTask(
+        async ({ signal, updateStage }) => {
+          const blob = await getThreeView()?.exportGlb({
+            signal,
+            onProgress: (progress, label) => {
+              const percent = Math.max(0, Math.min(100, Math.round(progress * 100)));
+              updateStage(`${percent}%${label ? ` · ${label}` : ''}`);
+            },
+          });
+          if (!blob) throw new Error('3D export is unavailable.');
+          return { ok: true, blob };
+        },
+        {
+          label: `Exporting ${getRoi() ? 'ROI' : 'full'} 3D GLB…`,
+          abortMessage: '3D GLB export cancelled. No file was written.',
+          failurePrefix: '3D model export failed',
+        },
+      );
+      setThreeExportBusy(false);
+      closeExport('threeExportModelBtn');
+
+      if (result?.busy) {
+        status('Another background task is already running.', 'warning');
+        return;
       }
+      if (result?.aborted || result?.error || !result?.blob) return;
+
+      downloadBlob(result.blob, 'wafercad-model.glb');
+      status(
+        modelHasDisplayMorphology()
+          ? `Exported ${getRoi() ? 'ROI' : 'full'} GLB in physical metres with Rough/Pyramid morphology embedded.`
+          : `Exported ${getRoi() ? 'ROI' : 'full'} 3D model as GLB (physical metres).`,
+        'success',
+      );
     };
 
-    $('threeExportPngBtn').onclick = async () => {
-      try {
-        const blob = await getThreeView()?.capturePng(3);
-        if (!blob) throw new Error('3D screenshot is unavailable.');
-        downloadBlob(blob, 'wafercad-3d-3x.png');
-        status('Exported 3× high-resolution 3D PNG.');
-      } catch (error) {
-        console.error(error);
-        status(`3D screenshot failed: ${error.message}`, 'error');
-      } finally {
-        closeExport('threeExportPngBtn');
+    pngButton.onclick = async () => {
+      setThreeExportBusy(true);
+      const result = await runVisibleTask(
+        async ({ updateStage }) => {
+          updateStage('Rendering 3× frame…');
+          const blob = await getThreeView()?.capturePng(3);
+          if (!blob) throw new Error('3D screenshot is unavailable.');
+          return { ok: true, blob };
+        },
+        {
+          label: 'Capturing 3D PNG…',
+          failurePrefix: '3D screenshot failed',
+          abortable: false,
+        },
+      );
+      setThreeExportBusy(false);
+      closeExport('threeExportPngBtn');
+
+      if (result?.busy) {
+        status('Another background task is already running.', 'warning');
+        return;
       }
+      if (result?.error || !result?.blob) return;
+
+      downloadBlob(result.blob, 'wafercad-3d-3x.png');
+      status('Exported 3× high-resolution 3D PNG.');
     };
+
   }
 
   function bindHistory() {

@@ -89,7 +89,9 @@ function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } =
       maskRoi: null,
       drawMask: { shapes: [] },
       maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-      layout: { elements: [] },
+      layout: { root: 'TOP', elements: [] },
+      activeCell: 'TOP',
+      selectedLayerKeys: ['7|0', '8|2'],
     }),
     operationAreaGeometry: () => [],
     selectedElement: () => true,
@@ -97,9 +99,9 @@ function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } =
     formatLengthField: (value) => String(value),
     processTaskController: {
       isBusy: () => false,
-      run: async () => {
+      run: async (...args) => {
         events.push('run-worker');
-        return taskResult(model);
+        return taskResult(model, ...args);
       },
     },
     saveHistory: () => events.push('save-history'),
@@ -275,6 +277,14 @@ test('successful geometry Apply stores a deterministic replay request', async ()
     growth: 'conformal',
   });
   assert.equal(recorded[0].replay.areaMode, 'full');
+  assert.deepEqual(recorded[0].maskContext, {
+    sourceMode: 'file',
+    cell: 'TOP',
+    layerKeys: ['7|0', '8|2'],
+    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    roi: null,
+  });
+  assert.deepEqual(recorded[0].replay.maskContext, recorded[0].maskContext);
   assert.equal('areaRequest' in recorded[0].replay, false);
 });
 
@@ -354,3 +364,89 @@ test('legacy downstream Step stops replay without guessing missing parameters', 
   assert.match(result.error, /predates replay metadata/i);
   assert.equal(events.includes('run-worker'), false);
 });
+
+
+test('replay selected mask traverses the saved Cell hierarchy and pinned Layer context', async () => {
+  const events = [],
+    capturedAreas = [],
+    controller = controllerForTask(
+      (model, _workerModel, _params, _label, areaRequest) => {
+        capturedAreas.push(areaRequest);
+        return {
+          result: { changed: true, layerId: 'layer-root-replay' },
+          model: {
+            ...model,
+            revision: model.revision + 1,
+            processRevision: model.processRevision + 1,
+          },
+        };
+      },
+      events,
+    );
+
+  const maskContext = {
+    sourceMode: 'file',
+    cell: 'TOP',
+    layerKeys: ['7|0'],
+    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    roi: null,
+  };
+  const result = await controller.replayOperations([
+    {
+      operation: {
+        kind: 'add',
+        label: 'Deposit selected ITO',
+        areaMode: 'mask',
+        maskContext,
+        replay: {
+          version: 1,
+          params: {
+            type: 'add',
+            name: 'ITO',
+            targetLayerId: '',
+            thickness: 0.075,
+            face: 'front',
+            growth: 'direct',
+          },
+          areaMode: 'mask',
+          maskContext,
+        },
+      },
+      state: {
+        maskSourceMode: 'file',
+        maskRoi: null,
+        maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+        selectedLayerKeys: ['99|0'],
+        activeCell: null,
+        layout: {
+          root: 'TOP',
+          hierarchy: {
+            TOP: [{ name: 'CHILD', count: 1 }],
+            CHILD: [],
+          },
+          elements: [
+            {
+              kind: 'polygon',
+              layer: 7,
+              datatype: 0,
+              sourceCell: 'CHILD',
+              points: [
+                [0, 0],
+                [10, 0],
+                [10, 10],
+                [0, 10],
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ]);
+
+  assert.deepEqual(result, { ok: true, completed: 1 });
+  assert.equal(capturedAreas.length, 1);
+  assert.equal(capturedAreas[0].mode, 'mask');
+  assert.equal(capturedAreas[0].elements.length, 1);
+  assert.deepEqual(capturedAreas[0].maskTransform, maskContext.transform);
+});
+

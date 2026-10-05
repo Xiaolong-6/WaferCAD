@@ -1503,3 +1503,474 @@ test('history truncation refuses to orphan a dependent child Variant', () => {
     ['A', 'B', 'C'],
   );
 });
+
+
+test('insertBeforeContext carries the selected Step and later replay tail with stable entity refs', () => {
+  let live = {
+    model: {
+      processRevision: 0,
+      layers: [{ id: 'base', name: 'Base' }],
+      implants: [],
+      electricalRegions: [],
+    },
+    mask: 'base',
+  };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = {
+    ...live,
+    model: {
+      ...live.model,
+      processRevision: 1,
+      layers: [...live.model.layers, { id: 'layer-1', name: 'Oxide' }],
+    },
+    mask: 'mask-a',
+  };
+  const first = manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Oxide · Directional · 0.1 µm',
+    name: 'Oxide',
+    thickness: 0.1,
+    growth: 'direct',
+    replay: {
+      version: 1,
+      params: { type: 'add', name: 'Oxide', thickness: 0.1, growth: 'direct' },
+      areaMode: 'full',
+    },
+  });
+
+  live = {
+    ...live,
+    model: {
+      ...live.model,
+      processRevision: 2,
+      layers: [...live.model.layers, { id: 'layer-2', name: 'Layer 2' }],
+    },
+    mask: 'mask-b',
+  };
+  const second = manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Layer 2 · Directional · 0.2 µm',
+    name: 'Layer 2',
+    thickness: 0.2,
+    growth: 'direct',
+    replay: {
+      version: 1,
+      params: { type: 'add', name: 'Layer 2', thickness: 0.2, growth: 'direct' },
+      areaMode: 'full',
+    },
+  });
+
+  live = {
+    ...live,
+    model: { ...live.model, processRevision: 3 },
+    mask: 'mask-c',
+  };
+  const third = manager.recordOperation({
+    kind: 'grow',
+    label: 'Extend Layer 2 · Conformal · 0.05 µm',
+    name: 'Layer 2',
+    targetLayerId: 'layer-2',
+    thickness: 0.05,
+    growth: 'conformal',
+    replay: {
+      version: 1,
+      params: {
+        type: 'grow',
+        name: 'Layer 2',
+        targetLayerId: 'layer-2',
+        thickness: 0.05,
+        growth: 'conformal',
+      },
+      areaMode: 'full',
+    },
+  });
+
+  const context = manager.insertBeforeContext(second.id, { includeReplayStates: true });
+  assert.equal(context.editable, true);
+  assert.equal(context.parentNodeId, first.id);
+  assert.equal(context.laterStepCount, 2);
+  assert.equal(context.replayableTail, true);
+  assert.deepEqual(
+    context.replaySteps.map((step) => step.id),
+    [second.id, third.id],
+  );
+  assert.equal(context.replaySteps[0].entityRefs.resultLayerId, 'layer-2');
+  assert.equal(context.replaySteps[1].entityRefs.targetLayerId, 'layer-2');
+  assert.equal(context.replaySteps[0].state.mask, 'mask-b');
+
+  assert.ok(manager.restoreStepInput(second.id));
+  assert.equal(live.model.processRevision, 1);
+  assert.equal(live.mask, 'mask-b');
+});
+
+test('renaming an entity propagates through restorable History states and replay metadata', () => {
+  let live = {
+    model: {
+      processRevision: 0,
+      layers: [{ id: 'base', name: 'Base' }],
+      implants: [],
+      electricalRegions: [],
+    },
+  };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = {
+    model: {
+      ...live.model,
+      processRevision: 1,
+      layers: [...live.model.layers, { id: 'layer-6', name: 'Layer 6' }],
+    },
+  };
+  const deposit = manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Layer 6 · Directional · 0.2 µm',
+    name: 'Layer 6',
+    thickness: 0.2,
+    growth: 'direct',
+    replay: {
+      version: 1,
+      params: { type: 'add', name: 'Layer 6', thickness: 0.2, growth: 'direct' },
+      areaMode: 'full',
+    },
+  });
+
+  live = {
+    model: {
+      ...live.model,
+      processRevision: 2,
+    },
+  };
+  manager.recordOperation({
+    kind: 'grow',
+    label: 'Extend Layer 6 · Conformal · 0.05 µm',
+    name: 'Layer 6',
+    targetLayerId: 'layer-6',
+    thickness: 0.05,
+    growth: 'conformal',
+    replay: {
+      version: 1,
+      params: {
+        type: 'grow',
+        name: 'Layer 6',
+        targetLayerId: 'layer-6',
+        thickness: 0.05,
+        growth: 'conformal',
+      },
+      areaMode: 'full',
+    },
+  });
+
+  live.model.layers.find((layer) => layer.id === 'layer-6').name = 'ITO';
+  assert.ok(manager.renameHistoryEntity('layer', 'layer-6', 'ITO') > 0);
+
+  const history = manager.listHistory();
+  assert.equal(history[0].entityRefs.resultLayerId, 'layer-6');
+  assert.equal(history[0].operation.name, 'ITO');
+  assert.equal(history[0].operation.replay.params.name, 'ITO');
+  assert.equal(history[1].operation.name, 'ITO');
+  assert.equal(history[1].operation.replay.params.name, 'ITO');
+
+  assert.equal(manager.restoreProcessNode(deposit.id), true);
+  assert.equal(live.model.layers.find((layer) => layer.id === 'layer-6').name, 'ITO');
+
+  const exported = manager.exportBranchState();
+  let importedLive = structuredClone(live);
+  const imported = createSnapshotManager({
+    capture: () => importedLive,
+    restore: (value) => {
+      importedLive = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+  imported.importRecords([], exported);
+  const importedDeposit = imported.listHistory().find((node) => node.id === deposit.id);
+  assert.equal(importedDeposit.displayLabel, 'Deposit ITO · Directional · 0.2 µm');
+  assert.equal(imported.restoreProcessNode(deposit.id), true);
+  assert.equal(
+    importedLive.model.layers.find((layer) => layer.id === 'layer-6').name,
+    'ITO',
+  );
+});
+
+
+test('History display labels stay scoped when independent Variants reuse the same internal layer ID', () => {
+  let live = {
+    model: {
+      revision: 0,
+      processRevision: 0,
+      layers: [{ id: 'base', name: 'Base' }],
+      implants: [],
+      electricalRegions: [],
+    },
+  };
+  let snapshotId = 0,
+    branchId = 0,
+    nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const origin = manager.create('Before independent deposits');
+
+  live = {
+    model: {
+      ...live.model,
+      revision: 1,
+      processRevision: 1,
+      layers: [...live.model.layers, { id: 'layer-1', name: 'Main oxide' }],
+    },
+  };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Main oxide · Directional · 0.1 µm',
+    name: 'Main oxide',
+    thickness: 0.1,
+    growth: 'direct',
+    replay: {
+      version: 1,
+      params: { type: 'add', name: 'Main oxide', thickness: 0.1, growth: 'direct' },
+      areaMode: 'full',
+    },
+  });
+
+  manager.createBranch(origin.id, 'Independent');
+  live = {
+    model: {
+      ...live.model,
+      revision: 1,
+      processRevision: 1,
+      layers: [...live.model.layers, { id: 'layer-1', name: 'Variant metal' }],
+    },
+  };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Variant metal · Directional · 0.2 µm',
+    name: 'Variant metal',
+    thickness: 0.2,
+    growth: 'direct',
+    replay: {
+      version: 1,
+      params: { type: 'add', name: 'Variant metal', thickness: 0.2, growth: 'direct' },
+      areaMode: 'full',
+    },
+  });
+
+  let history = manager.listHistory();
+  assert.equal(history.length, 2);
+  assert.equal(
+    history.find((node) => node.branchId === 'main').displayLabel,
+    'Deposit Main oxide · Directional · 0.1 µm',
+  );
+  assert.equal(
+    history.find((node) => node.branchId === 'branch-1').displayLabel,
+    'Deposit Variant metal · Directional · 0.2 µm',
+  );
+
+  live.model.layers.find((layer) => layer.id === 'layer-1').name = 'Variant ITO';
+  live.model.revision += 1;
+  assert.ok(manager.renameHistoryEntity('layer', 'layer-1', 'Variant ITO') > 0);
+
+  history = manager.listHistory();
+  assert.equal(
+    history.find((node) => node.branchId === 'main').displayLabel,
+    'Deposit Main oxide · Directional · 0.1 µm',
+  );
+  assert.equal(
+    history.find((node) => node.branchId === 'branch-1').displayLabel,
+    'Deposit Variant ITO · Directional · 0.2 µm',
+  );
+});
+
+
+test('History insertion topology supports current rewrite, branch start, branch carry, and dependency protection', () => {
+  const createChain = () => {
+    let live = {
+      model: {
+        revision: 0,
+        processRevision: 0,
+        layers: [{ id: 'base', name: 'Base' }],
+        implants: [],
+        electricalRegions: [],
+      },
+      tag: 'base',
+    };
+    let nodeId = 0,
+      branchId = 0;
+    const manager = createSnapshotManager({
+      capture: () => live,
+      restore: (value) => {
+        live = value;
+      },
+      validateState: (value) => Number.isInteger(value?.model?.processRevision),
+      nodeIdFactory: () => `process-${++nodeId}`,
+      branchIdFactory: () => `variant-${++branchId}`,
+    });
+    const append = (label, revision) => {
+      live = {
+        ...live,
+        model: {
+          ...live.model,
+          revision,
+          processRevision: revision,
+        },
+        tag: label,
+      };
+      return manager.recordOperation({
+        kind: 'record',
+        label,
+        replay: { version: 1, kind: 'record' },
+      });
+    };
+    const a = append('A', 1),
+      b = append('B', 2),
+      c = append('C', 3);
+    return {
+      manager,
+      append,
+      a,
+      b,
+      c,
+      getLive: () => live,
+      setLive: (value) => {
+        live = value;
+      },
+    };
+  };
+
+  const current = createChain();
+  assert.ok(current.manager.restoreStepInput(current.b.id));
+  current.manager.replaceBranchTailFrom(current.b.id);
+  const inserted = current.append('X', 2),
+    replayedB = current.append('B', 3),
+    replayedC = current.append('C', 4);
+  assert.deepEqual(
+    current.manager
+      .listHistory()
+      .filter((node) => node.branchId === 'main')
+      .map((node) => node.id),
+    [current.a.id, inserted.id, replayedB.id, replayedC.id],
+  );
+
+  const branchStart = createChain();
+  assert.ok(branchStart.manager.restoreStepInput(branchStart.b.id));
+  const startVariant = branchStart.manager.createBranchFromCursor('Start');
+  const startInserted = branchStart.append('X', 2);
+  const startBranches = branchStart.manager.listBranches(),
+    startMain = startBranches.find((branch) => branch.id === 'main'),
+    startChild = startBranches.find((branch) => branch.id === startVariant.id);
+  assert.equal(startMain.headNodeId, branchStart.c.id);
+  assert.equal(startChild.rootNodeId, branchStart.a.id);
+  assert.equal(startChild.headNodeId, startInserted.id);
+
+  const branchCarry = createChain();
+  assert.ok(branchCarry.manager.restoreStepInput(branchCarry.b.id));
+  const carryVariant = branchCarry.manager.createBranchFromCursor('Carry');
+  const carryInserted = branchCarry.append('X', 2),
+    carryB = branchCarry.append('B', 3),
+    carryC = branchCarry.append('C', 4);
+  const carryBranches = branchCarry.manager.listBranches(),
+    carryMain = carryBranches.find((branch) => branch.id === 'main'),
+    carryChild = carryBranches.find((branch) => branch.id === carryVariant.id);
+  assert.equal(carryMain.headNodeId, branchCarry.c.id);
+  assert.equal(carryChild.rootNodeId, branchCarry.a.id);
+  assert.equal(carryChild.headNodeId, carryC.id);
+  assert.deepEqual(
+    branchCarry.manager
+      .listHistory()
+      .filter((node) => node.branchId === carryVariant.id)
+      .map((node) => node.id),
+    [carryInserted.id, carryB.id, carryC.id],
+  );
+
+  const protectedChain = createChain();
+  protectedChain.manager.createBranchFromNode(protectedChain.b.id, 'Dependent');
+  assert.equal(protectedChain.manager.switchBranch('main'), true);
+  const protectedContext = protectedChain.manager.insertBeforeContext(protectedChain.b.id);
+  assert.equal(protectedContext.canReplaceCurrentVariant, false);
+  assert.equal(protectedContext.dependentVariants.length, 1);
+  assert.throws(
+    () => protectedChain.manager.replaceBranchTailFrom(protectedChain.b.id),
+    /Create a new Variant instead/,
+  );
+});
+
+test('process History pins and restores the exact file-mask Cell and Layer combination', () => {
+  let live = {
+    model: { processRevision: 1 },
+    layout: { root: 'TOP', hierarchy: { TOP: { children: [] } } },
+    maskSourceMode: 'file',
+    activeCell: 'STALE',
+    selectedLayerKeys: ['99|0'],
+    maskTransform: { x: 4, y: 5, scale: 2, rotation: 10 },
+    maskRoi: { type: 'rect', a: [0, 0], b: [1, 1] },
+  };
+  let restored = null;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      restored = value;
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => 'process-mask-context',
+  });
+
+  const maskContext = {
+    sourceMode: 'file',
+    cell: 'TOP',
+    layerKeys: ['7|0', '8|2'],
+    transform: { x: 1, y: -2, scale: 1.5, rotation: 12 },
+    roi: { type: 'square', c: [5, 5], size: 4, rotation: 0 },
+  };
+  const node = manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit ITO',
+    areaMode: 'mask',
+    areaLabel: 'Selected mask',
+    maskContext,
+    replay: { version: 1, areaMode: 'mask', maskContext },
+  });
+
+  const listed = manager.listHistory().find((item) => item.id === node.id);
+  assert.equal(
+    listed.areaLabel,
+    'Cell TOP · Layers 7/0, 8/2',
+  );
+
+  live = {
+    ...live,
+    activeCell: 'OTHER',
+    selectedLayerKeys: ['42|0'],
+    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    maskRoi: null,
+  };
+  assert.equal(manager.restoreProcessNode(node.id), true);
+  assert.equal(restored.activeCell, 'TOP');
+  assert.deepEqual(restored.selectedLayerKeys, ['7|0', '8|2']);
+  assert.deepEqual(restored.maskTransform, maskContext.transform);
+  assert.deepEqual(restored.maskRoi, maskContext.roi);
+});

@@ -9,9 +9,9 @@ export function createProcessTaskController({
 
   function formatElapsed(ms) {
     const seconds = Math.max(0, ms) / 1000;
-    return seconds < 60 ? `${seconds.toFixed(1)} s` : `${Math.floor(seconds / 60)}m ${(
-        seconds % 60
-      ).toFixed(1)}s`;
+    return seconds < 60
+      ? `${seconds.toFixed(1)} s`
+      : `${Math.floor(seconds / 60)}m ${(seconds % 60).toFixed(1)}s`;
   }
 
   function syncDialog() {
@@ -22,22 +22,156 @@ export function createProcessTaskController({
     $('processTaskTitle').textContent = active.label;
     $('processTaskStage').textContent = active.stage;
     $('processTaskElapsed').textContent = formatElapsed(performance.now() - active.startedAt);
+    const abortButton = $('processTaskAbortBtn');
+    if (abortButton) {
+      abortButton.hidden = active.abortable === false;
+      abortButton.disabled = active.abortable === false;
+    }
   }
 
   function finish(task) {
     clearInterval(task.timer);
-    task.worker.terminate();
+    task.abortCurrent?.();
+    task.abortCurrent = null;
     if (active?.id === task.id) active = null;
     setApplyDisabled(false);
     syncDialog();
   }
 
   function abort() {
-    if (!active) return;
+    if (!active || active.abortable === false) return;
     const task = active;
-    finish(task);
+    task.abortController.abort();
+    task.abortCurrent?.();
     status(task.abortMessage, 'warning');
-    task.resolve({ aborted: true });
+  }
+
+  function runChildWorker(task, workerPath, payload, { transfer = [], stagePrefix = '' } = {}) {
+    if (task.abortController.signal.aborted) return Promise.resolve({ aborted: true });
+
+    return new Promise((resolve) => {
+      const workerUrl = new URL(workerPath, import.meta.url),
+        currentModuleUrl = new URL(import.meta.url);
+      workerUrl.search = currentModuleUrl.search;
+
+      let worker,
+        settled = false;
+      const settle = (result) => {
+        if (settled) return;
+        settled = true;
+        if (task.abortCurrent === abortCurrent) task.abortCurrent = null;
+        worker?.terminate();
+        resolve(result);
+      };
+      const abortCurrent = () => settle({ aborted: true });
+
+      try {
+        worker = new Worker(workerUrl);
+      } catch (error) {
+        settle({
+          error: error?.message || String(error || 'Worker failed to start.'),
+          aborted: false,
+        });
+        return;
+      }
+
+      task.abortCurrent = abortCurrent;
+      if (stagePrefix) {
+        task.stage = stagePrefix;
+        syncDialog();
+      }
+
+      worker.onmessage = (event) => {
+        const message = event.data || {};
+        if (settled || message.id !== task.id) return;
+
+        if (message.type === 'progress') {
+          task.stage = [stagePrefix, message.stage || 'Working…'].filter(Boolean).join(' · ');
+          syncDialog();
+          return;
+        }
+
+        if (message.type === 'done') {
+          settle({ ...message, aborted: false });
+          return;
+        }
+
+        if (message.type === 'error') {
+          settle({ error: message.message || 'unknown error', aborted: false });
+        }
+      };
+
+      worker.onerror = (event) => {
+        settle({ error: event.message || 'Worker failed.', aborted: false });
+      };
+
+      try {
+        worker.postMessage({ id: task.id, ...payload }, transfer);
+      } catch (error) {
+        settle({
+          error: error?.message || String(error || 'Worker message could not be sent.'),
+          aborted: false,
+        });
+      }
+    });
+  }
+
+  async function runTask(
+    executor,
+    {
+      label = 'Working…',
+      abortMessage = 'Task aborted. The workspace was not changed.',
+      failurePrefix = 'Task failed',
+      abortable = true,
+      initialStage = 'Preparing…',
+    } = {},
+  ) {
+    if (active) return { busy: true };
+
+    const task = {
+      id: `task-${++sequence}`,
+      label,
+      abortMessage,
+      abortable,
+      stage: initialStage,
+      startedAt: performance.now(),
+      timer: null,
+      abortController: new AbortController(),
+      abortCurrent: null,
+    };
+
+    active = task;
+    setApplyDisabled(true);
+    syncDialog();
+    task.timer = setInterval(syncDialog, 100);
+
+    try {
+      const result = await executor({
+        signal: task.abortController.signal,
+        updateStage(stage) {
+          if (!active || active.id !== task.id) return;
+          task.stage = stage || 'Working…';
+          syncDialog();
+        },
+        runWorker(workerPath, payload, options = {}) {
+          return runChildWorker(task, workerPath, payload, options);
+        },
+      });
+
+      if (task.abortController.signal.aborted && !result?.aborted) {
+        return { aborted: true };
+      }
+      return result ?? { done: true, aborted: false };
+    } catch (error) {
+      if (task.abortController.signal.aborted || error?.name === 'AbortError') {
+        return { aborted: true };
+      }
+      const message = error?.message || String(error || 'Unknown task error');
+      status(`${failurePrefix}: ${message}`, 'error');
+      return { error: message, aborted: false };
+    } finally {
+      finish(task);
+    }
   }
 
   function runWorker(
@@ -50,81 +184,14 @@ export function createProcessTaskController({
       transfer = [],
     } = {},
   ) {
-    if (active) return Promise.resolve({ busy: true });
-
-    return new Promise((resolve) => {
-      const id = `task-${++sequence}`,
-        workerUrl = new URL(workerPath, import.meta.url),
-        currentModuleUrl = new URL(import.meta.url);
-      workerUrl.search = currentModuleUrl.search;
-      let worker;
-      try {
-        worker = new Worker(workerUrl);
-      } catch (error) {
-        const message = error?.message || String(error || 'Worker failed to start.');
-        setApplyDisabled(false);
-        status(`${failurePrefix}: ${message}`, 'error');
-        resolve({ error: message, aborted: false });
-        return;
-      }
-
-      const task = {
-        id,
-        worker,
-        resolve,
-        label,
-        abortMessage,
-        stage: 'Preparing worker…',
-        startedAt: performance.now(),
-        timer: null,
-      };
-
-      active = task;
-      setApplyDisabled(true);
-      syncDialog();
-      task.timer = setInterval(syncDialog, 100);
-
-      worker.onmessage = (event) => {
-        const message = event.data || {};
-        if (!active || active.id !== id || message.id !== id) return;
-
-        if (message.type === 'progress') {
-          active.stage = message.stage || 'Working…';
-          syncDialog();
-          return;
-        }
-
-        if (message.type === 'done') {
-          finish(task);
-          resolve({ ...message, aborted: false });
-          return;
-        }
-
-        if (message.type === 'error') {
-          const error = message.message || 'unknown error';
-          finish(task);
-          status(`${failurePrefix}: ${error}`, 'error');
-          resolve({ error, aborted: false });
-        }
-      };
-
-      worker.onerror = (event) => {
-        if (!active || active.id !== id) return;
-        const message = event.message || 'Worker failed.';
-        finish(task);
-        status(`${failurePrefix}: ${message}`, 'error');
-        resolve({ error: message, aborted: false });
-      };
-
-      try {
-        worker.postMessage({ id, ...payload }, transfer);
-      } catch (error) {
-        const message = error?.message || String(error || 'Worker message could not be sent.');
-        finish(task);
-        status(`${failurePrefix}: ${message}`, 'error');
-        resolve({ error: message, aborted: false });
-      }
-    });
+    return runTask(
+      async ({ runWorker: runChild }) => {
+        const result = await runChild(workerPath, payload, { transfer });
+        if (result?.error) throw new Error(result.error);
+        return result;
+      },
+      { label, abortMessage, failurePrefix },
+    );
   }
 
   function run(model, params, label = 'Applying process…', areaRequest = null) {
@@ -147,6 +214,7 @@ export function createProcessTaskController({
   return {
     bind,
     run,
+    runTask,
     runWorker,
     abort,
     isBusy: () => Boolean(active),

@@ -15,6 +15,8 @@ export function createPlanViewController({
   xyUnitLabel,
   renderMask,
   renderMain,
+  getViewportMargin = () => 34,
+  getCompactAxes = () => false,
   onChanged = () => {},
 }) {
   const featureSizeCache = {
@@ -118,7 +120,7 @@ export function createPlanViewController({
 
   function viewport(width, height, kind = 'mask') {
     const model = getModel(),
-      margin = 34,
+      margin = Math.max(0, Number(getViewportMargin(kind)) || 0),
       view = getPlanViews()[kind],
       bounds =
         kind === 'mask'
@@ -279,6 +281,31 @@ export function createPlanViewController({
   }
 
   function drawPlanAxes(context, view, width, height, back = false) {
+    if (getCompactAxes()) {
+      const left = 8,
+        bottom = height - 8,
+        right = width - 7,
+        top = 7;
+      context.save();
+      context.strokeStyle = 'rgba(70,82,95,.2)';
+      context.fillStyle = '#7b8792';
+      context.lineWidth = 0.65;
+      context.beginPath();
+      context.moveTo(left, bottom);
+      context.lineTo(right, bottom);
+      context.moveTo(left, bottom);
+      context.lineTo(left, top);
+      context.stroke();
+      context.font = '700 7px system-ui';
+      context.textAlign = 'right';
+      context.textBaseline = 'bottom';
+      context.fillText(`X (${xyUnitLabel()})`, right, bottom - 2);
+      context.textAlign = 'left';
+      context.fillText(`Y (${xyUnitLabel()})`, left + 3, top + 8);
+      context.restore();
+      return;
+    }
+
     context.save();
     context.font = '7.5px system-ui';
     const yLabelWidth = Math.max(

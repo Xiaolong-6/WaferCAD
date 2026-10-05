@@ -36,6 +36,7 @@ import { createProcessTaskController } from './controllers/process-task-controll
 import { createProcessPanelController } from './controllers/process-panel-controller.js';
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
+import { createHistoryMutationController } from './controllers/history-mutation-controller.js';
 import { createSectionControlsController } from './controllers/section-controls-controller.js';
 import { createSectionCollapseController } from './controllers/section-collapse-controller.js';
 import { createSectionDetailRoiController } from './controllers/section-detail-roi-controller.js';
@@ -142,7 +143,7 @@ let workspacePersistenceController = null,
   snapshotManager = null;
 
 function persistWorkspaceNow() {
-  return workspacePersistenceController?.persistNow() ?? Promise.resolve(false);
+  return workspacePersistenceController?.persistNow({ force: true }) ?? Promise.resolve(false);
 }
 
 function scheduleWorkspacePersistence() {
@@ -313,6 +314,8 @@ const planView = createPlanViewController({
   xyUnitLabel: () => xyUnit().label,
   renderMask,
   renderMain,
+  getViewportMargin: () => (EMBEDDED_PREVIEW ? 14 : 34),
+  getCompactAxes: () => EMBEDDED_PREVIEW,
   onChanged: markProjectDirty,
 });
 const {
@@ -519,6 +522,11 @@ const layerLegendController = createLayerLegendController({
   renderAll,
   updateOperationUI,
   onChanged: markProjectDirty,
+  onNameChanged: ({ kind, id, name }) => {
+    snapshotManager?.renameHistoryEntity(kind, id, name);
+    markProjectDirty();
+    renderSnapshots();
+  },
   status,
   confirmAction: (options) => confirmationDialog.confirm(options),
 });
@@ -730,7 +738,7 @@ function syncMaskSourceSummary() {
 }
 
 let processPanelController = null,
-  pendingHistoryStepEdit = null;
+  projectController = null;
 
 function updateOperationUI() {
   processPanelController?.updateUi();
@@ -842,32 +850,6 @@ snapshotManager = createSnapshotManager({
   validateState: isValidSnapshotState,
 });
 
-function cancelHistoricalStepEdit() {
-  pendingHistoryStepEdit = null;
-}
-
-function currentHistoricalStepEdit() {
-  if (!pendingHistoryStepEdit) return null;
-  const {
-    nodeId,
-    branchId,
-    branchName,
-    parentNodeId,
-    mode,
-    originalLabel,
-    downstreamCount,
-  } = pendingHistoryStepEdit;
-  return {
-    nodeId,
-    branchId,
-    branchName,
-    parentNodeId,
-    mode,
-    originalLabel,
-    downstreamCount,
-  };
-}
-
 function refreshAfterHistoricalEditLoad() {
   syncBaseControls();
   maskImportController?.syncTransformInputs();
@@ -875,115 +857,54 @@ function refreshAfterHistoricalEditLoad() {
   fit3d();
 }
 
-async function beginHistoricalStepEdit(node) {
-  const context = snapshotManager.stepEditContext(node?.id, { includeReplayStates: true });
-  if (!context?.editable) {
-    status(context?.reason || 'This Step cannot be edited from History.', 'warning');
-    return false;
-  }
-  if (!node?.replayable || !processPanelController?.canReplayOperation(node.operation)) {
-    status(
-      'This Step predates replay metadata. Restore it or create a Variant from here instead.',
-      'warning',
-    );
-    return false;
-  }
-
-  await checkpointWorkspace('pre-history-step-edit');
-  const restored = snapshotManager.restoreStepInput(node.id);
-  if (!restored) {
-    status('Could not restore the input state for this Step.', 'error');
-    return false;
-  }
-
-  pendingHistoryStepEdit = {
-    nodeId: node.id,
-    branchId: context.branchId,
-    branchName: context.branchName,
-    parentNodeId: context.parentNodeId,
-    mode: null,
-    originalLabel: node.operation?.label || node.operation?.kind || 'Process step',
-    downstreamCount: context.downstreamCount,
-    downstreamReplayable: context.downstreamReplayable,
-    canReplaceCurrentVariant: context.canReplaceCurrentVariant,
-    dependentVariants: context.dependentVariants.map((item) => ({ ...item })),
-    downstream: context.downstream.map((item) => structuredClone(item)),
+function captureHistoryReplayTransaction() {
+  snapshotManager?.syncActiveHeadState?.();
+  return {
+    project: structuredClone(buildProjectSnapshot(true)),
+    history: structuredClone(history),
+    future: structuredClone(future),
+    baseRevertSnapshot: baseRevertSnapshot ? structuredClone(baseRevertSnapshot) : null,
   };
+}
 
-  refreshAfterHistoricalEditLoad();
-  if (!processPanelController.loadOperationForEdit(node.operation)) {
-    pendingHistoryStepEdit = null;
-    snapshotManager.restoreActiveBranchHead();
-    refreshAfterHistoricalEditLoad();
-    status('This Step cannot be loaded into the current Process editor.', 'error');
-    return false;
-  }
-
-  markProjectDirty();
-  renderSnapshots();
-  document.querySelector('.workstation-rail-button[data-tool="process"]')?.click();
+function restoreHistoryReplayTransaction(transaction) {
+  if (!transaction?.project) return false;
+  const project = structuredClone(transaction.project);
+  loadProjectSnapshot(project);
+  snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+  history = structuredClone(transaction.history || []);
+  future = structuredClone(transaction.future || []);
+  baseRevertSnapshot = transaction.baseRevertSnapshot
+    ? structuredClone(transaction.baseRevertSnapshot)
+    : null;
+  syncBaseControls();
+  maskImportController?.syncTransformInputs();
+  syncUndo();
+  renderAll();
+  projectController?.renderSnapshots?.();
+  fit3d();
   updateOperationUI();
-  status(
-    `Editing "${pendingHistoryStepEdit.originalLabel}". Change the Process parameters, then choose Save edited Step.`,
-    'success',
-  );
+  markProjectDirty();
   return true;
 }
 
-async function finishHistoricalStepEdit({ applyGate, branchCommit } = {}) {
-  if (!applyGate?.historyStepEdit) return false;
-  const edit = pendingHistoryStepEdit;
-  if (
-    !edit ||
-    edit.nodeId !== applyGate.nodeId ||
-    edit.branchId !== applyGate.branchId ||
-    edit.parentNodeId !== applyGate.parentNodeId
-  ) {
-    status('Historical Step edit context changed before completion.', 'error');
-    pendingHistoryStepEdit = null;
-    updateOperationUI();
-    return true;
-  }
-
-  const downstream = edit.downstream.map((step) => structuredClone(step));
-  const mode = edit.mode;
-  const targetVariant = snapshotManager.activeBranch().name;
-  pendingHistoryStepEdit = null;
-  updateOperationUI();
-
-  if (mode !== 'replace-replay' || !downstream.length) {
-    markProjectDirty();
-    renderSnapshots();
-    status(
-      mode === 'branch-edit'
-        ? `Saved the edited Step as new Variant "${branchCommit?.name || targetVariant}".`
-        : downstream.length
-          ? `Updated "${targetVariant}" and discarded ${downstream.length} later Step${downstream.length === 1 ? '' : 's'}.`
-          : `Updated the last Step in "${targetVariant}".`,
-      'success',
-    );
-    return true;
-  }
-
-  const replay = await processPanelController.replayOperations(downstream);
-  markProjectDirty();
-  renderSnapshots();
-  if (!replay.ok) {
-    const failedLabel =
-      replay.failedOperation?.label || replay.failedOperation?.kind || 'later Step';
-    status(
-      `Replay stopped after ${replay.completed}/${downstream.length} later Steps at "${failedLabel}": ${replay.error} A Recovery checkpoint was saved before the edit.`,
-      'warning',
-    );
-    return true;
-  }
-
-  status(
-    `Replayed ${replay.completed} later Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`,
-    'success',
-  );
-  return true;
-}
+const historyMutationController = createHistoryMutationController({
+  snapshotManager,
+  getProcessPanelController: () => processPanelController,
+  confirmationDialog,
+  checkpointWorkspace,
+  refreshAfterHistoricalLoad: refreshAfterHistoricalEditLoad,
+  markProjectDirty,
+  renderSnapshots: () => projectController?.renderSnapshots?.(),
+  openProcessPanel: () =>
+    document.querySelector('.workstation-rail-button[data-tool="process"]')?.click(),
+  updateOperationUI,
+  captureReplayTransaction: captureHistoryReplayTransaction,
+  restoreReplayTransaction: restoreHistoryReplayTransaction,
+  beginReplayInteraction: () => workspacePersistenceController?.beginInteraction?.(),
+  endReplayInteraction: () => workspacePersistenceController?.endInteraction?.(),
+  status,
+});
 
 async function exportProjectFileTask(project, filename) {
   if (!processTaskController) return false;
@@ -1006,7 +927,7 @@ async function exportProjectFileTask(project, filename) {
   return true;
 }
 
-const projectController = createProjectController({
+projectController = createProjectController({
   importLayoutBuffer,
   loadProjectSnapshot,
   snapshotManager,
@@ -1032,9 +953,12 @@ const projectController = createProjectController({
   clearMaskRoiDrawingMode: () => maskRoiController.clearDrawingMode(),
   buildProjectSnapshot,
   confirmAction: (options) => confirmationDialog.confirm(options),
-  beginHistoricalStepEdit,
-  getHistoricalStepEdit: currentHistoricalStepEdit,
-  cancelHistoricalStepEdit,
+  beginHistoricalStepEdit: historyMutationController.beginEdit,
+  getHistoricalStepEdit: historyMutationController.currentEdit,
+  cancelHistoricalStepEdit: historyMutationController.cancelEdit,
+  beginHistoricalStepInsert: historyMutationController.beginInsert,
+  getHistoricalStepInsert: historyMutationController.currentInsert,
+  cancelHistoricalStepInsert: historyMutationController.cancelInsert,
 });
 const {
   renderSnapshots,
@@ -1042,172 +966,6 @@ const {
   openProjectFile,
   openBundledExample,
 } = projectController;
-
-async function ensureWritableProcessBranch() {
-  const continuation = snapshotManager.continuationContext();
-  if (pendingHistoryStepEdit) {
-    const edit = pendingHistoryStepEdit;
-    if (
-      !continuation ||
-      continuation.branchId !== edit.branchId ||
-      continuation.cursorNodeId !== edit.parentNodeId
-    ) {
-      pendingHistoryStepEdit = null;
-      updateOperationUI();
-      status('Historical Step edit context changed. Start the edit again from History.', 'error');
-      return false;
-    }
-
-    let mode = edit.mode;
-    if (!mode) {
-      const actions = [{ value: 'cancel', label: 'Cancel' }];
-      if (edit.canReplaceCurrentVariant) {
-        actions.push({
-          value: 'replace-discard',
-          label: edit.downstreamCount ? 'Replace & discard later Steps' : 'Replace Step',
-          kind: edit.downstreamCount ? 'danger' : 'primary',
-          default: true,
-        });
-        if (edit.downstreamCount && edit.downstreamReplayable) {
-          actions.push({
-            value: 'replace-replay',
-            label: 'Replace & replay later Steps',
-          });
-        }
-      }
-      if (snapshotManager.canCreateVariant() && snapshotManager.canRecordOperation(1)) {
-        actions.push({
-          value: 'branch-edit',
-          label: 'Save as new Variant',
-          kind: edit.canReplaceCurrentVariant ? undefined : 'primary',
-          default: !edit.canReplaceCurrentVariant,
-        });
-      }
-
-      if (actions.length === 1) {
-        status('No safe save strategy is available for this edited Step.', 'warning');
-        return false;
-      }
-
-      const detail = [
-        edit.downstreamCount
-          ? `${edit.downstreamCount} later Step${edit.downstreamCount === 1 ? '' : 's'} follow this Step.`
-          : 'This is the current Variant HEAD Step.',
-        !edit.canReplaceCurrentVariant
-          ? `The current Variant cannot be rewritten because ${edit.dependentVariants
-              .map((item) => `"${item.name}"`)
-              .join(', ')} depend on this Step.`
-          : '',
-        edit.downstreamCount && !edit.downstreamReplayable
-          ? 'Some later Steps predate replay metadata, so replay is unavailable.'
-          : '',
-      ]
-        .filter(Boolean)
-        .join(' ');
-
-      mode = await confirmationDialog.ask({
-        title: 'Save edited Step',
-        message: `Save changes to "${edit.originalLabel}"?`,
-        detail,
-        actions,
-        cancelValue: 'cancel',
-      });
-      if (mode === 'cancel') return false;
-      edit.mode = mode;
-    }
-
-    if (mode === 'branch-edit') {
-      if (!snapshotManager.canCreateVariant()) {
-        status('Variant limit reached before this edit could be saved.', 'error');
-        return false;
-      }
-      if (!snapshotManager.canRecordOperation(1)) {
-        status('Process history limit reached before this edit could be saved.', 'error');
-        return false;
-      }
-    }
-
-    return {
-      historyStepEdit: true,
-      nodeId: edit.nodeId,
-      branchId: edit.branchId,
-      parentNodeId: edit.parentNodeId,
-      mode,
-    };
-  }
-
-  if (!snapshotManager.canRecordOperation()) {
-    status('Process history limit reached. Delete or export this project before adding more steps.', 'error');
-    return false;
-  }
-
-  if (!continuation) return { createVariant: false };
-
-  const confirmed = await confirmationDialog.confirm({
-    title: 'Continue from historical state?',
-    message: continuation.processLabel
-      ? `Step "${continuation.processLabel}" is behind the current Variant HEAD.`
-      : continuation.snapshotName
-        ? `Legacy bookmark "${continuation.snapshotName}" is behind the current Variant HEAD.`
-        : 'The workspace is behind the current Variant HEAD.',
-    detail:
-      'If this operation succeeds, WaferCAD will create a new Variant from this historical state. The existing Variant and its HEAD remain unchanged.',
-    confirmLabel: 'Create Variant & apply',
-  });
-  if (!confirmed) return false;
-
-  return {
-    createVariant: true,
-    branchId: continuation.branchId,
-    snapshotId: continuation.snapshotId,
-    cursorNodeId: continuation.cursorNodeId,
-  };
-}
-
-function commitWritableProcessBranch(gate) {
-  if (gate?.historyStepEdit) {
-    const edit = pendingHistoryStepEdit;
-    const continuation = snapshotManager.continuationContext();
-    if (
-      !edit ||
-      edit.nodeId !== gate.nodeId ||
-      edit.branchId !== gate.branchId ||
-      edit.parentNodeId !== gate.parentNodeId ||
-      !continuation ||
-      continuation.branchId !== edit.branchId ||
-      continuation.cursorNodeId !== edit.parentNodeId
-    ) {
-      throw new Error('Historical Step edit context changed before the operation completed.');
-    }
-
-    let created = null;
-    if (edit.mode === 'branch-edit') {
-      created = snapshotManager.createBranchFromCursor();
-    } else {
-      snapshotManager.replaceBranchTailFrom(edit.nodeId);
-    }
-    markProjectDirty();
-    renderSnapshots();
-    return created;
-  }
-
-  if (!gate?.createVariant) return null;
-  const continuation = snapshotManager.continuationContext();
-  if (
-    !continuation ||
-    continuation.branchId !== gate.branchId ||
-    continuation.snapshotId !== gate.snapshotId ||
-    continuation.cursorNodeId !== gate.cursorNodeId
-  ) {
-    throw new Error('Historical state changed before the operation completed.');
-  }
-
-  const created = snapshotManager.createBranchFromCursor();
-  markProjectDirty();
-  renderSnapshots();
-  status(`Created variant "${created.name}" for continued processing.`);
-  return created;
-}
 
 function recordProcessOperation(operation) {
   const recorded = snapshotManager.recordOperation(operation);
@@ -1287,6 +1045,8 @@ processPanelController = createProcessPanelController({
     drawMask,
     maskTransform,
     layout,
+    activeCell,
+    selectedLayerKeys: [...selectedLayerKeys],
   }),
   operationAreaGeometry,
   selectedElement,
@@ -1294,11 +1054,12 @@ processPanelController = createProcessPanelController({
   formatLengthField,
   processTaskController,
   saveHistory,
-  beforeApply: ensureWritableProcessBranch,
-  commitApplyBranch: commitWritableProcessBranch,
+  beforeApply: historyMutationController.beforeApply,
+  commitApplyBranch: historyMutationController.commitApplyBranch,
   recordProcessOperation,
-  afterApply: finishHistoricalStepEdit,
-  getHistoricalStepEdit: currentHistoricalStepEdit,
+  afterApply: historyMutationController.afterApply,
+  getHistoricalStepEdit: historyMutationController.currentEdit,
+  getHistoricalStepInsert: historyMutationController.currentInsert,
   clearBaseRevertSnapshot: () => {
     baseRevertSnapshot = null;
   },
@@ -1434,6 +1195,7 @@ const workspaceActions = createWorkspaceActionsController({
   renderSnapshots,
   onProjectChanged: markProjectDirty,
   getModel: () => model,
+  taskController: processTaskController,
 });
 
 const mainCanvasController = createMainCanvasController({
@@ -1500,6 +1262,7 @@ workspacePersistenceController = createWorkspacePersistenceController({
     projectName = value;
   },
   syncProjectNameInput,
+  taskController: processTaskController,
   confirmAction: (options) => confirmationDialog.confirm(options),
   chooseAction: (options) => confirmationDialog.ask(options),
 });
