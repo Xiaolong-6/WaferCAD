@@ -538,13 +538,14 @@ export function createProjectController({
         : '';
       const area = node.areaLabel || node.operation?.areaLabel || '';
       meta.textContent = [
-        face,
         area,
+        face,
         `r${node.processRevision}`,
         !node.restorable ? 'legacy · unavailable' : '',
       ]
         .filter(Boolean)
         .join(' · ');
+      meta.title = meta.textContent;
       body.append(label, meta);
 
       const actions = [];
