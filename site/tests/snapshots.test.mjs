@@ -1690,3 +1690,99 @@ test('renaming an entity propagates through restorable History states and replay
   assert.equal(manager.restoreProcessNode(deposit.id), true);
   assert.equal(live.model.layers.find((layer) => layer.id === 'layer-6').name, 'ITO');
 });
+
+
+test('History display labels stay scoped when independent Variants reuse the same internal layer ID', () => {
+  let live = {
+    model: {
+      revision: 0,
+      processRevision: 0,
+      layers: [{ id: 'base', name: 'Base' }],
+      implants: [],
+      electricalRegions: [],
+    },
+  };
+  let snapshotId = 0,
+    branchId = 0,
+    nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `snapshot-${++snapshotId}`,
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const origin = manager.create('Before independent deposits');
+
+  live = {
+    model: {
+      ...live.model,
+      revision: 1,
+      processRevision: 1,
+      layers: [...live.model.layers, { id: 'layer-1', name: 'Main oxide' }],
+    },
+  };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Main oxide · Directional · 0.1 µm',
+    name: 'Main oxide',
+    thickness: 0.1,
+    growth: 'direct',
+    replay: {
+      version: 1,
+      params: { type: 'add', name: 'Main oxide', thickness: 0.1, growth: 'direct' },
+      areaMode: 'full',
+    },
+  });
+
+  manager.createBranch(origin.id, 'Independent');
+  live = {
+    model: {
+      ...live.model,
+      revision: 1,
+      processRevision: 1,
+      layers: [...live.model.layers, { id: 'layer-1', name: 'Variant metal' }],
+    },
+  };
+  manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Variant metal · Directional · 0.2 µm',
+    name: 'Variant metal',
+    thickness: 0.2,
+    growth: 'direct',
+    replay: {
+      version: 1,
+      params: { type: 'add', name: 'Variant metal', thickness: 0.2, growth: 'direct' },
+      areaMode: 'full',
+    },
+  });
+
+  let history = manager.listHistory();
+  assert.equal(history.length, 2);
+  assert.equal(
+    history.find((node) => node.branchId === 'main').displayLabel,
+    'Deposit Main oxide · Directional · 0.1 µm',
+  );
+  assert.equal(
+    history.find((node) => node.branchId === 'branch-1').displayLabel,
+    'Deposit Variant metal · Directional · 0.2 µm',
+  );
+
+  live.model.layers.find((layer) => layer.id === 'layer-1').name = 'Variant ITO';
+  live.model.revision += 1;
+  assert.ok(manager.renameHistoryEntity('layer', 'layer-1', 'Variant ITO') > 0);
+
+  history = manager.listHistory();
+  assert.equal(
+    history.find((node) => node.branchId === 'main').displayLabel,
+    'Deposit Main oxide · Directional · 0.1 µm',
+  );
+  assert.equal(
+    history.find((node) => node.branchId === 'branch-1').displayLabel,
+    'Deposit Variant ITO · Directional · 0.2 µm',
+  );
+});
