@@ -405,7 +405,9 @@ export function createProjectController({
       refreshAfterSnapshotLoad();
       onProjectChanged();
       renderSnapshots();
-      status(`Restored Step "${node.operation?.label || node.operation?.kind || 'Process step'}".`);
+      status(
+        `Restored Step "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}".`,
+      );
     }
 
     async function createVariantFromStep(node) {
@@ -423,7 +425,7 @@ export function createProjectController({
         onProjectChanged();
         renderSnapshots();
         status(
-          `Created Variant "${created.name}" from Step "${node.operation?.label || node.operation?.kind || 'Process step'}".`,
+          `Created Variant "${created.name}" from Step "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}".`,
         );
       } catch (error) {
         console.error(error);
