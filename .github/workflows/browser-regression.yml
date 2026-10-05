@@ -1,0 +1,119 @@
+name: Browser regression
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "site/**"
+      - "scripts/ui-smoke.mjs"
+      - "scripts/workstation-regression.mjs"
+      - "scripts/history-regression.mjs"
+      - "scripts/persistence-regression.mjs"
+      - "scripts/process-geometry-regression.mjs"
+      - "scripts/interaction-regression.mjs"
+      - "scripts/resilience-regression.mjs"
+      - "scripts/test-helpers/**"
+      - "scripts/example-regression.mjs"
+      - "scripts/product-regression.mjs"
+      - "scripts/product-layout-cases.mjs"
+      - "scripts/renderer-product-cases.mjs"
+      - "scripts/product-layout-regression.mjs"
+      - "scripts/renderer-product-regression.mjs"
+      - "scripts/process-benchmarks.mjs"
+      - ".github/workflows/browser-regression.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: browser-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-browser-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.0
+
+      - name: Install browser test dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save --package-lock=false playwright@1.55.0 three@0.179.1
+          npx playwright install --with-deps chromium
+
+      - name: Start WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-http.log
+          exit 1
+
+      - name: Run fast browser smoke
+        run: npm run test:ui:smoke
+
+      - name: Run workstation regression
+        run: npm run test:ui:workstation
+
+      - name: Run resilience regression
+        run: npm run test:ui:resilience
+
+      - name: Run History regression
+        run: npm run test:ui:history
+
+      - name: Run persistence regression
+        run: npm run test:ui:persistence
+
+      - name: Run interaction regression
+        run: npm run test:ui:interaction
+
+      - name: Run process geometry regression
+        run: npm run test:ui:process
+
+      - name: Run bundled example regression
+        run: npm run test:ui:examples
+
+      - name: Run product layout regression
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: npm run test:ui:product:layout
+
+      - name: Run renderer product regression
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: npm run test:ui:product:renderer
+
+      - name: Package tested preview
+        if: always()
+        run: |
+          mkdir -p test-results/product-review/preview
+          cp -R site/. test-results/product-review/preview/
+          node -e 'require("node:fs").writeFileSync("test-results/product-review/preview/build-info.json", JSON.stringify({commit:process.env.GITHUB_SHA}))'
+
+      - name: Upload product review and preview
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-product-review-${{ github.sha }}
+          path: test-results/product-review
+          retention-days: 14
