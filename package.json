@@ -14,8 +14,9 @@
     "test:ui:regression": "node scripts/ui-regression.mjs",
     "test:ui:examples": "node scripts/example-regression.mjs",
     "test:ui:product": "node scripts/product-regression.mjs",
-    "test:ui:all": "npm run test:ui:smoke && npm run test:ui:history && npm run test:ui:regression && npm run test:ui:examples && npm run test:ui:product",
-    "test:ui:history": "node scripts/history-regression.mjs"
+    "test:ui:all": "npm run test:ui:smoke && npm run test:ui:history && npm run test:ui:persistence && npm run test:ui:regression && npm run test:ui:examples && npm run test:ui:product",
+    "test:ui:history": "node scripts/history-regression.mjs",
+    "test:ui:persistence": "node scripts/persistence-regression.mjs"
   },
   "devDependencies": {
     "eslint": "10.11.0",
