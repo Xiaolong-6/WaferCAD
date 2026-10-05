@@ -6,6 +6,7 @@ import {
   gotoWelcome,
   launchBrowser,
   newUiPage,
+  observePageErrors,
   openFunctionPanel,
 } from './test-helpers/ui.mjs';
 
@@ -16,7 +17,7 @@ const browser = await launchBrowser();
 const { page: bootPage, context: bootContext } = await newUiPage(browser, {
   viewport: { width: 1100, height: 760 },
 });
-const bootErrors = [];
+const bootErrors = observePageErrors(bootPage);
 let releaseWorkstationCss;
 let workstationCssSeen;
 let appRequestedBeforeCss = false;
@@ -26,7 +27,6 @@ const workstationCssGate = new Promise((resolve) => {
 const workstationCssRequest = new Promise((resolve) => {
   workstationCssSeen = resolve;
 });
-bootPage.on('pageerror', (error) => bootErrors.push(error.message));
 await bootPage.route('**/workstation.css*', async (route) => {
   workstationCssSeen();
   await workstationCssGate;
@@ -76,10 +76,7 @@ await bootContext.close();
 const { page, context: mainContext } = await newUiPage(browser, {
   viewport: { width: 1365, height: 900 },
 });
-const errors = [];
-
-page.on('pageerror', (error) => errors.push(error.message));
-page.on('dialog', (dialog) => { errors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
+const errors = observePageErrors(page);
 
 await gotoWelcome(page);
 assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
@@ -301,8 +298,7 @@ await page.locator('#threePanel').waitFor({ state: 'visible' });
 const { page: navigationPage, context: navigationContext } = await newUiPage(browser, {
   viewport: { width: 1100, height: 760 },
 });
-const navigationErrors = [];
-navigationPage.on('pageerror', (error) => navigationErrors.push(error.message));
+const navigationErrors = observePageErrors(navigationPage);
 await gotoWelcome(navigationPage);
 await navigationPage.locator('#welcomeEmptyBtn').click();
 await navigationPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
@@ -323,8 +319,7 @@ await navigationContext.close();
 const { page: familyExamplePage, context: familyExampleContext } = await newUiPage(browser, {
   viewport: { width: 1100, height: 760 },
 });
-const familyExampleErrors = [];
-familyExamplePage.on('pageerror', (error) => familyExampleErrors.push(error.message));
+const familyExampleErrors = observePageErrors(familyExamplePage);
 await gotoWelcome(familyExamplePage);
 await familyExamplePage
   .locator('.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open')
@@ -359,8 +354,7 @@ await familyExampleContext.close();
 // A stalled Three.js CDN must never block the editor shell. The old top-level
 // await implementation left Main/Mask blank and all tool tabs unbound here.
 const blockedThreePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
-const blockedThreeErrors = [];
-blockedThreePage.on('pageerror', (error) => blockedThreeErrors.push(error.message));
+const blockedThreeErrors = observePageErrors(blockedThreePage);
 await blockedThreePage.route('https://cdn.jsdelivr.net/**', async (route) => {
   await new Promise((resolve) => setTimeout(resolve, 12000));
   await route.abort();
