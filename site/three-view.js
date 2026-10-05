@@ -825,6 +825,70 @@ export function createThreeView({
     return geometry;
   }
 
+  function annotationDepthFraction(annotation, z) {
+    const outer = Number(annotation?.outerZ),
+      inner = Number(annotation?.innerZ),
+      value = Number(z),
+      span = inner - outer;
+    if (![outer, inner, value].every(Number.isFinite) || Math.abs(span) < 1e-12) return 0;
+    return Math.max(0, Math.min(1, (value - outer) / span));
+  }
+
+  function setAnnotationDepthAttribute(geometry, annotation, constantDepth = null) {
+    const positions = geometry?.getAttribute?.('position');
+    if (!positions?.count) return geometry;
+    const values = new Float32Array(positions.count),
+      fixed = Number(constantDepth);
+    for (let index = 0; index < positions.count; index++) {
+      values[index] = Number.isFinite(fixed)
+        ? Math.max(0, Math.min(1, fixed))
+        : annotationDepthFraction(annotation, positions.getZ(index));
+    }
+    geometry.setAttribute('annotationDepth', new THREE.Float32BufferAttribute(values, 1));
+    return geometry;
+  }
+
+  function annotationSidewallParts(annotation) {
+    const appearance =
+        annotation?.surfaceAppearance?.kind === 'rough' ? annotation.surfaceAppearance : null,
+      faceDirection = annotation?.face === 'back' ? -1 : 1,
+      outerSurface = appearance
+        ? { appearance, profileNormal: faceDirection }
+        : null,
+      innerSurface =
+        appearance && annotation?.depthProfile !== 'smooth'
+          ? { appearance, profileNormal: faceDirection }
+          : null,
+      front = annotation?.face !== 'back',
+      lowerSurface = front ? innerSurface : outerSurface,
+      upperSurface = front ? outerSurface : innerSurface,
+      lowerDepth = front ? 1 : 0,
+      upperDepth = front ? 0 : 1,
+      parts = [];
+
+    for (const poly of annotation?.polys || []) {
+      for (const closed of poly || []) {
+        const ring = closed.slice(0, -1);
+        for (let index = 0; index < ring.length; index++) {
+          const p = ring[index],
+            q = ring[(index + 1) % ring.length];
+          if (!p || !q || (p[0] === q[0] && p[1] === q[1])) continue;
+          parts.push({
+            p,
+            q,
+            z0: annotation.z0,
+            z1: annotation.z1,
+            lowerSurface,
+            upperSurface,
+            lowerDepth,
+            upperDepth,
+          });
+        }
+      }
+    }
+    return parts;
+  }
+
   function geometryCenter(geometry) {
     geometry.computeBoundingBox();
     const center = new THREE.Vector3();
@@ -834,9 +898,10 @@ export function createThreeView({
 
   function geometryFromSidewallParts(parts) {
     const positions = [],
-      normals = [];
+      normals = [],
+      annotationDepths = [];
 
-    const triangle = (a, b, c) => {
+    const triangle = (a, b, c, depths = null) => {
         const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
           ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
           normal = [
@@ -848,6 +913,7 @@ export function createThreeView({
           unit = normal.map((value) => value / magnitude);
         positions.push(...a, ...b, ...c);
         normals.push(...unit, ...unit, ...unit);
+        if (depths) annotationDepths.push(...depths);
       },
       displacedZ = (point, z, surface) =>
         surface?.appearance?.kind === 'rough'
@@ -871,7 +937,11 @@ export function createThreeView({
           ? Math.max(1e-6, Math.min(...featureSizes) / 4)
           : length,
         segments = Math.max(1, Math.min(512, Math.ceil(length / targetStep))),
-        pointAt = (t) => [p[0] + dx * t, p[1] + dy * t];
+        pointAt = (t) => [p[0] + dx * t, p[1] + dy * t],
+        hasDepth =
+          Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth)),
+        lowerDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.lowerDepth))) : null,
+        upperDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.upperDepth))) : null;
 
       for (let segment = 0; segment < segments; segment++) {
         const t0 = segment / segments,
@@ -881,15 +951,23 @@ export function createThreeView({
           lower0 = [...p0, displacedZ(p0, part.z0, part.lowerSurface)],
           lower1 = [...p1, displacedZ(p1, part.z0, part.lowerSurface)],
           upper1 = [...p1, displacedZ(p1, part.z1, part.upperSurface)],
-          upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)];
-        triangle(lower0, lower1, upper1);
-        triangle(lower0, upper1, upper0);
+          upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
+          firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
+          secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
+        triangle(lower0, lower1, upper1, firstDepths);
+        triangle(lower0, upper1, upper0, secondDepths);
       }
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    if (annotationDepths.length === positions.length / 3 && annotationDepths.length) {
+      geometry.setAttribute(
+        'annotationDepth',
+        new THREE.Float32BufferAttribute(annotationDepths, 1),
+      );
+    }
     return geometry;
   }
 
@@ -917,6 +995,49 @@ export function createThreeView({
       side: THREE.DoubleSide,
       ...materialState,
     });
+  }
+
+  function createAnnotationGradientMaterial(
+    annotation,
+    materialState,
+    { roughness = 0.72, metalness = 0 } = {},
+  ) {
+    const material = new THREE.MeshStandardMaterial({
+      color: annotation?.color || '#D65A6F',
+      roughness,
+      metalness,
+      side: THREE.DoubleSide,
+      ...materialState,
+      transparent: true,
+      depthTest: true,
+      depthWrite: false,
+    });
+    material.userData.waferCadAnnotationGradient = 'section-depth';
+    material.customProgramCacheKey = () => 'wafercad-annotation-depth-gradient-v1';
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader.replace(
+        'void main() {',
+        `attribute float annotationDepth;
+varying float vWaferCadAnnotationDepth;
+void main() {
+  vWaferCadAnnotationDepth = annotationDepth;`,
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'void main() {',
+        `varying float vWaferCadAnnotationDepth;
+void main() {`,
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+float waferCadDepth = clamp(vWaferCadAnnotationDepth, 0.0, 1.0);
+float waferCadAlphaScale = waferCadDepth <= 0.48
+  ? mix(1.0, 0.5555556, waferCadDepth / 0.48)
+  : mix(0.5555556, 0.0555556, (waferCadDepth - 0.48) / 0.52);
+diffuseColor.a *= waferCadAlphaScale;`,
+      );
+    };
+    return material;
   }
 
   function addSurfaceMesh(
@@ -1109,9 +1230,20 @@ export function createThreeView({
             }
           : result.data;
       let geometry = geometryFromRoughMeshData(THREE, meshData);
-      if (task.implant) geometry = shearImplantGeometry(geometry, task.implant);
+      if (task.implant) {
+        setAnnotationDepthAttribute(
+          geometry,
+          task.implant,
+          task.kind === 'implant-depth' ? 1 : 0,
+        );
+        geometry = shearImplantGeometry(geometry, task.implant);
+      }
 
-      const material = createSurfaceMaterial(task.layer, task.state, cap.appearance);
+      const material = task.implant
+        ? createAnnotationGradientMaterial(task.implant, task.state, {
+            roughness: cap.appearance ? 0.84 : 0.72,
+          })
+        : createSurfaceMaterial(task.layer, task.state, cap.appearance);
       if (task.polygonOffset) {
         material.polygonOffset = true;
         material.polygonOffsetFactor = -1;
@@ -1346,9 +1478,20 @@ export function createThreeView({
           lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
           lodZones: task.zones,
         });
-        if (task.implant) geometry = shearImplantGeometry(geometry, task.implant);
+        if (task.implant) {
+          setAnnotationDepthAttribute(
+            geometry,
+            task.implant,
+            task.kind === 'implant-depth' ? 1 : 0,
+          );
+          geometry = shearImplantGeometry(geometry, task.implant);
+        }
 
-        const material = createSurfaceMaterial(task.layer, task.state, cap.appearance);
+        const material = task.implant
+          ? createAnnotationGradientMaterial(task.implant, task.state, {
+              roughness: cap.appearance ? 0.84 : 0.72,
+            })
+          : createSurfaceMaterial(task.layer, task.state, cap.appearance);
         if (task.polygonOffset) {
           material.polygonOffset = true;
           material.polygonOffsetFactor = -1;
