@@ -838,11 +838,13 @@ export function createThreeView({
   function setAnnotationDepthAttribute(geometry, annotation, constantDepth = null) {
     const positions = geometry?.getAttribute?.('position');
     if (!positions?.count) return geometry;
-    const values = new Float32Array(positions.count),
-      fixed = Number(constantDepth);
+    const hasFixedDepth =
+        constantDepth != null && Number.isFinite(Number(constantDepth)),
+      fixedDepth = hasFixedDepth ? Number(constantDepth) : null,
+      values = new Float32Array(positions.count);
     for (let index = 0; index < positions.count; index++) {
-      values[index] = Number.isFinite(fixed)
-        ? Math.max(0, Math.min(1, fixed))
+      values[index] = hasFixedDepth
+        ? Math.max(0, Math.min(1, fixedDepth))
         : annotationDepthFraction(annotation, positions.getZ(index));
     }
     geometry.setAttribute('annotationDepth', new THREE.Float32BufferAttribute(values, 1));
