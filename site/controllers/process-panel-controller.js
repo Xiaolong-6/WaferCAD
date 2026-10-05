@@ -1,4 +1,8 @@
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
+import {
+  captureHistoryReplayResult,
+  remapHistoryReplayOperation,
+} from '../history-replay.js';
 
 export function createProcessPanelController({
   root = document,
@@ -323,34 +327,6 @@ export function createProcessPanelController({
     };
   }
 
-  function remapReplayOperation(operation, params, layerIdMap) {
-    const remapLayerId = (id) => (id && layerIdMap.has(id) ? layerIdMap.get(id) : id);
-
-    if (params.targetLayerId) params.targetLayerId = remapLayerId(params.targetLayerId);
-    if (Array.isArray(params.etchTargetLayerIds)) {
-      params.etchTargetLayerIds = params.etchTargetLayerIds.map(remapLayerId);
-    }
-
-    if (operation.targetLayerId) operation.targetLayerId = remapLayerId(operation.targetLayerId);
-    if (Array.isArray(operation.etchTargetLayerIds)) {
-      operation.etchTargetLayerIds = operation.etchTargetLayerIds.map(remapLayerId);
-    }
-    if (operation.replay?.version === 1) operation.replay.params = structuredClone(params);
-  }
-
-  function applyReplayResultRefs(operation, sourceStep, result, layerIdMap) {
-    const refs = sourceStep?.entityRefs || {};
-    if (operation.kind === 'add' && result?.layerId) {
-      const previousId = refs.resultLayerId || operation.resultLayerId || null;
-      if (previousId) layerIdMap.set(previousId, result.layerId);
-      operation.resultLayerId = result.layerId;
-    } else if (operation.kind === 'implant' && result?.implantId) {
-      operation.resultImplantId = result.implantId;
-    } else if (operation.kind === 'electrical' && result?.electricalRegionId) {
-      operation.resultElectricalRegionId = result.electricalRegionId;
-    }
-  }
-
   async function replayOperations(steps = []) {
     let completed = 0;
     const layerIdMap = new Map();
@@ -390,7 +366,7 @@ export function createProcessPanelController({
       }
 
       const params = structuredClone(replay.params || {});
-      remapReplayOperation(operation, params, layerIdMap);
+      remapHistoryReplayOperation(operation, params, layerIdMap);
 
       let areaRequest;
       try {
@@ -429,7 +405,7 @@ export function createProcessPanelController({
       saveHistory();
       clearBaseRevertSnapshot();
       setModel(task.model);
-      applyReplayResultRefs(operation, sourceStep, task.result, layerIdMap);
+      captureHistoryReplayResult(operation, sourceStep, task.result, layerIdMap);
       if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
       else if (operation.kind === 'implant' && task.result.implantId) {
         colorNewImplant(task.result.implantId);
