@@ -2,14 +2,12 @@ import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { bundledExampleById } from '../bundled-examples.js';
-import { historyOperationLabel } from '../history-operation-label.js';
 
 export function createProjectController({
   root = document,
   importLayoutBuffer,
   loadProjectSnapshot,
   snapshotManager,
-  getModel = () => null,
   syncBaseControls,
   syncTransformInputs,
   renderAll,
@@ -59,7 +57,6 @@ export function createProjectController({
       historyEdit = getHistoricalStepEdit(),
       historyInsert = getHistoricalStepInsert(),
       historyMutation = historyEdit || historyInsert,
-      currentModel = getModel?.() || null,
       position = snapshotManager.currentPosition(),
       nodeById = new Map(historyNodes.map((node) => [node.id, node])),
       branchById = new Map(branches.map((variant) => [variant.id, variant])),
@@ -451,7 +448,7 @@ export function createProjectController({
       }
       const confirmed = await confirmAction({
         title: 'Continue from this Step?',
-        message: `Make "${historyOperationLabel(node, currentModel)}" the new HEAD of "${branch.name}"?`,
+        message: `Make "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}" the new HEAD of "${branch.name}"?`,
         detail:
           'All later Steps on this Variant, and bookmarks attached to those removed Steps, will be deleted. Other Variants are preserved unless they depend on the removed tail.',
         confirmLabel: 'Delete later Steps',
@@ -493,7 +490,7 @@ export function createProjectController({
       }
       const confirmed = await confirmAction({
         title: 'Delete last Step?',
-        message: `Delete "${historyOperationLabel(node, currentModel)}" from "${branch.name}"?`,
+        message: `Delete "${node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step'}" from "${branch.name}"?`,
         detail:
           'The Variant will return to the preceding restorable Step. This is independent of the legacy Undo stack.',
         confirmLabel: 'Delete last Step',
@@ -533,7 +530,7 @@ export function createProjectController({
       const body = root.createElement('div');
       body.className = 'process-history-body';
       const label = root.createElement('strong');
-      label.textContent = historyOperationLabel(node, currentModel);
+      label.textContent = node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step';
 
       const meta = root.createElement('span');
       const face = node.operation?.face
