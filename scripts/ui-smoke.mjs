@@ -348,8 +348,7 @@ assert.notEqual(
   'Welcome Main preview wheel zoom must remain available',
 );
 
-// A dormant preview must accept a view choice before its iframe is ready.
-// The ready handshake then replays the selected view rather than regressing to Main.
+// Auto-loaded previews must remain switchable after their viewport-driven startup.
 const tandemCard = page.locator(
   '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"]',
 );
@@ -364,7 +363,7 @@ const percCard = page.locator(
 );
 await percCard.locator('.welcome-example-view-tab[data-preview-view="three"]').click();
 assert.match(await previewFrames.nth(1).getAttribute('src'), /app\.html\?/);
-assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
+assert.match(await previewFrames.nth(2).getAttribute('src'), /app\.html\?/);
 const percPreview = page.frameLocator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"] .welcome-example-project-frame',
 );
