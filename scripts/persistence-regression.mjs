@@ -7,6 +7,8 @@ import {
   chooseConfirmation,
   gotoWelcome,
   launchBrowser,
+  newUiContext,
+  newUiPage,
   openFunctionPanel,
   waitForAppReady,
 } from './test-helpers/ui.mjs';
@@ -28,7 +30,7 @@ const welcomeProject = projectForBenchmark({
 });
 
 const browser = await launchBrowser();
-const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
+const { page, context: mainContext } = await newUiPage(browser, { viewport: { width: 1365, height: 900 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('dialog', (dialog) => {
@@ -48,7 +50,7 @@ await page.waitForFunction(
 );
 
 // Legacy autosaves must migrate before validation blocks the recovery checkpoint.
-const legacyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const legacyContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const legacyPage = await legacyContext.newPage();
 const legacyErrors = [];
 legacyPage.on('pageerror', (error) => legacyErrors.push(error.message));
@@ -118,7 +120,7 @@ await legacyContext.close();
 
 // Autosave must not serialize a large workspace while the user is actively
 // dragging the 3D camera. A pending dirty save is held until pointer release.
-const interactionAutosaveContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const interactionAutosaveContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const interactionAutosavePage = await interactionAutosaveContext.newPage();
 const interactionAutosaveErrors = [];
 interactionAutosavePage.on('pageerror', (error) => interactionAutosaveErrors.push(error.message));
@@ -183,7 +185,7 @@ await interactionAutosavePage.waitForFunction(
 assert.deepEqual(interactionAutosaveErrors, []);
 await interactionAutosaveContext.close();
 
-const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: refreshPage, context: refreshContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];
 refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));
 await refreshPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
@@ -204,10 +206,10 @@ await refreshPage.waitForFunction(
 assert.equal(await refreshPage.locator('#welcomeScreen').count(), 0);
 assert.equal(await refreshPage.locator('.app-shell').count(), 1);
 assert.deepEqual(refreshErrors, []);
-await refreshPage.close();
+await refreshContext.close();
 
 // Welcome-page layout import must survive the IndexedDB handoff and open in the workspace.
-const layoutHandoffPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: layoutHandoffPage, context: layoutHandoffContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
 const layoutHandoffErrors = [];
 layoutHandoffPage.on('pageerror', (error) => layoutHandoffErrors.push(error.message));
 await gotoWelcome(layoutHandoffPage);
@@ -224,10 +226,10 @@ await layoutHandoffPage.waitForFunction(
 );
 assert.ok(await layoutHandoffPage.locator('#maskLayerList .layer-row').count());
 assert.deepEqual(layoutHandoffErrors, []);
-await layoutHandoffPage.close();
+await layoutHandoffContext.close();
 
 // Welcome-page project opening uses the same staged-file path and restores physical geometry.
-const projectHandoffPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: projectHandoffPage, context: projectHandoffContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
 const projectHandoffErrors = [];
 projectHandoffPage.on('pageerror', (error) => projectHandoffErrors.push(error.message));
 await gotoWelcome(projectHandoffPage);
@@ -248,11 +250,11 @@ assert.equal(Number(await projectHandoffPage.locator('#baseWidth').inputValue())
 assert.equal(Number(await projectHandoffPage.locator('#baseHeight').inputValue()), 3210);
 assert.equal(Number(await projectHandoffPage.locator('#baseThickness').inputValue()), 7);
 assert.deepEqual(projectHandoffErrors, []);
-await projectHandoffPage.close();
+await projectHandoffContext.close();
 
 // A Welcome explicit start must checkpoint an existing autosaved workspace before
 // replacing it, and that checkpoint must be actually restorable.
-const welcomeCheckpointContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const welcomeCheckpointContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const welcomeCheckpointPage = await welcomeCheckpointContext.newPage();
 const welcomeCheckpointErrors = [];
 welcomeCheckpointPage.on('pageerror', (error) => welcomeCheckpointErrors.push(error.message));
@@ -327,7 +329,7 @@ await welcomeCheckpointContext.close();
 
 // A failed staged project from Welcome must restore the previous current workspace
 // instead of autosaving the default empty editor over it.
-const failedWelcomeContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const failedWelcomeContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const failedWelcomePage = await failedWelcomeContext.newPage();
 const failedWelcomeErrors = [];
 failedWelcomePage.on('pageerror', (error) => failedWelcomeErrors.push(error.message));
@@ -371,7 +373,7 @@ await failedWelcomeContext.close();
 
 // Open Example must work even while another tab owns autosave, and the resulting
 // workspace must remain interactive enough to replace the bundled mask.
-const examplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: examplePage, context: exampleContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
 const exampleErrors = [];
 examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
 examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
@@ -413,7 +415,7 @@ await examplePage.waitForFunction(
 );
 assert.ok(await examplePage.locator('#maskLayerList .layer-row').count());
 assert.deepEqual(exampleErrors, []);
-await examplePage.close();
+await exampleContext.close();
 
 await page.locator('#projectNameInput').fill('UI local checkpoint');
 await page.locator('#saveProjectBtn').click();
@@ -528,7 +530,7 @@ assert.match(await page.locator('#statusText').textContent(), /New empty project
 
 // Two tabs sharing one browser profile still have one autosave writer, but neither
 // editor is frozen. The non-owner can keep working and explicitly take over saving.
-const safetyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const safetyContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const safetyFirst = await safetyContext.newPage();
 const safetySecond = await safetyContext.newPage();
 const safetyErrors = [];
@@ -626,6 +628,6 @@ assert.deepEqual(safetyErrors, []);
 await safetyContext.close();
 
 assert.deepEqual(errors, []);
-await page.close();
+await mainContext.close();
 await browser.close();
 console.log('WaferCAD persistence regression: OK');
