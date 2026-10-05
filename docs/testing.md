@@ -18,6 +18,19 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 
 The former 2993-line UI smoke has been fully decomposed into focused browser suites. New coverage should go directly into the suite that owns the behavior; there is no generic catch-all UI regression file anymore.
 
+### Common local groups
+
+Use the smallest group that matches the change:
+
+- `npm run test:ui:fast`: smoke + workstation + resilience.
+- `npm run test:ui:state`: History + persistence/recovery/multi-tab.
+- `npm run test:ui:geometry`: process geometry + interaction.
+- `npm run test:ui:review`: bundled examples + product layout/renderer review.
+- `npm run test:ui:all`: every non-baseline browser suite.
+- `npm run test:ui:visual`: opt-in approved visual baselines only.
+
+These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
+
 ## Fast smoke contract
 
 The fast smoke should stay deliberately small. It currently proves that:
