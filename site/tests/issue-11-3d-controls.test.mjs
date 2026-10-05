@@ -79,11 +79,24 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
   assert.match(threeView, /const showInternalImplants = materialState\.transparent/);
-  assert.match(threeView, /if \(!showInternalImplants && !implant\.surfaceExposed\) continue/);
+  assert.match(
+    threeView,
+    /if \(!showInternalImplants && !implant\.surfaceExposed && !implant\.viewClipped\) continue/,
+  );
+  assert.match(threeView, /if \(implant\.viewClipped\)/);
   assert.match(threeView, /if \(showInternalImplants\)/);
   assert.match(threeView, /opacity: opacity \* 0\.18/);
+  assert.match(threeView, /opacity: opacity \* \(materialState\.transparent \? 0\.5 : 0\.72\)/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
-  assert.match(threeView, /opacity: implantState\.opacity,\s*depthTest: true/s);
+  assert.match(threeView, /function createAnnotationGradientMaterial\(/);
+  assert.match(threeView, /attribute float annotationDepth/);
+  assert.match(threeView, /waferCadDepth <= 0\.48/);
+  assert.match(threeView, /0\.5555556/);
+  assert.match(threeView, /0\.0555556/);
+  assert.match(threeView, /function annotationSidewallParts\(/);
+  assert.match(threeView, /displaySidewallParts\(annotationSidewallParts\(implant\)\)/);
+  assert.match(threeView, /cutMaterial\.polygonOffset = true/);
+  assert.match(threeView, /cutMaterial\.depthFunc = THREE\.LessEqualDepth/);
   assert.match(threeView, /capState = \{[\s\S]*?depthTest: true/);
   assert.match(threeView, /capMaterial\.polygonOffset = true/);
   assert.match(threeView, /capMaterial\.polygonOffsetFactor = -1/);
