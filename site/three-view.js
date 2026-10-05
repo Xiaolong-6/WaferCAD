@@ -1794,23 +1794,55 @@ diffuseColor.a *= waferCadAlphaScale;`,
         });
       }
 
-      // Implant is a non-material annotation volume. In opaque inspection,
-      // internal fragments are not added to the scene at all; only a fragment
-      // whose surviving outer face coincides with the current material surface
-      // receives a surface overlay. Transparent inspection adds the clipped
-      // internal body and its outer cap for volume inspection.
+      // Implant is a non-material annotation volume. Opaque inspection still
+      // hides buried volume, but an ROI clip creates a real inspection cut face:
+      // the clipped sidewall is rendered on top of the material cut with the same
+      // surface-to-depth gradient used by Section A–B. Transparent inspection
+      // additionally shows the full clipped internal volume.
       const showInternalImplants = materialState.transparent;
       let implantInternalCount = 0,
-        implantSurfaceCount = 0;
+        implantSurfaceCount = 0,
+        implantCutCount = 0,
+        implantGradientMeshCount = 0;
       for (const implant of implantSolids(model, clip)) {
-        if (!showInternalImplants && !implant.surfaceExposed) continue;
+        if (!showInternalImplants && !implant.surfaceExposed && !implant.viewClipped) continue;
 
         const outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
           followDepthProfile = Boolean(
             appearance && implant.depthProfile !== 'smooth',
-          );
+          ),
+          sidewallGeometry = () =>
+            shearImplantGeometry(
+              geometryFromSidewallParts(
+                displaySidewallParts(annotationSidewallParts(implant)),
+              ),
+              implant,
+            );
+
+        if (implant.viewClipped) {
+          const cutState = {
+              opacity: opacity * (materialState.transparent ? 0.5 : 0.72),
+              transparent: true,
+              depthTest: true,
+              depthWrite: false,
+            },
+            cutGeometry = sidewallGeometry(),
+            cutMaterial = createAnnotationGradientMaterial(implant, cutState, {
+              roughness: appearance ? 0.8 : 0.72,
+            });
+          cutMaterial.polygonOffset = true;
+          cutMaterial.polygonOffsetFactor = -2;
+          cutMaterial.polygonOffsetUnits = -2;
+          cutMaterial.depthFunc = THREE.LessEqualDepth;
+          const cut = addSurfaceMesh(cutGeometry, cutMaterial, cutState, null, 46);
+          if (cut) {
+            cut.name = `${implant.name || implant.implantId || 'Implant'} ROI cut`;
+            implantCutCount++;
+            implantGradientMeshCount++;
+          }
+        }
 
         if (showInternalImplants) {
           const implantState = {
@@ -1818,31 +1850,22 @@ diffuseColor.a *= waferCadAlphaScale;`,
               transparent: true,
               depthTest: true,
               depthWrite: false,
-            },
-            bodyGeometry = shearImplantGeometry(
-              geometryFromSolid(
-                displaySolidForZCollapse(
-                  followDepthProfile
-                    ? { slabs: implant.slabs, caps: [] }
-                    : implant,
-                ),
-              ),
-              implant,
-            ),
-            bodyMaterial = new THREE.MeshStandardMaterial({
-              color: implant.color || '#D65A6F',
+            };
+          let bodyGeometry = followDepthProfile
+            ? sidewallGeometry()
+            : geometryFromSolid(displaySolidForZCollapse(implant));
+          if (!followDepthProfile) {
+            setAnnotationDepthAttribute(bodyGeometry, implant);
+            bodyGeometry = shearImplantGeometry(bodyGeometry, implant);
+          }
+          const bodyMaterial = createAnnotationGradientMaterial(implant, implantState, {
               roughness: 0.7,
-              metalness: 0,
-              side: THREE.DoubleSide,
-              transparent: true,
-              opacity: implantState.opacity,
-              depthTest: true,
-              depthWrite: false,
             }),
             body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
           if (body) {
             body.name = implant.name || implant.implantId || 'Implant';
             implantInternalCount++;
+            implantGradientMeshCount++;
           }
 
           if (followDepthProfile && zIsVisible(implant.innerZ)) {
@@ -1874,6 +1897,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
             });
           }
         }
+
+        // A clipped sidewall is not a physical top/bottom surface. In opaque
+        // mode it is enough to show the ROI cut; only a genuinely exposed
+        // surviving outer face receives the horizontal surface overlay.
+        if (!showInternalImplants && !implant.surfaceExposed) continue;
 
         implantSurfaceCount++;
         const capState = {
@@ -1909,27 +1937,31 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
         } else {
           if (!zIsVisible(implant.outerZ)) continue;
-          const capGeometry = shearImplantGeometry(
-              geometryFromSolid({
-                slabs: [],
-                caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
-              }),
-              implant,
-            ),
-            capMaterial = createSurfaceMaterial(
-              { color: implant.color || '#D65A6F' },
-              capState,
-            );
+          let capGeometry = geometryFromSolid({
+            slabs: [],
+            caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
+          });
+          setAnnotationDepthAttribute(capGeometry, implant, 0);
+          capGeometry = shearImplantGeometry(capGeometry, implant);
+          const capMaterial = createAnnotationGradientMaterial(implant, capState, {
+            roughness: 0.72,
+          });
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
           const cap = addSurfaceMesh(capGeometry, capMaterial, capState, null, 40);
-          if (cap) cap.name = capName;
+          if (cap) {
+            cap.name = capName;
+            implantGradientMeshCount++;
+          }
         }
       }
 
       host.dataset.implantInternalCount = String(implantInternalCount);
       host.dataset.implantSurfaceCount = String(implantSurfaceCount);
+      host.dataset.implantCutCount = String(implantCutCount);
+      host.dataset.implantGradientMeshCount = String(implantGradientMeshCount);
+      host.dataset.implantGradient = 'section-depth';
 
       // Electrical regions are first-class non-material annotations. Their
       // volume is visible through transparent host material; an exposed/cut
