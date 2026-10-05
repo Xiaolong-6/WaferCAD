@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { installPinnedThreeRoute } from './ui.mjs';
 
 export async function openProductPage(browser, viewport, touch, errors) {
   const context = await browser.newContext({
@@ -9,15 +8,7 @@ export async function openProductPage(browser, viewport, touch, errors) {
     hasTouch: touch,
   });
 
-  if (process.env.WAFERCAD_THREE_DIR) {
-    await context.route('https://cdn.jsdelivr.net/npm/three@0.179.1/**', async (route) => {
-      const path = new URL(route.request().url()).pathname.split('/three@0.179.1/')[1];
-      await route.fulfill({
-        contentType: 'text/javascript',
-        body: await readFile(join(process.env.WAFERCAD_THREE_DIR, path)),
-      });
-    });
-  }
+  await installPinnedThreeRoute(context);
 
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
