@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { launchBrowser, newUiPage } from './test-helpers/ui.mjs';
+import { checkSectionSeams } from './test-helpers/product-scientific.mjs';
 
 const vendorSource = await readFile(
   new URL('../site/vendor/polygon-clipping.umd.js', import.meta.url),
@@ -16,6 +17,14 @@ const sahliProjectBuffer = await readFile(
   new URL('../examples/projects/sahli-2018-fully-textured-tandem.wafercad', import.meta.url),
 );
 
+const tandemProject = JSON.parse(
+  await readFile(
+    new URL('../site/examples/fully-textured-perovskite-silicon-tandem.wafercad', import.meta.url),
+    'utf8',
+  ),
+);
+expandProjectStorage(tandemProject);
+
 const packedLiterature = JSON.parse(
   await readFile(
     new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
@@ -23,6 +32,87 @@ const packedLiterature = JSON.parse(
   ),
 );
 expandProjectStorage(packedLiterature);
+
+function materialTopologySignature(model) {
+  return JSON.stringify({
+    layers: model?.layers || [],
+    regions: (model?.regions || []).map((region) => ({
+      id: region.id,
+      geom: region.geom,
+      stack: region.stack,
+    })),
+  });
+}
+
+function assertAnnotationKeepsMaterialTopology(project) {
+  const nodes = project.snapshotBranches?.nodes || [];
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  for (const node of nodes) {
+    if (!['implant', 'electrical'].includes(node.operation?.kind)) continue;
+    const parent = byId.get(node.parentId);
+    assert.ok(parent?.state?.model, `${node.id}: annotation parent model is missing`);
+    assert.ok(node.state?.model, `${node.id}: annotation result model is missing`);
+    assert.equal(
+      materialTopologySignature(node.state.model),
+      materialTopologySignature(parent.state.model),
+      `${node.operation.kind} annotation must not repartition material geometry: ${node.operation.label}`,
+    );
+  }
+}
+
+function assertTandemTextureContract(project) {
+  const model = project.model;
+  assert.ok(model?.regions?.length, 'Tandem final model is missing regions');
+
+  const layerById = new Map(model.layers.map((layer) => [layer.id, layer]));
+  const frontProfile = 'pyramid-front-2018';
+  const backProfile = 'pyramid-back-2019';
+  const seenFront = new Set();
+  const seenBack = new Set();
+
+  for (const region of model.regions) {
+    for (const segment of region.stack || []) {
+      if (segment.layerId === 'base') {
+        assert.equal(segment.frontSurface?.profileId, frontProfile);
+        assert.equal(segment.backSurface?.profileId, backProfile);
+        assert.equal(segment.frontSurface?.morphology, 'pyramid');
+        assert.equal(segment.backSurface?.morphology, 'pyramid');
+        continue;
+      }
+
+      const layer = layerById.get(segment.layerId);
+      assert.ok(layer, `Unknown tandem layer ${segment.layerId}`);
+      const isBack = /^(back|rear)\b/i.test(layer.name);
+      const surface = isBack ? segment.backSurface : segment.frontSurface;
+      assert.ok(
+        surface,
+        `${layer.name}: textured tandem segment lost its ${isBack ? 'back' : 'front'} surface profile`,
+      );
+      assert.equal(surface.profileId, isBack ? backProfile : frontProfile);
+      assert.equal(surface.morphology, 'pyramid');
+      assert.equal(surface.polarity, 'normal');
+      assert.equal(surface.seed, isBack ? 2019 : 2018);
+      if (isBack) seenBack.add(segment.layerId);
+      else seenFront.add(segment.layerId);
+    }
+  }
+
+  const expectedBack = new Set(
+    model.layers
+      .filter((layer) => layer.id !== 'base' && /^(back|rear)\b/i.test(layer.name))
+      .map((layer) => layer.id),
+  );
+  const expectedFront = new Set(
+    model.layers
+      .filter((layer) => layer.id !== 'base' && !/^(back|rear)\b/i.test(layer.name))
+      .map((layer) => layer.id),
+  );
+  assert.deepEqual([...seenBack].sort(), [...expectedBack].sort());
+  assert.deepEqual([...seenFront].sort(), [...expectedFront].sort());
+}
+
+assertAnnotationKeepsMaterialTopology(packedLiterature);
+assertTandemTextureContract(tandemProject);
 
 const branches = new Map(
     packedLiterature.snapshotBranches.branches.map((branch) => [branch.id, branch]),
@@ -189,6 +279,7 @@ await waitRendererForState(
   branches.get('black-si-fig1a-final').headState,
   'initial Black-Si FINAL',
 );
+await checkSectionSeams(page, packedLiterature);
 await page.screenshot({
   path: new URL('../test-results/product-review/example-photodetector-literature.png', import.meta.url)
     .pathname,
@@ -258,6 +349,43 @@ for (const example of [
     ).pathname,
     fullPage: true,
   });
+  if (example.id === 'fully-textured-perovskite-silicon-tandem') {
+    await page.locator('#threePanel .export-control > summary').click();
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    await page.locator('#threeExportModelBtn').click();
+    const download = await downloadPromise;
+    const path = await download.path();
+    assert.ok(path);
+    const glb = parseGlbJson(await readFile(path));
+    const morphologyNodes = (glb.nodes || []).filter(
+      (node) => node.extras?.wafercadMorphology,
+    );
+    const morphologyLayerIds = new Set(
+      morphologyNodes.flatMap((node) =>
+        [
+          node.extras?.wafercadLayerId,
+          node.extras?.wafercadInterfaceLayerId,
+        ].filter(Boolean),
+      ),
+    );
+    const expectedTexturedLayerIds = new Set(
+      tandemProject.model.regions.flatMap((region) =>
+        (region.stack || [])
+          .filter(
+            (segment) =>
+              segment.layerId !== 'base' &&
+              (segment.frontSurface?.profileId || segment.backSurface?.profileId),
+          )
+          .map((segment) => segment.layerId),
+      ),
+    );
+    for (const layerId of expectedTexturedLayerIds) {
+      assert.ok(
+        morphologyLayerIds.has(layerId),
+        `Tandem GLB lost textured morphology for ${layerId}`,
+      );
+    }
+  }
 }
 
 // Sahli is not a Welcome card, but it is the strongest morphology-export
