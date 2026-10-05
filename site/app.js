@@ -143,7 +143,7 @@ let workspacePersistenceController = null,
   snapshotManager = null;
 
 function persistWorkspaceNow() {
-  return workspacePersistenceController?.persistNow() ?? Promise.resolve(false);
+  return workspacePersistenceController?.persistNow({ force: true }) ?? Promise.resolve(false);
 }
 
 function scheduleWorkspacePersistence() {
@@ -908,6 +908,39 @@ function refreshAfterHistoricalEditLoad() {
   fit3d();
 }
 
+function captureHistoryReplayTransaction() {
+  snapshotManager?.syncActiveHeadState?.();
+  return {
+    project: structuredClone(buildProjectSnapshot(true)),
+    history: structuredClone(history),
+    future: structuredClone(future),
+    baseRevertSnapshot: baseRevertSnapshot ? structuredClone(baseRevertSnapshot) : null,
+  };
+}
+
+function restoreHistoryReplayTransaction(transaction) {
+  if (!transaction?.project) return false;
+  const project = structuredClone(transaction.project);
+  loadProjectSnapshot(project);
+  snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+  history = structuredClone(transaction.history || []);
+  future = structuredClone(transaction.future || []);
+  baseRevertSnapshot = transaction.baseRevertSnapshot
+    ? structuredClone(transaction.baseRevertSnapshot)
+    : null;
+  pendingHistoryStepEdit = null;
+  pendingHistoryStepInsert = null;
+  syncBaseControls();
+  maskImportController?.syncTransformInputs();
+  syncUndo();
+  renderAll();
+  renderSnapshots();
+  fit3d();
+  updateOperationUI();
+  markProjectDirty();
+  return true;
+}
+
 async function beginHistoricalStepEdit(node) {
   const context = snapshotManager.stepEditContext(node?.id, { includeReplayStates: true });
   if (!context?.editable) {
@@ -923,7 +956,8 @@ async function beginHistoricalStepEdit(node) {
   }
 
   await checkpointWorkspace('pre-history-step-edit');
-  const restored = snapshotManager.restoreStepInput(node.id);
+  const transaction = captureHistoryReplayTransaction(),
+    restored = snapshotManager.restoreStepInput(node.id);
   if (!restored) {
     status('Could not restore the input state for this Step.', 'error');
     return false;
@@ -941,6 +975,7 @@ async function beginHistoricalStepEdit(node) {
     canReplaceCurrentVariant: context.canReplaceCurrentVariant,
     dependentVariants: context.dependentVariants.map((item) => ({ ...item })),
     downstream: context.downstream.map((item) => structuredClone(item)),
+    transaction,
   };
 
   refreshAfterHistoricalEditLoad();
@@ -1042,7 +1077,8 @@ async function beginHistoricalStepInsert(node) {
   if (mode === 'cancel') return false;
 
   await checkpointWorkspace('pre-history-step-insert');
-  const restored = snapshotManager.restoreStepInput(node.id);
+  const transaction = captureHistoryReplayTransaction(),
+    restored = snapshotManager.restoreStepInput(node.id);
   if (!restored) {
     status('Could not restore the input state for this insertion point.', 'error');
     return false;
@@ -1058,6 +1094,7 @@ async function beginHistoricalStepInsert(node) {
     laterStepCount: context.laterStepCount,
     replaySteps: context.replaySteps.map((item) => structuredClone(item)),
     canReplaceCurrentVariant: context.canReplaceCurrentVariant,
+    transaction,
   };
 
   refreshAfterHistoricalEditLoad();
@@ -1094,7 +1131,8 @@ async function finishHistoricalStepInsert({ applyGate, branchCommit } = {}) {
 
   const replaySteps = insert.replaySteps.map((step) => structuredClone(step)),
     mode = insert.mode,
-    targetVariant = snapshotManager.activeBranch().name;
+    targetVariant = snapshotManager.activeBranch().name,
+    transaction = insert.transaction;
   pendingHistoryStepInsert = null;
   updateOperationUI();
 
@@ -1108,19 +1146,30 @@ async function finishHistoricalStepInsert({ applyGate, branchCommit } = {}) {
     return true;
   }
 
-  const replay = await processPanelController.replayOperations(replaySteps);
-  markProjectDirty();
-  renderSnapshots();
-  if (!replay.ok) {
+  workspacePersistenceController?.beginInteraction?.();
+  let replay;
+  try {
+    replay = await processPanelController.replayOperations(replaySteps, {
+      taskLabel: `Recomputing ${replaySteps.length} existing Step${replaySteps.length === 1 ? '' : 's'}…`,
+    });
+    if (!replay?.ok) restoreHistoryReplayTransaction(transaction);
+  } finally {
+    workspacePersistenceController?.endInteraction?.();
+  }
+
+  if (!replay?.ok) {
     const failedLabel =
-      replay.failedOperation?.label || replay.failedOperation?.kind || 'later Step';
+      replay?.failedOperation?.label || replay?.failedOperation?.kind || 'later Step',
+      completed = replay?.completed ?? 0;
     status(
-      `Recompute stopped after ${replay.completed}/${replaySteps.length} existing Steps at "${failedLabel}": ${replay.error} A Recovery checkpoint was saved before insertion.`,
+      `Recompute stopped after ${completed}/${replaySteps.length} existing Steps at "${failedLabel}": ${replay?.error || 'Unknown replay error.'} Original Variant restored; the pre-insertion Recovery checkpoint is also available.`,
       'warning',
     );
     return true;
   }
 
+  markProjectDirty();
+  renderSnapshots();
   status(
     mode === 'current-replay'
       ? `Inserted the Step and recomputed ${replay.completed} existing Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`
@@ -1148,9 +1197,10 @@ async function finishHistoricalStepEdit({ applyGate, branchCommit } = {}) {
     return true;
   }
 
-  const downstream = edit.downstream.map((step) => structuredClone(step));
-  const mode = edit.mode;
-  const targetVariant = snapshotManager.activeBranch().name;
+  const downstream = edit.downstream.map((step) => structuredClone(step)),
+    mode = edit.mode,
+    targetVariant = snapshotManager.activeBranch().name,
+    transaction = edit.transaction;
   pendingHistoryStepEdit = null;
   updateOperationUI();
 
@@ -1168,19 +1218,30 @@ async function finishHistoricalStepEdit({ applyGate, branchCommit } = {}) {
     return true;
   }
 
-  const replay = await processPanelController.replayOperations(downstream);
-  markProjectDirty();
-  renderSnapshots();
-  if (!replay.ok) {
+  workspacePersistenceController?.beginInteraction?.();
+  let replay;
+  try {
+    replay = await processPanelController.replayOperations(downstream, {
+      taskLabel: `Recalculating ${downstream.length} later Step${downstream.length === 1 ? '' : 's'}…`,
+    });
+    if (!replay?.ok) restoreHistoryReplayTransaction(transaction);
+  } finally {
+    workspacePersistenceController?.endInteraction?.();
+  }
+
+  if (!replay?.ok) {
     const failedLabel =
-      replay.failedOperation?.label || replay.failedOperation?.kind || 'later Step';
+      replay?.failedOperation?.label || replay?.failedOperation?.kind || 'later Step',
+      completed = replay?.completed ?? 0;
     status(
-      `Replay stopped after ${replay.completed}/${downstream.length} later Steps at "${failedLabel}": ${replay.error} A Recovery checkpoint was saved before the edit.`,
+      `Replay stopped after ${completed}/${downstream.length} later Steps at "${failedLabel}": ${replay?.error || 'Unknown replay error.'} Original Variant restored; the pre-edit Recovery checkpoint is also available.`,
       'warning',
     );
     return true;
   }
 
+  markProjectDirty();
+  renderSnapshots();
   status(
     `Replayed ${replay.completed} later Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`,
     'success',
@@ -1705,6 +1766,7 @@ const workspaceActions = createWorkspaceActionsController({
   renderSnapshots,
   onProjectChanged: markProjectDirty,
   getModel: () => model,
+  taskController: processTaskController,
 });
 
 const mainCanvasController = createMainCanvasController({
@@ -1771,6 +1833,7 @@ workspacePersistenceController = createWorkspacePersistenceController({
     projectName = value;
   },
   syncProjectNameInput,
+  taskController: processTaskController,
   confirmAction: (options) => confirmationDialog.confirm(options),
   chooseAction: (options) => confirmationDialog.ask(options),
 });
