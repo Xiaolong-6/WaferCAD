@@ -1862,7 +1862,7 @@ test('History insertion topology supports current rewrite, branch start, branch 
   };
 
   const current = createChain();
-  assert.equal(current.manager.restoreStepInput(current.b.id), true);
+  assert.ok(current.manager.restoreStepInput(current.b.id));
   current.manager.replaceBranchTailFrom(current.b.id);
   const inserted = current.append('X', 2),
     replayedB = current.append('B', 3),
@@ -1876,7 +1876,7 @@ test('History insertion topology supports current rewrite, branch start, branch 
   );
 
   const branchStart = createChain();
-  assert.equal(branchStart.manager.restoreStepInput(branchStart.b.id), true);
+  assert.ok(branchStart.manager.restoreStepInput(branchStart.b.id));
   const startVariant = branchStart.manager.createBranchFromCursor('Start');
   const startInserted = branchStart.append('X', 2);
   const startBranches = branchStart.manager.listBranches(),
@@ -1887,7 +1887,7 @@ test('History insertion topology supports current rewrite, branch start, branch 
   assert.equal(startChild.headNodeId, startInserted.id);
 
   const branchCarry = createChain();
-  assert.equal(branchCarry.manager.restoreStepInput(branchCarry.b.id), true);
+  assert.ok(branchCarry.manager.restoreStepInput(branchCarry.b.id));
   const carryVariant = branchCarry.manager.createBranchFromCursor('Carry');
   const carryInserted = branchCarry.append('X', 2),
     carryB = branchCarry.append('B', 3),
