@@ -71,6 +71,12 @@ export async function openFunctionPanel(page, name, clickOptions = {}) {
   );
 }
 
+export async function chooseConfirmation(page, action = 'confirm') {
+  const overlay = page.locator('#confirmationDialogOverlay');
+  await overlay.waitFor({ state: 'visible', timeout: 5000 });
+  await overlay.locator(`[data-dialog-action="${action}"]`).click();
+}
+
 export async function waitForThreeReady(page, timeout = 30000) {
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
