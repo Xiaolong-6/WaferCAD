@@ -255,10 +255,9 @@ await preview.locator('html.welcome-project-preview[data-preview-view="main"]').
   state: 'attached',
   timeout: 30000,
 });
-assert.equal(
-  await preview.locator('html.welcome-project-preview').getAttribute('data-preview-plan-framing'),
-  'fit',
-);
+await preview
+  .locator('html.welcome-project-preview[data-preview-plan-framing="fit"]')
+  .waitFor({ state: 'attached', timeout: 30000 });
 
 for (const [view, panelId] of [
   ['main', 'mainPanel'],
