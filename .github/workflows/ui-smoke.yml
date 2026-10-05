@@ -7,10 +7,12 @@ on:
     paths:
       - "site/**"
       - "scripts/ui-smoke.mjs"
-      - "scripts/ui-regression.mjs"
+      - "scripts/workstation-regression.mjs"
       - "scripts/history-regression.mjs"
       - "scripts/persistence-regression.mjs"
       - "scripts/process-geometry-regression.mjs"
+      - "scripts/interaction-regression.mjs"
+      - "scripts/resilience-regression.mjs"
       - "scripts/test-helpers/**"
       - "scripts/example-regression.mjs"
       - "scripts/product-regression.mjs"
@@ -68,8 +70,14 @@ jobs:
       - name: Run process geometry regression
         run: npm run test:ui:process
 
-      - name: Run full browser regression
-        run: npm run test:ui:regression
+      - name: Run workstation regression
+        run: npm run test:ui:workstation
+
+      - name: Run interaction regression
+        run: npm run test:ui:interaction
+
+      - name: Run resilience regression
+        run: npm run test:ui:resilience
 
       - name: Run bundled example regression
         run: npm run test:ui:examples
