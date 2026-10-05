@@ -970,6 +970,153 @@ assert.equal(
 assert.deepEqual(historyRecomputeErrors, []);
 await historyRecomputeContext.close();
 
+// Replay is transactional: if a later Step fails after earlier replay Steps
+// succeeded, the original Variant and geometry are restored automatically.
+const historyReplayFailureContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const historyReplayFailurePage = await historyReplayFailureContext.newPage();
+const historyReplayFailureErrors = [];
+historyReplayFailurePage.on('pageerror', (error) => historyReplayFailureErrors.push(error.message));
+await gotoWelcome(historyReplayFailurePage);
+await historyReplayFailurePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'history-replay-failure-base.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await historyReplayFailurePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyReplayFailurePage.waitForFunction(
+  () => (document.getElementById('statusText')?.textContent || '') === 'Opened history-replay-failure-base.wafercad.',
+  null,
+  { timeout: 30000 },
+);
+await openFunctionPanel(historyReplayFailurePage, 'process');
+await historyReplayFailurePage.locator('[data-process-mode="add"]').click();
+await historyReplayFailurePage.locator('#operationArea').selectOption('full');
+await historyReplayFailurePage.locator('#growthMode').selectOption('direct');
+await historyReplayFailurePage.locator('#operationThickness').fill('0.05');
+for (const name of ['Fail A', 'Fail B', 'Fail C', 'Fail D', 'Fail E']) {
+  await historyReplayFailurePage.locator('#layerName').fill(name);
+  await historyReplayFailurePage.locator('#applyOperationBtn').click();
+  await historyReplayFailurePage.waitForFunction(
+    (expected) =>
+      (document.getElementById('statusText')?.textContent || '').includes(`Deposited ${expected}`),
+    name,
+    { timeout: 30000 },
+  );
+}
+
+await openFunctionPanel(historyReplayFailurePage, 'snapshots');
+const failAStep = historyReplayFailurePage.locator('.history-step-wrap', { hasText: 'Fail A' }).first();
+await failAStep.locator('.snapshot-more-trigger').click();
+await failAStep.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+await historyReplayFailurePage.waitForFunction(
+  () => /Editing "Deposit Fail A/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+await historyReplayFailurePage.locator('#layerName').fill('Fail A edited');
+
+// The edited Step itself is the first process worker after this point. Let two
+// downstream replay workers finish, then fail the third downstream worker.
+await historyReplayFailurePage.evaluate(() => {
+  const NativeWorker = globalThis.Worker;
+  let processWorkerCount = 0;
+  globalThis.Worker = new Proxy(NativeWorker, {
+    construct(Target, args) {
+      const url = String(args[0] || '');
+      if (url.includes('process-worker.js')) {
+        processWorkerCount += 1;
+        if (processWorkerCount === 4) {
+          throw new Error('synthetic replay worker failure');
+        }
+      }
+      return Reflect.construct(Target, args);
+    },
+  });
+});
+
+await historyReplayFailurePage.locator('#applyOperationBtn').click();
+await historyReplayFailurePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+await chooseConfirmation(historyReplayFailurePage, 'replace-replay');
+await historyReplayFailurePage.waitForFunction(
+  () => /Replay stopped after 2\/4 later Steps/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+assert.match(
+  await historyReplayFailurePage.locator('#statusText').textContent(),
+  /Original Variant restored/,
+);
+await openFunctionPanel(historyReplayFailurePage, 'snapshots');
+const failedReplayText = await historyReplayFailurePage
+  .locator('.history-variant[data-variant-id="main"]')
+  .textContent();
+for (const name of ['Fail A', 'Fail B', 'Fail C', 'Fail D', 'Fail E']) {
+  assert.match(failedReplayText, new RegExp(name));
+}
+assert.doesNotMatch(failedReplayText, /Fail A edited/);
+assert.deepEqual(historyReplayFailureErrors, []);
+await historyReplayFailureContext.close();
+
+// Autosave must not serialize a large workspace while the user is actively
+// dragging the 3D camera. A pending dirty save is held until pointer release.
+const interactionAutosaveContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+const interactionAutosavePage = await interactionAutosaveContext.newPage();
+const interactionAutosaveErrors = [];
+interactionAutosavePage.on('pageerror', (error) => interactionAutosaveErrors.push(error.message));
+await gotoWelcome(interactionAutosavePage);
+await interactionAutosavePage.locator('#welcomeProjectInput').setInputFiles({
+  name: 'interaction-autosave-base.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await interactionAutosavePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await interactionAutosavePage.waitForFunction(
+  () => document.documentElement.dataset.appReady === 'true',
+  null,
+  { timeout: 30000 },
+);
+await interactionAutosavePage.waitForFunction(
+  () => document.querySelector('#threeHost canvas'),
+  null,
+  { timeout: 30000 },
+);
+await interactionAutosavePage.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.55';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await interactionAutosavePage.waitForFunction(
+  () => /Unsaved changes/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 3000 },
+);
+const interactionCanvas = interactionAutosavePage.locator('#threeHost canvas');
+const interactionBox = await interactionCanvas.boundingBox();
+assert.ok(interactionBox);
+await interactionAutosavePage.mouse.move(
+  interactionBox.x + interactionBox.width * 0.55,
+  interactionBox.y + interactionBox.height * 0.5,
+);
+await interactionAutosavePage.mouse.down();
+await interactionAutosavePage.mouse.move(
+  interactionBox.x + interactionBox.width * 0.68,
+  interactionBox.y + interactionBox.height * 0.58,
+  { steps: 8 },
+);
+await interactionAutosavePage.waitForTimeout(2300);
+assert.match(
+  await interactionAutosavePage.locator('#workspaceSaveStatus').textContent(),
+  /Unsaved changes/,
+);
+await interactionAutosavePage.mouse.up();
+await interactionAutosavePage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 8000 },
+);
+assert.deepEqual(interactionAutosaveErrors, []);
+await interactionAutosaveContext.close();
+
 const refreshPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const refreshErrors = [];
 refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));
