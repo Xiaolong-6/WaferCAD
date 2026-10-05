@@ -58,3 +58,16 @@ A failure here should stop the expensive browser regression steps early.
 `product-regression.mjs` already produces review screenshots and checks layout geometry across multiple viewports. Those artifacts are useful for product review but are not equivalent to pixel-baseline assertions.
 
 Before introducing screenshot baselines, keep deterministic rendering inputs (including the pinned Three.js source in CI), select a small set of stable views, and define explicit tolerances for raster/WebGL differences. Structural geometry invariants remain the primary gate for scientific correctness.
+
+## Next optimization target
+
+`product-regression.mjs` is now the largest remaining browser test file. It should not be split by line count alone because its shared helpers feed both responsive-layout checks and wide-screen renderer acceptance cases.
+
+The next safe refactor is:
+
+1. Extract reusable product-review helpers (browser/context setup, capture, layout checks, project loading) into a dedicated helper module.
+2. Keep responsive/workstation visual contracts in a product-layout suite.
+3. Move wide-screen renderer/roughness/LOD/implant acceptance into a renderer-product suite.
+4. Keep the generated review report/index as an orchestration layer over both outputs.
+
+Do this only after the current focused-suite split is validated; avoid duplicating the expensive renderer cases across multiple entry points.
