@@ -10,11 +10,13 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 | History regression | `npm run test:ui:history` | History restore, Variants, bookmarks, historical Step editing/replay, rollback, and History export | Independent History scenarios; fault injection allowed |
 | Persistence regression | `npm run test:ui:persistence` | Autosave, migration, recovery checkpoints, Welcome staged handoff, refresh restore, and multi-tab ownership/takeover | Storage/profile scenarios isolated from process geometry |
 | Process geometry regression | `npm run test:ui:process` | Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, GLB morphology, and Section geometry contracts | Scientific/process geometry coverage with real UI + export paths |
-| Full UI regression | `npm run test:ui:regression` | Remaining broad interaction and persistence coverage while it is decomposed | Comprehensive; may use fault injection and internal contracts |
+| Workstation regression | `npm run test:ui:workstation` | Welcome/boot gating, navigation semantics, example-family loading, default tool shell, and basic workstation integration | Shell-level integration; no process-specific geometry |
+| Interaction regression | `npm run test:ui:interaction` | Slice/ROI, Mask Draw and shape editors, mask ROI/alignment, exports, maximize/restore, and 3D controls | Pointer/keyboard interaction and view-control contracts |
+| Resilience regression | `npm run test:ui:resilience` | Missing Three.js CDN and unavailable WebGL behavior | Explicit degraded-mode diagnostics while 2D remains usable |
 | Bundled examples | `npm run test:ui:examples` | Literature/example structural contracts and restore behavior | Example-specific geometry/render invariants |
 | Product/visual review | `npm run test:ui:product` | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots | Multiple viewports; deterministic renderer inputs in CI |
 
-The full UI regression suite is intentionally a preservation layer. It started as the former 2993-line smoke scenario; History, persistence/recovery, and process-geometry coverage have now been migrated into dedicated suites. Its coverage should move into focused suites incrementally; do not add new unrelated scenarios to it by default.
+The former 2993-line UI smoke has been fully decomposed into focused browser suites. New coverage should go directly into the suite that owns the behavior; there is no generic catch-all UI regression file anymore.
 
 ## Fast smoke contract
 
@@ -40,14 +42,16 @@ A failure here should stop the expensive browser regression steps early.
 - Keep screenshots used only for human product review separate from future pixel-baseline gates.
 - Example tests should assert structural invariants, not only that a canvas is non-empty.
 
-## Next decomposition targets
+## Current ownership
 
-The preserved full regression should be split in this order because these areas already have clear boundaries:
-
-1. Mask drawing, ROI, Slice/Section interaction, and export interactions.
-2. Resilience cases such as missing Three.js and unavailable WebGL.
-
-After those migrations, `scripts/ui-regression.mjs` can be removed and the focused suites can run independently with clearer failure ownership.
+- `workstation-regression.mjs`: Welcome, boot gating, navigation, example-family loading, and core workstation shell.
+- `history-regression.mjs`: History tree, Variants, bookmarks, historical Step restore/edit/replay, rollback, and History export.
+- `persistence-regression.mjs`: autosave, migration, recovery checkpoints, staged Welcome handoff, refresh restore, and multi-tab ownership.
+- `process-geometry-regression.mjs`: Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, exported morphology, and scientific Section geometry checks.
+- `interaction-regression.mjs`: Slice/ROI, Mask Draw, mask ROI/alignment, view exports, maximize/restore, and 3D inspection controls.
+- `resilience-regression.mjs`: missing Three.js and unavailable WebGL degraded-mode behavior.
+- `example-regression.mjs`: bundled literature/example structural contracts.
+- `product-regression.mjs`: responsive product review, layout geometry, renderer diagnostics, and review screenshots.
 
 ## Visual regression policy
 
