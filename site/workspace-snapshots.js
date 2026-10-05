@@ -317,7 +317,23 @@ export function createSnapshotManager({
     const parentNode = node.parentId ? nodeById(node.parentId) : null,
       parentState = stateForProcessNode(parentNode);
     if (parentState) return parentState;
-    return node.inputState && validateState(node.inputState) ? node.inputState : null;
+    if (node.inputState && validateState(node.inputState)) return node.inputState;
+
+    // Legacy first Record Steps are exactly reversible because recording a
+    // process note changes no geometry; it only advances revision counters.
+    if (!node.parentId && node.operation?.kind === 'record') {
+      const outputState = stateForProcessNode(node);
+      if (!outputState) return null;
+      const inputState = cloneState(outputState),
+        revision = Number(inputState.model?.revision),
+        processRevision = Number(inputState.model?.processRevision);
+      if (Number.isFinite(revision)) inputState.model.revision = Math.max(0, revision - 1);
+      if (Number.isFinite(processRevision)) {
+        inputState.model.processRevision = Math.max(0, processRevision - 1);
+      }
+      return validateState(inputState) ? inputState : null;
+    }
+    return null;
   }
 
   function operationEntityRefs(node) {
