@@ -10,8 +10,14 @@ const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
 
-const { createLayer, createModel, deleteExposedLayer, isLayerExposed } =
-  await import('../model.js');
+const {
+  createLayer,
+  createModel,
+  deleteExposedLayer,
+  isLayerExposed,
+  setLayerVisible,
+  visibleMaterialModel,
+} = await import('../model.js');
 
 test('only layers exposed at a stack boundary can be deleted', () => {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 10 });
@@ -53,4 +59,33 @@ test('a layer exposed on the back face is also deletable', () => {
     model.regions[0].stack.map((segment) => segment.layerId),
     ['base'],
   );
+});
+
+
+test('material visibility hides render geometry without deleting process geometry', () => {
+  const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 10 });
+  const coating = createLayer(model, 'Inspection coating');
+  model.regions[0].stack.push({ layerId: coating.id, z0: 5, z1: 7 });
+
+  const processRevision = model.processRevision;
+  assert.equal(setLayerVisible(model, coating.id, false), true);
+  assert.equal(model.processRevision, processRevision);
+  assert.equal(model.layers.find((layer) => layer.id === coating.id)?.visible, false);
+  assert.deepEqual(
+    model.regions[0].stack.map((segment) => segment.layerId),
+    ['base', coating.id],
+  );
+
+  const visible = visibleMaterialModel(model);
+  assert.deepEqual(
+    visible.regions[0].stack.map((segment) => segment.layerId),
+    ['base'],
+  );
+  assert.deepEqual(
+    model.regions[0].stack.map((segment) => segment.layerId),
+    ['base', coating.id],
+  );
+
+  assert.equal(setLayerVisible(model, coating.id, true), true);
+  assert.equal(model.layers.find((layer) => layer.id === coating.id)?.visible, true);
 });
