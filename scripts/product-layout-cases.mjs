@@ -1,0 +1,192 @@
+import assert from 'node:assert/strict';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import {
+  processBenchmark,
+  projectForBenchmark,
+} from './process-benchmarks.mjs';
+import {
+  checkLayout,
+  confirmIfVisible,
+  ensurePrimaryViewVisible,
+  openFunctionPanel,
+} from './test-helpers/product.mjs';
+import {
+  checkSectionSeams,
+  loadProject,
+} from './test-helpers/product-scientific.mjs';
+import { sampleById } from '../site/sample-layouts.js';
+import { parseLayoutFile } from '../site/layout-io.js';
+
+export async function runProductLayoutCases({
+  open,
+  capture,
+  output,
+  checks,
+}) {
+  const {
+    checkStickerGrouping,
+    checkWorkstationShellLayout,
+    checkCompactProcessLayout,
+    checkPopover,
+    checkSectionCollapse,
+    checkAB,
+    checkROI,
+  } = checks;
+
+  for (const [name, viewport, touch] of [
+    ['wide', { width: 1440, height: 900 }, false],
+    ['medium', { width: 1000, height: 800 }, false],
+    ['phone', { width: 390, height: 844 }, true],
+  ]) {
+    const { page, context } = await open(viewport, touch);
+
+    if (name === 'wide') {
+      assert.equal(
+        await page.locator('.workstation-view-stage').getAttribute('data-view-mode'),
+        'overview',
+        'wide: fresh workspace must default to Overview',
+      );
+      assert.equal(await page.locator('#mainPanel').isVisible(), true);
+      assert.equal(await page.locator('#maskPanel').isVisible(), true);
+      assert.equal(await page.locator('#threePanel').isVisible(), true);
+    }
+
+    await capture(page, `${name}-empty`);
+    await checkLayout(page);
+    await checkAB(page, name);
+    await checkSectionCollapse(page, name);
+    await checkWorkstationShellLayout(page, name);
+    await checkStickerGrouping(page, name);
+
+    await ensurePrimaryViewVisible(page, 'three');
+    await page.locator('#threePanel .three-opacity-control > summary').click();
+    await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
+    await page.locator('#threePanel .three-opacity-control > summary').click();
+
+    await ensurePrimaryViewVisible(page, 'main');
+    for (const [tool, captureName] of [
+      ['base', 'base'],
+      ['mask', 'mask'],
+      ['process', 'operation'],
+      ['snapshots', 'snapshots'],
+      ['project', 'settings'],
+    ]) {
+      await openFunctionPanel(page, tool);
+      await capture(page, `${name}-tab-${captureName}`);
+      await checkLayout(page);
+    }
+
+    await checkCompactProcessLayout(page, name);
+    await openFunctionPanel(page, 'snapshots');
+    assert.equal(await page.locator('#saveSnapshotBtn').count(), 0);
+    assert.equal(await page.locator('.snapshot-other-branch').count(), 0);
+    await capture(page, `${name}-history-tree`);
+    await checkLayout(page);
+
+    await openFunctionPanel(page, 'mask');
+    for (const sample of ['gds-alm', 'gds-basic-instances', 'oas-cblock']) {
+      await page.locator('#sampleMaskSelect').selectOption(sample);
+      await page.waitForFunction(
+        (label) =>
+          document.querySelector('#statusText').textContent.startsWith(label) &&
+          document.querySelector('#statusText').textContent.includes('area objects;'),
+        sampleById(sample).label,
+      );
+      assert.ok((await page.locator('#cellTree').textContent()).trim());
+
+      const descriptor = sampleById(sample);
+      const bytes = await readFile(new URL(`../site/${descriptor.path.slice(2)}`, import.meta.url));
+      const imported = await parseLayoutFile(
+        bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+        descriptor.path,
+      );
+      const bounds = imported.layout.bounds;
+      const baseWidth =
+        Math.max(1, ...['minX', 'minY', 'maxX', 'maxY'].map((key) => Math.abs(bounds[key]))) * 2.2;
+
+      await openFunctionPanel(page, 'base');
+      await page.locator('#baseWidth').fill(String(baseWidth));
+      await page.locator('#applyBaseBtn').click();
+      await confirmIfVisible(page);
+      await openFunctionPanel(page, 'mask');
+      await capture(page, `${name}-${sample}`);
+      await checkLayout(page);
+    }
+
+    for (const kind of ['step', 'trench', 'island']) {
+      for (const growth of ['direct', 'conformal']) {
+        const benchmark = await processBenchmark(kind, growth);
+        const project = projectForBenchmark(benchmark);
+        await writeFile(
+          join(output, `${kind}-${growth}.wafercad`),
+          JSON.stringify(project, null, 2),
+        );
+
+        await loadProject(page, project, `${kind}-${growth}`);
+        await capture(page, `${name}-${kind}-${growth}`);
+        await checkSectionSeams(page, project);
+        await checkLayout(page);
+
+        if (name === 'phone') {
+          await page.locator('#sectionCanvas').scrollIntoViewIfNeeded();
+          await capture(page, `${name}-${kind}-${growth}-section`);
+        }
+
+        if (name === 'wide') {
+          const back = projectForBenchmark(await processBenchmark(kind, growth, 'back'));
+          back.activeFace = 'back';
+          await loadProject(page, back, `${kind}-${growth}-back`);
+          const view = await page.locator('#threeHost canvas').boundingBox();
+          await page.mouse.move(view.x + view.width / 2, view.y + view.height * 0.7);
+          await page.mouse.down();
+          await page.mouse.move(view.x + view.width / 2, view.y + view.height * 0.45, {
+            steps: 12,
+          });
+          await page.mouse.up();
+          await page.waitForTimeout(400);
+          await capture(page, `${name}-${kind}-${growth}-back`);
+          await checkSectionSeams(page, back);
+        }
+
+        const etched = structuredClone(project);
+        const { applyOperation } = await import('../site/model.js');
+        const { rectMulti } = await import('../site/vector-geometry.js');
+        applyOperation(etched.model, {
+          type: 'etch',
+          thickness: 1.5,
+          area: rectMulti(6, 8),
+          face: 'front',
+        });
+
+        await writeFile(
+          join(output, `${kind}-${growth}-etch.wafercad`),
+          JSON.stringify(etched, null, 2),
+        );
+        await loadProject(page, etched, `${kind}-${growth}-etch`);
+        await capture(page, `${name}-${kind}-${growth}-etch`);
+        await checkSectionSeams(page, etched);
+        await checkLayout(page);
+
+        if (name === 'phone') {
+          await page.locator('#sectionCanvas').scrollIntoViewIfNeeded();
+          await capture(page, `${name}-${kind}-${growth}-etch-section`);
+        }
+      }
+    }
+
+    await ensurePrimaryViewVisible(page, 'main');
+    await checkROI(page, name);
+    await context.close();
+    console.log(`${name}: A/B, units, ROI, tabs, imports and six process views passed`);
+  }
+
+  for (const width of [600, 601, 900, 901]) {
+    const { page, context } = await open({ width, height: 900 });
+    await checkLayout(page);
+    await page.locator('#sectionControlsBtn').click();
+    await capture(page, `breakpoint-${width}`);
+    await checkLayout(page);
+    await context.close();
+  }
+}
