@@ -74,6 +74,21 @@ The former 1600+ line product regression has now been decomposed into:
 
 The browser workflow keeps these product scopes as separate steps while sharing one job, avoiding duplicate Chromium installation and unnecessary GitHub Actions minutes. npm and Playwright browser assets are cached to reduce setup time.
 
-## Next optimization target
+## Visual baseline staging
 
-The next useful improvement is true visual baseline gating. Current PNG captures are review artifacts, while scientific correctness is still protected primarily by structural/model assertions. Add pixel baselines only for a small deterministic set of stable views, with explicit tolerances and an intentional baseline-update workflow.
+A dependency-free visual comparator is available in `test-helpers/visual.mjs`. It decodes PNGs in Chromium, compares per-channel differences, enforces a maximum changed-pixel ratio, and writes actual/expected/diff artifacts on failure.
+
+The first opt-in cases are deliberately 2D/UI-heavy:
+
+- wide Project tool panel;
+- wide Main panel;
+- phone Process tool panel;
+- phone Main panel;
+- Photodetector literature example Section panel.
+
+Commands:
+
+- `npm run update:ui:visual` generates/replaces the baseline PNGs under `tests/visual-baselines/`.
+- `npm run test:ui:visual` compares against committed baselines.
+
+Visual baselines are intentionally **not** part of `test:ui:all` or the GitHub Actions gate yet. Generate them in a controlled Chromium/Linux environment, review the PNGs, commit only approved baselines, then enable the gate in a separate change. WebGL screenshots remain review artifacts until cross-run raster stability is characterized.
