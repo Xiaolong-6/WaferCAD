@@ -1974,3 +1974,79 @@ test('process History pins and restores the exact file-mask Cell and Layer combi
   assert.deepEqual(restored.maskTransform, maskContext.transform);
   assert.deepEqual(restored.maskRoi, maskContext.roi);
 });
+
+
+test('first process Step can be edited and accept insertion when its input state was captured', () => {
+  let live = { model: { revision: 0, processRevision: 0 }, value: 'base' };
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  const firstInput = structuredClone(live);
+  live = { model: { revision: 1, processRevision: 1 }, value: 'step-1' };
+  const first = manager.recordOperation(
+    { kind: 'add', label: 'Step 1', replay: { version: 1, params: {} } },
+    { inputState: firstInput },
+  );
+  live = { model: { revision: 2, processRevision: 2 }, value: 'step-2' };
+  manager.recordOperation({
+    kind: 'etch',
+    label: 'Step 2',
+    replay: { version: 1, params: {} },
+  });
+
+  const editContext = manager.stepEditContext(first.id);
+  assert.equal(editContext.editable, true);
+  assert.equal(editContext.parentNodeId, null);
+  assert.equal(editContext.downstreamCount, 1);
+
+  const insertContext = manager.insertBeforeContext(first.id, { includeReplayStates: true });
+  assert.equal(insertContext.editable, true);
+  assert.equal(insertContext.parentNodeId, null);
+  assert.equal(insertContext.replaySteps.length, 2);
+
+  const restored = manager.restoreStepInput(first.id);
+  assert.ok(restored);
+  assert.equal(live.model.processRevision, 0);
+  assert.equal(manager.continuationContext().cursorNodeId, null);
+
+  const replaced = manager.replaceBranchTailFrom(first.id);
+  assert.equal(replaced.parentNodeId, null);
+  assert.equal(manager.activeBranch().headNodeId, null);
+
+  live = { model: { revision: 1, processRevision: 1 }, value: 'replacement' };
+  const replacement = manager.recordOperation(
+    { kind: 'add', label: 'Replacement', replay: { version: 1, params: {} } },
+    { inputState: firstInput },
+  );
+  assert.equal(replacement.parentId, null);
+  assert.equal(manager.activeBranch().headNodeId, replacement.id);
+  assert.equal(manager.stepEditContext(replacement.id).editable, true);
+});
+
+test('legacy first process Step stays safely non-editable without captured input state', () => {
+  let live = { model: { revision: 1, processRevision: 1 }, value: 'legacy-step' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => 'legacy-first',
+  });
+
+  const first = manager.recordOperation({
+    kind: 'add',
+    label: 'Legacy first',
+    replay: { version: 1, params: {} },
+  });
+  const context = manager.stepEditContext(first.id);
+  assert.equal(context.editable, false);
+  assert.match(context.reason, /restorable predecessor/i);
+});
