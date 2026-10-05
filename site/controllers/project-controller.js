@@ -140,11 +140,13 @@ export function createProjectController({
       hint.className = 'snapshot-continuation-hint';
       if (historyEdit) {
         hint.textContent =
-          historyEdit.mode === 'update-recompute'
-            ? `Apply updates this Step and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
-            : historyEdit.mode === 'branch-recompute'
-              ? `Apply creates a Variant and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
-              : 'Apply creates a Variant from this edited Step.';
+          !historyEdit.mode
+            ? 'Modify the Process parameters, then choose Save edited Step.'
+            : historyEdit.mode === 'replace-replay'
+              ? `Saving replaces this Step and replays ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+              : historyEdit.mode === 'replace-discard'
+                ? `Saving replaces this Step and discards ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+                : 'Saving creates a new Variant from the edited Step.';
       } else {
         hint.textContent = `Viewing ${activeBranch.name}. The next successful Apply creates a Variant from here.`;
       }
