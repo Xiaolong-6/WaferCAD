@@ -191,6 +191,15 @@ export function createWorkspacePersistenceController({
     syncSaveStatus();
   }
 
+  async function runVisibleTask(executor, options) {
+    if (taskController?.runTask) return taskController.runTask(executor, options);
+    try {
+      return await executor({ updateStage() {} });
+    } catch (error) {
+      return { error: error?.message || String(error || 'Task failed.') };
+    }
+  }
+
   async function saveCurrentProject(project) {
     const saved = await saveWorkspaceState(
       project,
@@ -426,29 +435,50 @@ export function createWorkspacePersistenceController({
       return;
     }
 
-    try {
-      const current = buildProjectSnapshot(true);
-      await createWorkspaceRecoveryCheckpoint(current, {
-        appCommit,
-        reason: 'pre-restore',
-      });
-      const recovered = await loadWorkspaceRecoveryPoint(key);
-      if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
-      loadProjectWithSnapshotHistory(recovered);
-      syncBaseControls();
-      syncTransformInputs();
-      renderAll();
-      renderSnapshots();
-      fit3d();
-      markDirty();
-      const persisted = await persistNow({ force: true });
-      if (!persisted) throw new Error('Another tab took over local autosave.');
-      await refreshRecoveryOptions();
-      status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
-    } catch (error) {
-      console.error(error);
-      status(`Recovery restore failed: ${error.message}`, 'error');
+    const result = await runVisibleTask(
+      async ({ updateStage }) => {
+        updateStage('Protecting current workspace…');
+        const current = buildProjectSnapshot(true);
+        await createWorkspaceRecoveryCheckpoint(current, {
+          appCommit,
+          reason: 'pre-restore',
+        });
+
+        updateStage('Loading Recovery checkpoint…');
+        const recovered = await loadWorkspaceRecoveryPoint(key);
+        if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
+        loadProjectWithSnapshotHistory(recovered);
+        syncBaseControls();
+        syncTransformInputs();
+        renderAll();
+        renderSnapshots();
+        fit3d();
+        markDirty();
+
+        updateStage('Saving restored workspace…');
+        const persisted = await persistNow({ force: true });
+        if (!persisted) throw new Error('Another tab took over local autosave.');
+        await refreshRecoveryOptions();
+        return { ok: true };
+      },
+      {
+        label: 'Restoring Recovery checkpoint…',
+        failurePrefix: 'Recovery restore failed',
+        abortable: false,
+      },
+    );
+
+    if (result?.busy) {
+      status('Another background task is already running.', 'warning');
+      return;
     }
+    if (result?.error || !result?.ok) {
+      if (result?.error && !taskController?.runTask) {
+        status(`Recovery restore failed: ${result.error}`, 'error');
+      }
+      return;
+    }
+    status(`Restored local recovery checkpoint for "${normalizedProjectName()}".`);
   }
 
   async function reloadSafely() {
@@ -513,26 +543,48 @@ export function createWorkspacePersistenceController({
       status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
       return;
     }
-    try {
-      const projectName = normalizedProjectName(getProjectName());
-      setProjectName(projectName);
-      syncProjectNameInput();
-      const persisted = await persistNow({ force: true });
-      if (!persisted) throw new Error('Another tab took over local autosave.');
-      const project = buildProjectSnapshot(true);
-      await createWorkspaceRecoveryCheckpoint(project, {
-        appCommit,
-        reason: `manual-save · ${projectName}`,
-      });
-      await refreshRecoveryOptions();
-      setSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`, 'saved');
-      status(`Saved "${projectName}" locally. It is available in Recovery.`);
-    } catch (error) {
-      console.error(error);
+
+    const projectName = normalizedProjectName(getProjectName());
+    setProjectName(projectName);
+    syncProjectNameInput();
+
+    const result = await runVisibleTask(
+      async ({ updateStage }) => {
+        updateStage('Saving current workspace…');
+        const persisted = await persistNow({ force: true });
+        if (!persisted) throw new Error('Another tab took over local autosave.');
+
+        updateStage('Creating Recovery checkpoint…');
+        const project = buildProjectSnapshot(true);
+        await createWorkspaceRecoveryCheckpoint(project, {
+          appCommit,
+          reason: `manual-save · ${projectName}`,
+        });
+        await refreshRecoveryOptions();
+        return { ok: true };
+      },
+      {
+        label: `Saving "${projectName}"…`,
+        failurePrefix: 'Local Save failed',
+        abortable: false,
+      },
+    );
+
+    if (result?.busy) {
+      status('Another background task is already running.', 'warning');
+      return;
+    }
+    if (result?.error || !result?.ok) {
       failed = true;
       syncSaveStatus();
-      status(`Local Save failed: ${error.message}`, 'error');
+      if (result?.error && !taskController?.runTask) {
+        status(`Local Save failed: ${result.error}`, 'error');
+      }
+      return;
     }
+
+    setSaveStatus(`Saved checkpoint · ${savedTimeLabel()}`, 'saved');
+    status(`Saved "${projectName}" locally. It is available in Recovery.`);
   }
 
   async function takeOverWorkspace() {
