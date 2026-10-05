@@ -1104,6 +1104,7 @@ await interactionAutosavePage.waitForFunction(
   { timeout: 3000 },
 );
 const interactionCanvas = interactionAutosavePage.locator('#threeHost canvas');
+await interactionCanvas.waitFor({ state: 'visible', timeout: 30000 });
 const interactionBox = await interactionCanvas.boundingBox();
 assert.ok(interactionBox);
 await interactionAutosavePage.mouse.move(
