@@ -97,9 +97,9 @@ function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } =
     formatLengthField: (value) => String(value),
     processTaskController: {
       isBusy: () => false,
-      run: async () => {
+      run: async (...args) => {
         events.push('run-worker');
-        return taskResult(model);
+        return taskResult(model, ...args);
       },
     },
     saveHistory: () => events.push('save-history'),
@@ -353,4 +353,75 @@ test('legacy downstream Step stops replay without guessing missing parameters', 
   assert.equal(result.completed, 0);
   assert.match(result.error, /predates replay metadata/i);
   assert.equal(events.includes('run-worker'), false);
+});
+
+
+test('replay falls back to the saved layout root when active Cell is missing', async () => {
+  const events = [],
+    capturedAreas = [],
+    controller = controllerForTask(
+      (model, _workerModel, _params, _label, areaRequest) => {
+        capturedAreas.push(areaRequest);
+        return {
+          result: { changed: true, layerId: 'layer-root-replay' },
+          model: {
+            ...model,
+            revision: model.revision + 1,
+            processRevision: model.processRevision + 1,
+          },
+        };
+      },
+      events,
+    );
+
+  const result = await controller.replayOperations([
+    {
+      operation: {
+        kind: 'add',
+        label: 'Deposit selected ITO',
+        replay: {
+          version: 1,
+          params: {
+            type: 'add',
+            name: 'ITO',
+            targetLayerId: '',
+            thickness: 0.075,
+            face: 'front',
+            growth: 'direct',
+          },
+          areaMode: 'selected',
+        },
+      },
+      state: {
+        maskSourceMode: 'file',
+        maskRoi: null,
+        maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+        selectedLayerKeys: ['7|0'],
+        activeCell: null,
+        layout: {
+          root: 'TOP',
+          hierarchy: { TOP: { children: [] } },
+          elements: [
+            {
+              kind: 'polygon',
+              layer: 7,
+              datatype: 0,
+              sourceCell: 'TOP',
+              points: [
+                [0, 0],
+                [10, 0],
+                [10, 10],
+                [0, 10],
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ]);
+
+  assert.deepEqual(result, { ok: true, completed: 1 });
+  assert.equal(capturedAreas.length, 1);
+  assert.equal(capturedAreas[0].mode, 'selected');
+  assert.equal(capturedAreas[0].elements.length, 1);
 });
