@@ -1766,6 +1766,7 @@ const workspaceActions = createWorkspaceActionsController({
   snapshotManager,
   renderSnapshots,
   onProjectChanged: markProjectDirty,
+  getModel: () => model,
   taskController: processTaskController,
 });
 
