@@ -30,7 +30,9 @@ const welcomeProject = projectForBenchmark({
 });
 
 const browser = await launchBrowser();
-const { page, context: mainContext } = await newUiPage(browser, { viewport: { width: 1365, height: 900 } });
+const { page, context: mainContext } = await newUiPage(browser, {
+  viewport: { width: 1365, height: 900 },
+});
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('dialog', (dialog) => {
@@ -185,7 +187,9 @@ await interactionAutosavePage.waitForFunction(
 assert.deepEqual(interactionAutosaveErrors, []);
 await interactionAutosaveContext.close();
 
-const { page: refreshPage, context: refreshContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
+const { page: refreshPage, context: refreshContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const refreshErrors = [];
 refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));
 await refreshPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
@@ -209,7 +213,9 @@ assert.deepEqual(refreshErrors, []);
 await refreshContext.close();
 
 // Welcome-page layout import must survive the IndexedDB handoff and open in the workspace.
-const { page: layoutHandoffPage, context: layoutHandoffContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
+const { page: layoutHandoffPage, context: layoutHandoffContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const layoutHandoffErrors = [];
 layoutHandoffPage.on('pageerror', (error) => layoutHandoffErrors.push(error.message));
 await gotoWelcome(layoutHandoffPage);
@@ -229,7 +235,9 @@ assert.deepEqual(layoutHandoffErrors, []);
 await layoutHandoffContext.close();
 
 // Welcome-page project opening uses the same staged-file path and restores physical geometry.
-const { page: projectHandoffPage, context: projectHandoffContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
+const { page: projectHandoffPage, context: projectHandoffContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const projectHandoffErrors = [];
 projectHandoffPage.on('pageerror', (error) => projectHandoffErrors.push(error.message));
 await gotoWelcome(projectHandoffPage);
@@ -373,7 +381,9 @@ await failedWelcomeContext.close();
 
 // Open Example must work even while another tab owns autosave, and the resulting
 // workspace must remain interactive enough to replace the bundled mask.
-const { page: examplePage, context: exampleContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
+const { page: examplePage, context: exampleContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const exampleErrors = [];
 examplePage.on('pageerror', (error) => exampleErrors.push(error.message));
 examplePage.on('dialog', (dialog) => { exampleErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`); void dialog.dismiss(); });
