@@ -81,7 +81,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs ESLint, the current Prettier gate, and the geometry/project-format self-tests. Use `npm run format` to format the active application and current documentation.
+`npm run check` runs ESLint, the current Prettier gate, and the focused Node geometry/project-format regression tests. Use `npm run format` to format the active application and current documentation. See [Testing](docs/testing.md) for the full browser groups and approved platform-specific baselines, [Development handoff](docs/COLLABORATION.md) for shared ChatGPT/Codex workflow, and [Local validation](docs/VALIDATION_2026-10-05.md) for the latest verified product revision.
 
 ## Project-file safety
 

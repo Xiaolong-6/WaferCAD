@@ -71,3 +71,11 @@ The 3D Implant inspection contract was tightened without changing canonical proc
 - **Regression coverage:** annotation/unit tests check ROI cut ownership and shared gradient constants; the focused 3D source regression locks the shader/cut-face contract; the real-WebGL product regression now checks that opaque ROI inspection creates a cut-face mesh without restoring the buried internal volume and that transparent inspection adds the gradient volume.
 
 This follow-up was documented in `README.md`, `docs/IMPLANT.md`, `docs/USAGE.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/PRODUCT_REVIEW.md`. Runtime browser/WebGL review remains the final visual acceptance step; this audit does not claim that a visual pass has run merely because static regression coverage exists.
+
+## Completed integration review — 2026-10-05
+
+The previously pending local runtime pass has now run on the integrated product revision `ec5edba`: lint, format, 312 Node tests and all ten focused browser suites passed. Product review produced 109 layout and 14 renderer captures, including the Implant cut/gradient contracts. See [validation](VALIDATION_2026-10-05.md) for exact scope and environment; this result does not retrospectively change the evidence available during the earlier audit.
+
+The Photodetector follow-up documents two scientific contracts: directional growth must not cap a vertical conformal-sidewall surrogate, and identical continuous Implant bands must not expose host-region partition seams in Section. The updated fixture and contracts were run; the changed Section reference was separately accepted by the user. The accepted five-image Windows set is committed under `tests/visual-baselines/windows-chromium/`, while Linux repeatability remains unverified and visual CI stays disabled.
+
+Current documentation was reconciled with package scripts, split browser-suite ownership, locked dependencies, separate product gallery directories and shared [ChatGPT/Codex handoff](COLLABORATION.md). Historical test counts and screenshots in dated sections remain historical records, rather than being relabeled as results for the current revision.

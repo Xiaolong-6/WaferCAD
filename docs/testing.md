@@ -130,7 +130,7 @@ The former 1600+ line product regression has now been decomposed into:
 - `test-helpers/product-scientific.mjs`: project load/export plus Section material/seam probes.
 - `product-layout-cases.mjs`: responsive viewport, sample-layout, benchmark-view, ROI, and breakpoint orchestration.
 - `renderer-product-cases.mjs`: renderer-heavy isotropic, rough/LOD, conformal-interface, and Implant acceptance.
-- `product-regression.mjs`: ~90-line orchestrator that selects `layout`, `renderer`, or `all`.
+- `product-regression.mjs`: thin orchestrator that selects `layout`, `renderer`, or `all`.
 
 The browser workflow keeps these product scopes as separate steps while sharing one job, avoiding duplicate Chromium installation and unnecessary GitHub Actions minutes. npm and Playwright browser assets are cached to reduce setup time.
 
@@ -151,8 +151,18 @@ The first opt-in cases are deliberately 2D/UI-heavy:
 Commands:
 
 - `npm run update:ui:visual` generates/replaces the baseline PNGs under `tests/visual-baselines/`.
-- `npm run test:ui:visual` compares against committed baselines.
+- `npm run test:ui:visual` compares against the selected baseline directory. The default `tests/visual-baselines/` has no approved cross-platform set yet.
 
 For unapproved local review captures, set `WAFERCAD_VISUAL_BASELINE_DIR` to an ignored artifact directory such as `test-results/visual-review-windows` before running `npm run update:ui:visual`. These captures are candidates for human review, not approved Linux baselines.
+
+The five Windows captures accepted on 2026-10-05 are committed separately under `tests/visual-baselines/windows-chromium/`. With the local server running, select them explicitly:
+
+```powershell
+$env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+$env:WAFERCAD_VISUAL_BASELINE_DIR = 'tests/visual-baselines/windows-chromium'
+npm run test:ui:visual
+```
+
+See [local validation](VALIDATION_2026-10-05.md) for the tested revision, environment, runtime results and human acceptance. Windows references must not be used as evidence of Linux raster stability. Generate a separate Linux set and review it before enabling a Linux pixel gate.
 
 Visual baselines are intentionally **not** part of `test:ui:all` or the GitHub Actions gate yet. Generate them in a controlled Chromium/Linux environment, review the PNGs, commit only approved baselines, then enable the gate in a separate change. WebGL screenshots remain review artifacts until cross-run raster stability is characterized.

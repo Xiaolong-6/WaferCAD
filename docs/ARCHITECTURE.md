@@ -188,7 +188,7 @@ The operation engine does not infer these from the view.
 
 ## Directional and Conformal
 
-Directional coverage preserves the selected XY footprint.
+Directional coverage preserves the selected XY footprint and grows exposed horizontal surfaces. The outward cap of a finite-width `conformal-sidewall` surrogate represents a vertical film rather than a physical horizontal process face, so directional Deposit/Extend skips that cap.
 
 Conformal coverage uses one shared coating kernel for Deposit and Extend. Stage 1 coats topology-v2 exposed horizontal faces in the selected area by the requested physical thickness: Deposit uses a newly created layer id, while Extend reuses the selected target layer id so contiguous material merges during stack normalization. Directional Extend remains narrower and only thickens locations where the target layer is already exposed. Conformal Extend still requires the target to be exposed somewhere in the selected area before it can be continued. Stage 2 re-reads the newly coated source faces, constructs local edge bands, and asks topology v2 to classify only genuine `material-wall` and `void-wall` targets. Same-height computational partitions never become walls. Sub-grid `numerical-crack` voids are healed before true-void classification.
 
