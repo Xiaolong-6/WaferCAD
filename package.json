@@ -12,14 +12,16 @@
     "precommit": "npm run format && npm run lint && npm test",
     "test:ui:smoke": "node scripts/ui-smoke.mjs",
     "test:ui:examples": "node scripts/example-regression.mjs",
-    "test:ui:product": "node scripts/product-regression.mjs",
+    "test:ui:product": "npm run test:ui:product:layout && npm run test:ui:product:renderer",
     "test:ui:all": "npm run test:ui:smoke && npm run test:ui:workstation && npm run test:ui:history && npm run test:ui:persistence && npm run test:ui:process && npm run test:ui:interaction && npm run test:ui:resilience && npm run test:ui:examples && npm run test:ui:product",
     "test:ui:history": "node scripts/history-regression.mjs",
     "test:ui:persistence": "node scripts/persistence-regression.mjs",
     "test:ui:process": "node scripts/process-geometry-regression.mjs",
     "test:ui:workstation": "node scripts/workstation-regression.mjs",
     "test:ui:interaction": "node scripts/interaction-regression.mjs",
-    "test:ui:resilience": "node scripts/resilience-regression.mjs"
+    "test:ui:resilience": "node scripts/resilience-regression.mjs",
+    "test:ui:product:layout": "node scripts/product-layout-regression.mjs",
+    "test:ui:product:renderer": "node scripts/renderer-product-regression.mjs"
   },
   "devDependencies": {
     "eslint": "10.11.0",
