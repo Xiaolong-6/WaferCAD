@@ -202,6 +202,12 @@ export function createProjectController({
       summary.setAttribute('aria-label', label);
       summary.title = label;
       summary.onclick = (event) => event.stopPropagation();
+      details.ontoggle = () => {
+        if (!details.open) return;
+        for (const other of root.querySelectorAll('.snapshot-more-menu[open]')) {
+          if (other !== details) other.open = false;
+        }
+      };
       // Keyboard activation of a nested menu must not bubble into a restorable
       // History row, otherwise Enter/Space can restore the Step instead of
       // opening or using the menu.
@@ -391,6 +397,70 @@ export function createProjectController({
       }
     }
 
+
+    async function continueFromStep(node) {
+      const branch = branchById.get(node.branchId);
+      if (!branch || node.id === branch.headNodeId) {
+        status('This Step is already the Variant HEAD.', 'warning');
+        return;
+      }
+      const confirmed = await confirmAction({
+        title: 'Continue from this Step?',
+        message: `Make "${node.operation?.label || node.operation?.kind || 'Process step'}" the new HEAD of "${branch.name}"?`,
+        detail:
+          'All later Steps on this Variant, and bookmarks attached to those removed Steps, will be deleted. Other Variants are preserved unless they depend on the removed tail.',
+        confirmLabel: 'Delete later Steps',
+        danger: true,
+      });
+      if (!confirmed) return;
+
+      try {
+        await checkpointBeforeReplace('pre-history-truncate');
+        const result = snapshotManager.truncateBranchAfter(node.id);
+        refreshAfterSnapshotLoad();
+        onProjectChanged();
+        renderSnapshots();
+        status(
+          result.removedNodeCount
+            ? `Removed ${result.removedNodeCount} later Step${result.removedNodeCount === 1 ? '' : 's'}. "${branch.name}" now continues from this Step.`
+            : `"${branch.name}" is already at this Step.`,
+          'success',
+        );
+      } catch (error) {
+        console.error(error);
+        status(`Could not continue from this Step: ${error.message}`, 'error');
+      }
+    }
+
+    async function deleteHeadStep(node) {
+      const branch = branchById.get(node.branchId);
+      if (!branch || branch.headNodeId !== node.id) {
+        status('Only the current Variant HEAD Step can be deleted.', 'warning');
+        return;
+      }
+      const confirmed = await confirmAction({
+        title: 'Delete last Step?',
+        message: `Delete "${node.operation?.label || node.operation?.kind || 'Process step'}" from "${branch.name}"?`,
+        detail:
+          'The Variant will return to the preceding restorable Step. This is independent of the legacy Undo stack.',
+        confirmLabel: 'Delete last Step',
+        danger: true,
+      });
+      if (!confirmed) return;
+
+      try {
+        await checkpointBeforeReplace('pre-history-head-delete');
+        snapshotManager.removeHeadStep(node.id);
+        refreshAfterSnapshotLoad();
+        onProjectChanged();
+        renderSnapshots();
+        status(`Deleted the last Step from "${branch.name}".`, 'success');
+      } catch (error) {
+        console.error(error);
+        status(`Last Step deletion failed: ${error.message}`, 'error');
+      }
+    }
+
     function createStepRow(node, variant) {
       const wrap = root.createElement('div');
       wrap.className = 'history-step-wrap';
@@ -437,13 +507,31 @@ export function createProjectController({
             ? 'This Step predates replay metadata and cannot be deterministically recalculated.'
             : !editContext?.editable
               ? editContext?.reason || 'This Step cannot be edited in place.'
-              : 'Edit this Step and choose how downstream process history should be handled.',
+              : 'Load this Step into Process using its predecessor as the input structure.',
           run: () => beginHistoricalStepEdit(node),
         });
+        if (!isVariantHead) {
+          actions.push({
+            label: 'Continue from here…',
+            title: 'Keep this Step, delete later Steps on this Variant, and make it the new HEAD.',
+            run: () => continueFromStep(node),
+          });
+        }
         actions.push({
-          label: 'Variant from here',
+          label: 'New Variant from here',
           run: () => createVariantFromStep(node),
         });
+        if (isVariantHead) {
+          actions.push({
+            label: 'Delete last Step',
+            danger: true,
+            disabled: !node.parentId,
+            title: node.parentId
+              ? 'Delete this HEAD Step and restore its predecessor.'
+              : 'The first Main Step has no restorable predecessor.',
+            run: () => deleteHeadStep(node),
+          });
+        }
         actions.push({
           label: 'Add bookmark',
           run: async () => {
