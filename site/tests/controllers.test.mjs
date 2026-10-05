@@ -179,6 +179,7 @@ test('workspace session keeps a stable tab identity across reloads', () => {
   };
   const windowRef = {
     sessionStorage,
+    performance: { getEntriesByType: () => [{ type: 'reload' }] },
     crypto: { randomUUID: () => 'stable-tab-id' },
     setInterval: () => 1,
     clearInterval: () => {},
@@ -226,6 +227,52 @@ test('workspace session stays usable when localStorage is unavailable', () => {
   assert.equal(session.canWrite(), true);
   assert.equal(session.hasWriteLease(), true);
   session.stop();
+});
+
+test('copied sessionStorage creates an independent identity on fresh navigation', () => {
+  const leaseValues = new Map(),
+    parentValues = new Map();
+  const storage = {
+    getItem: (key) => leaseValues.get(key) ?? null,
+    setItem: (key, value) => leaseValues.set(key, value),
+    removeItem: (key) => leaseValues.delete(key),
+  };
+  function windowFor(values, id, type) {
+    return {
+      sessionStorage: {
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => values.set(key, value),
+      },
+      performance: { getEntriesByType: () => [{ type }] },
+      crypto: { randomUUID: () => id },
+      setInterval: () => 1,
+      clearInterval: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+  }
+  const parent = createWorkspaceSessionController({
+    storage,
+    windowRef: windowFor(parentValues, 'parent', 'navigate'),
+  });
+  assert.equal(parent.start(), true);
+  for (const type of ['navigate', 'back_forward']) {
+    const copied = new Map(parentValues),
+      child = createWorkspaceSessionController({
+        storage,
+        windowRef: windowFor(copied, `child-${type}`, type),
+      });
+    assert.notEqual(child.tabId, parent.tabId);
+    assert.equal(child.start(), false);
+    assert.equal(child.hasWriteLease(), false);
+    child.stop();
+    assert.equal(
+      parent.hasWriteLease(),
+      true,
+      'closing a copied context must not release its parent lease',
+    );
+  }
+  parent.stop();
 });
 
 test('startup controller consumes a staged layout and clears the startup query', async () => {

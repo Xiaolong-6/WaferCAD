@@ -468,6 +468,7 @@ export function createPlanRenderers({
     }
 
     const roughColumns = sectionColumns(model, section.a, section.b),
+      sidewallProfiles = new Map(),
       sectionDx = section.b[0] - section.a[0],
       sectionDy = section.b[1] - section.a[1],
       sectionUnitX = sectionDx / sectionSpan,
@@ -489,6 +490,23 @@ export function createPlanRenderers({
           );
         }
         return sum / 5;
+      };
+
+    // Use one screen-space lattice for material and annotation profiles. Detail
+    // sampling stays within the visible interval instead of spending its budget
+    // on the offscreen wafer and misregistering a thin coating.
+    const profileStep = Math.max(1.5, w / 1100),
+      profileTimes = (t0, t1) => {
+        const x0 = Math.max(-profileStep, mapT(t0)),
+          x1 = Math.min(w + profileStep, mapT(t1));
+        if (x1 <= x0) return [];
+        const toT = (x) => (x / detailScaleX + detailX - plotLeft) / plotWidth,
+          times = [toT(x0)];
+        for (let x = (Math.floor(x0 / profileStep) + 1) * profileStep; x < x1; x += profileStep) {
+          times.push(toT(x));
+        }
+        times.push(toT(x1));
+        return times;
       };
 
     for (const column of roughColumns) {
@@ -523,18 +541,15 @@ export function createPlanRenderers({
         boundaries.push({ z, appearance, sourceFace });
       }
 
-      const roughBoundaries = boundaries.filter((boundary) => boundary.appearance),
-        widthPixels = Math.max(1, Math.abs(mapT(column.t1) - mapT(column.t0))),
-        samples = Math.max(3, Math.min(1100, Math.ceil(widthPixels / 1.5))),
+      const times = profileTimes(column.t0, column.t1),
         profileReliefCache = new Map(),
         profiles = boundaries.map(() => []);
 
       const filteredRelief = filteredSectionRoughRelief;
 
-      for (let sample = 0; sample <= samples; sample++) {
-        const fraction = sample / samples,
-          t = column.t0 + (column.t1 - column.t0) * fraction,
-          worldX = section.a[0] + sectionDx * t,
+      if (times.length < 2) continue;
+      for (const [sample, t] of times.entries()) {
+        const worldX = section.a[0] + sectionDx * t,
           worldY = section.a[1] + sectionDy * t;
 
         boundaries.forEach((boundary, boundaryIndex) => {
@@ -564,6 +579,12 @@ export function createPlanRenderers({
           bottomProfile = profiles[segmentIndex],
           topProfile = profiles[segmentIndex + 1];
         if (!layer) continue;
+        if (segment.role === 'conformal-sidewall') {
+          sidewallProfiles.set(`${column.t0}:${column.t1}:${segment.layerId}`, {
+            bottom: bottomProfile,
+            top: topProfile,
+          });
+        }
 
         ctx.beginPath();
         bottomProfile.forEach(([x, y], index) => {
@@ -609,18 +630,15 @@ export function createPlanRenderers({
     for (const electrical of electricalRegionSectionBands(model, section.a, section.b)) {
       const appearance = electrical.surfaceAppearance,
         faceDirection = electrical.face === 'back' ? -1 : 1,
-        widthPixels = Math.max(1, Math.abs(mapT(electrical.t1) - mapT(electrical.t0))),
-        samples =
+        times =
           appearance?.kind === 'rough'
-            ? Math.max(3, Math.min(1100, Math.ceil(widthPixels / 1.5)))
-            : 1,
+            ? profileTimes(electrical.t0, electrical.t1)
+            : [electrical.t0, electrical.t1],
         outerPoints = [],
         innerPoints = [];
 
-      for (let sample = 0; sample <= samples; sample++) {
-        const fraction = sample / samples,
-          t = electrical.t0 + (electrical.t1 - electrical.t0) * fraction,
-          worldX = section.a[0] + sectionDx * t,
+      for (const t of times) {
+        const worldX = section.a[0] + sectionDx * t,
           worldY = section.a[1] + sectionDy * t,
           relief =
             appearance?.kind === 'rough'
@@ -660,22 +678,20 @@ export function createPlanRenderers({
     for (const implant of implantSectionBands(model, section.a, section.b)) {
       const appearance = implant.surfaceAppearance,
         faceDirection = implant.face === 'back' ? -1 : 1,
-        widthPixels = Math.max(1, Math.abs(mapT(implant.t1) - mapT(implant.t0))),
-        samples =
+        times =
           appearance?.kind === 'rough'
-            ? Math.max(3, Math.min(1100, Math.ceil(widthPixels / 1.5)))
-            : 1,
+            ? profileTimes(implant.t0, implant.t1)
+            : [implant.t0, implant.t1],
         tiltTangent = Math.tan(((Number(implant.tilt) || 0) * Math.PI) / 180),
         outerPoints = [],
-        innerPoints = [];
+        innerPoints = [],
+        reliefSamples = [];
       let outerZSum = 0,
         innerZSum = 0,
         activeSamples = 0;
 
-      for (let sample = 0; sample <= samples; sample++) {
-        const fraction = sample / samples,
-          t = implant.t0 + (implant.t1 - implant.t0) * fraction,
-          worldX = section.a[0] + sectionDx * t,
+      for (const t of times) {
+        const worldX = section.a[0] + sectionDx * t,
           worldY = section.a[1] + sectionDy * t,
           relief =
             appearance?.kind === 'rough'
@@ -698,6 +714,7 @@ export function createPlanRenderers({
         if (!(Math.abs(outerZ - innerZ) > 1e-12)) continue;
         outerPoints.push([mapT(t + outerDeltaT), mapZ(outerZ)]);
         innerPoints.push([mapT(t + innerDeltaT), mapZ(innerZ)]);
+        reliefSamples.push(relief);
         outerZSum += outerZ;
         innerZSum += innerZ;
         activeSamples++;
@@ -735,8 +752,59 @@ export function createPlanRenderers({
         ctx.lineTo(...innerPoints[index]);
       }
       ctx.closePath();
-      ctx.fillStyle = gradient;
-      ctx.fill();
+      if (appearance?.kind === 'rough') {
+        // Follow the local source surface, not its band-wide average height.
+        // Clip once and fill pixel columns so adjacent translucent strips do
+        // not acquire antialiasing seams or double opacity.
+        ctx.clip();
+        for (let index = 1; index < outerPoints.length; index++) {
+          const sourceLeft = outerPoints[index - 1][0],
+            sourceRight = outerPoints[index][0],
+            left = index === 1 ? Math.min(sourceLeft, innerPoints[0][0]) : sourceLeft,
+            right =
+              index === outerPoints.length - 1
+                ? Math.max(sourceRight, innerPoints.at(-1)[0])
+                : sourceRight;
+          if (right <= left) continue;
+          const firstPixel = index === 1 ? Math.floor(left) : Math.ceil(left - 0.5),
+            lastPixel =
+              index === outerPoints.length - 1 ? Math.ceil(right) : Math.ceil(right - 0.5);
+          for (let x = Math.max(0, firstPixel); x < Math.min(w, lastPixel); x++) {
+            const fraction = Math.max(
+                0,
+                Math.min(1, (x + 0.5 - sourceLeft) / Math.max(sourceRight - sourceLeft, 1e-12)),
+              ),
+              relief = reliefSamples[index - 1] * (1 - fraction) + reliefSamples[index] * fraction,
+              localGradient = ctx.createLinearGradient(
+                0,
+                mapZ(implant.sourceZ + faceDirection * relief),
+                0,
+                mapZ(
+                  implant.sourceZ -
+                    faceDirection * implant.thickness +
+                    (implant.depthProfile === 'follow' ? faceDirection * relief : 0),
+                ),
+              );
+            localGradient.addColorStop(
+              IMPLANT_DEPTH_GRADIENT.outerDepth,
+              rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.outerAlpha),
+            );
+            localGradient.addColorStop(
+              IMPLANT_DEPTH_GRADIENT.midDepth,
+              rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.midAlpha),
+            );
+            localGradient.addColorStop(
+              IMPLANT_DEPTH_GRADIENT.innerDepth,
+              rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.innerAlpha),
+            );
+            ctx.fillStyle = localGradient;
+            ctx.fillRect(x, 0, 1, h);
+          }
+        }
+      } else {
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
       if (sectionShowBorders) {
         const key = implant.implantId;
         if (!implantBorderPolygons.has(key)) implantBorderPolygons.set(key, []);
@@ -783,12 +851,24 @@ export function createPlanRenderers({
         sy1 = mapZ(slice.z0);
       ctx.fillStyle = layer.color;
       const sideWidth = Math.max(minWidth, sx1 - sx0);
-      ctx.fillRect(sx0, sy0, sideWidth, sy1 - sy0);
+      const profile = sidewallProfiles.get(`${slice.t0}:${slice.t1}:${slice.layerId}`);
+      if (profile) {
+        ctx.beginPath();
+        const widen = (x) => sx0 + ((x - x0) / Math.max(x1 - x0, 1e-12)) * sideWidth;
+        profile.bottom.forEach(([x, y], index) => {
+          if (index === 0) ctx.moveTo(widen(x), y);
+          else ctx.lineTo(widen(x), y);
+        });
+        for (const [x, y] of profile.top.toReversed()) ctx.lineTo(widen(x), y);
+        ctx.closePath();
+        ctx.fill();
+      } else ctx.fillRect(sx0, sy0, sideWidth, sy1 - sy0);
       if (sectionShowBorders) {
         ctx.setLineDash([]);
         ctx.strokeStyle = 'rgba(17,24,32,.72)';
         ctx.lineWidth = 0.8;
-        ctx.strokeRect(sx0, sy0, sideWidth, sy1 - sy0);
+        if (profile) ctx.stroke();
+        else ctx.strokeRect(sx0, sy0, sideWidth, sy1 - sy0);
       }
     }
 

@@ -90,7 +90,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-1.55.0
+          key: playwright-${{ runner.os }}-chromium-1.55.1
 
       - name: Install project and browser test dependencies
         run: |

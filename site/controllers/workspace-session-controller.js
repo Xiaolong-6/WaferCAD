@@ -26,7 +26,12 @@ function persistentTabId(windowRef) {
   try {
     const sessionStorage = windowRef?.sessionStorage,
       existing = sessionStorage?.getItem?.(TAB_ID_KEY);
-    if (existing) return existing;
+    const navigation = windowRef?.performance?.getEntriesByType?.('navigation')?.[0],
+      reloading = navigation?.type === 'reload' || windowRef?.performance?.navigation?.type === 1;
+    // New browsing contexts may copy sessionStorage from an opener/duplicated
+    // tab. Only a reload can reuse its stored identity before the old lease is
+    // released; a fresh document otherwise receives an independent identity.
+    if (existing && reloading) return existing;
     const created = randomTabId(windowRef);
     sessionStorage?.setItem?.(TAB_ID_KEY, created);
     return created;

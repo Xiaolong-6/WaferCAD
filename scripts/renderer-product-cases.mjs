@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { isotropicReleaseBenchmark, projectForBenchmark } from './process-benchmarks.mjs';
+import { checkRoughSectionDetail } from './test-helpers/section-profile.mjs';
 import {
   checkLayout,
   openFunctionPanel,
@@ -665,6 +666,7 @@ export async function runRendererProductCases({ page, capture }) {
   literature.display.sectionShowBorders = true;
   literature.display.threeShowBorders = true;
   await loadProject(page, literature, 'wide-photodetector-quarter-roi');
+  await checkRoughSectionDetail(page, literature, null, true);
   await page.getByRole('button', { name: 'Overview', exact: true }).click();
   await page.locator('#fit3dBtn').click();
   await capture(page, 'wide-photodetector-quarter-roi-overview');

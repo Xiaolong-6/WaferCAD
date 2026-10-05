@@ -668,6 +668,67 @@ await safetyFirst.waitForFunction(
 );
 assert.equal(await safetyFirst.locator('.workspace').evaluate((element) => element.inert), false);
 assert.equal(await safetyFirst.locator('#workspaceConflictDialog').isVisible(), true);
+
+// Same-origin opener tabs receive copied sessionStorage. Their identity must
+// still be independent; refreshing either page must retain its own lease role.
+const ownerId = await safetySecond.evaluate(() =>
+  sessionStorage.getItem('wafercad.workspace.tab.v1'),
+);
+const popupPromise = safetySecond.waitForEvent('popup');
+await safetySecond.evaluate(() => window.open(location.href, '_blank'));
+const copiedTab = await popupPromise;
+copiedTab.on('pageerror', (error) => safetyErrors.push(error.message));
+await waitForAppReady(copiedTab);
+await copiedTab.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'false',
+);
+const copiedId = await copiedTab.evaluate(() =>
+  sessionStorage.getItem('wafercad.workspace.tab.v1'),
+);
+assert.notEqual(copiedId, ownerId);
+assert.equal(await copiedTab.locator('#workspaceConflictDialog').isVisible(), true);
+await safetySecond.locator('#projectNameInput').fill('Opener owner saved workspace');
+await safetySecond.waitForFunction(() =>
+  /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+);
+await copiedTab.locator('#projectNameInput').fill('Copied tab unsaved edits');
+assert.match(await copiedTab.locator('#workspaceSaveStatus').textContent(), /autosave paused/i);
+await safetySecond.reload();
+await waitForAppReady(safetySecond);
+await safetySecond.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+);
+assert.equal(
+  await safetySecond.evaluate(() => sessionStorage.getItem('wafercad.workspace.tab.v1')),
+  ownerId,
+);
+assert.equal(
+  await safetySecond.locator('#projectNameInput').inputValue(),
+  'Opener owner saved workspace',
+);
+await copiedTab.reload();
+await waitForAppReady(copiedTab);
+assert.equal(
+  await copiedTab.evaluate(() => sessionStorage.getItem('wafercad.workspace.tab.v1')),
+  copiedId,
+);
+assert.equal(await copiedTab.locator('.workspace').getAttribute('data-autosave-owner'), 'false');
+await copiedTab.locator('#projectNameInput').fill('Copied tab explicit takeover');
+await copiedTab.locator('#workspaceTakeOverBtn').click();
+await chooseConfirmation(copiedTab);
+await copiedTab.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'true',
+);
+await safetySecond.waitForFunction(
+  () => document.querySelector('.workspace')?.dataset.autosaveOwner === 'false',
+);
+await safetySecond.reload();
+await waitForAppReady(safetySecond);
+assert.equal(
+  await safetySecond.locator('.workspace').getAttribute('data-autosave-owner'),
+  'false',
+  'refreshing an old owner must not retake saving',
+);
 assert.deepEqual(safetyErrors, []);
 await safetyContext.close();
 

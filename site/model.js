@@ -1087,7 +1087,6 @@ function applyOperationImpl(
   }
 
   let layer = null;
-  if (type === 'add') layer = createLayer(model, name);
   if (type === 'grow' && !layerById(model, targetLayerId))
     return { changed: false, error: 'Target layer is unavailable.' };
 
@@ -1100,6 +1099,25 @@ function applyOperationImpl(
       };
     }
   }
+
+  if ((type === 'add' || type === 'grow') && growth !== 'conformal') {
+    const eligible = model.regions.some((region) => {
+      const exposed = surfaceSegment(region.stack, face);
+      return (
+        exposed &&
+        exposed.role !== 'conformal-sidewall' &&
+        (type !== 'grow' || exposed.layerId === targetLayerId) &&
+        !isEmpty(intersection(active, region.geom))
+      );
+    });
+    if (!eligible) {
+      return {
+        changed: false,
+        error: 'The selected area has no eligible horizontal surface for directional deposition.',
+      };
+    }
+  }
+  if (type === 'add') layer = createLayer(model, name);
 
   if (type === 'etch') {
     const selectiveTargets = [...new Set((etchTargetLayerIds || []).filter(Boolean))];

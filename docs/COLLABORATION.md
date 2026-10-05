@@ -33,3 +33,5 @@ Before publishing, refresh `origin/main`, inspect the integration diff and use a
 ## Current handoff
 
 [2026-10-05 validation](VALIDATION_2026-10-05.md) identifies the tested integration of the automated-test architecture, Implant cut/gradient work and Photodetector Section artifact fix. Consult newer commits and audits before treating that dated result as evidence for subsequent product changes. [Photodetector follow-up](PHOTODETECTOR_RENDER_FOLLOWUP_2026-10-05.md) records the subsequent ROI/border/Z-display correction. Project audit reports are maintained on separate audit branches.
+
+[Rendering and audit stabilization](STABILIZATION_2026-10-05.md) covers the later Section Detail profile correction, independent copied-tab autosave identity, no-change deposition guard and Playwright security patch. It records the intentional Photodetector pixel-reference difference and its pending human acceptance; do not treat that opt-in gate as passing against the original reference.

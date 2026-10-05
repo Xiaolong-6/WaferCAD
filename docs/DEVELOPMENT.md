@@ -60,7 +60,7 @@ There is no application build step.
 11. Layers are referenced by stable internal ID, not by user-visible name.
 12. Structure and Implant colors come from curated or generated harmonious 20-color palettes; arbitrary color-picker input is intentionally hidden from Process.
 13. Etch has no growth mode.
-14. Rough/Pyramid morphology is deterministic appearance metadata; Section and 3D must consume the same profile field and canonical material geometry remains ideal.
+14. Rough/Pyramid morphology is deterministic appearance metadata; Section and 3D must consume the same profile field and canonical material geometry remains ideal. Section materials, conformal films and following annotations must stay registered in Detail insets; concentration depth follows the local source surface. Widening a subpixel sidewall for visibility must preserve its rough floor.
 15. Implant is a non-material annotation volume. Rendering must clip it against current material geometry; later Etch removes the corresponding surviving volume rather than regenerating it from the new surface. Section and 3D must consume the shared Implant depth-gradient contract; opaque 3D may expose only the ROI-cut face of a buried Implant, never the full buried volume.
 16. Main/Mask morphology cues must remain subtle overlays that do not replace the underlying material/mask color language.
 17. Base rebuilds remain reversible.

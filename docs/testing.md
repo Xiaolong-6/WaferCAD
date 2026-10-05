@@ -33,7 +33,7 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 
 ### Deterministic browser dependencies
 
-Playwright `1.55.0` and Three `0.179.1` are pinned devDependencies in `package-lock.json`. Install them with `npm ci`, then install Chromium with `npx playwright install chromium` (`--with-deps` on Linux). Serve `site/` locally and set `WAFERCAD_THREE_DIR` to the project's `node_modules/three` directory before running browser tests:
+Playwright `1.55.1` and Three `0.179.1` are pinned devDependencies in `package-lock.json`. Install them with `npm ci`, then install Chromium with `npx playwright install chromium` (`--with-deps` on Linux). Serve `site/` locally and set `WAFERCAD_THREE_DIR` to the project's `node_modules/three` directory before running browser tests:
 
 ```powershell
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
@@ -166,3 +166,5 @@ npm run test:ui:visual
 See [local validation](VALIDATION_2026-10-05.md) for the tested revision, environment, runtime results and human acceptance. Windows references must not be used as evidence of Linux raster stability. Generate a separate Linux set and review it before enabling a Linux pixel gate.
 
 Visual baselines are intentionally **not** part of `test:ui:all` or the GitHub Actions gate yet. Generate them in a controlled Chromium/Linux environment, review the PNGs, commit only approved baselines, then enable the gate in a separate change. WebGL screenshots remain review artifacts until cross-run raster stability is characterized.
+
+The later [rendering stabilization](STABILIZATION_2026-10-05.md) intentionally changes the Photodetector Section profile/gradient. Its original Windows reference is retained pending human acceptance; the other four references pass unchanged. Product renderer tests independently measure Si/ALD/Implant registration, local depth gradients and the thin sidewall floor in a Detail inset, so an old-reference pixel mismatch must not be hidden by weakening those structural checks.

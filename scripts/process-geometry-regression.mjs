@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
-import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+import {
+  loadGeometryKernel,
+  processBenchmark,
+  projectForBenchmark,
+} from './process-benchmarks.mjs';
+import { exportCurrentProject, loadProject } from './test-helpers/product-scientific.mjs';
 import {
   baseUrl,
   canvasInkFraction,
@@ -17,7 +22,7 @@ import {
 } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, createModel } = await import('../site/model.js');
+const { applyOperation, createModel, surfaceSegment } = await import('../site/model.js');
 const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 function parseGlbJson(buffer) {
@@ -795,6 +800,58 @@ assert.equal(extendedSidewall.z1, 8);
 assert.equal(extendedSidewall.role, 'conformal-sidewall');
 
 await closeFunctionPanel(page);
+
+// Run the audited sidewall-only no-op through the real worker/UI. A no-change
+// result must not allocate a layer, alter revisions or append a History Step.
+for (const face of ['front', 'back']) {
+  for (const type of ['add', 'grow']) {
+    const { model } = await processBenchmark('step', 'conformal', face),
+      sidewall = model.regions.find(
+        (region) => surfaceSegment(region.stack, face)?.role === 'conformal-sidewall',
+      ),
+      project = projectForBenchmark({ model, section: { a: [-9, 0], b: [9, 0] } });
+    project.activeFace = face;
+    project.maskSourceMode = 'draw';
+    project.drawMask = {
+      nextShapeId: 2,
+      shapes: [{ id: 'shape-1', type: 'polygon', points: sidewall.geom[0][0] }],
+    };
+    await loadProject(page, project, `sidewall-only-${type}-${face}`);
+    const before = await exportCurrentProject(page);
+    await openFunctionPanel(page, 'process');
+    await page.locator(`[data-process-mode="${type}"]`).click();
+    await page.locator('#operationArea').selectOption('mask');
+    await page.locator('#growthMode').selectOption('direct');
+    if (type === 'grow')
+      await page.locator('#targetLayer').selectOption(surfaceSegment(sidewall.stack, face).layerId);
+    await page.locator('#operationThickness').fill('0.2');
+    await page.locator('#applyOperationBtn').click();
+    await page.waitForFunction(
+      () =>
+        /no eligible horizontal surface/.test(
+          document.getElementById('statusText')?.textContent || '',
+        ),
+      null,
+      { timeout: 30000 },
+    );
+    const after = await exportCurrentProject(page);
+    assert.deepEqual(
+      after.model,
+      before.model,
+      `${type}/${face}: no-op must preserve the stored model`,
+    );
+    assert.deepEqual(
+      after.snapshotBranches,
+      before.snapshotBranches,
+      `${type}/${face}: no-op must preserve all History branches/cursors/HEADs`,
+    );
+    assert.deepEqual(
+      after.snapshots,
+      before.snapshots,
+      `${type}/${face}: no-op must not append a Step`,
+    );
+  }
+}
 
 assert.deepEqual(errors, []);
 await context.close();

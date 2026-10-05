@@ -8,7 +8,8 @@ import {
 } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { applyOperation, baseCoverageState, createModel, surfaceZ } = await import('../model.js');
+const { applyOperation, baseCoverageState, createModel, surfaceSegment, surfaceZ } =
+  await import('../model.js');
 const { circleMulti, difference, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
   await import('../vector-geometry.js');
 const { electricalRegionSolids, extrusionGroups, implantSectionBands, sectionSlices } =
@@ -164,6 +165,43 @@ test('Directional deposition ignores conformal-sidewall surrogate caps', async (
     'lower horizontal surface must still receive the directional film',
   );
 });
+
+for (const face of ['front', 'back']) {
+  for (const type of ['add', 'grow']) {
+    test(`sidewall-only directional ${type} ${face} leaves the whole model unchanged`, async () => {
+      const { model } = await processBenchmark('step', 'conformal', face),
+        sidewall = model.regions.find(
+          (region) => surfaceSegment(region.stack, face)?.role === 'conformal-sidewall',
+        ),
+        before = structuredClone(model),
+        result = applyOperation(model, {
+          type,
+          face,
+          thickness: 0.2,
+          growth: 'direct',
+          area: sidewall.geom,
+          targetLayerId: surfaceSegment(sidewall.stack, face).layerId,
+        });
+      assert.equal(result.changed, false);
+      assert.match(result.error, /horizontal surface/);
+      assert.deepEqual(model, before, 'no layer/region IDs, revisions or morphology may change');
+      const applied = applyOperation(model, {
+        type,
+        face,
+        thickness: 0.2,
+        growth: 'direct',
+        area: model.boundary,
+        targetLayerId: surfaceSegment(sidewall.stack, face).layerId,
+      });
+      assert.equal(
+        applied.changed,
+        true,
+        'mixed selection must still process eligible horizontal surfaces',
+      );
+      assert.ok(volume(model) > volume(before));
+    });
+  }
+}
 
 test('Implant Section bands hide host-region partition seams', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
