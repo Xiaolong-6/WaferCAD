@@ -1006,7 +1006,7 @@ await historyReplayFailurePage.locator('[data-process-mode="add"]').click();
 await historyReplayFailurePage.locator('#operationArea').selectOption('full');
 await historyReplayFailurePage.locator('#growthMode').selectOption('direct');
 await historyReplayFailurePage.locator('#operationThickness').fill('0.05');
-for (const name of ['Fail A', 'Fail B', 'Fail C', 'Fail D', 'Fail E']) {
+for (const name of ['Fail Seed', 'Fail A', 'Fail B', 'Fail C', 'Fail D', 'Fail E']) {
   await historyReplayFailurePage.locator('#layerName').fill(name);
   await historyReplayFailurePage.locator('#applyOperationBtn').click();
   await historyReplayFailurePage.waitForFunction(
