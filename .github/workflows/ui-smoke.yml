@@ -7,6 +7,8 @@ on:
     paths:
       - "site/**"
       - "scripts/ui-smoke.mjs"
+      - "scripts/ui-regression.mjs"
+      - "scripts/test-helpers/**"
       - "scripts/example-regression.mjs"
       - "scripts/product-regression.mjs"
       - "scripts/process-benchmarks.mjs"
@@ -51,16 +53,19 @@ jobs:
           cat /tmp/wafercad-http.log
           exit 1
 
-      - name: Run browser interaction smoke
-        run: node scripts/ui-smoke.mjs
+      - name: Run fast browser smoke
+        run: npm run test:ui:smoke
+
+      - name: Run full browser regression
+        run: npm run test:ui:regression
 
       - name: Run bundled example regression
-        run: node scripts/example-regression.mjs
+        run: npm run test:ui:examples
 
       - name: Run product interaction and visual regression
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: node scripts/product-regression.mjs
+        run: npm run test:ui:product
 
       - name: Package tested preview
         if: always()
