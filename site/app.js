@@ -314,6 +314,8 @@ const planView = createPlanViewController({
   xyUnitLabel: () => xyUnit().label,
   renderMask,
   renderMain,
+  getViewportMargin: () => (EMBEDDED_PREVIEW ? 14 : 34),
+  getCompactAxes: () => EMBEDDED_PREVIEW,
   onChanged: markProjectDirty,
 });
 const {
