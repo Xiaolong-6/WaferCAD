@@ -13,9 +13,9 @@ import {
   loadProject,
   sectionMaterialThickness,
 } from './test-helpers/product-scientific.mjs';
-import { pointInMulti } from '../site/vector-geometry.js';
 
 export async function runRendererProductCases({ page, capture }) {
+  const { pointInMulti } = await import('../site/vector-geometry.js');
   const runRenderer = true;
   const name = 'wide';
 
