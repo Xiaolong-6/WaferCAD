@@ -827,6 +827,16 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
       if (version >= 3 && node.state == null) {
         fail(`${path}.state`, 'is required for restorable process history.');
       }
+      if (node.inputState != null) {
+        assertObject(node.inputState, `${path}.inputState`);
+        if (node.inputState.snapshots != null) {
+          fail(`${path}.inputState.snapshots`, 'must not be nested.');
+        }
+        if (node.inputState.snapshotBranches != null) {
+          fail(`${path}.inputState.snapshotBranches`, 'must not be nested.');
+        }
+        validateProjectCore(node.inputState, false, shared);
+      }
       if (node.state != null) {
         assertObject(node.state, `${path}.state`);
         if (node.state.snapshots != null) fail(`${path}.state.snapshots`, 'must not be nested.');
@@ -1235,6 +1245,7 @@ export function migrateProjectFile(project) {
   }
   if (isObject(migrated.snapshotBranches)) {
     for (const node of migrated.snapshotBranches.nodes || []) {
+      if (isObject(node) && isObject(node.inputState)) migrateProjectCore(node.inputState);
       if (isObject(node) && isObject(node.state)) migrateProjectCore(node.state);
     }
     for (const branch of migrated.snapshotBranches.branches || []) {
