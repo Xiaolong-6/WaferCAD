@@ -79,7 +79,8 @@ export function historyOperationAreaLabel(node, state = null) {
           : areaMode === 'mask'
             ? 'Selected mask'
             : ''),
-    context = operation.maskContext || operation.replay?.maskContext || null;
+    context = operation.maskContext || operation.replay?.maskContext || null,
+    contextPrefix = areaMode === 'mask' ? '' : fallback;
 
   if (!areaMode || areaMode === 'full') return fallback;
   if (!context) {
@@ -88,7 +89,7 @@ export function historyOperationAreaLabel(node, state = null) {
     if (!stateCell && !stateLayers.length) return fallback;
     const layerLabels = stateLayers.map(normalizedLayerKeyLabel).filter(Boolean);
     return [
-      fallback,
+      contextPrefix,
       stateCell ? `Cell ${stateCell}` : '',
       layerLabels.length
         ? `${layerLabels.length === 1 ? 'Layer' : 'Layers'} ${layerLabels.join(', ')}`
@@ -102,11 +103,11 @@ export function historyOperationAreaLabel(node, state = null) {
   if (sourceMode === 'draw') {
     const shapeCount = Number(context.shapeCount);
     return [
-      fallback,
+      contextPrefix,
       Number.isInteger(shapeCount) && shapeCount >= 0
         ? `Draw · ${shapeCount} shape${shapeCount === 1 ? '' : 's'}`
         : 'Draw',
-    ].join(' · ');
+    ].filter(Boolean).join(' · ');
   }
 
   const cell = context.cell || state?.activeCell || state?.layout?.root || '',
@@ -118,7 +119,7 @@ export function historyOperationAreaLabel(node, state = null) {
     layerLabels = layerKeys.map(normalizedLayerKeyLabel).filter(Boolean);
 
   return [
-    fallback,
+    contextPrefix,
     cell ? `Cell ${cell}` : '',
     layerLabels.length
       ? `${layerLabels.length === 1 ? 'Layer' : 'Layers'} ${layerLabels.join(', ')}`
