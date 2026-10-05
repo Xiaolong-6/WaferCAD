@@ -13,7 +13,7 @@
     "test:ui:smoke": "node scripts/ui-smoke.mjs",
     "test:ui:examples": "node scripts/example-regression.mjs",
     "test:ui:product": "npm run test:ui:product:layout && npm run test:ui:product:renderer",
-    "test:ui:all": "npm run test:ui:smoke && npm run test:ui:workstation && npm run test:ui:history && npm run test:ui:persistence && npm run test:ui:process && npm run test:ui:interaction && npm run test:ui:resilience && npm run test:ui:examples && npm run test:ui:product",
+    "test:ui:all": "npm run test:ui:fast && npm run test:ui:state && npm run test:ui:geometry && npm run test:ui:review",
     "test:ui:history": "node scripts/history-regression.mjs",
     "test:ui:persistence": "node scripts/persistence-regression.mjs",
     "test:ui:process": "node scripts/process-geometry-regression.mjs",
