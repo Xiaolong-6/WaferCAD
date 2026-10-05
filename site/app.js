@@ -20,7 +20,6 @@ import {
   unitMeta,
 } from './units.js';
 import { createSnapshotManager } from './workspace-snapshots.js';
-import { historyOperationLabel } from './history-operation-label.js';
 import { takeStartupFile } from './startup-file.js';
 import { createBuildController } from './controllers/build-controller.js';
 import { createFeedbackController } from './controllers/feedback-controller.js';
@@ -935,7 +934,8 @@ async function beginHistoricalStepEdit(node) {
     branchName: context.branchName,
     parentNodeId: context.parentNodeId,
     mode: null,
-    originalLabel: node.operation?.label || node.operation?.kind || 'Process step',
+    originalLabel:
+      node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step',
     downstreamCount: context.downstreamCount,
     downstreamReplayable: context.downstreamReplayable,
     canReplaceCurrentVariant: context.canReplaceCurrentVariant,
@@ -970,7 +970,8 @@ async function beginHistoricalStepInsert(node) {
     return false;
   }
 
-  const currentLabel = historyOperationLabel(node, model),
+  const currentLabel =
+      node.displayLabel || node.operation?.label || node.operation?.kind || 'Process step',
     replayableTail =
       context.replayableTail &&
       context.replaySteps.every((step) =>
@@ -1213,7 +1214,6 @@ const projectController = createProjectController({
   importLayoutBuffer,
   loadProjectSnapshot,
   snapshotManager,
-  getModel: () => model,
   syncBaseControls,
   syncTransformInputs: () => maskImportController.syncTransformInputs(),
   renderAll,
