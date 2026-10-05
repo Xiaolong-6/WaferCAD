@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  mkdir,
-  readFile } from 'node:fs/promises';
-import { loadGeometryKernel,
-  projectForBenchmark } from './process-benchmarks.mjs';
+import { mkdir, readFile } from 'node:fs/promises';
+import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 import {
   chooseConfirmation,
   gotoWelcome,
