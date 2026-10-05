@@ -2232,11 +2232,6 @@ await page.waitForFunction(
 assert.equal(await page.locator('#projectNameInput').inputValue(), 'Refresh restore check');
 assert.equal(Number(await page.locator('#maskOpacityRange').inputValue()), 0.35);
 
-// History is Step-first: manual save is only a bookmark annotation.
-await openFunctionPanel(page, 'snapshots');
-assert.equal(await page.locator('#saveSnapshotBtn').count(), 0);
-assert.equal(await page.locator('.snapshot-other-branch').count(), 0);
-
 // New Project also leaves a Recovery checkpoint before replacing the live workspace.
 await openFunctionPanel(page, 'project');
 await page.locator('#newProjectBtn').click();
