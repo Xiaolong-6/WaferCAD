@@ -107,7 +107,9 @@ export function historyOperationAreaLabel(node, state = null) {
       Number.isInteger(shapeCount) && shapeCount >= 0
         ? `Draw · ${shapeCount} shape${shapeCount === 1 ? '' : 's'}`
         : 'Draw',
-    ].filter(Boolean).join(' · ');
+    ]
+      .filter(Boolean)
+      .join(' · ');
   }
 
   const cell = context.cell || state?.activeCell || state?.layout?.root || '',
