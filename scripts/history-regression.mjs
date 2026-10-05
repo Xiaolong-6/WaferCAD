@@ -7,6 +7,7 @@ import {
   launchBrowser,
   openFunctionPanel,
   newUiContext,
+  observePageErrors,
 } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
@@ -41,8 +42,7 @@ const browser = await launchBrowser();
 // must also survive local autosave + full reload.
 const historyRestoreContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const historyRestorePage = await historyRestoreContext.newPage();
-const historyRestoreErrors = [];
-historyRestorePage.on('pageerror', (error) => historyRestoreErrors.push(error.message));
+const historyRestoreErrors = observePageErrors(historyRestorePage);
 await gotoWelcome(historyRestorePage);
 await historyRestorePage.locator('#welcomeProjectInput').setInputFiles({
   name: 'history-restore-base.wafercad',
@@ -361,8 +361,7 @@ await historyRestoreContext.close();
 // strategy is chosen only when the edited Step is actually saved.
 const historyRecomputeContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const historyRecomputePage = await historyRecomputeContext.newPage();
-const historyRecomputeErrors = [];
-historyRecomputePage.on('pageerror', (error) => historyRecomputeErrors.push(error.message));
+const historyRecomputeErrors = observePageErrors(historyRecomputePage);
 await gotoWelcome(historyRecomputePage);
 await historyRecomputePage.locator('#welcomeProjectInput').setInputFiles({
   name: 'history-recompute-base.wafercad',
@@ -449,8 +448,7 @@ await historyRecomputeContext.close();
 // succeeded, the original Variant and geometry are restored automatically.
 const historyReplayFailureContext = await newUiContext(browser, { viewport: { width: 1100, height: 760 } });
 const historyReplayFailurePage = await historyReplayFailureContext.newPage();
-const historyReplayFailureErrors = [];
-historyReplayFailurePage.on('pageerror', (error) => historyReplayFailureErrors.push(error.message));
+const historyReplayFailureErrors = observePageErrors(historyReplayFailurePage);
 await gotoWelcome(historyReplayFailurePage);
 await historyReplayFailurePage.locator('#welcomeProjectInput').setInputFiles({
   name: 'history-replay-failure-base.wafercad',
@@ -539,8 +537,7 @@ const projectDownloadContext = await newUiContext(browser, {
   acceptDownloads: true,
 });
 const projectDownloadPage = await projectDownloadContext.newPage();
-const projectDownloadErrors = [];
-projectDownloadPage.on('pageerror', (error) => projectDownloadErrors.push(error.message));
+const projectDownloadErrors = observePageErrors(projectDownloadPage);
 await gotoWelcome(projectDownloadPage);
 await projectDownloadPage.locator('#welcomeProjectInput').setInputFiles({
   name: 'snapshot-export-fixture.wafercad',
