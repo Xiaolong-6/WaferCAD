@@ -366,7 +366,7 @@ test('legacy downstream Step stops replay without guessing missing parameters', 
 });
 
 
-test('replay falls back to the saved layout root when active Cell is missing', async () => {
+test('replay selected mask traverses the saved Cell hierarchy and pinned Layer context', async () => {
   const events = [],
     capturedAreas = [],
     controller = controllerForTask(
@@ -384,11 +384,20 @@ test('replay falls back to the saved layout root when active Cell is missing', a
       events,
     );
 
+  const maskContext = {
+    sourceMode: 'file',
+    cell: 'TOP',
+    layerKeys: ['7|0'],
+    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    roi: null,
+  };
   const result = await controller.replayOperations([
     {
       operation: {
         kind: 'add',
         label: 'Deposit selected ITO',
+        areaMode: 'mask',
+        maskContext,
         replay: {
           version: 1,
           params: {
@@ -399,24 +408,28 @@ test('replay falls back to the saved layout root when active Cell is missing', a
             face: 'front',
             growth: 'direct',
           },
-          areaMode: 'selected',
+          areaMode: 'mask',
+          maskContext,
         },
       },
       state: {
         maskSourceMode: 'file',
         maskRoi: null,
         maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-        selectedLayerKeys: ['7|0'],
+        selectedLayerKeys: ['99|0'],
         activeCell: null,
         layout: {
           root: 'TOP',
-          hierarchy: { TOP: { children: [] } },
+          hierarchy: {
+            TOP: [{ name: 'CHILD', count: 1 }],
+            CHILD: [],
+          },
           elements: [
             {
               kind: 'polygon',
               layer: 7,
               datatype: 0,
-              sourceCell: 'TOP',
+              sourceCell: 'CHILD',
               points: [
                 [0, 0],
                 [10, 0],
@@ -432,6 +445,8 @@ test('replay falls back to the saved layout root when active Cell is missing', a
 
   assert.deepEqual(result, { ok: true, completed: 1 });
   assert.equal(capturedAreas.length, 1);
-  assert.equal(capturedAreas[0].mode, 'selected');
+  assert.equal(capturedAreas[0].mode, 'mask');
   assert.equal(capturedAreas[0].elements.length, 1);
+  assert.deepEqual(capturedAreas[0].maskTransform, maskContext.transform);
 });
+
