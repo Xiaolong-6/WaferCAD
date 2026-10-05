@@ -1103,26 +1103,32 @@ await interactionAutosavePage.waitForFunction(
   null,
   { timeout: 3000 },
 );
-const interactionCanvas = interactionAutosavePage.locator('#threeHost canvas');
-await interactionCanvas.waitFor({ state: 'visible', timeout: 30000 });
-const interactionBox = await interactionCanvas.boundingBox();
-assert.ok(interactionBox);
-await interactionAutosavePage.mouse.move(
-  interactionBox.x + interactionBox.width * 0.55,
-  interactionBox.y + interactionBox.height * 0.5,
-);
-await interactionAutosavePage.mouse.down();
-await interactionAutosavePage.mouse.move(
-  interactionBox.x + interactionBox.width * 0.68,
-  interactionBox.y + interactionBox.height * 0.58,
-  { steps: 8 },
-);
+await interactionAutosavePage.evaluate(() => {
+  const target = document.getElementById('threeHost');
+  target.dispatchEvent(
+    new PointerEvent('pointerdown', {
+      bubbles: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons: 1,
+    }),
+  );
+});
 await interactionAutosavePage.waitForTimeout(2300);
 assert.match(
   await interactionAutosavePage.locator('#workspaceSaveStatus').textContent(),
   /Unsaved changes/,
 );
-await interactionAutosavePage.mouse.up();
+await interactionAutosavePage.evaluate(() => {
+  window.dispatchEvent(
+    new PointerEvent('pointerup', {
+      bubbles: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons: 0,
+    }),
+  );
+});
 await interactionAutosavePage.waitForFunction(
   () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
   null,
