@@ -9,6 +9,7 @@ on:
       - "scripts/ui-smoke.mjs"
       - "scripts/ui-regression.mjs"
       - "scripts/history-regression.mjs"
+      - "scripts/persistence-regression.mjs"
       - "scripts/test-helpers/**"
       - "scripts/example-regression.mjs"
       - "scripts/product-regression.mjs"
@@ -59,6 +60,9 @@ jobs:
 
       - name: Run History regression
         run: npm run test:ui:history
+
+      - name: Run persistence regression
+        run: npm run test:ui:persistence
 
       - name: Run full browser regression
         run: npm run test:ui:regression
