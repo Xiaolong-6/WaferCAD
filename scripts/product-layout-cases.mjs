@@ -16,7 +16,6 @@ import {
   loadProject,
 } from './test-helpers/product-scientific.mjs';
 import { sampleById } from '../site/sample-layouts.js';
-import { parseLayoutFile } from '../site/layout-io.js';
 
 export async function runProductLayoutCases({
   open,
@@ -24,6 +23,7 @@ export async function runProductLayoutCases({
   output,
   checks,
 }) {
+  const { parseLayoutFile } = await import('../site/layout-io.js');
   const {
     checkStickerGrouping,
     checkWorkstationShellLayout,
