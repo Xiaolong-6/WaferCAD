@@ -312,6 +312,102 @@ export function createSnapshotManager({
     return null;
   }
 
+  function legacyFirstAddInputState(node) {
+    if (
+      node?.parentId ||
+      node?.operation?.kind !== 'add' ||
+      Number(node?.processRevision) !== 1
+    ) {
+      return null;
+    }
+
+    const outputState = stateForProcessNode(node),
+      outputModel = outputState?.model;
+    if (
+      !outputState ||
+      !outputModel ||
+      Number(outputModel.processRevision) !== 1 ||
+      !Array.isArray(outputModel.layers) ||
+      !Array.isArray(outputModel.regions)
+    ) {
+      return null;
+    }
+
+    const explicitLayerId =
+        node.operation?.resultLayerId ||
+        node.operation?.replay?.resultLayerId ||
+        null,
+      operationName = cleanName(
+        node.operation?.name || node.operation?.replay?.params?.name || '',
+      ),
+      nonBaseLayers = outputModel.layers.filter((layer) => layer?.id && layer.id !== 'base'),
+      namedCandidates = operationName
+        ? nonBaseLayers.filter((layer) => cleanName(layer?.name) === operationName)
+        : [],
+      inferredLayer =
+        explicitLayerId
+          ? nonBaseLayers.find((layer) => layer.id === explicitLayerId) || null
+          : namedCandidates.length === 1
+            ? namedCandidates[0]
+            : nonBaseLayers.length === 1
+              ? nonBaseLayers[0]
+              : null;
+
+    if (!inferredLayer) return null;
+
+    let found = false;
+    for (const region of outputModel.regions) {
+      const stack = Array.isArray(region?.stack) ? region.stack : [];
+      for (let index = 0; index < stack.length; index += 1) {
+        if (stack[index]?.layerId !== inferredLayer.id) continue;
+        found = true;
+        if (index !== 0 && index !== stack.length - 1) return null;
+      }
+    }
+    if (!found) return null;
+
+    const inputState = cloneState(outputState),
+      inputModel = inputState.model,
+      remainingLayers = inputModel.layers.filter((layer) => layer?.id !== inferredLayer.id);
+
+    inputModel.layers = remainingLayers;
+    inputModel.regions = inputModel.regions
+      .map((region) => ({
+        ...region,
+        stack: (region.stack || []).filter((segment) => segment?.layerId !== inferredLayer.id),
+      }))
+      .filter((region) => region.stack.length);
+
+    if (
+      inputModel.layers.some((layer) => layer?.id === inferredLayer.id) ||
+      inputModel.regions.some((region) =>
+        (region.stack || []).some((segment) => segment?.layerId === inferredLayer.id),
+      )
+    ) {
+      return null;
+    }
+
+    const remainingLayerOrdinals = inputModel.layers
+        .map((layer) => /^layer-(\d+)$/.exec(String(layer?.id || ''))?.[1])
+        .filter(Boolean)
+        .map(Number),
+      remainingRegionOrdinals = inputModel.regions
+        .map((region) => /^region-(\d+)$/.exec(String(region?.id || ''))?.[1])
+        .filter(Boolean)
+        .map(Number),
+      revision = Number(inputModel.revision),
+      processRevision = Number(inputModel.processRevision);
+
+    inputModel.nextLayerId = Math.max(1, ...remainingLayerOrdinals.map((value) => value + 1));
+    inputModel.nextRegionId = Math.max(2, ...remainingRegionOrdinals.map((value) => value + 1));
+    if (Number.isFinite(revision)) inputModel.revision = Math.max(1, revision - 2);
+    if (Number.isFinite(processRevision)) {
+      inputModel.processRevision = Math.max(0, processRevision - 1);
+    }
+
+    return validateState(inputState) ? inputState : null;
+  }
+
   function inputStateForProcessNode(node) {
     if (!node) return null;
     const parentNode = node.parentId ? nodeById(node.parentId) : null,
@@ -333,7 +429,12 @@ export function createSnapshotManager({
       }
       return validateState(inputState) ? inputState : null;
     }
-    return null;
+
+    // Older projects did not persist a predecessor for their first process
+    // Step. A first Deposit/add can still be reconstructed safely when its
+    // output contains one uniquely identifiable newly-created surface layer.
+    // Etch/Grow/Implant/Electrical Steps remain non-editable without inputState.
+    return legacyFirstAddInputState(node);
   }
 
   function operationEntityRefs(node) {
