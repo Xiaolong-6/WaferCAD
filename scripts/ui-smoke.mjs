@@ -633,13 +633,17 @@ const historyAPopoverStep = historyRestorePage.locator('.history-step-wrap', { h
 const historyBPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History B' });
 await historyAPopoverStep.locator('.snapshot-more-trigger').click();
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
-// Force the second trigger because the first popover may physically cover it;
-// opening it by keyboard/programmatic activation must still close the first menu.
-await historyBPopoverStep.locator('.snapshot-more-trigger').click({ force: true });
+// Open the second <details> programmatically because the first popover can
+// physically cover its trigger; the toggle handler must still close the first menu.
+await historyBPopoverStep.locator('.snapshot-more-menu').evaluate((menu) => {
+  menu.open = true;
+});
 await historyRestorePage.waitForFunction(() => {
-  const menus = [...document.querySelectorAll('.snapshot-more-menu')];
-  return menus.filter((menu) => menu.open).length === 1 &&
-    Boolean(document.querySelector('.history-step-wrap[data-step-id] .snapshot-more-menu[open]'));
+  const steps = [...document.querySelectorAll('.history-step-wrap')];
+  const historyA = steps.find((step) => /History A/.test(step.textContent || ''));
+  const historyB = steps.find((step) => /History B/.test(step.textContent || ''));
+  return !historyA?.querySelector('.snapshot-more-menu')?.open &&
+    Boolean(historyB?.querySelector('.snapshot-more-menu')?.open);
 });
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), null);
 assert.equal(await historyBPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
