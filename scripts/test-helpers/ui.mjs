@@ -71,6 +71,16 @@ export async function openFunctionPanel(page, name, clickOptions = {}) {
   );
 }
 
+export async function closeFunctionPanel(page) {
+  const panel = page.locator('#toolPanel.workstation-tool-flyout');
+  if (await panel.evaluate((element) => element.classList.contains('open'))) {
+    await page.locator('.workstation-tool-close').click();
+    await page.waitForFunction(
+      () => !document.getElementById('toolPanel')?.classList.contains('open'),
+    );
+  }
+}
+
 export async function canvasInkFraction(page, selector) {
   return page.locator(selector).evaluate((canvas) => {
     const ctx = canvas.getContext('2d');
