@@ -1,3 +1,5 @@
+import { historyOperationLabel } from './history-operation-label.js';
+
 function clone(value) {
   return structuredClone(value);
 }
@@ -327,7 +329,9 @@ export function createSnapshotManager({
 
   function listHistory() {
     return historyNodes.map(({ id, branchId, parentId, createdAt, processRevision, operation }) => {
-      const node = nodeById(id);
+      const node = nodeById(id),
+        state = stateForProcessNode(node),
+        entityRefs = operationEntityRefs(node);
       return {
         id,
         branchId,
@@ -335,8 +339,9 @@ export function createSnapshotManager({
         createdAt,
         processRevision,
         operation: clone(operation),
-        entityRefs: operationEntityRefs(node),
-        restorable: Boolean(stateForProcessNode(node)),
+        entityRefs,
+        displayLabel: historyOperationLabel({ operation, entityRefs }, state?.model),
+        restorable: Boolean(state),
         replayable: operation?.replay?.version === 1,
       };
     });
@@ -697,34 +702,80 @@ export function createSnapshotManager({
     return true;
   }
 
+  function nodeDescendsFrom(nodeId, ancestorId) {
+    if (!nodeId || !ancestorId) return false;
+    const seen = new Set();
+    let currentId = nodeId;
+    while (currentId && !seen.has(currentId)) {
+      if (currentId === ancestorId) return true;
+      seen.add(currentId);
+      currentId = nodeById(currentId)?.parentId || null;
+    }
+    return false;
+  }
+
+  function historyEntityCreator(kind, id) {
+    const branch = branchById(activeBranchId);
+    let currentId = cursorNodeId || branch?.headNodeId || null;
+    const seen = new Set();
+
+    while (currentId && !seen.has(currentId)) {
+      seen.add(currentId);
+      const node = nodeById(currentId),
+        refs = operationEntityRefs(node),
+        created =
+          (kind === 'layer' && refs.resultLayerId === id) ||
+          (kind === 'implant' && refs.resultImplantId === id) ||
+          (kind === 'electrical' && refs.resultElectricalRegionId === id);
+      if (created) return node;
+      currentId = node?.parentId || null;
+    }
+    return null;
+  }
+
   function renameHistoryEntity(kind, id, name) {
     const next = cleanName(name);
     if (!id || !next || !['layer', 'implant', 'electrical'].includes(kind)) return 0;
 
     const refsByNode = new Map(
-      historyNodes.map((node) => [node.id, operationEntityRefs(node)]),
-    );
-    const collectionKey =
-      kind === 'layer' ? 'layers' : kind === 'implant' ? 'implants' : 'electricalRegions';
+        historyNodes.map((node) => [node.id, operationEntityRefs(node)]),
+      ),
+      creator = historyEntityCreator(kind, id),
+      activePathNodeId = cursorNodeId || branchById(activeBranchId)?.headNodeId || null,
+      inScopeNode = (nodeId) =>
+        creator
+          ? nodeDescendsFrom(nodeId, creator.id)
+          : nodeDescendsFrom(activePathNodeId, nodeId),
+      collectionKey =
+        kind === 'layer' ? 'layers' : kind === 'implant' ? 'implants' : 'electricalRegions';
+
     let changed = 0;
-    const seenStates = new Set();
+    const seenModels = new Set();
 
     const renameInState = (state) => {
-      if (!state || typeof state !== 'object' || seenStates.has(state)) return;
-      seenStates.add(state);
-      const entity = (state.model?.[collectionKey] || []).find((item) => item?.id === id);
-      if (entity && entity.name !== next) {
-        entity.name = next;
-        changed += 1;
-      }
+      const stateModel = state?.model;
+      if (!stateModel || seenModels.has(stateModel)) return;
+      seenModels.add(stateModel);
+      const entity = (stateModel[collectionKey] || []).find((item) => item?.id === id);
+      if (!entity || entity.name === next) return;
+      entity.name = next;
+      stateModel.revision = (Number(stateModel.revision) || 0) + 1;
+      changed += 1;
     };
 
-    for (const node of historyNodes) renameInState(node.state);
-    for (const record of records) renameInState(record.state);
-    for (const branch of branches) renameInState(branch.headState);
-    renameInState(cursorBaselineState);
+    for (const node of historyNodes) {
+      if (inScopeNode(node.id)) renameInState(node.state);
+    }
+    for (const record of records) {
+      if (record.historyNodeId && inScopeNode(record.historyNodeId)) renameInState(record.state);
+    }
+    for (const branch of branches) {
+      if (branch.headNodeId && inScopeNode(branch.headNodeId)) renameInState(branch.headState);
+    }
+    if (!cursorNodeId || inScopeNode(cursorNodeId)) renameInState(cursorBaselineState);
 
     for (const node of historyNodes) {
+      if (!inScopeNode(node.id)) continue;
       const refs = refsByNode.get(node.id) || {},
         operation = node.operation || {},
         resultMatches =
@@ -757,7 +808,15 @@ export function createSnapshotManager({
       branchName: branch.name,
       snapshotId: snapshot?.id || null,
       snapshotName: snapshot?.name || null,
-      processLabel: processNode?.operation?.label || processNode?.operation?.kind || null,
+      processLabel: processNode
+        ? historyOperationLabel(
+            {
+              operation: processNode.operation,
+              entityRefs: operationEntityRefs(processNode),
+            },
+            stateForProcessNode(processNode)?.model,
+          )
+        : null,
       cursorNodeId,
       headNodeId: branch.headNodeId,
     };
