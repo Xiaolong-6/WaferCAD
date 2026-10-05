@@ -10,6 +10,7 @@ on:
       - "scripts/ui-regression.mjs"
       - "scripts/history-regression.mjs"
       - "scripts/persistence-regression.mjs"
+      - "scripts/process-geometry-regression.mjs"
       - "scripts/test-helpers/**"
       - "scripts/example-regression.mjs"
       - "scripts/product-regression.mjs"
@@ -63,6 +64,9 @@ jobs:
 
       - name: Run persistence regression
         run: npm run test:ui:persistence
+
+      - name: Run process geometry regression
+        run: npm run test:ui:process
 
       - name: Run full browser regression
         run: npm run test:ui:regression
