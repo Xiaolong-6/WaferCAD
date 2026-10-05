@@ -5,6 +5,7 @@ import {
   canvasInkFraction,
   gotoWelcome,
   launchBrowser,
+  newUiPage,
   openFunctionPanel,
 } from './test-helpers/ui.mjs';
 
@@ -12,7 +13,7 @@ const browser = await launchBrowser();
 
 // Startup must never expose the legacy/raw workspace while the workstation
 // stylesheet or DOM transformation is still pending.
-const bootPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: bootPage, context: bootContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
 const bootErrors = [];
 let releaseWorkstationCss;
 let workstationCssSeen;
@@ -68,9 +69,9 @@ assert.equal(
 assert.equal(await bootPage.locator('.workstation-rail').isVisible(), true);
 assert.equal(await bootPage.locator('#workstationBootScreen').isVisible(), false);
 assert.deepEqual(bootErrors, []);
-await bootPage.close();
+await bootContext.close();
 
-const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
+const { page, context: mainContext } = await newUiPage(browser, { viewport: { width: 1365, height: 900 } });
 const errors = [];
 
 page.on('pageerror', (error) => errors.push(error.message));
@@ -293,7 +294,7 @@ await page.locator('#threePanel').waitFor({ state: 'visible' });
 
 // Navigation semantics are checked in isolated pages so Back/Reload cannot
 // perturb the long-lived editor page used by the rest of this smoke suite.
-const navigationPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: navigationPage, context: navigationContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
 const navigationErrors = [];
 navigationPage.on('pageerror', (error) => navigationErrors.push(error.message));
 await gotoWelcome(navigationPage);
@@ -309,11 +310,11 @@ await navigationPage.waitForFunction(
 assert.equal(await navigationPage.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await navigationPage.locator('.app-shell').count(), 0);
 assert.deepEqual(navigationErrors, []);
-await navigationPage.close();
+await navigationContext.close();
 
 // Bundled example families must load through the same validated project path as
 // user-selected .wafercad files, including their restorable Variant tree.
-const familyExamplePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: familyExamplePage, context: familyExampleContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
 const familyExampleErrors = [];
 familyExamplePage.on('pageerror', (error) => familyExampleErrors.push(error.message));
 await gotoWelcome(familyExamplePage);
@@ -345,7 +346,7 @@ assert.equal(
   1,
 );
 assert.deepEqual(familyExampleErrors, []);
-await familyExamplePage.close();
+await familyExampleContext.close();
 
 // A stalled Three.js CDN must never block the editor shell. The old top-level
 // await implementation left Main/Mask blank and all tool tabs unbound here.
@@ -416,6 +417,7 @@ await face.click();
 
 assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);
 assert.deepEqual(errors, []);
+await mainContext.close();
 await browser.close();
 
 console.log('WaferCAD workstation regression: OK');
