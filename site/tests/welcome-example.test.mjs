@@ -10,44 +10,17 @@ const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
 
-const { createVisualizationExample, createVisualizationLayout } =
-  await import('../welcome-example.js');
 const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { expandProjectStorage } = await import('../project-io.js');
-const { CURRENT_PROJECT_VERSION, migrateProjectFile, validateProjectFile } =
-  await import('../project-schema.js');
+const { validateProjectFile } = await import('../project-schema.js');
 
-test('Visualization welcome example preserves the uploaded mask structure', () => {
-  const layout = createVisualizationLayout();
-  assert.equal(layout.root, 'Wafer');
-  assert.equal(layout.elements.length, 397);
-  assert.equal(layout.combos.length, 7);
-  assert.equal(layout.elements.filter((element) => element.sourceCell === 'Opening').length, 132);
-  assert.equal(layout.elements.filter((element) => element.sourceCell === 'ITO').length, 132);
-  assert.equal(layout.elements.filter((element) => element.sourceCell === 'Metal').length, 132);
-});
-
-test('Visualization welcome example migrates into the current interactive project schema', () => {
-  const project = migrateProjectFile(createVisualizationExample());
-  assert.equal(project.version, CURRENT_PROJECT_VERSION);
-  assert.equal(validateProjectFile(project), project);
-  assert.equal(project.model.layers.length, 7);
-  assert.deepEqual(project.selectedLayerKeys, ['4|0']);
-  assert.equal(project.maskSourceMode, 'file');
-  assert.deepEqual(project.drawMask, { nextShapeId: 1, shapes: [] });
-  assert.deepEqual(
-    project.model.layers.map((layer) => layer.name),
-    ['Base', 'SiO2', 'Perovskite', 'ETL', 'ITO', 'Metal', 'Back metal'],
-  );
-});
-
-
-test('welcome example catalog promotes three literature-backed project families', async () => {
+test('welcome example catalog promotes four literature-backed project families', async () => {
   assert.deepEqual(
     BUNDLED_EXAMPLES.map((example) => example.id),
     [
       'photodetector-literature',
       'perc-point-contact-solar-cell',
+      'fully-textured-perovskite-silicon-tandem',
       'suspended-silica-microdisk',
     ],
   );
@@ -137,12 +110,17 @@ test('all promoted Welcome examples are valid project files', async () => {
   }
 });
 
-test('PERC and microdisk examples use device-oriented titles and explicit provenance', () => {
+test('promoted device examples use device-oriented titles and explicit provenance', () => {
   const perc = BUNDLED_EXAMPLES.find((entry) => entry.id === 'perc-point-contact-solar-cell'),
+    tandem = BUNDLED_EXAMPLES.find(
+      (entry) => entry.id === 'fully-textured-perovskite-silicon-tandem',
+    ),
     microdisk = BUNDLED_EXAMPLES.find((entry) => entry.id === 'suspended-silica-microdisk');
 
   assert.equal(perc?.title, 'PERC solar cells with point contacts');
   assert.equal(perc?.sources?.[0]?.doi, '10.1063/1.101596');
+  assert.equal(tandem?.title, 'Fully textured perovskite–silicon tandems');
+  assert.equal(tandem?.sources?.[0]?.doi, '10.1038/s41563-018-0115-4');
   assert.equal(microdisk?.title, 'Suspended silica microdisks');
   assert.equal(microdisk?.sources?.[0]?.doi, '10.1038/s41467-018-08038-4');
   assert.equal(BUNDLED_EXAMPLES.some((entry) => entry.id === 'visualization'), false);

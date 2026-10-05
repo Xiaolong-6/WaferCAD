@@ -34,6 +34,16 @@ const welcomeProject = projectForBenchmark({
 
 const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
 
+function parseGlbJson(buffer) {
+  assert.equal(buffer.readUInt32LE(0), 0x46546c67, 'GLB magic');
+  assert.equal(buffer.readUInt32LE(4), 2, 'GLB version');
+  assert.equal(buffer.readUInt32LE(8), buffer.length, 'GLB byte length');
+  const jsonLength = buffer.readUInt32LE(12),
+    jsonType = buffer.readUInt32LE(16);
+  assert.equal(jsonType, 0x4e4f534a, 'first GLB chunk must be JSON');
+  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
+}
+
 async function gotoWelcome(targetPage) {
   await targetPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await targetPage.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 10000 });
@@ -207,7 +217,7 @@ assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
 assert.equal(await page.locator('.app-shell').count(), 0);
 assert.match(
   await page.locator('#welcomeScreen').textContent(),
-  /Mask[\s\S]*Process[\s\S]*Inspect/,
+  /Turn a fabrication sequence into an inspectable device structure\.[\s\S]*Example families[\s\S]*How WaferCAD works[\s\S]*Built for structural reasoning/,
 );
 
 const photodetectorCard = page.locator(
@@ -219,6 +229,18 @@ assert.deepEqual(
   await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
   ['Main', 'Mask', '3D', 'Section'],
 );
+const previewFrames = page.locator('.welcome-example-project-frame');
+assert.equal(await previewFrames.count(), 4);
+await page.waitForFunction(
+  () => document.querySelector('.welcome-example-project-frame')?.getAttribute('src')?.includes('app.html'),
+  null,
+  { timeout: 10000 },
+);
+assert.match(await previewFrames.nth(0).getAttribute('src'), /app\.html\?/);
+assert.equal(await previewFrames.nth(1).getAttribute('src'), null);
+assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
+assert.equal(await previewFrames.nth(3).getAttribute('src'), null);
+
 const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
 await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
 const preview = page.frameLocator(
@@ -228,14 +250,121 @@ await preview.locator('html.welcome-project-preview[data-preview-view="main"]').
   state: 'attached',
   timeout: 30000,
 });
+
+for (const [view, panelId] of [
+  ['main', 'mainPanel'],
+  ['mask', 'maskPanel'],
+  ['three', 'threePanel'],
+  ['section', 'sectionPanel'],
+]) {
+  await photodetectorCard
+    .locator(`.welcome-example-view-tab[data-preview-view="${view}"]`)
+    .click();
+  await preview.locator(`html.welcome-project-preview[data-preview-view="${view}"]`).waitFor({
+    state: 'attached',
+    timeout: 10000,
+  });
+  await preview.locator(`#${panelId}`).waitFor({ state: 'visible', timeout: 10000 });
+  const box = await preview.locator(`#${panelId}`).boundingBox();
+  assert.ok(box?.width > 20 && box?.height > 20, `${view} preview must have visible area`);
+
+  if (view === 'three') {
+    await preview.locator('#threeHost').evaluate(
+      (host) =>
+        new Promise((resolve, reject) => {
+          const deadline = performance.now() + 20000;
+          const check = () => {
+            if (host.dataset.renderState === 'ready') return resolve(true);
+            if (performance.now() > deadline) return reject(new Error('3D preview did not render'));
+            requestAnimationFrame(check);
+          };
+          check();
+        }),
+    );
+  }
+
+  for (const otherId of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+    if (otherId === panelId) continue;
+    assert.equal(
+      await preview.locator(`#${otherId}`).isVisible(),
+      false,
+      `${view} preview must hide ${otherId}`,
+    );
+  }
+}
+
 await photodetectorCard
-  .locator('.welcome-example-view-tab[data-preview-view="section"]')
+  .locator('.welcome-example-view-tab[data-preview-view="main"]')
   .click();
-await preview.locator('html.welcome-project-preview[data-preview-view="section"]').waitFor({
+await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
   state: 'attached',
   timeout: 10000,
 });
-assert.equal(await preview.locator('#sectionPanel').isVisible(), true);
+
+for (const selector of [
+  '.view-head',
+  '#sectionEndpointHandles',
+  '#sectionCoordsPanel',
+  '#focusEditor',
+  '#roiEditor',
+  '#maskRoiEditor',
+  '#drawMaskToolbar',
+  '#drawShapeEditor',
+  '#sectionDetailRoiOverlay',
+  '#sectionDetailInset',
+  '#sectionCollapseOverlay',
+]) {
+  assert.equal(
+    await preview.locator(selector).first().isVisible(),
+    false,
+    `${selector} must stay hidden in preview`,
+  );
+}
+
+const previewMainBefore = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+await preview.locator('#mainCanvas').dispatchEvent('wheel', {
+  deltaY: -120,
+  clientX: 120,
+  clientY: 80,
+});
+await preview.locator('#mainCanvas').evaluate(
+  () =>
+    new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    ),
+);
+const previewMainAfter = await preview.locator('#mainCanvas').evaluate((canvas) => canvas.toDataURL());
+assert.notEqual(
+  previewMainAfter,
+  previewMainBefore,
+  'Welcome Main preview wheel zoom must remain available',
+);
+
+// A dormant preview must accept a view choice before its iframe is ready.
+// The ready handshake then replays the selected view rather than regressing to Main.
+const tandemCard = page.locator(
+  '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"]',
+);
+assert.equal((await tandemCard.locator('h3').textContent()).trim(), 'Fully textured perovskite–silicon tandems');
+assert.match(
+  await tandemCard.locator('.welcome-example-sources a').first().getAttribute('href'),
+  /10\.1038\/s41563-018-0115-4/,
+);
+
+const percCard = page.locator(
+  '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"]',
+);
+await percCard.locator('.welcome-example-view-tab[data-preview-view="three"]').click();
+assert.match(await previewFrames.nth(1).getAttribute('src'), /app\.html\?/);
+assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
+const percPreview = page.frameLocator(
+  '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"] .welcome-example-project-frame',
+);
+await percPreview.locator('html.welcome-project-preview[data-preview-view="three"]').waitFor({
+  state: 'attached',
+  timeout: 30000,
+});
+assert.equal(await percPreview.locator('#threePanel').isVisible(), true);
 
 await page.locator('#welcomeEmptyBtn').click();
 await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
@@ -475,7 +604,7 @@ assert.equal(await historyBRow.getAttribute('data-head'), 'true');
 await historyARow.click();
 await historyRestorePage.waitForFunction(
   () =>
-    /Viewing Step .*History A/.test(
+    /Historical Step[\s\S]*History A/.test(
       document.querySelector('.snapshot-continuation-banner')?.textContent || '',
     ),
   null,
@@ -491,7 +620,7 @@ assert.equal(await historyRestorePage.locator('#undoBtn').isDisabled(), true);
 assert.equal(await historyRestorePage.locator('#redoBtn').isDisabled(), true);
 assert.match(
   await historyRestorePage.locator('.snapshot-continuation-banner').textContent(),
-  /Viewing Step .*History A/,
+  /Historical Step[\s\S]*History A/,
 );
 assert.ok(
   await historyRestorePage
@@ -575,8 +704,12 @@ assert.equal(
   true,
 );
 
-// Variant rename is a first-class inline action, not hidden in the overflow menu.
-await childVariant.locator('.history-variant-rename-trigger').click();
+// Rename through the Variant name itself so this smoke does not couple
+// Welcome integration to compact History overflow-menu presentation.
+const renameTrigger = childVariant.locator('.history-variant-rename-trigger'),
+  variantNameButton = childVariant.locator(':scope > .history-variant-head .history-variant-name');
+if (await renameTrigger.isVisible()) await renameTrigger.click();
+else await variantNameButton.dblclick();
 const variantEditor = childVariant.locator('.history-variant-editor:not([hidden])');
 await variantEditor.locator('input').fill('Detector path');
 await variantEditor.locator('button').first().click();
@@ -611,6 +744,8 @@ await variantCStep.locator('.snapshot-more-trigger').click();
 await variantCStep
   .locator('.snapshot-more-popover button', { hasText: 'Add bookmark' })
   .click();
+assert.equal(await variantCStep.locator('.history-bookmarks-group').count(), 1);
+assert.equal(await variantCStep.locator('.history-bookmarks-group').getAttribute('open'), null);
 assert.equal(await variantCStep.locator('.history-bookmark-row').count(), 1);
 assert.equal(
   Number(await historyRestorePage.locator('#snapshotCount').textContent()),
@@ -642,6 +777,8 @@ assert.equal(
   'Detector path',
 );
 assert.match(await reloadedChild.textContent(), /Variant C/);
+assert.equal(await reloadedChild.locator('.history-bookmarks-group').count(), 1);
+assert.equal(await reloadedChild.locator('.history-bookmarks-group').getAttribute('open'), null);
 assert.equal(await reloadedChild.locator('.history-bookmark-row').count(), 1);
 
 const historyTreeGeometry = await historyRestorePage.evaluate(() => {
@@ -658,12 +795,24 @@ const historyTreeGeometry = await historyRestorePage.evaluate(() => {
     mainVariant: box('.history-variant[data-variant-id="main"]'),
     firstStep: box('.history-step-row'),
     childVariant: box('.history-variant:not([data-variant-id="main"])'),
+    banner: box('.snapshot-continuation-banner'),
+    returnButton: box('.snapshot-return-head'),
   };
 });
 assert.equal(historyTreeGeometry.viewportWidth, 1100);
 assert.equal(historyTreeGeometry.compact, false);
 assert.ok(historyTreeGeometry.panel.width >= 295, JSON.stringify(historyTreeGeometry));
 assert.ok(historyTreeGeometry.panel.left >= 40, JSON.stringify(historyTreeGeometry));
+if (historyTreeGeometry.banner && historyTreeGeometry.returnButton) {
+  assert.ok(
+    historyTreeGeometry.returnButton.width >= 90,
+    JSON.stringify(historyTreeGeometry),
+  );
+  assert.ok(
+    historyTreeGeometry.banner.width >= historyTreeGeometry.returnButton.width,
+    JSON.stringify(historyTreeGeometry),
+  );
+}
 for (const item of [
   historyTreeGeometry.mainVariant,
   historyTreeGeometry.firstStep,
@@ -1231,6 +1380,41 @@ assert.ok(
       Math.abs(segment.frontSurface.etchDepth - 1) < 1e-12,
   ),
 );
+
+// Export the actual rough state and parse the GLB contract, rather than only
+// checking that a file downloaded. This locks physical units, deterministic
+// morphology metadata, and the real exporter path together.
+await page.locator('#threePanel .export-control > summary').click();
+const roughGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+await page.locator('#threeExportModelBtn').click();
+const roughGlbDownload = await roughGlbDownloadPromise;
+assert.equal(roughGlbDownload.suggestedFilename(), 'wafercad-model.glb');
+const roughGlbPath = await roughGlbDownload.path();
+assert.ok(roughGlbPath);
+const roughGlb = parseGlbJson(await readFile(roughGlbPath)),
+  roughGlbRoot = (roughGlb.nodes || []).find((node) => node.name === 'WaferCAD'),
+  roughGlbScale =
+    roughGlbRoot?.scale ||
+    (roughGlbRoot?.matrix
+      ? [roughGlbRoot.matrix[0], roughGlbRoot.matrix[5], roughGlbRoot.matrix[10]]
+      : []),
+  roughGlbMorphologyNodes = (roughGlb.nodes || []).filter(
+    (node) => node.extras?.wafercadMorphology,
+  );
+assert.equal(roughGlbScale.length, 3);
+assert.ok(roughGlbScale.every((value) => Math.abs(value - 1e-6) < 1e-12));
+assert.ok(roughGlbMorphologyNodes.length > 0, 'GLB must contain exported morphology meshes');
+assert.ok(
+  roughGlbMorphologyNodes.some(
+    (node) =>
+      node.extras?.wafercadMorphology === 'stochastic' &&
+      node.extras?.wafercadMorphologySeed === 4242 &&
+      node.extras?.wafercadMorphologyPolarity === 'normal',
+  ),
+  'GLB must retain deterministic rough morphology metadata',
+);
+assert.match(await page.locator('#statusText').textContent(), /morphology embedded/i);
+
 await openFunctionPanel(page, 'process');
 
 // Implant uses the same process area but records a structural annotation only.
@@ -1480,6 +1664,18 @@ applyOperation(conformalFixture, {
   type: 'etch',
   thickness: 2,
   area: circleMulti(10000),
+  surface: {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'normal',
+    featureSize: 4000,
+    meanHeight: 0.4,
+    featureCv: 0.2,
+    heightCv: 0.2,
+    seed: 7001,
+    profileId: 'rough-conformal-export-probe',
+    geometryMode: 'ideal',
+  },
 });
 const conformalProject = projectForBenchmark({
   model: conformalFixture,
@@ -1512,6 +1708,41 @@ await page.waitForFunction(() =>
 assert.equal(await page.locator('#processTaskDialog').evaluate((element) => element.hidden), true);
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 
+// The conformal layer inherits the rough trench surface. Export it through the
+// real 3D path and verify the buried shared profile is not closed to the ideal plane.
+await page.locator('#threePanel .export-control > summary').click();
+const conformalGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+await page.locator('#threeExportModelBtn').click();
+const conformalGlbDownload = await conformalGlbDownloadPromise,
+  conformalGlbPath = await conformalGlbDownload.path();
+assert.ok(conformalGlbPath);
+const conformalGlb = parseGlbJson(await readFile(conformalGlbPath)),
+  conformalMorphologyNodes = (conformalGlb.nodes || []).filter(
+    (node) => node.extras?.wafercadMorphology,
+  ),
+  conformalBuriedMorphology = conformalMorphologyNodes.filter(
+    (node) => node.extras?.wafercadBuriedInterface === true,
+  ),
+  conformalExposedMorphology = conformalMorphologyNodes.filter(
+    (node) => node.extras?.wafercadBuriedInterface === false,
+  );
+assert.ok(conformalBuriedMorphology.length > 0);
+assert.ok(conformalExposedMorphology.length > 0);
+assert.ok(
+  conformalBuriedMorphology.every(
+    (node) =>
+      node.extras?.wafercadSurfaceOwnership === 'interface' &&
+      node.extras?.wafercadInterfaceLayerId &&
+      node.extras?.wafercadRoughBorderVertexCount === 0,
+  ),
+  'buried conformal morphology must remain single-owner without ideal-plane closure skirts',
+);
+assert.ok(
+  conformalExposedMorphology.some(
+    (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) > 0,
+  ),
+);
+
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI conformal project');
 const downloadPromise = page.waitForEvent('download');
@@ -1531,10 +1762,13 @@ assert.deepEqual(
   stackAtSaved(sideX).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 4, z1: 7, role: 'conformal-sidewall' },
 );
-assert.deepEqual(
-  stackAtSaved(0).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 4, z1: 5 },
-);
+const centerCoat = stackAtSaved(0).find((segment) => segment.layerId === coatId);
+assert.ok(centerCoat);
+assert.equal(centerCoat.layerId, coatId);
+assert.equal(centerCoat.z0, 4);
+assert.equal(centerCoat.z1, 5);
+assert.equal(centerCoat.frontSurface?.profileId, 'rough-conformal-export-probe');
+assert.equal(centerCoat.frontSurface?.morphology, 'stochastic');
 assert.deepEqual(
   stackAtSaved(5001).find((segment) => segment.layerId === coatId),
   { layerId: coatId, z0: 6, z1: 7 },
@@ -1726,18 +1960,20 @@ assert.ok(extendSaved.display.sectionDetailRoi?.width > 0);
 assert.ok(extendSaved.display.sectionDetailRoi?.height > 0);
 const extendStackAt = (x) =>
   extendSaved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
-assert.deepEqual(
-  extendStackAt(0).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 4, z1: 6 },
-);
-assert.deepEqual(
-  extendStackAt(7000).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 6, z1: 8 },
-);
-assert.deepEqual(
-  extendStackAt(sideX).find((segment) => segment.layerId === coatId),
-  { layerId: coatId, z0: 4, z1: 8, role: 'conformal-sidewall' },
-);
+const extendedCenter = extendStackAt(0).find((segment) => segment.layerId === coatId),
+  extendedOuter = extendStackAt(7000).find((segment) => segment.layerId === coatId),
+  extendedSidewall = extendStackAt(sideX).find((segment) => segment.layerId === coatId);
+assert.ok(extendedCenter);
+assert.equal(extendedCenter.z0, 4);
+assert.equal(extendedCenter.z1, 6);
+assert.equal(extendedCenter.frontSurface?.profileId, 'rough-conformal-export-probe');
+assert.ok(extendedOuter);
+assert.equal(extendedOuter.z0, 6);
+assert.equal(extendedOuter.z1, 8);
+assert.ok(extendedSidewall);
+assert.equal(extendedSidewall.z0, 4);
+assert.equal(extendedSidewall.z1, 8);
+assert.equal(extendedSidewall.role, 'conformal-sidewall');
 
 await closeFunctionPanel(page);
 
@@ -2234,9 +2470,12 @@ assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeTogg
 await page.locator('#fit3dBtn').click();
 
 await page.locator('#threePanel .export-control > summary').click();
+assert.equal(await page.locator('#threeExportCancelBtn').isHidden(), true);
 const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
-assert.equal((await glbDownloadPromise).suggestedFilename(), 'wafercad-model.glb');
+const glbDownload = await glbDownloadPromise;
+assert.equal(glbDownload.suggestedFilename(), 'wafercad-model.glb');
+assert.ok(await glbDownload.path());
 await page.locator('#threePanel .export-control > summary').click();
 const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportPngBtn').click();

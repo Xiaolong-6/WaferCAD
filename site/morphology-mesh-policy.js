@@ -8,7 +8,7 @@ import {
   subdivideRoughBaseTriangles,
 } from './rough-mesh-geometry.js';
 
-export const MORPHOLOGY_EXPORT_TRIANGLE_BUDGET = 900000;
+export const MORPHOLOGY_EXPORT_TRIANGLE_HARD_CAP = 900000;
 
 export function xyBoundsOfGeometry(geometry) {
   let minX = Infinity,
@@ -152,7 +152,7 @@ function exportLodContext(appearance, zone) {
 export function prepareMorphologyExportTasks(
   THREE,
   roughCaps,
-  { totalTriangleBudget = MORPHOLOGY_EXPORT_TRIANGLE_BUDGET } = {},
+  { totalTriangleBudget = MORPHOLOGY_EXPORT_TRIANGLE_HARD_CAP } = {},
 ) {
   const tasks = [];
   for (const cap of roughCaps || []) {
@@ -178,9 +178,22 @@ export function prepareMorphologyExportTasks(
         priority: 1,
       })),
     ),
-    budgets = allocateRoughTriangleBudgets(requests, {
-      totalBudget: Math.max(24000, Number(totalTriangleBudget) || MORPHOLOGY_EXPORT_TRIANGLE_BUDGET),
-    });
+    hardBudget = Math.max(
+      1,
+      Math.floor(Number(totalTriangleBudget) || MORPHOLOGY_EXPORT_TRIANGLE_HARD_CAP),
+    ),
+    minimumTriangles = requests.reduce(
+      (sum, request) => sum + Math.max(1, Math.floor(Number(request.baseTriangles) || 1)),
+      0,
+    );
+
+  if (minimumTriangles > hardBudget) {
+    throw new RangeError(
+      `Morphology export needs at least ${minimumTriangles.toLocaleString()} base triangles, exceeding the ${hardBudget.toLocaleString()} triangle hard cap. Narrow the 3D ROI or simplify the visible morphology before exporting.`,
+    );
+  }
+
+  const budgets = allocateRoughTriangleBudgets(requests, { totalBudget: hardBudget });
 
   let index = 0;
   return tasks.map((task) => ({

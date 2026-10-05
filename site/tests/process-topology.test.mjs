@@ -296,6 +296,33 @@ test('material slab derivation falls back when polygon union rejects a complex s
   }
 });
 
+test('owned material surfaces emit one horizontal owner for a shared material interface', () => {
+  const model = createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
+  model.layers.push({ id: 'film', name: 'Film', color: '#999999' });
+  model.regions = [
+    {
+      id: 'stack',
+      geom: rectMulti(4, 4, 0, 0),
+      stack: [
+        { layerId: 'base', z0: -1, z1: 0 },
+        { layerId: 'film', z0: 0, z1: 1 },
+      ],
+    },
+  ];
+
+  const plan = ownedMaterialSurfacesFromTopology(model),
+    shared = plan.caps.filter(
+      (cap) => Math.abs(cap.z) < 1e-12 && cap.ownership === 'interface',
+    );
+
+  assert.equal(shared.length, 1);
+  assert.equal(shared[0].buried, true);
+  assert.ok(['base', 'film'].includes(shared[0].layerId));
+  assert.ok(['base', 'film'].includes(shared[0].interfaceLayerId));
+  assert.notEqual(shared[0].layerId, shared[0].interfaceLayerId);
+  assert.ok(Math.abs(geometryArea(shared[0].polys) - 16) < 1e-8);
+});
+
 test('owned material surfaces reconcile partial-height shared sidewalls once', () => {
   const model = createModel({ shape: 'rect', width: 2, height: 2, thickness: 2 });
   model.layers.push({ id: 'right', name: 'Right', color: '#999999' });

@@ -103,6 +103,55 @@ test('triangle-partitioned LOD zones treat shared edges as seams rather than phy
   assert.equal(geometry.userData.roughBorderPositions.length, 24);
 });
 
+test('buried rough interfaces do not generate ideal-plane closure skirts', () => {
+  const appearance = {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 0.5,
+      meanHeight: 0.1,
+      etchDepth: 0.1,
+      featureCv: 0,
+      heightCv: 0,
+      seed: 9,
+      geometryMode: 'ideal',
+    },
+    zones = squareTriangles.map((triangle) => ({
+      baseTriangles: [triangle],
+      maxEdge: Math.SQRT2,
+      edges: roughBoundaryEdgesFromTriangles([triangle]),
+      triangleBudget: 1,
+      lodContext: {
+        distance: 1000,
+        viewportWidth: 100,
+        viewportHeight: 100,
+        pixelRatio: 1,
+        fovDegrees: 34,
+        visibleFraction: 0.5,
+        roiFraction: 1,
+        screenPriority: 0.1,
+        maxDepth: 0,
+      },
+    })),
+    exposed = roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      lodZones: zones,
+      closeToIdeal: true,
+    }),
+    buried = roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      lodZones: zones,
+      closeToIdeal: false,
+    });
+
+  assert.ok(exposed.roughBorderPositions.length > 0);
+  assert.equal(buried.roughBorderPositions.length, 0);
+  assert.ok(exposed.positions.length > buried.positions.length);
+});
 
 test('worker-ready rough mesh data is transferable and reconstructs geometry metadata', () => {
   class BufferGeometry {

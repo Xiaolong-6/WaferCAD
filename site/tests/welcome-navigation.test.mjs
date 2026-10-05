@@ -26,7 +26,6 @@ test('welcome and workspace are separate browser pages', () => {
 test('workspace startup consumes welcome-page intents without embedding welcome state', () => {
   assert.match(appJs, /initializeWorkspaceStart/);
   assert.match(appJs, /takeStartupFile/);
-  assert.match(appJs, /openVisualizationExample/);
   assert.match(appJs, /openBundledExample/);
   assert.match(welcomeJs, /BUNDLED_EXAMPLES/);
   assert.match(welcomeJs, /start=example&example=/);

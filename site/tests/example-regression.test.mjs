@@ -317,17 +317,28 @@ test('Ge Fig. 15 A/B preserve Electrical semantics and host-material ownership',
 });
 
 
-test('PERC example keeps the corrected source-order process as its active reconstruction', async () => {
+test('PERC example exposes only curated reconstruction variants with a saved inspection view', async () => {
   const project = await loadBundledProject('perc-point-contact-solar-cell'),
-    active = branchMap(project).get(project.snapshotBranches.activeBranchId);
+    active = branchMap(project).get(project.snapshotBranches.activeBranchId),
+    branchNames = project.snapshotBranches.branches.map((branch) => branch.name);
 
   assert.ok(active);
-  assert.match(active.name, /corrected source-order process/i);
+  assert.match(active.name, /source-order reconstruction/i);
+  assert.equal(project.snapshotBranches.branches.length, 3);
+  assert.deepEqual(branchNames, [
+    'PERC Fig. 1 · baseline reconstruction',
+    'PERC Fig. 1 · GDS-patterned contacts',
+    'PERC Fig. 1 · source-order reconstruction',
+  ]);
+  assert.equal(branchNames.some((name) => /test|proxy|check/i.test(name)), false);
   assert.equal(project.model.processRevision, 18);
   assert.equal(project.model.implants.length, 2);
   assert.ok(project.model.layers.some((layer) => /Front passivation SiO2/i.test(layer.name)));
   assert.ok(project.model.layers.some((layer) => /Rear passivation SiO2/i.test(layer.name)));
   assert.ok(project.model.layers.some((layer) => /rear contact/i.test(layer.name)));
+  assert.deepEqual(project.display.sectionCollapse, { top: 131.5727, bottom: -131.5727 });
+  assert.equal(project.display.threeCamera?.position?.length, 3);
+  assert.deepEqual(project.section, active.headState.section);
 });
 
 test('microdisk example contains a canonical suspended air gap and central Si support', async () => {

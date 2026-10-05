@@ -1967,18 +1967,122 @@ export function createThreeView({
     scheduleFrame();
   }
 
-  async function exportGlb() {
+  async function exportGlb({ signal = null, onProgress = null } = {}) {
     if (!ready || !THREE) throw new Error('3D view is unavailable.');
     const model = getModel();
     if (!model) throw new Error('No model to export.');
 
-    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js'),
-      exportGroup = new THREE.Group(),
-      clip = getClipGeometry(),
-      surfacePlan = buildRenderSurfacePlan(model, clip),
-      roughCaps = surfacePlan.caps.filter((cap) => cap.appearance?.kind === 'rough'),
-      roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
-      roughByCap = new Map(roughTasks.map((task) => [task.cap, task.lodZones])),
+    const throwIfAborted = () => {
+        if (signal?.aborted) throw new DOMException('GLB export cancelled.', 'AbortError');
+      },
+      reportProgress = (progress, label = '') => {
+        throwIfAborted();
+        if (typeof onProgress === 'function') {
+          onProgress(Math.max(0, Math.min(1, Number(progress) || 0)), label);
+        }
+      },
+      yieldToUi = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        throwIfAborted();
+      },
+      buildExportRoughMeshData = (tasks) => {
+        if (!tasks.length) return Promise.resolve(new Map());
+
+        let worker;
+        try {
+          const workerUrl = new URL('./rough-mesh-worker.js', import.meta.url),
+            currentModuleUrl = new URL(import.meta.url);
+          workerUrl.search = currentModuleUrl.search;
+          worker = new Worker(workerUrl);
+        } catch (error) {
+          console.warn('GLB morphology worker unavailable; using synchronous fallback.', error);
+          return Promise.resolve(null);
+        }
+
+        const id = 'glb-export',
+          generation = 1,
+          payload = tasks.map((task, taskId) => ({
+            taskId,
+            geometry: {
+              z: task.cap.z,
+              normal: task.cap.normal,
+              appearance: task.cap.appearance,
+              closeToIdeal: !task.cap.buried,
+              profileNormal: task.cap.profileNormal,
+              lodZones: task.lodZones.map((zone) => ({
+                baseTriangles: zone.baseTriangles,
+                maxEdge: zone.maxEdge,
+                edges: zone.edges,
+                lodContext: zone.lodContext,
+                triangleBudget: zone.triangleBudget,
+              })),
+            },
+          }));
+
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = () => {
+              if (settled) return false;
+              settled = true;
+              signal?.removeEventListener?.('abort', onAbort);
+              worker.terminate();
+              return true;
+            },
+            onAbort = () => {
+              if (!finish()) return;
+              reject(new DOMException('GLB export cancelled.', 'AbortError'));
+            };
+
+          signal?.addEventListener?.('abort', onAbort, { once: true });
+          if (signal?.aborted) {
+            onAbort();
+            return;
+          }
+
+          worker.onmessage = (event) => {
+            const message = event.data || {};
+            if (message.id !== id || message.generation !== generation || settled) return;
+            if (message.type === 'progress') {
+              const total = Math.max(1, Number(message.total) || tasks.length),
+                completed = Math.max(0, Number(message.completed) || 0);
+              reportProgress(0.1 + 0.46 * Math.min(1, completed / total), 'Building morphology');
+              return;
+            }
+            if (message.type === 'error') {
+              if (!finish()) return;
+              reject(new Error(message.message || 'Morphology worker failed.'));
+              return;
+            }
+            if (message.type !== 'done') return;
+
+            const byCap = new Map();
+            for (const result of message.results || []) {
+              const task = tasks[result.taskId];
+              if (task?.cap && result.data) byCap.set(task.cap, result.data);
+            }
+            if (!finish()) return;
+            resolve(byCap);
+          };
+
+          worker.onerror = (event) => {
+            if (!finish()) return;
+            reject(new Error(event.message || 'Morphology worker failed.'));
+          };
+
+          try {
+            worker.postMessage({ id, generation, tasks: payload, reportProgress: true });
+          } catch (error) {
+            if (!finish()) return;
+            reject(error);
+          }
+        });
+      };
+
+    reportProgress(0, 'Preparing exporter');
+    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+    throwIfAborted();
+
+    const exportGroup = new THREE.Group(),
       disposable = [];
     exportGroup.name = 'WaferCAD';
     // glTF uses metres. Canonical WaferCAD geometry is stored in micrometres.
@@ -2005,51 +2109,112 @@ export function createThreeView({
         return mesh;
       };
 
-    // Export the same topology-owned surface plan used by the interactive 3D
-    // renderer. Rough/Pyramid caps use a deterministic, camera-independent
-    // mesh policy, so GLB no longer falls back to ideal flat canonical caps.
-    for (const cap of surfacePlan.caps) {
-      if (cap.appearance?.kind === 'rough') {
-        const lodZones = roughByCap.get(cap);
-        if (!lodZones?.length) continue;
-        const geometry = geometryFromRoughCap(THREE, {
-          z: cap.z,
-          normal: cap.normal,
-          polys: cap.polys,
-          appearance: cap.appearance,
-          closeToIdeal: !cap.buried,
-          profileNormal: cap.profileNormal,
-          lodZones,
-        });
-        const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
-        if (mesh) {
-          mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
-          mesh.userData.wafercadMorphologySeed = Number(cap.appearance.seed) >>> 0;
-          mesh.userData.wafercadMorphologyFeatureSizeUm =
-            Number(cap.appearance.featureSize) || 0;
+    try {
+      reportProgress(0.04, 'Resolving surface ownership');
+      const clip = getClipGeometry(),
+        surfacePlan = buildRenderSurfacePlan(model, clip),
+        roughCaps = surfacePlan.caps.filter((cap) => cap.appearance?.kind === 'rough');
+
+      await yieldToUi();
+      reportProgress(0.08, 'Allocating morphology mesh');
+      const roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
+        capCount = Math.max(1, surfacePlan.caps.length);
+      let roughMeshDataByCap = null;
+      try {
+        roughMeshDataByCap = await buildExportRoughMeshData(roughTasks);
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error;
+        console.warn('GLB morphology worker failed; using synchronous fallback.', error);
+      }
+      throwIfAborted();
+
+      // Export the same topology-owned surface plan used by the interactive 3D
+      // renderer. Rough/Pyramid caps use a deterministic, camera-independent
+      // mesh policy, so GLB does not fall back to ideal flat canonical caps.
+      for (let capIndex = 0; capIndex < surfacePlan.caps.length; capIndex++) {
+        throwIfAborted();
+        const cap = surfacePlan.caps[capIndex];
+        if (cap.appearance?.kind === 'rough') {
+          const task = roughTasks.find((entry) => entry.cap === cap),
+            meshData = roughMeshDataByCap?.get(cap) || null;
+          if (task?.lodZones?.length) {
+            if (!meshData) await yieldToUi();
+            const geometry = meshData
+              ? geometryFromRoughMeshData(THREE, meshData)
+              : geometryFromRoughCap(THREE, {
+                  z: cap.z,
+                  normal: cap.normal,
+                  polys: cap.polys,
+                  appearance: cap.appearance,
+                  closeToIdeal: !cap.buried,
+                  profileNormal: cap.profileNormal,
+                  lodZones: task.lodZones,
+                });
+            const roughBorderVertexCount = Math.floor(
+              (geometry.userData?.roughBorderPositions?.length || 0) / 3,
+            );
+            // Renderer-only LOD/debug metadata can include large typed arrays.
+            // Keep GLB extras compact and publish only the stable export contract
+            // on the mesh itself.
+            geometry.userData = {};
+            const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
+            if (mesh) {
+              mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
+              mesh.userData.wafercadMorphologySeed = Number(cap.appearance.seed) >>> 0;
+              mesh.userData.wafercadMorphologyFeatureSizeUm =
+                Number(cap.appearance.featureSize) || 0;
+              mesh.userData.wafercadMorphologyPolarity = cap.appearance.polarity || 'normal';
+              mesh.userData.wafercadBuriedInterface = Boolean(cap.buried);
+              mesh.userData.wafercadLayerId = cap.layerId || null;
+              mesh.userData.wafercadSurfaceOwnership = cap.ownership || 'exterior';
+              mesh.userData.wafercadInterfaceLayerId = cap.interfaceLayerId || null;
+              mesh.userData.wafercadSurfaceFace = cap.face || (cap.normal > 0 ? 'front' : 'back');
+              mesh.userData.wafercadSurfaceZUm = Number(cap.z) || 0;
+              mesh.userData.wafercadRoughBorderVertexCount = roughBorderVertexCount;
+            }
+          }
+        } else {
+          const mesh = addExportMesh(
+            geometryFromSolid({
+              slabs: [],
+              caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
+            }),
+            cap.layerId,
+          );
+          if (mesh) {
+            mesh.userData.wafercadLayerId = cap.layerId || null;
+            mesh.userData.wafercadSurfaceOwnership = cap.ownership || 'exterior';
+            mesh.userData.wafercadInterfaceLayerId = cap.interfaceLayerId || null;
+            mesh.userData.wafercadBuriedInterface = Boolean(cap.buried);
+            mesh.userData.wafercadSurfaceFace = cap.face || (cap.normal > 0 ? 'front' : 'back');
+            mesh.userData.wafercadSurfaceZUm = Number(cap.z) || 0;
+          }
         }
-        continue;
+        reportProgress(0.58 + 0.2 * ((capIndex + 1) / capCount), 'Building surfaces');
       }
 
-      addExportMesh(
-        geometryFromSolid({
-          slabs: [],
-          caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
-        }),
-        cap.layerId,
-      );
-    }
+      throwIfAborted();
+      const sidewallsByLayer = new Map();
+      for (const sidewall of surfacePlan.sidewalls) {
+        if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
+        sidewallsByLayer.get(sidewall.layerId).push(sidewall);
+      }
 
-    const sidewallsByLayer = new Map();
-    for (const sidewall of surfacePlan.sidewalls) {
-      if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
-      sidewallsByLayer.get(sidewall.layerId).push(sidewall);
-    }
-    for (const [layerId, parts] of sidewallsByLayer) {
-      addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
-    }
+      let sidewallIndex = 0;
+      const sidewallGroupCount = Math.max(1, sidewallsByLayer.size);
+      for (const [layerId, parts] of sidewallsByLayer) {
+        throwIfAborted();
+        addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
+        sidewallIndex++;
+        reportProgress(
+          0.79 + 0.1 * (sidewallIndex / sidewallGroupCount),
+          'Building sidewalls',
+        );
+        if (sidewallIndex % 2 === 0) await yieldToUi();
+      }
 
-    try {
+      await yieldToUi();
+      reportProgress(0.91, 'Encoding GLB');
       const exporter = new GLTFExporter();
       const result = await new Promise((resolve, reject) =>
         exporter.parse(exportGroup, resolve, reject, {
@@ -2058,6 +2223,8 @@ export function createThreeView({
           trs: false,
         }),
       );
+      throwIfAborted();
+      reportProgress(1, 'Complete');
       return new Blob([result], { type: 'model/gltf-binary' });
     } finally {
       for (const object of disposable) {

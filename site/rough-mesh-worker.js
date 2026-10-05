@@ -12,7 +12,7 @@ function roughModule() {
 }
 
 self.onmessage = async (event) => {
-  const { id, generation, tasks } = event.data || {};
+  const { id, generation, tasks, reportProgress = false } = event.data || {};
   if (!id || !Array.isArray(tasks)) return;
 
   try {
@@ -20,8 +20,9 @@ self.onmessage = async (event) => {
     const results = [];
     const transfer = [];
 
-    for (const task of tasks) {
-      const data = roughMeshDataFromPreparedCap(task.geometry || {});
+    for (let index = 0; index < tasks.length; index++) {
+      const task = tasks[index],
+        data = roughMeshDataFromPreparedCap(task.geometry || {});
       results.push({
         taskId: task.taskId,
         data: {
@@ -36,6 +37,15 @@ self.onmessage = async (event) => {
         data.normals.buffer,
         data.roughBorderPositions.buffer,
       );
+      if (reportProgress) {
+        self.postMessage({
+          id,
+          type: 'progress',
+          generation,
+          completed: index + 1,
+          total: tasks.length,
+        });
+      }
     }
 
     self.postMessage(

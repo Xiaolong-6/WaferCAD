@@ -1,7 +1,6 @@
 import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
-import { createVisualizationExample } from '../welcome-example.js';
 import { bundledExampleById } from '../bundled-examples.js';
 
 export function createProjectController({
@@ -128,27 +127,36 @@ export function createProjectController({
 
       const copy = root.createElement('div');
       const title = root.createElement('strong');
-      title.textContent = historyEdit ? 'Editing historical Step' : 'Historical state';
-      const detail = root.createElement('span');
+      title.textContent = historyEdit ? 'Editing historical Step' : 'Historical Step';
+
+      const context = root.createElement('span');
+      context.className = 'snapshot-continuation-context';
+      context.textContent = historyEdit
+        ? historyEdit.originalLabel
+        : continuation.processLabel || 'Older process state';
+      context.title = context.textContent;
+
+      const hint = root.createElement('span');
+      hint.className = 'snapshot-continuation-hint';
       if (historyEdit) {
-        const modeText =
+        hint.textContent =
           historyEdit.mode === 'update-recompute'
-            ? `Apply replaces this Step in "${historyEdit.branchName}" and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+            ? `Apply updates this Step and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
             : historyEdit.mode === 'branch-recompute'
-              ? `Apply creates a new Variant and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
-              : 'Apply creates a new Variant from this edited Step without carrying downstream Steps.';
-        detail.textContent = `Editing "${historyEdit.originalLabel}". ${modeText}`;
+              ? `Apply creates a Variant and recomputes ${historyEdit.downstreamCount} downstream Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
+              : 'Apply creates a Variant from this edited Step.';
       } else {
-        detail.textContent = continuation.processLabel
-          ? `Viewing Step "${continuation.processLabel}". Edits stay here; a successful Apply creates a new Variant from this Step.`
-          : 'Viewing an older state. Edits stay here; a successful Apply creates a new Variant.';
+        hint.textContent = `Viewing ${activeBranch.name}. The next successful Apply creates a Variant from here.`;
       }
-      copy.append(title, detail);
+      copy.append(title, context, hint);
 
       const returnButton = root.createElement('button');
       returnButton.type = 'button';
       returnButton.className = 'snapshot-return-head';
-      returnButton.textContent = historyEdit ? 'Cancel edit' : `Return to ${activeBranch.name}`;
+      returnButton.textContent = historyEdit ? 'Cancel edit' : 'Return to Variant HEAD';
+      returnButton.title = historyEdit
+        ? 'Cancel historical Step editing'
+        : `Return to ${activeBranch.name} HEAD`;
       returnButton.onclick = async () => {
         if (
           !(await prepareHistoryReplacement(
@@ -474,8 +482,25 @@ export function createProjectController({
       }
 
       wrap.append(row);
-      for (const bookmark of bookmarksByNode.get(node.id) || []) {
-        wrap.append(createBookmarkRow(bookmark));
+      const nodeBookmarks = bookmarksByNode.get(node.id) || [];
+      if (nodeBookmarks.length) {
+        const group = root.createElement('details');
+        group.className = 'history-bookmarks-group';
+
+        const summary = root.createElement('summary');
+        summary.className = 'history-bookmarks-summary';
+        summary.textContent = `${nodeBookmarks.length} bookmark${nodeBookmarks.length === 1 ? '' : 's'}`;
+        summary.setAttribute(
+          'aria-label',
+          `${nodeBookmarks.length} bookmark${nodeBookmarks.length === 1 ? '' : 's'} for ${label.textContent}`,
+        );
+
+        const bookmarkList = root.createElement('div');
+        bookmarkList.className = 'history-bookmarks-list';
+        for (const bookmark of nodeBookmarks) bookmarkList.append(createBookmarkRow(bookmark));
+
+        group.append(summary, bookmarkList);
+        wrap.append(group);
       }
       return wrap;
     }
@@ -603,7 +628,16 @@ export function createProjectController({
         input.select();
       };
 
-      const menuItems = [];
+      const menuItems = [
+        {
+          label: 'Rename Variant',
+          run: async () => {
+            editor.hidden = false;
+            input.focus();
+            input.select();
+          },
+        },
+      ];
       if (variant.id !== 'main') {
         menuItems.push({
           label: 'Delete Variant',
@@ -632,9 +666,7 @@ export function createProjectController({
           },
         });
       }
-      const menu = menuItems.length
-        ? createActionMenu(menuItems, 'Variant actions')
-        : null;
+      const menu = createActionMenu(menuItems, 'Variant actions');
 
       header.append(toggle, nameButton, stats, renameButton);
       if (menu) header.append(menu);
@@ -832,29 +864,6 @@ export function createProjectController({
     }
   }
 
-  function openVisualizationExample() {
-    try {
-      status('Building example…');
-      const project = validateProjectFile(migrateProjectFile(createVisualizationExample()));
-      cancelHistoricalStepEdit();
-      if (!project.name) project.name = 'Visualization example';
-      loadProjectSnapshot(project);
-      snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
-      syncBaseControls();
-      syncTransformInputs();
-      renderAll();
-      renderSnapshots();
-      fit3d();
-      status('Opened Visualization example.');
-      return true;
-    } catch (error) {
-      console.error(error);
-      status(`Example failed: ${error.message}`);
-      return false;
-    }
-  }
-
-
   function projectExportFilename() {
     const stem = normalizedProjectName(getProjectName())
       .replace(/[<>:"|?*\u0000-\u001f]/g, '-')
@@ -952,6 +961,5 @@ export function createProjectController({
     openLayoutFile,
     openProjectFile,
     openBundledExample,
-    openVisualizationExample,
   };
 }

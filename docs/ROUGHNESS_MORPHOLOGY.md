@@ -94,7 +94,7 @@ All views consume the same deterministic `roughProfileOffsetAtPoint(x, y, appear
 - **Main** and **Mask** keep their existing colors and add only a subtle neutral darkening over non-smooth surface regions.
 - Implant overlays inherit the active surface appearance so they remain aligned with etched topography.
 
-Surface morphology remains render-only: process operations and canonical physical geometry stay ideal. The conformal visual shell is a shared-profile Z offset, not a true constant-normal-thickness surface and not a deposition-transport model. Physical GLB export therefore continues to use the ideal process solid rather than the display tessellation.
+Surface morphology remains render-only with respect to process simulation: process operations and the canonical physical 2.5D stack stay ideal. The conformal visual shell is a shared-profile Z offset, not a true constant-normal-thickness surface and not a deposition-transport model. **GLB export is an inspection/handoff surface mesh**, so it deliberately embeds the deterministic Rough/Pyramid relief derived from the same topology-owned surface plan used by 3D. Export tessellation is camera-independent, uses a strict 900,000-triangle hard cap, preserves ROI clipping and interface ownership, and never feeds displaced vertices back into the process kernel.
 
 ## Extension point
 

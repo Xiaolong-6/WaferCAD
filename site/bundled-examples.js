@@ -32,7 +32,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     figure: 'Blakers et al. · Fig. 1 reconstruction',
     kind: 'project',
     level: 'Solar-cell literature',
-    variants: ['Corrected source-order process', 'Alternative reconstruction branches'],
+    variants: ['Source-order reconstruction', 'GDS-patterned contacts'],
     path: './examples/perc-solar-cells-point-contacts.wafercad',
     filename: 'perc-solar-cells-point-contacts.wafercad',
     summary:
@@ -46,6 +46,27 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       },
     ],
     tags: ['Literature', 'Solar cell', 'Point contacts', 'Front / Back', 'Variants'],
+  },
+  {
+    id: 'fully-textured-perovskite-silicon-tandem',
+    title: 'Fully textured perovskite–silicon tandems',
+    figure: 'Sahli et al. · fully textured monolithic tandem',
+    kind: 'project',
+    level: 'Tandem solar-cell literature',
+    variants: ['nc-Si:H recombination junction', 'ITO control branch'],
+    path: './examples/fully-textured-perovskite-silicon-tandem.wafercad',
+    filename: 'fully-textured-perovskite-silicon-tandem.wafercad',
+    summary:
+      'A fully textured monolithic perovskite/silicon tandem with double-sided Si pyramids, SHJ contacts, conformal top-cell layers, ALD SnO2, IZO, and a surrogate Ag front grid.',
+    sources: [
+      {
+        citation:
+          'F. Sahli et al., “Fully textured monolithic perovskite/silicon tandem solar cells with 25.2% power conversion efficiency,” Nature Materials 17, 820–826 (2018).',
+        doi: '10.1038/s41563-018-0115-4',
+        href: 'https://doi.org/10.1038/s41563-018-0115-4',
+      },
+    ],
+    tags: ['Literature', 'Tandem solar cell', 'Pyramid texture', 'Conformal', 'ALD', 'Variants'],
   },
   {
     id: 'suspended-silica-microdisk',
