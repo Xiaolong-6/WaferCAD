@@ -1764,9 +1764,10 @@ assert.ok(
   'buried conformal morphology must remain single-owner without ideal-plane closure skirts',
 );
 assert.ok(
-  conformalExposedMorphology.some(
-    (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) > 0,
+  conformalExposedMorphology.every(
+    (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) === 0,
   ),
+  'exposed conformal morphology must hand matched boundaries to textured sidewalls instead of ideal-plane skirts',
 );
 
 await openFunctionPanel(page, 'project');
