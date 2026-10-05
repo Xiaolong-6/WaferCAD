@@ -299,6 +299,9 @@ export function prepareProjectForWorkspaceStorage(project) {
     stored.snapshotBranches = structuredClone(branchMetadata);
     stored.snapshotBranches.nodes = nodes.map((node) => {
       const storedNode = structuredClone(node);
+      if (isObject(node.inputState)) {
+        storedNode.inputState = packWorkspaceState(node.inputState, modelAssets, layoutAssets);
+      }
       if (isObject(node.state)) {
         storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets);
       }
@@ -396,12 +399,20 @@ function assertQuantizedProjectGeometryPreserved(before, after) {
   const originalNodes = before?.snapshotBranches?.nodes || [],
     storedNodes = after?.snapshotBranches?.nodes || [];
   for (let index = 0; index < originalNodes.length; index++) {
-    if (!originalNodes[index]?.state) continue;
-    assertLayoutGeometryPreserved(
-      originalNodes[index]?.state?.layout,
-      storedNodes[index]?.state?.layout,
-      `snapshotBranches.nodes[${index}].state.layout`,
-    );
+    if (originalNodes[index]?.inputState) {
+      assertLayoutGeometryPreserved(
+        originalNodes[index]?.inputState?.layout,
+        storedNodes[index]?.inputState?.layout,
+        `snapshotBranches.nodes[${index}].inputState.layout`,
+      );
+    }
+    if (originalNodes[index]?.state) {
+      assertLayoutGeometryPreserved(
+        originalNodes[index]?.state?.layout,
+        storedNodes[index]?.state?.layout,
+        `snapshotBranches.nodes[${index}].state.layout`,
+      );
+    }
   }
 
   const originalBranches = before?.snapshotBranches?.branches || [],
@@ -445,8 +456,21 @@ export function prepareProjectForStorage(project) {
     stored.snapshotBranches = structuredClone(branchMetadata);
     stored.snapshotBranches.nodes = nodes.map((node) => {
       const storedNode = structuredClone(node);
+      if (isObject(node.inputState)) {
+        storedNode.inputState = packWorkspaceState(
+          node.inputState,
+          modelAssets,
+          layoutAssets,
+          { quantize: true },
+        );
+      }
       if (isObject(node.state)) {
-        storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets, { quantize: true });
+        storedNode.state = packWorkspaceState(
+          node.state,
+          modelAssets,
+          layoutAssets,
+          { quantize: true },
+        );
       }
       return storedNode;
     });
@@ -517,7 +541,10 @@ export function expandProjectStorage(project) {
     delete state.modelRef;
   };
 
-  for (const node of project.snapshotBranches?.nodes || []) expandState(node?.state);
+  for (const node of project.snapshotBranches?.nodes || []) {
+    expandState(node?.inputState);
+    expandState(node?.state);
+  }
   for (const branch of project.snapshotBranches?.branches || []) expandState(branch?.headState);
 
   delete project.sharedLayouts;
