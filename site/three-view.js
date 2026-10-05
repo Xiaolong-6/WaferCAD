@@ -1,3 +1,4 @@
+import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import { electricalRegionSolids, implantSolids } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
@@ -1002,7 +1003,15 @@ export function createThreeView({
     materialState,
     { roughness = 0.72, metalness = 0 } = {},
   ) {
-    const material = new THREE.MeshStandardMaterial({
+    const {
+        midDepth,
+        outerAlpha,
+        midAlpha,
+        innerAlpha,
+      } = IMPLANT_DEPTH_GRADIENT,
+      midScale = midAlpha / outerAlpha,
+      innerScale = innerAlpha / outerAlpha,
+      material = new THREE.MeshStandardMaterial({
       color: annotation?.color || '#D65A6F',
       roughness,
       metalness,
@@ -1031,9 +1040,9 @@ void main() {`,
         '#include <color_fragment>',
         `#include <color_fragment>
 float waferCadDepth = clamp(vWaferCadAnnotationDepth, 0.0, 1.0);
-float waferCadAlphaScale = waferCadDepth <= 0.48
-  ? mix(1.0, 0.5555556, waferCadDepth / 0.48)
-  : mix(0.5555556, 0.0555556, (waferCadDepth - 0.48) / 0.52);
+float waferCadAlphaScale = waferCadDepth <= ${midDepth}
+  ? mix(1.0, ${midScale}, waferCadDepth / ${midDepth})
+  : mix(${midScale}, ${innerScale}, (waferCadDepth - ${midDepth}) / ${1 - midDepth});
 diffuseColor.a *= waferCadAlphaScale;`,
       );
     };
@@ -1823,7 +1832,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
         if (implant.viewClipped) {
           const cutState = {
-              opacity: opacity * (materialState.transparent ? 0.5 : 0.72),
+              opacity:
+                opacity *
+                (materialState.transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
               transparent: true,
               depthTest: true,
               depthWrite: false,
