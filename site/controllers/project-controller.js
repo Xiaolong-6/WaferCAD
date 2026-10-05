@@ -2,12 +2,14 @@ import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { bundledExampleById } from '../bundled-examples.js';
+import { historyOperationLabel } from '../history-operation-label.js';
 
 export function createProjectController({
   root = document,
   importLayoutBuffer,
   loadProjectSnapshot,
   snapshotManager,
+  getModel = () => null,
   syncBaseControls,
   syncTransformInputs,
   renderAll,
@@ -31,6 +33,9 @@ export function createProjectController({
   beginHistoricalStepEdit = async () => false,
   getHistoricalStepEdit = () => null,
   cancelHistoricalStepEdit = () => {},
+  beginHistoricalStepInsert = async () => false,
+  getHistoricalStepInsert = () => null,
+  cancelHistoricalStepInsert = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
   const expandedHistoryVariants = new Set();
@@ -52,6 +57,9 @@ export function createProjectController({
       activeBranch = snapshotManager.activeBranch(),
       continuation = snapshotManager.continuationContext(),
       historyEdit = getHistoricalStepEdit(),
+      historyInsert = getHistoricalStepInsert(),
+      historyMutation = historyEdit || historyInsert,
+      currentModel = getModel?.() || null,
       position = snapshotManager.currentPosition(),
       nodeById = new Map(historyNodes.map((node) => [node.id, node])),
       branchById = new Map(branches.map((variant) => [variant.id, variant])),
@@ -73,6 +81,7 @@ export function createProjectController({
 
     async function prepareHistoryReplacement(reason, label = 'History navigation') {
       if (getHistoricalStepEdit()) cancelHistoricalStepEdit();
+      if (getHistoricalStepInsert()) cancelHistoricalStepInsert();
       const currentContinuation = snapshotManager.continuationContext();
       if (!currentContinuation) {
         if (!snapshotManager.syncActiveHeadState()) {
@@ -123,16 +132,20 @@ export function createProjectController({
     if (continuation) {
       const banner = root.createElement('div');
       banner.className = 'snapshot-continuation-banner';
-      if (historyEdit) banner.dataset.editingStep = 'true';
+      if (historyMutation) banner.dataset.editingStep = 'true';
 
       const copy = root.createElement('div');
       const title = root.createElement('strong');
-      title.textContent = historyEdit ? 'Editing historical Step' : 'Historical Step';
+      title.textContent = historyEdit
+        ? 'Editing historical Step'
+        : historyInsert
+          ? 'Inserting before Step'
+          : 'Historical Step';
 
       const context = root.createElement('span');
       context.className = 'snapshot-continuation-context';
-      context.textContent = historyEdit
-        ? historyEdit.originalLabel
+      context.textContent = historyMutation
+        ? historyMutation.originalLabel
         : continuation.processLabel || 'Older process state';
       context.title = context.textContent;
 
@@ -147,6 +160,13 @@ export function createProjectController({
               : historyEdit.mode === 'replace-discard'
                 ? `Saving replaces this Step and discards ${historyEdit.downstreamCount} later Step${historyEdit.downstreamCount === 1 ? '' : 's'}.`
                 : 'Saving creates a new Variant from the edited Step.';
+      } else if (historyInsert) {
+        hint.textContent =
+          historyInsert.mode === 'current-replay'
+            ? `Insert here and recompute ${historyInsert.laterStepCount} existing Step${historyInsert.laterStepCount === 1 ? '' : 's'} in the current Variant.`
+            : historyInsert.mode === 'branch-replay'
+              ? `Insert in a new Variant and recompute ${historyInsert.laterStepCount} existing Step${historyInsert.laterStepCount === 1 ? '' : 's'}.`
+              : 'Insert in a new Variant and start a clean process path from here.';
       } else {
         hint.textContent = `Viewing ${activeBranch.name}. The next successful Apply creates a Variant from here.`;
       }
@@ -155,10 +175,16 @@ export function createProjectController({
       const returnButton = root.createElement('button');
       returnButton.type = 'button';
       returnButton.className = 'snapshot-return-head';
-      returnButton.textContent = historyEdit ? 'Cancel edit' : 'Return to Variant HEAD';
+      returnButton.textContent = historyEdit
+        ? 'Cancel edit'
+        : historyInsert
+          ? 'Cancel insert'
+          : 'Return to Variant HEAD';
       returnButton.title = historyEdit
         ? 'Cancel historical Step editing'
-        : `Return to ${activeBranch.name} HEAD`;
+        : historyInsert
+          ? 'Cancel Step insertion'
+          : `Return to ${activeBranch.name} HEAD`;
       returnButton.onclick = async () => {
         if (
           !(await prepareHistoryReplacement(
@@ -425,7 +451,7 @@ export function createProjectController({
       }
       const confirmed = await confirmAction({
         title: 'Continue from this Step?',
-        message: `Make "${node.operation?.label || node.operation?.kind || 'Process step'}" the new HEAD of "${branch.name}"?`,
+        message: `Make "${historyOperationLabel(node, currentModel)}" the new HEAD of "${branch.name}"?`,
         detail:
           'All later Steps on this Variant, and bookmarks attached to those removed Steps, will be deleted. Other Variants are preserved unless they depend on the removed tail.',
         confirmLabel: 'Delete later Steps',
@@ -467,7 +493,7 @@ export function createProjectController({
       }
       const confirmed = await confirmAction({
         title: 'Delete last Step?',
-        message: `Delete "${node.operation?.label || node.operation?.kind || 'Process step'}" from "${branch.name}"?`,
+        message: `Delete "${historyOperationLabel(node, currentModel)}" from "${branch.name}"?`,
         detail:
           'The Variant will return to the preceding restorable Step. This is independent of the legacy Undo stack.',
         confirmLabel: 'Delete last Step',
@@ -507,7 +533,7 @@ export function createProjectController({
       const body = root.createElement('div');
       body.className = 'process-history-body';
       const label = root.createElement('strong');
-      label.textContent = node.operation?.label || node.operation?.kind || 'Process step';
+      label.textContent = historyOperationLabel(node, currentModel);
 
       const meta = root.createElement('span');
       const face = node.operation?.face
@@ -536,6 +562,16 @@ export function createProjectController({
               ? editContext?.reason || 'This Step cannot be edited in place.'
               : 'Load this Step into Process using its predecessor as the input structure.',
           run: () => beginHistoricalStepEdit(node),
+        });
+
+        const insertContext = snapshotManager.insertBeforeContext(node.id);
+        actions.push({
+          label: 'Insert before…',
+          disabled: !insertContext?.editable,
+          title: insertContext?.editable
+            ? 'Insert a new process Step before this Step, either in this Variant or a new Variant.'
+            : insertContext?.reason || 'This Step has no restorable predecessor.',
+          run: () => beginHistoricalStepInsert(node),
         });
         if (!isVariantHead) {
           actions.push({
