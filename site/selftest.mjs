@@ -9,6 +9,8 @@ const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
 
+const { IMPLANT_DEPTH_GRADIENT, implantDepthAlphaScale } =
+  await import('./annotation-rendering.js');
 const vg = await import('./vector-geometry.js');
 const modelApi = await import('./model.js');
 const { appearanceSurfaceGroups, implantSectionBands, implantSolids } =
@@ -54,6 +56,9 @@ function regionAt(model, point) {
 }
 
 for (const palette of Object.values(STRUCTURE_PALETTES)) assert.equal(palette.length, 20);
+assert.equal(implantDepthAlphaScale(IMPLANT_DEPTH_GRADIENT.outerDepth), 1);
+assert.ok(Math.abs(implantDepthAlphaScale(IMPLANT_DEPTH_GRADIENT.midDepth) - 0.4 / 0.72) < 1e-12);
+assert.ok(Math.abs(implantDepthAlphaScale(IMPLANT_DEPTH_GRADIENT.innerDepth) - 0.04 / 0.72) < 1e-12);
 
 const defaultCollapse = defaultSectionCollapse([-350, 30]);
 assert.ok(defaultCollapse.top > 0 && defaultCollapse.top < 30);
