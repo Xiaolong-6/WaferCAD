@@ -71,6 +71,24 @@ export async function openFunctionPanel(page, name, clickOptions = {}) {
   );
 }
 
+export async function canvasInkFraction(page, selector) {
+  return page.locator(selector).evaluate((canvas) => {
+    const ctx = canvas.getContext('2d');
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let ink = 0;
+    let samples = 0;
+    for (let index = 0; index < data.length; index += 16) {
+      const alpha = data[index + 3];
+      const r = data[index];
+      const g = data[index + 1];
+      const b = data[index + 2];
+      samples += 1;
+      if (alpha > 12 && (r < 245 || g < 245 || b < 245)) ink += 1;
+    }
+    return samples ? ink / samples : 0;
+  });
+}
+
 export async function chooseConfirmation(page, action = 'confirm') {
   const overlay = page.locator('#confirmationDialogOverlay');
   await overlay.waitFor({ state: 'visible', timeout: 5000 });
