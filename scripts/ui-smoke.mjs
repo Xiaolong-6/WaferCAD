@@ -633,11 +633,10 @@ const historyAPopoverStep = historyRestorePage.locator('.history-step-wrap', { h
 const historyBPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History B' });
 await historyAPopoverStep.locator('.snapshot-more-trigger').click();
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
-// Open the second <details> programmatically because the first popover can
-// physically cover its trigger; the toggle handler must still close the first menu.
-await historyBPopoverStep.locator('.snapshot-more-menu').evaluate((menu) => {
-  menu.open = true;
-});
+// Trigger the second menu through its native summary activation without
+// Playwright hit-testing. This exercises the same click/toggle path as the UI
+// while avoiding geometry overlap between the two popovers in headless runs.
+await historyBPopoverStep.locator('.snapshot-more-trigger').evaluate((summary) => summary.click());
 await historyRestorePage.waitForFunction(() => {
   const steps = [...document.querySelectorAll('.history-step-wrap')];
   const historyA = steps.find((step) => /History A/.test(step.textContent || ''));
