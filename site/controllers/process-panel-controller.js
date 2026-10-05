@@ -32,6 +32,32 @@ export function createProcessPanelController({
 }) {
   const $ = (id) => root.getElementById(id);
 
+  function normalizedMaskContext({
+    maskSourceMode,
+    maskRoi,
+    drawMask,
+    maskTransform,
+    layout,
+    activeCell,
+    selectedLayerKeys,
+  }) {
+    if (maskSourceMode === 'draw') {
+      return {
+        sourceMode: 'draw',
+        shapeCount: Array.isArray(drawMask?.shapes) ? drawMask.shapes.length : 0,
+        roi: maskRoi ? structuredClone(maskRoi) : null,
+      };
+    }
+
+    return {
+      sourceMode: 'file',
+      cell: activeCell || layout?.root || null,
+      layerKeys: Array.from(selectedLayerKeys || [], (value) => String(value)),
+      transform: { ...(maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }) },
+      roi: maskRoi ? structuredClone(maskRoi) : null,
+    };
+  }
+
   function updateGrowTargets() {
     const select = $('targetLayer');
     if (!select) return;
@@ -272,12 +298,12 @@ export function createProcessPanelController({
     return true;
   }
 
-  function replayScopeCells(state) {
+  function replayScopeCells(state, requestedCell = null) {
     const hierarchy = state?.layout?.hierarchy || {},
-      requestedCell = state?.activeCell || null,
+      savedCell = requestedCell || state?.activeCell || null,
       activeCell =
-        (requestedCell && (requestedCell in hierarchy || requestedCell === state?.layout?.root)
-          ? requestedCell
+        (savedCell && (savedCell in hierarchy || savedCell === state?.layout?.root)
+          ? savedCell
           : null) ||
         state?.layout?.root ||
         Object.keys(hierarchy)[0] ||
@@ -299,8 +325,20 @@ export function createProcessPanelController({
       throw new Error('This Step does not contain the workspace state required for replay.');
     }
     const mode = replay.areaMode || operation.areaMode || 'full',
-      maskSourceMode = state.maskSourceMode === 'draw' ? 'draw' : 'file',
-      maskRoi = state.maskRoi ? structuredClone(state.maskRoi) : null;
+      maskContext = replay.maskContext || operation.maskContext || null,
+      maskSourceMode =
+        maskContext?.sourceMode === 'draw'
+          ? 'draw'
+          : maskContext?.sourceMode === 'file'
+            ? 'file'
+            : state.maskSourceMode === 'draw'
+              ? 'draw'
+              : 'file',
+      maskRoi = maskContext?.roi
+        ? structuredClone(maskContext.roi)
+        : state.maskRoi
+          ? structuredClone(state.maskRoi)
+          : null;
 
     if (maskSourceMode === 'draw') {
       return {
@@ -311,8 +349,12 @@ export function createProcessPanelController({
       };
     }
 
-    const selectedLayers = new Set(state.selectedLayerKeys || []),
-      scope = replayScopeCells(state),
+    const selectedLayers = new Set(
+        Array.isArray(maskContext?.layerKeys)
+          ? maskContext.layerKeys
+          : state.selectedLayerKeys || [],
+      ),
+      scope = replayScopeCells(state, maskContext?.cell || null),
       elements = (state.layout?.elements || [])
         .filter(
           (element) =>
@@ -329,7 +371,11 @@ export function createProcessPanelController({
       mode,
       maskSourceMode,
       maskRoi,
-      maskTransform: { ...(state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }) },
+      maskTransform: {
+        ...(maskContext?.transform ||
+          state.maskTransform ||
+          { x: 0, y: 0, scale: 1, rotation: 0 }),
+      },
       elements,
     };
   }
@@ -532,7 +578,15 @@ export function createProcessPanelController({
   async function applyOperation() {
     let model = getModel();
     const activeFace = getActiveFace(),
-      { maskSourceMode, maskRoi, drawMask, maskTransform, layout } = getMaskState();
+      {
+        maskSourceMode,
+        maskRoi,
+        drawMask,
+        maskTransform,
+        layout,
+        activeCell,
+        selectedLayerKeys,
+      } = getMaskState();
     if (processTaskController?.isBusy()) {
       status('An operation is already running. Abort it before starting another.', 'warning');
       return;
@@ -545,7 +599,16 @@ export function createProcessPanelController({
     $('operationThickness').value = formatLengthField(thickness);
     if (!(thickness > 0)) return status('Thickness must be greater than zero.', 'error');
   
-    const areaMode = $('operationArea').value;
+    const areaMode = $('operationArea').value,
+      maskContext = normalizedMaskContext({
+        maskSourceMode,
+        maskRoi,
+        drawMask,
+        maskTransform,
+        layout,
+        activeCell,
+        selectedLayerKeys,
+      });
   
     const name =
         type === 'implant'
@@ -761,6 +824,7 @@ export function createProcessPanelController({
       electricalRegionSource: type === 'electrical' ? params.electricalRegionSource : null,
       maskSourceMode,
       maskRoi: Boolean(maskRoi),
+      maskContext: structuredClone(maskContext),
       resultLayerId: type === 'add' ? result.layerId || null : null,
       resultImplantId: type === 'implant' ? result.implantId || null : null,
       resultElectricalRegionId:
@@ -769,6 +833,7 @@ export function createProcessPanelController({
         version: 1,
         params: structuredClone(params),
         areaMode,
+        maskContext: structuredClone(maskContext),
       },
     };
     recordProcessOperation(operation);
