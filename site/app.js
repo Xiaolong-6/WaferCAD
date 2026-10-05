@@ -1053,29 +1053,86 @@ async function ensureWritableProcessBranch() {
       continuation.cursorNodeId !== edit.parentNodeId
     ) {
       pendingHistoryStepEdit = null;
+      updateOperationUI();
       status('Historical Step edit context changed. Start the edit again from History.', 'error');
       return false;
     }
-    const requiredSteps =
-      edit.mode === 'update-recompute'
-        ? 0
-        : edit.mode === 'branch-recompute'
-          ? 1 + edit.downstreamCount
-          : 1;
-    if (requiredSteps && !snapshotManager.canRecordOperation(requiredSteps)) {
-      status('Process history limit reached before this edit could be committed.', 'error');
-      return false;
+
+    let mode = edit.mode;
+    if (!mode) {
+      const actions = [{ value: 'cancel', label: 'Cancel' }];
+      if (edit.canReplaceCurrentVariant) {
+        actions.push({
+          value: 'replace-discard',
+          label: edit.downstreamCount ? 'Replace & discard later Steps' : 'Replace Step',
+          kind: edit.downstreamCount ? 'danger' : 'primary',
+          default: true,
+        });
+        if (edit.downstreamCount && edit.downstreamReplayable) {
+          actions.push({
+            value: 'replace-replay',
+            label: 'Replace & replay later Steps',
+          });
+        }
+      }
+      if (snapshotManager.canCreateVariant() && snapshotManager.canRecordOperation(1)) {
+        actions.push({
+          value: 'branch-edit',
+          label: 'Save as new Variant',
+          kind: edit.canReplaceCurrentVariant ? undefined : 'primary',
+          default: !edit.canReplaceCurrentVariant,
+        });
+      }
+
+      if (actions.length === 1) {
+        status('No safe save strategy is available for this edited Step.', 'warning');
+        return false;
+      }
+
+      const detail = [
+        edit.downstreamCount
+          ? `${edit.downstreamCount} later Step${edit.downstreamCount === 1 ? '' : 's'} follow this Step.`
+          : 'This is the current Variant HEAD Step.',
+        !edit.canReplaceCurrentVariant
+          ? `The current Variant cannot be rewritten because ${edit.dependentVariants
+              .map((item) => `"${item.name}"`)
+              .join(', ')} depend on this Step.`
+          : '',
+        edit.downstreamCount && !edit.downstreamReplayable
+          ? 'Some later Steps predate replay metadata, so replay is unavailable.'
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      mode = await confirmationDialog.ask({
+        title: 'Save edited Step',
+        message: `Save changes to "${edit.originalLabel}"?`,
+        detail,
+        actions,
+        cancelValue: 'cancel',
+      });
+      if (mode === 'cancel') return false;
+      edit.mode = mode;
     }
-    if (edit.mode !== 'update-recompute' && !snapshotManager.canCreateVariant()) {
-      status('Variant limit reached before this edit could be committed.', 'error');
-      return false;
+
+    if (mode === 'branch-edit') {
+      if (!snapshotManager.canCreateVariant()) {
+        status('Variant limit reached before this edit could be saved.', 'error');
+        return false;
+      }
+      if (!snapshotManager.canRecordOperation(1)) {
+        status('Process history limit reached before this edit could be saved.', 'error');
+        return false;
+      }
     }
+
     return {
       historyStepEdit: true,
       nodeId: edit.nodeId,
       branchId: edit.branchId,
       parentNodeId: edit.parentNodeId,
-      mode: edit.mode,
+      mode,
     };
   }
 
@@ -1124,10 +1181,10 @@ function commitWritableProcessBranch(gate) {
     }
 
     let created = null;
-    if (edit.mode === 'update-recompute') {
-      snapshotManager.replaceBranchTailFrom(edit.nodeId);
-    } else {
+    if (edit.mode === 'branch-edit') {
       created = snapshotManager.createBranchFromCursor();
+    } else {
+      snapshotManager.replaceBranchTailFrom(edit.nodeId);
     }
     markProjectDirty();
     renderSnapshots();
