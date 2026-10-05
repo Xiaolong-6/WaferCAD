@@ -697,6 +697,56 @@ export function createSnapshotManager({
     return true;
   }
 
+  function renameHistoryEntity(kind, id, name) {
+    const next = cleanName(name);
+    if (!id || !next || !['layer', 'implant', 'electrical'].includes(kind)) return 0;
+
+    const refsByNode = new Map(
+      historyNodes.map((node) => [node.id, operationEntityRefs(node)]),
+    );
+    const collectionKey =
+      kind === 'layer' ? 'layers' : kind === 'implant' ? 'implants' : 'electricalRegions';
+    let changed = 0;
+    const seenStates = new Set();
+
+    const renameInState = (state) => {
+      if (!state || typeof state !== 'object' || seenStates.has(state)) return;
+      seenStates.add(state);
+      const entity = (state.model?.[collectionKey] || []).find((item) => item?.id === id);
+      if (entity && entity.name !== next) {
+        entity.name = next;
+        changed += 1;
+      }
+    };
+
+    for (const node of historyNodes) renameInState(node.state);
+    for (const record of records) renameInState(record.state);
+    for (const branch of branches) renameInState(branch.headState);
+    renameInState(cursorBaselineState);
+
+    for (const node of historyNodes) {
+      const refs = refsByNode.get(node.id) || {},
+        operation = node.operation || {},
+        resultMatches =
+          (kind === 'layer' && refs.resultLayerId === id) ||
+          (kind === 'implant' && refs.resultImplantId === id) ||
+          (kind === 'electrical' && refs.resultElectricalRegionId === id),
+        targetMatches =
+          kind === 'layer' &&
+          (refs.targetLayerId === id || refs.etchTargetLayerIds?.includes(id));
+
+      if (resultMatches || targetMatches) {
+        if (resultMatches || operation.kind === 'grow') operation.name = next;
+        if (operation.replay?.version === 1 && operation.replay.params) {
+          if (resultMatches || operation.kind === 'grow') operation.replay.params.name = next;
+        }
+        changed += 1;
+      }
+    }
+
+    return changed;
+  }
+
   function continuationContext() {
     const branch = branchById(activeBranchId);
     if (!branch || isCursorAtBranchHead()) return null;
@@ -1526,6 +1576,7 @@ export function createSnapshotManager({
     switchBranch,
     rename,
     renameBranch,
+    renameHistoryEntity,
     branchesUsingSnapshot,
     remove,
     removeBranch,
