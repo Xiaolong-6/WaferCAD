@@ -13,7 +13,9 @@ const browser = await launchBrowser();
 
 // Startup must never expose the legacy/raw workspace while the workstation
 // stylesheet or DOM transformation is still pending.
-const { page: bootPage, context: bootContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
+const { page: bootPage, context: bootContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const bootErrors = [];
 let releaseWorkstationCss;
 let workstationCssSeen;
@@ -71,7 +73,9 @@ assert.equal(await bootPage.locator('#workstationBootScreen').isVisible(), false
 assert.deepEqual(bootErrors, []);
 await bootContext.close();
 
-const { page, context: mainContext } = await newUiPage(browser, { viewport: { width: 1365, height: 900 } });
+const { page, context: mainContext } = await newUiPage(browser, {
+  viewport: { width: 1365, height: 900 },
+});
 const errors = [];
 
 page.on('pageerror', (error) => errors.push(error.message));
@@ -294,7 +298,9 @@ await page.locator('#threePanel').waitFor({ state: 'visible' });
 
 // Navigation semantics are checked in isolated pages so Back/Reload cannot
 // perturb the long-lived editor page used by the rest of this smoke suite.
-const { page: navigationPage, context: navigationContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
+const { page: navigationPage, context: navigationContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const navigationErrors = [];
 navigationPage.on('pageerror', (error) => navigationErrors.push(error.message));
 await gotoWelcome(navigationPage);
@@ -314,7 +320,9 @@ await navigationContext.close();
 
 // Bundled example families must load through the same validated project path as
 // user-selected .wafercad files, including their restorable Variant tree.
-const { page: familyExamplePage, context: familyExampleContext } = await newUiPage(browser, { viewport: { width: 1100, height: 760 } });
+const { page: familyExamplePage, context: familyExampleContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const familyExampleErrors = [];
 familyExamplePage.on('pageerror', (error) => familyExampleErrors.push(error.message));
 await gotoWelcome(familyExamplePage);
