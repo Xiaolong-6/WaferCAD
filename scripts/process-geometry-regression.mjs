@@ -14,6 +14,7 @@ import {
   openFunctionPanel,
   waitForAppReady,
   waitForThreeReady,
+  waitForPaint,
   newUiContext,
 } from './test-helpers/ui.mjs';
 
@@ -280,7 +281,6 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 await page.locator('#threeMaxBtn').click();
-await page.waitForTimeout(250);
 await page.waitForFunction(
   () =>
     document.body.classList.contains('view-maximized') &&
@@ -316,7 +316,6 @@ await page.screenshot({
   fullPage: true,
 });
 await page.locator('#threeMaxBtn').click();
-await page.waitForTimeout(250);
 await page.waitForFunction(
   () =>
     document.body.classList.contains('view-maximized') &&
@@ -363,7 +362,7 @@ await page.mouse.move(
   { steps: 5 },
 );
 await page.mouse.up();
-await page.waitForTimeout(120);
+await waitForPaint(page);
 
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('UI implant project');
