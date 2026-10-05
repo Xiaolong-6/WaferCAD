@@ -529,12 +529,30 @@ export function createWorkspacePersistenceController({
   async function checkpointCurrent(reason = 'pre-destructive-action') {
     if (!ready || !hasWriteAccess()) return false;
     clearTimer();
-    const project = buildProjectSnapshot(true);
-    await createWorkspaceRecoveryCheckpoint(project, {
-      appCommit,
-      reason,
-    });
-    await refreshRecoveryOptions();
+
+    const result = await runVisibleTask(
+      async ({ updateStage }) => {
+        updateStage('Protecting current workspace…');
+        const project = buildProjectSnapshot(true);
+        await createWorkspaceRecoveryCheckpoint(project, {
+          appCommit,
+          reason,
+        });
+        await refreshRecoveryOptions();
+        return { ok: true };
+      },
+      {
+        label: 'Creating Recovery checkpoint…',
+        failurePrefix: 'Recovery checkpoint failed',
+        abortable: false,
+      },
+    );
+
+    if (result?.busy) {
+      status('Another background task is already running.', 'warning');
+      return false;
+    }
+    if (result?.error || !result?.ok) return false;
     return true;
   }
 
@@ -821,18 +839,31 @@ export function createWorkspacePersistenceController({
       ) {
         return;
       }
-      try {
-        const removed = await clearWorkspaceRecoveryPoints();
-        await refreshRecoveryOptions();
-        status(
-          removed
-            ? `Cleared ${removed} local Recovery checkpoint${removed === 1 ? '' : 's'}.`
-            : 'Recovery is already empty.',
-        );
-      } catch (error) {
-        console.error(error);
-        status(`Could not clear Recovery: ${error.message}`, 'error');
+      const result = await runVisibleTask(
+        async ({ updateStage }) => {
+          updateStage('Removing local Recovery checkpoints…');
+          const removed = await clearWorkspaceRecoveryPoints();
+          await refreshRecoveryOptions();
+          return { ok: true, removed };
+        },
+        {
+          label: 'Clearing Recovery…',
+          failurePrefix: 'Could not clear Recovery',
+          abortable: false,
+        },
+      );
+
+      if (result?.busy) {
+        status('Another background task is already running.', 'warning');
+        return;
       }
+      if (result?.error || !result?.ok) return;
+
+      status(
+        result.removed
+          ? `Cleared ${result.removed} local Recovery checkpoint${result.removed === 1 ? '' : 's'}.`
+          : 'Recovery is already empty.',
+      );
     };
     $('saveProjectBtn').onclick = () => {
       void saveCheckpoint();
