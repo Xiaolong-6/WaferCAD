@@ -540,13 +540,17 @@ export function createProjectController({
           run: () => createVariantFromStep(node),
         });
         if (isVariantHead) {
+          const deleteBlockedByVariant =
+            Boolean(node.parentId) && editContext?.canReplaceCurrentVariant === false;
           actions.push({
             label: 'Delete last Step',
             danger: true,
-            disabled: !node.parentId,
-            title: node.parentId
-              ? 'Delete this HEAD Step and restore its predecessor.'
-              : 'The first Main Step has no restorable predecessor.',
+            disabled: !node.parentId || deleteBlockedByVariant,
+            title: !node.parentId
+              ? 'The first Main Step has no restorable predecessor.'
+              : deleteBlockedByVariant
+                ? 'A child Variant depends on this HEAD Step. Delete that Variant first.'
+                : 'Delete this HEAD Step and restore its predecessor.',
             run: () => deleteHeadStep(node),
           });
         }
