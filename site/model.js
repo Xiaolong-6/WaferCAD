@@ -1143,9 +1143,14 @@ function applyOperationImpl(
   } else if (growth === 'conformal') {
     applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
   } else {
-    splitByArea(model, active, (stack) =>
-      mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face }),
-    );
+    splitByArea(model, active, (stack) => {
+      const exposed = surfaceSegment(stack, face);
+      // A conformal-sidewall segment is a finite-width surrogate for a vertical
+      // film. Its outward Z cap is not a physical horizontal process surface, so
+      // directional Deposit/Extend must not grow another layer from that cap.
+      if (!exposed || exposed.role === 'conformal-sidewall') return stack;
+      return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
+    });
   }
   model.regions = mergeRegions(model, model.regions);
   if (healNumericalCoverageCracks(model)) {

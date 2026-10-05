@@ -18,7 +18,7 @@ const {
   isEmpty,
   unionGeometries,
 } = await import('../vector-geometry.js');
-const { electricalRegionSolids, extrusionGroups, sectionSlices } =
+const { electricalRegionSolids, extrusionGroups, implantSectionBands, sectionSlices } =
   await import('../model-view-geometry.js');
 const { prepareProjectForStorage } = await import('../project-io.js');
 const { migrateProjectFile } = await import('../project-schema.js');
@@ -138,6 +138,68 @@ for (const face of ['front', 'back']) {
     });
   }
 }
+
+test('Directional deposition ignores conformal-sidewall surrogate caps', async () => {
+  const benchmark = await processBenchmark('step', 'conformal', 'front'),
+    { model } = benchmark,
+    result = applyOperation(model, {
+      type: 'add',
+      name: 'Directional cap',
+      thickness: 0.5,
+      face: 'front',
+      area: model.boundary,
+      growth: 'direct',
+    });
+
+  assert.equal(result.changed, true);
+  const sidewallStack = stackAt(model, 0.5);
+  assert.ok(
+    sidewallStack.some((segment) => segment.role === 'conformal-sidewall'),
+    'benchmark must retain the conformal sidewall surrogate',
+  );
+  assert.equal(
+    sidewallStack.some((segment) => segment.layerId === result.layerId),
+    false,
+    'directional deposition must not cap a vertical sidewall surrogate',
+  );
+  assert.ok(
+    stackAt(model, -3).some((segment) => segment.layerId === result.layerId),
+    'upper horizontal surface must still receive the directional film',
+  );
+  assert.ok(
+    stackAt(model, 3).some((segment) => segment.layerId === result.layerId),
+    'lower horizontal surface must still receive the directional film',
+  );
+});
+
+test('Implant Section bands hide host-region partition seams', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
+    implanted = applyOperation(model, {
+      type: 'implant',
+      name: 'Continuous front implant',
+      thickness: 1,
+      face: 'front',
+      area: model.boundary,
+      tilt: 0,
+    });
+
+  assert.equal(implanted.changed, true);
+  applyOperation(model, {
+    type: 'add',
+    name: 'Front cap partition',
+    thickness: 0.5,
+    face: 'front',
+    area: rectMulti(10, 20, -5, 0),
+    growth: 'direct',
+  });
+
+  const bands = implantSectionBands(model, [-10, 0], [10, 0]).filter(
+    (band) => band.implantId === implanted.implantId,
+  );
+  assert.equal(bands.length, 1, 'continuous Implant must not expose a region seam in Section');
+  assert.ok(Math.abs(bands[0].t0) < 1e-9);
+  assert.ok(Math.abs(bands[0].t1 - 1) < 1e-9);
+});
 
 test('Electrical Region follows current material and is clipped by later Etch', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });

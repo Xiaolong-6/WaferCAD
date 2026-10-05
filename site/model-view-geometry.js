@@ -177,13 +177,53 @@ function annotationSolids(fragments) {
 }
 
 function annotationSectionBands(fragments, a, b) {
-  const bands = [];
+  const grouped = new Map();
   for (const fragment of fragments) {
+    const key = JSON.stringify([
+      fragment.annotationKind,
+      fragment.annotationId,
+      fragment.face,
+      fragment.color,
+      fragment.thickness,
+      fragment.depthProfile,
+      fragment.tilt,
+      fragment.sourceZ,
+      fragment.outerZ,
+      fragment.innerZ,
+      fragment.hostLayerId || null,
+      fragment.regionType || null,
+      fragment.source || null,
+      fragment.surfaceAppearance || null,
+    ]);
+    if (!grouped.has(key)) grouped.set(key, []);
     for (const [t0, t1] of lineIntervalsInMulti(a, b, fragment.polys)) {
-      bands.push({ ...fragment, t0, t1 });
+      grouped.get(key).push({ ...fragment, t0, t1 });
     }
   }
-  return bands;
+
+  const bands = [];
+  for (const group of grouped.values()) {
+    group.sort((left, right) => left.t0 - right.t0 || left.t1 - right.t1);
+    let current = null;
+    for (const band of group) {
+      if (!current) {
+        current = { ...band };
+        continue;
+      }
+      // Host-region partitions are bookkeeping seams. If they describe the same
+      // annotation volume and touch in Section, keep one continuous band so the
+      // Border renderer cannot expose an internal dashed vertical edge.
+      if (band.t0 <= current.t1 + 1e-9) {
+        current.t1 = Math.max(current.t1, band.t1);
+        current.surfaceExposed = Boolean(current.surfaceExposed && band.surfaceExposed);
+        continue;
+      }
+      bands.push(current);
+      current = { ...band };
+    }
+    if (current) bands.push(current);
+  }
+  return bands.sort((left, right) => left.t0 - right.t0 || left.t1 - right.t1);
 }
 
 function implantFragments(model, clip = null) {
