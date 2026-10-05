@@ -14,6 +14,7 @@ import {
   adaptiveRoughMeshLod,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
+  roughProfileOffsetAtPoint,
   roughSceneTriangleBudget,
   roughLod,
   roughVisualBoundsZ,
@@ -373,7 +374,13 @@ export function createThreeView({
     for (const part of parts || []) {
       for (const [z0, z1] of visibleZIntervals(part.z0, part.z1, state)) {
         if (z0 === z1) continue;
-        visible.push({ ...part, z0, z1 });
+        visible.push({
+          ...part,
+          z0,
+          z1,
+          lowerSurface: Math.abs(z0 - part.z0) <= 1e-10 ? part.lowerSurface : null,
+          upperSurface: Math.abs(z1 - part.z1) <= 1e-10 ? part.upperSurface : null,
+        });
       }
     }
     return visible;
@@ -829,10 +836,25 @@ export function createThreeView({
     const positions = [],
       normals = [];
 
-    const triangle = (a, b, c, normal) => {
-      positions.push(...a, ...b, ...c);
-      normals.push(...normal, ...normal, ...normal);
-    };
+    const triangle = (a, b, c) => {
+        const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
+          ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
+          normal = [
+            ab[1] * ac[2] - ab[2] * ac[1],
+            ab[2] * ac[0] - ab[0] * ac[2],
+            ab[0] * ac[1] - ab[1] * ac[0],
+          ],
+          magnitude = Math.hypot(...normal) || 1,
+          unit = normal.map((value) => value / magnitude);
+        positions.push(...a, ...b, ...c);
+        normals.push(...unit, ...unit, ...unit);
+      },
+      displacedZ = (point, z, surface) =>
+        surface?.appearance?.kind === 'rough'
+          ? z +
+            (Number(surface.profileNormal) || 1) *
+              roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
+          : z;
 
     for (const part of parts || []) {
       const p = part.p,
@@ -841,13 +863,28 @@ export function createThreeView({
         dy = q[1] - p[1],
         length = Math.hypot(dx, dy);
       if (!length) continue;
-      const normal = [dy / length, -dx / length, 0],
-        a = [...p, part.z0],
-        b = [...q, part.z0],
-        c = [...q, part.z1],
-        d = [...p, part.z1];
-      triangle(a, b, c, normal);
-      triangle(a, c, d, normal);
+
+      const featureSizes = [part.lowerSurface, part.upperSurface]
+          .map((surface) => Number(surface?.appearance?.featureSize))
+          .filter((value) => Number.isFinite(value) && value > 0),
+        targetStep = featureSizes.length
+          ? Math.max(1e-6, Math.min(...featureSizes) / 4)
+          : length,
+        segments = Math.max(1, Math.min(512, Math.ceil(length / targetStep))),
+        pointAt = (t) => [p[0] + dx * t, p[1] + dy * t];
+
+      for (let segment = 0; segment < segments; segment++) {
+        const t0 = segment / segments,
+          t1 = (segment + 1) / segments,
+          p0 = pointAt(t0),
+          p1 = pointAt(t1),
+          lower0 = [...p0, displacedZ(p0, part.z0, part.lowerSurface)],
+          lower1 = [...p1, displacedZ(p1, part.z0, part.lowerSurface)],
+          upper1 = [...p1, displacedZ(p1, part.z1, part.upperSurface)],
+          upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)];
+        triangle(lower0, lower1, upper1);
+        triangle(lower0, upper1, upper0);
+      }
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -1141,6 +1178,7 @@ export function createThreeView({
           normal: cap.normal,
           appearance: cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
+          sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
           lodZones: task.zones.map((zone) => ({
             baseTriangles: zone.baseTriangles,
@@ -1303,6 +1341,7 @@ export function createThreeView({
           polys: cap.polys,
           appearance: cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
+          sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
           lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
           lodZones: task.zones,
@@ -2008,6 +2047,7 @@ export function createThreeView({
               normal: task.cap.normal,
               appearance: task.cap.appearance,
               closeToIdeal: !task.cap.buried,
+              sidewallBoundaryIntervals: task.cap.sidewallBoundaryIntervals,
               profileNormal: task.cap.profileNormal,
               lodZones: task.lodZones.map((zone) => ({
                 baseTriangles: zone.baseTriangles,
@@ -2147,6 +2187,7 @@ export function createThreeView({
                   polys: cap.polys,
                   appearance: cap.appearance,
                   closeToIdeal: !cap.buried,
+                  sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
                   profileNormal: cap.profileNormal,
                   lodZones: task.lodZones,
                 });

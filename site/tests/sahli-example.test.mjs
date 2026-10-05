@@ -12,6 +12,7 @@ globalThis.polygonClipping = commonJsModule.exports;
 
 const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
+const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
 
 const project = JSON.parse(
   await readFile(
@@ -59,4 +60,53 @@ test('Sahli Pyramid reconstruction is deterministic and explicitly non-periodic'
   assert.ok(appearances.every((appearance) => Number.isInteger(appearance.seed)));
   assert.ok(appearances.some((appearance) => appearance.seed === 2018));
   assert.ok(appearances.some((appearance) => appearance.seed === 2019));
+});
+
+
+test('Sahli 3D ROI sidewalls inherit the front and back Pyramid interfaces', () => {
+  const clip = [
+      [
+        [
+          [-20, -20],
+          [20, -20],
+          [20, 20],
+          [-20, 20],
+          [-20, -20],
+        ],
+      ],
+    ],
+    plan = buildRenderSurfacePlan(project.model, clip),
+    texturedWalls = plan.sidewalls.filter(
+      (part) => part.lowerSurface?.appearance || part.upperSurface?.appearance,
+    ),
+    frontConformal = texturedWalls.filter(
+      (part) =>
+        part.z0 >= 125.5 - 1e-9 &&
+        part.lowerSurface?.appearance?.profileId === 'pyramid-front-2018' &&
+        part.upperSurface?.appearance?.profileId === 'pyramid-front-2018',
+    ),
+    backConformal = texturedWalls.filter(
+      (part) =>
+        part.z1 <= -125.5 + 1e-9 &&
+        part.lowerSurface?.appearance?.profileId === 'pyramid-back-2019' &&
+        part.upperSurface?.appearance?.profileId === 'pyramid-back-2019',
+    );
+
+  assert.ok(texturedWalls.length > 0);
+  assert.ok(frontConformal.length > 0);
+  assert.ok(backConformal.length > 0);
+  assert.ok(
+    frontConformal.every(
+      (part) =>
+        part.lowerSurface.profileNormal === 1 &&
+        part.upperSurface.profileNormal === 1,
+    ),
+  );
+  assert.ok(
+    backConformal.every(
+      (part) =>
+        part.lowerSurface.profileNormal === -1 &&
+        part.upperSurface.profileNormal === -1,
+    ),
+  );
 });

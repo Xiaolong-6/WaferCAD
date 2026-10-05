@@ -125,6 +125,7 @@ export function roughMeshDataFromPreparedCap({
   polys,
   appearance,
   closeToIdeal = true,
+  sidewallBoundaryIntervals = [],
   lodContext = {},
   lodZones = null,
   profileNormal = normal,
@@ -246,6 +247,13 @@ export function roughMeshDataFromPreparedCap({
     isSeamAt = (edge, globalT) =>
       edgeSeams(edge).some(
         (span) => globalT >= span.t0 - 1e-10 && globalT <= span.t1 + 1e-10,
+      ),
+    hasPhysicalSidewallAt = (edge, globalT) =>
+      (sidewallBoundaryIntervals || []).some(
+        (span) =>
+          span?.key === edge.key &&
+          globalT >= Number(span.t0) - 1e-10 &&
+          globalT <= Number(span.t1) + 1e-10,
       );
 
   if (closeToIdeal) {
@@ -268,7 +276,9 @@ export function roughMeshDataFromPreparedCap({
           const t0 = ordered[index],
             t1 = ordered[index + 1],
             middleGlobalT = globalTAtLocal(edge.line, (t0 + t1) / 2);
-          if (isSeamAt(edge, middleGlobalT)) continue;
+          if (isSeamAt(edge, middleGlobalT) || hasPhysicalSidewallAt(edge, middleGlobalT)) {
+            continue;
+          }
           const base0 = pointAlongEdge(edge.p, edge.q, t0),
             base1 = pointAlongEdge(edge.p, edge.q, t1),
             top0 = roughAlongEdge(edge.p, edge.q, t0),
@@ -370,6 +380,7 @@ export function geometryFromRoughCap(
     polys,
     appearance,
     closeToIdeal = true,
+    sidewallBoundaryIntervals = [],
     lodContext = {},
     lodZones = null,
     profileNormal = normal,
@@ -404,6 +415,7 @@ export function geometryFromRoughCap(
       polys,
       appearance,
       closeToIdeal,
+      sidewallBoundaryIntervals,
       lodContext,
       lodZones: preparedZones,
       profileNormal,

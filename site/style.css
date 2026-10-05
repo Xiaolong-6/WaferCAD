@@ -1883,8 +1883,9 @@ a.welcome-action {
 
 .welcome-example-card {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(220px, 240px) minmax(0, 1fr);
+  align-items: start;
   overflow: hidden;
   border: 1px solid #cfd8e0;
   border-radius: 7px;
@@ -1905,10 +1906,9 @@ a.welcome-action {
 .welcome-example-visual {
   position: relative;
   min-width: 0;
-  height: 220px;
   overflow: hidden;
   padding: 12px;
-  border-bottom: 1px solid #e3e8ed;
+  border-right: 1px solid #e3e8ed;
   background:
     linear-gradient(rgba(82, 107, 132, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(82, 107, 132, 0.025) 1px, transparent 1px),
@@ -1924,7 +1924,8 @@ a.welcome-action {
 
 .welcome-example-image {
   width: 100%;
-  height: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
   display: block;
   object-fit: cover;
   background: #111923;
@@ -1950,10 +1951,10 @@ a.welcome-action {
 
 .welcome-example-project-preview {
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 32px;
+  grid-template-rows: auto 32px;
   background: #f3f6f8;
 }
 
@@ -1961,6 +1962,7 @@ a.welcome-action {
   position: relative;
   min-width: 0;
   min-height: 0;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: #eef2f5;
 }
@@ -2076,30 +2078,31 @@ a.welcome-action {
 }
 
 .welcome-example-sources {
-  margin: 0 0 6px;
-  color: #53616d;
-  font-size: 11px;
-  line-height: 1.45;
+  margin: 0 0 4px;
+  color: #74808a;
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 .welcome-example-sources > strong {
-  color: #394956;
-  font-size: inherit;
+  color: #68747f;
+  font-size: 9.75px;
+  font-weight: 600;
 }
 
 .welcome-example-source-row {
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 .welcome-example-source-row span {
-  color: #53616d;
+  color: #74808a;
 }
 
 .welcome-example-sources a {
-  color: #365f82;
-  font-weight: 680;
+  color: #607a91;
+  font-weight: 600;
   text-decoration: underline;
-  text-decoration-color: #9db7cc;
+  text-decoration-color: #b8c6d1;
   text-underline-offset: 2px;
 }
 
@@ -2110,32 +2113,14 @@ a.welcome-action {
 
 .welcome-example-body {
   min-width: 0;
-  min-height: 228px;
+  min-height: 0;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 14px 15px 15px;
 }
 
-.welcome-example-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  color: #5f6b76;
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.welcome-example-meta span:first-child {
-  padding: 3px 6px;
-  border: 1px solid #d9e0e6;
-  border-radius: 999px;
-  background: #f5f7f9;
-  color: #526371;
-  font-weight: 680;
-}
 
 .welcome-example-body h3 {
   margin: 0;
@@ -2391,9 +2376,13 @@ body.welcome-open {
     justify-self: start;
   }
 
+  .welcome-example-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .welcome-example-visual {
-    height: auto;
-    aspect-ratio: 4 / 3;
+    border-right: 0;
+    border-bottom: 1px solid #e3e8ed;
   }
 
   .welcome-example-body {
@@ -3659,9 +3648,15 @@ summary:focus-visible {
   font-size: 10px;
 }
 .confirmation-action.primary {
-  border-color: #8099ae;
-  background: #eaf2f8;
-  color: #2f536f;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.confirmation-action.primary:hover {
+  border-color: var(--accent-dark);
+  background: var(--accent-dark);
+  color: #fff;
 }
 .confirmation-action.danger {
   border-color: #d8aeb4;
