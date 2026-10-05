@@ -231,15 +231,20 @@ assert.deepEqual(
 );
 const previewFrames = page.locator('.welcome-example-project-frame');
 assert.equal(await previewFrames.count(), 4);
-await page.waitForFunction(
-  () => document.querySelector('.welcome-example-project-frame')?.getAttribute('src')?.includes('app.html'),
-  null,
-  { timeout: 10000 },
-);
-assert.match(await previewFrames.nth(0).getAttribute('src'), /app\.html\?/);
-assert.equal(await previewFrames.nth(1).getAttribute('src'), null);
-assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
-assert.equal(await previewFrames.nth(3).getAttribute('src'), null);
+for (let index = 0; index < 4; index++) {
+  const frame = previewFrames.nth(index);
+  await frame.scrollIntoViewIfNeeded();
+  await page.waitForFunction(
+    (frameIndex) =>
+      document
+        .querySelectorAll('.welcome-example-project-frame')
+        [frameIndex]?.getAttribute('src')
+        ?.includes('app.html'),
+    index,
+    { timeout: 10000 },
+  );
+  assert.match(await frame.getAttribute('src'), /app\.html\?/);
+}
 
 const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
 await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
@@ -250,6 +255,9 @@ await preview.locator('html.welcome-project-preview[data-preview-view="main"]').
   state: 'attached',
   timeout: 30000,
 });
+await preview
+  .locator('html.welcome-project-preview[data-preview-plan-framing="fit"]')
+  .waitFor({ state: 'attached', timeout: 30000 });
 
 for (const [view, panelId] of [
   ['main', 'mainPanel'],
@@ -340,8 +348,7 @@ assert.notEqual(
   'Welcome Main preview wheel zoom must remain available',
 );
 
-// A dormant preview must accept a view choice before its iframe is ready.
-// The ready handshake then replays the selected view rather than regressing to Main.
+// Auto-loaded previews must remain switchable after their viewport-driven startup.
 const tandemCard = page.locator(
   '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"]',
 );
@@ -356,7 +363,7 @@ const percCard = page.locator(
 );
 await percCard.locator('.welcome-example-view-tab[data-preview-view="three"]').click();
 assert.match(await previewFrames.nth(1).getAttribute('src'), /app\.html\?/);
-assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
+assert.match(await previewFrames.nth(2).getAttribute('src'), /app\.html\?/);
 const percPreview = page.frameLocator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"] .welcome-example-project-frame',
 );

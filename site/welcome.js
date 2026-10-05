@@ -5,7 +5,29 @@ import { stageStartupFile } from './startup-file.js';
 
 const $ = (id) => document.getElementById(id);
 const projectPreviewFrames = new Set();
-let autoProjectPreviewAssigned = false;
+const projectPreviewObserver =
+  'IntersectionObserver' in globalThis
+    ? new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const frame = entry.target.querySelector('.welcome-example-project-frame');
+            if (frame) activateProjectPreviewFrame(frame);
+            projectPreviewObserver.unobserve(entry.target);
+          }
+        },
+        { rootMargin: '280px 0px' },
+      )
+    : null;
+
+function activateProjectPreviewFrame(frame) {
+  if (!frame || frame.getAttribute('src')) return;
+  const host = frame.closest('.welcome-example-project-preview'),
+    loading = host?.querySelector('.welcome-example-project-loading');
+  if (loading) loading.textContent = 'Loading project preview…';
+  frame.src = frame.dataset.previewSrc;
+  if (host) projectPreviewObserver?.unobserve(host);
+}
 
 function status(message) {
   $('welcomeStatus').textContent = message;
@@ -60,7 +82,7 @@ function createProjectPreview(example) {
 
   const loading = document.createElement('div');
   loading.className = 'welcome-example-project-loading';
-  loading.textContent = 'Interactive preview · choose a view to load';
+  loading.textContent = 'Loading project preview…';
   stage.append(loading);
 
   const frame = document.createElement('iframe');
@@ -71,12 +93,6 @@ function createProjectPreview(example) {
   frame.setAttribute('aria-label', frame.title);
   stage.append(frame);
   projectPreviewFrames.add(frame);
-
-  const activatePreview = () => {
-    if (frame.getAttribute('src')) return;
-    loading.textContent = 'Loading project preview…';
-    frame.src = frame.dataset.previewSrc;
-  };
 
   const tabs = document.createElement('div');
   tabs.className = 'welcome-example-view-tabs';
@@ -98,7 +114,7 @@ function createProjectPreview(example) {
     button.setAttribute('aria-selected', String(view === 'main'));
     button.addEventListener('click', () => {
       host.dataset.view = view;
-      activatePreview();
+      activateProjectPreviewFrame(frame);
       for (const sibling of tabs.querySelectorAll('.welcome-example-view-tab')) {
         const active = sibling.dataset.previewView === view;
         sibling.classList.toggle('active', active);
@@ -114,10 +130,10 @@ function createProjectPreview(example) {
   }
 
   host.append(stage, tabs);
-  if (!autoProjectPreviewAssigned) {
-    autoProjectPreviewAssigned = true;
-    requestAnimationFrame(activatePreview);
-  }
+  requestAnimationFrame(() => {
+    if (projectPreviewObserver) projectPreviewObserver.observe(host);
+    else activateProjectPreviewFrame(frame);
+  });
   return host;
 }
 
