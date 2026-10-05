@@ -1,6 +1,6 @@
+#!/usr/bin/env node
 // One-off maintenance migration retained for provenance of the Sahli 2018 fixture.
 // This is intentionally not a general WaferCAD project-upgrade utility.
-#!/usr/bin/env node
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
