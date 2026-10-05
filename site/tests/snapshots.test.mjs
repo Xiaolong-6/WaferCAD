@@ -374,7 +374,7 @@ test('process History pins and restores the exact file-mask Cell and Layer combi
   const listed = manager.listHistory().find((item) => item.id === node.id);
   assert.equal(
     listed.areaLabel,
-    'Selected mask · Cell TOP · Layers 7/0, 8/2',
+    'Cell TOP · Layers 7/0, 8/2',
   );
 
   live = {
