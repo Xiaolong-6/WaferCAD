@@ -17,6 +17,7 @@ const {
   appearanceSurfaceGroups,
   electricalRegionSolids,
   extrusionGroups,
+  implantSectionBands,
   implantSolids,
   materialSolids,
   sectionSlices,
@@ -256,6 +257,38 @@ test('Black-Si FINAL preserves ALD and front roughness while removing blanket Al
 
   assert.equal(finalModel.implants.length, 2);
   assert.equal(finalModel.electricalRegions.length, 0);
+
+  const frontAlId = finalModel.layers.find((layer) => layer.name === frontAl)?.id;
+  assert.ok(frontAlId, 'front Al layer must exist');
+  for (const [label, model] of [
+    ['common', common],
+    ['FINAL', finalModel],
+  ]) {
+    for (const region of model.regions || []) {
+      const stack = region.stack || [];
+      for (let index = 0; index < stack.length; index++) {
+        const segment = stack[index];
+        if (segment.role !== 'conformal-sidewall') continue;
+        const outward = stack[index + 1];
+        assert.notEqual(
+          outward?.layerId,
+          frontAlId,
+          `${label}: directional front Al must not cap a conformal-sidewall surrogate`,
+        );
+      }
+    }
+  }
+
+  const rearImplant = finalModel.implants.find((implant) => implant.face === 'back');
+  assert.ok(rearImplant, 'FINAL rear Implant must exist');
+  const rearBands = implantSectionBands(finalModel, project.section.a, project.section.b).filter(
+    (band) => band.implantId === rearImplant.id,
+  );
+  assert.equal(
+    rearBands.length,
+    1,
+    'continuous rear Implant must not expose host-region partition seams in Section',
+  );
 });
 
 test('Ge Fig. 15 A/B preserve Electrical semantics and host-material ownership', async () => {

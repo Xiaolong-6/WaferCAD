@@ -11,7 +11,7 @@ await loadGeometryKernel();
 const { applyOperation, baseCoverageState, createModel, surfaceZ } = await import('../model.js');
 const { circleMulti, difference, pointInMulti, rectMulti, intersection, isEmpty, unionGeometries } =
   await import('../vector-geometry.js');
-const { electricalRegionSolids, extrusionGroups, sectionSlices } =
+const { electricalRegionSolids, extrusionGroups, implantSectionBands, sectionSlices } =
   await import('../model-view-geometry.js');
 const { prepareProjectForStorage } = await import('../project-io.js');
 const { migrateProjectFile } = await import('../project-schema.js');
@@ -131,6 +131,68 @@ for (const face of ['front', 'back']) {
     });
   }
 }
+
+test('Directional deposition ignores conformal-sidewall surrogate caps', async () => {
+  const benchmark = await processBenchmark('step', 'conformal', 'front'),
+    { model } = benchmark,
+    result = applyOperation(model, {
+      type: 'add',
+      name: 'Directional cap',
+      thickness: 0.5,
+      face: 'front',
+      area: model.boundary,
+      growth: 'direct',
+    });
+
+  assert.equal(result.changed, true);
+  const sidewallStack = stackAt(model, 0.5);
+  assert.ok(
+    sidewallStack.some((segment) => segment.role === 'conformal-sidewall'),
+    'benchmark must retain the conformal sidewall surrogate',
+  );
+  assert.equal(
+    sidewallStack.some((segment) => segment.layerId === result.layerId),
+    false,
+    'directional deposition must not cap a vertical sidewall surrogate',
+  );
+  assert.ok(
+    stackAt(model, -3).some((segment) => segment.layerId === result.layerId),
+    'upper horizontal surface must still receive the directional film',
+  );
+  assert.ok(
+    stackAt(model, 3).some((segment) => segment.layerId === result.layerId),
+    'lower horizontal surface must still receive the directional film',
+  );
+});
+
+test('Implant Section bands hide host-region partition seams', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
+    implanted = applyOperation(model, {
+      type: 'implant',
+      name: 'Continuous front implant',
+      thickness: 1,
+      face: 'front',
+      area: model.boundary,
+      tilt: 0,
+    });
+
+  assert.equal(implanted.changed, true);
+  applyOperation(model, {
+    type: 'add',
+    name: 'Front cap partition',
+    thickness: 0.5,
+    face: 'front',
+    area: rectMulti(10, 20, -5, 0),
+    growth: 'direct',
+  });
+
+  const bands = implantSectionBands(model, [-10, 0], [10, 0]).filter(
+    (band) => band.implantId === implanted.implantId,
+  );
+  assert.equal(bands.length, 1, 'continuous Implant must not expose a region seam in Section');
+  assert.ok(Math.abs(bands[0].t0) < 1e-9);
+  assert.ok(Math.abs(bands[0].t1 - 1) < 1e-9);
+});
 
 test('Electrical Region follows current material and is clipped by later Etch', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
@@ -442,7 +504,13 @@ test('layered circular trench keeps conformal sidewalls after a later direct bla
     z1: 9,
     role: 'conformal-sidewall',
   });
-  assert.deepEqual(at(sideX, direct.layerId), {
+  assert.equal(at(sideX, direct.layerId), undefined);
+  assert.deepEqual(at(0, direct.layerId), {
+    layerId: direct.layerId,
+    z0: 7,
+    z1: 8,
+  });
+  assert.deepEqual(at(5001, direct.layerId), {
     layerId: direct.layerId,
     z0: 9,
     z1: 10,
@@ -548,7 +616,14 @@ test('Conformal Extend reuses the Deposit coating kernel and still requires an e
   const before = structuredClone(model);
   assert.ok(extrusionGroups(model, rectMulti(2, 2)).length);
   assert.deepEqual(model, before);
-  applyOperation(model, { type: 'add', thickness: 1, area: model.boundary });
+  // Directional deposition leaves the sidewall exposed; conformal coverage
+  // is required to bury the entire target before checking Extend rejection.
+  applyOperation(model, {
+    type: 'add',
+    thickness: 1,
+    area: model.boundary,
+    growth: 'conformal',
+  });
   const buried = structuredClone(model);
   assert.equal(
     applyOperation(model, {
