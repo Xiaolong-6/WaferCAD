@@ -1028,7 +1028,7 @@ async function beginHistoricalStepInsert(node) {
       : '',
     !replayableTail
       ? 'Some existing Steps predate deterministic replay metadata, so carrying them forward is unavailable.'
-      : '',
+      : 'Recompute stops at the first failed/no-change Step. A Recovery checkpoint preserves the pre-insert workspace.',
   ]
     .filter(Boolean)
     .join(' ');
