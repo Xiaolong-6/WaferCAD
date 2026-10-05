@@ -41,6 +41,7 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 
 - Quality skips documentation-only pull requests and uses the npm cache.
 - Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes.
+- Browser regression runs `npm test` immediately after `npm ci`; Playwright/Chromium installation happens only after that fast Node gate passes.
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
 - The heavyweight browser suites remain sequential in one job; splitting them into parallel jobs would duplicate Chromium/setup cost and consume more Actions minutes.
 
