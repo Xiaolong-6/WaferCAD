@@ -193,14 +193,6 @@ function renderExampleCards() {
     const body = document.createElement('div');
     body.className = 'welcome-example-body';
 
-    const meta = document.createElement('div');
-    meta.className = 'welcome-example-meta';
-    const level = document.createElement('span');
-    level.textContent = example.level || 'Example';
-    const figure = document.createElement('span');
-    figure.textContent = example.figure;
-    meta.append(level, figure);
-
     const title = document.createElement('h3');
     title.textContent = example.title;
 
@@ -223,7 +215,7 @@ function renderExampleCards() {
     action.textContent = 'Open example →';
     action.onclick = () => openExample(example.id);
 
-    body.append(meta, title, summary);
+    body.append(title, summary);
     if (sources) body.append(sources);
     body.append(tags, action);
     card.append(visual, body);

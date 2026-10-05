@@ -225,6 +225,25 @@ const photodetectorCard = page.locator(
 );
 assert.equal((await photodetectorCard.locator('h3').textContent()).trim(), 'Photodetectors with nanopatterns');
 assert.equal(await photodetectorCard.locator('.welcome-example-sources a').count(), 2);
+assert.equal(await photodetectorCard.locator('.welcome-example-meta').count(), 0);
+assert.doesNotMatch(
+  await photodetectorCard.textContent(),
+  /Literature reconstruction|Black-Si Fig\. 1a · Ge Fig\. 15/,
+);
+const welcomeVisualBox = await photodetectorCard.locator('.welcome-example-visual').boundingBox();
+const welcomeBodyBox = await photodetectorCard.locator('.welcome-example-body').boundingBox();
+const welcomeStageBox = await photodetectorCard
+  .locator('.welcome-example-project-stage')
+  .boundingBox();
+assert.ok(welcomeVisualBox && welcomeBodyBox && welcomeStageBox);
+assert.ok(
+  welcomeVisualBox.x + welcomeVisualBox.width <= welcomeBodyBox.x + 2,
+  'desktop example card should place preview to the left of copy',
+);
+assert.ok(
+  Math.abs(welcomeStageBox.width - welcomeStageBox.height) <= 2,
+  'project preview stage should stay square',
+);
 assert.deepEqual(
   await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
   ['Main', 'Mask', '3D', 'Section'],
