@@ -11,8 +11,6 @@ import {
 import {
   captureProductReview,
   checkLayout,
-  chooseConfirmation,
-  closeFunctionPanel,
   confirmIfVisible,
   ensurePrimaryViewVisible,
   openFunctionPanel,
@@ -47,12 +45,6 @@ const browser = await chromium.launch({
 });
 const cases = [];
 const errors = [];
-const close = (actual, expected, tolerance = 1e-7) =>
-  assert.ok(
-    Math.abs(actual - expected) <= tolerance * Math.max(1, Math.abs(expected)),
-    `${actual} != ${expected}`,
-  );
-
 const open = (viewport, touch = false) =>
   openProductPage(browser, viewport, touch, errors);
 const capture = (page, name) => captureProductReview(page, name, output, cases);
