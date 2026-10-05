@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { installPinnedThreeRoute } from './ui.mjs';
+import { installPinnedThreeRoute, waitForCanvasSizeSync, waitForPaint } from './ui.mjs';
+
+export { waitForCanvasSizeSync, waitForPaint };
 
 export async function openProductPage(browser, viewport, touch, errors) {
   const context = await browser.newContext({
