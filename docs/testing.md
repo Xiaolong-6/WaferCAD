@@ -51,7 +51,9 @@ A failure here should stop the expensive browser regression steps early.
 - `interaction-regression.mjs`: Slice/ROI, Mask Draw, mask ROI/alignment, view exports, maximize/restore, and 3D inspection controls.
 - `resilience-regression.mjs`: missing Three.js and unavailable WebGL degraded-mode behavior.
 - `example-regression.mjs`: bundled literature/example structural contracts.
-- `product-regression.mjs`: responsive product review, layout geometry, renderer diagnostics, and review screenshots.
+- `product-layout-regression.mjs`: responsive product/layout review across wide, medium, phone, and breakpoint-edge viewports.
+- `renderer-product-regression.mjs`: wide-screen renderer acceptance for isotropic release, rough/LOD ownership, conformal interfaces, and implant visibility.
+- `product-regression.mjs`: thin shared orchestrator used by the two product entry points.
 
 ## Visual regression policy
 
@@ -59,15 +61,19 @@ A failure here should stop the expensive browser regression steps early.
 
 Before introducing screenshot baselines, keep deterministic rendering inputs (including the pinned Three.js source in CI), select a small set of stable views, and define explicit tolerances for raster/WebGL differences. Structural geometry invariants remain the primary gate for scientific correctness.
 
+## Product regression split
+
+The former 1600+ line product regression has now been decomposed into:
+
+- `test-helpers/product.mjs`: browser/context setup, function-panel navigation, captures, and generic layout probes.
+- `test-helpers/product-layout.mjs`: responsive shell, Slice/Section, compact-process, popover, and ROI checks.
+- `test-helpers/product-scientific.mjs`: project load/export plus Section material/seam probes.
+- `product-layout-cases.mjs`: responsive viewport, sample-layout, benchmark-view, ROI, and breakpoint orchestration.
+- `renderer-product-cases.mjs`: renderer-heavy isotropic, rough/LOD, conformal-interface, and Implant acceptance.
+- `product-regression.mjs`: ~90-line orchestrator that selects `layout`, `renderer`, or `all`.
+
+The browser workflow keeps these product scopes as separate steps while sharing one job, avoiding duplicate Chromium installation and unnecessary GitHub Actions minutes. npm and Playwright browser assets are cached to reduce setup time.
+
 ## Next optimization target
 
-`product-regression.mjs` is now the largest remaining browser test file. It should not be split by line count alone because its shared helpers feed both responsive-layout checks and wide-screen renderer acceptance cases.
-
-The next safe refactor is:
-
-1. Extract reusable product-review helpers (browser/context setup, capture, layout checks, project loading) into a dedicated helper module.
-2. Keep responsive/workstation visual contracts in a product-layout suite.
-3. Move wide-screen renderer/roughness/LOD/implant acceptance into a renderer-product suite.
-4. Keep the generated review report/index as an orchestration layer over both outputs.
-
-Do this only after the current focused-suite split is validated; avoid duplicating the expensive renderer cases across multiple entry points.
+The next useful improvement is true visual baseline gating. Current PNG captures are review artifacts, while scientific correctness is still protected primarily by structural/model assertions. Add pixel baselines only for a small deterministic set of stable views, with explicit tolerances and an intentional baseline-update workflow.
