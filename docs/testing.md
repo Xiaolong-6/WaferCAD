@@ -37,6 +37,13 @@ The Browser regression workflow installs the pinned `three@0.179.1` npm package 
 
 GitHub Actions caches both npm downloads and the Playwright Chromium browser directory. The suite remains a single job so those setup costs are paid once; focused test steps still preserve failure ownership without duplicating browser installation.
 
+### CI cost controls
+
+- Quality skips documentation-only pull requests and uses the npm cache.
+- Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes.
+- KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
+- The heavyweight browser suites remain sequential in one job; splitting them into parallel jobs would duplicate Chromium/setup cost and consume more Actions minutes.
+
 ## Fast smoke contract
 
 The fast smoke should stay deliberately small. It currently proves that:
@@ -60,6 +67,15 @@ A failure here should stop the expensive browser regression steps early.
 - Capture `pageerror` and unexpected native dialogs in every browser suite.
 - Keep screenshots used only for human product review separate from future pixel-baseline gates.
 - Example tests should assert structural invariants, not only that a canvas is non-empty.
+
+### Example structure gates
+
+Bundled examples have a fast, browser-independent structure gate in `site/tests/example-structure.test.mjs`, so ordinary `npm test` catches fixture regressions before Browser regression starts. The current contracts include:
+
+- Implant/Electrical annotation steps must not repartition material layers or material regions.
+- The fully textured tandem final model must propagate the deterministic front/back pyramid profiles through every material layer.
+
+The browser-level `example-regression.mjs` then verifies runtime loading, History restore, Section seam behavior, GLB morphology ownership/export, and renderer readiness.
 
 ## Current ownership
 
