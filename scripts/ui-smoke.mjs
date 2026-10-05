@@ -636,6 +636,11 @@ assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribu
 // Force the second trigger because the first popover may physically cover it;
 // opening it by keyboard/programmatic activation must still close the first menu.
 await historyBPopoverStep.locator('.snapshot-more-trigger').click({ force: true });
+await historyRestorePage.waitForFunction(() => {
+  const menus = [...document.querySelectorAll('.snapshot-more-menu')];
+  return menus.filter((menu) => menu.open).length === 1 &&
+    Boolean(document.querySelector('.history-step-wrap[data-step-id] .snapshot-more-menu[open]'));
+});
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), null);
 assert.equal(await historyBPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
 await historyBPopoverStep.locator('.snapshot-more-trigger').click();
