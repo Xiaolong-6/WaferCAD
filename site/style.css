@@ -1884,8 +1884,8 @@ a.welcome-action {
 .welcome-example-card {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(220px, 240px) minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: minmax(260px, 42%) minmax(0, 1fr);
+  align-items: stretch;
   overflow: hidden;
   border: 1px solid #cfd8e0;
   border-radius: 7px;
@@ -1906,29 +1906,26 @@ a.welcome-action {
 .welcome-example-visual {
   position: relative;
   min-width: 0;
+  min-height: 288px;
+  display: flex;
   overflow: hidden;
-  padding: 12px;
   border-right: 1px solid #e3e8ed;
-  background:
-    linear-gradient(rgba(82, 107, 132, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(82, 107, 132, 0.025) 1px, transparent 1px),
-    #f7f9fb;
-  background-size: 18px 18px;
+  background: #eef2f5;
 }
 
 .welcome-example-visual.has-image,
 .welcome-example-visual.has-project-preview {
   padding: 0;
-  background: #111923;
+  background: #eef2f5;
 }
 
 .welcome-example-image {
   width: 100%;
-  height: auto;
-  aspect-ratio: 1 / 1;
+  height: 100%;
+  min-height: 288px;
   display: block;
   object-fit: cover;
-  background: #111923;
+  background: #eef2f5;
 }
 
 .welcome-example-image-caption {
@@ -1949,37 +1946,24 @@ a.welcome-action {
   backdrop-filter: blur(3px);
 }
 
-.welcome-example-project-preview {
+.welcome-example-project-preview,
+.welcome-example-project-stage {
   width: 100%;
-  height: auto;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto 32px;
-  background: #f3f6f8;
+  height: 100%;
+  min-height: 288px;
+}
+
+.welcome-example-project-preview {
+  flex: 1 1 auto;
+  display: flex;
+  background: #eef2f5;
 }
 
 .welcome-example-project-stage {
   position: relative;
   min-width: 0;
-  min-height: 0;
-  aspect-ratio: 1 / 1;
+  flex: 1 1 auto;
   overflow: hidden;
-  background: #eef2f5;
-}
-
-.welcome-example-project-badge {
-  position: absolute;
-  right: 8px;
-  top: 8px;
-  z-index: 5;
-  padding: 3px 7px;
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.93);
-  color: #4f6070;
-  font-size: 11px;
-  font-weight: 750;
-  pointer-events: none;
 }
 
 .welcome-example-project-frame,
@@ -2040,101 +2024,112 @@ a.welcome-action {
 }
 
 .welcome-example-view-tabs {
+  position: absolute;
   z-index: 4;
+  top: 8px;
+  right: 8px;
+  height: 30px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid #dfe5ea;
-  background: #fff;
+  grid-template-columns: repeat(4, auto);
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(184, 196, 206, 0.88);
+  border-radius: 6px;
+  background: rgba(247, 249, 251, 0.9);
+  box-shadow: 0 2px 7px rgba(42, 54, 64, 0.08);
+  backdrop-filter: blur(5px);
 }
 
 .welcome-example-view-tab {
   min-width: 0;
+  min-height: 24px;
   border: 0;
-  border-right: 1px solid #e8edf1;
-  border-radius: 0;
-  background: #fff;
-  color: #5f6b76;
-  padding: 0 4px;
-  font-size: 11px;
-  font-weight: 520;
-}
-
-.welcome-example-view-tab:last-child {
-  border-right: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #62717e;
+  padding: 0 5px;
+  font-size: 10.5px;
+  font-weight: 620;
 }
 
 .welcome-example-view-tab:hover,
 .welcome-example-view-tab:focus-visible {
-  background: #f6f8fa;
+  background: rgba(255, 255, 255, 0.72);
   color: #40586e;
   outline: none;
 }
 
 .welcome-example-view-tab.active {
-  background: #edf3f8;
+  background: #fff;
   color: #35536e;
-  font-weight: 760;
-  box-shadow: inset 0 -2px #718da8;
-}
-
-.welcome-example-sources {
-  margin: 0 0 4px;
-  color: #74808a;
-  font-size: 10px;
-  line-height: 1.4;
-}
-
-.welcome-example-sources > strong {
-  color: #68747f;
-  font-size: 9.75px;
-  font-weight: 600;
-}
-
-.welcome-example-source-row {
-  margin-top: 3px;
-}
-
-.welcome-example-source-row span {
-  color: #74808a;
-}
-
-.welcome-example-sources a {
-  color: #607a91;
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-color: #b8c6d1;
-  text-underline-offset: 2px;
-}
-
-.welcome-example-sources a:hover,
-.welcome-example-sources a:focus-visible {
-  text-decoration-color: #365f82;
+  font-weight: 780;
+  box-shadow: 0 1px 3px rgba(46, 61, 74, 0.12);
 }
 
 .welcome-example-body {
   min-width: 0;
-  min-height: 0;
+  min-height: 288px;
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   padding: 14px 15px 15px;
 }
-
 
 .welcome-example-body h3 {
   margin: 0;
   color: #27333e;
   font-size: 16px;
-  line-height: 1.25;
+  line-height: 1.22;
   letter-spacing: -0.2px;
 }
 
 .welcome-example-body > p {
+  display: -webkit-box;
   margin: 0;
+  overflow: hidden;
   color: #5f6b76;
   font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.48;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.welcome-example-sources {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  color: #74808a;
+  font-size: 9.75px;
+  line-height: 1.35;
+}
+
+.welcome-example-source-row {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.welcome-example-source-row span,
+.welcome-example-sources a {
+  display: block;
+  overflow: hidden;
+  color: #6d7c88;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.welcome-example-sources a {
+  font-weight: 620;
+  text-decoration: none;
+}
+
+.welcome-example-sources a:hover,
+.welcome-example-sources a:focus-visible {
+  color: #365f82;
+  text-decoration: underline;
+  text-decoration-color: #9db1c1;
+  text-underline-offset: 2px;
 }
 
 .welcome-example-tags {
@@ -2151,18 +2146,23 @@ a.welcome-action {
   border-radius: 999px;
   background: #edf3f8;
   color: #465f75;
-  font-size: 11px;
+  font-size: 10.5px;
+}
+
+.welcome-example-tags .welcome-example-tag-more {
+  background: #f2f4f6;
+  color: #6e7882;
 }
 
 .welcome-example-open {
   align-self: flex-start;
-  min-height: 34px;
-  margin-top: 2px;
-  padding: 7px 10px;
+  min-height: 32px;
+  margin-top: 1px;
+  padding: 6px 10px;
   border-color: #b8c5d0;
   background: #fff;
   color: #385873;
-  font-size: 11.5px;
+  font-size: 11.25px;
   font-weight: 800;
 }
 
