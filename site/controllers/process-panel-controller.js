@@ -40,6 +40,7 @@ export function createProcessPanelController({
     layout,
     activeCell,
     selectedLayerKeys,
+    areaMode,
   }) {
     if (maskSourceMode === 'draw') {
       return {
@@ -49,10 +50,25 @@ export function createProcessPanelController({
       };
     }
 
+    const requestedLayerKeys = Array.from(
+        selectedLayerKeys || [],
+        (value) => String(value),
+      ),
+      effectiveLayerKeys =
+        areaMode === 'full'
+          ? requestedLayerKeys
+          : [
+              ...new Set(
+                (layout?.elements || [])
+                  .filter(selectedElement)
+                  .map((element) => `${element.layer}|${element.datatype}`),
+              ),
+            ];
+
     return {
       sourceMode: 'file',
       cell: activeCell || layout?.root || null,
-      layerKeys: Array.from(selectedLayerKeys || [], (value) => String(value)),
+      layerKeys: effectiveLayerKeys.length ? effectiveLayerKeys : requestedLayerKeys,
       transform: { ...(maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }) },
       roi: maskRoi ? structuredClone(maskRoi) : null,
     };
@@ -608,6 +624,7 @@ export function createProcessPanelController({
         layout,
         activeCell,
         selectedLayerKeys,
+        areaMode,
       });
   
     const name =
