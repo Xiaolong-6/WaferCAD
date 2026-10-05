@@ -3,6 +3,7 @@ import {
   lineIntervalKey,
 } from './line-intervals.js';
 import { ownedMaterialSurfacesFromTopology } from './process-topology.js';
+import { visibleMaterialModel } from './model.js';
 
 const SIDEWALL_APPEARANCE_EPSILON = 1e-10;
 
@@ -128,7 +129,7 @@ function decorateSurfacePlan(caps, sidewalls) {
 // metadata needed to make exposed/cut sidewalls follow the same deterministic
 // profile as their horizontal caps.
 export function buildRenderSurfacePlan(model, clip = null) {
-  const plan = ownedMaterialSurfacesFromTopology(model, clip),
+  const plan = ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip),
     decorated = decorateSurfacePlan(plan.caps, plan.sidewalls);
   return {
     ...plan,
