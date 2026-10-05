@@ -66,11 +66,13 @@ test('Sahli Pyramid reconstruction is deterministic and explicitly non-periodic'
 test('Sahli 3D ROI sidewalls inherit the front and back Pyramid interfaces', () => {
   const clip = [
       [
-        [-20, -20],
-        [20, -20],
-        [20, 20],
-        [-20, 20],
-        [-20, -20],
+        [
+          [-20, -20],
+          [20, -20],
+          [20, 20],
+          [-20, 20],
+          [-20, -20],
+        ],
       ],
     ],
     plan = buildRenderSurfacePlan(project.model, clip),
