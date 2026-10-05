@@ -241,12 +241,25 @@ assert.ok(
   'desktop example card should place preview to the left of copy',
 );
 assert.ok(
-  Math.abs(welcomeStageBox.width - welcomeStageBox.height) <= 2,
-  'project preview stage should stay square',
+  Math.abs(welcomeStageBox.height - welcomeVisualBox.height) <= 2,
+  'project preview stage should fill the visual column',
+);
+assert.ok(welcomeStageBox.height >= 280, 'project preview should keep a useful inspection height');
+assert.equal(await photodetectorCard.locator('.welcome-example-project-badge').count(), 0);
+assert.ok(
+  (await photodetectorCard.locator('.welcome-example-tags span').count()) <= 4,
+  'example cards should show at most three tags plus one overflow count',
 );
 assert.deepEqual(
   await photodetectorCard.locator('.welcome-example-view-tab').allTextContents(),
   ['Main', 'Mask', '3D', 'Section'],
+);
+const welcomeTabsBox = await photodetectorCard.locator('.welcome-example-view-tabs').boundingBox();
+assert.ok(welcomeTabsBox);
+assert.ok(
+  welcomeTabsBox.y >= welcomeStageBox.y &&
+    welcomeTabsBox.y + welcomeTabsBox.height <= welcomeStageBox.y + welcomeStageBox.height + 1,
+  'preview view switcher should stay inside the project preview',
 );
 const previewFrames = page.locator('.welcome-example-project-frame');
 assert.equal(await previewFrames.count(), 4);
