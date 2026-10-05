@@ -282,6 +282,49 @@ export function createSnapshotManager({
     return null;
   }
 
+  function operationEntityRefs(node) {
+    const operation = node?.operation || {},
+      replay = operation?.replay?.version === 1 ? operation.replay : null,
+      nodeState = stateForProcessNode(node),
+      parentState = node?.parentId ? stateForProcessNode(nodeById(node.parentId)) : null,
+      refs = {
+        targetLayerId: operation.targetLayerId || replay?.params?.targetLayerId || null,
+        etchTargetLayerIds: Array.isArray(operation.etchTargetLayerIds)
+          ? [...operation.etchTargetLayerIds]
+          : Array.isArray(replay?.params?.etchTargetLayerIds)
+            ? [...replay.params.etchTargetLayerIds]
+            : [],
+        resultLayerId: operation.resultLayerId || null,
+        resultImplantId: operation.resultImplantId || null,
+        resultElectricalRegionId: operation.resultElectricalRegionId || null,
+      };
+
+    const addedId = (after = [], before = [], { exclude = () => false } = {}) => {
+      const beforeIds = new Set((before || []).map((item) => item?.id).filter(Boolean)),
+        added = (after || []).filter(
+          (item) => item?.id && !beforeIds.has(item.id) && !exclude(item),
+        );
+      return added.length === 1 ? added[0].id : null;
+    };
+
+    if (!refs.resultLayerId && operation.kind === 'add') {
+      refs.resultLayerId = addedId(nodeState?.model?.layers, parentState?.model?.layers, {
+        exclude: (item) => item.id === 'base',
+      });
+    }
+    if (!refs.resultImplantId && operation.kind === 'implant') {
+      refs.resultImplantId = addedId(nodeState?.model?.implants, parentState?.model?.implants);
+    }
+    if (!refs.resultElectricalRegionId && operation.kind === 'electrical') {
+      refs.resultElectricalRegionId = addedId(
+        nodeState?.model?.electricalRegions,
+        parentState?.model?.electricalRegions,
+      );
+    }
+
+    return refs;
+  }
+
   function listHistory() {
     return historyNodes.map(({ id, branchId, parentId, createdAt, processRevision, operation }) => {
       const node = nodeById(id);
@@ -292,6 +335,7 @@ export function createSnapshotManager({
         createdAt,
         processRevision,
         operation: clone(operation),
+        entityRefs: operationEntityRefs(node),
         restorable: Boolean(stateForProcessNode(node)),
         replayable: operation?.replay?.version === 1,
       };
@@ -757,6 +801,7 @@ export function createSnapshotManager({
       downstream: tail.slice(1).map((item) => ({
         id: item.id,
         operation: clone(item.operation),
+        entityRefs: operationEntityRefs(item),
         processRevision: item.processRevision,
         ...(includeReplayStates ? { state: cloneState(stateForProcessNode(item)) } : {}),
       })),
@@ -766,6 +811,31 @@ export function createSnapshotManager({
       downstreamReplayable: tail
         .slice(1)
         .every((item) => item.operation?.replay?.version === 1),
+    };
+  }
+
+  function insertBeforeContext(nodeId, { includeReplayStates = false } = {}) {
+    const context = stepEditContext(nodeId, { includeReplayStates });
+    if (!context?.editable) return context;
+
+    const node = nodeById(nodeId),
+      state = stateForProcessNode(node),
+      replaySteps = [
+        {
+          id: node.id,
+          operation: clone(node.operation),
+          entityRefs: operationEntityRefs(node),
+          processRevision: node.processRevision,
+          ...(includeReplayStates ? { state: cloneState(state) } : {}),
+        },
+        ...context.downstream.map((item) => clone(item)),
+      ];
+
+    return {
+      ...context,
+      replaySteps,
+      laterStepCount: replaySteps.length,
+      replayableTail: replaySteps.every((item) => item.operation?.replay?.version === 1),
     };
   }
 
@@ -1445,6 +1515,7 @@ export function createSnapshotManager({
     restoreActiveBranchHead,
     canCreateVariant,
     stepEditContext,
+    insertBeforeContext,
     restoreStepInput,
     replaceBranchTailFrom,
     truncateBranchAfter,
