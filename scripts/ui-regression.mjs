@@ -1,3 +1,4 @@
+// Full browser regression suite. Keep the fast product gate in ui-smoke.mjs.
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
@@ -2989,4 +2990,4 @@ assert.deepEqual(noWebGlErrors, []);
 await noWebGlContext.close();
 await degradedBrowser.close();
 
-console.log('WaferCAD UI smoke: OK');
+console.log('WaferCAD UI regression: OK');
