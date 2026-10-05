@@ -269,8 +269,12 @@ export function createProcessPanelController({
   }
 
   function replayScopeCells(state) {
-    const activeCell = state?.activeCell;
-    const hierarchy = state?.layout?.hierarchy || {};
+    const hierarchy = state?.layout?.hierarchy || {},
+      activeCell =
+        state?.activeCell ||
+        state?.layout?.root ||
+        Object.keys(hierarchy)[0] ||
+        null;
     if (!activeCell) return new Set();
     const out = new Set();
     const walk = (name) => {
@@ -351,97 +355,144 @@ export function createProcessPanelController({
     }
   }
 
-  async function replayOperations(steps = []) {
-    let completed = 0;
-    const layerIdMap = new Map();
+  async function replayOperations(steps = [], { taskLabel = '' } = {}) {
+    const executeReplay = async (taskContext = null) => {
+      let completed = 0;
+      const layerIdMap = new Map(),
+        total = steps.length;
 
-    for (const sourceStep of steps) {
-      const operation = structuredClone(sourceStep?.operation || sourceStep || {}),
-        sourceState = sourceStep?.operation ? sourceStep.state : null,
-        replay = replayDescriptor(operation);
-      if (!replay) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: 'This downstream Step predates replay metadata.',
-        };
-      }
+      for (let index = 0; index < steps.length; index += 1) {
+        if (taskContext?.signal?.aborted) {
+          return {
+            ok: false,
+            aborted: true,
+            completed,
+            failedOperation: null,
+            error: 'Replay aborted.',
+          };
+        }
 
-      if (operation.kind === 'record') {
+        const sourceStep = steps[index],
+          operation = structuredClone(sourceStep?.operation || sourceStep || {}),
+          sourceState = sourceStep?.operation ? sourceStep.state : null,
+          replay = replayDescriptor(operation),
+          stepLabel = operation.label || operation.kind || 'process Step',
+          stagePrefix = `Step ${index + 1}/${total} · ${stepLabel}`;
+
+        taskContext?.updateStage?.(stagePrefix);
+
+        if (!replay) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: 'This downstream Step predates replay metadata.',
+          };
+        }
+
+        if (operation.kind === 'record') {
+          saveHistory();
+          clearBaseRevertSnapshot();
+          const nextModel = structuredClone(getModel());
+          nextModel.revision = (Number(nextModel.revision) || 0) + 1;
+          nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+          setModel(nextModel);
+          recordProcessOperation(operation);
+          completed += 1;
+          continue;
+        }
+
+        if (!taskContext && processTaskController?.isBusy()) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: 'Another process task is already running.',
+          };
+        }
+
+        const params = structuredClone(replay.params || {});
+        remapReplayOperation(operation, params, layerIdMap);
+
+        let areaRequest;
+        try {
+          areaRequest = replayAreaRequest(operation, sourceState);
+        } catch (error) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: error?.message || 'Replay area could not be reconstructed.',
+          };
+        }
+
+        const task = taskContext
+          ? await taskContext.runWorker(
+              '../process-worker.js',
+              { model: getModel(), params, areaRequest },
+              { stagePrefix },
+            )
+          : await processTaskController.run(
+              getModel(),
+              params,
+              `Replaying ${stepLabel}…`,
+              areaRequest,
+            );
+
+        if (task?.aborted || task?.error || task?.busy) {
+          return {
+            ok: false,
+            aborted: Boolean(task?.aborted),
+            completed,
+            failedOperation: operation,
+            error: task?.error || (task?.aborted ? 'Replay aborted.' : 'Replay worker is busy.'),
+          };
+        }
+        if (!task.result?.changed) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: task.result?.error || 'The replayed operation did not change the model.',
+          };
+        }
+
         saveHistory();
         clearBaseRevertSnapshot();
-        const nextModel = structuredClone(getModel());
-        nextModel.revision = (Number(nextModel.revision) || 0) + 1;
-        nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
-        setModel(nextModel);
+        setModel(task.model);
+        applyReplayResultRefs(operation, sourceStep, task.result, layerIdMap);
+        if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
+        else if (operation.kind === 'implant' && task.result.implantId) {
+          colorNewImplant(task.result.implantId);
+        } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
+          colorNewElectricalRegion(task.result.electricalRegionId);
+        }
         recordProcessOperation(operation);
         completed += 1;
-        continue;
       }
 
-      if (processTaskController?.isBusy()) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: 'Another process task is already running.',
-        };
-      }
+      renderAll();
+      return { ok: true, completed };
+    };
 
-      const params = structuredClone(replay.params || {});
-      remapReplayOperation(operation, params, layerIdMap);
+    if (!processTaskController?.runTask) return executeReplay();
 
-      let areaRequest;
-      try {
-        areaRequest = replayAreaRequest(operation, sourceState);
-      } catch (error) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: error?.message || 'Replay area could not be reconstructed.',
-        };
-      }
-      const task = await processTaskController.run(
-        getModel(),
-        params,
-        `Replaying ${operation.label || operation.kind || 'process Step'}…`,
-        areaRequest,
-      );
-      if (task?.aborted || task?.error || task?.busy) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: task?.error || (task?.aborted ? 'Replay aborted.' : 'Replay worker is busy.'),
-        };
-      }
-      if (!task.result?.changed) {
-        return {
-          ok: false,
-          completed,
-          failedOperation: operation,
-          error: task.result?.error || 'The replayed operation did not change the model.',
-        };
-      }
-
-      saveHistory();
-      clearBaseRevertSnapshot();
-      setModel(task.model);
-      applyReplayResultRefs(operation, sourceStep, task.result, layerIdMap);
-      if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
-      else if (operation.kind === 'implant' && task.result.implantId) {
-        colorNewImplant(task.result.implantId);
-      } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
-        colorNewElectricalRegion(task.result.electricalRegionId);
-      }
-      recordProcessOperation(operation);
-      completed += 1;
+    const result = await processTaskController.runTask(executeReplay, {
+      label:
+        taskLabel ||
+        `Recalculating ${steps.length} later Step${steps.length === 1 ? '' : 's'}…`,
+      abortMessage: 'History recalculation aborted. The previous Variant will be restored.',
+      failurePrefix: 'History recalculation failed',
+    });
+    if (result?.busy) {
+      return {
+        ok: false,
+        completed: 0,
+        failedOperation: null,
+        error: 'Another background task is already running.',
+      };
     }
-
-    renderAll();
-    return { ok: true, completed };
+    return result;
   }
 
   async function recordProcessStep() {
