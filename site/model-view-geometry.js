@@ -97,8 +97,8 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
       for (const region of model.regions || []) {
         if (!region.stack?.length) continue;
         let geom = intersection(patch.geom, region.geom);
-        const unclippedGeom = geom,
-          viewClipped = Boolean(clip) && !isEmpty(geom) && !isEmpty(difference(geom, clip));
+        const viewClipped =
+          Boolean(clip) && !isEmpty(geom) && !isEmpty(difference(geom, clip));
         if (clip && !isEmpty(geom)) geom = intersection(geom, clip);
         if (isEmpty(geom)) continue;
 
