@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import {
+  readFile } from 'node:fs/promises';
 import {
   assertNoPageErrors,
   gotoWelcome,
@@ -9,12 +10,13 @@ import {
   waitForAppReady,
   waitForStatus,
   waitForThreeReady,
+  newUiContext,
 } from './test-helpers/ui.mjs';
 
 const browser = await launchBrowser();
 
 try {
-  const context = await browser.newContext({
+  const context = await newUiContext(browser, {
     viewport: { width: 1365, height: 900 },
     acceptDownloads: true,
   });
