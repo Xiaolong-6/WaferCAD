@@ -75,7 +75,9 @@ After creation, drag inside the ROI to reposition it or use the four corner hand
 
 Changing Reference changes the coordinate readout without moving or resizing the ROI. Circle and Sector corner resize keep a circular radius and follow the pointer across the fixed corner.
 
-The ROI affects 3D rendering only. The full model is preserved. If a ROI is active, **GLB** exports the currently clipped 3D content; clearing ROI exports the full model.
+The ROI affects 3D rendering only. The full model is preserved. If a ROI is active, **GLB** exports the currently clipped 3D content; clearing ROI exports the full model. ROI clipping also creates inspection sidewalls: buried Implant regions crossed by that cut remain hidden as volumes at 100% material opacity, but their cut faces are visible with the same surface-to-depth gradient convention used by Section A–B. Lowering 3D opacity additionally reveals the internal Implant volume.
+
+The 3D ROI boundary is not automatically the Section A–B line. Section samples A–B, while 3D exposes the ROI perimeter. For annular/radial structures these paths can cross contacts at different positions; align A–B with the ROI edge you want to compare when a one-to-one cross-section is required.
 
 ## 6. Apply an operation
 
