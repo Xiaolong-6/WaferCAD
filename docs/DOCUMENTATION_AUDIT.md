@@ -59,3 +59,16 @@ Static consistency checks confirm that the current branch has:
 JavaScript syntax checks passed for the touched 3D renderer, view-geometry helper, surface-rendering helper, self-test, and focused 3D-control regression after the final fixes.
 
 A full browser/WebGL visual pass is still the required final check for relief quality and transparency ordering. The pull-request product regression now includes explicit opaque/transparent captures of a buried Implant, alongside the rough-surface captures; this audit does not treat static assertions alone as visual proof.
+
+
+## Follow-up audit — 2026-10-05: 3D Implant cut faces and gradient
+
+The 3D Implant inspection contract was tightened without changing canonical process geometry or the project format:
+
+- **Opaque ROI cut:** a buried Implant remains absent as an internal volume at 100% material opacity. When the active Main ROI removes part of that Implant footprint, only the resulting ROI inspection sidewall is overlaid on the material cut.
+- **Shared gradient:** Section A–B and 3D consume the same constants from `site/annotation-rendering.js`: depth 0 / alpha 0.72, depth 0.48 / alpha 0.40, and depth 1 / alpha 0.04. Transparent 3D uses the same normalized falloff at a lower overall opacity.
+- **Morphology:** Rough/Pyramid-related Implant cut edges continue to sample the shared deterministic surface profile. View-only Z collapse interpolates the depth coordinate on any truncated annotation sidewall instead of restarting the gradient.
+- **Inspection-path distinction:** Section A–B samples the A–B line; 3D ROI sidewalls lie on the ROI perimeter. They share the same model and rendering semantics, but they are not automatically the same physical cut. Annular/radial structures can therefore intersect metal or Implant regions at different lateral coordinates. One-to-one comparison requires aligning A–B with the ROI edge being inspected.
+- **Regression coverage:** self-test checks ROI cut ownership and shared gradient constants; the focused 3D source regression locks the shader/cut-face contract; the real-WebGL product regression now checks that opaque ROI inspection creates a cut-face mesh without restoring the buried internal volume and that transparent inspection adds the gradient volume.
+
+This follow-up was documented in `README.md`, `docs/IMPLANT.md`, `docs/USAGE.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/PRODUCT_REVIEW.md`. Runtime browser/WebGL review remains the final visual acceptance step; this audit does not claim that a visual pass has run merely because static regression coverage exists.
