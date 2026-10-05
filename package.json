@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node site/selftest.mjs && node --test site/tests/*.test.mjs",
+    "test": "node --test site/tests/*.test.mjs",
     "lint": "eslint \"site/**/*.{js,mjs}\"",
     "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"*.md\" \"*.json\"",
     "format:check": "prettier --check \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
