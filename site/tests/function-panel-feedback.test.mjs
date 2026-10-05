@@ -270,7 +270,7 @@ test('Apply runs as a single cancelable task with elapsed time and Abort', () =>
   assert.match(processPanelController, /processTaskController\?\.isBusy\(\)/);
   assert.match(processTaskController, /new Worker\(/);
   assert.match(processTaskController, /setInterval\(syncDialog, 100\)/);
-  assert.match(processTaskController, /worker\.terminate\(\)/);
+  assert.match(processTaskController, /worker\?\.terminate\(\)/);
   assert.match(processTaskController, /Operation aborted/);
 });
 
