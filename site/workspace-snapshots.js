@@ -312,136 +312,11 @@ export function createSnapshotManager({
     return null;
   }
 
-  function legacyFirstAddInputState(node) {
-    if (
-      node?.parentId ||
-      node?.operation?.kind !== 'add' ||
-      Number(node?.processRevision) !== 1
-    ) {
-      return null;
-    }
-
-    const outputState = stateForProcessNode(node),
-      outputModel = outputState?.model;
-    if (
-      !outputState ||
-      !outputModel ||
-      Number(outputModel.processRevision) !== 1 ||
-      !Array.isArray(outputModel.layers) ||
-      !Array.isArray(outputModel.regions)
-    ) {
-      return null;
-    }
-
-    const explicitLayerId =
-        node.operation?.resultLayerId ||
-        node.operation?.replay?.resultLayerId ||
-        null,
-      operationName = cleanName(
-        node.operation?.name || node.operation?.replay?.params?.name || '',
-      ),
-      nonBaseLayers = outputModel.layers.filter((layer) => layer?.id && layer.id !== 'base'),
-      inferredLayer =
-        explicitLayerId
-          ? nonBaseLayers.find((layer) => layer.id === explicitLayerId) || null
-          : nonBaseLayers.length === 1
-            ? nonBaseLayers[0]
-            : null;
-
-    if (
-      !inferredLayer ||
-      (operationName && cleanName(inferredLayer.name) !== operationName)
-    ) {
-      return null;
-    }
-
-    let found = false;
-    for (const region of outputModel.regions) {
-      const stack = Array.isArray(region?.stack) ? region.stack : [];
-      for (let index = 0; index < stack.length; index += 1) {
-        if (stack[index]?.layerId !== inferredLayer.id) continue;
-        found = true;
-        if (index !== 0 && index !== stack.length - 1) return null;
-      }
-    }
-    if (!found) return null;
-
-    const inputState = cloneState(outputState),
-      inputModel = inputState.model,
-      remainingLayers = inputModel.layers.filter((layer) => layer?.id !== inferredLayer.id);
-
-    inputModel.layers = remainingLayers;
-    inputModel.regions = inputModel.regions
-      .map((region) => ({
-        ...region,
-        stack: (region.stack || []).filter((segment) => segment?.layerId !== inferredLayer.id),
-      }))
-      .filter((region) => region.stack.length);
-
-    if (
-      inputModel.layers.some((layer) => layer?.id === inferredLayer.id) ||
-      inputModel.regions.some((region) =>
-        (region.stack || []).some((segment) => segment?.layerId === inferredLayer.id),
-      )
-    ) {
-      return null;
-    }
-
-    const remainingLayerOrdinals = inputModel.layers
-        .map((layer) => /^layer-(\d+)$/.exec(String(layer?.id || ''))?.[1])
-        .filter(Boolean)
-        .map(Number),
-      remainingRegionOrdinals = inputModel.regions
-        .map((region) => /^region-(\d+)$/.exec(String(region?.id || ''))?.[1])
-        .filter(Boolean)
-        .map(Number),
-      revision = Number(inputModel.revision),
-      processRevision = Number(inputModel.processRevision);
-
-    inputModel.nextLayerId = Math.max(1, ...remainingLayerOrdinals.map((value) => value + 1));
-    inputModel.nextRegionId = Math.max(2, ...remainingRegionOrdinals.map((value) => value + 1));
-    if (Number.isFinite(revision)) inputModel.revision = Math.max(1, revision - 2);
-    if (Number.isFinite(processRevision)) {
-      inputModel.processRevision = Math.max(0, processRevision - 1);
-    }
-
-    return validateState(inputState) ? inputState : null;
-  }
-
-  function inputStateForProcessNode(node) {
-    if (!node) return null;
-    const parentNode = node.parentId ? nodeById(node.parentId) : null,
-      parentState = stateForProcessNode(parentNode);
-    if (parentState) return parentState;
-    if (node.inputState && validateState(node.inputState)) return node.inputState;
-
-    // Legacy first Record Steps are exactly reversible because recording a
-    // process note changes no geometry; it only advances revision counters.
-    if (!node.parentId && node.operation?.kind === 'record') {
-      const outputState = stateForProcessNode(node);
-      if (!outputState) return null;
-      const inputState = cloneState(outputState),
-        revision = Number(inputState.model?.revision),
-        processRevision = Number(inputState.model?.processRevision);
-      if (Number.isFinite(revision)) inputState.model.revision = Math.max(0, revision - 1);
-      if (Number.isFinite(processRevision)) {
-        inputState.model.processRevision = Math.max(0, processRevision - 1);
-      }
-      return validateState(inputState) ? inputState : null;
-    }
-
-    // Older projects did not persist a predecessor for their first process
-    // Step. A first Deposit/add can still be reconstructed safely when its
-    // output contains one uniquely identifiable newly-created surface layer.
-    // Etch/Grow/Implant/Electrical Steps remain non-editable without inputState.
-    return legacyFirstAddInputState(node);
-  }
-
   function operationEntityRefs(node) {
     const operation = node?.operation || {},
       replay = operation?.replay?.version === 1 ? operation.replay : null,
       nodeState = stateForProcessNode(node),
-      parentState = inputStateForProcessNode(node),
+      parentState = node?.parentId ? stateForProcessNode(nodeById(node.parentId)) : null,
       refs = {
         targetLayerId: operation.targetLayerId || replay?.params?.targetLayerId || null,
         etchTargetLayerIds: Array.isArray(operation.etchTargetLayerIds)
@@ -920,9 +795,7 @@ export function createSnapshotManager({
     };
 
     for (const node of historyNodes) {
-      if (!inScopeNode(node.id)) continue;
-      renameInState(node.inputState);
-      renameInState(node.state);
+      if (inScopeNode(node.id)) renameInState(node.state);
     }
     for (const record of records) {
       if (record.historyNodeId && inScopeNode(record.historyNodeId)) renameInState(record.state);
@@ -1026,7 +899,7 @@ export function createSnapshotManager({
     const branch = node ? branchById(node.branchId) : null;
     const tail = node ? branchTailFromNode(node.id) : null;
     const parentNode = node?.parentId ? nodeById(node.parentId) : null;
-    const parentState = inputStateForProcessNode(node);
+    const parentState = stateForProcessNode(parentNode);
     const nodeState = stateForProcessNode(node);
 
     if (!node || !branch || !tail) {
@@ -1035,7 +908,7 @@ export function createSnapshotManager({
         reason: 'This Step is not on a current Variant history path.',
       };
     }
-    if (!nodeState || !parentState) {
+    if (!nodeState || !parentNode || !parentState) {
       return {
         editable: false,
         reason: 'This Step does not have a restorable predecessor state.',
@@ -1063,7 +936,7 @@ export function createSnapshotManager({
       nodeId: node.id,
       branchId: branch.id,
       branchName: branch.name,
-      parentNodeId: parentNode?.id || null,
+      parentNodeId: parentNode.id,
       downstreamCount: Math.max(0, tail.length - 1),
       downstream: tail.slice(1).map((item) => ({
         id: item.id,
@@ -1111,22 +984,22 @@ export function createSnapshotManager({
     if (!context.editable) return false;
 
     const node = nodeById(nodeId);
-    const parentNode = context.parentNodeId ? nodeById(context.parentNodeId) : null;
-    const parentState = inputStateForProcessNode(node);
+    const parentNode = nodeById(context.parentNodeId);
+    const parentState = stateForProcessNode(parentNode);
     const nodeState = stateForProcessNode(node);
     const branch = branchById(context.branchId);
     if (!nodeState || !parentState || !branch) return false;
 
     // Use the selected Step's workspace/mask/display context, but roll the
-    // physical model back to its predecessor. The first process Step uses its
-    // explicitly captured inputState because there is no parent History node.
+    // physical model back to its predecessor. This makes editing deterministic
+    // even when mask selection or ROI changed between adjacent process Steps.
     const editState = stateWithOperationMaskContext(nodeState, node.operation);
     editState.model = clone(parentState.model);
     if (!validateState(editState)) return false;
 
     activeBranchId = branch.id;
     restore(cloneState(editState));
-    cursorNodeId = parentNode?.id || null;
+    cursorNodeId = parentNode.id;
     cursorSnapshotId = null;
     cursorBaselineState = cloneState(editState);
     cursorDetachedFromHead = true;
@@ -1145,12 +1018,10 @@ export function createSnapshotManager({
       );
     }
 
-    const target = nodeById(nodeId),
-      tail = branchTailFromNode(nodeId),
-      branch = branchById(context.branchId),
-      parentNode = context.parentNodeId ? nodeById(context.parentNodeId) : null,
-      parentState = inputStateForProcessNode(target);
-    if (!target || !tail || !branch || !parentState) {
+    const tail = branchTailFromNode(nodeId);
+    const branch = branchById(context.branchId);
+    const parentNode = nodeById(context.parentNodeId);
+    if (!tail || !branch || !parentNode) {
       throw new Error('The Step history changed before replacement could start.');
     }
 
@@ -1178,15 +1049,12 @@ export function createSnapshotManager({
       if (record.parentId && removedRecordIds.has(record.parentId)) record.parentId = null;
     }
 
-    if (branch.rootNodeId && removedNodeIds.has(branch.rootNodeId)) {
-      branch.rootNodeId = parentNode?.id || null;
-    }
-    if (branch.rootSnapshotId && removedRecordIds.has(branch.rootSnapshotId)) {
-      branch.rootSnapshotId = null;
-    }
-    branch.headNodeId = parentNode?.id || null;
+    branch.headNodeId = parentNode.id;
     if (branch.headSnapshotId && removedRecordIds.has(branch.headSnapshotId)) {
-      branch.headSnapshotId = branch.rootSnapshotId || null;
+      branch.headSnapshotId =
+        branch.rootSnapshotId && !removedRecordIds.has(branch.rootSnapshotId)
+          ? branch.rootSnapshotId
+          : null;
     }
 
     const workingState = cloneState(capture());
@@ -1195,7 +1063,7 @@ export function createSnapshotManager({
     }
     branch.headState = workingState;
     activeBranchId = branch.id;
-    cursorNodeId = parentNode?.id || null;
+    cursorNodeId = parentNode.id;
     cursorSnapshotId = null;
     cursorBaselineState = cloneState(workingState);
     cursorDetachedFromHead = false;
@@ -1203,7 +1071,7 @@ export function createSnapshotManager({
     return {
       branchId: branch.id,
       branchName: branch.name,
-      parentNodeId: parentNode?.id || null,
+      parentNodeId: parentNode.id,
       removedNodeCount: removedNodeIds.size,
       removedBookmarkCount: removedRecordIds.size,
     };
@@ -1416,7 +1284,7 @@ export function createSnapshotManager({
     return historyNodes.length + required <= maxHistoryNodes;
   }
 
-  function recordOperation(operation = {}, { inputState = null } = {}) {
+  function recordOperation(operation = {}) {
     if (!canRecordOperation()) {
       throw new Error(`Process history limit of ${maxHistoryNodes} reached.`);
     }
@@ -1425,9 +1293,6 @@ export function createSnapshotManager({
     }
 
     const branch = branchById(activeBranchId) || branches[0];
-    const parentId = branch.headNodeId || null;
-    const capturedInput =
-      !parentId && inputState && validateState(inputState) ? cloneState(inputState) : null;
     const stamp = now();
     const date = stamp instanceof Date ? stamp : new Date(stamp);
     let id = nodeIdFactory();
@@ -1440,11 +1305,10 @@ export function createSnapshotManager({
     const node = {
       id,
       branchId: branch.id,
-      parentId,
+      parentId: branch.headNodeId || null,
       createdAt: date.toISOString(),
       processRevision: Number.isInteger(processRevision) ? processRevision : 0,
       operation: clone(operation),
-      inputState: capturedInput,
       state,
     };
     historyNodes.push(node);
@@ -1589,8 +1453,6 @@ export function createSnapshotManager({
           createdAt,
           processRevision: Number.isInteger(raw.processRevision) ? raw.processRevision : 0,
           operation: raw.operation && typeof raw.operation === 'object' ? clone(raw.operation) : {},
-          inputState:
-            raw.inputState && validateState(raw.inputState) ? cloneState(raw.inputState) : null,
           state: raw.state && validateState(raw.state) ? cloneState(raw.state) : null,
         });
         nodeIds.add(raw.id);

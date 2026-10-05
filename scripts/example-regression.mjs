@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
+import { checkSectionSeams } from './test-helpers/product-scientific.mjs';
+import {
+  assertAnnotationKeepsMaterialTopology,
+  assertTandemTextureContract,
+} from './test-helpers/example-contracts.mjs';
 
 const vendorSource = await readFile(
   new URL('../site/vendor/polygon-clipping.umd.js', import.meta.url),
@@ -16,6 +21,14 @@ const sahliProjectBuffer = await readFile(
   new URL('../examples/projects/sahli-2018-fully-textured-tandem.wafercad', import.meta.url),
 );
 
+const tandemProject = JSON.parse(
+  await readFile(
+    new URL('../site/examples/fully-textured-perovskite-silicon-tandem.wafercad', import.meta.url),
+    'utf8',
+  ),
+);
+expandProjectStorage(tandemProject);
+
 const packedLiterature = JSON.parse(
   await readFile(
     new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
@@ -23,6 +36,9 @@ const packedLiterature = JSON.parse(
   ),
 );
 expandProjectStorage(packedLiterature);
+
+assertAnnotationKeepsMaterialTopology(packedLiterature);
+assertTandemTextureContract(tandemProject);
 
 const branches = new Map(
     packedLiterature.snapshotBranches.branches.map((branch) => [branch.id, branch]),
@@ -77,10 +93,9 @@ function glbPositionBounds(json) {
   return bounds;
 }
 
-const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
-const pageErrors = [];
-page.on('pageerror', (error) => pageErrors.push(error.message));
+const browser = await launchBrowser();
+const { page, context } = await newUiPage(browser, { viewport: { width: 1280, height: 860 } });
+const pageErrors = observePageErrors(page);
 
 const FUNCTION_SECTION_IDS = {
   snapshots: 'snapshotsTools',
@@ -189,6 +204,7 @@ await waitRendererForState(
   branches.get('black-si-fig1a-final').headState,
   'initial Black-Si FINAL',
 );
+await checkSectionSeams(page, packedLiterature);
 await page.screenshot({
   path: new URL('../test-results/product-review/example-photodetector-literature.png', import.meta.url)
     .pathname,
@@ -258,6 +274,43 @@ for (const example of [
     ).pathname,
     fullPage: true,
   });
+  if (example.id === 'fully-textured-perovskite-silicon-tandem') {
+    await page.locator('#threePanel .export-control > summary').click();
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    await page.locator('#threeExportModelBtn').click();
+    const download = await downloadPromise;
+    const path = await download.path();
+    assert.ok(path);
+    const glb = parseGlbJson(await readFile(path));
+    const morphologyNodes = (glb.nodes || []).filter(
+      (node) => node.extras?.wafercadMorphology,
+    );
+    const morphologyLayerIds = new Set(
+      morphologyNodes.flatMap((node) =>
+        [
+          node.extras?.wafercadLayerId,
+          node.extras?.wafercadInterfaceLayerId,
+        ].filter(Boolean),
+      ),
+    );
+    const expectedTexturedLayerIds = new Set(
+      tandemProject.model.regions.flatMap((region) =>
+        (region.stack || [])
+          .filter(
+            (segment) =>
+              segment.layerId !== 'base' &&
+              (segment.frontSurface?.profileId || segment.backSurface?.profileId),
+          )
+          .map((segment) => segment.layerId),
+      ),
+    );
+    for (const layerId of expectedTexturedLayerIds) {
+      assert.ok(
+        morphologyLayerIds.has(layerId),
+        `Tandem GLB lost textured morphology for ${layerId}`,
+      );
+    }
+  }
 }
 
 // Sahli is not a Welcome card, but it is the strongest morphology-export
@@ -371,6 +424,7 @@ await page.screenshot({
 });
 
 assert.deepEqual(pageErrors, []);
+await context.close();
 await browser.close();
 
 console.log('Example regression browser harness passed.');

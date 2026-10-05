@@ -967,8 +967,8 @@ const {
   openBundledExample,
 } = projectController;
 
-function recordProcessOperation(operation, inputState = null) {
-  const recorded = snapshotManager.recordOperation(operation, { inputState });
+function recordProcessOperation(operation) {
+  const recorded = snapshotManager.recordOperation(operation);
   markProjectDirty();
   renderSnapshots();
   return recorded;
@@ -1057,7 +1057,6 @@ processPanelController = createProcessPanelController({
   beforeApply: historyMutationController.beforeApply,
   commitApplyBranch: historyMutationController.commitApplyBranch,
   recordProcessOperation,
-  captureProcessInputState: () => buildProjectSnapshot(false),
   afterApply: historyMutationController.afterApply,
   getHistoricalStepEdit: historyMutationController.currentEdit,
   getHistoricalStepInsert: historyMutationController.currentInsert,

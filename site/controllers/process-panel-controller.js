@@ -20,7 +20,6 @@ export function createProcessPanelController({
   beforeApply = async () => true,
   commitApplyBranch = async () => null,
   recordProcessOperation = () => {},
-  captureProcessInputState = () => null,
   afterApply = async () => false,
   getHistoricalStepEdit = () => null,
   getHistoricalStepInsert = () => null,
@@ -418,8 +417,7 @@ export function createProcessPanelController({
           };
         }
 
-        const processInputState = captureProcessInputState(),
-          sourceStep = steps[index],
+        const sourceStep = steps[index],
           operation = structuredClone(sourceStep?.operation || sourceStep || {}),
           sourceState = sourceStep?.operation ? sourceStep.state : null,
           replay = replayDescriptor(operation),
@@ -444,7 +442,7 @@ export function createProcessPanelController({
           nextModel.revision = (Number(nextModel.revision) || 0) + 1;
           nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
           setModel(nextModel);
-          recordProcessOperation(operation, processInputState);
+          recordProcessOperation(operation);
           completed += 1;
           continue;
         }
@@ -514,7 +512,7 @@ export function createProcessPanelController({
         } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
           colorNewElectricalRegion(task.result.electricalRegionId);
         }
-        recordProcessOperation(operation, processInputState);
+        recordProcessOperation(operation);
         completed += 1;
       }
 
@@ -545,7 +543,6 @@ export function createProcessPanelController({
   async function recordProcessStep() {
     const applyGate = await beforeApply();
     if (!applyGate) return;
-    const processInputState = captureProcessInputState();
 
     let temperatureC;
     let durationMin;
@@ -592,7 +589,7 @@ export function createProcessPanelController({
       note: note || null,
       replay: { version: 1, kind: 'record' },
     };
-    recordProcessOperation(operation, processInputState);
+    recordProcessOperation(operation);
     renderAll();
     if (await afterApply({ applyGate, branchCommit, operation })) return;
     status(`Recorded process Step “${label}” without changing geometry.`, 'success');
@@ -743,7 +740,6 @@ export function createProcessPanelController({
 
     const applyGate = await beforeApply();
     if (!applyGate) return;
-    const processInputState = captureProcessInputState();
   
     const areaRequest = {
       mode: areaMode,
@@ -861,7 +857,7 @@ export function createProcessPanelController({
         maskContext: structuredClone(maskContext),
       },
     };
-    recordProcessOperation(operation, processInputState);
+    recordProcessOperation(operation);
   
     renderAll();
     if (await afterApply({ applyGate, branchCommit, operation, result })) return;

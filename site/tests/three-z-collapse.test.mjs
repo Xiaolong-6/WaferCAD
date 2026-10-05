@@ -4,7 +4,9 @@ import test from 'node:test';
 
 import {
   createCollapsedZDisplayTransform,
+  normalizeSectionCollapse,
   resolveSectionCollapse,
+  translateSectionCollapse,
 } from '../section-z-collapse.js';
 
 test('collapsed Z display preserves the visible top and bottom spans', () => {
@@ -36,6 +38,25 @@ test('collapsed Z display is monotonic through the compressed interval', () => {
     assert.ok(samples[index] >= samples[index - 1]);
   }
 });
+
+test('thick substrates let the collapse handle approach the physical Z surface', () => {
+  const bounds = [-151, 151.35],
+    normalized = normalizeSectionCollapse({ top: bounds[1], bottom: -130 }, bounds);
+
+  assert.ok(bounds[1] - normalized.top > 0);
+  assert.ok(
+    bounds[1] - normalized.top < 0.001,
+    '302 um-class substrate must not reserve a multi-micrometre top margin',
+  );
+
+  const translated = translateSectionCollapse({ top: 200, bottom: -200 }, 100, [-250, 250]);
+  assert.ok(250 - translated.top > 0);
+  assert.ok(
+    250 - translated.top < 0.001,
+    'translated 500 um-class collapse window must reach the top surface within 1 nm',
+  );
+});
+
 
 test('3D follows Section collapse while GLB keeps canonical Z and exported morphology', async () => {
   const root = new URL('../', import.meta.url);
