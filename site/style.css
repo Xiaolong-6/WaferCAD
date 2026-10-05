@@ -3648,9 +3648,15 @@ summary:focus-visible {
   font-size: 10px;
 }
 .confirmation-action.primary {
-  border-color: #8099ae;
-  background: #eaf2f8;
-  color: #2f536f;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.confirmation-action.primary:hover {
+  border-color: var(--accent-dark);
+  background: var(--accent-dark);
+  color: #fff;
 }
 .confirmation-action.danger {
   border-color: #d8aeb4;
