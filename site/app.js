@@ -520,7 +520,11 @@ const layerLegendController = createLayerLegendController({
   renderAll,
   updateOperationUI,
   onChanged: markProjectDirty,
-  onNameChanged: () => renderSnapshots(),
+  onNameChanged: ({ kind, id, name }) => {
+    snapshotManager?.renameHistoryEntity(kind, id, name);
+    markProjectDirty();
+    renderSnapshots();
+  },
   status,
   confirmAction: (options) => confirmationDialog.confirm(options),
 });
