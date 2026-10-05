@@ -61,23 +61,23 @@ jobs:
       - name: Run fast browser smoke
         run: npm run test:ui:smoke
 
+      - name: Run workstation regression
+        run: npm run test:ui:workstation
+
+      - name: Run resilience regression
+        run: npm run test:ui:resilience
+
       - name: Run History regression
         run: npm run test:ui:history
 
       - name: Run persistence regression
         run: npm run test:ui:persistence
 
-      - name: Run process geometry regression
-        run: npm run test:ui:process
-
-      - name: Run workstation regression
-        run: npm run test:ui:workstation
-
       - name: Run interaction regression
         run: npm run test:ui:interaction
 
-      - name: Run resilience regression
-        run: npm run test:ui:resilience
+      - name: Run process geometry regression
+        run: npm run test:ui:process
 
       - name: Run bundled example regression
         run: npm run test:ui:examples
