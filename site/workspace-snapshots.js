@@ -1,4 +1,7 @@
-import { historyOperationLabel } from './history-operation-label.js';
+import {
+  historyOperationAreaLabel,
+  historyOperationLabel,
+} from './history-operation-label.js';
 
 function clone(value) {
   return structuredClone(value);
@@ -239,6 +242,31 @@ export function createSnapshotManager({
     return historyNodes.find((node) => node.id === id) || null;
   }
 
+  function stateWithOperationMaskContext(state, operation) {
+    if (!state) return null;
+    const next = cloneState(state),
+      context = operation?.maskContext || operation?.replay?.maskContext || null;
+    if (!context) return next;
+
+    if (context.sourceMode === 'draw') {
+      next.maskSourceMode = 'draw';
+    } else if (context.sourceMode === 'file') {
+      next.maskSourceMode = 'file';
+      if (context.cell) next.activeCell = context.cell;
+      if (Array.isArray(context.layerKeys)) {
+        next.selectedLayerKeys = [...context.layerKeys];
+      }
+      if (context.transform && typeof context.transform === 'object') {
+        next.maskTransform = { ...context.transform };
+      }
+    }
+
+    if (Object.hasOwn(context, 'roi')) {
+      next.maskRoi = context.roi ? clone(context.roi) : null;
+    }
+    return next;
+  }
+
   function list() {
     return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId, state }) => {
       const node = historyNodeId ? nodeById(historyNodeId) : null;
@@ -341,6 +369,7 @@ export function createSnapshotManager({
         operation: clone(operation),
         entityRefs,
         displayLabel: historyOperationLabel({ operation, entityRefs }, state?.model),
+        areaLabel: historyOperationAreaLabel({ operation, entityRefs }, state),
         restorable: Boolean(state),
         replayable: operation?.replay?.version === 1,
       };
@@ -542,7 +571,7 @@ export function createSnapshotManager({
     if (!branch) return false;
 
     activeBranchId = branch.id;
-    const restoredState = cloneState(state);
+    const restoredState = stateWithOperationMaskContext(state, node.operation);
     restore(restoredState);
     cursorNodeId = node.id;
     cursorSnapshotId = null;
@@ -631,7 +660,9 @@ export function createSnapshotManager({
       originNodeId: source.id,
       parentVariantId: source.branchId,
       name,
-      headState,
+      headState:
+        headState ||
+        stateWithOperationMaskContext(stateForProcessNode(source), source.operation),
     });
   }
 
@@ -962,7 +993,7 @@ export function createSnapshotManager({
     // Use the selected Step's workspace/mask/display context, but roll the
     // physical model back to its predecessor. This makes editing deterministic
     // even when mask selection or ROI changed between adjacent process Steps.
-    const editState = cloneState(nodeState);
+    const editState = stateWithOperationMaskContext(nodeState, node.operation);
     editState.model = clone(parentState.model);
     if (!validateState(editState)) return false;
 
@@ -1086,14 +1117,15 @@ export function createSnapshotManager({
       .filter((record) => record.historyNodeId === target.id && record.branchId === branch.id)
       .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
 
+    const restoredTargetState = stateWithOperationMaskContext(targetState, target.operation);
     branch.headNodeId = target.id;
     branch.headSnapshotId = targetBookmark?.id || null;
-    branch.headState = cloneState(targetState);
+    branch.headState = cloneState(restoredTargetState);
     activeBranchId = branch.id;
-    restore(cloneState(targetState));
+    restore(cloneState(restoredTargetState));
     cursorNodeId = target.id;
     cursorSnapshotId = branch.headSnapshotId;
-    cursorBaselineState = cloneState(targetState);
+    cursorBaselineState = cloneState(restoredTargetState);
     cursorDetachedFromHead = false;
 
     return {
@@ -1148,16 +1180,17 @@ export function createSnapshotManager({
       )
       .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
 
+    const restoredParentState = stateWithOperationMaskContext(parentState, parent.operation);
     branch.headNodeId = parent.id;
     branch.headSnapshotId =
       parentBookmark?.id ||
       (branch.rootNodeId === parent.id ? branch.rootSnapshotId || null : null);
-    branch.headState = cloneState(parentState);
+    branch.headState = cloneState(restoredParentState);
     activeBranchId = branch.id;
-    restore(cloneState(parentState));
+    restore(cloneState(restoredParentState));
     cursorNodeId = parent.id;
     cursorSnapshotId = branch.headSnapshotId;
-    cursorBaselineState = cloneState(parentState);
+    cursorBaselineState = cloneState(restoredParentState);
     cursorDetachedFromHead = false;
 
     return {
