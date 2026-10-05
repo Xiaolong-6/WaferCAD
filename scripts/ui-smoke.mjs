@@ -633,7 +633,9 @@ const historyAPopoverStep = historyRestorePage.locator('.history-step-wrap', { h
 const historyBPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History B' });
 await historyAPopoverStep.locator('.snapshot-more-trigger').click();
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
-await historyBPopoverStep.locator('.snapshot-more-trigger').click();
+// Force the second trigger because the first popover may physically cover it;
+// opening it by keyboard/programmatic activation must still close the first menu.
+await historyBPopoverStep.locator('.snapshot-more-trigger').click({ force: true });
 assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), null);
 assert.equal(await historyBPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
 await historyBPopoverStep.locator('.snapshot-more-trigger').click();
