@@ -373,6 +373,15 @@ export function createThreeView({
     if (!state) return parts || [];
     const visible = [];
     for (const part of parts || []) {
+      const hasDepth =
+          Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth)),
+        depthAt = (z) => {
+          if (!hasDepth) return null;
+          const span = part.z1 - part.z0;
+          if (Math.abs(span) < 1e-12) return Number(part.lowerDepth);
+          const t = Math.max(0, Math.min(1, (z - part.z0) / span));
+          return Number(part.lowerDepth) + (Number(part.upperDepth) - Number(part.lowerDepth)) * t;
+        };
       for (const [z0, z1] of visibleZIntervals(part.z0, part.z1, state)) {
         if (z0 === z1) continue;
         visible.push({
@@ -381,6 +390,7 @@ export function createThreeView({
           z1,
           lowerSurface: Math.abs(z0 - part.z0) <= 1e-10 ? part.lowerSurface : null,
           upperSurface: Math.abs(z1 - part.z1) <= 1e-10 ? part.upperSurface : null,
+          ...(hasDepth ? { lowerDepth: depthAt(z0), upperDepth: depthAt(z1) } : {}),
         });
       }
     }
