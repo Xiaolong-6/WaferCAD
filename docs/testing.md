@@ -45,6 +45,21 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
 - The heavyweight browser suites remain sequential in one job; splitting them into parallel jobs would duplicate Chromium/setup cost and consume more Actions minutes.
 
+## Node test ownership
+
+The former `site/selftest.mjs` monolith has been removed. `npm test` now runs only `node --test site/tests/*.test.mjs`.
+
+The migrated self-test contracts are owned by focused files:
+
+- `section-surface-rendering.test.mjs`: Section Z collapse, rough LOD/budgets, renderer sidewall ownership, and deterministic rough/pyramid profiles.
+- `rough-process.test.mjs`: core model defaults plus rough etch, inherited rough interfaces, pyramid etch, and rough-following films.
+- `isotropic-release.test.mjs`: canonical suspended-cavity topology, air-gap preservation, implant fragmentation, and directional-etch compatibility after release.
+- `conformal-process.test.mjs`: direct vs conformal growth, mask-edge clipping, sidewall growth, buried-layer rejection, layer mutation, and core vector topology checks.
+- `gds-smoke.test.mjs`: demo layout and physical-unit GDS parsing smoke.
+- `project-annotation.test.mjs`: project schema validation plus Implant/Electrical Region model/view contracts.
+
+The migration preserves all 203 assertions that were present in the former 1380-line self-test.
+
 ## Fast smoke contract
 
 The fast smoke should stay deliberately small. It currently proves that:
