@@ -114,7 +114,9 @@ await legacyPage.waitForFunction(
   { timeout: 10000 },
 );
 assert.deepEqual(legacyErrors, []);
-await legacyContext.close();\n\n// Autosave must not serialize a large workspace while the user is actively
+await legacyContext.close();
+
+// Autosave must not serialize a large workspace while the user is actively
 // dragging the 3D camera. A pending dirty save is held until pointer release.
 const interactionAutosaveContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
 const interactionAutosavePage = await interactionAutosaveContext.newPage();
@@ -202,7 +204,9 @@ await refreshPage.waitForFunction(
 assert.equal(await refreshPage.locator('#welcomeScreen').count(), 0);
 assert.equal(await refreshPage.locator('.app-shell').count(), 1);
 assert.deepEqual(refreshErrors, []);
-await refreshPage.close();\n\n// Welcome-page layout import must survive the IndexedDB handoff and open in the workspace.
+await refreshPage.close();
+
+// Welcome-page layout import must survive the IndexedDB handoff and open in the workspace.
 const layoutHandoffPage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const layoutHandoffErrors = [];
 layoutHandoffPage.on('pageerror', (error) => layoutHandoffErrors.push(error.message));
@@ -409,7 +413,9 @@ await examplePage.waitForFunction(
 );
 assert.ok(await examplePage.locator('#maskLayerList .layer-row').count());
 assert.deepEqual(exampleErrors, []);
-await examplePage.close();\n\nawait page.locator('#projectNameInput').fill('UI local checkpoint');
+await examplePage.close();
+
+await page.locator('#projectNameInput').fill('UI local checkpoint');
 await page.locator('#saveProjectBtn').click();
 await page.waitForFunction(() =>
   /Saved "UI local checkpoint" locally/.test(document.getElementById('statusText')?.textContent || ''),
@@ -460,7 +466,9 @@ await page.waitForFunction(
 assert.equal(
   await page.locator('#workspaceRecoverySelect option').filter({ hasText: /manual-save/ }).count(),
   0,
-);\n\n// The active workspace is restored after a normal app.html refresh. This also
+);
+
+// The active workspace is restored after a normal app.html refresh. This also
 // proves that a 2D-only display mutation schedules autosave without relying on 3D rendering.
 await openFunctionPanel(page, 'project');
 await page.locator('#projectNameInput').fill('Refresh restore check');
@@ -516,7 +524,9 @@ await page.waitForFunction(
       /pre-new-project/.test(option.textContent || ''),
     ),
 );
-assert.match(await page.locator('#statusText').textContent(), /New empty project/);\n\n// Two tabs sharing one browser profile still have one autosave writer, but neither
+assert.match(await page.locator('#statusText').textContent(), /New empty project/);
+
+// Two tabs sharing one browser profile still have one autosave writer, but neither
 // editor is frozen. The non-owner can keep working and explicitly take over saving.
 const safetyContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
 const safetyFirst = await safetyContext.newPage();
