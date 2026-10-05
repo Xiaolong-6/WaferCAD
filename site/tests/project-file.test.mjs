@@ -971,3 +971,60 @@ test('project validator rejects dangling snapshot branch graph references', () =
     /headSnapshotId references an unknown snapshot/,
   );
 });
+
+
+test('first-Step inputState uses shared project assets in workspace and exported storage', () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-05T10:00:00.000Z',
+        processRevision: 0,
+        operation: { kind: 'record', label: 'First Step' },
+        inputState: structuredClone(source),
+        state: structuredClone(source),
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: structuredClone(source),
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  const workspaceStored = prepareProjectForWorkspaceStorage(source);
+  const workspaceNode = workspaceStored.snapshotBranches.nodes[0];
+  assert.equal(workspaceNode.inputState.model, undefined);
+  assert.equal(workspaceNode.inputState.layout, undefined);
+  assert.ok(workspaceNode.inputState.modelRef != null);
+  assert.ok(workspaceNode.inputState.layoutRef != null);
+  expandProjectStorage(workspaceStored);
+  assert.equal(validateProjectFile(workspaceStored), workspaceStored);
+  assert.equal(workspaceStored.snapshotBranches.nodes[0].inputState.model.processRevision, 0);
+
+  const exported = JSON.parse(serializeProject(source));
+  const exportedNode = exported.snapshotBranches.nodes[0];
+  assert.equal(exportedNode.inputState.model, undefined);
+  assert.equal(exportedNode.inputState.layout, undefined);
+  assert.ok(exportedNode.inputState.modelRef != null);
+  assert.ok(exportedNode.inputState.layoutRef != null);
+  expandProjectStorage(exported);
+  assert.equal(validateProjectFile(exported), exported);
+  assert.equal(exported.snapshotBranches.nodes[0].inputState.model.processRevision, 0);
+});
