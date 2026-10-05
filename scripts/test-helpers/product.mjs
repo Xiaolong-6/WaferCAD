@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { installPinnedThreeRoute, waitForCanvasSizeSync, waitForPaint } from './ui.mjs';
+import {
+  installPinnedThreeRoute,
+  waitForCanvasSizeSync,
+  waitForPaint,
+} from './ui.mjs';
 
 export { waitForCanvasSizeSync, waitForPaint };
 
