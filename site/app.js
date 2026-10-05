@@ -1298,6 +1298,7 @@ processPanelController = createProcessPanelController({
   commitApplyBranch: commitWritableProcessBranch,
   recordProcessOperation,
   afterApply: finishHistoricalStepEdit,
+  getHistoricalStepEdit: currentHistoricalStepEdit,
   clearBaseRevertSnapshot: () => {
     baseRevertSnapshot = null;
   },
