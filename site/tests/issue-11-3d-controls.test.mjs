@@ -102,6 +102,7 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(annotationRendering, /midAlpha: 0\.4/);
   assert.match(annotationRendering, /innerAlpha: 0\.04/);
   assert.match(threeView, /function annotationSidewallParts\(/);
+  assert.match(threeView, /lowerDepth: depthAt\(z0\), upperDepth: depthAt\(z1\)/);
   assert.match(threeView, /displaySidewallParts\(annotationSidewallParts\(implant\)\)/);
   assert.match(threeView, /cutMaterial\.polygonOffset = true/);
   assert.match(threeView, /cutMaterial\.depthFunc = THREE\.LessEqualDepth/);
