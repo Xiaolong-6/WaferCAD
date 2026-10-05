@@ -67,7 +67,9 @@ await page.mouse.move(mainBox.x + mainBox.width * 0.72, mainBox.y + mainBox.heig
   steps: 5,
 });
 await page.mouse.up();
-await page.waitForTimeout(30);
+await page.waitForFunction(
+  () => /^Slice created\./.test(document.getElementById('statusText')?.textContent || ''),
+);
 assert.match(await page.locator('#statusText').textContent(), /^Slice created\./);
 assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
 assert.equal(await page.locator('[data-endpoint=b]').isVisible(), true);
@@ -106,7 +108,9 @@ await page.mouse.move(mainBox.x + mainBox.width * 0.6, mainBox.y + mainBox.heigh
   steps: 4,
 });
 await page.mouse.up();
-await page.waitForTimeout(50);
+await page.waitForFunction(
+  () => /^ROI created\./.test(document.getElementById('statusText')?.textContent || ''),
+);
 assert.deepEqual(errors, [], 'Rectangle ROI creation must not raise a browser error.');
 assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
 await page.locator('#focusEditor').evaluate((details) => {
@@ -135,7 +139,9 @@ await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sector
   steps: 4,
 });
 await page.mouse.up();
-await page.waitForTimeout(50);
+await page.waitForFunction(
+  () => /^ROI created\./.test(document.getElementById('statusText')?.textContent || ''),
+);
 assert.deepEqual(errors, [], 'Sector ROI creation must not raise a browser error.');
 assert.match(await page.locator('#statusText').textContent(), /^ROI created\./);
 await page.locator('#focusEditor').evaluate((details) => {
@@ -222,7 +228,9 @@ await page.mouse.move(drawBox.x + drawBox.width * 0.57, drawBox.y + drawBox.heig
   steps: 4,
 });
 await page.mouse.up();
-await page.waitForTimeout(30);
+await page.waitForFunction(
+  () => /^1 shape/.test(document.getElementById('drawMaskHint')?.textContent || ''),
+);
 assert.match(await page.locator('#drawMaskHint').textContent(), /^1 shape/);
 
 // Rectangle/Circle-style shapes open their exact parameter editor on a normal click.
@@ -272,7 +280,9 @@ await page.mouse.click(polygonStart.x, polygonStart.y);
 await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.3);
 await page.mouse.click(drawBox.x + drawBox.width * 0.38, drawBox.y + drawBox.height * 0.38);
 await page.mouse.click(polygonStart.x, polygonStart.y);
-await page.waitForTimeout(30);
+await page.waitForFunction(
+  () => /^2 shapes/.test(document.getElementById('drawMaskHint')?.textContent || ''),
+);
 assert.match(await page.locator('#drawMaskHint').textContent(), /^2 shapes/);
 
 // Existing Polygon opens the same parameter editor on a normal click.
