@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { baseUrl, launchBrowser } from './test-helpers/ui.mjs';
+import { baseUrl, launchBrowser, observePageErrors } from './test-helpers/ui.mjs';
 
 // Core editor must still boot when the external Three.js CDN is unavailable.
 const degradedBrowser = await launchBrowser();
@@ -12,8 +12,7 @@ await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => {
   return route.fulfill({ status: 503, body: '' });
 });
 const degraded = await degradedContext.newPage();
-const degradedErrors = [];
-degraded.on('pageerror', (error) => degradedErrors.push(error.message));
+const degradedErrors = observePageErrors(degraded);
 await degraded.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'domcontentloaded',
   timeout: 30000,
@@ -52,8 +51,7 @@ await noWebGlContext.addInitScript(() => {
   };
 });
 const noWebGl = await noWebGlContext.newPage();
-const noWebGlErrors = [];
-noWebGl.on('pageerror', (error) => noWebGlErrors.push(error.message));
+const noWebGlErrors = observePageErrors(noWebGl);
 await noWebGl.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
   waitUntil: 'domcontentloaded',
   timeout: 30000,
