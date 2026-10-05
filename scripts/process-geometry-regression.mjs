@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdir, readFile } from 'node:fs/promises';
-import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+import {
+  mkdir,
+  readFile } from 'node:fs/promises';
+import { loadGeometryKernel,
+  projectForBenchmark } from './process-benchmarks.mjs';
 import {
   baseUrl,
   canvasInkFraction,
@@ -11,6 +14,7 @@ import {
   openFunctionPanel,
   waitForAppReady,
   waitForThreeReady,
+  newUiContext,
 } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
@@ -48,7 +52,7 @@ async function processDiagnostics(page) {
 }
 
 const browser = await launchBrowser();
-const context = await browser.newContext({
+const context = await newUiContext(browser, {
   viewport: { width: 1365, height: 900 },
   acceptDownloads: true,
 });
