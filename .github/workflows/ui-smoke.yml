@@ -11,17 +11,11 @@ on:
       - "scripts/product-regression.mjs"
       - "scripts/process-benchmarks.mjs"
       - ".github/workflows/ui-smoke.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "site/**"
-      - "scripts/ui-smoke.mjs"
-      - "scripts/example-regression.mjs"
-      - "scripts/product-regression.mjs"
-      - "scripts/process-benchmarks.mjs"
-      - ".github/workflows/ui-smoke.yml"
   workflow_dispatch:
+
+concurrency:
+  group: ui-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -29,6 +23,7 @@ permissions:
 jobs:
   chromium-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v6
