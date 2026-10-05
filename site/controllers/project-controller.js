@@ -203,12 +203,21 @@ export function createProjectController({
       summary.textContent = '⋯';
       summary.setAttribute('aria-label', label);
       summary.title = label;
-      summary.onclick = (event) => event.stopPropagation();
-      details.ontoggle = () => {
-        if (!details.open) return;
+
+      const closeOtherMenus = () => {
         for (const other of root.querySelectorAll('.snapshot-more-menu[open]')) {
           if (other !== details) other.open = false;
         }
+      };
+      summary.onclick = (event) => {
+        event.stopPropagation();
+        // Close peers synchronously before the native <details> default action
+        // opens this menu. Relying only on the asynchronous toggle event can
+        // let a pending toggle from the previous menu close the newly opened one.
+        if (!details.open) closeOtherMenus();
+      };
+      details.ontoggle = () => {
+        if (details.open) closeOtherMenus();
       };
       // Keyboard activation of a nested menu must not bubble into a restorable
       // History row, otherwise Enter/Space can restore the Step instead of
