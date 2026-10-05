@@ -1,139 +1,14 @@
-// Full browser regression suite. Keep the fast product gate in ui-smoke.mjs.
+// Workstation integration regression: Welcome, boot gating, navigation, examples, and core tool shell.
 import assert from 'node:assert/strict';
-import { mkdir, readFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
-import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+import {
+  baseUrl,
+  canvasInkFraction,
+  gotoWelcome,
+  launchBrowser,
+  openFunctionPanel,
+} from './test-helpers/ui.mjs';
 
-await loadGeometryKernel();
-const { applyOperation, createModel, modelBoundsZ } = await import('../site/model.js');
-const { circleMulti, pointInMulti } = await import('../site/vector-geometry.js');
-
-const welcomeLayoutBuffer = await readFile(
-  new URL('../site/samples/klayout/oas-rectangles.oas', import.meta.url),
-);
-const welcomeProject = projectForBenchmark({
-  model: createModel({
-    shape: 'rect',
-    width: 4321,
-    height: 3210,
-    thickness: 7,
-  }),
-  section: { a: [-1000, 0], b: [1000, 0] },
-});
-
-const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
-
-function parseGlbJson(buffer) {
-  assert.equal(buffer.readUInt32LE(0), 0x46546c67, 'GLB magic');
-  assert.equal(buffer.readUInt32LE(4), 2, 'GLB version');
-  assert.equal(buffer.readUInt32LE(8), buffer.length, 'GLB byte length');
-  const jsonLength = buffer.readUInt32LE(12),
-    jsonType = buffer.readUInt32LE(16);
-  assert.equal(jsonType, 0x4e4f534a, 'first GLB chunk must be JSON');
-  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
-}
-
-async function gotoWelcome(targetPage) {
-  await targetPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await targetPage.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 10000 });
-  await targetPage.waitForFunction(
-    () => document.documentElement.dataset.welcomeReady === 'true',
-    null,
-    { timeout: 10000 },
-  );
-}
-
-async function processDiagnostics(page) {
-  return Promise.race([
-    page
-      .evaluate(() => ({
-        status: document.getElementById('statusText')?.textContent || '',
-        stage: document.getElementById('processTaskStage')?.textContent || '',
-        taskHidden: Boolean(document.getElementById('processTaskDialog')?.hidden),
-        applyDisabled: Boolean(document.getElementById('applyOperationBtn')?.disabled),
-        roughRebuilds: document.querySelector('#threeHost canvas')?.dataset?.roughRebuildCount || '',
-        roughZones: document.querySelector('#threeHost canvas')?.dataset?.roughLodZones || '',
-        operationType: document.getElementById('operationType')?.value || '',
-        growthMode: document.getElementById('growthMode')?.value || '',
-        workerGrowth: globalThis.__lastProcessWorkerPayload?.params?.growth || '',
-        workerType: globalThis.__lastProcessWorkerPayload?.params?.type || '',
-      }))
-      .catch((error) => ({ evaluateError: error.message })),
-    new Promise((resolve) => setTimeout(() => resolve({ pageUnresponsive: true }), 2000)),
-  ]);
-}
-
-async function chooseConfirmation(page, action = 'confirm') {
-  const overlay = page.locator('#confirmationDialogOverlay');
-  await overlay.waitFor({ state: 'visible', timeout: 5000 });
-  await overlay.locator(`[data-dialog-action="${action}"]`).click();
-}
-
-const FUNCTION_SECTION_IDS = {
-  project: 'settingsTools',
-  base: 'baseTools',
-  mask: 'maskTools',
-  process: 'operationTools',
-  snapshots: 'snapshotsTools',
-};
-
-async function openFunctionPanel(page, name, clickOptions = {}) {
-  const button = page.locator(`.workstation-rail-button[data-tool="${name}"]`);
-  await button.waitFor({ state: 'visible', timeout: clickOptions.timeout || 5000 });
-  const panel = page.locator('#toolPanel.workstation-tool-flyout');
-  const isOpen = await panel.evaluate((element) => element.classList.contains('open'));
-  const isActive = await button.evaluate((element) => element.classList.contains('active'));
-  if (!isOpen || !isActive) await button.click(clickOptions);
-  await page.locator(`#${FUNCTION_SECTION_IDS[name]}:not([hidden])`).waitFor();
-  await page.waitForFunction(
-    () => {
-      const panel = document.getElementById('toolPanel');
-      if (!panel?.classList.contains('open')) return false;
-      const rect = panel.getBoundingClientRect();
-      return rect.left >= 40 && rect.right > rect.left;
-    },
-    null,
-    { timeout: clickOptions.timeout || 5000 },
-  );
-  await page.evaluate((sectionName) => {
-    const scroller = document.querySelector('#toolPanel .tool-tab-content');
-    const section = document.querySelector(`[data-workstation-section="${sectionName}"]`);
-    if (scroller && section) scroller.scrollTop = Math.max(0, section.offsetTop - 6);
-  }, name);
-}
-
-async function closeFunctionPanel(page) {
-  const panel = page.locator('#toolPanel.workstation-tool-flyout');
-  if (await panel.evaluate((element) => element.classList.contains('open'))) {
-    await page.locator('.workstation-tool-close').click();
-    await page.waitForFunction(
-      () => !document.getElementById('toolPanel')?.classList.contains('open'),
-    );
-  }
-}
-
-async function canvasInkFraction(page, selector) {
-  return page.locator(selector).evaluate((canvas) => {
-    const ctx = canvas.getContext('2d'),
-      { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let ink = 0,
-      samples = 0;
-    for (let index = 0; index < data.length; index += 16) {
-      const alpha = data[index + 3],
-        r = data[index],
-        g = data[index + 1],
-        b = data[index + 2];
-      samples += 1;
-      if (alpha > 12 && (r < 245 || g < 245 || b < 245)) ink += 1;
-    }
-    return samples ? ink / samples : 0;
-  });
-}
-const launchOptions = {
-  headless: true,
-  ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
-};
-const browser = await chromium.launch(launchOptions);
+const browser = await launchBrowser();
 
 // Startup must never expose the legacy/raw workspace while the workstation
 // stylesheet or DOM transformation is still pending.
