@@ -35,6 +35,8 @@ jobs:
   chromium-browser-regression:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -94,13 +96,9 @@ jobs:
         run: npm run test:ui:examples
 
       - name: Run product layout regression
-        env:
-          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: npm run test:ui:product:layout
 
       - name: Run renderer product regression
-        env:
-          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: npm run test:ui:product:renderer
 
       - name: Package tested preview
