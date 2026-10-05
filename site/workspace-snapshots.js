@@ -962,11 +962,17 @@ export function createSnapshotManager({
     }
 
     const parentBookmark = records
-      .filter((record) => record.historyNodeId === parent.id)
+      .filter(
+        (record) =>
+          record.historyNodeId === parent.id &&
+          record.branchId === branch.id,
+      )
       .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0];
 
     branch.headNodeId = parent.id;
-    branch.headSnapshotId = parentBookmark?.id || null;
+    branch.headSnapshotId =
+      parentBookmark?.id ||
+      (branch.rootNodeId === parent.id ? branch.rootSnapshotId || null : null);
     branch.headState = cloneState(parentState);
     activeBranchId = branch.id;
     restore(cloneState(parentState));
