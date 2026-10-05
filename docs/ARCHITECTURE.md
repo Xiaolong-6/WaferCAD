@@ -40,7 +40,7 @@ The stored model is intentionally 2.5D: XY footprints are vector polygons and ve
 
 ### `site/app.js`
 
-Owns application state and top-level controller composition. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/apply orchestration is delegated to `site/controllers/process-panel-controller.js`; browser autosave/Recovery/safe-reload orchestration is delegated to `site/controllers/workspace-persistence-controller.js`; synchronized view refresh/base summaries live in `site/controllers/workspace-view-controller.js`; mask/ROI process-selection geometry lives in `site/selection-geometry.js`; Project toolbar actions live in `site/controllers/project-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
+Owns application state and top-level controller composition. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/request orchestration is delegated to `site/controllers/process-panel-controller.js`; History edit/insert transactions live in `site/controllers/history-mutation-controller.js`; browser autosave/Recovery/safe-reload orchestration is delegated to `site/controllers/workspace-persistence-controller.js`; synchronized view refresh/base summaries live in `site/controllers/workspace-view-controller.js`; mask/ROI process-selection geometry lives in `site/selection-geometry.js`; Project toolbar and History-tree presentation live in `site/controllers/project-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
 
 ### `site/controllers/workspace-persistence-controller.js`
 
@@ -56,7 +56,11 @@ Owns the derived XY geometry used by Process and 3D inspection: selected File/Dr
 
 ### `site/controllers/process-panel-controller.js`
 
-Owns Process panel presentation state, exposed Extend and material-selective Etch target refresh, Electrical Region metadata entry, input normalization/validation, worker request construction, non-geometric Record-step creation, and post-action model handoff/status messaging. It deliberately does not implement process geometry: canonical Deposit/Extend/Etch/Implant semantics remain in `model.js` / the process worker path. Record steps advance History/process revision while leaving material geometry unchanged.
+Owns Process panel presentation state, exposed Extend and material-selective Etch target refresh, Electrical Region metadata entry, input normalization/validation, worker request construction, non-geometric Record-step creation, downstream replay execution, and post-action model handoff/status messaging. It deliberately does not implement process geometry: canonical Deposit/Extend/Etch/Implant semantics remain in `model.js` / the process worker path. Record steps advance History/process revision while leaving material geometry unchanged.
+
+### `site/controllers/history-mutation-controller.js`
+
+Owns the transient History edit/insert state machine and its two-phase Apply transaction. It selects safe rewrite/branch strategies, checkpoints Recovery before historical mutation, validates Variant/History capacity immediately before commit, commits the Variant topology only after a successful Process result, and coordinates downstream replay without owning process geometry. `workspace-snapshots.js` remains the canonical graph/state owner; `process-panel-controller.js` remains the replay executor.
 
 ### `site/plan-renderers.js`
 
