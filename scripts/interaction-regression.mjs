@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import {
+  readFile } from 'node:fs/promises';
 import {
   baseUrl,
   launchBrowser,
@@ -7,6 +8,7 @@ import {
   openFunctionPanel,
   waitForAppReady,
   waitForThreeReady,
+  newUiContext,
 } from './test-helpers/ui.mjs';
 
 const welcomeLayoutBuffer = await readFile(
@@ -32,7 +34,7 @@ async function processDiagnostics(page) {
 }
 
 const browser = await launchBrowser();
-const context = await browser.newContext({
+const context = await newUiContext(browser, {
   viewport: { width: 1365, height: 900 },
   acceptDownloads: true,
 });
