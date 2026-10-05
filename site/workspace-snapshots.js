@@ -341,19 +341,19 @@ export function createSnapshotManager({
         node.operation?.name || node.operation?.replay?.params?.name || '',
       ),
       nonBaseLayers = outputModel.layers.filter((layer) => layer?.id && layer.id !== 'base'),
-      namedCandidates = operationName
-        ? nonBaseLayers.filter((layer) => cleanName(layer?.name) === operationName)
-        : [],
       inferredLayer =
         explicitLayerId
           ? nonBaseLayers.find((layer) => layer.id === explicitLayerId) || null
-          : namedCandidates.length === 1
-            ? namedCandidates[0]
-            : nonBaseLayers.length === 1
-              ? nonBaseLayers[0]
-              : null;
+          : nonBaseLayers.length === 1
+            ? nonBaseLayers[0]
+            : null;
 
-    if (!inferredLayer) return null;
+    if (
+      !inferredLayer ||
+      (operationName && cleanName(inferredLayer.name) !== operationName)
+    ) {
+      return null;
+    }
 
     let found = false;
     for (const region of outputModel.regions) {
