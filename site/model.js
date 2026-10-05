@@ -55,7 +55,7 @@ export function createModel({
     thickness,
     boundary,
     units: { xy: 'µm', z: 'µm' },
-    layers: [{ id: 'base', name: 'Base', color: BASE_COLOR }],
+    layers: [{ id: 'base', name: 'Base', color: BASE_COLOR, visible: true }],
     regions: [
       {
         id: 'region-1',
@@ -151,6 +151,7 @@ export function createLayer(model, name) {
     id,
     name: (name || `Layer ${ordinal}`).trim(),
     color: COLORS[(ordinal - 1) % COLORS.length],
+    visible: true,
   };
   model.layers.push(layer);
   return layer;
@@ -170,6 +171,30 @@ export function recolorLayer(model, id, color) {
   layer.color = color;
   model.revision++;
   return true;
+}
+
+export function setLayerVisible(model, id, visible) {
+  const layer = layerById(model, id);
+  if (!layer) return false;
+  layer.visible = Boolean(visible);
+  model.revision++;
+  return true;
+}
+
+export function visibleMaterialModel(model) {
+  const hidden = new Set(
+    (model?.layers || []).filter((layer) => layer.visible === false).map((layer) => layer.id),
+  );
+  if (!hidden.size) return model;
+  return {
+    ...model,
+    regions: (model?.regions || [])
+      .map((region) => ({
+        ...region,
+        stack: (region.stack || []).filter((segment) => !hidden.has(segment.layerId)),
+      }))
+      .filter((region) => region.stack.length),
+  };
 }
 
 export function implantById(model, id) {

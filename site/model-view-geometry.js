@@ -1,4 +1,5 @@
 import { intersection, isEmpty, lineIntervalsInMulti, unionGeometries } from './vector-geometry.js';
+import { visibleMaterialModel } from './model.js';
 import {
   appearanceSurfaceGroupsFromTopology,
   extrusionGroupsFromTopology,
@@ -13,30 +14,33 @@ import {
 // Topology v2 owns the shared volumetric/section derivation; this module keeps
 // the stable view-facing API.
 export function extrusionGroups(model, clip = null) {
-  return extrusionGroupsFromTopology(model, clip);
+  return extrusionGroupsFromTopology(visibleMaterialModel(model), clip);
 }
 
 export function sectionColumns(model, a, b) {
-  return sectionColumnsFromTopology(model, a, b);
+  return sectionColumnsFromTopology(visibleMaterialModel(model), a, b);
 }
 
 export function sectionSlices(model, a, b) {
-  return sectionSlicesFromTopology(model, a, b);
+  return sectionSlicesFromTopology(visibleMaterialModel(model), a, b);
 }
 
 // Region partitions describe processing history, not visible material boundaries.
 // Topology v2 owns which horizontal faces are physically exposed and which
 // rough interfaces are buried; the view layer only adapts those facts.
 export function surfaceGroups(model, face = 'front') {
-  return visibleSurfaceGroups(model, { face }).map(({ layerId, z, geom }) => ({
-    layerId,
-    z,
-    geom,
-  }));
+  return visibleSurfaceGroups(visibleMaterialModel(model), { face }).map(
+    ({ layerId, z, geom, appearance }) => ({
+      layerId,
+      z,
+      geom,
+      appearance,
+    }),
+  );
 }
 
 export function appearanceSurfaceGroups(model, clip = null) {
-  return appearanceSurfaceGroupsFromTopology(model, clip).map(
+  return appearanceSurfaceGroupsFromTopology(visibleMaterialModel(model), clip).map(
     ({ layerId, z, face, profileNormal, appearance, buried, polys }) => ({
       layerId,
       z,
@@ -72,7 +76,7 @@ export function sectionContours(model, a, b) {
 // Only footprint differences become horizontal caps; overlapping slab
 // transitions are internal and never rendered as physical faces.
 export function materialSolids(model, clip = null) {
-  return materialSolidsFromTopology(model, clip);
+  return materialSolidsFromTopology(visibleMaterialModel(model), clip);
 }
 
 export function solidBorders(solid, thresholdDegrees = 20) {

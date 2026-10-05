@@ -1372,3 +1372,134 @@ test('current Variant tail replacement is blocked when a child Variant depends o
   assert.deepEqual(context.dependentVariants.map((item) => item.name), ['Dependent child']);
   assert.throws(() => manager.replaceBranchTailFrom(second.id), /child Variant/i);
 });
+
+
+test('truncateBranchAfter keeps the selected Step and removes only the later tail', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let nodeId = 0;
+  let snapshotId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => `process-${++nodeId}`,
+    idFactory: () => `snapshot-${++snapshotId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'step-a' };
+  manager.recordOperation({ kind: 'add', label: 'A', replay: { version: 1, params: {} } });
+  live = { model: { processRevision: 2 }, value: 'step-b' };
+  const second = manager.recordOperation({
+    kind: 'etch',
+    label: 'B',
+    replay: { version: 1, params: {} },
+  });
+  live = { model: { processRevision: 3 }, value: 'step-c' };
+  const third = manager.recordOperation({
+    kind: 'add',
+    label: 'C',
+    replay: { version: 1, params: {} },
+  });
+  manager.bookmarkStep(third.id, 'C bookmark');
+
+  const result = manager.truncateBranchAfter(second.id);
+  assert.equal(result.removedNodeCount, 1);
+  assert.equal(result.removedBookmarkCount, 1);
+  assert.deepEqual(
+    manager.listHistory().map((node) => node.operation.label),
+    ['A', 'B'],
+  );
+  assert.equal(manager.activeBranch().headNodeId, second.id);
+  assert.equal(manager.currentPosition().atHead, true);
+  assert.equal(live.value, 'step-b');
+  assert.equal(live.model.processRevision, 2);
+  assert.equal(manager.list().length, 0);
+});
+
+test('removeHeadStep restores the predecessor while preserving an empty child Variant', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'main-a' };
+  const origin = manager.recordOperation({
+    kind: 'add',
+    label: 'Main A',
+    replay: { version: 1, params: {} },
+  });
+
+  const child = manager.createBranchFromNode(origin.id, 'Variant child');
+  live = { model: { processRevision: 2 }, value: 'child-b' };
+  const childStep = manager.recordOperation({
+    kind: 'etch',
+    label: 'Child B',
+    replay: { version: 1, params: {} },
+  });
+
+  const removed = manager.removeHeadStep(childStep.id);
+  assert.equal(removed.headNodeId, origin.id);
+  assert.equal(manager.activeBranch().id, child.id);
+  assert.equal(manager.activeBranch().headNodeId, origin.id);
+  assert.equal(manager.activeBranch().processStepCount, 0);
+  assert.equal(manager.currentPosition().atHead, true);
+  assert.equal(live.value, 'main-a');
+  assert.equal(live.model.processRevision, 1);
+  assert.deepEqual(
+    manager.listHistory().map((node) => node.operation.label),
+    ['Main A'],
+  );
+});
+
+test('history truncation refuses to orphan a dependent child Variant', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let branchId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    branchIdFactory: () => `branch-${++branchId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'a' };
+  manager.recordOperation({ kind: 'add', label: 'A', replay: { version: 1, params: {} } });
+  live = { model: { processRevision: 2 }, value: 'b' };
+  const second = manager.recordOperation({
+    kind: 'etch',
+    label: 'B',
+    replay: { version: 1, params: {} },
+  });
+  live = { model: { processRevision: 3 }, value: 'c' };
+  const third = manager.recordOperation({
+    kind: 'add',
+    label: 'C',
+    replay: { version: 1, params: {} },
+  });
+
+  manager.createBranchFromNode(third.id, 'Dependent child');
+  manager.switchBranch('main');
+
+  assert.throws(
+    () => manager.truncateBranchAfter(second.id),
+    /dependent Variant/i,
+  );
+  assert.equal(manager.activeBranch().headNodeId, third.id);
+  assert.deepEqual(
+    manager.listHistory().map((node) => node.operation.label),
+    ['A', 'B', 'C'],
+  );
+});

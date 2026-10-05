@@ -17,6 +17,7 @@ export function createProcessPanelController({
   commitApplyBranch = async () => null,
   recordProcessOperation = () => {},
   afterApply = async () => false,
+  getHistoricalStepEdit = () => null,
   clearBaseRevertSnapshot,
   colorNewLayer,
   colorNewImplant,
@@ -120,7 +121,11 @@ export function createProcessPanelController({
       materialExists = hasMaterial(model);
     $('applyOperationBtn').disabled =
       (!materialExists && !recordOnly) || Boolean(processTaskController?.isBusy());
-    $('applyOperationBtn').textContent = recordOnly ? 'Record' : 'Apply';
+    $('applyOperationBtn').textContent = getHistoricalStepEdit()
+      ? 'Save edited Step'
+      : recordOnly
+        ? 'Record'
+        : 'Apply';
     const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
     $('processSummary').textContent = recordOnly
       ? 'Process · Record step'

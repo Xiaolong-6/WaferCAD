@@ -627,6 +627,28 @@ assert.equal(await historyARow.count(), 1);
 assert.equal(await historyBRow.count(), 1);
 assert.equal(await historyARow.getAttribute('role'), 'button');
 assert.equal(await historyBRow.getAttribute('data-head'), 'true');
+
+// History action popovers are exclusive: opening another Step menu closes the first.
+const historyAPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History A' });
+const historyBPopoverStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History B' });
+await historyAPopoverStep.locator('.snapshot-more-trigger').click();
+assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
+// Open the second <details> programmatically because the first popover can
+// physically cover its trigger; the toggle handler must still close the first menu.
+await historyBPopoverStep.locator('.snapshot-more-menu').evaluate((menu) => {
+  menu.open = true;
+});
+await historyRestorePage.waitForFunction(() => {
+  const steps = [...document.querySelectorAll('.history-step-wrap')];
+  const historyA = steps.find((step) => /History A/.test(step.textContent || ''));
+  const historyB = steps.find((step) => /History B/.test(step.textContent || ''));
+  return !historyA?.querySelector('.snapshot-more-menu')?.open &&
+    Boolean(historyB?.querySelector('.snapshot-more-menu')?.open);
+});
+assert.equal(await historyAPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), null);
+assert.equal(await historyBPopoverStep.locator('.snapshot-more-menu').getAttribute('open'), '');
+await historyBPopoverStep.locator('.snapshot-more-trigger').click();
+
 await historyARow.click();
 await historyRestorePage.waitForFunction(
   () =>
@@ -861,8 +883,8 @@ await historyRestorePage.screenshot({
 assert.deepEqual(historyRestoreErrors, []);
 await historyRestoreContext.close();
 
-// Historical Step editing offers all three strategies and Branch & recompute
-// replays the actual downstream worker requests on a preserved child Variant.
+// Historical Step editing enters the Process editor immediately. The downstream
+// strategy is chosen only when the edited Step is actually saved.
 const historyRecomputeContext = await browser.newContext({ viewport: { width: 1100, height: 760 } });
 const historyRecomputePage = await historyRecomputeContext.newPage();
 const historyRecomputeErrors = [];
@@ -899,8 +921,22 @@ await openFunctionPanel(historyRecomputePage, 'snapshots');
 const replayBStep = historyRecomputePage.locator('.history-step-wrap', { hasText: 'Replay B' }).first();
 await replayBStep.locator('.snapshot-more-trigger').click();
 await replayBStep.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+await historyRecomputePage.waitForFunction(
+  () => /Editing "Deposit Replay B/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+assert.equal(await historyRecomputePage.locator('#confirmationDialogOverlay:not([hidden])').count(), 0);
+await historyRecomputePage.locator('.snapshot-continuation-banner[data-editing-step="true"]').waitFor();
+assert.equal(await historyRecomputePage.locator('#layerName').inputValue(), 'Replay B');
+assert.equal(Number(await historyRecomputePage.locator('#operationThickness').inputValue()), 0.05);
+assert.equal((await historyRecomputePage.locator('#applyOperationBtn').textContent()).trim(), 'Save edited Step');
+
+await historyRecomputePage.locator('#layerName').fill('Replay B edited');
+await historyRecomputePage.locator('#operationThickness').fill('0.08');
+await historyRecomputePage.locator('#applyOperationBtn').click();
 await historyRecomputePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
-for (const action of ['update-recompute', 'branch-here', 'branch-recompute']) {
+for (const action of ['replace-discard', 'replace-replay', 'branch-edit']) {
   assert.equal(
     await historyRecomputePage
       .locator(`#confirmationDialogActions [data-dialog-action="${action}"]`)
@@ -908,21 +944,9 @@ for (const action of ['update-recompute', 'branch-here', 'branch-recompute']) {
     1,
   );
 }
-await chooseConfirmation(historyRecomputePage, 'branch-recompute');
-
+await chooseConfirmation(historyRecomputePage, 'replace-replay');
 await historyRecomputePage.waitForFunction(
-  () => /Editing "Deposit Replay B/.test(document.getElementById('statusText')?.textContent || ''),
-  null,
-  { timeout: 10000 },
-);
-await historyRecomputePage.locator('.snapshot-continuation-banner[data-editing-step="true"]').waitFor();
-assert.equal(await historyRecomputePage.locator('#layerName').inputValue(), 'Replay B');
-assert.equal(Number(await historyRecomputePage.locator('#operationThickness').inputValue()), 0.05);
-await historyRecomputePage.locator('#layerName').fill('Replay B edited');
-await historyRecomputePage.locator('#operationThickness').fill('0.08');
-await historyRecomputePage.locator('#applyOperationBtn').click();
-await historyRecomputePage.waitForFunction(
-  () => /Recomputed 1 downstream Step in Variant "Variant 1"/.test(
+  () => /Replayed 1 later Step in Variant "Main"/.test(
     document.getElementById('statusText')?.textContent || '',
   ),
   null,
@@ -930,22 +954,14 @@ await historyRecomputePage.waitForFunction(
 );
 
 await openFunctionPanel(historyRecomputePage, 'snapshots');
-assert.equal(await historyRecomputePage.locator('.history-variant').count(), 2);
+assert.equal(await historyRecomputePage.locator('.history-variant').count(), 1);
 const recomputeMain = historyRecomputePage.locator('.history-variant[data-variant-id="main"]');
-const recomputeChild = historyRecomputePage.locator('.history-variant[data-active="true"]');
 const mainOwnSteps = recomputeMain.locator(':scope > .history-variant-body > .history-step-wrap');
-const childOwnSteps = recomputeChild.locator(':scope > .history-variant-body > .history-step-wrap');
-assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay B/);
-assert.doesNotMatch(
+assert.match(
   await mainOwnSteps.allTextContents().then((items) => items.join(' ')),
   /Replay B edited/,
 );
 assert.match(await mainOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
-assert.match(
-  await childOwnSteps.allTextContents().then((items) => items.join(' ')),
-  /Replay B edited/,
-);
-assert.match(await childOwnSteps.allTextContents().then((items) => items.join(' ')), /Replay C/);
 assert.equal(
   await historyRecomputePage.locator('#workspaceRecoverySelect option').evaluateAll((options) =>
     options.some((option) => /pre-history-step-edit/.test(option.textContent || '')),

@@ -1,6 +1,4 @@
 import {
-  deleteExposedLayer,
-  isLayerExposed,
   layerPresent,
   recolorElectricalRegion,
   recolorImplant,
@@ -12,6 +10,7 @@ import {
   setElectricalRegionVisible,
   setImplantDepthProfile,
   setImplantVisible,
+  setLayerVisible,
 } from '../model.js';
 
 const STRUCTURE_PALETTES = {
@@ -153,17 +152,12 @@ export function createLayerLegendController({
   setCustomStructurePalette,
   getOpenLayerPaletteId,
   setOpenLayerPaletteId,
-  saveHistory,
-  discardLastHistory,
-  syncUndo,
   renderMain,
   renderSection,
   renderThree,
   renderAll,
   updateOperationUI,
   onChanged = () => {},
-  status,
-  confirmAction = async () => false,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -355,6 +349,7 @@ export function createLayerLegendController({
       row.className = 'legend-row-wrap';
       const present = layerPresent(model, layer.id);
       row.classList.toggle('layer-absent', !present);
+      row.classList.toggle('layer-hidden', layer.visible === false);
 
       const main = root.createElement('div');
       main.className = 'legend-row';
@@ -386,43 +381,24 @@ export function createLayerLegendController({
         updateOperationUI();
       };
 
-      main.append(color, name);
+      const visible = root.createElement('input');
+      visible.type = 'checkbox';
+      visible.className = 'legend-visibility';
+      visible.checked = layer.visible !== false;
+      visible.title = visible.checked ? 'Hide material layer' : 'Show material layer';
+      visible.setAttribute('aria-label', `Toggle visibility for ${layer.name}`);
+      visible.onchange = () => {
+        setLayerVisible(model, layer.id, visible.checked);
+        if (!visible.checked && getOpenLayerPaletteId() === layer.id) {
+          setOpenLayerPaletteId(null);
+        }
+        onChanged();
+        renderLayerLegend();
+        renderAll();
+        updateOperationUI();
+      };
 
-      if (isLayerExposed(model, layer.id)) {
-        const remove = root.createElement('button');
-        remove.type = 'button';
-        remove.className = 'legend-delete';
-        remove.textContent = '×';
-        remove.title = `Delete exposed layer "${layer.name}"`;
-        remove.setAttribute('aria-label', `Delete exposed layer ${layer.name}`);
-        remove.onclick = async () => {
-          if (
-            !(await confirmAction({
-              title: 'Delete exposed layer?',
-              message: `Delete exposed layer "${layer.name}"?`,
-              detail: 'This change can be undone.',
-              confirmLabel: 'Delete layer',
-              danger: true,
-            }))
-          ) {
-            return;
-          }
-          saveHistory();
-          if (!deleteExposedLayer(model, layer.id)) {
-            discardLastHistory();
-            syncUndo();
-            status('Layer is no longer fully exposed and cannot be deleted.');
-            return;
-          }
-          if (getOpenLayerPaletteId() === layer.id) setOpenLayerPaletteId(null);
-          onChanged();
-          renderAll();
-          updateOperationUI();
-          status(`Deleted exposed layer "${layer.name}".`);
-        };
-        main.append(remove);
-      }
-
+      main.append(color, name, visible);
       row.append(main);
 
       if (getOpenLayerPaletteId() === layer.id) {

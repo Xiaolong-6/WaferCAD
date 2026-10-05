@@ -3592,6 +3592,10 @@ summary:focus-visible {
   opacity: 0.48;
 }
 
+.legend-row-wrap.layer-hidden {
+  opacity: 0.48;
+}
+
 
 /* In-page destructive-action dialog. Keeps automation and keyboard interaction in DOM. */
 .confirmation-overlay {
@@ -3648,15 +3652,16 @@ summary:focus-visible {
   font-size: 10px;
 }
 .confirmation-action.primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
-}
-
-.confirmation-action.primary:hover {
   border-color: var(--accent-dark);
   background: var(--accent-dark);
-  color: #fff;
+  color: #fff !important;
+}
+
+.confirmation-action.primary:hover,
+.confirmation-action.primary:focus-visible {
+  border-color: #35465d;
+  background: #35465d;
+  color: #fff !important;
 }
 .confirmation-action.danger {
   border-color: #d8aeb4;
