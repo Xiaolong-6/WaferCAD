@@ -9,11 +9,12 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 | Fast UI smoke | `npm run test:ui:smoke` | Product gate for boot, workstation readiness, one real process operation, persistence, and project export | Small, independent, fail fast |
 | History regression | `npm run test:ui:history` | History restore, Variants, bookmarks, historical Step editing/replay, rollback, and History export | Independent History scenarios; fault injection allowed |
 | Persistence regression | `npm run test:ui:persistence` | Autosave, migration, recovery checkpoints, Welcome staged handoff, refresh restore, and multi-tab ownership/takeover | Storage/profile scenarios isolated from process geometry |
+| Process geometry regression | `npm run test:ui:process` | Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, GLB morphology, and Section geometry contracts | Scientific/process geometry coverage with real UI + export paths |
 | Full UI regression | `npm run test:ui:regression` | Remaining broad interaction and persistence coverage while it is decomposed | Comprehensive; may use fault injection and internal contracts |
 | Bundled examples | `npm run test:ui:examples` | Literature/example structural contracts and restore behavior | Example-specific geometry/render invariants |
 | Product/visual review | `npm run test:ui:product` | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots | Multiple viewports; deterministic renderer inputs in CI |
 
-The full UI regression suite is intentionally a preservation layer. It started as the former 2993-line smoke scenario; History and persistence/recovery coverage have now been migrated into dedicated suites. Its coverage should move into focused suites incrementally; do not add new unrelated scenarios to it by default.
+The full UI regression suite is intentionally a preservation layer. It started as the former 2993-line smoke scenario; History, persistence/recovery, and process-geometry coverage have now been migrated into dedicated suites. Its coverage should move into focused suites incrementally; do not add new unrelated scenarios to it by default.
 
 ## Fast smoke contract
 
@@ -43,9 +44,8 @@ A failure here should stop the expensive browser regression steps early.
 
 The preserved full regression should be split in this order because these areas already have clear boundaries:
 
-1. Rough / Conformal / Implant / Electrical process contracts.
-2. Mask drawing, ROI, Section, and export interactions.
-3. Resilience cases such as missing Three.js and unavailable WebGL.
+1. Mask drawing, ROI, Slice/Section interaction, and export interactions.
+2. Resilience cases such as missing Three.js and unavailable WebGL.
 
 After those migrations, `scripts/ui-regression.mjs` can be removed and the focused suites can run independently with clearer failure ownership.
 
