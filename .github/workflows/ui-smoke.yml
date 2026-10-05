@@ -16,6 +16,8 @@ on:
       - "scripts/test-helpers/**"
       - "scripts/example-regression.mjs"
       - "scripts/product-regression.mjs"
+      - "scripts/product-layout-regression.mjs"
+      - "scripts/renderer-product-regression.mjs"
       - "scripts/process-benchmarks.mjs"
       - ".github/workflows/ui-smoke.yml"
   workflow_dispatch:
@@ -82,10 +84,15 @@ jobs:
       - name: Run bundled example regression
         run: npm run test:ui:examples
 
-      - name: Run product interaction and visual regression
+      - name: Run product layout regression
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: npm run test:ui:product
+        run: npm run test:ui:product:layout
+
+      - name: Run renderer product regression
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: npm run test:ui:product:renderer
 
       - name: Package tested preview
         if: always()
