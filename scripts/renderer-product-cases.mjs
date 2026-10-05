@@ -6,6 +6,8 @@ import {
 import {
   checkLayout,
   openFunctionPanel,
+  waitForCanvasSizeSync,
+  waitForPaint,
 } from './test-helpers/product.mjs';
 import {
   checkSectionSeams,
@@ -82,12 +84,18 @@ export async function runRendererProductCases({ page, capture }) {
         await page.locator('#threeOpacityRange').dispatchEvent('input');
         await page.locator('#threePanel .three-opacity-control > summary').click();
         await page.locator('#threeMaxBtn').click();
-        await page.waitForTimeout(250);
+        await page.waitForFunction(
+          () =>
+            document.body.classList.contains('view-maximized') &&
+            document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+          null,
+          { timeout: 10000 },
+        );
         await capture(page, 'wide-isotropic-release-3d-max');
         await page.locator('#threeMaxBtn').click();
 
         await page.locator('#sectionMaxBtn').click();
-        await page.waitForTimeout(150);
+        await waitForCanvasSizeSync(page, '#sectionCanvas');
         await capture(page, 'wide-isotropic-release-section-max');
         await page.locator('#sectionMaxBtn').click();
         await page.waitForFunction(() => {
@@ -145,7 +153,7 @@ export async function runRendererProductCases({ page, capture }) {
         assert.ok(Number(normalZMax) >= 4.8 - 1e-9, `rough Auto Z max too small: ${normalZMax}`);
         await capture(page, 'wide-rough-buried-interface');
         await page.locator('#sectionMaxBtn').click();
-        await page.waitForTimeout(120);
+        await waitForCanvasSizeSync(page, '#sectionCanvas');
         const maxThickness = await sectionMaterialThickness(page, '#6C8EBF');
         assert.ok(
           Math.abs(maxThickness - 0.8) < 0.04,
@@ -157,7 +165,7 @@ export async function runRendererProductCases({ page, capture }) {
         );
         await capture(page, 'wide-rough-buried-interface-max');
         await page.locator('#sectionMaxBtn').click();
-        await page.waitForTimeout(120);
+        await waitForCanvasSizeSync(page, '#sectionCanvas');
 
         // 3D integration guardrails: clean opaque rough surfaces and sorted
         // translucent layers should remain layer-colored without screen-door noise.
@@ -313,19 +321,19 @@ export async function runRendererProductCases({ page, capture }) {
         );
         await capture(page, 'wide-rough-3d-adaptive-zoom-max');
         await page.locator('#fit3dBtn').click();
-        await page.waitForTimeout(180);
+        await waitForPaint(page);
         await page.locator('#threeMaxBtn').click();
         await page.locator('#threePanel .three-opacity-control > summary').click();
         await page.locator('#threeOpacityRange').fill('0.5');
         await page.locator('#threePanel .three-opacity-control > summary').click();
-        await page.waitForTimeout(120);
+        await waitForPaint(page);
         await page.locator('#threeMaxBtn').click();
         await capture(page, 'wide-rough-3d-transparent-max');
         await page.locator('#threeMaxBtn').click();
         await page.locator('#threePanel .three-opacity-control > summary').click();
         await page.locator('#threeOpacityRange').fill('1');
         await page.locator('#threePanel .three-opacity-control > summary').click();
-        await page.waitForTimeout(120);
+        await waitForPaint(page);
 
         // Multi-cap stress: several independent rough patches must share one
         // scene-wide subdivision budget, and camera LOD changes must not rebuild
@@ -499,14 +507,14 @@ export async function runRendererProductCases({ page, capture }) {
         await page.locator('#threePanel .three-opacity-control > summary').click();
         await page.locator('#threeOpacityRange').fill('0.5');
         await page.locator('#threePanel .three-opacity-control > summary').click();
-        await page.waitForTimeout(120);
+        await waitForPaint(page);
         await page.locator('#threeMaxBtn').click();
         await capture(page, 'wide-rough-conformal-3d-transparent-max');
         await page.locator('#threeMaxBtn').click();
         await page.locator('#threePanel .three-opacity-control > summary').click();
         await page.locator('#threeOpacityRange').fill('1');
         await page.locator('#threePanel .three-opacity-control > summary').click();
-        await page.waitForTimeout(120);
+        await waitForPaint(page);
 
         // Opaque host material must occlude a buried Implant. Lowering global
         // 3D opacity reveals the same internal annotation volume.
@@ -548,7 +556,7 @@ export async function runRendererProductCases({ page, capture }) {
         await page.locator('#threePanel .three-opacity-control > summary').click();
         await page.locator('#threeOpacityRange').fill('0.5');
         await page.locator('#threePanel .three-opacity-control > summary').click();
-        await page.waitForTimeout(120);
+        await waitForPaint(page);
         await page.locator('#threeMaxBtn').click();
         assert.ok(
           Number(await page.locator('#threeHost').getAttribute('data-implant-internal-count')) > 0,
@@ -559,7 +567,7 @@ export async function runRendererProductCases({ page, capture }) {
         await page.locator('#threePanel .three-opacity-control > summary').click();
         await page.locator('#threeOpacityRange').fill('1');
         await page.locator('#threePanel .three-opacity-control > summary').click();
-        await page.waitForTimeout(120);
+        await waitForPaint(page);
 
         // Etching into an Implant exposes its surviving outer face. Opaque 3D
         // must render that surface overlay without rendering the buried volume.
