@@ -22,35 +22,15 @@ on:
       - "site/layout-worker.js"
       - "site/layout-export-worker.js"
       - "site/project-worker.js"
-      - "site/app.html"
-      - "site/app.js"
-      - "site/sample-layouts.js"
-      - "site/samples/klayout/**"
       - "scripts/klayout-compat.mjs"
       - "scripts/klayout-ui-compat.mjs"
       - "scripts/klayout-export-fixtures.mjs"
       - "scripts/klayout-export-verify.py"
       - ".github/workflows/klayout-compat.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "site/gds.js"
-      - "site/oasis.js"
-      - "site/layout-io.js"
-      - "site/layout-export.js"
-      - "site/layout-worker.js"
-      - "site/layout-export-worker.js"
-      - "site/project-worker.js"
-      - "site/app.html"
-      - "site/app.js"
-      - "site/sample-layouts.js"
-      - "site/samples/klayout/**"
-      - "scripts/klayout-compat.mjs"
-      - "scripts/klayout-ui-compat.mjs"
-      - "scripts/klayout-export-fixtures.mjs"
-      - "scripts/klayout-export-verify.py"
-      - ".github/workflows/klayout-compat.yml"
+
+concurrency:
+  group: klayout-compat-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -58,6 +38,7 @@ permissions:
 jobs:
   parser-sweep:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout WaferCAD
         uses: actions/checkout@v6
@@ -94,6 +75,7 @@ jobs:
   ui-import-sweep:
     needs: parser-sweep
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout WaferCAD
         uses: actions/checkout@v6
