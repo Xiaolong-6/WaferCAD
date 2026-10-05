@@ -334,63 +334,6 @@ test('V2 process history records Apply nodes and attaches snapshots as milestone
   assert.equal(manager.exportBranchState().version, 3);
 });
 
-test('process History pins and restores the exact file-mask Cell and Layer combination', () => {
-  let live = {
-    model: { processRevision: 1 },
-    layout: { root: 'TOP', hierarchy: { TOP: { children: [] } } },
-    maskSourceMode: 'file',
-    activeCell: 'STALE',
-    selectedLayerKeys: ['99|0'],
-    maskTransform: { x: 4, y: 5, scale: 2, rotation: 10 },
-    maskRoi: { type: 'rect', a: [0, 0], b: [1, 1] },
-  };
-  let restored = null;
-  const manager = createSnapshotManager({
-    capture: () => live,
-    restore: (value) => {
-      restored = value;
-      live = value;
-    },
-    validateState: (value) => Number.isInteger(value?.model?.processRevision),
-    nodeIdFactory: () => 'process-mask-context',
-  });
-
-  const maskContext = {
-    sourceMode: 'file',
-    cell: 'TOP',
-    layerKeys: ['7|0', '8|2'],
-    transform: { x: 1, y: -2, scale: 1.5, rotation: 12 },
-    roi: { type: 'square', c: [5, 5], size: 4, rotation: 0 },
-  };
-  const node = manager.recordOperation({
-    kind: 'add',
-    label: 'Deposit ITO',
-    areaMode: 'mask',
-    areaLabel: 'Selected mask',
-    maskContext,
-    replay: { version: 1, areaMode: 'mask', maskContext },
-  });
-
-  const listed = manager.listHistory().find((item) => item.id === node.id);
-  assert.equal(
-    listed.areaLabel,
-    'Cell TOP · Layers 7/0, 8/2',
-  );
-
-  live = {
-    ...live,
-    activeCell: 'OTHER',
-    selectedLayerKeys: ['42|0'],
-    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-    maskRoi: null,
-  };
-  assert.equal(manager.restoreProcessNode(node.id), true);
-  assert.equal(restored.activeCell, 'TOP');
-  assert.deepEqual(restored.selectedLayerKeys, ['7|0', '8|2']);
-  assert.deepEqual(restored.maskTransform, maskContext.transform);
-  assert.deepEqual(restored.maskRoi, maskContext.roi);
-});
-
 test('process history steps are directly restorable without milestones and survive import', () => {
   let live = { model: { processRevision: 0 }, value: 'base' };
   let nodeId = 0;
@@ -1973,4 +1916,61 @@ test('History insertion topology supports current rewrite, branch start, branch 
     () => protectedChain.manager.replaceBranchTailFrom(protectedChain.b.id),
     /Create a new Variant instead/,
   );
+});
+
+test('process History pins and restores the exact file-mask Cell and Layer combination', () => {
+  let live = {
+    model: { processRevision: 1 },
+    layout: { root: 'TOP', hierarchy: { TOP: { children: [] } } },
+    maskSourceMode: 'file',
+    activeCell: 'STALE',
+    selectedLayerKeys: ['99|0'],
+    maskTransform: { x: 4, y: 5, scale: 2, rotation: 10 },
+    maskRoi: { type: 'rect', a: [0, 0], b: [1, 1] },
+  };
+  let restored = null;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      restored = value;
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => 'process-mask-context',
+  });
+
+  const maskContext = {
+    sourceMode: 'file',
+    cell: 'TOP',
+    layerKeys: ['7|0', '8|2'],
+    transform: { x: 1, y: -2, scale: 1.5, rotation: 12 },
+    roi: { type: 'square', c: [5, 5], size: 4, rotation: 0 },
+  };
+  const node = manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit ITO',
+    areaMode: 'mask',
+    areaLabel: 'Selected mask',
+    maskContext,
+    replay: { version: 1, areaMode: 'mask', maskContext },
+  });
+
+  const listed = manager.listHistory().find((item) => item.id === node.id);
+  assert.equal(
+    listed.areaLabel,
+    'Cell TOP · Layers 7/0, 8/2',
+  );
+
+  live = {
+    ...live,
+    activeCell: 'OTHER',
+    selectedLayerKeys: ['42|0'],
+    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    maskRoi: null,
+  };
+  assert.equal(manager.restoreProcessNode(node.id), true);
+  assert.equal(restored.activeCell, 'TOP');
+  assert.deepEqual(restored.selectedLayerKeys, ['7|0', '8|2']);
+  assert.deepEqual(restored.maskTransform, maskContext.transform);
+  assert.deepEqual(restored.maskRoi, maskContext.roi);
 });
