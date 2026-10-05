@@ -92,6 +92,7 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /opacity: opacity \* 0\.18/);
   assert.match(threeView, /IMPLANT_DEPTH_GRADIENT\.outerAlpha/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
+  assert.match(threeView, /constantDepth != null && Number\.isFinite\(Number\(constantDepth\)\)/);
   assert.match(threeView, /function createAnnotationGradientMaterial\(/);
   assert.match(threeView, /attribute float annotationDepth/);
   assert.match(threeView, /midScale = midAlpha \/ outerAlpha/);
