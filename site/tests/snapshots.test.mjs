@@ -2050,3 +2050,156 @@ test('legacy first process Step stays safely non-editable without captured input
   assert.equal(context.editable, false);
   assert.match(context.reason, /restorable predecessor/i);
 });
+
+
+test('legacy first Deposit can reconstruct a safe predecessor for Edit and Insert', () => {
+  const baseRegion = {
+    id: 'region-1',
+    geom: [[[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]],
+    stack: [
+      { layerId: 'base', z0: -5, z1: 5 },
+      { layerId: 'layer-1', z0: 5, z1: 5.03 },
+    ],
+  };
+  let live = {
+    model: {
+      processRevision: 1,
+      revision: 3,
+      layers: [
+        { id: 'base', name: 'Base' },
+        { id: 'layer-1', name: 'Al2O3' },
+      ],
+      regions: [baseRegion],
+      nextLayerId: 2,
+      nextRegionId: 4,
+    },
+    layout: { name: 'mask.gds' },
+  };
+
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    nodeIdFactory: () => 'process-1',
+  });
+
+  const first = manager.recordOperation({
+    kind: 'add',
+    label: 'Deposit Al2O3 · Conformal · 0.03 µm',
+    name: 'Al2O3',
+    replay: {
+      version: 1,
+      params: {
+        type: 'add',
+        name: 'Al2O3',
+        thickness: 0.03,
+        growth: 'conformal',
+      },
+    },
+  });
+
+  // Simulate a pre-inputState legacy project by round-tripping only the old node fields.
+  const exported = manager.exportBranchState();
+  delete exported.nodes[0].inputState;
+
+  const legacy = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+  });
+  legacy.importRecords([], exported);
+
+  const edit = legacy.stepEditContext(first.id);
+  assert.equal(edit.editable, true);
+  assert.equal(edit.parentNodeId, null);
+  assert.equal(legacy.insertBeforeContext(first.id).editable, true);
+
+  assert.ok(legacy.restoreStepInput(first.id));
+  assert.equal(live.model.processRevision, 0);
+  assert.equal(live.model.revision, 1);
+  assert.equal(live.model.nextLayerId, 1);
+  assert.equal(live.model.nextRegionId, 2);
+  assert.deepEqual(
+    live.model.layers.map((layer) => layer.id),
+    ['base'],
+  );
+  assert.deepEqual(
+    live.model.regions[0].stack.map((segment) => segment.layerId),
+    ['base'],
+  );
+});
+
+test('legacy first Deposit stays disabled when the created layer is ambiguous or buried', () => {
+  const makeManager = (model) => {
+    let live = { model };
+    const manager = createSnapshotManager({
+      capture: () => live,
+      restore: (value) => {
+        live = value;
+      },
+      validateState: (value) => Number.isInteger(value?.model?.processRevision),
+      nodeIdFactory: () => 'process-1',
+    });
+    const first = manager.recordOperation({
+      kind: 'add',
+      name: 'Film',
+      replay: { version: 1, params: { type: 'add', name: 'Film' } },
+    });
+    const exported = manager.exportBranchState();
+    delete exported.nodes[0].inputState;
+    manager.importRecords([], exported);
+    return { manager, first };
+  };
+
+  const ambiguous = makeManager({
+    processRevision: 1,
+    revision: 3,
+    layers: [
+      { id: 'base', name: 'Base' },
+      { id: 'layer-1', name: 'Film A' },
+      { id: 'layer-2', name: 'Film B' },
+    ],
+    regions: [
+      {
+        id: 'region-1',
+        geom: [[[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]],
+        stack: [
+          { layerId: 'base', z0: -5, z1: 5 },
+          { layerId: 'layer-1', z0: 5, z1: 5.02 },
+          { layerId: 'layer-2', z0: 5.02, z1: 5.04 },
+        ],
+      },
+    ],
+    nextLayerId: 3,
+    nextRegionId: 2,
+  });
+  assert.equal(ambiguous.manager.stepEditContext(ambiguous.first.id).editable, false);
+
+  const buried = makeManager({
+    processRevision: 1,
+    revision: 3,
+    layers: [
+      { id: 'base', name: 'Base' },
+      { id: 'layer-1', name: 'Film' },
+      { id: 'cap', name: 'Cap' },
+    ],
+    regions: [
+      {
+        id: 'region-1',
+        geom: [[[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]],
+        stack: [
+          { layerId: 'base', z0: -5, z1: 5 },
+          { layerId: 'layer-1', z0: 5, z1: 5.02 },
+          { layerId: 'cap', z0: 5.02, z1: 5.04 },
+        ],
+      },
+    ],
+    nextLayerId: 2,
+    nextRegionId: 2,
+  });
+  assert.equal(buried.manager.stepEditContext(buried.first.id).editable, false);
+});
