@@ -5,6 +5,10 @@ import test from 'node:test';
 const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
+const annotationRendering = await readFile(
+  new URL('../annotation-rendering.js', import.meta.url),
+  'utf8',
+);
 const rendererGeometry = await readFile(
   new URL('../renderer-geometry.js', import.meta.url),
   'utf8',
@@ -86,13 +90,16 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /if \(implant\.viewClipped\)/);
   assert.match(threeView, /if \(showInternalImplants\)/);
   assert.match(threeView, /opacity: opacity \* 0\.18/);
-  assert.match(threeView, /opacity: opacity \* \(materialState\.transparent \? 0\.5 : 0\.72\)/);
+  assert.match(threeView, /IMPLANT_DEPTH_GRADIENT\.outerAlpha/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
   assert.match(threeView, /function createAnnotationGradientMaterial\(/);
   assert.match(threeView, /attribute float annotationDepth/);
-  assert.match(threeView, /waferCadDepth <= 0\.48/);
-  assert.match(threeView, /0\.5555556/);
-  assert.match(threeView, /0\.0555556/);
+  assert.match(threeView, /midScale = midAlpha \/ outerAlpha/);
+  assert.match(threeView, /innerScale = innerAlpha \/ outerAlpha/);
+  assert.match(annotationRendering, /outerAlpha: 0\.72/);
+  assert.match(annotationRendering, /midDepth: 0\.48/);
+  assert.match(annotationRendering, /midAlpha: 0\.4/);
+  assert.match(annotationRendering, /innerAlpha: 0\.04/);
   assert.match(threeView, /function annotationSidewallParts\(/);
   assert.match(threeView, /displaySidewallParts\(annotationSidewallParts\(implant\)\)/);
   assert.match(threeView, /cutMaterial\.polygonOffset = true/);
