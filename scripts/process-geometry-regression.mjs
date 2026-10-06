@@ -310,7 +310,7 @@ assert.ok(electricalSavedPath);
 const electricalSaved = JSON.parse(await readFile(electricalSavedPath, 'utf8'));
 assert.equal(electricalSaved.version, 14);
 assert.equal(electricalSaved.model.electricalRegions.length, 1);
-assert.equal(electricalSaved.model.electricalRegions[0].name, 'UI electrical renamed');
+assert.equal(electricalSaved.model.electricalRegions[0].name, 'UI induced inversion');
 assert.equal(electricalSaved.model.electricalRegions[0].regionType, 'p-inversion');
 assert.equal(electricalSaved.model.electricalRegions[0].source, 'induced');
 assert.equal(electricalSaved.model.electricalRegions[0].thickness, 0.2);

@@ -52,6 +52,18 @@ test('planner-only changes stay on the lightweight fast baseline', () => {
   assert.deepEqual(enabled(plan), ['smoke']);
 });
 
+test('product-specific helper changes stay within product owners', () => {
+  const plan = buildCiTestPlan(['scripts/test-helpers/product.mjs']);
+  assert.deepEqual(enabled(plan), ['smoke', 'product_layout', 'renderer']);
+  assert.equal(plan.full, false);
+});
+
+test('shared browser bootstrap helper changes conservatively run the complete suite', () => {
+  const plan = buildCiTestPlan(['scripts/test-helpers/ui.mjs']);
+  assert.equal(plan.full, true);
+  for (const suite of BROWSER_SUITES) assert.equal(plan.suites[suite], true);
+});
+
 test('dependency changes conservatively run the complete browser suite', () => {
   const plan = buildCiTestPlan(['package-lock.json']);
   assert.equal(plan.full, true);

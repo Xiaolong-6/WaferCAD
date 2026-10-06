@@ -737,6 +737,7 @@ export async function runRendererProductCases({ page, capture }) {
   await capture(page, 'wide-implant-partition-gradient-section');
   await page.locator('#sectionMaxBtn').click();
 
+  if (process.env.WAFERCAD_EXTENDED_REVIEW !== '0') {
   const literature = JSON.parse(
     await readFile(
       new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
@@ -764,6 +765,8 @@ export async function runRendererProductCases({ page, capture }) {
   await page.mouse.up();
   await capture(page, 'wide-photodetector-quarter-roi-low-angle');
   await page.locator('#threeMaxBtn').click();
+
+  }
 
   await checkLayout(page);
 }

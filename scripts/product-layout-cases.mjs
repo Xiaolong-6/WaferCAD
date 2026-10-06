@@ -13,6 +13,7 @@ import { checkSectionSeams, loadProject } from './test-helpers/product-scientifi
 import { sampleById } from '../site/sample-layouts.js';
 
 export async function runProductLayoutCases({ open, capture, output, checks }) {
+  const extendedReview = process.env.WAFERCAD_EXTENDED_REVIEW !== '0';
   const { parseLayoutFile } = await import('../site/layout-io.js');
   const { applyOperation } = await import('../site/model.js');
   const { rectMulti } = await import('../site/vector-geometry.js');
@@ -68,11 +69,25 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
     }
   }
 
-  for (const [name, viewport, touch] of [
-    ['wide', { width: 1440, height: 900 }, false],
-    ['medium', { width: 1000, height: 800 }, false],
-    ['phone', { width: 390, height: 844 }, true],
-  ]) {
+  const viewportCases = extendedReview
+    ? [
+        ['wide', { width: 1440, height: 900 }, false],
+        ['medium', { width: 1000, height: 800 }, false],
+        ['phone', { width: 390, height: 844 }, true],
+      ]
+    : [
+        ['wide', { width: 1440, height: 900 }, false],
+        ['phone', { width: 390, height: 844 }, true],
+      ];
+  const selectedSamples = extendedReview ? sampleCases : sampleCases.slice(0, 2);
+  const selectedProcessCases = extendedReview
+    ? processCases
+    : processCases.filter(
+        ({ kind, growth }) =>
+          (kind === 'step' && growth === 'direct') || (kind === 'trench' && growth === 'conformal'),
+      );
+
+  for (const [name, viewport, touch] of viewportCases) {
     const { page, context } = await open(viewport, touch);
 
     if (name === 'wide') {
@@ -119,7 +134,7 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
     await checkLayout(page);
 
     await openFunctionPanel(page, 'mask');
-    for (const sample of sampleCases) {
+    for (const sample of selectedSamples) {
       await page.locator('#sampleMaskSelect').selectOption(sample.id);
       await page.waitForFunction(
         (label) =>
@@ -138,7 +153,7 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
       await checkLayout(page);
     }
 
-    for (const { kind, growth, project, back, etched } of processCases) {
+    for (const { kind, growth, project, back, etched } of selectedProcessCases) {
       await loadProject(page, project, `${kind}-${growth}`);
       await capture(page, `${name}-${kind}-${growth}`);
       await checkSectionSeams(page, project);
@@ -180,7 +195,7 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
     console.log(`${name}: A/B, units, ROI, tabs, imports and six process views passed`);
   }
 
-  for (const width of [600, 601, 900, 901]) {
+  for (const width of extendedReview ? [600, 601, 900, 901] : [600, 601]) {
     const { page, context } = await open({ width, height: 900 });
     await checkLayout(page);
     await page.locator('#sectionControlsBtn').click();

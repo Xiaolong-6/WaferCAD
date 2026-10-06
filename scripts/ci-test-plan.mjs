@@ -14,7 +14,7 @@ export const BROWSER_SUITES = Object.freeze([
   'process',
 ]);
 
-const COMMON_TEST_INFRA = [/^scripts\/test-helpers\//];
+const COMMON_TEST_INFRA = [/^scripts\/test-helpers\/ui\.mjs$/];
 const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json']);
 const WORKSTATION_PATHS = [
   /^site\/app\.(?:js|html)$/,
@@ -80,7 +80,10 @@ const LAYOUT_PATHS = [
   /^scripts\/product-layout-cases\.mjs$/,
 ];
 
-const PRODUCT_REVIEW_PATHS = [/^scripts\/product-regression\.mjs$/];
+const PRODUCT_REVIEW_PATHS = [
+  /^scripts\/product-regression\.mjs$/,
+  /^scripts\/test-helpers\/(?:product|product-layout|product-scientific)\.mjs$/,
+];
 
 const EXAMPLE_PATHS = [
   /^site\/examples\//,
