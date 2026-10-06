@@ -51,12 +51,16 @@ test('shared product orchestrator changes run both product review scopes', () =>
   assert.equal(plan.suites.process, false);
 });
 
-test('workflow planner changes exercise every normal browser suite but do not force process geometry', () => {
+test('workflow-only changes stay on the lightweight fast baseline', () => {
   const plan = buildCiTestPlan(['.github/workflows/browser-regression.yml']);
   assert.equal(plan.full, false);
-  for (const suite of BROWSER_SUITES) {
-    assert.equal(plan.suites[suite], suite !== 'process');
-  }
+  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'resilience']);
+});
+
+test('planner-only changes stay on the lightweight fast baseline', () => {
+  const plan = buildCiTestPlan(['scripts/ci-test-plan.mjs']);
+  assert.equal(plan.full, false);
+  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'resilience']);
 });
 
 test('dependency changes conservatively run the complete browser suite', () => {

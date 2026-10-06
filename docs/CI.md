@@ -25,7 +25,7 @@ The planner then enables focused suites as needed:
 | Process/model/vector geometry                       | Process Geometry + renderer review + bundled examples                           |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-Workflow/planner-only changes exercise every normal browser suite but intentionally do not force the long Process Geometry regression. The planner itself has Node unit tests, and the heavy geometry job remains available through geometry-impacting changes and full-regression events.
+Workflow/planner-only changes stay on the lightweight fast browser baseline. The planner itself has Node unit tests, while the nightly/manual full sweep validates the complete job matrix. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
 ## Heavy Process Geometry job
 

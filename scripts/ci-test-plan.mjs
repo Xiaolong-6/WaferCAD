@@ -16,11 +16,6 @@ export const BROWSER_SUITES = Object.freeze([
 
 const COMMON_TEST_INFRA = [/^scripts\/test-helpers\//];
 const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json']);
-const CONTROL_PLANE_FILES = new Set([
-  '.github/workflows/browser-regression.yml',
-  'scripts/ci-test-plan.mjs',
-]);
-
 const HISTORY_PATHS = [
   /^site\/workspace-snapshots\.js$/,
   /^site\/history-/,
@@ -106,10 +101,6 @@ function enableAll(plan) {
   enable(plan, ...BROWSER_SUITES);
 }
 
-function enableAllExceptProcess(plan) {
-  enable(plan, ...BROWSER_SUITES.filter((suite) => suite !== 'process'));
-}
-
 export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
   const paths = [...new Set(changedPaths.map((path) => String(path).trim()).filter(Boolean))],
     plan = emptyPlan();
@@ -124,10 +115,6 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
   if (paths.some((path) => DEPENDENCY_FILES.has(path) || matchesAny(path, COMMON_TEST_INFRA))) {
     enableAll(plan);
     return { full: true, paths, suites: plan };
-  }
-
-  if (paths.some((path) => CONTROL_PLANE_FILES.has(path))) {
-    enableAllExceptProcess(plan);
   }
 
   for (const path of paths) {

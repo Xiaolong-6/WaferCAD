@@ -55,6 +55,7 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 - Process Geometry no longer runs on unrelated pull requests. When selected, it runs in a separate job in parallel with the targeted browser suites.
 - Pushes to `main` run only the lightweight fast browser baseline plus the Node test gate; they do not repeat focused suites or Process Geometry after merge.
 - The nightly Browser regression schedule and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
+- Workflow/planner-only changes stay on the fast browser baseline; planner routing is covered by Node tests.
 - Dependency-lockfile or shared browser-test-helper changes conservatively request the full browser suite.
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
 
