@@ -94,6 +94,8 @@ jobs:
     timeout-minutes: 15
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+      WAFERCAD_CAPTURE_REVIEW: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
+      WAFERCAD_EXTENDED_REVIEW: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -132,8 +134,17 @@ jobs:
           cat /tmp/wafercad-http.log
           exit 1
 
-      - name: Run fast browser gate
-        run: npm run test:ui:fast
+      - name: Run UI smoke
+        if: ${{ needs.plan.outputs.smoke == 'true' }}
+        run: npm run test:ui:smoke
+
+      - name: Run workstation regression
+        if: ${{ needs.plan.outputs.workstation == 'true' }}
+        run: npm run test:ui:workstation
+
+      - name: Run resilience regression
+        if: ${{ needs.plan.outputs.resilience == 'true' }}
+        run: npm run test:ui:resilience
 
       - name: Run History regression
         if: ${{ needs.plan.outputs.history == 'true' }}
@@ -182,6 +193,7 @@ jobs:
     timeout-minutes: 20
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+      WAFERCAD_PROCESS_EXTENDED: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6

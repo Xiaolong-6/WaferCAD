@@ -10,31 +10,20 @@ function enabled(plan) {
 test('bundled example History changes run focused state and example coverage', () => {
   const plan = buildCiTestPlan(['site/bundled-example-history.js']);
   assert.equal(plan.full, false);
-  assert.deepEqual(enabled(plan), [
-    'smoke',
-    'workstation',
-    'resilience',
-    'history',
-    'interaction',
-    'examples',
-  ]);
+  assert.deepEqual(enabled(plan), ['smoke', 'history', 'examples']);
   assert.equal(plan.suites.process, false);
   assert.equal(plan.suites.renderer, false);
 });
 
-test('core geometry changes schedule heavy process coverage plus renderer review', () => {
+test('core geometry changes schedule only the process browser owner', () => {
   const plan = buildCiTestPlan(['site/model.js']);
   assert.equal(plan.full, false);
-  assert.equal(plan.suites.process, true);
-  assert.equal(plan.suites.renderer, true);
-  assert.equal(plan.suites.examples, true);
+  assert.deepEqual(enabled(plan), ['smoke', 'process']);
 });
 
-test('project schema changes schedule persistence and example coverage without process geometry', () => {
+test('project schema changes schedule persistence without unrelated example coverage', () => {
   const plan = buildCiTestPlan(['site/project-schema.js']);
-  assert.equal(plan.suites.persistence, true);
-  assert.equal(plan.suites.examples, true);
-  assert.equal(plan.suites.process, false);
+  assert.deepEqual(enabled(plan), ['smoke', 'persistence']);
 });
 
 test('layout parser changes schedule interaction and layout review only', () => {
@@ -54,13 +43,13 @@ test('shared product orchestrator changes run both product review scopes', () =>
 test('workflow-only changes stay on the lightweight fast baseline', () => {
   const plan = buildCiTestPlan(['.github/workflows/browser-regression.yml']);
   assert.equal(plan.full, false);
-  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'resilience']);
+  assert.deepEqual(enabled(plan), ['smoke']);
 });
 
 test('planner-only changes stay on the lightweight fast baseline', () => {
   const plan = buildCiTestPlan(['scripts/ci-test-plan.mjs']);
   assert.equal(plan.full, false);
-  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'resilience']);
+  assert.deepEqual(enabled(plan), ['smoke']);
 });
 
 test('dependency changes conservatively run the complete browser suite', () => {
@@ -72,8 +61,23 @@ test('dependency changes conservatively run the complete browser suite', () => {
 test('empty changed-path plan stays on the lightweight fast baseline', () => {
   const plan = buildCiTestPlan([]);
   assert.equal(plan.full, false);
-  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'resilience']);
+  assert.deepEqual(enabled(plan), ['smoke']);
   assert.equal(plan.suites.process, false);
+});
+
+test('process controller changes do not pull layout, renderer or interaction review', () => {
+  const plan = buildCiTestPlan(['site/controllers/process-panel-controller.js']);
+  assert.deepEqual(enabled(plan), ['smoke', 'history', 'process']);
+});
+
+test('Three renderer changes select renderer plus resilience without product layout', () => {
+  const plan = buildCiTestPlan(['site/three-view.js']);
+  assert.deepEqual(enabled(plan), ['smoke', 'resilience', 'renderer']);
+});
+
+test('workstation shell changes select only their owned UI suites', () => {
+  const plan = buildCiTestPlan(['site/workstation.css']);
+  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'interaction', 'product_layout']);
 });
 
 test('explicit full mode runs every suite independent of changed paths', () => {
