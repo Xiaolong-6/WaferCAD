@@ -112,10 +112,13 @@ test('process, mask geometry, alignment, project and History changes are structu
   }
 
   assert.equal(
-    workspaceStructuralIdentityEqual(before, captureWorkspaceStructuralIdentity(base, {
-      projectName: 'Renamed',
-      historyToken: '0',
-    })),
+    workspaceStructuralIdentityEqual(
+      before,
+      captureWorkspaceStructuralIdentity(base, {
+        projectName: 'Renamed',
+        historyToken: '0',
+      }),
+    ),
     false,
   );
   assert.equal(workspaceStructuralIdentityEqual(before, identity(base, '1')), false);

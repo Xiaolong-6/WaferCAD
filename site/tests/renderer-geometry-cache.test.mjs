@@ -17,7 +17,11 @@ test('renderer reuses topology plan while model and clip are unchanged', () => {
   const clipA = rectMulti(10, 10);
   const clippedFirst = buildRenderSurfacePlan(model, clipA);
   const clippedSecond = buildRenderSurfacePlan(model, structuredClone(clipA));
-  assert.strictEqual(clippedSecond, clippedFirst, 'equivalent ROI geometry should share the cached plan');
+  assert.strictEqual(
+    clippedSecond,
+    clippedFirst,
+    'equivalent ROI geometry should share the cached plan',
+  );
   assert.notStrictEqual(clippedFirst, first);
 });
 

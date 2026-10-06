@@ -493,10 +493,13 @@ export function createWorkspacePersistenceController({
     }
     clearTimer();
     if (interactionDepth > 0 || transientTimer != null) return;
-    timer = setTimeout(() => {
-      timer = null;
-      void persistNow();
-    }, Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS));
+    timer = setTimeout(
+      () => {
+        timer = null;
+        void persistNow();
+      },
+      Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS),
+    );
   }
 
   function scheduleView({ delay = VIEW_AUTOSAVE_IDLE_MS } = {}) {
@@ -511,10 +514,13 @@ export function createWorkspacePersistenceController({
     }
     clearTimer();
     if (interactionDepth > 0 || transientTimer != null) return;
-    timer = setTimeout(() => {
-      timer = null;
-      void persistNow();
-    }, Math.max(VIEW_AUTOSAVE_IDLE_MS, Number(delay) || VIEW_AUTOSAVE_IDLE_MS));
+    timer = setTimeout(
+      () => {
+        timer = null;
+        void persistNow();
+      },
+      Math.max(VIEW_AUTOSAVE_IDLE_MS, Number(delay) || VIEW_AUTOSAVE_IDLE_MS),
+    );
   }
 
   async function refreshRecoveryOptions() {

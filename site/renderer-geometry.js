@@ -43,9 +43,7 @@ function clipFingerprint(clip) {
       }
     }
   }
-  return Number.isFinite(minX)
-    ? `${pointCount}:${minX}:${minY}:${maxX}:${maxY}:${hash}`
-    : 'empty';
+  return Number.isFinite(minX) ? `${pointCount}:${minX}:${minY}:${maxX}:${maxY}:${hash}` : 'empty';
 }
 
 function modelVisibilityKey(model) {

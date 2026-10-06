@@ -1855,18 +1855,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
                       },
                     ],
                   }),
-                  material = createSurfaceMaterial(
-                    layerById(model, bucket.part.layerId),
-                    state,
-                  ),
+                  material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
                   meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
                     name: `${bucket.part.layerId || 'material'} repeated cap`,
                   });
                 if (!meshes.length) continue;
                 smoothCapInstanceGroupCount += meshes.length;
                 smoothCapInstanceCount += instances.translations.length;
-                smoothCapTemplateTriangleCount +=
-                  geometry.getAttribute('position')?.count / 3 || 0;
+                smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
               }
 
               if (plane.instances.leftovers.length) {
@@ -1880,10 +1876,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                       },
                     ],
                   }),
-                  material = createSurfaceMaterial(
-                    layerById(model, bucket.part.layerId),
-                    state,
-                  );
+                  material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
                 addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 10 : 0);
               }
             }
@@ -1904,9 +1897,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
-      host.dataset.smoothCapTemplateTriangles = String(
-        Math.round(smoothCapTemplateTriangleCount),
-      );
+      host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
 
       for (const sidewall of plan.sidewalls) {
         const state = stateFor(sidewall);
@@ -1926,10 +1917,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           if (instances.instanceCount > 0) {
             for (const groupInstances of instances.groups) {
               const geometry = geometryFromSidewallParts([groupInstances.template]),
-                material = createSurfaceMaterial(
-                  layerById(model, bucket.part.layerId),
-                  state,
-                ),
+                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
                 meshes = addInstancedSurfaceMeshes(
                   geometry,
                   material,
@@ -1947,10 +1935,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
             if (instances.leftovers.length) {
               const geometry = geometryFromSidewallParts(instances.leftovers),
-                material = createSurfaceMaterial(
-                  layerById(model, bucket.part.layerId),
-                  state,
-                );
+                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
               addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
             }
             continue;

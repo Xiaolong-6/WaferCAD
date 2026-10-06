@@ -54,7 +54,10 @@ function splitRegions(model, vectorApi, area, mutateStack) {
     }
     if (isEmpty(vectorApi, hit)) continue;
     const before = stackKey(region.stack),
-      stack = mutateStack(region.stack.map((segment) => ({ ...segment })), region);
+      stack = mutateStack(
+        region.stack.map((segment) => ({ ...segment })),
+        region,
+      );
     if (stackKey(stack) !== before) changed = true;
     if (stack.length) {
       next.push({ id: `region-${model.nextRegionId++}`, geom: hit, stack });
@@ -137,11 +140,15 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
   const amount = Number(params.thickness),
     gap = Math.max(0, Number(params.transferGap) || 0),
     face = params.face === 'back' ? 'back' : 'front';
-  if (!(amount > 1e-9)) return { changed: false, error: 'Transfer thickness must be greater than zero.' };
+  if (!(amount > 1e-9))
+    return { changed: false, error: 'Transfer thickness must be greater than zero.' };
 
   const plane = exposedTransferPlane(model, area, face, modelApi, vectorApi);
   if (!Number.isFinite(plane)) {
-    return { changed: false, error: 'No exposed target surface is available for Transfer/Laminate.' };
+    return {
+      changed: false,
+      error: 'No exposed target surface is available for Transfer/Laminate.',
+    };
   }
 
   const layer = modelApi.createLayer(model, params.name || 'Transferred layer'),
@@ -166,7 +173,10 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
     next.push({
       id: `region-${model.nextRegionId++}`,
       geom: hit,
-      stack: modelApi.normalizeStack([...region.stack.map((segment) => ({ ...segment })), transferred]),
+      stack: modelApi.normalizeStack([
+        ...region.stack.map((segment) => ({ ...segment })),
+        transferred,
+      ]),
     });
   }
 
@@ -202,7 +212,10 @@ function applyUndercut(model, params, area, modelApi, vectorApi) {
     radius = Number(params.thickness),
     face = params.face === 'back' ? 'back' : 'front';
   if (!targetLayerId) {
-    return { changed: false, error: 'Undercut release requires one selected sacrificial material.' };
+    return {
+      changed: false,
+      error: 'Undercut release requires one selected sacrificial material.',
+    };
   }
   if (!(radius > 1e-9)) {
     return { changed: false, error: 'Undercut distance must be greater than zero.' };

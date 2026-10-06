@@ -50,9 +50,7 @@ function polygonBounds(poly) {
       maxY = Math.max(maxY, Number(y));
     }
   }
-  return [minX, minY, maxX, maxY].every(Number.isFinite)
-    ? { minX, minY, maxX, maxY }
-    : null;
+  return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
 }
 
 function translatedPolygonRecord(poly, quantum) {
@@ -127,7 +125,6 @@ export function translatedPolygonInstanceGroups(
     instanceCount: groups.reduce((sum, group) => sum + group.translations.length, 0),
   };
 }
-
 
 export function translatedSidewallInstanceGroups(
   parts,
@@ -205,7 +202,6 @@ export function translatedSidewallInstanceGroups(
     instanceCount: groups.reduce((sum, group) => sum + group.translations.length, 0),
   };
 }
-
 
 export function spatialInstanceChunks(translations, { maxInstances = 64 } = {}) {
   const limit = Math.max(1, Math.floor(Number(maxInstances) || 64)),

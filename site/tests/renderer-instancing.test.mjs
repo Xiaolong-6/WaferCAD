@@ -42,14 +42,12 @@ test('translated polygon grouping tolerates ring rotation and reversal', () => {
 });
 
 test('rare unique polygons remain in the regular mesh path', () => {
-  const grouped = translatedPolygonInstanceGroups(
-    [rect(0, 0), rect(10, 0), rect(20, 0, 7, 3)],
-    { minInstances: 3 },
-  );
+  const grouped = translatedPolygonInstanceGroups([rect(0, 0), rect(10, 0), rect(20, 0, 7, 3)], {
+    minInstances: 3,
+  });
   assert.equal(grouped.groups.length, 0);
   assert.equal(grouped.leftovers.length, 3);
 });
-
 
 test('translated sidewall grouping instances repeated smooth vertical walls', () => {
   const parts = Array.from({ length: 12 }, (_, index) => ({
@@ -92,7 +90,6 @@ test('rough and annotation-gradient sidewalls stay on the regular mesh path', ()
   assert.equal(grouped.groups.length, 0);
   assert.equal(grouped.leftovers.length, 2);
 });
-
 
 test('spatial instance chunks keep repeated arrays cullable without losing instances', () => {
   const translations = [];

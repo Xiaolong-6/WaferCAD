@@ -653,7 +653,8 @@ export function createProcessPanelController({
       thickness = manualMicron($('operationThickness').value);
     $('operationThickness').value = formatLengthField(thickness);
     if (planarizeEtch) {
-      if (!Number.isFinite(thickness)) return status('Target Z must be a finite coordinate.', 'error');
+      if (!Number.isFinite(thickness))
+        return status('Target Z must be a finite coordinate.', 'error');
     } else if (!(thickness > 0)) {
       return status('Thickness must be greater than zero.', 'error');
     }

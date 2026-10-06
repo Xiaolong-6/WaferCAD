@@ -100,15 +100,17 @@ function canonicalBooleanRing(ring, grid = BOOLEAN_RETRY_GRID_UM) {
 export function canonicalizeBooleanGeometry(geom, grid = BOOLEAN_RETRY_GRID_UM) {
   const out = [];
   for (const poly of normalizeMulti(geom)) {
-    const rings = poly.map((ring) => canonicalBooleanRing(ring, grid)).filter((ring) => ring.length >= 4);
+    const rings = poly
+      .map((ring) => canonicalBooleanRing(ring, grid))
+      .filter((ring) => ring.length >= 4);
     if (!rings.length) continue;
     const outer = rings[0];
     if (Math.abs(signedRingArea(outer)) <= BOOLEAN_RETRY_AREA_EPSILON_UM2) continue;
     out.push([
       outer,
-      ...rings.slice(1).filter(
-        (ring) => Math.abs(signedRingArea(ring)) > BOOLEAN_RETRY_AREA_EPSILON_UM2,
-      ),
+      ...rings
+        .slice(1)
+        .filter((ring) => Math.abs(signedRingArea(ring)) > BOOLEAN_RETRY_AREA_EPSILON_UM2),
     ]);
   }
   return out;
@@ -181,11 +183,11 @@ function polygonBounds(poly) {
 function boundsMayTouch(a, b, tolerance = EPS) {
   return Boolean(
     a &&
-      b &&
-      a.maxX >= b.minX - tolerance &&
-      b.maxX >= a.minX - tolerance &&
-      a.maxY >= b.minY - tolerance &&
-      b.maxY >= a.minY - tolerance,
+    b &&
+    a.maxX >= b.minX - tolerance &&
+    b.maxX >= a.minX - tolerance &&
+    a.maxY >= b.minY - tolerance &&
+    b.maxY >= a.minY - tolerance,
   );
 }
 
@@ -225,7 +227,9 @@ function unionPolygonComponents(geometries) {
       parent[b] = a;
       if (rank[a] === rank[b]) rank[a]++;
     },
-    order = entries.map((_, index) => index).sort((a, b) => entries[a].bounds.minX - entries[b].bounds.minX),
+    order = entries
+      .map((_, index) => index)
+      .sort((a, b) => entries[a].bounds.minX - entries[b].bounds.minX),
     active = [];
 
   for (const index of order) {

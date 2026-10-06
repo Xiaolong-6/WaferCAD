@@ -165,7 +165,9 @@ const autosaveCounts = async () =>
   });
 const beforeMixedDirty = await autosaveCounts();
 await openFunctionPanel(interactionAutosavePage, 'project');
-await interactionAutosavePage.locator('#projectNameInput').fill('Structural save survives view updates');
+await interactionAutosavePage
+  .locator('#projectNameInput')
+  .fill('Structural save survives view updates');
 await interactionAutosavePage.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
   input.value = '0.56';
@@ -272,6 +274,27 @@ await interactionAutosavePage.waitForFunction(
   { timeout: 30000 },
 );
 assert.equal(await interactionAutosavePage.locator('#maskOpacityRange').inputValue(), '0.55');
+// Blur must still persist normalization when it changes the project name.
+const beforeNormalizedName = await autosaveCounts();
+await openFunctionPanel(interactionAutosavePage, 'project');
+await interactionAutosavePage.locator('#projectNameInput').fill('  Normalized project name  ');
+await interactionAutosavePage.locator('#projectNameInput').press('Tab');
+assert.equal(
+  await interactionAutosavePage.locator('#projectNameInput').inputValue(),
+  'Normalized project name',
+);
+await interactionAutosavePage.waitForFunction(
+  (before) =>
+    (Number(document.querySelector('.workspace')?.dataset.fullAutosaveCount) || 0) > before.full,
+  beforeNormalizedName,
+  { timeout: 8000 },
+);
+await interactionAutosavePage.reload({ waitUntil: 'networkidle' });
+await waitForAppReady(interactionAutosavePage);
+assert.equal(
+  await interactionAutosavePage.locator('#projectNameInput').inputValue(),
+  'Normalized project name',
+);
 assert.deepEqual(interactionAutosaveErrors, []);
 await interactionAutosaveContext.close();
 

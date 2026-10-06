@@ -477,9 +477,7 @@ export async function runRendererProductCases({ page, capture }) {
     repeatedCapInstances = Number(
       await repeatedHost.getAttribute('data-smooth-cap-instance-count'),
     ),
-    repeatedCapGroups = Number(
-      await repeatedHost.getAttribute('data-smooth-cap-instance-groups'),
-    ),
+    repeatedCapGroups = Number(await repeatedHost.getAttribute('data-smooth-cap-instance-groups')),
     repeatedCapTemplateTriangles = Number(
       await repeatedHost.getAttribute('data-smooth-cap-template-triangles'),
     ),

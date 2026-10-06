@@ -132,7 +132,8 @@ test('vector booleans retry once on the 0.1 nm persistence grid after a sweep fa
   let calls = 0;
   globalThis.polygonClipping.intersection = (...args) => {
     calls++;
-    if (calls === 1) throw new Error('Unable to find segment in SweepLine tree after save/reopen quantization');
+    if (calls === 1)
+      throw new Error('Unable to find segment in SweepLine tree after save/reopen quantization');
     return original(...args);
   };
   try {

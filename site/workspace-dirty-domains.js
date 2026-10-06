@@ -63,15 +63,15 @@ export function workspaceStructuralIdentityEqual(left, right) {
     b = right.layout;
   return Boolean(
     a &&
-      b &&
-      a.name === b.name &&
-      a.root === b.root &&
-      a.elements === b.elements &&
-      a.linework === b.linework &&
-      a.bounds === b.bounds &&
-      a.combos === b.combos &&
-      a.hierarchy === b.hierarchy &&
-      a.units === b.units,
+    b &&
+    a.name === b.name &&
+    a.root === b.root &&
+    a.elements === b.elements &&
+    a.linework === b.linework &&
+    a.bounds === b.bounds &&
+    a.combos === b.combos &&
+    a.hierarchy === b.hierarchy &&
+    a.units === b.units,
   );
 }
 
@@ -127,7 +127,8 @@ export function applyWorkspaceViewState(project, viewState) {
   if (viewState.display && typeof viewState.display === 'object') {
     project.display = project.display && typeof project.display === 'object' ? project.display : {};
     for (const key of VIEW_DISPLAY_KEYS) {
-      if (Object.hasOwn(viewState.display, key)) project.display[key] = clone(viewState.display[key]);
+      if (Object.hasOwn(viewState.display, key))
+        project.display[key] = clone(viewState.display[key]);
     }
   }
   return true;
