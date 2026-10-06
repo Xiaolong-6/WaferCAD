@@ -142,7 +142,7 @@ function persistWorkspaceNow() {
 }
 
 function scheduleWorkspacePersistence() {
-  workspacePersistenceController?.schedule();
+  workspacePersistenceController?.scheduleStructural();
 }
 
 function markProjectDirty() {
