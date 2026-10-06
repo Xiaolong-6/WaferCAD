@@ -7,6 +7,7 @@ await loadGeometryKernel();
 const modelApi = await import('../model.js');
 const vectorApi = await import('../vector-geometry.js');
 const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
+const { validateProcessModel } = await import('../project-schema.js');
 
 function regionAt(model, point) {
   return model.regions.find((region) => vectorApi.pointInMulti(point, region.geom)) || null;
@@ -210,4 +211,5 @@ test('repeated conformal coating survives persistence-grid coordinate quantizati
     growth: 'conformal',
   });
   assert.equal(final.changed, true, final.error);
+  assert.equal(validateProcessModel(model), model);
 });
