@@ -2,6 +2,7 @@ import { modelBoundsZ } from '../model.js';
 import {
   defaultSectionCollapseForModel,
   normalizeSectionCollapse,
+  normalizeSectionZScales,
   resolveSectionCollapse,
   sectionCollapseSnapValues,
   translateSectionCollapse,
@@ -42,10 +43,29 @@ export function createSectionCollapseController({
     setSectionCollapse({
       ...normalizeSectionCollapse(value, bounds()),
       enabled: value?.enabled !== false,
+      ...normalizeSectionZScales(value),
     });
     onChanged();
     renderSection();
     if (settled) onSettled();
+  }
+
+  function setSurfaceScale(which, rawValue) {
+    const scale = Number(rawValue);
+    if (!Number.isFinite(scale)) {
+      syncRuler();
+      return;
+    }
+
+    const value = current(),
+      clamped = Math.max(0.1, Math.min(10, scale));
+    if (which === 'front') value.frontScale = clamped;
+    else value.backScale = clamped;
+    if (value.scaleLinked !== false) {
+      value.frontScale = clamped;
+      value.backScale = clamped;
+    }
+    setCurrent(value, { settled: true });
   }
 
   function toggleEnabled() {
@@ -128,6 +148,15 @@ export function createSectionCollapseController({
         : activeTarget === 'bottom'
           ? `${formatXY(value.bottom)} ${xyUnitLabel()}`
           : `${formatXY(value.top - value.bottom)} ${xyUnitLabel()}`;
+
+    const linked = value.scaleLinked !== false,
+      frontScale = $('sectionCollapseFrontScale'),
+      backScale = $('sectionCollapseBackScale'),
+      linkScale = $('sectionCollapseScaleLinked');
+    linkScale.checked = linked;
+    frontScale.value = String(Number(value.frontScale || 1));
+    backScale.value = String(Number(value.backScale || 1));
+    backScale.disabled = linked;
     updateStepLabels();
   }
 
@@ -201,7 +230,10 @@ export function createSectionCollapseController({
     } else if (activeTarget === 'bottom') {
       value.bottom = Math.min(value.top - minGap, Math.max(lo, value.bottom + step));
     } else {
-      setCurrent(translateSectionCollapse(value, step, [lo, hi]), { settled: true });
+      setCurrent(
+        { ...value, ...translateSectionCollapse(value, step, [lo, hi]) },
+        { settled: true },
+      );
       return;
     }
     setCurrent(value, { settled: true });
@@ -273,6 +305,18 @@ export function createSectionCollapseController({
     });
     $('sectionCollapseMinus').addEventListener('click', () => nudge(-1));
     $('sectionCollapsePlus').addEventListener('click', () => nudge(1));
+    $('sectionCollapseScaleLinked').addEventListener('change', (event) => {
+      const value = current();
+      value.scaleLinked = event.target.checked;
+      if (value.scaleLinked) value.backScale = value.frontScale;
+      setCurrent(value, { settled: true });
+    });
+    $('sectionCollapseFrontScale').addEventListener('change', (event) =>
+      setSurfaceScale('front', event.target.value),
+    );
+    $('sectionCollapseBackScale').addEventListener('change', (event) =>
+      setSurfaceScale('back', event.target.value),
+    );
     $('sectionCollapseTopHandle').addEventListener('pointerdown', (event) =>
       startDrag('top', event),
     );
