@@ -1,3 +1,5 @@
+import { difference as robustDifference, intersection as robustIntersection } from './vector-geometry.js';
+
 export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
 export const PROJECT_LENGTH_LIMIT_UM = PROJECT_COORDINATE_LIMIT_UM * 2;
@@ -176,12 +178,6 @@ function validateStack(stack, path, layerIds) {
   });
 }
 
-function geometryKernel() {
-  const kernel = globalThis.polygonClipping;
-  if (!kernel) throw new Error('Project geometry validation requires polygon-clipping.');
-  return kernel;
-}
-
 function ringArea(ring) {
   let sum = 0;
   for (let index = 0; index < (ring?.length || 0); index++) {
@@ -220,7 +216,6 @@ function geometryBounds(geom) {
 }
 
 function validateModelGeometry(model) {
-  const pc = geometryKernel();
   const boundaryBounds = geometryBounds(model.boundary);
   const dimensionTolerance = Math.max(1e-9, model.width, model.height) * 1e-9;
 
@@ -242,7 +237,7 @@ function validateModelGeometry(model) {
 
   try {
     for (const current of entries) {
-      const outside = pc.difference(current.region.geom, model.boundary);
+      const outside = robustDifference(current.region.geom, model.boundary);
       if (multiArea(outside) > areaTolerance) {
         fail(`model.regions[${current.index}].geom`, 'extends outside model.boundary.');
       }
@@ -257,7 +252,7 @@ function validateModelGeometry(model) {
         ) {
           continue;
         }
-        const overlap = pc.intersection(previous.region.geom, current.region.geom);
+        const overlap = robustIntersection(previous.region.geom, current.region.geom);
         if (multiArea(overlap) > areaTolerance) {
           fail(
             `model.regions[${current.index}].geom`,
@@ -1239,6 +1234,12 @@ export function migrateProjectFile(project) {
     }
   }
   return migrated;
+}
+
+export function validateProcessModel(model) {
+  const budget = { polygons: 0, rings: 0, points: 0 };
+  validateModel(model, budget);
+  return model;
 }
 
 export function validateProjectFile(project) {
