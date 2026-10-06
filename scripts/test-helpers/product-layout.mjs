@@ -379,7 +379,16 @@ export function createProductLayoutChecks({ capture }) {
     assert.equal(await editor.isHidden(), true);
 
     const afterBreakY = Number(await canvas.getAttribute('data-section-collapse-break-y'));
-    close(afterBreakY, before.breakY, 1e-9);
+    assert.ok(Number.isFinite(afterBreakY), `${name}: collapse break moved outside the plot`);
+    assert.ok(
+      afterBreakY < before.breakY,
+      `${name}: moving the top collapse boundary upward must move the equal-Z-scale break upward`,
+    );
+    close(
+      Number(await canvas.getAttribute('data-section-front-px-per-um')),
+      Number(await canvas.getAttribute('data-section-back-px-per-um')),
+      1e-9,
+    );
 
     await entry.dblclick();
     assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'false');
