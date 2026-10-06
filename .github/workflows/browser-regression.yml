@@ -8,6 +8,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "site/**"
+      - "!site/tests/**"
       - "examples/**"
       - "scripts/ui-smoke.mjs"
       - "scripts/workstation-regression.mjs"
@@ -107,8 +108,8 @@ jobs:
       - name: Install project dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Run Node test gate for full regressions
-        if: ${{ needs.plan.outputs.full == 'true' }}
+      - name: Run Node test gate outside PRs
+        if: ${{ github.event_name != 'pull_request' }}
         run: npm test
 
       - name: Install Chromium
