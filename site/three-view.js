@@ -1105,7 +1105,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const chunks = spatialInstanceChunks(translations, { maxInstances: maxInstancesPerMesh }),
       meshes = [];
     chunks.forEach((chunk, chunkIndex) => {
-      const mesh = new THREE.InstancedMesh(geometry, material, chunk.length),
+      // Z-collapse can remap vertex Z coordinates in place. Give each spatial
+      // chunk its own tiny template geometry so one chunk cannot mutate the
+      // canonical coordinates observed by another chunk.
+      const chunkGeometry = chunkIndex === 0 ? geometry : geometry.clone(),
+        mesh = new THREE.InstancedMesh(chunkGeometry, material, chunk.length),
         matrix = new THREE.Matrix4();
       chunk.forEach(([x, y], index) => {
         matrix.makeTranslation(Number(x) || 0, Number(y) || 0, 0);
