@@ -133,7 +133,14 @@ test('Project schema and annotation contracts', () => {
   assert.equal(validateProjectFile(validProject), validProject);
 
   const collapseProject = structuredClone(validProject);
-  collapseProject.display.sectionCollapse = { top: -0.5, bottom: -9.5, enabled: false };
+  collapseProject.display.sectionCollapse = {
+    top: -0.5,
+    bottom: -9.5,
+    enabled: false,
+    scaleLinked: false,
+    frontScale: 1.5,
+    backScale: 0.75,
+  };
   assert.equal(validateProjectFile(collapseProject), collapseProject);
   const invalidCollapseEnabledProject = structuredClone(validProject);
   invalidCollapseEnabledProject.display.sectionCollapse = {
@@ -144,6 +151,18 @@ test('Project schema and annotation contracts', () => {
   assert.throws(
     () => validateProjectFile(invalidCollapseEnabledProject),
     /sectionCollapse.enabled/,
+  );
+  const invalidCollapseScaleProject = structuredClone(validProject);
+  invalidCollapseScaleProject.display.sectionCollapse = {
+    top: -0.5,
+    bottom: -9.5,
+    scaleLinked: false,
+    frontScale: 0,
+    backScale: 1,
+  };
+  assert.throws(
+    () => validateProjectFile(invalidCollapseScaleProject),
+    /sectionCollapse.frontScale/,
   );
   const invalidCollapseProject = structuredClone(validProject);
   invalidCollapseProject.display.sectionCollapse = { top: -9.5, bottom: -0.5 };
