@@ -39,7 +39,7 @@ on:
       - "scripts/**"
       - ".github/workflows/browser-regression.yml"
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -81,14 +81,21 @@ jobs:
               | node scripts/ci-test-plan.mjs --stdin
           elif [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             node scripts/ci-test-plan.mjs --full
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            before="${{ github.event.before }}"
+            if [[ -z "$before" || "$before" =~ ^0+$ ]] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+              # Conservative fallback for an unusual push event where the
+              # previous main revision cannot be resolved locally.
+              node scripts/ci-test-plan.mjs --full
+            else
+              git diff --name-only "$before" "${{ github.sha }}"                 | node scripts/ci-test-plan.mjs --stdin
+            fi
           else
-            # main pushes were already validated by their PR. Keep only the
-            # lightweight baseline browser gate and avoid a second full sweep.
-            node scripts/ci-test-plan.mjs
+            node scripts/ci-test-plan.mjs --full
           fi
 
   browser:
-    name: ${{ github.event_name == 'push' && 'Main browser smoke' || 'Chromium targeted regression' }}
+    name: ${{ github.event_name == 'push' && 'Main targeted regression' || 'Chromium targeted regression' }}
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 15
