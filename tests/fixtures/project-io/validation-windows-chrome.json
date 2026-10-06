@@ -1,0 +1,128 @@
+{
+  "date": "2026-10-06",
+  "platform": "Windows",
+  "node": "24.19.0",
+  "playwright": "1.55.1",
+  "three": "0.179.1",
+  "viewport": {
+    "width": 1440,
+    "height": 960
+  },
+  "baselineCommit": "e9abb1583b553159789e133f039dcf0b17d59dd9",
+  "productCommit": "ebcc04aa2177c4abacc0335f024a2aba63f6c06e",
+  "baseline": {
+    "bytes": 67315148,
+    "browserVersion": "154.0.8037.98",
+    "runs": [
+      {
+        "openedMs": 148159.628,
+        "readyMs": 148491.946,
+        "workerMs": 72539.19999999925,
+        "worker": {
+          "started": 2007.5,
+          "Parsing project JSON…": 2059.300000000745,
+          "Validating project…": 3116.10000000149,
+          "done": 74546.69999999925,
+          "steps": 41,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 145657.9506,
+        "readyMs": 145906.11049999998,
+        "workerMs": 70876.69999999925,
+        "worker": {
+          "started": 932,
+          "Parsing project JSON…": 962.9000000022352,
+          "Validating project…": 2008.300000000745,
+          "done": 71808.69999999925,
+          "steps": 41,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 147039.70799999998,
+        "readyMs": 147278.1779,
+        "workerMs": 70808,
+        "worker": {
+          "started": 848.1999999992549,
+          "Parsing project JSON…": 879.6999999992549,
+          "Validating project…": 1930.2999999970198,
+          "done": 71656.19999999925,
+          "steps": 41,
+          "bookmarks": 5
+        },
+        "errors": []
+      }
+    ],
+    "medianOpenedMs": 147039.70799999998,
+    "medianReadyMs": 147278.1779,
+    "medianWorkerMs": 70876.69999999925
+  },
+  "optimized": {
+    "bytes": 3015859,
+    "browserVersion": "154.0.8037.98",
+    "runs": [
+      {
+        "openedMs": 13911.4216,
+        "readyMs": 14262.6991,
+        "workerMs": 4042.900000002235,
+        "worker": {
+          "started": 1256.199999999255,
+          "Parsing project JSON…": 1283.6000000014901,
+          "Validating project…": 1336.300000000745,
+          "done": 5299.10000000149,
+          "steps": 41,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 13256.621299999999,
+        "readyMs": 13507.075499999999,
+        "workerMs": 4075.800000000745,
+        "worker": {
+          "started": 854.8000000007451,
+          "Parsing project JSON…": 886.8000000007451,
+          "Validating project…": 942.3999999985099,
+          "done": 4930.60000000149,
+          "steps": 41,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 13025.658299999996,
+        "readyMs": 13301.813699999999,
+        "workerMs": 3956.60000000149,
+        "worker": {
+          "started": 819.8000000007451,
+          "Parsing project JSON…": 853.6000000014901,
+          "Validating project…": 908.6000000014901,
+          "done": 4776.400000002235,
+          "steps": 41,
+          "bookmarks": 5
+        },
+        "errors": []
+      }
+    ],
+    "medianOpenedMs": 13256.621299999999,
+    "medianReadyMs": 13507.075499999999,
+    "medianWorkerMs": 4042.900000002235
+  },
+  "storage": {
+    "sourceBytes": 67315148,
+    "outputBytes": 3015859,
+    "exportMs": 27336.361500000003,
+    "importMs": 4243.6394999999975,
+    "entireProjectEqual": true,
+    "steps": 41,
+    "bookmarks": 5,
+    "uniqueGeometries": 15
+  },
+  "byteReductionPercent": 95.51979147397849,
+  "readyTimeReductionPercent": 90.8288684090245,
+  "readySpeedup": 10.903779867077816
+}

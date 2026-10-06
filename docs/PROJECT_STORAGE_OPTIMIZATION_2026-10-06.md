@@ -21,3 +21,35 @@ Chrome baseline on the exact starting product: three visible installed Chrome 15
 ## Baseline integration
 
 The requested baseline advanced during implementation. A normal merge retains its latest process-worker validation and lazy robust polygon boolean implementation from `e9abb1583b553159789e133f039dcf0b17d59dd9`, without rewriting the already-pushed feature commits. IO validation caches call the shared robust operations, and `validateProcessModel` uses a fresh geometry validation context with full budgets. Focused integration: 71 tests passed; complete merged inventory: 372 tests passed; lint passed. Final browser checks and a fresh comparison against this exact advanced baseline are pending at this merge milestone.
+
+## Final validation on the updated baseline
+
+Final product commit: `ebcc04aa2177c4abacc0335f024a2aba63f6c06e`; exact comparison baseline: `e9abb1583b553159789e133f039dcf0b17d59dd9`. Subsequent commits contain scientific regression reader fixes and this report. All feature commits were pushed with `[skip ci]`; no manual CI was dispatched.
+
+| Measurement                     |   Baseline | Optimized |
+| ------------------------------- | ---------: | --------: |
+| Native project JSON bytes       | 67,315,148 | 3,015,859 |
+| Chrome Open status, median      |   147.04 s |   13.26 s |
+| Matching-model 3D ready, median |   147.28 s |   13.51 s |
+| Import worker, median           |    70.88 s |    4.04 s |
+
+This is a 95.52% file-size reduction and a 10.90-fold improvement in complete UI import time (90.83% less time). The ready-time runs were 148.49/145.91/147.28 s on the baseline and 14.26/13.51/13.30 s on the optimized product. All six runs restored 41 Steps and five bookmarks with no page errors. These are local measurements on this Windows machine, not a universal latency guarantee. Chrome 154.0.8037.98, Node 24.19.0, Playwright 1.55.1, Three 0.179.1 and a 1440 × 960 viewport were held constant. Raw measurements are committed in `tests/fixtures/project-io/validation-windows-chrome.json`.
+
+The storage benchmark asserts deep equality of the entire normalized project, including all models, Steps, bookmarks and Variant HEADs. Fifteen distinct geometry entries replace repeated coordinates. The exported file remains native JSON `.wafercad` and needs no unpacking. No history was removed and the existing 0.1 nm export quantization was retained. Old v1/unencoded project files remain readable; new v2 files require this updated frontend.
+
+Local checks: `node --test site/tests/*.test.mjs` passed all 372 tests, with zero failures/skips. ESLint passed. History, Persistence, Examples and the complete Process geometry browser regressions passed against the merged frontend. Scientific export assertions expand the v2 references before checking the original geometry and History invariants. Changed-file formatting passed. The full format inventory still reports 13 warnings in inherited, untouched baseline files; approved pixel baselines were not regenerated or run.
+
+Reproduction commands, after `npm ci --ignore-scripts --no-audit --no-fund` and starting a local static server for each exact product:
+
+```powershell
+node scripts/project-storage-benchmark.mjs tests/fixtures/project-io/nature2026-fig3-wafer-legacy.wafercad.br test-results/project-io/reference-v2.wafercad test-results/project-io/storage-benchmark.json test-results/project-io/reference-legacy.wafercad
+# Set WAFERCAD_URL, WAFERCAD_CHROMIUM and WAFERCAD_THREE_DIR to the local server, installed Chrome and locked Three package.
+node scripts/project-import-benchmark.mjs test-results/project-io/reference-legacy.wafercad test-results/project-io/baseline-chrome.json 3
+# Switch WAFERCAD_URL to the optimized frontend before the v2 run.
+node scripts/project-import-benchmark.mjs test-results/project-io/reference-v2.wafercad test-results/project-io/optimized-chrome.json 3
+node --test site/tests/*.test.mjs
+node scripts/history-regression.mjs
+node scripts/persistence-regression.mjs
+node scripts/example-regression.mjs
+node scripts/process-geometry-regression.mjs
+```
