@@ -3,6 +3,7 @@ import { CURRENT_PROJECT_VERSION, validateProjectFile } from '../project-schema.
 import { normalizeMaskRoi } from '../mask-roi-geometry.js';
 import { normalizeRoi } from '../roi-editor.js';
 import { normalizeSectionDetailRoi } from '../section-detail-roi.js';
+import { normalizeSectionZScales } from '../section-z-collapse.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
 
@@ -120,6 +121,7 @@ export function createProjectStateController({
               top: Number(project.display.sectionCollapse.top),
               bottom: Number(project.display.sectionCollapse.bottom),
               enabled: project.display.sectionCollapse.enabled !== false,
+              ...normalizeSectionZScales(project.display.sectionCollapse),
             }
           : null;
 
