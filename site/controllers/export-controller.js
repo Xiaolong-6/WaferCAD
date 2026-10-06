@@ -474,7 +474,6 @@ export function createExportController({
         plotTop,
         plotHeight,
         breakPixels,
-        upperFraction: 0.8,
         mode: sectionScaleMode,
         xScale,
       }),
