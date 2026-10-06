@@ -40,7 +40,6 @@ export function captureWorkspaceStructuralIdentity(
     modelRevision: Number(model?.revision) || 0,
     processRevision: Number(model?.processRevision) || 0,
     layout,
-    maskTransform: project?.maskTransform || null,
     drawMask: project?.drawMask || null,
     projectName: String(projectName || ''),
     historyToken: String(historyToken || ''),
@@ -53,7 +52,6 @@ export function workspaceStructuralIdentityEqual(left, right) {
     left.model !== right.model ||
     left.modelRevision !== right.modelRevision ||
     left.processRevision !== right.processRevision ||
-    left.maskTransform !== right.maskTransform ||
     left.drawMask !== right.drawMask ||
     left.projectName !== right.projectName ||
     left.historyToken !== right.historyToken
@@ -86,6 +84,7 @@ export function extractWorkspaceViewState(project) {
     version: 1,
     selectedLayerKeys: clone(project?.selectedLayerKeys),
     activeCell: project?.activeCell ?? null,
+    maskTransform: clone(project?.maskTransform),
     maskSourceMode: project?.maskSourceMode === 'draw' ? 'draw' : 'file',
     maskRoi: clone(project?.maskRoi),
     maskRoiAnchor: project?.maskRoiAnchor || 'center',
@@ -105,6 +104,9 @@ export function applyWorkspaceViewState(project, viewState) {
   }
   if (typeof viewState.activeCell === 'string' || viewState.activeCell === null) {
     project.activeCell = viewState.activeCell;
+  }
+  if (viewState.maskTransform && typeof viewState.maskTransform === 'object') {
+    project.maskTransform = clone(viewState.maskTransform);
   }
   if (viewState.maskSourceMode === 'file' || viewState.maskSourceMode === 'draw') {
     project.maskSourceMode = viewState.maskSourceMode;
