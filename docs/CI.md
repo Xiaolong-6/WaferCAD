@@ -35,19 +35,20 @@ When process/model geometry changes require it, the job runs in parallel with th
 
 ## Full regression events
 
-The complete browser suite, including Process Geometry, still runs for:
+The complete browser suite, including Process Geometry, runs for:
 
-- relevant pushes to `main`;
 - the nightly Browser regression schedule (`02:17 UTC`);
 - manual `workflow_dispatch` runs;
 - pull requests that change pinned dependencies or shared browser-test infrastructure.
 
-This gives targeted feedback during development while retaining a complete integration sweep after merge and on a recurring schedule.
+A push to `main` now runs only the lightweight baseline browser gate (smoke + workstation + resilience) plus the Node test gate. It does not repeat focused History/Persistence/Interaction/Examples/Product/Process suites that were already exercised on the pull request.
+
+This keeps a cheap post-merge sanity check while leaving the expensive full integration sweep to nightly/manual runs.
 
 ## Cost controls
 
 - Browser PR jobs do not repeat the Node test gate already owned by `Quality`.
-- Node tests are repeated inside Browser regression only for non-PR full runs, where a separate Quality workflow may not exist.
+- Node tests are repeated inside Browser regression for non-PR runs, including the lightweight `main` push smoke, because a separate Quality workflow may not exist for direct pushes.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.
 - Process Geometry is split only because it is substantially longer and benefits from conditional parallel execution.

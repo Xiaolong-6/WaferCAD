@@ -53,7 +53,8 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 - Every browser PR runs the fast smoke/workstation/resilience gate, then `scripts/ci-test-plan.mjs` selects History, Persistence, Interaction, Examples, Product Layout, Renderer, and Process Geometry coverage from changed paths.
 - Browser PR jobs do not repeat `npm test`; non-PR full runs still execute the Node gate because a separate Quality run may not exist.
 - Process Geometry no longer runs on unrelated pull requests. When selected, it runs in a separate job in parallel with the targeted browser suites.
-- Relevant pushes to `main`, the nightly Browser regression schedule, and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
+- Pushes to `main` run only the lightweight fast browser baseline plus the Node test gate; they do not repeat focused suites or Process Geometry after merge.
+- The nightly Browser regression schedule and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
 - Dependency-lockfile or shared browser-test-helper changes conservatively request the full browser suite.
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
 

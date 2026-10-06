@@ -65,6 +65,13 @@ test('dependency changes conservatively run the complete browser suite', () => {
   for (const suite of BROWSER_SUITES) assert.equal(plan.suites[suite], true);
 });
 
+test('empty changed-path plan stays on the lightweight fast baseline', () => {
+  const plan = buildCiTestPlan([]);
+  assert.equal(plan.full, false);
+  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'resilience']);
+  assert.equal(plan.suites.process, false);
+});
+
 test('explicit full mode runs every suite independent of changed paths', () => {
   const plan = buildCiTestPlan([], { full: true });
   assert.equal(plan.full, true);

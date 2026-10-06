@@ -79,12 +79,16 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
               | node scripts/ci-test-plan.mjs --stdin
-          else
+          elif [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             node scripts/ci-test-plan.mjs --full
+          else
+            # main pushes were already validated by their PR. Keep only the
+            # lightweight baseline browser gate and avoid a second full sweep.
+            node scripts/ci-test-plan.mjs
           fi
 
   browser:
-    name: Chromium targeted regression
+    name: ${{ github.event_name == 'push' && 'Main browser smoke' || 'Chromium targeted regression' }}
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 15
