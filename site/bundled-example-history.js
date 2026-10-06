@@ -6,7 +6,77 @@ function normalizedAreaMode(value) {
   return REPLAY_AREA_MODES.has(value) ? value : 'full';
 }
 
-function legacyReplayDescriptor(operation) {
+function savedSurfaceAppearance(node, operation) {
+  const model = node?.state?.model,
+    face = operation?.face,
+    field = face === 'back' ? 'backSurface' : 'frontSurface',
+    source = operation?.surface;
+  if (!model || !source || !['front', 'back'].includes(face)) return null;
+
+  const candidates = [];
+  for (const region of model.regions || []) {
+    const stack = region?.stack || [],
+      segment = face === 'back' ? stack[0] : stack.at(-1),
+      appearance = segment?.[field];
+    if (appearance?.kind === 'rough') candidates.push(appearance);
+  }
+
+  const close = (left, right) =>
+    Number.isFinite(Number(left)) &&
+    Number.isFinite(Number(right)) &&
+    Math.abs(Number(left) - Number(right)) <= 1e-9;
+
+  return (
+    candidates.find(
+      (appearance) =>
+        (!source.morphology || appearance.morphology === source.morphology) &&
+        (!source.polarity || appearance.polarity === source.polarity) &&
+        (!Number.isFinite(Number(source.featureSize)) ||
+          close(appearance.featureSize, source.featureSize)) &&
+        (!Number.isFinite(Number(source.meanHeight)) ||
+          close(appearance.meanHeight, source.meanHeight)),
+    ) ||
+    candidates.find(
+      (appearance) =>
+        (!source.morphology || appearance.morphology === source.morphology) &&
+        (!source.polarity || appearance.polarity === source.polarity),
+    ) ||
+    null
+  );
+}
+
+function normalizedLegacySurface(node, operation) {
+  const source = operation?.surface;
+  if (!source) return null;
+
+  const saved = savedSurfaceAppearance(node, operation),
+    featureSize = Number(source.featureSize ?? saved?.featureSize),
+    meanHeight = Number(source.meanHeight ?? source.amplitude ?? saved?.meanHeight);
+  if (!(featureSize > 0) || !(meanHeight > 0)) return null;
+
+  const featureCv = Number(source.featureCv ?? saved?.featureCv ?? 0),
+    heightCv = Number(source.heightCv ?? saved?.heightCv ?? 0),
+    seed = Number(source.seed ?? saved?.seed),
+    profileId = source.profileId || saved?.profileId || null;
+
+  return {
+    kind: 'rough',
+    featureSize,
+    meanHeight,
+    featureCv: Number.isFinite(featureCv) ? featureCv : 0,
+    heightCv: Number.isFinite(heightCv) ? heightCv : 0,
+    morphology:
+      source.morphology === 'pyramid' || saved?.morphology === 'pyramid'
+        ? 'pyramid'
+        : 'stochastic',
+    polarity: source.polarity === 'normal' || saved?.polarity === 'normal' ? 'normal' : 'inverted',
+    ...(Number.isInteger(seed) && seed >= 0 ? { seed } : {}),
+    ...(typeof profileId === 'string' && profileId ? { profileId } : {}),
+    geometryMode: 'ideal',
+  };
+}
+
+function legacyReplayDescriptor(node, operation) {
   const kind = operation?.kind;
   if (kind === 'record') return { version: 1, kind: 'record' };
   if (!EDITABLE_PROCESS_KINDS.has(kind)) return null;
@@ -24,7 +94,9 @@ function legacyReplayDescriptor(operation) {
   };
 
   if (kind === 'etch') {
-    params.surface = operation.surface ? structuredClone(operation.surface) : null;
+    const surface = normalizedLegacySurface(node, operation);
+    if (operation.surface && !surface) return null;
+    params.surface = surface;
     params.etchProfile =
       operation.etchProfile === 'isotropic' || operation.profile === 'isotropic-release'
         ? 'isotropic'
@@ -68,7 +140,7 @@ export function upgradeBundledExampleHistory(project) {
     const operation = node?.operation;
     if (!operation || operation.replay?.version === 1) continue;
 
-    const replay = legacyReplayDescriptor(operation);
+    const replay = legacyReplayDescriptor(node, operation);
     if (replay) {
       operation.replay = replay;
       upgraded += 1;
