@@ -167,6 +167,78 @@ test('historical Apply commits the variant only after a successful changed worke
   assert.ok(events.indexOf('record-operation') > events.indexOf('set-model'));
 });
 
+test('changed worker result is validated before Variant, model, or History commit', async () => {
+  const events = [];
+  const controller = controllerForTask(
+    (model) => {
+      const invalid = structuredClone(model);
+      invalid.regions[0].stack[0].z1 = invalid.regions[0].stack[0].z0;
+      invalid.revision += 1;
+      invalid.processRevision += 1;
+      return { result: { changed: true }, model: invalid };
+    },
+    events,
+  );
+
+  await controller.applyOperation();
+
+  assert.ok(events.includes('run-worker'));
+  assert.equal(events.includes('commit-variant'), false);
+  assert.equal(events.includes('save-history'), false);
+  assert.equal(events.includes('set-model'), false);
+  assert.equal(events.includes('record-operation'), false);
+});
+
+test('replay rejects invalid worker geometry before mutating replay History', async () => {
+  const events = [];
+  const controller = controllerForTask(
+    (model) => {
+      const invalid = structuredClone(model);
+      invalid.regions[0].stack[0].z1 = invalid.regions[0].stack[0].z0;
+      invalid.revision += 1;
+      invalid.processRevision += 1;
+      return { result: { changed: true, layerId: 'layer-invalid' }, model: invalid };
+    },
+    events,
+  );
+
+  const result = await controller.replayOperations([
+    {
+      operation: {
+        kind: 'add',
+        label: 'Invalid replay result',
+        replay: {
+          version: 1,
+          params: {
+            type: 'add',
+            name: 'Invalid',
+            targetLayerId: '',
+            thickness: 0.2,
+            face: 'front',
+            growth: 'direct',
+          },
+          areaMode: 'full',
+        },
+      },
+      state: {
+        maskSourceMode: 'file',
+        maskRoi: null,
+        maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+        selectedLayerKeys: [],
+        activeCell: null,
+        layout: { elements: [], hierarchy: {} },
+      },
+    },
+  ]);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.completed, 0);
+  assert.match(result.error, /Process result rejected/);
+  assert.equal(events.includes('save-history'), false);
+  assert.equal(events.includes('set-model'), false);
+  assert.equal(events.includes('record-operation'), false);
+});
+
 test('Record process step advances History without running geometry worker', async () => {
   const events = [],
     recorded = [],
