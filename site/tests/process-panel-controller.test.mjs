@@ -134,6 +134,11 @@ test('historical Apply does not commit a variant when the worker does not change
     () => ({ aborted: true }),
     () => ({ error: 'synthetic failure' }),
     () => ({ busy: true }),
+    () => ({
+      rejected: true,
+      error: 'Process result rejected; synthetic invalid geometry.',
+      result: { changed: true },
+    }),
     () => ({ result: { changed: false, error: 'no change' } }),
   ]) {
     const events = [];
