@@ -30,18 +30,18 @@ export function formatXY(valueMicron, unit = 'um', digits = 3) {
   return Number(value.toPrecision(digits)).toString();
 }
 
-export function roundMicronToNanometre(value) {
+export function roundMicronToTenthNanometre(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return number;
-  const rounded = Math.round(number * 1000) / 1000;
+  const rounded = Math.round(number * 10000) / 10000;
   return Object.is(rounded, -0) ? 0 : rounded;
 }
 
 export function formatLengthInput(valueMicron, unit = 'um') {
-  const roundedMicron = roundMicronToNanometre(valueMicron);
+  const roundedMicron = roundMicronToTenthNanometre(valueMicron);
   if (!Number.isFinite(roundedMicron)) return '';
   const value = fromMicron(roundedMicron, unit);
-  const decimals = unit === 'nm' ? 0 : unit === 'mm' ? 6 : 3;
+  const decimals = unit === 'nm' ? 1 : unit === 'mm' ? 7 : 4;
   return value
     .toFixed(decimals)
     .replace(/\.0+$/, '')
