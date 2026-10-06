@@ -336,6 +336,14 @@ export function createWorkspacePersistenceController({
     syncSaveStatus();
   }
 
+  function markViewDirty() {
+    editVersion += 1;
+    pendingDomainCheck = false;
+    if (!dirty) viewDirty = true;
+    failed = false;
+    syncSaveStatus();
+  }
+
   function beginInteraction() {
     interactionDepth += 1;
     clearTimer();
@@ -475,6 +483,20 @@ export function createWorkspacePersistenceController({
       timer = null;
       void persistNow();
     }, effectiveDelay);
+  }
+
+  function scheduleView({ delay = VIEW_AUTOSAVE_IDLE_MS } = {}) {
+    markViewDirty();
+    if (!ready || !hasWriteAccess()) {
+      syncSaveStatus();
+      return;
+    }
+    clearTimer();
+    if (interactionDepth > 0 || transientTimer != null || dirty) return;
+    timer = setTimeout(() => {
+      timer = null;
+      void persistNow();
+    }, Math.max(VIEW_AUTOSAVE_IDLE_MS, Number(delay) || VIEW_AUTOSAVE_IDLE_MS));
   }
 
   async function refreshRecoveryOptions() {
@@ -1082,6 +1104,7 @@ export function createWorkspacePersistenceController({
     bind,
     persistNow,
     schedule,
+    scheduleView,
     refreshRecoveryOptions,
     checkpointCurrent,
     syncSessionState,
