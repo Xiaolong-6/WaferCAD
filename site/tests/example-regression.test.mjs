@@ -11,6 +11,7 @@ new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.e
 globalThis.polygonClipping = commonJsModule.exports;
 
 const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
+const { upgradeBundledExampleHistory } = await import('../bundled-example-history.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
 const {
@@ -32,6 +33,7 @@ async function loadBundledProject(id) {
       await readFile(new URL(`../examples/${fileName}`, import.meta.url), 'utf8'),
     );
   expandProjectStorage(project);
+  upgradeBundledExampleHistory(project);
   validateProjectFile(project);
   return project;
 }
@@ -175,6 +177,41 @@ test('bundled examples remain valid renderer-ready regression fixtures', async (
     for (const node of project.snapshotBranches?.nodes || []) {
       assert.notEqual(node.restorable, false, `${node.id}: production Step must remain restorable`);
       assert.ok(node.state?.model, `${node.id}: restorable Step lost its model`);
+      if (node.operation?.kind === 'base') {
+        assert.notEqual(
+          node.operation?.replay?.version,
+          1,
+          `${node.id}: Base lifecycle marker must not masquerade as an editable Process Step`,
+        );
+      } else {
+        assert.equal(
+          node.operation?.replay?.version,
+          1,
+          `${node.id}: bundled Process Step must expose deterministic replay metadata`,
+        );
+        if (node.operation?.kind !== 'record') {
+          assert.ok(node.operation.replay.params, `${node.id}: replay params missing`);
+          if (node.operation?.surface) {
+            assert.equal(
+              node.operation.replay.params.surface?.kind,
+              'rough',
+              `${node.id}: legacy rough surface must remain a rough replay surface`,
+            );
+            assert.ok(
+              Number.isInteger(node.operation.replay.params.surface?.seed),
+              `${node.id}: legacy rough surface must preserve its deterministic seed`,
+            );
+            assert.ok(
+              node.operation.replay.params.surface?.profileId,
+              `${node.id}: legacy rough surface must preserve its profile identity`,
+            );
+          }
+          assert.ok(
+            ['full', 'mask', 'invert'].includes(node.operation.replay.areaMode),
+            `${node.id}: replay area mode must be normalized`,
+          );
+        }
+      }
       assertRendererReadyState(
         node.state,
         `${example.id} Step ${node.operation?.label || node.id}`,
@@ -391,6 +428,13 @@ test('microdisk example contains a canonical suspended air gap and central Si su
   assert.equal(project.snapshotBranches.nodes.length, 9);
   assert.equal(project.snapshots.length, 9);
   assert.ok(oxideId);
+
+  const releaseStep = project.snapshotBranches.nodes.find((node) =>
+    /XeF₂ isotropic Si release/.test(node.operation?.label || ''),
+  );
+  assert.equal(releaseStep?.operation?.replay?.areaMode, 'invert');
+  assert.equal(releaseStep?.operation?.replay?.params?.etchProfile, 'isotropic');
+  assert.deepEqual(releaseStep?.operation?.replay?.params?.etchTargetLayerIds, ['base']);
 
   const oxideSegments = model.regions.flatMap((region) =>
       region.stack.filter((segment) => segment.layerId === oxideId),

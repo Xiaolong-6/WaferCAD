@@ -2,6 +2,7 @@ import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { bundledExampleById } from '../bundled-examples.js';
+import { upgradeBundledExampleHistory } from '../bundled-example-history.js';
 
 export function createProjectController({
   root = document,
@@ -947,10 +948,11 @@ export function createProjectController({
     }
   }
 
-  async function openProjectFile(file) {
+  async function openProjectFile(file, { prepareProject = null } = {}) {
     try {
       const project = await readProjectFileTask(file);
       if (!project) return false;
+      if (typeof prepareProject === 'function') prepareProject(project);
       await checkpointBeforeReplace('pre-open-project');
       cancelHistoricalStepEdit();
       if (!project.name) {
@@ -990,7 +992,7 @@ export function createProjectController({
       }
       const arrayBuffer = await response.arrayBuffer(),
         file = new File([arrayBuffer], example.filename, { type: 'application/json' });
-      return await openProjectFile(file);
+      return await openProjectFile(file, { prepareProject: upgradeBundledExampleHistory });
     } catch (error) {
       console.error(error);
       status(`Example failed: ${error.message}`, 'error');
