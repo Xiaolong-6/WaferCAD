@@ -16,14 +16,6 @@ function clone(value) {
   return value == null ? value : structuredClone(value);
 }
 
-function jsonKey(value) {
-  try {
-    return JSON.stringify(value ?? null);
-  } catch {
-    return String(value ?? '');
-  }
-}
-
 function layoutIdentity(layout) {
   return {
     name: String(layout?.name || ''),
@@ -48,8 +40,8 @@ export function captureWorkspaceStructuralIdentity(
     modelRevision: Number(model?.revision) || 0,
     processRevision: Number(model?.processRevision) || 0,
     layout,
-    maskTransform: jsonKey(project?.maskTransform),
-    drawMask: jsonKey(project?.drawMask),
+    maskTransform: project?.maskTransform || null,
+    drawMask: project?.drawMask || null,
     projectName: String(projectName || ''),
     historyToken: String(historyToken || ''),
   };
