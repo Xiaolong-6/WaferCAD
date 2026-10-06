@@ -15,11 +15,13 @@ function modules() {
       import(versioned('./vector-geometry.js')),
       import(versioned('./draw-mask-geometry.js')),
       import(versioned('./mask-roi-geometry.js')),
-    ]).then(([modelApi, vectorApi, drawApi, maskRoiApi]) => ({
+      import(versioned('./advanced-process-operations.js')),
+    ]).then(([modelApi, vectorApi, drawApi, maskRoiApi, advancedApi]) => ({
       modelApi,
       vectorApi,
       drawApi,
       maskRoiApi,
+      advancedApi,
     }));
   }
   return modulesPromise;
@@ -87,7 +89,7 @@ self.onmessage = async (event) => {
   const { id, model, params, areaRequest } = event.data || {};
   if (!id) return;
   try {
-    const { modelApi, vectorApi, drawApi, maskRoiApi } = await modules();
+    const { modelApi, vectorApi, drawApi, maskRoiApi, advancedApi } = await modules();
     self.postMessage({ id, type: 'progress', stage: 'Preparing process area…' });
     const area = processArea(model, areaRequest, modelApi, vectorApi, drawApi, maskRoiApi);
     if (vectorApi.isEmpty(area)) {
@@ -107,7 +109,14 @@ self.onmessage = async (event) => {
 
     self.postMessage({ id, type: 'progress', stage: 'Computing process geometry…' });
     const nextModel = structuredClone(model);
-    const result = modelApi.applyOperation(nextModel, { ...params, area });
+    const advancedResult = advancedApi.applyAdvancedProcessOperation(
+      nextModel,
+      params,
+      area,
+      modelApi,
+      vectorApi,
+    );
+    const result = advancedResult ?? modelApi.applyOperation(nextModel, { ...params, area });
     self.postMessage({ id, type: 'done', model: nextModel, result });
   } catch (error) {
     self.postMessage({
