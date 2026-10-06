@@ -24,10 +24,6 @@ function jsonKey(value) {
   }
 }
 
-function selectedLayerKey(value) {
-  return Array.isArray(value) ? value.map((item) => String(item)).join('\u0000') : '';
-}
-
 function layoutIdentity(layout) {
   return {
     name: String(layout?.name || ''),
@@ -52,15 +48,8 @@ export function captureWorkspaceStructuralIdentity(
     modelRevision: Number(model?.revision) || 0,
     processRevision: Number(model?.processRevision) || 0,
     layout,
-    selectedLayerKeys: selectedLayerKey(project?.selectedLayerKeys),
-    activeCell: String(project?.activeCell || ''),
     maskTransform: jsonKey(project?.maskTransform),
-    maskSourceMode: String(project?.maskSourceMode || ''),
     drawMask: jsonKey(project?.drawMask),
-    maskRoi: jsonKey(project?.maskRoi),
-    maskRoiAnchor: String(project?.maskRoiAnchor || ''),
-    roi: jsonKey(project?.roi),
-    roiAnchor: String(project?.roiAnchor || ''),
     projectName: String(projectName || ''),
     historyToken: String(historyToken || ''),
   };
@@ -72,15 +61,8 @@ export function workspaceStructuralIdentityEqual(left, right) {
     left.model !== right.model ||
     left.modelRevision !== right.modelRevision ||
     left.processRevision !== right.processRevision ||
-    left.selectedLayerKeys !== right.selectedLayerKeys ||
-    left.activeCell !== right.activeCell ||
     left.maskTransform !== right.maskTransform ||
-    left.maskSourceMode !== right.maskSourceMode ||
     left.drawMask !== right.drawMask ||
-    left.maskRoi !== right.maskRoi ||
-    left.maskRoiAnchor !== right.maskRoiAnchor ||
-    left.roi !== right.roi ||
-    left.roiAnchor !== right.roiAnchor ||
     left.projectName !== right.projectName ||
     left.historyToken !== right.historyToken
   ) {
@@ -110,7 +92,14 @@ export function extractWorkspaceViewState(project) {
   }
   return {
     version: 1,
+    selectedLayerKeys: clone(project?.selectedLayerKeys),
+    activeCell: project?.activeCell ?? null,
+    maskSourceMode: project?.maskSourceMode === 'draw' ? 'draw' : 'file',
+    maskRoi: clone(project?.maskRoi),
+    maskRoiAnchor: project?.maskRoiAnchor || 'center',
     activeFace: project?.activeFace === 'back' ? 'back' : 'front',
+    roi: clone(project?.roi),
+    roiAnchor: project?.roiAnchor || 'center',
     section: clone(project?.section),
     planViews: clone(project?.planViews),
     display,
@@ -119,9 +108,22 @@ export function extractWorkspaceViewState(project) {
 
 export function applyWorkspaceViewState(project, viewState) {
   if (!project || !viewState || Number(viewState.version) !== 1) return false;
+  if (Array.isArray(viewState.selectedLayerKeys)) {
+    project.selectedLayerKeys = clone(viewState.selectedLayerKeys);
+  }
+  if (typeof viewState.activeCell === 'string' || viewState.activeCell === null) {
+    project.activeCell = viewState.activeCell;
+  }
+  if (viewState.maskSourceMode === 'file' || viewState.maskSourceMode === 'draw') {
+    project.maskSourceMode = viewState.maskSourceMode;
+  }
+  if (Object.hasOwn(viewState, 'maskRoi')) project.maskRoi = clone(viewState.maskRoi);
+  if (typeof viewState.maskRoiAnchor === 'string') project.maskRoiAnchor = viewState.maskRoiAnchor;
   if (viewState.activeFace === 'front' || viewState.activeFace === 'back') {
     project.activeFace = viewState.activeFace;
   }
+  if (Object.hasOwn(viewState, 'roi')) project.roi = clone(viewState.roi);
+  if (typeof viewState.roiAnchor === 'string') project.roiAnchor = viewState.roiAnchor;
   if (viewState.section && typeof viewState.section === 'object') {
     project.section = clone(viewState.section);
   }
