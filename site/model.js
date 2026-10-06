@@ -397,11 +397,11 @@ function sanitizeProcessGeometry(geom, areaEpsilon = 1e-18) {
   return out;
 }
 
-const RELEASE_GEOMETRY_GRID_UM = 1e-4;
+const PROCESS_GEOMETRY_GRID_UM = 1e-4;
 
-function snapReleaseGeometry(geom) {
+function snapProcessGeometry(geom) {
   const snap = (value) =>
-      Math.round(Number(value) / RELEASE_GEOMETRY_GRID_UM) * RELEASE_GEOMETRY_GRID_UM,
+      Math.round(Number(value) / PROCESS_GEOMETRY_GRID_UM) * PROCESS_GEOMETRY_GRID_UM,
     samePoint = (a, b) => a && b && a[0] === b[0] && a[1] === b[1],
     snapRing = (ring) => {
       const points = [];
@@ -431,7 +431,11 @@ function processGeometryArea(geom) {
   return Math.max(0, total);
 }
 
-function partitionReleaseRegions(regions, rejectOverlapAbove = null) {
+function partitionProcessRegions(
+  regions,
+  rejectOverlapAbove = null,
+  operation = 'Isotropic release',
+) {
   const out = [];
   for (const region of regions || []) {
     let geom = sanitizeProcessGeometry(region.geom);
@@ -442,7 +446,7 @@ function partitionReleaseRegions(regions, rejectOverlapAbove = null) {
       if (isEmpty(overlap)) continue;
       const overlapArea = processGeometryArea(overlap);
       if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
-        throw new Error(`Isotropic release produced overlapping regions (${overlapArea} µm²).`);
+        throw new Error(`${operation} produced overlapping regions (${overlapArea} µm²).`);
       }
       geom = sanitizeProcessGeometry(difference(geom, previous.geom));
       if (isEmpty(geom)) break;
@@ -453,18 +457,18 @@ function partitionReleaseRegions(regions, rejectOverlapAbove = null) {
   return out;
 }
 
-function canonicalizeReleasePartition(model, regions) {
+function canonicalizeProcessPartition(model, regions, operation = 'Isotropic release') {
   const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15),
-    canonical = partitionReleaseRegions(regions, overlapTolerance),
+    canonical = partitionProcessRegions(regions, overlapTolerance, operation),
     snapped = canonical.map((region) => ({
       ...region,
-      geom: sanitizeProcessGeometry(snapReleaseGeometry(region.geom)),
+      geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
     }));
 
   // Runtime geometry is checked before snapping. Any overlap in this second
   // pass is therefore introduced only by the 0.1 nm persistence grid and can
   // be deterministically assigned without masking a real kernel overlap.
-  return partitionReleaseRegions(snapped);
+  return partitionProcessRegions(snapped);
 }
 
 function stackKey(stack) {
@@ -1166,11 +1170,22 @@ function applyOperationImpl(
     });
   }
   model.regions = mergeRegions(model, model.regions);
-  if (healNumericalCoverageCracks(model)) {
+  if (growth === 'conformal') {
+    // A coverage boolean retry may derive sub-grid cracks from snapped inputs.
+    // Unioning those cracks into one unsnapped owner can overlap its neighbors.
+    // Check the runtime partition first, then normalize the shared persistence
+    // grid only when cracks exist; real runtime overlaps still fail safely.
+    const { cracks } = classifyCoverageVoids(model, {
+      crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
+    });
+    if (cracks.length) {
+      model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
+    }
+  } else if (healNumericalCoverageCracks(model)) {
     model.regions = mergeRegions(model, model.regions);
   }
   if (type === 'etch' && etchProfile === 'isotropic') {
-    model.regions = canonicalizeReleasePartition(model, model.regions);
+    model.regions = canonicalizeProcessPartition(model, model.regions);
   }
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
