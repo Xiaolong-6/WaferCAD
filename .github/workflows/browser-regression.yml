@@ -88,7 +88,8 @@ jobs:
               # previous main revision cannot be resolved locally.
               node scripts/ci-test-plan.mjs --full
             else
-              git diff --name-only "$before" "${{ github.sha }}"                 | node scripts/ci-test-plan.mjs --stdin
+              git diff --name-only "$before" "${{ github.sha }}" \
+                | node scripts/ci-test-plan.mjs --stdin
             fi
           else
             node scripts/ci-test-plan.mjs --full
