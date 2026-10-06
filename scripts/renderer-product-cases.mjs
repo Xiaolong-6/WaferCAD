@@ -75,6 +75,44 @@ export async function runRendererProductCases({ page, capture }) {
   await capture(page, 'wide-isotropic-release-overview');
   await checkLayout(page);
 
+  // View-only Z exaggeration follows the visible ROI footprint, even when the
+  // underlying wafer is much wider. Fit and display must use the same bounds.
+  const fullWaferZScale = Number(
+      await page.locator('#threeHost').getAttribute('data-z-display-scale'),
+    ),
+    roiProject = structuredClone(releasedProject),
+    width = roiProject.model.width,
+    height = roiProject.model.height;
+  roiProject.roi = {
+    type: 'rect',
+    a: [-width / 8, -height / 8],
+    b: [width / 8, height / 8],
+  };
+  await loadProject(page, roiProject, 'wide-isotropic-release-quarter-span-roi');
+  const roiZScale = Number(
+    await page.locator('#threeHost').getAttribute('data-z-display-scale'),
+  );
+  assert.ok(fullWaferZScale > 0 && roiZScale > 0);
+  assert.ok(
+    Math.abs(roiZScale / fullWaferZScale - 0.25) < 1e-9,
+    'ROI Z display scale must follow its visible XY span, not the full wafer',
+  );
+  assert.deepEqual(
+    (await exportCurrentProject(page)).model,
+    releasedProject.model,
+    'ROI magnification must not alter physical geometry',
+  );
+  await page.locator('#fit3dBtn').click();
+  await capture(page, 'wide-isotropic-release-quarter-span-roi');
+  await loadProject(page, releasedProject, 'wide-isotropic-release-restored');
+  assert.ok(
+    Math.abs(
+      Number(await page.locator('#threeHost').getAttribute('data-z-display-scale')) /
+        fullWaferZScale -
+        1,
+    ) < 1e-9,
+    'Removing ROI must restore the full-wafer display scale',
+  );
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('0.55');
   await page.locator('#threeOpacityRange').dispatchEvent('input');

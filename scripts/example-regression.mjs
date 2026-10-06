@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { gotoWelcome, launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
-import { checkSectionSeams } from './test-helpers/product-scientific.mjs';
+import { checkSectionSeams, exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import {
   assertAnnotationKeepsMaterialTopology,
   assertTandemTextureContract,
@@ -297,6 +297,18 @@ for (const example of [
     fullPage: true,
   });
   if (example.id === 'fully-textured-perovskite-silicon-tandem') {
+    const opened = await exportCurrentProject(page);
+    for (const key of ['position', 'target']) {
+      opened.display.threeCamera[key].forEach((value, index) =>
+        assert.ok(
+          Math.abs(value - tandemProject.display.threeCamera[key][index]) < 1e-6,
+          `Tandem must open at the saved ${key}`,
+        ),
+      );
+    }
+    assert.equal(opened.display.threeCamera.fov, tandemProject.display.threeCamera.fov);
+    assert.deepEqual(opened.roi, tandemProject.roi);
+    assert.deepEqual(opened.display.sectionDetailRoi, tandemProject.display.sectionDetailRoi);
     await page.locator('#threePanel .export-control > summary').click();
     const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
     await page.locator('#threeExportModelBtn').click();
@@ -310,7 +322,7 @@ for (const example of [
         [node.extras?.wafercadLayerId, node.extras?.wafercadInterfaceLayerId].filter(Boolean),
       ),
     );
-    // GLB exports the active 40 x 40 um ROI, not the full wafer. The Ag grid
+    // GLB exports the active 32 x 32 um ROI, not the full wafer. The Ag grid
     // lies outside this central crop and must not be expected in its export.
     assert.equal(tandemProject.roi.type, 'rect');
     const { a, b } = tandemProject.roi;
@@ -349,7 +361,7 @@ for (const example of [
 
 // Sahli is not a Welcome card, but it is the strongest morphology-export
 // integration fixture: both faces use deterministic Pyramid fields, the active
-// ROI is 40×40 µm, and inherited/buried interfaces reuse those profiles.
+// ROI is 32×32 µm, and inherited/buried interfaces reuse those profiles.
 await gotoWelcome(page);
 await page.locator('#welcomeProjectInput').setInputFiles({
   name: 'sahli-2018-fully-textured-tandem.wafercad',
@@ -420,8 +432,8 @@ assert.ok(
 
 assert.ok(sahliBounds.length > 0);
 for (const bound of sahliBounds) {
-  assert.ok(bound.min[0] >= -20.0001 && bound.max[0] <= 20.0001, 'ROI X clip leaked in GLB');
-  assert.ok(bound.min[1] >= -20.0001 && bound.max[1] <= 20.0001, 'ROI Y clip leaked in GLB');
+  assert.ok(bound.min[0] >= -16.0001 && bound.max[0] <= 16.0001, 'ROI X clip leaked in GLB');
+  assert.ok(bound.min[1] >= -16.0001 && bound.max[1] <= 16.0001, 'ROI Y clip leaked in GLB');
 }
 
 const interfaceDiagnostics = sahliBounds

@@ -293,6 +293,24 @@ export function createProductLayoutChecks({ capture }) {
     await editor.waitFor({ state: 'visible', timeout: 1000 });
     assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
     await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
+    const collapseLayout = await editor.evaluate((element) => ({
+      width: element.offsetWidth,
+      height: element.offsetHeight,
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+      panelHeight: document.querySelector('#sectionBody').clientHeight,
+      overlayWidth: document.querySelector('#sectionCollapseOverlay').clientWidth,
+    }));
+    if (collapseLayout.overlayWidth > 540 && collapseLayout.panelHeight >= 186) {
+      assert.ok(
+        collapseLayout.width > 2 * collapseLayout.height,
+        `${name}: collapse editor should use the wide Section dock horizontally`,
+      );
+      assert.ok(
+        collapseLayout.scrollHeight <= collapseLayout.clientHeight,
+        `${name}: wide collapse controls should fit without vertical scrolling`,
+      );
+    }
     await capture(page, `${name}-section-z-collapse-edit`);
     await page.waitForFunction(() => {
       const canvas = document.getElementById('sectionCanvas'),
@@ -619,13 +637,14 @@ export function createProductLayoutChecks({ capture }) {
     await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');
     const width = Number(await page.locator('#roiWidth').inputValue());
     const height = Number(await page.locator('#roiHeight').inputValue());
-    assert.equal(width, 12);
-    assert.equal(height, 11);
+    // Inputs retain the current 0.1 nm display precision.
+    assert.equal(width, 12.3);
+    assert.equal(height, 11.4);
     const center = [
       Number(await page.locator('#roiX').inputValue()),
       Number(await page.locator('#roiY').inputValue()),
     ];
-    assert.deepEqual(center, [-1, 1]);
+    assert.deepEqual(center, [-1, 1.1]);
     for (const reference of ['top-left', 'bottom-left', 'top-right', 'bottom-right', 'center']) {
       await page.locator('#roiAnchorSelect').selectOption(reference);
       close(Number(await page.locator('#roiWidth').inputValue()), width);
@@ -646,11 +665,11 @@ export function createProductLayoutChecks({ capture }) {
     await page.locator('#focusEditor > summary').click();
     assert.equal(
       Number(await page.locator('#roiWidth').inputValue()),
-      Math.round(12.345 + (9 / scale) * 1000),
+      Math.round((12.345 + (9 / scale) * 1000) * 10) / 10,
     );
     assert.equal(
       Number(await page.locator('#roiHeight').inputValue()),
-      Math.round(11.356 + (7 / scale) * 1000),
+      Math.round((11.356 + (7 / scale) * 1000) * 10) / 10,
     );
     await page.locator('#focusEditor .focus-popover').evaluate((element) => {
       element.scrollTop = 0;
@@ -673,7 +692,7 @@ export function createProductLayoutChecks({ capture }) {
     await page.locator('#focusEditor > summary').click();
     assert.equal(
       Number(await page.locator('#roiRadius').inputValue()),
-      Math.round(5 + (5 / circleScale) * 1000),
+      Math.round((5 + (5 / circleScale) * 1000) * 10) / 10,
     );
     await page.locator('#focusEditor > summary').click();
 

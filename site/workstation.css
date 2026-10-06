@@ -958,7 +958,7 @@ html.workstation-ui-v2 #sectionPanel .section-collapse-editor {
 }
 
 html.workstation-ui-v2 #sectionPanel .section-collapse-ruler {
-  height: 132px;
+  height: 118px;
 }
 
 @media (max-width: 820px) {

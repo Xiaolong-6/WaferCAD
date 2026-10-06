@@ -141,7 +141,7 @@ export function createThreeView({
     camera.position.set(...normalized.position);
     controls.target.set(...normalized.target);
     camera.fov = normalized.fov;
-    camera.updateProjectionMatrix();
+    updateCameraClipping(getModel());
     controls.update();
     scheduleFrame();
     return true;
@@ -196,6 +196,34 @@ export function createThreeView({
     };
   }
 
+  function updateCameraClipping(model, zState = null) {
+    if (!camera || !controls || !model) return;
+    zState ||= zDisplayState(model);
+    const bounds = visibleBounds(model, getClipGeometry()),
+      radius = Math.max(
+        1e-9,
+        Math.hypot(
+          (bounds.maxX - bounds.minX) / 2,
+          (bounds.maxY - bounds.minY) / 2,
+          (zState.displaySpan * zState.scale) / 2,
+        ),
+      ),
+      distance = camera.position.distanceTo(controls.target);
+    camera.near = Math.max(1e-6, Math.min(radius / 200, distance / 200));
+    camera.far = Math.max(camera.near * 1000, distance + radius * 20);
+    camera.updateProjectionMatrix();
+    axesHelper?.scale.setScalar(
+      Math.max(
+        0.6,
+        Math.max(
+          bounds.maxX - bounds.minX,
+          bounds.maxY - bounds.minY,
+          zState.displaySpan * zState.scale,
+        ) / 100,
+      ),
+    );
+  }
+
   function zDisplayState(model) {
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
@@ -206,7 +234,8 @@ export function createThreeView({
         collapse,
         breakFraction: 0,
       }),
-      xySpan = Math.max(Number(model.width) || 0, Number(model.height) || 0, 1e-12),
+      bounds = visibleBounds(model, getClipGeometry()),
+      xySpan = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1e-12),
       scale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12);
 
     return {
@@ -2281,7 +2310,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     scheduleFrame();
   }
 
-  function fit({ notify = true } = {}) {
+  function fit({ notify = true, preserveOrientation = false } = {}) {
     if (!ready || !camera || !controls || !axesHelper) return;
     const model = getModel();
     if (!model) return;
@@ -2289,30 +2318,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const zState = applyZDisplayState(model) || zDisplayState(model),
       zScale = zState.scale,
       zSpan = zState.displaySpan * zScale,
-      clipBounds = xyBounds(getClipGeometry()),
-      modelBounds = {
-        minX: -model.width / 2,
-        minY: -model.height / 2,
-        maxX: model.width / 2,
-        maxY: model.height / 2,
-      },
-      visibleBounds = clipBounds
-        ? {
-            minX: Math.max(modelBounds.minX, clipBounds.minX),
-            minY: Math.max(modelBounds.minY, clipBounds.minY),
-            maxX: Math.min(modelBounds.maxX, clipBounds.maxX),
-            maxY: Math.min(modelBounds.maxY, clipBounds.maxY),
-          }
-        : modelBounds,
-      validVisibleBounds =
-        visibleBounds.maxX > visibleBounds.minX && visibleBounds.maxY > visibleBounds.minY,
-      fitBounds = validVisibleBounds ? visibleBounds : modelBounds,
+      fitBounds = visibleBounds(model, getClipGeometry()),
       spanX = fitBounds.maxX - fitBounds.minX,
       spanY = fitBounds.maxY - fitBounds.minY,
       centerX = (fitBounds.minX + fitBounds.maxX) / 2,
       centerY = (fitBounds.minY + fitBounds.maxY) / 2,
       size = Math.max(spanX, spanY, zSpan);
 
+    const direction = preserveOrientation
+      ? camera.position.clone().sub(controls.target).normalize()
+      : new THREE.Vector3(1.05, -1.15, 0.82).normalize();
     const halfFov = (camera.fov * Math.PI) / 360;
     const limitingAngle = Math.min(halfFov, Math.atan(Math.tan(halfFov) * camera.aspect));
     const radius = Math.max(1e-9, Math.hypot(spanX / 2, spanY / 2, zSpan / 2));
@@ -2321,12 +2336,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     camera.far = Math.max(camera.near * 1000, distance + radius * 20);
     camera.updateProjectionMatrix();
     controls.target.set(centerX, centerY, ((zState.displayMin + zState.displayMax) / 2) * zScale);
-    camera.position.copy(
-      new THREE.Vector3(1.05, -1.15, 0.82)
-        .normalize()
-        .multiplyScalar(distance)
-        .add(controls.target),
-    );
+    camera.position.copy(direction.multiplyScalar(distance).add(controls.target));
     controls.update();
     axesHelper.scale.setScalar(Math.max(0.6, size / 100));
     pendingViewState = getViewState();

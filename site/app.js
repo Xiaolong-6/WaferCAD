@@ -1272,8 +1272,10 @@ function renderEmbeddedPreviewView(view = embeddedPreviewView) {
   if (view === 'three') {
     initThree();
     renderThree();
-    if (pendingThreeCamera) threeView?.setViewState?.(pendingThreeCamera);
-    else fit3d();
+    if (pendingThreeCamera) {
+      threeView?.setViewState?.(pendingThreeCamera);
+      threeView?.fit?.({ notify: false, preserveOrientation: true });
+    } else fit3d();
     return;
   }
   if (view === 'mask') {

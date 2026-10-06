@@ -967,7 +967,7 @@ export function createProjectController({
       syncTransformInputs();
       renderAll();
       renderSnapshots();
-      fit3d();
+      if (!project.display?.threeCamera) fit3d();
       status(`Opened ${file.name}.`);
       return true;
     } catch (error) {
