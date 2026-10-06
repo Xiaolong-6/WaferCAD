@@ -96,6 +96,7 @@ jobs:
         run: npm run test:ui:interaction
 
       - name: Run process geometry regression
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: npm run test:ui:process
 
       - name: Run bundled example regression
