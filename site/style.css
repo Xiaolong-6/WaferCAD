@@ -3980,6 +3980,67 @@ summary:focus-visible {
   margin: 0;
 }
 
+.section-collapse-scale-block {
+  display: grid;
+  gap: 4px;
+  padding-top: 5px;
+  border-top: 1px solid #e1e5ea;
+}
+
+.section-collapse-scale-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: #5b6773;
+  font-size: 9px;
+}
+
+.section-collapse-scale-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.section-collapse-scale-row label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px;
+  color: #65727e;
+  font-size: 8px;
+}
+
+.section-collapse-scale-row input {
+  width: 100%;
+  min-width: 0;
+  height: 22px;
+  padding: 1px 4px;
+  border: 1px solid #ccd4dc;
+  border-radius: 3px;
+  background: #fbfcfd;
+  color: #465563;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.section-collapse-scale-row input:disabled {
+  background: #f0f3f5;
+  color: #8b96a0;
+}
+
+.section-collapse-scale-row b {
+  color: #7a8792;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.section-collapse-scale-block small {
+  color: #87929c;
+  font-size: 7.5px;
+  line-height: 1.25;
+}
+
 @media (max-width: 600px) {
   .section-collapse-overlay {
     right: 130px;
