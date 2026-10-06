@@ -164,6 +164,15 @@ async function switchVariant(branchId) {
   await waitRendererForState(branch.headState, `Variant ${branchId} HEAD`);
 }
 
+async function assertEditStepEnabled(node, label) {
+  const wrap = page.locator(`.history-step-wrap[data-step-id="${node.id}"]`);
+  await wrap.locator('.snapshot-more-trigger').click();
+  const edit = wrap.locator('.snapshot-more-popover button', { hasText: 'Edit Step' });
+  await edit.waitFor({ state: 'visible', timeout: 10000 });
+  assert.equal(await edit.isDisabled(), false, `${label}: Edit Step must be enabled`);
+  await wrap.locator('.snapshot-more-trigger').click();
+}
+
 async function restoreStep(node) {
   const previousGeneration = Number(
     await page.locator('#threeHost').getAttribute('data-scene-generation'),
@@ -234,6 +243,7 @@ assert.equal(await page.locator('#layerLegend .implant-row-wrap').count(), 0);
 
 await switchVariant('black-si-fig1a');
 await restoreStep(roughStep);
+await assertEditStepEnabled(roughStep, 'Black-Si rough Step');
 assert.equal(await page.locator('#layerLegend .electrical-row-wrap').count(), 0);
 assert.equal(await page.locator('#layerLegend .implant-row-wrap').count(), 0);
 assert.ok(
