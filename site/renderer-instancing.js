@@ -205,3 +205,17 @@ export function translatedSidewallInstanceGroups(
     instanceCount: groups.reduce((sum, group) => sum + group.translations.length, 0),
   };
 }
+
+
+export function spatialInstanceChunks(translations, { maxInstances = 64 } = {}) {
+  const limit = Math.max(1, Math.floor(Number(maxInstances) || 64)),
+    points = (translations || [])
+      .map((point) => [Number(point?.[0]), Number(point?.[1])])
+      .filter((point) => point.every(Number.isFinite))
+      .sort((a, b) => a[1] - b[1] || a[0] - b[0]),
+    chunks = [];
+  for (let index = 0; index < points.length; index += limit) {
+    chunks.push(points.slice(index, index + limit));
+  }
+  return chunks;
+}

@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   translatedPolygonInstanceGroups,
   translatedSidewallInstanceGroups,
+  spatialInstanceChunks,
 } from '../renderer-instancing.js';
 
 function rect(x, y, width = 4, height = 2) {
@@ -90,4 +91,20 @@ test('rough and annotation-gradient sidewalls stay on the regular mesh path', ()
   );
   assert.equal(grouped.groups.length, 0);
   assert.equal(grouped.leftovers.length, 2);
+});
+
+
+test('spatial instance chunks keep repeated arrays cullable without losing instances', () => {
+  const translations = [];
+  for (let row = 0; row < 20; row++) {
+    for (let column = 0; column < 20; column++) translations.push([column * 10, row * 10]);
+  }
+  translations.reverse();
+
+  const chunks = spatialInstanceChunks(translations, { maxInstances: 64 });
+  assert.equal(chunks.length, 7);
+  assert.equal(chunks.flat().length, 400);
+  assert.ok(chunks.every((chunk) => chunk.length <= 64));
+  assert.deepEqual(chunks[0][0], [0, 0]);
+  assert.deepEqual(chunks.at(-1).at(-1), [190, 190]);
 });

@@ -7,6 +7,7 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
+  spatialInstanceChunks,
   translatedPolygonInstanceGroups,
   translatedSidewallInstanceGroups,
 } from './renderer-instancing.js';
@@ -100,6 +101,7 @@ export function createThreeView({
   let pendingViewState = null;
   let zDisplayObjects = new Set();
   let currentZDisplay = null;
+  let preferredPixelRatio = 1;
 
   function normalizeViewState(value) {
     if (!value || typeof value !== 'object') return null;
@@ -1088,27 +1090,37 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return mesh;
   }
 
-  function addInstancedSurfaceMesh(geometry, material, translations, { name = '' } = {}) {
+  function addInstancedSurfaceMeshes(
+    geometry,
+    material,
+    translations,
+    { name = '', maxInstancesPerMesh = 64 } = {},
+  ) {
     if (!geometry.getAttribute('position')?.count || !translations?.length) {
       geometry.dispose();
       material?.dispose?.();
-      return null;
+      return [];
     }
 
-    const mesh = new THREE.InstancedMesh(geometry, material, translations.length),
-      matrix = new THREE.Matrix4();
-    translations.forEach(([x, y], index) => {
-      matrix.makeTranslation(Number(x) || 0, Number(y) || 0, 0);
-      mesh.setMatrixAt(index, matrix);
+    const chunks = spatialInstanceChunks(translations, { maxInstances: maxInstancesPerMesh }),
+      meshes = [];
+    chunks.forEach((chunk, chunkIndex) => {
+      const mesh = new THREE.InstancedMesh(geometry, material, chunk.length),
+        matrix = new THREE.Matrix4();
+      chunk.forEach(([x, y], index) => {
+        matrix.makeTranslation(Number(x) || 0, Number(y) || 0, 0);
+        mesh.setMatrixAt(index, matrix);
+      });
+      mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingBox?.();
+      mesh.computeBoundingSphere?.();
+      if (name) mesh.name = chunks.length > 1 ? `${name} ${chunkIndex + 1}/${chunks.length}` : name;
+      group.add(mesh);
+      trackZDisplayObject(mesh);
+      meshes.push(mesh);
     });
-    mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingBox?.();
-    mesh.computeBoundingSphere?.();
-    if (name) mesh.name = name;
-    group.add(mesh);
-    trackZDisplayObject(mesh);
-    return mesh;
+    return meshes;
   }
 
   function disposeObjectResources(object) {
@@ -1612,7 +1624,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
 
         try {
-          renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
+          preferredPixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
+          renderer.setPixelRatio(preferredPixelRatio);
           renderer.setClearColor(0xf5f7f9);
 
           scene = new THREE.Scene();
@@ -1627,6 +1640,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
             interacting = true;
             clearRoughRefineTimer();
             terminateRoughWorker({ invalidate: true });
+            const interactionPixelRatio = Math.min(preferredPixelRatio, 1);
+            if (Math.abs(renderer.getPixelRatio() - interactionPixelRatio) > 1e-9) {
+              renderer.setPixelRatio(interactionPixelRatio);
+              resize();
+            }
+            host.dataset.interactionPixelRatio = String(interactionPixelRatio);
             if (
               roughInteractionCache &&
               roughInteractionCache.sceneGeneration === sceneGeneration
@@ -1649,6 +1668,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
           controls.addEventListener('end', () => {
             interacting = false;
+            if (Math.abs(renderer.getPixelRatio() - preferredPixelRatio) > 1e-9) {
+              renderer.setPixelRatio(preferredPixelRatio);
+              resize();
+            }
+            host.dataset.interactionPixelRatio = String(preferredPixelRatio);
             scheduleDetailedRoughBuild();
             pendingViewState = getViewState();
             onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
@@ -1831,11 +1855,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
                     layerById(model, bucket.part.layerId),
                     state,
                   ),
-                  mesh = addInstancedSurfaceMesh(geometry, material, instances.translations, {
+                  meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
                     name: `${bucket.part.layerId || 'material'} repeated cap`,
                   });
-                if (!mesh) continue;
-                smoothCapInstanceGroupCount++;
+                if (!meshes.length) continue;
+                smoothCapInstanceGroupCount += meshes.length;
                 smoothCapInstanceCount += instances.translations.length;
                 smoothCapTemplateTriangleCount +=
                   geometry.getAttribute('position')?.count / 3 || 0;
@@ -1902,7 +1926,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                   layerById(model, bucket.part.layerId),
                   state,
                 ),
-                mesh = addInstancedSurfaceMesh(
+                meshes = addInstancedSurfaceMeshes(
                   geometry,
                   material,
                   groupInstances.translations,
@@ -1910,8 +1934,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
                     name: `${bucket.part.layerId || 'material'} repeated sidewall`,
                   },
                 );
-              if (!mesh) continue;
-              smoothSidewallInstanceGroupCount++;
+              if (!meshes.length) continue;
+              smoothSidewallInstanceGroupCount += meshes.length;
               smoothSidewallInstanceCount += groupInstances.translations.length;
               smoothSidewallTemplateTriangleCount +=
                 geometry.getAttribute('position')?.count / 3 || 0;
