@@ -6,11 +6,7 @@ WaferCAD keeps the full regression inventory, but pull requests do not run every
 
 `Quality` remains the fast code gate for every non-documentation pull request. It installs the pinned development dependencies, runs ESLint, and runs the complete Node test suite.
 
-`Browser regression` always runs the fast browser group when application/browser-test changes trigger the workflow:
-
-- UI smoke;
-- workstation integration;
-- degraded-mode resilience.
+`Browser regression` always runs the small UI smoke when application/browser-test changes trigger the workflow. Workstation integration and degraded-mode resilience are selected only when their owned startup/shell or Three/WebGL paths change.
 
 The planner then enables focused suites as needed:
 
@@ -18,14 +14,15 @@ The planner then enables focused suites as needed:
 | --------------------------------------------------- | ------------------------------------------------------------------------------- |
 | History, replay, project History controls           | History + bundled examples                                                      |
 | Persistence, project IO/schema, startup/recovery    | Persistence + bundled examples                                                  |
-| General workstation/UI/controller changes           | Interaction, and product layout where applicable                                |
+| Workstation/startup shell                            | Workstation integration; resilience only for Three/WebGL bootstrap paths         |
+| Pointer/view/layout controls                         | Interaction, and product layout only for layout-owning files                    |
 | Bundled example fixtures/metadata                   | Bundled examples                                                                |
 | GDS/OAS/layout pipeline                             | Interaction + product layout; KLayout keeps its separate compatibility workflow |
-| Renderer/Section/model-view geometry                | Renderer product review + bundled examples                                      |
-| Process/model/vector geometry                       | Process Geometry + renderer review + bundled examples                           |
+| Renderer/Section/model-view geometry                | Renderer semantic regression; stress/gallery cases on nightly/manual full runs   |
+| Process/model/vector geometry                       | Process Geometry core browser path; full permutations on nightly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-Workflow/planner-only changes stay on the lightweight fast browser baseline. The planner itself has Node unit tests, while the nightly/manual full sweep validates the complete job matrix. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
+Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the nightly/manual full sweep validates the complete job matrix. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
 ## Heavy Process Geometry job
 
@@ -41,7 +38,7 @@ The complete browser suite, including Process Geometry, runs for:
 - manual `workflow_dispatch` runs;
 - pull requests that change pinned dependencies or shared browser-test infrastructure.
 
-A push to `main` now runs only the lightweight baseline browser gate (smoke + workstation + resilience) plus the Node test gate. It does not repeat focused History/Persistence/Interaction/Examples/Product/Process suites that were already exercised on the pull request.
+A push to `main` now runs only UI smoke plus the Node test gate. It does not repeat focused History/Persistence/Interaction/Examples/Product/Process suites that were already exercised on the pull request.
 
 This keeps a cheap post-merge sanity check while leaving the expensive full integration sweep to nightly/manual runs.
 
@@ -51,7 +48,9 @@ This keeps a cheap post-merge sanity check while leaving the expensive full inte
 - Node tests are repeated inside Browser regression for non-PR runs, including the lightweight `main` push smoke, because a separate Quality workflow may not exist for direct pushes.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.
-- Process Geometry is split only because it is substantially longer and benefits from conditional parallel execution.
+- Human-review screenshot galleries are disabled on pull requests and retained for nightly/manual full runs.
+- Renderer stress cases and the full Process Geometry permutation set are retained for nightly/manual full runs; PRs use semantic/core subsets.
+- Process Geometry is split only when selected because its real worker/process path remains materially heavier than ordinary UI checks.
 - Node-test-only changes under `site/tests/` do not trigger Browser regression by themselves.
 - KLayout parser/browser compatibility remains path-filtered in its dedicated workflow.
 
