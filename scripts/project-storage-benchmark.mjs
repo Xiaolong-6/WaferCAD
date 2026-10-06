@@ -1,18 +1,25 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { brotliDecompressSync } from 'node:zlib';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { expandProjectStorage, readProjectFile, serializeProject } from '../site/project-io.js';
 import { migrateProjectFile } from '../site/project-schema.js';
 
-const [sourcePath, outputPath, reportPath = 'test-results/project-io/storage-benchmark.json'] =
-  process.argv.slice(2);
+const [
+  sourcePath,
+  outputPath,
+  reportPath = 'test-results/project-io/storage-benchmark.json',
+  legacyOutputPath,
+] = process.argv.slice(2);
 if (!sourcePath || !outputPath)
   throw new Error(
-    'Usage: node scripts/project-storage-benchmark.mjs input.wafercad output.wafercad [report.json]',
+    'Usage: node scripts/project-storage-benchmark.mjs input.wafercad[.br] output.wafercad [report.json] [legacy-output.wafercad]',
   );
 await loadGeometryKernel();
-const sourceBytes = await readFile(resolve(sourcePath));
+const fixtureBytes = await readFile(resolve(sourcePath));
+const sourceBytes = sourcePath.endsWith('.br') ? brotliDecompressSync(fixtureBytes) : fixtureBytes;
+if (legacyOutputPath) await writeFile(resolve(legacyOutputPath), sourceBytes);
 const original = migrateProjectFile(expandProjectStorage(JSON.parse(sourceBytes)));
 const exportStarted = performance.now();
 const text = serializeProject(original);

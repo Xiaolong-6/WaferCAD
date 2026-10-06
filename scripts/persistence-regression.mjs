@@ -648,13 +648,17 @@ const storedMaskOpacity = await page.evaluate(
           resolve({
             maskOpacity: project?.display?.maskOpacity ?? null,
             storageEncoding: project?.storage?.encoding ?? null,
+            geometryCount: project?.sharedGeometries?.length ?? 0,
+            boundaryRef: project?.model?.boundaryRef,
           });
         };
       };
     }),
 );
 assert.equal(storedMaskOpacity.maskOpacity, 0.35);
-assert.equal(storedMaskOpacity.storageEncoding, 'shared-assets-v1');
+assert.equal(storedMaskOpacity.storageEncoding, 'shared-assets-v2');
+assert.ok(storedMaskOpacity.geometryCount > 0);
+assert.ok(Number.isInteger(storedMaskOpacity.boundaryRef));
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForFunction(
   () =>

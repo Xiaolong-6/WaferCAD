@@ -55,15 +55,10 @@ try {
       waitUntil: 'domcontentloaded',
     });
     await waitForAppReady(page);
-    console.log(
-      'BOOT',
-      await page.locator('#threeHost').evaluate((el) => ({ ...el.dataset })),
-      errors,
-    );
+
     const started = performance.now();
     await page.locator('#openProjectInput').setInputFiles(file);
     await chooseConfirmation(page);
-    console.log('OPEN_CONFIRMED');
     await waitForStatus(page, /^Opened /, 900000);
     const openedMs = performance.now() - started;
     await page.waitForFunction(

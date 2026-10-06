@@ -88,6 +88,17 @@ function validatePointArray(points, path, { min = 2, budget }) {
 }
 
 function validateMultiPolygon(value, path, budget) {
+  const cached = budget.geometry?.validated.get(value);
+  if (cached) {
+    budget.polygons += cached.polygons;
+    budget.rings += cached.rings;
+    budget.points += cached.points;
+    if (budget.polygons > LIMITS.polygons) fail(path, 'exceeds the project polygon budget.');
+    if (budget.rings > LIMITS.rings) fail(path, 'exceeds the project ring budget.');
+    if (budget.points > LIMITS.points) fail(path, 'exceeds the project point budget.');
+    return;
+  }
+  const before = { polygons: budget.polygons, rings: budget.rings, points: budget.points };
   const polygons = assertArray(value, path, LIMITS.polygons);
   budget.polygons += polygons.length;
   if (budget.polygons > LIMITS.polygons) fail(path, 'exceeds the project polygon budget.');
@@ -110,6 +121,11 @@ function validateMultiPolygon(value, path, budget) {
         fail(ringPath, 'must enclose non-zero area.');
       }
     });
+  });
+  budget.geometry?.validated.set(value, {
+    polygons: budget.polygons - before.polygons,
+    rings: budget.rings - before.rings,
+    points: budget.points - before.points,
   });
 }
 
@@ -224,6 +240,7 @@ function createValidationContext() {
     models: new WeakSet(),
     layouts: new WeakSet(),
     geometry: {
+      validated: new WeakMap(),
       canonical: new WeakMap(),
       byContent: new Map(),
       bounds: new WeakMap(),
@@ -1066,7 +1083,7 @@ function validateProjectCore(project, allowSnapshots, shared = createValidationC
     assertInteger(project.version, 'version', { min: 1, max: CURRENT_PROJECT_VERSION });
   }
 
-  const budget = { polygons: 0, rings: 0, points: 0 };
+  const budget = { polygons: 0, rings: 0, points: 0, geometry: shared.geometry };
   if (!shared.models.has(project.model)) {
     validateModel(project.model, budget, shared.geometry);
     shared.models.add(project.model);

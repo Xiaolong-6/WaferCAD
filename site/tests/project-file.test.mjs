@@ -1098,3 +1098,19 @@ test('geometry validation reuse retains per-model bounds, stacks and overlap che
     globalThis.polygonClipping = kernel;
   }
 });
+
+test('reused geometry still consumes each model occurrence in the point budget', () => {
+  const source = validProject();
+  const ring = Array.from({ length: 64 }, (_, index) => {
+    const angle = (index * 2 * Math.PI) / 64;
+    return [100 * Math.cos(angle), 50 * Math.sin(angle)];
+  });
+  ring.push([...ring[0]]);
+  const geom = [[ring]];
+  source.model.regions = Array.from({ length: 50000 }, (_, index) => ({
+    id: `region-${index}`,
+    geom,
+    stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+  }));
+  assert.throws(() => validateProjectFile(source), /exceeds the project point budget/);
+});
