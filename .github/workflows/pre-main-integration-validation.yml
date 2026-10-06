@@ -1,9 +1,6 @@
 name: Pre-main integration validation
 
 on:
-  push:
-    branches:
-      - fix/z-collapse-front-back-scale
   workflow_dispatch:
 
 concurrency:
