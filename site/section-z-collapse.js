@@ -58,12 +58,25 @@ export function defaultSectionCollapseForModel(model, bounds) {
   return { top, bottom };
 }
 
+export function normalizeSectionZScales(value) {
+  const clampScale = (raw) => {
+      const number = Number(raw);
+      return Number.isFinite(number) ? Math.max(0.1, Math.min(10, number)) : 1;
+    },
+    scaleLinked = value?.scaleLinked !== false,
+    frontScale = clampScale(value?.frontScale),
+    backScale = scaleLinked ? frontScale : clampScale(value?.backScale);
+
+  return { scaleLinked, frontScale, backScale };
+}
+
 export function resolveSectionCollapse(value, model, bounds) {
   const source = value ?? defaultSectionCollapseForModel(model, bounds),
     normalized = normalizeSectionCollapse(source, bounds);
   return {
     ...normalized,
     enabled: source?.enabled !== false,
+    ...normalizeSectionZScales(source),
   };
 }
 
@@ -94,6 +107,8 @@ export function createCollapsedZDisplayTransform({
   const normalized = normalizeSectionCollapse(collapse, [min, max]),
     enabled = collapse?.enabled !== false;
 
+  const scales = normalizeSectionZScales(collapse);
+
   if (!enabled) {
     return {
       mapZ: (value) => Number(value),
@@ -108,13 +123,17 @@ export function createCollapsedZDisplayTransform({
       displayMin: min,
       displayMax: max,
       displaySpan: max - min,
+      ...scales,
     };
   }
 
   const hiddenSpan = Math.max(normalized.top - normalized.bottom, 1e-12),
     upperSpan = Math.max(0, max - normalized.top),
     lowerSpan = Math.max(0, normalized.bottom - min),
-    visibleSpan = Math.max(upperSpan + lowerSpan, (max - min) * 0.02),
+    visibleSpan = Math.max(
+      upperSpan * scales.frontScale + lowerSpan * scales.backScale,
+      (max - min) * 0.02,
+    ),
     fraction = Math.max(0, Math.min(0.12, Number(breakFraction) || 0)),
     gap =
       fraction === 0
@@ -127,8 +146,8 @@ export function createCollapsedZDisplayTransform({
   const mapZ = (value) => {
     const z = Number(value);
     if (!Number.isFinite(z)) return z;
-    if (z >= normalized.top) return z - (normalized.top - displayTop);
-    if (z <= normalized.bottom) return z + (displayBottom - normalized.bottom);
+    if (z >= normalized.top) return displayTop + (z - normalized.top) * scales.frontScale;
+    if (z <= normalized.bottom) return displayBottom + (z - normalized.bottom) * scales.backScale;
     return displayBottom + ((z - normalized.bottom) / hiddenSpan) * gap;
   };
 
@@ -148,6 +167,7 @@ export function createCollapsedZDisplayTransform({
     displayMin,
     displayMax,
     displaySpan: Math.max(1e-12, displayMax - displayMin),
+    ...scales,
   };
 }
 
@@ -220,7 +240,6 @@ export function createSectionZTransform({
   plotTop,
   plotHeight,
   breakPixels = 8,
-  upperFraction = 0.8,
   mode = 'auto',
   xScale = 1,
 }) {
@@ -276,9 +295,12 @@ export function createSectionZTransform({
     frameTop += (height - frameHeight) / 2;
   } else {
     const usable = Math.max(1, height - gap),
-      share = Math.max(0.55, Math.min(0.92, Number(upperFraction) || 0.8));
-    upperPixels = usable * share;
-    lowerPixels = usable - upperPixels;
+      scales = normalizeSectionZScales(collapse),
+      weightedUpper = upperWorld * scales.frontScale,
+      weightedLower = lowerWorld * scales.backScale,
+      fitScale = usable / Math.max(weightedUpper + weightedLower, 1e-12);
+    upperPixels = weightedUpper * fitScale;
+    lowerPixels = weightedLower * fitScale;
   }
 
   const upperBottom = frameTop + upperPixels,
