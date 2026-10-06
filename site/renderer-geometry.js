@@ -3,6 +3,7 @@ import { ownedMaterialSurfacesFromTopology } from './process-topology.js';
 import { visibleMaterialModel } from './model.js';
 
 const SIDEWALL_APPEARANCE_EPSILON = 1e-10;
+const surfacePlanCache = new WeakMap();
 
 function zKey(value) {
   return Number(value).toPrecision(15);
@@ -10,6 +11,56 @@ function zKey(value) {
 
 function boundaryKey(layerId, z, line) {
   return `${layerId}\u0000${zKey(z)}\u0000${lineIntervalKey(line)}`;
+}
+
+function clipFingerprint(clip) {
+  if (!clip) return 'full';
+  let pointCount = 0,
+    minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity,
+    hash = 2166136261;
+  const mix = (value) => {
+    const quantized = Math.round(Number(value) * 1e6);
+    hash ^= quantized & 0xffffffff;
+    hash = Math.imul(hash, 16777619) >>> 0;
+  };
+  for (const polygon of clip || []) {
+    for (const ring of polygon || []) {
+      for (const point of ring || []) {
+        if (!Array.isArray(point) || point.length < 2) continue;
+        const x = Number(point[0]),
+          y = Number(point[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        pointCount++;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        mix(x);
+        mix(y);
+      }
+    }
+  }
+  return Number.isFinite(minX)
+    ? `${pointCount}:${minX}:${minY}:${maxX}:${maxY}:${hash}`
+    : 'empty';
+}
+
+function modelVisibilityKey(model) {
+  return (model?.layers || [])
+    .map((layer) => `${layer.id}:${layer.visible === false ? 0 : 1}`)
+    .join('|');
+}
+
+function surfacePlanCacheKey(model, clip) {
+  return [
+    Number(model?.revision) || 0,
+    Number(model?.processRevision) || 0,
+    modelVisibilityKey(model),
+    clipFingerprint(clip),
+  ].join('::');
 }
 
 function capBoundaryIndex(caps) {
@@ -121,12 +172,25 @@ function decorateSurfacePlan(caps, sidewalls) {
 // Renderer-facing adapter. Physical ownership is derived once by Process
 // Geometry Kernel v2; this adapter only attaches the rough/Pyramid boundary
 // metadata needed to make exposed/cut sidewalls follow the same deterministic
-// profile as their horizontal caps.
+// profile as their horizontal caps. The ownership pass can be expensive for
+// wafer-scale repeated arrays, so reuse it while model revision, visibility,
+// and inspection clip are unchanged. Camera/opacity/border changes can then
+// rebuild presentation meshes without re-running process topology.
 export function buildRenderSurfacePlan(model, clip = null) {
+  if (!model || typeof model !== 'object') {
+    return ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip);
+  }
+
+  const key = surfacePlanCacheKey(model, clip),
+    cached = surfacePlanCache.get(model);
+  if (cached?.key === key) return cached.plan;
+
   const plan = ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip),
-    decorated = decorateSurfacePlan(plan.caps, plan.sidewalls);
-  return {
-    ...plan,
-    ...decorated,
-  };
+    decorated = decorateSurfacePlan(plan.caps, plan.sidewalls),
+    result = {
+      ...plan,
+      ...decorated,
+    };
+  surfacePlanCache.set(model, { key, plan: result });
+  return result;
 }
