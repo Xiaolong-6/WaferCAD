@@ -1626,9 +1626,12 @@ export function createSnapshotManager({
         ? branchState.cursorNodeId
         : active?.headNodeId || null;
     cursorSnapshotId =
-      typeof branchState?.cursorSnapshotId === 'string' && recordById(branchState.cursorSnapshotId)
-        ? branchState.cursorSnapshotId
-        : active?.headSnapshotId || null;
+      branchState?.cursorSnapshotId === null
+        ? null
+        : typeof branchState?.cursorSnapshotId === 'string' &&
+            recordById(branchState.cursorSnapshotId)
+          ? branchState.cursorSnapshotId
+          : active?.headSnapshotId || null;
 
     const cursorSnapshot = cursorSnapshotId ? recordById(cursorSnapshotId) : null;
     const cursorNode = cursorNodeId ? nodeById(cursorNodeId) : null;

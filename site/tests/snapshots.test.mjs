@@ -1980,3 +1980,32 @@ test('process History pins and restores the exact file-mask Cell and Layer combi
   assert.deepEqual(restored.maskTransform, maskContext.transform);
   assert.deepEqual(restored.maskRoi, maskContext.roi);
 });
+
+test('reopening an unbookmarked HEAD preserves its null bookmark cursor after an older milestone', () => {
+  let live = { model: { processRevision: 1 }, value: 'oxide' };
+  let id = 0;
+  const options = {
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => Number.isInteger(value?.model?.processRevision),
+    idFactory: () => `bookmark-${++id}`,
+    nodeIdFactory: () => `step-${++id}`,
+  };
+  const source = createSnapshotManager(options);
+  source.recordOperation({ kind: 'add', label: 'Deposit oxide' });
+  source.bookmarkCurrentStep('Oxide complete');
+  live = { model: { processRevision: 2 }, value: 'etched' };
+  source.recordOperation({ kind: 'etch', label: 'Open contact' });
+  const records = source.exportRecords(),
+    history = source.exportBranchState();
+  assert.equal(history.cursorSnapshotId, null);
+  // Imported files can retain a milestone from before the latest process HEAD.
+  history.branches[0].headSnapshotId = records[0].id;
+  const reopened = createSnapshotManager(options);
+  reopened.importRecords(records, history);
+  assert.deepEqual(reopened.exportBranchState(), history);
+  assert.equal(reopened.currentPosition().bookmarkId, null);
+  assert.equal(reopened.continuationContext(), null);
+});
