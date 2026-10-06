@@ -64,8 +64,8 @@ export function normalizeSectionZScales(value) {
       return Number.isFinite(number) ? Math.max(0.1, Math.min(10, number)) : 1;
     },
     scaleLinked = value?.scaleLinked !== false,
-    frontScale = clampScale(value?.frontScale),
-    backScale = scaleLinked ? frontScale : clampScale(value?.backScale);
+    frontScale = scaleLinked ? 1 : clampScale(value?.frontScale),
+    backScale = scaleLinked ? 1 : clampScale(value?.backScale);
 
   return { scaleLinked, frontScale, backScale };
 }
