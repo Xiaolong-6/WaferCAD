@@ -9,6 +9,10 @@ import {
   robustIntersection,
 } from './polygon-boolean.js';
 
+if (!globalThis.polygonClipping) {
+  throw new Error('polygon-clipping must load before vector-geometry.js');
+}
+
 export {
   BOOLEAN_RETRY_GRID_UM,
   EPS,
