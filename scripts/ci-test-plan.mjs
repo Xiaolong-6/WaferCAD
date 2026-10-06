@@ -73,6 +73,8 @@ const LAYOUT_PATHS = [
   /^scripts\/product-layout-cases\.mjs$/,
 ];
 
+const PRODUCT_REVIEW_PATHS = [/^scripts\/product-regression\.mjs$/];
+
 const EXAMPLE_PATHS = [
   /^site\/examples\//,
   /^examples\//,
@@ -136,6 +138,7 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
     if (matchesAny(path, PERSISTENCE_PATHS)) enable(plan, 'persistence', 'examples');
     if (matchesAny(path, INTERACTION_PATHS)) enable(plan, 'interaction');
     if (matchesAny(path, PRODUCT_LAYOUT_PATHS)) enable(plan, 'product_layout');
+    if (matchesAny(path, PRODUCT_REVIEW_PATHS)) enable(plan, 'product_layout', 'renderer');
     if (matchesAny(path, EXAMPLE_PATHS)) enable(plan, 'examples');
     if (matchesAny(path, RENDERER_PATHS)) enable(plan, 'renderer', 'examples');
     if (matchesAny(path, PROCESS_PATHS)) enable(plan, 'process', 'renderer', 'examples');
