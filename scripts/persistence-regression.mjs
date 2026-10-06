@@ -162,6 +162,27 @@ const autosaveCounts = async () =>
       domain: workspace?.dataset.lastAutosaveDomain || '',
     };
   });
+const beforeMixedDirty = await autosaveCounts();
+await openFunctionPanel(interactionAutosavePage, 'project');
+await interactionAutosavePage.locator('#projectNameInput').fill('Structural save survives view updates');
+await interactionAutosavePage.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.56';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await interactionAutosavePage.waitForFunction(
+  (before) => {
+    const workspace = document.querySelector('.workspace');
+    return (
+      (Number(workspace?.dataset.fullAutosaveCount) || 0) > before.full &&
+      workspace?.dataset.lastAutosaveDomain === 'full'
+    );
+  },
+  beforeMixedDirty,
+  { timeout: 8000 },
+);
+assert.equal((await autosaveCounts()).view, beforeMixedDirty.view);
+
 const beforeViewInteraction = await autosaveCounts();
 
 await interactionAutosavePage.evaluate(() => {
