@@ -1,6 +1,6 @@
 # Local regression and autosave fix — 2026-10-06
 
-Product checkout: `306eb7e5a018cfd236aa494a3888d48023f3b8f5` on `feat/m3d-process-kernel-ops-v2`, followed by the local changes described below. The checkout was clean before testing. Changes remain local and uncommitted; no push, deployment, or remote CI was requested or performed.
+Product checkout: `306eb7e5a018cfd236aa494a3888d48023f3b8f5` on `feat/m3d-process-kernel-ops-v2`, followed by the local changes described below. The checkout was clean before testing. The verified local fixes were subsequently committed and pushed to this feature branch before merge review; no deployment was performed.
 
 ## Findings and fix
 
