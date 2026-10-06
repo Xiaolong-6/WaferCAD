@@ -831,13 +831,19 @@ const projectStateController = createProjectStateController({
   },
   setSectionEditEnabled,
 });
-const { buildProjectSnapshot, loadProjectSnapshot, resetProjectState, isValidSnapshotState } =
-  projectStateController;
+const {
+  buildProjectSnapshot,
+  loadProjectSnapshot,
+  resetProjectState,
+  isValidSnapshotState,
+  isValidSnapshotStates,
+} = projectStateController;
 
 snapshotManager = createSnapshotManager({
   capture: () => buildProjectSnapshot(false),
   restore: (state) => loadProjectSnapshot(state),
   validateState: isValidSnapshotState,
+  validateStates: isValidSnapshotStates,
 });
 
 function refreshAfterHistoricalEditLoad() {

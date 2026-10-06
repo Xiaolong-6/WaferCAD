@@ -1,5 +1,9 @@
 import { createModel } from '../model.js';
-import { CURRENT_PROJECT_VERSION, validateProjectFile } from '../project-schema.js';
+import {
+  CURRENT_PROJECT_VERSION,
+  validateProjectFile,
+  validateProjectFiles,
+} from '../project-schema.js';
 import { normalizeMaskRoi } from '../mask-roi-geometry.js';
 import { normalizeRoi } from '../roi-editor.js';
 import { normalizeSectionDetailRoi } from '../section-detail-roi.js';
@@ -214,10 +218,20 @@ export function createProjectStateController({
     }
   }
 
+  function isValidSnapshotStates(states) {
+    try {
+      validateProjectFiles(states);
+      return states.every((state) => state.snapshots == null);
+    } catch {
+      return false;
+    }
+  }
+
   return {
     buildProjectSnapshot,
     loadProjectSnapshot,
     resetProjectState,
     isValidSnapshotState,
+    isValidSnapshotStates,
   };
 }

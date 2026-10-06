@@ -4,7 +4,8 @@ export const MAX_PROJECT_FILE_BYTES = 256 * 1024 * 1024;
 export const PROJECT_LENGTH_QUANTUM_UM = 0.0001;
 export const DOWNLOAD_URL_REVOKE_DELAY_MS = 30_000;
 
-const STORAGE_ENCODING = 'shared-assets-v1';
+const LEGACY_STORAGE_ENCODING = 'shared-assets-v1';
+const STORAGE_ENCODING = 'shared-assets-v2';
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -188,6 +189,7 @@ function cloneCore(value, { model = true, layout = true, snapshotBranches = true
       key === 'snapshots' ||
       key === 'sharedLayouts' ||
       key === 'sharedModels' ||
+      key === 'sharedGeometries' ||
       key === 'storage'
     )
       continue;
@@ -197,6 +199,75 @@ function cloneCore(value, { model = true, layout = true, snapshotBranches = true
     clone[key] = structuredClone(item);
   }
   return clone;
+}
+
+function cloneRecordMetadata(record, stateKey) {
+  const metadata = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (key !== stateKey) metadata[key] = structuredClone(value);
+  }
+  return metadata;
+}
+
+function forEachStoredGeometry(project, visit) {
+  for (const model of [project.model, ...(project.sharedModels || [])]) {
+    if (!isObject(model)) continue;
+    visit(model, 'boundary');
+    for (const region of model.regions || []) visit(region, 'geom');
+    for (const annotation of [...(model.implants || []), ...(model.electricalRegions || [])]) {
+      for (const patch of annotation.patches || []) visit(patch, 'geom');
+    }
+  }
+}
+
+function packProjectGeometry(project) {
+  const geometries = [];
+  const candidates = new Map();
+  const identities = new WeakMap();
+  forEachStoredGeometry(project, (owner, key) => {
+    const geometry = owner[key];
+    let reference = identities.get(geometry);
+    if (reference === undefined) {
+      const text = JSON.stringify(geometry);
+      const bucket = candidates.get(text) || [];
+      reference = bucket.find((index) => deepEqual(geometries[index], geometry));
+      if (reference === undefined) {
+        reference = geometries.length;
+        geometries.push(geometry);
+        bucket.push(reference);
+        candidates.set(text, bucket);
+      }
+      identities.set(geometry, reference);
+    }
+    owner[`${key}Ref`] = reference;
+    delete owner[key];
+  });
+  project.sharedGeometries = geometries;
+}
+
+function expandProjectGeometry(project) {
+  const geometries = project.sharedGeometries;
+  if (!Array.isArray(geometries) || geometries.length > 250000) {
+    throw new Error('Project file contains an invalid shared geometry dictionary.');
+  }
+  forEachStoredGeometry(project, (owner, key) => {
+    if (!isObject(owner)) throw new Error('Project file contains an invalid geometry owner.');
+    const referenceKey = `${key}Ref`;
+    if (!Object.hasOwn(owner, referenceKey)) return;
+    const reference = owner[referenceKey];
+    if (
+      Object.hasOwn(owner, key) ||
+      !Number.isInteger(reference) ||
+      reference < 0 ||
+      reference >= geometries.length ||
+      !Array.isArray(geometries[reference])
+    ) {
+      throw new Error(`Project file contains an invalid ${key} geometry reference.`);
+    }
+    owner[key] = geometries[reference];
+    delete owner[referenceKey];
+  });
+  delete project.sharedGeometries;
 }
 
 function createAssetResolver(rootAsset, quantize, keyOf = () => '') {
@@ -299,14 +370,14 @@ export function prepareProjectForWorkspaceStorage(project) {
     const { nodes = [], branches = [], ...branchMetadata } = project.snapshotBranches;
     stored.snapshotBranches = structuredClone(branchMetadata);
     stored.snapshotBranches.nodes = nodes.map((node) => {
-      const storedNode = structuredClone(node);
+      const storedNode = cloneRecordMetadata(node, 'state');
       if (isObject(node.state)) {
         storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets);
       }
       return storedNode;
     });
     stored.snapshotBranches.branches = branches.map((branch) => {
-      const storedBranch = structuredClone(branch);
+      const storedBranch = cloneRecordMetadata(branch, 'headState');
       if (isObject(branch.headState)) {
         storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets);
       }
@@ -316,6 +387,7 @@ export function prepareProjectForWorkspaceStorage(project) {
 
   if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
   if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
+  packProjectGeometry(stored);
   stored.storage = {
     encoding: STORAGE_ENCODING,
     lossless: true,
@@ -444,7 +516,7 @@ export function prepareProjectForStorage(project) {
     const { nodes = [], branches = [], ...branchMetadata } = project.snapshotBranches;
     stored.snapshotBranches = structuredClone(branchMetadata);
     stored.snapshotBranches.nodes = nodes.map((node) => {
-      const storedNode = structuredClone(node);
+      const storedNode = cloneRecordMetadata(node, 'state');
       if (isObject(node.state)) {
         storedNode.state = packWorkspaceState(node.state, modelAssets, layoutAssets, {
           quantize: true,
@@ -453,7 +525,7 @@ export function prepareProjectForStorage(project) {
       return storedNode;
     });
     stored.snapshotBranches.branches = branches.map((branch) => {
-      const storedBranch = structuredClone(branch);
+      const storedBranch = cloneRecordMetadata(branch, 'headState');
       if (isObject(branch.headState)) {
         storedBranch.headState = packWorkspaceState(branch.headState, modelAssets, layoutAssets, {
           quantize: true,
@@ -465,6 +537,7 @@ export function prepareProjectForStorage(project) {
 
   if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
   if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
+  packProjectGeometry(stored);
   stored.storage = {
     encoding: STORAGE_ENCODING,
     lengthQuantumUm: PROJECT_LENGTH_QUANTUM_UM,
@@ -492,7 +565,12 @@ function resolveAsset(reference, rootAsset, sharedAssets, label) {
 }
 
 export function expandProjectStorage(project) {
-  if (!isObject(project) || project.storage?.encoding !== STORAGE_ENCODING) return project;
+  if (!isObject(project) || !project.storage?.encoding) return project;
+  const encoding = project.storage.encoding;
+  if (encoding !== STORAGE_ENCODING && encoding !== LEGACY_STORAGE_ENCODING) {
+    throw new Error(`Project file storage encoding is not supported: ${encoding}.`);
+  }
+  if (encoding === STORAGE_ENCODING) expandProjectGeometry(project);
 
   const sharedLayouts = Array.isArray(project.sharedLayouts) ? project.sharedLayouts : [];
   const sharedModels = Array.isArray(project.sharedModels) ? project.sharedModels : [];

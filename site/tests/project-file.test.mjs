@@ -16,6 +16,7 @@ import {
   PROJECT_LENGTH_LIMIT_UM,
   migrateProjectFile,
   validateProjectFile,
+  validateProjectFiles,
 } from '../project-schema.js';
 
 const vendorSource = readFileSync(
@@ -364,7 +365,7 @@ test('project storage compacts repeated snapshot assets and rounds physical leng
 
   assert.equal(PROJECT_LENGTH_QUANTUM_UM, 0.0001);
   assert.equal(stored.section.a[0], 25000);
-  assert.equal(stored.storage.encoding, 'shared-assets-v1');
+  assert.equal(stored.storage.encoding, 'shared-assets-v2');
   assert.equal(stored.snapshots[0].state.layout, undefined);
   assert.equal(stored.snapshots[0].state.layoutRef, 'project');
   assert.equal(stored.snapshots[0].state.model, undefined);
@@ -394,7 +395,7 @@ test('Recovery shared-asset packing is lossless below the file quantization boun
   ];
 
   const stored = prepareProjectForWorkspaceStorage(source);
-  assert.equal(stored.storage.encoding, 'shared-assets-v1');
+  assert.equal(stored.storage.encoding, 'shared-assets-v2');
   assert.equal(stored.storage.lossless, true);
   assert.equal(stored.section.a[0], 0.00004);
   assert.equal(stored.snapshots[0].state.model, undefined);
@@ -959,4 +960,141 @@ test('project validator rejects dangling snapshot branch graph references', () =
   source.snapshots[0].parentId = null;
   source.snapshotBranches.branches[0].headSnapshotId = 'missing';
   assert.throws(() => validateProjectFile(source), /headSnapshotId references an unknown snapshot/);
+});
+
+test('v2 shares geometry across distinct history models and annotation patches', () => {
+  const source = migrateProjectFile(validProject());
+  source.model.electricalRegions = [
+    {
+      id: 'electrical-1',
+      name: 'Doped base',
+      color: '#7A6FD0',
+      face: 'front',
+      thickness: 0.05,
+      regionType: 'n-type',
+      source: 'doped',
+      visible: true,
+      patches: [
+        {
+          geom: structuredClone(source.model.boundary),
+          z: 4,
+          zMin: -4,
+          zMax: 4,
+          layerId: 'base',
+          surfaceAppearance: null,
+        },
+      ],
+    },
+  ];
+  source.model.nextElectricalRegionId = 2;
+  source.snapshots = Array.from({ length: 12 }, (_, index) => {
+    const state = structuredClone(source);
+    delete state.snapshots;
+    state.model.revision += index + 1;
+    state.model.processRevision += index + 1;
+    state.model.regions[0].stack[0].z1 += (index + 1) * 0.01;
+    return {
+      id: `step-${index}`,
+      name: `Step ${index}`,
+      createdAt: '2026-10-06T00:00:00.000Z',
+      state,
+    };
+  });
+  const before = structuredClone(source);
+  const packed = prepareProjectForWorkspaceStorage(source);
+  assert.equal(packed.storage.encoding, 'shared-assets-v2');
+  assert.equal(packed.sharedGeometries.length, 1);
+  assert.equal(packed.sharedModels.length, 12);
+  assert.equal(packed.model.boundary, undefined);
+  assert.equal(packed.model.regions[0].geom, undefined);
+  assert.equal(packed.model.electricalRegions[0].patches[0].geomRef, packed.model.boundaryRef);
+  expandProjectStorage(packed);
+  assert.deepEqual(packed, before);
+  assert.deepEqual(source, before);
+  assert.equal(validateProjectFile(packed), packed);
+  assert.strictEqual(packed.model.boundary, packed.snapshots[0].state.model.boundary);
+});
+
+test('v2 rejects missing, conflicting, fractional and dangling geometry references', () => {
+  const text = serializeProject(validProject());
+  for (const reference of [-1, 0.5, '0', 999999]) {
+    const packed = JSON.parse(text);
+    packed.model.boundaryRef = reference;
+    assert.throws(() => expandProjectStorage(packed), /invalid boundary geometry reference/);
+  }
+  const missing = JSON.parse(text);
+  delete missing.sharedGeometries;
+  assert.throws(() => expandProjectStorage(missing), /invalid shared geometry dictionary/);
+  const conflicting = JSON.parse(text);
+  conflicting.model.boundary = [];
+  assert.throws(() => expandProjectStorage(conflicting), /invalid boundary geometry reference/);
+  const malformed = JSON.parse(text);
+  malformed.sharedGeometries[0][0][0][0][0] = Infinity;
+  expandProjectStorage(malformed);
+  assert.throws(() => validateProjectFile(malformed), /finite number/);
+});
+
+test('legacy shared-assets-v1 remains readable and unknown encodings reject', async () => {
+  const source = validProject();
+  const legacy = {
+    ...structuredClone(source),
+    storage: { encoding: 'shared-assets-v1' },
+    snapshots: [
+      {
+        id: 'old',
+        name: 'Old bookmark',
+        createdAt: '2026-10-06T00:00:00.000Z',
+        state: {
+          ...structuredClone(source),
+          model: undefined,
+          layout: undefined,
+          modelRef: 'project',
+          layoutRef: 'project',
+        },
+      },
+    ],
+  };
+  const text = JSON.stringify(legacy);
+  const loaded = await readProjectFile({ size: text.length, text: async () => text });
+  assert.equal(loaded.snapshots.length, 1);
+  assert.strictEqual(loaded.model, loaded.snapshots[0].state.model);
+  legacy.storage.encoding = 'shared-assets-future';
+  assert.throws(() => expandProjectStorage(legacy), /storage encoding is not supported/);
+});
+
+test('geometry validation reuse retains per-model bounds, stacks and overlap checks', () => {
+  const first = validProject();
+  const second = structuredClone(first);
+  second.model.boundary = first.model.boundary;
+  second.model.regions[0].geom = first.model.regions[0].geom;
+  let differences = 0;
+  const kernel = globalThis.polygonClipping;
+  globalThis.polygonClipping = {
+    ...kernel,
+    difference: (...args) => {
+      differences++;
+      return kernel.difference(...args);
+    },
+  };
+  try {
+    validateProjectFiles([first, second]);
+    assert.equal(differences, 1);
+    second.model.width += 1;
+    assert.throws(() => validateProjectFiles([first, second]), /bounds do not match/);
+    second.model.width = first.model.width;
+    second.model.regions[0].stack[0].z1 = -5;
+    assert.throws(() => validateProjectFiles([first, second]), /z1 > z0/);
+    second.model.regions[0].stack[0].z1 = 4;
+    second.model.regions.push({
+      ...structuredClone(second.model.regions[0]),
+      id: 'overlap',
+      geom: first.model.regions[0].geom,
+    });
+    assert.throws(() => validateProjectFiles([first, second]), /overlaps/);
+    second.model.regions.pop();
+    first.model.regions[0].geom[0][0][0][0] = NaN;
+    assert.throws(() => validateProjectFiles([first, second]), /finite number/);
+  } finally {
+    globalThis.polygonClipping = kernel;
+  }
 });

@@ -219,9 +219,51 @@ function geometryBounds(geom) {
   return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
 }
 
-function validateModelGeometry(model) {
+function createValidationContext() {
+  return {
+    models: new WeakSet(),
+    layouts: new WeakSet(),
+    geometry: {
+      canonical: new WeakMap(),
+      byContent: new Map(),
+      bounds: new WeakMap(),
+      differences: new WeakMap(),
+      intersections: new WeakMap(),
+    },
+  };
+}
+
+function canonicalGeometry(geometry, cache) {
+  if (cache.canonical.has(geometry)) return cache.canonical.get(geometry);
+  const key = JSON.stringify(geometry);
+  const canonical = cache.byContent.get(key) || geometry;
+  cache.byContent.set(key, canonical);
+  cache.canonical.set(geometry, canonical);
+  return canonical;
+}
+
+function cachedGeometryBounds(geometry, cache) {
+  geometry = canonicalGeometry(geometry, cache);
+  if (!cache.bounds.has(geometry)) cache.bounds.set(geometry, geometryBounds(geometry));
+  return cache.bounds.get(geometry);
+}
+
+function cachedGeometryArea(left, right, geometryCache, kind, operation) {
+  left = canonicalGeometry(left, geometryCache);
+  right = canonicalGeometry(right, geometryCache);
+  const cache = geometryCache[kind];
+  let results = cache.get(left);
+  if (!results) {
+    results = new WeakMap();
+    cache.set(left, results);
+  }
+  if (!results.has(right)) results.set(right, multiArea(operation(left, right)));
+  return results.get(right);
+}
+
+function validateModelGeometry(model, cache) {
   const pc = geometryKernel();
-  const boundaryBounds = geometryBounds(model.boundary);
+  const boundaryBounds = cachedGeometryBounds(model.boundary, cache);
   const dimensionTolerance = Math.max(1e-9, model.width, model.height) * 1e-9;
 
   if (
@@ -236,14 +278,20 @@ function validateModelGeometry(model) {
 
   const areaTolerance = Math.max(1e-18, model.width * model.height * 1e-15);
   const entries = model.regions
-    .map((region, index) => ({ region, index, bounds: geometryBounds(region.geom) }))
+    .map((region, index) => ({ region, index, bounds: cachedGeometryBounds(region.geom, cache) }))
     .sort((a, b) => a.bounds.minX - b.bounds.minX);
   const active = [];
 
   try {
     for (const current of entries) {
-      const outside = pc.difference(current.region.geom, model.boundary);
-      if (multiArea(outside) > areaTolerance) {
+      const outsideArea = cachedGeometryArea(
+        current.region.geom,
+        model.boundary,
+        cache,
+        'differences',
+        pc.difference,
+      );
+      if (outsideArea > areaTolerance) {
         fail(`model.regions[${current.index}].geom`, 'extends outside model.boundary.');
       }
 
@@ -257,8 +305,14 @@ function validateModelGeometry(model) {
         ) {
           continue;
         }
-        const overlap = pc.intersection(previous.region.geom, current.region.geom);
-        if (multiArea(overlap) > areaTolerance) {
+        const overlapArea = cachedGeometryArea(
+          previous.region.geom,
+          current.region.geom,
+          cache,
+          'intersections',
+          pc.intersection,
+        );
+        if (overlapArea > areaTolerance) {
           fail(
             `model.regions[${current.index}].geom`,
             `overlaps model.regions[${previous.index}].geom.`,
@@ -273,7 +327,7 @@ function validateModelGeometry(model) {
   }
 }
 
-function validateModel(model, budget) {
+function validateModel(model, budget, geometryCache) {
   assertObject(model, 'model');
   if (model.kernel !== 'vector-2.5d-v1') fail('model.kernel', 'is not supported.');
   if (!['circle', 'rect'].includes(model.shape)) fail('model.shape', 'must be circle or rect.');
@@ -423,7 +477,7 @@ function validateModel(model, budget) {
     });
   }
 
-  validateModelGeometry(model);
+  validateModelGeometry(model, geometryCache);
 
   if (model.nextImplantId != null) {
     assertInteger(model.nextImplantId, 'model.nextImplantId', { min: 1 });
@@ -1004,11 +1058,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   }
 }
 
-function validateProjectCore(
-  project,
-  allowSnapshots,
-  shared = { models: new WeakSet(), layouts: new WeakSet() },
-) {
+function validateProjectCore(project, allowSnapshots, shared = createValidationContext()) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
   if (project.name != null) assertString(project.name, 'name', { max: 256 });
@@ -1018,7 +1068,7 @@ function validateProjectCore(
 
   const budget = { polygons: 0, rings: 0, points: 0 };
   if (!shared.models.has(project.model)) {
-    validateModel(project.model, budget);
+    validateModel(project.model, budget, shared.geometry);
     shared.models.add(project.model);
   }
   if (!shared.layouts.has(project.layout)) {
@@ -1242,5 +1292,12 @@ export function migrateProjectFile(project) {
 }
 
 export function validateProjectFile(project) {
-  return validateProjectCore(project, true, { models: new WeakSet(), layouts: new WeakSet() });
+  return validateProjectCore(project, true, createValidationContext());
+}
+
+// A batch shares only transient validation work; no cache survives this synchronous call.
+export function validateProjectFiles(projects) {
+  const shared = createValidationContext();
+  for (const project of projects) validateProjectCore(project, true, shared);
+  return projects;
 }

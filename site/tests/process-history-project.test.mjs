@@ -8,7 +8,7 @@ import {
   readProjectFile,
   serializeProject,
 } from '../project-io.js';
-import { validateProjectFile } from '../project-schema.js';
+import { validateProjectFile, validateProjectFiles } from '../project-schema.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendorSource = readFileSync(
@@ -566,4 +566,82 @@ test('V2 schema rejects dangling process history references', () => {
   source.snapshotBranches.cursorNodeId = 'process-1';
   source.snapshotBranches.nodes[0].parentId = 'missing';
   assert.throws(() => validateProjectFile(source), /parentId references an unknown process node/);
+});
+
+test('shared geometry round-trip preserves all Steps and isolates restored edits', async () => {
+  let current = validProject(0);
+  let batchCalls = 0;
+  const options = {
+    capture: () => current,
+    restore: (state) => {
+      current = state;
+    },
+    validateState: (state) => {
+      validateProjectFile(state);
+      return true;
+    },
+    validateStates: (states) => {
+      batchCalls++;
+      validateProjectFiles(states);
+      return true;
+    },
+  };
+  const original = createSnapshotManager(options);
+  for (let index = 1; index <= 4; index++) {
+    current = validProject(index);
+    current.model.regions[0].stack[0].z1 += index * 0.1;
+    original.recordOperation({ kind: 'record', label: `Tier step ${index}` });
+    if (index % 2 === 0) original.bookmarkCurrentStep(`Tier bookmark ${index}`);
+  }
+  const source = {
+    ...current,
+    snapshots: original.exportRecords(),
+    snapshotBranches: original.exportBranchState(),
+  };
+  const text = serializeProject(source);
+  const loaded = await readProjectFile({ size: new Blob([text]).size, text: async () => text });
+  assert.equal(loaded.snapshotBranches.nodes.length, 4);
+  assert.equal(loaded.snapshots.length, 2);
+  current = loaded;
+  const imported = createSnapshotManager(options);
+  imported.importRecords(loaded.snapshots, loaded.snapshotBranches);
+  assert.equal(batchCalls, 1);
+  const before = imported.exportBranchState();
+  const sourceBefore = structuredClone(loaded);
+  const first = before.nodes[0];
+  assert.equal(imported.restoreProcessNode(first.id), true);
+  current.model.boundary[0][0][0][0] += 0.01;
+  current.model.layers[0].name = 'Edited live material';
+  const after = imported.exportBranchState();
+  assert.deepEqual(after.nodes[1].state, before.nodes[1].state);
+  assert.deepEqual(after.branches[0].headState, before.branches[0].headState);
+  assert.deepEqual(loaded, sourceBefore);
+});
+
+test('batch History validation falls back to filtering invalid states', () => {
+  const good = validProject(1);
+  const bad = validProject(2);
+  bad.model.regions[0].stack[0].z1 = -2;
+  const manager = createSnapshotManager({
+    capture: () => good,
+    restore: () => {},
+    validateStates: () => false,
+    validateState: (state) => {
+      try {
+        validateProjectFile(state);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  });
+  const count = manager.importRecords(
+    [
+      { id: 'good', name: 'Good', createdAt: '2026-10-06T00:00:00.000Z', state: good },
+      { id: 'bad', name: 'Bad', createdAt: '2026-10-06T00:00:00.000Z', state: bad },
+    ],
+    { nodes: {}, branches: {} },
+  );
+  assert.equal(count, 1);
+  assert.equal(manager.exportRecords()[0].id, 'good');
 });
