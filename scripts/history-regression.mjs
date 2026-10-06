@@ -380,8 +380,11 @@ await historyRestorePage.waitForFunction(
   null,
   { timeout: 10000 },
 );
+await openFunctionPanel(historyRestorePage, 'process');
 await historyRestorePage.locator('#layerName').fill('History B edited');
-await historyRestorePage.locator('#applyOperationBtn').click();
+const editedApplyButton = historyRestorePage.locator('#applyOperationBtn');
+await editedApplyButton.scrollIntoViewIfNeeded();
+await editedApplyButton.click();
 await historyRestorePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
 assert.match(
   await historyRestorePage.locator('#confirmationDialogDetail').textContent(),
