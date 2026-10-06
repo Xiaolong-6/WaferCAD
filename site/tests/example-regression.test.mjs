@@ -191,6 +191,21 @@ test('bundled examples remain valid renderer-ready regression fixtures', async (
         );
         if (node.operation?.kind !== 'record') {
           assert.ok(node.operation.replay.params, `${node.id}: replay params missing`);
+          if (node.operation?.surface) {
+            assert.equal(
+              node.operation.replay.params.surface?.kind,
+              'rough',
+              `${node.id}: legacy rough surface must remain a rough replay surface`,
+            );
+            assert.ok(
+              Number.isInteger(node.operation.replay.params.surface?.seed),
+              `${node.id}: legacy rough surface must preserve its deterministic seed`,
+            );
+            assert.ok(
+              node.operation.replay.params.surface?.profileId,
+              `${node.id}: legacy rough surface must preserve its profile identity`,
+            );
+          }
           assert.ok(
             ['full', 'mask', 'invert'].includes(node.operation.replay.areaMode),
             `${node.id}: replay area mode must be normalized`,
