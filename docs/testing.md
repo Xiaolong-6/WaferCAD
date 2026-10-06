@@ -44,15 +44,20 @@ On POSIX shells, use `WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:
 
 The Browser regression workflow exposes the same local Three package through `WAFERCAD_THREE_DIR`. Normal browser contexts intercept the matching jsDelivr URLs and serve those modules from the local package, so CDN availability is not part of ordinary regression reliability. The dedicated CDN resilience case intentionally bypasses this route; the WebGL-unavailable case still uses pinned Three so it isolates WebGL failure.
 
-GitHub Actions caches both npm downloads and the Playwright Chromium browser directory. The suite remains a single job so those setup costs are paid once; focused test steps still preserve failure ownership without duplicating browser installation.
+GitHub Actions caches both npm downloads and the Playwright Chromium browser directory. Pull requests share one targeted Chromium job for the normal suites so setup cost is paid once. The much longer Process Geometry regression is a separate conditional job: it runs only for relevant process/model geometry changes and full-regression events, where parallel execution improves wall time enough to justify the duplicated setup.
 
 ### CI cost controls
 
-- Quality skips documentation-only pull requests and uses the npm cache.
-- Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes.
-- Browser regression runs `npm test` immediately after `npm ci`; Chromium installation happens only after that fast Node gate passes.
+- Quality skips documentation-only pull requests and owns the PR-level ESLint + complete Node test gate.
+- Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes; `site/tests/**` changes alone do not trigger it.
+- Every browser PR runs the fast smoke/workstation/resilience gate, then `scripts/ci-test-plan.mjs` selects History, Persistence, Interaction, Examples, Product Layout, Renderer, and Process Geometry coverage from changed paths.
+- Browser PR jobs do not repeat `npm test`; non-PR full runs still execute the Node gate because a separate Quality run may not exist.
+- Process Geometry no longer runs on unrelated pull requests. When selected, it runs in a separate job in parallel with the targeted browser suites.
+- Relevant pushes to `main`, the nightly Browser regression schedule, and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
+- Dependency-lockfile or shared browser-test-helper changes conservatively request the full browser suite.
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
-- The heavyweight browser suites remain sequential in one job; splitting them into parallel jobs would duplicate Chromium/setup cost and consume more Actions minutes.
+
+See [CI routing](CI.md) for the path-to-suite policy and full-regression events.
 
 ## Node test ownership
 
@@ -132,7 +137,7 @@ The former 1600+ line product regression has now been decomposed into:
 - `renderer-product-cases.mjs`: renderer-heavy isotropic, rough/LOD, conformal-interface, and Implant acceptance.
 - `product-regression.mjs`: thin orchestrator that selects `layout`, `renderer`, or `all`.
 
-The browser workflow keeps these product scopes as separate steps while sharing one job, avoiding duplicate Chromium installation and unnecessary GitHub Actions minutes. npm and Playwright browser assets are cached to reduce setup time.
+The browser workflow keeps these product scopes as separate steps inside the normal targeted Chromium job. They are selected only when the changed paths can affect their ownership area, while still sharing the same browser installation when both are required.
 
 By default, layout review writes to `test-results/product-review/`, and renderer review writes to `test-results/product-review/renderer/`. Each directory contains its own `index.html` gallery and `report.json`; the renderer scope preserves the layout artifacts.
 
