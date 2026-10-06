@@ -150,6 +150,11 @@ function markProjectDirty() {
   scheduleWorkspacePersistence();
 }
 
+function markViewDirty() {
+  if (EMBEDDED_PREVIEW) return;
+  workspacePersistenceController?.scheduleView();
+}
+
 function refreshRecoveryOptions() {
   return workspacePersistenceController?.refreshRecoveryOptions() ?? Promise.resolve();
 }
@@ -183,7 +188,7 @@ const sectionControls = createSectionControlsController({
   getSection: () => section,
   setSection: (value) => {
     section = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getSectionEditor: () => sectionEditor,
   getSectionEditEnabled: () => sectionEditEnabled,
@@ -221,7 +226,7 @@ const sectionCollapseController = createSectionCollapseController({
   },
   renderSection,
   onChanged: () => {
-    markProjectDirty();
+    markViewDirty();
     threeView?.updateZCollapse();
   },
   onSettled: renderThree,
@@ -236,7 +241,7 @@ const sectionDetailRoiController = createSectionDetailRoiController({
     sectionDetailRoi = value;
   },
   renderDetail: (canvas, roi) => planRenderers?.renderSectionDetail(canvas, roi),
-  onChanged: markProjectDirty,
+  onChanged: markViewDirty,
   status,
 });
 
@@ -311,7 +316,7 @@ const planView = createPlanViewController({
   renderMain,
   getViewportMargin: () => (EMBEDDED_PREVIEW ? 14 : 34),
   getCompactAxes: () => EMBEDDED_PREVIEW,
-  onChanged: markProjectDirty,
+  onChanged: markViewDirty,
 });
 const {
   setupCanvas,
@@ -329,7 +334,7 @@ const maskBrowser = createMaskBrowserController({
   getActiveCell: () => activeCell,
   setActiveCellValue: (value) => {
     activeCell = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getExpandedCells: () => expandedCells,
   getSelectedLayerKeys: () => selectedLayerKeys,
@@ -341,7 +346,7 @@ const maskBrowser = createMaskBrowserController({
   layerColor,
   renderMask,
   renderAll,
-  onChanged: markProjectDirty,
+  onChanged: markViewDirty,
 });
 const {
   hierarchyFromParsed,
@@ -412,7 +417,7 @@ const roiController = createRoiController({
   getRoi: () => roi,
   setRoi: (value) => {
     roi = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getRoiTool: () => roiTool,
   setRoiTool: (value) => {
@@ -425,7 +430,7 @@ const roiController = createRoiController({
   getRoiAnchor: () => roiAnchor,
   setRoiAnchor: (value) => {
     roiAnchor = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getActiveFace: () => activeFace,
   isInteractionBlocked: () => sectionEditEnabled,
@@ -451,7 +456,7 @@ maskRoiController = createMaskRoiController({
   getRoi: () => maskRoi,
   setRoi: (value) => {
     maskRoi = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getTool: () => maskRoiTool,
   setTool: (value) => {
@@ -464,7 +469,7 @@ maskRoiController = createMaskRoiController({
   getAnchor: () => maskRoiAnchor,
   setAnchor: (value) => {
     maskRoiAnchor = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getTransform: () =>
     maskSourceMode === 'file' ? { ...maskTransform } : { x: 0, y: 0, scale: 1, rotation: 0 },
@@ -680,7 +685,7 @@ function initThree() {
     getZCollapse: () => sectionCollapse,
     onViewChanged: (viewState) => {
       pendingThreeCamera = viewState ? structuredClone(viewState) : null;
-      markProjectDirty();
+      markViewDirty();
     },
   });
   threeView.init();
@@ -974,7 +979,7 @@ drawMaskController = createDrawMaskController({
   getMode: () => maskSourceMode,
   setMode: (value) => {
     maskSourceMode = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getDrawMask: () => drawMask,
   setDrawMask: (value) => {
@@ -1017,7 +1022,7 @@ processPanelController = createProcessPanelController({
   getActiveFace: () => activeFace,
   setActiveFace: (value) => {
     activeFace = value === 'back' ? 'back' : 'front';
-    markProjectDirty();
+    markViewDirty();
   },
   getMaskState: () => ({
     maskSourceMode,
@@ -1108,7 +1113,7 @@ const workspaceActions = createWorkspaceActionsController({
   getXyUnit: xyUnit,
   setXyDisplayUnit: (value) => {
     xyDisplayUnit = value;
-    markProjectDirty();
+    markViewDirty();
   },
   formatLengthField,
   manualMicron,
@@ -1118,7 +1123,7 @@ const workspaceActions = createWorkspaceActionsController({
   getActiveFace: () => activeFace,
   setActiveFace: (value) => {
     activeFace = value;
-    markProjectDirty();
+    markViewDirty();
   },
   updateOperationUI,
   applyOperation: applyOp,
@@ -1135,29 +1140,29 @@ const workspaceActions = createWorkspaceActionsController({
   getSectionScaleMode: () => sectionScaleMode,
   setSectionScaleMode: (value) => {
     sectionScaleMode = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getSectionShowBorders: () => sectionShowBorders,
   setSectionShowBorders: (value) => {
     sectionShowBorders = Boolean(value);
-    markProjectDirty();
+    markViewDirty();
   },
   renderSection,
   getMaskOpacity: () => maskOpacity,
   setMaskOpacity: (value) => {
     maskOpacity = value;
-    markProjectDirty();
+    markViewDirty();
   },
   renderMask,
   getThreeOpacity: () => threeOpacity,
   setThreeOpacity: (value) => {
     threeOpacity = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getThreeShowBorders: () => threeShowBorders,
   setThreeShowBorders: (value) => {
     threeShowBorders = value;
-    markProjectDirty();
+    markViewDirty();
   },
   renderThree,
   zoomPlanView,
@@ -1182,7 +1187,7 @@ const mainCanvasController = createMainCanvasController({
   getSection: () => section,
   setSection: (value) => {
     section = value;
-    markProjectDirty();
+    markViewDirty();
   },
   getActiveFace: () => activeFace,
   getSectionCreateMode: () => sectionEditEnabled,
