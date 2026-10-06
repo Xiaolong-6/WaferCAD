@@ -256,6 +256,56 @@ test('Section slices and 3D solid caps share topology v2 boundaries', () => {
   );
 });
 
+test('conformal-sidewall surrogates omit non-physical outward horizontal caps', () => {
+  const front = createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
+  front.layers.push({ id: 'coat', name: 'Coat', color: '#55aacc' });
+  front.regions = [
+    {
+      id: 'front-wall',
+      geom: rectMulti(1, 4, 0, 0),
+      stack: [
+        { layerId: 'base', z0: -1, z1: 0 },
+        { layerId: 'coat', z0: 0, z1: 1, role: 'conformal-sidewall' },
+      ],
+    },
+  ];
+
+  const frontCoat = materialSolidsFromTopology(front).find((solid) => solid.layerId === 'coat');
+  assert.ok(frontCoat);
+  assert.equal(
+    frontCoat.caps.some((cap) => cap.normal === 1 && Math.abs(cap.z - 1) < 1e-12),
+    false,
+  );
+  assert.equal(
+    frontCoat.caps.some((cap) => cap.normal === -1 && Math.abs(cap.z) < 1e-12),
+    true,
+  );
+
+  const back = createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
+  back.layers.push({ id: 'coat', name: 'Coat', color: '#55aacc' });
+  back.regions = [
+    {
+      id: 'back-wall',
+      geom: rectMulti(1, 4, 0, 0),
+      stack: [
+        { layerId: 'coat', z0: -1, z1: 0, role: 'conformal-sidewall' },
+        { layerId: 'base', z0: 0, z1: 1 },
+      ],
+    },
+  ];
+
+  const backCoat = materialSolidsFromTopology(back).find((solid) => solid.layerId === 'coat');
+  assert.ok(backCoat);
+  assert.equal(
+    backCoat.caps.some((cap) => cap.normal === -1 && Math.abs(cap.z + 1) < 1e-12),
+    false,
+  );
+  assert.equal(
+    backCoat.caps.some((cap) => cap.normal === 1 && Math.abs(cap.z) < 1e-12),
+    true,
+  );
+});
+
 test('material solid topology removes internal caps across computational partitions', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
   model.regions = [

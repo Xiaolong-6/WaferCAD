@@ -6,6 +6,7 @@ import {
   pointAtLineT,
 } from './line-intervals.js';
 import { adaptiveRoughMeshLod, roughProfileOffsetAtPoint } from './surface-rendering.js';
+import { triangulatePolygon } from './polygon-triangulation.js';
 
 function triangleNormal(a, b, c) {
   const ux = b[0] - a[0],
@@ -25,11 +26,8 @@ export function roughCapBaseTriangles(THREE, z, normal, polys) {
   const triangles = [];
   let maxEdge = 0;
   for (const poly of polys || []) {
-    const rings = poly.map((ring) => ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y))),
-      points = rings.flat();
-    if (!rings[0]?.length) continue;
-    for (const indices of THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1))) {
-      let [a, b, c] = indices.map((index) => [points[index].x, points[index].y, z]);
+    for (const triangle2d of triangulatePolygon(THREE, poly)) {
+      let [a, b, c] = triangle2d.map(([x, y]) => [x, y, z]);
       const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
       if (cross * normal < 0) [b, c] = [c, b];
       triangles.push([a, b, c]);

@@ -6,6 +6,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
   translatedPolygonInstanceGroups,
@@ -781,18 +782,13 @@ export function createThreeView({
       normals.push(...normal, ...normal, ...normal);
     };
     for (const { z, normal, polys } of caps)
-      for (const poly of polys) {
-        const rings = poly.map((ring) =>
-          ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)),
-        );
-        const points = rings.flat();
-        for (const indices of THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1))) {
-          let [a, b, c] = indices.map((i) => [points[i].x, points[i].y, z]);
+      for (const poly of polys)
+        for (const triangle2d of triangulatePolygon(THREE, poly)) {
+          let [a, b, c] = triangle2d.map(([x, y]) => [x, y, z]);
           const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
           if (cross * normal < 0) [b, c] = [c, b];
           triangle(a, b, c, [0, 0, normal]);
         }
-      }
     for (const { z0, z1, polys } of slabs)
       for (const poly of polys)
         for (let r = 0; r < poly.length; r++) {
