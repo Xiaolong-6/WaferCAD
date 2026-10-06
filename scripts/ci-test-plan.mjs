@@ -1,4 +1,4 @@
-import { appendFile, readFile } from 'node:fs/promises';
+import { appendFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 export const BROWSER_SUITES = Object.freeze([
