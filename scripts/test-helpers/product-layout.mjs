@@ -313,6 +313,7 @@ export function createProductLayoutChecks({ capture }) {
     assert.equal(await linkedScale.isChecked(), true, `${name}: front/back Z scale must default linked`);
     close(Number(await frontScale.inputValue()), 1, 1e-12);
     close(Number(await backScale.inputValue()), 1, 1e-12);
+    assert.equal(await frontScale.isDisabled(), true);
     assert.equal(await backScale.isDisabled(), true);
     close(
       Number(await canvas.getAttribute('data-section-front-px-per-um')),
@@ -322,6 +323,7 @@ export function createProductLayoutChecks({ capture }) {
     assert.equal(await page.locator('#threeHost').getAttribute('data-z-scale-linked'), 'true');
 
     await linkedScale.uncheck();
+    assert.equal(await frontScale.isEnabled(), true);
     assert.equal(await backScale.isEnabled(), true);
     await backScale.fill('0.5');
     await backScale.press('Tab');
@@ -339,7 +341,9 @@ export function createProductLayoutChecks({ capture }) {
       const canvas = document.getElementById('sectionCanvas');
       return canvas?.dataset.sectionScaleLinked === 'true';
     });
-    close(Number(await backScale.inputValue()), Number(await frontScale.inputValue()), 1e-12);
+    close(Number(await frontScale.inputValue()), 1, 1e-12);
+    close(Number(await backScale.inputValue()), 1, 1e-12);
+    assert.equal(await frontScale.isDisabled(), true);
     close(
       Number(await canvas.getAttribute('data-section-front-px-per-um')),
       Number(await canvas.getAttribute('data-section-back-px-per-um')),
