@@ -438,6 +438,87 @@ export async function runRendererProductCases({ page, capture }) {
   await capture(page, 'wide-rough-stress-global-budget');
   await page.locator('#threeMaxBtn').click();
 
+  // Full-wafer repeated-array acceptance: smooth device islands must use
+  // translated InstancedMesh templates instead of duplicating every cap and
+  // sidewall triangle. Spatial chunks keep the instances frustum-cullable
+  // when the user zooms into one part of a large array.
+  const repeatedArrayModel = createModel({
+      shape: 'rect',
+      width: 240,
+      height: 240,
+      thickness: 8,
+    }),
+    repeatedArrayArea = [];
+  for (let row = 0; row < 20; row++) {
+    for (let column = 0; column < 20; column++) {
+      repeatedArrayArea.push(...rectMulti(4, 4, -95 + column * 10, -95 + row * 10));
+    }
+  }
+  applyOperation(repeatedArrayModel, {
+    type: 'add',
+    name: 'Repeated array metal',
+    thickness: 0.6,
+    face: 'front',
+    area: repeatedArrayArea,
+    growth: 'direct',
+  });
+  const repeatedArrayProject = projectForBenchmark({
+    model: repeatedArrayModel,
+    section: { a: [-110, 0], b: [110, 0] },
+  });
+  await loadProject(page, repeatedArrayProject, 'wide-repeated-array-instancing');
+  await page.locator('#threeMaxBtn').click();
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+    null,
+    { timeout: 10000 },
+  );
+  const repeatedHost = page.locator('#threeHost'),
+    repeatedCapInstances = Number(
+      await repeatedHost.getAttribute('data-smooth-cap-instance-count'),
+    ),
+    repeatedCapGroups = Number(
+      await repeatedHost.getAttribute('data-smooth-cap-instance-groups'),
+    ),
+    repeatedCapTemplateTriangles = Number(
+      await repeatedHost.getAttribute('data-smooth-cap-template-triangles'),
+    ),
+    repeatedSidewallInstances = Number(
+      await repeatedHost.getAttribute('data-smooth-sidewall-instance-count'),
+    ),
+    repeatedSidewallGroups = Number(
+      await repeatedHost.getAttribute('data-smooth-sidewall-instance-groups'),
+    ),
+    repeatedSidewallTemplateTriangles = Number(
+      await repeatedHost.getAttribute('data-smooth-sidewall-template-triangles'),
+    );
+  assert.ok(
+    repeatedCapInstances >= 400,
+    `repeated top caps were not instanced: ${repeatedCapInstances}`,
+  );
+  assert.ok(
+    repeatedSidewallInstances >= 1600,
+    `repeated sidewalls were not instanced: ${repeatedSidewallInstances}`,
+  );
+  assert.ok(
+    repeatedCapGroups > 0 && repeatedCapGroups < 20,
+    `repeated cap instances were not spatially chunked efficiently: ${repeatedCapGroups}`,
+  );
+  assert.ok(
+    repeatedSidewallGroups > 0 && repeatedSidewallGroups < 64,
+    `repeated sidewall instances were not spatially chunked efficiently: ${repeatedSidewallGroups}`,
+  );
+  assert.ok(
+    repeatedCapTemplateTriangles <= 16,
+    `repeated cap templates duplicated too much geometry: ${repeatedCapTemplateTriangles}`,
+  );
+  assert.ok(
+    repeatedSidewallTemplateTriangles <= 32,
+    `repeated sidewall templates duplicated too much geometry: ${repeatedSidewallTemplateTriangles}`,
+  );
+  await capture(page, 'wide-repeated-array-instancing');
+  await page.locator('#threeMaxBtn').click();
+
   // Rough Etch -> Conformal regression: inherited rough interfaces are
   // buried material interfaces and must not create closure skirts inside 3D.
   const roughConformalModel = createModel({
