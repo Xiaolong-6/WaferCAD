@@ -404,12 +404,13 @@ export function createPlanRenderers({
         plotTop,
         plotHeight,
         breakPixels,
-        upperFraction: 0.8,
         mode: sectionScaleMode,
         xScale,
       }),
       zScale = Math.max(1e-12, zTransform.topScale),
       zExaggeration = zScale / Math.max(xScale, 1e-12),
+      bottomZExaggeration =
+        Math.max(1e-12, zTransform.bottomScale) / Math.max(xScale, 1e-12),
       detailX = detailRoi ? detailRoi.x * viewW : 0,
       detailY = detailRoi ? detailRoi.y * viewH : 0,
       detailScaleX = detailRoi ? w / Math.max(1, detailRoi.width * viewW) : 1,
@@ -426,6 +427,9 @@ export function createPlanRenderers({
       c.dataset.scaleMode = sectionScaleMode;
       c.dataset.xPxPerUm = String(xScale);
       c.dataset.zPxPerUm = String(zScale);
+      c.dataset.sectionFrontPxPerUm = String(zTransform.topScale);
+      c.dataset.sectionBackPxPerUm = String(zTransform.bottomScale);
+      c.dataset.sectionScaleLinked = String(collapse.scaleLinked !== false);
       c.dataset.zMinUm = String(lo);
       c.dataset.zMaxUm = String(hi);
       c.dataset.sectionPlotLeft = String(plotLeft);
@@ -979,7 +983,14 @@ export function createPlanRenderers({
       : 'Show structural borders in Section A–B';
 
     const scaleLabel =
-      sectionScaleMode === 'auto' ? `Z ×${Number(zExaggeration.toPrecision(3))}` : '1:1';
+      sectionScaleMode === 'auto'
+        ? Math.abs(zExaggeration - bottomZExaggeration) <=
+          Math.max(1e-9, Math.abs(zExaggeration) * 1e-6)
+          ? `Z ×${Number(zExaggeration.toPrecision(3))}`
+          : `Z F×${Number(zExaggeration.toPrecision(3))} / B×${Number(
+              bottomZExaggeration.toPrecision(3),
+            )}`
+        : '1:1';
     $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
     $('sectionRange').textContent = `Z (${xyUnitLabel()}) ${formatXY(lo)} → ${formatXY(hi)}`;
     getSectionCollapseController()?.sync();
