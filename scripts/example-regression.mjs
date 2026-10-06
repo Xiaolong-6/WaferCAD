@@ -172,7 +172,7 @@ async function assertEditStepEnabled(node, label) {
   });
   await edit.waitFor({ state: 'visible', timeout: 10000 });
   assert.equal(await edit.isDisabled(), false, `${label}: Edit Step must be enabled`);
-  await wrap.locator('.snapshot-more-trigger').click();
+  await wrap.locator('summary[aria-label="Step actions"]').click();
 }
 
 async function restoreStep(node) {
