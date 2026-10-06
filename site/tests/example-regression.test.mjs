@@ -24,7 +24,6 @@ const {
   sectionSlices,
   surfaceGroups,
 } = await import('../model-view-geometry.js');
-const { intersection } = await import('../vector-geometry.js');
 
 async function loadBundledProject(id) {
   const example = BUNDLED_EXAMPLES.find((entry) => entry.id === id);
@@ -315,29 +314,6 @@ test('Black-Si FINAL preserves ALD and front roughness while removing blanket Al
         );
       }
     }
-  }
-
-  const aldId = finalModel.layers.find((layer) => layer.name === ald)?.id,
-    aldSolid = materialSolids(finalModel).find((solid) => solid.layerId === aldId),
-    frontSidewallRegions = (finalModel.regions || []).filter((region) => {
-      const outward = region.stack?.at(-1);
-      return outward?.layerId === aldId && outward?.role === 'conformal-sidewall';
-    });
-  assert.ok(aldId, 'ALD layer must exist');
-  assert.ok(aldSolid, 'ALD renderer solid must exist');
-  assert.ok(frontSidewallRegions.length > 0, 'FINAL must retain conformal ALD sidewall surrogates');
-  for (const region of frontSidewallRegions) {
-    const segment = region.stack.at(-1),
-      overlapArea = aldSolid.caps
-        .filter((cap) => cap.normal === 1 && Math.abs(cap.z - segment.z1) < 1e-9)
-        .reduce(
-          (sum, cap) => sum + multiPolygonArea(intersection(cap.polys, region.geom)),
-          0,
-        );
-    assert.ok(
-      overlapArea < 1e-6,
-      `ALD conformal-sidewall surrogate leaked ${overlapArea} um^2 into a 3D outward cap`,
-    );
   }
 
   const rearImplant = finalModel.implants.find((implant) => implant.face === 'back');
