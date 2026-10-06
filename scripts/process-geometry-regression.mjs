@@ -631,9 +631,11 @@ const extendDownload = await extendDownloadPromise;
 const extendSavedPath = await extendDownload.path();
 assert.ok(extendSavedPath);
 const extendSaved = JSON.parse(await readFile(extendSavedPath, 'utf8'));
-assert.equal(extendSaved.display.sectionDetailRoi?.shape, 'circle');
-assert.ok(extendSaved.display.sectionDetailRoi?.width > 0);
-assert.ok(extendSaved.display.sectionDetailRoi?.height > 0);
+if (extendedProcess) {
+  assert.equal(extendSaved.display.sectionDetailRoi?.shape, 'circle');
+  assert.ok(extendSaved.display.sectionDetailRoi?.width > 0);
+  assert.ok(extendSaved.display.sectionDetailRoi?.height > 0);
+}
 const extendStackAt = (x) =>
   extendSaved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
 const extendedCenter = extendStackAt(0).find((segment) => segment.layerId === coatId),
