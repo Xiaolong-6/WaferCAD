@@ -89,7 +89,7 @@ assert.notEqual(Number(await page.locator('#sectionBx').inputValue()), bBefore);
 
 await page.locator('#sectionAx').fill('1.23456');
 await page.locator('#sectionAx').press('Tab');
-assert.equal(await page.locator('#sectionAx').inputValue(), '1.235');
+assert.equal(await page.locator('#sectionAx').inputValue(), '1.2346');
 await page.locator('#sectionControlsBtn').click();
 assert.equal(await abPanel.isHidden(), true);
 assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
