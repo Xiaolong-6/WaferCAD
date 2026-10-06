@@ -14,12 +14,20 @@ export const BROWSER_SUITES = Object.freeze([
   'process',
 ]);
 
-const COMMON_TEST_INFRA = [/^scripts\/test-helpers\//];
+const COMMON_TEST_INFRA = [/^scripts\/test-helpers\/ui\.mjs$/];
 const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json']);
-const CONTROL_PLANE_FILES = new Set([
-  '.github/workflows/browser-regression.yml',
-  'scripts/ci-test-plan.mjs',
-]);
+const WORKSTATION_PATHS = [
+  /^site\/app\.(?:js|html)$/,
+  /^site\/workstation\.css$/,
+  /^site\/controllers\/(?:startup|tool-tabs|workspace-view|workspace-actions)-controller\.js$/,
+  /^site\/bundled-examples\.js$/,
+  /^scripts\/workstation-regression\.mjs$/,
+];
+
+const RESILIENCE_PATHS = [
+  /^site\/three-/,
+  /^scripts\/resilience-regression\.mjs$/,
+];
 
 const HISTORY_PATHS = [
   /^site\/workspace-snapshots\.js$/,
@@ -40,9 +48,9 @@ const PERSISTENCE_PATHS = [
 ];
 
 const INTERACTION_PATHS = [
-  /^site\/app\.(?:js|html)$/,
-  /^site\/style\.css$/,
-  /^site\/controllers\//,
+  /^site\/app\.html$/,
+  /^site\/(?:style|workstation)\.css$/,
+  /^site\/controllers\/(?:base-controls|draw-mask|export|main-canvas|mask-|plan-view|roi|section-|view-maximize|view-popover)-controller\.js$/,
   /^site\/(?:draw-mask|mask-|roi-|plan-)/,
   /^scripts\/interaction-regression\.mjs$/,
 ];
@@ -59,7 +67,6 @@ const PROCESS_PATHS = [
 ];
 
 const RENDERER_PATHS = [
-  /^site\/model\.js$/,
   /^site\/model-view-geometry\.js$/,
   /^site\/(?:three|section|render|glb)/,
   /^scripts\/renderer-product-regression\.mjs$/,
@@ -73,7 +80,10 @@ const LAYOUT_PATHS = [
   /^scripts\/product-layout-cases\.mjs$/,
 ];
 
-const PRODUCT_REVIEW_PATHS = [/^scripts\/product-regression\.mjs$/];
+const PRODUCT_REVIEW_PATHS = [
+  /^scripts\/product-regression\.mjs$/,
+  /^scripts\/test-helpers\/(?:product|product-layout|product-scientific)\.mjs$/,
+];
 
 const EXAMPLE_PATHS = [
   /^site\/examples\//,
@@ -84,9 +94,9 @@ const EXAMPLE_PATHS = [
 ];
 
 const PRODUCT_LAYOUT_PATHS = [
-  /^site\/app\.(?:js|html)$/,
-  /^site\/style\.css$/,
-  /^site\/controllers\//,
+  /^site\/app\.html$/,
+  /^site\/(?:style|workstation)\.css$/,
+  /^site\/controllers\/(?:base-controls|main-canvas|section-|tool-tabs|view-maximize|view-popover|workspace-view)-controller\.js$/,
   ...LAYOUT_PATHS,
 ];
 
@@ -106,15 +116,11 @@ function enableAll(plan) {
   enable(plan, ...BROWSER_SUITES);
 }
 
-function enableAllExceptProcess(plan) {
-  enable(plan, ...BROWSER_SUITES.filter((suite) => suite !== 'process'));
-}
-
 export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
   const paths = [...new Set(changedPaths.map((path) => String(path).trim()).filter(Boolean))],
     plan = emptyPlan();
 
-  enable(plan, 'smoke', 'workstation', 'resilience');
+  enable(plan, 'smoke');
 
   if (full) {
     enableAll(plan);
@@ -126,24 +132,18 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
     return { full: true, paths, suites: plan };
   }
 
-  if (paths.some((path) => CONTROL_PLANE_FILES.has(path))) {
-    enableAllExceptProcess(plan);
-  }
-
   for (const path of paths) {
-    if (matchesAny(path, HISTORY_PATHS)) enable(plan, 'history', 'examples');
-    if (matchesAny(path, PERSISTENCE_PATHS)) enable(plan, 'persistence', 'examples');
+    if (matchesAny(path, WORKSTATION_PATHS)) enable(plan, 'workstation');
+    if (matchesAny(path, RESILIENCE_PATHS)) enable(plan, 'resilience');
+    if (matchesAny(path, HISTORY_PATHS)) enable(plan, 'history');
+    if (matchesAny(path, PERSISTENCE_PATHS)) enable(plan, 'persistence');
     if (matchesAny(path, INTERACTION_PATHS)) enable(plan, 'interaction');
     if (matchesAny(path, PRODUCT_LAYOUT_PATHS)) enable(plan, 'product_layout');
     if (matchesAny(path, PRODUCT_REVIEW_PATHS)) enable(plan, 'product_layout', 'renderer');
     if (matchesAny(path, EXAMPLE_PATHS)) enable(plan, 'examples');
-    if (matchesAny(path, RENDERER_PATHS)) enable(plan, 'renderer', 'examples');
-    if (matchesAny(path, PROCESS_PATHS)) enable(plan, 'process', 'renderer', 'examples');
+    if (matchesAny(path, RENDERER_PATHS)) enable(plan, 'renderer');
+    if (matchesAny(path, PROCESS_PATHS)) enable(plan, 'process');
     if (matchesAny(path, LAYOUT_PATHS)) enable(plan, 'interaction', 'product_layout');
-
-    if (path.startsWith('site/') && !path.startsWith('site/tests/')) {
-      enable(plan, 'interaction');
-    }
   }
 
   return { full: false, paths, suites: plan };

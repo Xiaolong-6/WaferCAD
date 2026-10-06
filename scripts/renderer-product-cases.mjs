@@ -318,6 +318,7 @@ export async function runRendererProductCases({ page, capture }) {
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await waitForPaint(page);
 
+  if (process.env.WAFERCAD_EXTENDED_REVIEW !== '0') {
   // Multi-cap stress: several independent rough patches must share one
   // scene-wide subdivision budget, and camera LOD changes must not rebuild
   // the static ownership plan.
@@ -516,6 +517,8 @@ export async function runRendererProductCases({ page, capture }) {
   );
   await capture(page, 'wide-repeated-array-instancing');
   await page.locator('#threeMaxBtn').click();
+
+  }
 
   // Rough Etch -> Conformal regression: inherited rough interfaces are
   // buried material interfaces and must not create closure skirts inside 3D.
@@ -734,6 +737,7 @@ export async function runRendererProductCases({ page, capture }) {
   await capture(page, 'wide-implant-partition-gradient-section');
   await page.locator('#sectionMaxBtn').click();
 
+  if (process.env.WAFERCAD_EXTENDED_REVIEW !== '0') {
   const literature = JSON.parse(
     await readFile(
       new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
@@ -762,5 +766,8 @@ export async function runRendererProductCases({ page, capture }) {
   await capture(page, 'wide-photodetector-quarter-roi-low-angle');
   await page.locator('#threeMaxBtn').click();
 
+  }
+
+  await waitForCanvasSizeSync(page, '#sectionCanvas');
   await checkLayout(page);
 }

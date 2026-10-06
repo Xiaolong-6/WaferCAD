@@ -106,6 +106,16 @@ export async function ensurePrimaryViewVisible(page, name) {
 }
 
 export async function captureProductReview(page, name, output, cases) {
+  if (process.env.WAFERCAD_CAPTURE_REVIEW === '0') {
+    await page.evaluate(
+      () =>
+        new Promise((resolveFrame) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolveFrame)),
+        ),
+    );
+    return;
+  }
+
   await page.waitForFunction(
     () => {
       const host = document.getElementById('threeHost');

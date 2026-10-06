@@ -78,6 +78,7 @@ There is no application build step.
 29. History **Insert before…** must be transactional: failed/no-change inserted operations leave the original process tree untouched; current-Variant insertion may rewrite a tail only when dependency checks pass; child-Variant insertion must leave the source Variant unchanged.
 30. When insertion causes replayed Deposit Steps to receive new layer IDs, all downstream replayable layer references must be remapped before the worker request is issued.
 31. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
+32. Editing a Step shared by dependent Variants must use copy-on-write rather than becoming a dead end: preserve the source/dependent histories, commit the edited Step on a new active Variant, and carry replayable downstream Steps when requested. Failed carry/replay restores the original graph transactionally.
 
 ## Source style
 

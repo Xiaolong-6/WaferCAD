@@ -50,10 +50,13 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 
 - Quality skips documentation-only pull requests and owns the PR-level ESLint + complete Node test gate.
 - Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes; `site/tests/**` changes alone do not trigger it.
-- Every browser PR runs the fast smoke/workstation/resilience gate, then `scripts/ci-test-plan.mjs` selects History, Persistence, Interaction, Examples, Product Layout, Renderer, and Process Geometry coverage from changed paths.
+- Every browser PR runs UI smoke. Workstation and resilience are ownership-selected rather than unconditional; `scripts/ci-test-plan.mjs` then selects History, Persistence, Interaction, Examples, Product Layout, Renderer, and Process Geometry from changed paths.
 - Browser PR jobs do not repeat `npm test`; non-PR full runs still execute the Node gate because a separate Quality run may not exist.
 - Process Geometry no longer runs on unrelated pull requests. When selected, it runs in a separate job in parallel with the targeted browser suites.
-- Relevant pushes to `main`, the nightly Browser regression schedule, and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
+- Pushes to `main` run only UI smoke plus the Node test gate; they do not repeat focused suites or Process Geometry after merge.
+- The nightly Browser regression schedule and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
+- Workflow/planner-only changes stay on UI smoke; planner routing is covered by Node tests.
+- Pull-request product checks suppress human-review screenshot galleries. Nightly/manual full runs retain galleries plus renderer stress and full Process Geometry permutations.
 - Dependency-lockfile or shared browser-test-helper changes conservatively request the full browser suite.
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
 
