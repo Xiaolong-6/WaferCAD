@@ -229,6 +229,28 @@ await interactionAutosavePage.waitForFunction(
   { timeout: 8000 },
 );
 
+await interactionAutosavePage.locator('#threeMaxBtn').click();
+await interactionAutosavePage.waitForFunction(
+  () =>
+    document.body.classList.contains('view-maximized') &&
+    document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+  null,
+  { timeout: 10000 },
+);
+await interactionAutosavePage.waitForFunction(
+  () => {
+    const canvas = document.querySelector('#threeHost canvas');
+    if (!canvas?.checkVisibility()) return false;
+    const rect = canvas.getBoundingClientRect();
+    return rect.width > 20 && rect.height > 20;
+  },
+  null,
+  { timeout: 10000 },
+);
+// Maximizing 3D can refit the camera. Let that lightweight view save settle
+// before measuring the actual orbit interaction below.
+await interactionAutosavePage.waitForTimeout(3200);
+
 const beforeCameraDrag = await autosaveCounts(),
   threeCanvas = interactionAutosavePage.locator('#threeHost canvas'),
   box = await threeCanvas.boundingBox();
@@ -251,6 +273,7 @@ await interactionAutosavePage.waitForFunction(
   { timeout: 8000 },
 );
 assert.equal((await autosaveCounts()).full, beforeViewInteraction.full);
+await interactionAutosavePage.locator('#threeMaxBtn').click();
 
 await interactionAutosavePage.reload({ waitUntil: 'networkidle' });
 await interactionAutosavePage.waitForFunction(
