@@ -156,6 +156,7 @@ export function createSectionCollapseController({
     linkScale.checked = linked;
     frontScale.value = String(Number(value.frontScale || 1));
     backScale.value = String(Number(value.backScale || 1));
+    frontScale.disabled = linked;
     backScale.disabled = linked;
     updateStepLabels();
   }
@@ -308,7 +309,10 @@ export function createSectionCollapseController({
     $('sectionCollapseScaleLinked').addEventListener('change', (event) => {
       const value = current();
       value.scaleLinked = event.target.checked;
-      if (value.scaleLinked) value.backScale = value.frontScale;
+      if (value.scaleLinked) {
+        value.frontScale = 1;
+        value.backScale = 1;
+      }
       setCurrent(value, { settled: true });
     });
     $('sectionCollapseFrontScale').addEventListener('change', (event) =>
