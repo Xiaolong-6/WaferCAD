@@ -64,6 +64,7 @@ test('camera, plan zoom, working selections, Section inspection and display togg
 
   project.selectedLayerKeys = ['7|1'];
   project.activeCell = 'DEVICE';
+  project.maskTransform = { x: 5, y: -3, scale: 0.8, rotation: 12 };
   project.maskSourceMode = 'draw';
   project.maskRoi = { type: 'circle', c: [0, 0], r: 2 };
   project.maskRoiAnchor = 'corner';
@@ -100,9 +101,6 @@ test('process, mask geometry, alignment, project and History changes are structu
       project.layout.elements = [...project.layout.elements, { layer: 2 }];
     },
     (project) => {
-      project.maskTransform = { ...project.maskTransform, x: 4 };
-    },
-    (project) => {
       project.drawMask = { nextShapeId: 2, shapes: [{ id: 1, type: 'circle', c: [0, 0], r: 2 }] };
     },
   ];
@@ -127,6 +125,7 @@ test('lightweight view state round-trips without structural geometry', () => {
   const source = projectFixture();
   source.selectedLayerKeys = ['2|0', '4|1'];
   source.activeCell = 'DEVICE';
+  source.maskTransform = { x: 7, y: 9, scale: 1.25, rotation: -18 };
   source.maskSourceMode = 'draw';
   source.maskRoi = { type: 'circle', c: [1, 2], r: 3 };
   source.maskRoiAnchor = 'corner';
@@ -153,6 +152,7 @@ test('lightweight view state round-trips without structural geometry', () => {
   assert.equal(applyWorkspaceViewState(target, view), true);
   assert.deepEqual(target.selectedLayerKeys, source.selectedLayerKeys);
   assert.equal(target.activeCell, 'DEVICE');
+  assert.deepEqual(target.maskTransform, source.maskTransform);
   assert.equal(target.maskSourceMode, 'draw');
   assert.deepEqual(target.maskRoi, source.maskRoi);
   assert.equal(target.maskRoiAnchor, 'corner');
