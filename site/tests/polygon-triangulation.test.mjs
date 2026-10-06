@@ -36,9 +36,16 @@ function triangleArea([a, b, c]) {
 test('validated triangulation preserves wafer-scale thin annuli', () => {
   const polygon = [circularRing(3100, 96), circularRing(3099.95, 96, true)],
     expected = ringArea(polygon[0]) - ringArea(polygon[1]),
+    rawRings = polygon.map((ring) => ring.map(([x, y]) => new THREE.Vector2(x, y))),
+    rawPoints = rawRings.flat(),
+    rawTriangles = THREE.ShapeUtils.triangulateShape(rawRings[0], rawRings.slice(1)).map((face) =>
+      face.map((index) => [rawPoints[index].x, rawPoints[index].y]),
+    ),
+    rawArea = rawTriangles.reduce((sum, triangle) => sum + triangleArea(triangle), 0),
     triangles = triangulatePolygon(THREE, polygon),
     actual = triangles.reduce((sum, triangle) => sum + triangleArea(triangle), 0);
 
+  assert.ok(rawArea > expected * 100, 'fixture must reproduce the thin-annulus Earcut failure');
   assert.ok(triangles.length > 0);
   assert.ok(Math.abs(actual - expected) <= expected * 1e-8);
 });
