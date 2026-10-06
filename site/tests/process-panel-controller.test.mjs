@@ -9,9 +9,29 @@ const vendorSource = readFileSync(
 const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
+globalThis.Option ??= class Option {
+  constructor(textContent = '', value = '') {
+    this.textContent = textContent;
+    this.value = value;
+  }
+};
 
 const { createModel } = await import('../model.js');
 const { createProcessPanelController } = await import('../controllers/process-panel-controller.js');
+
+function fakeElement(id, value = '') {
+  return {
+    id,
+    value,
+    disabled: false,
+    textContent: '',
+    options: [],
+    add(option) {
+      this.options.push(option);
+    },
+    classList: { toggle() {} },
+  };
+}
 
 function fakeRoot() {
   const values = {
@@ -41,29 +61,12 @@ function fakeRoot() {
     recordNote: '',
   };
   const elements = new Map(
-    Object.entries(values).map(([id, value]) => [
-      id,
-      {
-        id,
-        value,
-        disabled: false,
-        textContent: '',
-        classList: { toggle() {} },
-      },
-    ]),
+    Object.entries(values).map(([id, value]) => [id, fakeElement(id, value)]),
   );
   elements.get('recordProcessType').selectedOptions = [{ textContent: 'Anneal' }];
   return {
     getElementById(id) {
-      if (!elements.has(id)) {
-        elements.set(id, {
-          id,
-          value: '',
-          disabled: false,
-          textContent: '',
-          classList: { toggle() {} },
-        });
-      }
+      if (!elements.has(id)) elements.set(id, fakeElement(id));
       return elements.get(id);
     },
     querySelectorAll() {
