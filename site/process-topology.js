@@ -193,36 +193,8 @@ export function sectionSlicesFromTopology(model, a, b) {
   return slices;
 }
 
-function conformalSurrogateOutwardCapFootprints(model, clip = null) {
-  const groups = new Map(),
-    add = (segment, normal, geom) => {
-      const z = normal > 0 ? segment.z1 : segment.z0,
-        key = JSON.stringify([segment.layerId, Number(z).toPrecision(15), normal]);
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(geom);
-    };
-
-  for (const region of model?.regions || []) {
-    const stack = region.stack || [],
-      geom = clippedRegionGeometry(region, clip);
-    if (!stack.length || isEmpty(geom)) continue;
-
-    const front = stack.at(-1),
-      back = stack[0];
-    if (front?.role === 'conformal-sidewall') add(front, 1, geom);
-    if (back?.role === 'conformal-sidewall') add(back, -1, geom);
-  }
-
-  return new Map([...groups].map(([key, geoms]) => [key, safeUnionGeometry(geoms)]));
-}
-
-function conformalSurrogateCapKey(layerId, z, normal) {
-  return JSON.stringify([layerId, Number(z).toPrecision(15), normal]);
-}
-
 export function materialSolidsFromTopology(model, clip = null) {
-  const layers = new Map(),
-    suppressedCaps = conformalSurrogateOutwardCapFootprints(model, clip);
+  const layers = new Map();
   for (const item of extrusionGroupsFromTopology(model, clip)) {
     if (!layers.has(item.layerId)) layers.set(item.layerId, []);
     layers.get(item.layerId).push(item);
@@ -260,9 +232,7 @@ export function materialSolidsFromTopology(model, clip = null) {
         [slab.z0, -1, slabs[index - 1]],
         [slab.z1, 1, slabs[index + 1]],
       ]) {
-        let polys = difference(slab.polys, neighbor?.polys || []);
-        const suppressed = suppressedCaps.get(conformalSurrogateCapKey(layerId, z, normal));
-        if (!isEmpty(suppressed) && !isEmpty(polys)) polys = difference(polys, suppressed);
+        const polys = difference(slab.polys, neighbor?.polys || []);
         if (!isEmpty(polys)) caps.push({ z, normal, polys });
       }
     }
