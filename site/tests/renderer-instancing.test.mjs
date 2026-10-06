@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { translatedPolygonInstanceGroups } from '../renderer-instancing.js';
+import {
+  translatedPolygonInstanceGroups,
+  translatedSidewallInstanceGroups,
+} from '../renderer-instancing.js';
 
 function rect(x, y, width = 4, height = 2) {
   return [
@@ -44,4 +47,47 @@ test('rare unique polygons remain in the regular mesh path', () => {
   );
   assert.equal(grouped.groups.length, 0);
   assert.equal(grouped.leftovers.length, 3);
+});
+
+
+test('translated sidewall grouping instances repeated smooth vertical walls', () => {
+  const parts = Array.from({ length: 12 }, (_, index) => ({
+    p: [index * 10, 5],
+    q: [index * 10 + 4, 5],
+    z0: 1,
+    z1: 3,
+    lowerSurface: null,
+    upperSurface: null,
+  }));
+  const grouped = translatedSidewallInstanceGroups(parts, { minInstances: 4 });
+  assert.equal(grouped.groups.length, 1);
+  assert.equal(grouped.instanceCount, 12);
+  assert.equal(grouped.leftovers.length, 0);
+  assert.deepEqual(grouped.groups[0].template.p, [0, 0]);
+  assert.deepEqual(grouped.groups[0].template.q, [4, 0]);
+});
+
+test('rough and annotation-gradient sidewalls stay on the regular mesh path', () => {
+  const grouped = translatedSidewallInstanceGroups(
+    [
+      {
+        p: [0, 0],
+        q: [4, 0],
+        z0: 1,
+        z1: 3,
+        lowerSurface: { appearance: { kind: 'rough' } },
+      },
+      {
+        p: [10, 0],
+        q: [14, 0],
+        z0: 1,
+        z1: 3,
+        lowerDepth: 0,
+        upperDepth: 1,
+      },
+    ],
+    { minInstances: 2 },
+  );
+  assert.equal(grouped.groups.length, 0);
+  assert.equal(grouped.leftovers.length, 2);
 });

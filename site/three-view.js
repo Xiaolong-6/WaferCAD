@@ -6,7 +6,10 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
-import { translatedPolygonInstanceGroups } from './renderer-instancing.js';
+import {
+  translatedPolygonInstanceGroups,
+  translatedSidewallInstanceGroups,
+} from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morphology-mesh-policy.js';
@@ -82,6 +85,9 @@ export function createThreeView({
   let smoothCapInstanceGroupCount = 0;
   let smoothCapInstanceCount = 0;
   let smoothCapTemplateTriangleCount = 0;
+  let smoothSidewallInstanceGroupCount = 0;
+  let smoothSidewallInstanceCount = 0;
+  let smoothSidewallTemplateTriangleCount = 0;
   let transparentMeshes = [];
   let roughWorker = null;
   let roughWorkerResolve = null;
@@ -1879,14 +1885,59 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state) continue;
         pushBucket(sidewalls, sidewall, state);
       }
+      smoothSidewallInstanceGroupCount = 0;
+      smoothSidewallInstanceCount = 0;
+      smoothSidewallTemplateTriangleCount = 0;
       for (const bucket of sidewalls.values()) {
         const state = stateFor(bucket.part),
           visibleParts = displaySidewallParts(bucket.items);
         if (!state || !visibleParts.length) continue;
+
+        if (!state.transparent) {
+          const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
+          if (instances.instanceCount > 0) {
+            for (const groupInstances of instances.groups) {
+              const geometry = geometryFromSidewallParts([groupInstances.template]),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
+                  state,
+                ),
+                mesh = addInstancedSurfaceMesh(
+                  geometry,
+                  material,
+                  groupInstances.translations,
+                  {
+                    name: `${bucket.part.layerId || 'material'} repeated sidewall`,
+                  },
+                );
+              if (!mesh) continue;
+              smoothSidewallInstanceGroupCount++;
+              smoothSidewallInstanceCount += groupInstances.translations.length;
+              smoothSidewallTemplateTriangleCount +=
+                geometry.getAttribute('position')?.count / 3 || 0;
+            }
+
+            if (instances.leftovers.length) {
+              const geometry = geometryFromSidewallParts(instances.leftovers),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
+                  state,
+                );
+              addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
+            }
+            continue;
+          }
+        }
+
         const geometry = geometryFromSidewallParts(visibleParts),
           material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
         addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
       }
+      host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
+      host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
+      host.dataset.smoothSidewallTemplateTriangles = String(
+        Math.round(smoothSidewallTemplateTriangleCount),
+      );
 
       if (borders) {
         addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {

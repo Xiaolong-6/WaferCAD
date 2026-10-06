@@ -127,3 +127,81 @@ export function translatedPolygonInstanceGroups(
     instanceCount: groups.reduce((sum, group) => sum + group.translations.length, 0),
   };
 }
+
+
+export function translatedSidewallInstanceGroups(
+  parts,
+  { minInstances = 8, quantum = DEFAULT_QUANTUM_UM } = {},
+) {
+  const threshold = Math.max(2, Math.floor(Number(minInstances) || 8)),
+    buckets = new Map(),
+    leftovers = [];
+
+  for (const part of parts || []) {
+    const p = part?.p,
+      q = part?.q,
+      z0 = Number(part?.z0),
+      z1 = Number(part?.z1),
+      hasAppearance = Boolean(part?.lowerSurface || part?.upperSurface),
+      hasAnnotationDepth =
+        Number.isFinite(Number(part?.lowerDepth)) || Number.isFinite(Number(part?.upperDepth));
+    if (
+      hasAppearance ||
+      hasAnnotationDepth ||
+      !Array.isArray(p) ||
+      !Array.isArray(q) ||
+      ![p[0], p[1], q[0], q[1], z0, z1].every((value) => Number.isFinite(Number(value)))
+    ) {
+      leftovers.push(part);
+      continue;
+    }
+
+    const tx = snap(p[0], quantum),
+      ty = snap(p[1], quantum),
+      dx = snap(Number(q[0]) - Number(p[0]), quantum),
+      dy = snap(Number(q[1]) - Number(p[1]), quantum),
+      localZ0 = snap(z0, quantum),
+      localZ1 = snap(z1, quantum);
+    if (Math.hypot(dx, dy) <= 1e-12 || Math.abs(localZ1 - localZ0) <= 1e-12) {
+      leftovers.push(part);
+      continue;
+    }
+
+    const signature = `${dx},${dy}|${localZ0},${localZ1}`;
+    if (!buckets.has(signature)) {
+      buckets.set(signature, {
+        template: {
+          ...part,
+          p: [0, 0],
+          q: [dx, dy],
+          z0: localZ0,
+          z1: localZ1,
+        },
+        translations: [],
+        originals: [],
+      });
+    }
+    const bucket = buckets.get(signature);
+    bucket.translations.push([tx, ty]);
+    bucket.originals.push(part);
+  }
+
+  const groups = [];
+  for (const bucket of buckets.values()) {
+    if (bucket.translations.length >= threshold) {
+      groups.push({
+        template: bucket.template,
+        translations: bucket.translations,
+      });
+    } else {
+      leftovers.push(...bucket.originals);
+    }
+  }
+
+  groups.sort((a, b) => b.translations.length - a.translations.length);
+  return {
+    groups,
+    leftovers,
+    instanceCount: groups.reduce((sum, group) => sum + group.translations.length, 0),
+  };
+}
