@@ -279,7 +279,9 @@ assert.equal(await historyRestorePage.locator('#snapshotBranchSelect').count(), 
 assert.equal(
   (
     await historyRestorePage
-      .locator('.history-variant[data-active="true"] .history-variant-name')
+      .locator(
+        '.history-variant[data-active="true"] > .history-variant-head .history-variant-name',
+      )
       .textContent()
   ).trim(),
   'Detector path',
@@ -358,7 +360,7 @@ assert.equal(await reloadedChild.locator('.history-bookmark-row').count(), 1);
 // Editing a Step that is also the origin of another Variant uses copy-on-write.
 // The dependent Variant keeps its original history while the edited path carries Main's later Step.
 await historyRestorePage
-  .locator('.history-variant[data-variant-id="main"] .history-variant-name')
+  .locator('.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name')
   .click();
 await historyRestorePage.waitForFunction(
   () =>
@@ -366,7 +368,10 @@ await historyRestorePage.waitForFunction(
 );
 await openFunctionPanel(historyRestorePage, 'snapshots');
 const sharedHistoryB = historyRestorePage
-  .locator('.history-variant[data-variant-id="main"] .history-step-wrap', { hasText: 'History B' })
+  .locator(
+    '.history-variant[data-variant-id="main"] > .history-variant-body > .history-step-wrap',
+    { hasText: 'History B' },
+  )
   .first();
 await sharedHistoryB.locator('.snapshot-more-trigger').click();
 await sharedHistoryB.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
@@ -409,17 +414,12 @@ assert.equal(
   'Main edit',
 );
 const editedVariantText = await historyRestorePage
-  .locator('.history-variant[data-active="true"]')
+  .locator('.history-variant[data-active="true"] > .history-variant-body')
   .textContent();
 assert.match(editedVariantText, /History B edited/);
 assert.match(editedVariantText, /History C/);
 
-await historyRestorePage
-  .locator('.history-variant', {
-    has: historyRestorePage.locator('.history-variant-name', { hasText: 'Detector path' }),
-  })
-  .locator(':scope > .history-variant-head .history-variant-name')
-  .click();
+await historyRestorePage.getByRole('button', { name: 'Detector path', exact: true }).click();
 await historyRestorePage.waitForFunction(
   () =>
     (document.querySelector('.history-variant[data-active="true"] .history-variant-name')
