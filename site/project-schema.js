@@ -727,6 +727,21 @@ function validateDisplay(display) {
     if (collapse.enabled != null && typeof collapse.enabled !== 'boolean') {
       fail('display.sectionCollapse.enabled', 'must be boolean.');
     }
+    if (collapse.scaleLinked != null && typeof collapse.scaleLinked !== 'boolean') {
+      fail('display.sectionCollapse.scaleLinked', 'must be boolean.');
+    }
+    if (collapse.frontScale != null) {
+      assertFinite(collapse.frontScale, 'display.sectionCollapse.frontScale', {
+        min: 0.1,
+        max: 10,
+      });
+    }
+    if (collapse.backScale != null) {
+      assertFinite(collapse.backScale, 'display.sectionCollapse.backScale', {
+        min: 0.1,
+        max: 10,
+      });
+    }
   }
   if (
     display.sectionScaleMode != null &&
