@@ -485,6 +485,20 @@ export function createWorkspacePersistenceController({
     }, effectiveDelay);
   }
 
+  function scheduleStructural({ delay = AUTOSAVE_IDLE_MS } = {}) {
+    markStructuralDirty();
+    if (!ready || !hasWriteAccess()) {
+      syncSaveStatus();
+      return;
+    }
+    clearTimer();
+    if (interactionDepth > 0 || transientTimer != null) return;
+    timer = setTimeout(() => {
+      timer = null;
+      void persistNow();
+    }, Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS));
+  }
+
   function scheduleView({ delay = VIEW_AUTOSAVE_IDLE_MS } = {}) {
     markViewDirty();
     if (!ready || !hasWriteAccess()) {
@@ -1104,6 +1118,7 @@ export function createWorkspacePersistenceController({
     bind,
     persistNow,
     schedule,
+    scheduleStructural,
     scheduleView,
     refreshRecoveryOptions,
     checkpointCurrent,
