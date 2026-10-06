@@ -56,12 +56,34 @@ test('Section collapse and surface rendering contracts', () => {
     plotTop: 10,
     plotHeight: 400,
     breakPixels: 8,
-    upperFraction: 0.8,
   });
   assert.ok(collapseTransform.mapZ(30) < collapseTransform.mapZ(10));
   assert.ok(collapseTransform.mapZ(10) < collapseTransform.mapZ(-330));
   assert.ok(collapseTransform.mapZ(-330) < collapseTransform.mapZ(-350));
   assert.equal(Math.round(collapseTransform.lowerTop - collapseTransform.upperBottom), 8);
+  assert.ok(
+    Math.abs(collapseTransform.topScale - collapseTransform.bottomScale) < 1e-12,
+    'Auto collapse must render equal physical front/back relief at the same Z scale',
+  );
+
+  const unlockedCollapseTransform = createSectionZTransform({
+    zMin: -380,
+    zMax: 60,
+    collapse: {
+      ...normalizedCollapse,
+      scaleLinked: false,
+      frontScale: 2,
+      backScale: 0.5,
+    },
+    plotTop: 10,
+    plotHeight: 400,
+    breakPixels: 8,
+  });
+  assert.ok(
+    Math.abs(unlockedCollapseTransform.topScale / unlockedCollapseTransform.bottomScale - 4) <
+      1e-12,
+    'Unlocked front/back scales must preserve the requested display ratio',
+  );
   assert.ok(niceSectionTicks(10, 30, 4).length >= 2);
   const collapseSnapModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   assert.ok(sectionCollapseSnapValues(collapseSnapModel, [-10, 0]).includes(-10));
@@ -81,6 +103,9 @@ test('Section collapse and surface rendering contracts', () => {
   assert.deepEqual(resolveSectionCollapse(null, layeredCollapseModel, [-5, 6]), {
     ...normalizeSectionCollapse(safeDefaultCollapse, [-5, 6]),
     enabled: true,
+    scaleLinked: true,
+    frontScale: 1,
+    backScale: 1,
   });
 
   assert.equal(roughLod(0).detail, 0);
