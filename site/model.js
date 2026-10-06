@@ -401,7 +401,11 @@ const PROCESS_GEOMETRY_GRID_UM = 1e-4;
 
 function snapProcessGeometry(geom) {
   const snap = (value) =>
-      Math.round(Number(value) / PROCESS_GEOMETRY_GRID_UM) * PROCESS_GEOMETRY_GRID_UM,
+      Number(
+        (Math.round(Number(value) / PROCESS_GEOMETRY_GRID_UM) * PROCESS_GEOMETRY_GRID_UM).toFixed(
+          4,
+        ),
+      ),
     samePoint = (a, b) => a && b && a[0] === b[0] && a[1] === b[1],
     snapRing = (ring) => {
       const points = [];
@@ -457,6 +461,70 @@ function partitionProcessRegions(
   return out;
 }
 
+// Boolean differences may introduce an intersection vertex on only one side
+// of a shared edge. Node both owners before rounding, so they follow the same
+// snapped polyline instead of independently rounding a straight edge and a bend.
+function nodeProcessPartitionEdges(regions) {
+  const epsilon = 1e-8,
+    vertices = new Map();
+  for (const region of regions) {
+    for (const polygon of region.geom) {
+      for (const ring of polygon) {
+        for (const point of ring) vertices.set(`${point[0]}:${point[1]}`, point);
+      }
+    }
+  }
+  const points = [...vertices.values()].sort((a, b) => a[0] - b[0]),
+    lowerBound = (x) => {
+      let low = 0,
+        high = points.length;
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (points[middle][0] < x) low = middle + 1;
+        else high = middle;
+      }
+      return low;
+    };
+  return regions.map((region) => ({
+    ...region,
+    geom: region.geom.map((polygon) =>
+      polygon.map((ring) => {
+        const out = [];
+        for (let index = 1; index < ring.length; index++) {
+          const a = ring[index - 1],
+            b = ring[index],
+            dx = b[0] - a[0],
+            dy = b[1] - a[1],
+            length = Math.hypot(dx, dy),
+            nodes = [],
+            minY = Math.min(a[1], b[1]) - epsilon,
+            maxY = Math.max(a[1], b[1]) + epsilon,
+            maxX = Math.max(a[0], b[0]) + epsilon;
+          out.push([...a]);
+          if (length <= epsilon) continue;
+          for (
+            let cursor = lowerBound(Math.min(a[0], b[0]) - epsilon);
+            cursor < points.length && points[cursor][0] <= maxX;
+            cursor++
+          ) {
+            const point = points[cursor];
+            if (point[1] < minY || point[1] > maxY) continue;
+            const px = point[0] - a[0],
+              py = point[1] - a[1],
+              distance = (px * dx + py * dy) / length;
+            if (distance <= epsilon || distance >= length - epsilon) continue;
+            if (Math.abs(px * dy - py * dx) / length <= epsilon) nodes.push({ point, distance });
+          }
+          nodes.sort((a, b) => a.distance - b.distance);
+          for (const node of nodes) out.push([...node.point]);
+        }
+        if (out.length) out.push([...out[0]]);
+        return out;
+      }),
+    ),
+  }));
+}
+
 function canonicalizeProcessPartition(model, regions, operation = 'Isotropic release') {
   const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15),
     canonical = partitionProcessRegions(regions, overlapTolerance, operation),
@@ -468,7 +536,18 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
   // Runtime geometry is checked before snapping. Any overlap in this second
   // pass is therefore introduced only by the 0.1 nm persistence grid and can
   // be deterministically assigned without masking a real kernel overlap.
-  return partitionProcessRegions(snapped);
+  const partitioned = partitionProcessRegions(snapped),
+    noded = nodeProcessPartitionEdges(partitioned),
+    stored = noded
+      .map((region) => ({
+        ...region,
+        geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
+      }))
+      .filter((region) => !isEmpty(region.geom));
+  // Verify the final grid partition without retaining fractional vertices from
+  // another difference pass. Genuine residual overlaps still reject safely.
+  partitionProcessRegions(stored, overlapTolerance, operation);
+  return stored;
 }
 
 function stackKey(stack) {
@@ -679,7 +758,15 @@ function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null
   return normalizeStack(out);
 }
 
-function applyConformalMaterialWalls(model, materialWalls, layerId, face, sourceZ, appearance) {
+function applyConformalMaterialWalls(
+  model,
+  materialWalls,
+  band,
+  layerId,
+  face,
+  sourceZ,
+  appearance,
+) {
   const targets = new Map((materialWalls || []).map((target) => [target.regionId, target])),
     next = [];
 
@@ -692,7 +779,9 @@ function applyConformalMaterialWalls(model, materialWalls, layerId, face, source
       continue;
     }
 
-    const rest = difference(region.geom, target.geom);
+    // Derive both halves from the same band. Subtracting the already clipped
+    // target can retry on a different grid and leave two owners at one wall.
+    const rest = difference(region.geom, band);
     if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
     if (!isEmpty(target.geom)) {
       next.push({
@@ -772,11 +861,34 @@ function addVoidConformalSidewall(model, geom, layerId, face, source) {
   });
 }
 
+function processPartitionHasFractionalBoundary(regions) {
+  return regions.some((region) =>
+    region.geom.some((polygon) =>
+      polygon.some((ring) =>
+        ring.some((point) =>
+          point.some(
+            (value) =>
+              Math.abs(
+                value - Math.round(value / PROCESS_GEOMETRY_GRID_UM) * PROCESS_GEOMETRY_GRID_UM,
+              ) > 1e-8,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 function applyConformalCoating(model, active, layerId, amount, face) {
-  // Repair sub-grid seams before true through-void detection. Otherwise a
-  // numerical slit can be mistaken for a trench and receive a full-depth film.
-  if (healNumericalCoverageCracks(model)) {
-    model.regions = mergeRegions(model, model.regions);
+  // Normalize a checked partition before true through-void detection and
+  // repeated offset construction. A numerical slit must not receive a full-
+  // depth film, and fractional shared edges must use one persistence grid.
+  if (
+    processPartitionHasFractionalBoundary(model.regions) ||
+    classifyCoverageVoids(model, {
+      crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
+    }).cracks.length
+  ) {
+    model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
   }
 
   // Capture the source topography before the horizontal coating is clipped to
@@ -801,7 +913,8 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // hard clip.
   for (const source of sources) {
     for (const rawBand of conformalBoundaryBands(source.geom, amount)) {
-      const band = intersection(intersection(rawBand, active), model.boundary);
+      // Use one persistence-grid band for both the hit and its complement.
+      const band = intersection(intersection(snapProcessGeometry(rawBand), active), model.boundary);
       if (isEmpty(band)) continue;
 
       // Topology v2 classifies this symmetric edge band once. Equal-height
@@ -812,7 +925,15 @@ function applyConformalCoating(model, active, layerId, amount, face) {
         source,
         voidDomain: uncovered,
       });
-      applyConformalMaterialWalls(model, materialWalls, layerId, face, source.z, source.appearance);
+      applyConformalMaterialWalls(
+        model,
+        materialWalls,
+        band,
+        layerId,
+        face,
+        source.z,
+        source.appearance,
+      );
 
       for (const wall of voidWalls) {
         addVoidConformalSidewall(model, wall.geom, layerId, face, source);
@@ -1174,11 +1295,11 @@ function applyOperationImpl(
     // A coverage boolean retry may derive sub-grid cracks from snapped inputs.
     // Unioning those cracks into one unsnapped owner can overlap its neighbors.
     // Check the runtime partition first, then normalize the shared persistence
-    // grid only when cracks exist; real runtime overlaps still fail safely.
+    // grid when cracks or fractional shared nodes exist; real overlaps reject.
     const { cracks } = classifyCoverageVoids(model, {
       crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
     });
-    if (cracks.length) {
+    if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
       model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
     }
   } else if (healNumericalCoverageCracks(model)) {
