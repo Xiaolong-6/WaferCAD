@@ -94,9 +94,13 @@ Owns the canonical region-stack model and process mutation semantics. Surface/vo
 
 Thin adapter from Process Geometry Kernel v2 to the 3D renderer. Physical surface ownership is resolved in `process-topology.js`; this module does not independently reinterpret interfaces or sidewalls.
 
+### `site/polygon-triangulation.js`
+
+Owns the shared cap-triangulation guard used by both smooth 3D caps and Rough/Pyramid base meshes. Three.js/Earcut output is accepted only when its summed triangle area matches the source polygon area; wafer-scale thin annuli that fail that check use a radial strip fallback. Invalid fallback output is dropped rather than allowing a triangle to span unrelated material.
+
 ### `site/rough-mesh-geometry.js`
 
-Owns adaptive Rough/Pyramid triangulation, profile-derived normals, physical cap skirts, and high/low-LOD seam stitching. Collinear seam intervals are reconciled through `site/line-intervals.js`, so clipping may split one long physical edge into several shorter segments without turning that split into a visible curtain or crack.
+Owns adaptive Rough/Pyramid tessellation after the shared base-cap triangulation, plus profile-derived normals, physical cap skirts, and high/low-LOD seam stitching. Collinear seam intervals are reconciled through `site/line-intervals.js`, so clipping may split one long physical edge into several shorter segments without turning that split into a visible curtain or crack.
 
 ### `site/line-intervals.js`
 
