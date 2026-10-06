@@ -147,6 +147,35 @@ test('vector booleans retry once on the 0.1 nm persistence grid after a sweep fa
   }
 });
 
+test('union skips the polygon sweep for disjoint wafer-array instances', () => {
+  const original = globalThis.polygonClipping.union;
+  let calls = 0;
+  globalThis.polygonClipping.union = (...args) => {
+    calls++;
+    return original(...args);
+  };
+  try {
+    const cells = [];
+    for (let x = 0; x < 25; x++) {
+      for (let y = 0; y < 25; y++) {
+        cells.push(vectorApi.rectMulti(0.4, 0.4, x * 2, y * 2));
+      }
+    }
+    const union = vectorApi.unionGeometries(cells);
+    assert.equal(union.length, 625);
+    assert.equal(calls, 0, 'disjoint repeated polygons should bypass Martinez union entirely');
+
+    const touching = vectorApi.unionGeometries([
+      vectorApi.rectMulti(2, 2, -1, 0),
+      vectorApi.rectMulti(2, 2, 1, 0),
+    ]);
+    assert.equal(touching.length, 1);
+    assert.ok(calls >= 1, 'touching components must still pass through the boolean kernel');
+  } finally {
+    globalThis.polygonClipping.union = original;
+  }
+});
+
 test('repeated conformal coating survives persistence-grid coordinate quantization', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   modelApi.applyOperation(model, {
