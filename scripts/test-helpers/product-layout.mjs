@@ -307,6 +307,46 @@ export function createProductLayoutChecks({ capture }) {
       `${name}: collapse ruler handle is too small`,
     );
 
+    const linkedScale = page.locator('#sectionCollapseScaleLinked'),
+      frontScale = page.locator('#sectionCollapseFrontScale'),
+      backScale = page.locator('#sectionCollapseBackScale');
+    assert.equal(await linkedScale.isChecked(), true, `${name}: front/back Z scale must default linked`);
+    close(Number(await frontScale.inputValue()), 1, 1e-12);
+    close(Number(await backScale.inputValue()), 1, 1e-12);
+    assert.equal(await backScale.isDisabled(), true);
+    close(
+      Number(await canvas.getAttribute('data-section-front-px-per-um')),
+      Number(await canvas.getAttribute('data-section-back-px-per-um')),
+      1e-9,
+    );
+    assert.equal(await page.locator('#threeHost').getAttribute('data-z-scale-linked'), 'true');
+
+    await linkedScale.uncheck();
+    assert.equal(await backScale.isEnabled(), true);
+    await backScale.fill('0.5');
+    await backScale.press('Tab');
+    await page.waitForFunction(() => {
+      const canvas = document.getElementById('sectionCanvas');
+      return canvas?.dataset.sectionScaleLinked === 'false';
+    });
+    const unlockedFrontPx = Number(await canvas.getAttribute('data-section-front-px-per-um')),
+      unlockedBackPx = Number(await canvas.getAttribute('data-section-back-px-per-um'));
+    close(unlockedFrontPx / unlockedBackPx, 2, 1e-6);
+    close(Number(await page.locator('#threeHost').getAttribute('data-z-back-scale')), 0.5, 1e-12);
+
+    await linkedScale.check();
+    await page.waitForFunction(() => {
+      const canvas = document.getElementById('sectionCanvas');
+      return canvas?.dataset.sectionScaleLinked === 'true';
+    });
+    close(Number(await backScale.inputValue()), Number(await frontScale.inputValue()), 1e-12);
+    close(
+      Number(await canvas.getAttribute('data-section-front-px-per-um')),
+      Number(await canvas.getAttribute('data-section-back-px-per-um')),
+      1e-9,
+    );
+    assert.equal(await backScale.isDisabled(), true);
+
     await page.locator('#sectionCollapseTarget').selectOption('top');
     await page.locator('#sectionCollapseStep').selectOption('0.1');
     await page.locator('#sectionCollapsePlus').click();
