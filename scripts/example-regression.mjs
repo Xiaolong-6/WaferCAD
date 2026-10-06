@@ -166,8 +166,10 @@ async function switchVariant(branchId) {
 
 async function assertEditStepEnabled(node, label) {
   const wrap = page.locator(`.history-step-wrap[data-step-id="${node.id}"]`);
-  await wrap.locator('.snapshot-more-trigger').click();
-  const edit = wrap.locator('.snapshot-more-popover button', { hasText: 'Edit Step' });
+  await wrap.locator('summary[aria-label="Step actions"]').click();
+  const edit = wrap.locator('.history-step-row .snapshot-more-popover button', {
+    hasText: 'Edit Step',
+  });
   await edit.waitFor({ state: 'visible', timeout: 10000 });
   assert.equal(await edit.isDisabled(), false, `${label}: Edit Step must be enabled`);
   await wrap.locator('.snapshot-more-trigger').click();
