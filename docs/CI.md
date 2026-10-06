@@ -22,7 +22,7 @@ The planner then enables focused suites as needed:
 | Process/model/vector geometry                       | Process Geometry core browser path; full permutations on nightly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the nightly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
+Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
 ## Heavy Process Geometry job
 
@@ -34,22 +34,22 @@ When process/model geometry changes require it, the job runs in parallel with th
 
 The complete browser suite, including Process Geometry, runs for:
 
-- the nightly Browser regression schedule (`02:17 UTC`);
+- the weekly Browser regression schedule (Monday at `02:17 UTC`);
 - manual `workflow_dispatch` runs;
-- pull requests that change pinned dependencies or shared browser-test infrastructure.
+- pull requests or main pushes whose changed paths conservatively select the full suite, such as dependency lockfiles or shared browser-test infrastructure.
 
-A push to `main` now runs only UI smoke plus the Node test gate. It does not repeat focused History/Persistence/Interaction/Examples/Product/Process suites that were already exercised on the pull request.
+A push to `main` now computes the changed paths from the previous main revision to the pushed revision and feeds that list through the same impact planner used by pull requests. This preserves a post-merge verification pass while avoiding an unconditional second full sweep after every merge.
 
-This keeps a cheap post-merge sanity check while leaving the expensive full integration sweep to nightly/manual runs.
+This keeps PR and main validation change-aware while leaving the expensive unconditional integration sweep to weekly/manual runs.
 
 ## Cost controls
 
 - Browser PR jobs do not repeat the Node test gate already owned by `Quality`.
-- Node tests are repeated inside Browser regression for non-PR runs, including the lightweight `main` push smoke, because a separate Quality workflow may not exist for direct pushes.
+- Node tests are repeated inside Browser regression for non-PR runs, including targeted `main` pushes, because a separate Quality workflow may not exist for direct pushes.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.
-- Human-review screenshot galleries are disabled on pull requests and retained for nightly/manual full runs.
-- Renderer stress cases and the full Process Geometry permutation set are retained for nightly/manual full runs; PRs use semantic/core subsets.
+- Human-review screenshot galleries are disabled on pull requests and targeted main pushes; they are retained for weekly/manual full runs.
+- Renderer stress cases and the full Process Geometry permutation set are retained for weekly/manual full runs; PRs and targeted main pushes use semantic/core subsets.
 - Process Geometry is split only when selected because its real worker/process path remains materially heavier than ordinary UI checks.
 - Node-test-only changes under `site/tests/` do not trigger Browser regression by themselves.
 - KLayout parser/browser compatibility remains path-filtered in its dedicated workflow.
