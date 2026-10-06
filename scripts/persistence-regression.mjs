@@ -126,7 +126,8 @@ await legacyContext.close();
 // View-only interaction must never serialize the full workspace. It is held
 // while the user is interacting, then persisted as a tiny view record.
 const interactionAutosaveContext = await newUiContext(browser, {
-  viewport: { width: 1100, height: 760 },
+  // Keep 3D visible: this case verifies camera/view persistence, not responsive layout.
+  viewport: { width: 1365, height: 900 },
 });
 const interactionAutosavePage = await interactionAutosaveContext.newPage();
 const interactionAutosaveErrors = [];
@@ -229,27 +230,17 @@ await interactionAutosavePage.waitForFunction(
   { timeout: 8000 },
 );
 
-await interactionAutosavePage.locator('#threeMaxBtn').click();
-await interactionAutosavePage.waitForFunction(
-  () =>
-    document.body.classList.contains('view-maximized') &&
-    document.getElementById('threeHost')?.dataset?.renderState === 'ready',
-  null,
-  { timeout: 10000 },
-);
 await interactionAutosavePage.waitForFunction(
   () => {
-    const canvas = document.querySelector('#threeHost canvas');
-    if (!canvas?.checkVisibility()) return false;
+    const host = document.getElementById('threeHost'),
+      canvas = host?.querySelector('canvas');
+    if (host?.dataset?.renderState !== 'ready' || !canvas?.checkVisibility()) return false;
     const rect = canvas.getBoundingClientRect();
     return rect.width > 20 && rect.height > 20;
   },
   null,
   { timeout: 10000 },
 );
-// Maximizing 3D can refit the camera. Let that lightweight view save settle
-// before measuring the actual orbit interaction below.
-await interactionAutosavePage.waitForTimeout(3200);
 
 const beforeCameraDrag = await autosaveCounts(),
   threeCanvas = interactionAutosavePage.locator('#threeHost canvas'),
@@ -273,7 +264,6 @@ await interactionAutosavePage.waitForFunction(
   { timeout: 8000 },
 );
 assert.equal((await autosaveCounts()).full, beforeViewInteraction.full);
-await interactionAutosavePage.locator('#threeMaxBtn').click();
 
 await interactionAutosavePage.reload({ waitUntil: 'networkidle' });
 await interactionAutosavePage.waitForFunction(
