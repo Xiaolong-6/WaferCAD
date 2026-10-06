@@ -14,7 +14,10 @@ export const BROWSER_SUITES = Object.freeze([
   'process',
 ]);
 
-const COMMON_TEST_INFRA = [/^scripts\/test-helpers\/ui\.mjs$/];
+const COMMON_TEST_INFRA = [
+  /^scripts\/test-helpers\/ui\.mjs$/,
+  /^scripts\/test-helpers\/product-scientific\.mjs$/,
+];
 const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json']);
 const WORKSTATION_PATHS = [
   /^site\/app\.(?:js|html)$/,
@@ -69,6 +72,7 @@ const PROCESS_PATHS = [
 const RENDERER_PATHS = [
   /^site\/model-view-geometry\.js$/,
   /^site\/(?:three|section|render|glb)/,
+  /^site\/(?:annotation-rendering|plan-renderers|rough-mesh(?:-geometry|-worker)?|surface-rendering)\.js$/,
   /^scripts\/renderer-product-regression\.mjs$/,
   /^scripts\/renderer-product-cases\.mjs$/,
 ];
