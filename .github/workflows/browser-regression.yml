@@ -8,6 +8,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "site/**"
+      - "!site/tests/**"
       - "examples/**"
       - "scripts/ui-smoke.mjs"
       - "scripts/workstation-regression.mjs"
@@ -24,18 +25,155 @@ on:
       - "scripts/product-layout-regression.mjs"
       - "scripts/renderer-product-regression.mjs"
       - "scripts/process-benchmarks.mjs"
+      - "scripts/ci-test-plan.mjs"
       - ".github/workflows/browser-regression.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "site/**"
+      - "!site/tests/**"
+      - "examples/**"
+      - "scripts/**"
+      - ".github/workflows/browser-regression.yml"
+  schedule:
+    - cron: "17 2 * * *"
   workflow_dispatch:
 
 concurrency:
-  group: browser-regression-${{ github.event.pull_request.number || github.ref }}
+  group: browser-regression-${{ github.event.pull_request.number || github.ref || github.run_id }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  chromium-browser-regression:
+  plan:
+    name: Plan browser suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.plan.outputs.full }}
+      smoke: ${{ steps.plan.outputs.smoke }}
+      workstation: ${{ steps.plan.outputs.workstation }}
+      resilience: ${{ steps.plan.outputs.resilience }}
+      history: ${{ steps.plan.outputs.history }}
+      persistence: ${{ steps.plan.outputs.persistence }}
+      interaction: ${{ steps.plan.outputs.interaction }}
+      examples: ${{ steps.plan.outputs.examples }}
+      product_layout: ${{ steps.plan.outputs.product_layout }}
+      renderer: ${{ steps.plan.outputs.renderer }}
+      process: ${{ steps.plan.outputs.process }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build regression plan
+        id: plan
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
+              | node scripts/ci-test-plan.mjs --stdin
+          else
+            node scripts/ci-test-plan.mjs --full
+          fi
+
+  browser:
+    name: Chromium targeted regression
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+
+      - name: Install project dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run Node test gate outside PRs
+        if: ${{ github.event_name != 'pull_request' }}
+        run: npm test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-http.log
+          exit 1
+
+      - name: Run fast browser gate
+        run: npm run test:ui:fast
+
+      - name: Run History regression
+        if: ${{ needs.plan.outputs.history == 'true' }}
+        run: npm run test:ui:history
+
+      - name: Run persistence regression
+        if: ${{ needs.plan.outputs.persistence == 'true' }}
+        run: npm run test:ui:persistence
+
+      - name: Run interaction regression
+        if: ${{ needs.plan.outputs.interaction == 'true' }}
+        run: npm run test:ui:interaction
+
+      - name: Run bundled example regression
+        if: ${{ needs.plan.outputs.examples == 'true' }}
+        run: npm run test:ui:examples
+
+      - name: Run product layout regression
+        if: ${{ needs.plan.outputs.product_layout == 'true' }}
+        run: npm run test:ui:product:layout
+
+      - name: Run renderer product regression
+        if: ${{ needs.plan.outputs.renderer == 'true' }}
+        run: npm run test:ui:product:renderer
+
+      - name: Package tested preview
+        if: always()
+        run: |
+          mkdir -p test-results/product-review/preview
+          cp -R site/. test-results/product-review/preview/
+          node -e 'require("node:fs").writeFileSync("test-results/product-review/preview/build-info.json", JSON.stringify({commit:process.env.GITHUB_SHA}))'
+
+      - name: Upload product review and preview
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-product-review-${{ github.sha }}
+          path: test-results/product-review
+          retention-days: 14
+
+  process-geometry:
+    name: Process geometry regression
+    needs: plan
+    if: ${{ needs.plan.outputs.process == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -59,9 +197,6 @@ jobs:
       - name: Install project dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Run fast Node test gate
-        run: npm test
-
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
@@ -77,48 +212,5 @@ jobs:
           cat /tmp/wafercad-http.log
           exit 1
 
-      - name: Run fast browser smoke
-        run: npm run test:ui:smoke
-
-      - name: Run workstation regression
-        run: npm run test:ui:workstation
-
-      - name: Run resilience regression
-        run: npm run test:ui:resilience
-
-      - name: Run History regression
-        run: npm run test:ui:history
-
-      - name: Run persistence regression
-        run: npm run test:ui:persistence
-
-      - name: Run interaction regression
-        run: npm run test:ui:interaction
-
       - name: Run process geometry regression
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: npm run test:ui:process
-
-      - name: Run bundled example regression
-        run: npm run test:ui:examples
-
-      - name: Run product layout regression
-        run: npm run test:ui:product:layout
-
-      - name: Run renderer product regression
-        run: npm run test:ui:product:renderer
-
-      - name: Package tested preview
-        if: always()
-        run: |
-          mkdir -p test-results/product-review/preview
-          cp -R site/. test-results/product-review/preview/
-          node -e 'require("node:fs").writeFileSync("test-results/product-review/preview/build-info.json", JSON.stringify({commit:process.env.GITHUB_SHA}))'
-
-      - name: Upload product review and preview
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: wafercad-product-review-${{ github.sha }}
-          path: test-results/product-review
-          retention-days: 14
