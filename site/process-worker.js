@@ -16,12 +16,14 @@ function modules() {
       import(versioned('./draw-mask-geometry.js')),
       import(versioned('./mask-roi-geometry.js')),
       import(versioned('./advanced-process-operations.js')),
-    ]).then(([modelApi, vectorApi, drawApi, maskRoiApi, advancedApi]) => ({
+      import(versioned('./project-schema.js')),
+    ]).then(([modelApi, vectorApi, drawApi, maskRoiApi, advancedApi, projectSchema]) => ({
       modelApi,
       vectorApi,
       drawApi,
       maskRoiApi,
       advancedApi,
+      projectSchema,
     }));
   }
   return modulesPromise;
@@ -89,7 +91,8 @@ self.onmessage = async (event) => {
   const { id, model, params, areaRequest } = event.data || {};
   if (!id) return;
   try {
-    const { modelApi, vectorApi, drawApi, maskRoiApi, advancedApi } = await modules();
+    const { modelApi, vectorApi, drawApi, maskRoiApi, advancedApi, projectSchema } =
+      await modules();
     self.postMessage({ id, type: 'progress', stage: 'Preparing process area…' });
     const area = processArea(model, areaRequest, modelApi, vectorApi, drawApi, maskRoiApi);
     if (vectorApi.isEmpty(area)) {
@@ -117,7 +120,21 @@ self.onmessage = async (event) => {
       vectorApi,
     );
     const result = advancedResult ?? modelApi.applyOperation(nextModel, { ...params, area });
-    self.postMessage({ id, type: 'done', model: nextModel, result });
+    if (result?.changed) {
+      self.postMessage({ id, type: 'progress', stage: 'Validating process geometry…' });
+      try {
+        projectSchema.validateProcessModel(nextModel);
+      } catch (error) {
+        self.postMessage({
+          id,
+          type: 'done',
+          rejected: true,
+          error: `Process result rejected; the previous structure and History were preserved. ${error.message}`,
+        });
+        return;
+      }
+    }
+    self.postMessage({ id, type: 'done', model: nextModel, result, validated: true });
   } catch (error) {
     self.postMessage({
       id,

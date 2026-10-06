@@ -17,3 +17,7 @@ Supported v2 export: 3,015,859 bytes, down from 67,315,148 bytes. The complete n
 Local focused project/History checks: 56 passed. Complete Node inventory: 367 passed, zero failures/skips. ESLint passed. Changed-file formatting passed. The full repository format inventory reported 11 pre-existing warnings in unchanged baseline files; these are not silently reformatted in this feature.
 
 Chrome baseline on the exact starting product: three visible installed Chrome 154.0.8037.98 runs, 1440 × 960 viewport, pinned Playwright 1.55.1 / Three 0.179.1. Input selection includes the normal Open confirmation. Median Open status: 148.59 s; median matching-model 3D ready: 148.83 s; median import worker: 72.90 s. Page errors: none. Optimized browser and persistence/History validation remain in progress at this milestone.
+
+## Baseline integration
+
+The requested baseline advanced during implementation. A normal merge retains its latest process-worker validation and lazy robust polygon boolean implementation from `e9abb1583b553159789e133f039dcf0b17d59dd9`, without rewriting the already-pushed feature commits. IO validation caches call the shared robust operations, and `validateProcessModel` uses a fresh geometry validation context with full budgets. Focused integration: 71 tests passed; complete merged inventory: 372 tests passed; lint passed. Final browser checks and a fresh comparison against this exact advanced baseline are pending at this merge milestone.

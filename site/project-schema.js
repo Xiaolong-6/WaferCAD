@@ -1,3 +1,5 @@
+import { robustDifference, robustIntersection } from './polygon-boolean.js';
+
 export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
 export const PROJECT_LENGTH_LIMIT_UM = PROJECT_COORDINATE_LIMIT_UM * 2;
@@ -192,12 +194,6 @@ function validateStack(stack, path, layerIds) {
   });
 }
 
-function geometryKernel() {
-  const kernel = globalThis.polygonClipping;
-  if (!kernel) throw new Error('Project geometry validation requires polygon-clipping.');
-  return kernel;
-}
-
 function ringArea(ring) {
   let sum = 0;
   for (let index = 0; index < (ring?.length || 0); index++) {
@@ -279,7 +275,6 @@ function cachedGeometryArea(left, right, geometryCache, kind, operation) {
 }
 
 function validateModelGeometry(model, cache) {
-  const pc = geometryKernel();
   const boundaryBounds = cachedGeometryBounds(model.boundary, cache);
   const dimensionTolerance = Math.max(1e-9, model.width, model.height) * 1e-9;
 
@@ -306,7 +301,7 @@ function validateModelGeometry(model, cache) {
         model.boundary,
         cache,
         'differences',
-        pc.difference,
+        robustDifference,
       );
       if (outsideArea > areaTolerance) {
         fail(`model.regions[${current.index}].geom`, 'extends outside model.boundary.');
@@ -327,7 +322,7 @@ function validateModelGeometry(model, cache) {
           current.region.geom,
           cache,
           'intersections',
-          pc.intersection,
+          robustIntersection,
         );
         if (overlapArea > areaTolerance) {
           fail(
@@ -1306,6 +1301,13 @@ export function migrateProjectFile(project) {
     }
   }
   return migrated;
+}
+
+export function validateProcessModel(model) {
+  const geometry = createValidationContext().geometry;
+  const budget = { polygons: 0, rings: 0, points: 0, geometry };
+  validateModel(model, budget, geometry);
+  return model;
 }
 
 export function validateProjectFile(project) {

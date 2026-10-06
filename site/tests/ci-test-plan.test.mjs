@@ -26,6 +26,11 @@ test('project schema changes schedule persistence without unrelated example cove
   assert.deepEqual(enabled(plan), ['smoke', 'persistence']);
 });
 
+test('shared polygon boolean kernel schedules persistence and process coverage', () => {
+  const plan = buildCiTestPlan(['site/polygon-boolean.js']);
+  assert.deepEqual(enabled(plan), ['smoke', 'persistence', 'process']);
+});
+
 test('layout parser changes schedule interaction and layout review only', () => {
   const plan = buildCiTestPlan(['site/gds.js']);
   assert.equal(plan.suites.interaction, true);
