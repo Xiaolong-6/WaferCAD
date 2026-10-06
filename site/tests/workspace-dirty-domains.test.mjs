@@ -58,13 +58,20 @@ function identity(project, historyToken = '0') {
   });
 }
 
-test('camera, plan zoom, Section inspection and display toggles stay view-only', () => {
+test('camera, plan zoom, working selections, Section inspection and display toggles stay view-only', () => {
   const project = projectFixture(),
     before = identity(project);
 
+  project.selectedLayerKeys = ['7|1'];
+  project.activeCell = 'DEVICE';
+  project.maskSourceMode = 'draw';
+  project.maskRoi = { type: 'circle', c: [0, 0], r: 2 };
+  project.maskRoiAnchor = 'corner';
   project.planViews.main = { zoom: 4, panX: 120, panY: -40 };
   project.section = { a: [-2, 1], b: [3, -1] };
   project.activeFace = 'back';
+  project.roi = { type: 'rect', a: [-1, -1], b: [1, 1] };
+  project.roiAnchor = 'corner';
   project.display.maskOpacity = 0.25;
   project.display.threeOpacity = 0.55;
   project.display.threeShowBorders = true;
@@ -81,7 +88,7 @@ test('camera, plan zoom, Section inspection and display toggles stay view-only',
   assert.equal(workspaceStructuralIdentityEqual(before, identity(project)), true);
 });
 
-test('process, mask, ROI, project and History changes are structural', () => {
+test('process, mask geometry, alignment, project and History changes are structural', () => {
   const base = projectFixture(),
     before = identity(base);
 
@@ -93,22 +100,10 @@ test('process, mask, ROI, project and History changes are structural', () => {
       project.layout.elements = [...project.layout.elements, { layer: 2 }];
     },
     (project) => {
-      project.selectedLayerKeys = ['2|0'];
-    },
-    (project) => {
-      project.activeCell = 'CHILD';
-    },
-    (project) => {
       project.maskTransform = { ...project.maskTransform, x: 4 };
     },
     (project) => {
       project.drawMask = { nextShapeId: 2, shapes: [{ id: 1, type: 'circle', c: [0, 0], r: 2 }] };
-    },
-    (project) => {
-      project.maskRoi = { type: 'circle', c: [0, 0], r: 2 };
-    },
-    (project) => {
-      project.roi = { type: 'rect', a: [-1, -1], b: [1, 1] };
     },
   ];
 
@@ -130,7 +125,14 @@ test('process, mask, ROI, project and History changes are structural', () => {
 
 test('lightweight view state round-trips without structural geometry', () => {
   const source = projectFixture();
+  source.selectedLayerKeys = ['2|0', '4|1'];
+  source.activeCell = 'DEVICE';
+  source.maskSourceMode = 'draw';
+  source.maskRoi = { type: 'circle', c: [1, 2], r: 3 };
+  source.maskRoiAnchor = 'corner';
   source.activeFace = 'back';
+  source.roi = { type: 'rect', a: [-2, -1], b: [2, 1] };
+  source.roiAnchor = 'corner';
   source.planViews.mask.zoom = 7;
   source.planViews.mask.panX = 81;
   source.display.maskOpacity = 0.3;
@@ -149,7 +151,14 @@ test('lightweight view state round-trips without structural geometry', () => {
     originalElements = target.layout.elements;
 
   assert.equal(applyWorkspaceViewState(target, view), true);
+  assert.deepEqual(target.selectedLayerKeys, source.selectedLayerKeys);
+  assert.equal(target.activeCell, 'DEVICE');
+  assert.equal(target.maskSourceMode, 'draw');
+  assert.deepEqual(target.maskRoi, source.maskRoi);
+  assert.equal(target.maskRoiAnchor, 'corner');
   assert.equal(target.activeFace, 'back');
+  assert.deepEqual(target.roi, source.roi);
+  assert.equal(target.roiAnchor, 'corner');
   assert.equal(target.planViews.mask.zoom, 7);
   assert.equal(target.planViews.mask.panX, 81);
   assert.equal(target.display.maskOpacity, 0.3);
