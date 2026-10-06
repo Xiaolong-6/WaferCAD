@@ -1,0 +1,14 @@
+{
+  "sourceFilename": "fig3_site_tier2_before_gate_failure.wafercad",
+  "bytes": 2189999,
+  "sha256": "d21580830d8c54f83ef5cf51713c1a55743a67e5828149dd75a4f567102d4ee8",
+  "archiveBytes": 22289,
+  "historySteps": 22,
+  "initialRegions": 30,
+  "exactRequestedStep": {
+    "maskLayer": 9,
+    "thicknessUm": 0.01,
+    "growth": "conformal",
+    "name": "T2 HfO2 gate"
+  }
+}
