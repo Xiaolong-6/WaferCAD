@@ -768,5 +768,6 @@ export async function runRendererProductCases({ page, capture }) {
 
   }
 
+  await waitForCanvasSizeSync(page, '#sectionCanvas');
   await checkLayout(page);
 }
