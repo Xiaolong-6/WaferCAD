@@ -529,13 +529,19 @@ export function createProcessPanelController({
               areaRequest,
             );
 
-        if (task?.aborted || task?.error || task?.busy) {
+        if (task?.aborted || task?.error || task?.busy || task?.rejected) {
           return {
             ok: false,
             aborted: Boolean(task?.aborted),
             completed,
             failedOperation: operation,
-            error: task?.error || (task?.aborted ? 'Replay aborted.' : 'Replay worker is busy.'),
+            error:
+              task?.error ||
+              (task?.aborted
+                ? 'Replay aborted.'
+                : task?.rejected
+                  ? 'Process result rejected; the previous structure and History were preserved.'
+                  : 'Replay worker is busy.'),
           };
         }
         if (!task.result?.changed) {
@@ -547,15 +553,17 @@ export function createProcessPanelController({
           };
         }
 
-        try {
-          validateProcessModel(task.model);
-        } catch (error) {
-          return {
-            ok: false,
-            completed,
-            failedOperation: operation,
-            error: `Process result rejected; the previous structure and History were preserved. ${error.message}`,
-          };
+        if (task.validated !== true) {
+          try {
+            validateProcessModel(task.model);
+          } catch (error) {
+            return {
+              ok: false,
+              completed,
+              failedOperation: operation,
+              error: `Process result rejected; the previous structure and History were preserved. ${error.message}`,
+            };
+          }
         }
 
         saveHistory();
@@ -831,19 +839,22 @@ export function createProcessPanelController({
 
     const task = await processTaskController.run(model, params, taskLabel, areaRequest);
     if (task?.aborted || task?.error || task?.busy) return;
+    if (task?.rejected) return status(task.error || 'Process result rejected.', 'error');
 
     const result = task.result;
     if (!result?.changed) {
       return status(result?.error || 'The operation did not change the model.', 'warning');
     }
 
-    try {
-      validateProcessModel(task.model);
-    } catch (error) {
-      return status(
-        `Process result rejected; the previous structure and History were preserved. ${error.message}`,
-        'error',
-      );
+    if (task.validated !== true) {
+      try {
+        validateProcessModel(task.model);
+      } catch (error) {
+        return status(
+          `Process result rejected; the previous structure and History were preserved. ${error.message}`,
+          'error',
+        );
+      }
     }
 
     let branchCommit = null;
