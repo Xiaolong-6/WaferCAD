@@ -104,6 +104,48 @@ test('ROI cut edges retain partial overlaps and hole boundaries without duplicat
   assert.equal(annotationInspectionCutSegments({ polys: holeClip }, holeClip).length, 8);
 });
 
+test('strict project geometry validation shares the 0.1 nm boolean retry path', () => {
+  const project = {
+    format: 'WaferCAD-vector',
+    model: createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
+    layout: {
+      name: 'Empty',
+      root: '',
+      elements: [],
+      linework: [],
+      bounds: { minX: -10, minY: -10, maxX: 10, maxY: 10, width: 20, height: 20 },
+      combos: [],
+      hierarchy: {},
+      units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
+    },
+    selectedLayerKeys: [],
+    activeCell: null,
+    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    activeFace: 'front',
+    roi: null,
+    section: { a: [-5, 0], b: [5, 0] },
+    planViews: {
+      mask: { zoom: 1, panX: 0, panY: 0 },
+      main: { zoom: 1, panX: 0, panY: 0 },
+    },
+    display: { xyUnit: 'um', structurePalette: 'balanced', customStructurePalette: null },
+  };
+
+  const original = globalThis.polygonClipping.difference;
+  let calls = 0;
+  globalThis.polygonClipping.difference = (...args) => {
+    calls++;
+    if (calls === 1) throw new Error('Unable to find segment in SweepLine tree');
+    return original(...args);
+  };
+  try {
+    assert.equal(validateProjectFile(project), project);
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.polygonClipping.difference = original;
+  }
+});
+
 test('Project schema and annotation contracts', () => {
   const validProject = {
     format: 'WaferCAD-vector',
