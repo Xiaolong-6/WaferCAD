@@ -6,6 +6,11 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  spatialInstanceChunks,
+  translatedPolygonInstanceGroups,
+  translatedSidewallInstanceGroups,
+} from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morphology-mesh-policy.js';
@@ -78,6 +83,12 @@ export function createThreeView({
   let roughSpatialZoneBuildCount = 0;
   let roughBaseTriangulationCount = 0;
   let surfacePlanBuildCount = 0;
+  let smoothCapInstanceGroupCount = 0;
+  let smoothCapInstanceCount = 0;
+  let smoothCapTemplateTriangleCount = 0;
+  let smoothSidewallInstanceGroupCount = 0;
+  let smoothSidewallInstanceCount = 0;
+  let smoothSidewallTemplateTriangleCount = 0;
   let transparentMeshes = [];
   let roughWorker = null;
   let roughWorkerResolve = null;
@@ -90,6 +101,7 @@ export function createThreeView({
   let pendingViewState = null;
   let zDisplayObjects = new Set();
   let currentZDisplay = null;
+  let preferredPixelRatio = 1;
 
   function normalizeViewState(value) {
     if (!value || typeof value !== 'object') return null;
@@ -1078,6 +1090,43 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return mesh;
   }
 
+  function addInstancedSurfaceMeshes(
+    geometry,
+    material,
+    translations,
+    { name = '', maxInstancesPerMesh = 64 } = {},
+  ) {
+    if (!geometry.getAttribute('position')?.count || !translations?.length) {
+      geometry.dispose();
+      material?.dispose?.();
+      return [];
+    }
+
+    const chunks = spatialInstanceChunks(translations, { maxInstances: maxInstancesPerMesh }),
+      meshes = [];
+    chunks.forEach((chunk, chunkIndex) => {
+      // Z-collapse can remap vertex Z coordinates in place. Give each spatial
+      // chunk its own tiny template geometry so one chunk cannot mutate the
+      // canonical coordinates observed by another chunk.
+      const chunkGeometry = chunkIndex === 0 ? geometry : geometry.clone(),
+        mesh = new THREE.InstancedMesh(chunkGeometry, material, chunk.length),
+        matrix = new THREE.Matrix4();
+      chunk.forEach(([x, y], index) => {
+        matrix.makeTranslation(Number(x) || 0, Number(y) || 0, 0);
+        mesh.setMatrixAt(index, matrix);
+      });
+      mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingBox?.();
+      mesh.computeBoundingSphere?.();
+      if (name) mesh.name = chunks.length > 1 ? `${name} ${chunkIndex + 1}/${chunks.length}` : name;
+      group.add(mesh);
+      trackZDisplayObject(mesh);
+      meshes.push(mesh);
+    });
+    return meshes;
+  }
+
   function disposeObjectResources(object) {
     object?.geometry?.dispose?.();
     const materials = Array.isArray(object?.material) ? object.material : [object?.material];
@@ -1579,7 +1628,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
 
         try {
-          renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
+          preferredPixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
+          renderer.setPixelRatio(preferredPixelRatio);
           renderer.setClearColor(0xf5f7f9);
 
           scene = new THREE.Scene();
@@ -1594,6 +1644,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
             interacting = true;
             clearRoughRefineTimer();
             terminateRoughWorker({ invalidate: true });
+            const interactionPixelRatio = Math.min(preferredPixelRatio, 1);
+            if (Math.abs(renderer.getPixelRatio() - interactionPixelRatio) > 1e-9) {
+              renderer.setPixelRatio(interactionPixelRatio);
+              resize();
+            }
+            host.dataset.interactionPixelRatio = String(interactionPixelRatio);
             if (
               roughInteractionCache &&
               roughInteractionCache.sceneGeneration === sceneGeneration
@@ -1616,6 +1672,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
           controls.addEventListener('end', () => {
             interacting = false;
+            if (Math.abs(renderer.getPixelRatio() - preferredPixelRatio) > 1e-9) {
+              renderer.setPixelRatio(preferredPixelRatio);
+              resize();
+            }
+            host.dataset.interactionPixelRatio = String(preferredPixelRatio);
             scheduleDetailedRoughBuild();
             pendingViewState = getViewState();
             onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
@@ -1755,10 +1816,74 @@ diffuseColor.a *= waferCadAlphaScale;`,
         });
       }
 
+      smoothCapInstanceGroupCount = 0;
+      smoothCapInstanceCount = 0;
+      smoothCapTemplateTriangleCount = 0;
       for (const bucket of smoothCaps.values()) {
         const state = stateFor(bucket.part),
           visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
         if (!state || !visibleCaps.length) continue;
+
+        if (!state.transparent) {
+          const planes = new Map();
+          for (const part of visibleCaps) {
+            const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
+            if (!planes.has(key)) {
+              planes.set(key, { z: part.z, normal: part.normal, polys: [] });
+            }
+            planes.get(key).polys.push(...(part.polys || []));
+          }
+          const preparedPlanes = [...planes.values()].map((plane) => ({
+              ...plane,
+              instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
+            })),
+            totalInstances = preparedPlanes.reduce(
+              (sum, plane) => sum + plane.instances.instanceCount,
+              0,
+            );
+
+          if (totalInstances > 0) {
+            for (const plane of preparedPlanes) {
+              for (const instances of plane.instances.groups) {
+                const geometry = geometryFromSolid({
+                    slabs: [],
+                    caps: [
+                      {
+                        z: plane.z,
+                        normal: plane.normal,
+                        polys: [instances.localPoly],
+                      },
+                    ],
+                  }),
+                  material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
+                  meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
+                    name: `${bucket.part.layerId || 'material'} repeated cap`,
+                  });
+                if (!meshes.length) continue;
+                smoothCapInstanceGroupCount += meshes.length;
+                smoothCapInstanceCount += instances.translations.length;
+                smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+              }
+
+              if (plane.instances.leftovers.length) {
+                const geometry = geometryFromSolid({
+                    slabs: [],
+                    caps: [
+                      {
+                        z: plane.z,
+                        normal: plane.normal,
+                        polys: plane.instances.leftovers,
+                      },
+                    ],
+                  }),
+                  material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+                addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 10 : 0);
+              }
+            }
+            continue;
+          }
+        }
+
         const geometry = geometryFromSolid({
             slabs: [],
             caps: visibleCaps.map((part) => ({
@@ -1770,20 +1895,62 @@ diffuseColor.a *= waferCadAlphaScale;`,
           material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
         addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 10 : 0);
       }
+      host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
+      host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
+      host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
 
       for (const sidewall of plan.sidewalls) {
         const state = stateFor(sidewall);
         if (!state) continue;
         pushBucket(sidewalls, sidewall, state);
       }
+      smoothSidewallInstanceGroupCount = 0;
+      smoothSidewallInstanceCount = 0;
+      smoothSidewallTemplateTriangleCount = 0;
       for (const bucket of sidewalls.values()) {
         const state = stateFor(bucket.part),
           visibleParts = displaySidewallParts(bucket.items);
         if (!state || !visibleParts.length) continue;
+
+        if (!state.transparent) {
+          const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
+          if (instances.instanceCount > 0) {
+            for (const groupInstances of instances.groups) {
+              const geometry = geometryFromSidewallParts([groupInstances.template]),
+                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
+                meshes = addInstancedSurfaceMeshes(
+                  geometry,
+                  material,
+                  groupInstances.translations,
+                  {
+                    name: `${bucket.part.layerId || 'material'} repeated sidewall`,
+                  },
+                );
+              if (!meshes.length) continue;
+              smoothSidewallInstanceGroupCount += meshes.length;
+              smoothSidewallInstanceCount += groupInstances.translations.length;
+              smoothSidewallTemplateTriangleCount +=
+                geometry.getAttribute('position')?.count / 3 || 0;
+            }
+
+            if (instances.leftovers.length) {
+              const geometry = geometryFromSidewallParts(instances.leftovers),
+                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+              addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
+            }
+            continue;
+          }
+        }
+
         const geometry = geometryFromSidewallParts(visibleParts),
           material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
         addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
       }
+      host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
+      host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
+      host.dataset.smoothSidewallTemplateTriangles = String(
+        Math.round(smoothSidewallTemplateTriangleCount),
+      );
 
       if (borders) {
         addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {

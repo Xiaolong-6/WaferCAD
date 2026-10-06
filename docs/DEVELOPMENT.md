@@ -51,8 +51,8 @@ There is no application build step.
 2. GDS XY is converted to canonical µm from the file's `UNITS` record.
 3. The global XYZ display/input unit converts presentation values only; it must never rescale stored geometry.
 4. X, Y and Z are stored as physical micrometre coordinates; view-only Z exaggeration must never feed back into process geometry.
-5. View zoom/pan must never modify geometry.
-6. Mask alignment transform is explicit and defaults to identity.
+5. View zoom/pan must never modify geometry or trigger full-project autosave packing; view/inspection state uses the lightweight workspace-view persistence domain.
+6. Mask alignment transform is explicit and defaults to identity. It is working state until a process/export consumes it, so browser autosave persists alignment through the lightweight view record rather than rewriting a large project on every input change.
 7. Cells define hierarchy scope; Layers is global.
 8. Zero-width linework is not an operable mask.
 9. The 3D ROI is render-only. Its perimeter defines 3D inspection cut faces and remains independent from the Section A–B line; neither view may silently move the other.

@@ -123,10 +123,11 @@ await legacyPage.waitForFunction(
 assert.deepEqual(legacyErrors, []);
 await legacyContext.close();
 
-// Autosave must not serialize a large workspace while the user is actively
-// dragging the 3D camera. A pending dirty save is held until pointer release.
+// View-only interaction must never serialize the full workspace. It is held
+// while the user is interacting, then persisted as a tiny view record.
 const interactionAutosaveContext = await newUiContext(browser, {
-  viewport: { width: 1100, height: 760 },
+  // Keep 3D visible: this case verifies camera/view persistence, not responsive layout.
+  viewport: { width: 1365, height: 900 },
 });
 const interactionAutosavePage = await interactionAutosaveContext.newPage();
 const interactionAutosaveErrors = [];
@@ -148,17 +149,49 @@ await interactionAutosavePage.waitForFunction(
   null,
   { timeout: 30000 },
 );
+await interactionAutosavePage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 8000 },
+);
+const autosaveCounts = async () =>
+  interactionAutosavePage.evaluate(() => {
+    const workspace = document.querySelector('.workspace');
+    return {
+      full: Number(workspace?.dataset.fullAutosaveCount) || 0,
+      view: Number(workspace?.dataset.viewAutosaveCount) || 0,
+      domain: workspace?.dataset.lastAutosaveDomain || '',
+    };
+  });
+const beforeMixedDirty = await autosaveCounts();
+await openFunctionPanel(interactionAutosavePage, 'project');
+await interactionAutosavePage
+  .locator('#projectNameInput')
+  .fill('Structural save survives view updates');
+await interactionAutosavePage.evaluate(() => {
+  const input = document.getElementById('maskOpacityRange');
+  input.value = '0.56';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await interactionAutosavePage.waitForFunction(
+  (before) => {
+    const workspace = document.querySelector('.workspace');
+    return (
+      (Number(workspace?.dataset.fullAutosaveCount) || 0) > before.full &&
+      workspace?.dataset.lastAutosaveDomain === 'full'
+    );
+  },
+  beforeMixedDirty,
+  { timeout: 8000 },
+);
+assert.equal((await autosaveCounts()).view, beforeMixedDirty.view);
+
+const beforeViewInteraction = await autosaveCounts();
+
 await interactionAutosavePage.evaluate(() => {
   const input = document.getElementById('maskOpacityRange');
   input.value = '0.55';
   input.dispatchEvent(new Event('input', { bubbles: true }));
-});
-await interactionAutosavePage.waitForFunction(
-  () => /Unsaved changes/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
-  null,
-  { timeout: 3000 },
-);
-await interactionAutosavePage.evaluate(() => {
   const target = document.getElementById('threeHost');
   target.dispatchEvent(
     new PointerEvent('pointerdown', {
@@ -169,11 +202,13 @@ await interactionAutosavePage.evaluate(() => {
     }),
   );
 });
-await interactionAutosavePage.waitForTimeout(2300);
-assert.match(
+await interactionAutosavePage.waitForTimeout(3000);
+assert.doesNotMatch(
   await interactionAutosavePage.locator('#workspaceSaveStatus').textContent(),
   /Unsaved changes/,
 );
+assert.deepEqual(await autosaveCounts(), beforeViewInteraction);
+
 await interactionAutosavePage.evaluate(() => {
   window.dispatchEvent(
     new PointerEvent('pointerup', {
@@ -185,9 +220,80 @@ await interactionAutosavePage.evaluate(() => {
   );
 });
 await interactionAutosavePage.waitForFunction(
-  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
-  null,
+  (before) => {
+    const workspace = document.querySelector('.workspace');
+    return (
+      (Number(workspace?.dataset.viewAutosaveCount) || 0) > before.view &&
+      (Number(workspace?.dataset.fullAutosaveCount) || 0) === before.full &&
+      workspace?.dataset.lastAutosaveDomain === 'view'
+    );
+  },
+  beforeViewInteraction,
   { timeout: 8000 },
+);
+
+await interactionAutosavePage.waitForFunction(
+  () => {
+    const host = document.getElementById('threeHost'),
+      canvas = host?.querySelector('canvas');
+    if (host?.dataset?.renderState !== 'ready' || !canvas?.checkVisibility()) return false;
+    const rect = canvas.getBoundingClientRect();
+    return rect.width > 20 && rect.height > 20;
+  },
+  null,
+  { timeout: 10000 },
+);
+
+const beforeCameraDrag = await autosaveCounts(),
+  threeCanvas = interactionAutosavePage.locator('#threeHost canvas'),
+  box = await threeCanvas.boundingBox();
+assert.ok(box);
+await interactionAutosavePage.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.5);
+await interactionAutosavePage.mouse.down();
+await interactionAutosavePage.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.62, {
+  steps: 8,
+});
+await interactionAutosavePage.mouse.up();
+await interactionAutosavePage.waitForFunction(
+  (before) => {
+    const workspace = document.querySelector('.workspace');
+    return (
+      (Number(workspace?.dataset.viewAutosaveCount) || 0) > before.view &&
+      (Number(workspace?.dataset.fullAutosaveCount) || 0) === before.full
+    );
+  },
+  beforeCameraDrag,
+  { timeout: 8000 },
+);
+assert.equal((await autosaveCounts()).full, beforeViewInteraction.full);
+
+await interactionAutosavePage.reload({ waitUntil: 'networkidle' });
+await interactionAutosavePage.waitForFunction(
+  () => document.documentElement.dataset.appReady === 'true',
+  null,
+  { timeout: 30000 },
+);
+assert.equal(await interactionAutosavePage.locator('#maskOpacityRange').inputValue(), '0.55');
+// Blur must still persist normalization when it changes the project name.
+const beforeNormalizedName = await autosaveCounts();
+await openFunctionPanel(interactionAutosavePage, 'project');
+await interactionAutosavePage.locator('#projectNameInput').fill('  Normalized project name  ');
+await interactionAutosavePage.locator('#projectNameInput').press('Tab');
+assert.equal(
+  await interactionAutosavePage.locator('#projectNameInput').inputValue(),
+  'Normalized project name',
+);
+await interactionAutosavePage.waitForFunction(
+  (before) =>
+    (Number(document.querySelector('.workspace')?.dataset.fullAutosaveCount) || 0) > before.full,
+  beforeNormalizedName,
+  { timeout: 8000 },
+);
+await interactionAutosavePage.reload({ waitUntil: 'networkidle' });
+await waitForAppReady(interactionAutosavePage);
+assert.equal(
+  await interactionAutosavePage.locator('#projectNameInput').inputValue(),
+  'Normalized project name',
 );
 assert.deepEqual(interactionAutosaveErrors, []);
 await interactionAutosaveContext.close();

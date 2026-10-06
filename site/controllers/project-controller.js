@@ -1015,10 +1015,13 @@ export function createProjectController({
       scheduleWorkspacePersistence();
     };
     $('projectNameInput').onchange = () => {
-      const projectName = normalizedProjectName(getProjectName());
+      const previousName = getProjectName(),
+        projectName = normalizedProjectName(previousName);
       setProjectName(projectName);
       $('projectNameInput').value = projectName;
-      scheduleWorkspacePersistence();
+      // Input already schedules a structural save. Blurring an unchanged name
+      // must not turn the next view interaction into another full-project save.
+      if (projectName !== previousName) scheduleWorkspacePersistence();
     };
 
     $('newProjectBtn').onclick = async () => {

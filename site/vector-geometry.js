@@ -2,6 +2,8 @@ const pc = globalThis.polygonClipping;
 if (!pc) throw new Error('polygon-clipping must load before vector-geometry.js');
 
 export const EPS = 1e-8;
+export const BOOLEAN_RETRY_GRID_UM = 1e-4;
+const BOOLEAN_RETRY_AREA_EPSILON_UM2 = BOOLEAN_RETRY_GRID_UM * BOOLEAN_RETRY_GRID_UM * 0.01;
 
 export function closeRing(points) {
   const ring = (points || [])
@@ -27,6 +29,107 @@ export function normalizeMulti(geom) {
 
 export const cloneGeom = (geom) => structuredClone(geom || []);
 export const isEmpty = (geom) => !geom || geom.length === 0;
+
+function signedRingArea(ring) {
+  let twiceArea = 0;
+  for (let index = 1; index < (ring || []).length; index++) {
+    const a = ring[index - 1],
+      b = ring[index];
+    twiceArea += a[0] * b[1] - b[0] * a[1];
+  }
+  return twiceArea / 2;
+}
+
+function snappedValue(value, grid = BOOLEAN_RETRY_GRID_UM) {
+  const rounded = Math.round(Number(value) / grid) * grid;
+  return Object.is(rounded, -0) ? 0 : Number(rounded.toFixed(10));
+}
+
+function samePoint(a, b, tolerance = EPS) {
+  return (
+    Array.isArray(a) &&
+    Array.isArray(b) &&
+    Math.abs(a[0] - b[0]) <= tolerance &&
+    Math.abs(a[1] - b[1]) <= tolerance
+  );
+}
+
+function canonicalBooleanRing(ring, grid = BOOLEAN_RETRY_GRID_UM) {
+  const points = [];
+  for (const point of ring || []) {
+    if (!Array.isArray(point) || point.length < 2) continue;
+    const next = [snappedValue(point[0], grid), snappedValue(point[1], grid)];
+    if (!samePoint(points.at(-1), next, grid * 1e-6)) points.push(next);
+  }
+  if (points.length && samePoint(points[0], points.at(-1), grid * 1e-6)) points.pop();
+  if (points.length < 3) return [];
+
+  // Persistence quantization can collapse a tiny edge onto its neighbour. Remove
+  // the resulting duplicate/collinear vertex before handing the ring back to
+  // polygon-clipping; this is the common source of SweepLine/output-ring faults
+  // after a save/open round trip on repeated conformal stacks.
+  let changed = true;
+  while (changed && points.length >= 3) {
+    changed = false;
+    for (let index = 0; index < points.length; index++) {
+      const prev = points[(index - 1 + points.length) % points.length],
+        current = points[index],
+        next = points[(index + 1) % points.length],
+        abx = current[0] - prev[0],
+        aby = current[1] - prev[1],
+        bcx = next[0] - current[0],
+        bcy = next[1] - current[1],
+        cross = abx * bcy - aby * bcx,
+        scale = Math.max(1, Math.hypot(abx, aby), Math.hypot(bcx, bcy));
+      if (
+        samePoint(prev, current, grid * 1e-6) ||
+        samePoint(current, next, grid * 1e-6) ||
+        Math.abs(cross) <= grid * 1e-8 * scale
+      ) {
+        points.splice(index, 1);
+        changed = true;
+        break;
+      }
+    }
+  }
+  if (points.length < 3) return [];
+  points.push([...points[0]]);
+  return Math.abs(signedRingArea(points)) > BOOLEAN_RETRY_AREA_EPSILON_UM2 ? points : [];
+}
+
+export function canonicalizeBooleanGeometry(geom, grid = BOOLEAN_RETRY_GRID_UM) {
+  const out = [];
+  for (const poly of normalizeMulti(geom)) {
+    const rings = poly
+      .map((ring) => canonicalBooleanRing(ring, grid))
+      .filter((ring) => ring.length >= 4);
+    if (!rings.length) continue;
+    const outer = rings[0];
+    if (Math.abs(signedRingArea(outer)) <= BOOLEAN_RETRY_AREA_EPSILON_UM2) continue;
+    out.push([
+      outer,
+      ...rings
+        .slice(1)
+        .filter((ring) => Math.abs(signedRingArea(ring)) > BOOLEAN_RETRY_AREA_EPSILON_UM2),
+    ]);
+  }
+  return out;
+}
+
+function booleanWithQuantizedRetry(operation, geometries) {
+  const normalized = geometries.map(normalizeMulti);
+  try {
+    return normalizeMulti(operation(...normalized));
+  } catch (initialError) {
+    const canonical = normalized.map((geometry) => canonicalizeBooleanGeometry(geometry));
+    try {
+      return normalizeMulti(operation(...canonical));
+    } catch (retryError) {
+      retryError.cause = initialError;
+      throw retryError;
+    }
+  }
+}
 
 export function rectMulti(width, height, cx = 0, cy = 0) {
   const x0 = cx - width / 2,
@@ -58,9 +161,112 @@ export function circleMulti(width, height = width, segments = 192, cx = 0, cy = 
   return [[ring]];
 }
 
+function polygonBounds(poly) {
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const ring of poly || []) {
+    for (const point of ring || []) {
+      const x = Number(point?.[0]),
+        y = Number(point?.[1]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+}
+
+function boundsMayTouch(a, b, tolerance = EPS) {
+  return Boolean(
+    a &&
+    b &&
+    a.maxX >= b.minX - tolerance &&
+    b.maxX >= a.minX - tolerance &&
+    a.maxY >= b.minY - tolerance &&
+    b.maxY >= a.minY - tolerance,
+  );
+}
+
+function unionPolygonComponents(geometries) {
+  const entries = [];
+  for (const geom of geometries || []) {
+    for (const poly of normalizeMulti(geom)) {
+      const bounds = polygonBounds(poly);
+      if (bounds) entries.push({ geom: [poly], bounds });
+    }
+  }
+  if (!entries.length) return [];
+  if (entries.length === 1) return cloneGeom(entries[0].geom);
+
+  // Wafer arrays commonly contain thousands of identical, non-touching polygons.
+  // Sending all of them through one Martinez sweep is both slow and a source of
+  // output-ring failures. A sweep over bounding boxes first partitions the input
+  // into overlap-connected components; singleton components are already exact
+  // union results and never enter polygon-clipping.
+  const parent = entries.map((_, index) => index),
+    rank = entries.map(() => 0),
+    find = (index) => {
+      let root = index;
+      while (parent[root] !== root) root = parent[root];
+      while (parent[index] !== index) {
+        const next = parent[index];
+        parent[index] = root;
+        index = next;
+      }
+      return root;
+    },
+    join = (left, right) => {
+      let a = find(left),
+        b = find(right);
+      if (a === b) return;
+      if (rank[a] < rank[b]) [a, b] = [b, a];
+      parent[b] = a;
+      if (rank[a] === rank[b]) rank[a]++;
+    },
+    order = entries
+      .map((_, index) => index)
+      .sort((a, b) => entries[a].bounds.minX - entries[b].bounds.minX),
+    active = [];
+
+  for (const index of order) {
+    const current = entries[index],
+      minX = current.bounds.minX - EPS;
+    let write = 0;
+    for (const otherIndex of active) {
+      const other = entries[otherIndex];
+      if (other.bounds.maxX < minX) continue;
+      active[write++] = otherIndex;
+      if (boundsMayTouch(current.bounds, other.bounds)) join(index, otherIndex);
+    }
+    active.length = write;
+    active.push(index);
+  }
+
+  const components = new Map();
+  for (let index = 0; index < entries.length; index++) {
+    const root = find(index);
+    if (!components.has(root)) components.set(root, []);
+    components.get(root).push(entries[index].geom);
+  }
+
+  const out = [];
+  for (const component of components.values()) {
+    if (component.length === 1) {
+      out.push(...component[0]);
+      continue;
+    }
+    const merged = booleanWithQuantizedRetry((...items) => pc.union(...items), component);
+    out.push(...merged);
+  }
+  return normalizeMulti(out);
+}
+
 export function unionGeometries(geometries) {
-  const list = (geometries || []).map(normalizeMulti).filter((g) => g.length);
-  return list.length ? normalizeMulti(pc.union(...list)) : [];
+  return unionPolygonComponents(geometries);
 }
 
 function unionGeometriesPairwise(geometries) {
@@ -69,7 +275,7 @@ function unionGeometriesPairwise(geometries) {
     const next = [];
     for (let i = 0; i < level.length; i += 2) {
       if (i + 1 >= level.length) next.push(level[i]);
-      else next.push(normalizeMulti(pc.union(level[i], level[i + 1])));
+      else next.push(booleanWithQuantizedRetry((a, b) => pc.union(a, b), [level[i], level[i + 1]]));
     }
     level = next;
   }
@@ -79,14 +285,18 @@ function unionGeometriesPairwise(geometries) {
 export function intersection(a, b) {
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
-  return aa.length && bb.length ? normalizeMulti(pc.intersection(aa, bb)) : [];
+  return aa.length && bb.length
+    ? booleanWithQuantizedRetry((left, right) => pc.intersection(left, right), [aa, bb])
+    : [];
 }
 
 export function difference(a, b) {
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
   if (!aa.length) return [];
-  return bb.length ? normalizeMulti(pc.difference(aa, bb)) : cloneGeom(aa);
+  return bb.length
+    ? booleanWithQuantizedRetry((left, right) => pc.difference(left, right), [aa, bb])
+    : cloneGeom(aa);
 }
 
 export function transformMulti(geom, transform) {

@@ -19,6 +19,7 @@ export function historyOperationLabel(node, model) {
   if (operation.kind === 'add') {
     const name = namedEntity(model.layers, refs.resultLayerId, operation.name || '');
     if (!name || !thickness) return fallback;
+    if (operation.growth === 'transfer') return `Transfer ${name} · Flat · ${thickness}`;
     return `Deposit ${name} · ${operation.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thickness}`;
   }
 
@@ -30,16 +31,23 @@ export function historyOperationLabel(node, model) {
 
   if (operation.kind === 'etch') {
     if (!thickness) return fallback;
-    const targetId = refs.etchTargetLayerIds?.[0] || null,
+    if (operation.etchProfile === 'planarize') return `Planarize · Z ${thickness}`;
+    const targetId = refs.etchTargetLayerIds?.[0] || operation.etchTargetLayerIds?.[0] || null,
       targetName = namedEntity(model.layers, targetId, ''),
-      release = operation.etchProfile === 'isotropic',
+      release = operation.etchProfile === 'isotropic' || operation.etchProfile === 'undercut',
       surfaceLabel =
         !release && operation.surface
           ? operation.surface.morphology === 'pyramid'
             ? 'Pyramid'
             : 'Rough'
-          : '';
-    return `${release ? 'Release' : 'Etch'}${targetName ? ` ${targetName}` : ''} · ${thickness}${release ? ' · Isotropic' : surfaceLabel ? ` · ${surfaceLabel}` : ''}`;
+          : '',
+      profileLabel =
+        operation.etchProfile === 'isotropic'
+          ? 'Isotropic'
+          : operation.etchProfile === 'undercut'
+            ? 'Undercut'
+            : '';
+    return `${release ? 'Release' : 'Etch'}${targetName ? ` ${targetName}` : ''} · ${thickness}${profileLabel ? ` · ${profileLabel}` : surfaceLabel ? ` · ${surfaceLabel}` : ''}`;
   }
 
   if (operation.kind === 'implant') {

@@ -107,10 +107,7 @@ function enableAll(plan) {
 }
 
 function enableAllExceptProcess(plan) {
-  enable(
-    plan,
-    ...BROWSER_SUITES.filter((suite) => suite !== 'process'),
-  );
+  enable(plan, ...BROWSER_SUITES.filter((suite) => suite !== 'process'));
 }
 
 export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {

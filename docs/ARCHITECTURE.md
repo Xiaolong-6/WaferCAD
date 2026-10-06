@@ -44,7 +44,7 @@ Owns application state and top-level controller composition. Detailed 2D Mask/Ma
 
 ### `site/controllers/workspace-persistence-controller.js`
 
-Owns browser-local autosave scheduling, manual Recovery checkpoints, recovery-list/restore/clear UI, destructive-action checkpoints, cross-tab persistence state feedback, safe reload checkpointing, and initial persisted-workspace restore. Persisted-state mutations explicitly mark the workspace dirty; renderers do not schedule autosave as a side effect. IndexedDB storage/validation stays in `workspace-persistence.js`, while the controller receives project capture/restore callbacks from the application composition root.
+Owns browser-local autosave scheduling, manual Recovery checkpoints, recovery-list/restore/clear UI, destructive-action checkpoints, cross-tab persistence state feedback, safe reload checkpointing, and initial persisted-workspace restore. Autosave is split into two persistence domains: structural edits write the validated/packed project to IndexedDB, while inspection and working-selection changes write a small view record keyed to the last structural save. Main/Mask pan and zoom, 3D camera, Section inspection state, opacity/border controls, active Cell/Layer selection, ROI state, and Mask alignment therefore do not rebuild or serialize the full project. Model/layout/Draw-mask/History/project-name changes remain structural. `site/workspace-dirty-domains.js` owns this classification and lightweight view-state projection. IndexedDB storage/validation stays in `workspace-persistence.js`, while the controller receives project capture/restore callbacks from the application composition root.
 
 ### `site/controllers/workspace-view-controller.js`
 

@@ -6,17 +6,68 @@ import {
   loadWorkspaceState,
   saveWorkspaceState,
 } from '../workspace-persistence.js';
+import {
+  applyWorkspaceViewState,
+  captureWorkspaceStructuralIdentity,
+  extractWorkspaceViewState,
+  workspaceStructuralIdentityEqual,
+} from '../workspace-dirty-domains.js';
 
 const PERSIST_MARKER_KEY = 'wafercad.workspace.persisted.v1';
+const VIEW_STATE_KEY = 'wafercad.workspace.view.v1';
 const CHANNEL_NAME = 'wafercad.workspace.sync.v1';
 const AUTOSAVE_IDLE_MS = 1800;
+const VIEW_AUTOSAVE_IDLE_MS = 2600;
 const INTERACTION_SETTLE_MS = 1400;
 const TRANSIENT_INTERACTION_MS = 450;
+const SNAPSHOT_MUTATION_METHODS = [
+  'create',
+  'bookmarkStep',
+  'bookmarkCurrentStep',
+  'createBranch',
+  'createBranchFromNode',
+  'createBranchFromCursor',
+  'restoreActiveBranchHead',
+  'replaceBranchTailFrom',
+  'truncateBranchAfter',
+  'removeHeadStep',
+  'recordOperation',
+  'syncCursorToProcessRevision',
+  'switchBranch',
+  'rename',
+  'renameBranch',
+  'renameHistoryEntity',
+  'remove',
+  'removeBranch',
+  'restore',
+  'restoreProcessNode',
+  'clear',
+  'importRecords',
+];
 
 function parseMarker(raw) {
   try {
     const value = JSON.parse(raw || 'null');
     if (!value || typeof value !== 'object' || typeof value.saveId !== 'string') return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function parseViewRecord(raw) {
+  try {
+    const value = JSON.parse(raw || 'null');
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Number(value.version) !== 1 ||
+      typeof value.saveId !== 'string' ||
+      !value.state ||
+      typeof value.state !== 'object'
+    ) {
+      return null;
+    }
     return value;
   } catch {
     return null;
@@ -63,9 +114,13 @@ export function createWorkspacePersistenceController({
     write = Promise.resolve(),
     updateCommit = '',
     dirty = false,
+    viewDirty = false,
+    pendingDomainCheck = false,
     saving = false,
     failed = false,
     editVersion = 0,
+    historyMutationVersion = 0,
+    structuralBaseline = null,
     lastSavedAt = null,
     baseSaveId = null,
     remoteSaveId = null,
@@ -76,11 +131,93 @@ export function createWorkspacePersistenceController({
     transientTimer = null;
   const flushWaiters = new Map();
 
+  function installSnapshotMutationTracking() {
+    for (const name of SNAPSHOT_MUTATION_METHODS) {
+      const original = snapshotManager?.[name];
+      if (typeof original !== 'function' || original.__wafercadPersistenceTracked) continue;
+      const tracked = function (...args) {
+        const result = original.apply(snapshotManager, args);
+        if (result && typeof result.then === 'function') {
+          return result.then((value) => {
+            if (value !== false) historyMutationVersion += 1;
+            return value;
+          });
+        }
+        if (result !== false) historyMutationVersion += 1;
+        return result;
+      };
+      tracked.__wafercadPersistenceTracked = true;
+      snapshotManager[name] = tracked;
+    }
+  }
+
+  installSnapshotMutationTracking();
+
   function readMarker() {
     try {
       return parseMarker(storage?.getItem?.(PERSIST_MARKER_KEY));
     } catch {
       return null;
+    }
+  }
+
+  function readViewRecord() {
+    try {
+      return parseViewRecord(storage?.getItem?.(VIEW_STATE_KEY));
+    } catch {
+      return null;
+    }
+  }
+
+  function clearStoredViewState() {
+    try {
+      storage?.removeItem?.(VIEW_STATE_KEY);
+    } catch {}
+  }
+
+  function bumpPersistenceMetric(domain) {
+    const workspace = root.querySelector('.workspace');
+    if (!workspace) return;
+    const key = domain === 'view' ? 'viewAutosaveCount' : 'fullAutosaveCount';
+    workspace.dataset[key] = String((Number(workspace.dataset[key]) || 0) + 1);
+    workspace.dataset.lastAutosaveDomain = domain;
+  }
+
+  function currentStructuralIdentity(project = buildProjectSnapshot(false)) {
+    return captureWorkspaceStructuralIdentity(project, {
+      projectName: normalizedProjectName(getProjectName()),
+      historyToken: String(historyMutationVersion),
+    });
+  }
+
+  function setStructuralBaseline(project = buildProjectSnapshot(false)) {
+    structuralBaseline = currentStructuralIdentity(project);
+    return structuralBaseline;
+  }
+
+  function applyStoredViewState(project) {
+    const record = readViewRecord();
+    if (!record || !baseSaveId || record.saveId !== baseSaveId) return false;
+    return applyWorkspaceViewState(project, record.state);
+  }
+
+  function saveCurrentViewState() {
+    if (!baseSaveId || !hasWriteAccess()) return false;
+    const project = buildProjectSnapshot(false),
+      record = {
+        version: 1,
+        saveId: baseSaveId,
+        updatedAt: new Date().toISOString(),
+        state: extractWorkspaceViewState(project),
+      };
+    try {
+      storage?.setItem?.(VIEW_STATE_KEY, JSON.stringify(record));
+      viewDirty = false;
+      bumpPersistenceMetric('view');
+      return true;
+    } catch (error) {
+      console.warn('Workspace view-state autosave failed.', error);
+      return false;
     }
   }
 
@@ -142,9 +279,22 @@ export function createWorkspacePersistenceController({
     return workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? false;
   }
 
-  function loadProjectWithSnapshotHistory(project) {
+  function loadProjectWithSnapshotHistory(project, { restoreView = false } = {}) {
+    if (restoreView) applyStoredViewState(project);
     loadProjectSnapshot(project);
     snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+    return Boolean(project?.display?.threeCamera);
+  }
+
+  function adoptLoadedCurrentProject(project) {
+    const hasCamera = loadProjectWithSnapshotHistory(project, { restoreView: true });
+    clearTimer();
+    dirty = false;
+    viewDirty = false;
+    pendingDomainCheck = false;
+    failed = false;
+    setStructuralBaseline();
+    return hasCamera;
   }
 
   function clearTimer() {
@@ -159,6 +309,41 @@ export function createWorkspacePersistenceController({
     transientTimer = null;
   }
 
+  function classifyCurrentDirty() {
+    pendingDomainCheck = false;
+    if (dirty) {
+      syncSaveStatus();
+      return 'structural';
+    }
+    const current = currentStructuralIdentity();
+    if (!structuralBaseline || !workspaceStructuralIdentityEqual(structuralBaseline, current)) {
+      dirty = true;
+      viewDirty = false;
+      syncSaveStatus();
+      return 'structural';
+    }
+    viewDirty = true;
+    syncSaveStatus();
+    return 'view';
+  }
+
+  function markStructuralDirty() {
+    editVersion += 1;
+    pendingDomainCheck = false;
+    dirty = true;
+    viewDirty = false;
+    failed = false;
+    syncSaveStatus();
+  }
+
+  function markViewDirty() {
+    editVersion += 1;
+    pendingDomainCheck = false;
+    if (!dirty) viewDirty = true;
+    failed = false;
+    syncSaveStatus();
+  }
+
   function beginInteraction() {
     interactionDepth += 1;
     clearTimer();
@@ -166,8 +351,13 @@ export function createWorkspacePersistenceController({
 
   function endInteraction() {
     interactionDepth = Math.max(0, interactionDepth - 1);
-    if (!interactionDepth && transientTimer == null && dirty) {
-      schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
+    if (interactionDepth || transientTimer != null) return;
+    if (pendingDomainCheck) classifyCurrentDirty();
+    if (dirty || viewDirty) {
+      schedule({
+        markDirty: false,
+        delay: dirty ? INTERACTION_SETTLE_MS : VIEW_AUTOSAVE_IDLE_MS,
+      });
     }
   }
 
@@ -177,8 +367,13 @@ export function createWorkspacePersistenceController({
     transientTimer = setTimeout(
       () => {
         transientTimer = null;
-        if (!interactionDepth && dirty) {
-          schedule({ markDirty: false, delay: INTERACTION_SETTLE_MS });
+        if (interactionDepth) return;
+        if (pendingDomainCheck) classifyCurrentDirty();
+        if (dirty || viewDirty) {
+          schedule({
+            markDirty: false,
+            delay: dirty ? INTERACTION_SETTLE_MS : VIEW_AUTOSAVE_IDLE_MS,
+          });
         }
       },
       Math.max(0, Number(delay) || TRANSIENT_INTERACTION_MS),
@@ -186,10 +381,17 @@ export function createWorkspacePersistenceController({
   }
 
   function markDirty() {
-    editVersion++;
-    dirty = true;
+    editVersion += 1;
     failed = false;
-    syncSaveStatus();
+    if (dirty) {
+      syncSaveStatus();
+      return;
+    }
+    if (interactionDepth > 0 || transientTimer != null) {
+      pendingDomainCheck = true;
+      return;
+    }
+    classifyCurrentDirty();
   }
 
   async function runVisibleTask(executor, options) {
@@ -217,17 +419,22 @@ export function createWorkspacePersistenceController({
       syncSaveStatus();
       return Promise.resolve(false);
     }
-    if (!dirty && !saving) {
-      syncSaveStatus();
-      return Promise.resolve(true);
-    }
     if (!force && (interactionDepth > 0 || transientTimer != null)) {
       syncSaveStatus();
       return Promise.resolve(false);
     }
+    if (pendingDomainCheck) classifyCurrentDirty();
+
+    if (!dirty && !saving) {
+      const savedView = viewDirty ? saveCurrentViewState() : true;
+      syncSaveStatus();
+      return Promise.resolve(savedView);
+    }
+    if (saving) return write;
 
     clearTimer();
-    const project = buildProjectSnapshot(true),
+    const savingIdentity = currentStructuralIdentity(),
+      project = buildProjectSnapshot(true),
       savingVersion = editVersion;
     saving = true;
     failed = false;
@@ -239,10 +446,16 @@ export function createWorkspacePersistenceController({
       .then((saved) => {
         if (!saved) return false;
         writeMarker();
+        clearStoredViewState();
+        structuralBaseline = savingIdentity;
         saving = false;
-        if (editVersion === savingVersion) dirty = false;
+        dirty = false;
+        viewDirty = false;
+        pendingDomainCheck = false;
+        bumpPersistenceMetric('full');
+        if (editVersion !== savingVersion) classifyCurrentDirty();
         syncSaveStatus();
-        if (dirty) schedule({ markDirty: false });
+        if (dirty || viewDirty) schedule({ markDirty: false });
         return true;
       });
 
@@ -262,6 +475,23 @@ export function createWorkspacePersistenceController({
       return;
     }
     clearTimer();
+    if (interactionDepth > 0 || transientTimer != null || pendingDomainCheck) return;
+    if (!dirty && !viewDirty) return;
+    const requestedDelay = Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS),
+      effectiveDelay = dirty ? requestedDelay : Math.max(requestedDelay, VIEW_AUTOSAVE_IDLE_MS);
+    timer = setTimeout(() => {
+      timer = null;
+      void persistNow();
+    }, effectiveDelay);
+  }
+
+  function scheduleStructural({ delay = AUTOSAVE_IDLE_MS } = {}) {
+    markStructuralDirty();
+    if (!ready || !hasWriteAccess()) {
+      syncSaveStatus();
+      return;
+    }
+    clearTimer();
     if (interactionDepth > 0 || transientTimer != null) return;
     timer = setTimeout(
       () => {
@@ -269,6 +499,27 @@ export function createWorkspacePersistenceController({
         void persistNow();
       },
       Math.max(0, Number(delay) || AUTOSAVE_IDLE_MS),
+    );
+  }
+
+  function scheduleView({ delay = VIEW_AUTOSAVE_IDLE_MS } = {}) {
+    markViewDirty();
+    if (!ready || !hasWriteAccess()) {
+      syncSaveStatus();
+      return;
+    }
+    if (dirty) {
+      schedule({ markDirty: false, delay: AUTOSAVE_IDLE_MS });
+      return;
+    }
+    clearTimer();
+    if (interactionDepth > 0 || transientTimer != null) return;
+    timer = setTimeout(
+      () => {
+        timer = null;
+        void persistNow();
+      },
+      Math.max(VIEW_AUTOSAVE_IDLE_MS, Number(delay) || VIEW_AUTOSAVE_IDLE_MS),
     );
   }
 
@@ -338,6 +589,7 @@ export function createWorkspacePersistenceController({
     } else {
       syncSaveStatus();
       void refreshRecoveryOptions();
+      if (ready && (dirty || viewDirty || pendingDomainCheck)) schedule({ markDirty: false });
     }
   }
 
@@ -444,13 +696,13 @@ export function createWorkspacePersistenceController({
         updateStage('Loading Recovery checkpoint…');
         const recovered = await loadWorkspaceRecoveryPoint(key);
         if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
-        loadProjectWithSnapshotHistory(recovered);
+        const hasCamera = loadProjectWithSnapshotHistory(recovered);
         syncBaseControls();
         syncTransformInputs();
         renderAll();
         renderSnapshots();
-        fit3d();
-        markDirty();
+        if (!hasCamera) fit3d();
+        markStructuralDirty();
 
         updateStage('Saving restored workspace…');
         const persisted = await persistNow({ force: true });
@@ -500,6 +752,7 @@ export function createWorkspacePersistenceController({
         .then((saved) => {
           if (!saved) throw new Error('Another tab took over local autosave.');
           writeMarker();
+          clearStoredViewState();
           return createWorkspaceRecoveryCheckpoint(project, {
             appCommit,
             reason: updateCommit ? `pre-update-${updateCommit.slice(0, 7)}` : 'pre-reload',
@@ -507,6 +760,8 @@ export function createWorkspacePersistenceController({
         });
       await write;
       dirty = false;
+      viewDirty = false;
+      pendingDomainCheck = false;
       saving = false;
       syncSaveStatus();
       workspaceSession.stop();
@@ -653,16 +908,14 @@ export function createWorkspacePersistenceController({
           reason: 'pre-takeover-current',
         });
       }
-      loadProjectWithSnapshotHistory(latestSaved);
+      baseSaveId = marker?.saveId || baseSaveId;
+      remoteSaveId = marker?.saveId || remoteSaveId;
+      const hasCamera = adoptLoadedCurrentProject(latestSaved);
       syncBaseControls();
       syncTransformInputs();
       renderAll();
       renderSnapshots();
-      fit3d();
-      dirty = false;
-      failed = false;
-      baseSaveId = marker?.saveId || baseSaveId;
-      remoteSaveId = marker?.saveId || remoteSaveId;
+      if (!hasCamera) fit3d();
       lastSavedAt = marker?.updatedAt ? new Date(marker.updatedAt) : lastSavedAt;
       syncSaveStatus();
       status('Took over this workspace and loaded the latest saved state.', 'success');
@@ -673,8 +926,9 @@ export function createWorkspacePersistenceController({
           reason: 'pre-takeover-remote',
         });
       }
-      if (savedChanged && !dirty) markDirty();
-      const persisted = dirty ? await persistNow({ force: true }) : true;
+      if (savedChanged && !dirty) markStructuralDirty();
+      const persisted =
+        dirty || viewDirty || pendingDomainCheck ? await persistNow({ force: true }) : true;
       if (!persisted || !hasWriteAccess()) {
         status(
           'Workspace takeover was interrupted by another tab before this state could be saved.',
@@ -706,6 +960,7 @@ export function createWorkspacePersistenceController({
     try {
       if (hasExplicitStart) {
         const saved = await loadWorkspaceState();
+        if (saved) applyStoredViewState(saved);
         if (saved && hasWriteAccess()) {
           try {
             await createWorkspaceRecoveryCheckpoint(saved, {
@@ -714,12 +969,12 @@ export function createWorkspacePersistenceController({
             });
           } catch (error) {
             console.error(error);
-            loadProjectWithSnapshotHistory(saved);
+            const hasCamera = adoptLoadedCurrentProject(saved);
             syncBaseControls();
             syncTransformInputs();
             renderAll();
             renderSnapshots();
-            fit3d();
+            if (!hasCamera) fit3d();
             restoredSaved = true;
             status(
               `Welcome action cancelled because the current workspace could not be checkpointed: ${error.message}`,
@@ -730,12 +985,12 @@ export function createWorkspacePersistenceController({
         }
         const started = await initializeWorkspaceStart();
         if (!started && saved) {
-          loadProjectWithSnapshotHistory(saved);
+          const hasCamera = adoptLoadedCurrentProject(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();
           renderSnapshots();
-          fit3d();
+          if (!hasCamera) fit3d();
           restoredSaved = true;
           status(
             `Welcome action failed; restored local workspace "${normalizedProjectName()}".`,
@@ -745,12 +1000,12 @@ export function createWorkspacePersistenceController({
       } else {
         const saved = await loadWorkspaceState();
         if (saved) {
-          loadProjectWithSnapshotHistory(saved);
+          const hasCamera = adoptLoadedCurrentProject(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();
           renderSnapshots();
-          fit3d();
+          if (!hasCamera) fit3d();
           restoredSaved = true;
           status(`Restored local workspace "${normalizedProjectName()}".`);
         }
@@ -761,14 +1016,14 @@ export function createWorkspacePersistenceController({
       status(`Local workspace restore failed: ${error.message}`, 'error');
     } finally {
       ready = true;
-      if (allowInitialAutosave && hasExplicitStart && !restoredSaved) {
-        markDirty();
-        schedule({ markDirty: false });
-      } else if (allowInitialAutosave && !hasExplicitStart && !restoredSaved && hasWriteAccess()) {
-        markDirty();
+      if (allowInitialAutosave && !restoredSaved) {
+        markStructuralDirty();
         schedule({ markDirty: false });
       } else {
         dirty = false;
+        viewDirty = false;
+        pendingDomainCheck = false;
+        if (restoredSaved && !structuralBaseline) setStructuralBaseline();
         syncSaveStatus();
       }
       void refreshRecoveryOptions();
@@ -873,6 +1128,8 @@ export function createWorkspacePersistenceController({
     bind,
     persistNow,
     schedule,
+    scheduleStructural,
+    scheduleView,
     refreshRecoveryOptions,
     checkpointCurrent,
     syncSessionState,
@@ -883,6 +1140,7 @@ export function createWorkspacePersistenceController({
     pulseInteraction,
     isInteracting: () => interactionDepth > 0 || transientTimer != null,
     isDirty: () => dirty,
+    isViewDirty: () => viewDirty || pendingDomainCheck,
     getBaseSaveId: () => baseSaveId,
     getRemoteSaveId: () => remoteSaveId,
   };
