@@ -45,6 +45,7 @@ const HISTORY_PATHS = [
 const PERSISTENCE_PATHS = [
   /^site\/workspace-persistence/,
   /^site\/project-(?:io|schema|storage|worker)/,
+  /^site\/polygon-boolean\.js$/,
   /^site\/controllers\/project-controller\.js$/,
   /^site\/controllers\/startup-controller\.js$/,
   /^scripts\/persistence-regression\.mjs$/,
@@ -63,6 +64,7 @@ const PROCESS_PATHS = [
   /^site\/model-view-geometry\.js$/,
   /^site\/process-worker\.js$/,
   /^site\/vector-geometry\.js$/,
+  /^site\/polygon-boolean\.js$/,
   /^site\/controllers\/process-/,
   /^site\/(?:rough|surface|conformal|isotropic)/,
   /^scripts\/process-geometry-regression\.mjs$/,
