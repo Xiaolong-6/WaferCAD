@@ -21,7 +21,7 @@ The transactional test injects an overlapping region into only a cloned worker r
 
 ## Local checks and reproduction
 
-Full Node inventory: 374 passed, zero failed/skipped. ESLint passed. Responsive product layout passed with 48 captures; renderer product checks passed with 15 captures (extended literature review disabled). All example browser checks passed, including native camera preservation, ROI/Detail persistence, physical export and the tandem GLB 32 �m clip. Changed product files and new scripts pass Prettier; the full formatting inventory retains 13 pre-existing warnings. Approved visual baselines are unchanged.
+Full Node inventory: 374 passed, zero failed/skipped. ESLint passed. Responsive product layout passed with 48 captures; renderer product checks passed with 15 captures (extended literature review disabled). All example browser checks passed, including native camera preservation, ROI/Detail persistence, physical export and the tandem GLB 32 um clip. Changed product files and new scripts pass Prettier; the full formatting inventory retains 13 pre-existing warnings. Approved visual baselines are unchanged.
 
 Run the ordinary local Node/lint/example/product commands from package.json. For the explicit Chrome checks:
 
@@ -36,4 +36,4 @@ node scripts/process-transaction-ui-regression.mjs
 
 Machine-readable evidence is in tests/fixtures/project-io/ui-acceptance-windows-chrome.json. Captures remain local under test-results/ui-acceptance. Feature-branch commits use [skip ci]; no CI, main merge or deployment is requested.
 
-The six-project size/timing results are recorded separately in EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md. Tandem framing adds one byte to each storage-only file measured there. Native Fig3 T2 Conformal gate/metal/contact pass; the next native ILD2 liner is still safely rejected, so T3 and a completed Fig3 Welcome example remain outstanding (see NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md).
+The six-project size/timing results are recorded separately in EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md. Tandem framing adds one byte to each storage-only file measured there. Native Fig3 ILD2 and T3 now pass through Chrome, and the completed 40-Step single-site reconstruction is a Welcome example (see NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md and NATIVE_FIG3_EXAMPLE_2026-10-06.md). Final Node inventory after these additions is 376 passing tests.

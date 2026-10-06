@@ -1,0 +1,133 @@
+{
+  "operations": [
+    {
+      "type": "add",
+      "name": "T2 HfO2 gate",
+      "thickness": 0.01,
+      "layer": 9,
+      "growth": "conformal",
+      "status": "Deposited T2 HfO2 gate \u00b7 Conformal on the front.",
+      "seconds": 14.7538043,
+      "passed": true
+    },
+    {
+      "type": "add",
+      "name": "T2 Gate metal",
+      "thickness": 0.0404,
+      "layer": 12,
+      "status": "Deposited T2 Gate metal \u00b7 Directional on the front.",
+      "seconds": 25.437944099999992,
+      "passed": true
+    },
+    {
+      "type": "etch",
+      "name": "T2 contact windows",
+      "thickness": 0.01,
+      "layer": 13,
+      "target": "T2 HfO2 gate",
+      "status": "Etched T2 HfO2 gate on the front.",
+      "seconds": 24.885265700000005,
+      "passed": true
+    },
+    {
+      "type": "record",
+      "name": "T2 forming-gas anneal",
+      "processType": "anneal",
+      "temperature": 300,
+      "duration": 0.75,
+      "ambient": "Forming gas",
+      "note": "45 s; gate metal 40.4 nm merged. Native Conformal gate retained.",
+      "status": "Recorded process Step \u201cT2 forming-gas anneal\u201d without changing geometry.",
+      "seconds": 16.643742499999995,
+      "passed": true
+    },
+    {
+      "type": "add",
+      "name": "ILD2 HfO2 liner",
+      "thickness": 0.02,
+      "layer": 9,
+      "growth": "conformal",
+      "status": "Deposited ILD2 HfO2 liner \u00b7 Conformal on the front.",
+      "seconds": 24.151069500000013,
+      "passed": true
+    },
+    {
+      "type": "record",
+      "name": "ILD2 SOG/CMP geometry assumption",
+      "note": "Fig2 90 nm reference, not measured Fig3 ILD. Target next membrane base Z=250.4028 um, 90 nm above completed-tier highest feature. SOG overfill/native CMP are geometric surrogates.",
+      "status": "Recorded process Step \u201cILD2 SOG/CMP geometry assumption\u201d without changing geometry.",
+      "seconds": 13.030963099999994,
+      "passed": true
+    },
+    {
+      "type": "add",
+      "name": "ILD2 SOG overfill",
+      "thickness": 0.2,
+      "layer": 9,
+      "growth": "conformal",
+      "status": "Deposited ILD2 SOG overfill \u00b7 Conformal on the front.",
+      "seconds": 33.52807449999999,
+      "passed": true
+    },
+    {
+      "type": "etch",
+      "name": "ILD2 Planarize/CMP",
+      "profile": "planarize",
+      "thickness": 250.4028,
+      "layer": 9,
+      "status": "Planarized to Z 250.4028 \u00b5m on the front.",
+      "seconds": 25.229512300000003,
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "steps": 40,
+  "regions": 35,
+  "planarityTargetUm": 250.4028,
+  "reopenedModelAndHistoryIdentical": true,
+  "physicalContract": {
+    "tiers": 3,
+    "nativeConformalGates": 3,
+    "nativeConformalLiners": 2,
+    "steps": 40
+  },
+  "verificationOnly": true,
+  "sourceCheckpointSha256": "d21580830d8c54f83ef5cf51713c1a55743a67e5828149dd75a4f567102d4ee8",
+  "original22FullHistoryStatesUnchanged": true,
+  "unchangedHistoryPrefixes": [22, 30, 37],
+  "uiReconstructionProtocol": "original 22-Step checkpoint to CMP Step 30; resume exported CMP through T3 Step 40; final export/reopen after null bookmark-cursor fix",
+  "uiReconstructionResumedAfterCmp": true,
+  "example": {
+    "physical": {
+      "tiers": 3,
+      "nativeConformalGates": 3,
+      "nativeConformalLiners": 2,
+      "steps": 40
+    },
+    "sourceSha256": "48d5d542b91ae898e27157a19f769d863ce1f06589ec03396733f28752030ba1",
+    "sourceBytes": 1812652,
+    "exampleBytes": 1816020,
+    "bookmarks": 5,
+    "lossless": true,
+    "geometryAndHistoryModelsUnchanged": true,
+    "sha256": "728e2615a4258c12ea2127e8c6a05b9ce4bbe9e7aa87020642a12d0d5a567c9e"
+  },
+  "expandedExampleBytes": 15940918,
+  "browser": "Chrome 154.0.8037.98",
+  "node": "24.19.0",
+  "playwright": "1.55.1",
+  "three": "0.179.1",
+  "fullNodeTests": 376,
+  "processGeometryBrowser": "passed",
+  "bundledExampleBrowser": "passed",
+  "welcomePreviewViews": ["main", "mask", "three", "section"],
+  "finalInstalledChromeExampleAcceptance": {
+    "browserVersion": "154.0.8037.98",
+    "openedMs": 58858.0521,
+    "readyMs": 58962.0913,
+    "selected": ["10/0", "11/0", "12/0", "13/0"],
+    "errors": [],
+    "modelAnd40HistoryNodesUnchanged": true
+  },
+  "welcomePreviewBrowser": "Pinned Chromium 140"
+}

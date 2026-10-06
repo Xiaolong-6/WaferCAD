@@ -89,6 +89,27 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', 'Release', 'Undercut', 'Suspended structure'],
   },
+  {
+    id: 'three-tier-silicon-jlfets',
+    title: 'Three-tier silicon junctionless transistors',
+    figure: 'Lam et al. - Fig. 3 single-site reconstruction',
+    kind: 'project',
+    level: '3D transistor literature',
+    variants: [],
+    path: './examples/three-tier-silicon-jlfets.wafercad',
+    filename: 'three-tier-silicon-jlfets.wafercad',
+    summary:
+      'Three stacked silicon transistor tiers with native conformal HfO2 gates, contact windows, ILD liners and CMP, retained in 40 History Steps. Reconstructed masks cover one device site; transfer and SOG/CMP use recorded geometric assumptions.',
+    sources: [
+      {
+        citation:
+          'B. Lam et al., "Monolithic three-dimensional integration of silicon transistors," Nature 654, 652-659 (2026).',
+        doi: '10.1038/s41586-026-10496-6',
+        href: 'https://doi.org/10.1038/s41586-026-10496-6',
+      },
+    ],
+    tags: ['Literature', '3D integration', 'Transfer', 'Conformal', 'CMP', 'History'],
+  },
 ]);
 
 export function bundledExampleById(id) {

@@ -6,6 +6,7 @@ import { checkSectionSeams, exportCurrentProject } from './test-helpers/product-
 import {
   assertAnnotationKeepsMaterialTopology,
   assertTandemTextureContract,
+  assertNativeFig3Contract,
 } from './test-helpers/example-contracts.mjs';
 
 const vendorSource = await readFile(
@@ -17,7 +18,7 @@ new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.e
 globalThis.polygonClipping = commonJsModule.exports;
 
 const { expandProjectStorage } = await import('../site/project-io.js');
-const { intersection, rectMulti } = await import('../site/vector-geometry.js');
+const { intersection, rectMulti, pointInMulti } = await import('../site/vector-geometry.js');
 
 const sahliProjectBuffer = await readFile(
   new URL('../examples/projects/sahli-2018-fully-textured-tandem.wafercad', import.meta.url),
@@ -266,26 +267,59 @@ for (const example of [
     id: 'suspended-silica-microdisk',
     filename: 'suspended-silica-microdisks.wafercad',
   },
+  {
+    id: 'three-tier-silicon-jlfets',
+    filename: 'three-tier-silicon-jlfets.wafercad',
+  },
 ]) {
+  const openTimeout = example.id === 'three-tier-silicon-jlfets' ? 120000 : 30000;
   await gotoWelcome(page);
+  if (example.id === 'three-tier-silicon-jlfets') {
+    const card = page.locator(`.welcome-example-card[data-example-id="${example.id}"]`);
+    await card.scrollIntoViewIfNeeded();
+    await card.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 120000 });
+    const frameElement = await card.locator('iframe').elementHandle();
+    const frame = await frameElement.contentFrame();
+    await frame.waitForFunction(() => document.documentElement.dataset.appReady === 'true', null, {
+      timeout: 120000,
+    });
+    for (const view of ['main', 'mask', 'three', 'section']) {
+      await card.locator(`[data-preview-view="${view}"]`).click();
+      await frame.waitForFunction(
+        (view) => document.documentElement.dataset.previewView === view,
+        view,
+      );
+      if (view === 'three')
+        await frame.waitForFunction(
+          () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+          null,
+          { timeout: 120000 },
+        );
+      await card.screenshot({
+        path: fileURLToPath(
+          new URL(`../test-results/product-review/fig3-welcome-${view}.png`, import.meta.url),
+        ),
+      });
+    }
+  }
   await page
     .locator(`.welcome-example-card[data-example-id="${example.id}"] .welcome-example-open`)
     .click();
   await page.waitForFunction(
     (id) => new URL(location.href).searchParams.get('example') === id,
     example.id,
-    { timeout: 30000 },
+    { timeout: openTimeout },
   );
   await page.waitForFunction(
     (filename) =>
       (document.getElementById('statusText')?.textContent || '') === `Opened ${filename}.`,
     example.filename,
-    { timeout: 30000 },
+    { timeout: openTimeout },
   );
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
     null,
-    { timeout: 30000 },
+    { timeout: openTimeout },
   );
   assert.ok((await page.locator('#mainCanvas').getAttribute('width')) !== '0');
   assert.ok((await page.locator('#maskCanvas').getAttribute('width')) !== '0');
@@ -296,6 +330,9 @@ for (const example of [
     ),
     fullPage: true,
   });
+  if (example.id === 'three-tier-silicon-jlfets') {
+    assertNativeFig3Contract(await exportCurrentProject(page, 120000), pointInMulti);
+  }
   if (example.id === 'fully-textured-perovskite-silicon-tandem') {
     const opened = await exportCurrentProject(page);
     for (const key of ['position', 'target']) {

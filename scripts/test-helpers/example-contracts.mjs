@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { expandProjectStorage } from '../../site/project-io.js';
 
 function modelForState(project, state) {
   if (state?.model) return state.model;
@@ -99,4 +100,75 @@ export function assertTandemTextureContract(project) {
     frontLayerCount: seenFront.size,
     backLayerCount: seenBack.size,
   };
+}
+
+export function assertNativeFig3Contract(project, pointInMulti) {
+  assert.equal(typeof pointInMulti, 'function');
+  const expanded = expandProjectStorage(structuredClone(project)),
+    model = expanded.model,
+    nodes = expanded.snapshotBranches.nodes,
+    names = new Map(model.layers.map((layer) => [layer.id, layer.name]));
+  assert.equal(nodes.length, 40);
+  assert.equal(model.width, 1600);
+  assert.equal(model.height, 1600);
+  assert.equal(model.electricalRegions.length, 3);
+  function ownerAt(point) {
+    const owners = model.regions.filter((region) => pointInMulti(point, region.geom));
+    assert.equal(owners.length, 1, `One material owner at ${point}`);
+    return owners[0];
+  }
+  for (const tier of [1, 2, 3]) {
+    const gate = nodes.find((node) => node.operation?.name === `T${tier} HfO2 gate`);
+    assert.equal(gate?.operation.growth, 'conformal', `T${tier} native gate`);
+    for (const [point, pad] of [
+      [[0, 0], false],
+      [[-575, 0], true],
+      [[575, 0], true],
+    ]) {
+      const stack = ownerAt(point).stack,
+        thickness = (name) =>
+          stack
+            .filter((segment) => names.get(segment.layerId) === name)
+            .reduce((sum, segment) => sum + segment.z1 - segment.z0, 0);
+      for (const [name, expected] of [
+        [`T${tier} Si membrane`, 0.01],
+        [`T${tier} HfO2 gate`, pad ? 0 : 0.01],
+        [`T${tier} ${pad ? 'S/D' : 'Gate'} metal`, pad ? 0.0414 : 0.0404],
+      ])
+        assert.ok(Math.abs(thickness(name) - expected) < 1e-9, `${name} at ${point}`);
+    }
+    assert.equal(
+      ownerAt([0, 150]).stack.some(
+        (segment) => names.get(segment.layerId) === `T${tier} Si membrane`,
+      ),
+      false,
+      `T${tier} isolation outside the active mask`,
+    );
+  }
+  for (const tier of [1, 2]) {
+    const liner = nodes.find((node) => node.operation?.name === `ILD${tier} HfO2 liner`);
+    assert.equal(liner?.operation.growth, 'conformal', `ILD${tier} native liner`);
+  }
+  const cmpSteps = nodes.filter((node) => node.operation?.etchProfile === 'planarize');
+  assert.equal(cmpSteps.length, 2);
+  for (const node of cmpSteps) {
+    const target = node.operation.targetZ;
+    assert.ok(Number.isFinite(target));
+    for (const region of node.state.model.regions)
+      assert.ok(
+        Math.abs(Math.max(...region.stack.map((segment) => segment.z1)) - target) < 1e-9,
+        'CMP leaves a uniform physical plane',
+      );
+  }
+  for (const point of [
+    [-700.005, 0],
+    [700.005, 0],
+  ]) {
+    const wall = ownerAt(point).stack.find(
+      (segment) => names.get(segment.layerId) === 'T3 HfO2 gate',
+    );
+    assert.equal(wall?.role, 'conformal-sidewall');
+    assert.ok(wall.z1 - wall.z0 > 0.05, 'T3 finite-height S/D sidewall');
+  }
+  return { tiers: 3, nativeConformalGates: 3, nativeConformalLiners: 2, steps: 40 };
 }
