@@ -1,4 +1,4 @@
-import { difference as robustDifference, intersection as robustIntersection } from './vector-geometry.js';
+import { robustDifference, robustIntersection } from './polygon-boolean.js';
 
 export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
