@@ -41,14 +41,14 @@ Operations can target the front or back face and use one of three areas:
 
 Available actions:
 
-- Deposit new layer
-- Extend existing layer
-- Etch / subtract — directional, material-selective, and isotropic release/undercut
+- Deposit new layer — directional, conformal, or Transfer / Laminate
+- Extend existing layer — directional or conformal
+- Etch / subtract — directional, material-selective, isotropic release, Planarize / CMP, and Undercut release
 - Implant
 - Electrical Region (non-material induced/doped/interface annotation)
 - Record process step (non-geometric fabrication metadata)
 
-Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Etch is vertical subtraction and has no coverage mode; it can either remove exposed materials in stack order or target one currently exposed material and stop when the next different material is reached. Its Surface setting can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
+Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Transfer / Laminate deposits a flat film at the active face's exposed transfer plane and can bridge openings without filling the void beneath. Directional Etch is vertical subtraction and can either remove exposed materials in stack order or target one currently exposed material and stop when the next different material is reached. Planarize / CMP trims material to an absolute target Z plane without adding fill, while Undercut release laterally removes one exposed sacrificial material. Directional Etch Surface can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
 
 **Record** adds fabrication metadata such as Anneal, Clean, Oxidation, Surface treatment, Activation, or a custom process directly to History without changing material geometry. This keeps literature/process-flow reconstructions chronological without pretending that WaferCAD simulates thermal chemistry or diffusion.
 
