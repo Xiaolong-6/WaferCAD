@@ -505,8 +505,12 @@ export function createWorkspacePersistenceController({
       syncSaveStatus();
       return;
     }
+    if (dirty) {
+      schedule({ markDirty: false, delay: AUTOSAVE_IDLE_MS });
+      return;
+    }
     clearTimer();
-    if (interactionDepth > 0 || transientTimer != null || dirty) return;
+    if (interactionDepth > 0 || transientTimer != null) return;
     timer = setTimeout(() => {
       timer = null;
       void persistNow();
