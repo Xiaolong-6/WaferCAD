@@ -229,11 +229,24 @@ assert.ok(
     .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B')),
 );
 
-// Branch directly from a Step: the Variant must appear at that Step in the tree.
+// Keep a later Main Step after the shared origin, then branch directly from History B.
+await openFunctionPanel(historyRestorePage, 'process');
+await historyRestorePage.locator('[data-process-mode="add"]').click();
+await historyRestorePage.locator('#operationArea').selectOption('full');
+await historyRestorePage.locator('#growthMode').selectOption('direct');
+await historyRestorePage.locator('#operationThickness').fill('0.05');
+await historyRestorePage.locator('#layerName').fill('History C');
+await historyRestorePage.locator('#applyOperationBtn').click();
+await historyRestorePage.waitForFunction(
+  () => /Deposited History C/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+
 await openFunctionPanel(historyRestorePage, 'snapshots');
-const historyAStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History A' });
-await historyAStep.locator('.snapshot-more-trigger').click();
-await historyAStep
+const historyBStep = historyRestorePage.locator('.history-step-wrap', { hasText: 'History B' });
+await historyBStep.locator('.snapshot-more-trigger').click();
+await historyBStep
   .locator('.snapshot-more-popover button', { hasText: 'Variant from here' })
   .click();
 await historyRestorePage.waitForFunction(() =>
@@ -247,7 +260,7 @@ assert.equal(
   await childVariant.evaluate((section) =>
     Boolean(
       section.previousElementSibling?.classList.contains('history-step-wrap') &&
-      /History A/.test(section.previousElementSibling.textContent || ''),
+      /History B/.test(section.previousElementSibling.textContent || ''),
     ),
   ),
   true,
@@ -341,6 +354,89 @@ assert.match(await reloadedChild.textContent(), /Variant C/);
 assert.equal(await reloadedChild.locator('.history-bookmarks-group').count(), 1);
 assert.equal(await reloadedChild.locator('.history-bookmarks-group').getAttribute('open'), null);
 assert.equal(await reloadedChild.locator('.history-bookmark-row').count(), 1);
+
+// Editing a Step that is also the origin of another Variant uses copy-on-write.
+// The dependent Variant keeps its original history while the edited path carries Main's later Step.
+await historyRestorePage
+  .locator('.history-variant[data-variant-id="main"] .history-variant-name')
+  .click();
+await historyRestorePage.waitForFunction(
+  () =>
+    document.querySelector('.history-variant[data-variant-id="main"]')?.dataset.active === 'true',
+);
+await openFunctionPanel(historyRestorePage, 'snapshots');
+const sharedHistoryB = historyRestorePage
+  .locator('.history-variant[data-variant-id="main"] .history-step-wrap', { hasText: 'History B' })
+  .first();
+await sharedHistoryB.locator('.snapshot-more-trigger').click();
+await sharedHistoryB.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+await historyRestorePage.waitForFunction(
+  () => /Editing "Deposit History B/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 10000 },
+);
+await historyRestorePage.locator('#layerName').fill('History B edited');
+await historyRestorePage.locator('#applyOperationBtn').click();
+await historyRestorePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+assert.match(
+  await historyRestorePage.locator('#confirmationDialogDetail').textContent(),
+  /shared with "Detector path"/,
+);
+assert.equal(
+  await historyRestorePage
+    .locator('#confirmationDialogActions [data-dialog-action="branch-edit-replay"]')
+    .count(),
+  1,
+);
+await chooseConfirmation(historyRestorePage, 'branch-edit-replay');
+await historyRestorePage.waitForFunction(
+  () =>
+    /copy-on-write Variant "Main edit".*replayed 1 later Step/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
+  null,
+  { timeout: 30000 },
+);
+
+await openFunctionPanel(historyRestorePage, 'snapshots');
+assert.equal(await historyRestorePage.locator('.history-variant').count(), 3);
+assert.equal(
+  (
+    await historyRestorePage
+      .locator('.history-variant[data-active="true"] .history-variant-name')
+      .textContent()
+  ).trim(),
+  'Main edit',
+);
+const editedVariantText = await historyRestorePage
+  .locator('.history-variant[data-active="true"]')
+  .textContent();
+assert.match(editedVariantText, /History B edited/);
+assert.match(editedVariantText, /History C/);
+
+await historyRestorePage
+  .locator('.history-variant', {
+    has: historyRestorePage.locator('.history-variant-name', { hasText: 'Detector path' }),
+  })
+  .locator(':scope > .history-variant-head .history-variant-name')
+  .click();
+await historyRestorePage.waitForFunction(
+  () =>
+    (document.querySelector('.history-variant[data-active="true"] .history-variant-name')
+      ?.textContent || '')
+      .trim() === 'Detector path',
+);
+assert.ok(
+  await historyRestorePage
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B')),
+);
+assert.equal(
+  await historyRestorePage
+    .locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.some((input) => input.value === 'History B edited')),
+  false,
+);
 
 const historyTreeGeometry = await historyRestorePage.evaluate(() => {
   const box = (selector) => {

@@ -90,6 +90,7 @@ export function createHistoryMutationController({
       downstreamReplayable: context.downstreamReplayable,
       canReplaceCurrentVariant: context.canReplaceCurrentVariant,
       dependentVariants: context.dependentVariants.map((item) => ({ ...item })),
+      entityRefs: structuredClone(node.entityRefs || {}),
       downstream: context.downstream.map((item) => structuredClone(item)),
       transaction,
     };
@@ -296,7 +297,7 @@ export function createHistoryMutationController({
     return true;
   }
 
-  async function finishEdit({ applyGate, branchCommit } = {}) {
+  async function finishEdit({ applyGate, branchCommit, operation } = {}) {
     if (applyGate?.historyStepInsert) {
       return finishInsert({ applyGate, branchCommit });
     }
@@ -321,12 +322,15 @@ export function createHistoryMutationController({
     pendingEdit = null;
     updateOperationUI();
 
-    if (mode !== 'replace-replay' || !downstream.length) {
+    const replayMode = mode === 'replace-replay' || mode === 'branch-edit-replay';
+    if (!replayMode || !downstream.length) {
       markProjectDirty();
       renderSnapshots();
       status(
         mode === 'branch-edit'
-          ? `Saved the edited Step as new Variant "${branchCommit?.name || targetVariant}".`
+          ? edit.dependentVariants.length
+            ? `Saved the edited Step as copy-on-write Variant "${branchCommit?.name || targetVariant}". Dependent Variants remain unchanged.`
+            : `Saved the edited Step as new Variant "${branchCommit?.name || targetVariant}".`
           : downstream.length
             ? `Updated "${targetVariant}" and discarded ${downstream.length} later Step${downstream.length === 1 ? '' : 's'}.`
             : `Updated the last Step in "${targetVariant}".`,
@@ -335,11 +339,17 @@ export function createHistoryMutationController({
       return true;
     }
 
+    const initialLayerIdMap = [];
+    if (edit.entityRefs?.resultLayerId && operation?.resultLayerId) {
+      initialLayerIdMap.push([edit.entityRefs.resultLayerId, operation.resultLayerId]);
+    }
+
     beginReplayInteraction();
     let replay;
     try {
       replay = await getProcessPanelController()?.replayOperations(downstream, {
         taskLabel: `Recalculating ${downstream.length} later Step${downstream.length === 1 ? '' : 's'}…`,
+        initialLayerIdMap,
       });
       if (!replay?.ok) restoreReplayTransaction(transaction);
     } finally {
@@ -360,7 +370,9 @@ export function createHistoryMutationController({
     markProjectDirty();
     renderSnapshots();
     status(
-      `Replayed ${replay.completed} later Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`,
+      mode === 'branch-edit-replay'
+        ? `Saved the edited Step in copy-on-write Variant "${branchCommit?.name || snapshotManager.activeBranch().name}" and replayed ${replay.completed} later Step${replay.completed === 1 ? '' : 's'}. The source and dependent Variants remain unchanged.`
+        : `Replayed ${replay.completed} later Step${replay.completed === 1 ? '' : 's'} in Variant "${snapshotManager.activeBranch().name}".`,
       'success',
     );
     return true;
@@ -449,12 +461,30 @@ export function createHistoryMutationController({
             });
           }
         }
-        if (snapshotManager.canCreateVariant() && snapshotManager.canRecordOperation(1)) {
+        const canBranchEdit =
+            snapshotManager.canCreateVariant() && snapshotManager.canRecordOperation(1),
+          canBranchReplay =
+            canBranchEdit &&
+            edit.downstreamCount > 0 &&
+            edit.downstreamReplayable &&
+            snapshotManager.canRecordOperation(edit.downstreamCount + 1);
+        if (canBranchReplay) {
           actions.push({
-            value: 'branch-edit',
-            label: 'Save as new Variant',
+            value: 'branch-edit-replay',
+            label: 'New Variant · Edit & carry later Steps',
             kind: edit.canReplaceCurrentVariant ? undefined : 'primary',
             default: !edit.canReplaceCurrentVariant,
+          });
+        }
+        if (canBranchEdit) {
+          actions.push({
+            value: 'branch-edit',
+            label: edit.downstreamCount
+              ? 'New Variant · Edited Step only'
+              : 'Save as copy-on-write Variant',
+            kind:
+              !edit.canReplaceCurrentVariant && !canBranchReplay ? 'primary' : undefined,
+            default: !edit.canReplaceCurrentVariant && !canBranchReplay,
           });
         }
 
@@ -468,9 +498,9 @@ export function createHistoryMutationController({
             ? `${edit.downstreamCount} later Step${edit.downstreamCount === 1 ? '' : 's'} follow this Step.`
             : 'This is the current Variant HEAD Step.',
           !edit.canReplaceCurrentVariant
-            ? `The current Variant cannot be rewritten because ${edit.dependentVariants
+            ? `This Step is shared with ${edit.dependentVariants
                 .map((item) => `"${item.name}"`)
-                .join(', ')} depend on this Step.`
+                .join(', ')}. WaferCAD will keep those dependent Variants unchanged by saving the edit in a copy-on-write Variant.`
             : '',
           edit.downstreamCount && !edit.downstreamReplayable
             ? 'Some later Steps predate replay metadata, so replay is unavailable.'
@@ -490,13 +520,20 @@ export function createHistoryMutationController({
         edit.mode = mode;
       }
 
-      if (mode === 'branch-edit') {
+      if (mode === 'branch-edit' || mode === 'branch-edit-replay') {
+        const requiredHistoryNodes =
+          mode === 'branch-edit-replay' ? edit.downstream.length + 1 : 1;
         if (!snapshotManager.canCreateVariant()) {
           status('Variant limit reached before this edit could be saved.', 'error');
           return false;
         }
-        if (!snapshotManager.canRecordOperation(1)) {
-          status('Process history limit reached before this edit could be saved.', 'error');
+        if (!snapshotManager.canRecordOperation(requiredHistoryNodes)) {
+          status(
+            mode === 'branch-edit-replay'
+              ? 'Process history capacity is insufficient to carry the edited Step and all later Steps.'
+              : 'Process history limit reached before this edit could be saved.',
+            'error',
+          );
           return false;
         }
       }
@@ -583,8 +620,8 @@ export function createHistoryMutationController({
       }
 
       const created =
-        edit.mode === 'branch-edit'
-          ? snapshotManager.createBranchFromCursor()
+        edit.mode === 'branch-edit' || edit.mode === 'branch-edit-replay'
+          ? snapshotManager.createBranchFromCursor(`${edit.branchName} edit`)
           : (snapshotManager.replaceBranchTailFrom(edit.nodeId), null);
       markProjectDirty();
       renderSnapshots();
