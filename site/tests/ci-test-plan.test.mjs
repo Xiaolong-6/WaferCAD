@@ -44,6 +44,13 @@ test('layout parser changes schedule interaction and layout review only', () => 
   assert.equal(plan.suites.process, false);
 });
 
+test('shared product orchestrator changes run both product review scopes', () => {
+  const plan = buildCiTestPlan(['scripts/product-regression.mjs']);
+  assert.equal(plan.suites.product_layout, true);
+  assert.equal(plan.suites.renderer, true);
+  assert.equal(plan.suites.process, false);
+});
+
 test('workflow planner changes exercise every normal browser suite but do not force process geometry', () => {
   const plan = buildCiTestPlan(['.github/workflows/browser-regression.yml']);
   assert.equal(plan.full, false);
