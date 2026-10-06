@@ -963,7 +963,7 @@ const maskImportController = createMaskImportController({
   getMaskTransform: () => maskTransform,
   setMaskTransform: (value) => {
     maskTransform = value;
-    markProjectDirty();
+    markViewDirty();
   },
   manualMicron,
   formatLengthField,
