@@ -272,12 +272,18 @@ export function createThreeView({
     const fullyHidden =
         state.enabled !== false && record.minZ > state.bottom && record.maxZ < state.top,
       fullyUpper = record.minZ >= state.top,
-      fullyLower = record.maxZ <= state.bottom;
+      fullyLower = record.maxZ <= state.bottom,
+      sideScale = fullyUpper
+        ? Number(state.frontScale) || 1
+        : fullyLower
+          ? Number(state.backScale) || 1
+          : 1,
+      canTranslateSide = (fullyUpper || fullyLower) && Math.abs(sideScale - 1) <= 1e-12;
 
     object.visible = !fullyHidden;
     if (fullyHidden) return;
 
-    if (fullyUpper || fullyLower) {
+    if (canTranslateSide) {
       if (record.mode === 'mapped') {
         restoreCanonicalZ(record, positions);
         refreshGeometryBounds(object);
@@ -320,6 +326,9 @@ export function createThreeView({
     host.dataset.zCollapseBottomUm = String(currentZDisplay.bottom);
     host.dataset.zCollapseGapUm = String(currentZDisplay.gap);
     host.dataset.zDisplayScale = String(currentZDisplay.scale);
+    host.dataset.zFrontScale = String(currentZDisplay.frontScale);
+    host.dataset.zBackScale = String(currentZDisplay.backScale);
+    host.dataset.zScaleLinked = String(currentZDisplay.scaleLinked !== false);
 
     updateTransparentOrder();
     updateRoughMaterialLod();
