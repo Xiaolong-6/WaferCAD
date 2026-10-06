@@ -315,7 +315,7 @@ await variantCStep.locator('.snapshot-more-popover button', { hasText: 'Add book
 assert.equal(await variantCStep.locator('.history-bookmarks-group').count(), 1);
 assert.equal(await variantCStep.locator('.history-bookmarks-group').getAttribute('open'), null);
 assert.equal(await variantCStep.locator('.history-bookmark-row').count(), 1);
-assert.equal(Number(await historyRestorePage.locator('#snapshotCount').textContent()), 3);
+assert.equal(Number(await historyRestorePage.locator('#snapshotCount').textContent()), 4);
 
 // Autosave/reload preserves the Step tree, Variant name, origin, and bookmark.
 await historyRestorePage.waitForFunction(
