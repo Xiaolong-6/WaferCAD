@@ -354,15 +354,7 @@ export function prepareProjectForWorkspaceStorage(project) {
   if (Array.isArray(project.snapshots)) {
     stored.snapshots = project.snapshots.map((record) => {
       const state = packWorkspaceState(record.state, modelAssets, layoutAssets);
-      return {
-        id: record.id,
-        name: record.name,
-        createdAt: record.createdAt,
-        ...(record.branchId ? { branchId: record.branchId } : {}),
-        ...(record.parentId ? { parentId: record.parentId } : {}),
-        ...(record.historyNodeId ? { historyNodeId: record.historyNodeId } : {}),
-        state,
-      };
+      return { ...cloneRecordMetadata(record, 'state'), state };
     });
   }
 
@@ -500,15 +492,7 @@ export function prepareProjectForStorage(project) {
   if (Array.isArray(project.snapshots)) {
     stored.snapshots = project.snapshots.map((record) => {
       const state = packWorkspaceState(record.state, modelAssets, layoutAssets, { quantize: true });
-      return {
-        id: record.id,
-        name: record.name,
-        createdAt: record.createdAt,
-        ...(record.branchId ? { branchId: record.branchId } : {}),
-        ...(record.parentId ? { parentId: record.parentId } : {}),
-        ...(record.historyNodeId ? { historyNodeId: record.historyNodeId } : {}),
-        state,
-      };
+      return { ...cloneRecordMetadata(record, 'state'), state };
     });
   }
 

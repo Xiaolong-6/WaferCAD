@@ -1,0 +1,396 @@
+{
+  "date": "2026-10-06",
+  "browser": "Chrome 154.0.8037.98",
+  "node": "24.19.0",
+  "playwright": "1.55.1",
+  "three": "0.179.1",
+  "precision": "Lossless JSON; signed zero normalized; no coordinate rounding",
+  "repetitions": 3,
+  "comparison": "Both file encodings imported in the same optimized app; local transfer, fresh contexts; before tandem composition changes",
+  "measurements": [
+    {
+      "path": "site/examples/fully-textured-perovskite-silicon-tandem.wafercad",
+      "beforeBytes": 393045,
+      "afterBytes": 263827,
+      "packMs": 94.30809999999998,
+      "importMs": 39.33480000000003,
+      "geometries": 13,
+      "steps": 24,
+      "bookmarks": 26,
+      "variants": 2,
+      "entireNormalizedProjectEqual": true,
+      "chrome": {
+        "before": {
+          "medianOpenedMs": 675.4210000000003,
+          "medianReadyMs": 1548.430299999999,
+          "medianWorkerMs": 115.90000000596046,
+          "runs": [
+            {
+              "openedMs": 981.8634999999999,
+              "readyMs": 1902.8957,
+              "workerMs": 132,
+              "errors": []
+            },
+            {
+              "openedMs": 675.4210000000003,
+              "readyMs": 1524.7822000000006,
+              "workerMs": 112.69999999552965,
+              "errors": []
+            },
+            {
+              "openedMs": 665.1193000000003,
+              "readyMs": 1548.430299999999,
+              "workerMs": 115.90000000596046,
+              "errors": []
+            }
+          ]
+        },
+        "after": {
+          "medianOpenedMs": 712.5819000000001,
+          "medianReadyMs": 1609.7883999999995,
+          "medianWorkerMs": 117.5,
+          "runs": [
+            {
+              "openedMs": 958.0185000000001,
+              "readyMs": 1831.6945,
+              "workerMs": 114.39999999850988,
+              "errors": []
+            },
+            {
+              "openedMs": 704.0034999999998,
+              "readyMs": 1587.3162999999995,
+              "workerMs": 117.5,
+              "errors": []
+            },
+            {
+              "openedMs": 712.5819000000001,
+              "readyMs": 1609.7883999999995,
+              "workerMs": 118.09999999403954,
+              "errors": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "path": "site/examples/perc-solar-cells-point-contacts.wafercad",
+      "beforeBytes": 3071195,
+      "afterBytes": 845137,
+      "packMs": 1219.8715,
+      "importMs": 483.6358,
+      "geometries": 14,
+      "steps": 33,
+      "bookmarks": 33,
+      "variants": 3,
+      "entireNormalizedProjectEqual": true,
+      "chrome": {
+        "before": {
+          "medianOpenedMs": 4317.833600000002,
+          "medianReadyMs": 4639.8721000000005,
+          "medianWorkerMs": 1395,
+          "runs": [
+            {
+              "openedMs": 5268.4884999999995,
+              "readyMs": 5941.570900000001,
+              "workerMs": 1657.6000000014901,
+              "errors": []
+            },
+            {
+              "openedMs": 4148.381600000001,
+              "readyMs": 4519.9905,
+              "workerMs": 1207.1000000014901,
+              "errors": []
+            },
+            {
+              "openedMs": 4317.833600000002,
+              "readyMs": 4639.8721000000005,
+              "workerMs": 1395,
+              "errors": []
+            }
+          ]
+        },
+        "after": {
+          "medianOpenedMs": 3791.791100000002,
+          "medianReadyMs": 4148.7471000000005,
+          "medianWorkerMs": 747.5,
+          "runs": [
+            {
+              "openedMs": 4020.5424,
+              "readyMs": 4628.6397,
+              "workerMs": 702,
+              "errors": []
+            },
+            {
+              "openedMs": 3735.8434000000007,
+              "readyMs": 4104.021299999999,
+              "workerMs": 751.1999999955297,
+              "errors": []
+            },
+            {
+              "openedMs": 3791.791100000002,
+              "readyMs": 4148.7471000000005,
+              "workerMs": 747.5,
+              "errors": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "path": "site/examples/photodetector-literature-examples.wafercad",
+      "beforeBytes": 2693533,
+      "afterBytes": 366336,
+      "packMs": 502.1091999999999,
+      "importMs": 168.09799999999996,
+      "geometries": 19,
+      "steps": 32,
+      "bookmarks": 47,
+      "variants": 7,
+      "entireNormalizedProjectEqual": true,
+      "chrome": {
+        "before": {
+          "medianOpenedMs": 2410.9011,
+          "medianReadyMs": 3314.5850999999993,
+          "medianWorkerMs": 595,
+          "runs": [
+            {
+              "openedMs": 2671.9825,
+              "readyMs": 3881.5881,
+              "workerMs": 602.1000000014901,
+              "errors": []
+            },
+            {
+              "openedMs": 2410.9011,
+              "readyMs": 3314.5850999999993,
+              "workerMs": 589,
+              "errors": []
+            },
+            {
+              "openedMs": 2408.222100000001,
+              "readyMs": 3289.7481000000007,
+              "workerMs": 595,
+              "errors": []
+            }
+          ]
+        },
+        "after": {
+          "medianOpenedMs": 2037.2658999999994,
+          "medianReadyMs": 2946.7435000000005,
+          "medianWorkerMs": 305.5,
+          "runs": [
+            {
+              "openedMs": 2417.6276000000003,
+              "readyMs": 3593.4586000000004,
+              "workerMs": 353.6000000014901,
+              "errors": []
+            },
+            {
+              "openedMs": 2037.2658999999994,
+              "readyMs": 2932.350299999999,
+              "workerMs": 292,
+              "errors": []
+            },
+            {
+              "openedMs": 2034.617900000001,
+              "readyMs": 2946.7435000000005,
+              "workerMs": 305.5,
+              "errors": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "path": "site/examples/suspended-silica-microdisks.wafercad",
+      "beforeBytes": 692925,
+      "afterBytes": 99921,
+      "packMs": 54.23520000000008,
+      "importMs": 33.04489999999987,
+      "geometries": 5,
+      "steps": 9,
+      "bookmarks": 9,
+      "variants": 1,
+      "entireNormalizedProjectEqual": true,
+      "chrome": {
+        "before": {
+          "medianOpenedMs": 926.9270999999999,
+          "medianReadyMs": 976.598,
+          "medianWorkerMs": 201.20000000298023,
+          "runs": [
+            {
+              "openedMs": 1230.7692,
+              "readyMs": 1285.2141,
+              "workerMs": 201.20000000298023,
+              "errors": []
+            },
+            {
+              "openedMs": 926.9270999999999,
+              "readyMs": 976.598,
+              "workerMs": 201.20000000298023,
+              "errors": []
+            },
+            {
+              "openedMs": 890.1572000000006,
+              "readyMs": 940.4681,
+              "workerMs": 190,
+              "errors": []
+            }
+          ]
+        },
+        "after": {
+          "medianOpenedMs": 822.5326999999997,
+          "medianReadyMs": 870.7222999999994,
+          "medianWorkerMs": 136.69999999552965,
+          "runs": [
+            {
+              "openedMs": 1121.0280000000002,
+              "readyMs": 1174.6702,
+              "workerMs": 140.70000000298023,
+              "errors": []
+            },
+            {
+              "openedMs": 822.5326999999997,
+              "readyMs": 870.7222999999994,
+              "workerMs": 123.80000000447035,
+              "errors": []
+            },
+            {
+              "openedMs": 819.7708000000002,
+              "readyMs": 865.5618000000004,
+              "workerMs": 136.69999999552965,
+              "errors": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "path": "examples/projects/black-si-photodiode-acs-photonics-2023.wafercad",
+      "beforeBytes": 347524,
+      "afterBytes": 53788,
+      "packMs": 40.57639999999992,
+      "importMs": 20.76000000000022,
+      "geometries": 5,
+      "steps": 0,
+      "bookmarks": 15,
+      "variants": 0,
+      "entireNormalizedProjectEqual": true,
+      "chrome": {
+        "before": {
+          "medianOpenedMs": 768.4951000000001,
+          "medianReadyMs": 1623.050800000001,
+          "medianWorkerMs": 120,
+          "runs": [
+            {
+              "openedMs": 721.7837999999992,
+              "readyMs": 2216.5095999999994,
+              "workerMs": 121,
+              "errors": []
+            },
+            {
+              "openedMs": 768.4951000000001,
+              "readyMs": 1623.050800000001,
+              "workerMs": 115.5,
+              "errors": []
+            },
+            {
+              "openedMs": 779.293999999998,
+              "readyMs": 1595.3083000000006,
+              "workerMs": 120,
+              "errors": []
+            }
+          ]
+        },
+        "after": {
+          "medianOpenedMs": 753.3528999999999,
+          "medianReadyMs": 1605.4798,
+          "medianWorkerMs": 82.79999999701977,
+          "runs": [
+            {
+              "openedMs": 1068.1885,
+              "readyMs": 2122.9076999999997,
+              "workerMs": 96.40000000596046,
+              "errors": []
+            },
+            {
+              "openedMs": 753.3528999999999,
+              "readyMs": 1605.4798,
+              "workerMs": 82.5,
+              "errors": []
+            },
+            {
+              "openedMs": 749.0408000000007,
+              "readyMs": 1548.0923000000003,
+              "workerMs": 82.79999999701977,
+              "errors": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "path": "examples/projects/sahli-2018-fully-textured-tandem.wafercad",
+      "beforeBytes": 393045,
+      "afterBytes": 263827,
+      "packMs": 39.65030000000024,
+      "importMs": 28.926100000000588,
+      "geometries": 13,
+      "steps": 24,
+      "bookmarks": 26,
+      "variants": 2,
+      "entireNormalizedProjectEqual": true,
+      "chrome": {
+        "before": {
+          "medianOpenedMs": 739.7969999999996,
+          "medianReadyMs": 1642.0069999999996,
+          "medianWorkerMs": 124.89999999850988,
+          "runs": [
+            {
+              "openedMs": 1008.2443000000001,
+              "readyMs": 1885.8373,
+              "workerMs": 121.29999999701977,
+              "errors": []
+            },
+            {
+              "openedMs": 736.8100999999997,
+              "readyMs": 1642.0069999999996,
+              "workerMs": 124.89999999850988,
+              "errors": []
+            },
+            {
+              "openedMs": 739.7969999999996,
+              "readyMs": 1640.5975000000008,
+              "workerMs": 128.80000000447035,
+              "errors": []
+            }
+          ]
+        },
+        "after": {
+          "medianOpenedMs": 777.6813000000002,
+          "medianReadyMs": 1679.7014,
+          "medianWorkerMs": 115.89999999850988,
+          "runs": [
+            {
+              "openedMs": 1044.5472999999997,
+              "readyMs": 1920.7698,
+              "workerMs": 111.70000000298023,
+              "errors": []
+            },
+            {
+              "openedMs": 777.6813000000002,
+              "readyMs": 1669.9016000000001,
+              "workerMs": 119.10000000149012,
+              "errors": []
+            },
+            {
+              "openedMs": 741.0298999999995,
+              "readyMs": 1679.7014,
+              "workerMs": 115.89999999850988,
+              "errors": []
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -916,6 +916,7 @@ test('project storage preserves snapshot branch graph metadata', () => {
 
   const stored = JSON.parse(serializeProject(source));
   assert.equal(stored.snapshots[1].branchId, 'branch-black');
+  assert.equal(stored.snapshots[0].parentId, null);
   assert.equal(stored.snapshots[1].parentId, 'snapshot-main');
   assert.equal(stored.snapshotBranches.activeBranchId, 'branch-black');
 
@@ -926,6 +927,7 @@ test('project storage preserves snapshot branch graph metadata', () => {
 
   const workspaceStored = prepareProjectForWorkspaceStorage(source);
   expandProjectStorage(workspaceStored);
+  assert.equal(workspaceStored.snapshots[0].parentId, null);
   assert.equal(workspaceStored.snapshots[1].parentId, 'snapshot-main');
   assert.equal(workspaceStored.snapshotBranches.activeBranchId, 'branch-black');
 });
