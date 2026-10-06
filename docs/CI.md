@@ -22,7 +22,7 @@ The planner then enables focused suites as needed:
 | Process/model/vector geometry                       | Process Geometry core browser path; full permutations on nightly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the nightly/manual full sweep validates the complete job matrix. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
+Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the nightly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
 ## Heavy Process Geometry job
 
