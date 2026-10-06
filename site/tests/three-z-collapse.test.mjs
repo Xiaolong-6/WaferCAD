@@ -39,6 +39,35 @@ test('collapsed Z display is monotonic through the compressed interval', () => {
   }
 });
 
+test('3D collapse keeps linked front/back relief 1:1 and honors an unlocked ratio', () => {
+  const linked = createCollapsedZDisplayTransform({
+    zMin: -140,
+    zMax: 140,
+    collapse: { top: 130, bottom: -130 },
+    breakFraction: 0,
+  });
+  assert.ok(Math.abs(linked.mapZ(140) - linked.mapZ(130) - 10) < 1e-12);
+  assert.ok(Math.abs(linked.mapZ(-130) - linked.mapZ(-140) - 10) < 1e-12);
+
+  const unlocked = createCollapsedZDisplayTransform({
+    zMin: -140,
+    zMax: 140,
+    collapse: {
+      top: 130,
+      bottom: -130,
+      scaleLinked: false,
+      frontScale: 2,
+      backScale: 0.5,
+    },
+    breakFraction: 0,
+  });
+  const frontRelief = unlocked.mapZ(140) - unlocked.mapZ(130),
+    backRelief = unlocked.mapZ(-130) - unlocked.mapZ(-140);
+  assert.ok(Math.abs(frontRelief - 20) < 1e-12);
+  assert.ok(Math.abs(backRelief - 5) < 1e-12);
+  assert.ok(Math.abs(frontRelief / backRelief - 4) < 1e-12);
+});
+
 test('3D can join the retained Z spans without inventing a substrate air gap', () => {
   const transform = createCollapsedZDisplayTransform({
     zMin: -176,
@@ -104,6 +133,9 @@ test('3D follows Section collapse while GLB keeps canonical Z and exported morph
     top: 30,
     bottom: -20,
     enabled: true,
+    scaleLinked: true,
+    frontScale: 1,
+    backScale: 1,
   });
 });
 
