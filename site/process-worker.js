@@ -130,7 +130,6 @@ self.onmessage = async (event) => {
           type: 'done',
           rejected: true,
           error: `Process result rejected; the previous structure and History were preserved. ${error.message}`,
-          result,
         });
         return;
       }
