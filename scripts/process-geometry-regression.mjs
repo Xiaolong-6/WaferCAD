@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { expandProjectStorage } from '../site/project-io.js';
 import {
   loadGeometryKernel,
   processBenchmark,
@@ -183,7 +184,7 @@ await page.locator('#exportProjectBtn').click();
 const roughDownload = await roughDownloadPromise;
 const roughSavedPath = await roughDownload.path();
 assert.ok(roughSavedPath);
-const roughSaved = JSON.parse(await readFile(roughSavedPath, 'utf8'));
+const roughSaved = expandProjectStorage(JSON.parse(await readFile(roughSavedPath, 'utf8')));
 const roughSegments = roughSaved.model.regions.flatMap((region) => region.stack);
 assert.ok(
   roughSegments.some(
@@ -265,7 +266,7 @@ await page.locator('#exportProjectBtn').click();
 const implantDownload = await implantDownloadPromise;
 const implantSavedPath = await implantDownload.path();
 assert.ok(implantSavedPath);
-const implantSaved = JSON.parse(await readFile(implantSavedPath, 'utf8'));
+const implantSaved = expandProjectStorage(JSON.parse(await readFile(implantSavedPath, 'utf8')));
 assert.equal(implantSaved.model.implants.length, 1);
 assert.equal(implantSaved.model.implants[0].name, 'UI implant');
 assert.equal(implantSaved.model.implants[0].thickness, 0.6);
@@ -307,7 +308,9 @@ await page.locator('#exportProjectBtn').click();
 const electricalDownload = await electricalDownloadPromise;
 const electricalSavedPath = await electricalDownload.path();
 assert.ok(electricalSavedPath);
-const electricalSaved = JSON.parse(await readFile(electricalSavedPath, 'utf8'));
+const electricalSaved = expandProjectStorage(
+  JSON.parse(await readFile(electricalSavedPath, 'utf8')),
+);
 assert.equal(electricalSaved.version, 14);
 assert.equal(electricalSaved.model.electricalRegions.length, 1);
 assert.equal(electricalSaved.model.electricalRegions[0].name, 'UI induced inversion');
@@ -380,42 +383,41 @@ assert.equal(await page.locator('#processTaskDialog').evaluate((element) => elem
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 
 if (extendedProcess) {
-// The conformal layer inherits the rough trench surface. Export it through the
-// real 3D path and verify the buried shared profile is not closed to the ideal plane.
-await page.locator('#threePanel .export-control > summary').click();
-const conformalGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
-await page.locator('#threeExportModelBtn').click();
-const conformalGlbDownload = await conformalGlbDownloadPromise,
-  conformalGlbPath = await conformalGlbDownload.path();
-assert.ok(conformalGlbPath);
-const conformalGlb = parseGlbJson(await readFile(conformalGlbPath)),
-  conformalMorphologyNodes = (conformalGlb.nodes || []).filter(
-    (node) => node.extras?.wafercadMorphology,
-  ),
-  conformalBuriedMorphology = conformalMorphologyNodes.filter(
-    (node) => node.extras?.wafercadBuriedInterface === true,
-  ),
-  conformalExposedMorphology = conformalMorphologyNodes.filter(
-    (node) => node.extras?.wafercadBuriedInterface === false,
+  // The conformal layer inherits the rough trench surface. Export it through the
+  // real 3D path and verify the buried shared profile is not closed to the ideal plane.
+  await page.locator('#threePanel .export-control > summary').click();
+  const conformalGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+  await page.locator('#threeExportModelBtn').click();
+  const conformalGlbDownload = await conformalGlbDownloadPromise,
+    conformalGlbPath = await conformalGlbDownload.path();
+  assert.ok(conformalGlbPath);
+  const conformalGlb = parseGlbJson(await readFile(conformalGlbPath)),
+    conformalMorphologyNodes = (conformalGlb.nodes || []).filter(
+      (node) => node.extras?.wafercadMorphology,
+    ),
+    conformalBuriedMorphology = conformalMorphologyNodes.filter(
+      (node) => node.extras?.wafercadBuriedInterface === true,
+    ),
+    conformalExposedMorphology = conformalMorphologyNodes.filter(
+      (node) => node.extras?.wafercadBuriedInterface === false,
+    );
+  assert.ok(conformalBuriedMorphology.length > 0);
+  assert.ok(conformalExposedMorphology.length > 0);
+  assert.ok(
+    conformalBuriedMorphology.every(
+      (node) =>
+        node.extras?.wafercadSurfaceOwnership === 'interface' &&
+        node.extras?.wafercadInterfaceLayerId &&
+        node.extras?.wafercadRoughBorderVertexCount === 0,
+    ),
+    'buried conformal morphology must remain single-owner without ideal-plane closure skirts',
   );
-assert.ok(conformalBuriedMorphology.length > 0);
-assert.ok(conformalExposedMorphology.length > 0);
-assert.ok(
-  conformalBuriedMorphology.every(
-    (node) =>
-      node.extras?.wafercadSurfaceOwnership === 'interface' &&
-      node.extras?.wafercadInterfaceLayerId &&
-      node.extras?.wafercadRoughBorderVertexCount === 0,
-  ),
-  'buried conformal morphology must remain single-owner without ideal-plane closure skirts',
-);
-assert.ok(
-  conformalExposedMorphology.every(
-    (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) === 0,
-  ),
-  'exposed conformal morphology must hand matched boundaries to textured sidewalls instead of ideal-plane skirts',
-);
-
+  assert.ok(
+    conformalExposedMorphology.every(
+      (node) => Number(node.extras?.wafercadRoughBorderVertexCount || 0) === 0,
+    ),
+    'exposed conformal morphology must hand matched boundaries to textured sidewalls instead of ideal-plane skirts',
+  );
 }
 
 await openFunctionPanel(page, 'project');
@@ -427,7 +429,7 @@ assert.equal(download.suggestedFilename(), 'UI conformal project.wafercad');
 assert.match(await page.locator('#statusText').textContent(), /Download requested/);
 const savedPath = await download.path();
 assert.ok(savedPath);
-const saved = JSON.parse(await readFile(savedPath, 'utf8'));
+const saved = expandProjectStorage(JSON.parse(await readFile(savedPath, 'utf8')));
 const coatId = saved.model.layers.find((layer) => layer.name === 'UI conformal')?.id;
 assert.ok(coatId);
 const stackAtSaved = (x) =>
@@ -544,69 +546,70 @@ assert.ok(
 );
 
 if (extendedProcess) {
-// Section defaults to readable Auto fit but offers a true physical 1:1 check.
-const sectionScaleButton = page.locator('#sectionScaleModeBtn');
-assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
-assert.match(await page.locator('#sectionMeta').textContent(), /Z ×/);
-const autoScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
-  x: Number(canvas.dataset.xPxPerUm),
-  z: Number(canvas.dataset.zPxPerUm),
-}));
-assert.ok(autoScales.x > 0 && autoScales.z > 0);
-await sectionScaleButton.click();
-assert.equal((await sectionScaleButton.textContent()).trim(), '1:1');
-assert.match(await page.locator('#sectionMeta').textContent(), /1:1/);
-const physicalScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
-  mode: canvas.dataset.scaleMode,
-  x: Number(canvas.dataset.xPxPerUm),
-  z: Number(canvas.dataset.zPxPerUm),
-}));
-assert.equal(physicalScales.mode, 'physical');
-assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
-await sectionScaleButton.click();
-assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
+  // Section defaults to readable Auto fit but offers a true physical 1:1 check.
+  const sectionScaleButton = page.locator('#sectionScaleModeBtn');
+  assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
+  assert.match(await page.locator('#sectionMeta').textContent(), /Z ×/);
+  const autoScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
+    x: Number(canvas.dataset.xPxPerUm),
+    z: Number(canvas.dataset.zPxPerUm),
+  }));
+  assert.ok(autoScales.x > 0 && autoScales.z > 0);
+  await sectionScaleButton.click();
+  assert.equal((await sectionScaleButton.textContent()).trim(), '1:1');
+  assert.match(await page.locator('#sectionMeta').textContent(), /1:1/);
+  const physicalScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
+    mode: canvas.dataset.scaleMode,
+    x: Number(canvas.dataset.xPxPerUm),
+    z: Number(canvas.dataset.zPxPerUm),
+  }));
+  assert.equal(physicalScales.mode, 'physical');
+  assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
+  await sectionScaleButton.click();
+  assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
 
-// Section Detail ROI keeps the global section visible while re-rendering a local
-// region at higher effective resolution. The inset can be moved out of the way.
-await page.locator('#sectionDetailRoiBtn').click();
-const sectionBox = await page.locator('#sectionCanvas').boundingBox();
-assert.ok(sectionBox);
-await page.mouse.move(
-  sectionBox.x + sectionBox.width * 0.34,
-  sectionBox.y + sectionBox.height * 0.18,
-);
-await page.mouse.down();
-await page.mouse.move(
-  sectionBox.x + sectionBox.width * 0.54,
-  sectionBox.y + sectionBox.height * 0.42,
-  { steps: 5 },
-);
-await page.mouse.up();
-await page.locator('#sectionDetailRoiOverlay').waitFor({ state: 'visible' });
-await page.locator('#sectionDetailInset').waitFor({ state: 'visible' });
-assert.ok(
-  (await canvasInkFraction(page, '#sectionDetailInsetCanvas')) > 0.01,
-  'Section Detail inset rendered blank',
-);
-const insetBefore = await page.locator('#sectionDetailInset').boundingBox();
-const insetHeadBox = await page.locator('#sectionDetailInsetHead').boundingBox();
-assert.ok(insetBefore && insetHeadBox);
-await page.mouse.move(insetHeadBox.x + 20, insetHeadBox.y + insetHeadBox.height / 2);
-await page.mouse.down();
-await page.mouse.move(insetHeadBox.x - 45, insetHeadBox.y + 42, { steps: 4 });
-await page.mouse.up();
-const insetAfter = await page.locator('#sectionDetailInset').boundingBox();
-assert.ok(insetAfter);
-assert.ok(
-  Math.abs(insetAfter.x - insetBefore.x) > 4 || Math.abs(insetAfter.y - insetBefore.y) > 4,
-  'Section Detail inset did not move',
-);
-await page.locator('#sectionDetailShapeBtn').click();
-assert.equal(
-  await page.locator('#sectionDetailRoiOverlay').evaluate((el) => el.classList.contains('circle')),
-  true,
-);
-
+  // Section Detail ROI keeps the global section visible while re-rendering a local
+  // region at higher effective resolution. The inset can be moved out of the way.
+  await page.locator('#sectionDetailRoiBtn').click();
+  const sectionBox = await page.locator('#sectionCanvas').boundingBox();
+  assert.ok(sectionBox);
+  await page.mouse.move(
+    sectionBox.x + sectionBox.width * 0.34,
+    sectionBox.y + sectionBox.height * 0.18,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    sectionBox.x + sectionBox.width * 0.54,
+    sectionBox.y + sectionBox.height * 0.42,
+    { steps: 5 },
+  );
+  await page.mouse.up();
+  await page.locator('#sectionDetailRoiOverlay').waitFor({ state: 'visible' });
+  await page.locator('#sectionDetailInset').waitFor({ state: 'visible' });
+  assert.ok(
+    (await canvasInkFraction(page, '#sectionDetailInsetCanvas')) > 0.01,
+    'Section Detail inset rendered blank',
+  );
+  const insetBefore = await page.locator('#sectionDetailInset').boundingBox();
+  const insetHeadBox = await page.locator('#sectionDetailInsetHead').boundingBox();
+  assert.ok(insetBefore && insetHeadBox);
+  await page.mouse.move(insetHeadBox.x + 20, insetHeadBox.y + insetHeadBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(insetHeadBox.x - 45, insetHeadBox.y + 42, { steps: 4 });
+  await page.mouse.up();
+  const insetAfter = await page.locator('#sectionDetailInset').boundingBox();
+  assert.ok(insetAfter);
+  assert.ok(
+    Math.abs(insetAfter.x - insetBefore.x) > 4 || Math.abs(insetAfter.y - insetBefore.y) > 4,
+    'Section Detail inset did not move',
+  );
+  await page.locator('#sectionDetailShapeBtn').click();
+  assert.equal(
+    await page
+      .locator('#sectionDetailRoiOverlay')
+      .evaluate((el) => el.classList.contains('circle')),
+    true,
+  );
 }
 
 // Conformal Extend reuses the Deposit coating kernel with the existing layer id.
@@ -630,7 +633,7 @@ await page.locator('#exportProjectBtn').click();
 const extendDownload = await extendDownloadPromise;
 const extendSavedPath = await extendDownload.path();
 assert.ok(extendSavedPath);
-const extendSaved = JSON.parse(await readFile(extendSavedPath, 'utf8'));
+const extendSaved = expandProjectStorage(JSON.parse(await readFile(extendSavedPath, 'utf8')));
 if (extendedProcess) {
   assert.equal(extendSaved.display.sectionDetailRoi?.shape, 'circle');
   assert.ok(extendSaved.display.sectionDetailRoi?.width > 0);

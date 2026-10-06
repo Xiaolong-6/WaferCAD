@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { expandProjectStorage } from '../../site/project-io.js';
 import { chooseConfirmation, closeFunctionPanel, openFunctionPanel } from './product.mjs';
 
 export async function loadProject(page, project, name) {
@@ -24,7 +25,7 @@ export async function exportCurrentProject(page, timeout = 30000) {
   const download = await downloadPromise,
     path = await download.path();
   assert.ok(path, 'Project export must produce a readable file.');
-  const project = JSON.parse(await readFile(path, 'utf8'));
+  const project = expandProjectStorage(JSON.parse(await readFile(path, 'utf8')));
   await closeFunctionPanel(page);
   return project;
 }
