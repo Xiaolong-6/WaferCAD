@@ -6,7 +6,7 @@ import {
   formatLengthInput,
   formatXY,
   fromMicron,
-  roundMicronToNanometre,
+  roundMicronToTenthNanometre,
   toMicron,
   XY_UNITS,
 } from '../units.js';
@@ -46,10 +46,14 @@ test('unknown units fall back to microns', () => {
   assert.equal(fromMicron(12, 'unknown'), 12);
 });
 
-test('manual length inputs round and display only to 1 nm precision', () => {
-  assert.equal(roundMicronToNanometre(1.23456), 1.235);
-  assert.equal(roundMicronToNanometre(-0.00049), 0);
-  assert.equal(formatLengthInput(1.23456, 'um'), '1.235');
-  assert.equal(formatLengthInput(1.23456, 'nm'), '1235');
-  assert.equal(formatLengthInput(1234.56789, 'mm'), '1.234568');
+test('manual length inputs round and display to 0.1 nm precision', () => {
+  assert.equal(roundMicronToTenthNanometre(1.23456), 1.2346);
+  assert.equal(roundMicronToTenthNanometre(-0.000049), 0);
+  assert.equal(roundMicronToTenthNanometre(-0.00006), -0.0001);
+  assert.equal(formatLengthInput(1.23456, 'um'), '1.2346');
+  assert.equal(formatLengthInput(1.23456, 'nm'), '1234.6');
+  assert.equal(formatLengthInput(1234.56789, 'mm'), '1.2345679');
+  assert.equal(formatLengthInput(0.0003, 'nm'), '0.3');
+  assert.equal(formatLengthInput(0.0007, 'um'), '0.0007');
+  assert.equal(formatLengthInput(0.0014, 'nm'), '1.4');
 });
