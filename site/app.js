@@ -7,7 +7,7 @@ import {
   formatLengthInput,
   formatXY as formatXYValue,
   fromMicron,
-  roundMicronToNanometre,
+  roundMicronToTenthNanometre,
   toMicron,
   unitMeta,
 } from './units.js';
@@ -261,7 +261,7 @@ function xyText(value) {
   return `${formatXY(value)} ${xyUnit().label}`;
 }
 function manualMicron(value) {
-  return roundMicronToNanometre(xyFromDisplay(Number(value)));
+  return roundMicronToTenthNanometre(xyFromDisplay(Number(value)));
 }
 function formatLengthField(valueMicron) {
   return formatLengthInput(valueMicron, xyDisplayUnit);
