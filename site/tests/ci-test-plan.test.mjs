@@ -64,6 +64,25 @@ test('shared browser bootstrap helper changes conservatively run the complete su
   for (const suite of BROWSER_SUITES) assert.equal(plan.suites[suite], true);
 });
 
+test('shared scientific browser helper changes conservatively run the complete suite', () => {
+  const plan = buildCiTestPlan(['scripts/test-helpers/product-scientific.mjs']);
+  assert.equal(plan.full, true);
+  for (const suite of BROWSER_SUITES) assert.equal(plan.suites[suite], true);
+});
+
+test('shared Section and rough renderer helpers select renderer coverage', () => {
+  for (const path of [
+    'site/plan-renderers.js',
+    'site/rough-mesh-geometry.js',
+    'site/rough-mesh-worker.js',
+    'site/surface-rendering.js',
+    'site/annotation-rendering.js',
+  ]) {
+    const plan = buildCiTestPlan([path]);
+    assert.equal(plan.suites.renderer, true, `${path} must select renderer regression`);
+  }
+});
+
 test('dependency changes conservatively run the complete browser suite', () => {
   const plan = buildCiTestPlan(['package-lock.json']);
   assert.equal(plan.full, true);
