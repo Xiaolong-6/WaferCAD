@@ -132,7 +132,7 @@ Polygon Boolean operations are provided by the vendored `polygon-clipping` libra
 
 ### `site/units.js`
 
-Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only. User-entered/displayed length fields use a 1 nm quantization boundary. Imported geometry and internal vector operations retain their working precision; project persistence separately normalizes physical lengths and coordinates to 0.1 nm.
+Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only. User-entered/displayed length fields use a **0.1 nm** quantization boundary, matching the project-file physical-coordinate normalization. Imported geometry and internal vector operations retain their working precision.
 
 ### `site/workspace-snapshots.js`
 
