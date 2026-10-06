@@ -1,4 +1,5 @@
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
+import { validateProcessModel } from '../project-schema.js';
 import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
 
 export function createProcessPanelController({
@@ -546,6 +547,17 @@ export function createProcessPanelController({
           };
         }
 
+        try {
+          validateProcessModel(task.model);
+        } catch (error) {
+          return {
+            ok: false,
+            completed,
+            failedOperation: operation,
+            error: `Process result rejected; the previous structure and History were preserved. ${error.message}`,
+          };
+        }
+
         saveHistory();
         clearBaseRevertSnapshot();
         setModel(task.model);
@@ -823,6 +835,15 @@ export function createProcessPanelController({
     const result = task.result;
     if (!result?.changed) {
       return status(result?.error || 'The operation did not change the model.', 'warning');
+    }
+
+    try {
+      validateProcessModel(task.model);
+    } catch (error) {
+      return status(
+        `Process result rejected; the previous structure and History were preserved. ${error.message}`,
+        'error',
+      );
     }
 
     let branchCommit = null;
