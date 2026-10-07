@@ -159,19 +159,23 @@ export function triangulatePolygon(THREE, polygon) {
   const rings = (polygon || []).map(openRing).filter((ring) => ring.length >= 3);
   if (!rings[0]?.length) return [];
 
-  const expectedArea = polygonArea(rings),
-    threeRings = rings.map((ring) => ring.map(([x, y]) => new THREE.Vector2(x, y))),
+  const expectedArea = polygonArea(rings);
+  if (expectedArea <= TRIANGULATION_ABSOLUTE_TOLERANCE) return [];
+
+  const threeRings = rings.map((ring) => ring.map(([x, y]) => new THREE.Vector2(x, y))),
     points = threeRings.flat(),
     faces = THREE.ShapeUtils.triangulateShape(threeRings[0], threeRings.slice(1)),
-    primary = faces.map((face) => face.map((index) => [points[index].x, points[index].y])),
+    primary = faces
+      .map((face) => face.map((index) => [points[index].x, points[index].y]))
+      .filter((triangle) => triangleArea(triangle) > TRIANGULATION_ABSOLUTE_TOLERANCE),
     primaryArea = trianglesArea(primary);
 
-  if (expectedArea <= TRIANGULATION_ABSOLUTE_TOLERANCE || areaMatches(expectedArea, primaryArea)) {
-    return primary;
-  }
+  if (areaMatches(expectedArea, primaryArea)) return primary;
 
-  const fallback = radialAnnulusTriangles(rings);
-  if (fallback && areaMatches(expectedArea, trianglesArea(fallback))) return fallback;
+  const fallback = radialAnnulusTriangles(rings)?.filter(
+    (triangle) => triangleArea(triangle) > TRIANGULATION_ABSOLUTE_TOLERANCE,
+  );
+  if (fallback?.length && areaMatches(expectedArea, trianglesArea(fallback))) return fallback;
 
   // A missing cap is preferable to a malformed triangle spanning unrelated material.
   return [];
