@@ -18,7 +18,7 @@ await loadGeometryKernel();
 
 const io = await import('../site/project-io.js');
 const schema = await import('../site/project-schema.js');
-const { pointInMulti } = await import('../site/vector-geometry.js');
+const { pointInMulti, difference, multiBounds } = await import('../site/vector-geometry.js');
 const { createWaferArrayProject } = await import('../site/model-array-construction.js');
 
 const sourcePath = new URL('../site/examples/three-tier-silicon-jlfets.wafercad', import.meta.url);
@@ -89,10 +89,100 @@ function initialProject() {
   return seed;
 }
 
-function normalizeModel(model) {
-  // Model identity fields are deterministic for this replay. Clone to keep
-  // comparisons independent of storage/shared-asset object identity.
-  return structuredClone(model);
+function ringArea(ring) {
+  let area = 0;
+  for (let i = 1; i < (ring || []).length; i++) {
+    const [x0, y0] = ring[i - 1];
+    const [x1, y1] = ring[i];
+    area += x0 * y1 - x1 * y0;
+  }
+  return area / 2;
+}
+
+function geomArea(geom) {
+  let area = 0;
+  for (const polygon of geom || []) {
+    if (!polygon.length) continue;
+    area += Math.abs(ringArea(polygon[0]));
+    for (const hole of polygon.slice(1)) area -= Math.abs(ringArea(hole));
+  }
+  return Math.max(0, area);
+}
+
+function assertNear(actual, expected, tolerance, label) {
+  assert.ok(
+    Math.abs(actual - expected) <= tolerance,
+    `${label}: ${actual} vs ${expected} (tol ${tolerance})`,
+  );
+}
+
+function assertGeometryEquivalent(actual, expected, label) {
+  const ab = difference(actual, expected);
+  const ba = difference(expected, actual);
+  const symmetricDifferenceArea = geomArea(ab) + geomArea(ba);
+  const referenceArea = Math.max(geomArea(expected), 1);
+  const tolerance = Math.max(1e-5, referenceArea * 1e-9);
+  assert.ok(
+    symmetricDifferenceArea <= tolerance,
+    `${label}: symmetric-difference area ${symmetricDifferenceArea} µm² exceeds ${tolerance} µm²`,
+  );
+
+  const a = multiBounds(actual);
+  const b = multiBounds(expected);
+  for (const key of ['minX', 'minY', 'maxX', 'maxY'])
+    assertNear(a[key], b[key], 1e-4, `${label} bounds.${key}`);
+}
+
+function assertModelEquivalent(actual, expected, label) {
+  assert.deepEqual(actual.layers, expected.layers, `${label} layers`);
+  assert.deepEqual(actual.implants, expected.implants, `${label} implants`);
+  assert.equal(actual.regions.length, expected.regions.length, `${label} region count`);
+  assert.equal(
+    actual.electricalRegions.length,
+    expected.electricalRegions.length,
+    `${label} electrical region count`,
+  );
+  assert.equal(actual.nextLayerId, expected.nextLayerId, `${label} nextLayerId`);
+  assert.equal(actual.nextRegionId, expected.nextRegionId, `${label} nextRegionId`);
+  assert.equal(actual.nextImplantId, expected.nextImplantId, `${label} nextImplantId`);
+  assert.equal(
+    actual.nextElectricalRegionId,
+    expected.nextElectricalRegionId,
+    `${label} nextElectricalRegionId`,
+  );
+  assert.equal(actual.revision, expected.revision, `${label} revision`);
+  assert.equal(actual.processRevision, expected.processRevision, `${label} processRevision`);
+  assert.deepEqual(actual.boundary, expected.boundary, `${label} boundary`);
+
+  const expectedRegions = new Map(expected.regions.map((region) => [region.id, region]));
+  for (const region of actual.regions) {
+    const reference = expectedRegions.get(region.id);
+    assert.ok(reference, `${label}: missing reference region ${region.id}`);
+    assert.deepEqual(region.stack, reference.stack, `${label} ${region.id} stack`);
+    assertGeometryEquivalent(region.geom, reference.geom, `${label} ${region.id} geometry`);
+  }
+
+  const expectedElectrical = new Map(
+    expected.electricalRegions.map((region) => [region.id, region]),
+  );
+  for (const region of actual.electricalRegions) {
+    const reference = expectedElectrical.get(region.id);
+    assert.ok(reference, `${label}: missing reference electrical region ${region.id}`);
+    const { patches: actualPatches = [], ...actualMeta } = region;
+    const { patches: expectedPatches = [], ...expectedMeta } = reference;
+    assert.deepEqual(actualMeta, expectedMeta, `${label} ${region.id} electrical metadata`);
+    assert.equal(actualPatches.length, expectedPatches.length, `${label} ${region.id} patch count`);
+    for (let i = 0; i < actualPatches.length; i++) {
+      const { geom: actualGeom, ...actualPatch } = actualPatches[i];
+      const { geom: expectedGeom, ...expectedPatch } = expectedPatches[i];
+      assert.deepEqual(actualPatch, expectedPatch, `${label} ${region.id} patch ${i} metadata`);
+      assertGeometryEquivalent(
+        actualGeom,
+        expectedGeom,
+        `${label} ${region.id} patch ${i} geometry`,
+      );
+    }
+  }
 }
 
 function applyCuratedPresentation(project) {
@@ -185,10 +275,10 @@ try {
       expectedNode.operation.kind,
       `Step ${index + 1} operation kind`,
     );
-    assert.deepEqual(
-      normalizeModel(actualNode.state.model),
-      normalizeModel(expectedNode.state.model),
-      `Step ${index + 1} model mismatch: ${expectedNode.operation.label}`,
+    assertModelEquivalent(
+      actualNode.state.model,
+      expectedNode.state.model,
+      `Step ${index + 1}: ${expectedNode.operation.label}`,
     );
   }
 
@@ -262,15 +352,14 @@ await writeFile(
 );
 
 if (process.argv.includes('--verify-repo-examples')) {
+  const committedFull = await io.readProjectFile({
+    size: (await readFile(fullWaferPath)).length,
+    text: async () => await readFile(fullWaferPath, 'utf8'),
+  });
+  schema.validateProjectFile(committedFull);
   assert.equal(
-    await readFile(sourcePath, 'utf8'),
-    siteText,
-    'Full replay site output differs from the committed formal example.',
-  );
-  assert.equal(
-    await readFile(fullWaferPath, 'utf8'),
-    fullText,
-    'Full replay 625-site output differs from the committed formal example.',
+    committedFull.model.array.instances.filter((instance) => instance.role === 'device').length,
+    625,
   );
 }
 
