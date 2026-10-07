@@ -29,7 +29,8 @@
     "test:ui:geometry": "npm run test:ui:process && npm run test:ui:interaction",
     "test:ui:review": "npm run test:ui:examples && npm run test:ui:product",
     "test:ui:io": "node scripts/project-io-runtime-regression.mjs",
-    "test:ui:array": "node scripts/array-runtime-regression.mjs"
+    "test:ui:array": "node scripts/array-runtime-regression.mjs",
+    "benchmark:renderer": "node scripts/renderer-pipeline-benchmark.mjs"
   },
   "devDependencies": {
     "eslint": "10.11.0",
