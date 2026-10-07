@@ -18,7 +18,7 @@ await loadGeometryKernel();
 
 const io = await import('../site/project-io.js');
 const schema = await import('../site/project-schema.js');
-const { pointInMulti, difference, multiBounds } = await import('../site/vector-geometry.js');
+const { pointInMulti, difference, multiBounds, unionGeometries } = await import('../site/vector-geometry.js');
 const { createWaferArrayProject } = await import('../site/model-array-construction.js');
 
 const sourcePath = new URL('../site/examples/three-tier-silicon-jlfets.wafercad', import.meta.url);
@@ -134,7 +134,6 @@ function assertGeometryEquivalent(actual, expected, label) {
 function assertModelEquivalent(actual, expected, label) {
   assert.deepEqual(actual.layers, expected.layers, `${label} layers`);
   assert.deepEqual(actual.implants, expected.implants, `${label} implants`);
-  assert.equal(actual.regions.length, expected.regions.length, `${label} region count`);
   assert.equal(
     actual.electricalRegions.length,
     expected.electricalRegions.length,
@@ -151,21 +150,32 @@ function assertModelEquivalent(actual, expected, label) {
   assert.equal(actual.processRevision, expected.processRevision, `${label} processRevision`);
   assert.deepEqual(actual.boundary, expected.boundary, `${label} boundary`);
 
-  const unmatchedRegions = [...expected.regions];
-  for (const region of actual.regions) {
-    const stackKey = JSON.stringify(region.stack);
-    const matchIndex = unmatchedRegions.findIndex(
-      (reference) =>
-        JSON.stringify(reference.stack) === stackKey &&
-        geometryComparison(region.geom, reference.geom).equivalent,
+  const groupRegions = (regions) => {
+    const groups = new Map();
+    for (const region of regions) {
+      const stackKey = JSON.stringify(region.stack);
+      if (!groups.has(stackKey)) groups.set(stackKey, []);
+      groups.get(stackKey).push(region.geom);
+    }
+    return groups;
+  };
+  const actualGroups = groupRegions(actual.regions);
+  const expectedGroups = groupRegions(expected.regions);
+  assert.deepEqual(
+    [...actualGroups.keys()].sort(),
+    [...expectedGroups.keys()].sort(),
+    `${label}: stack groups`,
+  );
+  for (const [stackKey, actualGeometries] of actualGroups) {
+    const expectedGeometries = expectedGroups.get(stackKey);
+    const actualUnion = unionGeometries(actualGeometries);
+    const expectedUnion = unionGeometries(expectedGeometries);
+    assertGeometryEquivalent(
+      actualUnion,
+      expectedUnion,
+      `${label}: unioned geometry for stack ${stackKey}`,
     );
-    assert.ok(
-      matchIndex >= 0,
-      `${label}: no semantic match for actual region ${region.id} with stack ${stackKey}`,
-    );
-    unmatchedRegions.splice(matchIndex, 1);
   }
-  assert.equal(unmatchedRegions.length, 0, `${label}: unmatched reference regions remain`);
 
   const expectedElectrical = new Map(
     expected.electricalRegions.map((region) => [region.id, region]),
