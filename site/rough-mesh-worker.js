@@ -28,11 +28,13 @@ self.onmessage = async (event) => {
         data: {
           positions: data.positions,
           normals: data.normals,
+          gpuDisplace: data.gpuDisplace,
           roughBorderPositions: data.roughBorderPositions,
           metadata: data.metadata,
         },
       });
       transfer.push(data.positions.buffer, data.normals.buffer, data.roughBorderPositions.buffer);
+      if (data.gpuDisplace?.buffer) transfer.push(data.gpuDisplace.buffer);
       if (reportProgress) {
         self.postMessage({
           id,
