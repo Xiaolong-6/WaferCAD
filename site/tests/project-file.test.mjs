@@ -1258,3 +1258,76 @@ test('component broad phase avoids disjoint sweeps and retains aggregate overlap
     globalThis.polygonClipping = kernel;
   }
 });
+
+
+test('project file persists and validates Process Recipe', async () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.processRecipe = {
+    version: 1,
+    name: 'Detector recipe',
+    activeStepId: 'recipe-step-2',
+    steps: [
+      {
+        id: 'recipe-step-1',
+        command: 'deposit',
+        params: {
+          material: 'SiO2',
+          thicknessUm: 0.1,
+          coverage: 'direct',
+          face: 'front',
+          area: 'full',
+        },
+      },
+      {
+        id: 'recipe-step-2',
+        command: 'etch',
+        params: {
+          target: 'SiO2',
+          thicknessUm: 0.1,
+          profile: 'directional',
+          surface: 'smooth',
+          face: 'front',
+          area: 'mask',
+          mask: {
+            sourceMode: 'file',
+            cell: 'TOP',
+            layerKeys: ['1|0'],
+            transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+            roi: null,
+          },
+        },
+      },
+    ],
+  };
+
+  assert.equal(validateProjectFile(source), source);
+  const text = serializeProject(source);
+  const loaded = await readProjectFile({
+    size: new Blob([text]).size,
+    text: async () => text,
+  });
+  assert.deepEqual(loaded.processRecipe, source.processRecipe);
+  assert.equal(validateProjectFile(loaded), loaded);
+});
+
+test('project validator rejects malformed Process Recipe structure', () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  source.processRecipe = {
+    version: 1,
+    name: 'Bad recipe',
+    activeStepId: 'missing',
+    steps: [
+      { id: 'same', command: 'deposit', params: {} },
+      { id: 'same', command: 'shell', params: {} },
+    ],
+  };
+  assert.throws(() => validateProjectFile(source), /processRecipe\.steps\[1\]\.id.*unique/);
+
+  source.processRecipe.steps[1].id = 'other';
+  assert.throws(() => validateProjectFile(source), /processRecipe\.steps\[1\]\.command.*not supported/);
+
+  source.processRecipe.steps[1].command = 'etch';
+  assert.throws(() => validateProjectFile(source), /activeStepId.*unknown recipe step/);
+});
