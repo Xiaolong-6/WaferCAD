@@ -113,6 +113,10 @@ export function createThreeView({
   let preferredPixelRatio = 1;
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
+  let presentationObjects = new Set();
+  let presentationUpdateCount = 0;
+  let physicalSceneModel = null;
+  let physicalSceneSignature = null;
 
   function renderPolicy(interactive = interacting) {
     return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
@@ -762,6 +766,7 @@ export function createThreeView({
       updateRoughMaterialLod();
       updateTransparentOrder();
       renderer.render(scene, camera);
+      updateSceneResourceDiagnostics();
       if (interacting || changed) scheduleFrame();
     });
   }
@@ -817,6 +822,9 @@ export function createThreeView({
     roughOwnedObjects = new Set();
     roughRenderContext = null;
     transparentMeshes = [];
+    presentationObjects = new Set();
+    physicalSceneModel = null;
+    physicalSceneSignature = null;
   }
 
   function inspectionMaterialState(value) {
@@ -829,6 +837,237 @@ export function createThreeView({
       depthTest: true,
       depthWrite: !translucent,
     };
+  }
+
+  function sceneSignature(model, clip, inspection = getInspection() || {}) {
+    const layers = (model?.layers || []).map((layer) => [
+      layer?.id ?? null,
+      layer?.color ?? null,
+      layer?.visible ?? null,
+      layer?.hidden ?? null,
+    ]);
+    return JSON.stringify({
+      revision: model?.revision ?? 0,
+      processRevision: model?.processRevision ?? 0,
+      fast: inspection?.fast !== false,
+      clip: clip || null,
+      zCollapse: getZCollapse?.() || null,
+      layers,
+    });
+  }
+
+  function interfaceMaterialState(opacity) {
+    return {
+      opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
+      transparent: true,
+      depthTest: true,
+      depthWrite: false,
+    };
+  }
+
+  function presentationState(descriptor, inspection = getInspection() || {}) {
+    const materialState = inspectionMaterialState(inspection.opacity),
+      opacity = materialState.opacity,
+      transparent = materialState.transparent,
+      alwaysTransparent = (value) => ({
+        opacity: Math.max(0, Math.min(1, value)),
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+      });
+    switch (descriptor?.kind) {
+      case 'material-interface':
+        return {
+          visible: transparent,
+          materialState: interfaceMaterialState(opacity),
+          transparentSort: true,
+        };
+      case 'border':
+        return {
+          visible: Boolean(inspection.borders),
+          materialState: {
+            opacity: transparent ? 0.62 : 1,
+            transparent,
+            depthTest: true,
+            depthWrite: false,
+          },
+          transparentSort: false,
+        };
+      case 'implant-cut':
+        return {
+          visible: true,
+          materialState: alwaysTransparent(
+            opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
+          ),
+          transparentSort: true,
+        };
+      case 'implant-internal':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.18),
+          transparentSort: true,
+        };
+      case 'implant-depth':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.24),
+          transparentSort: true,
+        };
+      case 'implant-surface':
+        return {
+          visible: transparent || Boolean(descriptor?.exposed),
+          materialState: alwaysTransparent(opacity * 0.3),
+          transparentSort: true,
+        };
+      case 'electrical-internal':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.14),
+          transparentSort: true,
+        };
+      case 'electrical-depth':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.2),
+          transparentSort: true,
+        };
+      case 'electrical-surface':
+        return {
+          visible: transparent || Boolean(descriptor?.exposed),
+          materialState: alwaysTransparent(opacity * 0.24),
+          transparentSort: true,
+        };
+      case 'material-exterior':
+      default:
+        return {
+          visible: true,
+          materialState,
+          transparentSort: materialState.transparent,
+        };
+    }
+  }
+
+  function applyMaterialPresentation(material, state) {
+    if (!material || !state) return;
+    const transparentChanged = material.transparent !== Boolean(state.transparent),
+      depthWriteChanged = material.depthWrite !== Boolean(state.depthWrite),
+      depthTestChanged = material.depthTest !== Boolean(state.depthTest);
+    material.opacity = Number(state.opacity);
+    material.transparent = Boolean(state.transparent);
+    material.depthTest = Boolean(state.depthTest);
+    material.depthWrite = Boolean(state.depthWrite);
+    if (transparentChanged || depthWriteChanged || depthTestChanged) material.needsUpdate = true;
+  }
+
+  function registerPresentationObject(object, descriptor = null) {
+    if (!object || !descriptor) return object;
+    object.userData ||= {};
+    object.userData.waferCadPresentation = { ...descriptor };
+    presentationObjects.add(object);
+    return object;
+  }
+
+  function refreshTransparentRegistry() {
+    transparentMeshes = [];
+    let sequence = 0;
+    for (const object of presentationObjects) {
+      if (!object?.visible || object.isLineSegments) continue;
+      const descriptor = object.userData?.waferCadPresentation || {},
+        materials = Array.isArray(object.material) ? object.material : [object.material],
+        isTransparent = materials.some((material) => Boolean(material?.transparent));
+      if (!isTransparent) {
+        object.renderOrder = 0;
+        continue;
+      }
+      transparentMeshes.push({
+        mesh: object,
+        center: object.boundingSphere?.center?.clone?.() || geometryCenter(object.geometry),
+        sortBias: Number(descriptor.sortBias) || 0,
+        depth: 0,
+        sequence: sequence++,
+      });
+    }
+    transparencyOrderDirty = true;
+  }
+
+  function updateSceneResourceDiagnostics() {
+    if (!host?.dataset || !group) return;
+    const geometries = new Set(),
+      materials = new Set();
+    let visibleObjects = 0;
+    group.traverse?.((object) => {
+      if (object === group) return;
+      if (object.visible !== false) visibleObjects++;
+      if (object.geometry) geometries.add(object.geometry);
+      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of objectMaterials) if (material) materials.add(material);
+    });
+    host.dataset.sceneObjectCount = String(Math.max(0, group.children.length));
+    host.dataset.sceneVisibleObjectCount = String(visibleObjects);
+    host.dataset.sceneGeometryCount = String(geometries.size);
+    host.dataset.sceneMaterialCount = String(materials.size);
+    host.dataset.presentationObjectCount = String(presentationObjects.size);
+    if (renderer?.info?.memory) {
+      host.dataset.webglGeometryCount = String(renderer.info.memory.geometries ?? 0);
+      host.dataset.webglTextureCount = String(renderer.info.memory.textures ?? 0);
+      host.dataset.webglProgramCount = String(renderer.info.programs?.length ?? 0);
+    }
+  }
+
+  function updateVisibleAnnotationDiagnostics() {
+    if (!host?.dataset) return;
+    const visibleCount = (kind) =>
+      [...presentationObjects].filter(
+        (object) =>
+          object?.visible !== false && object.userData?.waferCadPresentation?.kind === kind,
+      ).length;
+    host.dataset.implantInternalCount = String(visibleCount('implant-internal'));
+    host.dataset.implantCutCount = String(visibleCount('implant-cut'));
+    host.dataset.electricalRegionInternalCount = String(visibleCount('electrical-internal'));
+  }
+
+  function applyPresentationState({ profile = true, settle = true } = {}) {
+    if (!group || !presentationObjects.size) return false;
+    const started = performance.now(),
+      inspection = getInspection() || {};
+    for (const object of presentationObjects) {
+      const descriptor = object.userData?.waferCadPresentation;
+      if (!descriptor) continue;
+      const state = presentationState(descriptor, inspection),
+        materials = Array.isArray(object.material) ? object.material : [object.material];
+      object.visible = Boolean(state.visible);
+      for (const material of materials) applyMaterialPresentation(material, state.materialState);
+      if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
+    }
+    if (roughRenderContext) {
+      const materialState = inspectionMaterialState(inspection.opacity);
+      roughRenderContext.opacity = materialState.opacity;
+      roughRenderContext.borders = Boolean(inspection.borders);
+    }
+    refreshTransparentRegistry();
+    updateTransparentOrder();
+    updateVisibleAnnotationDiagnostics();
+    updateSceneResourceDiagnostics();
+    if (profile) {
+      presentationUpdateCount++;
+      host.dataset.presentationUpdateCount = String(presentationUpdateCount);
+      host.dataset.rendererUpdateKind = 'presentation';
+      host.dataset.rendererPresentationMs = String(performance.now() - started);
+      host.dataset.rendererTopologyMs = '0';
+      host.dataset.rendererSmoothCapsMs = '0';
+      host.dataset.rendererSidewallsMs = '0';
+      host.dataset.rendererAnnotationsMs = '0';
+      host.dataset.rendererAssemblyMs = '0';
+    }
+    if (settle) {
+      host.dataset.renderPhase = 'complete';
+      host.dataset.renderState = 'ready';
+      const model = getModel(),
+        clip = getClipGeometry();
+      stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
+    }
+    scheduleFrame();
+    return true;
   }
 
   function xyBounds(geometry) {
