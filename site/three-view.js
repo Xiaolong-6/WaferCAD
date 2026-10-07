@@ -2876,7 +2876,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.rendererSidewallsMs = String(rendererSidewallsAt - rendererCapsAt);
       host.dataset.rendererAnnotationsMs = String(rendererAssemblyAt - rendererSidewallsAt);
       host.dataset.rendererAssemblyMs = String(rendererAssemblyAt - rendererProfileStart);
-      updateTransparentOrder();
+      host.dataset.rendererPresentationMs = '0';
+      host.dataset.presentationUpdateCount = String(presentationUpdateCount);
+      physicalSceneModel = model;
+      physicalSceneSignature = signature;
+      applyPresentationState({ profile: false, settle: false });
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
