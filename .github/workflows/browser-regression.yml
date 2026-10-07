@@ -182,13 +182,13 @@ jobs:
         if: ${{ needs.plan.outputs.renderer == 'true' }}
         run: node scripts/renderer-product-regression.mjs
 
-      - name: Run array renderer regression
-        if: ${{ needs.plan.outputs.renderer == 'true' }}
-        run: node scripts/array-renderer-regression.mjs
-
       - name: Run renderer pipeline benchmark
         if: ${{ needs.plan.outputs.renderer == 'true' }}
         run: npm run benchmark:renderer
+
+      - name: Run array renderer regression
+        if: ${{ needs.plan.outputs.renderer == 'true' }}
+        run: node scripts/array-renderer-regression.mjs
 
       - name: Package tested preview
         if: always()
