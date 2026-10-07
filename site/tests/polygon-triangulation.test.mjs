@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
+
+const vendorSource = readFileSync(
+  new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
+const commonJsModule = { exports: {} };
+new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
+globalThis.polygonClipping = commonJsModule.exports;
 import { triangulatePolygon } from '../polygon-triangulation.js';
 
 function circularRing(radius, segments, clockwise = false) {
@@ -76,4 +85,83 @@ test('validated triangulation drops sub-grid degenerate cap slivers', () => {
     ],
   ];
   assert.deepEqual(triangulatePolygon(THREE, polygon), []);
+});
+
+
+test('validated triangulation slab-falls back for clipped multi-hole metal caps', () => {
+  const polygon = [
+      [
+        [-6, -4],
+        [6, -4],
+        [6, -1],
+        [4, -1],
+        [4, 1],
+        [6, 1],
+        [6, 4],
+        [-6, 4],
+        [-6, 1],
+        [-4, 1],
+        [-4, -1],
+        [-6, -1],
+        [-6, -4],
+      ],
+      [
+        [-3.5, -2.5],
+        [-1.5, -2.5],
+        [-1.5, 2.5],
+        [-3.5, 2.5],
+        [-3.5, -2.5],
+      ],
+      [
+        [1.5, -2.5],
+        [3.5, -2.5],
+        [3.5, 2.5],
+        [1.5, 2.5],
+        [1.5, -2.5],
+      ],
+    ],
+    expected = ringArea(polygon[0]) - ringArea(polygon[1]) - ringArea(polygon[2]),
+    forced = {
+      Vector2: THREE.Vector2,
+      ShapeUtils: {
+        triangulateShape(contour, holes) {
+          if (holes.length >= 2) return [[0, 1, 2]];
+          return THREE.ShapeUtils.triangulateShape(contour, holes);
+        },
+      },
+    },
+    triangles = triangulatePolygon(forced, polygon),
+    actual = triangles.reduce((sum, triangle) => sum + triangleArea(triangle), 0);
+
+  assert.ok(triangles.length > 0);
+  assert.ok(Math.abs(actual - expected) <= expected * 1e-8);
+});
+
+test('validated triangulation ignores repeated boolean corner vertices', () => {
+  const polygon = [
+      [
+        [-5, -5],
+        [-5, -5],
+        [5, -5],
+        [5, -5],
+        [5, 5],
+        [5, 5],
+        [-5, 5],
+        [-5, 5],
+        [-5, -5],
+      ],
+      [
+        [-4.9, -4.9],
+        [-4.9, 4.9],
+        [4.9, 4.9],
+        [4.9, -4.9],
+        [-4.9, -4.9],
+      ],
+    ],
+    expected = ringArea(polygon[0]) - ringArea(polygon[1]),
+    triangles = triangulatePolygon(THREE, polygon),
+    actual = triangles.reduce((sum, triangle) => sum + triangleArea(triangle), 0);
+
+  assert.ok(triangles.length > 0);
+  assert.ok(Math.abs(actual - expected) <= expected * 1e-8);
 });
