@@ -62,6 +62,61 @@ async function processDiagnostics(page) {
 }
 
 const browser = await launchBrowser();
+
+// Process Recipe must exercise the same real Process worker/Kernel path and
+// survive project export, not just render a code editor.
+const recipeContext = await newUiContext(browser, {
+  viewport: { width: 1365, height: 900 },
+  acceptDownloads: true,
+});
+const recipePage = await recipeContext.newPage();
+const recipeErrors = observePageErrors(recipePage);
+await recipePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await waitForAppReady(recipePage);
+await openFunctionPanel(recipePage, 'process');
+assert.equal(await recipePage.locator('#manualProcessPane').isVisible(), true);
+assert.equal(await recipePage.locator('#recipeProcessPane').isHidden(), true);
+await recipePage.locator('[data-process-input-mode="recipe"]').click();
+assert.equal(await recipePage.locator('#manualProcessPane').isHidden(), true);
+assert.equal(await recipePage.locator('#recipeProcessPane').isVisible(), true);
+
+await recipePage.locator('#recipeTemplateSelect').selectOption('conformal');
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Deposit Al2O3/);
+
+await recipePage.locator('#recipeCodeTab').click();
+assert.equal(await recipePage.locator('#recipeCodePane').isVisible(), true);
+assert.match(await recipePage.locator('#recipeCodeEditor').inputValue(), /deposit\(\{/);
+assert.match(await recipePage.locator('#recipeCodeEditor').inputValue(), /30 nm/);
+await recipePage.locator('#recipeStepsTab').click();
+
+await recipePage.locator('#recipeValidateBtn').click();
+assert.match(await recipePage.locator('#statusText').textContent(), /Recipe valid: 1 step/);
+await recipePage.locator('#recipeRunAllBtn').click();
+await recipePage.waitForFunction(
+  () => /Process Recipe completed 1 step/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+
+await openFunctionPanel(recipePage, 'project');
+const recipeDownloadPromise = recipePage.waitForEvent('download');
+await recipePage.locator('#exportProjectBtn').click();
+const recipeDownload = await recipeDownloadPromise;
+const recipePath = await recipeDownload.path();
+assert.ok(recipePath);
+const recipeSaved = expandProjectStorage(JSON.parse(await readFile(recipePath, 'utf8')));
+assert.equal(recipeSaved.processRecipe?.version, 1);
+assert.equal(recipeSaved.processRecipe?.steps?.length, 1);
+assert.equal(recipeSaved.processRecipe?.steps?.[0]?.command, 'deposit');
+assert.equal(recipeSaved.processRecipe?.steps?.[0]?.params?.material, 'Al2O3');
+assert.ok(recipeSaved.model.processRevision >= 1, 'Recipe Run All must commit through the Process kernel');
+assert.deepEqual(recipeErrors, []);
+await recipeContext.close();
+
 const context = await newUiContext(browser, {
   viewport: { width: 1365, height: 900 },
   acceptDownloads: true,
