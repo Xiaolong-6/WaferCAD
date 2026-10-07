@@ -8,9 +8,14 @@ const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile
   await import('../site/project-io.js');
 const { validateProjectFile } = await import('../site/project-schema.js');
 const write = process.argv.includes('--write');
+const requestedId = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5) || null;
+const examples = requestedId
+  ? BUNDLED_EXAMPLES.filter((example) => example.id === requestedId)
+  : BUNDLED_EXAMPLES;
+if (requestedId) assert.equal(examples.length, 1, `Unknown bundled example: ${requestedId}`);
 const reports = [];
 await mkdir(new URL('../site/examples/previews/', import.meta.url), { recursive: true });
-for (const example of BUNDLED_EXAMPLES) {
+for (const example of examples) {
   const sourcePath = new URL(
     '../site/' + (example.previewSourcePath || example.path).replace(/^\.\//, ''),
     import.meta.url,
