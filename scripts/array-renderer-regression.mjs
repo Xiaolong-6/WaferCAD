@@ -74,8 +74,64 @@ try {
     'Transparent array retains native buried electrical annotations',
   );
   assert.equal(transparent.materialLayerIds, fast.materialLayerIds);
+  assert.equal(
+    transparent.sceneGeneration,
+    quality.sceneGeneration,
+    'Opacity must not rebuild the physical scene',
+  );
+  assert.equal(
+    transparent.surfacePlanBuildCount,
+    quality.surfacePlanBuildCount,
+    'Opacity must not rebuild the surface plan',
+  );
+  assert.equal(transparent.rendererUpdateKind, 'presentation');
+  assert.equal(transparent.rendererAssemblyMs, '0');
+  assert.ok(
+    Number(transparent.presentationUpdateCount) > Number(quality.presentationUpdateCount || 0),
+    'Opacity must take the persistent presentation path',
+  );
+
+  const stableResources = Object.fromEntries(
+    ['sceneObjectCount', 'sceneGeometryCount', 'sceneMaterialCount', 'presentationObjectCount'].map(
+      (key) => [key, transparent[key]],
+    ),
+  );
+  for (let cycle = 0; cycle < 10; cycle++) {
+    await page.locator('#threeOpacityRange').fill(cycle % 2 ? '0.5' : '1');
+    await waitForThreeReady(page, 120000);
+  }
+  const stressOpacity = await snapshot();
+  for (const [key, value] of Object.entries(stableResources)) {
+    assert.equal(stressOpacity[key], value, `${key} changed across repeated opacity updates`);
+  }
+  assert.equal(stressOpacity.sceneGeneration, quality.sceneGeneration);
+  assert.equal(stressOpacity.surfacePlanBuildCount, quality.surfacePlanBuildCount);
+
+  const borders = page.locator('#threeBorders');
+  for (let cycle = 0; cycle < 6; cycle++) {
+    if (cycle % 2) await borders.uncheck();
+    else await borders.check();
+    await waitForThreeReady(page, 120000);
+  }
+  const stressBorders = await snapshot();
+  for (const [key, value] of Object.entries(stableResources)) {
+    assert.equal(stressBorders[key], value, `${key} changed across repeated border updates`);
+  }
+  assert.equal(stressBorders.sceneGeneration, quality.sceneGeneration);
+  assert.equal(stressBorders.surfacePlanBuildCount, quality.surfacePlanBuildCount);
+  assert.equal(stressBorders.rendererUpdateKind, 'presentation');
+
+  await page.locator('#threeOpacityRange').fill('0.5');
+  await waitForThreeReady(page, 120000);
   await page.screenshot({ path: fileURLToPath(new URL('transparent.png', output)) });
   await page.locator('#threeOpacityRange').fill('1');
+  await waitForThreeReady(page, 120000);
+  const opaqueAgain = await snapshot();
+  assert.equal(opaqueAgain.sceneGeneration, quality.sceneGeneration);
+  assert.equal(opaqueAgain.surfacePlanBuildCount, quality.surfacePlanBuildCount);
+  assert.equal(opaqueAgain.rendererUpdateKind, 'presentation');
+  await borders.uncheck();
+  await waitForThreeReady(page, 120000);
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeFastBtn').click();
   await waitForThreeReady(page, 120000);
