@@ -757,6 +757,11 @@ export function createThreeView({
     });
   }
 
+  async function yieldSceneAssembly() {
+    scheduleFrame();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
   function resize() {
     if (!renderer) return;
     const rect = host.getBoundingClientRect();
@@ -1460,6 +1465,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     updateTransparentOrder();
     updateRoughDiagnostics();
     if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
+    host.dataset.renderPhase = mode === 'interactive' ? 'preview' : 'complete';
     host.dataset.renderState = 'ready';
     stats.textContent = hasMaterial(context.model)
       ? context.clip
@@ -1861,7 +1867,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return initPromise;
   }
 
-  function render() {
+  async function render() {
     if (!ready) return;
     if (rendering) {
       pendingRender = true;
@@ -1900,6 +1906,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
           : null,
         smoothCaps = new Map(),
         sidewalls = new Map();
+      let sceneAssemblyYields = 0,
+        capAssemblyIndex = 0,
+        capBucketIndex = 0,
+        sidewallAssemblyIndex = 0,
+        sidewallBucketIndex = 0;
 
       host.dataset.materialLayerIds = JSON.stringify(
         [...new Set([...plan.caps, ...plan.sidewalls].map((part) => part.layerId))].sort(),
@@ -1939,6 +1950,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothCapInstanceCount = 0;
       smoothCapTemplateTriangleCount = 0;
       for (const cap of plan.caps) {
+        if (++capAssemblyIndex % 24 === 0) {
+          sceneAssemblyYields++;
+          await yieldSceneAssembly();
+        }
         if (!zIsVisible(cap.z)) continue;
         const state = stateFor(cap);
         if (!state) continue;
@@ -1972,6 +1987,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
 
       for (const bucket of smoothCaps.values()) {
+        if (++capBucketIndex % 8 === 0) {
+          sceneAssemblyYields++;
+          await yieldSceneAssembly();
+        }
         const state = stateFor(bucket.part),
           visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
         if (!state || !visibleCaps.length) continue;
@@ -2055,6 +2074,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
       for (const sidewall of plan.sidewalls) {
+        if (++sidewallAssemblyIndex % 24 === 0) {
+          sceneAssemblyYields++;
+          await yieldSceneAssembly();
+        }
         const state = stateFor(sidewall);
         if (!state) continue;
         if (sidewall.instanceTranslations) {
@@ -2075,6 +2098,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
+        if (++sidewallBucketIndex % 8 === 0) {
+          sceneAssemblyYields++;
+          await yieldSceneAssembly();
+        }
         const state = stateFor(bucket.part),
           visibleParts = displaySidewallParts(bucket.items);
         if (!state || !visibleParts.length) continue;
@@ -2124,6 +2151,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+
+      host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
+      if (sceneAssemblyYields) {
+        host.dataset.renderPhase = 'assembling';
+        await yieldSceneAssembly();
+      }
 
       if (borders) {
         addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
@@ -2480,6 +2513,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.electricalRegionSurfaceCount = String(electricalRegionSurfaceCount);
       updateTransparentOrder();
       if (!roughTasks.length) {
+        host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
@@ -2496,6 +2530,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
 
     if (roughTasks.length) {
+      host.dataset.renderPhase = 'rough-preview';
       host.dataset.renderState = 'refining';
       void requestRoughGeometry('interactive', { refineAfter: true });
     }
