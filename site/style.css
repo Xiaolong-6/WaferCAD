@@ -5214,6 +5214,9 @@ summary:focus-visible {
   gap: 6px;
   padding-top: 1px;
 }
+.recipe-process-pane[hidden] {
+  display: none !important;
+}
 .recipe-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
