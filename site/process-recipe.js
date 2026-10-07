@@ -408,7 +408,7 @@ class LiteralParser {
     if (this.nodes > 100000) this.error('Recipe literal exceeds the value budget');
     const ch = this.source[this.index];
     if (ch === '{' || ch === '[') {
-      if (this.depth >= 32) this.error('Recipe literal is nested too deeply');
+      if (this.depth >= 12) this.error('Recipe literal is nested too deeply');
       this.depth += 1;
       try {
         return ch === '{' ? this.object() : this.array();
