@@ -23,9 +23,12 @@ function processRecipeSignature(operation) {
       note: operation.note ?? null,
     };
   }
+  const replay = structuredClone(operation?.replay ?? null);
+  if (replay?.params?.growth === 'transfer' && !replay.params.transferMode)
+    replay.params.transferMode = 'follow';
   return {
     kind: operation?.kind ?? null,
-    replay: operation?.replay ?? null,
+    replay,
   };
 }
 
