@@ -25,7 +25,11 @@ export function normalizeMulti(geom) {
   for (const poly of geom) {
     if (!Array.isArray(poly)) continue;
     const rings = poly.map(closeRing).filter((ring) => ring.length >= 4);
-    if (rings.length) out.push(rings);
+    if (!rings.length || Math.abs(signedRingArea(rings[0])) <= 1e-18) continue;
+    out.push([
+      rings[0],
+      ...rings.slice(1).filter((ring) => Math.abs(signedRingArea(ring)) > 1e-18),
+    ]);
   }
   return out;
 }
