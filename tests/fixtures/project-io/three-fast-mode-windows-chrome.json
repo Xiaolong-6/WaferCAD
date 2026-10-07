@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-07",
+  "baselineProductCommit": "d37e51a",
+  "environment": {
+    "os": "Windows",
+    "node": "24.19.0",
+    "playwright": "1.55.1",
+    "chrome": "154.0.8037.98",
+    "three": "0.179.1",
+    "headlessTiming": false,
+    "softwareWebGL": true,
+    "viewport": [1440, 960],
+    "runsPerMode": 3,
+    "sameContextAndCameraPerMode": true
+  },
+  "benchmark": {
+    "browser": "154.0.8037.98",
+    "model": {
+      "width": 76200,
+      "regions": 3,
+      "layers": 2,
+      "implants": 1
+    },
+    "modes": [
+      {
+        "repeat": 0,
+        "quality": "quality",
+        "topology": "{\"caps\":5,\"sidewalls\":592}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "triangles": 110560,
+        "subdivisionTriangles": 108464,
+        "budget": 265625,
+        "sidewallTriangles": 594314,
+        "implantCutCount": "0",
+        "implantInternalCount": "0",
+        "rebuildMs": 5097.6966999999995,
+        "workerMs": 2608.7999999970198
+      },
+      {
+        "repeat": 0,
+        "quality": "fast",
+        "topology": "{\"caps\":5,\"sidewalls\":592}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "triangles": 26440,
+        "subdivisionTriangles": 25688,
+        "budget": 53125,
+        "sidewallTriangles": 148874,
+        "implantCutCount": "0",
+        "implantInternalCount": "0",
+        "rebuildMs": 1102.9056,
+        "workerMs": 237.09999999403954
+      },
+      {
+        "repeat": 1,
+        "quality": "quality",
+        "topology": "{\"caps\":5,\"sidewalls\":592}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "triangles": 110560,
+        "subdivisionTriangles": 108464,
+        "budget": 265625,
+        "sidewallTriangles": 594314,
+        "implantCutCount": "0",
+        "implantInternalCount": "0",
+        "rebuildMs": 5063.481200000002,
+        "workerMs": 2627.5
+      },
+      {
+        "repeat": 1,
+        "quality": "fast",
+        "topology": "{\"caps\":5,\"sidewalls\":592}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "triangles": 26440,
+        "subdivisionTriangles": 25688,
+        "budget": 53125,
+        "sidewallTriangles": 148874,
+        "implantCutCount": "0",
+        "implantInternalCount": "0",
+        "rebuildMs": 1121.7108999999982,
+        "workerMs": 235.6000000089407
+      },
+      {
+        "repeat": 2,
+        "quality": "quality",
+        "topology": "{\"caps\":5,\"sidewalls\":592}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "triangles": 110560,
+        "subdivisionTriangles": 108464,
+        "budget": 265625,
+        "sidewallTriangles": 594314,
+        "implantCutCount": "0",
+        "implantInternalCount": "0",
+        "rebuildMs": 4974.057399999998,
+        "workerMs": 2550.2999999970198
+      },
+      {
+        "repeat": 2,
+        "quality": "fast",
+        "topology": "{\"caps\":5,\"sidewalls\":592}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "triangles": 26440,
+        "subdivisionTriangles": 25688,
+        "budget": 53125,
+        "sidewallTriangles": 148874,
+        "implantCutCount": "0",
+        "implantInternalCount": "0",
+        "rebuildMs": 1080.9977,
+        "workerMs": 237
+      }
+    ],
+    "medianFastWorkerMs": 237,
+    "medianQualityWorkerMs": 2608.7999999970198,
+    "medianFastRebuildMs": 1102.9056,
+    "medianQualityRebuildMs": 5063.481200000002,
+    "interactive": {
+      "triangles": 6642,
+      "budget": 13281,
+      "fps": 60.29285099064446
+    },
+    "errors": []
+  },
+  "inspection": {
+    "browser": "154.0.8037.98",
+    "model": {
+      "width": 76200,
+      "regions": 3,
+      "layers": 2,
+      "implants": 1
+    },
+    "modes": [],
+    "inspection": [
+      {
+        "opacity": 1,
+        "topology": "{\"caps\":5,\"sidewalls\":28}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "implantCuts": 1,
+        "internalImplants": 0
+      },
+      {
+        "opacity": 0.55,
+        "topology": "{\"caps\":5,\"sidewalls\":28}",
+        "layerIds": "[\"base\",\"layer-1\"]",
+        "implantCuts": 1,
+        "internalImplants": 3
+      }
+    ],
+    "interactive": {
+      "triangles": 6496,
+      "budget": 9595,
+      "fps": 60.28086910416051
+    },
+    "errors": []
+  }
+}

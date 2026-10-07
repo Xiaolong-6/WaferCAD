@@ -76,6 +76,7 @@ test('camera, plan zoom, working selections, Section inspection and display togg
   project.display.maskOpacity = 0.25;
   project.display.threeOpacity = 0.55;
   project.display.threeShowBorders = true;
+  project.display.threeFastMode = false;
   project.display.threeCamera = {
     position: [12, -8, 5],
     target: [0, 0, 0],
@@ -140,6 +141,7 @@ test('lightweight view state round-trips without structural geometry', () => {
   source.display.maskOpacity = 0.3;
   source.display.threeOpacity = 0.45;
   source.display.threeShowBorders = true;
+  source.display.threeFastMode = false;
   source.display.threeCamera = {
     position: [3, 4, 5],
     target: [1, 2, 0],
@@ -167,6 +169,7 @@ test('lightweight view state round-trips without structural geometry', () => {
   assert.equal(target.display.maskOpacity, 0.3);
   assert.equal(target.display.threeOpacity, 0.45);
   assert.equal(target.display.threeShowBorders, true);
+  assert.equal(target.display.threeFastMode, false);
   assert.deepEqual(target.display.threeCamera, source.display.threeCamera);
   assert.deepEqual(target.display.sectionCollapse, source.display.sectionCollapse);
   assert.equal(target.model, originalModel);

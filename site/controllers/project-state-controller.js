@@ -111,6 +111,7 @@ export function createProjectStateController({
         maskOpacity: state.maskOpacity,
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
+        threeFastMode: state.threeFastMode !== false,
         threeCamera: state.threeCamera,
         sectionScaleMode: state.sectionScaleMode,
         sectionShowBorders: state.sectionShowBorders,
@@ -199,6 +200,7 @@ export function createProjectStateController({
       maskOpacity,
       threeOpacity,
       threeShowBorders,
+      threeFastMode: project.display?.threeFastMode !== false,
       threeCamera,
       sectionScaleMode,
       sectionShowBorders,
@@ -243,6 +245,7 @@ export function createProjectStateController({
       maskOpacity: previous.maskOpacity,
       threeOpacity: previous.threeOpacity,
       threeShowBorders: previous.threeShowBorders,
+      threeFastMode: previous.threeFastMode !== false,
       threeCamera: null,
       planViews: {
         mask: { zoom: 1, panX: 0, panY: 0 },

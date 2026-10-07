@@ -5,6 +5,7 @@ const VIEW_DISPLAY_KEYS = [
   'maskOpacity',
   'threeOpacity',
   'threeShowBorders',
+  'threeFastMode',
   'threeCamera',
   'sectionScaleMode',
   'sectionShowBorders',

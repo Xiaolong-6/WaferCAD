@@ -1,4 +1,5 @@
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
+import { threeRenderPolicy } from './render-quality-policy.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -103,6 +104,23 @@ export function createThreeView({
   let zDisplayObjects = new Set();
   let currentZDisplay = null;
   let preferredPixelRatio = 1;
+  let lastTransparencySort = -Infinity;
+  let transparencyOrderDirty = true;
+
+  function renderPolicy(interactive = interacting) {
+    return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
+  }
+
+  function syncRenderPolicy() {
+    const policy = renderPolicy();
+    host.dataset.renderQuality = policy.mode;
+    if (renderer?.domElement) renderer.domElement.dataset.renderQuality = policy.mode;
+    const ratio = Math.min(preferredPixelRatio, policy.maxPixelRatio);
+    if (renderer && Math.abs(renderer.getPixelRatio() - ratio) > 1e-9) {
+      renderer.setPixelRatio(ratio);
+      resize();
+    }
+  }
 
   function normalizeViewState(value) {
     if (!value || typeof value !== 'object') return null;
@@ -628,7 +646,7 @@ export function createThreeView({
       targetQuantum = Math.max(1e-9, 80 / Math.max(1e-12, pxPerUnit)),
       targetXBucket = Math.round(controls.target.x / targetQuantum),
       targetYBucket = Math.round(controls.target.y / targetQuantum);
-    return `${scaleBucket}:${azimuthBucket}:${elevationBucket}:${widthBucket}:${heightBucket}:${targetXBucket}:${targetYBucket}`;
+    return `${renderPolicy(false).mode}:${scaleBucket}:${azimuthBucket}:${elevationBucket}:${widthBucket}:${heightBucket}:${targetXBucket}:${targetYBucket}`;
   }
 
   function updateRoughMaterialLod() {
@@ -751,6 +769,8 @@ export function createThreeView({
     clearRoughRefineTimer();
     terminateRoughWorker({ invalidate: true });
     roughInteractionCache = null;
+    transparencyOrderDirty = true;
+    lastTransparencySort = -Infinity;
     currentRoughMode = 'none';
     lastLodSignature = null;
     if (renderer?.domElement?.dataset) {
@@ -977,8 +997,16 @@ export function createThreeView({
       const featureSizes = [part.lowerSurface, part.upperSurface]
           .map((surface) => Number(surface?.appearance?.featureSize))
           .filter((value) => Number.isFinite(value) && value > 0),
-        targetStep = featureSizes.length ? Math.max(1e-6, Math.min(...featureSizes) / 4) : length,
-        segments = Math.max(1, Math.min(512, Math.ceil(length / targetStep))),
+        targetStep = featureSizes.length
+          ? Math.max(
+              1e-6,
+              Math.min(...featureSizes) / (4 * Math.sqrt(renderPolicy(false).roughnessDetail)),
+            )
+          : length,
+        segments = Math.max(
+          1,
+          Math.min(renderPolicy(false).sidewallSegments, Math.ceil(length / targetStep)),
+        ),
         pointAt = (t) => [p[0] + dx * t, p[1] + dy * t],
         hasDepth =
           Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth)),
@@ -1015,6 +1043,14 @@ export function createThreeView({
 
   function updateTransparentOrder() {
     if (!camera || !group || !transparentMeshes.length) return;
+    const now = performance.now();
+    if (
+      !transparencyOrderDirty &&
+      now - lastTransparencySort < renderPolicy().transparencySortInterval
+    )
+      return;
+    lastTransparencySort = now;
+    transparencyOrderDirty = false;
     camera.updateMatrixWorld();
     for (const entry of transparentMeshes) {
       const point = displayedObjectCenter(entry.mesh);
@@ -1104,6 +1140,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     group.add(mesh);
     trackZDisplayObject(mesh);
     if (materialState.transparent) {
+      transparencyOrderDirty = true;
       transparentMeshes.push({
         mesh,
         center,
@@ -1219,7 +1256,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
   function prepareAdaptiveRoughTasks({ interactive = false } = {}) {
     const context = roughRenderContext;
     if (!context || !roughTasks.length) return { tasks: [], sceneBudget: 0 };
-    const focus = focusBounds(),
+    const policy = renderPolicy(interactive),
+      focus = focusBounds(),
       requests = [],
       tasks = roughTasks.map((task) => {
         const zones = prepareRoughSpatialZones(task).map((zone) => {
@@ -1227,7 +1265,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             lodContext = lodContextFor(context.model, context.clip, null, task.cap.z, {
               visibleFraction: priority >= 0.9 ? 1 : priority >= 0.2 ? 0.2 : 0.04,
               screenPriority: priority,
-              maxDepth: interactive ? 3 : priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
+              maxDepth: Math.min(policy.maxDepth, priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5),
               patchBounds: zone.bounds,
             }),
             preview = adaptiveRoughMeshLod({
@@ -1235,10 +1273,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
               maxEdge: zone.maxEdge,
               featureSize: task.cap.appearance?.featureSize,
               ...lodContext,
+              roughnessDetail:
+                policy.roughnessDetail * (task.cap.buried ? policy.interfaceDetail : 1),
             }),
             prepared = {
               ...zone,
-              lodContext,
+              lodContext: {
+                ...lodContext,
+                roughnessDetail:
+                  policy.roughnessDetail * (task.cap.buried ? policy.interfaceDetail : 1),
+              },
               triangleBudget: null,
             };
           requests.push({
@@ -1252,13 +1296,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         return { ...task, zones };
       }),
       viewport = currentViewport(),
-      requestedSceneBudget = roughSceneTriangleBudget({
+      qualitySceneBudget = roughSceneTriangleBudget({
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
         pixelRatio: viewport.pixelRatio,
         roiFraction: roughSceneRoiFraction(context.model, context.clip),
-        hardCap: interactive ? 70000 : 900000,
+        hardCap: 900000,
       }),
+      requestedSceneBudget = Math.max(1, Math.floor(qualitySceneBudget * policy.triangleBudget)),
       baseTriangleCount = requests.reduce((sum, request) => sum + request.baseTriangles, 0),
       sceneBudget = Math.max(requestedSceneBudget, baseTriangleCount),
       allocations = allocateRoughTriangleBudgets(requests, {
@@ -1268,7 +1313,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     requests.forEach((request, index) => {
       request.zone.triangleBudget = allocations[index];
     });
-    return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount };
+    return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount, policy };
   }
 
   function roughWorkerDiagnostics(prepared) {
@@ -1395,6 +1440,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
           sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
+          analyticNormals: prepared.policy.analyticNormals,
           lodZones: task.zones.map((zone) => ({
             baseTriangles: zone.baseTriangles,
             maxEdge: zone.maxEdge,
@@ -1557,6 +1603,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           profileNormal: cap.profileNormal,
           lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
           lodZones: task.zones,
+          analyticNormals: prepared.policy.analyticNormals,
         });
         if (task.implant) {
           setAnnotationDepthAttribute(
@@ -1678,7 +1725,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
             interacting = true;
             clearRoughRefineTimer();
             terminateRoughWorker({ invalidate: true });
-            const interactionPixelRatio = Math.min(preferredPixelRatio, 1);
+            syncRenderPolicy();
+            const interactionPixelRatio = Math.min(
+              preferredPixelRatio,
+              renderPolicy().maxPixelRatio,
+            );
             if (Math.abs(renderer.getPixelRatio() - interactionPixelRatio) > 1e-9) {
               renderer.setPixelRatio(interactionPixelRatio);
               resize();
@@ -1706,11 +1757,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
           controls.addEventListener('end', () => {
             interacting = false;
-            if (Math.abs(renderer.getPixelRatio() - preferredPixelRatio) > 1e-9) {
-              renderer.setPixelRatio(preferredPixelRatio);
-              resize();
-            }
-            host.dataset.interactionPixelRatio = String(preferredPixelRatio);
+            syncRenderPolicy();
+            transparencyOrderDirty = true;
+            updateTransparentOrder();
+            host.dataset.interactionPixelRatio = String(renderer.getPixelRatio());
             scheduleDetailedRoughBuild();
             pendingViewState = getViewState();
             onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
@@ -1782,6 +1832,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     rendering = true;
     try {
       disposeGroup();
+      syncRenderPolicy();
       applyZDisplayState(model);
 
       const clip = getClipGeometry(),
@@ -1801,6 +1852,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
         smoothCaps = new Map(),
         sidewalls = new Map();
 
+      host.dataset.materialLayerIds = JSON.stringify(
+        [...new Set([...plan.caps, ...plan.sidewalls].map((part) => part.layerId))].sort(),
+      );
+      host.dataset.surfaceTopology = JSON.stringify({
+        caps: plan.caps.length,
+        sidewalls: plan.sidewalls.length,
+      });
       surfacePlanBuildCount++;
       if (renderer?.domElement?.dataset) {
         renderer.domElement.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
@@ -1982,6 +2040,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
+      host.dataset.sidewallTriangleCount = String(
+        group.children.reduce(
+          (sum, object) => sum + (object.geometry?.getAttribute?.('position')?.count || 0) / 3,
+          0,
+        ),
+      );
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );

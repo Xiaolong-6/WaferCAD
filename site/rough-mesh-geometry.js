@@ -123,6 +123,7 @@ export function roughMeshDataFromPreparedCap({
   lodContext = {},
   lodZones = null,
   profileNormal = normal,
+  analyticNormals = true,
 }) {
   const zones = Array.isArray(lodZones) && lodZones.length ? lodZones : [{ polys, lodContext }],
     positions = [],
@@ -160,6 +161,10 @@ export function roughMeshDataFromPreparedCap({
       normals.push(...faceNormal, ...faceNormal, ...faceNormal);
     },
     pushRoughTriangle = (a, b, c) => {
+      if (!analyticNormals) {
+        pushTriangle(a, b, c);
+        return;
+      }
       positions.push(...a, ...b, ...c);
       normals.push(
         ...roughPointNormal(a, normal, profileNormal, appearance),
@@ -369,6 +374,7 @@ export function geometryFromRoughCap(
     lodContext = {},
     lodZones = null,
     profileNormal = normal,
+    analyticNormals = true,
   },
 ) {
   const sourceZones =
@@ -404,6 +410,7 @@ export function geometryFromRoughCap(
       lodContext,
       lodZones: preparedZones,
       profileNormal,
+      analyticNormals,
     });
   return geometryFromRoughMeshData(THREE, data);
 }

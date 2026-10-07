@@ -80,3 +80,17 @@ test('strict file results are reused once, with exact mutation detection and str
     Object.assign(kernel, original);
   }
 });
+
+test('Fast display preference is optional, boolean and never a geometry migration', async () => {
+  const controller = createProjectStateController({});
+  const project = await controller.readProjectSnapshot(file),
+    state = statesOf(project)[0];
+  const before = structuredClone(state.model);
+  for (const preference of [true, false]) {
+    state.display.threeFastMode = preference;
+    assert.equal(controller.isValidSnapshotState(state), true);
+    assert.deepEqual(state.model, before);
+  }
+  state.display.threeFastMode = 'fast';
+  assert.equal(controller.isValidSnapshotState(state), false);
+});

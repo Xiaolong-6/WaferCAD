@@ -732,6 +732,9 @@ function validateDisplay(display) {
   if (display.threeOpacity != null) {
     assertFinite(display.threeOpacity, 'display.threeOpacity', { min: 0.1, max: 1 });
   }
+  if (display.threeFastMode != null && typeof display.threeFastMode !== 'boolean') {
+    fail('display.threeFastMode', 'must be boolean.');
+  }
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
   }

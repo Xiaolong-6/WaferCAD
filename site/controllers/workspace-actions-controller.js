@@ -33,6 +33,8 @@ export function createWorkspaceActionsController({
   renderMask,
   getThreeOpacity,
   setThreeOpacity,
+  getThreeFastMode,
+  setThreeFastMode,
   getThreeShowBorders,
   setThreeShowBorders,
   renderThree,
@@ -147,6 +149,14 @@ export function createWorkspaceActionsController({
       setThreeOpacity(Math.max(0.1, Math.min(1, Number($('threeOpacityRange').value) || 1)));
       $('threeOpacityValue').value = `${Math.round(getThreeOpacity() * 100)}%`;
       renderThree();
+    };
+
+    $('threeFastBtn').onclick = () => {
+      setThreeFastMode(!getThreeFastMode());
+      $('threeFastBtn').classList.toggle('active', getThreeFastMode());
+      $('threeFastBtn').setAttribute('aria-pressed', String(getThreeFastMode()));
+      renderThree();
+      status(getThreeFastMode() ? 'Fast 3D rendering.' : 'Full quality 3D rendering.');
     };
 
     $('threeBorders').onchange = () => {

@@ -672,7 +672,8 @@ let maskOpacity = 0.65,
   threeView = null,
   pendingThreeCamera = null,
   threeOpacity = 1,
-  threeShowBorders = false;
+  threeShowBorders = false,
+  threeFastMode = true;
 
 function initThree() {
   if (threeView) return threeView;
@@ -681,7 +682,11 @@ function initThree() {
     stats: $('threeStats'),
     getModel: () => model,
     getClipGeometry: roiGeometry,
-    getInspection: () => ({ opacity: threeOpacity, borders: threeShowBorders }),
+    getInspection: () => ({
+      opacity: threeOpacity,
+      borders: threeShowBorders,
+      fast: threeFastMode,
+    }),
     getZCollapse: () => sectionCollapse,
     onViewChanged: (viewState) => {
       pendingThreeCamera = viewState ? structuredClone(viewState) : null;
@@ -767,6 +772,7 @@ const projectStateController = createProjectStateController({
     maskOpacity,
     threeOpacity,
     threeShowBorders,
+    threeFastMode,
     threeCamera: threeView?.getViewState?.() || pendingThreeCamera || null,
   }),
   applyState: (next) => {
@@ -798,6 +804,7 @@ const projectStateController = createProjectStateController({
     maskOpacity = next.maskOpacity;
     threeOpacity = next.threeOpacity;
     threeShowBorders = next.threeShowBorders;
+    threeFastMode = next.threeFastMode !== false;
     pendingThreeCamera = next.threeCamera ? structuredClone(next.threeCamera) : null;
     if (pendingThreeCamera) threeView?.setViewState?.(pendingThreeCamera);
     else threeView?.fit?.({ notify: false });
@@ -828,6 +835,8 @@ const projectStateController = createProjectStateController({
     $('threeOpacityRange').value = String(threeOpacity);
     $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
     $('threeBorders').checked = threeShowBorders;
+    $('threeFastBtn').classList.toggle('active', threeFastMode);
+    $('threeFastBtn').setAttribute('aria-pressed', String(threeFastMode));
     sectionDetailRoiController.sync();
   },
   setSectionEditEnabled,
@@ -1165,6 +1174,11 @@ const workspaceActions = createWorkspaceActionsController({
   getThreeOpacity: () => threeOpacity,
   setThreeOpacity: (value) => {
     threeOpacity = value;
+    markViewDirty();
+  },
+  getThreeFastMode: () => threeFastMode,
+  setThreeFastMode: (value) => {
+    threeFastMode = Boolean(value);
     markViewDirty();
   },
   getThreeShowBorders: () => threeShowBorders,
