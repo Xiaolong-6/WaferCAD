@@ -8,9 +8,7 @@ import {
   readProjectFile,
   serializeProject,
 } from '../project-io.js';
-import { applyOperation } from '../model.js';
 import { validateProjectFile, validateProjectFiles } from '../project-schema.js';
-import { rectMulti } from '../vector-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendorSource = readFileSync(
@@ -20,6 +18,9 @@ const vendorSource = readFileSync(
 const commonJsModule = { exports: {} };
 new Function('module', 'exports', vendorSource)(commonJsModule, commonJsModule.exports);
 globalThis.polygonClipping = commonJsModule.exports;
+
+const { applyOperation } = await import('../model.js');
+const { rectMulti } = await import('../vector-geometry.js');
 
 function validProject(processRevision = 0) {
   return {
