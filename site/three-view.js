@@ -1404,6 +1404,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     sortBias = 0,
     trackAdaptiveRough = false,
     instanceTranslations = null,
+    presentation = null,
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
@@ -1416,6 +1417,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           name: 'Array annotation',
           adaptiveRough: trackAdaptiveRough,
           appearance,
+          presentation: presentation ? { ...presentation, sortBias } : null,
         })[0] || null
       );
     const mesh = new THREE.Mesh(geometry, material),
@@ -1424,16 +1426,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     mesh.renderOrder = materialState.transparent ? 100 : 0;
     group.add(mesh);
     trackZDisplayObject(mesh);
-    if (materialState.transparent) {
-      transparencyOrderDirty = true;
-      transparentMeshes.push({
-        mesh,
-        center,
-        depth: 0,
-        sortBias,
-        sequence: transparentMeshes.length,
-      });
-    }
+    registerPresentationObject(mesh, presentation ? { ...presentation, sortBias } : null);
     if (appearance) mesh.userData.surfaceAppearance = { ...appearance };
     if (appearance && trackAdaptiveRough) {
       roughMeshes.push({
@@ -1450,7 +1443,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
     geometry,
     material,
     translations,
-    { name = '', maxInstancesPerMesh = 64, adaptiveRough = false, appearance = null } = {},
+    {
+      name = '',
+      maxInstancesPerMesh = 64,
+      adaptiveRough = false,
+      appearance = null,
+      presentation = null,
+    } = {},
   ) {
     if (!geometry.getAttribute('position')?.count || !translations?.length) {
       geometry.dispose();
@@ -1479,6 +1478,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (chunkGeometry.userData.roughGpuDisplacement) mesh.frustumCulled = false;
       group.add(mesh);
       trackZDisplayObject(mesh);
+      registerPresentationObject(mesh, presentation);
       if (adaptiveRough) {
         roughOwnedObjects.add(mesh);
         roughMeshes.push({
@@ -1486,16 +1486,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
           material,
           appearance: { ...appearance },
           center: mesh.boundingSphere?.center?.clone() || new THREE.Vector3(),
-        });
-      }
-      if (material.transparent) {
-        transparencyOrderDirty = true;
-        transparentMeshes.push({
-          mesh,
-          center: mesh.boundingSphere?.center?.clone() || new THREE.Vector3(),
-          sortBias: 0,
-          depth: 0,
-          sequence: transparentMeshes.length,
         });
       }
       meshes.push(mesh);
@@ -1537,7 +1527,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
   function addBorderPositions(
     positions,
-    { order = 100000, opacity = 1, adaptiveRough = false } = {},
+    {
+      order = 100000,
+      opacity = 1,
+      adaptiveRough = false,
+      presentation = { kind: 'border' },
+    } = {},
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
@@ -1554,6 +1549,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     edges.renderOrder = order;
     group.add(edges);
     trackZDisplayObject(edges);
+    registerPresentationObject(edges, presentation);
     if (adaptiveRough) roughOwnedObjects.add(edges);
     return edges;
   }
