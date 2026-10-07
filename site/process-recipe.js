@@ -49,6 +49,64 @@ function normalizeCoverage(value, { allowTransfer = false } = {}) {
   throw new Error(`Unsupported coverage "${value}".`);
 }
 
+function normalizeCv(value, label, fallback = 0.25) {
+  if (value == null || value === '') return fallback;
+  let numeric = Number(value);
+  if (!Number.isFinite(numeric)) throw new Error(`${label} must be finite.`);
+  if (numeric > 1 && numeric <= 100) numeric /= 100;
+  if (numeric < 0 || numeric > 1) throw new Error(`${label} must be between 0 and 1 (or 0–100%).`);
+  return numeric;
+}
+
+function normalizeEtchSurface(value, etchDepthUm) {
+  if (value == null || value === '' || value === 'smooth') return 'smooth';
+  const source = typeof value === 'string' ? { morphology: value } : value;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    throw new Error('etch.surface must be smooth, rough, pyramid, or an appearance object.');
+  }
+  const requested = cleanText(source.morphology || source.kind, 'rough').toLowerCase(),
+    morphology =
+      requested === 'pyramid'
+        ? 'pyramid'
+        : ['rough', 'stochastic'].includes(requested)
+          ? 'stochastic'
+          : '';
+  if (!morphology) throw new Error(`Unsupported etch.surface morphology "${requested}".`);
+  const polarity = cleanText(source.polarity, 'inverted').toLowerCase();
+  if (!['normal', 'inverted'].includes(polarity)) {
+    throw new Error('etch.surface.polarity must be normal or inverted.');
+  }
+  const featureSize = recipeLengthUm(source.featureSize ?? '0.5 µm', 'etch.surface.featureSize'),
+    defaultHeight = Math.min(Math.max(Number(etchDepthUm) || 0.5, 0.0001), 0.5),
+    meanHeight = recipeLengthUm(
+      source.meanHeight ?? source.height ?? defaultHeight,
+      'etch.surface.meanHeight',
+    );
+  if (!(featureSize > 0)) throw new Error('etch.surface.featureSize must be greater than zero.');
+  if (!(meanHeight > 0)) throw new Error('etch.surface.meanHeight must be greater than zero.');
+  if (Number(etchDepthUm) > 0 && meanHeight > Number(etchDepthUm) + 1e-12) {
+    throw new Error('etch.surface.meanHeight cannot exceed etch.depth.');
+  }
+  const seedValue = source.seed == null || source.seed === '' ? null : Number(source.seed);
+  if (
+    seedValue != null &&
+    (!Number.isInteger(seedValue) || seedValue < 0 || seedValue > 0xffffffff)
+  ) {
+    throw new Error('etch.surface.seed must be an integer from 0 to 4294967295.');
+  }
+  return {
+    kind: 'rough',
+    morphology,
+    polarity,
+    featureSize,
+    meanHeight,
+    featureCv: normalizeCv(source.featureCv, 'etch.surface.featureCv'),
+    heightCv: normalizeCv(source.heightCv, 'etch.surface.heightCv'),
+    ...(seedValue == null ? {} : { seed: seedValue >>> 0 }),
+    geometryMode: 'ideal',
+  };
+}
+
 function normalizeMask(mask) {
   if (mask == null) return null;
   if (typeof mask === 'string') {
@@ -100,6 +158,12 @@ function normalizeStep(command, input, index = 0) {
       : recipeLengthUm(params.thickness, 'deposit.thickness');
     if (!(params.thicknessUm > 0)) throw new Error('deposit.thickness must be greater than zero.');
     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
+    params.placement =
+      params.coverage === 'transfer'
+        ? ['flat', 'follow'].includes(cleanText(params.placement || params.transferMode, 'follow'))
+          ? cleanText(params.placement || params.transferMode, 'follow')
+          : 'follow'
+        : null;
     params.area = normalizeArea(params.area);
     params.face = params.face === 'back' ? 'back' : 'front';
     delete params.thickness;
@@ -136,7 +200,10 @@ function normalizeStep(command, input, index = 0) {
     }
     params.area = normalizeArea(params.area);
     params.face = params.face === 'back' ? 'back' : 'front';
-    params.surface = params.surface ?? 'smooth';
+    params.surface =
+      params.profile === 'directional'
+        ? normalizeEtchSurface(params.surface, params.thicknessUm)
+        : 'smooth';
     delete params.depth;
     delete params.targetZ;
     delete params.thickness;
@@ -421,6 +488,7 @@ export function serializeProcessRecipe(recipeValue) {
         add('material', p.material);
         add('thickness', displayLength(p.thicknessUm));
         add('coverage', p.coverage === 'direct' ? 'directional' : p.coverage);
+        if (p.coverage === 'transfer') add('placement', p.placement || 'follow');
       } else if (step.command === 'extend') {
         add('material', p.material);
         add('thickness', displayLength(p.thicknessUm));
@@ -473,7 +541,13 @@ export function recipeStepSummary(step) {
   const p = step?.params || {};
   const area = p.area && p.area !== 'full' ? ` · ${p.area}` : '';
   if (step?.command === 'deposit' || step?.command === 'extend') {
-    return `${displayLength(p.thicknessUm)} · ${p.coverage === 'direct' ? 'Directional' : p.coverage}${area}`;
+    const coverage =
+      p.coverage === 'direct'
+        ? 'Directional'
+        : p.coverage === 'transfer'
+          ? `Transfer · ${p.placement === 'flat' ? 'Flat bridge' : 'Follow surface'}`
+          : p.coverage;
+    return `${displayLength(p.thicknessUm)} · ${coverage}${area}`;
   }
   if (step?.command === 'etch') return `${displayLength(p.thicknessUm)} · ${p.profile}${area}`;
   if (step?.command === 'implant' || step?.command === 'electrical') return `${displayLength(p.depthUm)}${area}`;
