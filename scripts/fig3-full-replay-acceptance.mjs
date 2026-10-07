@@ -353,6 +353,11 @@ await writeFile(
   new URL('three-tier-silicon-jlfets-full-wafer.wafercad', resultDir),
   fullText,
 );
+if (process.argv.includes('--write-repo-examples')) {
+  await writeFile(sourcePath, siteText);
+  await writeFile(fullWaferPath, fullText);
+}
+
 await writeFile(
   new URL('validation.json', resultDir),
   JSON.stringify(
