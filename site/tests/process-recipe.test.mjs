@@ -96,6 +96,56 @@ test('Process Recipe generated source round-trips normalized steps', () => {
   assert.deepEqual(reparsed.steps[1].params.mask.layerKeys, ['7|0']);
 });
 
+test('Process Recipe preserves Transfer placement and rough Etch parameters', () => {
+  const recipe = normalizeProcessRecipe({
+    name: 'Surface recipe',
+    steps: [
+      {
+        command: 'deposit',
+        params: {
+          material: 'Polymer',
+          thickness: '2 µm',
+          coverage: 'transfer',
+          placement: 'flat',
+          area: 'full',
+        },
+      },
+      {
+        command: 'etch',
+        params: {
+          target: 'Base',
+          depth: '1 µm',
+          profile: 'directional',
+          surface: {
+            morphology: 'pyramid',
+            polarity: 'normal',
+            featureSize: '400 nm',
+            meanHeight: '800 nm',
+            featureCv: 25,
+            heightCv: 0.4,
+            seed: 4242,
+          },
+          area: 'full',
+        },
+      },
+    ],
+  });
+
+  assert.equal(recipe.steps[0].params.coverage, 'transfer');
+  assert.equal(recipe.steps[0].params.placement, 'flat');
+  assert.equal(recipe.steps[1].params.surface.morphology, 'pyramid');
+  assert.equal(recipe.steps[1].params.surface.polarity, 'normal');
+  assert.equal(recipe.steps[1].params.surface.featureSize, 0.4);
+  assert.equal(recipe.steps[1].params.surface.meanHeight, 0.8);
+  assert.equal(recipe.steps[1].params.surface.featureCv, 0.25);
+  assert.equal(recipe.steps[1].params.surface.heightCv, 0.4);
+  assert.equal(recipe.steps[1].params.surface.seed, 4242);
+
+  const reparsed = parseProcessRecipeSource(serializeProcessRecipe(recipe));
+  assert.equal(reparsed.steps[0].params.placement, 'flat');
+  assert.deepEqual(reparsed.steps[1].params.surface, recipe.steps[1].params.surface);
+});
+
 test('recipeLengthUm accepts supported units', () => {
   assert.equal(recipeLengthUm('30 nm'), 0.03);
   assert.equal(recipeLengthUm('2.5 um'), 2.5);
