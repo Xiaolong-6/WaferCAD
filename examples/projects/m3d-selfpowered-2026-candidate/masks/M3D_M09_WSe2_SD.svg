@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 18">
+  <metadata>WaferCAD paper-reconstructed mask v2; M3D cell; additive WSe2 Pd/Pt S/D plus upper-via landing; 1 viewBox unit = 1 um; black fill = operation region.</metadata>
+  <rect x="3.2" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="4.55" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="7.2" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="8.55" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="18.2" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="19.55" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="22.2" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="23.55" y="10.95" width="1.25" height="0.9" fill="#000000" stroke="none"/>
+  <rect x="0.8" y="11.1" width="2.6" height="0.6" fill="#000000" stroke="none"/>
+  <rect x="24.6" y="11.1" width="2.6" height="0.6" fill="#000000" stroke="none"/>
+  <rect x="8.9" y="11.15" width="5.3" height="0.65" fill="#000000" stroke="none"/>
+  <rect x="13.4" y="11.15" width="0.8" height="1.85" fill="#000000" stroke="none"/>
+</svg>
