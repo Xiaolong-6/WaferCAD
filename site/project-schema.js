@@ -32,6 +32,8 @@ const LIMITS = {
   implantPatches: 200000,
   electricalRegions: 10000,
   electricalRegionPatches: 200000,
+  recipeSteps: 1000,
+  recipeValueNodes: 100000,
 };
 
 function fail(path, message) {
@@ -1370,6 +1372,7 @@ function validateProjectCore(project, allowSnapshots, shared = createValidationC
   validateSection(project.section);
   validatePlanViews(project.planViews);
   validateDisplay(project.display);
+  validateProcessRecipe(project.processRecipe);
   if (allowSnapshots) {
     validateSnapshotRecords(project.snapshots, shared);
     validateSnapshotBranches(project.snapshotBranches, project.snapshots, shared);
@@ -1379,6 +1382,70 @@ function validateProjectCore(project, allowSnapshots, shared = createValidationC
   }
 
   return project;
+}
+
+function validateRecipeValue(value, path, budget, depth = 0) {
+  budget.nodes += 1;
+  if (budget.nodes > LIMITS.recipeValueNodes) {
+    fail(path, 'exceeds the Process Recipe value budget.');
+  }
+  if (depth > 12) fail(path, 'is nested too deeply.');
+  if (value == null || typeof value === 'boolean') return;
+  if (typeof value === 'number') {
+    assertFinite(value, path);
+    return;
+  }
+  if (typeof value === 'string') {
+    assertString(value, path, { allowEmpty: true, max: 4096 });
+    return;
+  }
+  if (Array.isArray(value)) {
+    if (value.length > 10000) fail(path, 'contains too many items.');
+    value.forEach((item, index) =>
+      validateRecipeValue(item, `${path}[${index}]`, budget, depth + 1),
+    );
+    return;
+  }
+  assertObject(value, path);
+  const entries = Object.entries(value);
+  if (entries.length > 256) fail(path, 'contains too many fields.');
+  for (const [key, item] of entries) {
+    if (key.length > 128) fail(path, 'contains an overlong field name.');
+    validateRecipeValue(item, `${path}.${key}`, budget, depth + 1);
+  }
+}
+
+function validateProcessRecipe(recipe) {
+  if (recipe == null) return;
+  assertObject(recipe, 'processRecipe');
+  if (recipe.version !== 1) fail('processRecipe.version', 'must be 1.');
+  assertString(recipe.name, 'processRecipe.name', { max: 160 });
+  const steps = assertArray(recipe.steps, 'processRecipe.steps', LIMITS.recipeSteps),
+    ids = new Set(),
+    budget = { nodes: 0 };
+  steps.forEach((step, index) => {
+    const path = `processRecipe.steps[${index}]`;
+    assertObject(step, path);
+    const id = assertString(step.id, `${path}.id`, { max: 128 });
+    if (ids.has(id)) fail(`${path}.id`, 'must be unique.');
+    ids.add(id);
+    const command = assertString(step.command, `${path}.command`, { max: 32 });
+    if (
+      !['deposit', 'extend', 'etch', 'implant', 'electrical', 'record', 'snapshot'].includes(
+        command,
+      )
+    ) {
+      fail(`${path}.command`, 'is not supported.');
+    }
+    assertObject(step.params, `${path}.params`);
+    validateRecipeValue(step.params, `${path}.params`, budget);
+  });
+  if (recipe.activeStepId != null) {
+    assertString(recipe.activeStepId, 'processRecipe.activeStepId', { max: 128 });
+    if (recipe.activeStepId && !ids.has(recipe.activeStepId)) {
+      fail('processRecipe.activeStepId', 'references an unknown recipe step.');
+    }
+  }
 }
 
 function legacyWorldPointToMaskLocal(point, transform) {
