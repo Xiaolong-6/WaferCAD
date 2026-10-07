@@ -1513,7 +1513,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     clearRoughRefineTimer();
     terminateRoughWorker();
     const prepared = prepareAdaptiveRoughTasks({ interactive }),
-      diagnostics = roughWorkerDiagnostics(prepared);
+      diagnostics = roughWorkerDiagnostics(prepared),
+      rendererRoughStart = performance.now();
     if (!prepared.tasks.length) return Promise.resolve(false);
 
     let worker;
@@ -1578,6 +1579,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
           interactive ? null : signature,
           sceneToken,
         );
+        if (host?.dataset) {
+          host.dataset.rendererRoughMs = String(performance.now() - rendererRoughStart);
+          const profileStart = roughRenderContext?.profileStart;
+          if (Number.isFinite(profileStart)) {
+            const total = performance.now() - profileStart;
+            if (interactive) host.dataset.rendererPreviewReadyMs = String(total);
+            else host.dataset.rendererFinalReadyMs = String(total);
+          }
+        }
         if (interactive && refineAfter && !interacting) scheduleDetailedRoughBuild(60);
         resolve(applied);
       };
@@ -1877,6 +1887,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.modelRevision = String(model.revision ?? 0);
     host.dataset.processRevision = String(model.processRevision ?? 0);
     stats.textContent = 'rebuilding 3D…';
+    const rendererProfileStart = performance.now();
 
     rendering = true;
     try {
@@ -1899,7 +1910,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
             }
           : null,
         smoothCaps = new Map(),
-        sidewalls = new Map();
+        sidewalls = new Map(),
+        rendererTopologyAt = performance.now();
 
       host.dataset.materialLayerIds = JSON.stringify(
         [...new Set([...plan.caps, ...plan.sidewalls].map((part) => part.layerId))].sort(),
@@ -1920,6 +1932,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sceneGeneration: renderGeneration,
         modelRevision: model.revision ?? 0,
         processRevision: model.processRevision ?? 0,
+        profileStart: rendererProfileStart,
       };
 
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
@@ -2051,6 +2064,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
 
+      const rendererCapsAt = performance.now();
+
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
@@ -2124,6 +2139,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+
+      const rendererSidewallsAt = performance.now();
 
       if (borders) {
         addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
@@ -2478,6 +2495,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       host.dataset.electricalRegionInternalCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceCount = String(electricalRegionSurfaceCount);
+      const rendererAssemblyAt = performance.now();
+      host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
+      host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
+      host.dataset.rendererSidewallsMs = String(rendererSidewallsAt - rendererCapsAt);
+      host.dataset.rendererAnnotationsMs = String(rendererAssemblyAt - rendererSidewallsAt);
+      host.dataset.rendererAssemblyMs = String(rendererAssemblyAt - rendererProfileStart);
       updateTransparentOrder();
       if (!roughTasks.length) {
         host.dataset.renderState = 'ready';
