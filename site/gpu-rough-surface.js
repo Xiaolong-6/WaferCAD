@@ -260,10 +260,8 @@ ${ROUGH_PROFILE_GLSL}`,
     shader.vertexShader = injectAfter(
       shader.vertexShader,
       '#include <begin_vertex>',
-      `vWaferCadRoughXY = position.xy;
-#ifdef USE_INSTANCING
-  vWaferCadRoughXY += instanceMatrix[3].xy;
-#endif
+      `// Compact arrays define rough morphology in the template-local physical frame.
+vWaferCadRoughXY = position.xy;
 vWaferCadGpuDisplace = waferCadGpuDisplace;
 if (waferCadGpuDisplace > 0.5) {
   transformed.z += waferCadRoughProfileNormal * waferCadRoughProfile(vWaferCadRoughXY);
