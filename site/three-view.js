@@ -1027,8 +1027,10 @@ export function createThreeView({
           object?.visible !== false && object.userData?.waferCadPresentation?.kind === kind,
       ).length;
     host.dataset.implantInternalCount = String(visibleCount('implant-internal'));
+    host.dataset.implantSurfaceCount = String(visibleCount('implant-surface'));
     host.dataset.implantCutCount = String(visibleCount('implant-cut'));
     host.dataset.electricalRegionInternalCount = String(visibleCount('electrical-internal'));
+    host.dataset.electricalRegionSurfaceCount = String(visibleCount('electrical-surface'));
   }
 
   function applyPresentationState({ profile = true, settle = true } = {}) {
