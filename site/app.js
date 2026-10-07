@@ -28,6 +28,7 @@ import { createRoiController } from './controllers/roi-controller.js';
 import { createMaskRoiController } from './controllers/mask-roi-controller.js';
 import { createProcessTaskController } from './controllers/process-task-controller.js';
 import { createProcessPanelController } from './controllers/process-panel-controller.js';
+import { createProcessRecipeController } from './controllers/process-recipe-controller.js';
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
 import { createHistoryMutationController } from './controllers/history-mutation-controller.js';
@@ -99,6 +100,7 @@ let maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 },
   roiDraft = null,
   roiAnchor = 'center';
 let projectName = 'Untitled',
+  processRecipe = null,
   section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionScaleMode = 'auto',
   sectionShowBorders = false,
@@ -753,6 +755,7 @@ function syncMaskSourceSummary() {
 }
 
 let processPanelController = null,
+  processRecipeController = null,
   projectController = null;
 
 function updateOperationUI() {
@@ -770,6 +773,7 @@ const projectStateController = createProjectStateController({
     model,
     layout,
     projectName: normalizedProjectName(),
+    processRecipe: processRecipe ? structuredClone(processRecipe) : null,
     selectedLayerKeys,
     activeCell,
     maskTransform,
@@ -829,6 +833,8 @@ const projectStateController = createProjectStateController({
     roiAnchor = next.roiAnchor;
     section = next.section;
     if (next.projectName) projectName = next.projectName;
+    processRecipe = next.processRecipe ? structuredClone(next.processRecipe) : null;
+    processRecipeController?.refresh();
     if (next.sectionScaleMode) sectionScaleMode = next.sectionScaleMode;
     sectionShowBorders = Boolean(next.sectionShowBorders);
     sectionCollapse = next.sectionCollapse || null;
@@ -1005,6 +1011,7 @@ const { renderSnapshots, openLayoutFile, openProjectFile, openBundledExample } =
 
 function recordProcessOperation(operation) {
   const recorded = snapshotManager.recordOperation(operation);
+  processRecipeController?.recordManualOperation?.(operation);
   markProjectDirty();
   renderSnapshots();
   return recorded;
@@ -1104,6 +1111,55 @@ processPanelController = createProcessPanelController({
   colorNewElectricalRegion,
   renderAll,
   status,
+});
+
+processRecipeController = createProcessRecipeController({
+  root: document,
+  getRecipe: () => processRecipe,
+  setRecipe: (value) => {
+    processRecipe = value ? structuredClone(value) : null;
+  },
+  getModel: () => model,
+  getMaskState: () => ({
+    maskSourceMode,
+    maskRoi,
+    drawMask,
+    maskTransform,
+    layout,
+    activeCell,
+    selectedLayerKeys: [...selectedLayerKeys],
+  }),
+  setMaskState: (next = {}) => {
+    maskSourceMode = next.maskSourceMode === 'draw' ? 'draw' : 'file';
+    if (next.activeCell && (next.activeCell === layout.root || layout.hierarchy?.[next.activeCell])) {
+      activeCell = next.activeCell;
+    }
+    if (Array.isArray(next.selectedLayerKeys)) {
+      selectedLayerKeys = new Set(next.selectedLayerKeys);
+    }
+    if (next.maskTransform) maskTransform = { ...next.maskTransform };
+    maskRoi = next.maskRoi ? structuredClone(next.maskRoi) : null;
+    if (maskSourceMode === 'draw' && next.drawMask) drawMask = structuredClone(next.drawMask);
+    markProjectDirty();
+    renderCellTree();
+    renderMaskList();
+    syncMaskCellLabel();
+    renderMask();
+    updateOperationUI();
+  },
+  setActiveFace: (value) => {
+    activeFace = value === 'back' ? 'back' : 'front';
+    markViewDirty();
+  },
+  processPanelController,
+  processTaskController,
+  snapshotManager,
+  formatLengthField,
+  updateOperationUI,
+  renderAll,
+  renderSnapshots,
+  status,
+  onChanged: markProjectDirty,
 });
 
 workspaceViewController = createWorkspaceViewController({
@@ -1449,6 +1505,7 @@ function bindUi() {
   viewMaximizeController.bind();
   roiController.bind();
   processTaskController.bind();
+  processRecipeController.bind();
   sectionControls.bind();
   sectionCollapseController.bind();
   sectionDetailRoiController.bind();
