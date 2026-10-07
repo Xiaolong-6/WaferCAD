@@ -1,5 +1,7 @@
 # 625-site array and idle process preparation — checkpoint
 
+> **Historical/superseded checkpoint.** This file records development on `codex/process-project-io-optimization`. The canonical-array/project-IO work later entered `main` through the 2026-10-07 integration, culminating in merge commit `61098987d6ed6d90accdadebbad58405249a0ee5`. Preserve the measurements below as checkpoint evidence; use [Development](DEVELOPMENT.md) and [Architecture](ARCHITECTURE.md) for the current contract.
+
 Repository: Xiaolong-6/WaferCAD. Branch: `codex/process-project-io-optimization`.
 Baseline before this checkpoint: `77a6c9dfc438d91e1672f46b5a56c9411d235766`.
 This document travels with the implementation commit; use `git log -1 -- docs/ARRAY_PROCESS_PREWARM_2026-10-07.md` to identify its exact revision.
