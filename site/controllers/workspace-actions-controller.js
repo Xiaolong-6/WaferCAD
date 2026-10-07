@@ -200,6 +200,7 @@ export function createWorkspaceActionsController({
     $('operationType').onchange = updateOperationUI;
     $('operationArea').onchange = updateOperationUI;
     $('growthMode').onchange = updateOperationUI;
+    $('transferMode').onchange = updateOperationUI;
     $('etchProfile').onchange = updateOperationUI;
     $('etchSurfaceMode').onchange = updateOperationUI;
     $('roughPolarity').onchange = updateOperationUI;
