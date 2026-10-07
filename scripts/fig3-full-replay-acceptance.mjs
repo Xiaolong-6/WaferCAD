@@ -81,6 +81,11 @@ function initialProject() {
   seed.name = 'Native Fig3 full replay seed';
   seed.snapshots = [];
   delete seed.snapshotBranches;
+  // The first History node stores the state *after* the record-only Step.
+  // Geometry is unchanged, but the model counters have already advanced once.
+  // Rewind those counters so replay starts from the true pre-History state.
+  seed.model.revision -= 1;
+  seed.model.processRevision -= 1;
   return seed;
 }
 
