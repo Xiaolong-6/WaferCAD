@@ -1,3 +1,4 @@
+// Audit trigger: renderer benchmark ownership.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
