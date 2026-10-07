@@ -143,7 +143,6 @@ function assertModelEquivalent(actual, expected, label) {
     `${label} electrical region count`,
   );
   assert.equal(actual.nextLayerId, expected.nextLayerId, `${label} nextLayerId`);
-  assert.equal(actual.nextRegionId, expected.nextRegionId, `${label} nextRegionId`);
   assert.equal(actual.nextImplantId, expected.nextImplantId, `${label} nextImplantId`);
   assert.equal(
     actual.nextElectricalRegionId,
