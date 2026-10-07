@@ -83,6 +83,7 @@ const PROCESS_PATHS = [
 ];
 
 const RENDERER_PATHS = [
+  /^scripts\/array-renderer-regression\.mjs$/,
   /^site\/(?:model-array|mask-instance-index)/,
   /^scripts\/array-runtime-regression\.mjs$/,
   /^site\/model-view-geometry\.js$/,

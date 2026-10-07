@@ -21,7 +21,7 @@
     "test:ui:interaction": "node scripts/interaction-regression.mjs",
     "test:ui:resilience": "node scripts/resilience-regression.mjs",
     "test:ui:product:layout": "node scripts/product-layout-regression.mjs",
-    "test:ui:product:renderer": "node scripts/renderer-product-regression.mjs",
+    "test:ui:product:renderer": "node scripts/renderer-product-regression.mjs && node scripts/array-renderer-regression.mjs",
     "test:ui:visual": "node scripts/visual-baseline-regression.mjs",
     "update:ui:visual": "node scripts/visual-baseline-regression.mjs --update",
     "test:ui:fast": "npm run test:ui:smoke && npm run test:ui:workstation && npm run test:ui:resilience",
