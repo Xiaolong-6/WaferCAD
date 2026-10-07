@@ -8,6 +8,7 @@ import {
   waitForThreeReady,
 } from './test-helpers/ui.mjs';
 import {
+  checkSectionSeams,
   exportCurrentProject,
   loadProject,
 } from './test-helpers/product-scientific.mjs';
@@ -309,6 +310,7 @@ try {
   assert.deepEqual(pageErrors, []);
   assertNativeFig3Contract(replayed, pointInMulti);
   await waitForThreeReady(page, 300000);
+  await checkSectionSeams(page, replayed);
 
   applyCuratedPresentation(replayed);
   schema.validateProjectFile(replayed);
