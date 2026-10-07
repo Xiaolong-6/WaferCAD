@@ -23,6 +23,7 @@ function numericProfile(dataset) {
     'rendererSidewallsMs',
     'rendererAnnotationsMs',
     'rendererAssemblyMs',
+    'rendererPresentationMs',
     'rendererRoughMs',
     'rendererPreviewReadyMs',
     'rendererFinalReadyMs',
@@ -84,6 +85,39 @@ try {
   assert.equal(initial.host.surfaceTopology, restored.host.surfaceTopology);
   assert.equal(initial.host.modelRevision, transparent.host.modelRevision);
   assert.equal(initial.host.modelRevision, restored.host.modelRevision);
+  assert.equal(
+    transparent.host.sceneGeneration,
+    initial.host.sceneGeneration,
+    'Opacity must keep the physical scene generation stable',
+  );
+  assert.equal(
+    restored.host.sceneGeneration,
+    initial.host.sceneGeneration,
+    'Restoring opacity must keep the physical scene generation stable',
+  );
+  assert.equal(
+    transparent.host.surfacePlanBuildCount,
+    initial.host.surfacePlanBuildCount,
+    'Opacity must not rebuild the surface plan',
+  );
+  assert.equal(
+    restored.host.surfacePlanBuildCount,
+    initial.host.surfacePlanBuildCount,
+    'Restoring opacity must not rebuild the surface plan',
+  );
+  assert.equal(transparent.host.rendererUpdateKind, 'presentation');
+  assert.equal(restored.host.rendererUpdateKind, 'presentation');
+  assert.equal(Number(transparent.host.rendererAssemblyMs), 0);
+  assert.equal(Number(restored.host.rendererAssemblyMs), 0);
+  for (const key of [
+    'sceneObjectCount',
+    'sceneGeometryCount',
+    'sceneMaterialCount',
+    'presentationObjectCount',
+  ]) {
+    assert.equal(transparent.host[key], initial.host[key], `${key} changed on opacity update`);
+    assert.equal(restored.host[key], initial.host[key], `${key} changed on opacity restore`);
+  }
   assert.deepEqual(errors, []);
 
   const report = {
@@ -94,6 +128,28 @@ try {
     initial: numericProfile(initial.host),
     transparent: numericProfile(transparent.host),
     restored: numericProfile(restored.host),
+    updateKinds: {
+      initial: initial.host.rendererUpdateKind,
+      transparent: transparent.host.rendererUpdateKind,
+      restored: restored.host.rendererUpdateKind,
+    },
+    resources: {
+      initial: {
+        objects: initial.host.sceneObjectCount,
+        geometries: initial.host.sceneGeometryCount,
+        materials: initial.host.sceneMaterialCount,
+      },
+      transparent: {
+        objects: transparent.host.sceneObjectCount,
+        geometries: transparent.host.sceneGeometryCount,
+        materials: transparent.host.sceneMaterialCount,
+      },
+      restored: {
+        objects: restored.host.sceneObjectCount,
+        geometries: restored.host.sceneGeometryCount,
+        materials: restored.host.sceneMaterialCount,
+      },
+    },
     topology: initial.host.surfaceTopology,
     arrayInstances: initial.host.arrayInstances,
     errors,
