@@ -8,6 +8,7 @@ import {
   geometryPointCount,
 } from './model-array.js';
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
+import { normalizeProcessRecipe } from './process-recipe.js';
 
 export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
@@ -1445,6 +1446,11 @@ function validateProcessRecipe(recipe) {
     if (recipe.activeStepId && !ids.has(recipe.activeStepId)) {
       fail('processRecipe.activeStepId', 'references an unknown recipe step.');
     }
+  }
+  try {
+    normalizeProcessRecipe(recipe);
+  } catch (error) {
+    fail('processRecipe', error?.message || 'is not a valid Process Recipe.');
   }
 }
 
