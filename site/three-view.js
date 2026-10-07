@@ -1908,10 +1908,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sidewalls = new Map();
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       let sceneAssemblyYields = 0,
-        capAssemblyIndex = 0,
-        capBucketIndex = 0,
-        sidewallAssemblyIndex = 0,
-        sidewallBucketIndex = 0;
+        nextAssemblyYieldAt = performance.now() + 32;
+      const maybeYieldAssembly = async () => {
+        if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
+        sceneAssemblyYields++;
+        await yieldSceneAssembly();
+        nextAssemblyYieldAt = performance.now() + 32;
+      };
 
       host.dataset.materialLayerIds = JSON.stringify(
         [...new Set([...plan.caps, ...plan.sidewalls].map((part) => part.layerId))].sort(),
@@ -1951,10 +1954,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothCapInstanceCount = 0;
       smoothCapTemplateTriangleCount = 0;
       for (const cap of plan.caps) {
-        if (cooperativeAssembly && ++capAssemblyIndex % 24 === 0) {
-          sceneAssemblyYields++;
-          await yieldSceneAssembly();
-        }
+        await maybeYieldAssembly();
         if (!zIsVisible(cap.z)) continue;
         const state = stateFor(cap);
         if (!state) continue;
@@ -1988,10 +1988,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
 
       for (const bucket of smoothCaps.values()) {
-        if (cooperativeAssembly && ++capBucketIndex % 8 === 0) {
-          sceneAssemblyYields++;
-          await yieldSceneAssembly();
-        }
+        await maybeYieldAssembly();
         const state = stateFor(bucket.part),
           visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
         if (!state || !visibleCaps.length) continue;
@@ -2075,10 +2072,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
       for (const sidewall of plan.sidewalls) {
-        if (cooperativeAssembly && ++sidewallAssemblyIndex % 24 === 0) {
-          sceneAssemblyYields++;
-          await yieldSceneAssembly();
-        }
+        await maybeYieldAssembly();
         const state = stateFor(sidewall);
         if (!state) continue;
         if (sidewall.instanceTranslations) {
@@ -2099,10 +2093,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
-        if (cooperativeAssembly && ++sidewallBucketIndex % 8 === 0) {
-          sceneAssemblyYields++;
-          await yieldSceneAssembly();
-        }
+        await maybeYieldAssembly();
         const state = stateFor(bucket.part),
           visibleParts = displaySidewallParts(bucket.items);
         if (!state || !visibleParts.length) continue;
@@ -2155,10 +2146,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
-      if (sceneAssemblyYields) {
-        host.dataset.renderPhase = 'assembling';
-        await yieldSceneAssembly();
-      }
+      if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
 
       if (borders) {
         addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
