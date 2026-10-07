@@ -8,6 +8,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { createDerivedDataCache } from './renderer-derived-cache.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
@@ -67,6 +68,8 @@ export function createThreeView({
   if (!host) throw new TypeError('3D host is required.');
   if (!stats) throw new TypeError('3D stats host is required.');
   if (typeof getModel !== 'function') throw new TypeError('getModel must be a function.');
+
+  const smoothCapDerivedDataCache = createDerivedDataCache();
 
   let renderer = null;
   let scene = null;
@@ -878,6 +881,24 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return geometry;
+  }
+
+  function geometryFromCachedArrayCap(cap) {
+    const variant = `${Number(cap.z).toPrecision(15)}|${Number(cap.normal) || 1}`,
+      data = smoothCapDerivedDataCache.get(cap.polys, variant, () => {
+        const source = geometryFromSolid({ slabs: [], caps: [cap] }),
+          positions = source.getAttribute('position')?.array?.slice?.() || new Float32Array(),
+          normals = source.getAttribute('normal')?.array?.slice?.() || new Float32Array();
+        source.dispose();
+        return { positions, normals };
+      }),
+      geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(data.positions.slice(), 3),
+    );
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(data.normals.slice(), 3));
     return geometry;
   }
 
@@ -1945,7 +1966,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const layer = layerById(model, cap.layerId);
 
         if (!cap.appearance && cap.instanceTranslations) {
-          const geometry = geometryFromSolid({ slabs: [], caps: [cap] }),
+          const geometry = geometryFromCachedArrayCap(cap),
             material = createSurfaceMaterial(layer, state);
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
             name: `${cap.layerId} array cap`,
@@ -2050,6 +2071,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
+
+      const derivedCapStats = smoothCapDerivedDataCache.stats();
+      host.dataset.derivedCapCacheHits = String(derivedCapStats.hits);
+      host.dataset.derivedCapCacheMisses = String(derivedCapStats.misses);
 
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
