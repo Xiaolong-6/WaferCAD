@@ -199,29 +199,34 @@ function componentwiseDifference(operation, left, right) {
 }
 
 function componentwiseUnion(operation, geometries) {
-  let pieces = geometries
-    .flatMap((geometry) => normalizeMulti(geometry))
-    .map((polygon) => [polygon]);
+  const pending = geometries
+      .flatMap((geometry) => normalizeMulti(geometry))
+      .map((polygon) => [polygon]),
+    out = [];
 
-  let merged = true;
-  while (merged) {
-    merged = false;
-    outer: for (let leftIndex = 0; leftIndex < pieces.length; leftIndex++) {
-      const left = pieces[leftIndex],
-        leftBounds = geometryBounds(left);
-      for (let rightIndex = leftIndex + 1; rightIndex < pieces.length; rightIndex++) {
-        const right = pieces[rightIndex];
-        if (!boundsMayOverlap(leftBounds, geometryBounds(right))) continue;
+  while (pending.length) {
+    let current = pending.shift(),
+      merged = true;
+    while (merged) {
+      merged = false;
+      const currentBounds = geometryBounds(current);
+      for (let index = 0; index < out.length; index++) {
+        const candidate = out[index];
+        if (!boundsMayOverlap(currentBounds, geometryBounds(candidate))) continue;
 
-        const result = runCanonicalBoolean(operation, [left, right]).map((polygon) => [polygon]);
-        pieces.splice(rightIndex, 1);
-        pieces.splice(leftIndex, 1, ...result);
+        const result = runCanonicalBoolean(operation, [current, candidate]);
+        // A true overlap/touch collapses to one polygon. Bounding boxes can
+        // overlap for geometrically disjoint polygons; leave those separate.
+        if (result.length !== 1) continue;
+        current = result;
+        out.splice(index, 1);
         merged = true;
-        break outer;
+        break;
       }
     }
+    out.push(current);
   }
-  return canonicalizeBooleanGeometry(pieces.flatMap((piece) => piece));
+  return canonicalizeBooleanGeometry(out.flatMap((piece) => piece));
 }
 
 export function booleanWithQuantizedRetry(operationName, geometries) {

@@ -240,7 +240,7 @@ test('vector difference falls back to componentwise clipping after multipolygon 
       ...vectorApi.rectMulti(4, 4, -4, 0),
       ...vectorApi.rectMulti(4, 4, 4, 0),
     ];
-    const result = vectorApi.difference(subject, vectorApi.rectMulti(2, 8, -4, 0));
+    const result = vectorApi.difference(subject, vectorApi.rectMulti(2, 8, -5, 0));
     assert.equal(result.length, 2);
     assert.ok(result.every((polygon) => polygon.length > 0));
   } finally {
