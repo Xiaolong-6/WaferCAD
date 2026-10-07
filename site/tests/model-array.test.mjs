@@ -169,6 +169,53 @@ test('array transfer uses one global plane across different site heights', () =>
   for (const x of [-5, 5])
     assert.deepEqual(physicalAt(resolved, [x, 0]).at(-1).slice(1, 3), [3, 3.1]);
 });
+test('array follow-surface transfer stays local across site heights and matches ordinary geometry', () => {
+  const array = twoSites(),
+    normal = resolveArrayModel(array);
+  const tallLeft = {
+    type: 'add',
+    name: 'Tall left',
+    thickness: 2,
+    area: rectMulti(10, 10, -5, 0),
+  };
+  assert.equal(applyOperation(array, tallLeft).changed, true);
+  assert.equal(applyOperation(normal, tallLeft).changed, true);
+
+  const front = {
+    type: 'add',
+    growth: 'transfer',
+    transferMode: 'follow',
+    name: 'Front follow laminate',
+    thickness: 0.1,
+    face: 'front',
+    area: array.boundary,
+  };
+  assert.equal(applyOperation(array, front).changed, true);
+  assert.equal(applyOperation(normal, front).changed, true);
+  validateProcessModel(array);
+
+  let resolved = resolveArrayModel(array);
+  assert.deepEqual(physicalAt(resolved, [-5, 0]), physicalAt(normal, [-5, 0]));
+  assert.deepEqual(physicalAt(resolved, [5, 0]), physicalAt(normal, [5, 0]));
+  assert.deepEqual(physicalAt(resolved, [-5, 0]).at(-1).slice(1, 3), [3, 3.1]);
+  assert.deepEqual(physicalAt(resolved, [5, 0]).at(-1).slice(1, 3), [1, 1.1]);
+
+  const back = {
+    type: 'add',
+    growth: 'transfer',
+    transferMode: 'follow',
+    name: 'Back follow laminate',
+    thickness: 0.05,
+    face: 'back',
+    area: array.boundary,
+  };
+  assert.equal(applyOperation(array, back).changed, true);
+  assert.equal(applyOperation(normal, back).changed, true);
+  validateProcessModel(array);
+  resolved = resolveArrayModel(array);
+  for (const x of [-5, 5])
+    assert.deepEqual(physicalAt(resolved, [x, 0]), physicalAt(normal, [x, 0]), `follow transfer at ${x}`);
+});
 
 const { sectionColumns } = await import('../model-view-geometry.js');
 const { roughProfileOffsetAtPoint } = await import('../surface-rendering.js');
