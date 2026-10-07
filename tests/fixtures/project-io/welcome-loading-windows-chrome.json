@@ -1,0 +1,453 @@
+{
+  "date": "2026-10-07",
+  "baselineProductCommit": "41ff251",
+  "optimizedProductCommit": "51485e5",
+  "environment": {
+    "os": "Windows",
+    "node": "24.19.0",
+    "playwright": "1.55.1",
+    "chrome": "154.0.8037.98",
+    "three": "0.179.1",
+    "headlessTiming": false,
+    "newBrowserContextPerRun": true,
+    "runsPerCondition": 3,
+    "localPinnedThree": true
+  },
+  "welcome": {
+    "beforeMedianAllMainReadyMs": 68727.4691,
+    "afterMedianAllMainReadyMs": 9971.464,
+    "beforeRuns": [
+      {
+        "shellMs": 363.6415999999999,
+        "allReadyMs": 68727.47869999999,
+        "cards": [
+          {
+            "id": "photodetector-literature",
+            "mainReadyMs": 3488.4745000000003,
+            "fromNavigationMs": 4117.217699999999,
+            "steps": 32,
+            "bookmarks": 47,
+            "revision": 26
+          },
+          {
+            "id": "perc-point-contact-solar-cell",
+            "mainReadyMs": 21.26009999999951,
+            "fromNavigationMs": 4189.4066,
+            "steps": 33,
+            "bookmarks": 33,
+            "revision": 28
+          },
+          {
+            "id": "fully-textured-perovskite-silicon-tandem",
+            "mainReadyMs": 13.35859999999957,
+            "fromNavigationMs": 4246.248799999999,
+            "steps": 24,
+            "bookmarks": 26,
+            "revision": 59
+          },
+          {
+            "id": "suspended-silica-microdisk",
+            "mainReadyMs": 11.653800000000047,
+            "fromNavigationMs": 4293.9195,
+            "steps": 9,
+            "bookmarks": 9,
+            "revision": 9
+          },
+          {
+            "id": "three-tier-silicon-jlfets",
+            "mainReadyMs": 64395.656299999995,
+            "fromNavigationMs": 68727.4691,
+            "steps": 40,
+            "bookmarks": 5,
+            "revision": 61
+          }
+        ],
+        "requests": [
+          "/examples/perc-solar-cells-point-contacts.wafercad",
+          "/examples/photodetector-literature-examples.wafercad",
+          "/examples/suspended-silica-microdisks.wafercad",
+          "/examples/fully-textured-perovskite-silicon-tandem.wafercad",
+          "/examples/three-tier-silicon-jlfets.wafercad"
+        ],
+        "errors": []
+      },
+      {
+        "shellMs": 229.69469999999274,
+        "allReadyMs": 68173.44709999999,
+        "cards": [
+          {
+            "id": "photodetector-literature",
+            "mainReadyMs": 3363.6994000000122,
+            "fromNavigationMs": 3848.015699999989,
+            "steps": 32,
+            "bookmarks": 47,
+            "revision": 26
+          },
+          {
+            "id": "perc-point-contact-solar-cell",
+            "mainReadyMs": 24.33300000001327,
+            "fromNavigationMs": 3901.448599999989,
+            "steps": 33,
+            "bookmarks": 33,
+            "revision": 28
+          },
+          {
+            "id": "fully-textured-perovskite-silicon-tandem",
+            "mainReadyMs": 14.28540000000794,
+            "fromNavigationMs": 3960.8401000000013,
+            "steps": 24,
+            "bookmarks": 26,
+            "revision": 59
+          },
+          {
+            "id": "suspended-silica-microdisk",
+            "mainReadyMs": 10.117900000012014,
+            "fromNavigationMs": 4005.0840999999928,
+            "steps": 9,
+            "bookmarks": 9,
+            "revision": 9
+          },
+          {
+            "id": "three-tier-silicon-jlfets",
+            "mainReadyMs": 64129.67969999999,
+            "fromNavigationMs": 68173.438,
+            "steps": 40,
+            "bookmarks": 5,
+            "revision": 61
+          }
+        ],
+        "requests": [
+          "/examples/suspended-silica-microdisks.wafercad",
+          "/examples/fully-textured-perovskite-silicon-tandem.wafercad",
+          "/examples/photodetector-literature-examples.wafercad",
+          "/examples/perc-solar-cells-point-contacts.wafercad",
+          "/examples/three-tier-silicon-jlfets.wafercad"
+        ],
+        "errors": []
+      },
+      {
+        "shellMs": 244.14910000000964,
+        "allReadyMs": 80815.4104,
+        "cards": [
+          {
+            "id": "photodetector-literature",
+            "mainReadyMs": 3162.525099999999,
+            "fromNavigationMs": 3629.3391999999876,
+            "steps": 32,
+            "bookmarks": 47,
+            "revision": 26
+          },
+          {
+            "id": "perc-point-contact-solar-cell",
+            "mainReadyMs": 20.430200000002515,
+            "fromNavigationMs": 3692.8991000000096,
+            "steps": 33,
+            "bookmarks": 33,
+            "revision": 28
+          },
+          {
+            "id": "fully-textured-perovskite-silicon-tandem",
+            "mainReadyMs": 12.333600000012666,
+            "fromNavigationMs": 3751.858199999988,
+            "steps": 24,
+            "bookmarks": 26,
+            "revision": 59
+          },
+          {
+            "id": "suspended-silica-microdisk",
+            "mainReadyMs": 9.794400000013411,
+            "fromNavigationMs": 3797.684799999988,
+            "steps": 9,
+            "bookmarks": 9,
+            "revision": 9
+          },
+          {
+            "id": "three-tier-silicon-jlfets",
+            "mainReadyMs": 76976.16380000001,
+            "fromNavigationMs": 80815.3989,
+            "steps": 40,
+            "bookmarks": 5,
+            "revision": 61
+          }
+        ],
+        "requests": [
+          "/examples/fully-textured-perovskite-silicon-tandem.wafercad",
+          "/examples/perc-solar-cells-point-contacts.wafercad",
+          "/examples/photodetector-literature-examples.wafercad",
+          "/examples/suspended-silica-microdisks.wafercad",
+          "/examples/three-tier-silicon-jlfets.wafercad"
+        ],
+        "errors": []
+      }
+    ],
+    "afterRuns": [
+      {
+        "shellMs": 334.4424999999999,
+        "allReadyMs": 9971.4791,
+        "cards": [
+          {
+            "id": "photodetector-literature",
+            "mainReadyMs": 2209.9117000000006,
+            "fromNavigationMs": 2819.9293,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 26
+          },
+          {
+            "id": "perc-point-contact-solar-cell",
+            "mainReadyMs": 9.921800000000076,
+            "fromNavigationMs": 2854.5738,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 28
+          },
+          {
+            "id": "fully-textured-perovskite-silicon-tandem",
+            "mainReadyMs": 8.51169999999911,
+            "fromNavigationMs": 2883.4213,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 59
+          },
+          {
+            "id": "suspended-silica-microdisk",
+            "mainReadyMs": 8.87119999999959,
+            "fromNavigationMs": 2934.5791,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 9
+          },
+          {
+            "id": "three-tier-silicon-jlfets",
+            "mainReadyMs": 7013.2823,
+            "fromNavigationMs": 9971.464,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 61
+          }
+        ],
+        "requests": [
+          "/examples/previews/perc-point-contact-solar-cell.wafercad",
+          "/examples/previews/suspended-silica-microdisk.wafercad",
+          "/examples/previews/photodetector-literature.wafercad",
+          "/examples/previews/fully-textured-perovskite-silicon-tandem.wafercad",
+          "/examples/previews/three-tier-silicon-jlfets.wafercad"
+        ],
+        "errors": []
+      },
+      {
+        "shellMs": 272.4398000000001,
+        "allReadyMs": 10415.6867,
+        "cards": [
+          {
+            "id": "photodetector-literature",
+            "mainReadyMs": 2401.7186,
+            "fromNavigationMs": 2886.0481,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 26
+          },
+          {
+            "id": "perc-point-contact-solar-cell",
+            "mainReadyMs": 12.942399999999907,
+            "fromNavigationMs": 2925.5579,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 28
+          },
+          {
+            "id": "fully-textured-perovskite-silicon-tandem",
+            "mainReadyMs": 9.367100000001301,
+            "fromNavigationMs": 2953.4552000000003,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 59
+          },
+          {
+            "id": "suspended-silica-microdisk",
+            "mainReadyMs": 9.507499999999709,
+            "fromNavigationMs": 3005.308499999999,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 9
+          },
+          {
+            "id": "three-tier-silicon-jlfets",
+            "mainReadyMs": 7388.001200000001,
+            "fromNavigationMs": 10415.6733,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 61
+          }
+        ],
+        "requests": [
+          "/examples/previews/perc-point-contact-solar-cell.wafercad",
+          "/examples/previews/suspended-silica-microdisk.wafercad",
+          "/examples/previews/photodetector-literature.wafercad",
+          "/examples/previews/fully-textured-perovskite-silicon-tandem.wafercad",
+          "/examples/previews/three-tier-silicon-jlfets.wafercad"
+        ],
+        "errors": []
+      },
+      {
+        "shellMs": 246.86239999999816,
+        "allReadyMs": 9699.9817,
+        "cards": [
+          {
+            "id": "photodetector-literature",
+            "mainReadyMs": 2089.934300000001,
+            "fromNavigationMs": 2553.111499999999,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 26
+          },
+          {
+            "id": "perc-point-contact-solar-cell",
+            "mainReadyMs": 8.813399999999092,
+            "fromNavigationMs": 2606.281899999998,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 28
+          },
+          {
+            "id": "fully-textured-perovskite-silicon-tandem",
+            "mainReadyMs": 9.72650000000067,
+            "fromNavigationMs": 2664.639299999999,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 59
+          },
+          {
+            "id": "suspended-silica-microdisk",
+            "mainReadyMs": 8.615100000002712,
+            "fromNavigationMs": 2706.5856999999996,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 9
+          },
+          {
+            "id": "three-tier-silicon-jlfets",
+            "mainReadyMs": 6971.253099999998,
+            "fromNavigationMs": 9699.971099999999,
+            "steps": 1,
+            "bookmarks": 0,
+            "revision": 61
+          }
+        ],
+        "requests": [
+          "/examples/previews/fully-textured-perovskite-silicon-tandem.wafercad",
+          "/examples/previews/perc-point-contact-solar-cell.wafercad",
+          "/examples/previews/photodetector-literature.wafercad",
+          "/examples/previews/suspended-silica-microdisk.wafercad",
+          "/examples/previews/three-tier-silicon-jlfets.wafercad"
+        ],
+        "errors": []
+      }
+    ]
+  },
+  "nativeFullImport": {
+    "file": "site/examples/three-tier-silicon-jlfets.wafercad",
+    "bytes": 1816020,
+    "beforeMedianOpenedMs": 58249.403999999995,
+    "afterMedianOpenedMs": 18701.3082,
+    "beforeMedianReadyMs": 70516.6612,
+    "afterMedianReadyMs": 30986.491299999994,
+    "beforeMedianWorkerMs": 6649.20000000298,
+    "afterMedianWorkerMs": 6598.9000000059605,
+    "beforeRuns": [
+      {
+        "openedMs": 58249.403999999995,
+        "readyMs": 70516.6612,
+        "workerMs": 6649.20000000298,
+        "worker": {
+          "started": 978.1000000089407,
+          "Parsing project JSON\u2026": 1000.7000000029802,
+          "Validating project\u2026": 1042.300000011921,
+          "done": 7627.300000011921,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 57810.066900000005,
+        "readyMs": 70144.3683,
+        "workerMs": 6593.399999991059,
+        "worker": {
+          "started": 741,
+          "Parsing project JSON\u2026": 763.0999999940395,
+          "Validating project\u2026": 805.0999999940395,
+          "done": 7334.399999991059,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 58253.655299999984,
+        "readyMs": 70591.8125,
+        "workerMs": 6744.300000011921,
+        "worker": {
+          "started": 731.6999999880791,
+          "Parsing project JSON\u2026": 761.8999999910593,
+          "Validating project\u2026": 803.2999999970198,
+          "done": 7476,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      }
+    ],
+    "afterRuns": [
+      {
+        "openedMs": 18987.498900000002,
+        "readyMs": 31322.971800000003,
+        "workerMs": 6598.9000000059605,
+        "worker": {
+          "started": 963.7999999970198,
+          "Parsing project JSON\u2026": 989.4000000059605,
+          "Validating project\u2026": 1030,
+          "done": 7562.70000000298,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 18676.878600000004,
+        "readyMs": 30863.7641,
+        "workerMs": 6587.100000008941,
+        "worker": {
+          "started": 757.0999999940395,
+          "Parsing project JSON\u2026": 778.7000000029802,
+          "Validating project\u2026": 819.7000000029802,
+          "done": 7344.20000000298,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 18701.3082,
+        "readyMs": 30986.491299999994,
+        "workerMs": 6621.70000000298,
+        "worker": {
+          "started": 696.2000000029802,
+          "Parsing project JSON\u2026": 718.6000000089407,
+          "Validating project\u2026": 782.5,
+          "done": 7317.9000000059605,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      }
+    ]
+  },
+  "notes": [
+    "Welcome baseline routes original full assets and the exact historical view module; optimized cards route final-only previews.",
+    "Native full import uses the identical file, differing only in the routed model-view-geometry.js module.",
+    "Sequential per-card wait durations are not standalone cold-load durations.",
+    "Four-view acceptance is a separate installed-Chrome headless run, excluded from cold timing.",
+    "Headful four-view inspection was interrupted and is not counted as passing."
+  ]
+}

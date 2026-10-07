@@ -1,0 +1,47 @@
+[
+  {
+    "id": "photodetector-literature",
+    "fullBytes": 366336,
+    "previewBytes": 65420,
+    "fullSteps": 32,
+    "previewSteps": 1,
+    "finalModelAndLayoutExactlyEqual": true,
+    "fullFileSha256": "383e24dc2d28296df593e7b4a4c760e882cde469cb69c16fc548e933a279e110"
+  },
+  {
+    "id": "perc-point-contact-solar-cell",
+    "fullBytes": 845137,
+    "previewBytes": 408546,
+    "fullSteps": 33,
+    "previewSteps": 1,
+    "finalModelAndLayoutExactlyEqual": true,
+    "fullFileSha256": "925e819ff86d4038caba2b3353ab34c061def3d4ab1f4835884ef06d60b8e00f"
+  },
+  {
+    "id": "fully-textured-perovskite-silicon-tandem",
+    "fullBytes": 263828,
+    "previewBytes": 58856,
+    "fullSteps": 24,
+    "previewSteps": 1,
+    "finalModelAndLayoutExactlyEqual": true,
+    "fullFileSha256": "04136a52007c2a40315fbbc662f016e95b098d0ebd6948a12cea4f4f44d59a64"
+  },
+  {
+    "id": "suspended-silica-microdisk",
+    "fullBytes": 99921,
+    "previewBytes": 57626,
+    "fullSteps": 9,
+    "previewSteps": 1,
+    "finalModelAndLayoutExactlyEqual": true,
+    "fullFileSha256": "196e1865304c47426b0a946d35ad0c3e17963437e8f78df1488a3980f3ce9627"
+  },
+  {
+    "id": "three-tier-silicon-jlfets",
+    "fullBytes": 1816020,
+    "previewBytes": 491334,
+    "fullSteps": 40,
+    "previewSteps": 1,
+    "finalModelAndLayoutExactlyEqual": true,
+    "fullFileSha256": "728e2615a4258c12ea2127e8c6a05b9ce4bbe9e7aa87020642a12d0d5a567c9e"
+  }
+]
