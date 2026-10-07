@@ -172,4 +172,8 @@ test('array runtime and renderer regressions select their owning browser suites'
     'smoke',
     'renderer',
   ]);
+  assert.deepEqual(enabled(buildCiTestPlan(['scripts/renderer-pipeline-benchmark.mjs'])), [
+    'smoke',
+    'renderer',
+  ]);
 });
