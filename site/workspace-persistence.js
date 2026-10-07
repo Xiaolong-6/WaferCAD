@@ -105,8 +105,42 @@ async function pruneRecoveryPoints(database, keep = MAX_RECOVERY_POINTS) {
   await transactionDone(transaction);
 }
 
+// Keep strict packing off the UI thread. Each request owns its worker and a
+// structured-cloned candidate, so edits made while saving cannot alter that save.
+export async function prepareWorkspaceStorage(project) {
+  if (typeof globalThis.Worker !== 'function') {
+    return Promise.resolve(prepareProjectForWorkspaceStorage(project));
+  }
+  return new Promise((resolve, reject) => {
+    let worker;
+    const finish = (error, stored) => {
+      worker?.terminate();
+      if (error) reject(error);
+      else resolve(stored);
+    };
+    try {
+      const url = new URL('./workspace-storage-worker.js', import.meta.url);
+      url.search = new URL(import.meta.url).search;
+      worker = new globalThis.Worker(url);
+      worker.onmessage = ({ data }) => {
+        if (data?.id !== 1) return;
+        if (data.type === 'done' && data.project) finish(null, data.project);
+        else if (data.type === 'error')
+          finish(new Error(data.message || 'Workspace packing failed.'));
+      };
+      worker.onerror = (event) =>
+        finish(new Error(event.message || 'Workspace storage worker failed.'));
+      worker.onmessageerror = () =>
+        finish(new Error('Workspace storage worker returned unreadable data.'));
+      worker.postMessage({ id: 1, project });
+    } catch (error) {
+      finish(error);
+    }
+  });
+}
+
 export async function saveWorkspaceState(project, metadata = {}, { canCommit = () => true } = {}) {
-  const preparedProject = prepareProjectForWorkspaceStorage(project);
+  const preparedProject = await prepareWorkspaceStorage(project);
   if (!canCommit()) return false;
 
   const database = await openDatabase();
@@ -120,7 +154,7 @@ export async function saveWorkspaceState(project, metadata = {}, { canCommit = (
     });
     transaction
       .objectStore(META_STORE_NAME)
-      .put(metadataRecord(RECORD_KEY, project, metadata, updatedAt));
+      .put(metadataRecord(RECORD_KEY, preparedProject, metadata, updatedAt));
     await transactionDone(transaction);
     return true;
   } finally {
@@ -129,6 +163,7 @@ export async function saveWorkspaceState(project, metadata = {}, { canCommit = (
 }
 
 export async function createWorkspaceRecoveryCheckpoint(project, metadata = {}) {
+  const preparedProject = await prepareWorkspaceStorage(project);
   const database = await openDatabase();
   try {
     const updatedAt = new Date().toISOString();
@@ -136,9 +171,11 @@ export async function createWorkspaceRecoveryCheckpoint(project, metadata = {}) 
     const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).put({
       key,
-      project: prepareProjectForWorkspaceStorage(project),
+      project: preparedProject,
     });
-    transaction.objectStore(META_STORE_NAME).put(metadataRecord(key, project, metadata, updatedAt));
+    transaction
+      .objectStore(META_STORE_NAME)
+      .put(metadataRecord(key, preparedProject, metadata, updatedAt));
     await transactionDone(transaction);
     await pruneRecoveryPoints(database);
     return key;

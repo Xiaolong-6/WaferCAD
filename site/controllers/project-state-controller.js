@@ -1,4 +1,5 @@
 import { createModel } from '../model.js';
+import { readProjectFile } from '../project-io.js';
 import {
   CURRENT_PROJECT_VERSION,
   validateProjectFile,
@@ -24,6 +25,26 @@ export function createEmptyLayout() {
   };
 }
 
+// Exact comparison with a private copy, including non-finite values and missing
+// keys. JSON fingerprints would conflate NaN/null and undefined/missing values.
+function unchangedState(left, right) {
+  const pending = [[left, right]];
+  while (pending.length) {
+    const [a, b] = pending.pop();
+    if (Object.is(a, b)) continue;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a) && a.length !== b.length) return false;
+    const keys = Object.keys(a);
+    if (keys.length !== Object.keys(b).length) return false;
+    for (const key of keys) {
+      if (!Object.hasOwn(b, key)) return false;
+      pending.push([a[key], b[key]]);
+    }
+  }
+  return true;
+}
+
 export function createProjectStateController({
   ensureHierarchy,
   getState,
@@ -32,7 +53,28 @@ export function createProjectStateController({
   getSnapshotBranchState = () => null,
   syncDisplayControls = () => {},
   setSectionEditEnabled,
+  // This reader must validate the entire migrated project before returning it.
+  // The app supplies the strict import worker; non-worker callers use project IO.
+  readValidatedFile = readProjectFile,
 }) {
+  let importedStates = new WeakMap();
+
+  async function readProjectSnapshot(file) {
+    importedStates = new WeakMap();
+    const project = await readValidatedFile(file);
+    if (!project) return project;
+    const states = [
+      ...(project.snapshots || []).map((record) => record.state),
+      ...(project.snapshotBranches?.nodes || []).map((node) => node.state),
+      ...(project.snapshotBranches?.branches || []).map((branch) => branch.headState),
+    ].filter((state) => state && typeof state === 'object');
+    const copies = structuredClone(states);
+    for (let index = 0; index < states.length; index++) {
+      importedStates.set(states[index], copies[index]);
+    }
+    return project;
+  }
+
   function buildProjectSnapshot(includeSnapshots = false) {
     ensureHierarchy();
     const state = getState();
@@ -220,7 +262,12 @@ export function createProjectStateController({
 
   function isValidSnapshotStates(states) {
     try {
-      validateProjectFiles(states);
+      const remaining = [...new Set(states)].filter((state) => {
+        const validatedCopy = importedStates.get(state);
+        importedStates.delete(state);
+        return !validatedCopy || !unchangedState(state, validatedCopy);
+      });
+      validateProjectFiles(remaining);
       return states.every((state) => state.snapshots == null);
     } catch {
       return false;
@@ -228,6 +275,7 @@ export function createProjectStateController({
   }
 
   return {
+    readProjectSnapshot,
     buildProjectSnapshot,
     loadProjectSnapshot,
     resetProjectState,

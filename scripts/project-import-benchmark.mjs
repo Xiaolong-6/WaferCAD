@@ -28,6 +28,19 @@ try {
         route.fulfill({ contentType: 'text/javascript', body }),
       );
     }
+    if (process.env.WAFERCAD_BASELINE_IMPORT_DIR) {
+      for (const path of [
+        'app.js',
+        'controllers/project-state-controller.js',
+        'workspace-persistence.js',
+      ]) {
+        const body = await readFile(resolve(process.env.WAFERCAD_BASELINE_IMPORT_DIR, path));
+        await context.route(
+          (url) => url.pathname.endsWith(`/${path}`),
+          (route) => route.fulfill({ contentType: 'text/javascript', body }),
+        );
+      }
+    }
     const page = await context.newPage();
     page.setDefaultTimeout(900000);
     const errors = [];
@@ -79,6 +92,7 @@ try {
     );
     const readyMs = performance.now() - started;
     const [worker] = await page.evaluate(() => window.__projectImportBenchmark);
+    assert.ok(worker, 'The import must use the real project worker.');
     assert.equal(worker.steps, raw.snapshotBranches?.nodes?.length);
     assert.equal(worker.bookmarks, raw.snapshots?.length);
     assert.deepEqual(errors, []);

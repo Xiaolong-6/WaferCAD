@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-07",
+  "baselineProductCommit": "8b6b7f9",
+  "environment": {
+    "os": "Windows",
+    "node": "24.19.0",
+    "playwright": "1.55.1",
+    "chrome": "154.0.8037.98",
+    "three": "0.179.1",
+    "headlessTiming": false,
+    "newBrowserContextPerRun": true,
+    "runsPerCondition": 3
+  },
+  "file": "site/examples/three-tier-silicon-jlfets.wafercad",
+  "bytes": 1816020,
+  "sha256": "728e2615a4258c12ea2127e8c6a05b9ce4bbe9e7aa87020642a12d0d5a567c9e",
+  "steps": 40,
+  "bookmarks": 5,
+  "before": {
+    "runs": [
+      {
+        "openedMs": 19633.039399999998,
+        "readyMs": 32562.150299999998,
+        "workerMs": 6368.4000000059605,
+        "worker": {
+          "started": 1112.3999999910593,
+          "Parsing project JSON\u2026": 1141.5999999940395,
+          "Validating project\u2026": 1187.3999999910593,
+          "done": 7480.79999999702,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 19935.532399999996,
+        "readyMs": 32813.825899999996,
+        "workerMs": 7324.0999999940395,
+        "worker": {
+          "started": 1454.5,
+          "Parsing project JSON\u2026": 1513.2000000029802,
+          "Validating project\u2026": 1560.9000000059605,
+          "done": 8778.59999999404,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 20011.13429999999,
+        "readyMs": 32864.35359999999,
+        "workerMs": 7174,
+        "worker": {
+          "started": 873.0999999940395,
+          "Parsing project JSON\u2026": 901.2999999970198,
+          "Validating project\u2026": 949.7000000029802,
+          "done": 8047.0999999940395,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      }
+    ],
+    "medianOpenedMs": 19935.532399999996,
+    "medianReadyMs": 32813.825899999996,
+    "medianWorkerMs": 7174
+  },
+  "after": {
+    "runs": [
+      {
+        "openedMs": 12581.7109,
+        "readyMs": 16475.1576,
+        "workerMs": 7344.20000000298,
+        "worker": {
+          "started": 1175.9000000059605,
+          "Parsing project JSON\u2026": 1210.2999999970198,
+          "Validating project\u2026": 1254.2999999970198,
+          "done": 8520.10000000894,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 12245.161399999997,
+        "readyMs": 16002.212500000001,
+        "workerMs": 7444.5,
+        "worker": {
+          "started": 847.1000000089407,
+          "Parsing project JSON\u2026": 885.6000000089407,
+          "Validating project\u2026": 931.1000000089407,
+          "done": 8291.60000000894,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      },
+      {
+        "openedMs": 11936.046200000004,
+        "readyMs": 15680.523000000001,
+        "workerMs": 7115.5999999940395,
+        "worker": {
+          "started": 1010,
+          "Parsing project JSON\u2026": 1045.0999999940395,
+          "Validating project\u2026": 1089.7000000029802,
+          "done": 8125.5999999940395,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": []
+      }
+    ],
+    "medianOpenedMs": 12245.161399999997,
+    "medianReadyMs": 16002.212500000001,
+    "medianWorkerMs": 7344.20000000298
+  },
+  "storageRegression": {
+    "baseUrl": "http://127.0.0.1:4173",
+    "browser": "154.0.8037.98",
+    "expected": "b27fef0f9eb0eb9a12400efaaca306d8d384978dbbb7be408e88dfff76e34af7",
+    "frames": 450,
+    "packedDigest": "b27fef0f9eb0eb9a12400efaaca306d8d384978dbbb7be408e88dfff76e34af7",
+    "saved": true,
+    "savedDigest": "b27fef0f9eb0eb9a12400efaaca306d8d384978dbbb7be408e88dfff76e34af7",
+    "rejection": "Invalid project: model.width must be between 1e-12 and 2000000000.",
+    "afterRejection": "b27fef0f9eb0eb9a12400efaaca306d8d384978dbbb7be408e88dfff76e34af7",
+    "lostLeaseCommitted": false,
+    "afterLeaseLoss": "b27fef0f9eb0eb9a12400efaaca306d8d384978dbbb7be408e88dfff76e34af7",
+    "retry": true,
+    "recoveryDigest": "b27fef0f9eb0eb9a12400efaaca306d8d384978dbbb7be408e88dfff76e34af7",
+    "steps": 40,
+    "bookmarks": 5,
+    "errors": []
+  }
+}

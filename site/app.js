@@ -740,6 +740,7 @@ function applyOp() {
 
 const projectStateController = createProjectStateController({
   ensureHierarchy,
+  readValidatedFile: readProjectFileTask,
   getState: () => ({
     model,
     layout,
@@ -832,6 +833,7 @@ const projectStateController = createProjectStateController({
   setSectionEditEnabled,
 });
 const {
+  readProjectSnapshot,
   buildProjectSnapshot,
   loadProjectSnapshot,
   resetProjectState,
@@ -934,7 +936,7 @@ projectController = createProjectController({
   status,
   onProjectChanged: markProjectDirty,
   checkpointBeforeReplace: checkpointWorkspace,
-  readProjectFileTask,
+  readProjectFileTask: readProjectSnapshot,
   exportProjectFileTask,
   normalizedProjectName,
   getProjectName: () => projectName,
