@@ -17,7 +17,25 @@ await mkdir(output, { recursive: true });
 try {
   const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
   const page = await context.newPage();
-  page.setDefaultTimeout(120000);
+  const THREE_READY_TIMEOUT_MS = 45000;
+  page.setDefaultTimeout(THREE_READY_TIMEOUT_MS);
+  const waitStage = async (label) => {
+    const started = performance.now();
+    console.log('ARRAY_RENDERER_STAGE_BEGIN', label);
+    await waitForThreeReady(page, THREE_READY_TIMEOUT_MS);
+    console.log(
+      'ARRAY_RENDERER_STAGE_OK',
+      label,
+      Math.round(performance.now() - started),
+      JSON.stringify(await page.locator('#threeHost').evaluate((el) => ({
+        renderState: el.dataset.renderState,
+        updateKind: el.dataset.rendererUpdateKind,
+        sceneGeneration: el.dataset.sceneGeneration,
+        surfacePlanBuildCount: el.dataset.surfacePlanBuildCount,
+        presentationMs: el.dataset.rendererPresentationMs,
+      }))),
+    );
+  };
   const errors = observePageErrors(page);
   await page.goto(baseUrl + '/app.html');
   await waitForAppReady(page);
@@ -33,7 +51,7 @@ try {
     document.getElementById('statusText').textContent.startsWith('Opened '),
   );
   await closeFunctionPanel(page);
-  await waitForThreeReady(page, 120000);
+  await waitStage('initial');
   const snapshot = () => page.locator('#threeHost').evaluate((el) => ({ ...el.dataset }));
   const fast = await snapshot();
   assert.equal(fast.arrayInstances, '1885');
@@ -45,11 +63,15 @@ try {
     'initial full-wafer render must populate derived cap triangulation data',
   );
   await page.locator('#threeFastBtn').click();
+  console.log('ARRAY_RENDERER_STAGE_BEGIN', 'quality');
   await page.waitForFunction(
     () =>
       document.getElementById('threeHost').dataset.renderQuality === 'quality' &&
       document.getElementById('threeHost').dataset.renderState === 'ready',
+    null,
+    { timeout: THREE_READY_TIMEOUT_MS },
   );
+  console.log('ARRAY_RENDERER_STAGE_OK', 'quality');
   const quality = await snapshot();
   assert.ok(
     Number(quality.derivedCapCacheHits) > Number(fast.derivedCapCacheHits),
@@ -66,7 +88,7 @@ try {
   await page.screenshot({ path: fileURLToPath(new URL('quality.png', output)) });
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('0.5');
-  await waitForThreeReady(page, 120000);
+  await waitStage('opacity-0.5');
   const transparent = await snapshot();
   assert.equal(transparent.arrayInstances, '1885');
   assert.ok(
@@ -98,7 +120,7 @@ try {
   );
   for (let cycle = 0; cycle < 10; cycle++) {
     await page.locator('#threeOpacityRange').fill(cycle % 2 ? '0.5' : '1');
-    await waitForThreeReady(page, 120000);
+    await waitStage(`opacity-stress-${cycle + 1}`);
   }
   const stressOpacity = await snapshot();
   for (const [key, value] of Object.entries(stableResources)) {
@@ -115,7 +137,7 @@ try {
   };
   for (let cycle = 0; cycle < 6; cycle++) {
     await setBorders(cycle % 2 === 0);
-    await waitForThreeReady(page, 120000);
+    await waitStage(`border-stress-${cycle + 1}`);
   }
   const stressBorders = await snapshot();
   for (const [key, value] of Object.entries(stableResources)) {
@@ -126,19 +148,19 @@ try {
   assert.equal(stressBorders.rendererUpdateKind, 'presentation');
 
   await page.locator('#threeOpacityRange').fill('0.5');
-  await waitForThreeReady(page, 120000);
+  await waitStage('opacity-final-0.5');
   await page.screenshot({ path: fileURLToPath(new URL('transparent.png', output)) });
   await page.locator('#threeOpacityRange').fill('1');
-  await waitForThreeReady(page, 120000);
+  await waitStage('opacity-final-1');
   const opaqueAgain = await snapshot();
   assert.equal(opaqueAgain.sceneGeneration, quality.sceneGeneration);
   assert.equal(opaqueAgain.surfacePlanBuildCount, quality.surfacePlanBuildCount);
   assert.equal(opaqueAgain.rendererUpdateKind, 'presentation');
   await setBorders(false);
-  await waitForThreeReady(page, 120000);
+  await waitStage('border-final-off');
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeFastBtn').click();
-  await waitForThreeReady(page, 120000);
+  await waitStage('restore-fast');
   const restored = await snapshot();
   assert.equal(restored.renderQuality, 'fast');
   assert.equal(restored.surfaceTopology, fast.surfaceTopology);
@@ -149,7 +171,7 @@ try {
   for (let i = 1; i <= 12; i++)
     await page.mouse.move(rect.x + rect.width * 0.5 + i * 4, rect.y + rect.height * 0.5 + i);
   await page.mouse.up();
-  await waitForThreeReady(page, 120000);
+  await waitStage('rotation');
   assert.deepEqual(errors, []);
   const report = {
     browserVersion: browser.version(),
