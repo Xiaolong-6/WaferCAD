@@ -64,3 +64,16 @@ test('validated triangulation keeps ordinary solid caps unchanged', () => {
   assert.equal(triangles.length, 2);
   assert.ok(Math.abs(actual - 8) < 1e-12);
 });
+
+test('validated triangulation drops sub-grid degenerate cap slivers', () => {
+  const polygon = [
+    [
+      [0, 0],
+      [1e-10, 0],
+      [1e-10, 1],
+      [0, 1],
+      [0, 0],
+    ],
+  ];
+  assert.deepEqual(triangulatePolygon(THREE, polygon), []);
+});
