@@ -8,7 +8,9 @@ import {
   readProjectFile,
   serializeProject,
 } from '../project-io.js';
+import { applyOperation } from '../model.js';
 import { validateProjectFile, validateProjectFiles } from '../project-schema.js';
+import { rectMulti } from '../vector-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendorSource = readFileSync(
@@ -644,4 +646,92 @@ test('batch History validation falls back to filtering invalid states', () => {
   );
   assert.equal(count, 1);
   assert.equal(manager.exportRecords()[0].id, 'good');
+});
+
+
+test('reopened History process replay sanitizes zero-area boolean sweep artifacts', async () => {
+  const source = validProject(1),
+    restoredState = validProject(1);
+  source.model = structuredClone(restoredState.model);
+  source.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'process-1',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'process-1',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-07T00:00:00.000Z',
+        processRevision: 1,
+        operation: { kind: 'record', label: 'Persisted predecessor' },
+        state: restoredState,
+      },
+    ],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        rootNodeId: 'process-1',
+        headNodeId: 'process-1',
+        headState: restoredState,
+        createdAt: '1970-01-01T00:00:00.000Z',
+      },
+    ],
+  };
+
+  const text = serializeProject(source),
+    loaded = await readProjectFile({ size: new Blob([text]).size, text: async () => text });
+  let live = loaded;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (value) => {
+      live = value;
+    },
+    validateState: (value) => {
+      validateProjectFile(value);
+      return true;
+    },
+  });
+  manager.importRecords([], loaded.snapshotBranches);
+  assert.equal(manager.restoreProcessNode('process-1'), true);
+
+  const originalDifference = globalThis.polygonClipping.difference;
+  let injected = false;
+  globalThis.polygonClipping.difference = (...args) => {
+    const result = originalDifference(...args);
+    if (injected || !Array.isArray(result) || !result.length) return result;
+    injected = true;
+    return [
+      ...result,
+      [
+        [
+          [0, 0],
+          [1, 0],
+          [2, 0],
+          [0, 0],
+        ],
+      ],
+    ];
+  };
+
+  try {
+    const operation = applyOperation(live.model, {
+      type: 'etch',
+      thickness: 0.2,
+      face: 'front',
+      area: rectMulti(8, 4),
+      etchProfile: 'directional',
+      etchTargetLayerIds: ['base'],
+    });
+    assert.equal(operation.changed, true, operation.error);
+    assert.equal(injected, true, 'fixture must inject a zero-area boolean fragment');
+    assert.equal(validateProjectFile(live), live);
+  } finally {
+    globalThis.polygonClipping.difference = originalDifference;
+  }
 });
