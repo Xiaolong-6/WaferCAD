@@ -1010,8 +1010,8 @@ projectController = createProjectController({
 const { renderSnapshots, openLayoutFile, openProjectFile, openBundledExample } = projectController;
 
 function recordProcessOperation(operation) {
-  const recorded = snapshotManager.recordOperation(operation);
   processRecipeController?.recordManualOperation?.(operation);
+  const recorded = snapshotManager.recordOperation(operation);
   markProjectDirty();
   renderSnapshots();
   return recorded;
