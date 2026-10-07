@@ -2265,6 +2265,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sidewalls: plan.sidewalls.length,
       });
       surfacePlanBuildCount++;
+      host.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
       if (renderer?.domElement?.dataset) {
         renderer.domElement.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
       }
