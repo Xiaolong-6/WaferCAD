@@ -94,7 +94,14 @@ try {
   report.sort((a, b) => order.get(a.id) - order.get(b.id));
   await writeFile(
     manifestUrl,
-    JSON.stringify({ browserVersion: browser.version(), examples: report }, null, 2) + '\n',
+    JSON.stringify(
+      {
+        browserVersion: requestedId ? previousManifest.browserVersion : browser.version(),
+        examples: report,
+      },
+      null,
+      2,
+    ) + '\n',
   );
   console.log(JSON.stringify(report, null, 2));
 } finally {
