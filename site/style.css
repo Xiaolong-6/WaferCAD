@@ -5372,6 +5372,9 @@ summary:focus-visible {
   gap: 5px;
   margin-top: 5px;
 }
+.recipe-code-pane[hidden] {
+  display: none !important;
+}
 .recipe-code-editor {
   width: 100%;
   min-height: 250px;
