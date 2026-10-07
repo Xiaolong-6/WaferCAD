@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 18">
+  <metadata>WaferCAD paper-reconstructed mask v2; M3D cell; additive local Ti/Pt back-gate islands; 1 viewBox unit = 1 um; black fill = operation region.</metadata>
+  <rect x="3" y="6" width="3" height="1.2" fill="#000000" stroke="none"/>
+  <rect x="7" y="6" width="3" height="1.2" fill="#000000" stroke="none"/>
+  <rect x="18" y="6" width="3" height="1.2" fill="#000000" stroke="none"/>
+  <rect x="22" y="6" width="3" height="1.2" fill="#000000" stroke="none"/>
+  <rect x="3" y="10.8" width="3" height="1.2" fill="#000000" stroke="none"/>
+  <rect x="7" y="10.8" width="3" height="1.2" fill="#000000" stroke="none"/>
+  <rect x="18" y="10.8" width="3" height="1.2" fill="#000000" stroke="none"/>
+  <rect x="22" y="10.8" width="3" height="1.2" fill="#000000" stroke="none"/>
+</svg>
