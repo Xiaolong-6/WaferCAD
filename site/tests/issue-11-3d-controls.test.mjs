@@ -23,6 +23,11 @@ const morphologyMeshPolicy = await readFile(
   'utf8',
 );
 
+const sceneSignatureSource = threeView.slice(
+  threeView.indexOf('function sceneSignature'),
+  threeView.indexOf('function interfaceMaterialState'),
+);
+
 test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(html, /id="threeOpacityRange"[^>]*value="1"/s);
   assert.match(html, /id="threeBorders" type="checkbox"/);
@@ -85,6 +90,11 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /rendererUpdateKind = 'presentation'/);
   assert.match(threeView, /rendererAssemblyMs = '0'/);
   assert.match(threeView, /physicalSceneSignature === signature/);
+  assert.match(sceneSignatureSource, /processRevision/);
+  assert.match(sceneSignatureSource, /fast:/);
+  assert.match(sceneSignatureSource, /clip:/);
+  assert.match(sceneSignatureSource, /zCollapse:/);
+  assert.doesNotMatch(sceneSignatureSource, /opacity|borders/);
   assert.match(threeView, /kind: 'implant-internal'/);
   assert.match(threeView, /part\.buried \? 'material-interface' : 'material-exterior'/);
   assert.match(threeView, /annotationInspectionCutSegments\(implant, clip\)/);
