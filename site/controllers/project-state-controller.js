@@ -100,7 +100,7 @@ export function createProjectStateController({
       maskRoi: state.maskRoi,
       maskRoiAnchor: state.maskRoiAnchor,
       activeFace: state.activeFace,
-      processRecipe: state.processRecipe ? structuredClone(state.processRecipe) : null,
+      ...(state.processRecipe ? { processRecipe: structuredClone(state.processRecipe) } : {}),
       roi: state.roi,
       roiAnchor: state.roiAnchor,
       section: state.section,
