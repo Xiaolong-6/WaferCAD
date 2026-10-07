@@ -2541,39 +2541,35 @@ diffuseColor.a *= waferCadAlphaScale;`,
         presentation: { kind: 'border' },
       });
 
-      // Implant is a non-material annotation volume. Opaque inspection still
-      // hides buried volume, but an ROI clip creates a real inspection cut face:
-      // the clipped sidewall is rendered on top of the material cut with the same
-      // surface-to-depth gradient used by Section A–B. Transparent inspection
-      // additionally shows the full clipped internal volume.
-      const showInternalImplants = materialState.transparent;
+      // Implant and Electrical Region annotations are built as a persistent
+      // superset. Presentation state decides which internal volumes are visible,
+      // so opacity changes never need to recreate annotation geometry.
       let implantInternalCount = 0,
         implantSurfaceCount = 0,
         implantCutCount = 0,
         implantGradientMeshCount = 0;
       const annotationModel =
-        isArrayModel(model) && clip ? resolveArrayModel(model, geometryBounds(clip)) : model;
-      const annotationSources =
-        isArrayModel(model) && !clip
-          ? [...new Set(arrayParts(model).map((p) => p.model))].map((leaf) => ({
-              leaf,
-              translations: arrayParts(model)
-                .filter((p) => p.model === leaf)
-                .map((p) => [p.x, p.y]),
-            }))
-          : [{ leaf: annotationModel, translations: null }];
-      const arrayAnnotations = (derive) =>
-        annotationSources.flatMap(({ leaf, translations }) =>
-          derive(leaf, clip).map((a) => ({ ...a, instanceTranslations: translations })),
-        );
+          isArrayModel(model) && clip ? resolveArrayModel(model, geometryBounds(clip)) : model,
+        annotationSources =
+          isArrayModel(model) && !clip
+            ? [...new Set(arrayParts(model).map((p) => p.model))].map((leaf) => ({
+                leaf,
+                translations: arrayParts(model)
+                  .filter((p) => p.model === leaf)
+                  .map((p) => [p.x, p.y]),
+              }))
+            : [{ leaf: annotationModel, translations: null }],
+        arrayAnnotations = (derive) =>
+          annotationSources.flatMap(({ leaf, translations }) =>
+            derive(leaf, clip).map((a) => ({ ...a, instanceTranslations: translations })),
+          );
+
       host.dataset.arrayInstances = String(plan.arrayInstances || 0);
       host.dataset.arrayNeighborhoods = String(plan.arrayNeighborhoods || 0);
-      for (const implant of arrayAnnotations(implantSolids)) {
-        const inspectionSegments = annotationInspectionCutSegments(implant, clip);
-        if (!showInternalImplants && !implant.surfaceExposed && !inspectionSegments.length)
-          continue;
 
-        const outerNormal = implant.face === 'front' ? 1 : -1,
+      for (const implant of arrayAnnotations(implantSolids)) {
+        const inspectionSegments = annotationInspectionCutSegments(implant, clip),
+          outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
           followDepthProfile = Boolean(appearance && implant.depthProfile !== 'smooth'),
@@ -2586,13 +2582,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
             );
 
         if (inspectionSegments.length) {
-          const cutState = {
-              opacity:
-                opacity * (materialState.transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
-              transparent: true,
-              depthTest: true,
-              depthWrite: false,
-            },
+          const presentation = { kind: 'implant-cut', sortBias: 46 },
+            cutState = presentationState(presentation, inspection).materialState,
             cutGeometry = sidewallGeometry(clip),
             cutMaterial = createAnnotationGradientMaterial(implant, cutState, {
               roughness: appearance ? 0.8 : 0.72,
@@ -2601,7 +2592,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
           cutMaterial.polygonOffsetFactor = -2;
           cutMaterial.polygonOffsetUnits = -2;
           cutMaterial.depthFunc = THREE.LessEqualDepth;
-          const cut = addSurfaceMesh(cutGeometry, cutMaterial, cutState, null, 46);
+          const cut = addSurfaceMesh(
+            cutGeometry,
+            cutMaterial,
+            cutState,
+            null,
+            46,
+            false,
+            null,
+            presentation,
+          );
           if (cut) {
             cut.name = `${implant.name || implant.implantId || 'Implant'} ROI cut`;
             implantCutCount++;
@@ -2609,13 +2609,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
-        if (showInternalImplants) {
-          const implantState = {
-            opacity: opacity * 0.18,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-          };
+        {
+          const presentation = { kind: 'implant-internal', sortBias: 30 },
+            implantState = presentationState(presentation, inspection).materialState;
           let bodyGeometry = followDepthProfile
             ? sidewallGeometry()
             : geometryFromSolid(displaySolidForZCollapse(implant));
@@ -2634,6 +2630,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               30,
               false,
               implant.instanceTranslations,
+              presentation,
             );
           if (body) {
             body.name = implant.name || implant.implantId || 'Implant';
@@ -2642,6 +2639,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
 
           if (followDepthProfile && zIsVisible(implant.innerZ)) {
+            const depthPresentation = { kind: 'implant-depth', sortBias: 31 },
+              depthState = presentationState(depthPresentation, inspection).materialState;
             roughTasks.push({
               kind: 'implant-depth',
               cap: {
@@ -2657,12 +2656,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 solidIndex: 0,
               },
               layer: { color: implant.color || '#D65A6F' },
-              state: {
-                opacity: opacity * 0.24,
-                transparent: true,
-                depthTest: true,
-                depthWrite: false,
-              },
+              state: depthState,
+              presentation: depthPresentation,
               sortBias: 31,
               closeToIdeal: false,
               includeBorders: false,
@@ -2672,21 +2667,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
-        // A clipped sidewall is not a physical top/bottom surface. In opaque
-        // mode it is enough to show the ROI cut; only a genuinely exposed
-        // surviving outer face receives the horizontal surface overlay.
-        if (!showInternalImplants && !implant.surfaceExposed) continue;
-
+        if (!zIsVisible(implant.outerZ)) continue;
         implantSurfaceCount++;
-        const capState = {
-            opacity: opacity * 0.3,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
+        const surfacePresentation = {
+            kind: 'implant-surface',
+            exposed: Boolean(implant.surfaceExposed),
+            sortBias: 40,
           },
+          capState = presentationState(surfacePresentation, inspection).materialState,
           capName = `${implant.name || implant.implantId || 'Implant'} surface`;
 
-        if (appearance && zIsVisible(implant.outerZ)) {
+        if (appearance) {
           roughTasks.push({
             kind: 'implant',
             cap: {
@@ -2703,6 +2694,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             },
             layer: { color: implant.color || '#D65A6F' },
             state: capState,
+            presentation: surfacePresentation,
             sortBias: 40,
             closeToIdeal: false,
             includeBorders: false,
@@ -2711,7 +2703,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
             name: capName,
           });
         } else {
-          if (!zIsVisible(implant.outerZ)) continue;
           let capGeometry = geometryFromSolid({
             slabs: [],
             caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
@@ -2736,6 +2727,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             40,
             false,
             implant.instanceTranslations,
+            surfacePresentation,
           );
           if (cap) {
             cap.name = capName;
@@ -2744,33 +2736,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
       }
 
-      host.dataset.implantInternalCount = String(implantInternalCount);
-      host.dataset.implantSurfaceCount = String(implantSurfaceCount);
-      host.dataset.implantCutCount = String(implantCutCount);
+      host.dataset.implantInternalBuiltCount = String(implantInternalCount);
+      host.dataset.implantSurfaceBuiltCount = String(implantSurfaceCount);
+      host.dataset.implantCutBuiltCount = String(implantCutCount);
       host.dataset.implantGradientMeshCount = String(implantGradientMeshCount);
       host.dataset.implantGradient = 'section-depth';
 
-      // Electrical regions are first-class non-material annotations. Their
-      // volume is visible through transparent host material; an exposed/cut
-      // region may also contribute a restrained surface cap in opaque mode.
-      const showInternalElectrical = materialState.transparent;
       let electricalRegionInternalCount = 0,
         electricalRegionSurfaceCount = 0;
       for (const electrical of arrayAnnotations(electricalRegionSolids)) {
-        if (!showInternalElectrical && !electrical.surfaceExposed) continue;
-
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
             electrical.surfaceAppearance?.kind === 'rough' ? electrical.surfaceAppearance : null,
           followDepthProfile = Boolean(appearance && electrical.depthProfile !== 'smooth');
 
-        if (showInternalElectrical) {
-          const electricalState = {
-              opacity: opacity * 0.14,
-              transparent: true,
-              depthTest: true,
-              depthWrite: false,
-            },
+        {
+          const presentation = { kind: 'electrical-internal', sortBias: 34 },
+            electricalState = presentationState(presentation, inspection).materialState,
             bodyGeometry = geometryFromSolid(
               displaySolidForZCollapse(
                 followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
@@ -2781,10 +2763,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               roughness: 0.82,
               metalness: 0,
               side: THREE.DoubleSide,
-              transparent: true,
-              opacity: electricalState.opacity,
-              depthTest: true,
-              depthWrite: false,
+              ...electricalState,
             }),
             body = addSurfaceMesh(
               bodyGeometry,
@@ -2794,6 +2773,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               34,
               false,
               electrical.instanceTranslations,
+              presentation,
             );
           if (body) {
             body.name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
@@ -2801,6 +2781,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
 
           if (followDepthProfile && zIsVisible(electrical.innerZ)) {
+            const depthPresentation = { kind: 'electrical-depth', sortBias: 35 },
+              depthState = presentationState(depthPresentation, inspection).materialState;
             roughTasks.push({
               kind: 'electrical-depth',
               cap: {
@@ -2816,12 +2798,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 solidIndex: 0,
               },
               layer: { color: electrical.color || '#7A6FD0' },
-              state: {
-                opacity: opacity * 0.2,
-                transparent: true,
-                depthTest: true,
-                depthWrite: false,
-              },
+              state: depthState,
+              presentation: depthPresentation,
               sortBias: 35,
               closeToIdeal: false,
               includeBorders: false,
@@ -2830,16 +2808,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
+        if (!zIsVisible(electrical.outerZ)) continue;
         electricalRegionSurfaceCount++;
-        const capState = {
-            opacity: opacity * 0.24,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
+        const surfacePresentation = {
+            kind: 'electrical-surface',
+            exposed: Boolean(electrical.surfaceExposed),
+            sortBias: 44,
           },
+          capState = presentationState(surfacePresentation, inspection).materialState,
           capName = `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
 
-        if (appearance && zIsVisible(electrical.outerZ)) {
+        if (appearance) {
           roughTasks.push({
             kind: 'electrical',
             cap: {
@@ -2856,6 +2835,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             },
             layer: { color: electrical.color || '#7A6FD0' },
             state: capState,
+            presentation: surfacePresentation,
             sortBias: 44,
             closeToIdeal: false,
             includeBorders: false,
@@ -2863,7 +2843,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
             name: capName,
           });
         } else {
-          if (!zIsVisible(electrical.outerZ)) continue;
           const capGeometry = geometryFromSolid({
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
@@ -2880,13 +2859,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
             44,
             false,
             electrical.instanceTranslations,
+            surfacePresentation,
           );
           if (cap) cap.name = capName;
         }
       }
 
-      host.dataset.electricalRegionInternalCount = String(electricalRegionInternalCount);
-      host.dataset.electricalRegionSurfaceCount = String(electricalRegionSurfaceCount);
+      host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
+      host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
