@@ -26,6 +26,8 @@ import {
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 
+const RENDER_EDGE_EPSILON_UM = 1e-4;
+
 let THREE = null;
 let OrbitControls = null;
 let dependencyError = null;
@@ -862,7 +864,7 @@ export function createThreeView({
             const dx = q[0] - p[0],
               dy = q[1] - p[1],
               length = Math.hypot(dx, dy);
-            if (!length) continue;
+            if (length <= RENDER_EDGE_EPSILON_UM) continue;
             const normal = [dy / length, -dx / length, 0];
             const a = [...p, z0],
               b = [...q, z0],
@@ -992,7 +994,8 @@ export function createThreeView({
         dx = q[0] - p[0],
         dy = q[1] - p[1],
         length = Math.hypot(dx, dy);
-      if (!length) continue;
+      if (length <= RENDER_EDGE_EPSILON_UM) continue;
+      if (Math.abs(Number(part.z1) - Number(part.z0)) <= 1e-9) continue;
 
       const featureSizes = [part.lowerSurface, part.upperSurface]
           .map((surface) => Number(surface?.appearance?.featureSize))
