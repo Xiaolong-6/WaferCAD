@@ -277,6 +277,7 @@ for (const example of [
   if (example.id === 'three-tier-silicon-jlfets') {
     const card = page.locator(`.welcome-example-card[data-example-id="${example.id}"]`);
     await card.scrollIntoViewIfNeeded();
+    await card.locator('[data-preview-view="main"]').click();
     await card.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 120000 });
     const frameElement = await card.locator('iframe').elementHandle();
     const frame = await frameElement.contentFrame();

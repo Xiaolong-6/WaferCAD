@@ -68,6 +68,7 @@ try {
     for (const example of BUNDLED_EXAMPLES) {
       const card = page.locator(`.welcome-example-card[data-example-id="${example.id}"]`);
       await card.scrollIntoViewIfNeeded();
+      if (example.preview?.path) await card.locator('[data-preview-view="main"]').click();
       const frameElement = await card.locator('iframe').elementHandle();
       const activated = performance.now();
       await card.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 180000 });

@@ -155,3 +155,31 @@ test('Welcome previews preserve final structure and display while retaining only
     assert.deepEqual(preview.snapshotBranches.nodes[0].state.model, original.model);
   }
 });
+
+test('Welcome thumbnail assets match their final preview source and image manifest', async () => {
+  const { createHash } = await import('node:crypto');
+  const manifest = JSON.parse(
+    await readFile(
+      new URL('../../tests/fixtures/project-io/example-thumbnails.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  for (const example of BUNDLED_EXAMPLES) {
+    const entry = manifest.examples.find((entry) => entry.id === example.id);
+    assert.ok(entry);
+    assert.equal(example.preview.view, 'three');
+    assert.equal(example.preview.path, entry.path);
+    const image = await readFile(new URL('../' + entry.path.replace(/^\.\//, ''), import.meta.url));
+    const source = await readFile(
+      new URL('../' + example.previewProject.path.replace(/^\.\//, ''), import.meta.url),
+    );
+    assert.equal(image.subarray(8, 12).toString(), 'WEBP');
+    assert.equal(image.length, entry.bytes);
+    assert.equal(createHash('sha256').update(image).digest('hex'), entry.sha256);
+    assert.equal(
+      createHash('sha256').update(source).digest('hex'),
+      entry.sourceSha256,
+      'regenerate thumbnail when its final structure changes',
+    );
+  }
+});

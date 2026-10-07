@@ -2022,6 +2022,82 @@ a.welcome-action {
   font-size: 11px;
 }
 
+/* Thumbnails stay visible until a requested interactive view is ready. */
+.welcome-example-project-preview.has-thumbnail .welcome-example-project-fallback {
+  opacity: 1;
+  filter: none;
+  object-fit: contain;
+  background: #f4f7f9;
+}
+
+.welcome-example-project-preview.has-thumbnail:not(.ready) .welcome-example-project-frame {
+  pointer-events: none;
+}
+
+.welcome-example-project-preview.has-thumbnail .welcome-example-project-loading {
+  inset: auto 10px 10px;
+  width: auto;
+  height: auto;
+  padding: 7px 10px;
+  border-radius: 5px;
+  background: rgba(247, 249, 251, 0.92);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome-example-project-preview.has-thumbnail.loading .welcome-example-project-loading,
+.welcome-example-project-preview.has-thumbnail.error .welcome-example-project-loading {
+  opacity: 1;
+}
+
+.welcome-example-project-preview.has-thumbnail.error .welcome-example-project-loading {
+  bottom: 48px;
+  background: rgba(31, 39, 47, 0.86);
+}
+
+.welcome-example-project-preview.has-thumbnail.ready .welcome-example-project-fallback {
+  opacity: 0;
+}
+
+.welcome-example-preview-start {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.welcome-example-preview-start span {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 6px 9px;
+  border: 1px solid rgba(184, 196, 206, 0.88);
+  border-radius: 5px;
+  background: rgba(247, 249, 251, 0.92);
+  color: #405467;
+  font:
+    650 11px system-ui,
+    sans-serif;
+}
+
+.welcome-example-preview-start:hover span {
+  border-color: #7d9bb5;
+  color: #1d4d75;
+}
+
+.welcome-example-preview-start:focus-visible {
+  outline: 2px solid #4c7eac;
+  outline-offset: -3px;
+}
+
+.welcome-example-project-preview.loading .welcome-example-preview-start,
+.welcome-example-project-preview.ready .welcome-example-preview-start {
+  display: none;
+}
+
 .welcome-example-view-tabs {
   position: absolute;
   z-index: 4;

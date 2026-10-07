@@ -131,21 +131,13 @@ assert.ok(
   'preview view switcher should stay inside the project preview',
 );
 const previewFrames = page.locator('.welcome-example-project-frame');
-assert.equal(await previewFrames.count(), 4);
-for (let index = 0; index < 4; index++) {
+assert.equal(await previewFrames.count(), 5);
+for (let index = 0; index < 5; index++) {
   const frame = previewFrames.nth(index);
   await frame.scrollIntoViewIfNeeded();
-  await page.waitForFunction(
-    (frameIndex) =>
-      document
-        .querySelectorAll('.welcome-example-project-frame')
-        [frameIndex]?.getAttribute('src')
-        ?.includes('app.html'),
-    index,
-    { timeout: 10000 },
-  );
-  assert.match(await frame.getAttribute('src'), /app\.html\?/);
+  assert.equal(await frame.getAttribute('src'), null, 'scrolling must not start an editor');
 }
+await photodetectorCard.locator('[data-preview-view="main"]').click();
 
 const previewFrame = photodetectorCard.locator('.welcome-example-project-frame');
 await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
@@ -248,7 +240,7 @@ assert.notEqual(
   'Welcome Main preview wheel zoom must remain available',
 );
 
-// Auto-loaded previews must remain switchable after their viewport-driven startup.
+// Click-loaded previews stay switchable; unrelated cards remain idle.
 const tandemCard = page.locator(
   '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"]',
 );
@@ -266,7 +258,7 @@ const percCard = page.locator(
 );
 await percCard.locator('.welcome-example-view-tab[data-preview-view="three"]').click();
 assert.match(await previewFrames.nth(1).getAttribute('src'), /app\.html\?/);
-assert.match(await previewFrames.nth(2).getAttribute('src'), /app\.html\?/);
+assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
 const percPreview = page.frameLocator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"] .welcome-example-project-frame',
 );

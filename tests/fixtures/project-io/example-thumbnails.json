@@ -1,0 +1,55 @@
+{
+  "browserVersion": "154.0.8037.98",
+  "examples": [
+    {
+      "id": "photodetector-literature",
+      "path": "./examples/thumbnails/photodetector-literature-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 12484,
+      "sourceSha256": "daefa0bdbab977fb3a80395de7179cf4f82d0d771f92c770bb181bd47ba207c0",
+      "sha256": "b6b853d935d172edccea328e5dbe727806a6abc65fc28da8f78f6c4d3648eefb"
+    },
+    {
+      "id": "perc-point-contact-solar-cell",
+      "path": "./examples/thumbnails/perc-point-contact-solar-cell-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 13990,
+      "sourceSha256": "2afa7d67a7f09cbc157892f806b27568164334292098b4a191a064f7f7f6ceeb",
+      "sha256": "ffe3ca8a0ed50bca0fe57ba79b85e5e008c768b935af534d01d35525317fed6a"
+    },
+    {
+      "id": "fully-textured-perovskite-silicon-tandem",
+      "path": "./examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 6086,
+      "sourceSha256": "e562ec959dc508c1da3fde6cbac19fdfafaaaacdc6afc85a79dc63201ea65f08",
+      "sha256": "e55af70357de5e0866a694567f970e2dcfcbacb2a9e8e1aa08303a5976f71b44"
+    },
+    {
+      "id": "suspended-silica-microdisk",
+      "path": "./examples/thumbnails/suspended-silica-microdisk-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 4710,
+      "sourceSha256": "f70cf8d91541e1eee049faac0349c4cc69bfe5474eba43cbb33db113c9a818f9",
+      "sha256": "242ff1bb4b90582e08578d7dcaf5067d051f1d7dbf90f50c64ba1182c0327cb5"
+    },
+    {
+      "id": "three-tier-silicon-jlfets",
+      "path": "./examples/thumbnails/three-tier-silicon-jlfets-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 8400,
+      "sourceSha256": "ea0e78d87d8a12d9275f394c081df50ccff818d203a6fb5947d710c5310a1c8a",
+      "sha256": "b7e335e9cbaac51c22557b36cd2eeaac29ebb9ba73210350c0d88bc90031285d"
+    }
+  ]
+}

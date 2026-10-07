@@ -1,6 +1,4 @@
 import { BUNDLED_EXAMPLES } from './bundled-examples.js';
-import { MAX_LAYOUT_FILE_BYTES } from './layout-io.js';
-import { MAX_PROJECT_FILE_BYTES } from './project-io.js';
 import { stageStartupFile } from './startup-file.js';
 
 const $ = (id) => document.getElementById(id);
@@ -21,10 +19,15 @@ const projectPreviewObserver =
     : null;
 
 function activateProjectPreviewFrame(frame) {
-  if (!frame || frame.getAttribute('src')) return;
+  if (!frame) return;
+  const retry = frame.closest('.welcome-example-project-preview')?.classList.contains('error');
+  if (frame.getAttribute('src') && !retry) return;
   const host = frame.closest('.welcome-example-project-preview'),
     loading = host?.querySelector('.welcome-example-project-loading');
   if (loading) loading.textContent = 'Loading project preview…';
+  host?.classList.add('loading');
+  host?.classList.remove('error', 'ready');
+  frame.loading = 'eager';
   frame.src = frame.dataset.previewSrc;
   if (host) projectPreviewObserver?.unobserve(host);
 }
@@ -68,12 +71,19 @@ function previewUrl(example, view = 'main') {
 function createProjectPreview(example) {
   const host = document.createElement('div');
   host.className = 'welcome-example-project-preview';
-  host.dataset.view = 'main';
+  const initialView = example.preview?.view || 'main';
+  host.dataset.view = initialView;
+  if (example.preview?.path) host.classList.add('has-thumbnail');
 
   const stage = document.createElement('div');
   stage.className = 'welcome-example-project-stage';
 
-  if (example.preview?.path) stage.append(createImagePreview(example, { fallback: true }));
+  if (example.preview?.path) {
+    stage.append(createImagePreview(example, { fallback: true }));
+    stage
+      .querySelector('img')
+      .addEventListener('error', () => activateProjectPreviewFrame(frame), { once: true });
+  }
 
   const loading = document.createElement('div');
   loading.className = 'welcome-example-project-loading';
@@ -84,10 +94,22 @@ function createProjectPreview(example) {
   frame.className = 'welcome-example-project-frame';
   frame.title = `${example.title} interactive WaferCAD preview`;
   frame.loading = 'lazy';
-  frame.dataset.previewSrc = previewUrl(example);
+  frame.dataset.previewSrc = previewUrl(example, initialView);
   frame.setAttribute('aria-label', frame.title);
   stage.append(frame);
   projectPreviewFrames.add(frame);
+
+  if (example.preview?.path) {
+    const start = document.createElement('button');
+    start.type = 'button';
+    start.className = 'welcome-example-preview-start';
+    start.setAttribute('aria-label', `Explore ${example.title} in 3D`);
+    const label = document.createElement('span');
+    label.textContent = 'Explore 3D';
+    start.append(label);
+    start.addEventListener('click', () => activateProjectPreviewFrame(frame));
+    stage.append(start);
+  }
 
   const tabs = document.createElement('div');
   tabs.className = 'welcome-example-view-tabs';
@@ -106,9 +128,10 @@ function createProjectPreview(example) {
     button.dataset.previewView = view;
     button.textContent = label;
     button.setAttribute('role', 'tab');
-    button.setAttribute('aria-selected', String(view === 'main'));
+    button.setAttribute('aria-selected', String(view === initialView));
     button.addEventListener('click', () => {
       host.dataset.view = view;
+      if (!frame.getAttribute('src')) frame.dataset.previewSrc = previewUrl(example, view);
       activateProjectPreviewFrame(frame);
       for (const sibling of tabs.querySelectorAll('.welcome-example-view-tab')) {
         const active = sibling.dataset.previewView === view;
@@ -120,13 +143,14 @@ function createProjectPreview(example) {
         globalThis.location.origin,
       );
     });
-    if (view === 'main') button.classList.add('active');
+    if (view === initialView) button.classList.add('active');
     tabs.append(button);
   }
 
   stage.append(tabs);
   host.append(stage);
   requestAnimationFrame(() => {
+    if (example.preview?.path) return;
     if (projectPreviewObserver) projectPreviewObserver.observe(host);
     else activateProjectPreviewFrame(frame);
   });
@@ -242,7 +266,10 @@ function renderExampleCards() {
 async function stageAndOpen(file, kind) {
   if (!file) return;
   try {
-    const maxBytes = kind === 'project' ? MAX_PROJECT_FILE_BYTES : MAX_LAYOUT_FILE_BYTES;
+    const maxBytes =
+      kind === 'project'
+        ? (await import('./project-io.js')).MAX_PROJECT_FILE_BYTES
+        : (await import('./layout-io.js')).MAX_LAYOUT_FILE_BYTES;
     if (file.size > maxBytes) {
       throw new Error(
         `${kind === 'project' ? 'Project' : 'Layout'} file is larger than the ${Math.round(maxBytes / (1024 * 1024))} MB safety limit.`,
@@ -275,13 +302,18 @@ globalThis.addEventListener('message', (event) => {
   const host = frame.closest('.welcome-example-project-preview');
   if (event.data?.type === 'wafercad-preview-ready') {
     host?.classList.add('ready');
-    host?.classList.remove('error');
+    host?.classList.remove('error', 'loading');
     frame.contentWindow?.postMessage(
       { type: 'wafercad-preview-view', view: host?.dataset.view || 'main' },
       globalThis.location.origin,
     );
   } else if (event.data?.type === 'wafercad-preview-error') {
     host?.classList.add('error');
-    host?.classList.remove('ready');
+    host?.classList.remove('ready', 'loading');
+    const start = host?.querySelector('.welcome-example-preview-start');
+    if (start) {
+      start.querySelector('span').textContent = 'Retry preview';
+      start.setAttribute('aria-label', 'Retry interactive preview');
+    }
   }
 });

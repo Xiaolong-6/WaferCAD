@@ -1,0 +1,78 @@
+{
+  "browserVersion": "154.0.8037.98",
+  "headless": false,
+  "runs": [
+    {
+      "shellMs": 250.16769999999997,
+      "firstVisibleMs": 305.6235999999999,
+      "allThumbnailsMs": 876.6947999999998,
+      "coldRequests": [
+        "/",
+        "/build-info.json",
+        "/style.css",
+        "/vendor/polygon-clipping.umd.js",
+        "/welcome.js",
+        "/bundled-examples.js",
+        "/startup-file.js",
+        "/examples/thumbnails/photodetector-literature-three.webp",
+        "/examples/thumbnails/perc-point-contact-solar-cell-three.webp",
+        "/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp",
+        "/examples/thumbnails/suspended-silica-microdisk-three.webp",
+        "/examples/thumbnails/three-tier-silicon-jlfets-three.webp"
+      ],
+      "interaction": false,
+      "errors": []
+    },
+    {
+      "shellMs": 228.48790000000008,
+      "firstVisibleMs": 268.1961000000001,
+      "allThumbnailsMs": 514.9513999999999,
+      "coldRequests": [
+        "/",
+        "/build-info.json",
+        "/style.css",
+        "/vendor/polygon-clipping.umd.js",
+        "/welcome.js",
+        "/bundled-examples.js",
+        "/startup-file.js",
+        "/examples/thumbnails/photodetector-literature-three.webp",
+        "/examples/thumbnails/perc-point-contact-solar-cell-three.webp",
+        "/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp",
+        "/examples/thumbnails/suspended-silica-microdisk-three.webp",
+        "/examples/thumbnails/three-tier-silicon-jlfets-three.webp"
+      ],
+      "interaction": false,
+      "errors": []
+    },
+    {
+      "shellMs": 248.28459999999995,
+      "firstVisibleMs": 271.42869999999994,
+      "allThumbnailsMs": 519.2165,
+      "coldRequests": [
+        "/",
+        "/build-info.json",
+        "/style.css",
+        "/vendor/polygon-clipping.umd.js",
+        "/welcome.js",
+        "/bundled-examples.js",
+        "/startup-file.js",
+        "/examples/thumbnails/photodetector-literature-three.webp",
+        "/examples/thumbnails/perc-point-contact-solar-cell-three.webp",
+        "/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp",
+        "/examples/thumbnails/suspended-silica-microdisk-three.webp",
+        "/examples/thumbnails/three-tier-silicon-jlfets-three.webp"
+      ],
+      "interaction": false,
+      "errors": []
+    }
+  ],
+  "medianShellMs": 248.28459999999995,
+  "medianFirstVisibleMs": 271.42869999999994,
+  "medianAllThumbnailsMs": 519.2165,
+  "baselineProductCommit": "42f2468",
+  "notes": [
+    "Cold runs display actual renderer-generated WebP thumbnails; no app iframe or project geometry is requested until interaction.",
+    "Thumbnail display timing is different from interactive renderer readiness.",
+    "Full projects and final-only interactive previews remain unchanged."
+  ]
+}

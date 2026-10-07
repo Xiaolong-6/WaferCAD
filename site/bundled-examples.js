@@ -12,6 +12,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       path: './examples/previews/photodetector-literature.wafercad',
       filename: 'photodetector-literature-preview.wafercad',
     },
+    preview: { path: './examples/thumbnails/photodetector-literature-three.webp', view: 'three' },
     summary:
       'Nanostructured Si and Ge photodiodes reconstructed as one branch-based project, covering rough surfaces, conformal passivation, implants, and induced electrical regions.',
     sources: [
@@ -43,6 +44,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       path: './examples/previews/perc-point-contact-solar-cell.wafercad',
       filename: 'perc-point-contact-solar-cell-preview.wafercad',
     },
+    preview: {
+      path: './examples/thumbnails/perc-point-contact-solar-cell-three.webp',
+      view: 'three',
+    },
     summary:
       'Texturing, diffusion regions, front and rear passivation, local rear openings, and metallization reconstructed as a branch-based PERC process project.',
     sources: [
@@ -67,6 +72,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     previewProject: {
       path: './examples/previews/fully-textured-perovskite-silicon-tandem.wafercad',
       filename: 'fully-textured-perovskite-silicon-tandem-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp',
+      view: 'three',
     },
     summary:
       'A fully textured monolithic perovskite/silicon tandem with double-sided Si pyramids, SHJ contacts, conformal top-cell layers, ALD SnO2, IZO, and a surrogate Ag front grid.',
@@ -93,6 +102,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       path: './examples/previews/suspended-silica-microdisk.wafercad',
       filename: 'suspended-silica-microdisk-preview.wafercad',
     },
+    preview: { path: './examples/thumbnails/suspended-silica-microdisk-three.webp', view: 'three' },
     summary:
       'A spoked silica microdisk released from silicon with a real annular air gap and surviving central support pedestal.',
     sources: [
@@ -118,6 +128,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       path: './examples/previews/three-tier-silicon-jlfets.wafercad',
       filename: 'three-tier-silicon-jlfets-preview.wafercad',
     },
+    preview: { path: './examples/thumbnails/three-tier-silicon-jlfets-three.webp', view: 'three' },
     summary:
       'Three stacked silicon transistor tiers with native conformal HfO2 gates, contact windows, ILD liners and CMP, retained in 40 History Steps. Reconstructed masks cover one device site; transfer and SOG/CMP use recorded geometric assumptions.',
     sources: [
