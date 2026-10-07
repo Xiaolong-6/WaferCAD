@@ -75,6 +75,7 @@ The migrated self-test contracts are owned by focused files:
 - `gds-smoke.test.mjs`: demo layout and physical-unit GDS parsing smoke.
 - `project-annotation.test.mjs`: project schema validation plus Implant/Electrical Region model/view contracts.
 - `project-geometry-storage.test.mjs`: exact v3 polygon template expansion, holes/order/winding, lossless sub-grid workspace values, malformed references/overflow, expansion limits, real Process output and complete native Fig3 History round-trips.
+- `model-array.test.mjs`, `mask-instance-index.test.mjs`, `process-boundary-index.test.mjs`: canonical arrays, strict tile ownership, bounded neighborhood/COW equivalence, lossless v4 IO, exact mask/edge indexes and cancellable idle preparation.
 - `project-file.test.mjs`: storage compatibility and strict file/schema limits, including rectangular containment and aggregate component-overlap rejection.
 
 The migration preserves all 203 assertions that were present in the former 1380-line self-test.
@@ -117,12 +118,12 @@ The browser-level `example-regression.mjs` then verifies runtime loading, Histor
 - `workstation-regression.mjs`: Welcome, boot gating, navigation, example-family loading, and core workstation shell.
 - `history-regression.mjs`: History tree, Variants, bookmarks, historical Step restore/edit/replay, rollback, and History export.
 - `persistence-regression.mjs`: autosave, migration, recovery checkpoints, staged Welcome handoff, refresh restore, and multi-tab ownership.
-- `process-geometry-regression.mjs`: Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, exported morphology, and scientific Section geometry checks. The `test:ui:process` command then runs `project-io-runtime-regression.mjs`: 400 real UI mask islands, native 10 nm Conformal walls, worker export/open with exact physical model and recorded History, and continued Etch at every island. Run `npm run test:ui:io` for that focused path alone.
+- `process-geometry-regression.mjs`: Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, exported morphology, and scientific Section geometry checks. The `test:ui:process` command then runs `project-io-runtime-regression.mjs`: 400 real UI mask islands, native 10 nm Conformal walls, worker export/open with exact physical model and recorded History, and continued Etch at every island. Run `npm run test:ui:io` for that focused path alone. `test:ui:process` also runs `array-runtime-regression.mjs`: 625 native sites, full-wafer SVG/physical GLB instancing, real Conformal, exact IO/History, original metal/contact probes and continued selective Etch. Use `npm run test:ui:array` for that focused acceptance.
 - `interaction-regression.mjs`: Slice/ROI, Mask Draw, mask ROI/alignment, view exports, maximize/restore, and 3D inspection controls.
 - `resilience-regression.mjs`: missing Three.js and unavailable WebGL degraded-mode behavior.
 - `example-regression.mjs`: bundled literature/example structural contracts.
 - `product-layout-regression.mjs`: responsive product/layout review across wide, medium, phone, and breakpoint-edge viewports.
-- `renderer-product-regression.mjs`: wide-screen renderer acceptance for isotropic release, rough/LOD ownership, conformal interfaces, and implant visibility.
+- `renderer-product-regression.mjs`: wide-screen renderer acceptance for isotropic release, rough/LOD ownership, conformal interfaces, and implant visibility. Its package entry point also runs `array-renderer-regression.mjs` for full-wafer Fast/Quality topology consistency, transparent annotations and pointer rotation.
 - `product-regression.mjs`: thin shared orchestrator used by the two product entry points.
 
 ## Visual regression policy

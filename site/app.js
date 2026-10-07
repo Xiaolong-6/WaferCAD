@@ -583,7 +583,15 @@ function applyImportedLayout(imported, displayName) {
   prepareMaskInstanceIndex(layout);
   const preparedModel = model;
   const prepare = () =>
-    prewarmModelBoundaryIndexes(preparedModel, () => model === preparedModel).catch(() => {});
+    prewarmModelBoundaryIndexes(
+      preparedModel,
+      () => model === preparedModel,
+      () =>
+        new Promise((resolve) => {
+          if (globalThis.requestIdleCallback) requestIdleCallback(resolve);
+          else setTimeout(resolve, 16);
+        }),
+    ).catch(() => {});
   if (globalThis.requestIdleCallback) requestIdleCallback(prepare);
   else setTimeout(prepare, 250);
   layout.name = displayName || layout.name;
@@ -794,7 +802,15 @@ const projectStateController = createProjectStateController({
     prepareMaskInstanceIndex(layout);
     const preparedModel = model;
     const prepare = () =>
-      prewarmModelBoundaryIndexes(preparedModel, () => model === preparedModel).catch(() => {});
+      prewarmModelBoundaryIndexes(
+        preparedModel,
+        () => model === preparedModel,
+        () =>
+          new Promise((resolve) => {
+            if (globalThis.requestIdleCallback) requestIdleCallback(resolve);
+            else setTimeout(resolve, 16);
+          }),
+      ).catch(() => {});
     if (globalThis.requestIdleCallback) requestIdleCallback(prepare);
     else setTimeout(prepare, 250);
     selectedLayerKeys = next.selectedLayerKeys;

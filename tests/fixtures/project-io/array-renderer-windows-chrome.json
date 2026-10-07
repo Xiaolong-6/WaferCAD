@@ -1,0 +1,9 @@
+{
+  "browserVersion": "154.0.8037.98",
+  "arrayInstances": "1885",
+  "surfaceTopology": "{\"caps\":439,\"sidewalls\":647}",
+  "qualityTopologyEqual": true,
+  "transparentElectricalInternalCount": "49",
+  "rotationPassed": true,
+  "errors": []
+}

@@ -34,7 +34,7 @@ Environment: Windows, Node 24.19.0, Playwright 1.55.1, installed Chrome 154.0.80
 - Real Chrome array UI already passed Open → Directional 10 nm → L9 masked native Conformal 10 nm → export → Open → continued selective Etch, retaining the full recorded model/History and all 625 native sidewall sites. This run preceded the final boundary-index/idle-worker changes. It produced 3,666,491 bytes after Conformal and 3,713,936 bytes after continued Etch, with 43 Steps and no page errors. Conformal used nine kernel working sets, 625 changed sites; the indexed-mask run alone did not improve total time (158.75 seconds UI, 124.45 seconds worker).
 - A direct Node profile with the subsequent indexed partition lookup reduced nine-workset Conformal from 104.03 seconds (97.83 in callbacks) to 65.75 seconds (58.86 in callbacks). These are single-run local diagnostics, not stable browser medians or a final performance claim.
 
-## Required continuation and acceptance
+## Original checkpoint acceptance checklist (results appended below)
 
 1. Run complete lint/format/Node gates and all owning browser regressions after the latest changes. Add a permanent, reproducible 625-site browser test rather than relying on ignored `test-results/native-array/runtime.mjs`.
 2. Re-run the real 625-site Apply/export/Open/continued-operation test with the idle worker and final index implementation; record worker/UI timings separately. Verify rejection preserves History/Variant and the next successful Apply still works.
@@ -73,3 +73,24 @@ History fault injection previously counted Worker constructors. Retaining a vali
 ## Welcome promotion in this follow-up
 
 The native transistor card now opens `three-tier-silicon-jlfets-full-wafer.wafercad`. Its preview and thumbnail continue to use the unchanged single-device source through explicit `previewSourcePath`; all existing preview geometry/display and thumbnail hashes remain required. The native structure helper checks every recorded array Step's shared device template and requires exactly 625 device references. This follows the successful actual full-wafer SVG/GLB and Apply/IO acceptance above. Re-run Welcome/example owners and deterministic preview rebuilding before final acceptance.
+
+## Final broad gates after 954b110
+
+- Complete Node rerun: 421/421 passed (43.794 seconds), including the promoted full-wafer example and preview/source contracts.
+- Full ESLint and formatting of changed files passed.
+- All ten browser owners passed on pinned Chromium 140.0.7339.186: smoke, workstation, resilience, History, persistence, interaction, examples, product layout, renderer and extended Process. The first constructor-count-based History injection failed; after changing the injection to dispatch count, its complete rerun passed. The final Welcome/full-array workstation and examples reruns also passed.
+- Both `project-io-runtime-regression.mjs` (400 ordinary mask islands) and `process-transaction-ui-regression.mjs` (actual strict rejection preserving model/History/Variant and successful next Apply) passed.
+- `node scripts/build-example-previews.mjs` without `--write` passed for all five cards. Native full download is 2,677,016 bytes; unchanged single-device preview is 491,334 bytes; source/cover hashes remain checked.
+- Installed Chrome 154 full-array actual UI/IO/SVG/GLB gate passed as documented above. Performance after adding a coating is still dominated by 3D rebuilding (modified import worker only 3.661 s, total ready 45.607 s), with History export/autosave also taking seconds. Do not claim these costs are eliminated by prewarming.
+
+The browser tests run in isolated contexts; the user's Chrome and the local 4173/4174 static servers are preserved. No main push, Pages deployment or manual CI dispatch occurred. This branch is development evidence, not approval to merge main.
+
+## Closing handoff
+
+The implementation and acceptance follow-ups are committed on `codex/process-project-io-optimization`; baseline checkpoint `b78d5ae`, native runtime/Welcome follow-up `954b110`. Use the last commit touching this document for the closing revision. Check remote HEAD before continuing.
+
+The additional `node scripts/array-renderer-regression.mjs` passed on installed Chrome 154: full-wafer Fast → Quality → opacity 0.5 → opaque Fast → pointer rotation, no page errors; identical canonical revision, layer IDs and surface topology between Fast and Quality; all 1,885 tiles retained; buried electrical annotations visible when transparent. It is now included in `test:ui:product:renderer` and the CI routing planner. Import/restore prewarming now waits for another browser idle callback between regions; successful Process work prewarms in the retained worker, yielding between regions. The original source files and image baselines remain intact.
+
+Highest-value next optimizations are **derived render topology/mesh reuse after a new coating** and **shared-dictionary work for History export/autosave during idle time**. Measure these separately from import parsing. The current implementation prepares boundary/spatial indexes; it does not precompute every future process result or arbitrary offset thickness. Region counts, physical openings, original HfO2 sidewalls and single-site edits must remain exact. The recorded single-run timings are useful for bottleneck selection, not a promise of uniform device performance.
+
+This iteration does not establish a clean full-wafer replay of all 40 original Steps or a Linux visual-baseline pass. The assembled recipe and its continued native operations are validated. A new environment can reproduce every committed gate using the documented package scripts and preserved `.wafercad` sources; ignored screenshots/logs are optional supporting artifacts.
