@@ -86,7 +86,7 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /rendererAssemblyMs = '0'/);
   assert.match(threeView, /physicalSceneSignature === signature/);
   assert.match(threeView, /kind: 'implant-internal'/);
-  assert.match(threeView, /kind: 'material-interface'/);
+  assert.match(threeView, /part\.buried \? 'material-interface' : 'material-exterior'/);
   assert.match(threeView, /annotationInspectionCutSegments\(implant, clip\)/);
   assert.match(threeView, /if \(inspectionSegments\.length\)/);
   assert.doesNotMatch(threeView, /const showInternalImplants = materialState\.transparent/);
