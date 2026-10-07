@@ -100,6 +100,7 @@ export function createProjectStateController({
       maskRoi: state.maskRoi,
       maskRoiAnchor: state.maskRoiAnchor,
       activeFace: state.activeFace,
+      processRecipe: state.processRecipe ? structuredClone(state.processRecipe) : null,
       roi: state.roi,
       roiAnchor: state.roiAnchor,
       section: state.section,
@@ -189,6 +190,10 @@ export function createProjectStateController({
       maskRoi: project.maskRoi ? normalizeMaskRoi(project.maskRoi) : null,
       maskRoiAnchor: project.maskRoiAnchor || 'center',
       activeFace: project.activeFace,
+      processRecipe:
+        project.processRecipe && typeof project.processRecipe === 'object'
+          ? structuredClone(project.processRecipe)
+          : null,
       roi: project.roi ? normalizeRoi(project.roi) : null,
       roiAnchor: project.roiAnchor || 'center',
       section: project.section,
@@ -231,6 +236,7 @@ export function createProjectStateController({
       maskRoi: null,
       maskRoiAnchor: 'center',
       activeFace: 'front',
+      processRecipe: null,
       roi: null,
       roiAnchor: 'center',
       section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
