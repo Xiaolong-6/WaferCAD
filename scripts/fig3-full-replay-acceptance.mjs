@@ -109,13 +109,6 @@ function geomArea(geom) {
   return Math.max(0, area);
 }
 
-function assertNear(actual, expected, tolerance, label) {
-  assert.ok(
-    Math.abs(actual - expected) <= tolerance,
-    `${label}: ${actual} vs ${expected} (tol ${tolerance})`,
-  );
-}
-
 function geometryComparison(actual, expected) {
   const ab = difference(actual, expected);
   const ba = difference(expected, actual);
