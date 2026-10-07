@@ -79,14 +79,17 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
-  assert.match(threeView, /const showInternalImplants = materialState\.transparent/);
-  assert.match(
-    threeView,
-    /if \(!showInternalImplants && !implant\.surfaceExposed && !inspectionSegments\.length\)\s*continue/,
-  );
+  assert.match(threeView, /let presentationObjects = new Set\(\)/);
+  assert.match(threeView, /let physicalSceneSignature = null/);
+  assert.match(threeView, /function applyPresentationState\(/);
+  assert.match(threeView, /rendererUpdateKind = 'presentation'/);
+  assert.match(threeView, /rendererAssemblyMs = '0'/);
+  assert.match(threeView, /physicalSceneSignature === signature/);
+  assert.match(threeView, /kind: 'implant-internal'/);
+  assert.match(threeView, /kind: 'material-interface'/);
   assert.match(threeView, /annotationInspectionCutSegments\(implant, clip\)/);
   assert.match(threeView, /if \(inspectionSegments\.length\)/);
-  assert.match(threeView, /if \(showInternalImplants\)/);
+  assert.doesNotMatch(threeView, /const showInternalImplants = materialState\.transparent/);
   assert.match(threeView, /opacity: opacity \* 0\.18/);
   assert.match(threeView, /IMPLANT_DEPTH_GRADIENT\.outerAlpha/);
   assert.match(threeView, /opacity: opacity \* 0\.3/);
@@ -107,10 +110,10 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   );
   assert.match(threeView, /cutMaterial\.polygonOffset = true/);
   assert.match(threeView, /cutMaterial\.depthFunc = THREE\.LessEqualDepth/);
-  assert.match(threeView, /capState = \{[\s\S]*?depthTest: true/);
+  assert.match(threeView, /presentationState\(surfacePresentation, inspection\)\.materialState/);
   assert.match(threeView, /capMaterial\.polygonOffset = true/);
   assert.match(threeView, /capMaterial\.polygonOffsetFactor = -1/);
-  assert.match(threeView, /if \(!state\?\.transparent\) return base/);
+  assert.match(threeView, /const base = .*part\.layerId/);
   assert.match(threeView, /part\.type === 'cap'/);
   assert.match(threeView, /part\.z0/);
   assert.match(threeView, /part\.z1/);
