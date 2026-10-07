@@ -53,6 +53,9 @@ jobs:
       - name: Replay Native Fig3 from the initial state
         run: node scripts/fig3-full-replay-acceptance.mjs --verify-repo-examples
 
+      - name: Run 625-site browser regression
+        run: npm run test:ui:array
+
       - name: Upload full replay evidence
         if: always()
         uses: actions/upload-artifact@v6
