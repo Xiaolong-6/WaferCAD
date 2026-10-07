@@ -1,5 +1,7 @@
 # Documentation audit — 2026-10-02
 
+> **Historical audit record.** This audit describes the repository state at its recorded revision. It is retained as evidence, not as the authoritative description of current `main`. Start from [Documentation map](README.md) for current contracts.
+
 This audit reconciles the current feature-branch documentation with the merged compact Function panel, surface-morphology work, Implant structural-annotation follow-up, and the final 3D roughness/opacity fixes prepared for merge to `main`.
 
 ## Audited product contracts
