@@ -46,7 +46,9 @@ for (const example of BUNDLED_EXAMPLES) {
     ],
   };
   validateProjectFile(preview);
-  const text = JSON.stringify(prepareProjectForWorkspaceStorage(preview));
+  const text = JSON.stringify(
+    prepareProjectForWorkspaceStorage(preview, { geometryTemplates: false }),
+  );
   const reopened = await readProjectFile({ size: Buffer.byteLength(text), text: async () => text });
   assert.deepEqual(reopened.model, source.model);
   assert.deepEqual(reopened.layout, source.layout);

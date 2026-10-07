@@ -1,4 +1,5 @@
 import { migrateProjectFile, validateProjectFile } from './project-schema.js';
+import { compactGeometryDictionary, expandGeometryDictionary } from './project-geometry-storage.js';
 
 export const MAX_PROJECT_FILE_BYTES = 256 * 1024 * 1024;
 export const PROJECT_LENGTH_QUANTUM_UM = 0.0001;
@@ -6,6 +7,7 @@ export const DOWNLOAD_URL_REVOKE_DELAY_MS = 30_000;
 
 const LEGACY_STORAGE_ENCODING = 'shared-assets-v1';
 const STORAGE_ENCODING = 'shared-assets-v2';
+const TEMPLATE_STORAGE_ENCODING = 'shared-assets-v3';
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -190,6 +192,7 @@ function cloneCore(value, { model = true, layout = true, snapshotBranches = true
       key === 'sharedLayouts' ||
       key === 'sharedModels' ||
       key === 'sharedGeometries' ||
+      key === 'sharedPolygonTemplates' ||
       key === 'storage'
     )
       continue;
@@ -220,7 +223,7 @@ function forEachStoredGeometry(project, visit) {
   }
 }
 
-function packProjectGeometry(project) {
+function packProjectGeometry(project, { geometryTemplates = true } = {}) {
   const geometries = [];
   const candidates = new Map();
   const identities = new WeakMap();
@@ -243,6 +246,9 @@ function packProjectGeometry(project) {
     delete owner[key];
   });
   project.sharedGeometries = geometries;
+  return geometryTemplates && compactGeometryDictionary(project)
+    ? TEMPLATE_STORAGE_ENCODING
+    : STORAGE_ENCODING;
 }
 
 function expandProjectGeometry(project) {
@@ -344,7 +350,7 @@ function packWorkspaceState(state, modelAssets, layoutAssets, { quantize = false
   return packed;
 }
 
-export function prepareProjectForWorkspaceStorage(project) {
+export function prepareProjectForWorkspaceStorage(project, options = {}) {
   validateProjectFile(project);
 
   const stored = cloneCore(project, { snapshotBranches: false });
@@ -379,9 +385,9 @@ export function prepareProjectForWorkspaceStorage(project) {
 
   if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
   if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
-  packProjectGeometry(stored);
+  const encoding = packProjectGeometry(stored, options);
   stored.storage = {
-    encoding: STORAGE_ENCODING,
+    encoding,
     lossless: true,
   };
   return stored;
@@ -521,9 +527,9 @@ export function prepareProjectForStorage(project) {
 
   if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
   if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
-  packProjectGeometry(stored);
+  const encoding = packProjectGeometry(stored);
   stored.storage = {
-    encoding: STORAGE_ENCODING,
+    encoding,
     lengthQuantumUm: PROJECT_LENGTH_QUANTUM_UM,
   };
 
@@ -551,10 +557,16 @@ function resolveAsset(reference, rootAsset, sharedAssets, label) {
 export function expandProjectStorage(project) {
   if (!isObject(project) || !project.storage?.encoding) return project;
   const encoding = project.storage.encoding;
-  if (encoding !== STORAGE_ENCODING && encoding !== LEGACY_STORAGE_ENCODING) {
+  if (
+    encoding !== STORAGE_ENCODING &&
+    encoding !== TEMPLATE_STORAGE_ENCODING &&
+    encoding !== LEGACY_STORAGE_ENCODING
+  ) {
     throw new Error(`Project file storage encoding is not supported: ${encoding}.`);
   }
-  if (encoding === STORAGE_ENCODING) expandProjectGeometry(project);
+  if (encoding === TEMPLATE_STORAGE_ENCODING) expandGeometryDictionary(project);
+  if (encoding === STORAGE_ENCODING || encoding === TEMPLATE_STORAGE_ENCODING)
+    expandProjectGeometry(project);
 
   const sharedLayouts = Array.isArray(project.sharedLayouts) ? project.sharedLayouts : [];
   const sharedModels = Array.isArray(project.sharedModels) ? project.sharedModels : [];

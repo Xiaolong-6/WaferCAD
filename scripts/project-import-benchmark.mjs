@@ -7,6 +7,7 @@ import {
   installPinnedThreeRoute,
   waitForAppReady,
   waitForStatus,
+  openFunctionPanel,
 } from './test-helpers/ui.mjs';
 const file = resolve(process.argv[2]);
 const output = process.argv[3] || 'test-results/project-io/import-benchmark.json';
@@ -41,22 +42,39 @@ try {
         );
       }
     }
+    if (process.env.WAFERCAD_BASELINE_GEOMETRY_DIR) {
+      for (const path of ['project-io.js', 'project-schema.js']) {
+        const body = await readFile(resolve(process.env.WAFERCAD_BASELINE_GEOMETRY_DIR, path));
+        await context.route(
+          (url) => url.pathname.endsWith(`/${path}`),
+          (route) => route.fulfill({ contentType: 'text/javascript', body }),
+        );
+      }
+    }
     const page = await context.newPage();
     page.setDefaultTimeout(900000);
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.addInitScript(() => {
       window.__projectImportBenchmark = [];
+      window.__projectExportBenchmark = [];
       const NativeWorker = window.Worker;
       window.Worker = class extends NativeWorker {
         constructor(url, options) {
           super(url, options);
-          if (String(url).includes('project-worker.js')) {
+          if (
+            String(url).includes('project-worker.js') ||
+            String(url).includes('project-export-worker.js')
+          ) {
             const run = {};
-            window.__projectImportBenchmark.push(run);
+            (String(url).includes('project-export-worker.js')
+              ? window.__projectExportBenchmark
+              : window.__projectImportBenchmark
+            ).push(run);
             this.addEventListener('message', ({ data }) => {
               if (data.type === 'done') {
                 run.done = performance.now();
+                run.byteLength = data.byteLength;
                 run.steps = data.project?.snapshotBranches?.nodes?.length;
                 run.bookmarks = data.project?.snapshots?.length;
               } else if (data.type === 'progress') run[data.stage] = performance.now();
@@ -95,8 +113,31 @@ try {
     assert.ok(worker, 'The import must use the real project worker.');
     assert.equal(worker.steps, raw.snapshotBranches?.nodes?.length);
     assert.equal(worker.bookmarks, raw.snapshots?.length);
+    let exportMetrics = {};
+    if (process.env.WAFERCAD_BENCHMARK_EXPORT === '1') {
+      await openFunctionPanel(page, 'project');
+      const exportStarted = performance.now();
+      const downloadPromise = page.waitForEvent('download', { timeout: 900000 });
+      await page.locator('#exportProjectBtn').click();
+      const download = await downloadPromise;
+      assert.equal(await download.failure(), null);
+      const [exportWorker] = await page.evaluate(() => window.__projectExportBenchmark);
+      assert.ok(exportWorker, 'Export must use the real project export worker.');
+      exportMetrics = {
+        exportMs: performance.now() - exportStarted,
+        exportWorkerMs: exportWorker.done - exportWorker.started,
+        exportedBytes: exportWorker.byteLength,
+      };
+    }
     assert.deepEqual(errors, []);
-    const run = { openedMs, readyMs, workerMs: worker.done - worker.started, worker, errors };
+    const run = {
+      openedMs,
+      readyMs,
+      workerMs: worker.done - worker.started,
+      worker,
+      errors,
+      ...exportMetrics,
+    };
     runs.push(run);
     console.log('IMPORT_RUN', index + 1, JSON.stringify(run));
     await context.close();
@@ -111,6 +152,9 @@ try {
     medianOpenedMs: median('openedMs'),
     medianReadyMs: median('readyMs'),
     medianWorkerMs: median('workerMs'),
+    ...(process.env.WAFERCAD_BENCHMARK_EXPORT === '1'
+      ? { medianExportMs: median('exportMs'), medianExportWorkerMs: median('exportWorkerMs') }
+      : {}),
   };
   await writeFile(output, JSON.stringify(report, null, 2));
   console.log('IMPORT_MEDIAN', JSON.stringify(report));

@@ -44,11 +44,12 @@ const PERSISTENCE_PATHS = [
   /^site\/workspace-persistence/,
   /^site\/workspace-(?:storage-worker|dirty-domains)\.js$/,
   /^site\/controllers\/project-state-controller\.js$/,
-  /^site\/project-(?:io|schema|storage|worker)/,
+  /^site\/project-(?:io|schema|storage|geometry-storage|worker)/,
   /^site\/polygon-boolean\.js$/,
   /^site\/controllers\/project-controller\.js$/,
   /^site\/controllers\/startup-controller\.js$/,
   /^scripts\/persistence-regression\.mjs$/,
+  /^scripts\/project-io-runtime-regression\.mjs$/,
 ];
 
 const INTERACTION_PATHS = [
@@ -61,6 +62,8 @@ const INTERACTION_PATHS = [
 
 const PROCESS_PATHS = [
   /^site\/model\.js$/,
+  /^site\/project-(?:io|schema|geometry-storage)\.js$/,
+  /^scripts\/project-io-runtime-regression\.mjs$/,
   /^site\/model-view-geometry\.js$/,
   /^site\/process-worker\.js$/,
   /^site\/vector-geometry\.js$/,

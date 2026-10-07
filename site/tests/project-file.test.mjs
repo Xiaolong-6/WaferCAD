@@ -1066,6 +1066,8 @@ test('legacy shared-assets-v1 remains readable and unknown encodings reject', as
 
 test('geometry validation reuse retains per-model bounds, stacks and overlap checks', () => {
   const first = validProject();
+  // Extra collinear edge vertex keeps this on the general Boolean/cache path.
+  first.model.boundary[0][0].splice(1, 0, [0, -50]);
   const second = structuredClone(first);
   second.model.boundary = first.model.boundary;
   second.model.regions[0].geom = first.model.regions[0].geom;
@@ -1152,4 +1154,107 @@ test('shared whole-layout validation still charges layout points with a differen
   assert.equal(validateProjectFile(first), first);
   assert.throws(() => validateProjectFile(second), /exceeds the project point budget/);
   assert.throws(() => validateProjectFiles([first, second]), /exceeds the project point budget/);
+});
+
+test('rectangular containment is proven without booleans, while holes and outside regions reject', () => {
+  const source = validProject();
+  const kernel = globalThis.polygonClipping;
+  let differences = 0;
+  globalThis.polygonClipping = {
+    ...kernel,
+    difference: (...args) => {
+      differences++;
+      return kernel.difference(...args);
+    },
+  };
+  try {
+    validateProjectFile(source);
+    assert.equal(differences, 0);
+    const outside = structuredClone(source);
+    outside.model.regions[0].geom[0][0].forEach((p) => {
+      p[0] += 20;
+    });
+    assert.throws(() => validateProjectFile(outside), /extends outside/);
+    assert.ok(differences > 0);
+    const holed = structuredClone(source);
+    holed.model.boundary[0].push([
+      [-10, -10],
+      [-10, 10],
+      [10, 10],
+      [10, -10],
+      [-10, -10],
+    ]);
+    assert.throws(() => validateProjectFile(holed), /extends outside/);
+    const concave = structuredClone(source);
+    concave.model.boundary = [
+      [
+        [
+          [-100, -50],
+          [100, -50],
+          [100, 0],
+          [0, 0],
+          [0, 50],
+          [-100, 50],
+          [-100, -50],
+        ],
+      ],
+    ];
+    assert.throws(() => validateProjectFile(concave), /extends outside/);
+  } finally {
+    globalThis.polygonClipping = kernel;
+  }
+});
+
+test('component broad phase avoids disjoint sweeps and retains aggregate overlap rejection', () => {
+  const p = validProject();
+  const square = (x, y, w, h) => [
+    [x, y],
+    [x + w, y],
+    [x + w, y + h],
+    [x, y + h],
+    [x, y],
+  ];
+  p.model.regions = [
+    {
+      id: 'left-right',
+      geom: [[square(-80, -10, 5, 5)], [square(75, -10, 5, 5)]],
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+    { id: 'middle', geom: [[square(-2, -10, 4, 5)]], stack: [{ layerId: 'base', z0: -4, z1: 4 }] },
+  ];
+  const kernel = globalThis.polygonClipping;
+  let intersections = 0;
+  globalThis.polygonClipping = {
+    ...kernel,
+    intersection: (...args) => {
+      intersections++;
+      return kernel.intersection(...args);
+    },
+  };
+  try {
+    validateProjectFile(p);
+    assert.equal(
+      intersections,
+      0,
+      'disjoint components with overlapping whole-geometry bounds need no sweep',
+    );
+    p.model.regions[1].geom = [[square(76, -9, 2, 2)]];
+    assert.throws(() => validateProjectFile(p), /overlaps/);
+    assert.ok(intersections > 0);
+    const aggregate = validProject();
+    aggregate.model.width = aggregate.model.height = 1000000;
+    aggregate.model.boundary = [[square(-500000, -500000, 1000000, 1000000)]];
+    const parts = [[square(-10, 0, 0.02, 0.03)], [square(10, 0, 0.02, 0.03)]];
+    aggregate.model.regions = [
+      { id: 'a', geom: parts, stack: [{ layerId: 'base', z0: -4, z1: 4 }] },
+      { id: 'b', geom: structuredClone(parts), stack: [{ layerId: 'base', z0: -4, z1: 4 }] },
+    ];
+    assert.throws(
+      () => validateProjectFile(aggregate),
+      /overlaps/,
+      'two sub-tolerance overlaps must still reject in aggregate',
+    );
+  } finally {
+    globalThis.polygonClipping = kernel;
+  }
 });

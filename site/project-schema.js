@@ -240,6 +240,8 @@ function createValidationContext() {
       canonical: new WeakMap(),
       byContent: new Map(),
       bounds: new WeakMap(),
+      rectangles: new WeakMap(),
+      components: new WeakMap(),
       differences: new WeakMap(),
       intersections: new WeakMap(),
     },
@@ -261,6 +263,81 @@ function cachedGeometryBounds(geometry, cache) {
   return cache.bounds.get(geometry);
 }
 
+// A closed four-corner axis-aligned boundary admits an exact containment
+// proof from bounds. All other boundaries retain the robust polygon difference.
+function rectangularBoundary(geometry, cache) {
+  geometry = canonicalGeometry(geometry, cache);
+  if (cache.rectangles.has(geometry)) return cache.rectangles.get(geometry);
+  const ring = geometry.length === 1 && geometry[0].length === 1 ? geometry[0][0] : null;
+  let rectangle = Boolean(ring && ring.length === 5);
+  if (rectangle) {
+    for (let i = 0; i < 4; i++) {
+      const a = ring[i],
+        b = ring[i + 1];
+      if ((a[0] === b[0]) === (a[1] === b[1])) rectangle = false;
+    }
+    const bounds = cachedGeometryBounds(geometry, cache);
+    rectangle &&=
+      new Set(ring.slice(0, 4).map((p) => p.join('|'))).size === 4 &&
+      ring
+        .slice(0, 4)
+        .every(
+          ([x, y]) =>
+            (x === bounds.minX || x === bounds.maxX) && (y === bounds.minY || y === bounds.maxY),
+        );
+  }
+  cache.rectangles.set(geometry, rectangle);
+  return rectangle;
+}
+
+function geometryComponents(geometry, cache) {
+  if (!cache.components.has(geometry)) {
+    cache.components.set(
+      geometry,
+      geometry
+        .map((polygon, index) => ({
+          index,
+          bounds: geometryBounds([polygon]),
+        }))
+        .sort((a, b) => a.bounds.minX - b.bounds.minX),
+    );
+  }
+  return cache.components.get(geometry);
+}
+
+// Discard only polygons whose bounds cannot have a positive-area intersection
+// with any component on the other side. Intersect the remaining sets together,
+// preserving the original aggregate area tolerance and polygon order.
+function intersectionCandidates(left, right, cache) {
+  const sides = [geometryComponents(left, cache), geometryComponents(right, cache)];
+  const active = [[], []],
+    selected = [new Set(), new Set()];
+  const cursor = [0, 0];
+  while (cursor[0] < sides[0].length || cursor[1] < sides[1].length) {
+    const side =
+      cursor[1] >= sides[1].length ||
+      (cursor[0] < sides[0].length &&
+        sides[0][cursor[0]].bounds.minX <= sides[1][cursor[1]].bounds.minX)
+        ? 0
+        : 1;
+    const current = sides[side][cursor[side]++],
+      other = 1 - side;
+    active[other] = active[other].filter((entry) => entry.bounds.maxX > current.bounds.minX);
+    for (const previous of active[other]) {
+      if (
+        previous.bounds.maxY <= current.bounds.minY ||
+        current.bounds.maxY <= previous.bounds.minY
+      )
+        continue;
+      selected[side].add(current.index);
+      selected[other].add(previous.index);
+    }
+    active[side].push(current);
+  }
+  if (!selected[0].size) return null;
+  return [left.filter((_, i) => selected[0].has(i)), right.filter((_, i) => selected[1].has(i))];
+}
+
 function cachedGeometryArea(left, right, geometryCache, kind, operation) {
   left = canonicalGeometry(left, geometryCache);
   right = canonicalGeometry(right, geometryCache);
@@ -270,12 +347,26 @@ function cachedGeometryArea(left, right, geometryCache, kind, operation) {
     results = new WeakMap();
     cache.set(left, results);
   }
-  if (!results.has(right)) results.set(right, multiArea(operation(left, right)));
+  if (!results.has(right)) {
+    const candidates =
+      kind === 'intersections' ? intersectionCandidates(left, right, geometryCache) : [left, right];
+    const area = candidates ? multiArea(operation(...candidates)) : 0;
+    results.set(right, area);
+    if (kind === 'intersections') {
+      let reverse = cache.get(right);
+      if (!reverse) {
+        reverse = new WeakMap();
+        cache.set(right, reverse);
+      }
+      reverse.set(left, area);
+    }
+  }
   return results.get(right);
 }
 
 function validateModelGeometry(model, cache) {
   const boundaryBounds = cachedGeometryBounds(model.boundary, cache);
+  const rectangle = rectangularBoundary(model.boundary, cache);
   const dimensionTolerance = Math.max(1e-9, model.width, model.height) * 1e-9;
 
   if (
@@ -296,13 +387,22 @@ function validateModelGeometry(model, cache) {
 
   try {
     for (const current of entries) {
-      const outsideArea = cachedGeometryArea(
-        current.region.geom,
-        model.boundary,
-        cache,
-        'differences',
-        robustDifference,
-      );
+      const bounds = current.bounds;
+      const provablyContained =
+        rectangle &&
+        bounds.minX >= boundaryBounds.minX &&
+        bounds.minY >= boundaryBounds.minY &&
+        bounds.maxX <= boundaryBounds.maxX &&
+        bounds.maxY <= boundaryBounds.maxY;
+      const outsideArea = provablyContained
+        ? 0
+        : cachedGeometryArea(
+            current.region.geom,
+            model.boundary,
+            cache,
+            'differences',
+            robustDifference,
+          );
       if (outsideArea > areaTolerance) {
         fail(`model.regions[${current.index}].geom`, 'extends outside model.boundary.');
       }
