@@ -186,6 +186,10 @@ jobs:
         if: ${{ needs.plan.outputs.renderer == 'true' }}
         run: npm run benchmark:renderer
 
+      - name: Run rough renderer benchmark
+        if: ${{ needs.plan.outputs.renderer == 'true' }}
+        run: node scripts/rough-renderer-benchmark.mjs
+
       - name: Package tested preview
         if: always()
         run: |
