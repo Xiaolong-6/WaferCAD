@@ -107,10 +107,14 @@ try {
   assert.equal(stressOpacity.sceneGeneration, quality.sceneGeneration);
   assert.equal(stressOpacity.surfacePlanBuildCount, quality.surfacePlanBuildCount);
 
-  const borders = page.locator('#threeBorders');
+  const setBorders = async (checked) => {
+    await page.locator('#threeBorders').evaluate((input, value) => {
+      input.checked = Boolean(value);
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, checked);
+  };
   for (let cycle = 0; cycle < 6; cycle++) {
-    if (cycle % 2) await borders.uncheck();
-    else await borders.check();
+    await setBorders(cycle % 2 === 0);
     await waitForThreeReady(page, 120000);
   }
   const stressBorders = await snapshot();
@@ -130,7 +134,7 @@ try {
   assert.equal(opaqueAgain.sceneGeneration, quality.sceneGeneration);
   assert.equal(opaqueAgain.surfacePlanBuildCount, quality.surfacePlanBuildCount);
   assert.equal(opaqueAgain.rendererUpdateKind, 'presentation');
-  await borders.uncheck();
+  await setBorders(false);
   await waitForThreeReady(page, 120000);
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeFastBtn').click();
