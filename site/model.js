@@ -592,9 +592,11 @@ function mergeRegions(model, regions) {
     // numerically unstable, recursively keep smaller valid partitions instead
     // of failing the process or exploding all the way back to one region per cut.
     for (const geom of safeUnionParts(group.geoms)) {
+      const cleaned = sanitizeProcessGeometry(geom);
+      if (isEmpty(cleaned)) continue;
       out.push({
         id: `region-${model.nextRegionId++}`,
-        geom,
+        geom: cleaned,
         stack: group.stack.map((segment) => ({ ...segment })),
       });
     }
