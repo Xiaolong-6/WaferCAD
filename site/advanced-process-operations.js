@@ -136,6 +136,74 @@ function exposedTransferPlane(model, area, face, modelApi, vectorApi) {
   return found ? plane : null;
 }
 
+function transferredSegment(layerId, surfaceZ, amount, gap, face) {
+  return face === 'front'
+    ? { layerId, z0: surfaceZ + gap, z1: surfaceZ + gap + amount }
+    : { layerId, z0: surfaceZ - gap - amount, z1: surfaceZ - gap };
+}
+
+function applyFollowSurfaceTransfer(model, params, area, modelApi, vectorApi) {
+  const amount = Number(params.thickness),
+    gap = Math.max(0, Number(params.transferGap) || 0),
+    face = params.face === 'back' ? 'back' : 'front';
+  if (!(amount > 1e-9))
+    return { changed: false, error: 'Transfer thickness must be greater than zero.' };
+
+  const layer = modelApi.createLayer(model, params.name || 'Transferred layer'),
+    next = [];
+  let touched = false;
+
+  for (const region of model.regions || []) {
+    const hit = vectorApi.intersection(region.geom, area),
+      rest = vectorApi.difference(region.geom, area);
+    if (!isEmpty(vectorApi, rest)) {
+      next.push({
+        id: region.id,
+        geom: rest,
+        stack: region.stack.map((segment) => ({ ...segment })),
+      });
+    }
+    if (isEmpty(vectorApi, hit)) continue;
+
+    const surfaceZ = modelApi.surfaceZ(region.stack, face);
+    if (!Number.isFinite(surfaceZ)) {
+      next.push({
+        id: `region-${model.nextRegionId++}`,
+        geom: hit,
+        stack: region.stack.map((segment) => ({ ...segment })),
+      });
+      continue;
+    }
+
+    touched = true;
+    const transferred = transferredSegment(layer.id, surfaceZ, amount, gap, face);
+    next.push({
+      id: `region-${model.nextRegionId++}`,
+      geom: hit,
+      stack: modelApi.normalizeStack([
+        ...region.stack.map((segment) => ({ ...segment })),
+        transferred,
+      ]),
+    });
+  }
+
+  if (!touched) {
+    model.layers = model.layers.filter((candidate) => candidate.id !== layer.id);
+    return { changed: false, error: 'Transfer/Laminate does not overlap the selected target.' };
+  }
+
+  model.regions = mergeRegions(model, vectorApi, next);
+  model.revision++;
+  model.processRevision = (model.processRevision || 0) + 1;
+  return {
+    changed: true,
+    layerId: layer.id,
+    transferMode: 'follow',
+    transferGap: gap,
+    transferSource: String(params.transferSource || '').trim() || null,
+  };
+}
+
 function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
   const amount = Number(params.thickness),
     gap = Math.max(0, Number(params.transferGap) || 0),
@@ -152,9 +220,7 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
   }
 
   const layer = modelApi.createLayer(model, params.name || 'Transferred layer'),
-    z0 = face === 'front' ? plane + gap : plane - gap - amount,
-    z1 = face === 'front' ? plane + gap + amount : plane - gap,
-    transferred = { layerId: layer.id, z0, z1 },
+    transferred = transferredSegment(layer.id, plane, amount, gap, face),
     next = [],
     coveredParts = [];
 
@@ -201,6 +267,7 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
   return {
     changed: true,
     layerId: layer.id,
+    transferMode: 'flat',
     transferPlaneZ: plane,
     transferGap: gap,
     transferSource: String(params.transferSource || '').trim() || null,
@@ -261,7 +328,12 @@ export function applyAdvancedProcessOperation(model, params, area, modelApi, vec
     return applyUndercut(model, params, area, modelApi, vectorApi);
   }
   if (params?.type === 'add' && params?.growth === 'transfer') {
-    return applyFlatTransfer(model, params, area, modelApi, vectorApi);
+    // Old saved/replayed transfer steps did not carry transferMode and keep
+    // their historical flat-bridge semantics. New UI operations explicitly
+    // store transferMode='follow'.
+    return params.transferMode === 'follow'
+      ? applyFollowSurfaceTransfer(model, params, area, modelApi, vectorApi)
+      : applyFlatTransfer(model, params, area, modelApi, vectorApi);
   }
   return null;
 }
