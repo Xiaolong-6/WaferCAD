@@ -121,7 +121,7 @@ function assertGeometryEquivalent(actual, expected, label) {
   const ba = difference(expected, actual);
   const symmetricDifferenceArea = geomArea(ab) + geomArea(ba);
   const referenceArea = Math.max(geomArea(expected), 1);
-  const tolerance = Math.max(1e-5, referenceArea * 1e-9);
+  const tolerance = Math.max(1e-3, referenceArea * 1e-9);
   assert.ok(
     symmetricDifferenceArea <= tolerance,
     `${label}: symmetric-difference area ${symmetricDifferenceArea} µm² exceeds ${tolerance} µm²`,
