@@ -1906,6 +1906,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           : null,
         smoothCaps = new Map(),
         sidewalls = new Map();
+      const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       let sceneAssemblyYields = 0,
         capAssemblyIndex = 0,
         capBucketIndex = 0,
@@ -1950,7 +1951,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothCapInstanceCount = 0;
       smoothCapTemplateTriangleCount = 0;
       for (const cap of plan.caps) {
-        if (++capAssemblyIndex % 24 === 0) {
+        if (cooperativeAssembly && ++capAssemblyIndex % 24 === 0) {
           sceneAssemblyYields++;
           await yieldSceneAssembly();
         }
@@ -1987,7 +1988,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
 
       for (const bucket of smoothCaps.values()) {
-        if (++capBucketIndex % 8 === 0) {
+        if (cooperativeAssembly && ++capBucketIndex % 8 === 0) {
           sceneAssemblyYields++;
           await yieldSceneAssembly();
         }
@@ -2074,7 +2075,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
       for (const sidewall of plan.sidewalls) {
-        if (++sidewallAssemblyIndex % 24 === 0) {
+        if (cooperativeAssembly && ++sidewallAssemblyIndex % 24 === 0) {
           sceneAssemblyYields++;
           await yieldSceneAssembly();
         }
@@ -2098,7 +2099,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
-        if (++sidewallBucketIndex % 8 === 0) {
+        if (cooperativeAssembly && ++sidewallBucketIndex % 8 === 0) {
           sceneAssemblyYields++;
           await yieldSceneAssembly();
         }
@@ -2152,6 +2153,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         Math.round(smoothSidewallTemplateTriangleCount),
       );
 
+      host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) {
         host.dataset.renderPhase = 'assembling';
