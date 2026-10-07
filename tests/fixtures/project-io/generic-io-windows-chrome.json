@@ -1,0 +1,194 @@
+{
+  "baselineCommit": "de24166a81f65474c73b08bf0a22ac566dedb76a",
+  "os": "Windows",
+  "node": "24.19.0",
+  "playwright": "1.55.1",
+  "three": "0.179.1",
+  "browser": "154.0.8037.98",
+  "headful": true,
+  "viewport": {
+    "width": 1440,
+    "height": 960
+  },
+  "repeat": 3,
+  "sourceSha256": "728e2615a4258c12ea2127e8c6a05b9ce4bbe9e7aa87020642a12d0d5a567c9e",
+  "method": "Before routes baseline project-io.js and project-schema.js into the real worker paths; after uses current modules and the v3 round-trip of the same complete source. Fresh browser contexts. No concurrent test workloads. Every run opens 40 Steps and 5 bookmarks, waits for matching model revision and real 3D readiness, then clicks the real Export button and awaits download completion. UI live camera metadata changes re-export bytes slightly.",
+  "before": {
+    "file": "three-tier-silicon-jlfets.wafercad",
+    "bytes": 1816020,
+    "browserVersion": "154.0.8037.98",
+    "runs": [
+      {
+        "openedMs": 11784.583599999998,
+        "readyMs": 15700.4395,
+        "workerMs": 6936.399999991059,
+        "worker": {
+          "started": 1543.7000000029802,
+          "Parsing project JSON\u00e2\u20ac\u00a6": 1595.0999999940395,
+          "Validating project\u00e2\u20ac\u00a6": 1636.7999999970198,
+          "done": 8480.09999999404,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": [],
+        "exportMs": 18190.363899999997,
+        "exportWorkerMs": 14870.90000000596,
+        "exportedBytes": 1816273
+      },
+      {
+        "openedMs": 12020.979800000001,
+        "readyMs": 15772.0864,
+        "workerMs": 7193.5,
+        "worker": {
+          "started": 908.7999999970198,
+          "Parsing project JSON\u00e2\u20ac\u00a6": 939.4000000059605,
+          "Validating project\u00e2\u20ac\u00a6": 983.2000000029802,
+          "done": 8102.29999999702,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": [],
+        "exportMs": 17723.508500000004,
+        "exportWorkerMs": 14310.29999999702,
+        "exportedBytes": 1816273
+      },
+      {
+        "openedMs": 12076.378100000002,
+        "readyMs": 15816.074200000003,
+        "workerMs": 7245.100000008941,
+        "worker": {
+          "started": 866.5,
+          "Parsing project JSON\u00e2\u20ac\u00a6": 896.6000000089407,
+          "Validating project\u00e2\u20ac\u00a6": 939.7000000029802,
+          "done": 8111.600000008941,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": [],
+        "exportMs": 20752.362900000007,
+        "exportWorkerMs": 17371.10000000894,
+        "exportedBytes": 1816273
+      }
+    ],
+    "medianOpenedMs": 12020.979800000001,
+    "medianReadyMs": 15772.0864,
+    "medianWorkerMs": 7193.5,
+    "medianExportMs": 18190.363899999997,
+    "medianExportWorkerMs": 14870.90000000596
+  },
+  "after": {
+    "file": "three-tier-silicon-jlfets-v3.wafercad",
+    "bytes": 995140,
+    "browserVersion": "154.0.8037.98",
+    "runs": [
+      {
+        "openedMs": 8512.9604,
+        "readyMs": 11190.6139,
+        "workerMs": 3495.5999999940395,
+        "worker": {
+          "started": 1120.5,
+          "Parsing project JSON\u00e2\u20ac\u00a6": 1151.8999999910593,
+          "Validating project\u00e2\u20ac\u00a6": 1185.699999988079,
+          "done": 4616.0999999940395,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": [],
+        "exportMs": 11250.661700000002,
+        "exportWorkerMs": 8955.20000000298,
+        "exportedBytes": 995384
+      },
+      {
+        "openedMs": 8333.355,
+        "readyMs": 10959.972899999997,
+        "workerMs": 3475.2000000029802,
+        "worker": {
+          "started": 867,
+          "Parsing project JSON\u00e2\u20ac\u00a6": 897.4000000059605,
+          "Validating project\u00e2\u20ac\u00a6": 932.3000000119209,
+          "done": 4342.20000000298,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": [],
+        "exportMs": 10589.043599999997,
+        "exportWorkerMs": 8417.70000000298,
+        "exportedBytes": 995384
+      },
+      {
+        "openedMs": 7929.694199999998,
+        "readyMs": 10355.472999999998,
+        "workerMs": 3278.2999999970198,
+        "worker": {
+          "started": 788.7000000029802,
+          "Parsing project JSON\u00e2\u20ac\u00a6": 815.5,
+          "Validating project\u00e2\u20ac\u00a6": 850.2999999970198,
+          "done": 4067,
+          "steps": 40,
+          "bookmarks": 5
+        },
+        "errors": [],
+        "exportMs": 10607.5694,
+        "exportWorkerMs": 8556,
+        "exportedBytes": 995384
+      }
+    ],
+    "medianOpenedMs": 8333.355,
+    "medianReadyMs": 10959.972899999997,
+    "medianWorkerMs": 3475.2000000029802,
+    "medianExportMs": 10607.5694,
+    "medianExportWorkerMs": 8556
+  },
+  "fileMatrix": [
+    {
+      "id": "photodetector-literature",
+      "sourceBytes": 366336,
+      "beforeBytes": 366345,
+      "bytes": 286456,
+      "encoding": "shared-assets-v3",
+      "steps": 32,
+      "bookmarks": 47,
+      "entireNormalizedProjectEqual": true
+    },
+    {
+      "id": "perc-point-contact-solar-cell",
+      "sourceBytes": 845137,
+      "beforeBytes": 845146,
+      "bytes": 576089,
+      "encoding": "shared-assets-v3",
+      "steps": 33,
+      "bookmarks": 33,
+      "entireNormalizedProjectEqual": true
+    },
+    {
+      "id": "fully-textured-perovskite-silicon-tandem",
+      "sourceBytes": 263828,
+      "beforeBytes": 263837,
+      "bytes": 253360,
+      "encoding": "shared-assets-v3",
+      "steps": 24,
+      "bookmarks": 26,
+      "entireNormalizedProjectEqual": true
+    },
+    {
+      "id": "suspended-silica-microdisk",
+      "sourceBytes": 99921,
+      "beforeBytes": 87993,
+      "bytes": 69917,
+      "encoding": "shared-assets-v3",
+      "steps": 9,
+      "bookmarks": 9,
+      "entireNormalizedProjectEqual": true
+    },
+    {
+      "id": "three-tier-silicon-jlfets",
+      "sourceBytes": 1816020,
+      "beforeBytes": 1816029,
+      "bytes": 995140,
+      "encoding": "shared-assets-v3",
+      "steps": 40,
+      "bookmarks": 5,
+      "entireNormalizedProjectEqual": true
+    }
+  ]
+}

@@ -74,6 +74,8 @@ The migrated self-test contracts are owned by focused files:
 - `conformal-process.test.mjs`: direct vs conformal growth, mask-edge clipping, sidewall growth, buried-layer rejection, layer mutation, and core vector topology checks.
 - `gds-smoke.test.mjs`: demo layout and physical-unit GDS parsing smoke.
 - `project-annotation.test.mjs`: project schema validation plus Implant/Electrical Region model/view contracts.
+- `project-geometry-storage.test.mjs`: exact v3 polygon template expansion, holes/order/winding, lossless sub-grid workspace values, malformed references/overflow, expansion limits, real Process output and complete native Fig3 History round-trips.
+- `project-file.test.mjs`: storage compatibility and strict file/schema limits, including rectangular containment and aggregate component-overlap rejection.
 
 The migration preserves all 203 assertions that were present in the former 1380-line self-test.
 
@@ -115,7 +117,7 @@ The browser-level `example-regression.mjs` then verifies runtime loading, Histor
 - `workstation-regression.mjs`: Welcome, boot gating, navigation, example-family loading, and core workstation shell.
 - `history-regression.mjs`: History tree, Variants, bookmarks, historical Step restore/edit/replay, rollback, and History export.
 - `persistence-regression.mjs`: autosave, migration, recovery checkpoints, staged Welcome handoff, refresh restore, and multi-tab ownership.
-- `process-geometry-regression.mjs`: Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, exported morphology, and scientific Section geometry checks.
+- `process-geometry-regression.mjs`: Etch/Rough, Implant, Electrical Region, Conformal Deposit/Extend, exported morphology, and scientific Section geometry checks. The `test:ui:process` command then runs `project-io-runtime-regression.mjs`: 400 real UI mask islands, native 10 nm Conformal walls, worker export/open with exact physical model and recorded History, and continued Etch at every island. Run `npm run test:ui:io` for that focused path alone.
 - `interaction-regression.mjs`: Slice/ROI, Mask Draw, mask ROI/alignment, view exports, maximize/restore, and 3D inspection controls.
 - `resilience-regression.mjs`: missing Three.js and unavailable WebGL degraded-mode behavior.
 - `example-regression.mjs`: bundled literature/example structural contracts.
