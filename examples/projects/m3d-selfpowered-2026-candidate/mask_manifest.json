@@ -1,0 +1,41 @@
+{
+  "source": "Nature Electronics 9 (2026) 775–787; paper reconstruction, not author GDS",
+  "revision": 2,
+  "coordinateSystems": {
+    "PVM": {
+      "widthUm": 30,
+      "heightUm": 30
+    },
+    "M3D": {
+      "widthUm": 28,
+      "heightUm": 18
+    }
+  },
+  "polarity": "black = operation region; etch/open removes black; additive deposits black",
+  "publishedDimensions": {
+    "pvmSiUm": [
+      20,
+      20
+    ],
+    "channelUm": {
+      "L": 0.2,
+      "W": 0.5
+    },
+    "viaUm": [
+      5,
+      5
+    ],
+    "HfO2Nm": 10,
+    "ILD1Nm": 100,
+    "ILD2Nm": 50,
+    "finalAl2O3Nm": 70
+  },
+  "auditCorrections": [
+    "explicit PVM etch polarity",
+    "full power-via landing pads",
+    "aligned HfO2 gate openings",
+    "0.2 x 0.5 um WSe2/MoS2 channels",
+    "connected comparator bridge footprints",
+    "connected graphene power/data routes"
+  ]
+}
