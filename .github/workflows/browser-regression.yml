@@ -182,10 +182,6 @@ jobs:
         if: ${{ needs.plan.outputs.renderer == 'true' }}
         run: npm run test:ui:product:renderer
 
-      - name: Run renderer pipeline benchmark
-        if: ${{ needs.plan.outputs.renderer == 'true' }}
-        run: npm run benchmark:renderer
-
       - name: Package tested preview
         if: always()
         run: |
