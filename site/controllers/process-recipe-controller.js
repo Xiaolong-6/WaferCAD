@@ -29,6 +29,16 @@ function selectedOptionByLabel(select, label) {
   return [...(select?.options || [])].find((item) => item.textContent === label) || null;
 }
 
+function recipeLengthText(valueUm) {
+  const value = Number(valueUm);
+  if (!Number.isFinite(value)) return '';
+  if (Math.abs(value) < 1 && Math.abs(value) >= 1e-3) {
+    return `${Number((value * 1000).toPrecision(8))} nm`;
+  }
+  if (Math.abs(value) >= 1000) return `${Number((value / 1000).toPrecision(8))} mm`;
+  return `${Number(value.toPrecision(8))} µm`;
+}
+
 export function createProcessRecipeController({
   root = document,
   getRecipe = () => null,
@@ -388,7 +398,8 @@ export function createProcessRecipeController({
       return select;
     };
     const bindLength = (label, key, valueUm) => {
-      const input = textInput(formatLengthField(valueUm));
+      const input = textInput(recipeLengthText(valueUm));
+      input.placeholder = 'e.g. 30 nm, 0.5 µm';
       attachCommit(input, () => {
         const microns = recipeLengthUm(input.value, label);
         updateStep(step.id, (target) => (target.params[key] = microns));
