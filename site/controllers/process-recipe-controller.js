@@ -802,10 +802,14 @@ export function createProcessRecipeController({
         },
       };
     } else if (operation.kind === 'etch') {
+      const targetId = p.etchTargetLayerIds?.[0] || operation.etchTargetLayerIds?.[0] || null,
+        targetName = targetId
+          ? getModel()?.layers?.find((layer) => layer.id === targetId)?.name || ''
+          : '';
       source = {
         command: 'etch',
         params: {
-          target: operation.name && operation.etchTargetLayerIds?.length ? operation.name : '',
+          target: targetName,
           [p.etchProfile === 'planarize' ? 'targetZ' : 'depth']: Number(
             p.targetZ ?? p.thickness,
           ),
