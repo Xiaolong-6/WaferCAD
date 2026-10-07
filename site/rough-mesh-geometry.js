@@ -124,10 +124,12 @@ export function roughMeshDataFromPreparedCap({
   lodZones = null,
   profileNormal = normal,
   analyticNormals = true,
+  gpuDisplacement = false,
 }) {
   const zones = Array.isArray(lodZones) && lodZones.length ? lodZones : [{ polys, lodContext }],
     positions = [],
     normals = [],
+    gpuDisplace = [],
     roughBorderPositions = [],
     zoneResults = [];
   let maxDepth = 0;
@@ -159,6 +161,7 @@ export function roughMeshDataFromPreparedCap({
       const faceNormal = triangleNormal(a, b, c);
       positions.push(...a, ...b, ...c);
       normals.push(...faceNormal, ...faceNormal, ...faceNormal);
+      gpuDisplace.push(0, 0, 0);
     },
     pushRoughTriangle = (a, b, c) => {
       if (!analyticNormals) {
@@ -171,6 +174,12 @@ export function roughMeshDataFromPreparedCap({
         ...roughPointNormal(b, normal, profileNormal, appearance),
         ...roughPointNormal(c, normal, profileNormal, appearance),
       );
+      gpuDisplace.push(0, 0, 0);
+    },
+    pushGpuRoughTriangle = (a, b, c) => {
+      positions.push(...a, ...b, ...c);
+      normals.push(0, 0, normal, 0, 0, normal, 0, 0, normal);
+      gpuDisplace.push(1, 1, 1);
     },
     pointAlongEdge = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, z],
     roughAlongEdge = (p, q, t) => roughPoint(pointAlongEdge(p, q, t), z, profileNormal, appearance),
@@ -206,11 +215,15 @@ export function roughMeshDataFromPreparedCap({
     zoneResults.push({ ...zone, depth, lod, edges });
 
     for (const [a, b, c] of triangles) {
-      pushRoughTriangle(
-        roughPoint(a, z, profileNormal, appearance),
-        roughPoint(b, z, profileNormal, appearance),
-        roughPoint(c, z, profileNormal, appearance),
-      );
+      if (gpuDisplacement) {
+        pushGpuRoughTriangle(a, b, c);
+      } else {
+        pushRoughTriangle(
+          roughPoint(a, z, profileNormal, appearance),
+          roughPoint(b, z, profileNormal, appearance),
+          roughPoint(c, z, profileNormal, appearance),
+        );
+      }
     }
   }
 
@@ -327,8 +340,10 @@ export function roughMeshDataFromPreparedCap({
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
+    gpuDisplace: gpuDisplacement ? new Float32Array(gpuDisplace) : new Float32Array(),
     roughBorderPositions: new Float32Array(roughBorderPositions),
     metadata: {
+      roughGpuDisplacement: Boolean(gpuDisplacement),
       roughSubdivisionDepth: maxDepth,
       roughLod: zoneResults.map((zone) => zone.lod),
       roughLodZoneCount: zoneResults.length,
@@ -351,8 +366,14 @@ export function geometryFromRoughMeshData(THREE, data) {
     'normal',
     new THREE.Float32BufferAttribute(data?.normals || new Float32Array(), 3),
   );
+  const gpuDisplace = data?.gpuDisplace || new Float32Array(),
+    positionCount = Math.floor((data?.positions?.length || 0) / 3);
+  if (gpuDisplace.length > 0 && gpuDisplace.length === positionCount) {
+    geometry.setAttribute('waferCadGpuDisplace', new THREE.Float32BufferAttribute(gpuDisplace, 1));
+  }
   const metadata = data?.metadata || {};
   geometry.userData.roughSubdivisionDepth = Number(metadata.roughSubdivisionDepth) || 0;
+  geometry.userData.roughGpuDisplacement = Boolean(metadata.roughGpuDisplacement);
   geometry.userData.roughLod = Array.isArray(metadata.roughLod) ? metadata.roughLod : [];
   geometry.userData.roughBorderPositions = data?.roughBorderPositions || new Float32Array();
   geometry.userData.roughLodZoneCount = Number(metadata.roughLodZoneCount) || 0;
@@ -375,6 +396,7 @@ export function geometryFromRoughCap(
     lodZones = null,
     profileNormal = normal,
     analyticNormals = true,
+    gpuDisplacement = false,
   },
 ) {
   const sourceZones =
@@ -411,6 +433,7 @@ export function geometryFromRoughCap(
       lodZones: preparedZones,
       profileNormal,
       analyticNormals,
+      gpuDisplacement,
     });
   return geometryFromRoughMeshData(THREE, data);
 }

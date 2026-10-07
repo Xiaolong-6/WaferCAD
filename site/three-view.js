@@ -9,6 +9,7 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
+import { canUseGpuRoughTask, decorateGpuRoughMaterial } from './gpu-rough-surface.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
@@ -668,8 +669,13 @@ export function createThreeView({
           pixelRatio: viewport.pixelRatio,
         }),
         featurePixels = entry.appearance.featureSize * pxPerUm,
-        lod = roughLod(featurePixels);
+        lod = roughLod(featurePixels),
+        gpuRough = entry.material.userData?.waferCadGpuRough;
       entry.material.roughness = 0.82 + 0.12 * lod.detail;
+      if (gpuRough?.uniforms?.waferCadRoughNormalStrength) {
+        gpuRough.uniforms.waferCadRoughNormalStrength.value =
+          (Number(gpuRough.normalStrengthBase) || 0) * lod.micro;
+      }
     }
   }
 
@@ -1175,6 +1181,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
     const mesh = new THREE.Mesh(geometry, material),
       center = geometryCenter(geometry);
+    if (geometry.userData.roughGpuDisplacement) mesh.frustumCulled = false;
     mesh.renderOrder = materialState.transparent ? 100 : 0;
     group.add(mesh);
     trackZDisplayObject(mesh);
@@ -1230,6 +1237,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       mesh.computeBoundingBox?.();
       mesh.computeBoundingSphere?.();
       if (name) mesh.name = chunks.length > 1 ? `${name} ${chunkIndex + 1}/${chunks.length}` : name;
+      if (chunkGeometry.userData.roughGpuDisplacement) mesh.frustumCulled = false;
       group.add(mesh);
       trackZDisplayObject(mesh);
       if (adaptiveRough) {
@@ -1317,6 +1325,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return Math.max(0, Math.min(1, visibleArea / modelArea));
   }
 
+  function gpuRoughTask(task) {
+    return canUseGpuRoughTask({
+      appearance: task?.cap?.appearance,
+      buried: task?.cap?.buried,
+      implant: Boolean(task?.implant),
+      zDisplay: currentZDisplay,
+    });
+  }
+
   function prepareAdaptiveRoughTasks({ interactive = false } = {}) {
     const context = roughRenderContext;
     if (!context || !roughTasks.length) return { tasks: [], sceneBudget: 0 };
@@ -1324,12 +1341,35 @@ diffuseColor.a *= waferCadAlphaScale;`,
       focus = focusBounds(),
       requests = [],
       tasks = roughTasks.map((task) => {
-        const zones = prepareRoughSpatialZones(task).map((zone) => {
+        const gpuDisplacement = gpuRoughTask(task),
+          gpuGeometryDetail = gpuDisplacement
+            ? interactive
+              ? 0.35
+              : policy.mode === 'quality'
+                ? 0.55
+                : 0.45
+            : 1,
+          gpuMaxDepth = gpuDisplacement
+            ? interactive
+              ? 3
+              : policy.mode === 'quality'
+                ? 8
+                : 6
+            : policy.maxDepth,
+          zones = prepareRoughSpatialZones(task).map((zone) => {
           const priority = roughZonePriority(zone.bounds, focus),
+            roughnessDetail =
+              policy.roughnessDetail *
+              (task.cap.buried ? policy.interfaceDetail : 1) *
+              gpuGeometryDetail,
             lodContext = lodContextFor(context.model, context.clip, null, task.cap.z, {
               visibleFraction: priority >= 0.9 ? 1 : priority >= 0.2 ? 0.2 : 0.04,
               screenPriority: priority,
-              maxDepth: Math.min(policy.maxDepth, priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5),
+              maxDepth: Math.min(
+                policy.maxDepth,
+                gpuMaxDepth,
+                priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
+              ),
               patchBounds: zone.bounds,
             }),
             preview = adaptiveRoughMeshLod({
@@ -1337,15 +1377,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
               maxEdge: zone.maxEdge,
               featureSize: task.cap.appearance?.featureSize,
               ...lodContext,
-              roughnessDetail:
-                policy.roughnessDetail * (task.cap.buried ? policy.interfaceDetail : 1),
+              roughnessDetail,
             }),
             prepared = {
               ...zone,
               lodContext: {
                 ...lodContext,
-                roughnessDetail:
-                  policy.roughnessDetail * (task.cap.buried ? policy.interfaceDetail : 1),
+                roughnessDetail,
               },
               triangleBudget: null,
             };
@@ -1357,7 +1395,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
           return prepared;
         });
-        return { ...task, zones };
+        return { ...task, gpuDisplacement, zones };
       }),
       viewport = currentViewport(),
       qualitySceneBudget = roughSceneTriangleBudget({
@@ -1385,6 +1423,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       sceneBudget: prepared.sceneBudget,
       requestedSceneBudget: prepared.requestedSceneBudget,
       baseTriangleCount: prepared.baseTriangleCount,
+      gpuTaskCount: prepared.tasks.filter((task) => task.gpuDisplacement).length,
     };
   }
 
@@ -1432,6 +1471,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
             roughness: cap.appearance ? 0.84 : 0.72,
           })
         : createSurfaceMaterial(task.layer, task.state, cap.appearance);
+      if (geometry.userData.roughGpuDisplacement && !task.implant) {
+        decorateGpuRoughMaterial(material, cap.appearance, {
+          profileNormal: cap.profileNormal ?? cap.normal,
+          normalStrength: mode === 'interactive' ? 0.82 : 1,
+        });
+      }
       if (task.polygonOffset) {
         material.polygonOffset = true;
         material.polygonOffsetFactor = -1;
@@ -1480,6 +1525,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       data.roughRebuildCount = String(roughRebuildCount);
       data.surfacePlanBuildCount = String(surfacePlanBuildCount);
       data.roughMeshMode = mode;
+      data.roughMeshBackend = diagnostics?.gpuTaskCount ? 'gpu-hybrid' : 'cpu-mesh';
+      data.roughGpuTaskCount = String(diagnostics?.gpuTaskCount || 0);
       data.roughMeshWorker = 'true';
     }
     updateRoughMaterialLod();
@@ -1509,7 +1556,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
           sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
-          analyticNormals: prepared.policy.analyticNormals,
+          analyticNormals: task.gpuDisplacement ? false : prepared.policy.analyticNormals,
+          gpuDisplacement: Boolean(task.gpuDisplacement),
           lodZones: task.zones.map((zone) => ({
             baseTriangles: zone.baseTriangles,
             maxEdge: zone.maxEdge,
@@ -1682,7 +1730,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           profileNormal: cap.profileNormal,
           lodContext: lodContextFor(context.model, context.clip, cap.polys, cap.z),
           lodZones: task.zones,
-          analyticNormals: prepared.policy.analyticNormals,
+          analyticNormals: task.gpuDisplacement ? false : prepared.policy.analyticNormals,
+          gpuDisplacement: Boolean(task.gpuDisplacement),
         });
         if (task.implant) {
           setAnnotationDepthAttribute(
@@ -1698,6 +1747,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
               roughness: cap.appearance ? 0.84 : 0.72,
             })
           : createSurfaceMaterial(task.layer, task.state, cap.appearance);
+        if (geometry.userData.roughGpuDisplacement && !task.implant) {
+          decorateGpuRoughMaterial(material, cap.appearance, {
+            profileNormal: cap.profileNormal ?? cap.normal,
+            normalStrength: interactive ? 0.82 : 1,
+          });
+        }
         if (task.polygonOffset) {
           material.polygonOffset = true;
           material.polygonOffsetFactor = -1;
@@ -1749,6 +1804,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
         data.roughRebuildCount = String(roughRebuildCount);
         data.surfacePlanBuildCount = String(surfacePlanBuildCount);
         data.roughMeshMode = currentRoughMode;
+        data.roughMeshBackend = prepared.tasks.some((task) => task.gpuDisplacement)
+          ? 'gpu-hybrid'
+          : 'cpu-mesh';
+        data.roughGpuTaskCount = String(
+          prepared.tasks.filter((task) => task.gpuDisplacement).length,
+        );
         data.roughMeshWorker = 'false';
       }
       updateRoughMaterialLod();

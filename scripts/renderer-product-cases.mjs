@@ -144,6 +144,59 @@ export async function runRendererProductCases({ page, capture }) {
 
   const { applyOperation, createModel } = await import('../site/model.js');
   const { rectMulti } = await import('../site/vector-geometry.js');
+
+  // GPU rough backend acceptance: an exposed rough cap must use shader-driven
+  // displacement rather than silently falling back to the CPU morphology mesh.
+  const gpuRoughModel = createModel({ shape: 'rect', width: 18, height: 12, thickness: 8 });
+  applyOperation(gpuRoughModel, {
+    type: 'etch',
+    thickness: 1.2,
+    face: 'front',
+    area: rectMulti(12, 8),
+    surface: {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 0.5,
+      meanHeight: 0.55,
+      etchDepth: 1.2,
+      featureCv: 0.12,
+      heightCv: 0.15,
+      seed: 20261007,
+      geometryMode: 'ideal',
+    },
+  });
+  const gpuRoughProject = projectForBenchmark({
+    model: gpuRoughModel,
+    section: { a: [-8, 0], b: [8, 0] },
+  });
+  await loadProject(page, gpuRoughProject, 'wide-gpu-rough-exposed');
+  await page.locator('#threeMaxBtn').click();
+  const gpuRoughCanvas = page.locator('#threeHost canvas');
+  await page.waitForFunction(
+    () => {
+      const canvas = document.querySelector('#threeHost canvas');
+      return (
+        canvas?.dataset.roughMeshMode === 'detailed' &&
+        canvas.dataset.roughMeshBackend === 'gpu-hybrid' &&
+        Number(canvas.dataset.roughGpuTaskCount || 0) > 0
+      );
+    },
+    null,
+    { timeout: 10000 },
+  );
+  assert.equal(
+    await gpuRoughCanvas.getAttribute('data-rough-mesh-backend'),
+    'gpu-hybrid',
+    'exposed rough cap did not activate the GPU rough backend',
+  );
+  assert.ok(
+    Number(await gpuRoughCanvas.getAttribute('data-rough-gpu-task-count')) > 0,
+    'GPU rough backend reported no shader-displaced tasks',
+  );
+  await capture(page, 'wide-gpu-rough-exposed');
+  await page.locator('#threeMaxBtn').click();
+
   const roughModel = createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 }),
     roughArea = rectMulti(10, 12);
   applyOperation(roughModel, {
