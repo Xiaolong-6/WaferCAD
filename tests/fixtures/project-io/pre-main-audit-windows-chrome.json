@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-07",
+  "branch": "codex/project-io-geometry-sharing",
+  "reviewedHead": "4fb5c183fa63bd6e7dc95482ad3d056a1a144c6f",
+  "main": "467f1a87ea88b35821d44c4b5277f16b6dccf1d5",
+  "productAfterFixes": "744017560141ca826f697c1a5fd8dfb7863a3f0e",
+  "environment": {
+    "os": "Windows",
+    "node": "24.19.0",
+    "playwright": "1.55.1",
+    "chrome": "154.0.8037.98",
+    "three": "0.179.1"
+  },
+  "node": {
+    "passed": 389,
+    "failed": 0,
+    "skipped": 0
+  },
+  "eslint": "pass",
+  "prettier": "pass",
+  "fixes": [
+    "Charge shared model/layout occurrence budgets for every workspace",
+    "Add missing scientific/rendering/persistence/Welcome browser ownership"
+  ],
+  "examples": {
+    "existingFullProjectsComparedToMain": 6,
+    "allPhysicalAndHistoryDataEqual": true,
+    "previewAssetsDeterministic": 5
+  },
+  "transaction": {
+    "rejectionStatus": "Operation failed: Process result rejected; the previous structure and History were preserved. Invalid project: model.regions[1].geom overlaps model.regions[0].geom.",
+    "recoveryStatus": "Deposited Recovery success · Directional on the front.",
+    "injectedOnlyWorkerRequest": true,
+    "strictWorkerValidationObserved": true,
+    "modelPreserved": true,
+    "historyPreserved": true,
+    "bookmarksPreserved": true,
+    "noEmptyVariant": true,
+    "nextApplySucceeded": true,
+    "stepsBefore": 2,
+    "stepsAfterRejection": 2,
+    "stepsAfterRecovery": 3,
+    "variantsBefore": 1,
+    "variantsAfterRejection": 1,
+    "variantsAfterRecovery": 2,
+    "pageErrors": []
+  },
+  "storage": {
+    "candidateSaved": true,
+    "leaseLossCommitted": false,
+    "retrySucceeded": true,
+    "frames": 442,
+    "steps": 40,
+    "bookmarks": 5,
+    "packedSavedRecoveryDigest": "b27fef0f9eb0eb9a12400efaaca306d8d384978dbbb7be408e88dfff76e34af7"
+  },
+  "native": {
+    "steps": 40,
+    "regions": 35,
+    "physicalContract": {
+      "tiers": 3,
+      "nativeConformalGates": 3,
+      "nativeConformalLiners": 2,
+      "steps": 40
+    },
+    "operations": 18,
+    "allOperationsPassed": true,
+    "reopenedModelAndHistoryIdentical": true,
+    "resumedAfterCmp": false,
+    "resumedAfterGate": false,
+    "errors": []
+  },
+  "tandem": {
+    "ratios": [1, 2, 0.5, 1],
+    "modelUnchanged": true,
+    "sectionRasterRelockIdentical": true,
+    "threeRelockIdentical": true,
+    "visualInspectionCompleted": true,
+    "errors": []
+  },
+  "welcome": {
+    "runs": 3,
+    "firstVisibleMedianMs": 280.3861999999999,
+    "allThumbnailsMedianMs": 559.2895999999996,
+    "errors": []
+  },
+  "fastMode": {
+    "inspectionOnlyRun": "pass",
+    "currentModeLabelsAndTooltip": "pass",
+    "qualityReloadLabel": "pass",
+    "physicalGeometryAnd2dPixelsUnchanged": "pass"
+  },
+  "ciRun": false,
+  "mainUpdated": false,
+  "deploymentRun": false,
+  "limitations": [
+    "Windows local Chrome only; Linux approved-pixel gate not run",
+    "No new universal FPS or performance claim",
+    "Older readers do not understand shared-assets-v2"
+  ]
+}

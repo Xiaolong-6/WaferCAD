@@ -47,6 +47,8 @@ UI orchestration that does not own canonical geometry lives under `site/controll
 
 3D Fast Mode defaults on. Fast, Quality and temporary Interactive are render-mesh budgets over the same canonical surface ownership and morphology field; `display.threeFastMode` is a view preference and uses lightweight view autosave. Rough sampling, normals, sidewall subdivision, pixel ratio and transparency sort frequency may vary, while topology, annotation envelopes, Main/Section and physical GLB export remain unchanged. See [3D Fast acceptance](THREE_FAST_MODE_2026-10-07.md) and run `node scripts/three-fast-mode-regression.mjs` (or `--inspection-only` for transparent/ROI checks).
 
+The [2026-10-07 pre-main audit](PRE_MAIN_AUDIT_2026-10-07.md) records the complete branch review, repaired shared-asset budget accounting and browser ownership, and current local integration evidence.
+
 ## Deployment
 
 `.github/workflows/pages.yml` deploys `site/` to GitHub Pages when `main` changes. Full Quality/browser regression belongs to pull-request CI; superseded PR runs are cancelled. Pages performs only a lightweight release sanity check plus asset stamping/deployment, avoiding a second full browser regression after an already-validated merge. KLayout compatibility is path-scoped to layout parser/export changes and remains manually runnable for broader corpus checks.
