@@ -760,6 +760,11 @@ export function createThreeView({
     });
   }
 
+  async function yieldSceneAssembly() {
+    scheduleFrame();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
   function resize() {
     if (!renderer) return;
     const rect = host.getBoundingClientRect();
@@ -1481,6 +1486,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     updateTransparentOrder();
     updateRoughDiagnostics();
     if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
+    host.dataset.renderPhase = mode === 'interactive' ? 'preview' : 'complete';
     host.dataset.renderState = 'ready';
     stats.textContent = hasMaterial(context.model)
       ? context.clip
@@ -1892,7 +1898,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return initPromise;
   }
 
-  function render() {
+  async function render() {
     if (!ready) return;
     if (rendering) {
       pendingRender = true;
@@ -1934,6 +1940,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
 
+      const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
+      let sceneAssemblyYields = 0,
+        nextAssemblyYieldAt = performance.now() + 32;
+      const maybeYieldAssembly = async () => {
+        if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
+        sceneAssemblyYields++;
+        await yieldSceneAssembly();
+        nextAssemblyYieldAt = performance.now() + 32;
+      };
+
       host.dataset.materialLayerIds = JSON.stringify(
         [...new Set([...plan.caps, ...plan.sidewalls].map((part) => part.layerId))].sort(),
       );
@@ -1973,6 +1989,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothCapInstanceCount = 0;
       smoothCapTemplateTriangleCount = 0;
       for (const cap of plan.caps) {
+        await maybeYieldAssembly();
         if (!zIsVisible(cap.z)) continue;
         const state = stateFor(cap);
         if (!state) continue;
@@ -2006,6 +2023,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
 
       for (const bucket of smoothCaps.values()) {
+        await maybeYieldAssembly();
         const state = stateFor(bucket.part),
           visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
         if (!state || !visibleCaps.length) continue;
@@ -2094,6 +2112,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
       for (const sidewall of plan.sidewalls) {
+        await maybeYieldAssembly();
         const state = stateFor(sidewall);
         if (!state) continue;
         if (sidewall.instanceTranslations) {
@@ -2114,6 +2133,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
+        await maybeYieldAssembly();
         const state = stateFor(bucket.part),
           visibleParts = displaySidewallParts(bucket.items);
         if (!state || !visibleParts.length) continue;
@@ -2164,6 +2184,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         Math.round(smoothSidewallTemplateTriangleCount),
       );
       const rendererSidewallsAt = performance.now();
+
+      host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
+      host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
+      if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
 
       if (borders) {
         addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
@@ -2526,6 +2550,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.rendererAssemblyMs = String(rendererAssemblyAt - rendererProfileStart);
       updateTransparentOrder();
       if (!roughTasks.length) {
+        host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
@@ -2542,6 +2567,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
 
     if (roughTasks.length) {
+      host.dataset.renderPhase = 'rough-preview';
       host.dataset.renderState = 'refining';
       void requestRoughGeometry('interactive', { refineAfter: true });
     }
