@@ -1,6 +1,6 @@
 # General Process validation and project IO optimization
 
-Product commit: `bb54faad05b1021761db89e874e9907c4a8879a2`. Branch: `codex/project-io-geometry-sharing`. Baseline: `de24166a81f65474c73b08bf0a22ac566dedb76a`. Local development only; no remote CI, main push or deployment in this round.
+Product commit: `bb54faad05b1021761db89e874e9907c4a8879a2`. Branch: `codex/process-project-io-optimization` (developed on `codex/project-io-geometry-sharing`). Baseline: `de24166a81f65474c73b08bf0a22ac566dedb76a`. Feature branch for review; no main push, deployment or manual remote CI in this round.
 
 ## Product behavior
 
