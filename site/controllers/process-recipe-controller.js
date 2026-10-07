@@ -439,6 +439,12 @@ export function createProcessRecipeController({
           { value: 'conformal', label: 'Conformal' },
           { value: 'transfer', label: 'Transfer / Laminate' },
         ]);
+        if (p.coverage === 'transfer') {
+          bindSelect('Placement', 'placement', [
+            { value: 'follow', label: 'Follow surface' },
+            { value: 'flat', label: 'Flat bridge' },
+          ]);
+        }
       } else if (step.command === 'extend') {
         bindText('Material', 'material');
         bindLength('Thickness', 'thicknessUm', p.thicknessUm);
@@ -450,6 +456,118 @@ export function createProcessRecipeController({
         bindText('Target', 'target');
         bindLength(p.profile === 'planarize' ? 'Target Z' : 'Depth', 'thicknessUm', p.thicknessUm);
         bindSelect('Profile', 'profile', ['directional', 'isotropic', 'planarize', 'undercut']);
+        if (p.profile === 'directional') {
+          const appearance = p.surface && p.surface !== 'smooth' ? p.surface : null,
+            surfaceMode = appearance
+              ? appearance.morphology === 'pyramid'
+                ? 'pyramid'
+                : 'rough'
+              : 'smooth',
+            surfaceSelect = selectInput(
+              [
+                { value: 'smooth', label: 'Smooth' },
+                { value: 'rough', label: 'Rough' },
+                { value: 'pyramid', label: 'Pyramid' },
+              ],
+              surfaceMode,
+            );
+          surfaceSelect.addEventListener('change', () => {
+            updateStep(step.id, (target) => {
+              const mode = surfaceSelect.value;
+              if (mode === 'smooth') {
+                target.params.surface = 'smooth';
+                return;
+              }
+              const previous =
+                  target.params.surface && target.params.surface !== 'smooth'
+                    ? target.params.surface
+                    : {},
+                depth = Number(target.params.thicknessUm) || 0.5;
+              target.params.surface = {
+                kind: 'rough',
+                morphology: mode === 'pyramid' ? 'pyramid' : 'stochastic',
+                polarity: previous.polarity || 'inverted',
+                featureSize: Number(previous.featureSize) || 0.5,
+                meanHeight:
+                  Number(previous.meanHeight) > 0
+                    ? Math.min(Number(previous.meanHeight), depth)
+                    : Math.min(depth, 0.5),
+                featureCv: Number.isFinite(Number(previous.featureCv))
+                  ? Number(previous.featureCv)
+                  : 0.25,
+                heightCv: Number.isFinite(Number(previous.heightCv))
+                  ? Number(previous.heightCv)
+                  : 0.25,
+                ...(previous.seed == null ? {} : { seed: Number(previous.seed) }),
+                geometryMode: 'ideal',
+              };
+            });
+          });
+          grid.append(field('Surface', surfaceSelect));
+
+          if (appearance) {
+            const nestedLength = (label, key) => {
+                const input = textInput(recipeLengthText(appearance[key]));
+                input.placeholder = 'e.g. 500 nm';
+                input.addEventListener('change', () => {
+                  const value = recipeLengthUm(input.value, `etch.surface.${key}`);
+                  updateStep(step.id, (target) => {
+                    target.params.surface = { ...target.params.surface, [key]: value };
+                  });
+                });
+                grid.append(field(label, input));
+              },
+              nestedPercent = (label, key) => {
+                const input = textInput(String(Number(appearance[key] || 0) * 100), {
+                  type: 'number',
+                  min: '0',
+                  max: '100',
+                  step: '1',
+                });
+                input.addEventListener('change', () => {
+                  const value = Math.max(0, Math.min(100, Number(input.value) || 0)) / 100;
+                  updateStep(step.id, (target) => {
+                    target.params.surface = { ...target.params.surface, [key]: value };
+                  });
+                });
+                grid.append(field(label, input));
+              };
+            const polarity = selectInput(['inverted', 'normal'], appearance.polarity || 'inverted');
+            polarity.addEventListener('change', () => {
+              updateStep(step.id, (target) => {
+                target.params.surface = { ...target.params.surface, polarity: polarity.value };
+              });
+            });
+            grid.append(field('Orientation', polarity));
+            nestedLength(
+              appearance.morphology === 'pyramid' ? 'Pyramid XY' : 'Feature XY',
+              'featureSize',
+            );
+            nestedLength(
+              appearance.morphology === 'pyramid' ? 'Height' : 'Height mean',
+              'meanHeight',
+            );
+            nestedPercent('Feature CV %', 'featureCv');
+            nestedPercent('Height CV %', 'heightCv');
+            const seed = textInput(appearance.seed ?? '', {
+              type: 'number',
+              min: '0',
+              max: '4294967295',
+              step: '1',
+            });
+            seed.placeholder = 'auto';
+            seed.addEventListener('change', () => {
+              updateStep(step.id, (target) => {
+                const value = String(seed.value).trim();
+                const nextSurface = { ...target.params.surface };
+                if (value) nextSurface.seed = Number(value);
+                else delete nextSurface.seed;
+                target.params.surface = nextSurface;
+              });
+            });
+            grid.append(field('Seed', seed));
+          }
+        }
       } else if (step.command === 'implant') {
         bindText('Name', 'name');
         bindLength('Depth', 'depthUm', p.depthUm);
@@ -647,7 +765,9 @@ export function createProcessRecipeController({
         $('layerName').value = p.material;
         setThickness(p.thicknessUm);
         updateOperationUI();
-        if (p.coverage === 'transfer' && $('transferMode')) $('transferMode').value = 'follow';
+        if (p.coverage === 'transfer' && $('transferMode')) {
+          $('transferMode').value = p.placement === 'flat' ? 'flat' : 'follow';
+        }
       } else if (step.command === 'extend') {
         $('operationType').value = 'grow';
         $('growthMode').value = p.coverage || 'direct';
@@ -727,6 +847,10 @@ export function createProcessRecipeController({
 
   async function run(limit = recipe.steps.length) {
     if (running) return;
+    if (processTaskController?.isBusy?.()) {
+      status('Another background task is already running.', 'warning');
+      return;
+    }
     const report = showValidation();
     if (report.errors.length) {
       status('Recipe validation failed. Fix the highlighted issues before running.', 'error');
@@ -759,7 +883,8 @@ export function createProcessRecipeController({
       if (stopRequested) status('Process Recipe stopped.', 'warning');
       else status(`Process Recipe completed ${total} step(s).`, 'success');
     } catch (error) {
-      status(`Process Recipe stopped: ${error.message}`, 'error');
+      if (stopRequested) status('Process Recipe stopped.', 'warning');
+      else status(`Process Recipe stopped: ${error.message}`, 'error');
     } finally {
       setRunningUi(false);
       renderAll();
@@ -799,6 +924,7 @@ export function createProcessRecipeController({
           material: p.name || operation.name,
           thickness: Number(p.thickness),
           coverage: p.growth || 'direct',
+          placement: p.transferMode || operation.transferMode || 'follow',
           ...common,
         },
       };
