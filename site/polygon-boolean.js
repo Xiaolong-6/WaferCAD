@@ -1,7 +1,6 @@
 export const EPS = 1e-8;
 export const BOOLEAN_RETRY_GRID_UM = 1e-4;
-const BOOLEAN_RETRY_AREA_EPSILON_UM2 =
-  BOOLEAN_RETRY_GRID_UM * BOOLEAN_RETRY_GRID_UM * 0.01;
+const BOOLEAN_RETRY_AREA_EPSILON_UM2 = BOOLEAN_RETRY_GRID_UM * BOOLEAN_RETRY_GRID_UM * 0.01;
 
 function polygonKernel() {
   const kernel = globalThis.polygonClipping;

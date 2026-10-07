@@ -409,8 +409,7 @@ export function createPlanRenderers({
       }),
       zScale = Math.max(1e-12, zTransform.topScale),
       zExaggeration = zScale / Math.max(xScale, 1e-12),
-      bottomZExaggeration =
-        Math.max(1e-12, zTransform.bottomScale) / Math.max(xScale, 1e-12),
+      bottomZExaggeration = Math.max(1e-12, zTransform.bottomScale) / Math.max(xScale, 1e-12),
       detailX = detailRoi ? detailRoi.x * viewW : 0,
       detailY = detailRoi ? detailRoi.y * viewH : 0,
       detailScaleX = detailRoi ? w / Math.max(1, detailRoi.width * viewW) : 1,

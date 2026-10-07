@@ -279,9 +279,7 @@ assert.equal(await historyRestorePage.locator('#snapshotBranchSelect').count(), 
 assert.equal(
   (
     await historyRestorePage
-      .locator(
-        '.history-variant[data-active="true"] > .history-variant-head .history-variant-name',
-      )
+      .locator('.history-variant[data-active="true"] > .history-variant-head .history-variant-name')
       .textContent()
   ).trim(),
   'Detector path',
@@ -425,9 +423,10 @@ assert.match(editedVariantText, /History C/);
 await historyRestorePage.getByRole('button', { name: 'Detector path', exact: true }).click();
 await historyRestorePage.waitForFunction(
   () =>
-    (document.querySelector('.history-variant[data-active="true"] .history-variant-name')
-      ?.textContent || '')
-      .trim() === 'Detector path',
+    (
+      document.querySelector('.history-variant[data-active="true"] .history-variant-name')
+        ?.textContent || ''
+    ).trim() === 'Detector path',
 );
 assert.ok(
   await historyRestorePage

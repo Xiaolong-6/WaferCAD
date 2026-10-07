@@ -14,12 +14,12 @@ The planner then enables focused suites as needed:
 | --------------------------------------------------- | ------------------------------------------------------------------------------- |
 | History, replay, project History controls           | History + bundled examples                                                      |
 | Persistence, project IO/schema, startup/recovery    | Persistence + bundled examples                                                  |
-| Workstation/startup shell                            | Workstation integration; resilience only for Three/WebGL bootstrap paths         |
-| Pointer/view/layout controls                         | Interaction, and product layout only for layout-owning files                    |
+| Workstation/startup shell                           | Workstation integration; resilience only for Three/WebGL bootstrap paths        |
+| Pointer/view/layout controls                        | Interaction, and product layout only for layout-owning files                    |
 | Bundled example fixtures/metadata                   | Bundled examples                                                                |
 | GDS/OAS/layout pipeline                             | Interaction + product layout; KLayout keeps its separate compatibility workflow |
-| Renderer/Section/model-view geometry                | Renderer semantic regression; stress/gallery cases on nightly/manual full runs   |
-| Process/model/vector geometry                       | Process Geometry core browser path; full permutations on nightly/manual runs     |
+| Renderer/Section/model-view geometry                | Renderer semantic regression; stress/gallery cases on nightly/manual full runs  |
+| Process/model/vector geometry                       | Process Geometry core browser path; full permutations on nightly/manual runs    |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
 Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.

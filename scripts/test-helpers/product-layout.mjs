@@ -328,7 +328,11 @@ export function createProductLayoutChecks({ capture }) {
     const linkedScale = page.locator('#sectionCollapseScaleLinked'),
       frontScale = page.locator('#sectionCollapseFrontScale'),
       backScale = page.locator('#sectionCollapseBackScale');
-    assert.equal(await linkedScale.isChecked(), true, `${name}: front/back Z scale must default linked`);
+    assert.equal(
+      await linkedScale.isChecked(),
+      true,
+      `${name}: front/back Z scale must default linked`,
+    );
     close(Number(await frontScale.inputValue()), 1, 1e-12);
     close(Number(await backScale.inputValue()), 1, 1e-12);
     assert.equal(await frontScale.isDisabled(), true);

@@ -36,9 +36,7 @@ function polygonArea(rings) {
 }
 
 function triangleArea([a, b, c]) {
-  return (
-    Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2
-  );
+  return Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2;
 }
 
 function trianglesArea(triangles) {
@@ -104,11 +102,7 @@ function rayIntersection(ring, center, angle, tolerance) {
   if (unique.length !== 1) return null;
 
   const distance = unique[0];
-  return [
-    center[0] + direction[0] * distance,
-    center[1] + direction[1] * distance,
-    distance,
-  ];
+  return [center[0] + direction[0] * distance, center[1] + direction[1] * distance, distance];
 }
 
 function radialAnnulusTriangles(rings) {

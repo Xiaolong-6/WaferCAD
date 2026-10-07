@@ -482,8 +482,7 @@ export function createHistoryMutationController({
             label: edit.downstreamCount
               ? 'New Variant · Edited Step only'
               : 'Save as copy-on-write Variant',
-            kind:
-              !edit.canReplaceCurrentVariant && !canBranchReplay ? 'primary' : undefined,
+            kind: !edit.canReplaceCurrentVariant && !canBranchReplay ? 'primary' : undefined,
             default: !edit.canReplaceCurrentVariant && !canBranchReplay,
           });
         }
@@ -500,7 +499,9 @@ export function createHistoryMutationController({
           !edit.canReplaceCurrentVariant
             ? `This Step is shared with ${edit.dependentVariants
                 .map((item) => `"${item.name}"`)
-                .join(', ')}. WaferCAD will keep those dependent Variants unchanged by saving the edit in a copy-on-write Variant.`
+                .join(
+                  ', ',
+                )}. WaferCAD will keep those dependent Variants unchanged by saving the edit in a copy-on-write Variant.`
             : '',
           edit.downstreamCount && !edit.downstreamReplayable
             ? 'Some later Steps predate replay metadata, so replay is unavailable.'
@@ -521,8 +522,7 @@ export function createHistoryMutationController({
       }
 
       if (mode === 'branch-edit' || mode === 'branch-edit-replay') {
-        const requiredHistoryNodes =
-          mode === 'branch-edit-replay' ? edit.downstream.length + 1 : 1;
+        const requiredHistoryNodes = mode === 'branch-edit-replay' ? edit.downstream.length + 1 : 1;
         if (!snapshotManager.canCreateVariant()) {
           status('Variant limit reached before this edit could be saved.', 'error');
           return false;

@@ -28,17 +28,13 @@ function ringArea(ring) {
 }
 
 function triangleArea([a, b, c]) {
-  return (
-    Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2
-  );
+  return Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2;
 }
 
 test('validated triangulation preserves wafer-scale thin annuli', () => {
   const polygon = [circularRing(3100, 96), circularRing(3099.95, 96, true)],
     expected = ringArea(polygon[0]) - ringArea(polygon[1]),
-    rawRings = polygon.map((ring) =>
-      ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)),
-    ),
+    rawRings = polygon.map((ring) => ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y))),
     rawPoints = rawRings.flat(),
     rawTriangles = THREE.ShapeUtils.triangulateShape(rawRings[0], rawRings.slice(1)).map((face) =>
       face.map((index) => [rawPoints[index].x, rawPoints[index].y]),

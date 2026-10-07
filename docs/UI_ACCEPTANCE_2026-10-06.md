@@ -1,16 +1,16 @@
-# UI acceptance � 2026-10-06
+# UI acceptance - 2026-10-06
 
 The Z-collapse editor uses a 560 px horizontal layout with two control columns and a compact ruler. It fits the short desktop Section dock without vertical scrolling; narrow containers retain a stacked, scrollable layout. The toolbar button has a slider SVG, an accessible name, and visible focus/active states. Existing control IDs and interactions are preserved.
 
-Both tandem project copies now open with centered Main/Mask framing, a 32 � 32 �m ROI, a 32 �m Section cut, a selected oblique camera, and a narrow Detail ROI around the front pyramid coatings. Only current view metadata changes: canonical geometry, materials and every History/Variant state remain identical. Native import retains saved camera position/target/FOV; Welcome previews retain its orientation and fit the card dimensions.
+Both tandem project copies now open with centered Main/Mask framing, a 32 x 32 um ROI, a 32 um Section cut, a selected oblique camera, and a narrow Detail ROI around the front pyramid coatings. Only current view metadata changes: canonical geometry, materials and every History/Variant state remain identical. Native import retains saved camera position/target/FOV; Welcome previews retain its orientation and fit the card dimensions.
 
-3D display magnification and camera clipping use the visible ROI extent. Previously a 25 mm wafer viewed through a 40 �m ROI inherited whole-wafer vertical amplification, producing an excessively tall slab. ROI changes now affect display scale only; the renderer contract asserts that exported physical geometry remains unchanged and removing ROI restores the full-view scale.
+3D display magnification and camera clipping use the visible ROI extent. Previously a 25 mm wafer viewed through a 40 um ROI inherited whole-wafer vertical amplification, producing an excessively tall slab. ROI changes now affect display scale only; the renderer contract asserts that exported physical geometry remains unchanged and removing ROI restores the full-view scale.
 
 ## Real Chrome acceptance
 
-Installed Chrome 154.0.8037.98 on Windows, Node 24.19.0, Playwright 1.55.1, pinned Three 0.179.1. The four Welcome views, front/back views at matched inclination, and the Section Detail were visually inspected. Front/back use the same 4.5 �m pyramid height and 6.4 �m feature size, with independent seeds; their film stacks differ. Thus identical magnification is required, rather than identical textured pixels.
+Installed Chrome 154.0.8037.98 on Windows, Node 24.19.0, Playwright 1.55.1, pinned Three 0.179.1. The four Welcome views, front/back views at matched inclination, and the Section Detail were visually inspected. Front/back use the same 4.5 um pyramid height and 6.4 um feature size, with independent seeds; their film stacks differ. Thus identical magnification is required, rather than identical textured pixels.
 
-- Linked: Section front/back both 15.8348039375 px/�m; 3D multipliers both 1.
+- Linked: Section front/back both 15.8348039375 px/um; 3D multipliers both 1.
 - Unlocked 2:1: Section 20.7883730101 / 10.3941865050; 3D 2 / 1.
 - Unlocked 1:2: Section 10.7240374376 / 21.4480748752; 3D 1 / 2.
 - Relocked: original 1:1 scaling returns. Section canvas raster and 3D screenshot are identical to their initial states. Full DOM Section screenshots can differ due to focus/Detail overlays; no pixel baseline was regenerated.

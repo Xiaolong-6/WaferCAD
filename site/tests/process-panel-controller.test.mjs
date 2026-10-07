@@ -174,16 +174,13 @@ test('historical Apply commits the variant only after a successful changed worke
 
 test('changed worker result is validated before Variant, model, or History commit', async () => {
   const events = [];
-  const controller = controllerForTask(
-    (model) => {
-      const invalid = structuredClone(model);
-      invalid.regions[0].stack[0].z1 = invalid.regions[0].stack[0].z0;
-      invalid.revision += 1;
-      invalid.processRevision += 1;
-      return { result: { changed: true }, model: invalid };
-    },
-    events,
-  );
+  const controller = controllerForTask((model) => {
+    const invalid = structuredClone(model);
+    invalid.regions[0].stack[0].z1 = invalid.regions[0].stack[0].z0;
+    invalid.revision += 1;
+    invalid.processRevision += 1;
+    return { result: { changed: true }, model: invalid };
+  }, events);
 
   await controller.applyOperation();
 
@@ -196,16 +193,13 @@ test('changed worker result is validated before Variant, model, or History commi
 
 test('replay rejects invalid worker geometry before mutating replay History', async () => {
   const events = [];
-  const controller = controllerForTask(
-    (model) => {
-      const invalid = structuredClone(model);
-      invalid.regions[0].stack[0].z1 = invalid.regions[0].stack[0].z0;
-      invalid.revision += 1;
-      invalid.processRevision += 1;
-      return { result: { changed: true, layerId: 'layer-invalid' }, model: invalid };
-    },
-    events,
-  );
+  const controller = controllerForTask((model) => {
+    const invalid = structuredClone(model);
+    invalid.regions[0].stack[0].z1 = invalid.regions[0].stack[0].z0;
+    invalid.revision += 1;
+    invalid.processRevision += 1;
+    return { result: { changed: true, layerId: 'layer-invalid' }, model: invalid };
+  }, events);
 
   const result = await controller.replayOperations([
     {

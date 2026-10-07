@@ -13,13 +13,7 @@ if (!globalThis.polygonClipping) {
   throw new Error('polygon-clipping must load before vector-geometry.js');
 }
 
-export {
-  BOOLEAN_RETRY_GRID_UM,
-  EPS,
-  canonicalizeBooleanGeometry,
-  closeRing,
-  normalizeMulti,
-};
+export { BOOLEAN_RETRY_GRID_UM, EPS, canonicalizeBooleanGeometry, closeRing, normalizeMulti };
 
 export const cloneGeom = (geom) => structuredClone(geom || []);
 export const isEmpty = (geom) => !geom || geom.length === 0;

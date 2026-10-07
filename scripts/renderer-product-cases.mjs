@@ -89,9 +89,7 @@ export async function runRendererProductCases({ page, capture }) {
     b: [width / 8, height / 8],
   };
   await loadProject(page, roiProject, 'wide-isotropic-release-quarter-span-roi');
-  const roiZScale = Number(
-    await page.locator('#threeHost').getAttribute('data-z-display-scale'),
-  );
+  const roiZScale = Number(await page.locator('#threeHost').getAttribute('data-z-display-scale'));
   assert.ok(fullWaferZScale > 0 && roiZScale > 0);
   assert.ok(
     Math.abs(roiZScale / fullWaferZScale - 0.25) < 1e-9,
@@ -357,205 +355,210 @@ export async function runRendererProductCases({ page, capture }) {
   await waitForPaint(page);
 
   if (process.env.WAFERCAD_EXTENDED_REVIEW !== '0') {
-  // Multi-cap stress: several independent rough patches must share one
-  // scene-wide subdivision budget, and camera LOD changes must not rebuild
-  // the static ownership plan.
-  const roughStressModel = createModel({
-    shape: 'rect',
-    width: 40,
-    height: 40,
-    thickness: 8,
-  });
-  for (const [index, [cx, cy]] of [
-    [-10, -10],
-    [10, -10],
-    [-10, 10],
-    [10, 10],
-  ].entries()) {
-    applyOperation(roughStressModel, {
-      type: 'etch',
-      thickness: 1 + index * 0.15,
-      face: 'front',
-      area: rectMulti(8, 8, cx, cy),
-      surface: {
-        kind: 'rough',
-        featureSize: 0.35 + index * 0.04,
-        meanHeight: 0.5,
-        featureCv: 0.25,
-        heightCv: 0.3,
-        seed: 101 + index,
-        morphology: 'stochastic',
-        polarity: 'inverted',
-        geometryMode: 'ideal',
-      },
-    });
-  }
-  const roughStressProject = projectForBenchmark({
-    model: roughStressModel,
-    section: { a: [-19, 0], b: [19, 0] },
-  });
-  await loadProject(page, roughStressProject, 'wide-rough-stress');
-  await page.locator('#threeMaxBtn').click();
-  const stressCanvas = page.locator('#threeHost canvas');
-  await page.waitForFunction(
-    () => {
-      const canvas = document.querySelector('#threeHost canvas');
-      return (
-        canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true'
-      );
-    },
-    null,
-    { timeout: 10000 },
-  );
-  const stressBudget = Number(await stressCanvas.getAttribute('data-rough-scene-triangle-budget')),
-    stressSubdivision = Number(
-      await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
-    ),
-    stressPlanBuilds = Number(await stressCanvas.getAttribute('data-surface-plan-build-count')),
-    stressRebuilds = Number(await stressCanvas.getAttribute('data-rough-rebuild-count')),
-    stressSpatialZoneBuilds = Number(
-      await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
-    ),
-    stressBaseTriangulations = Number(
-      await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
-    );
-  assert.ok(stressBudget > 0, `rough stress budget missing: ${stressBudget}`);
-  assert.ok(
-    stressSubdivision <= stressBudget,
-    `multi-cap rough subdivision exceeded global budget: ${stressSubdivision} > ${stressBudget}`,
-  );
-  await stressCanvas.hover();
-  for (let step = 0; step < 5; step++) await page.mouse.wheel(0, -500);
-  await page.waitForFunction(
-    (previous) => {
-      const canvas = document.querySelector('#threeHost canvas');
-      return (
-        canvas?.dataset.roughMeshMode === 'detailed' &&
-        Number(canvas.dataset.roughRebuildCount || 0) > previous
-      );
-    },
-    stressRebuilds,
-    { timeout: 10000 },
-  );
-  const stressZoomPlanBuilds = Number(
-      await stressCanvas.getAttribute('data-surface-plan-build-count'),
-    ),
-    stressZoomRebuilds = Number(await stressCanvas.getAttribute('data-rough-rebuild-count')),
-    stressZoomBudget = Number(await stressCanvas.getAttribute('data-rough-scene-triangle-budget')),
-    stressZoomSubdivision = Number(
-      await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
-    ),
-    stressZoomSpatialZoneBuilds = Number(
-      await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
-    ),
-    stressZoomBaseTriangulations = Number(
-      await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
-    );
-  assert.equal(
-    stressZoomPlanBuilds,
-    stressPlanBuilds,
-    `multi-cap camera zoom rebuilt surface plan: ${stressPlanBuilds} -> ${stressZoomPlanBuilds}`,
-  );
-  assert.ok(
-    stressZoomRebuilds > stressRebuilds,
-    `multi-cap camera zoom did not rebuild rough meshes: ${stressRebuilds} -> ${stressZoomRebuilds}`,
-  );
-  assert.equal(
-    stressZoomSpatialZoneBuilds,
-    stressSpatialZoneBuilds,
-    `multi-cap camera zoom rebuilt spatial zones: ${stressSpatialZoneBuilds} -> ${stressZoomSpatialZoneBuilds}`,
-  );
-  assert.equal(
-    stressZoomBaseTriangulations,
-    stressBaseTriangulations,
-    `multi-cap camera zoom retriangulated base geometry: ${stressBaseTriangulations} -> ${stressZoomBaseTriangulations}`,
-  );
-  assert.ok(
-    stressZoomSubdivision <= stressZoomBudget,
-    `multi-cap zoom exceeded global budget: ${stressZoomSubdivision} > ${stressZoomBudget}`,
-  );
-  await capture(page, 'wide-rough-stress-global-budget');
-  await page.locator('#threeMaxBtn').click();
-
-  // Full-wafer repeated-array acceptance: smooth device islands must use
-  // translated InstancedMesh templates instead of duplicating every cap and
-  // sidewall triangle. Spatial chunks keep the instances frustum-cullable
-  // when the user zooms into one part of a large array.
-  const repeatedArrayModel = createModel({
+    // Multi-cap stress: several independent rough patches must share one
+    // scene-wide subdivision budget, and camera LOD changes must not rebuild
+    // the static ownership plan.
+    const roughStressModel = createModel({
       shape: 'rect',
-      width: 240,
-      height: 240,
+      width: 40,
+      height: 40,
       thickness: 8,
-    }),
-    repeatedArrayArea = [];
-  for (let row = 0; row < 20; row++) {
-    for (let column = 0; column < 20; column++) {
-      repeatedArrayArea.push(...rectMulti(4, 4, -95 + column * 10, -95 + row * 10));
+    });
+    for (const [index, [cx, cy]] of [
+      [-10, -10],
+      [10, -10],
+      [-10, 10],
+      [10, 10],
+    ].entries()) {
+      applyOperation(roughStressModel, {
+        type: 'etch',
+        thickness: 1 + index * 0.15,
+        face: 'front',
+        area: rectMulti(8, 8, cx, cy),
+        surface: {
+          kind: 'rough',
+          featureSize: 0.35 + index * 0.04,
+          meanHeight: 0.5,
+          featureCv: 0.25,
+          heightCv: 0.3,
+          seed: 101 + index,
+          morphology: 'stochastic',
+          polarity: 'inverted',
+          geometryMode: 'ideal',
+        },
+      });
     }
-  }
-  applyOperation(repeatedArrayModel, {
-    type: 'add',
-    name: 'Repeated array metal',
-    thickness: 0.6,
-    face: 'front',
-    area: repeatedArrayArea,
-    growth: 'direct',
-  });
-  const repeatedArrayProject = projectForBenchmark({
-    model: repeatedArrayModel,
-    section: { a: [-110, 0], b: [110, 0] },
-  });
-  await loadProject(page, repeatedArrayProject, 'wide-repeated-array-instancing');
-  await page.locator('#threeMaxBtn').click();
-  await page.waitForFunction(
-    () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
-    null,
-    { timeout: 10000 },
-  );
-  const repeatedHost = page.locator('#threeHost'),
-    repeatedCapInstances = Number(
-      await repeatedHost.getAttribute('data-smooth-cap-instance-count'),
-    ),
-    repeatedCapGroups = Number(await repeatedHost.getAttribute('data-smooth-cap-instance-groups')),
-    repeatedCapTemplateTriangles = Number(
-      await repeatedHost.getAttribute('data-smooth-cap-template-triangles'),
-    ),
-    repeatedSidewallInstances = Number(
-      await repeatedHost.getAttribute('data-smooth-sidewall-instance-count'),
-    ),
-    repeatedSidewallGroups = Number(
-      await repeatedHost.getAttribute('data-smooth-sidewall-instance-groups'),
-    ),
-    repeatedSidewallTemplateTriangles = Number(
-      await repeatedHost.getAttribute('data-smooth-sidewall-template-triangles'),
+    const roughStressProject = projectForBenchmark({
+      model: roughStressModel,
+      section: { a: [-19, 0], b: [19, 0] },
+    });
+    await loadProject(page, roughStressProject, 'wide-rough-stress');
+    await page.locator('#threeMaxBtn').click();
+    const stressCanvas = page.locator('#threeHost canvas');
+    await page.waitForFunction(
+      () => {
+        const canvas = document.querySelector('#threeHost canvas');
+        return (
+          canvas?.dataset.roughMeshMode === 'detailed' && canvas.dataset.roughMeshWorker === 'true'
+        );
+      },
+      null,
+      { timeout: 10000 },
     );
-  assert.ok(
-    repeatedCapInstances >= 400,
-    `repeated top caps were not instanced: ${repeatedCapInstances}`,
-  );
-  assert.ok(
-    repeatedSidewallInstances >= 1600,
-    `repeated sidewalls were not instanced: ${repeatedSidewallInstances}`,
-  );
-  assert.ok(
-    repeatedCapGroups > 0 && repeatedCapGroups < 20,
-    `repeated cap instances were not spatially chunked efficiently: ${repeatedCapGroups}`,
-  );
-  assert.ok(
-    repeatedSidewallGroups > 0 && repeatedSidewallGroups < 64,
-    `repeated sidewall instances were not spatially chunked efficiently: ${repeatedSidewallGroups}`,
-  );
-  assert.ok(
-    repeatedCapTemplateTriangles <= 16,
-    `repeated cap templates duplicated too much geometry: ${repeatedCapTemplateTriangles}`,
-  );
-  assert.ok(
-    repeatedSidewallTemplateTriangles <= 32,
-    `repeated sidewall templates duplicated too much geometry: ${repeatedSidewallTemplateTriangles}`,
-  );
-  await capture(page, 'wide-repeated-array-instancing');
-  await page.locator('#threeMaxBtn').click();
+    const stressBudget = Number(
+        await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
+      ),
+      stressSubdivision = Number(
+        await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+      ),
+      stressPlanBuilds = Number(await stressCanvas.getAttribute('data-surface-plan-build-count')),
+      stressRebuilds = Number(await stressCanvas.getAttribute('data-rough-rebuild-count')),
+      stressSpatialZoneBuilds = Number(
+        await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+      ),
+      stressBaseTriangulations = Number(
+        await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
+      );
+    assert.ok(stressBudget > 0, `rough stress budget missing: ${stressBudget}`);
+    assert.ok(
+      stressSubdivision <= stressBudget,
+      `multi-cap rough subdivision exceeded global budget: ${stressSubdivision} > ${stressBudget}`,
+    );
+    await stressCanvas.hover();
+    for (let step = 0; step < 5; step++) await page.mouse.wheel(0, -500);
+    await page.waitForFunction(
+      (previous) => {
+        const canvas = document.querySelector('#threeHost canvas');
+        return (
+          canvas?.dataset.roughMeshMode === 'detailed' &&
+          Number(canvas.dataset.roughRebuildCount || 0) > previous
+        );
+      },
+      stressRebuilds,
+      { timeout: 10000 },
+    );
+    const stressZoomPlanBuilds = Number(
+        await stressCanvas.getAttribute('data-surface-plan-build-count'),
+      ),
+      stressZoomRebuilds = Number(await stressCanvas.getAttribute('data-rough-rebuild-count')),
+      stressZoomBudget = Number(
+        await stressCanvas.getAttribute('data-rough-scene-triangle-budget'),
+      ),
+      stressZoomSubdivision = Number(
+        await stressCanvas.getAttribute('data-rough-subdivision-triangle-count'),
+      ),
+      stressZoomSpatialZoneBuilds = Number(
+        await stressCanvas.getAttribute('data-rough-spatial-zone-build-count'),
+      ),
+      stressZoomBaseTriangulations = Number(
+        await stressCanvas.getAttribute('data-rough-base-triangulation-count'),
+      );
+    assert.equal(
+      stressZoomPlanBuilds,
+      stressPlanBuilds,
+      `multi-cap camera zoom rebuilt surface plan: ${stressPlanBuilds} -> ${stressZoomPlanBuilds}`,
+    );
+    assert.ok(
+      stressZoomRebuilds > stressRebuilds,
+      `multi-cap camera zoom did not rebuild rough meshes: ${stressRebuilds} -> ${stressZoomRebuilds}`,
+    );
+    assert.equal(
+      stressZoomSpatialZoneBuilds,
+      stressSpatialZoneBuilds,
+      `multi-cap camera zoom rebuilt spatial zones: ${stressSpatialZoneBuilds} -> ${stressZoomSpatialZoneBuilds}`,
+    );
+    assert.equal(
+      stressZoomBaseTriangulations,
+      stressBaseTriangulations,
+      `multi-cap camera zoom retriangulated base geometry: ${stressBaseTriangulations} -> ${stressZoomBaseTriangulations}`,
+    );
+    assert.ok(
+      stressZoomSubdivision <= stressZoomBudget,
+      `multi-cap zoom exceeded global budget: ${stressZoomSubdivision} > ${stressZoomBudget}`,
+    );
+    await capture(page, 'wide-rough-stress-global-budget');
+    await page.locator('#threeMaxBtn').click();
 
+    // Full-wafer repeated-array acceptance: smooth device islands must use
+    // translated InstancedMesh templates instead of duplicating every cap and
+    // sidewall triangle. Spatial chunks keep the instances frustum-cullable
+    // when the user zooms into one part of a large array.
+    const repeatedArrayModel = createModel({
+        shape: 'rect',
+        width: 240,
+        height: 240,
+        thickness: 8,
+      }),
+      repeatedArrayArea = [];
+    for (let row = 0; row < 20; row++) {
+      for (let column = 0; column < 20; column++) {
+        repeatedArrayArea.push(...rectMulti(4, 4, -95 + column * 10, -95 + row * 10));
+      }
+    }
+    applyOperation(repeatedArrayModel, {
+      type: 'add',
+      name: 'Repeated array metal',
+      thickness: 0.6,
+      face: 'front',
+      area: repeatedArrayArea,
+      growth: 'direct',
+    });
+    const repeatedArrayProject = projectForBenchmark({
+      model: repeatedArrayModel,
+      section: { a: [-110, 0], b: [110, 0] },
+    });
+    await loadProject(page, repeatedArrayProject, 'wide-repeated-array-instancing');
+    await page.locator('#threeMaxBtn').click();
+    await page.waitForFunction(
+      () => document.getElementById('threeHost')?.dataset?.renderState === 'ready',
+      null,
+      { timeout: 10000 },
+    );
+    const repeatedHost = page.locator('#threeHost'),
+      repeatedCapInstances = Number(
+        await repeatedHost.getAttribute('data-smooth-cap-instance-count'),
+      ),
+      repeatedCapGroups = Number(
+        await repeatedHost.getAttribute('data-smooth-cap-instance-groups'),
+      ),
+      repeatedCapTemplateTriangles = Number(
+        await repeatedHost.getAttribute('data-smooth-cap-template-triangles'),
+      ),
+      repeatedSidewallInstances = Number(
+        await repeatedHost.getAttribute('data-smooth-sidewall-instance-count'),
+      ),
+      repeatedSidewallGroups = Number(
+        await repeatedHost.getAttribute('data-smooth-sidewall-instance-groups'),
+      ),
+      repeatedSidewallTemplateTriangles = Number(
+        await repeatedHost.getAttribute('data-smooth-sidewall-template-triangles'),
+      );
+    assert.ok(
+      repeatedCapInstances >= 400,
+      `repeated top caps were not instanced: ${repeatedCapInstances}`,
+    );
+    assert.ok(
+      repeatedSidewallInstances >= 1600,
+      `repeated sidewalls were not instanced: ${repeatedSidewallInstances}`,
+    );
+    assert.ok(
+      repeatedCapGroups > 0 && repeatedCapGroups < 20,
+      `repeated cap instances were not spatially chunked efficiently: ${repeatedCapGroups}`,
+    );
+    assert.ok(
+      repeatedSidewallGroups > 0 && repeatedSidewallGroups < 64,
+      `repeated sidewall instances were not spatially chunked efficiently: ${repeatedSidewallGroups}`,
+    );
+    assert.ok(
+      repeatedCapTemplateTriangles <= 16,
+      `repeated cap templates duplicated too much geometry: ${repeatedCapTemplateTriangles}`,
+    );
+    assert.ok(
+      repeatedSidewallTemplateTriangles <= 32,
+      `repeated sidewall templates duplicated too much geometry: ${repeatedSidewallTemplateTriangles}`,
+    );
+    await capture(page, 'wide-repeated-array-instancing');
+    await page.locator('#threeMaxBtn').click();
   }
 
   // Rough Etch -> Conformal regression: inherited rough interfaces are
@@ -776,34 +779,36 @@ export async function runRendererProductCases({ page, capture }) {
   await page.locator('#sectionMaxBtn').click();
 
   if (process.env.WAFERCAD_EXTENDED_REVIEW !== '0') {
-  const literature = JSON.parse(
-    await readFile(
-      new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
-      'utf8',
-    ),
-  );
-  literature.roi = { type: 'sector', c: [0, 0], r: 3400, startDeg: 0, endDeg: 90 };
-  literature.section = { a: [-2900, 0], b: [2900, 0] };
-  literature.display.sectionShowBorders = true;
-  literature.display.threeShowBorders = true;
-  await loadProject(page, literature, 'wide-photodetector-quarter-roi');
-  await checkRoughSectionDetail(page, literature, null, true);
-  await page.getByRole('button', { name: 'Overview', exact: true }).click();
-  await page.locator('#fit3dBtn').click();
-  await capture(page, 'wide-photodetector-quarter-roi-overview');
-  assert.equal(Number(await page.locator('#threeHost').getAttribute('data-z-collapse-gap-um')), 0);
-  assert.ok(Number(await page.locator('#threeHost').getAttribute('data-implant-cut-count')) > 0);
-  await page.locator('#threeMaxBtn').click();
-  const bounds = await page.locator('#threeHost canvas').boundingBox();
-  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 75, {
-    steps: 15,
-  });
-  await page.mouse.up();
-  await capture(page, 'wide-photodetector-quarter-roi-low-angle');
-  await page.locator('#threeMaxBtn').click();
-
+    const literature = JSON.parse(
+      await readFile(
+        new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
+        'utf8',
+      ),
+    );
+    literature.roi = { type: 'sector', c: [0, 0], r: 3400, startDeg: 0, endDeg: 90 };
+    literature.section = { a: [-2900, 0], b: [2900, 0] };
+    literature.display.sectionShowBorders = true;
+    literature.display.threeShowBorders = true;
+    await loadProject(page, literature, 'wide-photodetector-quarter-roi');
+    await checkRoughSectionDetail(page, literature, null, true);
+    await page.getByRole('button', { name: 'Overview', exact: true }).click();
+    await page.locator('#fit3dBtn').click();
+    await capture(page, 'wide-photodetector-quarter-roi-overview');
+    assert.equal(
+      Number(await page.locator('#threeHost').getAttribute('data-z-collapse-gap-um')),
+      0,
+    );
+    assert.ok(Number(await page.locator('#threeHost').getAttribute('data-implant-cut-count')) > 0);
+    await page.locator('#threeMaxBtn').click();
+    const bounds = await page.locator('#threeHost canvas').boundingBox();
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 75, {
+      steps: 15,
+    });
+    await page.mouse.up();
+    await capture(page, 'wide-photodetector-quarter-roi-low-angle');
+    await page.locator('#threeMaxBtn').click();
   }
 
   await waitForCanvasSizeSync(page, '#sectionCanvas');

@@ -442,10 +442,7 @@ export function createProcessPanelController({
     };
   }
 
-  async function replayOperations(
-    steps = [],
-    { taskLabel = '', initialLayerIdMap = [] } = {},
-  ) {
+  async function replayOperations(steps = [], { taskLabel = '', initialLayerIdMap = [] } = {}) {
     const executeReplay = async (taskContext = null) => {
       let completed = 0;
       const layerIdMap = new Map(initialLayerIdMap),
