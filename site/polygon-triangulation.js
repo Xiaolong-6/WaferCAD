@@ -2,18 +2,28 @@ const TRIANGULATION_RELATIVE_TOLERANCE = 1e-6;
 const TRIANGULATION_ABSOLUTE_TOLERANCE = 1e-9;
 const ANGLE_EPSILON = 1e-10;
 
+function samePoint(a, b, tolerance = 1e-12) {
+  return Boolean(
+    a &&
+      b &&
+      Math.abs(Number(a[0]) - Number(b[0])) <= tolerance &&
+      Math.abs(Number(a[1]) - Number(b[1])) <= tolerance,
+  );
+}
+
 function openRing(ring) {
-  const points = (ring || [])
-    .map((point) => [Number(point?.[0]), Number(point?.[1])])
-    .filter((point) => point.every(Number.isFinite));
-  if (
-    points.length > 1 &&
-    Math.abs(points[0][0] - points.at(-1)[0]) <= 1e-12 &&
-    Math.abs(points[0][1] - points.at(-1)[1]) <= 1e-12
-  ) {
-    points.pop();
+  const points = [];
+  for (const point of ring || []) {
+    const next = [Number(point?.[0]), Number(point?.[1])];
+    if (!next.every(Number.isFinite) || samePoint(points.at(-1), next)) continue;
+    points.push(next);
   }
+  if (points.length > 1 && samePoint(points[0], points.at(-1))) points.pop();
   return points;
+}
+
+function closeRing(ring) {
+  return ring?.length ? [...ring.map((point) => [...point]), [...ring[0]]] : [];
 }
 
 function signedRingArea(ring) {
@@ -105,6 +115,81 @@ function rayIntersection(ring, center, angle, tolerance) {
   return [center[0] + direction[0] * distance, center[1] + direction[1] * distance, distance];
 }
 
+function primaryTriangles(THREE, rings) {
+  const threeRings = rings.map((ring) => ring.map(([x, y]) => new THREE.Vector2(x, y))),
+    points = threeRings.flat(),
+    faces = THREE.ShapeUtils.triangulateShape(threeRings[0], threeRings.slice(1)),
+    triangles = faces
+      .map((face) => face.map((index) => [points[index].x, points[index].y]))
+      .filter((triangle) => triangleArea(triangle) > TRIANGULATION_ABSOLUTE_TOLERANCE);
+  return { triangles, area: trianglesArea(triangles) };
+}
+
+function uniqueSorted(values, tolerance = 1e-12) {
+  const sorted = values.filter(Number.isFinite).sort((a, b) => a - b),
+    out = [];
+  for (const value of sorted) {
+    if (!out.length || Math.abs(value - out.at(-1)) > tolerance) out.push(value);
+  }
+  return out;
+}
+
+// Earcut can over-triangulate wafer-scale thin or heavily clipped rings. When
+// both the direct path and the annulus-specialized path fail, decompose the
+// valid polygon into vertex-aligned horizontal slabs. Polygon-clipping performs
+// the exact 2D intersection; each slab is then triangulated independently. This
+// fallback is renderer-only and never changes canonical process geometry.
+function slabFallbackTriangles(THREE, rings, expectedArea) {
+  const kernel = globalThis.polygonClipping;
+  if (!kernel?.intersection || !rings?.length) return null;
+
+  const xs = rings.flat().map((point) => point[0]),
+    ys = uniqueSorted(rings.flat().map((point) => point[1]));
+  if (ys.length < 2 || !xs.length) return null;
+
+  const minX = Math.min(...xs),
+    maxX = Math.max(...xs),
+    span = Math.max(1, maxX - minX),
+    margin = span * 1e-6 + 1e-6,
+    subject = [rings.map(closeRing)],
+    triangles = [];
+
+  for (let index = 1; index < ys.length; index++) {
+    const y0 = ys[index - 1],
+      y1 = ys[index];
+    if (!(y1 > y0 + 1e-12)) continue;
+
+    const slab = [
+      [
+        [
+          [minX - margin, y0],
+          [maxX + margin, y0],
+          [maxX + margin, y1],
+          [minX - margin, y1],
+          [minX - margin, y0],
+        ],
+      ],
+    ];
+
+    let clipped;
+    try {
+      clipped = kernel.intersection(subject, slab);
+    } catch {
+      return null;
+    }
+
+    for (const polygon of clipped || []) {
+      const piece = (polygon || []).map(openRing).filter((ring) => ring.length >= 3);
+      if (!piece.length) continue;
+      const primary = primaryTriangles(THREE, piece);
+      if (!areaMatches(polygonArea(piece), primary.area)) return null;
+      triangles.push(...primary.triangles);
+    }
+  }
+
+  return triangles.length && areaMatches(expectedArea, trianglesArea(triangles)) ? triangles : null;
+}
+
 function radialAnnulusTriangles(rings) {
   if (rings.length !== 2 || rings.some((ring) => ring.length < 3)) return null;
 
@@ -162,20 +247,16 @@ export function triangulatePolygon(THREE, polygon) {
   const expectedArea = polygonArea(rings);
   if (expectedArea <= TRIANGULATION_ABSOLUTE_TOLERANCE) return [];
 
-  const threeRings = rings.map((ring) => ring.map(([x, y]) => new THREE.Vector2(x, y))),
-    points = threeRings.flat(),
-    faces = THREE.ShapeUtils.triangulateShape(threeRings[0], threeRings.slice(1)),
-    primary = faces
-      .map((face) => face.map((index) => [points[index].x, points[index].y]))
-      .filter((triangle) => triangleArea(triangle) > TRIANGULATION_ABSOLUTE_TOLERANCE),
-    primaryArea = trianglesArea(primary);
+  const primary = primaryTriangles(THREE, rings);
+  if (areaMatches(expectedArea, primary.area)) return primary.triangles;
 
-  if (areaMatches(expectedArea, primaryArea)) return primary;
-
-  const fallback = radialAnnulusTriangles(rings)?.filter(
+  const annulus = radialAnnulusTriangles(rings)?.filter(
     (triangle) => triangleArea(triangle) > TRIANGULATION_ABSOLUTE_TOLERANCE,
   );
-  if (fallback?.length && areaMatches(expectedArea, trianglesArea(fallback))) return fallback;
+  if (annulus?.length && areaMatches(expectedArea, trianglesArea(annulus))) return annulus;
+
+  const slabs = slabFallbackTriangles(THREE, rings, expectedArea);
+  if (slabs?.length) return slabs;
 
   // A missing cap is preferable to a malformed triangle spanning unrelated material.
   return [];
