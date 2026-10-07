@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   native-fig3-full-replay:
@@ -55,6 +55,24 @@ jobs:
 
       - name: Run 625-site browser regression
         run: npm run test:ui:array
+
+      - name: Refresh Native Fig3 Welcome preview
+        run: |
+          node scripts/build-example-previews.mjs --write --id=three-tier-silicon-jlfets
+          node scripts/build-example-thumbnails.mjs --id=three-tier-silicon-jlfets
+
+      - name: Commit refreshed Native Fig3 Welcome assets
+        if: github.head_ref == 'test/native-fig3-full-replay-20261007'
+        run: |
+          if git diff --quiet --             site/examples/previews/three-tier-silicon-jlfets.wafercad             site/examples/thumbnails/three-tier-silicon-jlfets-three.webp             tests/fixtures/project-io/example-thumbnails.json; then
+            echo "Native Fig3 Welcome assets already match the accepted formal example."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add             site/examples/previews/three-tier-silicon-jlfets.wafercad             site/examples/thumbnails/three-tier-silicon-jlfets-three.webp             tests/fixtures/project-io/example-thumbnails.json
+          git commit -m "examples: refresh Native Fig3 Welcome assets"
+          git push origin HEAD:${{ github.head_ref }}
 
       - name: Upload full replay evidence
         if: always()
