@@ -8,6 +8,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { createDerivedDataCache } from './renderer-derived-cache.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
@@ -67,6 +68,8 @@ export function createThreeView({
   if (!host) throw new TypeError('3D host is required.');
   if (!stats) throw new TypeError('3D stats host is required.');
   if (typeof getModel !== 'function') throw new TypeError('getModel must be a function.');
+
+  const smoothCapDerivedDataCache = createDerivedDataCache();
 
   let renderer = null;
   let scene = null;
@@ -757,6 +760,11 @@ export function createThreeView({
     });
   }
 
+  async function yieldSceneAssembly() {
+    scheduleFrame();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
   function resize() {
     if (!renderer) return;
     const rect = host.getBoundingClientRect();
@@ -878,6 +886,24 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return geometry;
+  }
+
+  function geometryFromCachedArrayCap(cap) {
+    const variant = `${Number(cap.z).toPrecision(15)}|${Number(cap.normal) || 1}`,
+      data = smoothCapDerivedDataCache.get(cap.polys, variant, () => {
+        const source = geometryFromSolid({ slabs: [], caps: [cap] }),
+          positions = source.getAttribute('position')?.array?.slice?.() || new Float32Array(),
+          normals = source.getAttribute('normal')?.array?.slice?.() || new Float32Array();
+        source.dispose();
+        return { positions, normals };
+      }),
+      geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(data.positions.slice(), 3),
+    );
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(data.normals.slice(), 3));
     return geometry;
   }
 
@@ -1460,6 +1486,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     updateTransparentOrder();
     updateRoughDiagnostics();
     if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
+    host.dataset.renderPhase = mode === 'interactive' ? 'preview' : 'complete';
     host.dataset.renderState = 'ready';
     stats.textContent = hasMaterial(context.model)
       ? context.clip
@@ -1513,7 +1540,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     clearRoughRefineTimer();
     terminateRoughWorker();
     const prepared = prepareAdaptiveRoughTasks({ interactive }),
-      diagnostics = roughWorkerDiagnostics(prepared);
+      diagnostics = roughWorkerDiagnostics(prepared),
+      rendererRoughStart = performance.now();
     if (!prepared.tasks.length) return Promise.resolve(false);
 
     let worker;
@@ -1578,6 +1606,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
           interactive ? null : signature,
           sceneToken,
         );
+        if (host?.dataset) {
+          host.dataset.rendererRoughMs = String(performance.now() - rendererRoughStart);
+          const profileStart = roughRenderContext?.profileStart;
+          if (Number.isFinite(profileStart)) {
+            const total = performance.now() - profileStart;
+            if (interactive) host.dataset.rendererPreviewReadyMs = String(total);
+            else host.dataset.rendererFinalReadyMs = String(total);
+          }
+        }
         if (interactive && refineAfter && !interacting) scheduleDetailedRoughBuild(60);
         resolve(applied);
       };
@@ -1861,7 +1898,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return initPromise;
   }
 
-  function render() {
+  async function render() {
     if (!ready) return;
     if (rendering) {
       pendingRender = true;
@@ -1877,6 +1914,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.modelRevision = String(model.revision ?? 0);
     host.dataset.processRevision = String(model.processRevision ?? 0);
     stats.textContent = 'rebuilding 3D…';
+    const rendererProfileStart = performance.now();
 
     rendering = true;
     try {
@@ -1899,7 +1937,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
             }
           : null,
         smoothCaps = new Map(),
-        sidewalls = new Map();
+        sidewalls = new Map(),
+        rendererTopologyAt = performance.now();
+
+      const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
+      let sceneAssemblyYields = 0,
+        nextAssemblyYieldAt = performance.now() + 32;
+      const maybeYieldAssembly = async () => {
+        if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
+        sceneAssemblyYields++;
+        await yieldSceneAssembly();
+        nextAssemblyYieldAt = performance.now() + 32;
+      };
 
       host.dataset.materialLayerIds = JSON.stringify(
         [...new Set([...plan.caps, ...plan.sidewalls].map((part) => part.layerId))].sort(),
@@ -1920,6 +1969,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sceneGeneration: renderGeneration,
         modelRevision: model.revision ?? 0,
         processRevision: model.processRevision ?? 0,
+        profileStart: rendererProfileStart,
       };
 
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
@@ -1939,13 +1989,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothCapInstanceCount = 0;
       smoothCapTemplateTriangleCount = 0;
       for (const cap of plan.caps) {
+        await maybeYieldAssembly();
         if (!zIsVisible(cap.z)) continue;
         const state = stateFor(cap);
         if (!state) continue;
         const layer = layerById(model, cap.layerId);
 
         if (!cap.appearance && cap.instanceTranslations) {
-          const geometry = geometryFromSolid({ slabs: [], caps: [cap] }),
+          const geometry = geometryFromCachedArrayCap(cap),
             material = createSurfaceMaterial(layer, state);
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
             name: `${cap.layerId} array cap`,
@@ -1972,6 +2023,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
 
       for (const bucket of smoothCaps.values()) {
+        await maybeYieldAssembly();
         const state = stateFor(bucket.part),
           visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
         if (!state || !visibleCaps.length) continue;
@@ -2050,11 +2102,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
+      const rendererCapsAt = performance.now();
+
+      const derivedCapStats = smoothCapDerivedDataCache.stats();
+      host.dataset.derivedCapCacheHits = String(derivedCapStats.hits);
+      host.dataset.derivedCapCacheMisses = String(derivedCapStats.misses);
 
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
       for (const sidewall of plan.sidewalls) {
+        await maybeYieldAssembly();
         const state = stateFor(sidewall);
         if (!state) continue;
         if (sidewall.instanceTranslations) {
@@ -2075,6 +2133,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
+        await maybeYieldAssembly();
         const state = stateFor(bucket.part),
           visibleParts = displaySidewallParts(bucket.items);
         if (!state || !visibleParts.length) continue;
@@ -2124,6 +2183,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+      const rendererSidewallsAt = performance.now();
+
+      host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
+      host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
+      if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
 
       if (borders) {
         addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
@@ -2478,8 +2542,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       host.dataset.electricalRegionInternalCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceCount = String(electricalRegionSurfaceCount);
+      const rendererAssemblyAt = performance.now();
+      host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
+      host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
+      host.dataset.rendererSidewallsMs = String(rendererSidewallsAt - rendererCapsAt);
+      host.dataset.rendererAnnotationsMs = String(rendererAssemblyAt - rendererSidewallsAt);
+      host.dataset.rendererAssemblyMs = String(rendererAssemblyAt - rendererProfileStart);
       updateTransparentOrder();
       if (!roughTasks.length) {
+        host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
@@ -2496,6 +2567,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
 
     if (roughTasks.length) {
+      host.dataset.renderPhase = 'rough-preview';
       host.dataset.renderState = 'refining';
       void requestRoughGeometry('interactive', { refineAfter: true });
     }

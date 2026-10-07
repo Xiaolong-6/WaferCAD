@@ -31,6 +31,8 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, rough preview/final readiness). The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.
+
 ### Deterministic browser dependencies
 
 Playwright `1.55.1` and Three `0.179.1` are pinned devDependencies in `package-lock.json`. Install them with `npm ci`, then install Chromium with `npx playwright install chromium` (`--with-deps` on Linux). Serve `site/` locally and set `WAFERCAD_THREE_DIR` to the project's `node_modules/three` directory before running browser tests:
@@ -178,4 +180,4 @@ See [local validation](VALIDATION_2026-10-05.md) for the tested revision, enviro
 
 Visual baselines are intentionally **not** part of `test:ui:all` or the GitHub Actions gate yet. Generate them in a controlled Chromium/Linux environment, review the PNGs, commit only approved baselines, then enable the gate in a separate change. WebGL screenshots remain review artifacts until cross-run raster stability is characterized.
 
-The later [rendering stabilization](STABILIZATION_2026-10-05.md) intentionally changes the Photodetector Section profile/gradient. Its original Windows reference is retained pending human acceptance; the other four references pass unchanged. Product renderer tests independently measure Si/ALD/Implant registration, local depth gradients and the thin sidewall floor in a Detail inset, so an old-reference pixel mismatch must not be hidden by weakening those structural checks.
+The later [rendering stabilization](STABILIZATION_2026-10-05.md) intentionally changed the Photodetector Section profile/gradient. The updated Photodetector Windows reference was subsequently reviewed and accepted, so all five committed Windows Chromium references represent the accepted 2026-10-05 Windows set. Product renderer tests independently measure Si/ALD/Implant registration, local depth gradients and the thin sidewall floor in a Detail inset; accepted Windows pixels still do not establish Linux raster stability.

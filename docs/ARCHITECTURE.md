@@ -36,6 +36,14 @@ X, Y and Z are physical geometry stored internally in micrometres. The UI has on
 
 The stored model is intentionally 2.5D: XY footprints are vector polygons and vertical structure is represented by Z intervals. Runtime Process Geometry Kernel v2 derives a unified surface topology from that canonical model, so Process, Section, and 3D agree on exposed faces, buried material interfaces, true voids, numerical cracks, and genuine vertical walls without introducing a full arbitrary-solid B-rep kernel.
 
+### Canonical repeated arrays
+
+Large repeated wafers may use the canonical array kernel instead of eagerly expanding every site. An array model stores shared leaf templates, translated instances, and exclusive tile domains while preserving the same physical layer/region/annotation semantics as an ordinary model. `site/model-array.js` owns array validation, bounded resolution and copy-on-write template separation; `site/model-array-process.js` applies Process operations by physical context; `site/model-array-rendering.js` derives repeated render ownership and GPU-instancing groups without creating artificial tile interfaces.
+
+Array-aware caches are derived runtime accelerators, not new physical truth. The mask instance index, Process boundary index, renderer ownership/triangulation caches and retained Process worker may be rebuilt or discarded at any time. Their keys must follow canonical geometry/revision/context identity, and they are never serialized into History or project files.
+
+Project storage uses `shared-assets-v4` for canonical arrays: shared model templates and instance lists are stored compactly alongside the existing shared geometry/model/layout dictionaries. Older unencoded/v1/v2/v3 projects remain readable; applications that do not support v4 must reject canonical-array projects rather than silently dropping repeated geometry.
+
 ## Modules
 
 ### `site/app.js`
@@ -84,6 +92,7 @@ Owns the canonical region-stack model and process mutation semantics. Surface/vo
 - Extend (`grow` internally);
 - Etch, including optional exposed-material targeting with stop-on-next-material behavior;
 - Directional/Conformal coverage behavior;
+- Transfer / Laminate placement, with current **Follow surface** semantics and explicit legacy **Flat bridge** replay compatibility;
 - front/back surface access;
 - stochastic Rough / Pyramid surface-appearance normalization and polarity;
 - structural Implant creation as a non-material annotation;
@@ -93,6 +102,7 @@ Owns the canonical region-stack model and process mutation semantics. Surface/vo
 ### `site/renderer-geometry.js`
 
 Thin adapter from Process Geometry Kernel v2 to the 3D renderer. Physical surface ownership is resolved in `process-topology.js`; this module does not independently reinterpret interfaces or sidewalls.
+The ownership plan is cached by canonical model identity/revisions, layer visibility and ROI fingerprint. Renderer-only derived triangulation/mesh data may be cached separately, but cache hits must never bypass canonical Process ownership or survive a physical invalidation.
 
 ### `site/polygon-triangulation.js`
 
@@ -107,6 +117,8 @@ Owns adaptive Rough/Pyramid tessellation after the shared base-cap triangulation
 Provides canonical collinear-line descriptors and interval partitioning shared by Kernel-v2 sidewall ownership and rough-mesh LOD stitching. One interval rule therefore governs both physical material walls and camera-generated LOD seams.
 
 ### `site/three-view.js`
+
+`three-view.js` exposes **Fast** and **Quality** static mesh policies over the same canonical surface ownership; camera interaction temporarily uses a lighter Interactive policy and returns to the selected static mode. Mode changes may alter sampling density, rough subdivision, pixel ratio and transparency-sort cadence, but not material topology, annotation envelopes, Main/Section geometry or physical GLB output. Smooth repeated array surfaces use Three.js instancing, and renderer-derived caches may reuse canonical triangulation data across presentation rebuilds while constructing fresh mutable BufferGeometry for the active scene.
 
 Owns Three.js dependency loading, renderer/camera/OrbitControls lifecycle, event-driven frame scheduling, polygon extrusion, ROI clipping, opacity/border inspection state consumption, Fit behavior, physical GLB export, high-resolution PNG capture, and graceful degradation when the external 3D dependency is unavailable. Rough/Pyramid caps use screen-space adaptive tessellation driven by camera distance, projected rough-feature size, viewport resolution/DPR, ROI extent, and an expanded camera-focus region. When the static surface plan is built, each rough cap is triangulated once. A bounded uniform pre-subdivision improves spatial granularity, then those cached base triangles are assigned to a small set of zones by centroid; zone boundaries are derived from single-owner triangle edges. LOD zoning therefore performs no polygon Boolean clipping. Camera/view LOD changes update zone priority, depth and scene-wide triangle-budget allocation without repeating polygon clipping or base triangulation. Focus geometry receives the larger allocation while background zones compete for the same hard budget. A quantized camera/view signature triggers only rough-mesh replacement when effective detail changes: smooth caps, sidewalls, Implant meshes, cached rough spatial zones, and the Kernel-v2 ownership plan remain intact. The displaced mesh still uses the shared deterministic profile field and profile-derived normals.
 

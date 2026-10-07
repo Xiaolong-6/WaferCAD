@@ -63,6 +63,8 @@ File and Draw state are independent: switching source never unloads the imported
 
 Process **Selected mask** and **Invert mask** always use the currently active source. In Draw mode, all drawn shapes compose by union.
 
+Use **Mask ROI** to restrict mask-based work to a local area. Choose **Rect** or **Circle**, drag once to create it, then move/resize it with the same direct-manipulation pattern used elsewhere. When active, Mask ROI clips both **Selected mask / Invert mask Process Apply** geometry and Mask **SVG/GDSII/OASIS** export. It is independent from Main ROI and Section A–B and does not rewrite the imported or drawn mask geometry.
+
 Use **Opacity** to fade whichever source is active. The neutral dashed structure reference, axes, and cursor readout are unaffected.
 
 Double-click Mask or use **Fit** to restore the Mask view. Fit considers the active source while keeping the wafer in view.
@@ -78,6 +80,10 @@ Changing Reference changes the coordinate readout without moving or resizing the
 The ROI affects 3D rendering only. The full model is preserved. If a ROI is active, **GLB** exports the currently clipped 3D content; clearing ROI exports the full model. ROI clipping also creates inspection sidewalls: buried Implant regions crossed by that cut remain hidden as volumes at 100% material opacity, but their cut faces are visible with the same surface-to-depth gradient convention used by Section A–B. Lowering 3D opacity additionally reveals the internal Implant volume.
 
 The 3D ROI boundary is not automatically the Section A–B line. Section samples A–B, while 3D exposes the ROI perimeter. For annular/radial structures these paths can cross contacts at different positions; align A–B with the ROI edge you want to compare when a one-to-one cross-section is required.
+
+### Fast / Quality 3D
+
+The 3D header exposes **Fast** and **Quality** modes. Fast is the default and lowers render-mesh sampling, rough-surface subdivision and pixel ratio while preserving the same canonical material ownership, openings, sidewalls and annotation envelopes. Quality uses the denser inspection mesh for close morphology review. During rotate/pan/zoom, 3D may temporarily enter an even lighter Interactive policy and automatically return to the selected Fast/Quality mode when interaction ends. These modes change presentation only; Main, Section, project geometry and physical GLB export are unchanged.
 
 ## 6. Apply an operation
 

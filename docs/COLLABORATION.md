@@ -32,6 +32,6 @@ Before publishing, refresh `origin/main`, inspect the integration diff and use a
 
 ## Current handoff
 
-[2026-10-05 validation](VALIDATION_2026-10-05.md) identifies the tested integration of the automated-test architecture, Implant cut/gradient work and Photodetector Section artifact fix. Consult newer commits and audits before treating that dated result as evidence for subsequent product changes. [Photodetector follow-up](PHOTODETECTOR_RENDER_FOLLOWUP_2026-10-05.md) records the subsequent ROI/border/Z-display correction. Project audit reports are maintained on separate audit branches.
+Start with the [documentation map](README.md) and the current contract documents it links. The 2026-10-05 validation/stabilization files remain historical evidence for those revisions; the accepted Windows Chromium visual set now includes the updated Photodetector reference. The 2026-10-07 project-IO/array and pre-main audit files are also historical checkpoints after their work entered `main`.
 
-[Rendering and audit stabilization](STABILIZATION_2026-10-05.md) covers the later Section Detail profile correction, independent copied-tab autosave identity, no-change deposition guard and Playwright security patch. It records the intentional Photodetector pixel-reference difference and its pending human acceptance; do not treat that opt-in gate as passing against the original reference.
+For current development, inspect `origin/main`, open PRs and the active integration branch before relying on any dated branch/status statement. Audit and optimization reports may live in `main` after merge; their original branch wording is intentionally preserved as historical evidence and should be accompanied by a superseded banner when necessary.

@@ -1,5 +1,7 @@
 # General Process validation and project IO optimization
 
+> **Historical/superseded checkpoint.** This document intentionally describes the earlier v3 project-IO stage before canonical arrays were added. Subsequent `shared-assets-v4` canonical-array work entered `main` through merge commit `61098987d6ed6d90accdadebbad58405249a0ee5`. Keep the v3 measurements and limitations below as historical evidence; use [Development](DEVELOPMENT.md) and [Architecture](ARCHITECTURE.md) for current behavior.
+
 Product commit: `bb54faad05b1021761db89e874e9907c4a8879a2`. Branch: `codex/process-project-io-optimization` (developed on `codex/project-io-geometry-sharing`). Baseline: `de24166a81f65474c73b08bf0a22ac566dedb76a`. Feature branch for review; no main push, deployment or manual remote CI in this round.
 
 ## Product behavior

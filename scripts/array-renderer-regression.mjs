@@ -38,6 +38,12 @@ try {
   const fast = await snapshot();
   assert.equal(fast.arrayInstances, '1885');
   assert.equal(fast.renderQuality, 'fast');
+  assert.equal(fast.cooperativeSceneAssembly, 'true');
+  assert.ok(Number(fast.rendererAssemblyMs) > 0, 'renderer profiling must record assembly time');
+  assert.ok(
+    Number(fast.derivedCapCacheMisses) > 0,
+    'initial full-wafer render must populate derived cap triangulation data',
+  );
   await page.locator('#threeFastBtn').click();
   await page.waitForFunction(
     () =>
@@ -45,6 +51,10 @@ try {
       document.getElementById('threeHost').dataset.renderState === 'ready',
   );
   const quality = await snapshot();
+  assert.ok(
+    Number(quality.derivedCapCacheHits) > Number(fast.derivedCapCacheHits),
+    'Fast → Quality rebuild must reuse canonical array-cap triangulation data',
+  );
   for (const key of [
     'arrayInstances',
     'materialLayerIds',

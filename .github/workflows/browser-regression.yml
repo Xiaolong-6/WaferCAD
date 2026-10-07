@@ -18,6 +18,7 @@ on:
       - "scripts/project-io-runtime-regression.mjs"
       - "scripts/array-runtime-regression.mjs"
       - "scripts/array-renderer-regression.mjs"
+      - "scripts/renderer-pipeline-benchmark.mjs"
       - "scripts/interaction-regression.mjs"
       - "scripts/resilience-regression.mjs"
       - "scripts/test-helpers/**"

@@ -1,5 +1,7 @@
 # Mask File / Draw plan
 
+> **Historical design record.** This plan captures the original Mask File/Draw design and contains superseded v1 assumptions. Current behavior is defined in [Mask File / Draw contract](MASK_DRAW.md): project format v14, Rect/Circle Mask ROI, Process clipping by Mask ROI, and SVG/GDSII/OASIS export from the active mask source. Do not use future-tense statements below as the current product contract.
+
 ## Implementation status
 
 The v1 architecture in this document is implemented on the feature branch:
