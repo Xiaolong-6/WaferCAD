@@ -775,7 +775,16 @@
               data-tab-panel="operation"
               hidden
             >
-              <div class="tool-context process-context">
+              <div id="processInputMode" class="segmented process-input-mode" aria-label="Process input mode">
+                <button type="button" class="active" data-process-input-mode="manual" aria-pressed="true">
+                  Manual
+                </button>
+                <button type="button" data-process-input-mode="recipe" aria-pressed="false">
+                  Recipe
+                </button>
+              </div>
+              <div id="manualProcessPane">
+                <div class="tool-context process-context">
                 <span id="processSummary">Front · Deposit layer</span>
                 <button
                   id="faceToggleBtn"
@@ -1073,6 +1082,8 @@
                   Directional coverage follows the selected footprint.
                 </p>
               </div>
+              </div>
+              <div id="recipeProcessPane" class="control-body recipe-process-pane" hidden></div>
             </section>
 
             <section
