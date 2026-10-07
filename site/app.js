@@ -35,7 +35,10 @@ import { createSectionDetailRoiController } from './controllers/section-detail-r
 import { createBaseControlsController } from './controllers/base-controls-controller.js';
 import { createMaskImportController } from './controllers/mask-import-controller.js';
 import { createMainCanvasController } from './controllers/main-canvas-controller.js';
-import { createWorkspaceActionsController } from './controllers/workspace-actions-controller.js';
+import {
+  createWorkspaceActionsController,
+  syncThreeRenderModeButton,
+} from './controllers/workspace-actions-controller.js';
 import { createWorkspaceSessionController } from './controllers/workspace-session-controller.js';
 import { createWorkspacePersistenceController } from './controllers/workspace-persistence-controller.js';
 import { createWorkspaceViewController } from './controllers/workspace-view-controller.js';
@@ -835,8 +838,7 @@ const projectStateController = createProjectStateController({
     $('threeOpacityRange').value = String(threeOpacity);
     $('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;
     $('threeBorders').checked = threeShowBorders;
-    $('threeFastBtn').classList.toggle('active', threeFastMode);
-    $('threeFastBtn').setAttribute('aria-pressed', String(threeFastMode));
+    syncThreeRenderModeButton($('threeFastBtn'), threeFastMode);
     sectionDetailRoiController.sync();
   },
   setSectionEditEnabled,

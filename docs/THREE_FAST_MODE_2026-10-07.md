@@ -4,7 +4,7 @@ Branch: `codex/project-io-geometry-sharing`, following complete-import accelerat
 
 ## Contract
 
-The 3D toolbar's **Fast** button defaults on for new and older projects. Off selects Quality. Mouse rotate/pan/zoom temporarily selects Interactive, then restores the preference. `display.threeFastMode` is an optional boolean UI preference, included in file/autosave/Recovery and the lightweight view record. It does not modify canonical model geometry, process topology, Main/Section data, History Steps or Variant lineage. No project-version bump or geometry migration is needed.
+The 3D toolbar mode button defaults to **Fast** for new and older projects. It displays the selected mode: **Fast** or **Quality**. Clicking switches modes; the tooltip names the current mode and the next click's destination. File import, History restore and workspace reload synchronize the same label. The stable accessible toggle name is Fast 3D rendering, with `aria-pressed` indicating whether Fast is selected. Mouse rotate/pan/zoom temporarily selects Interactive, then restores the preference. `display.threeFastMode` is an optional boolean UI preference, included in file/autosave/Recovery and the lightweight view record. It does not modify canonical model geometry, process topology, Main/Section data, History Steps or Variant lineage. No project-version bump or geometry migration is needed.
 
 `render-quality-policy.js` defines one policy over the existing surface plan, spatial zones and canonical triangulation. Quality retains the previous sampling and analytical normals. Fast lowers screen-space adaptive sampling, uses face normals from the sampled envelope instead of six extra profile samples per vertex, lowers rough sidewall subdivision and caps device-pixel ratio. All levels sample the same deterministic morphology field: no second morphology/geometry algorithm, frequency-altered canonical profile, merged material layers or simplified project cache is created. Subpixel microtexture is approximated by the coarser render mesh and its normals.
 
@@ -47,3 +47,7 @@ Other executed checks:
 - `node scripts/renderer-product-regression.mjs`: installed Chrome passed 19 real renderer captures, including conformal, rough/LOD/instancing, Implant profile and opaque/transparent ownership.
 
 Fast deliberately trades fine surface shading and high-density sampling for responsiveness. Select Quality when examining microtexture. Macroscopic structure and physical data remain the same. Windows runtime evidence does not establish Linux pixel-baseline equivalence.
+
+## Mode button follow-up
+
+On 2026-10-07 the toolbar label was aligned with the selected Fast/Quality mode, including import and refresh restoration. `node scripts/three-fast-mode-regression.mjs --inspection-only` passed in installed Chrome 154.0.8037.98, asserting both labels/tooltips and the restored Quality label alongside the existing ROI/geometry checks. Focused ESLint, changed-file Prettier and `git diff --check` passed. The follow-up stays on `codex/project-io-geometry-sharing` and is pushed with `[skip ci]`; no main merge or CI run is requested.

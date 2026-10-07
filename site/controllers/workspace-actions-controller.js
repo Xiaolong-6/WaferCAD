@@ -1,5 +1,14 @@
 import { XY_UNITS } from '../units.js';
 
+export function syncThreeRenderModeButton(button, fast) {
+  button.textContent = fast ? 'Fast' : 'Quality';
+  button.title = fast
+    ? 'Current mode: Fast. Click to switch to Quality.'
+    : 'Current mode: Quality. Click to switch to Fast.';
+  button.classList.toggle('active', fast);
+  button.setAttribute('aria-pressed', String(fast));
+}
+
 export function createWorkspaceActionsController({
   root = document,
   getXyUnit,
@@ -153,8 +162,7 @@ export function createWorkspaceActionsController({
 
     $('threeFastBtn').onclick = () => {
       setThreeFastMode(!getThreeFastMode());
-      $('threeFastBtn').classList.toggle('active', getThreeFastMode());
-      $('threeFastBtn').setAttribute('aria-pressed', String(getThreeFastMode()));
+      syncThreeRenderModeButton($('threeFastBtn'), getThreeFastMode());
       renderThree();
       status(getThreeFastMode() ? 'Fast 3D rendering.' : 'Full quality 3D rendering.');
     };

@@ -107,8 +107,8 @@ try {
     /Saved locally/.test(document.getElementById('workspaceSaveStatus').textContent),
   );
   await page.locator('#threeMaxBtn').click();
-  const waitStatic = async (mode) =>
-    page.waitForFunction((mode) => {
+  const waitStatic = async (mode) => {
+    await page.waitForFunction((mode) => {
       const host = document.getElementById('threeHost'),
         canvas = host.querySelector('canvas');
       return (
@@ -118,6 +118,13 @@ try {
         canvas.dataset.roughMeshWorker === 'true'
       );
     }, mode);
+    const label = mode === 'fast' ? 'Fast' : 'Quality';
+    assert.equal((await page.locator('#threeFastBtn').textContent()).trim(), label);
+    assert.match(
+      await page.locator('#threeFastBtn').getAttribute('title'),
+      new RegExp(`Current mode: ${label}\\.`),
+    );
+  };
   const probe = () =>
     page.evaluate(() => {
       const host = document.getElementById('threeHost'),
@@ -297,6 +304,7 @@ try {
     document.getElementById('statusText').textContent.startsWith('Restored local workspace'),
   );
   assert.equal(await page.locator('#threeFastBtn').getAttribute('aria-pressed'), 'false');
+  assert.equal((await page.locator('#threeFastBtn').textContent()).trim(), 'Quality');
   assert.deepEqual(errors, []);
   const report = {
     browser: browser.version(),
