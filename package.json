@@ -8,7 +8,7 @@
     "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"*.md\" \"*.json\" \"eslint.config.js\"",
     "format:check": "prettier --check \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
     "check": "npm run lint && npm run format:check && npm test",
-    "check:ci": "npm run lint && npm test",
+    "check:ci": "npm run lint && node --test --test-concurrency=2 site/tests/*.test.mjs",
     "precommit": "npm run format && npm run lint && npm test",
     "test:ui:smoke": "node scripts/ui-smoke.mjs",
     "test:ui:examples": "node scripts/example-regression.mjs",
