@@ -59,7 +59,7 @@ Tests etch 1.5 µm through a 2 × 2 µm area and verify a volume reduction of 6 
 - A completely through-etched trench remains empty at its center, but Conformal may place sidewall material into the empty XY band adjacent to an exposed wall. The coating spans the wall's vertical interval and does not create an unsupported bridge across the void.
 - Uncovered slivers narrower than 0.1 nm are treated as numerical partition cracks and healed before Conformal. Intentional trenches wider than that threshold remain physical voids.
 - Rounded XY corners are polygonal buffer approximations. Z corners remain piecewise vertical/horizontal, without a normal-offset surface solution.
-- There is no simulation of transport, shadowing, sticking probability, aspect-ratio-dependent coverage, pinch-off, undercuts, material-selective etch, dopant transport, activation, or diffusion. Implant remains a geometric annotation, not a concentration solver.
+- WaferCAD does not simulate calibrated transport, shadowing, sticking probability, aspect-ratio-dependent coverage, pinch-off kinetics, chemistry/selectivity ratios, dopant transport, activation, or diffusion. Canonical geometry does support geometric undercut/release and exposed-material-targeted etch with stop-on-next-material behavior. Implant remains a geometric annotation, not a concentration solver.
 - XY display-unit changes convert inputs and labels only. They do not recalibrate Z, rescale geometry, or change process results.
 
 Changes to these boundaries require an explicit geometry-contract update and new benchmarks.
