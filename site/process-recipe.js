@@ -211,6 +211,8 @@ class LiteralParser {
   constructor(source) {
     this.source = source;
     this.index = 0;
+    this.depth = 0;
+    this.nodes = 0;
   }
   error(message) {
     throw new Error(`${message} at character ${this.index + 1}.`);
@@ -315,6 +317,9 @@ class LiteralParser {
         return out;
       }
       const key = ['"', "'"].includes(this.peek()) ? this.string() : this.identifier();
+      if (['__proto__', 'prototype', 'constructor'].includes(key)) {
+        this.error(`Unsupported object key "${key}"`);
+      }
       this.take(':');
       out[key] = this.value();
       const next = this.peek();
@@ -332,9 +337,18 @@ class LiteralParser {
   }
   value() {
     this.skip();
+    this.nodes += 1;
+    if (this.nodes > 100000) this.error('Recipe literal exceeds the value budget');
     const ch = this.source[this.index];
-    if (ch === '{') return this.object();
-    if (ch === '[') return this.array();
+    if (ch === '{' || ch === '[') {
+      if (this.depth >= 32) this.error('Recipe literal is nested too deeply');
+      this.depth += 1;
+      try {
+        return ch === '{' ? this.object() : this.array();
+      } finally {
+        this.depth -= 1;
+      }
+    }
     if (ch === '"' || ch === "'") return this.string();
     if (/[+\-.\d]/.test(ch || '')) return this.number();
     const id = this.identifier();
@@ -346,7 +360,9 @@ class LiteralParser {
 }
 
 export function parseProcessRecipeSource(source, { name = 'Process Recipe' } = {}) {
-  const parser = new LiteralParser(String(source ?? ''));
+  const text = String(source ?? '');
+  if (text.length > 1000000) throw new Error('Process Recipe source exceeds the 1 MB limit.');
+  const parser = new LiteralParser(text);
   const steps = [];
   while (true) {
     parser.skip();
@@ -361,6 +377,7 @@ export function parseProcessRecipeSource(source, { name = 'Process Recipe' } = {
     parser.take(')');
     parser.skip();
     if (parser.source[parser.index] === ';') parser.index += 1;
+    if (steps.length >= 1000) throw new Error('Process Recipe exceeds the 1000 step limit.');
     steps.push(normalizeStep(command, argument, steps.length));
   }
   return normalizeProcessRecipe({ version: 1, name, steps });
