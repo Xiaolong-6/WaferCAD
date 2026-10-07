@@ -1,5 +1,7 @@
 # Product interaction and visual regression
 
+> **Historical review record.** This file preserves the product-review state from its original feature-branch period. The referenced renderer/layout work has since entered `main`; use [Documentation map](README.md), [Architecture](ARCHITECTURE.md), and [Testing](testing.md) for current behavior.
+
 ## Review scope
 
 The 2026-10-05 integrated Windows run passed all browser groups, with 109 layout and 14 renderer captures. Five 2D/UI references were accepted and committed separately from generated galleries. See [validation](VALIDATION_2026-10-05.md) for the exact tested revision and limitations; the dated September review below remains historical evidence.
