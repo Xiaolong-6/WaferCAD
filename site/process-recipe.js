@@ -95,7 +95,9 @@ function normalizeStep(command, input, index = 0) {
   if (command === 'deposit') {
     params.material = cleanText(params.material || params.name);
     if (!params.material) throw new Error('deposit.material is required.');
-    params.thicknessUm = recipeLengthUm(params.thickness, 'deposit.thickness');
+    params.thicknessUm = Number.isFinite(Number(params.thicknessUm))
+      ? Number(params.thicknessUm)
+      : recipeLengthUm(params.thickness, 'deposit.thickness');
     if (!(params.thicknessUm > 0)) throw new Error('deposit.thickness must be greater than zero.');
     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
     params.area = normalizeArea(params.area);
@@ -105,7 +107,9 @@ function normalizeStep(command, input, index = 0) {
   } else if (command === 'extend') {
     params.material = cleanText(params.material || params.target);
     if (!params.material) throw new Error('extend.material is required.');
-    params.thicknessUm = recipeLengthUm(params.thickness, 'extend.thickness');
+    params.thicknessUm = Number.isFinite(Number(params.thicknessUm))
+      ? Number(params.thicknessUm)
+      : recipeLengthUm(params.thickness, 'extend.thickness');
     if (!(params.thicknessUm > 0)) throw new Error('extend.thickness must be greater than zero.');
     params.coverage = normalizeCoverage(params.coverage || params.mode);
     params.area = normalizeArea(params.area);
@@ -120,7 +124,9 @@ function normalizeStep(command, input, index = 0) {
     }
     const lengthKey = params.profile === 'planarize' ? 'targetZ' : 'depth';
     const sourceLength = params[lengthKey] ?? params.thickness;
-    params.thicknessUm = recipeLengthUm(sourceLength, `etch.${lengthKey}`);
+    params.thicknessUm = Number.isFinite(Number(params.thicknessUm))
+      ? Number(params.thicknessUm)
+      : recipeLengthUm(sourceLength, `etch.${lengthKey}`);
     if (params.profile !== 'planarize' && !(params.thicknessUm > 0)) {
       throw new Error(`etch.${lengthKey} must be greater than zero.`);
     }
@@ -136,7 +142,9 @@ function normalizeStep(command, input, index = 0) {
     delete params.thickness;
   } else if (command === 'implant') {
     params.name = cleanText(params.name, 'Implant');
-    params.depthUm = recipeLengthUm(params.depth ?? params.thickness, 'implant.depth');
+    params.depthUm = Number.isFinite(Number(params.depthUm))
+      ? Number(params.depthUm)
+      : recipeLengthUm(params.depth ?? params.thickness, 'implant.depth');
     if (!(params.depthUm > 0)) throw new Error('implant.depth must be greater than zero.');
     params.tilt = Number(params.tilt ?? 0);
     if (!Number.isFinite(params.tilt) || params.tilt < -80 || params.tilt > 80) {
@@ -148,7 +156,9 @@ function normalizeStep(command, input, index = 0) {
     delete params.thickness;
   } else if (command === 'electrical') {
     params.name = cleanText(params.name, 'Electrical Region');
-    params.depthUm = recipeLengthUm(params.depth ?? params.thickness, 'electrical.depth');
+    params.depthUm = Number.isFinite(Number(params.depthUm))
+      ? Number(params.depthUm)
+      : recipeLengthUm(params.depth ?? params.thickness, 'electrical.depth');
     if (!(params.depthUm > 0)) throw new Error('electrical.depth must be greater than zero.');
     params.regionType = cleanText(params.regionType || params.type, 'p-inversion');
     params.source = cleanText(params.source, 'induced');
