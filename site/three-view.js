@@ -964,6 +964,11 @@ export function createThreeView({
     object.userData ||= {};
     object.userData.waferCadPresentation = { ...descriptor };
     presentationObjects.add(object);
+    const state = presentationState(descriptor),
+      materials = Array.isArray(object.material) ? object.material : [object.material];
+    object.visible = Boolean(state.visible);
+    for (const material of materials) applyMaterialPresentation(material, state.materialState);
+    if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     return object;
   }
 
