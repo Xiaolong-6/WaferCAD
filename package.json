@@ -16,18 +16,20 @@
     "test:ui:all": "npm run test:ui:fast && npm run test:ui:state && npm run test:ui:geometry && npm run test:ui:review",
     "test:ui:history": "node scripts/history-regression.mjs",
     "test:ui:persistence": "node scripts/persistence-regression.mjs",
-    "test:ui:process": "node scripts/process-geometry-regression.mjs",
+    "test:ui:process": "node scripts/process-geometry-regression.mjs && npm run test:ui:io && npm run test:ui:array",
     "test:ui:workstation": "node scripts/workstation-regression.mjs",
     "test:ui:interaction": "node scripts/interaction-regression.mjs",
     "test:ui:resilience": "node scripts/resilience-regression.mjs",
     "test:ui:product:layout": "node scripts/product-layout-regression.mjs",
-    "test:ui:product:renderer": "node scripts/renderer-product-regression.mjs",
+    "test:ui:product:renderer": "node scripts/renderer-product-regression.mjs && node scripts/array-renderer-regression.mjs",
     "test:ui:visual": "node scripts/visual-baseline-regression.mjs",
     "update:ui:visual": "node scripts/visual-baseline-regression.mjs --update",
     "test:ui:fast": "npm run test:ui:smoke && npm run test:ui:workstation && npm run test:ui:resilience",
     "test:ui:state": "npm run test:ui:history && npm run test:ui:persistence",
     "test:ui:geometry": "npm run test:ui:process && npm run test:ui:interaction",
-    "test:ui:review": "npm run test:ui:examples && npm run test:ui:product"
+    "test:ui:review": "npm run test:ui:examples && npm run test:ui:product",
+    "test:ui:io": "node scripts/project-io-runtime-regression.mjs",
+    "test:ui:array": "node scripts/array-runtime-regression.mjs"
   },
   "devDependencies": {
     "eslint": "10.11.0",

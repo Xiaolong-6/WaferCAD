@@ -1,3 +1,5 @@
+import { prewarmModelBoundaryIndexes } from './process-boundary-index.js';
+import { prepareMaskInstanceIndex } from './mask-instance-index.js';
 import { parseLayoutFile } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
 import { cloneModel, createModel, hasMaterial, surfaceSegment, surfaceZ } from './model.js';
@@ -575,8 +577,23 @@ function fitImportedLayout() {
 }
 
 function applyImportedLayout(imported, displayName) {
+  processTaskController?.dispose();
   parsedLayout = imported.parsed;
   layout = imported.layout;
+  prepareMaskInstanceIndex(layout);
+  const preparedModel = model;
+  const prepare = () =>
+    prewarmModelBoundaryIndexes(
+      preparedModel,
+      () => model === preparedModel,
+      () =>
+        new Promise((resolve) => {
+          if (globalThis.requestIdleCallback) requestIdleCallback(resolve);
+          else setTimeout(resolve, 16);
+        }),
+    ).catch(() => {});
+  if (globalThis.requestIdleCallback) requestIdleCallback(prepare);
+  else setTimeout(prepare, 250);
   layout.name = displayName || layout.name;
   layout.hierarchy = hierarchyFromParsed(parsedLayout);
   activeCell = parsedLayout.root || null;
@@ -779,8 +796,23 @@ const projectStateController = createProjectStateController({
     threeCamera: threeView?.getViewState?.() || pendingThreeCamera || null,
   }),
   applyState: (next) => {
+    processTaskController?.dispose();
     model = next.model;
     layout = next.layout;
+    prepareMaskInstanceIndex(layout);
+    const preparedModel = model;
+    const prepare = () =>
+      prewarmModelBoundaryIndexes(
+        preparedModel,
+        () => model === preparedModel,
+        () =>
+          new Promise((resolve) => {
+            if (globalThis.requestIdleCallback) requestIdleCallback(resolve);
+            else setTimeout(resolve, 16);
+          }),
+      ).catch(() => {});
+    if (globalThis.requestIdleCallback) requestIdleCallback(prepare);
+    else setTimeout(prepare, 250);
     selectedLayerKeys = next.selectedLayerKeys;
     activeCell = next.activeCell;
     expandedCells = next.expandedCells;

@@ -131,6 +131,9 @@ test('strict project geometry validation shares the 0.1 nm boolean retry path', 
     display: { xyUnit: 'um', structurePalette: 'balanced', customStructurePalette: null },
   };
 
+  // Keep this retry contract on the general Boolean path, outside the exact
+  // four-corner rectangle containment proof. The physical boundary is unchanged.
+  project.model.boundary[0][0].splice(1, 0, [0, -10]);
   const original = globalThis.polygonClipping.difference;
   let calls = 0;
   globalThis.polygonClipping.difference = (...args) => {

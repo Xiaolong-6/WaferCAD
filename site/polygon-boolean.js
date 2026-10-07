@@ -113,6 +113,122 @@ export function canonicalizeBooleanGeometry(geom, grid = BOOLEAN_RETRY_GRID_UM) 
   return out;
 }
 
+function geometryBounds(geom) {
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const polygon of geom || []) {
+    for (const ring of polygon || []) {
+      for (const point of ring || []) {
+        const x = Number(point?.[0]),
+          y = Number(point?.[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+}
+
+function boundsMayOverlap(a, b, tolerance = EPS) {
+  return Boolean(
+    a &&
+      b &&
+      a.maxX >= b.minX - tolerance &&
+      b.maxX >= a.minX - tolerance &&
+      a.maxY >= b.minY - tolerance &&
+      b.maxY >= a.minY - tolerance,
+  );
+}
+
+const BOOLEAN_FALLBACK_GRIDS_UM = [
+  BOOLEAN_RETRY_GRID_UM,
+  BOOLEAN_RETRY_GRID_UM * 2,
+  BOOLEAN_RETRY_GRID_UM * 5,
+];
+
+function runCanonicalBoolean(operation, geometries) {
+  let lastError = null;
+  for (const grid of BOOLEAN_FALLBACK_GRIDS_UM) {
+    const canonical = geometries.map((geometry) => canonicalizeBooleanGeometry(geometry, grid));
+    try {
+      return normalizeMulti(operation(...canonical));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error('Polygon boolean retry failed.');
+}
+
+function componentwiseIntersection(operation, left, right) {
+  const out = [];
+  for (const a of normalizeMulti(left)) {
+    const aa = [a],
+      aBounds = geometryBounds(aa);
+    for (const b of normalizeMulti(right)) {
+      const bb = [b];
+      if (!boundsMayOverlap(aBounds, geometryBounds(bb))) continue;
+      out.push(...runCanonicalBoolean(operation, [aa, bb]));
+    }
+  }
+  return canonicalizeBooleanGeometry(out);
+}
+
+function componentwiseDifference(operation, left, right) {
+  let pieces = normalizeMulti(left).map((polygon) => [polygon]);
+  for (const clipPolygon of normalizeMulti(right)) {
+    const clip = [clipPolygon],
+      clipBounds = geometryBounds(clip),
+      next = [];
+    for (const piece of pieces) {
+      if (!boundsMayOverlap(geometryBounds(piece), clipBounds)) {
+        next.push(piece);
+        continue;
+      }
+      const result = runCanonicalBoolean(operation, [piece, clip]);
+      for (const polygon of result) next.push([polygon]);
+    }
+    pieces = next;
+    if (!pieces.length) break;
+  }
+  return canonicalizeBooleanGeometry(pieces.flatMap((piece) => piece));
+}
+
+function componentwiseUnion(operation, geometries) {
+  const pending = geometries
+      .flatMap((geometry) => normalizeMulti(geometry))
+      .map((polygon) => [polygon]),
+    out = [];
+
+  while (pending.length) {
+    let current = pending.shift(),
+      merged = true;
+    while (merged) {
+      merged = false;
+      const currentBounds = geometryBounds(current);
+      for (let index = 0; index < out.length; index++) {
+        const candidate = out[index];
+        if (!boundsMayOverlap(currentBounds, geometryBounds(candidate))) continue;
+
+        const result = runCanonicalBoolean(operation, [current, candidate]);
+        // A true overlap/touch collapses to one polygon. Bounding boxes can
+        // overlap for geometrically disjoint polygons; leave those separate.
+        if (result.length !== 1) continue;
+        current = result;
+        out.splice(index, 1);
+        merged = true;
+        break;
+      }
+    }
+    out.push(current);
+  }
+  return canonicalizeBooleanGeometry(out.flatMap((piece) => piece));
+}
+
 export function booleanWithQuantizedRetry(operationName, geometries) {
   const kernel = polygonKernel(),
     operation = kernel?.[operationName];
@@ -124,10 +240,23 @@ export function booleanWithQuantizedRetry(operationName, geometries) {
   try {
     return normalizeMulti(operation(...normalized));
   } catch (initialError) {
-    const canonical = normalized.map((geometry) => canonicalizeBooleanGeometry(geometry));
     try {
-      return normalizeMulti(operation(...canonical));
+      return runCanonicalBoolean(operation, normalized);
     } catch (retryError) {
+      try {
+        if (operationName === 'intersection' && normalized.length === 2) {
+          return componentwiseIntersection(operation, normalized[0], normalized[1]);
+        }
+        if (operationName === 'difference' && normalized.length === 2) {
+          return componentwiseDifference(operation, normalized[0], normalized[1]);
+        }
+        if (operationName === 'union') {
+          return componentwiseUnion(operation, normalized);
+        }
+      } catch (componentError) {
+        componentError.cause = retryError;
+        throw componentError;
+      }
       retryError.cause = initialError;
       throw retryError;
     }

@@ -1,3 +1,4 @@
+import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
@@ -25,6 +26,8 @@ import {
   roughLod,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
+
+const RENDER_EDGE_EPSILON_UM = 1e-4;
 
 let THREE = null;
 let OrbitControls = null;
@@ -862,7 +865,7 @@ export function createThreeView({
             const dx = q[0] - p[0],
               dy = q[1] - p[1],
               length = Math.hypot(dx, dy);
-            if (!length) continue;
+            if (length <= RENDER_EDGE_EPSILON_UM) continue;
             const normal = [dy / length, -dx / length, 0];
             const a = [...p, z0],
               b = [...q, z0],
@@ -992,7 +995,8 @@ export function createThreeView({
         dx = q[0] - p[0],
         dy = q[1] - p[1],
         length = Math.hypot(dx, dy);
-      if (!length) continue;
+      if (length <= RENDER_EDGE_EPSILON_UM) continue;
+      if (Math.abs(Number(part.z1) - Number(part.z0)) <= 1e-9) continue;
 
       const featureSizes = [part.lowerSurface, part.upperSurface]
           .map((surface) => Number(surface?.appearance?.featureSize))
@@ -1128,12 +1132,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
     appearance = null,
     sortBias = 0,
     trackAdaptiveRough = false,
+    instanceTranslations = null,
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
       material?.dispose?.();
       return null;
     }
+    if (instanceTranslations)
+      return (
+        addInstancedSurfaceMeshes(geometry, material, instanceTranslations, {
+          name: 'Array annotation',
+          adaptiveRough: trackAdaptiveRough,
+          appearance,
+        })[0] || null
+      );
     const mesh = new THREE.Mesh(geometry, material),
       center = geometryCenter(geometry);
     mesh.renderOrder = materialState.transparent ? 100 : 0;
@@ -1165,7 +1178,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     geometry,
     material,
     translations,
-    { name = '', maxInstancesPerMesh = 64 } = {},
+    { name = '', maxInstancesPerMesh = 64, adaptiveRough = false, appearance = null } = {},
   ) {
     if (!geometry.getAttribute('position')?.count || !translations?.length) {
       geometry.dispose();
@@ -1193,6 +1206,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (name) mesh.name = chunks.length > 1 ? `${name} ${chunkIndex + 1}/${chunks.length}` : name;
       group.add(mesh);
       trackZDisplayObject(mesh);
+      if (adaptiveRough) {
+        roughOwnedObjects.add(mesh);
+        roughMeshes.push({
+          mesh,
+          material,
+          appearance: { ...appearance },
+          center: mesh.boundingSphere?.center?.clone() || new THREE.Vector3(),
+        });
+      }
+      if (material.transparent) {
+        transparencyOrderDirty = true;
+        transparentMeshes.push({
+          mesh,
+          center: mesh.boundingSphere?.center?.clone() || new THREE.Vector3(),
+          sortBias: 0,
+          depth: 0,
+          sequence: transparentMeshes.length,
+        });
+      }
       meshes.push(mesh);
     });
     return meshes;
@@ -1224,6 +1256,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
     roughMeshes = [];
   }
 
+  function instanceBorderPositions(positions, translations) {
+    if (!translations) return positions;
+    return translations.flatMap(([x, y]) =>
+      positions.map((v, i) => v + (i % 3 === 0 ? x : i % 3 === 1 ? y : 0)),
+    );
+  }
   function addBorderPositions(
     positions,
     { order = 100000, opacity = 1, adaptiveRough = false } = {},
@@ -1380,6 +1418,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         cap.appearance,
         task.sortBias ?? (cap.buried ? 12 : 0),
         true,
+        cap.instanceTranslations || task.implant?.instanceTranslations,
       );
       if (mesh) {
         roughOwnedObjects.add(mesh);
@@ -1392,11 +1431,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         !cap.buried &&
         geometry.userData.roughBorderPositions?.length
       ) {
-        addBorderPositions(geometry.userData.roughBorderPositions, {
-          order: 100010 + (cap.solidIndex || 0),
-          opacity: context.opacity,
-          adaptiveRough: true,
-        });
+        addBorderPositions(
+          instanceBorderPositions(geometry.userData.roughBorderPositions, cap.instanceTranslations),
+          {
+            order: 100010 + (cap.solidIndex || 0),
+            opacity: context.opacity,
+            adaptiveRough: true,
+          },
+        );
       }
     }
 
@@ -1631,6 +1673,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           cap.appearance,
           task.sortBias ?? (cap.buried ? 12 : 0),
           true,
+          cap.instanceTranslations || task.implant?.instanceTranslations,
         );
         if (mesh) {
           roughOwnedObjects.add(mesh);
@@ -1643,11 +1686,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
           !cap.buried &&
           geometry.userData.roughBorderPositions?.length
         ) {
-          addBorderPositions(geometry.userData.roughBorderPositions, {
-            order: 100010 + (cap.solidIndex || 0),
-            opacity: context.opacity,
-            adaptiveRough: true,
-          });
+          addBorderPositions(
+            instanceBorderPositions(
+              geometry.userData.roughBorderPositions,
+              cap.instanceTranslations,
+            ),
+            {
+              order: 100010 + (cap.solidIndex || 0),
+              opacity: context.opacity,
+              adaptiveRough: true,
+            },
+          );
         }
       }
 
@@ -1886,12 +1935,26 @@ diffuseColor.a *= waferCadAlphaScale;`,
           map.get(key).items.push(part);
         };
 
+      smoothCapInstanceGroupCount = 0;
+      smoothCapInstanceCount = 0;
+      smoothCapTemplateTriangleCount = 0;
       for (const cap of plan.caps) {
         if (!zIsVisible(cap.z)) continue;
         const state = stateFor(cap);
         if (!state) continue;
         const layer = layerById(model, cap.layerId);
 
+        if (!cap.appearance && cap.instanceTranslations) {
+          const geometry = geometryFromSolid({ slabs: [], caps: [cap] }),
+            material = createSurfaceMaterial(layer, state);
+          const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
+            name: `${cap.layerId} array cap`,
+          });
+          smoothCapInstanceGroupCount += meshes.length;
+          smoothCapInstanceCount += cap.instanceTranslations.length;
+          smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+          continue;
+        }
         if (!cap.appearance) {
           pushBucket(smoothCaps, cap, state);
           continue;
@@ -1908,9 +1971,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
         });
       }
 
-      smoothCapInstanceGroupCount = 0;
-      smoothCapInstanceCount = 0;
-      smoothCapTemplateTriangleCount = 0;
       for (const bucket of smoothCaps.values()) {
         const state = stateFor(bucket.part),
           visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
@@ -1991,14 +2051,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
 
-      for (const sidewall of plan.sidewalls) {
-        const state = stateFor(sidewall);
-        if (!state) continue;
-        pushBucket(sidewalls, sidewall, state);
-      }
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
+      for (const sidewall of plan.sidewalls) {
+        const state = stateFor(sidewall);
+        if (!state) continue;
+        if (sidewall.instanceTranslations) {
+          const parts = displaySidewallParts(sidewall.parts || [sidewall]);
+          const geometry = geometryFromSidewallParts(parts),
+            material = createSurfaceMaterial(layerById(model, sidewall.layerId), state);
+          const meshes = addInstancedSurfaceMeshes(
+            geometry,
+            material,
+            sidewall.instanceTranslations,
+            { name: `${sidewall.layerId} array wall` },
+          );
+          smoothSidewallInstanceGroupCount += meshes.length;
+          smoothSidewallInstanceCount += sidewall.instanceTranslations.length;
+          smoothSidewallTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+          continue;
+        }
+        pushBucket(sidewalls, sidewall, state);
+      }
       for (const bucket of sidewalls.values()) {
         const state = stateFor(bucket.part),
           visibleParts = displaySidewallParts(bucket.items);
@@ -2067,7 +2142,24 @@ diffuseColor.a *= waferCadAlphaScale;`,
         implantSurfaceCount = 0,
         implantCutCount = 0,
         implantGradientMeshCount = 0;
-      for (const implant of implantSolids(model, clip)) {
+      const annotationModel =
+        isArrayModel(model) && clip ? resolveArrayModel(model, geometryBounds(clip)) : model;
+      const annotationSources =
+        isArrayModel(model) && !clip
+          ? [...new Set(arrayParts(model).map((p) => p.model))].map((leaf) => ({
+              leaf,
+              translations: arrayParts(model)
+                .filter((p) => p.model === leaf)
+                .map((p) => [p.x, p.y]),
+            }))
+          : [{ leaf: annotationModel, translations: null }];
+      const arrayAnnotations = (derive) =>
+        annotationSources.flatMap(({ leaf, translations }) =>
+          derive(leaf, clip).map((a) => ({ ...a, instanceTranslations: translations })),
+        );
+      host.dataset.arrayInstances = String(plan.arrayInstances || 0);
+      host.dataset.arrayNeighborhoods = String(plan.arrayNeighborhoods || 0);
+      for (const implant of arrayAnnotations(implantSolids)) {
         const inspectionSegments = annotationInspectionCutSegments(implant, clip);
         if (!showInternalImplants && !implant.surfaceExposed && !inspectionSegments.length)
           continue;
@@ -2125,7 +2217,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const bodyMaterial = createAnnotationGradientMaterial(implant, implantState, {
               roughness: 0.7,
             }),
-            body = addSurfaceMesh(bodyGeometry, bodyMaterial, implantState, null, 30);
+            body = addSurfaceMesh(
+              bodyGeometry,
+              bodyMaterial,
+              implantState,
+              null,
+              30,
+              false,
+              implant.instanceTranslations,
+            );
           if (body) {
             body.name = implant.name || implant.implantId || 'Implant';
             implantInternalCount++;
@@ -2137,6 +2237,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               kind: 'implant-depth',
               cap: {
                 type: 'cap',
+                instanceTranslations: implant.instanceTranslations,
                 layerId: implant.layerId || implant.implantId || 'implant',
                 z: implant.innerZ,
                 normal: -outerNormal,
@@ -2181,6 +2282,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             kind: 'implant',
             cap: {
               type: 'cap',
+              instanceTranslations: implant.instanceTranslations,
               layerId: implant.layerId || implant.implantId || 'implant',
               z: implant.outerZ,
               normal: outerNormal,
@@ -2217,7 +2319,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
-          const cap = addSurfaceMesh(capGeometry, capMaterial, capState, null, 40);
+          const cap = addSurfaceMesh(
+            capGeometry,
+            capMaterial,
+            capState,
+            null,
+            40,
+            false,
+            implant.instanceTranslations,
+          );
           if (cap) {
             cap.name = capName;
             implantGradientMeshCount++;
@@ -2237,7 +2347,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const showInternalElectrical = materialState.transparent;
       let electricalRegionInternalCount = 0,
         electricalRegionSurfaceCount = 0;
-      for (const electrical of electricalRegionSolids(model, clip)) {
+      for (const electrical of arrayAnnotations(electricalRegionSolids)) {
         if (!showInternalElectrical && !electrical.surfaceExposed) continue;
 
         const outerNormal = electrical.face === 'front' ? 1 : -1,
@@ -2267,7 +2377,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
               depthTest: true,
               depthWrite: false,
             }),
-            body = addSurfaceMesh(bodyGeometry, bodyMaterial, electricalState, null, 34);
+            body = addSurfaceMesh(
+              bodyGeometry,
+              bodyMaterial,
+              electricalState,
+              null,
+              34,
+              false,
+              electrical.instanceTranslations,
+            );
           if (body) {
             body.name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
             electricalRegionInternalCount++;
@@ -2278,6 +2396,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               kind: 'electrical-depth',
               cap: {
                 type: 'cap',
+                instanceTranslations: electrical.instanceTranslations,
                 layerId: electrical.layerId || electrical.electricalRegionId || 'electrical-region',
                 z: electrical.innerZ,
                 normal: -outerNormal,
@@ -2316,6 +2435,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             kind: 'electrical',
             cap: {
               type: 'cap',
+              instanceTranslations: electrical.instanceTranslations,
               layerId: electrical.layerId || electrical.electricalRegionId || 'electrical-region',
               z: electrical.outerZ,
               normal: outerNormal,
@@ -2343,7 +2463,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
-          const cap = addSurfaceMesh(capGeometry, capMaterial, capState, null, 44);
+          const cap = addSurfaceMesh(
+            capGeometry,
+            capMaterial,
+            capState,
+            null,
+            44,
+            false,
+            electrical.instanceTranslations,
+          );
           if (cap) cap.name = capName;
         }
       }
@@ -2537,14 +2665,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
           metalness: 0.015,
           side: THREE.DoubleSide,
         }),
-      addExportMesh = (geometry, layerId, suffix = '') => {
+      addExportMesh = (geometry, layerId, suffix = '', translations = null) => {
         if (!geometry?.getAttribute?.('position')?.count) {
           geometry?.dispose?.();
           return null;
         }
         const layer = layerById(model, layerId),
           material = exportMaterial(layer),
-          mesh = new THREE.Mesh(geometry, material);
+          mesh = translations
+            ? new THREE.InstancedMesh(geometry, material, translations.length)
+            : new THREE.Mesh(geometry, material);
+        if (translations) {
+          const matrix = new THREE.Matrix4();
+          translations.forEach(([x, y], i) => {
+            matrix.makeTranslation(x, y, 0);
+            mesh.setMatrixAt(i, matrix);
+          });
+        }
         mesh.name = `${layer?.name || layerId || 'Layer'}${suffix}`;
         exportGroup.add(mesh);
         disposable.push(mesh);
@@ -2600,7 +2737,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
             // Keep GLB extras compact and publish only the stable export contract
             // on the mesh itself.
             geometry.userData = {};
-            const mesh = addExportMesh(geometry, cap.layerId, ' · morphology');
+            const mesh = addExportMesh(
+              geometry,
+              cap.layerId,
+              ' · morphology',
+              cap.instanceTranslations,
+            );
             if (mesh) {
               mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
               mesh.userData.wafercadMorphologySeed = Number(cap.appearance.seed) >>> 0;
@@ -2623,6 +2765,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
               caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
             }),
             cap.layerId,
+            '',
+            cap.instanceTranslations,
           );
           if (mesh) {
             mesh.userData.wafercadLayerId = cap.layerId || null;
@@ -2639,6 +2783,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
       throwIfAborted();
       const sidewallsByLayer = new Map();
       for (const sidewall of surfacePlan.sidewalls) {
+        if (sidewall.instanceTranslations) {
+          addExportMesh(
+            geometryFromSidewallParts(sidewall.parts || [sidewall]),
+            sidewall.layerId,
+            ' · sidewalls',
+            sidewall.instanceTranslations,
+          );
+          continue;
+        }
         if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
         sidewallsByLayer.get(sidewall.layerId).push(sidewall);
       }

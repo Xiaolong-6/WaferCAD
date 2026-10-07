@@ -1,3 +1,5 @@
+import { selectedMaskInstanceIndex } from '../mask-instance-index.js';
+import { isArrayModel } from '../model-array.js';
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
 import { validateProcessModel } from '../project-schema.js';
 import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
@@ -150,6 +152,7 @@ export function createProcessPanelController({
       'hidden',
       t === 'etch' || t === 'implant' || electrical || recordOnly,
     );
+    $('transferModeRow')?.classList.toggle('hidden', !transfer);
     $('operationAreaRow').classList.toggle('hidden', recordOnly);
     $('operationThicknessRow').classList.toggle('hidden', recordOnly);
     $('recordProcessParams').classList.toggle('hidden', !recordOnly);
@@ -255,7 +258,9 @@ export function createProcessPanelController({
                         ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
                         : 'Etch removes exposed material vertically in stack order and may create through-holes.'
             : transfer
-              ? 'Transfer / Laminate places a flat zero-gap membrane at the highest exposed target plane (lowest plane on the back face). It can bridge openings without filling the void underneath.'
+              ? $('transferMode')?.value === 'flat'
+                ? 'Transfer / Laminate places a flat membrane at the highest exposed target plane (lowest plane on the back face) and can bridge openings without filling them.'
+                : 'Transfer / Laminate follows each local exposed horizontal surface in the selected area. It does not coat sidewalls or create material inside uncovered voids.'
               : $('growthMode').value === 'conformal'
                 ? t === 'grow'
                   ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
@@ -312,6 +317,10 @@ export function createProcessPanelController({
     if (kind === 'add') {
       $('layerName').value = params.name || operation.name || '';
       $('growthMode').value = params.growth || operation.growth || 'direct';
+      if ((params.growth || operation.growth) === 'transfer' && $('transferMode')) {
+        // Missing transferMode identifies a legacy flat-bridge operation.
+        $('transferMode').value = params.transferMode || operation.transferMode || 'flat';
+      }
     } else if (kind === 'grow') {
       $('growthMode').value = params.growth || operation.growth || 'direct';
     } else if (kind === 'implant') {
@@ -794,7 +803,12 @@ export function createProcessPanelController({
     } else if (type === 'electrical') {
       params.electricalRegionType = $('electricalRegionType').value;
       params.electricalRegionSource = $('electricalRegionSource').value;
-    } else params.growth = $('growthMode').value;
+    } else {
+      params.growth = $('growthMode').value;
+      if (type === 'add' && params.growth === 'transfer') {
+        params.transferMode = $('transferMode')?.value === 'flat' ? 'flat' : 'follow';
+      }
+    }
 
     const taskLabel =
       type === 'etch'
@@ -826,6 +840,9 @@ export function createProcessPanelController({
         ? { drawMask: structuredClone(drawMask) }
         : {
             maskTransform: { ...maskTransform },
+            ...(isArrayModel(model)
+              ? { maskIndex: selectedMaskInstanceIndex(layout, selectedElement, maskTransform) }
+              : {}),
             elements: (layout.elements || []).filter(selectedElement).map((element) => ({
               kind: element.kind,
               width: element.width,
@@ -909,7 +926,7 @@ export function createProcessPanelController({
               : type === 'electrical'
                 ? `Electrical ${name} · ${params.electricalRegionType} · ${thicknessLabel}`
                 : params.growth === 'transfer'
-                  ? `Transfer ${name} · Flat · ${thicknessLabel}`
+                  ? `Transfer ${name} · ${params.transferMode === 'flat' ? 'Flat bridge' : 'Follow surface'} · ${thicknessLabel}`
                   : `Deposit ${name} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`;
 
     const operation = {
@@ -924,6 +941,7 @@ export function createProcessPanelController({
       etchTargetLayerIds: type === 'etch' ? params.etchTargetLayerIds : null,
       etchProfile: type === 'etch' ? params.etchProfile : null,
       growth: type === 'etch' || type === 'implant' || type === 'electrical' ? null : params.growth,
+      transferMode: params.growth === 'transfer' ? params.transferMode : null,
       targetZ: planarizeEtch ? thickness : null,
       surface:
         type === 'etch' && roughSurface

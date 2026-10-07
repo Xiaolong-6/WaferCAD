@@ -1,3 +1,4 @@
+import { referencedModelParts } from '../model-array.js';
 import { XY_UNITS } from '../units.js';
 
 export function syncThreeRenderModeButton(button, fast) {
@@ -200,6 +201,7 @@ export function createWorkspaceActionsController({
     $('operationType').onchange = updateOperationUI;
     $('operationArea').onchange = updateOperationUI;
     $('growthMode').onchange = updateOperationUI;
+    $('transferMode').onchange = updateOperationUI;
     $('etchProfile').onchange = updateOperationUI;
     $('etchSurfaceMode').onchange = updateOperationUI;
     $('roughPolarity').onchange = updateOperationUI;
@@ -216,7 +218,7 @@ export function createWorkspaceActionsController({
   }
 
   function modelHasDisplayMorphology() {
-    for (const region of getModel()?.regions || []) {
+    for (const region of referencedModelParts(getModel()).flatMap((m) => m?.regions || [])) {
       for (const segment of region.stack || []) {
         if (segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough') {
           return true;

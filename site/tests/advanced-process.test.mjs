@@ -63,6 +63,7 @@ test('Transfer/Laminate places one flat membrane plane and bridges open voids', 
     transferGap: 0.2,
     transferSource: 'SOI donor',
     growth: 'transfer',
+    transferMode: 'flat',
     face: 'front',
   });
 
@@ -74,6 +75,62 @@ test('Transfer/Laminate places one flat membrane plane and bridges open voids', 
   assert.deepEqual(bridge.stack, [{ layerId: result.layerId, z0: 5.2, z1: 5.3 }]);
   const supported = regionAt(model, [7, 0]);
   assert.equal(modelApi.surfaceSegment(supported.stack, 'front').layerId, result.layerId);
+});
+
+test('Transfer/Laminate follow mode lands on each local exposed surface without global-Z air gaps', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  modelApi.applyOperation(model, {
+    type: 'add',
+    name: 'Local gate step',
+    thickness: 2,
+    face: 'front',
+    area: vectorApi.rectMulti(6, 20),
+    growth: 'direct',
+  });
+
+  const result = runAdvanced(model, {
+    type: 'add',
+    name: '2D transfer',
+    thickness: 0.01,
+    transferGap: 0,
+    growth: 'transfer',
+    transferMode: 'follow',
+    face: 'front',
+  });
+
+  assert.equal(result.changed, true, result.error);
+  assert.equal(result.transferMode, 'follow');
+  const onStep = regionAt(model, [0, 0]).stack.find((segment) => segment.layerId === result.layerId);
+  const offStep = regionAt(model, [7, 0]).stack.find((segment) => segment.layerId === result.layerId);
+  assert.deepEqual(onStep, { layerId: result.layerId, z0: 7, z1: 7.01 });
+  assert.deepEqual(offStep, { layerId: result.layerId, z0: 5, z1: 5.01 });
+  assert.equal(validateProcessModel(model), model);
+});
+
+test('Transfer/Laminate follow mode does not invent film inside a true through-void', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  modelApi.applyOperation(model, {
+    type: 'etch',
+    thickness: 10,
+    face: 'front',
+    area: vectorApi.rectMulti(4, 20),
+    etchProfile: 'directional',
+    etchTargetLayerIds: ['base'],
+  });
+  const result = runAdvanced(model, {
+    type: 'add',
+    name: 'Supported transfer',
+    thickness: 0.01,
+    growth: 'transfer',
+    transferMode: 'follow',
+    face: 'front',
+  });
+  assert.equal(result.changed, true, result.error);
+  assert.equal(regionAt(model, [0, 0]), null);
+  assert.equal(
+    modelApi.surfaceSegment(regionAt(model, [7, 0]).stack, 'front').layerId,
+    result.layerId,
+  );
 });
 
 test('Undercut release laterally removes a selected sacrificial material under a membrane', () => {
@@ -146,6 +203,48 @@ test('vector booleans retry once on the 0.1 nm persistence grid after a sweep fa
     assert.equal(calls, 2);
   } finally {
     globalThis.polygonClipping.intersection = original;
+  }
+});
+
+test('vector booleans escalate canonical grids when the first quantized retry still fails', () => {
+  const original = globalThis.polygonClipping.intersection;
+  let calls = 0;
+  globalThis.polygonClipping.intersection = (...args) => {
+    calls++;
+    if (calls <= 2) throw new Error('synthetic output-ring failure');
+    return original(...args);
+  };
+  try {
+    const hit = vectorApi.intersection(
+      vectorApi.rectMulti(10.00004, 10.00004),
+      vectorApi.rectMulti(6.00004, 6.00004, 1.00004, 0),
+    );
+    assert.equal(vectorApi.isEmpty(hit), false);
+    assert.equal(calls, 3);
+  } finally {
+    globalThis.polygonClipping.intersection = original;
+  }
+});
+
+test('vector difference falls back to componentwise clipping after multipolygon sweep failures', () => {
+  const original = globalThis.polygonClipping.difference;
+  globalThis.polygonClipping.difference = (...args) => {
+    const subject = args[0];
+    if (Array.isArray(subject) && subject.length > 1) {
+      throw new Error('synthetic multipolygon output-ring failure');
+    }
+    return original(...args);
+  };
+  try {
+    const subject = [
+      ...vectorApi.rectMulti(4, 4, -4, 0),
+      ...vectorApi.rectMulti(4, 4, 4, 0),
+    ];
+    const result = vectorApi.difference(subject, vectorApi.rectMulti(2, 8, -5, 0));
+    assert.equal(result.length, 2);
+    assert.ok(result.every((polygon) => polygon.length > 0));
+  } finally {
+    globalThis.polygonClipping.difference = original;
   }
 });
 

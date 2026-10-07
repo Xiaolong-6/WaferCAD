@@ -1,3 +1,12 @@
+import {
+  ARRAY_MODEL_KERNEL,
+  MAX_ARRAY_INSTANCES,
+  MAX_ARRAY_TEMPLATES,
+  isArrayModel,
+  translateGeometry,
+  geometryBounds as arrayGeometryBounds,
+  geometryPointCount,
+} from './model-array.js';
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
 
 export const CURRENT_PROJECT_VERSION = 14;
@@ -145,6 +154,7 @@ function validateLayer(layer, index, ids) {
 
 function validateSurfaceAppearance(appearance, path) {
   assertObject(appearance, path);
+  if (appearance.sampleOrigin != null) assertPoint(appearance.sampleOrigin, `${path}.sampleOrigin`);
   if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
   assertLength(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
   const meanHeight = assertLength(appearance.meanHeight, `${path}.meanHeight`, { min: 1e-12 });
@@ -236,10 +246,13 @@ function createValidationContext() {
     models: new WeakMap(),
     layouts: new WeakMap(),
     geometry: {
+      arrayDomains: new Set(),
       validated: new WeakMap(),
       canonical: new WeakMap(),
       byContent: new Map(),
       bounds: new WeakMap(),
+      rectangles: new WeakMap(),
+      components: new WeakMap(),
       differences: new WeakMap(),
       intersections: new WeakMap(),
     },
@@ -261,6 +274,81 @@ function cachedGeometryBounds(geometry, cache) {
   return cache.bounds.get(geometry);
 }
 
+// A closed four-corner axis-aligned boundary admits an exact containment
+// proof from bounds. All other boundaries retain the robust polygon difference.
+function rectangularBoundary(geometry, cache) {
+  geometry = canonicalGeometry(geometry, cache);
+  if (cache.rectangles.has(geometry)) return cache.rectangles.get(geometry);
+  const ring = geometry.length === 1 && geometry[0].length === 1 ? geometry[0][0] : null;
+  let rectangle = Boolean(ring && ring.length === 5);
+  if (rectangle) {
+    for (let i = 0; i < 4; i++) {
+      const a = ring[i],
+        b = ring[i + 1];
+      if ((a[0] === b[0]) === (a[1] === b[1])) rectangle = false;
+    }
+    const bounds = cachedGeometryBounds(geometry, cache);
+    rectangle &&=
+      new Set(ring.slice(0, 4).map((p) => p.join('|'))).size === 4 &&
+      ring
+        .slice(0, 4)
+        .every(
+          ([x, y]) =>
+            (x === bounds.minX || x === bounds.maxX) && (y === bounds.minY || y === bounds.maxY),
+        );
+  }
+  cache.rectangles.set(geometry, rectangle);
+  return rectangle;
+}
+
+function geometryComponents(geometry, cache) {
+  if (!cache.components.has(geometry)) {
+    cache.components.set(
+      geometry,
+      geometry
+        .map((polygon, index) => ({
+          index,
+          bounds: geometryBounds([polygon]),
+        }))
+        .sort((a, b) => a.bounds.minX - b.bounds.minX),
+    );
+  }
+  return cache.components.get(geometry);
+}
+
+// Discard only polygons whose bounds cannot have a positive-area intersection
+// with any component on the other side. Intersect the remaining sets together,
+// preserving the original aggregate area tolerance and polygon order.
+function intersectionCandidates(left, right, cache) {
+  const sides = [geometryComponents(left, cache), geometryComponents(right, cache)];
+  const active = [[], []],
+    selected = [new Set(), new Set()];
+  const cursor = [0, 0];
+  while (cursor[0] < sides[0].length || cursor[1] < sides[1].length) {
+    const side =
+      cursor[1] >= sides[1].length ||
+      (cursor[0] < sides[0].length &&
+        sides[0][cursor[0]].bounds.minX <= sides[1][cursor[1]].bounds.minX)
+        ? 0
+        : 1;
+    const current = sides[side][cursor[side]++],
+      other = 1 - side;
+    active[other] = active[other].filter((entry) => entry.bounds.maxX > current.bounds.minX);
+    for (const previous of active[other]) {
+      if (
+        previous.bounds.maxY <= current.bounds.minY ||
+        current.bounds.maxY <= previous.bounds.minY
+      )
+        continue;
+      selected[side].add(current.index);
+      selected[other].add(previous.index);
+    }
+    active[side].push(current);
+  }
+  if (!selected[0].size) return null;
+  return [left.filter((_, i) => selected[0].has(i)), right.filter((_, i) => selected[1].has(i))];
+}
+
 function cachedGeometryArea(left, right, geometryCache, kind, operation) {
   left = canonicalGeometry(left, geometryCache);
   right = canonicalGeometry(right, geometryCache);
@@ -270,12 +358,26 @@ function cachedGeometryArea(left, right, geometryCache, kind, operation) {
     results = new WeakMap();
     cache.set(left, results);
   }
-  if (!results.has(right)) results.set(right, multiArea(operation(left, right)));
+  if (!results.has(right)) {
+    const candidates =
+      kind === 'intersections' ? intersectionCandidates(left, right, geometryCache) : [left, right];
+    const area = candidates ? multiArea(operation(...candidates)) : 0;
+    results.set(right, area);
+    if (kind === 'intersections') {
+      let reverse = cache.get(right);
+      if (!reverse) {
+        reverse = new WeakMap();
+        cache.set(right, reverse);
+      }
+      reverse.set(left, area);
+    }
+  }
   return results.get(right);
 }
 
 function validateModelGeometry(model, cache) {
   const boundaryBounds = cachedGeometryBounds(model.boundary, cache);
+  const rectangle = rectangularBoundary(model.boundary, cache);
   const dimensionTolerance = Math.max(1e-9, model.width, model.height) * 1e-9;
 
   if (
@@ -296,13 +398,22 @@ function validateModelGeometry(model, cache) {
 
   try {
     for (const current of entries) {
-      const outsideArea = cachedGeometryArea(
-        current.region.geom,
-        model.boundary,
-        cache,
-        'differences',
-        robustDifference,
-      );
+      const bounds = current.bounds;
+      const provablyContained =
+        rectangle &&
+        bounds.minX >= boundaryBounds.minX &&
+        bounds.minY >= boundaryBounds.minY &&
+        bounds.maxX <= boundaryBounds.maxX &&
+        bounds.maxY <= boundaryBounds.maxY;
+      const outsideArea = provablyContained
+        ? 0
+        : cachedGeometryArea(
+            current.region.geom,
+            model.boundary,
+            cache,
+            'differences',
+            robustDifference,
+          );
       if (outsideArea > areaTolerance) {
         fail(`model.regions[${current.index}].geom`, 'extends outside model.boundary.');
       }
@@ -341,7 +452,10 @@ function validateModelGeometry(model, cache) {
 
 function validateModel(model, budget, geometryCache) {
   assertObject(model, 'model');
-  if (model.kernel !== 'vector-2.5d-v1') fail('model.kernel', 'is not supported.');
+  if (model.kernel !== 'vector-2.5d-v1' && model.kernel !== ARRAY_MODEL_KERNEL)
+    fail('model.kernel', 'is not supported.');
+  if (model.array != null && !isArrayModel(model))
+    fail('model.array', 'requires the array model kernel.');
   if (!['circle', 'rect'].includes(model.shape)) fail('model.shape', 'must be circle or rect.');
   assertLength(model.width, 'model.width', { min: 1e-12 });
   assertLength(model.height, 'model.height', { min: 1e-12 });
@@ -490,6 +604,7 @@ function validateModel(model, budget, geometryCache) {
   }
 
   validateModelGeometry(model, geometryCache);
+  if (isArrayModel(model)) validateModelArray(model, budget, geometryCache);
 
   if (model.nextImplantId != null) {
     assertInteger(model.nextImplantId, 'model.nextImplantId', { min: 1 });
@@ -503,6 +618,113 @@ function validateModel(model, budget, geometryCache) {
   if (model.processRevision != null) {
     assertInteger(model.processRevision, 'model.processRevision', { min: 0 });
   }
+}
+
+function validateModelArray(model, budget, cache) {
+  const array = assertObject(model.array, 'model.array');
+  if (array.version !== 1) fail('model.array.version', 'is not supported.');
+  if (model.regions.length) fail('model.regions', 'must be empty for an instanced model.');
+  for (const key of ['implants', 'electricalRegions'])
+    for (const a of model[key] || [])
+      if (a.patches.length)
+        fail(`model.${key}`, 'must contain only annotation definitions in an array model.');
+  const templates = assertArray(array.templates, 'model.array.templates', MAX_ARRAY_TEMPLATES),
+    definitions = new Map();
+  if (!templates.length) fail('model.array.templates', 'must not be empty.');
+  const layerIds = new Set(model.layers.map((l) => l.id));
+  for (const [i, t] of templates.entries()) {
+    const path = `model.array.templates[${i}]`;
+    assertObject(t, path);
+    assertString(t.id, `${path}.id`, { max: 128 });
+    if (definitions.has(t.id)) fail(`${path}.id`, 'must be unique.');
+    assertObject(t.model, `${path}.model`);
+    if (t.model.kernel !== 'vector-2.5d-v1' || t.model.array != null)
+      fail(`${path}.model`, 'must be a non-nested canonical model.');
+    validateModel(t.model, budget, cache);
+    for (const l of t.model.layers)
+      if (!layerIds.has(l.id)) fail(`${path}.model.layers`, 'references a missing global layer.');
+    for (const key of ['implants', 'electricalRegions'])
+      for (const a of t.model[key] || []) {
+        const definition = (model[key] || []).find((r) => r.id === a.id);
+        if (!definition) fail(`${path}.model.${key}`, 'references a missing global annotation.');
+        for (const field of ['face', 'thickness', 'tilt', 'regionType', 'source'])
+          if (a[field] !== definition[field])
+            fail(`${path}.model.${key}`, 'has inconsistent physical annotation metadata.');
+      }
+    definitions.set(t.id, t.model);
+  }
+  const instances = assertArray(array.instances, 'model.array.instances', MAX_ARRAY_INSTANCES),
+    ids = new Set(),
+    entries = [];
+  if (!instances.length) fail('model.array.instances', 'must not be empty.');
+  const domainKey = JSON.stringify([
+    model.width,
+    model.height,
+    model.boundary,
+    templates.map((t) => [t.id, t.model.boundary]),
+    instances,
+  ]);
+  const proven = cache.arrayDomains.has(domainKey);
+  let domainPoints = 0;
+  for (const [i, instance] of instances.entries()) {
+    const path = `model.array.instances[${i}]`;
+    assertObject(instance, path);
+    assertString(instance.id, `${path}.id`, { max: 64 });
+    if (ids.has(instance.id)) fail(`${path}.id`, 'must be unique.');
+    ids.add(instance.id);
+    assertString(instance.templateId, `${path}.templateId`, { max: 128 });
+    const template = definitions.get(instance.templateId);
+    if (!template) fail(`${path}.templateId`, 'references an unknown template.');
+    assertCoordinate(instance.x, `${path}.x`);
+    assertCoordinate(instance.y, `${path}.y`);
+    domainPoints += geometryPointCount(template.boundary);
+    if (domainPoints > 250000)
+      fail('model.array.instances', 'exceeds the instance domain point budget.');
+    if (instance.role != null && !['device', 'background'].includes(instance.role))
+      fail(`${path}.role`, 'must be device or background.');
+    if (proven) continue;
+    const geom = translateGeometry(template.boundary, instance.x, instance.y),
+      bounds = arrayGeometryBounds(geom);
+    for (const value of [bounds.minX, bounds.maxX, bounds.minY, bounds.maxY])
+      assertCoordinate(value, `${path}.bounds`);
+    entries.push({ geom, bounds, path });
+  }
+  if (proven) return;
+  const tolerance = Math.max(1e-18, model.width * model.height * 1e-15);
+  const domains = entries.flatMap((e) => e.geom);
+  if (
+    cachedGeometryArea(domains, model.boundary, cache, 'differences', robustDifference) > tolerance
+  )
+    fail('model.array.instances', 'extends outside the physical model boundary.');
+  if (
+    cachedGeometryArea(model.boundary, domains, cache, 'differences', robustDifference) > tolerance
+  )
+    fail('model.array.instances', 'must cover the complete physical model domain.');
+  entries.sort((a, b) => a.bounds.minX - b.bounds.minX);
+  const active = [];
+  for (const current of entries) {
+    for (let i = active.length - 1; i >= 0; i--)
+      if (active[i].bounds.maxX <= current.bounds.minX) active.splice(i, 1);
+    for (const previous of active) {
+      if (
+        previous.bounds.maxY <= current.bounds.minY ||
+        current.bounds.maxY <= previous.bounds.minY
+      )
+        continue;
+      if (
+        cachedGeometryArea(
+          previous.geom,
+          current.geom,
+          cache,
+          'intersections',
+          robustIntersection,
+        ) > tolerance
+      )
+        fail(current.path, 'overlaps another instance domain.');
+    }
+    active.push(current);
+  }
+  cache.arrayDomains.add(domainKey);
 }
 
 function validateBounds(bounds, path) {

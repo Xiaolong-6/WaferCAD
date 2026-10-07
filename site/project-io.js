@@ -1,4 +1,6 @@
+import { isArrayModel, storedModelParts } from './model-array.js';
 import { migrateProjectFile, validateProjectFile } from './project-schema.js';
+import { compactGeometryDictionary, expandGeometryDictionary } from './project-geometry-storage.js';
 
 export const MAX_PROJECT_FILE_BYTES = 256 * 1024 * 1024;
 export const PROJECT_LENGTH_QUANTUM_UM = 0.0001;
@@ -6,6 +8,8 @@ export const DOWNLOAD_URL_REVOKE_DELAY_MS = 30_000;
 
 const LEGACY_STORAGE_ENCODING = 'shared-assets-v1';
 const STORAGE_ENCODING = 'shared-assets-v2';
+const TEMPLATE_STORAGE_ENCODING = 'shared-assets-v3';
+const ARRAY_STORAGE_ENCODING = 'shared-assets-v4';
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -52,6 +56,13 @@ function multiBounds(geometry) {
 
 function quantizeModel(model) {
   if (!isObject(model)) return;
+  if (isArrayModel(model)) {
+    for (const t of model.array.templates) quantizeModel(t.model);
+    for (const i of model.array.instances) {
+      i.x = quantizeLength(i.x);
+      i.y = quantizeLength(i.y);
+    }
+  }
   quantizeMultiPolygon(model.boundary);
   for (const region of model.regions || []) {
     quantizeMultiPolygon(region.geom);
@@ -60,6 +71,7 @@ function quantizeModel(model) {
       segment.z1 = quantizeLength(segment.z1);
       for (const appearance of [segment.frontSurface, segment.backSurface]) {
         if (!isObject(appearance)) continue;
+        if (appearance.sampleOrigin) quantizePoint(appearance.sampleOrigin);
         appearance.featureSize = quantizeLength(appearance.featureSize);
         appearance.meanHeight = quantizeLength(appearance.meanHeight);
         if (appearance.etchDepth != null)
@@ -75,6 +87,8 @@ function quantizeModel(model) {
       patch.zMin = quantizeLength(patch.zMin);
       patch.zMax = quantizeLength(patch.zMax);
       if (isObject(patch.surfaceAppearance)) {
+        if (patch.surfaceAppearance.sampleOrigin)
+          quantizePoint(patch.surfaceAppearance.sampleOrigin);
         patch.surfaceAppearance.featureSize = quantizeLength(patch.surfaceAppearance.featureSize);
         patch.surfaceAppearance.meanHeight = quantizeLength(patch.surfaceAppearance.meanHeight);
         if (patch.surfaceAppearance.etchDepth != null) {
@@ -190,6 +204,8 @@ function cloneCore(value, { model = true, layout = true, snapshotBranches = true
       key === 'sharedLayouts' ||
       key === 'sharedModels' ||
       key === 'sharedGeometries' ||
+      key === 'sharedPolygonTemplates' ||
+      key === 'sharedArrayInstances' ||
       key === 'storage'
     )
       continue;
@@ -210,7 +226,7 @@ function cloneRecordMetadata(record, stateKey) {
 }
 
 function forEachStoredGeometry(project, visit) {
-  for (const model of [project.model, ...(project.sharedModels || [])]) {
+  for (const model of [project.model, ...(project.sharedModels || [])].flatMap(storedModelParts)) {
     if (!isObject(model)) continue;
     visit(model, 'boundary');
     for (const region of model.regions || []) visit(region, 'geom');
@@ -220,7 +236,7 @@ function forEachStoredGeometry(project, visit) {
   }
 }
 
-function packProjectGeometry(project) {
+function packProjectGeometry(project, { geometryTemplates = true } = {}) {
   const geometries = [];
   const candidates = new Map();
   const identities = new WeakMap();
@@ -243,6 +259,64 @@ function packProjectGeometry(project) {
     delete owner[key];
   });
   project.sharedGeometries = geometries;
+  return geometryTemplates && compactGeometryDictionary(project)
+    ? TEMPLATE_STORAGE_ENCODING
+    : STORAGE_ENCODING;
+}
+
+function packArrayAssets(project, modelAssets) {
+  const instances = [],
+    byContent = new Map();
+  let found = false;
+  // resolve() can append leaf models; array models never nest.
+  for (const model of [project.model, ...modelAssets.shared]) {
+    if (!isArrayModel(model)) continue;
+    found = true;
+    for (const t of model.array.templates) {
+      t.modelRef = modelAssets.resolve(t.model);
+      delete t.model;
+    }
+    const key = JSON.stringify(model.array.instances);
+    let ref = byContent.get(key);
+    if (ref === undefined) {
+      ref = instances.length;
+      instances.push(model.array.instances);
+      byContent.set(key, ref);
+    }
+    model.array.instancesRef = ref;
+    delete model.array.instances;
+  }
+  if (found) project.sharedArrayInstances = instances;
+  return found;
+}
+function expandArrayAssets(project, sharedModels) {
+  const instances = project.sharedArrayInstances || [];
+  if (!Array.isArray(instances) || instances.length > 1000)
+    throw new Error('Invalid shared array instance dictionary.');
+  for (const model of [project.model, ...sharedModels]) {
+    if (!isArrayModel(model)) continue;
+    if (!model.array || !Array.isArray(model.array.templates))
+      throw new Error('Invalid model array template dictionary.');
+    for (const t of model.array.templates) {
+      if (!isObject(t)) throw new Error('Invalid model array template.');
+      if (t.model == null)
+        t.model = resolveAsset(t.modelRef, project.model, sharedModels, 'array model');
+      delete t.modelRef;
+    }
+    if (model.array.instances == null) {
+      const ref = model.array.instancesRef;
+      if (
+        !Number.isInteger(ref) ||
+        ref < 0 ||
+        ref >= instances.length ||
+        !Array.isArray(instances[ref])
+      )
+        throw new Error('Invalid array instance dictionary reference.');
+      model.array.instances = instances[ref];
+    }
+    delete model.array.instancesRef;
+  }
+  delete project.sharedArrayInstances;
 }
 
 function expandProjectGeometry(project) {
@@ -344,7 +418,7 @@ function packWorkspaceState(state, modelAssets, layoutAssets, { quantize = false
   return packed;
 }
 
-export function prepareProjectForWorkspaceStorage(project) {
+export function prepareProjectForWorkspaceStorage(project, options = {}) {
   validateProjectFile(project);
 
   const stored = cloneCore(project, { snapshotBranches: false });
@@ -377,11 +451,12 @@ export function prepareProjectForWorkspaceStorage(project) {
     });
   }
 
+  const arrayAssets = packArrayAssets(stored, modelAssets);
   if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
   if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
-  packProjectGeometry(stored);
+  const encoding = packProjectGeometry(stored, options);
   stored.storage = {
-    encoding: STORAGE_ENCODING,
+    encoding: arrayAssets ? ARRAY_STORAGE_ENCODING : encoding,
     lossless: true,
   };
   return stored;
@@ -519,11 +594,12 @@ export function prepareProjectForStorage(project) {
     });
   }
 
+  const arrayAssets = packArrayAssets(stored, modelAssets);
   if (layoutAssets.shared.length) stored.sharedLayouts = layoutAssets.shared;
   if (modelAssets.shared.length) stored.sharedModels = modelAssets.shared;
-  packProjectGeometry(stored);
+  const encoding = packProjectGeometry(stored);
   stored.storage = {
-    encoding: STORAGE_ENCODING,
+    encoding: arrayAssets ? ARRAY_STORAGE_ENCODING : encoding,
     lengthQuantumUm: PROJECT_LENGTH_QUANTUM_UM,
   };
 
@@ -551,10 +627,25 @@ function resolveAsset(reference, rootAsset, sharedAssets, label) {
 export function expandProjectStorage(project) {
   if (!isObject(project) || !project.storage?.encoding) return project;
   const encoding = project.storage.encoding;
-  if (encoding !== STORAGE_ENCODING && encoding !== LEGACY_STORAGE_ENCODING) {
+  if (
+    encoding !== STORAGE_ENCODING &&
+    encoding !== TEMPLATE_STORAGE_ENCODING &&
+    encoding !== ARRAY_STORAGE_ENCODING &&
+    encoding !== LEGACY_STORAGE_ENCODING
+  ) {
     throw new Error(`Project file storage encoding is not supported: ${encoding}.`);
   }
-  if (encoding === STORAGE_ENCODING) expandProjectGeometry(project);
+  if (
+    encoding === TEMPLATE_STORAGE_ENCODING ||
+    (encoding === ARRAY_STORAGE_ENCODING && project.sharedPolygonTemplates)
+  )
+    expandGeometryDictionary(project);
+  if (
+    encoding === STORAGE_ENCODING ||
+    encoding === TEMPLATE_STORAGE_ENCODING ||
+    encoding === ARRAY_STORAGE_ENCODING
+  )
+    expandProjectGeometry(project);
 
   const sharedLayouts = Array.isArray(project.sharedLayouts) ? project.sharedLayouts : [];
   const sharedModels = Array.isArray(project.sharedModels) ? project.sharedModels : [];
@@ -586,6 +677,7 @@ export function expandProjectStorage(project) {
   for (const node of project.snapshotBranches?.nodes || []) expandState(node?.state);
   for (const branch of project.snapshotBranches?.branches || []) expandState(branch?.headState);
 
+  if (encoding === ARRAY_STORAGE_ENCODING) expandArrayAssets(project, sharedModels);
   delete project.sharedLayouts;
   delete project.sharedModels;
   delete project.storage;

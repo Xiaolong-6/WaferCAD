@@ -21,9 +21,9 @@ test('core geometry changes schedule only the process browser owner', () => {
   assert.deepEqual(enabled(plan), ['smoke', 'process']);
 });
 
-test('project schema changes schedule persistence without unrelated example coverage', () => {
+test('project schema changes schedule persistence and process validation coverage', () => {
   const plan = buildCiTestPlan(['site/project-schema.js']);
-  assert.deepEqual(enabled(plan), ['smoke', 'persistence']);
+  assert.deepEqual(enabled(plan), ['smoke', 'persistence', 'process']);
 });
 
 test('shared polygon boolean kernel schedules persistence and process coverage', () => {
@@ -141,4 +141,35 @@ test('new storage and import modules schedule their persistence browser owner', 
 
 test('Welcome bootstrap schedules its workstation browser owner', () => {
   assert.deepEqual(enabled(buildCiTestPlan(['site/welcome.js'])), ['smoke', 'workstation']);
+});
+
+test('geometry codec and real IO runtime coverage select strict process and persistence owners', () => {
+  assert.deepEqual(enabled(buildCiTestPlan(['site/project-io.js'])), [
+    'smoke',
+    'persistence',
+    'process',
+  ]);
+  assert.deepEqual(enabled(buildCiTestPlan(['site/project-geometry-storage.js'])), [
+    'smoke',
+    'persistence',
+    'process',
+  ]);
+  assert.deepEqual(enabled(buildCiTestPlan(['scripts/project-io-runtime-regression.mjs'])), [
+    'smoke',
+    'persistence',
+    'process',
+  ]);
+});
+
+test('array runtime and renderer regressions select their owning browser suites', () => {
+  assert.deepEqual(enabled(buildCiTestPlan(['scripts/array-runtime-regression.mjs'])), [
+    'smoke',
+    'persistence',
+    'renderer',
+    'process',
+  ]);
+  assert.deepEqual(enabled(buildCiTestPlan(['scripts/array-renderer-regression.mjs'])), [
+    'smoke',
+    'renderer',
+  ]);
 });

@@ -1,4 +1,13 @@
 import {
+  isArrayModel,
+  arrayParts,
+  resolveArrayModel,
+  geometryBounds as arrayBounds,
+  lineBounds,
+  translatedStack,
+  translatedAppearance,
+} from './model-array.js';
+import {
   difference,
   intersection,
   isEmpty,
@@ -22,14 +31,27 @@ import {
 // Topology v2 owns the shared volumetric/section derivation; this module keeps
 // the stable view-facing API.
 export function extrusionGroups(model, clip = null) {
+  if (isArrayModel(model))
+    return extrusionGroups(resolveArrayModel(model, clip ? arrayBounds(clip) : null), clip);
   return extrusionGroupsFromTopology(visibleMaterialModel(model), clip);
 }
 
 export function sectionColumns(model, a, b) {
+  if (isArrayModel(model))
+    return arrayParts(model, lineBounds(a, b), { touch: true }).flatMap((p) =>
+      sectionColumns(p.model, [a[0] - p.x, a[1] - p.y], [b[0] - p.x, b[1] - p.y]).map((c) => ({
+        ...c,
+        stack: translatedStack(c.stack, p.x, p.y),
+      })),
+    );
   return sectionColumnsFromTopology(visibleMaterialModel(model), a, b);
 }
 
 export function sectionSlices(model, a, b) {
+  if (isArrayModel(model))
+    return arrayParts(model, lineBounds(a, b), { touch: true }).flatMap((p) =>
+      sectionSlices(p.model, [a[0] - p.x, a[1] - p.y], [b[0] - p.x, b[1] - p.y]),
+    );
   return sectionSlicesFromTopology(visibleMaterialModel(model), a, b);
 }
 
@@ -37,6 +59,7 @@ export function sectionSlices(model, a, b) {
 // Topology v2 owns which horizontal faces are physically exposed and which
 // rough interfaces are buried; the view layer only adapts those facts.
 export function surfaceGroups(model, face = 'front') {
+  if (isArrayModel(model)) return surfaceGroups(resolveArrayModel(model), face);
   return visibleSurfaceGroups(visibleMaterialModel(model), { face }).map(
     ({ layerId, z, geom, appearance }) => ({
       layerId,
@@ -48,6 +71,8 @@ export function surfaceGroups(model, face = 'front') {
 }
 
 export function appearanceSurfaceGroups(model, clip = null) {
+  if (isArrayModel(model))
+    return appearanceSurfaceGroups(resolveArrayModel(model, clip ? arrayBounds(clip) : null), clip);
   return appearanceSurfaceGroupsFromTopology(visibleMaterialModel(model), clip).map(
     ({ layerId, z, face, profileNormal, appearance, buried, polys }) => ({
       layerId,
@@ -84,6 +109,8 @@ export function sectionContours(model, a, b) {
 // Only footprint differences become horizontal caps; overlapping slab
 // transitions are internal and never rendered as physical faces.
 export function materialSolids(model, clip = null) {
+  if (isArrayModel(model))
+    return materialSolids(resolveArrayModel(model, clip ? arrayBounds(clip) : null), clip);
   return materialSolidsFromTopology(visibleMaterialModel(model), clip);
 }
 
@@ -315,10 +342,14 @@ function electricalRegionFragments(model, clip = null) {
 }
 
 export function implantSurfaceGroups(model, clip = null) {
+  if (isArrayModel(model))
+    return implantSurfaceGroups(resolveArrayModel(model, clip ? arrayBounds(clip) : null), clip);
   return annotationSurfaceGroups(implantFragments(model, clip));
 }
 
 export function implantSolids(model, clip = null) {
+  if (isArrayModel(model))
+    return implantSolids(resolveArrayModel(model, clip ? arrayBounds(clip) : null), clip);
   return annotationSolids(implantFragments(model, clip));
 }
 
@@ -386,17 +417,37 @@ export function annotationInspectionCutSegments(annotation, clip) {
 }
 
 export function implantSectionBands(model, a, b) {
+  if (isArrayModel(model))
+    return arrayParts(model, lineBounds(a, b), { touch: true }).flatMap((p) =>
+      implantSectionBands(p.model, [a[0] - p.x, a[1] - p.y], [b[0] - p.x, b[1] - p.y]).map((c) => ({
+        ...c,
+        surfaceAppearance: translatedAppearance(c.surfaceAppearance, p.x, p.y),
+      })),
+    );
   return annotationSectionBands(implantFragments(model), a, b);
 }
 
 export function electricalRegionSurfaceGroups(model, clip = null) {
+  if (isArrayModel(model))
+    return electricalRegionSurfaceGroups(
+      resolveArrayModel(model, clip ? arrayBounds(clip) : null),
+      clip,
+    );
   return annotationSurfaceGroups(electricalRegionFragments(model, clip));
 }
 
 export function electricalRegionSolids(model, clip = null) {
+  if (isArrayModel(model))
+    return electricalRegionSolids(resolveArrayModel(model, clip ? arrayBounds(clip) : null), clip);
   return annotationSolids(electricalRegionFragments(model, clip));
 }
 
 export function electricalRegionSectionBands(model, a, b) {
+  if (isArrayModel(model))
+    return arrayParts(model, lineBounds(a, b), { touch: true }).flatMap((p) =>
+      electricalRegionSectionBands(p.model, [a[0] - p.x, a[1] - p.y], [b[0] - p.x, b[1] - p.y]).map(
+        (c) => ({ ...c, surfaceAppearance: translatedAppearance(c.surfaceAppearance, p.x, p.y) }),
+      ),
+    );
   return annotationSectionBands(electricalRegionFragments(model), a, b);
 }

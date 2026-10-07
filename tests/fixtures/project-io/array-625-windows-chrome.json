@@ -1,0 +1,63 @@
+{
+  "browserVersion": "154.0.8037.98",
+  "sites": 625,
+  "operations": [
+    {
+      "type": "add",
+      "name": "Array film",
+      "thickness": 0.01,
+      "area": "full",
+      "status": "Deposited Array film \u00c2\u00b7 Directional on the front.",
+      "seconds": 15.404127100000006,
+      "passed": true
+    },
+    {
+      "type": "add",
+      "name": "Array conformal",
+      "thickness": 0.01,
+      "layer": 9,
+      "growth": "conformal",
+      "status": "Deposited Array conformal \u00c2\u00b7 Conformal on the front.",
+      "seconds": 91.34676960000002,
+      "passed": true
+    },
+    {
+      "type": "etch",
+      "name": "Array continued etch",
+      "thickness": 0.01,
+      "target": "Array conformal",
+      "area": "full",
+      "status": "Etched Array conformal on the front.",
+      "seconds": 18.600210099999998,
+      "passed": true
+    }
+  ],
+  "nativeSidewallSegments": 11875,
+  "nativeSidewallSites": 625,
+  "exportedBytes": 3666491,
+  "exportMs": 18364.13989999998,
+  "reopenedMs": 45607.192099999986,
+  "steps": 43,
+  "physicalModelAndHistoryRoundTripEqual": true,
+  "cameraMaxDifference": 8.731149137020111e-11,
+  "continuedProcessPassed": true,
+  "nativeMetalAndContactSites": 625,
+  "initialBytes": 2677401,
+  "openedMs": 17068.205899999997,
+  "fullWaferSvgInstances": 1885,
+  "glbGateSites": 625,
+  "glbBytes": 4910188,
+  "frames": 10388,
+  "errors": [],
+  "measurement": "Single local acceptance run; browser-owner regression also active, not a median",
+  "nodeVersion": "24.19.0",
+  "playwrightVersion": "1.55.1",
+  "threeVersion": "0.179.1",
+  "before": {
+    "conformalUiSeconds": 158.7533651,
+    "conformalWorkerMs": 124454.7
+  },
+  "conformalWorkerMs": 61448.3,
+  "importWorkerMs": 3808.4,
+  "modifiedImportWorkerMs": 3660.7
+}

@@ -55,3 +55,20 @@ test('Native three-tier Fig3 preserves gates, contact windows, isolation, CMP an
   assert.deepEqual(project.snapshotBranches.nodes.slice(0, 22), original.snapshotBranches.nodes);
   assert.deepEqual(project.selectedLayerKeys, ['10|0', '11|0', '12|0', '13|0']);
 });
+
+test('Native full-wafer Fig3 retains the verified 625-site recipe and all recorded Steps', async () => {
+  const { readProjectFile } = await import('../project-io.js');
+  const { pointInMulti } = await import('../vector-geometry.js');
+  const text = await readFile(
+    new URL('../examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
+    'utf8',
+  );
+  const project = await readProjectFile({ size: Buffer.byteLength(text), text: async () => text });
+  assert.deepEqual(assertNativeFig3Contract(project, pointInMulti), {
+    tiers: 3,
+    nativeConformalGates: 3,
+    nativeConformalLiners: 2,
+    steps: 40,
+  });
+  assert.equal(project.snapshots.length, 5);
+});

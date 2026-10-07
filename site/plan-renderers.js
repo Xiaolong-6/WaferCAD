@@ -1,3 +1,9 @@
+import {
+  isArrayModel,
+  arrayParts,
+  geometryBounds as arrayBounds,
+  boundsOverlap,
+} from './model-array.js';
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { layerById, modelBoundsZ } from './model.js';
 import {
@@ -159,6 +165,162 @@ export function createPlanRenderers({
     patches: [],
   };
 
+  const arrayImageCaches = new WeakMap();
+  function arrayLeafDrawing(ctx, leaf, v, back, mask) {
+    const bounds = arrayBounds(leaf.boundary);
+    const stroke = (geom) => {
+      ctx.beginPath();
+      for (const polygon of geom)
+        for (const ring of polygon)
+          for (let i = 1; i < ring.length; i++) {
+            const a = ring[i - 1],
+              b = ring[i];
+            if (
+              (a[0] === b[0] && (a[0] === bounds.minX || a[0] === bounds.maxX)) ||
+              (a[1] === b[1] && (a[1] === bounds.minY || a[1] === bounds.maxY))
+            )
+              continue;
+            const p = worldToCanvas(a, v, back),
+              q = worldToCanvas(b, v, back);
+            ctx.moveTo(...p);
+            ctx.lineTo(...q);
+          }
+      ctx.stroke();
+    };
+    const { activeFace } = getState();
+    for (const patch of surfaceGroups(leaf, activeFace)) {
+      if (!mask) {
+        const layer = layerById(leaf, patch.layerId);
+        if (!layer) continue;
+        canvasPathMulti(ctx, patch.geom, v, back);
+        ctx.fillStyle = shadeColor(layer.color, Math.max(-12, Math.min(14, patch.z * 0.8)));
+        ctx.fill('evenodd');
+      }
+      ctx.strokeStyle = mask ? 'rgba(86,100,114,.58)' : 'rgba(36,46,56,.24)';
+      ctx.lineWidth = mask ? 0.8 : 0.65;
+      ctx.setLineDash(mask ? [4, 3] : []);
+      stroke(patch.geom);
+    }
+    for (const patch of surfaceGroups(leaf, activeFace))
+      if (patch.appearance?.kind === 'rough') {
+        canvasPathMulti(ctx, patch.geom, v, back);
+        ctx.fillStyle = 'rgba(17,24,32,.09)';
+        ctx.fill('evenodd');
+      }
+    if (mask) return;
+    for (const [items, alpha] of [
+      [implantSurfaceGroups(leaf), 0.14],
+      [electricalRegionSurfaceGroups(leaf), 0.1],
+    ])
+      for (const item of items) {
+        if (item.face !== activeFace) continue;
+        canvasPathMulti(ctx, item.polys, v, back);
+        ctx.fillStyle = rgbaColor(item.color, alpha);
+        ctx.fill('evenodd');
+        if (alpha === 0.1) {
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = rgbaColor(item.color, 0.78);
+          ctx.lineWidth = 0.85;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+  }
+  function drawArrayPlan(ctx, v, back, mask = false) {
+    const { model, activeFace } = getState(),
+      scale = Math.abs(v.s);
+    const signature = [model.revision, model.processRevision, scale, back, mask, activeFace].join(
+      '|',
+    );
+    let arrayImageCache = arrayImageCaches.get(ctx.canvas);
+    if (arrayImageCache?.model !== model || arrayImageCache.signature !== signature) {
+      arrayImageCache = { model, signature, images: new Map() };
+      arrayImageCaches.set(ctx.canvas, arrayImageCache);
+    }
+    let drawn = 0,
+      vectors = 0;
+    const view = {
+      minX: -v.cx / scale,
+      maxX: ((ctx.canvas.getBoundingClientRect().width || ctx.canvas.width) - v.cx) / scale,
+      minY: (v.cy - (ctx.canvas.getBoundingClientRect().height || ctx.canvas.height)) / scale,
+      maxY: v.cy / scale,
+    };
+    if (back) {
+      const low = -view.maxX;
+      view.maxX = -view.minX;
+      view.minX = low;
+    }
+    if (!mask) {
+      const backgrounds = new Map();
+      for (const part of arrayParts(model))
+        if (part.role === 'background' && boundsOverlap(part.bounds, view)) {
+          for (const patch of surfaceGroups(part.model, activeFace)) {
+            const layer = layerById(part.model, patch.layerId);
+            if (!layer) continue;
+            const color = shadeColor(layer.color, Math.max(-12, Math.min(14, patch.z * 0.8)));
+            if (!backgrounds.has(color)) backgrounds.set(color, []);
+            backgrounds.get(color).push({ part, geom: patch.geom });
+          }
+        }
+      for (const [color, items] of backgrounds) {
+        ctx.beginPath();
+        for (const { part, geom } of items)
+          for (const polygon of geom)
+            for (const ring of polygon) {
+              ring.forEach(([x, y], i) => {
+                const p = worldToCanvas([x + part.x, y + part.y], v, back);
+                if (i === 0) ctx.moveTo(...p);
+                else ctx.lineTo(...p);
+              });
+              ctx.closePath();
+            }
+        ctx.fillStyle = color;
+        ctx.fill('evenodd');
+      }
+    }
+    for (const part of arrayParts(model)) {
+      if (!boundsOverlap(part.bounds, view)) continue;
+      drawn++;
+      const box = arrayBounds(part.model.boundary),
+        width = box.width * scale,
+        height = box.height * scale;
+      if (Math.max(width, height) > 2048) {
+        vectors++;
+        ctx.save();
+        arrayLeafDrawing(
+          ctx,
+          part.model,
+          { ...v, cx: v.cx + (back ? -part.x : part.x) * scale, cy: v.cy - part.y * scale },
+          back,
+          mask,
+        );
+        ctx.restore();
+        continue;
+      }
+      let image = arrayImageCache.images.get(part.model);
+      if (!image) {
+        image = root.createElement
+          ? root.createElement('canvas')
+          : document.createElement('canvas');
+        image.width = Math.max(1, Math.ceil(width)) + 4;
+        image.height = Math.max(1, Math.ceil(height)) + 4;
+        const leafView = {
+          ...v,
+          cx: 2 + (back ? box.maxX : -box.minX) * scale,
+          cy: 2 + box.maxY * scale,
+        };
+        arrayLeafDrawing(image.getContext('2d'), part.model, leafView, back, mask);
+        arrayImageCache.images.set(part.model, image);
+      }
+      const left = v.cx + (back ? -part.bounds.maxX : part.bounds.minX) * scale - 2,
+        top = v.cy - part.bounds.maxY * scale - 2;
+      ctx.drawImage(image, left, top);
+    }
+    ctx.canvas.dataset.arrayDrawnInstances = String(drawn);
+    ctx.canvas.dataset.arrayTemplateImages = String(arrayImageCache.images.size);
+    ctx.canvas.dataset.arrayVectorInstances = String(vectors);
+  }
+
   function maskStructurePatches() {
     const { model, activeFace } = getState();
     if (
@@ -211,6 +373,10 @@ export function createPlanRenderers({
 
   function drawMaskStructureReference(ctx, v) {
     const { model, activeFace } = getState();
+    if (isArrayModel(model)) {
+      drawArrayPlan(ctx, v, activeFace === 'back', true);
+      return;
+    }
     ctx.save();
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -232,6 +398,7 @@ export function createPlanRenderers({
 
   function fillRoughPlanOverlay(ctx, v, back, alpha = 0.08) {
     const { model, activeFace } = getState();
+    if (isArrayModel(model)) return;
     ctx.save();
     ctx.fillStyle = `rgba(17,24,32,${Math.max(0, Math.min(0.2, alpha))})`;
     // Plan views describe the currently exposed process face. Buried rough
@@ -294,38 +461,41 @@ export function createPlanRenderers({
     $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
     ctx.clearRect(0, 0, w, h);
     drawBaseOutline(ctx, v, { fill: false, back });
-    const patches = surfaceGroups(model, activeFace);
-    for (const patch of patches) {
-      const layer = layerById(model, patch.layerId);
-      if (!layer) continue;
-      canvasPathMulti(ctx, patch.geom, v, back);
-      const shade = Math.max(-12, Math.min(14, patch.z * 0.8));
-      ctx.fillStyle = shadeColor(layer.color, shade);
-      ctx.fill('evenodd');
-      ctx.strokeStyle = 'rgba(36,46,56,.24)';
-      ctx.lineWidth = 0.65;
-      ctx.stroke();
-    }
-    fillRoughPlanOverlay(ctx, v, back, 0.09);
-    for (const implant of implantSurfaceGroups(model)) {
-      if (implant.face !== activeFace) continue;
-      ctx.save();
-      canvasPathMulti(ctx, implant.polys, v, back);
-      ctx.fillStyle = rgbaColor(implant.color, 0.14);
-      ctx.fill('evenodd');
-      ctx.restore();
-    }
-    for (const electrical of electricalRegionSurfaceGroups(model)) {
-      if (electrical.face !== activeFace) continue;
-      ctx.save();
-      canvasPathMulti(ctx, electrical.polys, v, back);
-      ctx.fillStyle = rgbaColor(electrical.color, 0.1);
-      ctx.fill('evenodd');
-      ctx.setLineDash([3, 3]);
-      ctx.strokeStyle = rgbaColor(electrical.color, 0.78);
-      ctx.lineWidth = 0.85;
-      ctx.stroke();
-      ctx.restore();
+    if (isArrayModel(model)) drawArrayPlan(ctx, v, back);
+    else {
+      const patches = surfaceGroups(model, activeFace);
+      for (const patch of patches) {
+        const layer = layerById(model, patch.layerId);
+        if (!layer) continue;
+        canvasPathMulti(ctx, patch.geom, v, back);
+        const shade = Math.max(-12, Math.min(14, patch.z * 0.8));
+        ctx.fillStyle = shadeColor(layer.color, shade);
+        ctx.fill('evenodd');
+        ctx.strokeStyle = 'rgba(36,46,56,.24)';
+        ctx.lineWidth = 0.65;
+        ctx.stroke();
+      }
+      fillRoughPlanOverlay(ctx, v, back, 0.09);
+      for (const implant of implantSurfaceGroups(model)) {
+        if (implant.face !== activeFace) continue;
+        ctx.save();
+        canvasPathMulti(ctx, implant.polys, v, back);
+        ctx.fillStyle = rgbaColor(implant.color, 0.14);
+        ctx.fill('evenodd');
+        ctx.restore();
+      }
+      for (const electrical of electricalRegionSurfaceGroups(model)) {
+        if (electrical.face !== activeFace) continue;
+        ctx.save();
+        canvasPathMulti(ctx, electrical.polys, v, back);
+        ctx.fillStyle = rgbaColor(electrical.color, 0.1);
+        ctx.fill('evenodd');
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = rgbaColor(electrical.color, 0.78);
+        ctx.lineWidth = 0.85;
+        ctx.stroke();
+        ctx.restore();
+      }
     }
     ctx.save();
     ctx.setLineDash([5, 4]);
