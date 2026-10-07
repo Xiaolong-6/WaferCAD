@@ -212,18 +212,120 @@ test('worker-ready rough mesh data is transferable and reconstructs geometry met
 
   assert.ok(data.positions instanceof Float32Array);
   assert.ok(data.normals instanceof Float32Array);
+  assert.ok(data.gpuDisplace instanceof Float32Array);
   assert.ok(data.roughBorderPositions instanceof Float32Array);
   assert.ok(data.positions.length > 0);
   assert.equal(data.positions.length, data.normals.length);
+  assert.equal(data.gpuDisplace.length, 0);
   assert.equal(data.metadata.roughLodZoneCount, 2);
   assert.equal(data.metadata.roughLodStitchCount, 1);
 
   const geometry = geometryFromRoughMeshData(THREE, data);
   assert.equal(geometry.attributes.position.array, data.positions);
   assert.equal(geometry.attributes.normal.array, data.normals);
+  assert.equal(geometry.attributes.waferCadGpuDisplace, undefined);
+  assert.equal(geometry.userData.roughGpuDisplacement, false);
   assert.equal(geometry.userData.roughLodZoneCount, data.metadata.roughLodZoneCount);
   assert.equal(
     geometry.userData.roughSubdivisionTriangleCount,
     data.metadata.roughSubdivisionTriangleCount,
   );
+});
+
+
+test('GPU rough mode keeps cap vertices ideal and marks only shader-displaced triangles', () => {
+  const appearance = {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 0.5,
+      meanHeight: 0.1,
+      etchDepth: 0.1,
+      featureCv: 0,
+      heightCv: 0,
+      seed: 11,
+      geometryMode: 'ideal',
+    },
+    zone = {
+      baseTriangles: squareTriangles,
+      maxEdge: Math.SQRT2,
+      edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+      triangleBudget: 8,
+      lodContext: {
+        distance: 20,
+        viewportWidth: 640,
+        viewportHeight: 480,
+        pixelRatio: 1,
+        fovDegrees: 34,
+        visibleFraction: 1,
+        roiFraction: 1,
+        screenPriority: 1,
+        maxDepth: 1,
+      },
+    },
+    data = roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      lodZones: [zone],
+      closeToIdeal: true,
+      gpuDisplacement: true,
+    });
+
+  assert.equal(data.metadata.roughGpuDisplacement, true);
+  assert.equal(data.gpuDisplace.length, data.positions.length / 3);
+  assert.ok(data.gpuDisplace.some((value) => value === 1));
+  assert.ok(data.gpuDisplace.some((value) => value === 0));
+
+  for (let index = 0; index < data.gpuDisplace.length; index++) {
+    if (data.gpuDisplace[index] !== 1) continue;
+    assert.equal(data.positions[index * 3 + 2], 0);
+    assert.deepEqual(
+      Array.from(data.normals.slice(index * 3, index * 3 + 3)),
+      [0, 0, 1],
+    );
+  }
+});
+
+
+test('GPU rough cap interior does not sample the CPU morphology field', () => {
+  const appearance = new Proxy(
+      { kind: 'rough', featureSize: 0.5 },
+      {
+        get(target, property) {
+          if (property === 'featureSize' || property === 'kind') return target[property];
+          throw new Error(`CPU morphology field was sampled through ${String(property)}`);
+        },
+      },
+    ),
+    zone = {
+      baseTriangles: squareTriangles,
+      maxEdge: Math.SQRT2,
+      edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+      triangleBudget: 2,
+      lodContext: {
+        distance: 1000,
+        viewportWidth: 100,
+        viewportHeight: 100,
+        pixelRatio: 1,
+        fovDegrees: 34,
+        visibleFraction: 1,
+        roiFraction: 1,
+        screenPriority: 0.1,
+        maxDepth: 0,
+      },
+    };
+
+  const data = roughMeshDataFromPreparedCap({
+    z: 0,
+    normal: 1,
+    appearance,
+    lodZones: [zone],
+    closeToIdeal: false,
+    gpuDisplacement: true,
+  });
+
+  assert.equal(data.metadata.roughGpuDisplacement, true);
+  assert.ok(data.gpuDisplace.every((value) => value === 1));
+  assert.ok(data.positions.every((value, index) => index % 3 !== 2 || value === 0));
 });
