@@ -116,21 +116,26 @@ function assertNear(actual, expected, tolerance, label) {
   );
 }
 
-function assertGeometryEquivalent(actual, expected, label) {
+function geometryComparison(actual, expected) {
   const ab = difference(actual, expected);
   const ba = difference(expected, actual);
   const symmetricDifferenceArea = geomArea(ab) + geomArea(ba);
   const referenceArea = Math.max(geomArea(expected), 1);
   const tolerance = Math.max(1e-3, referenceArea * 1e-9);
-  assert.ok(
-    symmetricDifferenceArea <= tolerance,
-    `${label}: symmetric-difference area ${symmetricDifferenceArea} µm² exceeds ${tolerance} µm²`,
-  );
-
   const a = multiBounds(actual);
   const b = multiBounds(expected);
-  for (const key of ['minX', 'minY', 'maxX', 'maxY'])
-    assertNear(a[key], b[key], 1e-4, `${label} bounds.${key}`);
+  const boundsMatch = ['minX', 'minY', 'maxX', 'maxY'].every(
+    (key) => Math.abs(a[key] - b[key]) <= 1e-4,
+  );
+  return { equivalent: symmetricDifferenceArea <= tolerance && boundsMatch, symmetricDifferenceArea, tolerance, a, b };
+}
+
+function assertGeometryEquivalent(actual, expected, label) {
+  const comparison = geometryComparison(actual, expected);
+  assert.ok(
+    comparison.equivalent,
+    `${label}: symmetric-difference area ${comparison.symmetricDifferenceArea} µm² exceeds ${comparison.tolerance} µm² or bounds differ (${JSON.stringify(comparison.a)} vs ${JSON.stringify(comparison.b)})`,
+  );
 }
 
 function assertModelEquivalent(actual, expected, label) {
@@ -153,13 +158,21 @@ function assertModelEquivalent(actual, expected, label) {
   assert.equal(actual.processRevision, expected.processRevision, `${label} processRevision`);
   assert.deepEqual(actual.boundary, expected.boundary, `${label} boundary`);
 
-  const expectedRegions = new Map(expected.regions.map((region) => [region.id, region]));
+  const unmatchedRegions = [...expected.regions];
   for (const region of actual.regions) {
-    const reference = expectedRegions.get(region.id);
-    assert.ok(reference, `${label}: missing reference region ${region.id}`);
-    assert.deepEqual(region.stack, reference.stack, `${label} ${region.id} stack`);
-    assertGeometryEquivalent(region.geom, reference.geom, `${label} ${region.id} geometry`);
+    const stackKey = JSON.stringify(region.stack);
+    const matchIndex = unmatchedRegions.findIndex(
+      (reference) =>
+        JSON.stringify(reference.stack) === stackKey &&
+        geometryComparison(region.geom, reference.geom).equivalent,
+    );
+    assert.ok(
+      matchIndex >= 0,
+      `${label}: no semantic match for actual region ${region.id} with stack ${stackKey}`,
+    );
+    unmatchedRegions.splice(matchIndex, 1);
   }
+  assert.equal(unmatchedRegions.length, 0, `${label}: unmatched reference regions remain`);
 
   const expectedElectrical = new Map(
     expected.electricalRegions.map((region) => [region.id, region]),
