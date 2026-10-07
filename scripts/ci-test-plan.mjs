@@ -24,13 +24,11 @@ const WORKSTATION_PATHS = [
   /^site\/workstation\.css$/,
   /^site\/controllers\/(?:startup|tool-tabs|workspace-view|workspace-actions)-controller\.js$/,
   /^site\/bundled-examples\.js$/,
+  /^site\/welcome\.js$/,
   /^scripts\/workstation-regression\.mjs$/,
 ];
 
-const RESILIENCE_PATHS = [
-  /^site\/three-/,
-  /^scripts\/resilience-regression\.mjs$/,
-];
+const RESILIENCE_PATHS = [/^site\/three-/, /^scripts\/resilience-regression\.mjs$/];
 
 const HISTORY_PATHS = [
   /^site\/workspace-snapshots\.js$/,
@@ -44,6 +42,8 @@ const HISTORY_PATHS = [
 
 const PERSISTENCE_PATHS = [
   /^site\/workspace-persistence/,
+  /^site\/workspace-(?:storage-worker|dirty-domains)\.js$/,
+  /^site\/controllers\/project-state-controller\.js$/,
   /^site\/project-(?:io|schema|storage|worker)/,
   /^site\/polygon-boolean\.js$/,
   /^site\/controllers\/project-controller\.js$/,
@@ -73,6 +73,7 @@ const PROCESS_PATHS = [
 
 const RENDERER_PATHS = [
   /^site\/model-view-geometry\.js$/,
+  /^site\/polygon-triangulation\.js$/,
   /^site\/(?:three|section|render|glb)/,
   /^site\/(?:annotation-rendering|plan-renderers|rough-mesh(?:-geometry|-worker)?|surface-rendering)\.js$/,
   /^scripts\/renderer-product-regression\.mjs$/,

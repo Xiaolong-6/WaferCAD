@@ -1116,3 +1116,40 @@ test('reused geometry still consumes each model occurrence in the point budget',
   }));
   assert.throws(() => validateProjectFile(source), /exceeds the project point budget/);
 });
+
+test('shared whole-model validation still charges model points in every workspace budget', () => {
+  const first = validProject();
+  const second = { ...first, layout: structuredClone(first.layout) };
+  second.layout.elements = [
+    {
+      kind: 'path',
+      sourceCell: 'TOP',
+      layer: 1,
+      datatype: 0,
+      width: 1,
+      points: Array(3000000 - 5).fill([0, 0]),
+    },
+  ];
+  assert.throws(() => validateProjectFile(second), /exceeds the project point budget/);
+  assert.throws(() => validateProjectFiles([first, second]), /exceeds the project point budget/);
+});
+
+test('shared whole-layout validation still charges layout points with a different model', () => {
+  const first = validProject();
+  first.layout.elements = [
+    {
+      kind: 'path',
+      sourceCell: 'TOP',
+      layer: 1,
+      datatype: 0,
+      width: 1,
+      points: Array(3000000 - 15).fill([0, 0]),
+    },
+  ];
+  const second = { ...first, model: structuredClone(first.model) };
+  const ring = second.model.boundary[0][0];
+  ring.splice(1, 0, ...Array.from({ length: 10 }, () => [...ring[0]]));
+  assert.equal(validateProjectFile(first), first);
+  assert.throws(() => validateProjectFile(second), /exceeds the project point budget/);
+  assert.throws(() => validateProjectFiles([first, second]), /exceeds the project point budget/);
+});

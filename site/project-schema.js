@@ -233,8 +233,8 @@ function geometryBounds(geom) {
 
 function createValidationContext() {
   return {
-    models: new WeakSet(),
-    layouts: new WeakSet(),
+    models: new WeakMap(),
+    layouts: new WeakMap(),
     geometry: {
       validated: new WeakMap(),
       canonical: new WeakMap(),
@@ -1073,6 +1073,28 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
   }
 }
 
+// Reuse strict validation, while charging every workspace's model + layout
+// totals. Shared identity must not let a later state bypass the size limits.
+function validateAssetInBudget(asset, path, cache, budget, validate) {
+  const keys = ['polygons', 'rings', 'points'],
+    cost = cache.get(asset);
+  if (cost) {
+    for (const key of keys) {
+      budget[key] += cost[key];
+      if (budget[key] > LIMITS[key]) {
+        fail(
+          path,
+          `exceeds the project ${key === 'polygons' ? 'polygon' : key === 'rings' ? 'ring' : 'point'} budget.`,
+        );
+      }
+    }
+    return;
+  }
+  const before = Object.fromEntries(keys.map((key) => [key, budget[key]]));
+  validate();
+  cache.set(asset, Object.fromEntries(keys.map((key) => [key, budget[key] - before[key]])));
+}
+
 function validateProjectCore(project, allowSnapshots, shared = createValidationContext()) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
@@ -1082,14 +1104,12 @@ function validateProjectCore(project, allowSnapshots, shared = createValidationC
   }
 
   const budget = { polygons: 0, rings: 0, points: 0, geometry: shared.geometry };
-  if (!shared.models.has(project.model)) {
-    validateModel(project.model, budget, shared.geometry);
-    shared.models.add(project.model);
-  }
-  if (!shared.layouts.has(project.layout)) {
-    validateLayout(project.layout, budget);
-    shared.layouts.add(project.layout);
-  }
+  validateAssetInBudget(project.model, 'model', shared.models, budget, () =>
+    validateModel(project.model, budget, shared.geometry),
+  );
+  validateAssetInBudget(project.layout, 'layout', shared.layouts, budget, () =>
+    validateLayout(project.layout, budget),
+  );
 
   const selectedLayerKeys = assertArray(
     project.selectedLayerKeys,

@@ -121,3 +121,24 @@ test('explicit full mode runs every suite independent of changed paths', () => {
   assert.equal(plan.full, true);
   for (const suite of BROWSER_SUITES) assert.equal(plan.suites[suite], true);
 });
+
+test('new cap triangulation schedules its renderer browser owner', () => {
+  assert.deepEqual(enabled(buildCiTestPlan(['site/polygon-triangulation.js'])), [
+    'smoke',
+    'renderer',
+  ]);
+});
+
+test('new storage and import modules schedule their persistence browser owner', () => {
+  for (const path of [
+    'site/workspace-storage-worker.js',
+    'site/workspace-dirty-domains.js',
+    'site/controllers/project-state-controller.js',
+  ]) {
+    assert.deepEqual(enabled(buildCiTestPlan([path])), ['smoke', 'persistence'], path);
+  }
+});
+
+test('Welcome bootstrap schedules its workstation browser owner', () => {
+  assert.deepEqual(enabled(buildCiTestPlan(['site/welcome.js'])), ['smoke', 'workstation']);
+});
