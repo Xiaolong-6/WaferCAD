@@ -1,3 +1,4 @@
+import { referencedModelParts } from '../model-array.js';
 import { minimumSegmentLength, zoomLimitForFeature } from '../view-interactions.js';
 
 export function createPlanViewController({
@@ -207,7 +208,7 @@ export function createPlanViewController({
     }
 
     const pointGroups = [];
-    for (const region of model.regions || []) {
+    for (const region of referencedModelParts(model).flatMap((m) => m.regions || [])) {
       for (const polygon of region.geom || []) {
         for (const ring of polygon || []) pointGroups.push(ring);
       }

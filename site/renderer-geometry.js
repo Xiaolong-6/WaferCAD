@@ -1,3 +1,5 @@
+import { isArrayModel } from './model-array.js';
+import { buildArrayRenderPlan } from './model-array-rendering.js';
 import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
 import { ownedMaterialSurfacesFromTopology } from './process-topology.js';
 import { visibleMaterialModel } from './model.js';
@@ -183,7 +185,9 @@ export function buildRenderSurfacePlan(model, clip = null) {
     cached = surfacePlanCache.get(model);
   if (cached?.key === key) return cached.plan;
 
-  const plan = ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip),
+  const plan = isArrayModel(model)
+      ? buildArrayRenderPlan(visibleMaterialModel(model), clip, buildRenderSurfacePlan)
+      : ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip),
     decorated = decorateSurfacePlan(plan.caps, plan.sidewalls),
     result = {
       ...plan,

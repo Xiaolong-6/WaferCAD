@@ -1,3 +1,4 @@
+import { referencedModelParts } from './model-array.js';
 function sectionCollapseEdgeEpsilon(bounds) {
   const [rawLo, rawHi] = bounds || [];
   const lo = Number(rawLo),
@@ -29,7 +30,7 @@ export function defaultSectionCollapseForModel(model, bounds) {
   const fallback = defaultSectionCollapse(bounds),
     baseIntervals = [];
 
-  for (const region of model?.regions || []) {
+  for (const region of referencedModelParts(model).flatMap((m) => m?.regions || [])) {
     const base = (region?.stack || []).find((segment) => segment?.layerId === 'base');
     if (!base) return fallback;
     const z0 = Number(base.z0),
@@ -349,7 +350,7 @@ export function sectionCollapseSnapValues(model, bounds = null) {
     push(bounds[1]);
   }
 
-  for (const region of model?.regions || []) {
+  for (const region of referencedModelParts(model).flatMap((m) => m?.regions || [])) {
     for (const segment of region?.stack || []) {
       push(segment?.z0);
       push(segment?.z1);

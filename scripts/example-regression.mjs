@@ -269,7 +269,7 @@ for (const example of [
   },
   {
     id: 'three-tier-silicon-jlfets',
-    filename: 'three-tier-silicon-jlfets.wafercad',
+    filename: 'three-tier-silicon-jlfets-full-wafer.wafercad',
   },
 ]) {
   const openTimeout = example.id === 'three-tier-silicon-jlfets' ? 120000 : 30000;

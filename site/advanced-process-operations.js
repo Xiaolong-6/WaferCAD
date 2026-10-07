@@ -211,7 +211,8 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
   if (!(amount > 1e-9))
     return { changed: false, error: 'Transfer thickness must be greater than zero.' };
 
-  const plane = exposedTransferPlane(model, area, face, modelApi, vectorApi);
+  const plane =
+    params.arrayTransferPlane ?? exposedTransferPlane(model, area, face, modelApi, vectorApi);
   if (!Number.isFinite(plane)) {
     return {
       changed: false,

@@ -345,6 +345,8 @@ function pyramidProfileOffsetAtPoint(x, y, appearance) {
 }
 
 export function roughProfileOffsetAtPoint(x, y, appearance) {
+  x -= appearance?.sampleOrigin?.[0] || 0;
+  y -= appearance?.sampleOrigin?.[1] || 0;
   if (appearance?.morphology === 'pyramid') {
     return pyramidProfileOffsetAtPoint(x, y, appearance);
   }

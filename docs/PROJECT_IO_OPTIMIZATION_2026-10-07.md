@@ -82,3 +82,5 @@ node scripts/process-transaction-ui-regression.mjs
 ## Remaining full-wafer limitation
 
 This patch does not introduce canonical model array instances or lazy expansion. The native 625-site JLFET array still exceeds the current logical point budget when eagerly expanded; it has not been promoted as a complete example. Full-wafer process replay, memory scaling and render scalability remain separate acceptance work. This round improves real process validation and real project IO without removing nanometre geometry, History or strict safety limits.
+
+The subsequent in-progress canonical array and idle preparation work is tracked separately in [625-site checkpoint](ARRAY_PROCESS_PREWARM_2026-10-07.md); the measurements above describe the earlier ordinary-model IO implementation.

@@ -136,7 +136,14 @@ test('Welcome previews preserve final structure and display while retaining only
           await readFile(new URL('../' + path.replace(/^\.\//, ''), import.meta.url), 'utf8'),
         ),
       );
-    const original = await read(example.path);
+    const original = await read(example.previewSourcePath || example.path);
+    const full = await read(example.path);
+    if (example.previewSourcePath) {
+      assert.equal(full.model.kernel, 'vector-2.5d-array-v1');
+      assert.equal(full.model.array.instances.filter((i) => i.role === 'device').length, 625);
+      assert.equal(full.snapshotBranches.nodes.length, 40);
+      assert.equal(original.model.kernel, 'vector-2.5d-v1');
+    }
     const preview = await read(example.previewProject.path);
     assert.equal(validateProjectFile(preview), preview);
     for (const key of Object.keys(original).filter(

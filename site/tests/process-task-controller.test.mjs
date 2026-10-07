@@ -151,3 +151,48 @@ test('grouped task keeps one busy transaction across multiple worker steps', asy
     globalThis.Worker = originalWorker;
   }
 });
+
+test('validated process workers survive idle inspection and abort discards the reused worker', async () => {
+  const originalWorker = globalThis.Worker,
+    workers = [];
+  globalThis.Worker = class {
+    constructor() {
+      workers.push(this);
+      this.terminated = false;
+    }
+    postMessage(message) {
+      if (message.params.hold) return;
+      queueMicrotask(() =>
+        this.onmessage({
+          data: {
+            id: message.id,
+            type: 'done',
+            validated: true,
+            model: message.model,
+            result: { changed: true },
+          },
+        }),
+      );
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  };
+  const controller = createProcessTaskController({ root: fakeRoot(), status: () => {} });
+  try {
+    await controller.run({ revision: 1 }, {});
+    assert.equal(workers.length, 1);
+    assert.equal(workers[0].terminated, false);
+    await controller.run({ revision: 2 }, {});
+    assert.equal(workers.length, 1);
+    const pending = controller.run({ revision: 3 }, { hold: true });
+    controller.abort();
+    assert.equal((await pending).aborted, true);
+    assert.equal(workers[0].terminated, true);
+    await controller.run({ revision: 4 }, {});
+    assert.equal(workers.length, 2);
+  } finally {
+    controller.dispose();
+    globalThis.Worker = originalWorker;
+  }
+});

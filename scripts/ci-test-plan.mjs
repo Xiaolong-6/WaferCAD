@@ -41,6 +41,8 @@ const HISTORY_PATHS = [
 ];
 
 const PERSISTENCE_PATHS = [
+  /^site\/(?:model-array|mask-instance-index)/,
+  /^scripts\/(?:array-runtime-regression|build-wafer-array-example)\.mjs$/,
   /^site\/workspace-persistence/,
   /^site\/workspace-(?:storage-worker|dirty-domains)\.js$/,
   /^site\/controllers\/project-state-controller\.js$/,
@@ -53,6 +55,7 @@ const PERSISTENCE_PATHS = [
 ];
 
 const INTERACTION_PATHS = [
+  /^site\/(?:selection-geometry|mask-instance-index)\.js$/,
   /^site\/app\.html$/,
   /^site\/(?:style|workstation)\.css$/,
   /^site\/controllers\/(?:base-controls|draw-mask|export|main-canvas|mask-|plan-view|roi|section-|view-maximize|view-popover)-controller\.js$/,
@@ -61,6 +64,11 @@ const INTERACTION_PATHS = [
 ];
 
 const PROCESS_PATHS = [
+  /^site\/(?:model-array|mask-instance-index)/,
+  /^site\/process-(?:boundary-index|topology)\.js$/,
+  /^site\/controllers\/process-task-controller\.js$/,
+  /^site\/advanced-process-operations\.js$/,
+  /^scripts\/array-runtime-regression\.mjs$/,
   /^site\/model\.js$/,
   /^site\/project-(?:io|schema|geometry-storage)\.js$/,
   /^scripts\/project-io-runtime-regression\.mjs$/,
@@ -75,6 +83,8 @@ const PROCESS_PATHS = [
 ];
 
 const RENDERER_PATHS = [
+  /^site\/(?:model-array|mask-instance-index)/,
+  /^scripts\/array-runtime-regression\.mjs$/,
   /^site\/model-view-geometry\.js$/,
   /^site\/polygon-triangulation\.js$/,
   /^site\/(?:three|section|render|glb)/,

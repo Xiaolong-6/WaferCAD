@@ -647,20 +647,15 @@ await historyReplayFailurePage.locator('#layerName').fill('Fail A edited');
 // The edited Step itself is the first process worker after this point. Let two
 // downstream replay workers finish, then fail the third downstream worker.
 await historyReplayFailurePage.evaluate(() => {
-  const NativeWorker = globalThis.Worker;
-  let processWorkerCount = 0;
-  globalThis.Worker = new Proxy(NativeWorker, {
-    construct(Target, args) {
-      const url = String(args[0] || '');
-      if (url.includes('process-worker.js')) {
-        processWorkerCount += 1;
-        if (processWorkerCount === 4) {
-          throw new Error('synthetic replay worker failure');
-        }
-      }
-      return Reflect.construct(Target, args);
-    },
-  });
+  const nativePost = Worker.prototype.postMessage;
+  let processRequestCount = 0;
+  Worker.prototype.postMessage = function (request, ...rest) {
+    if (request?.params && request?.model) {
+      processRequestCount++;
+      if (processRequestCount === 4) throw new Error('synthetic replay worker failure');
+    }
+    return Reflect.apply(nativePost, this, [request, ...rest]);
+  };
 });
 
 await historyReplayFailurePage.locator('#applyOperationBtn').click();
