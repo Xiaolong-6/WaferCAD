@@ -31,6 +31,8 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, rough preview/final readiness). The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.
+
 ### Deterministic browser dependencies
 
 Playwright `1.55.1` and Three `0.179.1` are pinned devDependencies in `package-lock.json`. Install them with `npm ci`, then install Chromium with `npx playwright install chromium` (`--with-deps` on Linux). Serve `site/` locally and set `WAFERCAD_THREE_DIR` to the project's `node_modules/three` directory before running browser tests:
