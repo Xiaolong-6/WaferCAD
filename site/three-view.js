@@ -2202,6 +2202,22 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
+    const clip = getClipGeometry(),
+      inspection = getInspection() || {},
+      signature = sceneSignature(model, clip, inspection);
+
+    if (
+      physicalSceneModel === model &&
+      physicalSceneSignature === signature &&
+      presentationObjects.size
+    ) {
+      pendingRender = false;
+      host.dataset.renderState = 'updating';
+      stats.textContent = 'updating 3D…';
+      syncRenderPolicy();
+      applyPresentationState();
+      return;
+    }
 
     const renderGeneration = ++sceneGeneration;
     pendingRender = false;
@@ -2209,6 +2225,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.sceneGeneration = String(renderGeneration);
     host.dataset.modelRevision = String(model.revision ?? 0);
     host.dataset.processRevision = String(model.processRevision ?? 0);
+    host.dataset.rendererUpdateKind = 'rebuild';
     stats.textContent = 'rebuilding 3D…';
     const rendererProfileStart = performance.now();
 
@@ -2218,20 +2235,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       syncRenderPolicy();
       applyZDisplayState(model);
 
-      const clip = getClipGeometry(),
-        inspection = getInspection() || {},
-        materialState = inspectionMaterialState(inspection.opacity),
+      const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
         borders = Boolean(inspection.borders),
         plan = buildRenderSurfacePlan(model, clip),
-        interfaceState = materialState.transparent
-          ? {
-              opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
-              transparent: true,
-              depthTest: true,
-              depthWrite: false,
-            }
-          : null,
+        interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
@@ -2269,14 +2277,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
       };
 
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
-        bucketKey = (part, state) => {
+        presentationFor = (part, sortBias = 0) => ({
+          kind: part.buried ? 'material-interface' : 'material-exterior',
+          sortBias,
+        }),
+        bucketKey = (part) => {
           const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
-          if (!state?.transparent) return base;
           if (part.type === 'cap') return `${base}\u0000cap\u0000${part.z}\u0000${part.normal}`;
           return `${base}\u0000side\u0000${part.z0}\u0000${part.z1}`;
         },
-        pushBucket = (map, part, state) => {
-          const key = bucketKey(part, state);
+        pushBucket = (map, part) => {
+          const key = bucketKey(part);
           if (!map.has(key)) map.set(key, { part, items: [] });
           map.get(key).items.push(part);
         };
@@ -2303,7 +2314,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           continue;
         }
         if (!cap.appearance) {
-          pushBucket(smoothCaps, cap, state);
+          pushBucket(smoothCaps, cap);
           continue;
         }
 
@@ -2426,7 +2437,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           smoothSidewallTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
           continue;
         }
-        pushBucket(sidewalls, sidewall, state);
+        pushBucket(sidewalls, sidewall);
       }
       for (const bucket of sidewalls.values()) {
         await maybeYieldAssembly();
