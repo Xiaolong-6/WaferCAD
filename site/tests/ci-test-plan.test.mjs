@@ -160,3 +160,16 @@ test('geometry codec and real IO runtime coverage select strict process and pers
     'process',
   ]);
 });
+
+test('array runtime and renderer regressions select their owning browser suites', () => {
+  assert.deepEqual(enabled(buildCiTestPlan(['scripts/array-runtime-regression.mjs'])), [
+    'smoke',
+    'persistence',
+    'renderer',
+    'process',
+  ]);
+  assert.deepEqual(enabled(buildCiTestPlan(['scripts/array-renderer-regression.mjs'])), [
+    'smoke',
+    'renderer',
+  ]);
+});
