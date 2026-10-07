@@ -766,7 +766,6 @@ export function createThreeView({
       updateRoughMaterialLod();
       updateTransparentOrder();
       renderer.render(scene, camera);
-      updateSceneResourceDiagnostics();
       if (interacting || changed) scheduleFrame();
     });
   }
