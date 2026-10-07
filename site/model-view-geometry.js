@@ -3,6 +3,8 @@ import {
   intersection,
   isEmpty,
   lineIntervalsInMulti,
+  multiBounds,
+  cloneGeom,
   unionGeometries,
 } from './vector-geometry.js';
 import { visibleMaterialModel } from './model.js';
@@ -89,7 +91,17 @@ export function solidBorders(solid, thresholdDegrees = 20) {
   return solidBordersFromTopology(solid, thresholdDegrees);
 }
 
-function annotationVolumeFragments(items, model, clip = null, kind = 'annotation') {
+function deriveAnnotationVolumeFragments(items, model, kind) {
+  const bounds = new WeakMap();
+  const boundsOf = (geom) => {
+    if (!bounds.has(geom)) bounds.set(geom, multiBounds(geom));
+    return bounds.get(geom);
+  };
+  const disjoint = (left, right) => {
+    const a = boundsOf(left),
+      b = boundsOf(right);
+    return !a || !b || a.maxX <= b.minX || b.maxX <= a.minX || a.maxY <= b.minY || b.maxY <= a.minY;
+  };
   const fragments = [];
   for (const item of items || []) {
     if (item.visible === false) continue;
@@ -102,17 +114,16 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
 
       for (const region of model.regions || []) {
         if (!region.stack?.length) continue;
-        let geom = intersection(patch.geom, region.geom);
-        const viewClipped = Boolean(clip) && !isEmpty(geom) && !isEmpty(difference(geom, clip));
-        if (clip && !isEmpty(geom)) geom = intersection(geom, clip);
+        const hostSegments = region.stack.filter(
+          (segment) =>
+            (kind !== 'electrical' || segment.layerId === patch.layerId) &&
+            Math.min(sourceHigh, segment.z1) > Math.max(sourceLow, segment.z0) + 1e-12,
+        );
+        if (!hostSegments.length || disjoint(patch.geom, region.geom)) continue;
+        const geom = intersection(patch.geom, region.geom);
         if (isEmpty(geom)) continue;
-
         const currentLow = region.stack[0].z0,
-          currentHigh = region.stack.at(-1).z1,
-          hostSegments =
-            kind === 'electrical'
-              ? region.stack.filter((segment) => segment.layerId === patch.layerId)
-              : region.stack;
+          currentHigh = region.stack.at(-1).z1;
 
         for (const hostSegment of hostSegments) {
           const z0 = Math.max(sourceLow, hostSegment.z0),
@@ -156,7 +167,7 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
             outerZ,
             innerZ,
             surfaceExposed,
-            viewClipped,
+            viewClipped: false,
             z0,
             z1,
             surfaceAppearance:
@@ -168,6 +179,63 @@ function annotationVolumeFragments(items, model, clip = null, kind = 'annotation
     }
   }
   return fragments;
+}
+
+// Private derived geometry is shared across views of one model revision.
+// Changes to an annotation's presentation metadata also invalidate it.
+const annotationFragmentCache = new WeakMap();
+function annotationVolumeFragments(items = [], model, clip = null, kind = 'annotation') {
+  items ||= [];
+  const metadata = JSON.stringify(
+    items.map(({ patches = [], ...item }) => ({
+      ...item,
+      patches: patches.map(({ geom, ...patch }) => patch),
+    })),
+  );
+  const geometries = items.flatMap((item) => (item.patches || []).map((patch) => patch.geom));
+  let cache = annotationFragmentCache.get(model);
+  if (
+    !cache ||
+    cache.revision !== model.revision ||
+    cache.processRevision !== model.processRevision ||
+    cache.regions !== model.regions
+  ) {
+    cache = {
+      revision: model.revision,
+      processRevision: model.processRevision,
+      regions: model.regions,
+      kinds: new Map(),
+    };
+    annotationFragmentCache.set(model, cache);
+  }
+  let entry = cache.kinds.get(kind);
+  if (
+    !entry ||
+    entry.metadata !== metadata ||
+    entry.geometries.length !== geometries.length ||
+    entry.geometries.some((geom, i) => geom !== geometries[i])
+  ) {
+    entry = {
+      metadata,
+      geometries,
+      fragments: deriveAnnotationVolumeFragments(items, model, kind),
+    };
+    cache.kinds.set(kind, entry);
+  }
+  if (!clip)
+    return entry.fragments.map((fragment) => ({ ...fragment, polys: cloneGeom(fragment.polys) }));
+  const clipped = new WeakMap();
+  return entry.fragments.flatMap((fragment) => {
+    let geometry = clipped.get(fragment.polys);
+    if (!geometry) {
+      geometry = {
+        polys: intersection(fragment.polys, clip),
+        viewClipped: !isEmpty(difference(fragment.polys, clip)),
+      };
+      clipped.set(fragment.polys, geometry);
+    }
+    return isEmpty(geometry.polys) ? [] : [{ ...fragment, ...geometry }];
+  });
 }
 
 function annotationSurfaceGroups(fragments) {

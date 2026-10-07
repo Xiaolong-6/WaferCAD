@@ -8,6 +8,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['Black-Si · FINAL / QA', 'Ge Fig. 15 · A / B'],
     path: './examples/photodetector-literature-examples.wafercad',
     filename: 'photodetector-literature-examples.wafercad',
+    previewProject: {
+      path: './examples/previews/photodetector-literature.wafercad',
+      filename: 'photodetector-literature-preview.wafercad',
+    },
     summary:
       'Nanostructured Si and Ge photodiodes reconstructed as one branch-based project, covering rough surfaces, conformal passivation, implants, and induced electrical regions.',
     sources: [
@@ -35,6 +39,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['Source-order reconstruction', 'GDS-patterned contacts'],
     path: './examples/perc-solar-cells-point-contacts.wafercad',
     filename: 'perc-solar-cells-point-contacts.wafercad',
+    previewProject: {
+      path: './examples/previews/perc-point-contact-solar-cell.wafercad',
+      filename: 'perc-point-contact-solar-cell-preview.wafercad',
+    },
     summary:
       'Texturing, diffusion regions, front and rear passivation, local rear openings, and metallization reconstructed as a branch-based PERC process project.',
     sources: [
@@ -56,6 +64,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['nc-Si:H recombination junction', 'ITO control branch'],
     path: './examples/fully-textured-perovskite-silicon-tandem.wafercad',
     filename: 'fully-textured-perovskite-silicon-tandem.wafercad',
+    previewProject: {
+      path: './examples/previews/fully-textured-perovskite-silicon-tandem.wafercad',
+      filename: 'fully-textured-perovskite-silicon-tandem-preview.wafercad',
+    },
     summary:
       'A fully textured monolithic perovskite/silicon tandem with double-sided Si pyramids, SHJ contacts, conformal top-cell layers, ALD SnO2, IZO, and a surrogate Ag front grid.',
     sources: [
@@ -77,6 +89,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: [],
     path: './examples/suspended-silica-microdisks.wafercad',
     filename: 'suspended-silica-microdisks.wafercad',
+    previewProject: {
+      path: './examples/previews/suspended-silica-microdisk.wafercad',
+      filename: 'suspended-silica-microdisk-preview.wafercad',
+    },
     summary:
       'A spoked silica microdisk released from silicon with a real annular air gap and surviving central support pedestal.',
     sources: [
@@ -98,6 +114,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: [],
     path: './examples/three-tier-silicon-jlfets.wafercad',
     filename: 'three-tier-silicon-jlfets.wafercad',
+    previewProject: {
+      path: './examples/previews/three-tier-silicon-jlfets.wafercad',
+      filename: 'three-tier-silicon-jlfets-preview.wafercad',
+    },
     summary:
       'Three stacked silicon transistor tiers with native conformal HfO2 gates, contact windows, ILD liners and CMP, retained in 40 History Steps. Reconstructed masks cover one device site; transfer and SOG/CMP use recorded geometric assumptions.',
     sources: [

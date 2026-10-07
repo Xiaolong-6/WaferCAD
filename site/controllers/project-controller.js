@@ -977,21 +977,22 @@ export function createProjectController({
     }
   }
 
-  async function openBundledExample(exampleId) {
+  async function openBundledExample(exampleId, { preview = false } = {}) {
     const example = bundledExampleById(exampleId);
     if (!example || example.kind !== 'project' || !example.path) {
       status('Bundled example was not found.', 'error');
       return false;
     }
 
+    const projectFile = preview && example.previewProject ? example.previewProject : example;
     try {
       status(`Loading ${example.title}…`);
-      const response = await fetch(example.path, { cache: 'no-store' });
+      const response = await fetch(projectFile.path, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       const arrayBuffer = await response.arrayBuffer(),
-        file = new File([arrayBuffer], example.filename, { type: 'application/json' });
+        file = new File([arrayBuffer], projectFile.filename, { type: 'application/json' });
       return await openProjectFile(file, { prepareProject: upgradeBundledExampleHistory });
     } catch (error) {
       console.error(error);

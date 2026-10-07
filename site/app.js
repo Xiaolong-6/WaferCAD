@@ -1220,7 +1220,7 @@ const { initializeWorkspaceStart } = createStartupController({
   takeStartupFile,
   openLayoutFile,
   openProjectFile,
-  openBundledExample,
+  openBundledExample: (id) => openBundledExample(id, { preview: EMBEDDED_PREVIEW }),
   status,
 });
 

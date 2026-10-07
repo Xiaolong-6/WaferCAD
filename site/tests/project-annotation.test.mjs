@@ -465,3 +465,54 @@ test('Project schema and annotation contracts', () => {
   });
   assert.equal(implantSolids(fullyEtchedImplantModel).length, 0);
 });
+
+test('annotation view reuse stays isolated across ROI, presentation edits and process changes', async () => {
+  const { electricalRegionSurfaceGroups, electricalRegionSolids, electricalRegionSectionBands } =
+    await import('../model-view-geometry.js');
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  applyOperation(model, {
+    type: 'electrical',
+    name: 'Channel',
+    thickness: 2,
+    face: 'front',
+    area: rectMulti(12, 12),
+    electricalRegionType: 'n-accumulation',
+    electricalRegionSource: 'induced',
+  });
+  const id = model.electricalRegions[0].id;
+  const full = electricalRegionSolids(model);
+  assert.equal(full.length, 1);
+  const saved = structuredClone(full);
+  full[0].polys[0][0][0][0] = 999;
+  assert.deepEqual(
+    electricalRegionSolids(model),
+    saved,
+    'a caller cannot mutate the shared derivation',
+  );
+  assert.equal(electricalRegionSolids(model, rectMulti(4, 4))[0].viewClipped, true);
+  assert.equal(electricalRegionSolids(model, rectMulti(18, 18))[0].viewClipped, false);
+  assert.deepEqual(electricalRegionSolids(model, rectMulti(2, 2, 8, 8)), []);
+  assert.deepEqual(
+    electricalRegionSolids(model),
+    saved,
+    'an ROI must not truncate later full views',
+  );
+  modelApi.recolorElectricalRegion(model, id, '#123456');
+  modelApi.setElectricalRegionDepthProfile(model, id, 'smooth');
+  assert.equal(electricalRegionSurfaceGroups(model)[0].color, '#123456');
+  assert.equal(electricalRegionSectionBands(model, [-8, 0], [8, 0])[0].depthProfile, 'smooth');
+  modelApi.setElectricalRegionVisible(model, id, false);
+  assert.deepEqual(electricalRegionSolids(model), []);
+  modelApi.setElectricalRegionVisible(model, id, true);
+  applyOperation(model, { type: 'etch', thickness: 0.5, face: 'front', area: model.boundary });
+  const etched = electricalRegionSolids(model)[0];
+  assert.equal(etched.z1 - etched.z0, 1.5);
+  assert.equal(etched.surfaceExposed, true);
+  assert.equal(electricalRegionSectionBands(model, [-8, 0], [8, 0])[0].z1, etched.z1);
+  applyOperation(model, { type: 'etch', thickness: 2, face: 'front', area: model.boundary });
+  assert.deepEqual(
+    electricalRegionSurfaceGroups(model),
+    [],
+    'removed host material must remove the annotation',
+  );
+});

@@ -22,6 +22,12 @@ try {
   for (let index = 0; index < repeat; index++) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
     await installPinnedThreeRoute(context);
+    if (process.env.WAFERCAD_BASELINE_VIEW) {
+      const body = await readFile(process.env.WAFERCAD_BASELINE_VIEW);
+      await context.route('**/model-view-geometry.js', (route) =>
+        route.fulfill({ contentType: 'text/javascript', body }),
+      );
+    }
     const page = await context.newPage();
     page.setDefaultTimeout(900000);
     const errors = [];

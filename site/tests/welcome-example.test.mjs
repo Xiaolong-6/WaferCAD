@@ -127,3 +127,31 @@ test('promoted device examples use device-oriented titles and explicit provenanc
     false,
   );
 });
+
+test('Welcome previews preserve final structure and display while retaining only the final Step', async () => {
+  for (const example of BUNDLED_EXAMPLES) {
+    const read = async (path) =>
+      expandProjectStorage(
+        JSON.parse(
+          await readFile(new URL('../' + path.replace(/^\.\//, ''), import.meta.url), 'utf8'),
+        ),
+      );
+    const original = await read(example.path);
+    const preview = await read(example.previewProject.path);
+    assert.equal(validateProjectFile(preview), preview);
+    for (const key of Object.keys(original).filter(
+      (key) => !['snapshots', 'snapshotBranches', 'storageEncoding'].includes(key),
+    )) {
+      assert.deepEqual(
+        preview[key],
+        original[key],
+        `${example.id}: ${key} changed in the final preview`,
+      );
+    }
+    assert.equal(preview.snapshots.length, 0);
+    assert.equal(preview.snapshotBranches.nodes.length, 1);
+    assert.equal(preview.snapshotBranches.branches.length, 1);
+    assert.ok(original.snapshotBranches.nodes.length > 1, 'complete original must retain History');
+    assert.deepEqual(preview.snapshotBranches.nodes[0].state.model, original.model);
+  }
+});
