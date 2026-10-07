@@ -102,6 +102,27 @@ await recipePage.waitForFunction(
   { timeout: 30000 },
 );
 
+// Manual Process remains the source of truth and can teach Recipe by recording
+// a successful operation back into the same persisted recipe.
+await recipePage.locator('[data-process-input-mode="manual"]').click();
+await recipePage.locator('[data-process-mode="add"]').click();
+await recipePage.locator('#operationArea').selectOption('full');
+await recipePage.locator('#growthMode').selectOption('direct');
+await recipePage.locator('#layerName').fill('Manual recipe check');
+await recipePage.locator('#operationThickness').fill('0.02');
+await recipePage.locator('#applyOperationBtn').click();
+await recipePage.waitForFunction(
+  () => /Deposited Manual recipe check/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+await recipePage.locator('[data-process-input-mode="recipe"]').click();
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 2);
+assert.match(
+  await recipePage.locator('.recipe-step-row').nth(1).textContent(),
+  /Deposit Manual recipe check/,
+);
+
 await openFunctionPanel(recipePage, 'project');
 const recipeDownloadPromise = recipePage.waitForEvent('download');
 await recipePage.locator('#exportProjectBtn').click();
@@ -110,10 +131,11 @@ const recipePath = await recipeDownload.path();
 assert.ok(recipePath);
 const recipeSaved = expandProjectStorage(JSON.parse(await readFile(recipePath, 'utf8')));
 assert.equal(recipeSaved.processRecipe?.version, 1);
-assert.equal(recipeSaved.processRecipe?.steps?.length, 1);
+assert.equal(recipeSaved.processRecipe?.steps?.length, 2);
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.command, 'deposit');
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.params?.material, 'Al2O3');
-assert.ok(recipeSaved.model.processRevision >= 1, 'Recipe Run All must commit through the Process kernel');
+assert.equal(recipeSaved.processRecipe?.steps?.[1]?.params?.material, 'Manual recipe check');
+assert.ok(recipeSaved.model.processRevision >= 2, 'Recipe and Manual operations must commit through the Process kernel');
 assert.deepEqual(recipeErrors, []);
 await recipeContext.close();
 
