@@ -1512,6 +1512,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     transparentMeshes = transparentMeshes.filter((entry) => !owned.has(entry.mesh));
     for (const object of owned) {
       zDisplayObjects.delete(object);
+      presentationObjects.delete(object);
       group?.remove(object);
       disposeObjectResources(object);
     }
@@ -1725,6 +1726,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         task.sortBias ?? (cap.buried ? 12 : 0),
         true,
         cap.instanceTranslations || task.implant?.instanceTranslations,
+        task.presentation,
       );
       if (mesh) {
         roughOwnedObjects.add(mesh);
@@ -1733,7 +1735,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       if (
         task.includeBorders !== false &&
-        context.borders &&
         !cap.buried &&
         geometry.userData.roughBorderPositions?.length
       ) {
@@ -1743,6 +1744,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             order: 100010 + (cap.solidIndex || 0),
             opacity: context.opacity,
             adaptiveRough: true,
+            presentation: { kind: 'border' },
           },
         );
       }
@@ -1764,8 +1766,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       data.roughGpuTaskCount = String(diagnostics?.gpuTaskCount || 0);
       data.roughMeshWorker = 'true';
     }
+    applyPresentationState({ profile: false, settle: false });
     updateRoughMaterialLod();
-    updateTransparentOrder();
     updateRoughDiagnostics();
     if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
     host.dataset.renderPhase = mode === 'interactive' ? 'preview' : 'complete';
@@ -2001,6 +2003,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           task.sortBias ?? (cap.buried ? 12 : 0),
           true,
           cap.instanceTranslations || task.implant?.instanceTranslations,
+          task.presentation,
         );
         if (mesh) {
           roughOwnedObjects.add(mesh);
@@ -2009,7 +2012,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
         if (
           task.includeBorders !== false &&
-          context.borders &&
           !cap.buried &&
           geometry.userData.roughBorderPositions?.length
         ) {
@@ -2022,6 +2024,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               order: 100010 + (cap.solidIndex || 0),
               opacity: context.opacity,
               adaptiveRough: true,
+              presentation: { kind: 'border' },
             },
           );
         }
@@ -2047,8 +2050,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
         data.roughMeshWorker = 'false';
       }
+      applyPresentationState({ profile: false, settle: false });
       updateRoughMaterialLod();
-      updateTransparentOrder();
       updateRoughDiagnostics();
       if (!interactive) lastLodSignature = adaptiveLodSignature();
       return true;
