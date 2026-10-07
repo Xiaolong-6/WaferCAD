@@ -1330,4 +1330,8 @@ test('project validator rejects malformed Process Recipe structure', () => {
 
   source.processRecipe.steps[1].command = 'etch';
   assert.throws(() => validateProjectFile(source), /activeStepId.*unknown recipe step/);
+
+  source.processRecipe.activeStepId = 'same';
+  source.processRecipe.steps = [{ id: 'same', command: 'deposit', params: {} }];
+  assert.throws(() => validateProjectFile(source), /deposit\.material is required/);
 });
