@@ -178,9 +178,13 @@ jobs:
         if: ${{ needs.plan.outputs.product_layout == 'true' }}
         run: npm run test:ui:product:layout
 
-      - name: Run renderer product regression
+      - name: Run renderer product cases
         if: ${{ needs.plan.outputs.renderer == 'true' }}
-        run: npm run test:ui:product:renderer
+        run: node scripts/renderer-product-regression.mjs
+
+      - name: Run array renderer regression
+        if: ${{ needs.plan.outputs.renderer == 'true' }}
+        run: node scripts/array-renderer-regression.mjs
 
       - name: Run renderer pipeline benchmark
         if: ${{ needs.plan.outputs.renderer == 'true' }}
