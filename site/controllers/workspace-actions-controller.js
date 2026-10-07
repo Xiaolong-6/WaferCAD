@@ -1,3 +1,4 @@
+import { referencedModelParts } from '../model-array.js';
 import { XY_UNITS } from '../units.js';
 
 export function syncThreeRenderModeButton(button, fast) {
@@ -216,7 +217,7 @@ export function createWorkspaceActionsController({
   }
 
   function modelHasDisplayMorphology() {
-    for (const region of getModel()?.regions || []) {
+    for (const region of referencedModelParts(getModel()).flatMap((m) => m?.regions || [])) {
       for (const segment of region.stack || []) {
         if (segment.frontSurface?.kind === 'rough' || segment.backSurface?.kind === 'rough') {
           return true;

@@ -1,3 +1,4 @@
+import { isArrayModel, arrayParts } from '../model-array.js';
 import { layerById, modelBoundsZ } from '../model.js';
 import { sectionContours, sectionSlices, surfaceGroups } from '../model-view-geometry.js';
 import { sectorBoundaryPoints } from '../roi-editor.js';
@@ -89,14 +90,33 @@ export function createExportController({
       map = (point) => worldToCanvas(point, view);
     let body = `<path d="${svgPathFromMulti(model.boundary, map)}" fill="#f1f4f6" stroke="#96a1ad" stroke-width="1"/>`;
 
-    for (const patch of surfaceGroups(model, activeFace)) {
-      const layer = layerById(model, patch.layerId);
-      if (!layer) continue;
-      const shade = Math.max(-12, Math.min(14, patch.z * 0.8));
-      body += `<path d="${svgPathFromMulti(patch.geom, map)}" fill="${shadeColor(
-        layer.color,
-        shade,
-      )}" fill-rule="evenodd" stroke="rgba(36,46,56,.24)" stroke-width=".65"/>`;
+    const sources = isArrayModel(model) ? arrayParts(model) : [{ model, x: 0, y: 0 }];
+    const paths = new Map();
+    for (const part of sources) {
+      if (isArrayModel(model) && paths.has(part.model)) {
+        const id = paths.get(part.model),
+          origin = map([0, 0]),
+          moved = map([part.x, part.y]);
+        body += `<use href="#${id}" transform="translate(${svgNumber(moved[0] - origin[0])} ${svgNumber(moved[1] - origin[1])})"/>`;
+        continue;
+      }
+      const id = `array-template-${paths.size}`;
+      paths.set(part.model, id);
+      let template = '';
+      for (const patch of surfaceGroups(part.model, activeFace)) {
+        const layer = layerById(model, patch.layerId);
+        if (!layer) continue;
+        const shade = Math.max(-12, Math.min(14, patch.z * 0.8));
+        template += `<path d="${svgPathFromMulti(patch.geom, map)}" fill="${shadeColor(
+          layer.color,
+          shade,
+        )}" fill-rule="evenodd" stroke="rgba(36,46,56,.24)" stroke-width=".65"/>`;
+      }
+      if (isArrayModel(model)) {
+        const origin = map([0, 0]),
+          moved = map([part.x, part.y]);
+        body += `<defs><g id="${id}">${template}</g></defs><use href="#${id}" transform="translate(${svgNumber(moved[0] - origin[0])} ${svgNumber(moved[1] - origin[1])})"/>`;
+      } else body += template;
     }
     body += `<path d="${svgPathFromMulti(model.boundary, map)}" fill="none" stroke="#87939f" stroke-width="1"/>`;
 

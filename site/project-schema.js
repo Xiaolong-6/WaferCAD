@@ -1,3 +1,12 @@
+import {
+  ARRAY_MODEL_KERNEL,
+  MAX_ARRAY_INSTANCES,
+  MAX_ARRAY_TEMPLATES,
+  isArrayModel,
+  translateGeometry,
+  geometryBounds as arrayGeometryBounds,
+  geometryPointCount,
+} from './model-array.js';
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
 
 export const CURRENT_PROJECT_VERSION = 14;
@@ -145,6 +154,7 @@ function validateLayer(layer, index, ids) {
 
 function validateSurfaceAppearance(appearance, path) {
   assertObject(appearance, path);
+  if (appearance.sampleOrigin != null) assertPoint(appearance.sampleOrigin, `${path}.sampleOrigin`);
   if (appearance.kind !== 'rough') fail(`${path}.kind`, 'must be rough.');
   assertLength(appearance.featureSize, `${path}.featureSize`, { min: 1e-12 });
   const meanHeight = assertLength(appearance.meanHeight, `${path}.meanHeight`, { min: 1e-12 });
@@ -236,6 +246,7 @@ function createValidationContext() {
     models: new WeakMap(),
     layouts: new WeakMap(),
     geometry: {
+      arrayDomains: new Set(),
       validated: new WeakMap(),
       canonical: new WeakMap(),
       byContent: new Map(),
@@ -441,7 +452,10 @@ function validateModelGeometry(model, cache) {
 
 function validateModel(model, budget, geometryCache) {
   assertObject(model, 'model');
-  if (model.kernel !== 'vector-2.5d-v1') fail('model.kernel', 'is not supported.');
+  if (model.kernel !== 'vector-2.5d-v1' && model.kernel !== ARRAY_MODEL_KERNEL)
+    fail('model.kernel', 'is not supported.');
+  if (model.array != null && !isArrayModel(model))
+    fail('model.array', 'requires the array model kernel.');
   if (!['circle', 'rect'].includes(model.shape)) fail('model.shape', 'must be circle or rect.');
   assertLength(model.width, 'model.width', { min: 1e-12 });
   assertLength(model.height, 'model.height', { min: 1e-12 });
@@ -590,6 +604,7 @@ function validateModel(model, budget, geometryCache) {
   }
 
   validateModelGeometry(model, geometryCache);
+  if (isArrayModel(model)) validateModelArray(model, budget, geometryCache);
 
   if (model.nextImplantId != null) {
     assertInteger(model.nextImplantId, 'model.nextImplantId', { min: 1 });
@@ -603,6 +618,113 @@ function validateModel(model, budget, geometryCache) {
   if (model.processRevision != null) {
     assertInteger(model.processRevision, 'model.processRevision', { min: 0 });
   }
+}
+
+function validateModelArray(model, budget, cache) {
+  const array = assertObject(model.array, 'model.array');
+  if (array.version !== 1) fail('model.array.version', 'is not supported.');
+  if (model.regions.length) fail('model.regions', 'must be empty for an instanced model.');
+  for (const key of ['implants', 'electricalRegions'])
+    for (const a of model[key] || [])
+      if (a.patches.length)
+        fail(`model.${key}`, 'must contain only annotation definitions in an array model.');
+  const templates = assertArray(array.templates, 'model.array.templates', MAX_ARRAY_TEMPLATES),
+    definitions = new Map();
+  if (!templates.length) fail('model.array.templates', 'must not be empty.');
+  const layerIds = new Set(model.layers.map((l) => l.id));
+  for (const [i, t] of templates.entries()) {
+    const path = `model.array.templates[${i}]`;
+    assertObject(t, path);
+    assertString(t.id, `${path}.id`, { max: 128 });
+    if (definitions.has(t.id)) fail(`${path}.id`, 'must be unique.');
+    assertObject(t.model, `${path}.model`);
+    if (t.model.kernel !== 'vector-2.5d-v1' || t.model.array != null)
+      fail(`${path}.model`, 'must be a non-nested canonical model.');
+    validateModel(t.model, budget, cache);
+    for (const l of t.model.layers)
+      if (!layerIds.has(l.id)) fail(`${path}.model.layers`, 'references a missing global layer.');
+    for (const key of ['implants', 'electricalRegions'])
+      for (const a of t.model[key] || []) {
+        const definition = (model[key] || []).find((r) => r.id === a.id);
+        if (!definition) fail(`${path}.model.${key}`, 'references a missing global annotation.');
+        for (const field of ['face', 'thickness', 'tilt', 'regionType', 'source'])
+          if (a[field] !== definition[field])
+            fail(`${path}.model.${key}`, 'has inconsistent physical annotation metadata.');
+      }
+    definitions.set(t.id, t.model);
+  }
+  const instances = assertArray(array.instances, 'model.array.instances', MAX_ARRAY_INSTANCES),
+    ids = new Set(),
+    entries = [];
+  if (!instances.length) fail('model.array.instances', 'must not be empty.');
+  const domainKey = JSON.stringify([
+    model.width,
+    model.height,
+    model.boundary,
+    templates.map((t) => [t.id, t.model.boundary]),
+    instances,
+  ]);
+  const proven = cache.arrayDomains.has(domainKey);
+  let domainPoints = 0;
+  for (const [i, instance] of instances.entries()) {
+    const path = `model.array.instances[${i}]`;
+    assertObject(instance, path);
+    assertString(instance.id, `${path}.id`, { max: 64 });
+    if (ids.has(instance.id)) fail(`${path}.id`, 'must be unique.');
+    ids.add(instance.id);
+    assertString(instance.templateId, `${path}.templateId`, { max: 128 });
+    const template = definitions.get(instance.templateId);
+    if (!template) fail(`${path}.templateId`, 'references an unknown template.');
+    assertCoordinate(instance.x, `${path}.x`);
+    assertCoordinate(instance.y, `${path}.y`);
+    domainPoints += geometryPointCount(template.boundary);
+    if (domainPoints > 250000)
+      fail('model.array.instances', 'exceeds the instance domain point budget.');
+    if (instance.role != null && !['device', 'background'].includes(instance.role))
+      fail(`${path}.role`, 'must be device or background.');
+    if (proven) continue;
+    const geom = translateGeometry(template.boundary, instance.x, instance.y),
+      bounds = arrayGeometryBounds(geom);
+    for (const value of [bounds.minX, bounds.maxX, bounds.minY, bounds.maxY])
+      assertCoordinate(value, `${path}.bounds`);
+    entries.push({ geom, bounds, path });
+  }
+  if (proven) return;
+  const tolerance = Math.max(1e-18, model.width * model.height * 1e-15);
+  const domains = entries.flatMap((e) => e.geom);
+  if (
+    cachedGeometryArea(domains, model.boundary, cache, 'differences', robustDifference) > tolerance
+  )
+    fail('model.array.instances', 'extends outside the physical model boundary.');
+  if (
+    cachedGeometryArea(model.boundary, domains, cache, 'differences', robustDifference) > tolerance
+  )
+    fail('model.array.instances', 'must cover the complete physical model domain.');
+  entries.sort((a, b) => a.bounds.minX - b.bounds.minX);
+  const active = [];
+  for (const current of entries) {
+    for (let i = active.length - 1; i >= 0; i--)
+      if (active[i].bounds.maxX <= current.bounds.minX) active.splice(i, 1);
+    for (const previous of active) {
+      if (
+        previous.bounds.maxY <= current.bounds.minY ||
+        current.bounds.maxY <= previous.bounds.minY
+      )
+        continue;
+      if (
+        cachedGeometryArea(
+          previous.geom,
+          current.geom,
+          cache,
+          'intersections',
+          robustIntersection,
+        ) > tolerance
+      )
+        fail(current.path, 'overlaps another instance domain.');
+    }
+    active.push(current);
+  }
+  cache.arrayDomains.add(domainKey);
 }
 
 function validateBounds(bounds, path) {

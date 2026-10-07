@@ -1,3 +1,5 @@
+import { selectedMaskInstanceIndex } from '../mask-instance-index.js';
+import { isArrayModel } from '../model-array.js';
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
 import { validateProcessModel } from '../project-schema.js';
 import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
@@ -826,6 +828,9 @@ export function createProcessPanelController({
         ? { drawMask: structuredClone(drawMask) }
         : {
             maskTransform: { ...maskTransform },
+            ...(isArrayModel(model)
+              ? { maskIndex: selectedMaskInstanceIndex(layout, selectedElement, maskTransform) }
+              : {}),
             elements: (layout.elements || []).filter(selectedElement).map((element) => ({
               kind: element.kind,
               width: element.width,

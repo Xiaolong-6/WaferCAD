@@ -1,3 +1,4 @@
+import { prepareBoundaryIndex, boundaryChains } from './process-boundary-index.js';
 import {
   bufferPolyline,
   cloneGeom,
@@ -826,29 +827,30 @@ function packDisjointBands(bands, maxBatchSize = 8) {
   return batches.map((batch) => batch.geom);
 }
 
-export function conformalBoundaryBands(geom, amount) {
+export function conformalBoundaryBands(geom, amount, clip = null) {
   const distance = Math.max(0, Number(amount) || 0),
     bands = [];
   if (!(distance > TOPOLOGY_EPSILON_UM)) return bands;
-
-  for (const polygon of geom || []) {
-    for (const ring of polygon || []) {
-      if (!Array.isArray(ring) || ring.length < 4) continue;
-      const points = ring.slice(0, -1);
-      try {
-        const band = bufferPolyline(points, distance, 32, true);
+  const index = prepareBoundaryIndex(geom);
+  const chains = clip
+    ? boundaryChains(index, multiBounds(clip), distance + 0.0002)
+    : index.rings
+        .filter(({ ring }) => ring.length >= 4)
+        .map(({ ring }) => ({ points: ring.slice(0, -1), closed: true }));
+  for (const { points, closed } of chains) {
+    if (points.length < 2) continue;
+    try {
+      const band = bufferPolyline(points, distance, 32, closed);
+      if (!isEmpty(band)) bands.push(band);
+    } catch {
+      // Preserve the existing local-edge fallback for pathological rings.
+      const path = closed ? [...points, points[0]] : points;
+      for (let i = 1; i < path.length; i++) {
+        const band = bufferPolyline([path[i - 1], path[i]], distance, 20, false);
         if (!isEmpty(band)) bands.push(band);
-      } catch {
-        // Keep boundary construction local. One pathological imported ring must
-        // not cancel otherwise valid Conformal wall topology.
-        for (let index = 1; index < ring.length; index++) {
-          const band = bufferPolyline([ring[index - 1], ring[index]], distance, 20, false);
-          if (!isEmpty(band)) bands.push(band);
-        }
       }
     }
   }
-
   return packDisjointBands(bands);
 }
 

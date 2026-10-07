@@ -2,6 +2,7 @@ const versionQuery = self.location.search || '';
 self.importScripts(`./vendor/polygon-clipping.umd.js${versionQuery}`);
 
 let modulesPromise = null;
+let prewarmEpoch = 0;
 
 function modules() {
   if (!modulesPromise) {
@@ -17,14 +18,35 @@ function modules() {
       import(versioned('./mask-roi-geometry.js')),
       import(versioned('./advanced-process-operations.js')),
       import(versioned('./project-schema.js')),
-    ]).then(([modelApi, vectorApi, drawApi, maskRoiApi, advancedApi, projectSchema]) => ({
-      modelApi,
-      vectorApi,
-      drawApi,
-      maskRoiApi,
-      advancedApi,
-      projectSchema,
-    }));
+      import(versioned('./model-array-process.js')),
+      import(versioned('./model-array.js')),
+      import(versioned('./mask-instance-index.js')),
+      import(versioned('./process-boundary-index.js')),
+    ]).then(
+      ([
+        modelApi,
+        vectorApi,
+        drawApi,
+        maskRoiApi,
+        advancedApi,
+        projectSchema,
+        arrayProcess,
+        arrayApi,
+        maskIndexApi,
+        boundaryIndexApi,
+      ]) => ({
+        modelApi,
+        vectorApi,
+        drawApi,
+        maskRoiApi,
+        advancedApi,
+        projectSchema,
+        arrayProcess,
+        arrayApi,
+        maskIndexApi,
+        boundaryIndexApi,
+      }),
+    );
   }
   return modulesPromise;
 }
@@ -62,7 +84,16 @@ function fileMaskGeometry(elements, transform, vectorApi) {
   return vectorApi.unionGeometries(geoms);
 }
 
-function processArea(model, request, modelApi, vectorApi, drawApi, maskRoiApi) {
+function processArea(
+  model,
+  request,
+  modelApi,
+  vectorApi,
+  drawApi,
+  maskRoiApi,
+  arrayApi,
+  maskIndexApi,
+) {
   const mode = request?.mode || 'full';
   let area;
   if (mode === 'full') {
@@ -84,17 +115,51 @@ function processArea(model, request, modelApi, vectorApi, drawApi, maskRoiApi) {
     limiter = request?.maskRoi
       ? maskRoiApi.maskRoiWorldGeometry(request.maskRoi, roiTransform, 96)
       : null;
-  return limiter ? vectorApi.intersection(area, limiter) : area;
+  const result = limiter ? vectorApi.intersection(area, limiter) : area;
+  if (arrayApi.isArrayModel(model) && request.maskSourceMode === 'file')
+    Object.defineProperty(result, 'arrayMaskQuery', {
+      value: {
+        index:
+          mode === 'full'
+            ? null
+            : request.maskIndex ||
+              maskIndexApi.compileMaskInstanceIndex(request.elements || [], request.maskTransform),
+        mode,
+        limiter,
+        boundary: model.boundary,
+      },
+    });
+  return result;
 }
 
 self.onmessage = async (event) => {
   const { id, model, params, areaRequest } = event.data || {};
   if (!id) return;
+  const currentEpoch = ++prewarmEpoch;
   try {
-    const { modelApi, vectorApi, drawApi, maskRoiApi, advancedApi, projectSchema } =
-      await modules();
+    const {
+      modelApi,
+      vectorApi,
+      drawApi,
+      maskRoiApi,
+      advancedApi,
+      projectSchema,
+      arrayProcess,
+      arrayApi,
+      maskIndexApi,
+      boundaryIndexApi,
+    } = await modules();
     self.postMessage({ id, type: 'progress', stage: 'Preparing process area…' });
-    const area = processArea(model, areaRequest, modelApi, vectorApi, drawApi, maskRoiApi);
+    const area = processArea(
+      model,
+      areaRequest,
+      modelApi,
+      vectorApi,
+      drawApi,
+      maskRoiApi,
+      arrayApi,
+      maskIndexApi,
+    );
     if (vectorApi.isEmpty(area)) {
       self.postMessage({
         id,
@@ -112,14 +177,17 @@ self.onmessage = async (event) => {
 
     self.postMessage({ id, type: 'progress', stage: 'Computing process geometry…' });
     const nextModel = structuredClone(model);
-    const advancedResult = advancedApi.applyAdvancedProcessOperation(
-      nextModel,
-      params,
-      area,
-      modelApi,
-      vectorApi,
-    );
-    const result = advancedResult ?? modelApi.applyOperation(nextModel, { ...params, area });
+    const apply = (candidate, localParams) =>
+      advancedApi.applyAdvancedProcessOperation(
+        candidate,
+        localParams,
+        localParams.area,
+        modelApi,
+        vectorApi,
+      ) ?? modelApi.applyOperation(candidate, localParams);
+    const result = arrayApi.isArrayModel(nextModel)
+      ? arrayProcess.applyArrayOperation(nextModel, { ...params, area }, apply)
+      : apply(nextModel, { ...params, area });
     if (result?.changed) {
       self.postMessage({ id, type: 'progress', stage: 'Validating process geometry…' });
       try {
@@ -135,6 +203,14 @@ self.onmessage = async (event) => {
       }
     }
     self.postMessage({ id, type: 'done', model: nextModel, result, validated: true });
+    // The committed candidate is immutable here. Yield between regions so a
+    // new foreground request cancels idle preparation before computing.
+    if (result?.changed)
+      setTimeout(() => {
+        boundaryIndexApi
+          .prewarmModelBoundaryIndexes(nextModel, () => currentEpoch === prewarmEpoch)
+          .catch(() => {}); // Optional cache work never turns success into failure.
+      }, 250);
   } catch (error) {
     self.postMessage({
       id,

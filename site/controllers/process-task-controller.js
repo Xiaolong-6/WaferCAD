@@ -6,6 +6,20 @@ export function createProcessTaskController({
   const $ = (id) => root.getElementById(id);
   let active = null,
     sequence = 0;
+  let idleProcessWorker = null,
+    idleTimer = null;
+  function discardIdleWorker() {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+    idleProcessWorker?.terminate();
+    idleProcessWorker = null;
+  }
+  function retainProcessWorker(worker) {
+    discardIdleWorker();
+    idleProcessWorker = worker;
+    idleTimer = setTimeout(discardIdleWorker, 120000);
+    idleTimer.unref?.();
+  }
 
   function formatElapsed(ms) {
     const seconds = Math.max(0, ms) / 1000;
@@ -54,19 +68,27 @@ export function createProcessTaskController({
         currentModuleUrl = new URL(import.meta.url);
       workerUrl.search = currentModuleUrl.search;
 
+      const reusable = workerPath === '../process-worker.js';
       let worker,
         settled = false;
       const settle = (result) => {
         if (settled) return;
         settled = true;
         if (task.abortCurrent === abortCurrent) task.abortCurrent = null;
-        worker?.terminate();
+        if (reusable && result.validated && !result.rejected && !result.error && !result.aborted)
+          retainProcessWorker(worker);
+        else worker?.terminate();
         resolve(result);
       };
       const abortCurrent = () => settle({ aborted: true });
 
       try {
-        worker = new Worker(workerUrl);
+        if (reusable && idleProcessWorker) {
+          worker = idleProcessWorker;
+          idleProcessWorker = null;
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        } else worker = new Worker(workerUrl);
       } catch (error) {
         settle({
           error: error?.message || String(error || 'Worker failed to start.'),
@@ -102,6 +124,10 @@ export function createProcessTaskController({
       };
 
       worker.onerror = (event) => {
+        if (settled && idleProcessWorker === worker) {
+          discardIdleWorker();
+          return;
+        }
         settle({ error: event.message || 'Worker failed.', aborted: false });
       };
 
@@ -218,5 +244,6 @@ export function createProcessTaskController({
     runWorker,
     abort,
     isBusy: () => Boolean(active),
+    dispose: discardIdleWorker,
   };
 }

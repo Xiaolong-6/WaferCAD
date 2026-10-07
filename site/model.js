@@ -1,3 +1,14 @@
+import { indexedIntersectionInputs } from './process-boundary-index.js';
+import { localGeometry } from './model-array-context.js';
+import { applyArrayOperation } from './model-array-process.js';
+import {
+  isArrayModel,
+  resolveArrayModel,
+  referencedModelParts,
+  arrayParts,
+  translateGeometry,
+  geometryBounds as arrayBounds,
+} from './model-array.js';
 import {
   bufferMulti,
   circleMulti,
@@ -76,10 +87,11 @@ export function createModel({
 
 export const cloneModel = (model) => structuredClone(model);
 export const isVectorModel = (model) =>
-  model?.kernel === 'vector-2.5d-v1' && Array.isArray(model.regions);
+  (model?.kernel === 'vector-2.5d-v1' || isArrayModel(model)) && Array.isArray(model.regions);
 export const fullFaceGeometry = (model) => cloneGeom(model.boundary);
 
 export function hasMaterial(model) {
+  if (isArrayModel(model)) return referencedModelParts(model).some(hasMaterial);
   return Boolean(
     model?.regions?.some((region) => !isEmpty(region.geom) && (region.stack || []).length > 0),
   );
@@ -109,6 +121,7 @@ export function geometryArea(geometry) {
 }
 
 export function layerPresent(model, layerId) {
+  if (isArrayModel(model)) return referencedModelParts(model).some((m) => layerPresent(m, layerId));
   return Boolean(
     model?.regions?.some((region) =>
       (region.stack || []).some((segment) => segment.layerId === layerId),
@@ -117,6 +130,21 @@ export function layerPresent(model, layerId) {
 }
 
 export function baseCoverageState(model) {
+  if (isArrayModel(model)) {
+    const costs = new Map(
+      model.array.templates.map((t) => [
+        t.id,
+        t.model.regions.reduce(
+          (sum, r) => sum + (r.stack.some((s) => s.layerId === 'base') ? geometryArea(r.geom) : 0),
+          0,
+        ),
+      ]),
+    );
+    const area = model.array.instances.reduce((sum, i) => sum + costs.get(i.templateId), 0);
+    if (area <= 1e-12) return 'removed';
+    const domain = geometryArea(model.boundary);
+    return area >= domain - Math.max(1e-9, domain * 1e-9) ? 'full' : 'partial';
+  }
   let baseArea = 0;
   for (const region of model?.regions || []) {
     if ((region.stack || []).some((segment) => segment.layerId === 'base')) {
@@ -131,6 +159,29 @@ export function baseCoverageState(model) {
 }
 
 export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
+  if (isArrayModel(model)) {
+    const ids = new Set(),
+      full = area === model.boundary || JSON.stringify(area) === JSON.stringify(model.boundary),
+      seen = new Set(),
+      queries = new Map(),
+      maskBoundsCache = new WeakMap();
+    for (const part of arrayParts(model, full ? null : arrayBounds(area))) {
+      if (full && seen.has(part.model)) continue;
+      seen.add(part.model);
+      const local = full
+        ? part.model.boundary
+        : localGeometry(area, part, translateGeometry(part.model.boundary, part.x, part.y));
+      if (!local.length) continue;
+      const key = part.templateId + '|' + JSON.stringify(local);
+      let exposed = queries.get(key);
+      if (!exposed) {
+        exposed = exposedLayerIdsFromTopology(part.model, local, face);
+        queries.set(key, exposed);
+      }
+      for (const id of exposed) ids.add(id);
+    }
+    return [...ids];
+  }
   return exposedLayerIdsFromTopology(model, area, face);
 }
 
@@ -186,6 +237,17 @@ export function visibleMaterialModel(model) {
     (model?.layers || []).filter((layer) => layer.visible === false).map((layer) => layer.id),
   );
   if (!hidden.size) return model;
+  if (isArrayModel(model))
+    return {
+      ...model,
+      array: {
+        ...model.array,
+        templates: model.array.templates.map((t) => ({
+          ...t,
+          model: visibleMaterialModel({ ...t.model, layers: model.layers }),
+        })),
+      },
+    };
   return {
     ...model,
     regions: (model?.regions || [])
@@ -274,6 +336,10 @@ export function setImplantDepthProfile(model, id, profile) {
 }
 
 export function isLayerExposed(model, id) {
+  if (isArrayModel(model)) {
+    const leaves = referencedModelParts(model).filter((m) => layerPresent(m, id));
+    return leaves.length > 0 && leaves.every((m) => isLayerExposed(m, id));
+  }
   if (id === 'base' || !layerById(model, id)) return false;
   let found = false;
   for (const region of model.regions) {
@@ -288,6 +354,20 @@ export function isLayerExposed(model, id) {
 }
 
 export function deleteExposedLayer(model, id) {
+  if (isArrayModel(model)) {
+    if (!isLayerExposed(model, id)) return false;
+    const templates = model.array.templates.map((t) => {
+      const leaf = cloneModel(t.model);
+      if (layerPresent(leaf, id)) deleteExposedLayer(leaf, id);
+      leaf.layers = leaf.layers.filter((l) => l.id !== id);
+      return { ...t, model: leaf };
+    });
+    model.array = { ...model.array, templates };
+    model.layers = model.layers.filter((l) => l.id !== id);
+    model.revision++;
+    model.processRevision = (model.processRevision || 0) + 1;
+    return true;
+  }
   if (!isLayerExposed(model, id)) return false;
   const next = [];
   for (const region of model.regions) {
@@ -440,13 +520,15 @@ function partitionProcessRegions(
   rejectOverlapAbove = null,
   operation = 'Isotropic release',
 ) {
-  const out = [];
+  const out = [],
+    operationCache = new WeakMap();
   for (const region of regions || []) {
     let geom = sanitizeProcessGeometry(region.geom);
     if (isEmpty(geom)) continue;
 
     for (const previous of out) {
-      const overlap = intersection(geom, previous.geom);
+      const [left, right] = indexedIntersectionInputs(geom, previous.geom, operationCache);
+      const overlap = intersection(left, right);
       if (isEmpty(overlap)) continue;
       const overlapArea = processGeometryArea(overlap);
       if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
@@ -912,7 +994,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // mask opening still receive conformal coverage while the mask edge remains a
   // hard clip.
   for (const source of sources) {
-    for (const rawBand of conformalBoundaryBands(source.geom, amount)) {
+    for (const rawBand of conformalBoundaryBands(source.geom, amount, active)) {
       // Use one persistence-grid band for both the hit and its complement.
       const band = intersection(intersection(snapProcessGeometry(rawBand), active), model.boundary);
       if (isEmpty(band)) continue;
@@ -1314,6 +1396,7 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
       params?.growth === 'conformal' ||
       (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
@@ -1336,6 +1419,12 @@ export function applyOperation(model, params) {
 }
 
 export function modelBoundsZ(model) {
+  if (isArrayModel(model)) {
+    const bounds = referencedModelParts(model).filter(hasMaterial).map(modelBoundsZ);
+    return bounds.length
+      ? [Math.min(...bounds.map((b) => b[0])), Math.max(...bounds.map((b) => b[1]))]
+      : [-1, 1];
+  }
   let lo = Infinity,
     hi = -Infinity;
   for (const region of model.regions)
@@ -1347,6 +1436,7 @@ export function modelBoundsZ(model) {
 }
 
 export function surfacePatches(model, face = 'front') {
+  if (isArrayModel(model)) return surfacePatches(resolveArrayModel(model), face);
   return regionSurfaceFaces(model, { face }).map((patch) => ({
     geom: patch.geom,
     layerId: patch.layerId,
@@ -1358,6 +1448,10 @@ export function surfacePatches(model, face = 'front') {
 }
 
 export function layerUsage(model, id) {
+  if (isArrayModel(model)) {
+    const counts = new Map(model.array.templates.map((t) => [t.id, layerUsage(t.model, id)]));
+    return model.array.instances.reduce((n, i) => n + counts.get(i.templateId), 0);
+  }
   let count = 0;
   for (const region of model.regions)
     for (const seg of region.stack) if (seg.layerId === id) count++;
