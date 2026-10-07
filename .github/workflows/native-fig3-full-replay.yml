@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   native-fig3-full-replay:
@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -49,8 +51,20 @@ jobs:
           exit 1
 
       - name: Replay Native Fig3 from the initial state
-        run: node scripts/fig3-full-replay-acceptance.mjs --verify-repo-examples
+        run: node scripts/fig3-full-replay-acceptance.mjs --verify-repo-examples --write-repo-examples
 
+      - name: Commit refreshed formal examples
+        if: github.head_ref == 'test/native-fig3-full-replay-20261007'
+        run: |
+          if git diff --quiet -- site/examples/three-tier-silicon-jlfets.wafercad site/examples/three-tier-silicon-jlfets-full-wafer.wafercad; then
+            echo "Formal examples already match the accepted replay."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/examples/three-tier-silicon-jlfets.wafercad site/examples/three-tier-silicon-jlfets-full-wafer.wafercad
+          git commit -m "examples: refresh Native Fig3 from full replay"
+          git push origin HEAD:${{ github.head_ref }}
       - name: Upload full replay evidence
         if: always()
         uses: actions/upload-artifact@v6
