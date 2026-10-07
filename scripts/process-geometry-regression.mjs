@@ -82,6 +82,8 @@ assert.equal(await recipePage.locator('#recipeProcessPane').isHidden(), true);
 await recipePage.locator('[data-process-input-mode="recipe"]').click();
 assert.equal(await recipePage.locator('#manualProcessPane').isHidden(), true);
 assert.equal(await recipePage.locator('#recipeProcessPane').isVisible(), true);
+assert.equal(await recipePage.locator('#recipeStepsPane').isVisible(), true);
+assert.equal(await recipePage.locator('#recipeCodePane').isHidden(), true);
 
 await recipePage.locator('#recipeTemplateSelect').selectOption('conformal');
 assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
