@@ -114,6 +114,7 @@ export function createThreeView({
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
   let presentationObjects = new Set();
+  let surfaceMaterialPool = new Map();
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
   let physicalSceneSignature = null;
@@ -822,6 +823,7 @@ export function createThreeView({
     roughRenderContext = null;
     transparentMeshes = [];
     presentationObjects = new Set();
+    surfaceMaterialPool = new Map();
     physicalSceneModel = null;
     physicalSceneSignature = null;
   }
@@ -1346,14 +1348,39 @@ export function createThreeView({
     });
   }
 
-  function createSurfaceMaterial(layer, materialState, appearance = null) {
-    return new THREE.MeshStandardMaterial({
-      color: layer?.color || '#999',
-      roughness: appearance ? 0.84 : 0.78,
-      metalness: 0.015,
-      side: THREE.DoubleSide,
-      ...materialState,
-    });
+  function createSurfaceMaterial(
+    layer,
+    materialState,
+    appearance = null,
+    presentation = null,
+  ) {
+    const create = () =>
+      new THREE.MeshStandardMaterial({
+        color: layer?.color || '#999',
+        roughness: appearance ? 0.84 : 0.78,
+        metalness: 0.015,
+        side: THREE.DoubleSide,
+        ...materialState,
+      });
+
+    // Adaptive rough meshes are replaced independently and may carry
+    // per-profile shader decoration, so they retain private materials.
+    // Smooth persistent scene objects share one material per visual role/layer.
+    if (appearance || !presentation?.kind) return create();
+
+    const key = JSON.stringify([
+      presentation.kind,
+      layer?.id || '',
+      layer?.color || '#999',
+      Number(appearance ? 0.84 : 0.78),
+    ]);
+    let material = surfaceMaterialPool.get(key);
+    if (!material) {
+      material = create();
+      material.userData.waferCadPooledPresentationMaterial = true;
+      surfaceMaterialPool.set(key, material);
+    }
+    return material;
   }
 
   function createAnnotationGradientMaterial(
@@ -1414,7 +1441,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
-      material?.dispose?.();
+      if (!material?.userData?.waferCadPooledPresentationMaterial) material?.dispose?.();
       return null;
     }
     if (instanceTranslations)
@@ -1459,7 +1486,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
   ) {
     if (!geometry.getAttribute('position')?.count || !translations?.length) {
       geometry.dispose();
-      material?.dispose?.();
+      if (!material?.userData?.waferCadPooledPresentationMaterial) material?.dispose?.();
       return [];
     }
 
@@ -2314,10 +2341,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
         if (!cap.appearance && cap.instanceTranslations) {
           const geometry = geometryFromCachedArrayCap(cap),
-            material = createSurfaceMaterial(layer, state);
+            presentation = presentationFor(cap),
+            material = createSurfaceMaterial(layer, state, null, presentation);
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
             name: `${cap.layerId} array cap`,
-            presentation: presentationFor(cap),
+            presentation,
           });
           smoothCapInstanceGroupCount += meshes.length;
           smoothCapInstanceCount += cap.instanceTranslations.length;
@@ -2377,10 +2405,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
                     },
                   ],
                 }),
-                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
+                presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
+                  state,
+                  null,
+                  presentation,
+                ),
                 meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
                   name: `${bucket.part.layerId || 'material'} repeated cap`,
-                  presentation: presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                  presentation,
                 });
               if (!meshes.length) continue;
               smoothCapInstanceGroupCount += meshes.length;
@@ -2399,7 +2433,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
                     },
                   ],
                 }),
-                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+                presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
+                  state,
+                  null,
+                  presentation,
+                );
               addSurfaceMesh(
                 geometry,
                 material,
@@ -2408,7 +2448,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 bucket.part.buried ? 10 : 0,
                 false,
                 null,
-                presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                presentation,
               );
             }
           }
@@ -2423,7 +2463,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
               polys: part.polys,
             })),
           }),
-          material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+          presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+          material = createSurfaceMaterial(
+            layerById(model, bucket.part.layerId),
+            state,
+            null,
+            presentation,
+          );
         addSurfaceMesh(
           geometry,
           material,
@@ -2432,7 +2478,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           bucket.part.buried ? 10 : 0,
           false,
           null,
-          presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+          presentation,
         );
       }
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
@@ -2454,14 +2500,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (sidewall.instanceTranslations) {
           const parts = displaySidewallParts(sidewall.parts || [sidewall]);
           const geometry = geometryFromSidewallParts(parts),
-            material = createSurfaceMaterial(layerById(model, sidewall.layerId), state);
+            presentation = presentationFor(sidewall),
+            material = createSurfaceMaterial(
+              layerById(model, sidewall.layerId),
+              state,
+              null,
+              presentation,
+            );
           const meshes = addInstancedSurfaceMeshes(
             geometry,
             material,
             sidewall.instanceTranslations,
             {
               name: `${sidewall.layerId} array wall`,
-              presentation: presentationFor(sidewall),
+              presentation,
             },
           );
           smoothSidewallInstanceGroupCount += meshes.length;
@@ -2481,14 +2533,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (instances.instanceCount > 0) {
           for (const groupInstances of instances.groups) {
             const geometry = geometryFromSidewallParts([groupInstances.template]),
-              material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
+              presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+              material = createSurfaceMaterial(
+                layerById(model, bucket.part.layerId),
+                state,
+                null,
+                presentation,
+              ),
               meshes = addInstancedSurfaceMeshes(
                 geometry,
                 material,
                 groupInstances.translations,
                 {
                   name: `${bucket.part.layerId || 'material'} repeated sidewall`,
-                  presentation: presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+                  presentation,
                 },
               );
             if (!meshes.length) continue;
@@ -2500,7 +2558,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
           if (instances.leftovers.length) {
             const geometry = geometryFromSidewallParts(instances.leftovers),
-              material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+              presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+              material = createSurfaceMaterial(
+                layerById(model, bucket.part.layerId),
+                state,
+                null,
+                presentation,
+              );
             addSurfaceMesh(
               geometry,
               material,
@@ -2509,14 +2573,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
               bucket.part.buried ? 11 : 0,
               false,
               null,
-              presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+              presentation,
             );
           }
           continue;
         }
 
         const geometry = geometryFromSidewallParts(visibleParts),
-          material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
+          presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+          material = createSurfaceMaterial(
+            layerById(model, bucket.part.layerId),
+            state,
+            null,
+            presentation,
+          );
         addSurfaceMesh(
           geometry,
           material,
@@ -2525,7 +2595,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           bucket.part.buried ? 11 : 0,
           false,
           null,
-          presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+          presentation,
         );
       }
       host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
@@ -2857,7 +2927,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
             }),
-            capMaterial = createSurfaceMaterial({ color: electrical.color || '#7A6FD0' }, capState);
+            capMaterial = createSurfaceMaterial(
+              { id: electrical.layerId || electrical.electricalRegionId || 'electrical-region', color: electrical.color || '#7A6FD0' },
+              capState,
+              null,
+              surfacePresentation,
+            );
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
