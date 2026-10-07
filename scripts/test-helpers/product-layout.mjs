@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { checkLayout, closeFunctionPanel, openFunctionPanel } from './product.mjs';
+import {
+  checkLayout,
+  closeFunctionPanel,
+  openFunctionPanel,
+  waitForCanvasSizeSync,
+} from './product.mjs';
 import { processBenchmark, projectForBenchmark } from '../process-benchmarks.mjs';
 import { loadProject } from './product-scientific.mjs';
 
@@ -273,6 +278,9 @@ export function createProductLayoutChecks({ capture }) {
       assert.equal((await dockToggle.textContent()).trim(), 'Hide');
       await canvas.waitFor({ state: 'visible' });
     }
+    // Restoring the phone dock makes it visible before ResizeObserver redraws
+    // its canvas. Compare break pixels only after that layout/render boundary.
+    await waitForCanvasSizeSync(page, '#sectionCanvas');
     assert.equal(await entry.isVisible(), true, `${name}: Z collapse axis entry is missing`);
     assert.equal(
       await editor.isHidden(),
@@ -280,11 +288,13 @@ export function createProductLayoutChecks({ capture }) {
       `${name}: collapse editor should be hidden normally`,
     );
 
-    const before = {
-      top: Number(await canvas.getAttribute('data-section-collapse-top-um')),
-      bottom: Number(await canvas.getAttribute('data-section-collapse-bottom-um')),
-      breakY: Number(await canvas.getAttribute('data-section-collapse-break-y')),
-    };
+    const before = await canvas.evaluate((element) => ({
+      top: Number(element.dataset.sectionCollapseTopUm),
+      bottom: Number(element.dataset.sectionCollapseBottomUm),
+      breakY: Number(element.dataset.sectionCollapseBreakY),
+      height: element.height,
+      cssHeight: element.getBoundingClientRect().height,
+    }));
     assert.ok(Number.isFinite(before.top) && Number.isFinite(before.bottom));
     assert.ok(before.top > before.bottom);
     assert.ok(Number.isFinite(before.breakY));
@@ -400,11 +410,12 @@ export function createProductLayoutChecks({ capture }) {
     await page.locator('#sectionCollapseClose').click();
     assert.equal(await editor.isHidden(), true);
 
+    await waitForCanvasSizeSync(page, '#sectionCanvas');
     const afterBreakY = Number(await canvas.getAttribute('data-section-collapse-break-y'));
     assert.ok(Number.isFinite(afterBreakY), `${name}: collapse break moved outside the plot`);
     assert.ok(
       afterBreakY < before.breakY,
-      `${name}: moving the top collapse boundary upward must move the equal-Z-scale break upward`,
+      `${name}: moving the top collapse boundary upward must move the equal-Z-scale break upward: ${JSON.stringify({ before, afterBreakY, afterHeight: await canvas.getAttribute('height') })}`,
     );
     close(
       Number(await canvas.getAttribute('data-section-front-px-per-um')),

@@ -57,3 +57,11 @@ node scripts/welcome-thumbnail-regression.mjs
 ```
 
 Committed scalar evidence: `tests/fixtures/project-io/pre-main-audit-windows-chrome.json`. Local logs: `test-results/pre-main-*.log`. Native captures/exports: `test-results/native-fig3/complete-ui/`; tandem captures: `test-results/ui-acceptance/tandem/`. Local images/exports support the audit but are not a replacement for the committed fixtures and reproducible scripts.
+
+## Authorized full CI follow-up
+
+The user subsequently authorized full pre-main CI and a main fast-forward only after it succeeds. The first Linux run on `1872c61`, [37588608665](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37588608665), passed all 389 Node tests/lint and smoke, workstation, resilience, History, persistence, extended Process Geometry, interaction and example browser suites. It then failed the phone layout assertion that increasing the top collapse bound moves the break upward. Renderer review had not run when the sequential inventory stopped. Main was not pushed after that failure.
+
+The helper read its baseline break pixels immediately after hiding/showing the phone Section dock, before the asynchronous canvas-size/redraw barrier. It now awaits the existing `waitForCanvasSizeSync` before baseline measurement and after the final adjustment; baseline bounds/break/dimensions are read atomically, with dimensions included in any failure. The original upward-movement, equal front/back scales, physical geometry and all other assertions remain unchanged. No product geometry or display math was changed to make the test pass.
+
+The original failing Linux result was not reproduced by three local phone-path runs on pinned Chromium 140.0.7339.186. After the synchronization repair, the complete Windows pinned-Chromium responsive layout suite passed all 109 captures (wide/medium/phone, A/B, units, ROI, imports and six process views); focused ESLint and Prettier passed. These local results do not substitute for the required new full Linux CI run. The Actions run associated with the follow-up commit records that gate's result.
