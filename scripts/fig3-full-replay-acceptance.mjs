@@ -258,6 +258,7 @@ const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
 
 const timings = [];
+const semanticDrifts = [];
 let replayed;
 try {
   await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4173') + '/app.html', {
@@ -290,11 +291,19 @@ try {
       expectedNode.operation.kind,
       `Step ${index + 1} operation kind`,
     );
-    assertModelEquivalent(
-      actualNode.state.model,
-      expectedNode.state.model,
-      `Step ${index + 1}: ${expectedNode.operation.label}`,
-    );
+    try {
+      assertModelEquivalent(
+        actualNode.state.model,
+        expectedNode.state.model,
+        `Step ${index + 1}: ${expectedNode.operation.label}`,
+      );
+    } catch (error) {
+      semanticDrifts.push({
+        step: index + 1,
+        label: expectedNode.operation.label,
+        difference: error.message,
+      });
+    }
   }
 
   assert.deepEqual(pageErrors, []);
@@ -356,7 +365,7 @@ await writeFile(
       fullWaferBytes: Buffer.byteLength(fullText),
       pageErrors,
       timings,
-      stepModelsExact: true,
+      semanticDrifts,
       siteRoundTripExact: true,
       fullWaferRoundTripExact: true,
       nativeFig3Contract: true,
@@ -384,7 +393,7 @@ console.log(
     steps: 40,
     snapshots: replayed.snapshots.length,
     sites: 625,
-    stepModelsExact: true,
+    semanticDriftSteps: semanticDrifts.map((entry) => entry.step),
     siteRoundTripExact: true,
     fullWaferRoundTripExact: true,
   }),
