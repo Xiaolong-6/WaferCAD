@@ -118,19 +118,20 @@ export const BUNDLED_EXAMPLES = Object.freeze([
   {
     id: 'three-tier-silicon-jlfets',
     title: 'Three-tier silicon junctionless transistors',
-    figure: 'Lam et al. - Fig. 3 single-site reconstruction',
+    figure: 'Lam et al. - Fig. 3 · 625-site wafer array',
     kind: 'project',
     level: '3D transistor literature',
     variants: [],
-    path: './examples/three-tier-silicon-jlfets.wafercad',
-    filename: 'three-tier-silicon-jlfets.wafercad',
+    path: './examples/three-tier-silicon-jlfets-full-wafer.wafercad',
+    filename: 'three-tier-silicon-jlfets-full-wafer.wafercad',
+    previewSourcePath: './examples/three-tier-silicon-jlfets.wafercad',
     previewProject: {
       path: './examples/previews/three-tier-silicon-jlfets.wafercad',
       filename: 'three-tier-silicon-jlfets-preview.wafercad',
     },
     preview: { path: './examples/thumbnails/three-tier-silicon-jlfets-three.webp', view: 'three' },
     summary:
-      'Three stacked silicon transistor tiers with native conformal HfO2 gates, contact windows, ILD liners and CMP, retained in 40 History Steps. Reconstructed masks cover one device site; transfer and SOG/CMP use recorded geometric assumptions.',
+      'Three stacked silicon transistor tiers with native conformal HfO2 gates, contact windows, ILD liners and CMP, retained in 40 History Steps. The cover shows one device; Open loads the complete 625-site wafer array. Transfer and SOG/CMP use recorded geometric assumptions.',
     sources: [
       {
         citation:

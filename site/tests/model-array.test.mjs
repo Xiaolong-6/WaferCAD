@@ -4,7 +4,7 @@ import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-b
 await loadGeometryKernel();
 const { createModel } = await import('../model.js');
 const { rectMulti, pointInMulti } = await import('../vector-geometry.js');
-const { ARRAY_MODEL_KERNEL, resolveArrayModel, translateGeometry } =
+const { ARRAY_MODEL_KERNEL, isArrayModel, resolveArrayModel, translateGeometry } =
   await import('../model-array.js');
 const { validateProcessModel, migrateProjectFile } = await import('../project-schema.js');
 const { serializeProject, readProjectFile } = await import('../project-io.js');
@@ -225,4 +225,119 @@ test('strict array ownership rejects missing cells and revalidates mutated geome
   validateProcessModel(source);
   source.array.instances[1].x = 5.001;
   assert.throws(() => validateProcessModel(source), /outside/);
+});
+
+test('array back-face Conformal, planarize, isotropic and undercut match ordinary physical working sets', () => {
+  const apply = (m, params) =>
+    isArrayModel(m)
+      ? applyArrayOperation(
+          m,
+          params,
+          (leaf, p) =>
+            applyAdvancedProcessOperation(leaf, p, p.area, modelApi, vector) ??
+            applyOperation(leaf, p),
+        )
+      : (applyAdvancedProcessOperation(m, params, params.area, modelApi, vector) ??
+        applyOperation(m, params));
+  for (const scenario of ['back-conformal', 'planarize', 'isotropic', 'undercut']) {
+    const array = twoSites(),
+      normal = resolveArrayModel(array);
+    const seed = {
+      type: 'add',
+      name: 'Seed',
+      face: scenario === 'back-conformal' ? 'back' : 'front',
+      thickness: 0.5,
+      area: rectMulti(6, 6),
+    };
+    assert.equal(apply(array, seed).changed, true);
+    assert.equal(apply(normal, seed).changed, true);
+    const seedId = normal.layers.at(-1).id;
+    const params =
+      scenario === 'back-conformal'
+        ? {
+            type: 'add',
+            name: 'Back film',
+            face: 'back',
+            growth: 'conformal',
+            thickness: 0.1,
+            area: normal.boundary,
+          }
+        : scenario === 'planarize'
+          ? {
+              type: 'etch',
+              etchProfile: 'planarize',
+              targetZ: 1.2,
+              thickness: 1.2,
+              area: normal.boundary,
+            }
+          : {
+              type: 'etch',
+              etchProfile: scenario,
+              etchTargetLayerIds: [seedId],
+              thickness: 0.1,
+              area: rectMulti(2, 8, 2.5, 0),
+            };
+    const a = apply(array, params),
+      b = apply(normal, params);
+    assert.equal(a.changed, b.changed, scenario);
+    assert.equal(a.changed, true, scenario + ': ' + a.error);
+    validateProcessModel(array);
+    const resolved = resolveArrayModel(array);
+    for (const x of [-8, -3.2, -2.8, -1, 0.2, 1.6, 2.4, 2.8, 3.2, 8])
+      for (const y of [-4, -2.5, 0.25, 2.5, 4])
+        assert.deepEqual(
+          physicalAt(resolved, [x, y]),
+          physicalAt(normal, [x, y]),
+          `${scenario} at ${x},${y}`,
+        );
+  }
+});
+test('array implant and electrical annotations preserve local host depths and global identities', () => {
+  const array = twoSites(),
+    normal = resolveArrayModel(array);
+  for (const type of ['implant', 'electrical']) {
+    const params = {
+      type,
+      name: type,
+      thickness: 0.2,
+      tilt: 15,
+      area: rectMulti(12, 6),
+      electricalRegionType: 'n-type',
+      electricalRegionSource: 'doped',
+    };
+    assert.equal(applyOperation(array, params).changed, true);
+    assert.equal(applyOperation(normal, params).changed, true);
+    validateProcessModel(array);
+    const resolved = resolveArrayModel(array),
+      key = type === 'implant' ? 'implants' : 'electricalRegions';
+    assert.equal(resolved[key].length, 1);
+    assert.equal(resolved[key][0].id, normal[key][0].id);
+    for (const point of [
+      [-4, 1],
+      [4, 1],
+      [-8, 1],
+      [8, 1],
+    ]) {
+      const at = (m) =>
+        m[key][0].patches.filter((p) => pointInMulti(point, p.geom)).map(({ geom, ...p }) => p);
+      assert.deepEqual(at(resolved), at(normal), `${type} at ${point}`);
+    }
+  }
+});
+test('a changed neighboring site rebuilds its own seam context while unchanged repeat sites still share', () => {
+  const m = twoSites();
+  applyOperation(m, { type: 'add', name: 'Left', thickness: 0.5, area: rectMulti(2, 4, -0.5, 0) });
+  const normal = resolveArrayModel(m);
+  const params = {
+    type: 'add',
+    name: 'Coat',
+    growth: 'conformal',
+    thickness: 0.1,
+    area: m.boundary,
+  };
+  assert.equal(applyOperation(m, params).changed, true);
+  assert.equal(applyOperation(normal, params).changed, true);
+  const resolved = resolveArrayModel(m);
+  for (const x of [-1.55, -1, 0.1, 0.55, 5])
+    assert.deepEqual(physicalAt(resolved, [x, 0.1]), physicalAt(normal, [x, 0.1]));
 });

@@ -657,6 +657,7 @@ export function appearanceSurfaceGroupsFromTopology(model, clip = null) {
       appearance.featureCv,
       appearance.heightCv,
       appearance.seed,
+      appearance.sampleOrigin || null,
       appearance.geometryMode,
       appearance.morphology,
       appearance.polarity,

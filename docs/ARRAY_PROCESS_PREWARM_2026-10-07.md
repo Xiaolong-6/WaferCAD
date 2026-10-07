@@ -59,3 +59,17 @@ node scripts/process-transaction-ui-regression.mjs
 ```
 
 The site is static and requires no build. Original UNC checkout contains unrelated work: do not overwrite it from this feature checkout. No changes from this checkpoint are deployed or merged into main.
+
+## Validated runtime follow-up after b78d5ae
+
+`node scripts/array-runtime-regression.mjs` is now a permanent acceptance entry point (`npm run test:ui:array`, included after IO in `test:ui:process`). It passed on installed Chrome 154 with 625 native sidewall sites / 11,875 sidewall segments; complete model and recorded History round-trip; 43 Steps after continued selective Etch; original metal, contact and HfO2-wall probes unchanged at all 625 sites; continued horizontal film removal at all sites; no page errors. The full-wafer Main SVG has all 1,885 tile uses. Physical GLB is 4,910,188 bytes, includes all 625 translated T3 gate positions and the micrometre-to-metre root matrix via `EXT_mesh_gpu_instancing`.
+
+The scalar report is committed at `tests/fixtures/project-io/array-625-windows-chrome.json`. One local run measured initial Open/3D ready 17.068 s (import worker 3.808 s), masked Conformal UI 91.347 s / worker 61.448 s, modified Open/3D ready 45.607 s (import worker 3.661 s), Conformal project export 18.364 s and continued Etch UI 18.600 s. Compare the preceding indexed-mask-only run: Conformal UI 158.753 s / worker 124.455 s. These are single acceptance runs, not medians; browser-owner regressions were also running. Modified-model renderer and autosave/export costs still warrant further work.
+
+The first final complete Node attempt was 416/417: one source-text ROI assertion expected an immediate return expression. The implementation now attaches a non-enumerable array query after the same ROI intersection, so the test was updated to require both the exact intersection assignment and return of that result. Additional scientific Node checks passed for back-face Conformal, planarize, isotropic/undercut, host-depth annotations and changed-neighbor contexts. A complete rerun is required after these final changes.
+
+History fault injection previously counted Worker constructors. Retaining a validated Process worker changes that implementation detail; the test now fails the fourth Process dispatch, still after two downstream replay Steps, with the same rollback assertions. Re-run History and the real transactional rejection test before final acceptance.
+
+## Welcome promotion in this follow-up
+
+The native transistor card now opens `three-tier-silicon-jlfets-full-wafer.wafercad`. Its preview and thumbnail continue to use the unchanged single-device source through explicit `previewSourcePath`; all existing preview geometry/display and thumbnail hashes remain required. The native structure helper checks every recorded array Step's shared device template and requires exactly 625 device references. This follows the successful actual full-wafer SVG/GLB and Apply/IO acceptance above. Re-run Welcome/example owners and deterministic preview rebuilding before final acceptance.

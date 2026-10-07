@@ -11,7 +11,10 @@ const write = process.argv.includes('--write');
 const reports = [];
 await mkdir(new URL('../site/examples/previews/', import.meta.url), { recursive: true });
 for (const example of BUNDLED_EXAMPLES) {
-  const sourcePath = new URL('../site/' + example.path.replace(/^\.\//, ''), import.meta.url);
+  const sourcePath = new URL(
+    '../site/' + (example.previewSourcePath || example.path).replace(/^\.\//, ''),
+    import.meta.url,
+  );
   const sourceBytes = await readFile(sourcePath);
   const source = expandProjectStorage(JSON.parse(sourceBytes));
   const preview = structuredClone(source);
@@ -59,12 +62,15 @@ for (const example of BUNDLED_EXAMPLES) {
   assert.deepEqual(await readFile(sourcePath), sourceBytes, 'Complete original is preserved');
   reports.push({
     id: example.id,
-    fullBytes: sourceBytes.length,
+    fullBytes: (
+      await readFile(new URL('../site/' + example.path.replace(/^\.\//, ''), import.meta.url))
+    ).length,
+    previewSourceBytes: sourceBytes.length,
     previewBytes: Buffer.byteLength(text),
     fullSteps: source.snapshotBranches.nodes.length,
     previewSteps: 1,
     finalModelAndLayoutExactlyEqual: true,
-    fullFileSha256: createHash('sha256').update(sourceBytes).digest('hex'),
+    previewSourceSha256: createHash('sha256').update(sourceBytes).digest('hex'),
   });
 }
 console.log(JSON.stringify(reports, null, 2));

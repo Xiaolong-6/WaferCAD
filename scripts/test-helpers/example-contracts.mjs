@@ -105,8 +105,13 @@ export function assertTandemTextureContract(project) {
 export function assertNativeFig3Contract(project, pointInMulti) {
   assert.equal(typeof pointInMulti, 'function');
   const expanded = expandProjectStorage(structuredClone(project)),
-    model = expanded.model,
-    nodes = expanded.snapshotBranches.nodes,
+    model = nativeDeviceModel(expanded.model),
+    nodes = expanded.snapshotBranches.nodes.map((node) => ({
+      ...node,
+      state: node.state
+        ? { ...node.state, model: nativeDeviceModel(node.state.model) }
+        : node.state,
+    })),
     names = new Map(model.layers.map((layer) => [layer.id, layer.name]));
   assert.equal(nodes.length, 40);
   assert.equal(model.width, 1600);
@@ -171,4 +176,21 @@ export function assertNativeFig3Contract(project, pointInMulti) {
     assert.ok(wall.z1 - wall.z0 > 0.05, 'T3 finite-height S/D sidewall');
   }
   return { tiers: 3, nativeConformalGates: 3, nativeConformalLiners: 2, steps: 40 };
+}
+
+// Full-wafer assembly keeps the same verified local recipe at every device.
+// Require all 625 device references and inspect each recorded Step's template.
+function nativeDeviceModel(model) {
+  if (model.kernel !== 'vector-2.5d-array-v1') return model;
+  assert.equal(model.width, 76200);
+  assert.equal(model.height, 76200);
+  const sites = model.array.instances.filter((i) => i.role === 'device');
+  assert.equal(sites.length, 625);
+  const templateId = sites[0].templateId;
+  assert.ok(
+    sites.every((i) => i.templateId === templateId),
+    'Every native device uses the verified recipe',
+  );
+  const leaf = model.array.templates.find((t) => t.id === templateId).model;
+  return { ...leaf, layers: model.layers };
 }

@@ -14,6 +14,18 @@ export function createProcessTaskController({
     idleProcessWorker?.terminate();
     idleProcessWorker = null;
   }
+  function canRetain(model) {
+    const parts = model?.array?.templates?.map((t) => t.model) || [model];
+    let points = 0;
+    for (const part of parts)
+      for (const region of part?.regions || [])
+        for (const polygon of region.geom || [])
+          for (const ring of polygon) {
+            points += ring.length;
+            if (points > 250000) return false;
+          }
+    return true;
+  }
   function retainProcessWorker(worker) {
     discardIdleWorker();
     idleProcessWorker = worker;
@@ -75,7 +87,14 @@ export function createProcessTaskController({
         if (settled) return;
         settled = true;
         if (task.abortCurrent === abortCurrent) task.abortCurrent = null;
-        if (reusable && result.validated && !result.rejected && !result.error && !result.aborted)
+        if (
+          reusable &&
+          result.validated &&
+          !result.rejected &&
+          !result.error &&
+          !result.aborted &&
+          canRetain(result.model)
+        )
           retainProcessWorker(worker);
         else worker?.terminate();
         resolve(result);
