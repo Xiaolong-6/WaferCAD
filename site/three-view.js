@@ -127,17 +127,12 @@ export function createThreeView({
   }
 
   function syncRenderPolicy() {
-    const policy = renderPolicy(),
-      inspection = getInspection?.() || {},
-      fullWaferTransparent =
-        Number(host?.dataset?.arrayInstances || 0) >= 64 &&
-        Number(inspection.opacity) < 0.999,
-      transparencyRatioCap = fullWaferTransparent ? 0.3 : Infinity,
-      ratio = Math.min(preferredPixelRatio, policy.maxPixelRatio, transparencyRatioCap);
+    const policy = renderPolicy();
     host.dataset.renderQuality = policy.mode;
-    host.dataset.presentationPixelRatio = String(ratio);
-    host.dataset.fullWaferTransparencyLod = String(fullWaferTransparent);
     if (renderer?.domElement) renderer.domElement.dataset.renderQuality = policy.mode;
+    const ratio = Math.min(preferredPixelRatio, policy.maxPixelRatio);
+    host.dataset.presentationPixelRatio = String(ratio);
+    host.dataset.fullWaferTransparencyLod = 'false';
     if (renderer && Math.abs(renderer.getPixelRatio() - ratio) > 1e-9) {
       renderer.setPixelRatio(ratio);
       resize();
@@ -2363,41 +2358,74 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (!model) return;
     const clip = getClipGeometry(),
       inspection = getInspection() || {},
-      signature = sceneSignature(model, clip, inspection);
+      signature = sceneSignature(model, clip, inspection),
+      targetVariant = presentationMode(inspection);
+    let variantBuild = false;
 
     if (
       physicalSceneModel === model &&
       physicalSceneSignature === signature &&
       presentationObjects.size
     ) {
-      pendingRender = false;
-      host.dataset.renderState = 'updating';
-      stats.textContent = 'updating 3D…';
-      syncRenderPolicy();
-      applyPresentationState();
-      return;
+      if (activeSceneVariant === targetVariant) {
+        pendingRender = false;
+        host.dataset.renderState = 'updating';
+        host.dataset.rendererUpdateKind = 'presentation';
+        stats.textContent = 'updating 3D…';
+        syncRenderPolicy();
+        applyPresentationState();
+        return;
+      }
+
+      const cachedVariant = sceneVariantCache.get(targetVariant);
+      if (cachedVariant && restoreSceneVariant(cachedVariant)) {
+        pendingRender = false;
+        host.dataset.renderState = 'updating';
+        host.dataset.rendererUpdateKind = 'variant-swap';
+        stats.textContent = 'updating 3D…';
+        syncRenderPolicy();
+        applyPresentationState();
+        return;
+      }
+
+      if (Number(host.dataset.arrayInstances || 0) >= 64 && !roughTasks.length) {
+        variantBuild = true;
+        startSceneVariantBuild(targetVariant);
+      } else {
+        pendingRender = false;
+        host.dataset.renderState = 'updating';
+        host.dataset.rendererUpdateKind = 'presentation';
+        stats.textContent = 'updating 3D…';
+        syncRenderPolicy();
+        applyPresentationState();
+        return;
+      }
     }
 
-    const renderGeneration = ++sceneGeneration;
+    const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
     pendingRender = false;
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
     host.dataset.modelRevision = String(model.revision ?? 0);
     host.dataset.processRevision = String(model.processRevision ?? 0);
-    host.dataset.rendererUpdateKind = 'rebuild';
-    stats.textContent = 'rebuilding 3D…';
+    host.dataset.rendererUpdateKind = variantBuild ? 'variant-build' : 'rebuild';
+    stats.textContent = variantBuild ? 'preparing 3D transparency…' : 'rebuilding 3D…';
     const rendererProfileStart = performance.now();
 
     rendering = true;
     try {
-      disposeGroup();
+      if (!variantBuild) disposeGroup();
       syncRenderPolicy();
       applyZDisplayState(model);
 
       const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
         borders = Boolean(inspection.borders),
-        plan = buildRenderSurfacePlan(model, clip);
+        plan =
+          variantBuild && physicalSurfacePlan
+            ? physicalSurfacePlan
+            : buildRenderSurfacePlan(model, clip);
+      if (!variantBuild) physicalSurfacePlan = plan;
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
@@ -2420,7 +2448,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         caps: plan.caps.length,
         sidewalls: plan.sidewalls.length,
       });
-      surfacePlanBuildCount++;
+      if (!variantBuild) surfacePlanBuildCount++;
       host.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
       if (renderer?.domElement?.dataset) {
         renderer.domElement.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
@@ -2441,13 +2469,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
           kind: part.buried ? 'material-interface' : 'material-exterior',
           sortBias,
         }),
-        bucketKey = (part) => {
+        bucketKey = (part, state) => {
           const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
+          if (!state?.transparent) return base;
           if (part.type === 'cap') return `${base}\u0000cap\u0000${part.z}\u0000${part.normal}`;
           return `${base}\u0000side\u0000${part.z0}\u0000${part.z1}`;
         },
-        pushBucket = (map, part) => {
-          const key = bucketKey(part);
+        pushBucket = (map, part, state) => {
+          const key = bucketKey(part, state);
           if (!map.has(key)) map.set(key, { part, items: [] });
           map.get(key).items.push(part);
         };
@@ -2476,7 +2505,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           continue;
         }
         if (!cap.appearance) {
-          pushBucket(smoothCaps, cap);
+          pushBucket(smoothCaps, cap, state);
           continue;
         }
 
@@ -2498,8 +2527,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           visibleCaps = bucket.items.filter((part) => zIsVisible(part.z));
         if (!state || !visibleCaps.length) continue;
 
-        const planes = new Map();
-        for (const part of visibleCaps) {
+        if (!state.transparent) {
+          const planes = new Map();
+          for (const part of visibleCaps) {
           const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
           if (!planes.has(key)) {
             planes.set(key, { z: part.z, normal: part.normal, polys: [] });
@@ -2575,7 +2605,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
               );
             }
           }
-          continue;
+            continue;
+          }
         }
 
         const geometry = geometryFromSolid({
@@ -2644,7 +2675,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           smoothSidewallTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
           continue;
         }
-        pushBucket(sidewalls, sidewall);
+        pushBucket(sidewalls, sidewall, state);
       }
       for (const bucket of sidewalls.values()) {
         await maybeYieldAssembly();
@@ -2652,8 +2683,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           visibleParts = displaySidewallParts(bucket.items);
         if (!state || !visibleParts.length) continue;
 
-        const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
-        if (instances.instanceCount > 0) {
+        if (!state.transparent) {
+          const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
+          if (instances.instanceCount > 0) {
           for (const groupInstances of instances.groups) {
             const geometry = geometryFromSidewallParts([groupInstances.template]),
               presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
@@ -2699,7 +2731,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
               presentation,
             );
           }
-          continue;
+            continue;
+          }
         }
 
         const geometry = geometryFromSidewallParts(visibleParts),
@@ -3086,7 +3119,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.presentationUpdateCount = String(presentationUpdateCount);
       physicalSceneModel = model;
       physicalSceneSignature = signature;
+      physicalSurfacePlan = plan;
+      activeSceneVariant = targetVariant;
+      host.dataset.sceneVariant = targetVariant;
       applyPresentationState({ profile: false, settle: false });
+      cacheActiveSceneVariant();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
