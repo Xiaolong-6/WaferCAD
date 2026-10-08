@@ -7,6 +7,7 @@ import {
   recipeTemplate,
   serializeProcessRecipe,
 } from '../process-recipe.js';
+import { validateRecipeExecution } from '../process-recipe-preflight.js';
 
 function clone(value) {
   return structuredClone(value);
@@ -67,8 +68,34 @@ export function createProcessRecipeController({
     bound = false,
     recordManual = true,
     undoStack = [],
-    redoStack = [];
+    redoStack = [],
+    codeDraftDirty = false,
+    invalidFields = new Map(),
+    lastRunResult = null;
   const recipeHistoryLimit = 100;
+  const recipeSignature = () => JSON.stringify(recipe.steps);
+  const fieldId = (stepId, key) => `${stepId}:${key}`;
+
+  function markInvalidField(stepId, key, input, label, error) {
+    invalidFields.set(fieldId(stepId, key), {
+      message: `Step ${recipe.steps.findIndex((step) => step.id === stepId) + 1}: ${label}: ${error.message}`,
+      value: input.value,
+    });
+    input.setAttribute('aria-invalid', 'true');
+    input.title = error.message;
+    showValidation();
+    status(error.message, 'error');
+  }
+
+  function restoreField(stepId, key, input) {
+    const invalid = invalidFields.get(fieldId(stepId, key));
+    if (invalid) {
+      input.value = invalid.value;
+      input.setAttribute('aria-invalid', 'true');
+      input.title = invalid.message;
+    }
+    return input;
+  }
 
   function updateUndoRedoUi() {
     const undo = $('recipeUndoBtn'),
@@ -130,6 +157,9 @@ export function createProcessRecipeController({
     activeStepId = recipe.activeStepId || recipe.steps[0]?.id || null;
     undoStack = [];
     redoStack = [];
+    invalidFields.clear();
+    codeDraftDirty = false;
+    lastRunResult = null;
     updateUndoRedoUi();
   }
 
@@ -349,6 +379,7 @@ export function createProcessRecipeController({
         <div><span id="recipeProgressLabel">Preparing…</span><span id="recipeProgressCount"></span></div>
         <progress id="recipeProgressBar" max="1" value="0"></progress>
       </div>
+      <p id="recipeRunSummary" class="hint compact-hint" role="status"></p>
       <label class="recipe-start-mode">
         <span>Start</span>
         <select id="recipeRunStart" class="compact-select" aria-label="Recipe run starting state">
@@ -390,7 +421,7 @@ export function createProcessRecipeController({
     return select;
   }
 
-  function updateStep(stepId, mutate) {
+  function updateStep(stepId, mutate, fieldInfo = null) {
     const index = recipe.steps.findIndex((step) => step.id === stepId);
     if (index < 0) return;
     const next = clone(recipe);
@@ -398,10 +429,14 @@ export function createProcessRecipeController({
     try {
       const normalized = normalizeProcessRecipe(next);
       normalized.steps[index].id = stepId;
+      if (fieldInfo) invalidFields.delete(fieldId(stepId, fieldInfo.key));
       persist(normalized);
       render();
+      return true;
     } catch (error) {
-      status(error.message, 'error');
+      if (fieldInfo) markInvalidField(stepId, fieldInfo.key, fieldInfo.input, fieldInfo.label, error);
+      else status(error.message, 'error');
+      return false;
     }
   }
 
@@ -518,7 +553,8 @@ export function createProcessRecipeController({
 
     const bindText = (label, key, value = p[key], opts = {}) => {
       const input = textInput(value ?? '', opts);
-      attachCommit(input, () => updateStep(step.id, (target) => (target.params[key] = input.value)), 'change');
+      restoreField(step.id, key, input);
+      attachCommit(input, () => updateStep(step.id, (target) => (target.params[key] = input.value), { key, input, label }), 'change');
       grid.append(field(label, input));
       return input;
     };
@@ -531,9 +567,14 @@ export function createProcessRecipeController({
     const bindLength = (label, key, valueUm) => {
       const input = textInput(recipeLengthText(valueUm));
       input.placeholder = 'e.g. 30 nm, 0.5 µm';
+      restoreField(step.id, key, input);
       attachCommit(input, () => {
-        const microns = recipeLengthUm(input.value, label);
-        updateStep(step.id, (target) => (target.params[key] = microns));
+        try {
+          const microns = recipeLengthUm(input.value, label);
+          updateStep(step.id, (target) => (target.params[key] = microns), { key, input, label });
+        } catch (error) {
+          markInvalidField(step.id, key, input, label, error);
+        }
       }, 'change');
       grid.append(field(label, input));
     };
@@ -648,11 +689,17 @@ export function createProcessRecipeController({
             const nestedLength = (label, key) => {
                 const input = textInput(recipeLengthText(appearance[key]));
                 input.placeholder = 'e.g. 500 nm';
+                const fieldKey = `surface.${key}`;
+                restoreField(step.id, fieldKey, input);
                 input.addEventListener('change', () => {
-                  const value = recipeLengthUm(input.value, `etch.surface.${key}`);
-                  updateStep(step.id, (target) => {
-                    target.params.surface = { ...target.params.surface, [key]: value };
-                  });
+                  try {
+                    const value = recipeLengthUm(input.value, `etch.surface.${key}`);
+                    updateStep(step.id, (target) => {
+                      target.params.surface = { ...target.params.surface, [key]: value };
+                    }, { key: fieldKey, input, label });
+                  } catch (error) {
+                    markInvalidField(step.id, fieldKey, input, label, error);
+                  }
                 });
                 grid.append(field(label, input));
               },
@@ -760,7 +807,15 @@ export function createProcessRecipeController({
         make(root, 'strong', '', fullTitle),
         make(root, 'small', '', fullSummary),
       );
-      const state = make(root, 'span', 'recipe-step-state', '○');
+      const run = lastRunResult && lastRunResult.signature === recipeSignature() &&
+        lastRunResult.modelRevision === Number(getModel()?.processRevision || 0) &&
+        lastRunResult.modelRef.deref() === getModel()
+        ? lastRunResult : null;
+      const stateText = run?.failedIndex === index ? '✕' :
+        (run && index < run.completed ? '✓' : '○');
+      button.classList.toggle('complete', stateText === '✓');
+      button.classList.toggle('failed', stateText === '✕');
+      const state = make(root, 'span', 'recipe-step-state', stateText);
       button.append(num, copy, state);
       button.addEventListener('click', () => {
         activeStepId = step.id;
@@ -773,48 +828,35 @@ export function createProcessRecipeController({
     }
   }
 
-  function syncCode({ force = false } = {}) {
+  function syncCode() {
     const editor = $('recipeCodeEditor');
-    if (!editor) return;
-    if (!force && root.activeElement === editor) return;
+    if (!editor || codeDraftDirty || root.activeElement === editor) return;
     editor.value = serializeProcessRecipe(recipe);
   }
 
-  function validateContext() {
-    const errors = [],
-      warnings = [],
-      materials = new Set((getModel()?.layers || []).map((layer) => layer.name));
-
-    for (const [index, step] of recipe.steps.entries()) {
-      const prefix = `Step ${index + 1}`;
-      if (step.command === 'deposit') materials.add(step.params.material);
-      if (step.command === 'extend' && !materials.has(step.params.material)) {
-        errors.push(`${prefix}: material "${step.params.material}" does not exist yet.`);
-      }
-      if (
-        step.command === 'etch' &&
-        step.params.target &&
-        !materials.has(step.params.target)
-      ) {
-        errors.push(`${prefix}: etch target "${step.params.target}" does not exist yet.`);
-      }
-      if (
-        !['snapshot', 'record'].includes(step.command) &&
-        ['mask', 'invert'].includes(step.params.area) &&
-        !step.params.mask
-      ) {
-        errors.push(`${prefix}: capture a Mask context for ${step.params.area} area.`);
-      }
-      if (
-        step.params.mask?.sourceMode === 'file' &&
-        ['mask', 'invert'].includes(step.params.area) &&
-        !(step.params.mask.layerKeys || []).length
-      ) {
-        warnings.push(`${prefix}: captured file mask has no selected layers.`);
+  function validateContext(limit = recipe.steps.length, startMode = $('recipeRunStart')?.value || 'continue') {
+    let sourceSteps = recipe.steps;
+    const fieldErrors = [...invalidFields.values()].map((entry) => entry.message);
+    if (codeDraftDirty) {
+      try {
+        sourceSteps = parseProcessRecipeSource($('recipeCodeEditor').value, {
+          name: $('recipeNameInput').value || recipe.name,
+        }).steps;
+      } catch (error) {
+        return { errors: [...fieldErrors, `Code draft: ${error.message}`], warnings: [] };
       }
     }
-    if (!recipe.steps.length) warnings.push('Recipe has no steps.');
-    return { errors, warnings };
+    const report = validateRecipeExecution(sourceSteps, {
+      model: getModel(),
+      maskState: getMaskState?.(),
+      limit,
+      startMode,
+    });
+    return {
+      errors: [...report.errors, ...fieldErrors,
+        ...(codeDraftDirty ? ['Code draft is unapplied. Apply code before running.'] : [])],
+      warnings: report.warnings,
+    };
   }
 
   function showValidation(report = validateContext()) {
@@ -837,6 +879,23 @@ export function createProcessRecipeController({
     renderEditor();
     syncCode();
     showValidation();
+    showRunSummary();
+  }
+
+  function showRunSummary() {
+    const target = $('recipeRunSummary');
+    if (!target) return;
+    const result = lastRunResult;
+    if (!result) {
+      target.textContent = '';
+      return;
+    }
+    const stale = result.signature !== recipeSignature() ||
+      result.modelRevision !== Number(getModel()?.processRevision || 0) ||
+      result.modelRef.deref() !== getModel();
+    target.textContent = stale
+      ? 'Previous Recipe run belongs to a different Recipe or model revision; completion marks are hidden.'
+      : `${result.outcome}: ${result.completed}/${result.total} steps committed from ${result.startMode === 'new-base' ? 'rebuilt Base' : 'the existing model'} (starting revision ${result.startRevision}). Run to Step always replays from Step 1; it does not resume.`;
   }
 
   function setMode(mode) {
@@ -855,7 +914,8 @@ export function createProcessRecipeController({
     $('recipeCodePane').hidden = !codeMode;
     $('recipeStepsTab').classList.toggle('active', !codeMode);
     $('recipeCodeTab').classList.toggle('active', codeMode);
-    if (codeMode) syncCode({ force: true });
+    if (codeMode) syncCode(); // Never overwrite an unapplied draft.
+    showValidation();
   }
 
   function maskStateFromRecipe(mask) {
@@ -989,8 +1049,24 @@ export function createProcessRecipeController({
     return true;
   }
 
+  const runDisabledState = new Map();
   function setRunningUi(value) {
     running = value;
+    if (value) {
+      // Freeze the draft and selected prefix through any asynchronous confirmation.
+      // Stop remains the only active Recipe control until the run settles.
+      for (const control of root.querySelectorAll(
+        '#recipeProcessPane input, #recipeProcessPane select, ' +
+        '#recipeProcessPane textarea, #recipeProcessPane button',
+      )) {
+        if (control.id === 'recipeStopBtn') continue;
+        runDisabledState.set(control, control.disabled);
+        control.disabled = true;
+      }
+    } else {
+      for (const [control, disabled] of runDisabledState) control.disabled = disabled;
+      runDisabledState.clear();
+    }
     $('recipeRunAllBtn').disabled = value;
     $('recipeRunToBtn').disabled = value;
     $('recipeValidateBtn').disabled = value;
@@ -1006,37 +1082,66 @@ export function createProcessRecipeController({
       status('Another background task is already running.', 'warning');
       return;
     }
-    // A Recipe is a sequence of mutations, so replaying it on an already
-    // processed model would silently double-deposit or double-etch. Expose
-    // the starting-state policy before any Process worker requests.
+    const total = Math.min(Math.max(0, limit), recipe.steps.length);
+    if (!total) return status('Recipe has no steps to run.', 'warning');
+
     const startMode = $('recipeRunStart')?.value || 'continue';
-    if (startMode === 'new-base') {
-      const rebuilt = await resetToBase();
-      if (!rebuilt) {
-        status('Process Recipe run cancelled: Base was not rebuilt.', 'warning');
-        return;
-      }
-    } else if (Number(getModel()?.processRevision || 0) > 0) {
-      const allowed = await confirmContinue();
-      if (!allowed) {
-        status('Process Recipe run cancelled; existing process was not changed.', 'warning');
-        return;
-      }
-    }
-    const report = showValidation();
+    // Preflight must complete BEFORE any confirmation or Base/history mutation.
+    const report = showValidation(validateContext(total, startMode));
     if (report.errors.length) {
-      status('Recipe validation failed. Fix the highlighted issues before running.', 'error');
+      status('Recipe preflight failed. Model and History were not changed.', 'error');
       return;
     }
 
-    const total = Math.min(Math.max(0, limit), recipe.steps.length);
-    if (!total) return status('Recipe has no steps to run.', 'warning');
+    const signature = recipeSignature();
+    const previousRevision = Number(getModel()?.processRevision || 0);
     setRunningUi(true);
     stopRequested = false;
-    const rows = () => [...root.querySelectorAll('.recipe-step-row')];
+    let completed = 0;
+    let failedIndex = null;
+    let outcome = 'Stopped';
+    let started = false;
+    let startRevision = previousRevision;
+    lastRunResult = null;
+    showRunSummary();
 
     try {
+      if (startMode === 'new-base') {
+        // Base rebuild may open an asynchronous History decision. Recheck first;
+        // a cancelled/invalid preflight must never touch either model or History.
+        if (recipeSignature() !== signature || validateContext(total, startMode).errors.length) {
+          status('Recipe changed or became invalid before Base rebuild. No changes made.', 'error');
+          return;
+        }
+        const rebuilt = await resetToBase();
+        if (!rebuilt) {
+          status('Recipe run cancelled. Base was not rebuilt.', 'warning');
+          return;
+        }
+      } else if (previousRevision > 0) {
+        const allowed = await confirmContinue();
+        if (!allowed) {
+          status('Recipe run cancelled. The existing model was not changed.', 'warning');
+          return;
+        }
+      }
+      if (stopRequested) {
+        status('Recipe run stopped before its first Step.', 'warning');
+        return;
+      }
+      // Confirmations yield control; an edit made in the meantime invalidates preflight.
+      if (recipeSignature() !== signature ||
+          validateContext(total, startMode).errors.length) {
+        status('Recipe changed or became invalid while preparing. No Process Steps applied.', 'error');
+        return;
+      }
+
+      started = true;
+      startRevision = Number(getModel()?.processRevision || 0);
+      const rows = () => [...root.querySelectorAll('.recipe-step-row')];
       for (let index = 0; index < total; index += 1) {
+        // Yield between committed Steps so Stop and browser input remain responsive.
+        await new Promise((resolve) => setTimeout(resolve, 0));
         if (stopRequested) break;
         const step = recipe.steps[index],
           row = rows()[index];
@@ -1046,21 +1151,44 @@ export function createProcessRecipeController({
         $('recipeProgressCount').textContent = `${index + 1} / ${total}`;
         $('recipeProgressBar').max = total;
         $('recipeProgressBar').value = index;
-        await applyProcessStep(step);
+        try {
+          await applyProcessStep(step);
+        } catch (error) {
+          if (!stopRequested) failedIndex = index;
+          throw error;
+        }
+        completed += 1;
         row?.classList.remove('running');
         row?.classList.add('complete');
         row?.querySelector('.recipe-step-state')?.replaceChildren('✓');
-        $('recipeProgressBar').value = index + 1;
+        $('recipeProgressBar').value = completed;
       }
-      if (stopRequested) status('Process Recipe stopped.', 'warning');
-      else status(`Process Recipe completed ${total} step(s).`, 'success');
+      outcome = stopRequested ? 'Stopped' : 'Completed';
+      status(`Recipe ${outcome.toLowerCase()}: ${completed}/${total} steps committed.`,
+        stopRequested ? 'warning' : 'success');
     } catch (error) {
-      if (stopRequested) status('Process Recipe stopped.', 'warning');
-      else status(`Process Recipe stopped: ${error.message}`, 'error');
+      outcome = stopRequested ? 'Stopped' : 'Failed';
+      status(stopRequested
+        ? `Recipe stopped after ${completed} committed step(s).`
+        : `Recipe failed at Step ${(failedIndex ?? completed) + 1}: ${error.message}`, 'error');
     } finally {
+      if (started) {
+        lastRunResult = {
+          signature,
+          startMode,
+          startRevision,
+          completed,
+          total,
+          failedIndex,
+          outcome,
+          modelRevision: Number(getModel()?.processRevision || 0),
+          modelRef: new WeakRef(getModel()),
+        };
+      }
       setRunningUi(false);
       renderAll();
       renderSteps();
+      showRunSummary();
     }
   }
 
@@ -1070,12 +1198,17 @@ export function createProcessRecipeController({
         name: $('recipeNameInput').value || recipe.name,
       });
       persist(parsed);
+      codeDraftDirty = false;
+      invalidFields.clear();
       activeStepId = recipe.steps[0]?.id || null;
       render();
+      syncCode();
       status('Recipe code applied.', 'success');
+      return true;
     } catch (error) {
       showValidation({ errors: [error.message], warnings: [] });
       status(`Recipe code error: ${error.message}`, 'error');
+      return false;
     }
   }
 
@@ -1222,11 +1355,13 @@ export function createProcessRecipeController({
       render();
       status(`Added ${recipeStepLabel(step)} after Step ${insertIndex}.`, 'success');
     });
+    $('recipeCodeEditor').addEventListener('input', () => {
+      codeDraftDirty = $('recipeCodeEditor').value !== serializeProcessRecipe(recipe);
+      showValidation();
+    });
     $('recipeApplyCodeBtn').addEventListener('click', applyCode);
     $('recipeFormatCodeBtn').addEventListener('click', () => {
-      applyCode();
-      if (!recipe.steps.length && $('recipeCodeEditor').value.trim()) return;
-      syncCode({ force: true });
+      if (applyCode()) syncCode();
     });
     $('recipeValidateBtn').addEventListener('click', () => {
       const report = showValidation();
@@ -1238,6 +1373,9 @@ export function createProcessRecipeController({
       );
     });
     $('recipeRunAllBtn').addEventListener('click', () => void run(recipe.steps.length));
+    $('recipeRunToBtn').textContent = 'Replay 1 → Step';
+    $('recipeRunToBtn').title = 'Always replays Steps 1 through the selected Step from the chosen starting model.';
+    $('recipeRunStart').addEventListener('change', () => showValidation());
     $('recipeRunToBtn').addEventListener('click', () => {
       const index = recipe.steps.findIndex((step) => step.id === activeStepId);
       void run(index < 0 ? 0 : index + 1);

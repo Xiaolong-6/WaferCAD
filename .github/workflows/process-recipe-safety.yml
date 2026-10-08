@@ -1,0 +1,51 @@
+name: Process Recipe safety
+on:
+  push:
+    branches:
+      - fix/process-recipe-safety-r1-r7
+  pull_request:
+    paths:
+      - "site/process-recipe.js"
+      - "site/process-recipe-preflight.js"
+      - "site/controllers/process-recipe-controller.js"
+      - "site/tests/process-recipe-preflight.test.mjs"
+      - "scripts/process-recipe-safety-regression.mjs"
+      - ".github/workflows/process-recipe-safety.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  recipe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Format changed Recipe files
+        run: |
+          npx prettier --write site/process-recipe.js site/process-recipe-preflight.js site/controllers/process-recipe-controller.js site/tests/process-recipe-preflight.test.mjs scripts/process-recipe-safety-regression.mjs docs/PROCESS_RECIPE_SAFETY_AUDIT_2026-10-08.md .github/workflows/process-recipe-safety.yml
+      - name: Unit regression and lint
+        run: npm run check:ci
+      - name: Start local app
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site >/tmp/wafercad-server.log 2>&1 &
+          sleep 2
+          curl --fail http://127.0.0.1:4173/app.html >/dev/null
+      - name: Recipe interaction regression
+        run: node scripts/process-recipe-safety-regression.mjs
+      - name: Persist validated formatting on repair branch
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/process-recipe.js site/process-recipe-preflight.js site/controllers/process-recipe-controller.js site/tests/process-recipe-preflight.test.mjs scripts/process-recipe-safety-regression.mjs docs/PROCESS_RECIPE_SAFETY_AUDIT_2026-10-08.md .github/workflows/process-recipe-safety.yml
+          git diff --cached --quiet || git commit -m "Format Recipe safety fixes"
+          git push origin HEAD:fix/process-recipe-safety-r1-r7
