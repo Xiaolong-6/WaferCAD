@@ -40,11 +40,15 @@ jobs:
         run: node --test site/tests/m3d-reconstruction-regression.test.mjs
       - name: Kernel full replay S00-S26
         run: node scripts/m3d-kernel-full-replay.mjs --write-repo
+      - name: Sync production project and single-step welcome preview
+        run: |
+          cp examples/projects/m3d-selfpowered-2026-replay/M3D_selfpowered_full_replay.wafercad site/examples/m3d-selfpowered-full-replay.wafercad
+          node scripts/build-example-previews.mjs --id=m3d-selfpowered-heterogeneous-ic --write
       - name: Commit validated replay outputs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add examples/projects/m3d-selfpowered-2026-replay
+          git add examples/projects/m3d-selfpowered-2026-replay site/examples/m3d-selfpowered-full-replay.wafercad site/examples/previews/m3d-selfpowered-heterogeneous-ic.wafercad
           git diff --cached --quiet || git commit -m "Add validated M3D Kernel full replay outputs"
           git push origin HEAD:test/m3d-full-replay-20261008
       - uses: actions/upload-artifact@v4
@@ -86,6 +90,15 @@ jobs:
           exit 1
       - name: Import and inspect Main, Section, 3D, History and Export
         run: node scripts/m3d-visual-acceptance.mjs
+      - name: Build matching M3D WebP preview and thumbnail manifest
+        run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
+      - name: Commit final 3D thumbnail
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp tests/fixtures/project-io/example-thumbnails.json
+          git diff --cached --quiet || git commit -m "Add M3D final-state 3D thumbnail"
+          git push origin HEAD:test/m3d-full-replay-20261008
       - uses: actions/upload-artifact@v6
         if: always()
         with:

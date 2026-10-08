@@ -125,14 +125,14 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     path: './examples/m3d-selfpowered-full-replay.wafercad',
     filename: 'm3d-selfpowered-full-replay.wafercad',
     previewProject: {
-      path: './examples/m3d-selfpowered-full-replay.wafercad',
-      filename: 'm3d-selfpowered-full-replay-preview.wafercad',
+      path: './examples/previews/m3d-selfpowered-heterogeneous-ic.wafercad',
+      filename: 'm3d-selfpowered-preview.wafercad',
     },
     preview: {
-      path: './examples/thumbnails/m3d-selfpowered-stack.svg',
+      path: './examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp',
       view: 'three',
-      alt: 'Illustrative three-tier M3D stack: silicon photovoltaic base, WSe₂ and MoS₂ middle-tier logic, graphene sensing top tier.',
-      label: 'Illustrative tier schematic · interactive WaferCAD preview on click',
+      alt: 'WaferCAD 3D rendering of a reconstructed heterogeneous M3D chip',
+      label: 'WaferCAD final-stage render · open to explore the model',
     },
     summary:
       'Paper-derived, kernel-reconstructed self-powered IC: silicon photovoltaic tier, WSe₂ and MoS₂ logic, graphene sensor, conformal oxides and selective sensing windows. Includes 36 History nodes and 27 stage bookmarks (S00–S26); routing masks are inferred.',

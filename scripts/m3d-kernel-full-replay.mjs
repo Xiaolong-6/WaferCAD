@@ -390,7 +390,7 @@ appendNode({
   kind: 'base',
   label: 'Create 2 um BOX receiver; SOI handle omitted because paper does not specify handle thickness',
   geometryChanged: true,
-  replay: { version: 1, kind: 'base' },
+  replay: { kind: 'base' },
 });
 applyStep('00_SOI', {
   type: 'add',
