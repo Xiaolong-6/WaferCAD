@@ -3,6 +3,7 @@ import { downloadProject, readProjectFile } from '../project-io.js';
 import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { bundledExampleById } from '../bundled-examples.js';
 import { upgradeBundledExampleHistory } from '../bundled-example-history.js';
+import { bufferBackedProjectFile, versionedExampleAssetPath } from '../example-asset.js';
 
 export function createProjectController({
   root = document,
@@ -17,6 +18,7 @@ export function createProjectController({
   onProjectChanged = () => {},
   checkpointBeforeReplace = async () => false,
   readProjectFileTask = readProjectFile,
+  exampleBuildVersion = '',
   exportProjectFileTask = null,
   normalizedProjectName,
   getProjectName,
@@ -988,12 +990,14 @@ export function createProjectController({
     const projectFile = preview && example.previewProject ? example.previewProject : example;
     try {
       status(`Loading ${example.title}…`);
-      const response = await fetch(projectFile.path, { cache: 'no-store' });
+      const response = await fetch(versionedExampleAssetPath(projectFile.path, exampleBuildVersion), {
+        cache: 'default',
+      });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       const arrayBuffer = await response.arrayBuffer(),
-        file = new File([arrayBuffer], projectFile.filename, { type: 'application/json' });
+        file = bufferBackedProjectFile(arrayBuffer, projectFile.filename);
       return await openProjectFile(file, { prepareProject: upgradeBundledExampleHistory });
     } catch (error) {
       console.error(error);
