@@ -488,7 +488,10 @@ export function createProcessRecipeController({
         JSON.stringify(recipe) !== previousRecipe ||
         codeDraftDirty !== previousDraftDirty
       ) {
-        status('Recipe changed while preparing replacement. Please review and confirm again.', 'warning');
+        status(
+          'Recipe changed while preparing replacement. Please review and confirm again.',
+          'warning',
+        );
         templateReplaceArmed = false;
         return;
       }
