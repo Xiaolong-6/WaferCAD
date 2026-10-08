@@ -192,6 +192,7 @@ function branchView(branch, activeBranchId, records, historyNodes) {
     headSnapshotId: branch.headSnapshotId,
     rootNodeId: branch.rootNodeId,
     headNodeId: branch.headNodeId,
+    archivedMainRoot: branch.archivedMainRoot === true,
     createdAt: branch.createdAt,
     ownSnapshotCount,
     bookmarkCount: ownSnapshotCount,
@@ -1373,7 +1374,8 @@ export function createSnapshotManager({
       id: archiveId,
       name: uniqueBranchName(`Previous base · ${date.toISOString().slice(0, 16).replace('T', ' ')}`),
       parentBranchId: MAIN_SNAPSHOT_BRANCH_ID,
-      rootNodeId: null,
+      rootNodeId: previousMain.rootNodeId || null,
+      archivedMainRoot: true,
       headState: oldMainState,
       createdAt: date.toISOString(),
     };
@@ -1571,6 +1573,7 @@ export function createSnapshotManager({
             typeof raw.headNodeId === 'string' && nodeIds.has(raw.headNodeId)
               ? raw.headNodeId
               : null,
+          archivedMainRoot: raw.archivedMainRoot === true,
           headState,
           createdAt,
         });
