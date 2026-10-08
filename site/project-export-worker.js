@@ -19,9 +19,15 @@ self.onmessage = async (event) => {
   try {
     self.postMessage({ id, type: 'progress', stage: 'Validating and packing project…' });
     const api = await projectIo();
-    const stored = api.prepareProjectForStorage(project);
+    const { stored, mode } = api.prepareProjectForExport(project);
 
-    self.postMessage({ id, type: 'progress', stage: 'Serializing project…' });
+    self.postMessage({
+      id,
+      type: 'progress',
+      stage: mode === 'lossless'
+        ? 'Preserving exact sub-grid geometry in lossless project export…'
+        : 'Serializing project…',
+    });
     const bytes = new TextEncoder().encode(JSON.stringify(stored));
     if (bytes.byteLength > api.MAX_PROJECT_FILE_BYTES) {
       throw new Error(
@@ -29,7 +35,7 @@ self.onmessage = async (event) => {
       );
     }
     const arrayBuffer = bytes.buffer;
-    self.postMessage({ id, type: 'done', arrayBuffer, byteLength: bytes.byteLength }, [
+    self.postMessage({ id, type: 'done', arrayBuffer, byteLength: bytes.byteLength, mode }, [
       arrayBuffer,
     ]);
   } catch (error) {
