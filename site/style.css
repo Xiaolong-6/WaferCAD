@@ -942,12 +942,6 @@ canvas {
   text-align: right;
 }
 
-#sectionControlsBtn.active {
-  border-color: #aebbc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
 #mainCanvas.section-editing {
   cursor: crosshair;
   touch-action: none;
@@ -1522,12 +1516,6 @@ canvas {
   margin-left: auto;
 }
 
-#sectionScaleModeBtn.active {
-  border-color: #aebbc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
 .view-head > div:first-child > span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1683,12 +1671,6 @@ body.view-maximized .view-panel.is-maximized .view-head {
 
 body.view-maximized .view-panel.is-maximized .section-body {
   grid-template-columns: minmax(0, 1fr) minmax(150px, 210px);
-}
-
-.view-max-btn.active {
-  border-color: #aebbc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
 }
 
 /* Welcome */
@@ -2773,10 +2755,7 @@ summary:focus-visible {
 
 .view-head .focus-editor[open] > summary,
 .view-head .three-opacity-control[open] > summary,
-.view-head .three-border-toggle:has(input:checked),
-#sectionControlsBtn.active,
-#sectionScaleModeBtn.active,
-.view-max-btn.active {
+.view-head .three-border-toggle:has(input:checked) {
   border-color: transparent;
   background: var(--accent-soft);
   color: var(--accent-dark);
@@ -3208,12 +3187,6 @@ summary:focus-visible {
   min-width: 34px;
 }
 
-#maskSourceToggleBtn.active {
-  border-color: #aebcc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
 .draw-mask-toolbar {
   position: absolute;
   z-index: 5;
@@ -3551,8 +3524,7 @@ summary:focus-visible {
   padding: 7px;
 }
 
-.view-head details[open] > summary,
-#sectionControlsBtn.active {
+.view-head details[open] > summary {
   border-color: #aebcc9;
   background: var(--accent-soft);
   color: var(--accent-dark);
@@ -5034,12 +5006,6 @@ summary:focus-visible {
 }
 
 /* Section detail ROI: one lightweight inspection window over the Section canvas. */
-#sectionDetailRoiBtn.active {
-  border-color: transparent;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
 #sectionCanvas.section-detail-drawing {
   cursor: crosshair;
 }
