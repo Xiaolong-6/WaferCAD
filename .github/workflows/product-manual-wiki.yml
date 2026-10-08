@@ -21,6 +21,9 @@ jobs:
       - name: Checkout tracked documentation
         uses: actions/checkout@v6
 
+        with:
+          fetch-depth: 0
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -30,6 +33,11 @@ jobs:
         run: |
           node scripts/build-process-guide.mjs --check
           node --test site/tests/process-guide.test.mjs
+
+      - name: Detect possible product manual drift
+        env:
+          PREVIOUS_MAIN_SHA: ${{ github.event.before }}
+        run: node scripts/check-wiki-change-coverage.mjs
 
       - name: Compare and synchronize managed Wiki pages
         env:
