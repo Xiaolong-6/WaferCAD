@@ -7,7 +7,7 @@ export function normalizeRecipeLayerKey(value) {
 
 export function validateRecipeExecution(
   steps,
-  { model = null, maskState = null, limit = steps.length, startMode = 'continue' } = {},
+  { model = null, maskState = null, base = null, limit = steps.length, startMode = 'continue' } = {},
 ) {
   const errors = [];
   const warnings = [];
@@ -20,7 +20,13 @@ export function validateRecipeExecution(
   if (startMode === 'new-base' && startingLayers.length === 0 && layers.length) {
     startingLayers.push(layers[0]);
   }
-  const materials = new Set(startingLayers.map((layer) => layer.name));
+  const materials = new Set(
+    startMode === 'new-base' && base
+      ? [base.material]
+      : startMode === 'new-base'
+        ? ['Base']
+        : startingLayers.map((layer) => layer.name),
+  );
   const layout = maskState?.layout;
   const existingKeys = layout?.elements
     ? new Set(layout.elements.map((element) => `${element.layer}|${element.datatype ?? 0}`))
