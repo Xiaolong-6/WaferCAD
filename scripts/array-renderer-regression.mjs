@@ -214,6 +214,43 @@ try {
 
   await page.screenshot({ path: fileURLToPath(new URL('transparent.png', output)) });
 
+  // Stress-test 20 additional opacity/border presentation toggles. Both
+  // retained variants must remain bounded; warm changes cannot create a
+  // succession of leaked BufferGeometries or materials.
+  const retainedKeys = [
+    'sceneRetainedGroupCount',
+    'sceneRetainedObjectCount',
+    'sceneRetainedGeometryCount',
+    'sceneRetainedMaterialCount',
+  ];
+  const retainedBaseline = Object.fromEntries(
+    retainedKeys.map((key) => [key, borderOff[key]]),
+  );
+  const assertRetained = async (label) => {
+    const current = await snapshot();
+    for (const key of retainedKeys)
+      assert.equal(current[key], retainedBaseline[key], `${label}: retained ${key} changed`);
+    assert.equal(current.sceneGeneration, quality.sceneGeneration);
+    assert.equal(current.surfacePlanBuildCount, quality.surfacePlanBuildCount);
+    return current;
+  };
+  for (let iteration = 0; iteration < 10; iteration++) {
+    await setBorders(iteration % 2 === 0);
+    await waitStage(`border-stress-${iteration + 1}`, 120000);
+    await assertRetained(`border-stress-${iteration + 1}`);
+  }
+  await setBorders(false);
+  for (let iteration = 0; iteration < 5; iteration++) {
+    const beforeOpaque = await frameSerial();
+    await page.locator('#threeOpacityRange').fill('1');
+    await waitStage(`opacity-stress-opaque-${iteration + 1}`, 120000, beforeOpaque);
+    await assertRetained(`opacity-stress-opaque-${iteration + 1}`);
+    const beforeTransparent = await frameSerial();
+    await page.locator('#threeOpacityRange').fill('0.5');
+    await waitStage(`opacity-stress-transparent-${iteration + 1}`, 120000, beforeTransparent);
+    await assertRetained(`opacity-stress-transparent-${iteration + 1}`);
+  }
+
   const beforeFinalFrame = await frameSerial();
   await page.locator('#threeOpacityRange').fill('1');
   const finalOpaqueSwapMs = await waitStage('opacity-final-opaque', 120000, beforeFinalFrame);
@@ -260,6 +297,8 @@ try {
       warmTransparentMs,
       finalOpaqueSwapMs,
     },
+    presentationStressToggles: { border: 10, opacity: 10 },
+    retainedBaseline,
     rotationPassed: true,
     errors,
   };
