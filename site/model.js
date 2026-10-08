@@ -901,6 +901,59 @@ function applyConformalMaterialWalls(
 
 const COVERAGE_CRACK_TOLERANCE_UM = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM;
 
+// A Conformal coating may re-partition the XY domain thousands of times near
+// rounded sidewall corners. Snapping and re-noding can lose sub-grid slivers
+// even when the input base covers the entire field. In the 2.5D model an XY
+// sliver removes its *entire* Z column and creates a false full-depth sidewall.
+// Restore only newly missing, sub-grid coverage; existing physical voids are
+// explicitly excluded. Do not re-snap the repaired polygon (which can re-open
+// the very same crack).
+function healConformalCoverageCracks(model, originalVoids) {
+  const overlapTolerance = Math.max(
+    PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
+    model.width * model.height * 1e-15,
+  );
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { cracks } = classifyCoverageVoids(model, {
+      crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
+    });
+    let repaired = false;
+    for (const crack of cracks) {
+      const missing = isEmpty(originalVoids)
+        ? crack.geom
+        : difference(crack.geom, originalVoids);
+      if (isEmpty(missing)) continue;
+      const halo = bufferMulti(missing, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
+      let owner = null;
+      let largestContact = 0;
+      for (const region of model.regions) {
+        const contact = geometryArea(intersection(region.geom, halo));
+        if (contact > largestContact) {
+          largestContact = contact;
+          owner = region;
+        }
+      }
+      if (!owner || largestContact <= 0) {
+        throw new Error('Conformal could not assign a numerical coverage crack.');
+      }
+      owner.geom = unionGeometries([owner.geom, missing]);
+      repaired = true;
+    }
+    if (!repaired) return;
+    model.regions = partitionProcessRegions(
+      model.regions,
+      overlapTolerance,
+      'Conformal coverage repair',
+    );
+  }
+  const remaining = classifyCoverageVoids(model, {
+    crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
+  }).cracks.some(({ geom }) =>
+    !isEmpty(isEmpty(originalVoids) ? geom : difference(geom, originalVoids)),
+  );
+  if (remaining) throw new Error('Conformal left a numerical coverage crack after repair.');
+}
+
 function uncoveredGeometryRaw(model) {
   return uncoveredDomain(model, model.boundary);
 }
@@ -1007,7 +1060,8 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // Keep the pre-coating void domain. A conformal film is allowed to occupy
   // empty trench / through-hole space next to an exposed wall; ordinary
   // splitByArea() only visits existing material regions.
-  let uncovered = baseCoverageState(model) === 'full' ? [] : uncoveredGeometry(model);
+  const originalVoids = baseCoverageState(model) === 'full' ? [] : uncoveredGeometry(model);
+  let uncovered = cloneGeom(originalVoids);
 
   // Stage 1: coat every exposed horizontal surface in the selected area.
   splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face), false);
@@ -1046,6 +1100,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       }
     }
   }
+  return originalVoids;
 }
 
 const ISOTROPIC_ETCH_SLICES = 8;
@@ -1317,6 +1372,7 @@ function applyOperationImpl(
   }
 
   let layer = null;
+  let conformalOriginalVoids = null;
   if (type === 'grow' && !layerById(model, targetLayerId))
     return { changed: false, error: 'Target layer is unavailable.' };
 
@@ -1384,7 +1440,13 @@ function applyOperationImpl(
       );
     }
   } else if (growth === 'conformal') {
-    applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
+    conformalOriginalVoids = applyConformalCoating(
+      model,
+      active,
+      layer?.id || targetLayerId,
+      amount,
+      face,
+    );
   } else {
     splitByArea(model, active, (stack) => {
       const exposed = surfaceSegment(stack, face);
@@ -1407,6 +1469,7 @@ function applyOperationImpl(
     if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
       model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
     }
+    healConformalCoverageCracks(model, conformalOriginalVoids);
   } else if (healNumericalCoverageCracks(model)) {
     model.regions = mergeRegions(model, model.regions);
   }
