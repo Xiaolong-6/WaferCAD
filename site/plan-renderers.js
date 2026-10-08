@@ -1137,7 +1137,8 @@ export function createPlanRenderers({
 
     const scaleButton = $('sectionScaleModeBtn');
     scaleButton.textContent = sectionScaleMode === 'auto' ? 'Auto' : '1:1';
-    scaleButton.classList.toggle('active', sectionScaleMode === 'physical');
+    // Auto and 1:1 both display the selected scale mode.
+    scaleButton.classList.add('active');
     scaleButton.setAttribute('aria-pressed', String(sectionScaleMode === 'physical'));
     scaleButton.title =
       sectionScaleMode === 'auto'
