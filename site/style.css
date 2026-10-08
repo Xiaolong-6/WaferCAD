@@ -5561,6 +5561,21 @@ summary:focus-visible {
 .recipe-template-preview .hint {
   margin: 0;
 }
+.recipe-template-preview-steps {
+  max-height: 112px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 3px 5px 3px 22px;
+  border: 1px solid #d6e2ec;
+  border-radius: 4px;
+  background: #fff;
+  color: #455868;
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+.recipe-template-preview-steps:empty {
+  display: none;
+}
 .recipe-template-actions {
   display: flex;
   justify-content: flex-end;
