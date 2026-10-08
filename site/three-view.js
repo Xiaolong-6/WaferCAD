@@ -1026,9 +1026,17 @@ export function createThreeView({
   }
 
   function refreshCameraArrayLod() {
-    const model = getModel();
-    if (!ready || !model || !physicalSceneSignature || !isArrayModel(model)) return;
-    if (sceneSignature(model, getClipGeometry(), getInspection() || {}) !== physicalSceneSignature) {
+    const model = getModel(),
+      inspection = getInspection() || {};
+    if (
+      !ready ||
+      !model ||
+      !physicalSceneSignature ||
+      !isArrayModel(model) ||
+      presentationMode(inspection) !== 'transparent'
+    )
+      return;
+    if (sceneSignature(model, getClipGeometry(), inspection) !== physicalSceneSignature) {
       // Only tier transitions rebuild the scene; ordinary orbit movement
       // continues to reuse both opaque and transparent presentation variants.
       void render();
