@@ -68,6 +68,8 @@ try {
       retainedObjects: el.dataset.sceneRetainedObjectCount,
       retainedGeometries: el.dataset.sceneRetainedGeometryCount,
       retainedMaterials: el.dataset.sceneRetainedMaterialCount,
+      triangleKinds: el.dataset.sceneTriangleKinds,
+      topTriangleObjects: el.dataset.sceneTopTriangleObjects,
     }));
     // Include the host evaluation/compositor blocking time: the old timer
     // reported a 0.67 s cold variant despite ~37 s to the actual first frame.
