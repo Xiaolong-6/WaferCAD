@@ -1,0 +1,66 @@
+name: M3D welcome integration
+
+on:
+  push:
+    branches:
+      - test/m3d-full-replay-20261008
+    paths:
+      - "site/bundled-examples.js"
+      - "site/examples/**"
+      - "site/model.js"
+      - "site/project-io.js"
+      - "site/tests/m3d-bundled-example.test.mjs"
+      - "docs/wiki/Examples-and-Modeling-Limits.md"
+      - ".github/workflows/m3d-example-integration.yml"
+  pull_request:
+    branches:
+      - feat/process-recipe-v1
+    paths:
+      - "site/**"
+      - "examples/projects/m3d-selfpowered-2026-replay/**"
+      - ".github/workflows/m3d-example-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Catalog, project IO and M3D browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Full lint, docs and Node regression
+        run: npm run check:ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-m3d-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-m3d-http.log
+          exit 1
+      - name: M3D history and export browser acceptance
+        run: node scripts/m3d-visual-acceptance.mjs
+      - name: Welcome-card open and preview regression
+        run: node scripts/m3d-welcome-regression.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: m3d-example-integration
+          path: test-results/m3d/
+          retention-days: 14
+          if-no-files-found: warn
