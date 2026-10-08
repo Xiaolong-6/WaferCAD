@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "package.json"
       - "package-lock.json"
@@ -202,7 +203,8 @@ jobs:
   renderer-array:
     name: 625-site array renderer regression
     needs: plan
-    if: ${{ needs.plan.outputs.renderer == 'true' }}
+    # Run 625-site software-WebGL stress at final review, on main or by manual dispatch.
+    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     # Large transparent software-WebGL frames take ~34 s per completed frame.
     # The full 20-toggle resource-stability contract needs a dedicated watchdog;
