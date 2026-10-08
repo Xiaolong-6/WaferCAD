@@ -167,7 +167,7 @@ try {
       await context.unroute(unavailable);
       await native.locator('.welcome-example-preview-start').click();
       await native.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 120000 });
-      await native.locator('.welcome-example-open').click();
+      await native.locator('.welcome-example-summary-link').click();
       await page.waitForFunction(
         () =>
           document.getElementById('statusText')?.textContent ===
