@@ -3,6 +3,9 @@ import test from 'node:test';
 import {
   reduceCollinearClosedRing,
   mergeCollinearSidewallParts,
+  simplifyDisplayRing,
+  simplifyDisplayPolygons,
+  simplifyDisplaySidewallParts,
 } from '../renderer-line-reduction.js';
 
 test('exact collinear point reduction keeps the polygon and winding', () => {
@@ -46,4 +49,51 @@ test('never merge rough profiles, thickness changes or discontinuous edges', () 
     { p:[5,0],q:[6,0],z0:0,z1:2 },
   ];
   assert.equal(mergeCollinearSidewallParts(parts).length, 4);
+});
+
+test('screen-space LOD simplifies a distant wavy boundary without mutating source geometry', () => {
+  const upper = Array.from({ length: 101 }, (_, index) => [
+    index * 0.1,
+    2 + (index % 2 ? 0.002 : -0.002),
+  ]);
+  const outline = [
+    [0, 0],
+    [10, 0],
+    ...upper.slice().reverse(),
+    [0, 0],
+  ];
+  const original = structuredClone(outline);
+  const reduced = simplifyDisplayRing(outline, 0.01);
+  assert.ok(reduced.length < original.length / 4);
+  assert.deepEqual(outline, original);
+  assert.deepEqual(reduced[0], reduced.at(-1));
+});
+
+test('screen-space LOD preserves through-void holes and avoids close range simplification', () => {
+  const ring = [
+    [0, 0], [2, 0.001], [4, 0], [4, 4], [2, 3.999], [0, 4], [0, 0],
+  ];
+  const hole = [[1, 1], [1, 3], [3, 3], [3, 1], [1, 1]];
+  const polys = [[ring, hole]];
+  assert.deepEqual(simplifyDisplayPolygons(polys, 0), polys);
+  const reduced = simplifyDisplayPolygons(polys, 0.01);
+  assert.deepEqual(reduced[0][1], hole);
+  assert.deepEqual(polys[0][0], ring);
+});
+
+test('far-field sidewall LOD removes subpixel waviness but keeps Z and depth metadata', () => {
+  const parts = Array.from({ length: 60 }, (_, index) => ({
+    p: [index * 0.1, index % 2 ? 0.004 : 0],
+    q: [(index + 1) * 0.1, (index + 1) % 2 ? 0.004 : 0],
+    z0: 1,
+    z1: 2,
+    lowerDepth: 0,
+    upperDepth: 1,
+  }));
+  const simplified = simplifyDisplaySidewallParts(parts, 0.02);
+  assert.ok(simplified.length < 10);
+  assert.equal(simplified[0].z0, 1);
+  assert.equal(simplified[0].upperDepth, 1);
+  assert.deepEqual(simplified[0].p, parts[0].p);
+  assert.deepEqual(simplified.at(-1).q, parts.at(-1).q);
 });
