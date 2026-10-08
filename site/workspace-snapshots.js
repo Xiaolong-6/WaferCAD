@@ -1342,7 +1342,7 @@ export function createSnapshotManager({
 
   // Base rebuild establishes a new independent Main root. Preserve the previous
   // Main lineage as a restorable Variant instead of leaving orphaned Steps.
-  function rebuildMainBase({ preservePrevious = false } = {}) {
+  function rebuildMainBase({ preservePrevious = false, previousState = null } = {}) {
     const state = cloneState(capture());
     if (!validateState(state)) {
       throw new Error('Cannot rebuild Main with an invalid workspace state.');
@@ -1365,9 +1365,9 @@ export function createSnapshotManager({
     let archiveId = branchIdFactory();
     while (!archiveId || branchById(archiveId)) archiveId = branchIdFactory();
     const oldMainState =
-      activeBranchId === MAIN_SNAPSHOT_BRANCH_ID && isCursorAtBranchHead()
-        ? cloneState(cursorBaselineState || previousMain.headState || state)
-        : cloneState(previousMain.headState || cursorBaselineState || state);
+      activeBranchId === MAIN_SNAPSHOT_BRANCH_ID && previousState && validateState(previousState)
+        ? cloneState(previousState)
+        : cloneState(previousMain.headState || previousState || cursorBaselineState || state);
     const archive = {
       ...previousMain,
       id: archiveId,
