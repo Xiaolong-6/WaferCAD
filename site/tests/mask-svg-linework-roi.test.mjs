@@ -57,9 +57,9 @@ test('Mask ROI SVG retains clipped zero-width and stroked file linework like GDS
     selectedLayerKeys: new Set(['1|0']),
   });
   assert.equal(exported.elements.length, 2);
-  assert.equal(exported.elements[0].kind, 'polygon');
-  assert.equal(exported.elements[1].kind, 'path');
-  assert.deepEqual(exported.elements[1].points, [[-2, 0], [2, 0]]);
+  assert.equal(exported.elements[0].kind, 'path');
+  assert.equal(exported.elements[1].kind, 'polygon');
+  assert.deepEqual(exported.elements[0].points, [[-2, 0], [2, 0]]);
 
   const root = {
     body: { append() {} },
