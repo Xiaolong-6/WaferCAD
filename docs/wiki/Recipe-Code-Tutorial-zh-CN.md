@@ -2,7 +2,7 @@
 
 ![Conformal 工艺的前后示意](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
-*这是和软件 Process 面板共用定义的示意图，实际结构由 Base、Mask 和前序步骤决定。*
+_这是和软件 Process 面板共用定义的示意图，实际结构由 Base、Mask 和前序步骤决定。_
 
 [首页](Home) · [English tutorial](Recipe-Code-Tutorial) · [Process 与 Recipe](Process-and-Recipes) · [示例项目](Examples-and-Modeling-Limits)
 

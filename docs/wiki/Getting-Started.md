@@ -6,11 +6,11 @@
 
 ![Photodetector example — genuine WaferCAD 3D preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
 
-*Representative structural output from the bundled example. This introductory procedure creates a much simpler structure.*
+_Representative structural output from the bundled example. This introductory procedure creates a much simpler structure._
 
 ![WaferCAD Project tab screenshot](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/tests/visual-baselines/windows-chromium/wide-project-panel.png)
 
-*Approved Windows/Chromium UI reference captured on 2026-10-05. The current toolbar or panel arrangement may differ slightly.*
+_Approved Windows/Chromium UI reference captured on 2026-10-05. The current toolbar or panel arrangement may differ slightly._
 
 1. Open the [WaferCAD workspace](https://xiaolong-6.github.io/WaferCAD/) and start a new project or an example. The **Project** tab contains base setup and project commands.
 2. Choose a circular or rectangular substrate, set its planar size and physical Z thickness, then use **Apply base**.

@@ -927,19 +927,14 @@ function healConformalCoverageCracks(model, originalVoids) {
     ),
     maxRepairArea = Math.min(
       1e-3,
-      Math.max(
-        PROCESS_GEOMETRY_GRID_UM ** 2 * 4,
-        geometryArea(model.boundary) * 1e-8,
-      ),
+      Math.max(PROCESS_GEOMETRY_GRID_UM ** 2 * 4, geometryArea(model.boundary) * 1e-8),
     );
   for (let attempt = 0; attempt < 3; attempt++) {
     const missing = verifiedConformalCoverageLoss(model, originalVoids);
     if (isEmpty(missing)) return;
     const missingArea = geometryArea(missing);
     if (missingArea > maxRepairArea) {
-      throw new Error(
-        `Conformal lost ${missingArea} µm² of existing XY material coverage.`,
-      );
+      throw new Error(`Conformal lost ${missingArea} µm² of existing XY material coverage.`);
     }
 
     for (const polygon of missing) {

@@ -6,7 +6,7 @@
 
 ![Real 3D view from the shipped Photodetector example](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
 
-*An actual WaferCAD example preview. Dimensions and process assumptions are explained in the linked example documentation.*
+_An actual WaferCAD example preview. Dimensions and process assumptions are explained in the linked example documentation._
 
 ## Read the manual
 

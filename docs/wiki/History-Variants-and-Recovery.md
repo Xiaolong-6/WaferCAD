@@ -4,7 +4,7 @@
 
 ## History and snapshots
 
-~~~mermaid
+```mermaid
 flowchart LR
   Base[Base structure] --> Step1[Process step 1]
   Step1 --> Step2[Process step 2]
@@ -12,9 +12,9 @@ flowchart LR
   Step1 --> Variant[Alternative Variant]
   Main --> Save["Save: browser Recovery"]
   Main --> Export["Export: portable .wafercad"]
-~~~
+```
 
-*History and Variants retain process lineage. Local Recovery checkpoints and portable exports are separate persistence mechanisms.*
+_History and Variants retain process lineage. Local Recovery checkpoints and portable exports are separate persistence mechanisms._
 
 Each successful geometric Process step advances the model and may carry a replay descriptor. History enables revisiting saved states and comparing intermediate Section/3D views. **Record** inserts metadata into the chronological process without changing geometry. Named snapshots are inspection bookmarks; they should not substitute for actual fabrication steps.
 

@@ -6,11 +6,11 @@
 
 ![Conformal deposition before and after](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
-*The same schematic geometry source is used here and in the expandable Process guide. These drawings do not depict the currently opened project.*
+_The same schematic geometry source is used here and in the expandable Process guide. These drawings do not depict the currently opened project._
 
 ![WaferCAD Process panel on a narrow screen](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/tests/visual-baselines/windows-chromium/phone-process-panel.png)
 
-*Real compact Process panel visual baseline (2026-10-05). The expandable schematic beneath Apply stays linked to the same operation catalog.*
+_Real compact Process panel visual baseline (2026-10-05). The expandable schematic beneath Apply stays linked to the same operation catalog._
 
 The **Step** mode has Front/Back, one **Operation** selector, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. **Apply** performs the current operation. **Also add to Recipe** controls whether a successful Step-mode operation is appended to the Recipe. Below Apply, **How it works** expands a conceptual Before → After schematic and caveats; it is not a live prediction from the current project.
 

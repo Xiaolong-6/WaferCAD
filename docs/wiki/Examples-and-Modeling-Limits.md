@@ -21,11 +21,11 @@ These six entries are **the shipped Welcome catalog in main**. Other research re
 
 ![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
 
-*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
 
 ![Photodetector Section screenshot from the accepted Windows visual baseline](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/tests/visual-baselines/windows-chromium/photodetector-section.png)
 
-*Section screenshot from a reproducible browser visual reference (2026-10-05); device geometry and visual results can evolve after later Kernel changes.*
+_Section screenshot from a reproducible browser visual reference (2026-10-05); device geometry and visual results can evolve after later Kernel changes._
 
 **Black-Si photodiode — Setälä 2023, Fig. 1a**
 
@@ -45,7 +45,7 @@ For detailed assumptions, source differences, and the reconstruction acceptance 
 
 ![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/perc-point-contact-solar-cell-three.webp)
 
-*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
 
 The PERC family demonstrates front/back processing and locally patterned rear contacts. Inspect the source-order fabrication Variant and the alternative GDS-patterned-contact Variant to understand which geometry comes from a mask and which parts are structural simplifications. Doping/diffusion regions are represented schematically: **photovoltaic conversion efficiency is not calculated**.
 
@@ -53,7 +53,7 @@ The PERC family demonstrates front/back processing and locally patterned rear co
 
 ![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp)
 
-*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
 
 This project illustrates two-sided silicon pyramid texture and a multilayer tandem stack. The saved Variants compare an nc-Si:H recombination-junction construction with an ITO control. The 3D and Section views are useful for inspecting conformal materials across the ideal texture and the surrogate front Ag fingers.
 
@@ -63,7 +63,7 @@ This project illustrates two-sided silicon pyramid texture and a multilayer tand
 
 ![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/suspended-silica-microdisk-three.webp)
 
-*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
 
 Use Main, Section and 3D to inspect the actual canonical void and supported disk. This example is most useful for explaining isotropic/undercut release and the difference between an open cavity and a hidden or painted surface. It does not simulate release chemistry, device motion, optical modes or acoustic sensitivity.
 
@@ -71,7 +71,7 @@ Use Main, Section and 3D to inspect the actual canonical void and supported disk
 
 ![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp)
 
-*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
 
 The kernel-reconstructed literature example includes the silicon photovoltaic power tier, WSe₂/MoS₂ logic, graphene sensor, vias, conformal Al₂O₃ encapsulation and selective sensing windows. The full editable project contains **36 History nodes** and **27 stage bookmarks (S00–S26)**.
 
@@ -81,7 +81,7 @@ The kernel-reconstructed literature example includes the silicon photovoltaic po
 
 ![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/three-tier-silicon-jlfets-three.webp)
 
-*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
 
 The Welcome preview uses a **single-site source** for responsive inspection. Opening the project loads the **625-site full-wafer array**, containing three stacked silicon transistor tiers and **40 stored History Steps**. Deposition, conformal gate dielectrics, inter-tier transfer and CMP are represented with documented geometric assumptions.
 

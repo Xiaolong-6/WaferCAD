@@ -9,13 +9,13 @@ Merge policy: **do not merge main** before the user explicitly requests it.
 
 Inspected the lossless production example `site/examples/m3d-selfpowered-full-replay.wafercad`, unpacking its shared polygon templates and History models:
 
-| Revision | Stage | Regions | Covered XY area (um^2) |
-| --- | --- | ---: | ---: |
-| 19 | WSe2 anneal, before local cap | 42 | 1800.00000000 |
-| 20 | Local 20 nm WSe2 Al2O3 Conformal cap | 62 | 1799.99999979 |
-| 21 | MoS2 transfer | 65 | 1799.99999979 |
-| 22 | MoS2 pattern | 63 | 1800.00000000 |
-| 25 | 50 nm ILD2 Conformal | 184 | 1799.99999897 |
+| Revision | Stage                                | Regions | Covered XY area (um^2) |
+| -------- | ------------------------------------ | ------: | ---------------------: |
+| 19       | WSe2 anneal, before local cap        |      42 |          1800.00000000 |
+| 20       | Local 20 nm WSe2 Al2O3 Conformal cap |      62 |          1799.99999979 |
+| 21       | MoS2 transfer                        |      65 |          1799.99999979 |
+| 22       | MoS2 pattern                         |      63 |          1800.00000000 |
+| 25       | 50 nm ILD2 Conformal                 |     184 |          1799.99999897 |
 
 There are approximately 0.032 nm-wide uncovered XY gaps in revision 20 around x=4.995 and x=12.004 um, adjacent to regions `region-748`, `region-749`, and `region-750` in the stored S15 model. Original BOX substrate is Z=-1 to +1 um and present in every region; a missing XY column therefore appears as a spurious **full-depth 2 um material sidewall** in the 3D renderer. Turning Border OFF removes the black `THREE.LineSegments`, but does not remove the fake geometric sides, matching the user's observation.
 
@@ -23,7 +23,7 @@ The new 20 nm Al2O3 layer itself has Z extents >= 1.18 um, and no full-depth cap
 
 ## Fix
 
-`site/model.js` adds a post-Conformal coverage-repair pass *after* the persistence-grid canonical partition pass.
+`site/model.js` adds a post-Conformal coverage-repair pass _after_ the persistence-grid canonical partition pass.
 
 - Newly lost XY coverage is determined by subtracting the **pre-operation void domain** from post-operation uncovered geometry. This also identifies long, thin slivers missed by the previous bounding-box `numerical-crack` classifier.
 - Pre-existing physical voids are subtracted from every candidate crack; an existing real trench is never filled.

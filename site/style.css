@@ -1185,8 +1185,6 @@ canvas {
   gap: 3px;
 }
 
-
-
 .param-grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1298,7 +1296,6 @@ canvas {
 }
 
 @media (max-width: 600px) {
-
   .param-grid-2 {
     grid-template-columns: minmax(0, 1fr);
     gap: 3px;
@@ -2516,7 +2513,6 @@ body.welcome-open {
   cursor: pointer;
   user-select: none;
 }
-
 
 #applyOperationBtn:disabled {
   opacity: 0.45;

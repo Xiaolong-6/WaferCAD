@@ -2,7 +2,7 @@
 
 ![Conformal deposition in a Recipe](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
-*Illustrative geometry only; actual results depend on the selected Base, Mask, Face and preceding steps.*
+_Illustrative geometry only; actual results depend on the selected Base, Mask, Face and preceding steps._
 
 [Home](Home) · [Process and Recipes](Process-and-Recipes) · [Examples](Examples-and-Modeling-Limits) · [中文教程](Recipe-Code-Tutorial-zh-CN)
 

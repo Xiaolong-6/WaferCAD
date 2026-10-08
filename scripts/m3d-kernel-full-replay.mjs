@@ -301,8 +301,12 @@ function applyStep(stage, spec) {
   assert.equal(
     coverage.all.length,
     0,
-    stage + ' · ' + spec.label + ' introduced ' +
-      coverage.all.length + ' uncovered XY polygons in the BOX',
+    stage +
+      ' · ' +
+      spec.label +
+      ' introduced ' +
+      coverage.all.length +
+      ' uncovered XY polygons in the BOX',
   );
 
   const replay = {

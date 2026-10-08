@@ -4,7 +4,7 @@
 
 ![Schematic of conformal coverage](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
-*For coating problems, first compare the displayed Section against this idealized before/after illustration.*
+_For coating problems, first compare the displayed Section against this idealized before/after illustration._
 
 **Why does Apply change the wrong part?** Check File/Draw mask source, selected Cells and Layers, Selected versus Invert mask, active Front/Back face and Mask ROI. Main ROI affects 3D inspection, not Process.
 

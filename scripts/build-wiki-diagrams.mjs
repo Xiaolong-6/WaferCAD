@@ -34,9 +34,7 @@ export async function buildWikiDiagrams(mode = '--check') {
   if (mode === '--write') await mkdir(PROCESS_WIKI_ASSET_DIR, { recursive: true });
   const expectedNames = new Set(PROCESS_GUIDE.map((entry) => entry.id + '.svg'));
   const existing = await readdir(PROCESS_WIKI_ASSET_DIR);
-  const unexpected = existing.filter(
-    (name) => name.endsWith('.svg') && !expectedNames.has(name),
-  );
+  const unexpected = existing.filter((name) => name.endsWith('.svg') && !expectedNames.has(name));
   if (unexpected.length) throw Error('Obsolete Process diagrams: ' + unexpected.join(', '));
   for (const entry of PROCESS_GUIDE) {
     const filename = join(PROCESS_WIKI_ASSET_DIR, entry.id + '.svg');

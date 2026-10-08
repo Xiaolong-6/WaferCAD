@@ -439,9 +439,7 @@ export function createProcessRecipeController({
       stepList.append(row);
     }
     const hasCurrentWork =
-      recipe.steps.length > 0 ||
-      codeDraftDirty ||
-      recipe.name !== recipeTemplate('blank').name;
+      recipe.steps.length > 0 || codeDraftDirty || recipe.name !== recipeTemplate('blank').name;
     $('recipeTemplatePreviewWarning').textContent = templateReplaceArmed
       ? `Replace your current Recipe${codeDraftDirty ? ' and unapplied Code draft' : ''}? This cannot be undone after reload. Recipe Undo is available in this session.`
       : hasCurrentWork
@@ -455,9 +453,7 @@ export function createProcessRecipeController({
   function requestTemplateLoad() {
     if (!pendingTemplateId || running) return;
     const hasCurrentWork =
-      recipe.steps.length > 0 ||
-      codeDraftDirty ||
-      recipe.name !== recipeTemplate('blank').name;
+      recipe.steps.length > 0 || codeDraftDirty || recipe.name !== recipeTemplate('blank').name;
     if (hasCurrentWork && !templateReplaceArmed) {
       templateReplaceArmed = true;
       renderTemplatePreview();
