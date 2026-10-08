@@ -4,17 +4,41 @@
 
 **Start with the observable symptom.** Check the **Section A–B** view and the currently selected **Mask**, **Front/Back** face, **Area** and **XYZ unit** before repeating an operation. Clicking **Apply** again may create another film or remove additional material.
 
-| What you see                                                 | First checks                                                                                                                                                                                    | Safe next action                                                                                                   |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Apply does nothing / the wrong location changes**          | Is the active Mask source **File** or **Draw**? Is **Area** set to **Selected mask**, **Invert mask** or **Whole face**? Is the active face correct? Is the Mask ROI restricting the operation? | Inspect the chosen mask in **Mask** and check the on-screen error. Correct the selection **before** another Apply. |
-| **The entire substrate or oxide is etched away**             | Was Etch **Material** left at **All exposed materials**? Is **Whole face** selected? Is the Z etch depth too large?                                                                             | **Undo** if available; choose the intended material and mask.                                                      |
-| **The opening is visible in Main/3D but missing in Section** | Does the **A–B line actually cross the opening**?                                                                                                                                               | In Main, move/edit A and B to cross the feature. Do not conclude it is a Kernel error from a different slice.      |
-| **A film looks far too thick/thin**                          | Check the global **XYZ unit** (nm/µm/mm) and Section **Auto** versus **1:1**.                                                                                                                   | Inspect the actual entered length; **Auto** can exaggerate Z for visibility.                                       |
-| **Conformal film is missing from sidewalls**                 | **Directional** covers exposed horizontal faces; **Conformal** covers real sidewalls as well.                                                                                                   | Confirm **Coverage = Conformal** and inspect Section along a real step.                                            |
-| **A drawn rectangle has no process effect**                  | Does the Mask header say **Draw**, does the rectangle overlap the substrate, and is the Area **Selected mask**?                                                                                 | Clear an unintended Mask ROI and retry **once**, after Undo if necessary.                                          |
-| **3D changes when I set an ROI, but the process does not**   | A **Main ROI** clips the 3D view/GLB; a **Mask ROI** clips selected/inverted-mask operations.                                                                                                   | Use **Mask ROI** for Process limitations; use **Main ROI** only for inspection.                                    |
-| **Run All gives duplicated layers**                          | Did you use **Continue current model** on an already processed device?                                                                                                                          | Export a backup, then choose **Rebuild Base first (new Main)** and handle History confirmation explicitly.         |
-| **I cannot find my changes after opening another browser**   | **Save** is browser-local; it is not a portable file.                                                                                                                                           | **Export** a `.wafercad` file and import it on the second device.                                                  |
+## Apply changes nothing or the wrong location
+
+Check the **Process Area** (Whole face / Selected mask / Invert mask), **Front/Back** side and the currently active **File/Draw** Mask. A hidden Mask ROI may reduce the process area. Correct the input or displayed error **before** repeating Apply.
+
+## A mask exists, but Etch removed the entire film (or even the Base)
+
+For a masked, selective etch choose **Area → Selected mask**, then choose the intended layer in Etch **Material** instead of **All exposed materials**. Check the etch depth and active Draw/File mask. Use **Undo** if available, then correct the inputs.
+
+## The hole appears in Main or 3D, but not in Section
+
+The **A–B line may miss the hole**. Move A/B in Main so that the line crosses the mask opening. A section through a different location can look unchanged even when the etch succeeded.
+
+## Film thickness looks wrong
+
+Check **Project → XYZ unit** and the number typed in Process Z. For example **0.2 µm = 200 nm**. The **Section Auto** view fits XY and Z independently and may visually exaggerate the height; **1:1** uses a common physical scale.
+
+## A conformal coating has no sidewalls
+
+Confirm **Coverage → Conformal**. Directional adds material on horizontal exposed surfaces; a conformal operation may coat actual exposed steps/sidewalls. Align A–B with the step to inspect it.
+
+## I drew a rectangle, but it does not affect Process
+
+In the Mask view header click **File** until the button says **Draw**. The rectangle must overlap the Base. In Process choose **Area → Selected mask**, not Whole face, and ensure **Mask ROI** is clear for the beginner exercise.
+
+## An ROI changes the 3D view but not the etched area
+
+You probably used **Main ROI**, which clips the 3D/GLB inspection view. To limit a mask-based Process, use **Mask ROI** instead. Both are independent of the Section A–B line.
+
+## Run All duplicates layers
+
+The Recipe may be set to **Continue current model**. For a clean reconstruction, export a backup and choose **Rebuild Base first (new Main)**, then carefully handle the History confirmation.
+
+## My work is missing in another browser
+
+**Save** keeps Recovery checkpoints in one browser profile. Use **Project → Export** for a portable `.wafercad` file, then import it elsewhere.
 
 ![Schematic of conformal coverage](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
