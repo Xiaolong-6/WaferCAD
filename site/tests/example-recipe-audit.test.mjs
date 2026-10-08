@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
-import { readProjectFile } from '../project-io.js';
-import { validateRecipeExecution } from '../process-recipe-preflight.js';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
+
+const { readProjectFile } = await import('../project-io.js');
+const { validateRecipeExecution } = await import('../process-recipe-preflight.js');
 
 function historyPath(id, nodes) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
