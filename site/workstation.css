@@ -1496,9 +1496,8 @@ html.workstation-ui-v2 .workstation-view-stage .view-head .three-opacity-control
 html.workstation-ui-v2 .workstation-view-stage .view-head .three-border-toggle:has(input:checked),
 html.workstation-ui-v2 #sectionPanel .view-head .mini-btn.active,
 html.workstation-ui-v2 #sectionPanel .view-head .mini-btn[aria-pressed='true'],
-html.workstation-ui-v2 #maskSourceToggleBtn.active,
-html.workstation-ui-v2 #sectionControlsBtn.active,
-html.workstation-ui-v2 #sectionDetailRoiBtn.active {
+html.workstation-ui-v2 .workstation-view-stage .view-head details[open] > summary,
+html.workstation-ui-v2 #sectionPanel .view-head details[open] > summary {
   border-color: #5c88aa;
   background: #345674;
   color: #f0f7fe;
@@ -1511,9 +1510,8 @@ html.workstation-ui-v2 .workstation-view-stage .view-head .three-opacity-control
 html.workstation-ui-v2 .workstation-view-stage .view-head .three-border-toggle:has(input:checked):hover,
 html.workstation-ui-v2 #sectionPanel .view-head .mini-btn.active:hover,
 html.workstation-ui-v2 #sectionPanel .view-head .mini-btn[aria-pressed='true']:hover,
-html.workstation-ui-v2 #maskSourceToggleBtn.active:hover,
-html.workstation-ui-v2 #sectionControlsBtn.active:hover,
-html.workstation-ui-v2 #sectionDetailRoiBtn.active:hover {
+html.workstation-ui-v2 .workstation-view-stage .view-head details[open] > summary:hover,
+html.workstation-ui-v2 #sectionPanel .view-head details[open] > summary:hover {
   border-color: #7aa7cc;
   background: #406a8c;
   color: #fff;
