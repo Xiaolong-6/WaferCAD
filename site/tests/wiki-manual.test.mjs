@@ -73,7 +73,22 @@ test('the novice path is discoverable and names the current UI controls', async 
   ]) {
     assert.ok(guide.includes(step), `novice workflow missing ${step}`);
   }
+  const welcome = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(welcome, /id="welcomeEmptyBtn"[^>]*href="\.\/app\.html\?start=empty"/);
+  assert.match(guide, /click \*\*Start empty\*\*/);
+  assert.match(guide, /\*\*Project\*\* tab[\s\S]*\*\*XYZ unit/);
+  assert.match(guide, /separate \*\*Base\*\* tab/);
+  assert.match(guide, /default layer name[\s\S]*\*\*Base\*\*/);
+  assert.match(guide, /uncheck Also add to Recipe/);
+
   const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+  const basePanel = html.slice(html.indexOf('id="baseTools"'), html.indexOf('id="maskTools"'));
+  const projectPanel = html.slice(html.indexOf('id="settingsTools"'), html.indexOf('id="sectionPanel"'));
+  assert.ok(basePanel.includes('id="applyBaseBtn"'), 'Apply base must belong to Base, not Project');
+  assert.ok(!projectPanel.includes('id="applyBaseBtn"'), 'Project should not claim Base controls');
+  for (const id of ['newProjectBtn', 'saveProjectBtn', 'exportProjectBtn', 'xyUnitSelect']) {
+    assert.ok(projectPanel.includes(`id="${id}"`), `Project control missing: ${id}`);
+  }
   for (const id of [
     'baseWidth',
     'baseHeight',
