@@ -1,6 +1,7 @@
 **WaferCAD Manual**
 
 - [Home](Home)
+- [First 10 Minutes](First-10-Minutes) — no files or coding needed
 - [Getting Started](Getting-Started)
 - [Workspace & Views](Workspace-and-Views)
 - [Masks & ROI](Masks-and-ROI)
