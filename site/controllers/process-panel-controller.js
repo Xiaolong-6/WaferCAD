@@ -92,6 +92,39 @@ export function createProcessPanelController({
     };
   }
 
+  // Derived UI-only cache. With an unchanged model/revisions and Mask
+  // selection, revisiting Grow/Etch material menus need not recompute heavy
+  // mask booleans. The Process worker still validates canonical geometry.
+  let targetExposureCache = null;
+  function targetExposure() {
+    const model = getModel(),
+      activeFace = getActiveFace(),
+      mode = $('operationArea').value,
+      state = getMaskState();
+    const signature = JSON.stringify({
+      mode,
+      face: activeFace,
+      revision: model.revision,
+      processRevision: model.processRevision,
+      source: state.maskSourceMode,
+      cell: state.activeCell,
+      keys: Array.from(state.selectedLayerKeys || []),
+      transform: state.maskTransform,
+      roi: state.maskRoi,
+      draw: state.maskSourceMode === 'draw' ? state.drawMask : null,
+    });
+    if (
+      targetExposureCache?.model === model &&
+      targetExposureCache.elements === state.layout?.elements &&
+      targetExposureCache.signature === signature
+    )
+      return targetExposureCache.exposed;
+    const area = operationAreaGeometry(mode);
+    const exposed = new Set(exposedLayerIds(model, area, activeFace));
+    targetExposureCache = { model, elements: state.layout?.elements, signature, exposed };
+    return exposed;
+  }
+
   function updateGrowTargets() {
     const select = $('targetLayer');
     if (!select) return;
@@ -99,9 +132,7 @@ export function createProcessPanelController({
     select.innerHTML = '';
 
     const model = getModel(),
-      activeFace = getActiveFace(),
-      area = operationAreaGeometry($('operationArea').value),
-      exposed = new Set(exposedLayerIds(model, area, activeFace));
+      exposed = targetExposure();
     for (const layer of model.layers) {
       if (!exposed.has(layer.id)) continue;
       select.add(new Option(layer.name, layer.id));
@@ -120,9 +151,7 @@ export function createProcessPanelController({
     select.add(new Option(requiresMaterial ? 'Select material…' : 'All exposed materials', ''));
 
     const model = getModel(),
-      activeFace = getActiveFace(),
-      area = operationAreaGeometry($('operationArea').value),
-      exposed = new Set(exposedLayerIds(model, area, activeFace));
+      exposed = targetExposure();
     for (const layer of model.layers) {
       if (!exposed.has(layer.id)) continue;
       select.add(new Option(layer.name, layer.id));
