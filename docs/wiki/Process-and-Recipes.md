@@ -1,6 +1,6 @@
 # Process and Recipes
 
-[Home](Home) · [Illustrated operations](Process-Operations)
+[Home](Home) · [Recipe Code Tutorial](Recipe-Code-Tutorial) · [中文教程](Recipe-Code-Tutorial-zh-CN) · [Illustrated operations](Process-Operations)
 
 ## Manual Process
 
@@ -22,6 +22,10 @@ The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrica
 Switch from **Manual** to **Recipe** to build an ordered list of typed operations. The guided editor supports step creation, reorder, parameter inspection, validation and per-step execution. Its restricted Code editor is a declarative recipe format; it is **not** an arbitrary JavaScript execution environment.
 
 Recipe uses the same Process worker/kernel as Manual. A Recipe is stored in the exported `.wafercad` project. Applying it again to an already processed model repeats its geometry operations; use the fresh-Base start option if you need a reproducible new lineage.
+
+**Learn the syntax:** Follow the [complete Recipe Code Tutorial](Recipe-Code-Tutorial) (also available [in Chinese](Recipe-Code-Tutorial-zh-CN)). It includes a copy-ready oxide/ALD example, all seven supported commands, Mask capture, rough/pyramid morphology, a masked contact-window flow, and Run All/replay checks. Code drafts must be applied with **Apply code** before execution, and `area: "mask"` / `"invert"` steps require a captured File or Draw Mask context.
+
+**Starting state:** **Continue current model** appends changes to the current geometry. **Rebuild Base first (new Main)** is the clean-replay option, subject to the confirmation and History handling. **Replay 1 → Step** replays the prefix from Step 1; **Stop** retains steps that already committed.
 
 ## Replay and versions
 

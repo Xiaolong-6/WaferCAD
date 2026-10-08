@@ -2,7 +2,8 @@
 
 ## Source of truth
 
-- `docs/wiki/*.md`: complete product user manual (Welcome/Getting Started, views, mask, Process, Recipe, History, Variants, Recovery, I/O, examples, limits and troubleshooting).
+- `docs/wiki/*.md`: complete product user manual (Welcome/Getting Started, views, mask, Process, the English/Chinese Recipe Code Tutorial, History, Variants, Recovery, I/O, examples, limits and troubleshooting).
+- `site/bundled-examples.js`: canonical Welcome project catalog. Keep `docs/wiki/Examples-and-Modeling-Limits.md` aligned with every promoted example ID/title; do not count unpromoted development fixtures as Welcome examples.
 - `site/process-guide.js`: canonical metadata for the 18 Process operation variants.
 - `site/process-guide-svg.js`: the paired Before → After diagrams.
 - `site/guide/index.html`: public interactive atlas served by GitHub Pages.

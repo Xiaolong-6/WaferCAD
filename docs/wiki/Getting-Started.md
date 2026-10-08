@@ -24,4 +24,4 @@ A simple directional deposition adds a layer on selected exposed horizontal surf
 
 ## Next steps
 
-Learn [Mask and ROI semantics](Masks-and-ROI) and the full [Process Operations](Process-Operations) guide before reproducing a literature device.
+Learn [Mask and ROI semantics](Masks-and-ROI), the [Process Operations](Process-Operations) guide, and the [Recipe Code Tutorial](Recipe-Code-Tutorial) ([中文](Recipe-Code-Tutorial-zh-CN)) before reproducing a literature device. The [Examples catalog](Examples-and-Modeling-Limits) lists every family currently promoted on Welcome.

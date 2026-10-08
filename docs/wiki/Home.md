@@ -9,12 +9,13 @@
 1. [Getting Started](Getting-Started) — your first masked structure.
 2. [Workspace and Views](Workspace-and-Views) — Main, Mask, Section, 3D, and navigation.
 3. [Masks and ROI](Masks-and-ROI) — imported layout, Draw, target area and inspection boundaries.
-4. [Process and Recipes](Process-and-Recipes) — manual operations, guided Recipe and code syntax.
-5. [Process Operations](Process-Operations) — complete descriptions of all variants, constraints and examples.
-6. [History, Variants and Recovery](History-Variants-and-Recovery) — replays, branches, snapshots and saving.
-7. [Import and Export](Import-and-Export) — project, mask and geometry interchange.
-8. [Examples and Modeling Limits](Examples-and-Modeling-Limits) — Black-Si/Ge photodetector and scientific scope.
-9. [Troubleshooting](Troubleshooting) — common UI and geometry questions.
+4. [Process and Recipes](Process-and-Recipes) — manual operations and guided Recipe controls.
+5. [Recipe Code Tutorial](Recipe-Code-Tutorial) ([中文](Recipe-Code-Tutorial-zh-CN)) — seven commands, copy-ready process scripts, Mask contexts, replay and validation.
+6. [Process Operations](Process-Operations) — complete descriptions of all variants, constraints and examples.
+7. [History, Variants and Recovery](History-Variants-and-Recovery) — replays, branches, snapshots and saving.
+8. [Import and Export](Import-and-Export) — project, mask and geometry interchange.
+9. [Examples and Modeling Limits](Examples-and-Modeling-Limits) — all six Welcome example families and their scientific scope.
+10. [Troubleshooting](Troubleshooting) — common UI and geometry questions.
 
 ## Documentation contract
 

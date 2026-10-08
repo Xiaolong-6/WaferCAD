@@ -74,6 +74,8 @@ async function main() {
       'Workspace-and-Views',
       'Masks-and-ROI',
       'Process-and-Recipes',
+      'Recipe-Code-Tutorial',
+      'Recipe-Code-Tutorial-zh-CN',
       'History-Variants-and-Recovery',
       'Import-and-Export',
       'Examples-and-Modeling-Limits',
