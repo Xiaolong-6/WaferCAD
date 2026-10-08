@@ -2367,6 +2367,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
       signature = sceneSignature(model, clip, inspection),
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
+    let buildStageStartedAt = 0;
+    const recordVariantStage = (name) => {
+      if (!variantBuild) return;
+      const now = performance.now();
+      host.dataset.rendererBuildPhase = name;
+      host.dataset.rendererBuildPhaseElapsedMs = String(now - buildStageStartedAt);
+      console.info('WAFERCAD_VARIANT_STAGE', name, Math.round(now - buildStageStartedAt));
+      buildStageStartedAt = now;
+    };
 
     if (
       physicalSceneModel === model &&
@@ -2418,6 +2427,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const rendererProfileStart = performance.now();
 
     rendering = true;
+    buildStageStartedAt = performance.now();
+    recordVariantStage('begin');
     try {
       if (!variantBuild) disposeGroup();
       syncRenderPolicy();
@@ -2530,6 +2541,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         });
       }
 
+      recordVariantStage('caps-buckets-ready');
       for (const bucket of smoothCaps.values()) {
         await maybeYieldAssembly();
         const state = stateFor(bucket.part),
@@ -2644,6 +2656,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           presentation,
         );
       }
+      recordVariantStage('caps-complete');
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
@@ -2686,6 +2699,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
         pushBucket(sidewalls, sidewall, state);
       }
+      recordVariantStage('sidewalls-buckets-ready');
       for (const bucket of sidewalls.values()) {
         await maybeYieldAssembly();
         const state = stateFor(bucket.part),
@@ -2763,6 +2777,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           presentation,
         );
       }
+      recordVariantStage('sidewalls-complete');
       host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
@@ -3118,6 +3133,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
+      recordVariantStage('annotations-complete');
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
@@ -3132,7 +3148,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       activeSceneVariant = targetVariant;
       host.dataset.sceneVariant = targetVariant;
       group.visible = true;
+      recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
+      recordVariantStage('presentation-complete');
       cacheActiveSceneVariant();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
