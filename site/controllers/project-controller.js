@@ -645,7 +645,11 @@ export function createProjectController({
       let nodeId = variant.headNodeId;
       while (nodeId && !seen.has(nodeId)) {
         seen.add(nodeId);
-        if (variant.id !== 'main' && nodeId === variant.rootNodeId) break;
+        if (
+          variant.id !== 'main' &&
+          !variant.archivedMainRoot &&
+          nodeId === variant.rootNodeId
+        ) break;
         const node = nodeById.get(nodeId);
         if (!node) break;
         if (node.branchId === variant.id) result.push(node);
