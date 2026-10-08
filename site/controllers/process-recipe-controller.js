@@ -190,6 +190,60 @@ export function createProcessRecipeController({
     return normalized;
   }
 
+  function changeStepCommand(stepId, command) {
+    const index = recipe.steps.findIndex((step) => step.id === stepId);
+    if (index < 0 || recipe.steps[index].command === command) return;
+    const previous = recipe.steps[index],
+      previousParams = previous.params || {},
+      nextStep = defaultStep(command),
+      nextParams = nextStep.params || {},
+      previousLength =
+        Number.isFinite(Number(previousParams.thicknessUm))
+          ? Number(previousParams.thicknessUm)
+          : Number.isFinite(Number(previousParams.depthUm))
+            ? Number(previousParams.depthUm)
+            : null;
+
+    nextStep.id = previous.id;
+
+    if (!['record', 'snapshot'].includes(command)) {
+      if (previousParams.face) nextParams.face = previousParams.face;
+      if (previousParams.area) nextParams.area = previousParams.area;
+      if (previousParams.mask) nextParams.mask = clone(previousParams.mask);
+    }
+
+    if (previousLength != null && previousLength > 0) {
+      if (['deposit', 'extend', 'etch'].includes(command)) nextParams.thicknessUm = previousLength;
+      if (['implant', 'electrical'].includes(command)) nextParams.depthUm = previousLength;
+    }
+
+    if (
+      ['deposit', 'extend'].includes(previous.command) &&
+      ['deposit', 'extend'].includes(command) &&
+      previousParams.material
+    ) {
+      nextParams.material = previousParams.material;
+    }
+
+    if (
+      ['implant', 'electrical'].includes(previous.command) &&
+      ['implant', 'electrical'].includes(command) &&
+      previousParams.name
+    ) {
+      nextParams.name = previousParams.name;
+    }
+
+    const next = clone(recipe);
+    next.steps[index] = nextStep;
+    activeStepId = nextStep.id;
+    persist(next);
+    render();
+    status(
+      `Step ${index + 1} changed to ${recipeStepLabel(nextStep)}. Compatible face, area, mask, and length values were kept.`,
+      'success',
+    );
+  }
+
   function initMarkup() {
     const host = $('recipeProcessPane');
     if (!host || host.dataset.ready === 'true') return;
@@ -334,7 +388,24 @@ export function createProcessRecipeController({
     }
 
     const head = make(root, 'div', 'recipe-step-editor-head');
-    const title = make(root, 'strong', '', recipeStepLabel(step));
+    const operationSelect = selectInput(
+      [
+        { value: 'deposit', label: 'Deposit' },
+        { value: 'extend', label: 'Extend' },
+        { value: 'etch', label: 'Etch' },
+        { value: 'implant', label: 'Implant' },
+        { value: 'electrical', label: 'Electrical' },
+        { value: 'record', label: 'Record' },
+        { value: 'snapshot', label: 'Snapshot' },
+      ],
+      step.command,
+    );
+    operationSelect.id = 'recipeStepOperation';
+    operationSelect.className = 'recipe-step-type-select';
+    operationSelect.title =
+      'Change this step type. Compatible face, area, mask, and length values are kept.';
+    operationSelect.setAttribute('aria-label', 'Operation type');
+    operationSelect.addEventListener('change', () => changeStepCommand(step.id, operationSelect.value));
     const actions = make(root, 'div', 'recipe-step-editor-actions');
     for (const [text, delta] of [
       ['↑', -1],
@@ -379,7 +450,9 @@ export function createProcessRecipeController({
       render();
     });
     actions.append(duplicate, remove);
-    head.append(title, actions);
+    const operationWrap = make(root, 'label', 'recipe-step-operation-field');
+    operationWrap.append(make(root, 'span', '', 'Operation'), operationSelect);
+    head.append(operationWrap, actions);
     host.append(head);
 
     const grid = make(root, 'div', 'param-grid-2');
@@ -411,12 +484,12 @@ export function createProcessRecipeController({
       bindText('Name', 'name');
     } else if (step.command === 'record') {
       bindSelect('Process', 'process', [
-        'anneal',
-        'clean',
-        'oxidation',
-        'surface-treatment',
-        'activation',
-        'custom',
+        { value: 'anneal', label: 'Anneal' },
+        { value: 'clean', label: 'Clean' },
+        { value: 'oxidation', label: 'Oxidation' },
+        { value: 'surface-treatment', label: 'Surface treatment' },
+        { value: 'activation', label: 'Activation' },
+        { value: 'custom', label: 'Custom' },
       ]);
       bindText('Label', 'label');
       bindText('Temp. °C', 'temperatureC', p.temperatureC ?? '', { type: 'number', step: 'any' });
