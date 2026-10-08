@@ -1215,9 +1215,7 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
 
       if (branch.id !== 'main' && branch.parentBranchId != null && branch.rootNodeId != null) {
         const origin = nodesById.get(branch.rootNodeId);
-        const expectedOwner = branch.archivedMainRoot === true
-          ? branch.id
-          : branch.parentBranchId;
+        const expectedOwner = branch.archivedMainRoot === true ? branch.id : branch.parentBranchId;
         if (origin && origin.branchId !== expectedOwner) {
           fail(
             `snapshotBranches.branches[${index}].rootNodeId`,

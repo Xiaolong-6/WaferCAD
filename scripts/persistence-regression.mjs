@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import {
   baseUrl,
   canvasInkFraction,
@@ -30,6 +31,55 @@ const welcomeProject = projectForBenchmark({
 });
 
 const browser = await launchBrowser();
+
+// A snapshot-only Recipe still changes structural History and must autosave.
+const bookmarkContext = await newUiContext(browser, { acceptDownloads: true });
+const bookmarkPage = await bookmarkContext.newPage();
+const bookmarkErrors = [];
+bookmarkPage.on('pageerror', (error) => bookmarkErrors.push(error.message));
+bookmarkPage.on('dialog', (dialog) => {
+  bookmarkErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
+  void dialog.dismiss();
+});
+await bookmarkPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
+await waitForAppReady(bookmarkPage);
+await openFunctionPanel(bookmarkPage, 'process');
+await bookmarkPage.locator('[data-process-input-mode="recipe"]').click();
+await bookmarkPage.locator('#recipeCodeTab').click();
+await bookmarkPage.locator('#recipeCodeEditor').fill('snapshot("Recipe persisted bookmark");');
+await bookmarkPage.locator('#recipeApplyCodeBtn').click();
+await bookmarkPage.waitForFunction(() =>
+  /Saved locally/.test(document.querySelector('#workspaceSaveStatus')?.textContent || ''),
+);
+const savedCount = Number(
+  await bookmarkPage.locator('.workspace').getAttribute('data-full-autosave-count'),
+);
+await bookmarkPage.locator('#recipeRunAllBtn').click();
+await bookmarkPage.waitForFunction(
+  (before) =>
+    Number(document.querySelector('.workspace')?.dataset.fullAutosaveCount) > before &&
+    /Saved locally/.test(document.querySelector('#workspaceSaveStatus')?.textContent || ''),
+  savedCount,
+);
+await bookmarkPage.reload();
+await waitForAppReady(bookmarkPage);
+const bookmarkProject = await exportCurrentProject(bookmarkPage);
+assert.equal(
+  bookmarkProject.snapshots.filter((record) => record.name === 'Recipe persisted bookmark').length,
+  1,
+);
+assert.equal(
+  bookmarkProject.model.processRevision,
+  0,
+  'Recipe Snapshot must not mutate material geometry',
+);
+assert.deepEqual(bookmarkErrors, []);
+await bookmarkContext.close();
+if (process.argv.includes('--recipe-only')) {
+  await browser.close();
+  console.log('WaferCAD Recipe persistence regression: OK');
+  process.exit(0);
+}
 const { page, context: mainContext } = await newUiPage(browser, {
   viewport: { width: 1365, height: 900 },
 });
@@ -551,13 +601,15 @@ await examplePage.waitForFunction(
     if (!canvas?.width || !canvas?.height) return false;
     const data = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
     if (!data?.length) return false;
-    let ink = 0, samples = 0;
+    let ink = 0,
+      samples = 0;
     for (let index = 0; index < data.length; index += 16) {
       samples += 1;
       if (
         data[index + 3] > 12 &&
         (data[index] < 245 || data[index + 1] < 245 || data[index + 2] < 245)
-      ) ink += 1;
+      )
+        ink += 1;
     }
     return samples > 0 && ink / samples > 0.005;
   },
@@ -565,7 +617,10 @@ await examplePage.waitForFunction(
   { timeout: 15000, polling: 250 },
 );
 const exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
-assert.ok(exampleMaskInk > 0.005, `Open Example Mask canvas is blank after selecting Mask: ${exampleMaskInk}`);
+assert.ok(
+  exampleMaskInk > 0.005,
+  `Open Example Mask canvas is blank after selecting Mask: ${exampleMaskInk}`,
+);
 await examplePage.locator('#gdsInput').setInputFiles({
   name: 'example-reimport.oas',
   mimeType: 'application/octet-stream',

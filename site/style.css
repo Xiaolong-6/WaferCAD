@@ -4382,7 +4382,7 @@ summary:focus-visible {
   grid-template-columns: 10px minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
-min-height: 32px;
+  min-height: 32px;
 }
 
 .process-history-row {
@@ -5255,7 +5255,6 @@ min-height: 32px;
     bottom: -7px;
   }
 }
-
 
 /* Process Recipe */
 .process-input-mode {

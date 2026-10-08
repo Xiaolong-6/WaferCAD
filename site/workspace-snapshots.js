@@ -1372,8 +1372,7 @@ export function createSnapshotManager({
     // A historical cursor is not the Variant HEAD. Rebuilding the Base from
     // an earlier Step must archive the original Main HEAD rather than the
     // currently inspected (detached) Step state.
-    const previousIsHead =
-      activeBranchId === MAIN_SNAPSHOT_BRANCH_ID && isCursorAtBranchHead();
+    const previousIsHead = activeBranchId === MAIN_SNAPSHOT_BRANCH_ID && isCursorAtBranchHead();
     const sourceMainState =
       previousIsHead && previousState && validateState(previousState)
         ? previousState
@@ -1384,7 +1383,9 @@ export function createSnapshotManager({
     const archive = {
       ...previousMain,
       id: archiveId,
-      name: uniqueBranchName(`Previous base · ${date.toISOString().slice(0, 16).replace('T', ' ')}`),
+      name: uniqueBranchName(
+        `Previous base · ${date.toISOString().slice(0, 16).replace('T', ' ')}`,
+      ),
       parentBranchId: MAIN_SNAPSHOT_BRANCH_ID,
       rootNodeId: previousMain.rootNodeId || null,
       archivedMainRoot: true,

@@ -175,11 +175,17 @@ test('Welcome thumbnail assets match their final preview source and image manife
     if (example.preview.path.endsWith('.svg')) {
       // A documented schematic fallback must never masquerade as a WebP
       // renderer screenshot or be required in the WebP checksum manifest.
-      const asset = await readFile(new URL('../' + example.preview.path.replace(/^\.\//, ''), import.meta.url), 'utf8');
+      const asset = await readFile(
+        new URL('../' + example.preview.path.replace(/^\.\//, ''), import.meta.url),
+        'utf8',
+      );
       assert.match(asset, /<svg[\s>]/);
       assert.match(asset, /Schematic only|Illustrative/i);
       assert.match(example.preview.alt || '', /Illustrative|Schematic/i);
-      assert.equal(manifest.examples.some((entry) => entry.id === example.id), false);
+      assert.equal(
+        manifest.examples.some((entry) => entry.id === example.id),
+        false,
+      );
       continue;
     }
     const entry = manifest.examples.find((entry) => entry.id === example.id);

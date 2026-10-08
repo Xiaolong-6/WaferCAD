@@ -32,7 +32,9 @@ export function recipeLengthUm(value, label = 'Length') {
   if (!match) throw new Error(`${label} must be a number with optional nm, µm/um, or mm units.`);
   const unit = match[2] || 'um';
   const scale = UNIT_SCALE_UM[unit.toLowerCase()] ?? UNIT_SCALE_UM[unit];
-  return Number(match[1]) * scale;
+  const valueUm = Number(match[1]) * scale;
+  if (!Number.isFinite(valueUm)) throw new Error(`${label} must be finite.`);
+  return valueUm;
 }
 
 function normalizeArea(value) {

@@ -9,44 +9,95 @@ import {
 } from '../renderer-line-reduction.js';
 
 test('exact collinear point reduction keeps the polygon and winding', () => {
-  const ring = [[0,0],[1,0],[2,0],[2,1],[2,2],[1,2],[0,2],[0,1],[0,0]];
+  const ring = [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [2, 1],
+    [2, 2],
+    [1, 2],
+    [0, 2],
+    [0, 1],
+    [0, 0],
+  ];
   const reduced = reduceCollinearClosedRing(ring);
-  assert.deepEqual(reduced, [[0,0],[2,0],[2,2],[0,2],[0,0]]);
-  assert.deepEqual(ring[1], [1,0], 'source geometry is immutable');
+  assert.deepEqual(reduced, [
+    [0, 0],
+    [2, 0],
+    [2, 2],
+    [0, 2],
+    [0, 0],
+  ]);
+  assert.deepEqual(ring[1], [1, 0], 'source geometry is immutable');
   assert.deepEqual(
-    reduceCollinearClosedRing([[0,0],[0,2],[2,2],[2,0],[0,0]]),
-    [[0,0],[0,2],[2,2],[2,0],[0,0]],
+    reduceCollinearClosedRing([
+      [0, 0],
+      [0, 2],
+      [2, 2],
+      [2, 0],
+      [0, 0],
+    ]),
+    [
+      [0, 0],
+      [0, 2],
+      [2, 2],
+      [2, 0],
+      [0, 0],
+    ],
   );
 });
 
 test('non-collinear geometry, holes and sharp corners remain intact', () => {
-  const ring = [[0,0],[1,0.2],[2,0],[2,2],[0,2],[0,0]];
+  const ring = [
+    [0, 0],
+    [1, 0.2],
+    [2, 0],
+    [2, 2],
+    [0, 2],
+    [0, 0],
+  ];
   assert.deepEqual(reduceCollinearClosedRing(ring), ring);
-  const hole = [[0.4,0.4],[0.4,1.6],[1.6,1.6],[1.6,0.4],[0.4,0.4]];
+  const hole = [
+    [0.4, 0.4],
+    [0.4, 1.6],
+    [1.6, 1.6],
+    [1.6, 0.4],
+    [0.4, 0.4],
+  ];
   assert.deepEqual(reduceCollinearClosedRing(hole), hole);
 });
 
 test('consecutive collinear smooth owned walls merge exactly without moving endpoints', () => {
   const parts = [
-    { p: [0,0], q: [1,0], z0: 0, z1: 1 },
-    { p: [1,0], q: [2,0], z0: 0, z1: 1 },
-    { p: [2,0], q: [2,1], z0: 0, z1: 1 },
-    { p: [2,1], q: [2,2], z0: 0, z1: 1 },
+    { p: [0, 0], q: [1, 0], z0: 0, z1: 1 },
+    { p: [1, 0], q: [2, 0], z0: 0, z1: 1 },
+    { p: [2, 0], q: [2, 1], z0: 0, z1: 1 },
+    { p: [2, 1], q: [2, 2], z0: 0, z1: 1 },
   ];
   const reduced = mergeCollinearSidewallParts(parts);
-  assert.deepEqual(reduced.map(({p,q}) => [p,q]), [
-    [[0,0],[2,0]], [[2,0],[2,2]],
-  ]);
-  assert.deepEqual(parts[0].q, [1,0]);
+  assert.deepEqual(
+    reduced.map(({ p, q }) => [p, q]),
+    [
+      [
+        [0, 0],
+        [2, 0],
+      ],
+      [
+        [2, 0],
+        [2, 2],
+      ],
+    ],
+  );
+  assert.deepEqual(parts[0].q, [1, 0]);
 });
 
 test('never merge rough profiles, thickness changes or discontinuous edges', () => {
   const rough = { appearance: { kind: 'rough', featureSize: 0.1 } };
   const parts = [
-    { p:[0,0],q:[1,0],z0:0,z1:1,upperSurface:rough },
-    { p:[1,0],q:[2,0],z0:0,z1:1,upperSurface:rough },
-    { p:[2,0],q:[3,0],z0:0,z1:2 },
-    { p:[5,0],q:[6,0],z0:0,z1:2 },
+    { p: [0, 0], q: [1, 0], z0: 0, z1: 1, upperSurface: rough },
+    { p: [1, 0], q: [2, 0], z0: 0, z1: 1, upperSurface: rough },
+    { p: [2, 0], q: [3, 0], z0: 0, z1: 2 },
+    { p: [5, 0], q: [6, 0], z0: 0, z1: 2 },
   ];
   assert.equal(mergeCollinearSidewallParts(parts).length, 4);
 });
@@ -56,12 +107,7 @@ test('screen-space LOD simplifies a distant wavy boundary without mutating sourc
     index * 0.1,
     2 + (index % 2 ? 0.002 : -0.002),
   ]);
-  const outline = [
-    [0, 0],
-    [10, 0],
-    ...upper.slice().reverse(),
-    [0, 0],
-  ];
+  const outline = [[0, 0], [10, 0], ...upper.slice().reverse(), [0, 0]];
   const original = structuredClone(outline);
   const reduced = simplifyDisplayRing(outline, 0.01);
   assert.ok(reduced.length < original.length / 4);
@@ -71,9 +117,21 @@ test('screen-space LOD simplifies a distant wavy boundary without mutating sourc
 
 test('screen-space LOD preserves through-void holes and avoids close range simplification', () => {
   const ring = [
-    [0, 0], [2, 0.001], [4, 0], [4, 4], [2, 3.999], [0, 4], [0, 0],
+    [0, 0],
+    [2, 0.001],
+    [4, 0],
+    [4, 4],
+    [2, 3.999],
+    [0, 4],
+    [0, 0],
   ];
-  const hole = [[1, 1], [1, 3], [3, 3], [3, 1], [1, 1]];
+  const hole = [
+    [1, 1],
+    [1, 3],
+    [3, 3],
+    [3, 1],
+    [1, 1],
+  ];
   const polys = [[ring, hole]];
   assert.deepEqual(simplifyDisplayPolygons(polys, 0), polys);
   const reduced = simplifyDisplayPolygons(polys, 0.01);
@@ -107,9 +165,9 @@ test('display LOD reconnects shuffled directed wall edges without connecting oth
     buried: true,
     layerId: 'buried-interface',
   }));
-  const reordered = parts.filter((_, index) => index % 2).concat(
-    parts.filter((_, index) => index % 2 === 0),
-  );
+  const reordered = parts
+    .filter((_, index) => index % 2)
+    .concat(parts.filter((_, index) => index % 2 === 0));
   const reduced = simplifyDisplaySidewallParts(reordered, 0.02);
   assert.ok(reduced.length < 10, `expected stitched chain, got ${reduced.length} edges`);
   assert.deepEqual(reduced[0].p, parts[0].p);

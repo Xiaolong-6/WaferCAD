@@ -8,33 +8,33 @@ WaferCAD Recipe v1 is a **restricted, declarative process language**. Each comma
 
 Begin with a project containing a suitable **Base** substrate (for example, Si); applying a Recipe does not create the Base. Navigate to **Process → Recipe → Code**, paste:
 
-~~~javascript
+```javascript
 // Simple oxide and ALD passivation
-snapshot("00 - Si Base");
+snapshot('00 - Si Base');
 deposit({
-  material: "SiO2",
-  thickness: "200 nm",
-  coverage: "directional",
-  face: "front",
-  area: "full"
+  material: 'SiO2',
+  thickness: '200 nm',
+  coverage: 'directional',
+  face: 'front',
+  area: 'full',
 });
-snapshot("01 - Oxide");
+snapshot('01 - Oxide');
 deposit({
-  material: "Al2O3",
-  thickness: "30 nm",
-  coverage: "conformal",
-  face: "front",
-  area: "full"
+  material: 'Al2O3',
+  thickness: '30 nm',
+  coverage: 'conformal',
+  face: 'front',
+  area: 'full',
 });
 record({
-  process: "anneal",
-  label: "Post-deposition anneal",
+  process: 'anneal',
+  label: 'Post-deposition anneal',
   temperatureC: 350,
   durationMin: 30,
-  ambient: "N2"
+  ambient: 'N2',
 });
-snapshot("02 - Passivated");
-~~~
+snapshot('02 - Passivated');
+```
 
 1. Click **Apply code** to commit the text into the editable Steps list.
 2. Click **Validate**. Fix errors before running.
@@ -54,59 +54,70 @@ The parser deliberately rejects variables, expressions, loops, arbitrary functio
 
 ### Shared parameters
 
-| Field | Values | Meaning |
-| --- | --- | --- |
-| `face` | `"front"`, `"back"` | Which exposed face is processed (default: front) |
-| `area` | `"full"`, `"mask"`, `"invert"` | Entire face, selected Mask, or complement |
-| `mask` | Captured File/Draw context | Required for masked or inverted steps |
-| `thickness` / `depth` | Positive physical length | How much to deposit, extend, etch, or annotate |
+| Field                 | Values                         | Meaning                                          |
+| --------------------- | ------------------------------ | ------------------------------------------------ |
+| `face`                | `"front"`, `"back"`            | Which exposed face is processed (default: front) |
+| `area`                | `"full"`, `"mask"`, `"invert"` | Entire face, selected Mask, or complement        |
+| `mask`                | Captured File/Draw context     | Required for masked or inverted steps            |
+| `thickness` / `depth` | Positive physical length       | How much to deposit, extend, etch, or annotate   |
 
 A **Mask ROI** clips masked Process operations; a **Main ROI** controls inspection/export view and does not limit Apply. See [Masks and ROI](Masks-and-ROI).
 
 ## 3. Command reference
 
-| Command | Required or principal fields | Notes |
-| --- | --- | --- |
-| `deposit({...})` | `material`, `thickness`, `coverage` | New material; `directional`, `conformal`, `transfer` |
-| `extend({...})` | `material`, `thickness`, `coverage` | Material must already exist and have an exposed target |
-| `etch({...})` | `depth` or `targetZ`, `profile` | `directional`, `isotropic`, `undercut`, `planarize` |
-| `implant({...})` | `name`, `depth`, optional `tilt` | Structural annotation; tilt from −80° to +80° |
-| `electrical({...})` | `name`, `depth`, `regionType`, `source` | Non-material electrical region |
-| `record({...})` | `process`, `label`, optional thermal metadata | History entry only; no geometric reaction |
-| `snapshot("...")` | Milestone name | Named inspection/restoration marker |
+| Command             | Required or principal fields                  | Notes                                                  |
+| ------------------- | --------------------------------------------- | ------------------------------------------------------ |
+| `deposit({...})`    | `material`, `thickness`, `coverage`           | New material; `directional`, `conformal`, `transfer`   |
+| `extend({...})`     | `material`, `thickness`, `coverage`           | Material must already exist and have an exposed target |
+| `etch({...})`       | `depth` or `targetZ`, `profile`               | `directional`, `isotropic`, `undercut`, `planarize`    |
+| `implant({...})`    | `name`, `depth`, optional `tilt`              | Structural annotation; tilt from −80° to +80°          |
+| `electrical({...})` | `name`, `depth`, `regionType`, `source`       | Non-material electrical region                         |
+| `record({...})`     | `process`, `label`, optional thermal metadata | History entry only; no geometric reaction              |
+| `snapshot("...")`   | Milestone name                                | Named inspection/restoration marker                    |
 
 ### Deposit, Extend and Transfer
 
-~~~javascript
+```javascript
 deposit({
-  material: "SiO2", thickness: "100 nm",
-  coverage: "directional", area: "full"
+  material: 'SiO2',
+  thickness: '100 nm',
+  coverage: 'directional',
+  area: 'full',
 });
 extend({
-  material: "SiO2", thickness: "50 nm",
-  coverage: "conformal", area: "full"
+  material: 'SiO2',
+  thickness: '50 nm',
+  coverage: 'conformal',
+  area: 'full',
 });
 deposit({
-  material: "MoS2", thickness: "1 nm",
-  coverage: "transfer", placement: "flat", area: "full"
+  material: 'MoS2',
+  thickness: '1 nm',
+  coverage: 'transfer',
+  placement: 'flat',
+  area: 'full',
 });
-~~~
+```
 
 Directional covers exposed horizontal surfaces. Conformal also creates ideal geometric sidewall bands. For transfer, `placement: "follow"` follows local exposed planes; `"flat"` places a global bridge plane. Neither models deposition kinetics or mechanical sag.
 
 ### Etch, release and planarization
 
-~~~javascript
-deposit({ material: "SiO2", thickness: "500 nm", area: "full" });
+```javascript
+deposit({ material: 'SiO2', thickness: '500 nm', area: 'full' });
 etch({
-  target: "SiO2", depth: "150 nm",
-  profile: "directional", area: "full"
+  target: 'SiO2',
+  depth: '150 nm',
+  profile: 'directional',
+  area: 'full',
 });
 etch({
-  target: "SiO2", depth: "100 nm",
-  profile: "isotropic", area: "full"
+  target: 'SiO2',
+  depth: '100 nm',
+  profile: 'isotropic',
+  area: 'full',
 });
-~~~
+```
 
 An omitted `target` in directional etch means unselective geometric removal through exposed adjacent materials. `isotropic` and `undercut` require an explicit existing `target`. For CMP, use `etch({ profile: "planarize", targetZ: "2 µm", area: "full" });` (absolute model Z, **not** removed thickness). See [Process Operations](Process-Operations) for modeling details.
 
@@ -114,43 +125,51 @@ An omitted `target` in directional etch means unselective geometric removal thro
 
 Rough/Pyramid are attributes of **directional etch**. They are deterministic display morphology and do not change the ideal geometry processed by later kernel operations.
 
-~~~javascript
+```javascript
 etch({
-  target: "Si",
-  depth: "2 µm",
-  profile: "directional",
-  area: "full",
+  target: 'Si',
+  depth: '2 µm',
+  profile: 'directional',
+  area: 'full',
   surface: {
-    morphology: "rough",
-    polarity: "normal",
-    featureSize: "500 nm",
-    meanHeight: "1 µm",
+    morphology: 'rough',
+    polarity: 'normal',
+    featureSize: '500 nm',
+    meanHeight: '1 µm',
     featureCv: 0.25,
-    heightCv: 0.30,
-    seed: 12345
-  }
+    heightCv: 0.3,
+    seed: 12345,
+  },
 });
-~~~
+```
 
 `morphology` accepts `"rough"` / `"stochastic"` or `"pyramid"`; `polarity` is `"normal"` (outward peaks) or `"inverted"` (recessed pits). `featureSize` and `meanHeight` are positive lengths, `meanHeight` cannot exceed directional etch depth, CV values are 0–1 or percentages 0–100, and `seed` is a non-negative 32-bit integer.
 
 ### Implant, Electrical, Record and Snapshot
 
-~~~javascript
+```javascript
 implant({
-  name: "B implant", depth: "300 nm",
-  tilt: 7, area: "full"
+  name: 'B implant',
+  depth: '300 nm',
+  tilt: 7,
+  area: 'full',
 });
 electrical({
-  name: "Induced p-layer", depth: "50 nm",
-  regionType: "p-inversion", source: "induced", area: "full"
+  name: 'Induced p-layer',
+  depth: '50 nm',
+  regionType: 'p-inversion',
+  source: 'induced',
+  area: 'full',
 });
 record({
-  process: "anneal", label: "Activation",
-  temperatureC: 1000, durationMin: 1, ambient: "N2"
+  process: 'anneal',
+  label: 'Activation',
+  temperatureC: 1000,
+  durationMin: 1,
+  ambient: 'N2',
 });
-snapshot("After activation");
-~~~
+snapshot('After activation');
+```
 
 Implant marks a depth-graded area but does not simulate dose, energy, activation, or diffusion. Electrical marks a region; it does not solve electrostatics. Record keeps chronological metadata without mutating geometry. For `regionType` the editor offers p/n type, inversion, accumulation, depletion and custom; `source` includes induced, doped, interface and custom.
 
@@ -158,23 +177,26 @@ Implant marks a depth-graded area but does not simulate dose, energy, activation
 
 **File Mask:** Import a GDSII/OASIS layout first. The Cell and layer/datatype must actually exist. For example `"3|0"` means GDS layer 3 / datatype 0; `"3/0"` is also normalized.
 
-~~~javascript
+```javascript
 // Requires a loaded layout with Cell TOP and layer 3/datatype 0.
 deposit({
-  material: "SiO2", thickness: "200 nm", area: "full"
+  material: 'SiO2',
+  thickness: '200 nm',
+  area: 'full',
 });
 etch({
-  target: "SiO2", depth: "200 nm",
-  profile: "directional",
-  area: "mask",
+  target: 'SiO2',
+  depth: '200 nm',
+  profile: 'directional',
+  area: 'mask',
   mask: {
-    source: "file",
-    cell: "TOP",
-    layers: ["3|0"]
-  }
+    source: 'file',
+    cell: 'TOP',
+    layers: ['3|0'],
+  },
 });
-snapshot("Oxide contact window");
-~~~
+snapshot('Oxide contact window');
+```
 
 **Draw Mask:** Use the Mask view to draw Rectangle, Circle, Polygon, Ring or Ring Sector, then in the target Recipe Step choose **Area: Selected mask** and click **Use current Mask**. WaferCAD captures the actual `drawMask` shapes, optional ROI, transform and selection into that Step. Switch to **Code** to inspect/copy its serialized context. A `mask: { source: "draw" }` object alone is incomplete: it needs captured shapes.
 
@@ -184,33 +206,44 @@ A separate Mask context is stored on **each** masked Step, so two steps may use 
 
 Prerequisites: Si Base; imported File Mask Cell `TOP` containing layer `3|0`. This illustrates recipe syntax and geometry; it is **not** a validated real photodiode manufacturing protocol.
 
-~~~javascript
-snapshot("00 - Si Base");
+```javascript
+snapshot('00 - Si Base');
 deposit({
-  material: "SiO2", thickness: "200 nm",
-  coverage: "directional", area: "full"
+  material: 'SiO2',
+  thickness: '200 nm',
+  coverage: 'directional',
+  area: 'full',
 });
-snapshot("01 - Oxide");
+snapshot('01 - Oxide');
 etch({
-  target: "SiO2", depth: "200 nm",
-  profile: "directional", area: "mask",
-  mask: { source: "file", cell: "TOP", layers: ["3|0"] }
+  target: 'SiO2',
+  depth: '200 nm',
+  profile: 'directional',
+  area: 'mask',
+  mask: { source: 'file', cell: 'TOP', layers: ['3|0'] },
 });
 implant({
-  name: "B implant", depth: "300 nm", tilt: 0,
-  area: "mask",
-  mask: { source: "file", cell: "TOP", layers: ["3|0"] }
+  name: 'B implant',
+  depth: '300 nm',
+  tilt: 0,
+  area: 'mask',
+  mask: { source: 'file', cell: 'TOP', layers: ['3|0'] },
 });
 record({
-  process: "anneal", label: "Activation record",
-  temperatureC: 1000, durationMin: 1, ambient: "N2"
+  process: 'anneal',
+  label: 'Activation record',
+  temperatureC: 1000,
+  durationMin: 1,
+  ambient: 'N2',
 });
 deposit({
-  material: "Al2O3", thickness: "30 nm",
-  coverage: "conformal", area: "full"
+  material: 'Al2O3',
+  thickness: '30 nm',
+  coverage: 'conformal',
+  area: 'full',
 });
-snapshot("02 - Passivated");
-~~~
+snapshot('02 - Passivated');
+```
 
 After **Apply code → Validate → Rebuild Base first → Run All**, inspect the mask footprint and true exposed materials in Section. If you want a full literature reconstruction, open a [bundled example](Examples-and-Modeling-Limits) and inspect its History/Variants and provenance instead.
 

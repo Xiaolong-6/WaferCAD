@@ -5,8 +5,7 @@ import test from 'node:test';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 import { parseProcessRecipeSource } from '../process-recipe.js';
 
-const manual = (page) =>
-  readFile(new URL(`../../docs/wiki/${page}.md`, import.meta.url), 'utf8');
+const manual = (page) => readFile(new URL(`../../docs/wiki/${page}.md`, import.meta.url), 'utf8');
 
 test('Wiki examples cover exactly the published Welcome project families and their sources', async () => {
   const page = await manual('Examples-and-Modeling-Limits');
@@ -46,7 +45,7 @@ test('Wiki navigation links to both Recipe tutorials', async () => {
 test('all code blocks labeled JavaScript in the Recipe tutorials parse as v1 recipes', async () => {
   for (const page of ['Recipe-Code-Tutorial', 'Recipe-Code-Tutorial-zh-CN']) {
     const source = await manual(page);
-    const snippets = [...source.matchAll(/~~~javascript\n([\s\S]*?)\n~~~/g)];
+    const snippets = [...source.matchAll(/^(?:~~~|```)javascript\n([\s\S]*?)\n(?:~~~|```)/gm)];
     assert.ok(snippets.length >= 4, `${page}: expected copy-ready recipe snippets`);
     for (const [index, snippet] of snippets.entries()) {
       const recipe = parseProcessRecipeSource(snippet[1]);

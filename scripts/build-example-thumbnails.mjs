@@ -19,7 +19,10 @@ const examples = requestedId
   ? BUNDLED_EXAMPLES.filter((example) => example.id === requestedId)
   : BUNDLED_EXAMPLES;
 if (requestedId) assert.equal(examples.length, 1, `Unknown bundled example: ${requestedId}`);
-const manifestUrl = new URL('../tests/fixtures/project-io/example-thumbnails.json', import.meta.url);
+const manifestUrl = new URL(
+  '../tests/fixtures/project-io/example-thumbnails.json',
+  import.meta.url,
+);
 const previousManifest = requestedId
   ? JSON.parse(await readFile(manifestUrl, 'utf8'))
   : { examples: [] };
@@ -32,7 +35,9 @@ try {
     if (!example.preview.path.endsWith('.webp')) {
       // Some Welcome projects deliberately use a labeled schematic fallback.
       // Never overwrite an SVG with encoded WebP screenshot bytes.
-      console.log(`${example.id}: retained illustrative ${example.preview.path}; no WebP manifest entry`);
+      console.log(
+        `${example.id}: retained illustrative ${example.preview.path}; no WebP manifest entry`,
+      );
       continue;
     }
     const inputPath = new URL(

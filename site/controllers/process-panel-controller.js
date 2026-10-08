@@ -742,7 +742,7 @@ export function createProcessPanelController({
     status(`Recorded process Step “${label}” without changing geometry.`, 'success');
   }
 
-  async function applyOperation() {
+  async function applyOperation({ canonicalLengthUm = null, canonicalSurface = null } = {}) {
     let model = getModel();
     const activeFace = getActiveFace(),
       { maskSourceMode, maskRoi, drawMask, maskTransform, layout, activeCell, selectedLayerKeys } =
@@ -757,12 +757,14 @@ export function createProcessPanelController({
 
     const etchProfile = type === 'etch' ? selectedEtchProfile() : 'directional',
       planarizeEtch = type === 'etch' && etchProfile === 'planarize',
-      thickness = manualMicron($('operationThickness').value);
+      // Typed Recipe inputs bypass the manual form's 0.1 nm editing grid.
+      thickness =
+        canonicalLengthUm == null ? manualMicron($('operationThickness').value) : canonicalLengthUm;
     $('operationThickness').value = formatLengthField(thickness);
     if (planarizeEtch) {
       if (!Number.isFinite(thickness))
         return status('Target Z must be a finite coordinate.', 'error');
-    } else if (!(thickness > 0)) {
+    } else if (!Number.isFinite(thickness) || !(thickness > 0)) {
       return status('Thickness must be greater than zero.', 'error');
     }
 
@@ -807,8 +809,8 @@ export function createProcessPanelController({
     const etchSurfaceMode = $('etchSurfaceMode').value;
     if (type === 'etch' && etchProfile === 'directional' && etchSurfaceMode !== 'smooth') {
       const pyramid = etchSurfaceMode === 'pyramid',
-        featureSize = manualMicron($('roughFeatureSize').value),
-        meanHeight = manualMicron($('roughAmplitude').value),
+        featureSize = canonicalSurface?.featureSize ?? manualMicron($('roughFeatureSize').value),
+        meanHeight = canonicalSurface?.meanHeight ?? manualMicron($('roughAmplitude').value),
         featureCvPercent = Number($('roughFeatureCv').value),
         heightCvPercent = Number($('roughHeightCv').value),
         featureCv = featureCvPercent / 100,

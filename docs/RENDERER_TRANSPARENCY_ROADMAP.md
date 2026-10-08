@@ -8,13 +8,13 @@ The workload is **Native Fig3: 625 sites / 1,885 render instances**, examined in
 
 Selected CI measurements (different revisions on the same class of Linux Chromium/software-WebGL runner; compare matched hardware/browser runs before attributing gains):
 
-| Observation | Evidence | Interpretation |
-| --- | --- | --- |
-| Cold transparent first complete frame | ~20.84 s on one attempted reduction, ~25.1 s in another; earlier ~32–38 s | Above the aspirational 15 s target and visibly slow. Hardware-specific, not a universal user latency. |
-| Warm transparent scene switch | ~36.77 s at integrated renderer v2.1 | CPU scene assembly and geometry regeneration can be zero, yet the WebGL transparent frame remains expensive. |
-| Full transparent frame | ~59–60 million submitted triangles (including the cost of two-sided drawing), ~1,759 draw calls | Dominated by per-site internal geometry; an opaque scene is much smaller. |
+| Observation                           | Evidence                                                                                                                                                | Interpretation                                                                                                     |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Cold transparent first complete frame | ~20.84 s on one attempted reduction, ~25.1 s in another; earlier ~32–38 s                                                                               | Above the aspirational 15 s target and visibly slow. Hardware-specific, not a universal user latency.              |
+| Warm transparent scene switch         | ~36.77 s at integrated renderer v2.1                                                                                                                    | CPU scene assembly and geometry regeneration can be zero, yet the WebGL transparent frame remains expensive.       |
+| Full transparent frame                | ~59–60 million submitted triangles (including the cost of two-sided drawing), ~1,759 draw calls                                                         | Dominated by per-site internal geometry; an opaque scene is much smaller.                                          |
 | Pre-double-sided ownership diagnostic | ~14 million buried interface triangles, ~12 million Electrical internal region triangles, ~3 million Electrical surfaces, <1 million exterior triangles | Focus on the internal presentation meshes; do not spend another cycle optimizing the outer wafer silhouette alone. |
-| CPU assembly | Often <1 s | Repeating scene caching or minor JavaScript assembly changes alone cannot solve the renderer bottleneck. |
+| CPU assembly                          | Often <1 s                                                                                                                                              | Repeating scene caching or minor JavaScript assembly changes alone cannot solve the renderer bottleneck.           |
 
 These are diagnostic samples, **not** reproducible benchmark guarantees. In particular, older measurements incorrectly stopped their timer when `renderState=ready` was set, before the first WebGL frame finished. Current tests wait for `rendererFrameSerial` and record `rendererFrameMs`, `rendererDrawCalls`, `rendererDrawTriangles`, active/retained scene resources, and the largest triangle-owning objects.
 

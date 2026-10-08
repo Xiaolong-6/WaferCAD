@@ -1,23 +1,29 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { chromium } from 'playwright';
-import { gotoWelcome, waitForAppReady, observePageErrors } from './test-helpers/ui.mjs';
+import {
+  gotoWelcome,
+  waitForAppReady,
+  observePageErrors,
+  launchBrowser,
+  newUiContext,
+} from './test-helpers/ui.mjs';
 import { openFunctionPanel } from './test-helpers/product.mjs';
 
 await mkdir('test-results/m3d/welcome', { recursive: true });
-const browser = await chromium.launch({
-  headless: true,
-  args: ['--enable-unsafe-swiftshader'],
-});
+const browser = await launchBrowser();
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
+  const page = await context.newPage();
   page.setDefaultTimeout(180000);
   const errors = observePageErrors(page);
   await gotoWelcome(page);
-  const card = page.locator('.welcome-example-card[data-example-id="m3d-selfpowered-heterogeneous-ic"]');
+  const card = page.locator(
+    '.welcome-example-card[data-example-id="m3d-selfpowered-heterogeneous-ic"]',
+  );
   assert.equal(await card.count(), 1, 'M3D welcome card missing');
   assert.match(await card.locator('.welcome-example-summary-link').textContent(), /36 History/);
-  assert.equal(await card.locator('img').evaluate((img) => img.complete && img.naturalWidth), 640);
+  await card.locator('img').evaluate((img) => img.decode());
+  assert.equal(await card.locator('img').evaluate((img) => img.naturalWidth), 640);
   await card.locator('.welcome-example-title-link').click();
   await page.waitForURL('**/app.html?start=example&example=m3d-selfpowered-heterogeneous-ic');
   await waitForAppReady(page);
@@ -27,10 +33,14 @@ try {
   // ON and OFF must remain legible in the actual 3D header, irrespective of
   // the opacity selection or color palette.
   const border = page.locator('#threeBorderControl');
-  const state = async () => border.evaluate((node) => ({
-    fill: getComputedStyle(node).backgroundColor,
-    caption: getComputedStyle(node.querySelector('.three-border-status'), '::before').content,
-  }));
+  const state = async () =>
+    border.evaluate((node) => ({
+      fill: getComputedStyle(node).backgroundColor,
+      caption: getComputedStyle(node.querySelector('.three-border-status'), '::before').content,
+    }));
+  // Imported projects restore their saved Border state. Start this toggle
+  // scenario explicitly at OFF instead of assuming a fixed example default.
+  if (await page.locator('#threeBorders').isChecked()) await border.click();
   const off = await state();
   assert.match(off.caption, /OFF/);
   await border.click();

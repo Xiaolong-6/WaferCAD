@@ -259,10 +259,17 @@ test('Export falls back losslessly when strict 0.1 nm quantization would change 
   const source = validProject();
   const halfWidth = PROJECT_LENGTH_QUANTUM_UM * 0.2;
   source.model.width = halfWidth * 2;
-  source.model.boundary = [[[
-    [-halfWidth, -50], [halfWidth, -50], [halfWidth, 50],
-    [-halfWidth, 50], [-halfWidth, -50],
-  ]]];
+  source.model.boundary = [
+    [
+      [
+        [-halfWidth, -50],
+        [halfWidth, -50],
+        [halfWidth, 50],
+        [-halfWidth, 50],
+        [-halfWidth, -50],
+      ],
+    ],
+  ];
   source.model.regions[0].geom = structuredClone(source.model.boundary);
 
   assert.equal(validateProjectFile(source), source);
@@ -283,6 +290,25 @@ test('Export falls back losslessly when strict 0.1 nm quantization would change 
   const invalid = validProject();
   invalid.model.regions[0].stack[0].layerId = 'nonexistent';
   assert.throws(() => prepareProjectForExport(invalid), /unknown layer/i);
+});
+
+test('Export preserves sub-grid Z in live and historical material models', async () => {
+  const source = migrateProjectFile(validProject());
+  source.model.layers.push({ id: 'graphene', name: 'Graphene', color: '#333333' });
+  source.model.regions[0].stack.push({ layerId: 'graphene', z0: 4, z1: 4.00035 });
+  const historical = structuredClone(source);
+  // Only the bookmark retains the sub-grid film in this case.
+  source.snapshots = [
+    { id: 'thin-film', name: 'Thin film', createdAt: '2026-10-08T00:00:00Z', state: historical },
+  ];
+  source.model.regions[0].stack.pop();
+  const result = prepareProjectForExport(source);
+  assert.equal(result.mode, 'lossless');
+  const text = JSON.stringify(result.stored);
+  const reopened = await readProjectFile({ size: Buffer.byteLength(text), text: async () => text });
+  assert.deepEqual(reopened.model, source.model);
+  assert.deepEqual(reopened.snapshots[0].state.model, historical.model);
+  assert.equal(prepareProjectForExport(historical).mode, 'lossless');
 });
 
 test('project storage rejects semantic geometry that collapses at file precision', () => {
@@ -1290,7 +1316,6 @@ test('component broad phase avoids disjoint sweeps and retains aggregate overlap
   }
 });
 
-
 test('project file persists and validates Process Recipe', async () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION;
@@ -1357,7 +1382,10 @@ test('project validator rejects malformed Process Recipe structure', () => {
   assert.throws(() => validateProjectFile(source), /processRecipe\.steps\[1\]\.id.*unique/);
 
   source.processRecipe.steps[1].id = 'other';
-  assert.throws(() => validateProjectFile(source), /processRecipe\.steps\[1\]\.command.*not supported/);
+  assert.throws(
+    () => validateProjectFile(source),
+    /processRecipe\.steps\[1\]\.command.*not supported/,
+  );
 
   source.processRecipe.steps[1].command = 'etch';
   assert.throws(() => validateProjectFile(source), /activeStepId.*unknown recipe step/);

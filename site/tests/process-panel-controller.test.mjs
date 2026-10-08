@@ -76,7 +76,11 @@ function fakeRoot() {
   };
 }
 
-function controllerForTask(taskResult, events, { mode = 'add', recorded = [], areaGeometry = () => [] } = {}) {
+function controllerForTask(
+  taskResult,
+  events,
+  { mode = 'add', recorded = [], areaGeometry = () => [] } = {},
+) {
   let model = createModel();
   const maskState = {
     maskSourceMode: 'file',
@@ -517,7 +521,6 @@ test('replay selected mask traverses the saved Cell hierarchy and pinned Layer c
   assert.deepEqual(capturedAreas[0].maskTransform, maskContext.transform);
 });
 
-
 test('material menu refresh reuses exposure for unchanged model and Mask selection', () => {
   let calls = 0;
   const controller = controllerForTask(() => ({}), [], {
@@ -545,4 +548,19 @@ test('material menu refresh reuses exposure for unchanged model and Mask selecti
   controller.__getMaskState().maskRoi = { type: 'circle', r: 1, c: [0, 0] };
   controller.updateUi();
   assert.equal(calls, 6);
+});
+
+test('typed Recipe lengths reach the worker without manual grid rounding', async () => {
+  let request;
+  const controller = controllerForTask((model, workerModel, params) => {
+    request = params;
+    return { aborted: true };
+  }, []);
+  controller.__root.getElementById('operationThickness').value = '0.0004';
+  await controller.applyOperation({ canonicalLengthUm: 0.00035 });
+  assert.equal(request.thickness, 0.00035);
+  assert.equal(controller.__getModel().processRevision, 0);
+  request = null;
+  await controller.applyOperation({ canonicalLengthUm: Infinity });
+  assert.equal(request, null, 'invalid typed lengths must never start a worker');
 });

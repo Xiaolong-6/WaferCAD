@@ -564,7 +564,9 @@ function ownedVerticalBorderLines(solids, sidewalls) {
       ...new Set(
         [...entries, ...external].flatMap((entry) => [entry.z0, entry.z1]).map(topologyZKey),
       ),
-    ].map(Number).sort((a, b) => a - b);
+    ]
+      .map(Number)
+      .sort((a, b) => a - b);
     for (let index = 0; index < levels.length - 1; index++) {
       const z0 = levels[index],
         z1 = levels[index + 1];
@@ -583,7 +585,8 @@ function ownedVerticalBorderLines(solids, sidewalls) {
             part.z0 <= midpoint + TOPOLOGY_EPSILON_UM &&
             part.z1 >= midpoint - TOPOLOGY_EPSILON_UM,
         )
-      ) continue;
+      )
+        continue;
       const [x, y] = covering[0].point;
       lines.push([
         [x, y, z0],

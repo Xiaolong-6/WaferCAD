@@ -3,9 +3,15 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  launchBrowser, newUiContext, waitForAppReady, waitForThreeReady,
-  observePageErrors, canvasInkFraction, waitForCanvasSizeSync,
-  openFunctionPanel, closeFunctionPanel,
+  launchBrowser,
+  newUiContext,
+  waitForAppReady,
+  waitForThreeReady,
+  observePageErrors,
+  canvasInkFraction,
+  waitForCanvasSizeSync,
+  openFunctionPanel,
+  closeFunctionPanel,
 } from './test-helpers/ui.mjs';
 import { ensurePrimaryViewVisible } from './test-helpers/product.mjs';
 import { loadProject } from './test-helpers/product-scientific.mjs';
@@ -17,10 +23,12 @@ const { validateProjectFile } = await import('../site/project-schema.js');
 
 const output = fileURLToPath(new URL('../test-results/m3d/visual-acceptance/', import.meta.url));
 await mkdir(output, { recursive: true });
-const sourcePath = fileURLToPath(new URL(
-  '../examples/projects/m3d-selfpowered-2026-replay/M3D_selfpowered_full_replay.wafercad',
-  import.meta.url,
-));
+const sourcePath = fileURLToPath(
+  new URL(
+    '../examples/projects/m3d-selfpowered-2026-replay/M3D_selfpowered_full_replay.wafercad',
+    import.meta.url,
+  ),
+);
 const originalText = await readFile(sourcePath, 'utf8');
 const original = await readProjectFile({
   size: Buffer.byteLength(originalText),
@@ -65,7 +73,8 @@ try {
   report.mainInk = await canvasInkFraction(page, '#mainCanvas');
   assert.ok(report.mainInk > 0.015, 'Main view appears empty');
   await page.locator('#mainPanel').screenshot({
-    path: join(output, 'm3d-main.png'), animations: 'disabled',
+    path: join(output, 'm3d-main.png'),
+    animations: 'disabled',
   });
 
   if (await page.locator('#sectionPanel').isVisible()) {
@@ -73,7 +82,8 @@ try {
     report.sectionInk = await canvasInkFraction(page, '#sectionCanvas');
     assert.ok(report.sectionInk > 0.015, 'Section view appears empty');
     await page.locator('#sectionPanel').screenshot({
-      path: join(output, 'm3d-section.png'), animations: 'disabled',
+      path: join(output, 'm3d-section.png'),
+      animations: 'disabled',
     });
   }
 
@@ -83,11 +93,48 @@ try {
   await three.waitFor({ state: 'visible', timeout: 180000 });
   report.threeReady = true;
   const png = await page.locator('#threePanel').screenshot({
-    path: join(output, 'm3d-three.png'), animations: 'disabled',
+    path: join(output, 'm3d-three.png'),
+    animations: 'disabled',
   });
   report.threePngBytes = png.length;
   assert.ok(png.length > 10000, '3D screenshot is unexpectedly small');
 
+  report.borderOpacityCases = [];
+  for (const opacity of [1, 0.7]) {
+    for (const borders of [false, true]) {
+      const beforeFrame = await page
+        .locator('#threeHost')
+        .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
+      if ((await page.locator('#threeBorders').isChecked()) !== borders)
+        await page.locator('#threeBorderControl').click();
+      await page.locator('#threeOpacityRange').evaluate((input, value) => {
+        input.value = String(value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }, opacity);
+      await page.waitForFunction(
+        (before) => {
+          const host = document.querySelector('#threeHost');
+          return (
+            host?.dataset.renderState === 'ready' &&
+            Number(host.dataset.rendererFrameSerial) > before
+          );
+        },
+        beforeFrame,
+        { timeout: 180000 },
+      );
+      const filename = `m3d-border-${borders ? 'on' : 'off'}-opacity-${Math.round(opacity * 100)}.png`;
+      await page
+        .locator('#threePanel')
+        .screenshot({ path: join(output, filename), animations: 'disabled' });
+      report.borderOpacityCases.push({ opacity, borders, filename });
+    }
+  }
+  const recoveryKeys = () =>
+    page.evaluate(async () => {
+      const api = await import('./workspace-persistence.js');
+      return (await api.listWorkspaceRecoveryPoints()).map((record) => record.key).sort();
+    });
+  const beforeRecovery = await recoveryKeys();
   await openFunctionPanel(page, 'snapshots', { timeout: 30000 });
   assert.equal(await page.locator('.history-step-wrap').count(), 36);
   assert.ok(
@@ -97,10 +144,14 @@ try {
   const labels = await page.locator('.process-history-row strong').allTextContents();
   report.historyLabels = labels;
   for (const id of ['m3d-step-15', 'm3d-step-21', 'm3d-step-30']) {
-    const label = await page.locator(
-      '.history-step-wrap[data-step-id="' + id + '"] .process-history-row strong',
-    ).textContent();
-    assert.match(label || '', /Follow surface/, id + ' must display actual Follow-surface transfer');
+    const label = await page
+      .locator('.history-step-wrap[data-step-id="' + id + '"] .process-history-row strong')
+      .textContent();
+    assert.match(
+      label || '',
+      /Follow surface/,
+      id + ' must display actual Follow-surface transfer',
+    );
   }
   const early = page.locator('.history-step-wrap[data-step-id="m3d-step-15"] .process-history-row');
   assert.equal(await early.count(), 1, 'WSe2 History node is missing: ' + labels.join(' | '));
@@ -112,9 +163,10 @@ try {
   // An imported project may initially display a stale historical banner until
   // its asynchronously restored WSe2 state finishes rendering.
   await page.waitForFunction(
-    () => /Historical Step.*WSe2/i.test(
-      document.querySelector('.snapshot-continuation-banner')?.textContent || '',
-    ),
+    () =>
+      /Historical Step.*WSe2/i.test(
+        document.querySelector('.snapshot-continuation-banner')?.textContent || '',
+      ),
     null,
     { timeout: 120000 },
   );
@@ -123,19 +175,50 @@ try {
     /WSe2/i,
     'History must identify the restored WSe2 stage',
   );
-  const earlyLayers = await page.locator('#layerLegend .legend-name')
+  const earlyLayers = await page
+    .locator('#layerLegend .legend-name')
     .evaluateAll((inputs) => inputs.map((input) => input.value));
-  assert.ok(earlyLayers.some((name) => /WSe2/i.test(name)), 'WSe2 missing at early cursor');
-  assert.ok(!earlyLayers.some((name) => /graphene/i.test(name)), 'Graphene visible before transfer');
+  assert.ok(
+    earlyLayers.some((name) => /WSe2/i.test(name)),
+    'WSe2 missing at early cursor',
+  );
+  assert.ok(
+    !earlyLayers.some((name) => /graphene/i.test(name)),
+    'Graphene visible before transfer',
+  );
+  report.historyNavigationMs = [];
+  for (const [id, material] of [
+    ['m3d-step-21', 'MoS2'],
+    ['m3d-step-30', 'graphene'],
+  ]) {
+    const started = performance.now();
+    await page.locator(`.history-step-wrap[data-step-id="${id}"] .process-history-row`).click();
+    await page.waitForFunction(
+      (name) =>
+        (document.querySelector('.snapshot-continuation-banner')?.textContent || '').includes(name),
+      material,
+      { timeout: 120000 },
+    );
+    report.historyNavigationMs.push({ id, elapsedMs: performance.now() - started });
+  }
   const head = page.locator('.history-step-wrap[data-step-id="m3d-step-36"] .process-history-row');
   assert.equal(await head.count(), 1);
   await head.click();
   await page.waitForFunction(
-    () => !document.querySelector('.snapshot-continuation-banner') &&
-      [...document.querySelectorAll('#layerLegend .legend-name')]
-        .some((input) => /graphene/i.test(input.value)),
+    () =>
+      !document.querySelector('.snapshot-continuation-banner') &&
+      [...document.querySelectorAll('#layerLegend .legend-name')].some((input) =>
+        /graphene/i.test(input.value),
+      ),
     null,
     { timeout: 120000 },
+  );
+  report.recoveryUnchanged =
+    JSON.stringify(await recoveryKeys()) === JSON.stringify(beforeRecovery);
+  assert.equal(
+    report.recoveryUnchanged,
+    true,
+    'Read-only History navigation created Recovery records',
   );
   report.historyCanRestore = true;
   await closeFunctionPanel(page);
@@ -166,10 +249,23 @@ try {
   report.secondImport = true;
   await page.screenshot({
     path: join(output, 'm3d-reimport-overview.png'),
-    fullPage: true, animations: 'disabled',
+    fullPage: true,
+    animations: 'disabled',
   });
   assert.deepEqual(errors, [], 'Browser import/view/export emitted page errors');
   console.log('M3D VISUAL ACCEPTANCE', JSON.stringify(report));
+} catch (error) {
+  report.failure = error.message;
+  report.failureState = await page
+    .evaluate(() => ({
+      appReady: document.documentElement.dataset.appReady,
+      status: document.querySelector('#status')?.textContent,
+      renderState: document.querySelector('#threeHost')?.dataset.renderState,
+      body: document.body.innerText.slice(-4000),
+    }))
+    .catch(() => null);
+  await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+  throw error;
 } finally {
   await writeFile(join(output, 'validation.json'), JSON.stringify(report, null, 2) + '\n');
   await browser.close();

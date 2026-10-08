@@ -687,7 +687,55 @@ export function expandProjectStorage(project) {
 // Compact storage remains strict: it must reject geometries whose physical
 // meaning changes on the 0.1 nm persistence grid. Export can instead preserve
 // the exact, already-validated canonical model in the supported lossless codec.
+// Compact files may round ordinary UI lengths to their documented grid. A
+// Recipe can contain exact sub-grid films/depths, so user export must preserve
+// those values in the live model and every restorable History state.
+function hasSubgridModelLengths(project) {
+  const seen = new WeakSet();
+  const changed = (value) =>
+    Number.isFinite(value) &&
+    Math.abs(value - quantizeLength(value)) > Math.max(1e-12, Math.abs(value) * Number.EPSILON * 8);
+  const appearanceChanged = (surface) =>
+    surface && [surface.featureSize, surface.meanHeight, surface.etchDepth].some(changed);
+  const modelChanged = (model) => {
+    if (!isObject(model) || seen.has(model)) return false;
+    seen.add(model);
+    for (const part of storedModelParts(model)) {
+      if (changed(part.thickness)) return true;
+      for (const region of part.regions || [])
+        for (const segment of region.stack || [])
+          if (
+            [segment.z0, segment.z1].some(changed) ||
+            appearanceChanged(segment.frontSurface) ||
+            appearanceChanged(segment.backSurface)
+          )
+            return true;
+      for (const annotation of [...(part.implants || []), ...(part.electricalRegions || [])]) {
+        if (changed(annotation.thickness)) return true;
+        for (const patch of annotation.patches || [])
+          if (
+            [patch.z, patch.zMin, patch.zMax].some(changed) ||
+            appearanceChanged(patch.surfaceAppearance)
+          )
+            return true;
+      }
+    }
+    return false;
+  };
+  return (
+    modelChanged(project.model) ||
+    (project.snapshots || []).some((record) => modelChanged(record.state?.model)) ||
+    (project.snapshotBranches?.nodes || []).some((node) => modelChanged(node.state?.model)) ||
+    (project.snapshotBranches?.branches || []).some((branch) =>
+      modelChanged(branch.headState?.model),
+    )
+  );
+}
+
 export function prepareProjectForExport(project) {
+  if (hasSubgridModelLengths(project)) {
+    return { stored: prepareProjectForWorkspaceStorage(project), mode: 'lossless' };
+  }
   try {
     return { stored: prepareProjectForStorage(project), mode: 'compact' };
   } catch (error) {

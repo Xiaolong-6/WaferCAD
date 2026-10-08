@@ -10,10 +10,7 @@ import {
   ensurePrimaryViewVisible,
   openFunctionPanel,
 } from './test-helpers/product.mjs';
-import {
-  exportCurrentProject,
-  loadProject,
-} from './test-helpers/product-scientific.mjs';
+import { exportCurrentProject, loadProject } from './test-helpers/product-scientific.mjs';
 
 await loadGeometryKernel();
 const { createModel } = await import('../site/model.js');
@@ -81,22 +78,14 @@ function gds(name, rects) {
     ];
     const xy = Buffer.alloc(40);
     pts.flat().forEach((n, i) => xy.writeInt32BE(Math.round(n * 1000), i * 4));
-    c.push(
-      rec(8, 0),
-      rec(13, 2, i16(1)),
-      rec(14, 2, i16(0)),
-      rec(16, 3, xy),
-      rec(17, 0),
-    );
+    c.push(rec(8, 0), rec(13, 2, i16(1)), rec(14, 2, i16(0)), rec(16, 3, xy), rec(17, 0));
   }
   c.push(rec(7, 0), rec(4, 0));
   return Buffer.concat(c);
 }
 function svgRects(svg) {
   return [...svg.matchAll(/<rect\s([^>]+)>?/g)].map((m) => {
-    const a = Object.fromEntries(
-      [...m[1].matchAll(/([\w]+)="([^"]*)"/g)].map((x) => [x[1], x[2]]),
-    );
+    const a = Object.fromEntries([...m[1].matchAll(/([\w]+)="([^"]*)"/g)].map((x) => [x[1], x[2]]));
     return [Number(a.x), Number(a.y), Number(a.width), Number(a.height)];
   });
 }
@@ -134,32 +123,244 @@ for (const name of maskNames) masks.set(name, await makeMask(name));
 await writeFile(join(maskDir, 'M3D_FIELD.gds'), gds('M3D_FIELD', [[2, -9, 28, 18]]));
 
 const stages = [
-  { name: '01_PVM_Si', mask: 'PVM_M01_Si_channel_etch.svg', section: [-30, 0, 0, 0], ops: [{ kind: 'etch', target: 'SOI B-doped Si 70nm', z: 0.07, area: 'mask' }] },
-  { name: '02_PVM_Cr', mask: 'PVM_M02_Cr_contact.svg', section: [-30, 0, 0, 0], ops: [{ kind: 'add', name: 'S02 Cr 20nm', z: 0.02, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S02 Au 50nm', z: 0.05, coverage: 'direct', area: 'mask' }] },
-  { name: '03_PVM_Pt', mask: 'PVM_M03_Pt_contact.svg', section: [-30, 0, 0, 0], ops: [{ kind: 'add', name: 'S03 Pt 80nm', z: 0.08, coverage: 'direct', area: 'mask' }] },
-  { name: '04_Power_Rails', mask: 'M3D_M04_power_rail.svg', section: [16, -9, 16, 9], ops: [{ kind: 'add', name: 'S04 Pt power rails 70nm', z: 0.07, coverage: 'direct', area: 'mask' }] },
-  { name: '05_ILD1', section: [16, -9, 16, 9], ops: [{ kind: 'add', name: 'S05 ILD1 Al2O3 100nm', z: 0.1, coverage: 'conformal', area: 'full' }] },
-  { name: '06_Power_Via_Open', mask: 'M3D_M05_power_via_open_ILD1.svg', section: [16, -9, 16, 9], ops: [{ kind: 'etch', target: 'S05 ILD1 Al2O3 100nm', z: 0.1, area: 'mask' }] },
-  { name: '07_Power_Via_Fill', mask: 'M3D_M05_power_via_open_ILD1.svg', section: [16, -9, 16, 9], ops: [{ kind: 'add', name: 'S07 Ti power via 120nm', z: 0.12, coverage: 'direct', area: 'mask' }] },
-  { name: '08_Back_Gates', mask: 'M3D_M06_local_back_gate.svg', section: [2, 2.65, 30, 2.65], ops: [{ kind: 'add', name: 'S08 Ti back gate 2nm', z: 0.002, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S08 Pt back gate 18nm', z: 0.018, coverage: 'direct', area: 'mask' }] },
-  { name: '09_HfO2', section: [2, 2.65, 30, 2.65], ops: [{ kind: 'add', name: 'S09 HfO2 gate dielectric 10nm', z: 0.01, coverage: 'conformal', area: 'full' }] },
-  { name: '10_HfO2_Open', mask: 'M3D_M07_HfO2_open.svg', section: [16, -9, 16, 9], ops: [{ kind: 'etch', target: 'S09 HfO2 gate dielectric 10nm', z: 0.01, area: 'mask' }] },
-  { name: '11_WSe2_Transfer', field: true, section: [2, 2.65, 30, 2.65], ops: [{ kind: 'add', name: 'S11 WSe2 bilayer 1.4nm', z: 0.0014, coverage: 'transfer', transferMode: 'follow', area: 'mask' }] },
-  { name: '12_WSe2_Pattern', mask: 'M3D_M08_WSe2_channel.svg', section: [2, 2.65, 30, 2.65], ops: [{ kind: 'etch', target: 'S11 WSe2 bilayer 1.4nm', z: 0.0014, area: 'invert' }] },
-  { name: '13_WSe2_SD', mask: 'M3D_M09_WSe2_SD.svg', section: [2, 2.65, 30, 2.65], ops: [{ kind: 'add', name: 'S13 Pd WSe2 SD 10nm', z: 0.01, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S13 Pt WSe2 SD 30nm', z: 0.03, coverage: 'direct', area: 'mask' }] },
+  {
+    name: '01_PVM_Si',
+    mask: 'PVM_M01_Si_channel_etch.svg',
+    section: [-30, 0, 0, 0],
+    ops: [{ kind: 'etch', target: 'SOI B-doped Si 70nm', z: 0.07, area: 'mask' }],
+  },
+  {
+    name: '02_PVM_Cr',
+    mask: 'PVM_M02_Cr_contact.svg',
+    section: [-30, 0, 0, 0],
+    ops: [
+      { kind: 'add', name: 'S02 Cr 20nm', z: 0.02, coverage: 'direct', area: 'mask' },
+      { kind: 'add', name: 'S02 Au 50nm', z: 0.05, coverage: 'direct', area: 'mask' },
+    ],
+  },
+  {
+    name: '03_PVM_Pt',
+    mask: 'PVM_M03_Pt_contact.svg',
+    section: [-30, 0, 0, 0],
+    ops: [{ kind: 'add', name: 'S03 Pt 80nm', z: 0.08, coverage: 'direct', area: 'mask' }],
+  },
+  {
+    name: '04_Power_Rails',
+    mask: 'M3D_M04_power_rail.svg',
+    section: [16, -9, 16, 9],
+    ops: [
+      { kind: 'add', name: 'S04 Pt power rails 70nm', z: 0.07, coverage: 'direct', area: 'mask' },
+    ],
+  },
+  {
+    name: '05_ILD1',
+    section: [16, -9, 16, 9],
+    ops: [
+      { kind: 'add', name: 'S05 ILD1 Al2O3 100nm', z: 0.1, coverage: 'conformal', area: 'full' },
+    ],
+  },
+  {
+    name: '06_Power_Via_Open',
+    mask: 'M3D_M05_power_via_open_ILD1.svg',
+    section: [16, -9, 16, 9],
+    ops: [{ kind: 'etch', target: 'S05 ILD1 Al2O3 100nm', z: 0.1, area: 'mask' }],
+  },
+  {
+    name: '07_Power_Via_Fill',
+    mask: 'M3D_M05_power_via_open_ILD1.svg',
+    section: [16, -9, 16, 9],
+    ops: [
+      { kind: 'add', name: 'S07 Ti power via 120nm', z: 0.12, coverage: 'direct', area: 'mask' },
+    ],
+  },
+  {
+    name: '08_Back_Gates',
+    mask: 'M3D_M06_local_back_gate.svg',
+    section: [2, 2.65, 30, 2.65],
+    ops: [
+      { kind: 'add', name: 'S08 Ti back gate 2nm', z: 0.002, coverage: 'direct', area: 'mask' },
+      { kind: 'add', name: 'S08 Pt back gate 18nm', z: 0.018, coverage: 'direct', area: 'mask' },
+    ],
+  },
+  {
+    name: '09_HfO2',
+    section: [2, 2.65, 30, 2.65],
+    ops: [
+      {
+        kind: 'add',
+        name: 'S09 HfO2 gate dielectric 10nm',
+        z: 0.01,
+        coverage: 'conformal',
+        area: 'full',
+      },
+    ],
+  },
+  {
+    name: '10_HfO2_Open',
+    mask: 'M3D_M07_HfO2_open.svg',
+    section: [16, -9, 16, 9],
+    ops: [{ kind: 'etch', target: 'S09 HfO2 gate dielectric 10nm', z: 0.01, area: 'mask' }],
+  },
+  {
+    name: '11_WSe2_Transfer',
+    field: true,
+    section: [2, 2.65, 30, 2.65],
+    ops: [
+      {
+        kind: 'add',
+        name: 'S11 WSe2 bilayer 1.4nm',
+        z: 0.0014,
+        coverage: 'transfer',
+        transferMode: 'follow',
+        area: 'mask',
+      },
+    ],
+  },
+  {
+    name: '12_WSe2_Pattern',
+    mask: 'M3D_M08_WSe2_channel.svg',
+    section: [2, 2.65, 30, 2.65],
+    ops: [{ kind: 'etch', target: 'S11 WSe2 bilayer 1.4nm', z: 0.0014, area: 'invert' }],
+  },
+  {
+    name: '13_WSe2_SD',
+    mask: 'M3D_M09_WSe2_SD.svg',
+    section: [2, 2.65, 30, 2.65],
+    ops: [
+      { kind: 'add', name: 'S13 Pd WSe2 SD 10nm', z: 0.01, coverage: 'direct', area: 'mask' },
+      { kind: 'add', name: 'S13 Pt WSe2 SD 30nm', z: 0.03, coverage: 'direct', area: 'mask' },
+    ],
+  },
   { name: '14_WSe2_Anneal', section: [2, 2.65, 30, 2.65], ops: [{ kind: 'record' }] },
-  { name: '15_WSe2_Cap', mask: 'M3D_M10_WSe2_cap.svg', section: [2, 2.65, 30, 2.65], ops: [{ kind: 'add', name: 'S15 Al2O3 WSe2 cap 20nm', z: 0.02, coverage: 'conformal', area: 'mask' }] },
-  { name: '16_MoS2_Transfer', field: true, section: [2, -2.45, 30, -2.45], ops: [{ kind: 'add', name: 'S16 MoS2 monolayer 0.7nm', z: 0.0007, coverage: 'transfer', transferMode: 'follow', area: 'mask' }] },
-  { name: '17_MoS2_Pattern', mask: 'M3D_M11_MoS2_channel.svg', section: [2, -2.45, 30, -2.45], ops: [{ kind: 'etch', target: 'S16 MoS2 monolayer 0.7nm', z: 0.0007, area: 'invert' }] },
-  { name: '18_MoS2_SD_Bridge', mask: 'M3D_M12_MoS2_SD_bridge.svg', section: [16, -9, 16, 9], ops: [{ kind: 'add', name: 'S18 Ni MoS2 SD bridge 30nm', z: 0.03, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S18 Au MoS2 SD bridge 10nm', z: 0.01, coverage: 'direct', area: 'mask' }] },
-  { name: '19_ILD2', section: [16, -9, 16, 9], ops: [{ kind: 'add', name: 'S19 ILD2 Al2O3 50nm', z: 0.05, coverage: 'conformal', area: 'full' }] },
-  { name: '20_Data_Power_Via_Open', mask: 'M3D_M13_ILD2_data_power_via_open.svg', section: [16, -9, 16, 9], ops: [{ kind: 'etch', target: 'S19 ILD2 Al2O3 50nm', z: 0.05, area: 'mask' }] },
-  { name: '21_Via2_Fill', mask: 'M3D_M13_ILD2_data_power_via_open.svg', section: [16, -9, 16, 9], ops: [{ kind: 'add', name: 'S21 Ti via2 2nm', z: 0.002, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S21 Ni via2 28nm', z: 0.028, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S21 Au via2 30nm', z: 0.03, coverage: 'direct', area: 'mask' }] },
-  { name: '22_Graphene_Transfer', field: true, section: [2, -0.125, 30, -0.125], ops: [{ kind: 'add', name: 'S22 Graphene monolayer 0.3nm', z: 0.0003, coverage: 'transfer', transferMode: 'follow', area: 'mask' }] },
-  { name: '23_Graphene_Pattern', mask: 'M3D_M14_graphene_channel.svg', section: [2, -0.125, 30, -0.125], ops: [{ kind: 'etch', target: 'S22 Graphene monolayer 0.3nm', z: 0.0003, area: 'invert' }] },
-  { name: '24_Graphene_SD', mask: 'M3D_M15_graphene_SD_via_connect.svg', section: [2, -0.125, 30, -0.125], ops: [{ kind: 'add', name: 'S24 Ti graphene SD 2nm', z: 0.002, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S24 Ni graphene SD 28nm', z: 0.028, coverage: 'direct', area: 'mask' }, { kind: 'add', name: 'S24 Au graphene SD 30nm', z: 0.03, coverage: 'direct', area: 'mask' }] },
-  { name: '25_Final_Al2O3', section: [2, -0.125, 30, -0.125], ops: [{ kind: 'add', name: 'S25 Al2O3 final cap 70nm', z: 0.07, coverage: 'conformal', area: 'full' }] },
-  { name: '26_Final_Sensing_Windows', mask: 'M3D_M16_final_cap_open_sensing_windows.svg', section: [2, -0.125, 30, -0.125], ops: [{ kind: 'etch', target: 'S25 Al2O3 final cap 70nm', z: 0.07, area: 'mask' }] },
+  {
+    name: '15_WSe2_Cap',
+    mask: 'M3D_M10_WSe2_cap.svg',
+    section: [2, 2.65, 30, 2.65],
+    ops: [
+      {
+        kind: 'add',
+        name: 'S15 Al2O3 WSe2 cap 20nm',
+        z: 0.02,
+        coverage: 'conformal',
+        area: 'mask',
+      },
+    ],
+  },
+  {
+    name: '16_MoS2_Transfer',
+    field: true,
+    section: [2, -2.45, 30, -2.45],
+    ops: [
+      {
+        kind: 'add',
+        name: 'S16 MoS2 monolayer 0.7nm',
+        z: 0.0007,
+        coverage: 'transfer',
+        transferMode: 'follow',
+        area: 'mask',
+      },
+    ],
+  },
+  {
+    name: '17_MoS2_Pattern',
+    mask: 'M3D_M11_MoS2_channel.svg',
+    section: [2, -2.45, 30, -2.45],
+    ops: [{ kind: 'etch', target: 'S16 MoS2 monolayer 0.7nm', z: 0.0007, area: 'invert' }],
+  },
+  {
+    name: '18_MoS2_SD_Bridge',
+    mask: 'M3D_M12_MoS2_SD_bridge.svg',
+    section: [16, -9, 16, 9],
+    ops: [
+      {
+        kind: 'add',
+        name: 'S18 Ni MoS2 SD bridge 30nm',
+        z: 0.03,
+        coverage: 'direct',
+        area: 'mask',
+      },
+      {
+        kind: 'add',
+        name: 'S18 Au MoS2 SD bridge 10nm',
+        z: 0.01,
+        coverage: 'direct',
+        area: 'mask',
+      },
+    ],
+  },
+  {
+    name: '19_ILD2',
+    section: [16, -9, 16, 9],
+    ops: [
+      { kind: 'add', name: 'S19 ILD2 Al2O3 50nm', z: 0.05, coverage: 'conformal', area: 'full' },
+    ],
+  },
+  {
+    name: '20_Data_Power_Via_Open',
+    mask: 'M3D_M13_ILD2_data_power_via_open.svg',
+    section: [16, -9, 16, 9],
+    ops: [{ kind: 'etch', target: 'S19 ILD2 Al2O3 50nm', z: 0.05, area: 'mask' }],
+  },
+  {
+    name: '21_Via2_Fill',
+    mask: 'M3D_M13_ILD2_data_power_via_open.svg',
+    section: [16, -9, 16, 9],
+    ops: [
+      { kind: 'add', name: 'S21 Ti via2 2nm', z: 0.002, coverage: 'direct', area: 'mask' },
+      { kind: 'add', name: 'S21 Ni via2 28nm', z: 0.028, coverage: 'direct', area: 'mask' },
+      { kind: 'add', name: 'S21 Au via2 30nm', z: 0.03, coverage: 'direct', area: 'mask' },
+    ],
+  },
+  {
+    name: '22_Graphene_Transfer',
+    field: true,
+    section: [2, -0.125, 30, -0.125],
+    ops: [
+      {
+        kind: 'add',
+        name: 'S22 Graphene monolayer 0.3nm',
+        z: 0.0003,
+        coverage: 'transfer',
+        transferMode: 'follow',
+        area: 'mask',
+      },
+    ],
+  },
+  {
+    name: '23_Graphene_Pattern',
+    mask: 'M3D_M14_graphene_channel.svg',
+    section: [2, -0.125, 30, -0.125],
+    ops: [{ kind: 'etch', target: 'S22 Graphene monolayer 0.3nm', z: 0.0003, area: 'invert' }],
+  },
+  {
+    name: '24_Graphene_SD',
+    mask: 'M3D_M15_graphene_SD_via_connect.svg',
+    section: [2, -0.125, 30, -0.125],
+    ops: [
+      { kind: 'add', name: 'S24 Ti graphene SD 2nm', z: 0.002, coverage: 'direct', area: 'mask' },
+      { kind: 'add', name: 'S24 Ni graphene SD 28nm', z: 0.028, coverage: 'direct', area: 'mask' },
+      { kind: 'add', name: 'S24 Au graphene SD 30nm', z: 0.03, coverage: 'direct', area: 'mask' },
+    ],
+  },
+  {
+    name: '25_Final_Al2O3',
+    section: [2, -0.125, 30, -0.125],
+    ops: [
+      {
+        kind: 'add',
+        name: 'S25 Al2O3 final cap 70nm',
+        z: 0.07,
+        coverage: 'conformal',
+        area: 'full',
+      },
+    ],
+  },
+  {
+    name: '26_Final_Sensing_Windows',
+    mask: 'M3D_M16_final_cap_open_sensing_windows.svg',
+    section: [2, -0.125, 30, -0.125],
+    ops: [{ kind: 'etch', target: 'S25 Al2O3 final cap 70nm', z: 0.07, area: 'mask' }],
+  },
 ];
 
 const base = createModel({ shape: 'rect', width: 60, height: 30, thickness: 1 });
@@ -198,9 +399,7 @@ function maskCenter(file, index = 0) {
 
 const browser = await chromium.launch({
   headless: process.env.WAFERCAD_HEADFUL !== '1',
-  ...(process.env.WAFERCAD_CHROMIUM
-    ? { executablePath: process.env.WAFERCAD_CHROMIUM }
-    : {}),
+  ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
   args: [
     '--enable-unsafe-swiftshader',
     '--disable-background-timer-throttling',
@@ -364,9 +563,7 @@ try {
       assertTransferZeroGap(project.model, 'S22 Graphene monolayer 0.3nm');
     }
     if (stage.name === '25_Final_Al2O3') {
-      assert.ok(
-        project.model.layers.some((layer) => layer.name === 'S25 Al2O3 final cap 70nm'),
-      );
+      assert.ok(project.model.layers.some((layer) => layer.name === 'S25 Al2O3 final cap 70nm'));
     }
     if (stage.name === '26_Final_Sensing_Windows') finalProject = project;
     stageChecks.push({ stage: stage.name, ok: true });
@@ -465,7 +662,12 @@ if (process.argv.includes('--write-repo')) {
   await writeFile(join(repoOut, 'M3D_selfpowered_full_replay.wafercad'), finalText);
   await writeFile(join(repoOut, 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
   await writeFile(join(repoOut, 'AUDIT.md'), await readFile(join(resultDir, 'AUDIT.md'), 'utf8'));
-  for (const file of ['final_Main.png', 'final_3D.png', 'final_Section.png', 'final_overview.png']) {
+  for (const file of [
+    'final_Main.png',
+    'final_3D.png',
+    'final_Section.png',
+    'final_overview.png',
+  ]) {
     try {
       await writeFile(join(repoOut, file), await readFile(join(resultDir, file)));
     } catch {}

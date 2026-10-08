@@ -46,7 +46,8 @@ test('Process Recipe rejects arbitrary JavaScript and identifiers', () => {
 
 test('Process Recipe rejects prototype keys and excessive nesting', () => {
   assert.throws(
-    () => parseProcessRecipeSource('deposit({ material: "SiO2", thickness: "1 µm", __proto__: {} });'),
+    () =>
+      parseProcessRecipeSource('deposit({ material: "SiO2", thickness: "1 µm", __proto__: {} });'),
     /Unsupported object key/,
   );
   const nested = '['.repeat(40) + '0' + ']'.repeat(40);
@@ -151,4 +152,13 @@ test('recipeLengthUm accepts supported units', () => {
   assert.equal(recipeLengthUm('2.5 um'), 2.5);
   assert.equal(recipeLengthUm('2.5 µm'), 2.5);
   assert.equal(recipeLengthUm('0.1 mm'), 100);
+});
+
+test('unit-bearing Recipe lengths reject numeric and conversion overflow', () => {
+  assert.throws(() => recipeLengthUm('1e309 um'), /must be finite/);
+  assert.throws(() => recipeLengthUm('1e308 mm'), /must be finite/);
+  assert.throws(
+    () => parseProcessRecipeSource('deposit({ material: "Bad", thickness: "1e309 um" });'),
+    /must be finite/,
+  );
 });

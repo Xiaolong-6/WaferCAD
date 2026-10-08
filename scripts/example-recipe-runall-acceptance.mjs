@@ -164,6 +164,24 @@ try {
         exported.snapshotBranches?.nodes?.length >= count,
         `${example.id}: rebuilt History omits Process Steps`,
       );
+      // The material-name/count checks below cannot detect a 0.35 nm film
+      // replayed as 0.40 nm. Check the actual Kernel request retained in History.
+      const processSteps = exported.processRecipe.steps.filter(
+        (step) => step.command !== 'snapshot',
+      );
+      const replayNodes = exported.snapshotBranches.nodes.filter(
+        (node) => node.branchId === 'main',
+      );
+      assert.equal(replayNodes.length, processSteps.length);
+      for (const [index, step] of processSteps.entries()) {
+        if (step.command === 'record') continue;
+        const expected = step.params.thicknessUm ?? step.params.depthUm;
+        const actual = replayNodes[index].operation?.replay?.params?.thickness;
+        assert.ok(
+          Number.isFinite(actual) && Math.abs(actual - expected) < 1e-12,
+          `${example.id}: Step ${index + 1} changed physical length ${expected} to ${actual}`,
+        );
+      }
       assert.ok(
         exported.model.layers.length > 1,
         `${example.id}: Kernel replay left only the Base substrate`,

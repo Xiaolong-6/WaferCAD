@@ -5,9 +5,9 @@ const ANGLE_EPSILON = 1e-10;
 function samePoint(a, b, tolerance = 1e-12) {
   return Boolean(
     a &&
-      b &&
-      Math.abs(Number(a[0]) - Number(b[0])) <= tolerance &&
-      Math.abs(Number(a[1]) - Number(b[1])) <= tolerance,
+    b &&
+    Math.abs(Number(a[0]) - Number(b[0])) <= tolerance &&
+    Math.abs(Number(a[1]) - Number(b[1])) <= tolerance,
   );
 }
 

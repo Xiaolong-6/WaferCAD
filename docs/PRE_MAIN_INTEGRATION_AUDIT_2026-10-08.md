@@ -15,12 +15,12 @@ Merges #143 and #144 were conventional two-parent PR merges. The Wiki conflict w
 
 ## User-requested UI/product fixes
 
-| Finding | Remediation | Acceptance |
-| --- | --- | --- |
-| M3D absent from feature Welcome | Integrated its sixth catalog entry and editable `.wafercad` project; retained its interactive mini-preview/Source DOI links | Browser open, 3D state, per-step restoration, export/reimport |
-| M3D thumbnail referred to nonexistent WebP | The follow-up M3D branch now includes a real renderer-produced WebP; updated the Welcome card and six-entry checksum manifest while retaining prior five thumbnail contracts | Welcome image decode and browser project preview |
-| History rows much smaller than Recipe | Main History title **10 px**, subtitle **8.5 px**; enlarged variant titles, bookmark labels and row height | Visual check at narrow/wide workstation sizes; History typography regression |
-| Wiki examples described only detector | Synced all **six** Welcome families and scientific/modeling boundaries, with a dynamic catalog contract test | `node --test site/tests/wiki-manual.test.mjs`, `npm run docs:check` |
+| Finding                                    | Remediation                                                                                                                                                                  | Acceptance                                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| M3D absent from feature Welcome            | Integrated its sixth catalog entry and editable `.wafercad` project; retained its interactive mini-preview/Source DOI links                                                  | Browser open, 3D state, per-step restoration, export/reimport                |
+| M3D thumbnail referred to nonexistent WebP | The follow-up M3D branch now includes a real renderer-produced WebP; updated the Welcome card and six-entry checksum manifest while retaining prior five thumbnail contracts | Welcome image decode and browser project preview                             |
+| History rows much smaller than Recipe      | Main History title **10 px**, subtitle **8.5 px**; enlarged variant titles, bookmark labels and row height                                                                   | Visual check at narrow/wide workstation sizes; History typography regression |
+| Wiki examples described only detector      | Synced all **six** Welcome families and scientific/modeling boundaries, with a dynamic catalog contract test                                                                 | `node --test site/tests/wiki-manual.test.mjs`, `npm run docs:check`          |
 
 ## M3D Recipe migration
 
@@ -36,24 +36,24 @@ The imported M3D production project had **36 History nodes** (one Base + 35 oper
 
 ## Pre-main acceptance matrix
 
-| Gate | Current evidence | Status |
-| --- | --- | --- |
-| Source branch histories combined without rewriting `main` | PR merges and two-parent Wiki merge | Integrated |
-| M3D Welcome project, source and genuine fallback asset exist | Catalog and assets inspected; missing WebP was corrected to labeled SVG | Real image source integrated; browser visual check pending |
-| Recipe parser, all six example metadata, captured Masks | Structural inspection and added unit regression | Full integrated CI pending |
-| M3D clean Run All | Kernel history rebuilt originally; new Recipe backfilled from replay | **Blocking, unverified** |
-| Every other family/Variant clean Run All and mask export | Repair-branch test harness committed | **Blocking, unverified on integration HEAD** |
-| Native Fig3 625-site full kernel replay | Existing dedicated pipeline; do not substitute single-site or assembled file | Blocking until same-head acceptance |
-| M3D lossless export/import and scientific final geometry | Dedicated source-branch fixtures; new Recipe requires retest | Blocking until same-head acceptance |
-| 3D material ownership, opaque/transparency and stop/cancel behavior | Existing renderer/Recipe gates, R7 private OAS path still unverified | Correctness and hangs blocking; private OAS limitation explicit |
-| History/Recipe list readability | CSS and Node style contract updated | Visual breakpoint check pending |
-| Wiki publication | Sources under `docs/wiki/` with main-push sync workflow | Publish **after** main merge, not before |
+| Gate                                                                | Current evidence                                                             | Status                                                          |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Source branch histories combined without rewriting `main`           | PR merges and two-parent Wiki merge                                          | Integrated                                                      |
+| M3D Welcome project, source and genuine fallback asset exist        | Catalog and assets inspected; missing WebP was corrected to labeled SVG      | Real image source integrated; browser visual check pending      |
+| Recipe parser, all six example metadata, captured Masks             | Structural inspection and added unit regression                              | Full integrated CI pending                                      |
+| M3D clean Run All                                                   | Kernel history rebuilt originally; new Recipe backfilled from replay         | **Blocking, unverified**                                        |
+| Every other family/Variant clean Run All and mask export            | Repair-branch test harness committed                                         | **Blocking, unverified on integration HEAD**                    |
+| Native Fig3 625-site full kernel replay                             | Existing dedicated pipeline; do not substitute single-site or assembled file | Blocking until same-head acceptance                             |
+| M3D lossless export/import and scientific final geometry            | Dedicated source-branch fixtures; new Recipe requires retest                 | Blocking until same-head acceptance                             |
+| 3D material ownership, opaque/transparency and stop/cancel behavior | Existing renderer/Recipe gates, R7 private OAS path still unverified         | Correctness and hangs blocking; private OAS limitation explicit |
+| History/Recipe list readability                                     | CSS and Node style contract updated                                          | Visual breakpoint check pending                                 |
+| Wiki publication                                                    | Sources under `docs/wiki/` with main-push sync workflow                      | Publish **after** main merge, not before                        |
 
 ## Required checks on the exact integration SHA
 
 From the repository root with dependencies and Chromium:
 
-~~~sh
+```sh
 npm ci
 npm run check:ci
 npm run docs:check
@@ -67,11 +67,11 @@ WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-
 WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs --id=m3d-selfpowered-heterogeneous-ic
 WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs --id=photodetector-literature --variant=ge-fig15-a
 WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk --history=keep
-~~~
+```
 
 Run the dedicated M3D and Native Fig3 browser/geometry pipelines and inspect their artifacts too. Do not downgrade failed structural/material assertions or treat successful schema parsing as equivalent to kernel replay. Review visual snapshots for the History UI and example cards.
 
-**Main merge decision:** hold until the complete integration SHA is green or user explicitly accepts a documented, scoped exception. The long-standing renderer cold-frame *performance* threshold is diagnostic/nonblocking; actual hangs, wrong geometry/visibility, lost masks/history and failed Run All remain blockers.
+**Main merge decision:** hold until the complete integration SHA is green or user explicitly accepts a documented, scoped exception. The long-standing renderer cold-frame _performance_ threshold is diagnostic/nonblocking; actual hangs, wrong geometry/visibility, lost masks/history and failed Run All remain blockers.
 
 ## M3D follow-up resynchronization
 

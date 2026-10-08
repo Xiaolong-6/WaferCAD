@@ -11,21 +11,10 @@ const { applyOperation, createModel } = modelApi;
 const { applyAdvancedProcessOperation } = await import('../site/advanced-process-operations.js');
 const { drawMaskGeometry } = await import('../site/draw-mask-geometry.js');
 const vectorApi = await import('../site/vector-geometry.js');
-const {
-  difference,
-  pointInMulti,
-  rectMulti,
-  unionGeometries,
-} = vectorApi;
-const {
-  prepareProjectForWorkspaceStorage,
-  readProjectFile,
-  serializeProject,
-} = await import('../site/project-io.js');
-const {
-  validateProcessModel,
-  validateProjectFile,
-} = await import('../site/project-schema.js');
+const { difference, pointInMulti, rectMulti, unionGeometries } = vectorApi;
+const { prepareProjectForWorkspaceStorage, readProjectFile, serializeProject } =
+  await import('../site/project-io.js');
+const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const candidateDir = join(repoRoot, 'examples/projects/m3d-selfpowered-2026-candidate');
@@ -77,9 +66,7 @@ function draw(shapes) {
 
 function geomFromRects(rects) {
   return unionGeometries(
-    rects.map((rect) =>
-      rectMulti(rect.w, rect.h, rect.x + rect.w / 2, rect.y + rect.h / 2),
-    ),
+    rects.map((rect) => rectMulti(rect.w, rect.h, rect.x + rect.w / 2, rect.y + rect.h / 2)),
   );
 }
 
@@ -294,11 +281,16 @@ function applyStep(stage, spec) {
   const mode = spec.area || 'full';
   const started = performance.now();
   const area = areaFor(mode, currentShapes);
-  const result = params.growth === 'transfer'
-    ? applyAdvancedProcessOperation(model, params, area, modelApi, vectorApi)
-    : applyOperation(model, { ...params, area });
+  const result =
+    params.growth === 'transfer'
+      ? applyAdvancedProcessOperation(model, params, area, modelApi, vectorApi)
+      : applyOperation(model, { ...params, area });
   const ms = performance.now() - started;
-  assert.equal(result.changed, true, stage + ' · ' + spec.label + ': ' + (result.error || 'no geometry change'));
+  assert.equal(
+    result.changed,
+    true,
+    stage + ' · ' + spec.label + ': ' + (result.error || 'no geometry change'),
+  );
   validateProcessModel(model);
 
   const replay = {
@@ -324,9 +316,7 @@ function applyStep(stage, spec) {
           name: spec.name,
           thickness: spec.thickness,
           growth: spec.growth || 'direct',
-          ...(spec.growth === 'transfer'
-            ? { transferMode: 'follow', transferGap: 0 }
-            : {}),
+          ...(spec.growth === 'transfer' ? { transferMode: 'follow', transferGap: 0 } : {}),
           resultLayerId: result.layerId,
         }
       : {
@@ -388,7 +378,8 @@ function assertTransferZeroGap(layerName) {
 
 appendNode({
   kind: 'base',
-  label: 'Create 2 um BOX receiver; SOI handle omitted because paper does not specify handle thickness',
+  label:
+    'Create 2 um BOX receiver; SOI handle omitted because paper does not specify handle thickness',
   geometryChanged: true,
   replay: { kind: 'base' },
 });
@@ -888,7 +879,9 @@ const audit =
   '- Graphene remains present at every sampled sensing-window overlap.\n' +
   '- Lossless WaferCAD project storage reopens with exact canonical-model equality.\n' +
   (compactExportError
-    ? '- Compact 0.1 nm export is still blocked by a persistence-grid geometry issue: ' + compactExportError + '\n\n'
+    ? '- Compact 0.1 nm export is still blocked by a persistence-grid geometry issue: ' +
+      compactExportError +
+      '\n\n'
     : '- Compact 0.1 nm export also passes.\n\n') +
   'Scientific boundary: the mask package is a paper-derived reconstruction. Exact unpublished routing polygons are not claimed to be the authors original layout.\n';
 

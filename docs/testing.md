@@ -35,6 +35,12 @@ For **frame-accurate transparency measurements**, wait for `rendererFrameSerial`
 
 For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, presentation updates, and rough preview/final readiness). It also asserts the persistent-scene contract: opacity changes must retain the same scene generation and surface-plan build count, report a presentation update, perform zero physical assembly work, and keep scene object/geometry/material counts stable. The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.
 
+### Focused Recipe audit checks
+
+`node scripts/process-geometry-regression.mjs --recipe-only` runs the Recipe UI/Base/History integration and exact sub-grid film replay/export in µm, nm and mm. `node scripts/persistence-regression.mjs --recipe-only` proves a snapshot-only Recipe autosaves its bookmark and survives reload. These cases also run in their normal owning suites.
+
+`example-recipe-runall-acceptance.mjs` checks the actual Kernel lengths retained in every rebuilt Process Step, in addition to material inventory and annotation/site counts. M3D visual acceptance records all four Border ON/OFF × Opacity 100%/70% views and confirms three read-only historical stages plus HEAD do not create Recovery records. Welcome acceptance decodes its image before measuring it, uses pinned local Three, and explicitly sets the starting Border state because projects restore saved display settings.
+
 ### Deterministic browser dependencies
 
 Playwright `1.55.1` and Three `0.179.1` are pinned devDependencies in `package-lock.json`. Install them with `npm ci`, then install Chromium with `npx playwright install chromium` (`--with-deps` on Linux). Serve `site/` locally and set `WAFERCAD_THREE_DIR` to the project's `node_modules/three` directory before running browser tests:

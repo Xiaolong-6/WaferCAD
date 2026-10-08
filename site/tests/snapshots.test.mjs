@@ -2010,7 +2010,6 @@ test('reopening an unbookmarked HEAD preserves its null bookmark cursor after an
   assert.equal(reopened.continuationContext(), null);
 });
 
-
 test('Apply Base archives Main Steps and Variants while starting clean Main', () => {
   let live = { model: { processRevision: 0 }, tag: 'old base' };
   let nodeId = 0;
@@ -2018,7 +2017,9 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
   let bookmarkId = 0;
   const options = {
     capture: () => live,
-    restore: (state) => { live = state; },
+    restore: (state) => {
+      live = state;
+    },
     validateState: (state) => Number.isInteger(state?.model?.processRevision),
     nodeIdFactory: () => `node-${++nodeId}`,
     branchIdFactory: () => `variant-${++branchId}`,
@@ -2041,12 +2042,24 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
     previousState,
   });
   assert.ok(archivedBranchId);
-  assert.equal(manager.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot, true);
+  assert.equal(
+    manager.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot,
+    true,
+  );
   assert.equal(manager.activeBranch().id, 'main');
   assert.equal(manager.activeBranch().processStepCount, 0);
-  assert.equal(manager.listBranches().find((item) => item.id === child.id).parentBranchId, archivedBranchId);
-  assert.equal(manager.listHistory().find((node) => node.id === first.id).branchId, archivedBranchId);
-  assert.equal(manager.list().find((record) => record.id === milestone.id).branchId, archivedBranchId);
+  assert.equal(
+    manager.listBranches().find((item) => item.id === child.id).parentBranchId,
+    archivedBranchId,
+  );
+  assert.equal(
+    manager.listHistory().find((node) => node.id === first.id).branchId,
+    archivedBranchId,
+  );
+  assert.equal(
+    manager.list().find((record) => record.id === milestone.id).branchId,
+    archivedBranchId,
+  );
 
   live = { model: { processRevision: 1 }, tag: 'new deposit' };
   const freshStep = manager.recordOperation({ kind: 'add', label: 'New deposition' });
@@ -2065,11 +2078,16 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
     branchState = manager.exportBranchState();
   const reopened = createSnapshotManager({
     capture: () => live,
-    restore: (state) => { live = state; },
+    restore: (state) => {
+      live = state;
+    },
     validateState: options.validateState,
   });
   reopened.importRecords(records, branchState);
-  assert.equal(reopened.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot, true);
+  assert.equal(
+    reopened.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot,
+    true,
+  );
   assert.equal(reopened.switchBranch(archivedBranchId), true);
   assert.equal(live.tag, 'oxide');
   assert.equal(reopened.switchBranch(child.id), true);
@@ -2083,7 +2101,9 @@ test('Apply Base from a historical cursor archives actual Main HEAD', () => {
     sequence = 0;
   const manager = createSnapshotManager({
     capture: () => live,
-    restore: (state) => { live = state; },
+    restore: (state) => {
+      live = state;
+    },
     validateState: (state) => Number.isInteger(state?.model?.processRevision),
     nodeIdFactory: () => `process-${++sequence}`,
     branchIdFactory: () => `archived-${++sequence}`,
@@ -2114,7 +2134,9 @@ test('Apply Base clear mode resets both Steps and Variants', () => {
   let live = { model: { processRevision: 1 }, tag: 'old process' };
   const manager = createSnapshotManager({
     capture: () => live,
-    restore: (state) => { live = state; },
+    restore: (state) => {
+      live = state;
+    },
     validateState: (state) => Number.isInteger(state?.model?.processRevision),
     nodeIdFactory: () => 'old-step',
   });
@@ -2124,15 +2146,25 @@ test('Apply Base clear mode resets both Steps and Variants', () => {
   manager.rebuildMainBase({ preservePrevious: false });
   assert.equal(manager.listHistory().length, 0);
   assert.equal(manager.list().length, 0);
-  assert.deepEqual(manager.listBranches().map((item) => item.id), ['main']);
+  assert.deepEqual(
+    manager.listBranches().map((item) => item.id),
+    ['main'],
+  );
   assert.equal(manager.switchBranch('main'), true);
   assert.equal(live.tag, 'new base');
 });
 
-
 test('read-only History navigation does not treat persisted project title as a process edit', () => {
-  const early = { model: { revision: 2, processRevision: 2 }, name: 'M3D full replay', drawMask: { shapes: [] } };
-  const head = { model: { revision: 3, processRevision: 3 }, name: 'M3D full replay', drawMask: { shapes: [] } };
+  const early = {
+    model: { revision: 2, processRevision: 2 },
+    name: 'M3D full replay',
+    drawMask: { shapes: [] },
+  };
+  const head = {
+    model: { revision: 3, processRevision: 3 },
+    name: 'M3D full replay',
+    drawMask: { shapes: [] },
+  };
   let live = structuredClone(head);
   delete live.name; // buildProjectSnapshot(false) intentionally omits name
   const manager = createSnapshotManager({
@@ -2150,31 +2182,58 @@ test('read-only History navigation does not treat persisted project title as a p
     cursorSnapshotId: null,
     nodes: [
       {
-        id: 'm3d-01', branchId: 'main', parentId: null,
-        createdAt: '2026-10-08T09:30:01Z', processRevision: 2,
-        operation: { type: 'add', label: 'WSe2 transfer' }, state: early,
+        id: 'm3d-01',
+        branchId: 'main',
+        parentId: null,
+        createdAt: '2026-10-08T09:30:01Z',
+        processRevision: 2,
+        operation: { type: 'add', label: 'WSe2 transfer' },
+        state: early,
       },
       {
-        id: 'm3d-02', branchId: 'main', parentId: 'm3d-01',
-        createdAt: '2026-10-08T09:30:02Z', processRevision: 3,
-        operation: { type: 'add', label: 'Graphene transfer' }, state: head,
+        id: 'm3d-02',
+        branchId: 'main',
+        parentId: 'm3d-01',
+        createdAt: '2026-10-08T09:30:02Z',
+        processRevision: 3,
+        operation: { type: 'add', label: 'Graphene transfer' },
+        state: head,
       },
     ],
-    branches: [{
-      id: 'main', name: 'Main', createdAt: '2026-10-08T09:30:00Z',
-      rootNodeId: 'm3d-01', headNodeId: 'm3d-02',
-      parentBranchId: null, rootSnapshotId: null, headSnapshotId: null,
-      headState: head,
-    }],
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        createdAt: '2026-10-08T09:30:00Z',
+        rootNodeId: 'm3d-01',
+        headNodeId: 'm3d-02',
+        parentBranchId: null,
+        rootSnapshotId: null,
+        headSnapshotId: null,
+        headState: head,
+      },
+    ],
   });
 
   assert.equal(manager.restoreProcessNode('m3d-01'), true);
   assert.ok(manager.continuationContext(), 'Restoring an earlier Step should enter History mode');
-  assert.equal(manager.hasHistoricalWorkingEdits(), false, 'No Recovery checkpoint for title drift');
+  assert.equal(
+    manager.hasHistoricalWorkingEdits(),
+    false,
+    'No Recovery checkpoint for title drift',
+  );
   live.selectedLayerKeys = ['inspection-layer'];
   live.section = { a: [0, 0], b: [2, 0] };
-  assert.equal(manager.hasHistoricalWorkingEdits(), false, 'Read-only inspection should not checkpoint');
+  assert.equal(
+    manager.hasHistoricalWorkingEdits(),
+    false,
+    'Read-only inspection should not checkpoint',
+  );
 
   live.drawMask.shapes.push({ id: 'new-rect', type: 'rect' });
-  assert.equal(manager.hasHistoricalWorkingEdits(), true, 'Genuine mask edits must remain protected');
+  assert.equal(
+    manager.hasHistoricalWorkingEdits(),
+    true,
+    'Genuine mask edits must remain protected',
+  );
 });

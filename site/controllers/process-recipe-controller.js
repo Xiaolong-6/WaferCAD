@@ -51,7 +51,7 @@ export function createProcessRecipeController({
   processPanelController,
   processTaskController,
   snapshotManager,
-  formatLengthField,
+  formatCanonicalLengthInput,
   updateOperationUI,
   renderAll,
   renderSnapshots = () => {},
@@ -985,7 +985,7 @@ export function createProcessRecipeController({
   }
 
   function setThickness(valueUm) {
-    $('operationThickness').value = formatLengthField(Number(valueUm));
+    $('operationThickness').value = formatCanonicalLengthInput(Number(valueUm));
   }
 
   function selectMaterialByName(selectId, name, { optional = false } = {}) {
@@ -1005,6 +1005,7 @@ export function createProcessRecipeController({
     const p = step.params;
     if (step.command === 'snapshot') {
       snapshotManager?.create?.(p.name);
+      onChanged();
       renderSnapshots();
       return true;
     }
@@ -1057,11 +1058,11 @@ export function createProcessRecipeController({
             appearance.morphology === 'pyramid' || surface === 'pyramid' ? 'pyramid' : 'rough';
           updateOperationUI();
           if (appearance.featureSize != null)
-            $('roughFeatureSize').value = formatLengthField(
+            $('roughFeatureSize').value = formatCanonicalLengthInput(
               recipeLengthUm(appearance.featureSize, 'surface.featureSize'),
             );
           if (appearance.meanHeight != null || appearance.height != null)
-            $('roughAmplitude').value = formatLengthField(
+            $('roughAmplitude').value = formatCanonicalLengthInput(
               recipeLengthUm(appearance.meanHeight ?? appearance.height, 'surface.height'),
             );
           if (appearance.featureCv != null)
@@ -1097,7 +1098,10 @@ export function createProcessRecipeController({
     }
 
     const before = Number(getModel()?.processRevision || 0);
-    await processPanelController.applyOperation();
+    await processPanelController.applyOperation({
+      canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
+      canonicalSurface: typeof p.surface === 'object' ? p.surface : null,
+    });
     const after = Number(getModel()?.processRevision || 0);
     if (after <= before) throw new Error('The Process step did not commit a model revision.');
     return true;

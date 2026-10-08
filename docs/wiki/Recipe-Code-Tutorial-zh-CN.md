@@ -8,33 +8,33 @@
 
 先在 Project 中准备好 Si 等材料的 **Base**。切换到 **Process → Recipe → Code**，粘贴：
 
-~~~javascript
+```javascript
 // 简单的氧化物 + ALD 钝化结构
-snapshot("00 - Initial Si");
+snapshot('00 - Initial Si');
 deposit({
-  material: "SiO2",
-  thickness: "200 nm",
-  coverage: "directional",
-  face: "front",
-  area: "full"
+  material: 'SiO2',
+  thickness: '200 nm',
+  coverage: 'directional',
+  face: 'front',
+  area: 'full',
 });
-snapshot("01 - Oxide");
+snapshot('01 - Oxide');
 deposit({
-  material: "Al2O3",
-  thickness: "30 nm",
-  coverage: "conformal",
-  face: "front",
-  area: "full"
+  material: 'Al2O3',
+  thickness: '30 nm',
+  coverage: 'conformal',
+  face: 'front',
+  area: 'full',
 });
 record({
-  process: "anneal",
-  label: "Post-deposition anneal",
+  process: 'anneal',
+  label: 'Post-deposition anneal',
   temperatureC: 350,
   durationMin: 30,
-  ambient: "N2"
+  ambient: 'N2',
 });
-snapshot("02 - Passivated");
-~~~
+snapshot('02 - Passivated');
+```
 
 操作顺序：
 
@@ -50,57 +50,63 @@ snapshot("02 - Passivated");
 
 标准形式为：
 
-~~~javascript
+```javascript
 deposit({
-  material: "SiO2",
-  thickness: "100 nm",
-  coverage: "directional",
-  area: "full"
+  material: 'SiO2',
+  thickness: '100 nm',
+  coverage: 'directional',
+  area: 'full',
 });
-~~~
+```
 
 支持对象、数组、字符串、数字、布尔值、null，以及 `//` 和 `/* ... */` 注释；不支持变量、循环、表达式或任意 JS 函数调用。
 
 长度可以写 `"30 nm"`、`"0.5 µm"`、`"2 um"` 或 `"0.001 mm"`。**裸数字默认 µm**，建议显式写单位。
 
-| 通用字段 | 可用值 | 含义 |
-| --- | --- | --- |
-| `face` | `"front"`、`"back"` | 加工正面或背面 |
-| `area` | `"full"`、`"mask"`、`"invert"` | 全表面、Mask 区域或反选 |
-| `mask` | File / Draw 上下文 | `mask` 与 `invert` 操作必需 |
-| `thickness` / `depth` | 正长度 | 沉积、扩展、刻蚀或标记深度 |
+| 通用字段              | 可用值                         | 含义                        |
+| --------------------- | ------------------------------ | --------------------------- |
+| `face`                | `"front"`、`"back"`            | 加工正面或背面              |
+| `area`                | `"full"`、`"mask"`、`"invert"` | 全表面、Mask 区域或反选     |
+| `mask`                | File / Draw 上下文             | `mask` 与 `invert` 操作必需 |
+| `thickness` / `depth` | 正长度                         | 沉积、扩展、刻蚀或标记深度  |
 
 **Mask ROI 会限制 Mask 工艺作用范围，Main ROI 不限制 Apply**。参阅 [Masks and ROI](Masks-and-ROI)。
 
 ## 三、七条支持的命令
 
-| 命令 | 用途 | 主要参数 |
-| --- | --- | --- |
-| `deposit()` | 新材料沉积 | material、thickness、coverage |
-| `extend()` | 增厚现有材料 | material、thickness、coverage |
-| `etch()` | 刻蚀、释放或平坦化 | target、depth / targetZ、profile |
-| `implant()` | 深度渐变注入标记 | name、depth、tilt |
-| `electrical()` | 电学区域标记 | name、depth、regionType、source |
-| `record()` | 非几何工艺记录 | process、label、temperatureC、durationMin |
-| `snapshot()` | 命名快照 | 快照名称 |
+| 命令           | 用途               | 主要参数                                  |
+| -------------- | ------------------ | ----------------------------------------- |
+| `deposit()`    | 新材料沉积         | material、thickness、coverage             |
+| `extend()`     | 增厚现有材料       | material、thickness、coverage             |
+| `etch()`       | 刻蚀、释放或平坦化 | target、depth / targetZ、profile          |
+| `implant()`    | 深度渐变注入标记   | name、depth、tilt                         |
+| `electrical()` | 电学区域标记       | name、depth、regionType、source           |
+| `record()`     | 非几何工艺记录     | process、label、temperatureC、durationMin |
+| `snapshot()`   | 命名快照           | 快照名称                                  |
 
 ### 1. Deposit 和 Extend
 
-~~~javascript
+```javascript
 deposit({
-  material: "SiO2", thickness: "100 nm",
-  coverage: "directional", area: "full"
+  material: 'SiO2',
+  thickness: '100 nm',
+  coverage: 'directional',
+  area: 'full',
 });
 extend({
-  material: "SiO2", thickness: "50 nm",
-  coverage: "conformal", area: "full"
+  material: 'SiO2',
+  thickness: '50 nm',
+  coverage: 'conformal',
+  area: 'full',
 });
 deposit({
-  material: "MoS2", thickness: "1 nm",
-  coverage: "transfer", placement: "flat",
-  area: "full"
+  material: 'MoS2',
+  thickness: '1 nm',
+  coverage: 'transfer',
+  placement: 'flat',
+  area: 'full',
 });
-~~~
+```
 
 - `directional`：主要覆盖暴露的水平面。
 - `conformal`：在真实侧壁上构造几何包覆层。
@@ -109,15 +115,15 @@ deposit({
 
 ### 2. Etch
 
-~~~javascript
-deposit({ material: "SiO2", thickness: "500 nm" });
+```javascript
+deposit({ material: 'SiO2', thickness: '500 nm' });
 etch({
-  target: "SiO2",
-  depth: "200 nm",
-  profile: "directional",
-  area: "full"
+  target: 'SiO2',
+  depth: '200 nm',
+  profile: 'directional',
+  area: 'full',
 });
-~~~
+```
 
 `profile` 支持：
 
@@ -128,35 +134,35 @@ etch({
 
 例如 CMP：
 
-~~~javascript
+```javascript
 etch({
-  profile: "planarize",
-  targetZ: "2 µm",
-  area: "full"
+  profile: 'planarize',
+  targetZ: '2 µm',
+  area: 'full',
 });
-~~~
+```
 
 ### 3. 黑硅、粗糙表面与金字塔
 
 在定向刻蚀步骤中添加 `surface`：
 
-~~~javascript
+```javascript
 etch({
-  target: "Si",
-  depth: "2 µm",
-  profile: "directional",
-  area: "full",
+  target: 'Si',
+  depth: '2 µm',
+  profile: 'directional',
+  area: 'full',
   surface: {
-    morphology: "rough",
-    polarity: "normal",
-    featureSize: "500 nm",
-    meanHeight: "1 µm",
+    morphology: 'rough',
+    polarity: 'normal',
+    featureSize: '500 nm',
+    meanHeight: '1 µm',
     featureCv: 0.25,
-    heightCv: 0.30,
-    seed: 12345
-  }
+    heightCv: 0.3,
+    seed: 12345,
+  },
 });
-~~~
+```
 
 - `morphology`：`rough`、`stochastic` 或 `pyramid`。
 - `polarity`：`normal` 外凸尖峰，`inverted` 内凹谷底。
@@ -169,25 +175,29 @@ etch({
 
 ### 4. Implant、Electrical、Record、Snapshot
 
-~~~javascript
+```javascript
 implant({
-  name: "B implant", depth: "300 nm",
-  tilt: 7, area: "full"
+  name: 'B implant',
+  depth: '300 nm',
+  tilt: 7,
+  area: 'full',
 });
 electrical({
-  name: "Induced p-layer", depth: "50 nm",
-  regionType: "p-inversion",
-  source: "induced", area: "full"
+  name: 'Induced p-layer',
+  depth: '50 nm',
+  regionType: 'p-inversion',
+  source: 'induced',
+  area: 'full',
 });
 record({
-  process: "anneal",
-  label: "Activation record",
+  process: 'anneal',
+  label: 'Activation record',
   temperatureC: 1000,
   durationMin: 1,
-  ambient: "N2"
+  ambient: 'N2',
 });
-snapshot("After activation");
-~~~
+snapshot('After activation');
+```
 
 Implant 是结构注入标记（倾角 −80° 至 +80°），不求剂量、能量及扩散。Electrical 是电学区域示意，支持 p/n 型、反型、积累、耗尽等，**不求电场或载流子分布**。Record 和 Snapshot 不增加物理材料层。
 
@@ -195,22 +205,26 @@ Implant 是结构注入标记（倾角 −80° 至 +80°），不求剂量、能
 
 先在 Mask 中导入 GDSII/OASIS，再从项目里的真实 Cell / Layer 选择相应版图。
 
-~~~javascript
+```javascript
 // 运行前必须有 TOP Cell 和 3/0 图层
 deposit({
-  material: "SiO2", thickness: "200 nm", area: "full"
+  material: 'SiO2',
+  thickness: '200 nm',
+  area: 'full',
 });
 etch({
-  target: "SiO2", depth: "200 nm",
-  profile: "directional", area: "mask",
+  target: 'SiO2',
+  depth: '200 nm',
+  profile: 'directional',
+  area: 'mask',
   mask: {
-    source: "file",
-    cell: "TOP",
-    layers: ["3|0"]
-  }
+    source: 'file',
+    cell: 'TOP',
+    layers: ['3|0'],
+  },
 });
-snapshot("Contact opening");
-~~~
+snapshot('Contact opening');
+```
 
 `"3|0"` 是 GDS Layer 3、Datatype 0；`"3/0"` 也会归一化。每个使用 `area: "mask"` 或 `"invert"` 的 Step 必须提供有效 Mask 上下文。
 
@@ -222,32 +236,43 @@ snapshot("Contact opening");
 
 准备条件：Si Base；GDS 中有 `TOP` Cell 和 `3|0` 接触开窗层。本例仅用于验证 Recipe 语法与几何 Kernel，**不代表完整的真实器件制造流程**。
 
-~~~javascript
-snapshot("00 - Si Base");
+```javascript
+snapshot('00 - Si Base');
 deposit({
-  material: "SiO2", thickness: "200 nm", area: "full"
+  material: 'SiO2',
+  thickness: '200 nm',
+  area: 'full',
 });
-snapshot("01 - Oxide");
+snapshot('01 - Oxide');
 etch({
-  target: "SiO2", depth: "200 nm",
-  profile: "directional", area: "mask",
-  mask: { source: "file", cell: "TOP", layers: ["3|0"] }
+  target: 'SiO2',
+  depth: '200 nm',
+  profile: 'directional',
+  area: 'mask',
+  mask: { source: 'file', cell: 'TOP', layers: ['3|0'] },
 });
 implant({
-  name: "B Implant", depth: "300 nm", tilt: 0,
-  area: "mask",
-  mask: { source: "file", cell: "TOP", layers: ["3|0"] }
+  name: 'B Implant',
+  depth: '300 nm',
+  tilt: 0,
+  area: 'mask',
+  mask: { source: 'file', cell: 'TOP', layers: ['3|0'] },
 });
 record({
-  process: "anneal", label: "Activation record",
-  temperatureC: 1000, durationMin: 1, ambient: "N2"
+  process: 'anneal',
+  label: 'Activation record',
+  temperatureC: 1000,
+  durationMin: 1,
+  ambient: 'N2',
 });
 deposit({
-  material: "Al2O3", thickness: "30 nm",
-  coverage: "conformal", area: "full"
+  material: 'Al2O3',
+  thickness: '30 nm',
+  coverage: 'conformal',
+  area: 'full',
 });
-snapshot("02 - Passivated");
-~~~
+snapshot('02 - Passivated');
+```
 
 点击 **Apply code → Validate → Rebuild Base first → Run All**，逐步核对截面和掩膜作用范围。如果要研究实际文献器件，请进一步查看 [欢迎页已有的六个 Example 家族](Examples-and-Modeling-Limits) 和相应来源说明。
 

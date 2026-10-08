@@ -26,7 +26,8 @@ try {
   await page.locator('#recipeCodeTab').click();
 
   // R1: Invalid Format and Steps/Code switching do not erase an unapplied draft.
-  const draft = 'deposit({ material: "Draft film", thickness: "25 nm", area: "full" });\ninvalid();';
+  const draft =
+    'deposit({ material: "Draft film", thickness: "25 nm", area: "full" });\ninvalid();';
   await page.locator('#recipeCodeEditor').fill(draft);
   await page.locator('#recipeFormatCodeBtn').click();
   assert.equal(await page.locator('#recipeCodeEditor').inputValue(), draft);
@@ -59,14 +60,19 @@ try {
   await page.locator('#recipeRunStart').selectOption('new-base');
   await page.locator('#recipeRunAllBtn').click();
   await waitForStatus(page, /Recipe preflight failed/);
-  assert.ok(await page.locator('#layerLegend .legend-name').evaluateAll(
-    (inputs) => inputs.some((element) => element.value === 'UI film'),
-  ));
+  assert.ok(
+    await page
+      .locator('#layerLegend .legend-name')
+      .evaluateAll((inputs) => inputs.some((element) => element.value === 'UI film')),
+  );
   assert.equal(await page.locator('#recipeRunSummary').count(), 1);
 
   // R2: Negative / nonsensical UI input remains invalid even if applied recipe was valid.
   await rows.nth(0).click();
-  const thickness = page.locator('#recipeStepEditor label', { hasText: 'Thickness' }).locator('input').first();
+  const thickness = page
+    .locator('#recipeStepEditor label', { hasText: 'Thickness' })
+    .locator('input')
+    .first();
   await thickness.fill('-1 nm');
   await thickness.press('Tab');
   await page.locator('#recipeValidateBtn').click();
@@ -92,17 +98,18 @@ try {
   await openFunctionPanel(stressPage, 'process');
   await stressPage.locator('[data-process-input-mode="recipe"]').click();
   await stressPage.locator('#recipeCodeTab').click();
-  const stressRecipe = Array.from({ length: 40 }, (_, index) =>
-    `deposit({ material: "Stop film ${index + 1}", thickness: "20 nm", area: "full" });`,
+  const stressRecipe = Array.from(
+    { length: 40 },
+    (_, index) =>
+      `deposit({ material: "Stop film ${index + 1}", thickness: "20 nm", area: "full" });`,
   ).join('\n');
   await stressPage.locator('#recipeCodeEditor').fill(stressRecipe);
   await stressPage.locator('#recipeApplyCodeBtn').click();
   await stressPage.locator('#recipeRunAllBtn').click();
   await stressPage.locator('#recipeStopBtn').click({ timeout: 5000 });
-  await stressPage.waitForFunction(
-    () => document.getElementById('recipeStopBtn')?.disabled,
-    null, { timeout: 45000 },
-  );
+  await stressPage.waitForFunction(() => document.getElementById('recipeStopBtn')?.disabled, null, {
+    timeout: 45000,
+  });
   assert.match(await stressPage.locator('#recipeRunSummary').innerText(), /Stopped: [0-9]+\/40/);
   assertNoPageErrors(stressErrors);
   await stressContext.close();
@@ -121,10 +128,14 @@ try {
   await openFunctionPanel(fieldPage, 'process');
   await fieldPage.locator('[data-process-input-mode="recipe"]').click();
   await fieldPage.locator('#recipeCodeTab').click();
-  await fieldPage.locator('#recipeCodeEditor').fill([
-    'deposit({ material: "A", thickness: "30 nm", area: "full" });',
-    'deposit({ material: "B", thickness: "30 nm", area: "full" });',
-  ].join('\n'));
+  await fieldPage
+    .locator('#recipeCodeEditor')
+    .fill(
+      [
+        'deposit({ material: "A", thickness: "30 nm", area: "full" });',
+        'deposit({ material: "B", thickness: "30 nm", area: "full" });',
+      ].join('\n'),
+    );
   await fieldPage.locator('#recipeApplyCodeBtn').click();
   await fieldPage.locator('#recipeStepsTab').click();
   const fieldRows = fieldPage.locator('.recipe-step-row');

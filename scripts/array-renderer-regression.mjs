@@ -25,11 +25,7 @@ try {
   page.setDefaultTimeout(THREE_READY_TIMEOUT_MS);
   const frameSerial = () =>
     page.locator('#threeHost').evaluate((el) => Number(el.dataset.rendererFrameSerial || 0));
-  const waitStage = async (
-    label,
-    timeout = THREE_READY_TIMEOUT_MS,
-    previousFrameSerial = null,
-  ) => {
+  const waitStage = async (label, timeout = THREE_READY_TIMEOUT_MS, previousFrameSerial = null) => {
     const started = performance.now();
     console.log('ARRAY_RENDERER_STAGE_BEGIN', label);
     await waitForThreeReady(page, timeout);
@@ -235,9 +231,7 @@ try {
     'sceneRetainedGeometryCount',
     'sceneRetainedMaterialCount',
   ];
-  const retainedBaseline = Object.fromEntries(
-    retainedKeys.map((key) => [key, borderOff[key]]),
-  );
+  const retainedBaseline = Object.fromEntries(retainedKeys.map((key) => [key, borderOff[key]]));
   const assertRetained = async (label) => {
     const current = await snapshot();
     for (const key of retainedKeys)

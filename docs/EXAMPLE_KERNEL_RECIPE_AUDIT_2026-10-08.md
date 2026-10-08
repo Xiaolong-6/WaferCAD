@@ -12,13 +12,13 @@ using **Process → Recipe → Run All → Rebuild Base**. A remembered History
 snapshot, successful import or final 3D preview alone is insufficient evidence
 of reproducibility.
 
-| Production example | Original History | Original Recipe | Mask source | Key deficit |
-| --- | ---: | --- | --- | --- |
-| Photodetector literature (Si / Ge Variants) | 46 nodes / 7 Variants | per-Variant, 15 Steps at default HEAD | Draw | Recipe had no explicit Si/Ge Base contract |
-| PERC point-contact solar cell | 33 / 3 | Missing | File; 217 layout elements | Legacy History lacked replay metadata; old pyramid seed/CV only in Kernel surface |
-| Fully textured perovskite/Si tandem | 24 / 2 | Missing | File; 8 elements | Legacy History lacked replay metadata; both textured faces needed seed/CV |
-| Suspended silica microdisk | 9 / 1 | Missing | File; 7 elements | Legacy `mask-inverted` / `isotropic-release` labels needed mapping |
-| Three-tier JLFET (production 625-site wafer) | 40 / 1 | Missing | File; 6,875 elements | Source is a canonical array; scalar Base reset would destroy 625-device ownership |
+| Production example                           |      Original History | Original Recipe                       | Mask source               | Key deficit                                                                       |
+| -------------------------------------------- | --------------------: | ------------------------------------- | ------------------------- | --------------------------------------------------------------------------------- |
+| Photodetector literature (Si / Ge Variants)  | 46 nodes / 7 Variants | per-Variant, 15 Steps at default HEAD | Draw                      | Recipe had no explicit Si/Ge Base contract                                        |
+| PERC point-contact solar cell                |                33 / 3 | Missing                               | File; 217 layout elements | Legacy History lacked replay metadata; old pyramid seed/CV only in Kernel surface |
+| Fully textured perovskite/Si tandem          |                24 / 2 | Missing                               | File; 8 elements          | Legacy History lacked replay metadata; both textured faces needed seed/CV         |
+| Suspended silica microdisk                   |                 9 / 1 | Missing                               | File; 7 elements          | Legacy `mask-inverted` / `isotropic-release` labels needed mapping                |
+| Three-tier JLFET (production 625-site wafer) |                40 / 1 | Missing                               | File; 6,875 elements      | Source is a canonical array; scalar Base reset would destroy 625-device ownership |
 
 The JLFET single-site source is separately preserved for full replay reference.
 Preview `.wafercad` files are cover images/preview models, not extra production
@@ -29,7 +29,7 @@ examples.
 - Store a validated, portable `processRecipe.base` for every Variant,
   History node and Snapshot. The Base includes original shape, dimensions,
   substrate material and color, and optional canonical wafer-array tiling.
-- `Run All` preflight uses the *new* Base material. Base reset recreates
+- `Run All` preflight uses the _new_ Base material. Base reset recreates
   original Si/Ge substrate or the 25 × 25 site array while respecting the
   user's existing **Clear history** versus **Keep history as Variant** choice.
 - Backfill complete editable Recipes from legacy process ancestry, keeping

@@ -24,9 +24,10 @@ self.onmessage = async (event) => {
     self.postMessage({
       id,
       type: 'progress',
-      stage: mode === 'lossless'
-        ? 'Preserving exact sub-grid geometry in lossless project export…'
-        : 'Serializing project…',
+      stage:
+        mode === 'lossless'
+          ? 'Preserving exact sub-grid geometry in lossless project export…'
+          : 'Serializing project…',
     });
     const bytes = new TextEncoder().encode(JSON.stringify(stored));
     if (bytes.byteLength > api.MAX_PROJECT_FILE_BYTES) {

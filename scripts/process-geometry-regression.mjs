@@ -127,7 +127,10 @@ await recipePage.locator('#recipeValidateBtn').click();
 assert.match(await recipePage.locator('#statusText').textContent(), /Recipe valid: 1 step/);
 await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.waitForFunction(
-  () => /Recipe completed: 1\/1 steps committed\./.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Recipe completed: 1\/1 steps committed\./.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -135,7 +138,10 @@ await recipePage.waitForFunction(
 // Re-running on an already processed model requires explicit permission.
 await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
-assert.match(await recipePage.locator('#confirmationDialogMessage').textContent(), /already contains Process Steps/);
+assert.match(
+  await recipePage.locator('#confirmationDialogMessage').textContent(),
+  /already contains Process Steps/,
+);
 await recipePage.locator('#confirmationDialogActions [data-dialog-action="cancel"]').click();
 assert.match(await recipePage.locator('#statusText').textContent(), /run cancelled/);
 
@@ -146,7 +152,10 @@ await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
 await recipePage.locator('#confirmationDialogActions [data-dialog-action="keep"]').click();
 await recipePage.waitForFunction(
-  () => /Recipe completed: 1\/1 steps committed\./.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Recipe completed: 1\/1 steps committed\./.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -162,7 +171,8 @@ await recipePage.locator('#layerName').fill('Manual recipe check');
 await recipePage.locator('#operationThickness').fill('0.02');
 await recipePage.locator('#applyOperationBtn').click();
 await recipePage.waitForFunction(
-  () => /Deposited Manual recipe check/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Deposited Manual recipe check/.test(document.getElementById('statusText')?.textContent || ''),
   null,
   { timeout: 30000 },
 );
@@ -185,16 +195,21 @@ assert.equal(recipeSaved.processRecipe?.steps?.length, 2);
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.command, 'deposit');
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.params?.material, 'Al2O3');
 assert.equal(recipeSaved.processRecipe?.steps?.[1]?.params?.material, 'Manual recipe check');
-assert.ok(recipeSaved.model.processRevision >= 2, 'Recipe and Step-mode operations must commit through the Process kernel');
+assert.ok(
+  recipeSaved.model.processRevision >= 2,
+  'Recipe and Step-mode operations must commit through the Process kernel',
+);
 
 // Narrow Process flyouts must not grow wider when a recipe step has a very
 // long operation label; the full label stays available as a title tooltip.
 await openFunctionPanel(recipePage, 'process');
 await recipePage.locator('[data-process-input-mode="recipe"]').click();
 await recipePage.locator('#recipeCodeTab').click();
-await recipePage.locator('#recipeCodeEditor').fill(
-  'record({ process: "custom", label: "S00 FZ-32 p-type 2LP1 representative die with a very very very long process title" });',
-);
+await recipePage
+  .locator('#recipeCodeEditor')
+  .fill(
+    'record({ process: "custom", label: "S00 FZ-32 p-type 2LP1 representative die with a very very very long process title" });',
+  );
 await recipePage.locator('#recipeApplyCodeBtn').click();
 await recipePage.locator('#recipeStepsTab').click();
 const listBox = await recipePage.locator('#recipeStepsList').boundingBox();
@@ -229,25 +244,34 @@ await recipePage.waitForFunction(
   { timeout: 15000 },
 );
 await openFunctionPanel(recipePage, 'snapshots');
-const archivedVariant = recipePage.locator('.history-variant-name', {
-  hasText: 'Previous base',
-}).first();
+const archivedVariant = recipePage
+  .locator('.history-variant-name', {
+    hasText: 'Previous base',
+  })
+  .first();
 assert.ok(await archivedVariant.count(), 'archived Main must be visible in History');
 assert.equal(
-  await recipePage.locator(
-    '.history-variant[data-variant-id="main"] > .history-variant-body > .history-step-wrap',
-  ).count(),
+  await recipePage
+    .locator(
+      '.history-variant[data-variant-id="main"] > .history-variant-body > .history-step-wrap',
+    )
+    .count(),
   0,
   'new Main must have a fresh history root',
 );
 await archivedVariant.click();
 await recipePage.waitForFunction(
-  () => /Switched to Variant "Previous base/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Switched to Variant "Previous base/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 15000 },
 );
 assert.ok(
-  await recipePage.locator('.history-variant[data-active="true"] > .history-variant-body > .history-step-wrap').count() >= 2,
+  (await recipePage
+    .locator('.history-variant[data-active="true"] > .history-variant-body > .history-step-wrap')
+    .count()) >= 2,
   'the old process steps must remain directly restorable',
 );
 await openFunctionPanel(recipePage, 'project');
@@ -272,6 +296,66 @@ assert.equal(
 );
 assert.deepEqual(recipeErrors, []);
 await recipeContext.close();
+
+// Recipe replay and export retain physical sub-grid films in every display unit.
+for (const unit of ['um', 'nm', 'mm']) {
+  const precisionContext = await newUiContext(browser, { acceptDownloads: true });
+  const precisionPage = await precisionContext.newPage();
+  const precisionErrors = observePageErrors(precisionPage);
+  await precisionPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
+  await waitForAppReady(precisionPage);
+  await loadProject(
+    precisionPage,
+    projectForBenchmark({
+      model: createModel({ shape: 'rect', width: 20, height: 10, thickness: 2 }),
+      section: { a: [-8, 0], b: [8, 0] },
+    }),
+    `recipe-precision-${unit}`,
+  );
+  await precisionPage.locator('#xyUnitSelect').selectOption(unit);
+  await openFunctionPanel(precisionPage, 'process');
+  await precisionPage.locator('[data-process-input-mode="recipe"]').click();
+  await precisionPage.locator('#recipeCodeTab').click();
+  await precisionPage
+    .locator('#recipeCodeEditor')
+    .fill(
+      [
+        'deposit({ material: "Graphene precision", thickness: "0.35 nm", area: "full" });',
+        'extend({ material: "Graphene precision", thickness: "0.35 nm", area: "full" });',
+        'etch({ target: "Graphene precision", depth: "0.15 nm", area: "full" });',
+      ].join('\n'),
+    );
+  await precisionPage.locator('#recipeApplyCodeBtn').click();
+  await precisionPage.locator('#recipeRunAllBtn').click();
+  await precisionPage.waitForFunction(() =>
+    /Recipe completed: 3\/3 steps committed/.test(
+      document.querySelector('#statusText')?.textContent || '',
+    ),
+  );
+  const exported = await exportCurrentProject(precisionPage);
+  const layer = exported.model.layers.find((item) => item.name === 'Graphene precision');
+  assert.ok(layer);
+  const segments = exported.model.regions.flatMap((region) =>
+    region.stack.filter((segment) => segment.layerId === layer.id),
+  );
+  assert.ok(segments.length);
+  for (const segment of segments)
+    assert.ok(
+      Math.abs(segment.z1 - segment.z0 - 0.00055) < 1e-12,
+      `${unit}: Recipe or Export rounded a film`,
+    );
+  assert.deepEqual(
+    exported.snapshotBranches.nodes.map((node) => node.operation.replay.params.thickness),
+    [0.00035, 0.00035, 0.00015],
+  );
+  assert.deepEqual(precisionErrors, []);
+  await precisionContext.close();
+}
+if (process.argv.includes('--recipe-only')) {
+  await browser.close();
+  console.log('WaferCAD Recipe geometry regression: OK');
+  process.exit(0);
+}
 
 const context = await newUiContext(browser, {
   viewport: { width: 1365, height: 900 },

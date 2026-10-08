@@ -1184,7 +1184,9 @@ processRecipeController = createProcessRecipeController({
   processPanelController,
   processTaskController,
   snapshotManager,
-  formatLengthField,
+  // Recipe values are physical inputs, including lossless sub-grid films.
+  // The Step UI formatter may round presentation, but must not round replay.
+  formatCanonicalLengthInput: (valueUm) => String(fromMicron(valueUm, xyDisplayUnit)),
   updateOperationUI,
   renderAll,
   renderSnapshots,
