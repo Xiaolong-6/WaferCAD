@@ -96,6 +96,12 @@ try {
   );
   const labels = await page.locator('.process-history-row strong').allTextContents();
   report.historyLabels = labels;
+  for (const id of ['m3d-step-15', 'm3d-step-21', 'm3d-step-30']) {
+    const label = await page.locator(
+      '.history-step-wrap[data-step-id="' + id + '"] .process-history-row strong',
+    ).textContent();
+    assert.match(label || '', /Follow surface/, id + ' must display actual Follow-surface transfer');
+  }
   const early = page.locator('.history-step-wrap[data-step-id="m3d-step-15"] .process-history-row');
   assert.equal(await early.count(), 1, 'WSe2 History node is missing: ' + labels.join(' | '));
   assert.match(await early.textContent(), /WSe2/i);
