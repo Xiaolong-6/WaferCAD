@@ -36,6 +36,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — open performance work and acceptance conditions; planned LOD is not a shipped capability.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
 - [Documentation audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md) — navigation, content repairs and check results.
+- [Process workflow v2 branch handoff — 2026-10-08](PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md) — operation selector, safe Recipe templates, latest-main baseline recheck and pending browser acceptance.
 - [Revision-specific archive](archive/README.md) — every earlier audit, reconstruction, optimization and design/research snapshot; original paths are preserved.
 
 For a current behavior question, follow the owner above. For a claim that a test, deployment or scientific replay passed, use the evidence for the exact revision and environment. An old pending/approved banner does not establish the state of today's main.

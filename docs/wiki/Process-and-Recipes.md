@@ -4,7 +4,7 @@
 
 ## Manual Process
 
-The Process panel has **Front/Back**, Action, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. Under **Apply** is an inline Before → After schematic that changes with Action and submode. The text below it describes important edge cases. The card is a conceptual Section diagram, not a prediction from the current project.
+The **Step** mode has Front/Back, one **Operation** selector, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. **Apply** performs the current operation. **Also add to Recipe** controls whether a successful Step-mode operation is appended to the Recipe. Below Apply, **How it works** expands a conceptual Before → After schematic and caveats; it is not a live prediction from the current project.
 
 The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
 
@@ -19,7 +19,7 @@ The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrica
 
 ## Process Recipe
 
-Switch from **Manual** to **Recipe** to build an ordered list of typed operations. The guided editor supports step creation, reorder, parameter inspection, validation and per-step execution. Its restricted Code editor is a declarative recipe format; it is **not** an arbitrary JavaScript execution environment.
+Switch from **Step** to **Recipe** to build an ordered list of typed operations. The Recipe panel separates step building, readiness checking and execution. Template selection only previews its steps; **Load template** must be clicked to apply it, and replacing an existing Recipe requires another explicit confirmation. **Cancel** leaves the Recipe unchanged. An existing Recipe can be restored with **Undo** during the same editing session; that Undo stack is not a persistent version archive. The guided editor supports step creation, reorder, parameter inspection, validation and per-step execution. Its restricted Code editor is a declarative recipe format; it is **not** an arbitrary JavaScript execution environment.
 
 Recipe uses the same Process worker/kernel as Manual. Typed physical lengths retain their exact normalized µm values independently of the Manual editing grid and current display unit; nonfinite conversions are rejected. A Recipe is stored in the exported `.wafercad` project. Applying it again to an already processed model repeats its geometry operations; use the fresh-Base start option if you need a reproducible new lineage.
 
@@ -29,4 +29,4 @@ Recipe uses the same Process worker/kernel as Manual. Typed physical lengths ret
 
 ## Replay and versions
 
-Recorded successful Manual operations can be added into Recipe. Older project files can use historical execution semantics, such as legacy Transfer defaulting to Flat bridge. Always distinguish historic saved behavior from current UI defaults.
+Successful Step-mode operations can be added into Recipe when **Also add to Recipe** is enabled. Older project files can use historical execution semantics, such as legacy Transfer defaulting to Flat bridge. Always distinguish historic saved behavior from current UI defaults.

@@ -1185,14 +1185,7 @@ canvas {
   gap: 3px;
 }
 
-.process-mode {
-  margin: 1px 0 3px;
-}
 
-.process-mode button {
-  height: 25px;
-  font-size: 10.5px;
-}
 
 .param-grid-2 {
   display: grid;
@@ -1264,7 +1257,7 @@ canvas {
   margin: 0;
 }
 
-#operationTools:has([data-process-mode='etch'].active) #operationThicknessRow {
+#operationTools[data-operation-mode='etch'] #operationThicknessRow {
   grid-column: 1 / -1;
 }
 
@@ -1305,13 +1298,6 @@ canvas {
 }
 
 @media (max-width: 600px) {
-  .process-mode button {
-    min-width: 0;
-    padding-left: 2px;
-    padding-right: 2px;
-    font-size: 9.5px;
-    white-space: nowrap;
-  }
 
   .param-grid-2 {
     grid-template-columns: minmax(0, 1fr);
@@ -2531,14 +2517,6 @@ body.welcome-open {
   user-select: none;
 }
 
-.process-mode {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 4px 0 6px;
-}
-.process-mode button {
-  height: 27px;
-  font-size: 11px;
-}
 
 #applyOperationBtn:disabled {
   opacity: 0.45;
@@ -5501,4 +5479,146 @@ summary:focus-visible {
 .recipe-run-actions .compact-btn {
   min-width: 0;
   padding-inline: 4px;
+}
+
+/* Process workspace v2: a single operation selector is the canonical mode input. */
+.process-operation-picker {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  color: #5f6b77;
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.process-operation-picker select {
+  min-width: 0;
+  width: 100%;
+  height: 30px;
+  border: 1px solid #bccad6;
+  border-radius: 5px;
+  padding: 3px 7px;
+  background: #f8fbfd;
+  color: #293c4e;
+  font-size: 11px;
+  font-weight: 650;
+}
+.step-recipe-record {
+  display: inline-flex;
+  min-height: 23px;
+  margin: 4px 0 2px;
+}
+.process-visual-guide > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.process-visual-guide:not([open]) {
+  padding: 7px 8px;
+}
+.process-visual-guide:not([open]) .process-guide-top {
+  margin: 0;
+}
+.process-visual-guide > #processGuideLink {
+  display: inline-block;
+  margin: 7px 0 3px;
+  font-size: 10px;
+}
+.process-guide-top span#processGuideTitle {
+  font-weight: 650;
+}
+
+/* Process Recipe workflow: preview before replacement, compact editor, sticky execution. */
+.recipe-process-pane {
+  align-content: start;
+  min-width: 0;
+}
+.recipe-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+}
+.recipe-toolbar select {
+  min-width: 0;
+  width: 100%;
+}
+.recipe-template-preview {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid #c6d7e5;
+  border-radius: 6px;
+  background: #f1f7fc;
+  font-size: 10px;
+}
+.recipe-template-preview[hidden] {
+  display: none !important;
+}
+.recipe-template-preview > strong {
+  color: #2c4b65;
+}
+.recipe-template-preview > span {
+  color: #64798a;
+}
+.recipe-template-preview .hint {
+  margin: 0;
+}
+.recipe-template-preview-steps {
+  max-height: 112px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 3px 5px 3px 22px;
+  border: 1px solid #d6e2ec;
+  border-radius: 4px;
+  background: #fff;
+  color: #455868;
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+.recipe-template-preview-steps:empty {
+  display: none;
+}
+.recipe-template-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.recipe-workflow-label {
+  color: #657785;
+  font-size: 9.5px;
+  font-weight: 650;
+}
+.recipe-validation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 24px;
+}
+.recipe-validation-header .compact-btn {
+  padding: 2px 8px;
+  font-size: 9.5px;
+}
+.recipe-steps-list {
+  max-height: min(34vh, 270px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.recipe-execution {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 5px;
+  margin: 5px -3px -3px;
+  padding: 8px 3px 3px;
+  border-top: 1px solid #dce5ec;
+  background: #fdfcff;
+}
+.recipe-run-actions {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+}
+.recipe-run-actions:has(#recipeStopBtn:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) auto;
+}
+.recipe-run-actions #recipeStopBtn[hidden] {
+  display: none !important;
 }

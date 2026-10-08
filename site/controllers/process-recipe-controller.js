@@ -71,7 +71,9 @@ export function createProcessRecipeController({
     redoStack = [],
     codeDraftDirty = false,
     invalidFields = new Map(),
-    lastRunResult = null;
+    lastRunResult = null,
+    pendingTemplateId = '',
+    templateReplaceArmed = false;
   const recipeHistoryLimit = 100;
   const recipeSignature = () => JSON.stringify(recipe.steps);
   const fieldId = (stepId, key) => `${stepId}:${key}`;
@@ -166,6 +168,7 @@ export function createProcessRecipeController({
     invalidFields.clear();
     codeDraftDirty = false;
     lastRunResult = null;
+    resetTemplatePreview();
     updateUndoRedoUi();
   }
 
@@ -335,17 +338,24 @@ export function createProcessRecipeController({
         <input id="recipeNameInput" class="recipe-name-input" maxlength="160" aria-label="Recipe name" />
         <select id="recipeTemplateSelect" class="compact-select" aria-label="Recipe template">
           <option value="">Template…</option>
-          <option value="blank">Blank</option>
+          <option value="blank">New blank Recipe</option>
           <option value="deposit-etch">Deposit + Etch</option>
           <option value="conformal">Conformal coating</option>
           <option value="implant">Implant</option>
         </select>
       </div>
+      <div id="recipeTemplatePreview" class="recipe-template-preview" hidden aria-live="polite">
+        <strong id="recipeTemplatePreviewTitle"></strong>
+        <span id="recipeTemplatePreviewDetail"></span>
+        <ol id="recipeTemplatePreviewSteps" class="recipe-template-preview-steps" aria-label="Template steps"></ol>
+        <p id="recipeTemplatePreviewWarning" class="hint compact-hint"></p>
+        <div class="recipe-template-actions">
+          <button id="recipeTemplateCancelBtn" type="button" class="compact-btn">Cancel</button>
+          <button id="recipeTemplateLoadBtn" type="button" class="compact-btn primary">Load template</button>
+        </div>
+      </div>
       <div class="recipe-options-row">
-        <label class="recipe-record-toggle" title="Append successful Step-mode operations to this recipe">
-          <input id="recipeRecordManual" type="checkbox" checked />
-          <span>Record Step-mode operations</span>
-        </label>
+        <span class="recipe-workflow-label">Build · edit steps</span>
         <div class="recipe-history-actions" aria-label="Recipe edit history">
           <button id="recipeUndoBtn" class="compact-btn" type="button" title="Undo Recipe edit" disabled>Undo</button>
           <button id="recipeRedoBtn" class="compact-btn" type="button" title="Redo Recipe edit" disabled>Redo</button>
@@ -379,25 +389,87 @@ export function createProcessRecipeController({
         </div>
         <p class="hint compact-hint">Safe Process Recipe syntax only. Arbitrary JavaScript is not executed.</p>
       </div>
-      <div id="recipeValidation" class="recipe-validation" aria-live="polite"></div>
-      <div id="recipeProgress" class="recipe-progress" hidden>
-        <div><span id="recipeProgressLabel">Preparing…</span><span id="recipeProgressCount"></span></div>
-        <progress id="recipeProgressBar" max="1" value="0"></progress>
-      </div>
-      <p id="recipeRunSummary" class="hint compact-hint" role="status"></p>
-      <label class="recipe-start-mode">
-        <span>Start</span>
-        <select id="recipeRunStart" class="compact-select" aria-label="Recipe run starting state">
-          <option value="continue">Continue current model</option>
-          <option value="new-base">Rebuild Base first (new Main)</option>
-        </select>
-      </label>
-      <div class="recipe-run-actions">
-        <button id="recipeValidateBtn" class="compact-btn" type="button">Validate</button>
-        <button id="recipeRunToBtn" class="compact-btn" type="button">Run to Step</button>
-        <button id="recipeRunAllBtn" class="primary compact-btn" type="button">Run All</button>
-        <button id="recipeStopBtn" class="compact-btn" type="button" disabled>Stop</button>
+      <div class="recipe-execution">
+        <div class="recipe-validation-header">
+          <span class="recipe-workflow-label">Check · readiness</span>
+          <button id="recipeValidateBtn" class="compact-btn" type="button">Validate</button>
+        </div>
+        <div id="recipeValidation" class="recipe-validation" aria-live="polite"></div>
+        <div id="recipeProgress" class="recipe-progress" hidden>
+          <div><span id="recipeProgressLabel">Preparing…</span><span id="recipeProgressCount"></span></div>
+          <progress id="recipeProgressBar" max="1" value="0"></progress>
+        </div>
+        <p id="recipeRunSummary" class="hint compact-hint" role="status"></p>
+        <label class="recipe-start-mode">
+          <span>Start</span>
+          <select id="recipeRunStart" class="compact-select" aria-label="Recipe run starting state">
+            <option value="continue">Continue current model</option>
+            <option value="new-base">Rebuild Base first (new Main)</option>
+          </select>
+        </label>
+        <div class="recipe-run-actions">
+          <button id="recipeRunToBtn" class="compact-btn" type="button">Run to Step</button>
+          <button id="recipeRunAllBtn" class="primary compact-btn" type="button">Run All</button>
+          <button id="recipeStopBtn" class="compact-btn" type="button" disabled hidden>Stop</button>
+        </div>
       </div>`;
+  }
+
+  function resetTemplatePreview() {
+    pendingTemplateId = '';
+    templateReplaceArmed = false;
+    if ($('recipeTemplateSelect')) $('recipeTemplateSelect').value = '';
+    if ($('recipeTemplatePreview')) $('recipeTemplatePreview').hidden = true;
+  }
+
+  function renderTemplatePreview() {
+    const host = $('recipeTemplatePreview');
+    if (!host) return;
+    host.hidden = !pendingTemplateId;
+    if (!pendingTemplateId) return;
+    const next = recipeTemplate(pendingTemplateId);
+    $('recipeTemplatePreviewTitle').textContent = next.name || 'New Recipe';
+    $('recipeTemplatePreviewDetail').textContent =
+      `${next.steps.length} template step(s) · Current Recipe: ${recipe.steps.length} step(s)`;
+    const stepList = $('recipeTemplatePreviewSteps');
+    stepList.replaceChildren();
+    for (const step of next.steps) {
+      const row = make(root, 'li', '', recipeStepLabel(step));
+      row.title = recipeStepSummary(step);
+      stepList.append(row);
+    }
+    const hasCurrentWork =
+      recipe.steps.length > 0 ||
+      codeDraftDirty ||
+      recipe.name !== recipeTemplate('blank').name;
+    $('recipeTemplatePreviewWarning').textContent = templateReplaceArmed
+      ? `Replace your current Recipe${codeDraftDirty ? ' and unapplied Code draft' : ''}? This cannot be undone after reload. Recipe Undo is available in this session.`
+      : hasCurrentWork
+        ? 'Preview only. Nothing changes until you explicitly load and confirm replacement.'
+        : 'Preview only. Loading will create this Recipe without running any Process operations.';
+    $('recipeTemplateLoadBtn').textContent = templateReplaceArmed
+      ? 'Replace Recipe'
+      : 'Load template';
+  }
+
+  function requestTemplateLoad() {
+    if (!pendingTemplateId || running) return;
+    const hasCurrentWork =
+      recipe.steps.length > 0 ||
+      codeDraftDirty ||
+      recipe.name !== recipeTemplate('blank').name;
+    if (hasCurrentWork && !templateReplaceArmed) {
+      templateReplaceArmed = true;
+      renderTemplatePreview();
+      return;
+    }
+    const next = recipeTemplate(pendingTemplateId);
+    activeStepId = next.steps[0]?.id || null;
+    persist(next);
+    codeDraftDirty = false;
+    resetTemplatePreview();
+    render();
+    status('Template loaded. Previous Recipe is available with Undo until reload.', 'success');
   }
 
   function field(label, control) {
@@ -928,6 +1000,7 @@ export function createProcessRecipeController({
     if (!$('recipeProcessPane')) return;
     $('recipeNameInput').value = recipe.name;
     $('recipeRecordManual').checked = recordManual;
+    renderTemplatePreview();
     renderSteps();
     renderEditor();
     syncCode();
@@ -1130,6 +1203,8 @@ export function createProcessRecipeController({
     $('recipeValidateBtn').disabled = value;
     $('recipeApplyCodeBtn').disabled = value;
     $('recipeStopBtn').disabled = !value;
+    $('recipeStopBtn').hidden = !value;
+    $('recipeRecordManual').disabled = value;
     $('recipeProgress').hidden = !value;
     updateUndoRedoUi();
   }
@@ -1403,14 +1478,12 @@ export function createProcessRecipeController({
     $('recipeUndoBtn').addEventListener('click', undoRecipe);
     $('recipeRedoBtn').addEventListener('click', redoRecipe);
     $('recipeTemplateSelect').addEventListener('change', () => {
-      const id = $('recipeTemplateSelect').value;
-      if (!id) return;
-      const next = recipeTemplate(id);
-      persist(next);
-      activeStepId = next.steps[0]?.id || null;
-      $('recipeTemplateSelect').value = '';
-      render();
+      pendingTemplateId = $('recipeTemplateSelect').value;
+      templateReplaceArmed = false;
+      renderTemplatePreview();
     });
+    $('recipeTemplateCancelBtn').addEventListener('click', resetTemplatePreview);
+    $('recipeTemplateLoadBtn').addEventListener('click', requestTemplateLoad);
     $('recipeAddStepBtn').addEventListener('click', () => {
       const next = clone(recipe),
         step = defaultStep($('recipeAddKind').value),

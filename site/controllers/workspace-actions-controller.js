@@ -193,13 +193,6 @@ export function createWorkspaceActionsController({
   }
 
   function bindOperationControls() {
-    const setMode = (mode) => {
-      $('operationType').value = mode;
-      updateOperationUI();
-    };
-    root.querySelectorAll('[data-process-mode]').forEach((button) => {
-      button.onclick = () => setMode(button.dataset.processMode);
-    });
     $('operationType').onchange = updateOperationUI;
     $('operationArea').onchange = updateOperationUI;
     $('growthMode').onchange = updateOperationUI;

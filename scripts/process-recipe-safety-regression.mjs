@@ -23,6 +23,26 @@ try {
   await openFunctionPanel(page, 'process');
   await page.locator('[data-process-input-mode="recipe"]').click();
   await page.locator('#recipeTemplateSelect').selectOption('deposit-etch');
+  // Merely selecting a template cannot discard an existing Recipe.
+  assert.equal(await page.locator('.recipe-step-row').count(), 0);
+  assert.equal(await page.locator('#recipeTemplatePreviewSteps li').count(), 2);
+  assert.match(await page.locator('#recipeTemplatePreviewSteps').innerText(), /Deposit/);
+  await page.locator('#recipeTemplateLoadBtn').click();
+  const originalStepCount = await page.locator('.recipe-step-row').count();
+  assert.ok(originalStepCount > 0);
+  await page.locator('#recipeTemplateSelect').selectOption('blank');
+  assert.equal(await page.locator('.recipe-step-row').count(), originalStepCount);
+  await page.locator('#recipeTemplateLoadBtn').click();
+  assert.equal(await page.locator('.recipe-step-row').count(), originalStepCount);
+  assert.match(await page.locator('#recipeTemplateLoadBtn').innerText(), /Replace Recipe/);
+  await page.locator('#recipeTemplateCancelBtn').click();
+  assert.equal(await page.locator('.recipe-step-row').count(), originalStepCount);
+  await page.locator('#recipeTemplateSelect').selectOption('blank');
+  await page.locator('#recipeTemplateLoadBtn').click();
+  await page.locator('#recipeTemplateLoadBtn').click();
+  assert.equal(await page.locator('.recipe-step-row').count(), 0);
+  await page.locator('#recipeUndoBtn').click();
+  assert.equal(await page.locator('.recipe-step-row').count(), originalStepCount);
   await page.locator('#recipeCodeTab').click();
 
   // R1: Invalid Format and Steps/Code switching do not erase an unapplied draft.

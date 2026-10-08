@@ -61,7 +61,7 @@ await historyRestorePage.waitForFunction(
   { timeout: 30000 },
 );
 await openFunctionPanel(historyRestorePage, 'process');
-await historyRestorePage.locator('[data-process-mode="add"]').click();
+await historyRestorePage.locator('#operationType').selectOption('add');
 await historyRestorePage.locator('#operationArea').selectOption('full');
 await historyRestorePage.locator('#growthMode').selectOption('direct');
 await historyRestorePage.locator('#operationThickness').fill('0.05');
@@ -231,7 +231,7 @@ assert.ok(
 
 // Keep a later Main Step after the shared origin, then branch directly from History B.
 await openFunctionPanel(historyRestorePage, 'process');
-await historyRestorePage.locator('[data-process-mode="add"]').click();
+await historyRestorePage.locator('#operationType').selectOption('add');
 await historyRestorePage.locator('#operationArea').selectOption('full');
 await historyRestorePage.locator('#growthMode').selectOption('direct');
 await historyRestorePage.locator('#operationThickness').fill('0.05');
@@ -295,7 +295,7 @@ assert.equal(
 
 // Add a process Step on the child Variant.
 await openFunctionPanel(historyRestorePage, 'process');
-await historyRestorePage.locator('[data-process-mode="add"]').click();
+await historyRestorePage.locator('#operationType').selectOption('add');
 await historyRestorePage.locator('#operationArea').selectOption('full');
 await historyRestorePage.locator('#growthMode').selectOption('direct');
 await historyRestorePage.locator('#operationThickness').fill('0.05');
@@ -512,7 +512,7 @@ await historyRecomputePage.waitForFunction(
   { timeout: 30000 },
 );
 await openFunctionPanel(historyRecomputePage, 'process');
-await historyRecomputePage.locator('[data-process-mode="add"]').click();
+await historyRecomputePage.locator('#operationType').selectOption('add');
 await historyRecomputePage.locator('#operationArea').selectOption('full');
 await historyRecomputePage.locator('#growthMode').selectOption('direct');
 await historyRecomputePage.locator('#operationThickness').fill('0.05');
@@ -616,7 +616,7 @@ await historyReplayFailurePage.waitForFunction(
   { timeout: 30000 },
 );
 await openFunctionPanel(historyReplayFailurePage, 'process');
-await historyReplayFailurePage.locator('[data-process-mode="add"]').click();
+await historyReplayFailurePage.locator('#operationType').selectOption('add');
 await historyReplayFailurePage.locator('#operationArea').selectOption('full');
 await historyReplayFailurePage.locator('#growthMode').selectOption('direct');
 await historyReplayFailurePage.locator('#operationThickness').fill('0.05');

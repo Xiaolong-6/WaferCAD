@@ -193,7 +193,7 @@ try {
   const state = await uiState(page);
   if (!state.layers) throw new Error('Rectangle sample has no selectable layer.');
   await page.locator('.workstation-rail-button[data-tool="process"]').click();
-  await page.locator('[data-process-mode="add"]').click();
+  await page.locator('#operationType').selectOption('add');
   await page.locator('#operationArea').selectOption('mask');
   await page.locator('#layerName').fill('UI import probe');
   await page.locator('#operationThickness').fill('1');
