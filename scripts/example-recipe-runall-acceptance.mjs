@@ -2,6 +2,7 @@
 // production example. Run with a static server on WAFERCAD_URL (default 4173).
 // This is intentionally separate from History/Recipe metadata-only assertions.
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import {
   assertNoPageErrors,
@@ -27,6 +28,19 @@ try {
     const context = await newUiContext(browser, { viewport: { width: 1440, height: 950 } });
     const page = await context.newPage();
     const errors = observePageErrors(page);
+    const browserEvents = [];
+    let lastStep = '';
+    page.on('crash', () => browserEvents.push('Chromium page crashed'));
+    page.on('close', () => browserEvents.push('Chromium page closed'));
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) browserEvents.push(`Navigation: ${frame.url()}`);
+    });
+    page.on('console', (message) => {
+      if (message.text().startsWith('Recipe batch progress:')) {
+        lastStep = message.text();
+        console.log(`${example.id}: ${lastStep}`);
+      }
+    });
     try {
       await page.goto(
         `${baseUrl}/app.html?start=example&example=${encodeURIComponent(example.id)}`,
@@ -72,6 +86,17 @@ try {
 
       // The user can choose either clear or archive. This test exercises
       // "Clear history"; product UI's alternative is "Keep (new Main)".
+      // Observe actual committed-step progression without modifying product code.
+      await page.evaluate(() => {
+        const progress = document.getElementById('recipeProgressCount');
+        if (!progress) return;
+        const log = () => {
+          const value = progress.textContent?.trim();
+          if (value) console.info(`Recipe batch progress: ${value}`);
+        };
+        new MutationObserver(log).observe(progress, { childList: true, subtree: true });
+      });
+      console.log(`${example.id}: beginning ${count}-Step Kernel rebuild`);
       await page.locator('#recipeRunAllBtn').click();
       await chooseConfirmation(page, historyChoice);
       await page.waitForFunction(
@@ -89,6 +114,7 @@ try {
       assert.match(summary, new RegExp(`^Completed: ${count}/${count} steps committed`),
         `${example.id}: Run All failed or stopped: ${summary}; status: ${status}`);
 
+      console.log(`${example.id}: browser reports ${summary}; checking final UI and export`);
       const exported = await exportCurrentProject(page, 120000);
       assert.equal(exported.processRecipe?.steps?.length, count,
         `${example.id}: rebuilt export must retain the complete Recipe`);
@@ -126,6 +152,41 @@ try {
       }
       assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
       console.log(`${example.id}: Run All completed, exported ${count} History/Recipe steps`);
+    } catch (error) {
+      // Preserve actionable evidence when a large-array replay exhausts
+      // Chromium memory, navigates unexpectedly or blocks the main thread.
+      const state = await Promise.race([
+        page.evaluate(() => ({
+          url: location.href,
+          ready: document.documentElement.dataset.appReady,
+          status: document.getElementById('statusText')?.textContent,
+          progress: document.getElementById('recipeProgressCount')?.textContent,
+          summary: document.getElementById('recipeRunSummary')?.textContent,
+          projectButton: {
+            exists: Boolean(document.querySelector('.workstation-rail-button[data-tool="project"]')),
+            visible: Boolean(document.querySelector('.workstation-rail-button[data-tool="project"]')?.checkVisibility()),
+          },
+          threeState: document.getElementById('threeHost')?.dataset?.renderState,
+          threeError: document.getElementById('threeHost')?.dataset?.renderError,
+        })).catch((reason) => ({ error: String(reason) })),
+        new Promise((resolve) => setTimeout(() => resolve({ error: 'UI unresponsive after 4 s' }), 4000)),
+      ]);
+      const details = {
+        example: example.id,
+        error: error.message,
+        lastStep,
+        browserEvents,
+        pageClosed: page.isClosed(),
+        pageState: state,
+        pageErrors: errors,
+      };
+      console.error(`${example.id}: diagnostic ${JSON.stringify(details)}`);
+      await mkdir('test-results/example-recipe-runall', { recursive: true });
+      await writeFile(
+        `test-results/example-recipe-runall/${example.id}.json`,
+        JSON.stringify(details, null, 2),
+      );
+      throw error;
     } finally {
       await context.close();
     }
