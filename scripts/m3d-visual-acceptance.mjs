@@ -61,7 +61,6 @@ try {
   report.import = true;
 
   await ensurePrimaryViewVisible(page, 'main');
-  const main = page.locator('#mainCanvas');
   await waitForCanvasSizeSync(page, '#mainCanvas');
   report.mainInk = await canvasInkFraction(page, '#mainCanvas');
   assert.ok(report.mainInk > 0.015, 'Main view appears empty');
