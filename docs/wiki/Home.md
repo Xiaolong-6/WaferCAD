@@ -10,15 +10,15 @@ _Real preview of a bundled device. Your first structure will be simpler._
 
 ## Choose your path
 
-| I want to… | Start here |
-| --- | --- |
+| I want to…                                   | Start here                                                                                                                                                        |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **See what WaferCAD can do without editing** | [Explore a ready-made example](Examples-and-Modeling-Limits#how-to-explore-or-reproduce-an-example); click the **title or description** of an example on Welcome. |
-| **Build something for the first time** | [First 10 Minutes](First-10-Minutes): make a substrate, deposit an oxide, draw a rectangle and etch one window. No mask file needed. |
-| **Understand the controls** | [Getting Started](Getting-Started) and [Workspace and Views](Workspace-and-Views). |
-| **Import a GDS/OAS mask** | [Masks and ROI](Masks-and-ROI) and [Import and Export](Import-and-Export). |
-| **Run a multi-step process** | [Process and Recipes](Process-and-Recipes); for writing Recipe code, use the [English tutorial](Recipe-Code-Tutorial) or [中文教程](Recipe-Code-Tutorial-zh-CN). |
-| **Find a process's before/after drawing** | [Illustrated Process Operations](Process-Operations) — all 18 operation variants. |
-| **Fix something unexpected** | [Troubleshooting](Troubleshooting). |
+| **Build something for the first time**       | [First 10 Minutes](First-10-Minutes): make a substrate, deposit an oxide, draw a rectangle and etch one window. No mask file needed.                              |
+| **Understand the controls**                  | [Getting Started](Getting-Started) and [Workspace and Views](Workspace-and-Views).                                                                                |
+| **Import a GDS/OAS mask**                    | [Masks and ROI](Masks-and-ROI) and [Import and Export](Import-and-Export).                                                                                        |
+| **Run a multi-step process**                 | [Process and Recipes](Process-and-Recipes); for writing Recipe code, use the [English tutorial](Recipe-Code-Tutorial) or [中文教程](Recipe-Code-Tutorial-zh-CN).      |
+| **Find a process's before/after drawing**    | [Illustrated Process Operations](Process-Operations) — all 18 operation variants.                                                                                 |
+| **Fix something unexpected**                 | [Troubleshooting](Troubleshooting).                                                                                                                               |
 
 ## Three things to understand
 
