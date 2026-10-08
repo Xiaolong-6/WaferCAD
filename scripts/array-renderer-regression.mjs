@@ -118,11 +118,19 @@ try {
       (key) => [key, transparent[key]],
     ),
   );
-  for (let cycle = 0; cycle < 10; cycle++) {
-    await page.locator('#threeOpacityRange').fill(cycle % 2 ? '0.5' : '1');
-    await waitStage(`opacity-stress-${cycle + 1}`);
-  }
+  const opacityUpdatesBeforeStress = Number(transparent.presentationUpdateCount || 0);
+  await page.locator('#threeOpacityRange').evaluate((input) => {
+    for (let cycle = 0; cycle < 10; cycle++) {
+      input.value = cycle % 2 ? '0.5' : '1';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+  await waitStage('opacity-stress-batched');
   const stressOpacity = await snapshot();
+  assert.ok(
+    Number(stressOpacity.presentationUpdateCount) >= opacityUpdatesBeforeStress + 10,
+    'Batched opacity stress must execute every presentation update',
+  );
   for (const [key, value] of Object.entries(stableResources)) {
     assert.equal(stressOpacity[key], value, `${key} changed across repeated opacity updates`);
   }
@@ -135,11 +143,19 @@ try {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }, checked);
   };
-  for (let cycle = 0; cycle < 6; cycle++) {
-    await setBorders(cycle % 2 === 0);
-    await waitStage(`border-stress-${cycle + 1}`);
-  }
+  const borderUpdatesBeforeStress = Number(stressOpacity.presentationUpdateCount || 0);
+  await page.locator('#threeBorders').evaluate((input) => {
+    for (let cycle = 0; cycle < 6; cycle++) {
+      input.checked = cycle % 2 === 0;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  await waitStage('border-stress-batched');
   const stressBorders = await snapshot();
+  assert.ok(
+    Number(stressBorders.presentationUpdateCount) >= borderUpdatesBeforeStress + 6,
+    'Batched border stress must execute every presentation update',
+  );
   for (const [key, value] of Object.entries(stableResources)) {
     assert.equal(stressBorders[key], value, `${key} changed across repeated border updates`);
   }
