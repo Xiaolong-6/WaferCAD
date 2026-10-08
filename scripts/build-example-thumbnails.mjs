@@ -29,6 +29,12 @@ const report = requestedId
 await mkdir(new URL('../site/examples/thumbnails/', import.meta.url), { recursive: true });
 try {
   for (const example of examples) {
+    if (!example.preview.path.endsWith('.webp')) {
+      // Some Welcome projects deliberately use a labeled schematic fallback.
+      // Never overwrite an SVG with encoded WebP screenshot bytes.
+      console.log(`${example.id}: retained illustrative ${example.preview.path}; no WebP manifest entry`);
+      continue;
+    }
     const inputPath = new URL(
       '../site/' + example.previewProject.path.replace(/^\.\//, ''),
       import.meta.url,
