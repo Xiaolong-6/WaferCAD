@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import {
   baseUrl,
   launchBrowser,
@@ -46,6 +46,115 @@ await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
 });
 await waitForAppReady(page);
 await waitForThreeReady(page);
+
+// Verify actual computed toolbar states, including the light fallback cascade.
+// Clicks use the current workstation; theme removal is limited to CSS sampling.
+await mkdir('test-results/toolbar-state', { recursive: true });
+// Sample settled palettes, rather than the 120 ms transition between states.
+const toolbarMotion = await page.addStyleTag({
+  content: '.view-head .mini-btn, .view-head .three-border-toggle { transition: none !important; }',
+});
+const palette = async (selector, light = false) => {
+  await page.mouse.move(1, 1);
+  return page.locator(selector).evaluate((element, light) => {
+    const root = document.documentElement;
+    if (light) root.classList.remove('workstation-ui-v2');
+    try {
+      const style = getComputedStyle(element);
+      return { fill: style.backgroundColor, color: style.color, border: style.borderColor };
+    } finally {
+      if (light) root.classList.add('workstation-ui-v2');
+    }
+  }, light);
+};
+const selectedPalettes = [
+  await palette('#maskSourceToggleBtn'),
+  await palette('#maskSourceToggleBtn', true),
+];
+for (const selector of ['#maskSourceToggleBtn', '#threeFastBtn', '#sectionScaleModeBtn']) {
+  const button = page.locator(selector);
+  const original = (await button.textContent()).trim();
+  const pressed = await button.getAttribute('aria-pressed');
+  for (let index = 0; index < 2; index++) {
+    for (const light of [false, true])
+      assert.deepEqual(
+        await palette(selector, light),
+        selectedPalettes[Number(light)],
+        `${selector}: current mode palette`,
+      );
+    await button.click();
+  }
+  assert.equal((await button.textContent()).trim(), original);
+  assert.equal(await button.getAttribute('aria-pressed'), pressed);
+}
+const toggles = [
+  '#threeBorderControl',
+  '#sectionBordersBtn',
+  '#mainPanBtn',
+  '#sectionDetailRoiBtn',
+];
+for (const selector of toggles) {
+  const control = page.locator(selector);
+  const active = async () =>
+    selector === '#threeBorderControl'
+      ? page.locator('#threeBorders').isChecked()
+      : (await control.getAttribute('aria-pressed')) === 'true';
+  const initial = await active();
+  if (initial) await control.click();
+  const off = [await palette(selector), await palette(selector, true)];
+  await control.click();
+  assert.equal(await active(), true, `${selector}: selected semantics`);
+  for (const light of [false, true]) {
+    const on = await palette(selector, light);
+    assert.notDeepEqual(on, off[Number(light)], `${selector}: distinguish selected state`);
+    assert.deepEqual(on, selectedPalettes[Number(light)], `${selector}: shared selected palette`);
+  }
+  await page.locator('#maskSourceToggleBtn').hover();
+  const hovered = await page.locator('#maskSourceToggleBtn').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { fill: style.backgroundColor, color: style.color, border: style.borderColor };
+  });
+  await control.hover();
+  assert.deepEqual(
+    await control.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { fill: style.backgroundColor, color: style.color, border: style.borderColor };
+    }),
+    hovered,
+    `${selector}: shared selected hover palette`,
+  );
+  await control.click();
+  assert.equal(await active(), false);
+  if (initial) await control.click();
+}
+const bordersBeforeKeyboard = await page.locator('#threeBorders').isChecked();
+await page.locator('#threeBorders').focus();
+await page.keyboard.press('Space');
+assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeKeyboard);
+await page.keyboard.press('Space');
+assert.equal(await page.locator('#threeBorders').isChecked(), bordersBeforeKeyboard);
+for (const selector of ['#maskRoiEditor', '#threePanel .three-opacity-control']) {
+  const details = page.locator(selector);
+  const summary = `${selector} > summary`;
+  if (await details.evaluate((element) => element.open)) await page.locator(summary).click();
+  const closed = [await palette(summary), await palette(summary, true)];
+  await page.locator(summary).click();
+  assert.equal(await details.evaluate((element) => element.open), true);
+  for (const light of [false, true]) {
+    assert.notDeepEqual(await palette(summary, light), closed[Number(light)]);
+    assert.deepEqual(
+      await palette(summary, light),
+      selectedPalettes[Number(light)],
+      `${selector}: expanded palette`,
+    );
+  }
+  await page.locator(summary).click();
+}
+await toolbarMotion.evaluate((element) => element.remove());
+await page.screenshot({ path: 'test-results/toolbar-state/desktop.png', animations: 'disabled' });
+console.log(
+  'Toolbar computed palettes: modes, toggles, hover and popovers passed in dark/light CSS',
+);
 
 // Slice geometry is editable by default; Slice starts one-shot creation.
 const abPanel = page.locator('#sectionCoordsPanel');

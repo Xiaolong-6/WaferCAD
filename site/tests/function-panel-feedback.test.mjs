@@ -9,10 +9,7 @@ const feedback = await readFile(
   'utf8',
 );
 const style = await readFile(new URL('../style.css', import.meta.url), 'utf8');
-const workstationStyle = await readFile(
-  new URL('../workstation.css', import.meta.url),
-  'utf8',
-);
+const workstationStyle = await readFile(new URL('../workstation.css', import.meta.url), 'utf8');
 const projectState = await readFile(
   new URL('../controllers/project-state-controller.js', import.meta.url),
   'utf8',

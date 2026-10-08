@@ -126,7 +126,7 @@ See [Process benchmarks](PROCESS_BENCHMARKS.md) for analytic step/trench/island 
 
 WaferCAD should read as a compact engineering/CAD workstation rather than a collection of independent web cards. Preserve information density and layout geometry. New UI should reuse the existing visual hierarchy:
 
-- scientific headers use the shared compact toolbar treatment;
+- scientific headers use the shared compact toolbar treatment; persistent toggles share selected/hover palettes across Main, Mask, 3D and Section, with no extra ON/OFF badge. File/Draw, Fast/Quality and Auto/1:1 always highlight the currently named mode; popovers highlight only while open. Keep checkbox/pressed semantics independent of the mode label;
 - use borders sparingly; prefer surface contrast, spacing and active-state emphasis;
 - fields and selects share the same compact control height, radius and focus ring;
 - primary actions use the steel-blue accent; secondary/quiet actions remain neutral;
