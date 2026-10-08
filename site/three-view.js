@@ -1155,9 +1155,7 @@ export function createThreeView({
         if (object === retainedGroup) return;
         retainedObjects++;
         if (object.geometry) retainedGeometries.add(object.geometry);
-        const objectMaterials = Array.isArray(object.material)
-          ? object.material
-          : [object.material];
+        const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
         for (const material of objectMaterials) if (material) retainedMaterials.add(material);
       });
     }
@@ -1308,7 +1306,10 @@ export function createThreeView({
         return { positions, normals };
       }),
       geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(data.positions.slice(), 3));
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(data.positions.slice(), 3),
+    );
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(data.normals.slice(), 3));
     return geometry;
   }
@@ -1501,7 +1502,12 @@ export function createThreeView({
     });
   }
 
-  function createSurfaceMaterial(layer, materialState, appearance = null, presentation = null) {
+  function createSurfaceMaterial(
+    layer,
+    materialState,
+    appearance = null,
+    presentation = null,
+  ) {
     const create = () => {
       // Large arrays can cover thousands of overlapping transparent faces.
       // Fast vertex-lit shading is materially cheaper on software WebGL than
@@ -1531,7 +1537,8 @@ export function createThreeView({
     // transparent sorting and WebGL program lifecycle must remain independent
     // per object (matching the last verified GPU-v3 transparency path).
     // Opaque smooth objects can share materials without that ordering pressure.
-    if (appearance || !presentation?.kind || presentationMode() === 'transparent') return create();
+    if (appearance || !presentation?.kind || presentationMode() === 'transparent')
+      return create();
 
     const key = JSON.stringify([
       presentation.kind,
@@ -1731,7 +1738,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
   function addBorderPositions(
     positions,
-    { order = 100000, opacity = 1, adaptiveRough = false, presentation = { kind: 'border' } } = {},
+    {
+      order = 100000,
+      opacity = 1,
+      adaptiveRough = false,
+      presentation = { kind: 'border' },
+    } = {},
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
@@ -1791,44 +1803,44 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 : 6
             : policy.maxDepth,
           zones = prepareRoughSpatialZones(task).map((zone) => {
-            const priority = roughZonePriority(zone.bounds, focus),
-              roughnessDetail =
-                policy.roughnessDetail *
-                (task.cap.buried ? policy.interfaceDetail : 1) *
-                gpuGeometryDetail,
-              lodContext = lodContextFor(context.model, context.clip, null, task.cap.z, {
-                visibleFraction: priority >= 0.9 ? 1 : priority >= 0.2 ? 0.2 : 0.04,
-                screenPriority: priority,
-                maxDepth: Math.min(
-                  policy.maxDepth,
-                  gpuMaxDepth,
-                  priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
-                ),
-                patchBounds: zone.bounds,
-              }),
-              preview = adaptiveRoughMeshLod({
-                triangleCount: zone.baseTriangles.length,
-                maxEdge: zone.maxEdge,
-                featureSize: task.cap.appearance?.featureSize,
+          const priority = roughZonePriority(zone.bounds, focus),
+            roughnessDetail =
+              policy.roughnessDetail *
+              (task.cap.buried ? policy.interfaceDetail : 1) *
+              gpuGeometryDetail,
+            lodContext = lodContextFor(context.model, context.clip, null, task.cap.z, {
+              visibleFraction: priority >= 0.9 ? 1 : priority >= 0.2 ? 0.2 : 0.04,
+              screenPriority: priority,
+              maxDepth: Math.min(
+                policy.maxDepth,
+                gpuMaxDepth,
+                priority >= 0.9 ? 10 : priority >= 0.2 ? 7 : 5,
+              ),
+              patchBounds: zone.bounds,
+            }),
+            preview = adaptiveRoughMeshLod({
+              triangleCount: zone.baseTriangles.length,
+              maxEdge: zone.maxEdge,
+              featureSize: task.cap.appearance?.featureSize,
+              ...lodContext,
+              roughnessDetail,
+            }),
+            prepared = {
+              ...zone,
+              lodContext: {
                 ...lodContext,
                 roughnessDetail,
-              }),
-              prepared = {
-                ...zone,
-                lodContext: {
-                  ...lodContext,
-                  roughnessDetail,
-                },
-                triangleBudget: null,
-              };
-            requests.push({
-              zone: prepared,
-              baseTriangles: Math.max(1, zone.baseTriangles.length),
-              desiredTriangles: Math.max(1, preview.desiredTriangles),
-              priority,
-            });
-            return prepared;
+              },
+              triangleBudget: null,
+            };
+          requests.push({
+            zone: prepared,
+            baseTriangles: Math.max(1, zone.baseTriangles.length),
+            desiredTriangles: Math.max(1, preview.desiredTriangles),
+            priority,
           });
+          return prepared;
+        });
         return { ...task, gpuDisplacement, zones };
       }),
       viewport = currentViewport(),
@@ -2592,81 +2604,81 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state.transparent) {
           const planes = new Map();
           for (const part of visibleCaps) {
-            const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
-            if (!planes.has(key)) {
-              planes.set(key, { z: part.z, normal: part.normal, polys: [] });
-            }
-            planes.get(key).polys.push(...(part.polys || []));
+          const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
+          if (!planes.has(key)) {
+            planes.set(key, { z: part.z, normal: part.normal, polys: [] });
           }
-          const preparedPlanes = [...planes.values()].map((plane) => ({
-              ...plane,
-              instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
-            })),
-            totalInstances = preparedPlanes.reduce(
-              (sum, plane) => sum + plane.instances.instanceCount,
-              0,
-            );
+          planes.get(key).polys.push(...(part.polys || []));
+        }
+        const preparedPlanes = [...planes.values()].map((plane) => ({
+            ...plane,
+            instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
+          })),
+          totalInstances = preparedPlanes.reduce(
+            (sum, plane) => sum + plane.instances.instanceCount,
+            0,
+          );
 
-          if (totalInstances > 0) {
-            for (const plane of preparedPlanes) {
-              for (const instances of plane.instances.groups) {
-                const geometry = geometryFromSolid({
-                    slabs: [],
-                    caps: [
-                      {
-                        z: plane.z,
-                        normal: plane.normal,
-                        polys: [instances.localPoly],
-                      },
-                    ],
-                  }),
-                  presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
-                  material = createSurfaceMaterial(
-                    layerById(model, bucket.part.layerId),
-                    state,
-                    null,
-                    presentation,
-                  ),
-                  meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
-                    name: `${bucket.part.layerId || 'material'} repeated cap`,
-                    presentation,
-                  });
-                if (!meshes.length) continue;
-                smoothCapInstanceGroupCount += meshes.length;
-                smoothCapInstanceCount += instances.translations.length;
-                smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
-              }
-
-              if (plane.instances.leftovers.length) {
-                const geometry = geometryFromSolid({
-                    slabs: [],
-                    caps: [
-                      {
-                        z: plane.z,
-                        normal: plane.normal,
-                        polys: plane.instances.leftovers,
-                      },
-                    ],
-                  }),
-                  presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
-                  material = createSurfaceMaterial(
-                    layerById(model, bucket.part.layerId),
-                    state,
-                    null,
-                    presentation,
-                  );
-                addSurfaceMesh(
-                  geometry,
-                  material,
+        if (totalInstances > 0) {
+          for (const plane of preparedPlanes) {
+            for (const instances of plane.instances.groups) {
+              const geometry = geometryFromSolid({
+                  slabs: [],
+                  caps: [
+                    {
+                      z: plane.z,
+                      normal: plane.normal,
+                      polys: [instances.localPoly],
+                    },
+                  ],
+                }),
+                presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
                   state,
                   null,
-                  bucket.part.buried ? 10 : 0,
-                  false,
+                  presentation,
+                ),
+                meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
+                  name: `${bucket.part.layerId || 'material'} repeated cap`,
+                  presentation,
+                });
+              if (!meshes.length) continue;
+              smoothCapInstanceGroupCount += meshes.length;
+              smoothCapInstanceCount += instances.translations.length;
+              smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+            }
+
+            if (plane.instances.leftovers.length) {
+              const geometry = geometryFromSolid({
+                  slabs: [],
+                  caps: [
+                    {
+                      z: plane.z,
+                      normal: plane.normal,
+                      polys: plane.instances.leftovers,
+                    },
+                  ],
+                }),
+                presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
+                  state,
                   null,
                   presentation,
                 );
-              }
+              addSurfaceMesh(
+                geometry,
+                material,
+                state,
+                null,
+                bucket.part.buried ? 10 : 0,
+                false,
+                null,
+                presentation,
+              );
             }
+          }
             continue;
           }
         }
@@ -2750,51 +2762,51 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state.transparent) {
           const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
           if (instances.instanceCount > 0) {
-            for (const groupInstances of instances.groups) {
-              const geometry = geometryFromSidewallParts([groupInstances.template]),
-                presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
-                material = createSurfaceMaterial(
-                  layerById(model, bucket.part.layerId),
-                  state,
-                  null,
-                  presentation,
-                ),
-                meshes = addInstancedSurfaceMeshes(
-                  geometry,
-                  material,
-                  groupInstances.translations,
-                  {
-                    name: `${bucket.part.layerId || 'material'} repeated sidewall`,
-                    presentation,
-                  },
-                );
-              if (!meshes.length) continue;
-              smoothSidewallInstanceGroupCount += meshes.length;
-              smoothSidewallInstanceCount += groupInstances.translations.length;
-              smoothSidewallTemplateTriangleCount +=
-                geometry.getAttribute('position')?.count / 3 || 0;
-            }
-
-            if (instances.leftovers.length) {
-              const geometry = geometryFromSidewallParts(instances.leftovers),
-                presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
-                material = createSurfaceMaterial(
-                  layerById(model, bucket.part.layerId),
-                  state,
-                  null,
-                  presentation,
-                );
-              addSurfaceMesh(
-                geometry,
-                material,
+          for (const groupInstances of instances.groups) {
+            const geometry = geometryFromSidewallParts([groupInstances.template]),
+              presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+              material = createSurfaceMaterial(
+                layerById(model, bucket.part.layerId),
                 state,
                 null,
-                bucket.part.buried ? 11 : 0,
-                false,
+                presentation,
+              ),
+              meshes = addInstancedSurfaceMeshes(
+                geometry,
+                material,
+                groupInstances.translations,
+                {
+                  name: `${bucket.part.layerId || 'material'} repeated sidewall`,
+                  presentation,
+                },
+              );
+            if (!meshes.length) continue;
+            smoothSidewallInstanceGroupCount += meshes.length;
+            smoothSidewallInstanceCount += groupInstances.translations.length;
+            smoothSidewallTemplateTriangleCount +=
+              geometry.getAttribute('position')?.count / 3 || 0;
+          }
+
+          if (instances.leftovers.length) {
+            const geometry = geometryFromSidewallParts(instances.leftovers),
+              presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+              material = createSurfaceMaterial(
+                layerById(model, bucket.part.layerId),
+                state,
                 null,
                 presentation,
               );
-            }
+            addSurfaceMesh(
+              geometry,
+              material,
+              state,
+              null,
+              bucket.part.buried ? 11 : 0,
+              false,
+              null,
+              presentation,
+            );
+          }
             continue;
           }
         }
@@ -2832,7 +2844,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       const rendererSidewallsAt = performance.now();
 
-      host.dataset.instanceChunkLimit = presentationMode() === 'transparent' ? '256' : '4096';
+      host.dataset.instanceChunkLimit =
+        presentationMode() === 'transparent' ? '256' : '4096';
       host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
@@ -3150,10 +3163,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
             }),
             capMaterial = createSurfaceMaterial(
-              {
-                id: electrical.layerId || electrical.electricalRegionId || 'electrical-region',
-                color: electrical.color || '#7A6FD0',
-              },
+              { id: electrical.layerId || electrical.electricalRegionId || 'electrical-region', color: electrical.color || '#7A6FD0' },
               capState,
               null,
               surfacePresentation,

@@ -73,9 +73,7 @@ test('Native three-tier Fig3 preserves gates, contact windows, isolation, CMP an
     ),
   );
   assert.deepEqual(
-    project.snapshotBranches.nodes
-      .slice(0, 22)
-      .map((node) => processRecipeSignature(node.operation)),
+    project.snapshotBranches.nodes.slice(0, 22).map((node) => processRecipeSignature(node.operation)),
     original.snapshotBranches.nodes.map((node) => processRecipeSignature(node.operation)),
     'Current full replay preserves the approved tier-1/tier-2 process recipe without requiring historical node/state identity',
   );

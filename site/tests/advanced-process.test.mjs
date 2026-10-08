@@ -100,12 +100,8 @@ test('Transfer/Laminate follow mode lands on each local exposed surface without 
 
   assert.equal(result.changed, true, result.error);
   assert.equal(result.transferMode, 'follow');
-  const onStep = regionAt(model, [0, 0]).stack.find(
-    (segment) => segment.layerId === result.layerId,
-  );
-  const offStep = regionAt(model, [7, 0]).stack.find(
-    (segment) => segment.layerId === result.layerId,
-  );
+  const onStep = regionAt(model, [0, 0]).stack.find((segment) => segment.layerId === result.layerId);
+  const offStep = regionAt(model, [7, 0]).stack.find((segment) => segment.layerId === result.layerId);
   assert.deepEqual(onStep, { layerId: result.layerId, z0: 7, z1: 7.01 });
   assert.deepEqual(offStep, { layerId: result.layerId, z0: 5, z1: 5.01 });
   assert.equal(validateProcessModel(model), model);
@@ -240,7 +236,10 @@ test('vector difference falls back to componentwise clipping after multipolygon 
     return original(...args);
   };
   try {
-    const subject = [...vectorApi.rectMulti(4, 4, -4, 0), ...vectorApi.rectMulti(4, 4, 4, 0)];
+    const subject = [
+      ...vectorApi.rectMulti(4, 4, -4, 0),
+      ...vectorApi.rectMulti(4, 4, 4, 0),
+    ];
     const result = vectorApi.difference(subject, vectorApi.rectMulti(2, 8, -5, 0));
     assert.equal(result.length, 2);
     assert.ok(result.every((polygon) => polygon.length > 0));

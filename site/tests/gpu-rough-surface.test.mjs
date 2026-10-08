@@ -56,7 +56,10 @@ test('GPU rough task eligibility falls back for buried, implant, and scaled-Z pa
     canUseGpuRoughTask({ appearance, zDisplay: { frontScale: 1.2, backScale: 1 } }),
     false,
   );
-  assert.equal(canUseGpuRoughTask({ appearance, zDisplay: { frontScale: 1, backScale: 1 } }), true);
+  assert.equal(
+    canUseGpuRoughTask({ appearance, zDisplay: { frontScale: 1, backScale: 1 } }),
+    true,
+  );
 });
 
 test('GPU rough decorator chains existing material shader hooks', () => {

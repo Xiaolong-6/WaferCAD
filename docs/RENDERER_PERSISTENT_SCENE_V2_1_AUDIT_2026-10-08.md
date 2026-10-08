@@ -14,18 +14,18 @@
 
 The Chromium full-wafer regression uses the 625-site / 1885-instance project. Initial opaque rendering and Fast/Quality transitions succeed.
 
-| CI head    | Transparent path                                                 | CPU variant assembly | Cold transparent wait | Status                                                                   |
-| ---------- | ---------------------------------------------------------------- | -------------------: | --------------------: | ------------------------------------------------------------------------ |
-| `045f9820` | 4096-instance groups, pooled materials                           |               ~0.6 s |         >45 s timeout | Fail                                                                     |
-| `3840247d` | 64-instance groups, pooled materials                             |               ~0.8 s |         >45 s timeout | Fail                                                                     |
-| `264b3f76` | 64-instance groups, private transparent materials                |               ~0.4 s |                37.8 s | Fail                                                                     |
-| `a5f9abed` | 256-instance groups, private materials, experimental single-pass |               ~0.3 s |                27.5 s | **Invalid experiment:** violates verified two-pass transparency contract |
+| CI head | Transparent path | CPU variant assembly | Cold transparent wait | Status |
+|---|---|---:|---:|---|
+| `045f9820` | 4096-instance groups, pooled materials | ~0.6 s | >45 s timeout | Fail |
+| `3840247d` | 64-instance groups, pooled materials | ~0.8 s | >45 s timeout | Fail |
+| `264b3f76` | 64-instance groups, private transparent materials | ~0.4 s | 37.8 s | Fail |
+| `a5f9abed` | 256-instance groups, private materials, experimental single-pass | ~0.3 s | 27.5 s | **Invalid experiment:** violates verified two-pass transparency contract |
 
 The experimental `forceSinglePass` change was reverted in `faee9138`. Do not reintroduce it without an independently reviewed visual/scientific contract change. The current code preserves the two-pass transparent material behavior and uses 256-instance transparent spatial groups; its resulting browser runtime requires verification.
 
 ## Root-cause boundary
 
-The stage logger separates cap bucket construction, sidewall construction, annotations and presentation updates. In failed runs, **CPU assembly completes in less than ~1 second**; the 45-second wait is dominated by the first WebGL transparent frame on the CI software renderer. The problem is _not_ a Process Kernel or physical topology operation. Existing scene diagnostic counts show **608 opaque objects** versus roughly **940–2100 transparent objects**, depending on spatial chunking.
+The stage logger separates cap bucket construction, sidewall construction, annotations and presentation updates. In failed runs, **CPU assembly completes in less than ~1 second**; the 45-second wait is dominated by the first WebGL transparent frame on the CI software renderer. The problem is *not* a Process Kernel or physical topology operation. Existing scene diagnostic counts show **608 opaque objects** versus roughly **940–2100 transparent objects**, depending on spatial chunking.
 
 ## Next implementation direction
 

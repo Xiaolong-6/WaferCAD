@@ -8,10 +8,7 @@ const { applyOperation, createModel } = await import('../model.js');
 const { rectMulti, unionGeometries } = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
 
-const packageRoot = new URL(
-  '../../examples/projects/m3d-selfpowered-2026-candidate/',
-  import.meta.url,
-);
+const packageRoot = new URL('../../examples/projects/m3d-selfpowered-2026-candidate/', import.meta.url);
 
 async function text(relative) {
   return readFile(new URL(relative, packageRoot), 'utf8');
@@ -58,19 +55,20 @@ async function maskArea(name) {
 }
 
 test('M3D v2 masks keep published channels and corrected electrical landings', async () => {
-  const [pvm, rail, via, gate, open, wse, mos, wseSd, bridge, via2, graphene] = await Promise.all([
-    text('masks/PVM_M01_Si_channel_etch.svg'),
-    text('masks/M3D_M04_power_rail.svg'),
-    text('masks/M3D_M05_power_via_open_ILD1.svg'),
-    text('masks/M3D_M06_local_back_gate.svg'),
-    text('masks/M3D_M07_HfO2_open.svg'),
-    text('masks/M3D_M08_WSe2_channel.svg'),
-    text('masks/M3D_M11_MoS2_channel.svg'),
-    text('masks/M3D_M09_WSe2_SD.svg'),
-    text('masks/M3D_M12_MoS2_SD_bridge.svg'),
-    text('masks/M3D_M13_ILD2_data_power_via_open.svg'),
-    text('masks/M3D_M15_graphene_SD_via_connect.svg'),
-  ]);
+  const [pvm, rail, via, gate, open, wse, mos, wseSd, bridge, via2, graphene] =
+    await Promise.all([
+      text('masks/PVM_M01_Si_channel_etch.svg'),
+      text('masks/M3D_M04_power_rail.svg'),
+      text('masks/M3D_M05_power_via_open_ILD1.svg'),
+      text('masks/M3D_M06_local_back_gate.svg'),
+      text('masks/M3D_M07_HfO2_open.svg'),
+      text('masks/M3D_M08_WSe2_channel.svg'),
+      text('masks/M3D_M11_MoS2_channel.svg'),
+      text('masks/M3D_M09_WSe2_SD.svg'),
+      text('masks/M3D_M12_MoS2_SD_bridge.svg'),
+      text('masks/M3D_M13_ILD2_data_power_via_open.svg'),
+      text('masks/M3D_M15_graphene_SD_via_connect.svg'),
+    ]);
 
   const pvmRects = rects(pvm),
     rails = rects(rail),

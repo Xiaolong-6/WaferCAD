@@ -87,6 +87,7 @@ test('validated triangulation drops sub-grid degenerate cap slivers', () => {
   assert.deepEqual(triangulatePolygon(THREE, polygon), []);
 });
 
+
 test('validated triangulation slab-falls back for clipped multi-hole metal caps', () => {
   const polygon = [
       [

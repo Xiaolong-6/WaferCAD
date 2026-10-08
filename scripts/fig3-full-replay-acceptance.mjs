@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
-import { newUiContext, waitForAppReady, waitForThreeReady } from './test-helpers/ui.mjs';
+import {
+  newUiContext,
+  waitForAppReady,
+  waitForThreeReady,
+} from './test-helpers/ui.mjs';
 import {
   checkSectionSeams,
   exportCurrentProject,
@@ -15,8 +19,7 @@ await loadGeometryKernel();
 
 const io = await import('../site/project-io.js');
 const schema = await import('../site/project-schema.js');
-const { pointInMulti, difference, multiBounds, unionGeometries } =
-  await import('../site/vector-geometry.js');
+const { pointInMulti, difference, multiBounds, unionGeometries } = await import('../site/vector-geometry.js');
 const { createWaferArrayProject } = await import('../site/model-array-construction.js');
 
 const sourcePath = new URL('../site/examples/three-tier-silicon-jlfets.wafercad', import.meta.url);
@@ -118,13 +121,7 @@ function geometryComparison(actual, expected) {
   const boundsMatch = ['minX', 'minY', 'maxX', 'maxY'].every(
     (key) => Math.abs(a[key] - b[key]) <= 1e-4,
   );
-  return {
-    equivalent: symmetricDifferenceArea <= tolerance && boundsMatch,
-    symmetricDifferenceArea,
-    tolerance,
-    a,
-    b,
-  };
+  return { equivalent: symmetricDifferenceArea <= tolerance && boundsMatch, symmetricDifferenceArea, tolerance, a, b };
 }
 
 function assertGeometryEquivalent(actual, expected, label) {
@@ -354,7 +351,10 @@ assert.deepEqual(reopenedFull.model, fullWafer.model);
 assert.deepEqual(reopenedFull.snapshotBranches, fullWafer.snapshotBranches);
 
 await writeFile(new URL('three-tier-silicon-jlfets.wafercad', resultDir), siteText);
-await writeFile(new URL('three-tier-silicon-jlfets-full-wafer.wafercad', resultDir), fullText);
+await writeFile(
+  new URL('three-tier-silicon-jlfets-full-wafer.wafercad', resultDir),
+  fullText,
+);
 if (process.argv.includes('--write-repo-examples')) {
   await writeFile(sourcePath, siteText);
   await writeFile(fullWaferPath, fullText);

@@ -214,11 +214,7 @@ test('array follow-surface transfer stays local across site heights and matches 
   validateProcessModel(array);
   resolved = resolveArrayModel(array);
   for (const x of [-5, 5])
-    assert.deepEqual(
-      physicalAt(resolved, [x, 0]),
-      physicalAt(normal, [x, 0]),
-      `follow transfer at ${x}`,
-    );
+    assert.deepEqual(physicalAt(resolved, [x, 0]), physicalAt(normal, [x, 0]), `follow transfer at ${x}`);
 });
 
 const { sectionColumns } = await import('../model-view-geometry.js');

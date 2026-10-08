@@ -155,10 +155,7 @@ try {
   }
   // Timing is diagnostic here, not a hardware-independent pass/fail
   // condition. Both frames must be complete and own the same cached geometry.
-  assert.ok(
-    Number(transparentWarm.host.rendererFrameSerial) >
-      Number(transparentCold.host.rendererFrameSerial),
-  );
+  assert.ok(Number(transparentWarm.host.rendererFrameSerial) > Number(transparentCold.host.rendererFrameSerial));
   assert.deepEqual(errors, []);
 
   const report = {

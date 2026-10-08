@@ -2010,6 +2010,7 @@ test('reopening an unbookmarked HEAD preserves its null bookmark cursor after an
   assert.equal(reopened.continuationContext(), null);
 });
 
+
 test('Apply Base archives Main Steps and Variants while starting clean Main', () => {
   let live = { model: { processRevision: 0 }, tag: 'old base' };
   let nodeId = 0;
@@ -2017,9 +2018,7 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
   let bookmarkId = 0;
   const options = {
     capture: () => live,
-    restore: (state) => {
-      live = state;
-    },
+    restore: (state) => { live = state; },
     validateState: (state) => Number.isInteger(state?.model?.processRevision),
     nodeIdFactory: () => `node-${++nodeId}`,
     branchIdFactory: () => `variant-${++branchId}`,
@@ -2042,24 +2041,12 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
     previousState,
   });
   assert.ok(archivedBranchId);
-  assert.equal(
-    manager.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot,
-    true,
-  );
+  assert.equal(manager.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot, true);
   assert.equal(manager.activeBranch().id, 'main');
   assert.equal(manager.activeBranch().processStepCount, 0);
-  assert.equal(
-    manager.listBranches().find((item) => item.id === child.id).parentBranchId,
-    archivedBranchId,
-  );
-  assert.equal(
-    manager.listHistory().find((node) => node.id === first.id).branchId,
-    archivedBranchId,
-  );
-  assert.equal(
-    manager.list().find((record) => record.id === milestone.id).branchId,
-    archivedBranchId,
-  );
+  assert.equal(manager.listBranches().find((item) => item.id === child.id).parentBranchId, archivedBranchId);
+  assert.equal(manager.listHistory().find((node) => node.id === first.id).branchId, archivedBranchId);
+  assert.equal(manager.list().find((record) => record.id === milestone.id).branchId, archivedBranchId);
 
   live = { model: { processRevision: 1 }, tag: 'new deposit' };
   const freshStep = manager.recordOperation({ kind: 'add', label: 'New deposition' });
@@ -2078,16 +2065,11 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
     branchState = manager.exportBranchState();
   const reopened = createSnapshotManager({
     capture: () => live,
-    restore: (state) => {
-      live = state;
-    },
+    restore: (state) => { live = state; },
     validateState: options.validateState,
   });
   reopened.importRecords(records, branchState);
-  assert.equal(
-    reopened.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot,
-    true,
-  );
+  assert.equal(reopened.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot, true);
   assert.equal(reopened.switchBranch(archivedBranchId), true);
   assert.equal(live.tag, 'oxide');
   assert.equal(reopened.switchBranch(child.id), true);
@@ -2101,9 +2083,7 @@ test('Apply Base from a historical cursor archives actual Main HEAD', () => {
     sequence = 0;
   const manager = createSnapshotManager({
     capture: () => live,
-    restore: (state) => {
-      live = state;
-    },
+    restore: (state) => { live = state; },
     validateState: (state) => Number.isInteger(state?.model?.processRevision),
     nodeIdFactory: () => `process-${++sequence}`,
     branchIdFactory: () => `archived-${++sequence}`,
@@ -2134,9 +2114,7 @@ test('Apply Base clear mode resets both Steps and Variants', () => {
   let live = { model: { processRevision: 1 }, tag: 'old process' };
   const manager = createSnapshotManager({
     capture: () => live,
-    restore: (state) => {
-      live = state;
-    },
+    restore: (state) => { live = state; },
     validateState: (state) => Number.isInteger(state?.model?.processRevision),
     nodeIdFactory: () => 'old-step',
   });
@@ -2146,10 +2124,7 @@ test('Apply Base clear mode resets both Steps and Variants', () => {
   manager.rebuildMainBase({ preservePrevious: false });
   assert.equal(manager.listHistory().length, 0);
   assert.equal(manager.list().length, 0);
-  assert.deepEqual(
-    manager.listBranches().map((item) => item.id),
-    ['main'],
-  );
+  assert.deepEqual(manager.listBranches().map((item) => item.id), ['main']);
   assert.equal(manager.switchBranch('main'), true);
   assert.equal(live.tag, 'new base');
 });
