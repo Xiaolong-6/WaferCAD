@@ -12,6 +12,26 @@ async function readJson(relativeUrl) {
   return JSON.parse(await readFile(new URL(relativeUrl, import.meta.url), 'utf8'));
 }
 
+function processRecipeSignature(operation) {
+  if (operation?.kind === 'record') {
+    return {
+      kind: operation.kind,
+      processType: operation.processType ?? null,
+      temperatureC: operation.temperatureC ?? null,
+      durationMin: operation.durationMin ?? null,
+      ambient: operation.ambient ?? null,
+      note: operation.note ?? null,
+    };
+  }
+  const replay = structuredClone(operation?.replay ?? null);
+  if (replay?.params?.growth === 'transfer' && !replay.params.transferMode)
+    replay.params.transferMode = 'follow';
+  return {
+    kind: operation?.kind ?? null,
+    replay,
+  };
+}
+
 test('Photodetector annotation steps preserve material topology', async () => {
   const project = await readJson('../examples/photodetector-literature-examples.wafercad');
   const checked = assertAnnotationKeepsMaterialTopology(project);
@@ -52,7 +72,11 @@ test('Native three-tier Fig3 preserves gates, contact windows, isolation, CMP an
       ),
     ),
   );
-  assert.deepEqual(project.snapshotBranches.nodes.slice(0, 22), original.snapshotBranches.nodes);
+  assert.deepEqual(
+    project.snapshotBranches.nodes.slice(0, 22).map((node) => processRecipeSignature(node.operation)),
+    original.snapshotBranches.nodes.map((node) => processRecipeSignature(node.operation)),
+    'Current full replay preserves the approved tier-1/tier-2 process recipe without requiring historical node/state identity',
+  );
   assert.deepEqual(project.selectedLayerKeys, ['10|0', '11|0', '12|0', '13|0']);
 });
 

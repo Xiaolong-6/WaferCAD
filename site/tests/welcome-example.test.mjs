@@ -137,11 +137,10 @@ test('Welcome previews preserve final structure and display while retaining only
         ),
       );
     const original = await read(example.previewSourcePath || example.path);
-    const full = await read(example.path);
     if (example.previewSourcePath) {
-      assert.equal(full.model.kernel, 'vector-2.5d-array-v1');
-      assert.equal(full.model.array.instances.filter((i) => i.role === 'device').length, 625);
-      assert.equal(full.snapshotBranches.nodes.length, 40);
+      // Full-wafer validity and the 625-site/40-Step contract are covered by
+      // example-structure, Native Fig3 full replay and array browser regression.
+      // This preview test only needs the single-site source used to build the cover.
       assert.equal(original.model.kernel, 'vector-2.5d-v1');
     }
     const preview = await read(example.previewProject.path);

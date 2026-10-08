@@ -14,10 +14,21 @@ const browser = await chromium.launch({
   executablePath: process.env.WAFERCAD_CHROMIUM,
   args: ['--enable-unsafe-swiftshader'],
 });
-const report = [];
+const requestedId = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5) || null;
+const examples = requestedId
+  ? BUNDLED_EXAMPLES.filter((example) => example.id === requestedId)
+  : BUNDLED_EXAMPLES;
+if (requestedId) assert.equal(examples.length, 1, `Unknown bundled example: ${requestedId}`);
+const manifestUrl = new URL('../tests/fixtures/project-io/example-thumbnails.json', import.meta.url);
+const previousManifest = requestedId
+  ? JSON.parse(await readFile(manifestUrl, 'utf8'))
+  : { examples: [] };
+const report = requestedId
+  ? previousManifest.examples.filter((entry) => entry.id !== requestedId)
+  : [];
 await mkdir(new URL('../site/examples/thumbnails/', import.meta.url), { recursive: true });
 try {
-  for (const example of BUNDLED_EXAMPLES) {
+  for (const example of examples) {
     const inputPath = new URL(
       '../site/' + example.previewProject.path.replace(/^\.\//, ''),
       import.meta.url,
@@ -79,9 +90,18 @@ try {
     });
     await context.close();
   }
+  const order = new Map(BUNDLED_EXAMPLES.map((example, index) => [example.id, index]));
+  report.sort((a, b) => order.get(a.id) - order.get(b.id));
   await writeFile(
-    new URL('../tests/fixtures/project-io/example-thumbnails.json', import.meta.url),
-    JSON.stringify({ browserVersion: browser.version(), examples: report }, null, 2) + '\n',
+    manifestUrl,
+    JSON.stringify(
+      {
+        browserVersion: requestedId ? previousManifest.browserVersion : browser.version(),
+        examples: report,
+      },
+      null,
+      2,
+    ) + '\n',
   );
   console.log(JSON.stringify(report, null, 2));
 } finally {

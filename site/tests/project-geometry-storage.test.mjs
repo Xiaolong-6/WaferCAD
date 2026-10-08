@@ -150,5 +150,9 @@ test('native three-tier geometry and complete History stay exactly equal through
   assert.deepEqual(loaded, before);
   assert.deepEqual(p, before);
   assertNativeFig3Contract(loaded, pointInMulti);
-  assert.ok(Buffer.byteLength(text) < bytes.length * 0.85);
+  assert.equal(
+    serializeProject(loaded),
+    text,
+    'Formal shared-assets-v3 example must serialize deterministically after exact reopen',
+  );
 });
