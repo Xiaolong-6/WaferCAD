@@ -2535,6 +2535,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
             ? physicalSurfacePlan
             : buildRenderSurfacePlan(model, clip);
       if (!variantBuild) physicalSurfacePlan = plan;
+      // Bounded screen-space display LOD: only distant, un-clipped full-array
+      // transparent inspection meshes are reduced. ROI and near-field retain
+      // exact canonical-derived boundaries.
+      const viewport = currentViewport(),
+        projectedUnitPerPixel =
+          (2 * camera.position.distanceTo(controls.target) *
+            Math.tan((camera.fov * Math.PI) / 360)) /
+          viewport.height,
+        transparentArrayDisplayTolerance =
+          targetVariant === 'transparent' &&
+          !clip &&
+          Number(plan.arrayInstances || 0) >= 64 &&
+          projectedUnitPerPixel > 0.01
+            ? projectedUnitPerPixel * 0.85
+            : 0;
+      host.dataset.fullWaferTransparencyLod = String(transparentArrayDisplayTolerance > 0);
+      host.dataset.transparentArrayDisplayTolerance = String(transparentArrayDisplayTolerance);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
@@ -2605,7 +2622,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const layer = layerById(model, cap.layerId);
 
         if (!cap.appearance && cap.instanceTranslations) {
-          const geometry = geometryFromCachedArrayCap(cap),
+          const geometry = geometryFromCachedArrayCap(
+              cap,
+              cap.buried ? transparentArrayDisplayTolerance : 0,
+            ),
             presentation = presentationFor(cap),
             material = createSurfaceMaterial(layer, state, null, presentation);
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
@@ -2768,7 +2788,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state) continue;
         if (sidewall.instanceTranslations) {
           const parts = displaySidewallParts(sidewall.parts || [sidewall]);
-          const geometry = geometryFromSidewallParts(parts),
+          const geometry = geometryFromSidewallParts(
+              parts,
+              sidewall.buried ? transparentArrayDisplayTolerance : 0,
+            ),
             presentation = presentationFor(sidewall),
             material = createSurfaceMaterial(
               layerById(model, sidewall.layerId),
@@ -2851,7 +2874,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
-        const geometry = geometryFromSidewallParts(visibleParts),
+        const geometry = geometryFromSidewallParts(
+            visibleParts,
+            bucket.part.buried ? transparentArrayDisplayTolerance : 0,
+          ),
           presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
           material = createSurfaceMaterial(
             layerById(model, bucket.part.layerId),
@@ -3112,6 +3138,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               displaySolidForZCollapse(
                 followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
               ),
+              transparentArrayDisplayTolerance,
             ),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
@@ -3201,7 +3228,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const capGeometry = geometryFromSolid({
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
-            }),
+            }, transparentArrayDisplayTolerance),
             capMaterial = createSurfaceMaterial(
               { id: electrical.layerId || electrical.electricalRegionId || 'electrical-region', color: electrical.color || '#7A6FD0' },
               capState,
