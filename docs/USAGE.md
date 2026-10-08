@@ -1,5 +1,9 @@
 # Usage
 
+## Workspace navigation
+
+The title bar contains the project name and five primary view choices: **Overview** (Main, Mask and 3D together), **Main**, **Mask**, **3D**, and **Split** (two selectable side-by-side views). The Section A–B dock remains below the primary view. On narrow screens the view choices can scroll horizontally in the title bar; they do not add a second header row. The active button indicates the current layout, so no separate layout-description label is shown.
+
 ## 1. Create the base
 
 The default base is circular.
