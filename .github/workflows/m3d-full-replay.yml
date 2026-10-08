@@ -55,12 +55,15 @@ jobs:
           if-no-files-found: warn
 
   visual-acceptance:
+    needs: replay
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: test/m3d-full-replay-20261008
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
