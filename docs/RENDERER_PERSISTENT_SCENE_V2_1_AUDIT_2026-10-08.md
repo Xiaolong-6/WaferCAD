@@ -1,5 +1,7 @@
 # Renderer A v2.1 — Persistent Scene audit (2026-10-08)
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 **Status: integrated into `feat/process-recipe-v1`; 625-site transparency performance debt recorded and temporarily NON-BLOCKING for current PR #135. Functional and scientific correctness gates remain required.** Renderer source branch: `perf/renderer-persistent-scene-v2-1`. Baseline: GPU rough v3 merged at `58b45ee9`. Integration merge: `f51bef35` via [#134](https://github.com/Xiaolong-6/WaferCAD/pull/134); review gate: [#135](https://github.com/Xiaolong-6/WaferCAD/pull/135).
 
 ## Scope and verified behavior

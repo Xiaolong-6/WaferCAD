@@ -1,6 +1,6 @@
 # Renderer transparency bottleneck and phased LOD plan
 
-**Status:** Open performance debt; **non-blocking for current PR #135 acceptance** (2026-10-08). Owner: 3D Renderer / persistent-scene presentation. This document is the canonical forward plan; see [the dated v2.1 audit](RENDERER_PERSISTENT_SCENE_V2_1_AUDIT_2026-10-08.md) for the commit-by-commit experiments and CI evidence.
+**Status:** Open performance debt; frame-time targets remain **non-blocking** under the recorded 2026-10-08 acceptance policy. Current main includes the integrated renderer; PR #135 is historical provenance, not a pending main blocker. Owner: 3D Renderer / persistent-scene presentation. This document is the canonical forward plan, not a claim that all phases have shipped; see [the dated v2.1 audit](RENDERER_PERSISTENT_SCENE_V2_1_AUDIT_2026-10-08.md) for the commit-by-commit experiments and CI evidence.
 
 ## Scope and measured evidence
 

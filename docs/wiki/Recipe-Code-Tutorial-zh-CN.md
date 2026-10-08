@@ -2,7 +2,7 @@
 
 [首页](Home) · [English tutorial](Recipe-Code-Tutorial) · [Process 与 Recipe](Process-and-Recipes) · [示例项目](Examples-and-Modeling-Limits)
 
-本教程基于 `feat/process-recipe-v1` 的实际解析器和执行逻辑。**Recipe 是受限的声明式工艺语言，不是任意 JavaScript**。它与 Manual Process 复用几何 Kernel，适合从论文工艺描述生成可执行的逐步结构流程。它不计算真实工艺速率或电学性能。
+本教程说明 main 中已发布的 v1 解析器与执行契约；旧项目的历史重放可能保留明确的兼容语义。**Recipe 是受限的声明式工艺语言，不是任意 JavaScript**。它与 Manual Process 复用几何 Kernel，适合从论文工艺描述生成可执行的逐步结构流程。它不计算真实工艺速率或电学性能。
 
 ## 一、五分钟编写第一个 Recipe
 
@@ -47,6 +47,8 @@ snapshot('02 - Passivated');
 这里的 `record()` 仅记录退火温度、时间等信息，**不会进行真实扩散、激活或氧化反应计算**。
 
 ## 二、核心语法和单位
+
+长度换算后必须是有限数值。Recipe 的物理长度不经过 Manual 表单的 0.1 nm 编辑网格；`"0.35 nm"` 在 nm、µm 或 mm 显示下都按 0.35 nm 执行。若紧凑导出的量化会改变物理长度或破坏有效几何，Export 自动采用无损存储。`snapshot()` 也会触发自动保存，只有书签的 Recipe 在刷新后仍可恢复。
 
 标准形式为：
 

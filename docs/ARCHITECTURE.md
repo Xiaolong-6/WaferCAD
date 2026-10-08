@@ -44,6 +44,25 @@ Array-aware caches are derived runtime accelerators, not new physical truth. The
 
 Project storage uses `shared-assets-v4` for canonical arrays: shared model templates and instance lists are stored compactly alongside the existing shared geometry/model/layout dictionaries. Older unencoded/v1/v2/v3 projects remain readable; applications that do not support v4 must reject canonical-array projects rather than silently dropping repeated geometry.
 
+## State and transaction flow
+
+```mermaid
+flowchart LR
+  Input[Manual or typed Recipe] --> Request[Process controller request]
+  Request --> Worker[Process worker and canonical model operations]
+  Request --> Metadata[Record metadata without geometry worker]
+  Metadata --> Commit
+  Worker --> Validate[Strict candidate validation]
+  Validate --> Commit[Validated workspace and History update]
+  Commit --> Topology[Derived Kernel topology]
+  Topology --> Views[Main / Section / 3D]
+  Commit --> Persistence[Autosave / Recovery / Export]
+  Open[Project import worker] --> ValidateProject[Expand / migrate / validate]
+  ValidateProject --> Restore[Replace workspace atomically]
+```
+
+Canonical region stacks and IDs are physical truth. Topology, meshes, caches, display scaling and inspection ROI are derived. Process failures discard candidates; imports validate before replacement; History and storage keep exact restorable states. The [documentation architecture](DOCUMENTATION.md) describes ownership of prose and generated references separately from runtime architecture.
+
 ## Modules
 
 ### `site/app.js`
@@ -65,6 +84,10 @@ Owns the derived XY geometry used by Process and 3D inspection: selected File/Dr
 ### `site/controllers/process-panel-controller.js`
 
 Owns Process panel presentation state, exposed Extend and material-selective Etch target refresh, Electrical Region metadata entry, input normalization/validation, worker request construction, non-geometric Record-step creation, downstream replay execution, and post-action model handoff/status messaging. It deliberately does not implement process geometry: canonical Deposit/Extend/Etch/Implant semantics remain in `model.js` / the process worker path. Record steps advance History/process revision while leaving material geometry unchanged.
+
+### `site/process-recipe.js` and `site/controllers/process-recipe-controller.js`
+
+The parser normalizes a restricted declarative language; it never evaluates arbitrary JavaScript. `process-recipe-preflight.js` checks the requested execution prefix and dependencies before a run. The Recipe controller owns guided/code drafts, stable Step IDs, captured mask context, Continue/Rebuild start choices and Stop behavior. It invokes the existing Process controller with canonical physical lengths; worker validation, History branching and commit stay on the same transactional path as Manual. `snapshot()` is a structural bookmark mutation and triggers autosave even without a material operation. A failed/aborted step cannot commit a candidate; earlier completed steps remain available.
 
 ### `site/controllers/history-mutation-controller.js`
 
@@ -154,7 +177,7 @@ Polygon Boolean operations are provided by the vendored `polygon-clipping` libra
 
 ### `site/units.js`
 
-Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only. User-entered/displayed length fields use a **0.1 nm** quantization boundary, matching the project-file physical-coordinate normalization. Imported geometry and internal vector operations retain their working precision.
+Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm changes are presentation/input conversions only. Manual editable length fields use a **0.1 nm** input grid. Typed Recipe lengths bypass that grid when constructing the validated worker request, so a 0.35 nm film remains 0.35 nm in nm/µm/mm displays. Imported geometry, internal vector operations, autosave and Recovery retain working precision; compact file storage and lossless export selection are separate IO policies.
 
 ### `site/workspace-snapshots.js`
 
@@ -251,15 +274,15 @@ Changing the global display/input unit never rescales geometry. Base dimensions,
 
 ## Workspace layout
 
-The editor uses CSS Grid without changing the underlying DOM/view ownership. At widths above 900 px, the landscape grid is **Main / Mask / Function** on row one and **3D / Section** on row two. The six-column allocation remains 2/2/2 on the first row and 2/4 on the second row, so reordering does not resize the panels.
+`site/workstation-ui.js` and `site/workstation.css` own the current shell. The title bar selects **Overview**, **Main**, **Mask**, **3D**, or **Split**. Overview shows the three primary scientific panels together; Split keeps two independently chosen panes. Section A–B remains a dock below the primary area. The tool rail opens Project/Base, Process, History and other controls in the Function panel; Function is not a permanent third column in the old five-panel grid.
 
-At widths up to 900 px, the existing narrow layout is preserved: **Function/3D**, **Main/Mask**, then **Section**. Layout changes are presentation-only and do not alter view state, geometry, or project serialization.
+Wide screens default to Overview, with explicit view preferences restored when saved. Compact/mobile selection is handled by the workstation controller rather than assuming one fixed panel arrangement at 900 px. Layout, camera, ROI inspection and maximize choices must not mutate canonical material geometry.
 
 ## Persistence
 
 Projects are JSON files with format identifier `WaferCAD-vector` plus an explicit format version.
 
-The current project format is **v14**. It stores the vector model, imported layout data, selected global layers, active cell, mask alignment, active mask source (File/Draw), project-local Draw mask geometry, active face, Rect/Circle/Sector ROI and its reference point, section line, plan-view state, XYZ display unit, structure palette preference, 3D opacity/border state, named snapshots, Implant annotations, Electrical Region annotations, and validated surface-appearance metadata. Persisted physical CAD coordinates are bounded to ±1e9 µm and physical lengths to the corresponding 2e9 µm full span; this still exceeds any realistic wafer/layout scale by orders of magnitude while keeping corrupt/extreme numeric inputs away from the geometry kernel. The **Project** tool tab is the default tab. Browser persistence has two layers: continuous autosave keeps the current workspace in IndexedDB, while **Save** creates an explicit local Recovery checkpoint. IndexedDB v2 keeps Recovery metadata in a small dedicated store so listing/pruning checkpoints does not deserialize every large project payload. Both current autosave and Recovery payloads use lossless shared-asset packing for repeated snapshot model/layout data without quantizing coordinates. New Project, Open Project, Snapshot Restore, Recovery Restore, Welcome explicit-start replacement, migration and safe reload leave a checkpoint before replacing the live workspace when this tab owns local persistence. A read-only tab never deletes the owner tab's current autosave. Pagehide flushes the owner state before releasing its lease; BFCache-restored editor pages reload before resuming writes so stale in-memory state cannot reclaim autosave ownership. Initialization failures do not automatically overwrite the unread current record. **Export** is the separate action that downloads a `.wafercad` file; Recovery checkpoints can be restored or cleared without deleting the current autosaved workspace. v12 introduced explicit stochastic morphology/polarity; v13 adds Pyramid morphology; v14 adds first-class Electrical Region annotations. Older supported versions migrate forward with deterministic defaults. Snapshot state never recursively contains the snapshot list. On disk, repeated snapshot layouts and unchanged models are interned into shared assets; physical coordinates and lengths are normalized to 0.1 nm, then the fully expanded quantized project is validated again before bytes are written. Runtime geometry and browser Recovery keep their working precision.
+The current project format is **v14**. It stores the vector model, imported layout data, selected global layers, active cell, mask alignment, active mask source (File/Draw), project-local Draw mask geometry, active face, Rect/Circle/Sector ROI and its reference point, section line, plan-view state, XYZ display unit, structure palette preference, 3D opacity/border state, named snapshots, Implant annotations, Electrical Region annotations, validated surface-appearance metadata, and the typed `processRecipe` with captured masks and Base metadata. Persisted physical CAD coordinates are bounded to ±1e9 µm and physical lengths to the corresponding 2e9 µm full span; this still exceeds any realistic wafer/layout scale by orders of magnitude while keeping corrupt/extreme numeric inputs away from the geometry kernel. The **Project** tool tab is the default tab. Browser persistence has two layers: continuous autosave keeps the current workspace in IndexedDB, while **Save** creates an explicit local Recovery checkpoint. IndexedDB v2 keeps Recovery metadata in a small dedicated store so listing/pruning checkpoints does not deserialize every large project payload. Both current autosave and Recovery payloads use lossless shared-asset packing for repeated snapshot model/layout data without quantizing coordinates. Destructive replacement protects the current owner workspace with a Recovery checkpoint when required. Clean History cursor navigation preserves Variant HEAD without creating Recovery records; leaving a genuinely edited historical state still requires protection. A read-only tab never deletes the owner tab's current autosave. Pagehide flushes the owner state before releasing its lease; BFCache-restored editor pages reload before resuming writes so stale in-memory state cannot reclaim autosave ownership. Initialization failures do not automatically overwrite the unread current record. **Export** is the separate action that downloads a `.wafercad` file; Recovery checkpoints can be restored or cleared without deleting the current autosaved workspace. v12 introduced explicit stochastic morphology/polarity; v13 adds Pyramid morphology; v14 adds first-class Electrical Region annotations. Older supported versions migrate forward with deterministic defaults. Snapshot state never recursively contains the snapshot list. On disk, repeated snapshot layouts and unchanged models are interned into shared assets; compact coordinates and lengths are normalized to 0.1 nm and the expanded result is validated again. `prepareProjectForExport()` selects lossless workspace encoding when compact storage would alter canonical model Z/depth/profile lengths in current or restorable states, or when strict compact validation fails. `prepareProjectForStorage()` remains the strict compact API. Runtime geometry and browser Recovery keep their working precision.
 
 `site/project-schema.js` owns migration into the current version before validation. Legacy files without an explicit version are migrated with deterministic defaults rather than inheriting unrelated session state.
 

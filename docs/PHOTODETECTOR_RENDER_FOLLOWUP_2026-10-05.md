@@ -1,5 +1,7 @@
 # Photodetector border and 3D Z follow-up — 2026-10-05
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 The user's screenshot was from deployed `952d654`, with a restored local Photodetector workspace, a quarter-sector Main ROI and an A–B span of 5800 µm. Both requested fix branches were already ancestors of that deployment. The remaining defects were missed rendering cases, not missing merges.
 
 ## Corrected contracts

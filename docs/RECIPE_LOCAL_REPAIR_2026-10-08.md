@@ -1,5 +1,7 @@
 # Recipe local patch integration — 2026-10-08
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 ## Provenance
 
 The user supplied `recipe-fixes-from-feat-process-recipe-v1.zip` containing `recipe-fixes.patch`, `README.txt` and `VALIDATION.md`.

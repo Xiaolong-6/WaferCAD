@@ -1,5 +1,7 @@
 # Pre-main audit - 2026-10-07
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 ## Result and scope
 
 No unresolved merge-blocking defect was found after the repairs below. The branch is ready for main integration preparation based on local Windows evidence. This audit did not update main, deploy Pages, open a PR or run CI.

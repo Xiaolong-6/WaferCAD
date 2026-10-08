@@ -82,7 +82,7 @@ Projects from versions <= 11 migrate to:
 
 so existing files retain their previous appearance.
 
-Pyramid morphology is introduced with project format v13. v12 stochastic projects upgrade to v13 without changing their stored morphology or polarity.
+Pyramid morphology is introduced with project format v13. v12 stochastic projects migrate through v13 to the current v14 schema without changing their stored morphology or polarity; v14 adds Electrical Region annotations.
 
 ## Renderer contract
 

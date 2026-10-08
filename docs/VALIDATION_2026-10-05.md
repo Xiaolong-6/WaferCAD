@@ -1,5 +1,7 @@
 # Local integration validation — 2026-10-05
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 Tested product revision: `ec5edba` on `refactor/automated-test-architecture`. Documentation and accepted reference images were added afterward without changing application behavior.
 
 ## Integrated work

@@ -1,5 +1,7 @@
 # Native Conformal follow-up - 2026-10-06
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 The exact user checkpoint now completes T2 gate/metal/contact windows, native ILD2 liner, SOG overfill, CMP and T3 in Chrome. The final single-site reconstruction has three native Conformal HfO2 gates, two native Conformal ILD liners, three electrical annotations and 40 complete History Steps. No horizontal HfO2 gate proxy is used. All 22 original History nodes and their full states remain exactly equal to the approved source.
 
 ## Partition defects and fixes

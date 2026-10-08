@@ -4,7 +4,7 @@ WaferCAD keeps the full regression inventory, but pull requests do not run every
 
 ## Pull-request gates
 
-`Quality` remains the fast code gate for every non-documentation pull request. It installs the pinned development dependencies, runs ESLint, and runs the complete Node test suite.
+`Quality` remains the fast code gate for every non-documentation pull request. It installs the pinned development dependencies, runs ESLint and documentation checks, and runs the complete Node test suite.
 
 `Browser regression` always runs the small UI smoke when application/browser-test changes trigger the workflow. Workstation integration and degraded-mode resilience are selected only when their owned startup/shell or Three/WebGL paths change.
 
@@ -18,11 +18,32 @@ The planner then enables focused suites as needed:
 | Pointer/view/layout controls                        | Interaction, and product layout only for layout-owning files                    |
 | Bundled example fixtures/metadata                   | Bundled examples                                                                |
 | GDS/OAS/layout pipeline                             | Interaction + product layout; KLayout keeps its separate compatibility workflow |
-| Renderer/Section/model-view geometry                | Renderer semantic regression; stress/gallery cases on nightly/manual full runs  |
-| Process/model/vector geometry                       | Process Geometry core browser path; full permutations on nightly/manual runs    |
+| Renderer/Section/model-view geometry                | Renderer semantic regression; stress/gallery cases on weekly/manual full runs   |
+| Process/model/vector geometry                       | Process Geometry core browser path; full permutations on weekly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
 Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
+
+## Draft PRs and dedicated acceptance workflows
+
+Draft PRs still receive the applicable fast Quality/targeted browser checks. Heavy acceptance is deferred by explicit workflow conditions until `ready_for_review`:
+
+| Workflow                                                                                | Actual trigger and Draft behavior                                                                                         |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| [Browser regression](../.github/workflows/browser-regression.yml)                       | Impact-selected PR/main runs plus weekly/manual full runs; the separate 625-site renderer job skips Draft PRs.            |
+| [Example Recipe reconstruction](../.github/workflows/example-recipe-reconstruction.yml) | Path-filtered PR/manual; fixture verification and nine example/Variant Run All jobs skip Draft PRs. No main-push trigger. |
+| [Native Fig3 full replay](../.github/workflows/native-fig3-full-replay.yml)             | Path-filtered PR/manual; skips Draft PRs. No main-push trigger.                                                           |
+| [Recipe safety](../.github/workflows/process-recipe-safety.yml)                         | Path-filtered PR and the explicitly named Recipe feature branches; skips Draft PRs. No main-push trigger.                 |
+| [Pre-main full inventory](../.github/workflows/pre-main-integration-validation.yml)     | Manual only; does not run just because a PR is opened or main changes.                                                    |
+| [M3D Welcome integration](../.github/workflows/m3d-example-integration.yml)             | The named M3D feature branch, PRs targeting the named Recipe feature branch, or manual dispatch; not a general main gate. |
+
+A skipped/deferred check is unverified, not passed. Marking a PR ready triggers its existing final-review jobs; direct main publication does not implicitly run every dedicated replay workflow. Costly manual acceptance still follows user authorization.
+
+## Documentation and publication workflows
+
+[Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It checks generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift before comparing managed Wiki pages.
+
+[Pages deployment](../.github/workflows/pages.yml) runs on main changes to `site/**`, the asset-stamping script or its own workflow, plus manual dispatch. It runs Node release sanity before deploying. A change only under `docs/` does not trigger Pages by itself. [Quality](../.github/workflows/quality.yml) is PR/manual rather than a general main-push gate; the selected Browser non-PR gate owns post-merge Node coverage.
 
 ## Heavy Process Geometry job
 

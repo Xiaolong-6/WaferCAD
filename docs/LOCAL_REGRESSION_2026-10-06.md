@@ -1,5 +1,7 @@
 # Local regression and autosave fix — 2026-10-06
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 Product checkout: `306eb7e5a018cfd236aa494a3888d48023f3b8f5` on `feat/m3d-process-kernel-ops-v2`, followed by the local changes described below. The checkout was clean before testing. The verified local fixes were subsequently committed and pushed to this feature branch before merge review; no deployment was performed.
 
 ## Findings and fix

@@ -1,38 +1,41 @@
 # Documentation map
 
-This page is the navigation layer for the current `main` product contract. Dated audit, validation, optimization, and handoff files are evidence from a specific revision; branch/status statements inside them must not be treated as current unless this page or the current contract documents say so.
+Use this page to find the document that owns a question. Current contracts describe the product; dated audits describe evidence at an exact revision. The [documentation architecture](DOCUMENTATION.md) explains authority, generated content and publishing.
 
-## Current product contracts
+## Product users
 
-- [README](../README.md) — product scope and entry points.
-- [Usage](USAGE.md) — current user workflow and controls.
-- [Architecture](ARCHITECTURE.md) — canonical model, renderer, Process, persistence, and array architecture.
-- [Development](DEVELOPMENT.md) — implementation contracts and developer workflow.
-- [Mask Draw](MASK_DRAW.md) — current File/Draw mask and Mask ROI behavior.
+- [Product manual](wiki/Home.md) — complete task-oriented user manual and English/Chinese Recipe tutorials.
+- [Usage](USAGE.md) — compact repository reference for daily operations.
+- [Wiki navigation](wiki/_Sidebar.md) — the navigation published with the manual.
+- [Interactive Process atlas](https://xiaolong-6.github.io/WaferCAD/guide/) — schematic Before → After operation diagrams.
 
-## Product user manual
+## Developers and reviewers
 
-- [Product manual publishing](WIKI_SYNC.md) — reviewed Wiki source, full product manual, generation checks and every-main-push synchronization.
-- [Canonical Wiki pages](wiki/Home.md) — beginner guide, workspace, masks, Process, Recipe, History, persistence, I/O, examples and troubleshooting.
-- [Interactive Process diagrams](https://xiaolong-6.github.io/WaferCAD/guide/) — public Before → After operation atlas with deep links from the application.
+| Question                                                         | Owner                                          |
+| ---------------------------------------------------------------- | ---------------------------------------------- |
+| Product scope and entry points                                   | [Repository README](../README.md)              |
+| Canonical model, module ownership, workers and state flow        | [Architecture](ARCHITECTURE.md)                |
+| Implementation contracts and local checks                        | [Development](DEVELOPMENT.md)                  |
+| Shared ChatGPT/Codex workflow and reproducible handoff           | [Collaboration](COLLABORATION.md)              |
+| Test ownership, scientific/runtime coverage and visual baselines | [Testing](testing.md)                          |
+| PR/main/scheduled/manual triggers and Draft cost controls        | [CI routing](CI.md)                            |
+| Documentation ownership, navigation and drift checks             | [Documentation architecture](DOCUMENTATION.md) |
+| Generated manual and GitHub Wiki delivery                        | [Wiki publishing](WIKI_SYNC.md)                |
 
-## Scientific and geometry contracts
+## Scientific and interchange contracts
 
-- [Process geometry benchmarks](PROCESS_BENCHMARKS.md)
-- [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md)
-- [Roughness and morphology](ROUGHNESS_MORPHOLOGY.md)
-- [Implant](IMPLANT.md)
+- [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
+- [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — derived topology and material ownership.
+- [Morphology](ROUGHNESS_MORPHOLOGY.md) — deterministic visual relief and physical/export boundaries.
+- [Implant](IMPLANT.md) — structural annotation, clipping and shared gradient semantics.
+- [Mask File/Draw](MASK_DRAW.md) — independent sources, Process selection and export scope.
+- [KLayout compatibility](KLAYOUT_LAYOUT_COMPATIBILITY.md) — pinned parser/import oracle; recorded corpus results are revision-specific evidence.
 
-## Testing and CI
+## Plans and verification evidence
 
-- [Automated test architecture](testing.md)
-- [CI routing](CI.md)
+- [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — open performance work and acceptance conditions; planned LOD is not a shipped capability.
+- [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
+- [Documentation audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md) — navigation, content repairs and check results.
+- [Revision-specific archive](archive/README.md) — every earlier audit, reconstruction, optimization and design/research snapshot; original paths are preserved.
 
-## Current integration audit
-
-- [Desktop pre-main audit (2026-10-08)](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — repaired physical precision and Recipe persistence, exact product revision, local runtime evidence and main decision.
-- [M3D History, Recovery and 3D Border verification (2026-10-08)](M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md) — historical feature checkpoint; later acceptance is recorded in the desktop audit above.
-
-## Historical evidence
-
-Files named with dates, audit/checkpoint/handoff wording, or explicit feature-branch status preserve the evidence available at that revision. Keep their original measurements and conclusions, but add a clear historical/superseded banner when later `main` behavior has moved on. Use the current contract documents above for present-tense product behavior.
+For a current behavior question, follow the owner above. For a claim that a test, deployment or scientific replay passed, use the evidence for the exact revision and environment. An old pending/approved banner does not establish the state of today's main.

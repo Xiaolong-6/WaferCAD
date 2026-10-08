@@ -1,5 +1,7 @@
 # Rendering and audit stabilization — 2026-10-05
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 This follow-up starts from product `8d0abae` and fixes the confirmed runtime findings from `codex/project-audit-2026-10-05`, plus the subsequently reported Photodetector Section Detail mismatch. The original audit and before/after observations remain on the audit branch. Consult that branch's report for exact checked and published commits.
 
 ## Behavior
