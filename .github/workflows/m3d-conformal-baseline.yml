@@ -1,11 +1,15 @@
 name: M3D conformal baseline audit
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/m3d-conformal-microcracks-20261008
+      - main
     paths:
-      - "docs/M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md"
+      - "site/model.js"
+      - "site/app.html"
+      - "site/controllers/process-panel-controller.js"
+      - "docs/wiki/**"
+      - ".github/workflows/m3d-conformal-baseline.yml"
   workflow_dispatch:
 
 concurrency:
@@ -25,9 +29,9 @@ jobs:
       matrix:
         include:
           - variant: original-main
-            source: 82c35a845946835451fd7da9fcbe92be47593e7f
-          - variant: repaired-branch
-            source: fix/m3d-conformal-microcracks-20261008
+            source: bad705c406ebb57a84f3a0ac66340b63e92bcf0c
+          - variant: integrated-review
+            source: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
         with:

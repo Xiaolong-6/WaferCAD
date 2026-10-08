@@ -907,17 +907,33 @@ const COVERAGE_CRACK_TOLERANCE_UM = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM;
 // Compare coverage before and after the process: repair *newly* lost slivers,
 // not intentional prior trenches/voids. Keep the repair strictly bounded so a
 // substantive geometric failure still aborts and rolls back transactionally.
+function verifiedConformalCoverageLoss(model, originalVoids) {
+  // A Boolean uncovered-domain query can itself produce a synthetic sliver
+  // across two valid owners. Verify that the candidate is truly unowned
+  // before assigning material to it: never fill an already-owned XY column.
+  let missing = difference(uncoveredGeometryRaw(model), originalVoids);
+  if (isEmpty(missing)) return [];
+  for (const region of model.regions) {
+    missing = difference(missing, region.geom);
+    if (isEmpty(missing)) return [];
+  }
+  return missing;
+}
+
 function healConformalCoverageCracks(model, originalVoids) {
   const overlapTolerance = Math.max(
       PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
       model.width * model.height * 1e-15,
     ),
-    maxRepairArea = Math.max(
-      PROCESS_GEOMETRY_GRID_UM ** 2 * 4,
-      geometryArea(model.boundary) * 1e-8,
+    maxRepairArea = Math.min(
+      1e-3,
+      Math.max(
+        PROCESS_GEOMETRY_GRID_UM ** 2 * 4,
+        geometryArea(model.boundary) * 1e-8,
+      ),
     );
   for (let attempt = 0; attempt < 3; attempt++) {
-    const missing = difference(uncoveredGeometryRaw(model), originalVoids);
+    const missing = verifiedConformalCoverageLoss(model, originalVoids);
     if (isEmpty(missing)) return;
     const missingArea = geometryArea(missing);
     if (missingArea > maxRepairArea) {
@@ -950,7 +966,7 @@ function healConformalCoverageCracks(model, originalVoids) {
       'Conformal coverage repair',
     );
   }
-  const remaining = difference(uncoveredGeometryRaw(model), originalVoids);
+  const remaining = verifiedConformalCoverageLoss(model, originalVoids);
   if (!isEmpty(remaining)) {
     throw new Error('Conformal left lost XY material coverage after repair.');
   }

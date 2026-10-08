@@ -27,7 +27,7 @@ The new 20 nm Al2O3 layer itself has Z extents >= 1.18 um, and no full-depth cap
 
 - Newly lost XY coverage is determined by subtracting the **pre-operation void domain** from post-operation uncovered geometry. This also identifies long, thin slivers missed by the previous bounding-box `numerical-crack` classifier.
 - Pre-existing physical voids are subtracted from every candidate crack; an existing real trench is never filled.
-- Every eligible missing sliver is assigned to a nearby physical region using an XY contact halo; the repair carries that region's material stack.
+- Newly lost coverage is verified against **every existing region** before assignment, rejecting false Boolean uncovered-domain slivers between valid owners. Real missing slivers are assigned using an XY contact halo; the repair carries that region's material stack.
 - Partition ownership is rechecked without another snap-to-grid pass (which previously could reopen the crack).
 - Repair is bounded by lost area, and unresolved coverage fails transactionally instead of accepting damaged geometry.
 - Selective Etch of upper layers also preserves the intact BOX. A second coverage check runs after final polygon cleanup.
