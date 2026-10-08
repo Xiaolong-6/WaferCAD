@@ -232,7 +232,6 @@ test('worker-ready rough mesh data is transferable and reconstructs geometry met
   );
 });
 
-
 test('GPU rough mode keeps cap vertices ideal and marks only shader-displaced triangles', () => {
   const appearance = {
       kind: 'rough',
@@ -280,13 +279,9 @@ test('GPU rough mode keeps cap vertices ideal and marks only shader-displaced tr
   for (let index = 0; index < data.gpuDisplace.length; index++) {
     if (data.gpuDisplace[index] !== 1) continue;
     assert.equal(data.positions[index * 3 + 2], 0);
-    assert.deepEqual(
-      Array.from(data.normals.slice(index * 3, index * 3 + 3)),
-      [0, 0, 1],
-    );
+    assert.deepEqual(Array.from(data.normals.slice(index * 3, index * 3 + 3)), [0, 0, 1]);
   }
 });
-
 
 test('GPU rough cap interior does not sample the CPU morphology field', () => {
   const appearance = new Proxy(

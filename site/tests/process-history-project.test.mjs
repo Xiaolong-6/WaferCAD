@@ -649,7 +649,6 @@ test('batch History validation falls back to filtering invalid states', () => {
   assert.equal(manager.exportRecords()[0].id, 'good');
 });
 
-
 test('reopened History process replay sanitizes zero-area boolean sweep artifacts', async () => {
   const source = validProject(1),
     restoredState = validProject(1);

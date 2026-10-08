@@ -1259,7 +1259,6 @@ test('component broad phase avoids disjoint sweeps and retains aggregate overlap
   }
 });
 
-
 test('project file persists and validates Process Recipe', async () => {
   const source = validProject();
   source.version = CURRENT_PROJECT_VERSION;
@@ -1326,7 +1325,10 @@ test('project validator rejects malformed Process Recipe structure', () => {
   assert.throws(() => validateProjectFile(source), /processRecipe\.steps\[1\]\.id.*unique/);
 
   source.processRecipe.steps[1].id = 'other';
-  assert.throws(() => validateProjectFile(source), /processRecipe\.steps\[1\]\.command.*not supported/);
+  assert.throws(
+    () => validateProjectFile(source),
+    /processRecipe\.steps\[1\]\.command.*not supported/,
+  );
 
   source.processRecipe.steps[1].command = 'etch';
   assert.throws(() => validateProjectFile(source), /activeStepId.*unknown recipe step/);

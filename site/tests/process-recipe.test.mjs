@@ -46,7 +46,8 @@ test('Process Recipe rejects arbitrary JavaScript and identifiers', () => {
 
 test('Process Recipe rejects prototype keys and excessive nesting', () => {
   assert.throws(
-    () => parseProcessRecipeSource('deposit({ material: "SiO2", thickness: "1 µm", __proto__: {} });'),
+    () =>
+      parseProcessRecipeSource('deposit({ material: "SiO2", thickness: "1 µm", __proto__: {} });'),
     /Unsupported object key/,
   );
   const nested = '['.repeat(40) + '0' + ']'.repeat(40);

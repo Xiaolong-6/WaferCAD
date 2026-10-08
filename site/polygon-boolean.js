@@ -137,11 +137,11 @@ function geometryBounds(geom) {
 function boundsMayOverlap(a, b, tolerance = EPS) {
   return Boolean(
     a &&
-      b &&
-      a.maxX >= b.minX - tolerance &&
-      b.maxX >= a.minX - tolerance &&
-      a.maxY >= b.minY - tolerance &&
-      b.maxY >= a.minY - tolerance,
+    b &&
+    a.maxX >= b.minX - tolerance &&
+    b.maxX >= a.minX - tolerance &&
+    a.maxY >= b.minY - tolerance &&
+    b.maxY >= a.minY - tolerance,
   );
 }
 

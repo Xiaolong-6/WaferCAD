@@ -1146,7 +1146,10 @@ processRecipeController = createProcessRecipeController({
   }),
   setMaskState: (next = {}) => {
     maskSourceMode = next.maskSourceMode === 'draw' ? 'draw' : 'file';
-    if (next.activeCell && (next.activeCell === layout.root || layout.hierarchy?.[next.activeCell])) {
+    if (
+      next.activeCell &&
+      (next.activeCell === layout.root || layout.hierarchy?.[next.activeCell])
+    ) {
       activeCell = next.activeCell;
     }
     if (Array.isArray(next.selectedLayerKeys)) {
@@ -1258,9 +1261,7 @@ const baseControls = createBaseControlsController({
     const graph = snapshotManager.exportBranchState();
     return {
       hasHistory:
-        graph.nodes.length > 0 ||
-        graph.branches.length > 1 ||
-        snapshotManager.list().length > 0,
+        graph.nodes.length > 0 || graph.branches.length > 1 || snapshotManager.list().length > 0,
     };
   },
   captureBaseSnapshot: () => stateSnapshot({ includeHistoryGraph: true }),

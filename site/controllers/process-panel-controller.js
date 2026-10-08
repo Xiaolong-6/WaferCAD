@@ -235,7 +235,12 @@ export function createProcessPanelController({
     // The inline guide reflects the same UI state as Apply without touching geometry.
     const guideId = processGuideKey({
       type: t,
-      growth: t === 'grow' ? ($('growthMode').value === 'transfer' ? 'direct' : $('growthMode').value) : growthMode,
+      growth:
+        t === 'grow'
+          ? $('growthMode').value === 'transfer'
+            ? 'direct'
+            : $('growthMode').value
+          : growthMode,
       placement: $('transferMode')?.value || 'follow',
       profile: etchProfile,
       surface: surfaceMode,
@@ -248,9 +253,13 @@ export function createProcessPanelController({
       guideNode.dataset.guideId = guideId;
       $('processGuideTitle').textContent = guide.title;
       $('processGuideEffect').textContent =
-        guide.effect === 'geometry' ? 'Geometry' :
-        guide.effect === 'display' ? 'Display only' :
-        guide.effect === 'annotation' ? 'Annotation' : 'History only';
+        guide.effect === 'geometry'
+          ? 'Geometry'
+          : guide.effect === 'display'
+            ? 'Display only'
+            : guide.effect === 'annotation'
+              ? 'Annotation'
+              : 'History only';
       $('processGuideBefore').innerHTML = processGuideSvg(guideId, false);
       $('processGuideAfter').innerHTML = processGuideSvg(guideId, true);
       $('processGuideSummary').textContent = guide.summary;
@@ -261,10 +270,13 @@ export function createProcessPanelController({
       guideNode.hidden = !materialExists && !recordOnly;
       const areaHint = $('processGuideArea');
       if (areaHint) {
-        areaHint.textContent = recordOnly ? 'History only' :
-          $('operationArea').value === 'full' ? 'Whole face' :
-          $('operationArea').value === 'invert' ? 'Invert mask · Mask ROI applies' :
-          'Selected mask · Mask ROI applies';
+        areaHint.textContent = recordOnly
+          ? 'History only'
+          : $('operationArea').value === 'full'
+            ? 'Whole face'
+            : $('operationArea').value === 'invert'
+              ? 'Invert mask · Mask ROI applies'
+              : 'Selected mask · Mask ROI applies';
       }
     }
     $('operationNote').hidden = !materialExists && !recordOnly;

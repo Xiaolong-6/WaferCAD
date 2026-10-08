@@ -24,18 +24,29 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
     lines.push('<a id="' + entry.id + '"></a>', '### ' + entry.title, '');
     lines.push('**Behavior:** ' + entry.summary, '', entry.detail, '');
     lines.push('**Inputs:** ' + entry.parameters, '');
-    lines.push('**Changes:** ' + ({
-      geometry: 'canonical material geometry',
-      display: 'display morphology only (ideal 2.5D stack unchanged)',
-      annotation: 'non-material annotation only',
-      history: 'History metadata only',
-    }[entry.effect] || entry.effect), '');
+    lines.push(
+      '**Changes:** ' +
+        ({
+          geometry: 'canonical material geometry',
+          display: 'display morphology only (ideal 2.5D stack unchanged)',
+          annotation: 'non-material annotation only',
+          history: 'History metadata only',
+        }[entry.effect] || entry.effect),
+      '',
+    );
     lines.push('**Modeling boundary:** ' + entry.limits, '');
     lines.push('**Example:** ' + entry.example, '');
-    lines.push('[View diagram ↗](https://xiaolong-6.github.io/WaferCAD/guide/#' + entry.id + ')', '');
+    lines.push(
+      '[View diagram ↗](https://xiaolong-6.github.io/WaferCAD/guide/#' + entry.id + ')',
+      '',
+    );
   }
-  lines.push('## More documentation', '',
-    'See [Mask and ROI](Masks-and-ROI), [History and Recovery](History-Variants-and-Recovery), and [Examples and Modeling Limits](Examples-and-Modeling-Limits).', '');
+  lines.push(
+    '## More documentation',
+    '',
+    'See [Mask and ROI](Masks-and-ROI), [History and Recovery](History-Variants-and-Recovery), and [Examples and Modeling Limits](Examples-and-Modeling-Limits).',
+    '',
+  );
   return lines.join('\n');
 }
 
@@ -48,14 +59,35 @@ async function main() {
     console.log('Wrote ' + path + ' (' + PROCESS_GUIDE.length + ' operations)');
   } else if (mode === '--check') {
     let actual;
-    try { actual = await readFile(path, 'utf8'); }
-    catch { throw Error(path + ' missing. Run npm run docs:build.'); }
-    if (actual !== expected) throw Error(path + ' drifted from site/process-guide.js. Run npm run docs:build and commit the output.');
-    const pages = ['Home','Getting-Started','Workspace-and-Views','Masks-and-ROI',
-      'Process-and-Recipes','History-Variants-and-Recovery','Import-and-Export',
-      'Examples-and-Modeling-Limits','Troubleshooting','_Sidebar'];
-    for (const name of pages) await access(join('docs','wiki',name+'.md'));
-    console.log('Product manual checked: ' + PROCESS_GUIDE.length + ' operation descriptions and ' + pages.length + ' product chapters');
+    try {
+      actual = await readFile(path, 'utf8');
+    } catch {
+      throw Error(path + ' missing. Run npm run docs:build.');
+    }
+    if (actual !== expected)
+      throw Error(
+        path + ' drifted from site/process-guide.js. Run npm run docs:build and commit the output.',
+      );
+    const pages = [
+      'Home',
+      'Getting-Started',
+      'Workspace-and-Views',
+      'Masks-and-ROI',
+      'Process-and-Recipes',
+      'History-Variants-and-Recovery',
+      'Import-and-Export',
+      'Examples-and-Modeling-Limits',
+      'Troubleshooting',
+      '_Sidebar',
+    ];
+    for (const name of pages) await access(join('docs', 'wiki', name + '.md'));
+    console.log(
+      'Product manual checked: ' +
+        PROCESS_GUIDE.length +
+        ' operation descriptions and ' +
+        pages.length +
+        ' product chapters',
+    );
   } else throw Error('Usage: node scripts/build-process-guide.mjs --check|--write');
 }
 

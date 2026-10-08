@@ -127,7 +127,10 @@ await recipePage.locator('#recipeValidateBtn').click();
 assert.match(await recipePage.locator('#statusText').textContent(), /Recipe valid: 1 step/);
 await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.waitForFunction(
-  () => /Process Recipe completed 1 step/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Process Recipe completed 1 step/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -135,7 +138,10 @@ await recipePage.waitForFunction(
 // Re-running on an already processed model requires explicit permission.
 await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
-assert.match(await recipePage.locator('#confirmationDialogMessage').textContent(), /already contains Process Steps/);
+assert.match(
+  await recipePage.locator('#confirmationDialogMessage').textContent(),
+  /already contains Process Steps/,
+);
 await recipePage.locator('#confirmationDialogActions [data-dialog-action="cancel"]').click();
 assert.match(await recipePage.locator('#statusText').textContent(), /run cancelled/);
 
@@ -146,7 +152,10 @@ await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
 await recipePage.locator('#confirmationDialogActions [data-dialog-action="keep"]').click();
 await recipePage.waitForFunction(
-  () => /Process Recipe completed 1 step/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Process Recipe completed 1 step/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 30000 },
 );
@@ -162,7 +171,8 @@ await recipePage.locator('#layerName').fill('Manual recipe check');
 await recipePage.locator('#operationThickness').fill('0.02');
 await recipePage.locator('#applyOperationBtn').click();
 await recipePage.waitForFunction(
-  () => /Deposited Manual recipe check/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Deposited Manual recipe check/.test(document.getElementById('statusText')?.textContent || ''),
   null,
   { timeout: 30000 },
 );
@@ -185,16 +195,21 @@ assert.equal(recipeSaved.processRecipe?.steps?.length, 2);
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.command, 'deposit');
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.params?.material, 'Al2O3');
 assert.equal(recipeSaved.processRecipe?.steps?.[1]?.params?.material, 'Manual recipe check');
-assert.ok(recipeSaved.model.processRevision >= 2, 'Recipe and Step-mode operations must commit through the Process kernel');
+assert.ok(
+  recipeSaved.model.processRevision >= 2,
+  'Recipe and Step-mode operations must commit through the Process kernel',
+);
 
 // Narrow Process flyouts must not grow wider when a recipe step has a very
 // long operation label; the full label stays available as a title tooltip.
 await openFunctionPanel(recipePage, 'process');
 await recipePage.locator('[data-process-input-mode="recipe"]').click();
 await recipePage.locator('#recipeCodeTab').click();
-await recipePage.locator('#recipeCodeEditor').fill(
-  'record({ process: "custom", label: "S00 FZ-32 p-type 2LP1 representative die with a very very very long process title" });',
-);
+await recipePage
+  .locator('#recipeCodeEditor')
+  .fill(
+    'record({ process: "custom", label: "S00 FZ-32 p-type 2LP1 representative die with a very very very long process title" });',
+  );
 await recipePage.locator('#recipeApplyCodeBtn').click();
 await recipePage.locator('#recipeStepsTab').click();
 const listBox = await recipePage.locator('#recipeStepsList').boundingBox();
@@ -229,25 +244,34 @@ await recipePage.waitForFunction(
   { timeout: 15000 },
 );
 await openFunctionPanel(recipePage, 'snapshots');
-const archivedVariant = recipePage.locator('.history-variant-name', {
-  hasText: 'Previous base',
-}).first();
+const archivedVariant = recipePage
+  .locator('.history-variant-name', {
+    hasText: 'Previous base',
+  })
+  .first();
 assert.ok(await archivedVariant.count(), 'archived Main must be visible in History');
 assert.equal(
-  await recipePage.locator(
-    '.history-variant[data-variant-id="main"] > .history-variant-body > .history-step-wrap',
-  ).count(),
+  await recipePage
+    .locator(
+      '.history-variant[data-variant-id="main"] > .history-variant-body > .history-step-wrap',
+    )
+    .count(),
   0,
   'new Main must have a fresh history root',
 );
 await archivedVariant.click();
 await recipePage.waitForFunction(
-  () => /Switched to Variant "Previous base/.test(document.getElementById('statusText')?.textContent || ''),
+  () =>
+    /Switched to Variant "Previous base/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 15000 },
 );
 assert.ok(
-  await recipePage.locator('.history-variant[data-active="true"] > .history-variant-body > .history-step-wrap').count() >= 2,
+  (await recipePage
+    .locator('.history-variant[data-active="true"] > .history-variant-body > .history-step-wrap')
+    .count()) >= 2,
   'the old process steps must remain directly restorable',
 );
 await openFunctionPanel(recipePage, 'project');

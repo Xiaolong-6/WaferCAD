@@ -24,6 +24,6 @@ Use WaferCAD to explain structure sequences, review masks, teach process concept
 
 ## Research provenance
 
-- Setälä et al., *ACS Photonics* (2023), DOI: 10.1021/acsphotonics.2c01984.
-- Liu et al., *Light: Science & Applications* (2025), DOI: 10.1038/s41377-024-01670-4.
+- Setälä et al., _ACS Photonics_ (2023), DOI: 10.1021/acsphotonics.2c01984.
+- Liu et al., _Light: Science & Applications_ (2025), DOI: 10.1038/s41377-024-01670-4.
 - For process assumptions and QA acceptance, consult [the reconstruction handoff](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md).
