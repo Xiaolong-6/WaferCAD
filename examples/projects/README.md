@@ -16,7 +16,7 @@ The current production literature families are:
   - **Ge Fig. 15:** explicit n-Ge Base, temporary SiNₓ implantation mask, B/P activation, temporary Al₂O₃ etch mask, ICP-RIE and wet-treatment records.
     - A · full-area Al₂O₃.
     - B · inactive SiO₂/Al₂O₃.
-    - p-inversion and n-accumulation remain Ge-hosted Electrical Regions; the *anticipated* annotations precede the passivation film because host-selective buried electrical placement is not yet available.
+    - p-inversion and n-accumulation remain Ge-hosted Electrical Regions; the _anticipated_ annotations precede the passivation film because host-selective buried electrical placement is not yet available.
 - **PERC solar cells with point contacts** — `site/examples/perc-solar-cells-point-contacts.wafercad`
   - source-order reconstruction is the default active Variant;
   - curated baseline and GDS-patterned-contact alternatives remain available.

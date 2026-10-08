@@ -257,7 +257,6 @@ test('literature example keeps the intended Variant ancestry and HEADs', async (
   assert.equal(ownStepCount('ge-fig15-b'), 9);
 });
 
-
 test('Ge process uses real sacrificial masks and source-order implantation', async () => {
   const project = await loadLiteratureProject();
   const nodes = project.snapshotBranches.nodes.filter(
@@ -281,25 +280,31 @@ test('Ge process uses real sacrificial masks and source-order implantation', asy
   for (const id of ['ge-fig15-a', 'ge-fig15-b']) {
     const next = branchMap(project).get(id);
     assert.ok(next.headState.processRecipe.steps.length > 15, id + ': missing full recipe');
-    assert.ok(next.headState.processRecipe.steps.some(
-      (step) => step.command === 'record' && /350°C/.test(step.params.label),
-    ), id + ': final anneal should be a real History Step');
+    assert.ok(
+      next.headState.processRecipe.steps.some(
+        (step) => step.command === 'record' && /350°C/.test(step.params.label),
+      ),
+      id + ': final anneal should be a real History Step',
+    );
   }
 });
 
 test('Black-Si processing records drive-in and forming-gas anneals as independent Steps', async () => {
   const project = await loadLiteratureProject();
-  const nodes = project.snapshotBranches.nodes.filter(
-    (node) => node.branchId === 'black-si-fig1a',
-  );
+  const nodes = project.snapshotBranches.nodes.filter((node) => node.branchId === 'black-si-fig1a');
   const labels = nodes.map((node) => node.operation.label);
   for (const phrase of ['Drive-in', 'Remove drive-in oxide', 'Forming gas']) {
-    assert.ok(labels.some((label) => label.includes(phrase)), phrase + ' missing');
+    assert.ok(
+      labels.some((label) => label.includes(phrase)),
+      phrase + ' missing',
+    );
   }
   const anneal = nodes.find((node) => node.operation.label.startsWith('Forming gas'));
   assert.equal(anneal.operation.kind, 'record');
   assert.equal(anneal.operation.temperatureC, 425);
-  assert.ok(branchMap(project).get('black-si-fig1a-final').headState.processRecipe.steps.length >= 15);
+  assert.ok(
+    branchMap(project).get('black-si-fig1a-final').headState.processRecipe.steps.length >= 15,
+  );
 });
 
 test('Black-Si FINAL preserves ALD and front roughness while removing blanket Al', async () => {
@@ -388,8 +393,18 @@ test('Ge Fig. 15 A/B preserve Electrical semantics and host-material ownership',
   // Conformal ownership canonicalizes the 0.1 nm shared XY grid. Allow at most
   // one part per billion of the unchanged bulk Ge volume for rounding effects.
   const geVolumeTolerance = Math.max(1e-3, commonVolumes.get(geName) * 1e-9);
-  assertClose(aVolumes.get(geName), commonVolumes.get(geName), geVolumeTolerance, 'Fig. 15a Ge volume');
-  assertClose(bVolumes.get(geName), commonVolumes.get(geName), geVolumeTolerance, 'Fig. 15b Ge volume');
+  assertClose(
+    aVolumes.get(geName),
+    commonVolumes.get(geName),
+    geVolumeTolerance,
+    'Fig. 15a Ge volume',
+  );
+  assertClose(
+    bVolumes.get(geName),
+    commonVolumes.get(geName),
+    geVolumeTolerance,
+    'Fig. 15b Ge volume',
+  );
 
   assert.equal(
     modelA.layers.some((layer) => /SiO2 inactive/i.test(layer.name)),
