@@ -25,6 +25,8 @@ try {
   await page.locator('#recipeTemplateSelect').selectOption('deposit-etch');
   // Merely selecting a template cannot discard an existing Recipe.
   assert.equal(await page.locator('.recipe-step-row').count(), 0);
+  assert.equal(await page.locator('#recipeTemplatePreviewSteps li').count(), 2);
+  assert.match(await page.locator('#recipeTemplatePreviewSteps').innerText(), /Deposit/);
   await page.locator('#recipeTemplateLoadBtn').click();
   const originalStepCount = await page.locator('.recipe-step-row').count();
   assert.ok(originalStepCount > 0);
