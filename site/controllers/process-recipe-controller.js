@@ -206,9 +206,9 @@ export function createProcessRecipeController({
         </select>
       </div>
       <div class="recipe-options-row">
-        <label class="recipe-record-toggle" title="Append successful Manual operations to this recipe">
+        <label class="recipe-record-toggle" title="Append successful Step-mode operations to this recipe">
           <input id="recipeRecordManual" type="checkbox" checked />
-          <span>Record Manual steps</span>
+          <span>Record Step-mode operations</span>
         </label>
       </div>
       <div class="segmented recipe-view-mode">
