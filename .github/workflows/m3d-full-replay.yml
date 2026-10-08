@@ -7,6 +7,7 @@ on:
     paths:
       - "scripts/m3d-kernel-full-replay.mjs"
       - "site/tests/m3d-reconstruction-regression.test.mjs"
+      - "site/model.js"
       - "examples/projects/m3d-selfpowered-2026-candidate/**"
       - ".github/workflows/m3d-full-replay.yml"
   workflow_dispatch:
