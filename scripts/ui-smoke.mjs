@@ -27,6 +27,15 @@ try {
   assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
   assert.equal(await page.locator('.app-shell').count(), 0);
   assert.ok((await page.locator('.welcome-example-card').count()) >= 3);
+  assert.equal(await page.locator('.welcome-example-open').count(), 0);
+  for (const card of await page.locator('.welcome-example-card').all()) {
+    const titleLink = card.locator('.welcome-example-title-link'),
+      summaryLink = card.locator('.welcome-example-summary-link');
+    assert.equal(await titleLink.count(), 1);
+    assert.equal(await summaryLink.count(), 1);
+    assert.equal(await titleLink.getAttribute('href'), await summaryLink.getAttribute('href'));
+    assert.match(await titleLink.getAttribute('href'), /^\.\/app\.html\?start=example&example=/);
+  }
 
   // Contract 2: A normal start reaches the usable workstation.
   await page.locator('#welcomeEmptyBtn').click();
