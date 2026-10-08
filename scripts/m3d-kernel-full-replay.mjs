@@ -294,17 +294,16 @@ function applyStep(stage, spec) {
   );
   validateProcessModel(model);
 
-  // The base is never etched in this reconstruction. A sub-grid XY hole
-  // removes its whole 2 um BOX column and becomes a full-depth 3D sidewall.
-  // Assert physical coverage at the two formerly failing conformal stages.
-  if (['15_WSe2_Cap', '19_ILD2', '25_Final_Al2O3'].includes(stage)) {
-    const coverage = classifyCoverageVoids(model);
-    assert.equal(
-      coverage.all.length,
-      0,
-      stage + ' left ' + coverage.all.length + ' uncovered XY polygons in the BOX',
-    );
-  }
+  // The unetched 2 um BOX is physically continuous throughout this M3D
+  // reconstruction. A lost XY sliver becomes a spurious full-depth 3D wall.
+  // Check EVERY process operation (not only selected conformal deposits).
+  const coverage = classifyCoverageVoids(model);
+  assert.equal(
+    coverage.all.length,
+    0,
+    stage + ' · ' + spec.label + ' introduced ' +
+      coverage.all.length + ' uncovered XY polygons in the BOX',
+  );
 
   const replay = {
     version: 1,
@@ -347,6 +346,11 @@ function recordStep(stage, label, detail) {
   model.revision += 1;
   model.processRevision += 1;
   validateProcessModel(model);
+  assert.equal(
+    classifyCoverageVoids(model).all.length,
+    0,
+    stage + ' record-only operation changed the unetched BOX coverage',
+  );
   appendNode({
     kind: 'record',
     label,
