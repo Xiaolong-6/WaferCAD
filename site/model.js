@@ -1507,6 +1507,16 @@ function applyOperationImpl(
     }))
     .filter((region) => !isEmpty(region.geom));
 
+  // The final persistence-degenerate filter can itself discard a tiny XY
+  // owner. Enforce unchanged material coverage on the *returned* model too:
+  // successful Conformal and base-preserving selective Etch may not leave
+  // sub-grid full-depth voids behind after cleanup.
+  const protectedVoids =
+    conformalOriginalVoids !== null ? conformalOriginalVoids : protectedEtchVoids;
+  if (protectedVoids !== null) {
+    healConformalCoverageCracks(model, protectedVoids);
+  }
+
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };
