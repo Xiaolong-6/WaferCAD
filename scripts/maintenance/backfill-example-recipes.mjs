@@ -86,7 +86,7 @@ function surfaceFor(project, node, targetId) {
   return requested;
 }
 
-function stepFor(project, node) {
+function stepFor(project, node, terminalModel, precedingModel) {
   const op = node.operation || {};
   if (op.kind === 'base') return null;
   const replay = op.replay?.version === 1 ? op.replay : null;
@@ -96,7 +96,10 @@ function stepFor(project, node) {
   const face = raw.face || op.face || 'front';
   const shared = { area, face, ...(area === 'full' ? {} : { mask: maskFor(node, project) }) };
   const model = modelFor(project, node.state);
-  const layerName = (id) => model.layers?.find((layer) => layer.id === id)?.name || '';
+  const layerName = (id) =>
+    terminalModel.layers?.find((layer) => layer.id === id)?.name ||
+    model.layers?.find((layer) => layer.id === id)?.name ||
+    '';
   const name = raw.name || op.name || op.label;
   const thickness = Number(raw.thickness ?? op.thickness);
   let command;
@@ -116,7 +119,11 @@ function stepFor(project, node) {
     command = 'deposit';
     params = {
       ...shared,
-      material: name,
+      material: (() => {
+        const introduced = model.layers.filter((layer) =>
+          !precedingModel?.layers?.some((prior) => prior.id === layer.id));
+        return introduced.length === 1 ? layerName(introduced[0].id) : name;
+      })(),
       thicknessUm: thickness,
       coverage: raw.growth || op.growth || 'direct',
       placement: raw.transferMode || op.transferMode || 'follow',
@@ -194,7 +201,13 @@ async function main(filename) {
       const recipe = normalizeProcessRecipe({
         name: `${project.name || filename} · Process reconstruction`,
         base: baseFor(project, state || chain[0].state, filename),
-        steps: chain.map((node) => stepFor(project, node)).filter(Boolean),
+        steps: chain.map((node, index) =>
+          stepFor(
+            project,
+            node,
+            modelFor(project, state || chain.at(-1).state),
+            index ? modelFor(project, chain[index - 1].state) : null,
+          )).filter(Boolean),
       });
       recipesByNodeId.set(id, recipe);
     }
