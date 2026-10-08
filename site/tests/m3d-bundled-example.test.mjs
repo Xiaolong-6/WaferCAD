@@ -17,7 +17,7 @@ test('M3D welcome example points to a valid, distinct, losslessly stored project
   assert.ok(example, 'M3D welcome catalog entry missing');
   assert.equal(BUNDLED_EXAMPLES.filter((entry) => entry.id === id).length, 1);
   assert.equal(example.kind, 'project');
-  assert.ok(example.preview.path.endsWith('.webp'));
+  assert.ok(example.preview.path.endsWith('.svg'), 'M3D uses a clearly labeled SVG schematic fallback');
   assert.equal(example.sources[0].doi, '10.1038/s41928-026-01624-1');
   assert.ok((await stat(projectPath)).size > 100_000);
   const text = await readFile(projectPath, 'utf8');
