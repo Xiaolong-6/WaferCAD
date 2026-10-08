@@ -9,13 +9,14 @@ The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundl
 The current production literature families are:
 
 - **Photodetectors with nanopatterns** — `site/examples/photodetector-literature-examples.wafercad`
-  - **Black-Si Fig. 1a** common process
-    - FINAL · protected active ALD
-    - QA · overetch
-  - **Ge Fig. 15** common nanostructured Ge
-    - A · full-area Al₂O₃
-    - B · inactive SiO₂/Al₂O₃
-    - induced p-type inversion / n-type accumulation are stored as first-class Electrical Regions, not Implant placeholders
+  - Rebuilt from the current Process Geometry Kernel using `scripts/maintenance/rebuild-photodetectors.mjs`; see `docs/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`.
+  - **Black-Si Fig. 1a:** ordered thermal oxidation, lithography, ICP-RIE, B/P contact implants, drive-in and oxide-strip records, conformal passivation, contacts and final forming-gas treatment.
+    - FINAL · selectively strips blanket Al while protecting active ALD.
+    - QA · intentional nonselective overetch; not a fabrication recommendation.
+  - **Ge Fig. 15:** explicit n-Ge Base, temporary SiNₓ implantation mask, B/P activation, temporary Al₂O₃ etch mask, ICP-RIE and wet-treatment records.
+    - A · full-area Al₂O₃.
+    - B · inactive SiO₂/Al₂O₃.
+    - p-inversion and n-accumulation remain Ge-hosted Electrical Regions; the *anticipated* annotations precede the passivation film because host-selective buried electrical placement is not yet available.
 - **PERC solar cells with point contacts** — `site/examples/perc-solar-cells-point-contacts.wafercad`
   - source-order reconstruction is the default active Variant;
   - curated baseline and GDS-patterned-contact alternatives remain available.
