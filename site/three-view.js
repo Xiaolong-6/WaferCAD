@@ -1478,7 +1478,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     translations,
     {
       name = '',
-      maxInstancesPerMesh = 512,
+      maxInstancesPerMesh = 4096,
       adaptiveRough = false,
       appearance = null,
       presentation = null,
@@ -2611,7 +2611,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       const rendererSidewallsAt = performance.now();
 
-      host.dataset.instanceChunkLimit = '512';
+      host.dataset.instanceChunkLimit = '4096';
       host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
