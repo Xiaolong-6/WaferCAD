@@ -19,17 +19,24 @@ const browser = await chromium.launch({
 });
 const errors = [];
 const results = [];
+const visualDiffs = [];
 
 async function compare(page, name, locator) {
-  results.push(
-    await assertVisualBaseline(page, name, {
-      update,
-      baselineDir: process.env.WAFERCAD_VISUAL_BASELINE_DIR || 'tests/visual-baselines',
-      locator,
-      maxDiffRatio: 0.0005,
-      channelThreshold: 16,
-    }),
-  );
+  try {
+    results.push(
+      await assertVisualBaseline(page, name, {
+        update,
+        baselineDir: process.env.WAFERCAD_VISUAL_BASELINE_DIR || 'tests/visual-baselines',
+        locator,
+        maxDiffRatio: 0.0005,
+        channelThreshold: 16,
+      }),
+    );
+  } catch (error) {
+    // Save every viewport's actual/expected/diff, not just the first failure.
+    visualDiffs.push(`${name}: ${error.message}`);
+    console.error(`Visual baseline mismatch: ${name}: ${error.message}`);
+  }
 }
 
 try {
@@ -96,6 +103,7 @@ try {
   }
 
   assert.deepEqual(errors, []);
+  assert.deepEqual(visualDiffs, [], 'Approved visual baseline comparisons failed');
   console.log(
     update
       ? `WaferCAD visual baselines updated: ${results.length}`

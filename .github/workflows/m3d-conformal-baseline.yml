@@ -68,15 +68,25 @@ jobs:
       - run: npm run docs:check
 
   approved-windows-visual-baseline:
-    name: Approved Windows visual baseline
+    name: Approved Windows visual baseline / ${{ matrix.variant }}
     needs: scientific-baseline
     runs-on: windows-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: original-main
+            source: bad705c406ebb57a84f3a0ac66340b63e92bcf0c
+          - variant: integrated-review
+            source: ${{ github.event.pull_request.head.sha || github.sha }}
     env:
       WAFERCAD_VISUAL_BASELINE_DIR: tests/visual-baselines/windows-chromium
       WAFERCAD_THREE_DIR: ${{ github.workspace }}\node_modules\three
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.source }}
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -101,6 +111,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: windows-visual-baseline-diffs
+          name: windows-visual-baseline-diffs-${{ matrix.variant }}
           path: test-results/visual-diff
           if-no-files-found: warn
