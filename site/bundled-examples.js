@@ -129,10 +129,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       filename: 'm3d-selfpowered-preview.wafercad',
     },
     preview: {
-      path: './examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp',
+      path: './examples/thumbnails/m3d-selfpowered-stack.svg',
       view: 'three',
-      alt: 'WaferCAD 3D rendering of a reconstructed heterogeneous M3D chip',
-      label: 'WaferCAD final-stage render · open to explore the model',
+      alt: 'Illustrative three-tier schematic of the reconstructed heterogeneous M3D chip',
+      label: 'Illustrative tier schematic · open to explore the live WaferCAD model',
     },
     summary:
       'Paper-derived, kernel-reconstructed self-powered IC: silicon photovoltaic tier, WSe₂ and MoS₂ logic, graphene sensor, conformal oxides and selective sensing windows. Includes 36 History nodes and 27 stage bookmarks (S00–S26); routing masks are inferred.',
