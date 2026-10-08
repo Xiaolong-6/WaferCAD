@@ -37,6 +37,8 @@ test('quality, opaque, ROI, small arrays and near inspection remain exact', () =
     { transparent: false },
     { clipped: true },
     { instanceCount: 25 },
+    { viewZFraction: 0.2 },
+    { viewZFraction: NaN },
     { unitsPerPixel: 0.005 },
     { unitsPerPixel: NaN },
     { unitsPerPixel: Infinity },
