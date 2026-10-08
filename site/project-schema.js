@@ -1169,6 +1169,9 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
         fail(`${path}.parentBranchId`, 'must not reference itself.');
       }
     }
+    if (branch.archivedMainRoot != null && typeof branch.archivedMainRoot !== 'boolean') {
+      fail(`${path}.archivedMainRoot`, 'must be a boolean.');
+    }
     const createdAt = assertString(branch.createdAt, `${path}.createdAt`, { max: 64 });
     if (!Number.isFinite(Date.parse(createdAt))) fail(`${path}.createdAt`, 'must be a valid date.');
 
@@ -1212,10 +1215,15 @@ function validateSnapshotBranches(snapshotBranches, snapshots, shared) {
 
       if (branch.id !== 'main' && branch.parentBranchId != null && branch.rootNodeId != null) {
         const origin = nodesById.get(branch.rootNodeId);
-        if (origin && origin.branchId !== branch.parentBranchId) {
+        const expectedOwner = branch.archivedMainRoot === true
+          ? branch.id
+          : branch.parentBranchId;
+        if (origin && origin.branchId !== expectedOwner) {
           fail(
             `snapshotBranches.branches[${index}].rootNodeId`,
-            'must reference a Step owned by the parent Variant.',
+            branch.archivedMainRoot === true
+              ? 'must reference the first archived Main Step.'
+              : 'must reference a Step owned by the parent Variant.',
           );
         }
       }
