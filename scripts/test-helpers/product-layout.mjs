@@ -73,7 +73,7 @@ export function createProductLayoutChecks({ capture }) {
       return {
         navigationInHeader: Boolean(header?.contains(nav)),
         redundantViewHint: Boolean(document.querySelector('.workstation-view-meta')),
-        rows: getComputedStyle(shell).gridTemplateRows.trim().split(/\\s+/).length,
+        rows: getComputedStyle(shell).gridTemplateRows.trim().split(/\s+/).length,
         headerBottom: h?.bottom ?? -1,
         navigationBottom: n?.bottom ?? -1,
         navigationHeight: n?.height ?? 0,
