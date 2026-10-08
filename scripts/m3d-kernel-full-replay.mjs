@@ -168,7 +168,6 @@ function stateTemplate(model) {
   project.name = 'M3D self-powered heterogeneous IC · kernel full replay';
   project.maskSourceMode = 'draw';
   project.drawMask = draw([]);
-  project.snapshots = [];
   return project;
 }
 
@@ -208,6 +207,8 @@ function stamp() {
 
 function captureState() {
   const value = copy(root);
+  delete value.snapshots;
+  delete value.snapshotBranches;
   value.model = copy(model);
   value.drawMask = draw(currentShapes);
   value.section = copy(currentSection);
