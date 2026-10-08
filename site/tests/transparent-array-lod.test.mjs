@@ -78,6 +78,21 @@ test('Z-collapse/cut missing depth caps cannot drop a true annotation sidewall',
   };
   const cut = { ...source, caps: [source.caps[0]] };
   assert.equal(electricalDisplaySolidForLod(source, cut, distant()), cut);
-  assert.equal(electricalDisplaySolidForLod(source, { ...source, slabs: [] }, distant()).slabs.length, 0);
+  const clipped = {
+    ...source,
+    slabs: [
+      { z0: -1, z1: -0.2, polys: [] },
+      { z0: 0.2, z1: 1, polys: [] },
+    ],
+  };
+  assert.equal(
+    electricalDisplaySolidForLod(source, clipped, distant()),
+    clipped,
+    'partial Z-collapse cuts retain real sidewalls even when both end caps survive',
+  );
+  assert.equal(
+    electricalDisplaySolidForLod(source, { ...source, slabs: [] }, distant()).slabs.length,
+    0,
+  );
   assert.equal(electricalDisplaySolidForLod(source, source, { flattenElectrical: false }), source);
 });
