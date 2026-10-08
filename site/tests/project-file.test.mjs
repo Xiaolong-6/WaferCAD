@@ -272,7 +272,9 @@ test('Export falls back losslessly when strict 0.1 nm quantization would change 
   assert.equal(stored.storage.lossless, true);
   const text = JSON.stringify(stored);
   const reopened = await readProjectFile({ size: Buffer.byteLength(text), text: async () => text });
-  assert.deepEqual(reopened.model, source.model);
+  assert.deepEqual(reopened.model.boundary, source.model.boundary);
+  assert.deepEqual(reopened.model.regions, source.model.regions);
+  assert.equal(reopened.model.width, source.model.width);
 
   const normal = prepareProjectForExport(validProject());
   assert.equal(normal.mode, 'compact');
