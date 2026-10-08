@@ -2,7 +2,7 @@
 
 Repository: `Xiaolong-6/WaferCAD`  
 Branch: `feat/process-panel-workflow-v2-20261008`  
-Base: `main` at `82c35a845946835451fd7da9fcbe92be47593e7f`  
+Original base: `main` at `82c35a845946835451fd7da9fcbe92be47593e7f`  
 Merge status: **feature branch only; main untouched**.
 
 ## Interaction changes
@@ -50,3 +50,11 @@ For browser tests, start the local `site/` server on port 4173 as described in `
 - The Recipe runner remains safe for Continue versus Rebuild Base; Stop is responsive mid-run; long recipes have a scrollable step list and visible footer.
 - Confirm desktop narrow panel, wide panel and mobile breakpoints visually; no horizontal overflow or uncontrolled sticky footer overlap.
 - If any browser regression is red, repair in this branch and rerun only the affected suites. Do not merge without runtime evidence.
+
+## Latest-main baseline recheck
+
+During implementation, main advanced to `bad705c406ebb57a84f3a0ac66340b63e92bcf0c` (21 newer commits, including the unified-toolbar integration and documentation audit). A three-way source comparison identified seven overlapping files, with **zero overlapping edit regions**. The feature branch integrated all main changes via the feature-only merge commit `02e7deb11f4fbf916a98a5719c499c3ff71b1302`, using the latest-main tree and both commit parents. Main was not modified.
+
+GitHub `compare main...feat/process-panel-workflow-v2-20261008` after the merge reported the current main SHA as the exact merge base and `behind_by = 0`. Static source checks: **17/17 passed** for the operation selector, template flow, guide, recording preference, running controls and retained toolbar integration. A JavaScript syntax-only parse check (not a test run, imports excluded for parsing) passed for **15/15** changed JS/MJS modules and regression scripts.
+
+The template preview additionally lists actual step names before Load/Replace. Browser/runtime checks remain pending, along with cross-refresh persistence of replaced-Recipe version history. This is not a production acceptance or a CI-green claim.
