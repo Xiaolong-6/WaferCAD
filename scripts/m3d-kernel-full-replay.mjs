@@ -147,7 +147,6 @@ for (const file of maskFiles) {
 }
 
 const m3dFieldShapes = rectShapes([{ x: 2, y: -9, w: 28, h: 18 }]);
-const m3dField = drawMaskGeometry(draw(m3dFieldShapes));
 
 function mask(file) {
   const item = masks.get(file);
@@ -746,7 +745,6 @@ const s25Ms = performance.now() - s25Start;
 closeStage('25_Final_Al2O3');
 
 const beforeS26Volumes = layerVolumes(model);
-const beforeS26 = copy(model);
 
 applyStep('26_Final_Sensing_Windows', {
   type: 'etch',
