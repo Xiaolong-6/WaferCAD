@@ -106,6 +106,57 @@ try {
   assert.match(await stressPage.locator('#recipeRunSummary').innerText(), /Stopped: [0-9]+\/40/);
   assertNoPageErrors(stressErrors);
   await stressContext.close();
+
+  // Invalid field drafts are attached to stable step IDs. A later invalid
+  // step must not block an earlier Run to Step; deleting or changing its
+  // operation must clear the obsolete validation, and Undo must restore
+  // the last valid persisted Recipe.
+  const fieldContext = await newUiContext(browser);
+  const fieldPage = await fieldContext.newPage();
+  const fieldPageErrors = observePageErrors(fieldPage);
+  await gotoWelcome(fieldPage);
+  await fieldPage.locator('#welcomeEmptyBtn').click();
+  await fieldPage.waitForURL(/\/app\.html(?:\?.*)?$/);
+  await waitForAppReady(fieldPage);
+  await openFunctionPanel(fieldPage, 'process');
+  await fieldPage.locator('[data-process-input-mode="recipe"]').click();
+  await fieldPage.locator('#recipeCodeTab').click();
+  await fieldPage.locator('#recipeCodeEditor').fill([
+    'deposit({ material: "A", thickness: "30 nm", area: "full" });',
+    'deposit({ material: "B", thickness: "30 nm", area: "full" });',
+  ].join('\n'));
+  await fieldPage.locator('#recipeApplyCodeBtn').click();
+  await fieldPage.locator('#recipeStepsTab').click();
+  const fieldRows = fieldPage.locator('.recipe-step-row');
+  await fieldRows.nth(1).click();
+  const fieldThickness = fieldPage.getByRole('textbox', { name: 'Thickness', exact: true });
+  await fieldThickness.fill('abc');
+  await fieldThickness.press('Tab');
+  await fieldRows.nth(0).click();
+  await fieldPage.locator('#recipeRunToBtn').click();
+  await waitForStatus(fieldPage, /Recipe completed: 1\/1 steps committed/, 45000);
+  await fieldRows.nth(1).click();
+  await fieldPage.getByRole('button', { name: '×', exact: true }).click();
+  await fieldPage.locator('#recipeValidateBtn').click();
+  assert.equal(await fieldRows.count(), 1);
+  assert.match(
+    await fieldPage.locator('#recipeValidation').innerText(),
+    /1 step\(s\) structurally valid/,
+  );
+  await fieldPage.locator('#recipeUndoBtn').click();
+  await fieldPage.locator('#recipeValidateBtn').click();
+  assert.match(
+    await fieldPage.locator('#recipeValidation').innerText(),
+    /2 step\(s\) structurally valid/,
+  );
+  await fieldRows.nth(1).click();
+  await fieldThickness.fill('abc');
+  await fieldThickness.press('Tab');
+  await fieldPage.getByRole('combobox', { name: 'Operation type' }).selectOption('record');
+  await fieldPage.locator('#recipeValidateBtn').click();
+  assert.doesNotMatch(await fieldPage.locator('#recipeValidation').innerText(), /Thickness/);
+  assertNoPageErrors(fieldPageErrors);
+  await fieldContext.close();
 } finally {
   await browser.close();
 }
