@@ -93,7 +93,7 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /let sceneVariantCache = new Map\(\)/);
   assert.match(threeView, /function presentationMode\(/);
   assert.match(threeView, /function restoreSceneVariant\(/);
-  assert.match(threeView, /rendererUpdateKind = 'variant-swap'/);
+  assert.match(threeView, /applyPresentationState\(\{ updateKind: 'variant-swap' \}\)/);
   assert.match(threeView, /rendererUpdateKind = variantBuild \? 'variant-build' : 'rebuild'/);
   assert.match(threeView, /variantBuild && physicalSurfacePlan/);
   assert.match(threeView, /if \(!variantBuild\) surfacePlanBuildCount\+\+/);
