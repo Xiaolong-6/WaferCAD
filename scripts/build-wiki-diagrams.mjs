@@ -7,8 +7,14 @@ import { processGuideSvg } from '../site/process-guide-svg.js';
 export const PROCESS_WIKI_ASSET_DIR = join('docs', 'wiki', 'assets', 'process');
 
 export function processWikiDiagramSvg(id) {
-  const before = processGuideSvg(id, false).replace('<svg ', '<svg x="14" y="36" width="220" height="124" ');
-  const after = processGuideSvg(id, true).replace('<svg ', '<svg x="266" y="36" width="220" height="124" ');
+  const before = processGuideSvg(id, false).replace(
+    '<svg ',
+    '<svg x="14" y="36" width="220" height="124" ',
+  );
+  const after = processGuideSvg(id, true).replace(
+    '<svg ',
+    '<svg x="266" y="36" width="220" height="124" ',
+  );
   return [
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 174" role="img" aria-label="Process before and after">',
     '<rect width="500" height="174" rx="12" fill="#ffffff"/>',
@@ -28,7 +34,9 @@ export async function buildWikiDiagrams(mode = '--check') {
   if (mode === '--write') await mkdir(PROCESS_WIKI_ASSET_DIR, { recursive: true });
   const expectedNames = new Set(PROCESS_GUIDE.map((entry) => entry.id + '.svg'));
   const existing = await readdir(PROCESS_WIKI_ASSET_DIR);
-  const unexpected = existing.filter((name) => name.endsWith('.svg') && !expectedNames.has(name));
+  const unexpected = existing.filter(
+    (name) => name.endsWith('.svg') && !expectedNames.has(name),
+  );
   if (unexpected.length) throw Error('Obsolete Process diagrams: ' + unexpected.join(', '));
   for (const entry of PROCESS_GUIDE) {
     const filename = join(PROCESS_WIKI_ASSET_DIR, entry.id + '.svg');

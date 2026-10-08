@@ -4,16 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>WaferCAD · Process Manual</title>
-    <meta http-equiv="refresh" content="2;url=https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations" />
+    <meta
+      http-equiv="refresh"
+      content="2;url=https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations"
+    />
   </head>
   <body>
-    <p>Process diagrams are now part of the
-      <a id="manual" href="https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations">illustrated WaferCAD Wiki manual</a>.
+    <p>
+      Process diagrams are now part of the
+      <a id="manual" href="https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations"
+        >illustrated WaferCAD Wiki manual</a
+      >.
     </p>
     <script>
       // Preserve old /guide/#operation-id bookmarks without retaining a separate atlas.
       let operation = '';
-      try { operation = decodeURIComponent(location.hash.slice(1)); } catch { /* fall back to index */ }
+      try {
+        operation = decodeURIComponent(location.hash.slice(1));
+      } catch {
+        // Fall back to the index.
+      }
       const anchor = /^[a-z0-9-]+$/.test(operation) ? '#' + encodeURIComponent(operation) : '';
       const target = 'https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations' + anchor;
       document.getElementById('manual').href = target;

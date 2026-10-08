@@ -35,7 +35,7 @@ WaferCAD accepts `.gds`, `.gdsii`, `.oas`, and `.oasis` mask files. OASIS import
 
 ## Product manual
 
-The [GitHub Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki) is the full product user manual, including startup, workspace navigation, mask/ROI, Process, Recipe, History/Variants, project recovery, import/export, examples and modeling limits. Its [illustrated Process Operations chapter](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations) embeds Before → After diagrams for all 18 operation variants. The compact dynamic version remains under Apply in the Process panel; its Guide link opens the same Wiki chapter.
+The [GitHub Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki) is the full product user manual, including startup, workspace navigation, mask/ROI, Process, Recipe, History/Variants, project recovery, import/export, examples and modeling limits. Its [illustrated Process Operations chapter](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations) embeds Before → After diagrams for all 18 operation variants. The compact dynamic version remains under Apply in the Process panel; its Wiki link opens the same chapter.
 
 Source pages in `docs/wiki/` are checked on every `main` push and synchronized to the Wiki only if their content changed. The detailed Process chapter is generated from the same catalog used by the UI. First-time Wiki initialization and any required write token are documented in [Wiki sync](docs/WIKI_SYNC.md).
 

@@ -35,7 +35,8 @@ test('every Process variant has distinct catalog metadata and a valid diagram', 
 test('Wiki image assets match every in-app Process illustration', async () => {
   for (const entry of PROCESS_GUIDE) {
     const image = await readFile(
-      new URL('../../docs/wiki/assets/process/' + entry.id + '.svg', import.meta.url), 'utf8'
+      new URL('../../docs/wiki/assets/process/' + entry.id + '.svg', import.meta.url),
+      'utf8',
     );
     assert.equal(image, processWikiDiagramSvg(entry.id), entry.id + ': stale Wiki illustration');
     assert.match(image, /BEFORE/);

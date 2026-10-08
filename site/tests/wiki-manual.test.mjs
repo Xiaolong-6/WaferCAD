@@ -35,7 +35,10 @@ test('every shipped example section embeds a real corresponding preview asset', 
   const page = await manual('Examples-and-Modeling-Limits');
   for (const example of BUNDLED_EXAMPLES) {
     const image = example.id + '-three.webp';
-    assert.ok(page.includes('/site/examples/thumbnails/' + image), example.id + ': missing preview');
+    assert.ok(
+      page.includes('/site/examples/thumbnails/' + image),
+      example.id + ': missing preview',
+    );
     await access(new URL('../examples/thumbnails/' + image, import.meta.url));
   }
 });
