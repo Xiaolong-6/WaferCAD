@@ -9,6 +9,14 @@ on:
       - "site/examples/**"
       - "site/model.js"
       - "site/project-io.js"
+      - "site/workspace-snapshots.js"
+      - "site/process-topology.js"
+      - "site/three-view.js"
+      - "site/app.html"
+      - "site/style.css"
+      - "site/tests/snapshots.test.mjs"
+      - "site/tests/process-topology.test.mjs"
+      - "site/tests/issue-11-3d-controls.test.mjs"
       - "site/tests/m3d-bundled-example.test.mjs"
       - "scripts/m3d-visual-acceptance.mjs"
       - "scripts/m3d-welcome-regression.mjs"
@@ -55,8 +63,10 @@ jobs:
           exit 1
       - name: Generate M3D final-state thumbnail and SHA manifest
         run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
-      - name: Focused M3D Node acceptance
-        run: node --test site/tests/m3d-bundled-example.test.mjs site/tests/m3d-reconstruction-regression.test.mjs
+      - name: M3D, History and 3D Border regression
+        run: |
+          node --check site/three-view.js
+          node --test site/tests/m3d-bundled-example.test.mjs site/tests/m3d-reconstruction-regression.test.mjs site/tests/snapshots.test.mjs site/tests/process-topology.test.mjs site/tests/issue-11-3d-controls.test.mjs
       - name: M3D history and export browser acceptance
         run: node scripts/m3d-visual-acceptance.mjs
       - name: Welcome-card open and preview regression
