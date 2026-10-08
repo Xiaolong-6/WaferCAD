@@ -104,7 +104,7 @@ await recipePage.waitForFunction(
   { timeout: 30000 },
 );
 
-// Manual Process remains the source of truth and can teach Recipe by recording
+// Step mode remains the source of truth and can teach Recipe by recording
 // a successful operation back into the same persisted recipe.
 await recipePage.locator('[data-process-input-mode="manual"]').click();
 await recipePage.locator('[data-process-mode="add"]').click();
@@ -137,7 +137,7 @@ assert.equal(recipeSaved.processRecipe?.steps?.length, 2);
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.command, 'deposit');
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.params?.material, 'Al2O3');
 assert.equal(recipeSaved.processRecipe?.steps?.[1]?.params?.material, 'Manual recipe check');
-assert.ok(recipeSaved.model.processRevision >= 2, 'Recipe and Manual operations must commit through the Process kernel');
+assert.ok(recipeSaved.model.processRevision >= 2, 'Recipe and Step-mode operations must commit through the Process kernel');
 assert.deepEqual(recipeErrors, []);
 await recipeContext.close();
 
