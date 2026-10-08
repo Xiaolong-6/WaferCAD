@@ -34,7 +34,7 @@ _Illustration of a directional film on a flat face; the geometry and scaling dep
 - **Coverage / Profile:** **Directional** grows/etches along Z; **Conformal** deposition follows true exposed sidewalls; isotropic/undercut release removes material laterally.
 - **Z and units:** Choose **XYZ unit** first. `0.2` with unit **µm** means **200 nm**; it is different from `0.2` with unit **nm**. The base Z is a physical thickness; Process Z typically means film thickness or etch depth.
 
-**Two distinct ROIs:** A **Mask ROI** limits selected/inverted-mask processing and mask export. A **Main ROI** limits 3D inspection/GLB export, **not** Process. See [Masks and ROI](Masks-and-ROI).
+**Two distinct ROIs:** An active **Mask ROI** clips Process operations, **including Whole face**, as well as mask export. Clear it for a true full-face operation. A **Main ROI** limits 3D inspection/GLB export, **not** Process. See [Masks and ROI](Masks-and-ROI).
 
 ## Keep your work safe
 
