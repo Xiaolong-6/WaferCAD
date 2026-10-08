@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: m3d-full-replay-20261008
+  group: m3d-kernel-full-replay-20261008
   cancel-in-progress: true
 
 permissions:
