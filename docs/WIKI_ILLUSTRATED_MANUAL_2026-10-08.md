@@ -26,6 +26,14 @@
 - `site/guide/index.html` stays as a lightweight backward-compatible redirect for old `/guide/#<id>` links; the separate atlas UI and maintenance logic are removed.
 - README, docs map, documentation architecture, Wiki home/sidebar and usage describe a single illustrated product manual.
 
+## Source-level verification performed on this branch
+
+- The generated Process Markdown was compared directly against the catalog generator: exact match (18 operation descriptions and 18 sanitized SVG references).
+- Each of the 18 tracked SVG assets was compared byte-for-byte against `processWikiDiagramSvg(id)`: **18/18 match**.
+- A tree-aware link audit inspected all 13 Wiki Markdown files: 33 embedded images and 2 Mermaid diagrams before UI screenshots were added; no missing raw-asset paths or stale standalone-atlas links were found. The four approved UI screenshots added here are tracked in `tests/visual-baselines/windows-chromium/`.
+- The six Welcome `*-three.webp` preview files were confirmed present.
+- These are source-level checks executed through the GitHub connector. The local Node/Prettier/ESLint suite and published GitHub Wiki browser rendering have **not** been executed or validated in this session.
+
 ## Acceptance and limitations
 
 Checks intended for the implementation revision:

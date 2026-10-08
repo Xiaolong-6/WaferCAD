@@ -23,6 +23,10 @@ These six entries are **the shipped Welcome catalog in main**. Other research re
 
 *Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
 
+![Photodetector Section screenshot from the accepted Windows visual baseline](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/tests/visual-baselines/windows-chromium/photodetector-section.png)
+
+*Section screenshot from a reproducible browser visual reference (2026-10-05); device geometry and visual results can evolve after later Kernel changes.*
+
 **Black-Si photodiode — Setälä 2023, Fig. 1a**
 
 - Silicon Base, SiO₂ patterning, schematic ICP-RIE Black-Si morphology, front B/rear P Implant markers, thermal/clean process records, conformal Al₂O₃ passivation and Al contacts.
