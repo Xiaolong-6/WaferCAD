@@ -88,6 +88,14 @@ assert.equal(await recipePage.locator('#recipeCodePane').isHidden(), true);
 await recipePage.locator('#recipeTemplateSelect').selectOption('conformal');
 assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
 assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Deposit Al2O3/);
+assert.equal(await recipePage.locator('#recipeStepOperation').inputValue(), 'deposit');
+
+// A step can change operation in place without delete/re-add. Compatible material
+// and vertical dimensions survive Deposit <-> Extend conversion.
+await recipePage.locator('#recipeStepOperation').selectOption('extend');
+assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Extend Al2O3/);
+await recipePage.locator('#recipeStepOperation').selectOption('deposit');
+assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Deposit Al2O3/);
 
 await recipePage.locator('#recipeCodeTab').click();
 assert.equal(await recipePage.locator('#recipeCodePane').isVisible(), true);
