@@ -879,6 +879,10 @@ export function createThreeView({
       clipped: Boolean(clip),
       instanceCount: isArrayModel(model) ? model.array?.instances?.length || 0 : 0,
       unitsPerPixel,
+      viewZFraction:
+        camera && distance > 0
+          ? Math.abs(camera.position.z - controls.target.z) / distance
+          : 1,
     });
   }
 
