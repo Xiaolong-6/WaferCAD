@@ -209,23 +209,25 @@ await recipePage.waitForFunction(
   { timeout: 15000 },
 );
 await openFunctionPanel(recipePage, 'snapshots');
-const archivedVariant = recipePage.locator('.history-variant').filter({
-  has: recipePage.locator('.history-variant-name', { hasText: 'Previous base' }),
+const archivedVariant = recipePage.locator('.history-variant-name', {
+  hasText: 'Previous base',
 }).first();
 assert.ok(await archivedVariant.count(), 'archived Main must be visible in History');
 assert.equal(
-  await recipePage.locator('.history-variant[data-variant-id="main"] .history-step-row').count(),
+  await recipePage.locator(
+    '.history-variant[data-variant-id="main"] > .history-variant-body > .history-step-wrap',
+  ).count(),
   0,
   'new Main must have a fresh history root',
 );
-await archivedVariant.locator('.history-variant-name').first().click();
+await archivedVariant.click();
 await recipePage.waitForFunction(
   () => /Switched to Variant "Previous base/.test(document.getElementById('statusText')?.textContent || ''),
   null,
   { timeout: 15000 },
 );
 assert.ok(
-  await recipePage.locator('.history-variant[data-active="true"] .history-step-row').count() >= 2,
+  await recipePage.locator('.history-variant[data-active="true"] > .history-variant-body > .history-step-wrap').count() >= 2,
   'the old process steps must remain directly restorable',
 );
 assert.deepEqual(recipeErrors, []);
