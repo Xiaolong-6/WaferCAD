@@ -28,6 +28,10 @@ This page is the navigation layer for the current `main` product contract. Dated
 - [Automated test architecture](testing.md)
 - [CI routing](CI.md)
 
+## Pending feature-branch handoff
+
+- [M3D History, Recovery and 3D Border verification (2026-10-08)](M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md) — code prepared on `test/m3d-full-replay-20261008`; desktop Agent owns deferred regression and acceptance. **Not a current `main` contract.**
+
 ## Historical evidence
 
 Files named with dates, audit/checkpoint/handoff wording, or explicit feature-branch status preserve the evidence available at that revision. Keep their original measurements and conclusions, but add a clear historical/superseded banner when later `main` behavior has moved on. Use the current contract documents above for present-tense product behavior.
