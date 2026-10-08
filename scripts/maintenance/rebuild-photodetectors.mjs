@@ -8,7 +8,7 @@ import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
 const { createModel, applyOperation } = await import('../../site/model.js');
 const { drawMaskGeometry } = await import('../../site/draw-mask-geometry.js');
-const { difference, unionGeometries } = await import('../../site/vector-geometry.js');
+const { difference } = await import('../../site/vector-geometry.js');
 const { normalizeProcessRecipe } = await import('../../site/process-recipe.js');
 const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile } =
   await import('../../site/project-io.js');
@@ -28,7 +28,6 @@ root.roi = null;
 root.maskRoi = null;
 root.display.sectionCollapse = null;
 
-const emptyMask = { nextShapeId: 1, shapes: [] };
 const circle = (r) => ({ type: 'circle', c: [0, 0], r });
 const ring = (innerR, outerR) => ({ type: 'ring', c: [0, 0], innerR, outerR });
 const masks = {
