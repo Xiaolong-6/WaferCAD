@@ -1130,7 +1130,13 @@ processPanelController = createProcessPanelController({
   colorNewLayer,
   colorNewImplant,
   colorNewElectricalRegion,
-  renderAll,
+  // Array Steps are still fully committed through the native Kernel/History.
+  // Only skip heavy 625-site geometry/3D repaint between batch Steps.
+  // The Recipe controller does a complete render on success, Stop or failure.
+  renderAll: () => {
+    if (processRecipeController?.isRunning?.() && isArrayModel(model)) return;
+    renderAll();
+  },
   status,
 });
 
