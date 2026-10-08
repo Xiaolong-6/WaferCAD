@@ -191,6 +191,27 @@ try {
         );
       }
       assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
+      await mkdir('test-results/example-recipe-runall', { recursive: true });
+      await writeFile(
+        `test-results/example-recipe-runall/${example.id}${requestedVariant ? '-' + requestedVariant : ''}-${historyChoice}.json`,
+        JSON.stringify(
+          {
+            example: example.id,
+            variant: requestedVariant,
+            historyChoice,
+            outcome: 'Completed',
+            committedSteps: count,
+            sourceLayerNames: sourceProject.model.layers.map((layer) => layer.name),
+            exportedLayerNames: exported.model.layers.map((layer) => layer.name),
+            implants: exported.model.implants.length,
+            electricalRegions: exported.model.electricalRegions.length,
+            waferSites: exported.model.array?.instances?.length || null,
+            historyNodes: exported.snapshotBranches.nodes.length,
+          },
+          null,
+          2,
+        ) + '\n',
+      );
       console.log(`${example.id}: Run All completed, exported ${count} History/Recipe steps`);
     } catch (error) {
       // Preserve actionable evidence when a large-array replay exhausts
