@@ -194,8 +194,8 @@ function createSourceList(example) {
   return host;
 }
 
-function openExample(exampleId) {
-  globalThis.location.href = './app.html?start=example&example=' + encodeURIComponent(exampleId);
+function exampleHref(exampleId) {
+  return './app.html?start=example&example=' + encodeURIComponent(exampleId);
 }
 
 function renderExampleCards() {
@@ -220,11 +220,20 @@ function renderExampleCards() {
     const body = document.createElement('div');
     body.className = 'welcome-example-body';
 
-    const title = document.createElement('h3');
-    title.textContent = example.title;
+    const href = exampleHref(example.id),
+      title = document.createElement('h3'),
+      titleLink = document.createElement('a');
+    titleLink.className = 'welcome-example-title-link';
+    titleLink.href = href;
+    titleLink.textContent = example.title;
+    title.append(titleLink);
 
-    const summary = document.createElement('p');
-    summary.textContent = example.summary;
+    const summary = document.createElement('p'),
+      summaryLink = document.createElement('a');
+    summaryLink.className = 'welcome-example-summary-link';
+    summaryLink.href = href;
+    summaryLink.textContent = example.summary;
+    summary.append(summaryLink);
 
     const sources = createSourceList(example);
 
@@ -249,15 +258,9 @@ function renderExampleCards() {
       tags.append(more);
     }
 
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'welcome-example-open';
-    action.textContent = 'Open example →';
-    action.onclick = () => openExample(example.id);
-
     body.append(title, summary);
     if (sources) body.append(sources);
-    body.append(tags, action);
+    body.append(tags);
     card.append(visual, body);
     grid.append(card);
   }
