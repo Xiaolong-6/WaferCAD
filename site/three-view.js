@@ -1163,6 +1163,33 @@ export function createThreeView({
     host.dataset.sceneRetainedObjectCount = String(retainedObjects);
     host.dataset.sceneRetainedGeometryCount = String(retainedGeometries.size);
     host.dataset.sceneRetainedMaterialCount = String(retainedMaterials.size);
+    // In full-wafer transparency, a small number of instanced buried surfaces
+    // can dominate vertex throughput even when draw calls look manageable.
+    // Attribute the *submitted* triangles by presentation ownership.
+    const trianglesByKind = new Map(),
+      largestTriangleObjects = [];
+    group.traverse?.((object) => {
+      if (!object.isMesh || object.visible === false) return;
+      const geometry = object.geometry;
+      const primitiveCount = geometry?.index?.count || geometry?.getAttribute('position')?.count || 0,
+        instances = object.isInstancedMesh ? object.count : 1,
+        triangles = Math.round((primitiveCount / 3) * instances);
+      if (!triangles) return;
+      const kind = object.userData?.waferCadPresentation?.kind || 'untracked';
+      trianglesByKind.set(kind, (trianglesByKind.get(kind) || 0) + triangles);
+      largestTriangleObjects.push({
+        name: object.name || '',
+        kind,
+        triangles,
+        instances,
+      });
+    });
+    host.dataset.sceneTriangleKinds = JSON.stringify(
+      [...trianglesByKind].sort((a, b) => b[1] - a[1]),
+    );
+    host.dataset.sceneTopTriangleObjects = JSON.stringify(
+      largestTriangleObjects.sort((a, b) => b.triangles - a.triangles).slice(0, 8),
+    );
     if (renderer?.info?.memory) {
       host.dataset.webglGeometryCount = String(renderer.info.memory.geometries ?? 0);
       host.dataset.webglTextureCount = String(renderer.info.memory.textures ?? 0);
