@@ -12,7 +12,7 @@ _The same schematic geometry source is used here and in the expandable Process g
 
 The **Step** mode has Front/Back, one **Operation** selector, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. **Apply** performs the current operation. **Also add to Recipe** controls whether a successful Step-mode operation is appended to the Recipe. Below Apply, **How it works** expands a conceptual Before → After schematic and caveats; it is not a live prediction from the current project.
 
-The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
+The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. An active **Mask ROI** clips even **Whole face** Process operations; clear it before applying truly wafer-wide steps. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
 
 ### Special cases
 
