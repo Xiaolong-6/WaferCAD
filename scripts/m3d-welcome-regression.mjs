@@ -30,27 +30,29 @@ try {
   await openFunctionPanel(page, 'snapshots', { timeout: 120000 });
   await page.locator('.history-step-wrap').first().waitFor({ timeout: 180000 });
   assert.equal(await page.locator('.history-step-wrap').count(), 36);
-  // ON and OFF must remain legible in the actual 3D header, irrespective of
-  // the opacity selection or color palette.
+  // The Border state is communicated by the common selected color, not an
+  // extra ON/OFF caption. Preserve the restored checkbox and click behavior.
   const border = page.locator('#threeBorderControl');
   const state = async () =>
     border.evaluate((node) => ({
       fill: getComputedStyle(node).backgroundColor,
-      caption: getComputedStyle(node.querySelector('.three-border-status'), '::before').content,
+      color: getComputedStyle(node).color,
+      outline: getComputedStyle(node).borderColor,
+      label: node.textContent.trim(),
     }));
-  // Imported projects restore their saved Border state. Start this toggle
-  // scenario explicitly at OFF instead of assuming a fixed example default.
+  assert.equal(await border.locator('.three-border-status').count(), 0);
   if (await page.locator('#threeBorders').isChecked()) await border.click();
   const off = await state();
-  assert.match(off.caption, /OFF/);
+  assert.equal(off.label, 'Border');
   await border.click();
   assert.equal(await page.locator('#threeBorders').isChecked(), true);
   const on = await state();
-  assert.match(on.caption, /ON/);
-  assert.notEqual(on.fill, off.fill, 'Border ON must have distinct high-contrast fill');
+  assert.equal(on.label, 'Border');
+  assert.notEqual(on.fill, off.fill, 'Selected Border must have a distinct fill');
+  assert.notEqual(on.color, off.color, 'Selected Border must have a distinct text color');
   await border.click();
   assert.equal(await page.locator('#threeBorders').isChecked(), false);
-  assert.match((await state()).caption, /OFF/);
+  assert.deepEqual(await state(), off);
   assert.deepEqual(errors, [], 'M3D welcome opening caused page errors');
   await page.screenshot({
     path: 'test-results/m3d/welcome/m3d-welcome-opened.png',

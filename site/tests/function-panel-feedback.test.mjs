@@ -9,6 +9,10 @@ const feedback = await readFile(
   'utf8',
 );
 const style = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+const workstationStyle = await readFile(
+  new URL('../workstation.css', import.meta.url),
+  'utf8',
+);
 const projectState = await readFile(
   new URL('../controllers/project-state-controller.js', import.meta.url),
   'utf8',
@@ -186,6 +190,16 @@ test('Mask topography reference is dashed and all scientific header controls sha
   assert.match(style, /max-height: 21px/);
   assert.match(style, /\.view-head \.three-border-toggle > span[\s\S]*?color: inherit/);
   assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
+  assert.match(style, /\.view-head \.mini-btn\.active/);
+  assert.match(workstationStyle, /\.view-head \.three-border-toggle:has\(input:checked\)/);
+  assert.match(workstationStyle, /\.view-head \.mini-btn\.active/);
+  assert.match(workstationStyle, /\.view-head details\[open\] > summary/);
+  assert.match(html, /id="threeBorders"[^>]*aria-label="Show 3D borders"/);
+  assert.doesNotMatch(html, /three-border-status/);
+  assert.doesNotMatch(style, /content: ['"](?:ON|OFF)['"]/);
+  assert.match(workspaceActions, /button\.classList\.add\('active'\)/);
+  assert.match(html, /id="maskSourceToggleBtn"\s+class="mini-btn active"/);
+  assert.match(html, /id="sectionScaleModeBtn"\s+class="mini-btn active"/);
 });
 
 test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
