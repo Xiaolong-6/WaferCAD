@@ -28,9 +28,10 @@ This page is the navigation layer for the current `main` product contract. Dated
 - [Automated test architecture](testing.md)
 - [CI routing](CI.md)
 
-## Pending feature-branch handoff
+## Current integration audit
 
-- [M3D History, Recovery and 3D Border verification (2026-10-08)](M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md) — code prepared on `test/m3d-full-replay-20261008`; desktop Agent owns deferred regression and acceptance. **Not a current `main` contract.**
+- [Desktop pre-main audit (2026-10-08)](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — repaired physical precision and Recipe persistence, exact product revision, local runtime evidence and main decision.
+- [M3D History, Recovery and 3D Border verification (2026-10-08)](M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md) — historical feature checkpoint; later acceptance is recorded in the desktop audit above.
 
 ## Historical evidence
 

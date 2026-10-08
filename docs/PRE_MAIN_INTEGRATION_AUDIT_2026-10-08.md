@@ -1,5 +1,7 @@
 # Pre-main integration audit — 2026-10-08
 
+> Historical integration checkpoint. The later [desktop pre-main audit](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) records repairs, current revision, runtime evidence and the user-authorized main decision. Preserve the original findings below as revision-specific evidence.
+
 **Status: not approved for `main` until the combined integration HEAD completes its gates.**
 
 ## Branch closure and traceability

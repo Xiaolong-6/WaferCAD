@@ -1,5 +1,7 @@
 # M3D / History / Border — desktop Agent handoff (2026-10-08)
 
+> Historical integration checkpoint. The later [desktop pre-main audit](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) records repairs, current revision, runtime evidence and the user-authorized main decision. Preserve the original findings below as revision-specific evidence.
+
 > **Status: CODE WRITTEN; FINAL REGRESSION DEFERRED BY USER.**
 > This is branch-local evidence and an execution checklist, **not** a validated product contract or a claim that CI is green. The user explicitly requested that no more regression validation be performed in this session and that desktop Agent perform it instead. Do not treat this document as permission to merge.
 >
