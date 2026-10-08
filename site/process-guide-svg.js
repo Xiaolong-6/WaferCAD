@@ -76,13 +76,19 @@ export function processGuideSvg(id, after = false) {
         : deposited(6, 46, 208, 11) + arrow();
     }
   } else if (id === 'implant') {
-    shape = base() + (after
-      ? '<defs><linearGradient id="process-implant-fade" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop stop-color="#ab80ce" stop-opacity=".85"/><stop offset="1" stop-color="#ab80ce" stop-opacity=".06"/>' +
-        '</linearGradient></defs><path d="M74 57H140L159 97H93Z" fill="url(#process-implant-fade)"/>'
-      : arrow());
+    shape =
+      base() +
+      (after
+        ? '<defs><linearGradient id="process-implant-fade" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop stop-color="#ab80ce" stop-opacity=".85"/><stop offset="1" stop-color="#ab80ce" stop-opacity=".06"/>' +
+          '</linearGradient></defs><path d="M74 57H140L159 97H93Z" fill="url(#process-implant-fade)"/>'
+        : arrow());
   } else if (id === 'electrical') {
-    shape = base() + (after ? '<rect x="74" y="57" width="74" height="37" fill="#64bda8" opacity=".55"/>' : arrow());
+    shape =
+      base() +
+      (after
+        ? '<rect x="74" y="57" width="74" height="37" fill="#64bda8" opacity=".55"/>'
+        : arrow());
   } else if (id === 'record') {
     shape = base() + (after ? rect(91, 12, 38, 25, gold) : arrow());
   }
