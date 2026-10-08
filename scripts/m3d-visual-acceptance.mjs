@@ -94,15 +94,17 @@ try {
     (await page.locator('.process-history-row[role="button"]').count()) >= 34,
     'Most Process History nodes should be restorable',
   );
-  const early = page.locator('.process-history-row', { hasText: 'Transfer bilayer WSe2' });
-  assert.equal(await early.count(), 1);
+  const labels = await page.locator('.process-history-row strong').allTextContents();
+  report.historyLabels = labels;
+  const early = page.locator('.history-step-wrap[data-step-id="m3d-step-15"] .process-history-row');
+  assert.equal(await early.count(), 1, 'WSe2 History node is missing: ' + labels.join(' | '));
+  assert.match(await early.textContent(), /WSe2/i);
   await early.click();
-  await page.waitForFunction(() => Boolean(
-    document.querySelector('.history-step-wrap[data-step-id="m3d-step-15"] [data-cursor="true"]'),
-  ), null, { timeout: 30000 }).catch(async () => {
-    assert.ok(await page.locator('.process-history-row[data-cursor="true"]').count() === 1);
-  });
-  const head = page.locator('.process-history-row', { hasText: 'Open graphene sensing windows' });
+  await page.waitForFunction(() =>
+    document.querySelector('.history-step-wrap[data-step-id="m3d-step-15"] .process-history-row')
+      ?.dataset.cursor === 'true',
+    null, { timeout: 30000 });
+  const head = page.locator('.history-step-wrap[data-step-id="m3d-step-36"] .process-history-row');
   assert.equal(await head.count(), 1);
   await head.click();
   await page.waitForFunction(() => {
