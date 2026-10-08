@@ -1,6 +1,6 @@
 # Renderer A v2.1 — Persistent Scene audit (2026-10-08)
 
-**Status: draft / not accepted / do not merge.** Source branch: `perf/renderer-persistent-scene-v2-1`. Baseline: GPU rough v3 merged at `58b45ee9`. PR: [#134](https://github.com/Xiaolong-6/WaferCAD/pull/134).
+**Status: integrated into `feat/process-recipe-v1`; product/performance acceptance pending; do not merge the integration PR into main until all gates pass.** Renderer source branch: `perf/renderer-persistent-scene-v2-1`. Baseline: GPU rough v3 merged at `58b45ee9`. Integration merge: `f51bef35` via [#134](https://github.com/Xiaolong-6/WaferCAD/pull/134); review gate: [#135](https://github.com/Xiaolong-6/WaferCAD/pull/135).
 
 ## Scope and verified behavior
 
@@ -36,3 +36,13 @@ The stage logger separates cap bucket construction, sidewall construction, annot
 5. Required acceptance: Quality + Browser green, cold transparency <15 s as a first gate, then evaluate warm swap against the sub-second v2.1 goal. No merge until these are achieved.
 
 The authoritative long-lived contracts remain `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/testing.md`; this note is dated diagnostic evidence only.
+
+## Integrated-branch follow-up (2026-10-08)
+
+The original renderer branch was merged for audit and iteration into the **feature branch only**; it was not accepted for `main`. On integrated SHA `f51bef35`, Quality, Native Fig3, and Process Geometry passed, but Browser failed on the 625-site transparency path. The reported cold 0.67 s was a timing artifact: `renderState=ready` was set before first WebGL frame completion. Warm transparent swap measured **36.77 s** in the CI software renderer despite zero topology/assembly work. The cached scene and low CPU assembly numbers therefore must not be presented as evidence of satisfactory interactive performance.
+
+The follow-up integration branch adds vertex-lit Lambert shading for smooth transparent large-array surfaces (while retaining two-pass DoubleSide transparency), frame completion/draw-call counters, active-and-retained scene resource diagnostics, compositor-aware renderer benchmarking, and 20 opacity/border stress toggles. Scientific material ownership and GLB export remain in the existing Kernel/CPU contracts. **All timing, visual and resource checks must be rerun against the final HEAD**; these changes are not yet proof of acceptance.
+
+A separate application audit also found and addressed the archived-Main HEAD bug when Apply Base is invoked from an earlier History Step. Process Recipe now has a user-visible Start selector: Continue current model (confirmation required if process revisions exist) or Rebuild Base first into a new Main (with existing Keep/Clear history protection). Base HEAD and Recipe execution-state browser/unit tests were added. Product documentation in README, USAGE, ARCHITECTURE, DEVELOPMENT and testing was synchronized.
+
+Acceptance stays blocked until Quality, Browser renderer/product review, Native Fig3 replay and 625-site cold/warm transparency pass on the same final SHA, with no unreviewed shader-side rendering contract changes.
