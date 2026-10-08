@@ -1047,7 +1047,7 @@ export function createProjectController({
         return;
       }
       try {
-        await checkpointBeforeReplace('pre-new-project');
+        await requireRecoveryCheckpoint('pre-new-project');
         cancelHistoricalStepEdit();
         resetProjectState();
         resetRoughDraftControls();
