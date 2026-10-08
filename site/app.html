@@ -806,39 +806,17 @@
                   </button>
                 </div>
                 <div class="control-body process-control-body">
-                  <div id="processMode" class="segmented process-mode" aria-label="Process action">
-                    <button
-                      type="button"
-                      class="active"
-                      data-process-mode="add"
-                      aria-pressed="true"
-                    >
-                      Deposit
-                    </button>
-                    <button type="button" data-process-mode="grow" aria-pressed="false">
-                      Extend
-                    </button>
-                    <button type="button" data-process-mode="etch" aria-pressed="false">
-                      Etch
-                    </button>
-                    <button type="button" data-process-mode="implant" aria-pressed="false">
-                      Implant
-                    </button>
-                    <button type="button" data-process-mode="electrical" aria-pressed="false">
-                      Electrical
-                    </button>
-                    <button type="button" data-process-mode="record" aria-pressed="false">
-                      Record
-                    </button>
-                  </div>
-                  <select id="operationType" class="visually-hidden" aria-label="Process action">
-                    <option value="add">Deposit new layer</option>
-                    <option value="grow">Extend existing layer</option>
-                    <option value="etch">Etch / subtract</option>
-                    <option value="implant">Implant</option>
-                    <option value="electrical">Electrical region</option>
-                    <option value="record">Record process step</option>
-                  </select>
+                  <label class="process-operation-picker" for="operationType">
+                    <span>Operation</span>
+                    <select id="operationType" aria-label="Process action">
+                      <option value="add">Deposit</option>
+                      <option value="grow">Extend</option>
+                      <option value="etch">Etch</option>
+                      <option value="implant">Implant</option>
+                      <option value="electrical">Electrical</option>
+                      <option value="record">Record</option>
+                    </select>
+                  </label>
 
                   <div class="param-grid-2 process-area-grid">
                     <label id="operationAreaRow" class="param-field">
@@ -1091,6 +1069,10 @@
                     </label>
                   </div>
 
+                  <label class="step-recipe-record recipe-record-toggle" title="Append successful Step-mode operations to Recipe">
+                    <input id="recipeRecordManual" type="checkbox" checked />
+                    <span>Also add to Recipe</span>
+                  </label>
                   <div class="operation-actions">
                     <button id="applyOperationBtn" class="primary apply-btn">Apply</button>
                     <button
@@ -1110,23 +1092,23 @@
                       Redo
                     </button>
                   </div>
-                  <section
+                  <details
                     id="processVisualGuide"
                     class="process-visual-guide"
                     aria-label="Current process schematic"
                   >
-                    <div class="process-guide-top">
-                      <strong id="processGuideTitle">Directional deposition</strong>
+                    <summary class="process-guide-top">
+                      <strong>How it works · <span id="processGuideTitle">Directional deposition</span></strong>
                       <span id="processGuideEffect" class="process-guide-effect">Geometry</span>
-                      <a
-                        id="processGuideLink"
-                        href="./guide/#deposit-directional"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Open full product manual"
-                        >Guide ↗</a
-                      >
-                    </div>
+                    </summary>
+                    <a
+                      id="processGuideLink"
+                      href="./guide/#deposit-directional"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open full product manual"
+                      >Full guide ↗</a
+                    >
                     <div
                       class="process-guide-illustrations"
                       aria-label="Schematic process before and after"
@@ -1145,10 +1127,10 @@
                     <small id="processGuideArea" class="process-guide-area"
                       >Selected mask · Mask ROI applies</small
                     >
-                  </section>
-                  <p id="operationNote" class="hint compact-hint">
-                    Directional coverage follows the selected footprint.
-                  </p>
+                    <p id="operationNote" class="hint compact-hint">
+                      Directional coverage follows the selected footprint.
+                    </p>
+                  </details>
                 </div>
               </div>
               <div id="recipeProcessPane" class="control-body recipe-process-pane" hidden></div>
