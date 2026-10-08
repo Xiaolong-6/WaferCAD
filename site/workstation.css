@@ -1486,11 +1486,47 @@ html.workstation-ui-v2 #sectionPanel .mini-btn:hover {
   color: #f1f4f6;
 }
 
-html.workstation-ui-v2 #sectionPanel .mini-btn.active,
-html.workstation-ui-v2 #sectionPanel .mini-btn[aria-pressed='true'] {
-  border-color: #3f6482;
-  background: #25303a;
-  color: #edf5fb;
+/* One selected-state palette for Main, Mask, 3D and Section controls.
+   An open popover is highlighted only while open; persistent toggles reflect
+   checked/pressed/active. Mode buttons highlight the currently named mode. */
+html.workstation-ui-v2 .workstation-view-stage .view-head .mini-btn.active,
+html.workstation-ui-v2 .workstation-view-stage .view-head .mini-btn[aria-pressed='true'],
+html.workstation-ui-v2 .workstation-view-stage .view-head .focus-editor[open] > summary,
+html.workstation-ui-v2 .workstation-view-stage .view-head .three-opacity-control[open] > summary,
+html.workstation-ui-v2 .workstation-view-stage .view-head .three-border-toggle:has(input:checked),
+html.workstation-ui-v2 #sectionPanel .view-head .mini-btn.active,
+html.workstation-ui-v2 #sectionPanel .view-head .mini-btn[aria-pressed='true'],
+html.workstation-ui-v2 .workstation-view-stage .view-head details[open] > summary,
+html.workstation-ui-v2 #sectionPanel .view-head details[open] > summary {
+  border-color: #5c88aa;
+  background: #345674;
+  color: #f0f7fe;
+}
+
+html.workstation-ui-v2 .workstation-view-stage .view-head .mini-btn.active:hover,
+html.workstation-ui-v2 .workstation-view-stage .view-head .mini-btn[aria-pressed='true']:hover,
+html.workstation-ui-v2 .workstation-view-stage .view-head .focus-editor[open] > summary:hover,
+html.workstation-ui-v2
+  .workstation-view-stage
+  .view-head
+  .three-opacity-control[open]
+  > summary:hover,
+html.workstation-ui-v2
+  .workstation-view-stage
+  .view-head
+  .three-border-toggle:has(input:checked):hover,
+html.workstation-ui-v2 #sectionPanel .view-head .mini-btn.active:hover,
+html.workstation-ui-v2 #sectionPanel .view-head .mini-btn[aria-pressed='true']:hover,
+html.workstation-ui-v2 .workstation-view-stage .view-head details[open] > summary:hover,
+html.workstation-ui-v2 #sectionPanel .view-head details[open] > summary:hover {
+  border-color: #7aa7cc;
+  background: #406a8c;
+  color: #fff;
+}
+
+/* The generic header span rule must not dim the Border toggle label. */
+html.workstation-ui-v2 .workstation-view-stage .view-head .three-border-toggle > span {
+  color: inherit;
 }
 
 html.workstation-ui-v2 #toolPanel.workstation-tool-flyout {
@@ -1648,13 +1684,6 @@ html.workstation-ui-v2
     inset 0 -2px 0 var(--wc-accent),
     0 1px 2px rgba(31, 41, 51, 0.05);
   font-weight: 680;
-}
-
-html.workstation-ui-v2 #mainPanBtn.active,
-html.workstation-ui-v2 #mainPanBtn[aria-pressed='true'] {
-  border-color: #3f6482;
-  background: var(--wc-accent-soft);
-  color: #315f87;
 }
 
 html.workstation-ui-v2 #mainCanvas.plan-pan-active {

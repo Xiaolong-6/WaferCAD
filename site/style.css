@@ -942,12 +942,6 @@ canvas {
   text-align: right;
 }
 
-#sectionControlsBtn.active {
-  border-color: #aebbc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
 #mainCanvas.section-editing {
   cursor: crosshair;
   touch-action: none;
@@ -1508,12 +1502,6 @@ canvas {
   margin-left: auto;
 }
 
-#sectionScaleModeBtn.active {
-  border-color: #aebbc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
 .view-head > div:first-child > span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1669,12 +1657,6 @@ body.view-maximized .view-panel.is-maximized .view-head {
 
 body.view-maximized .view-panel.is-maximized .section-body {
   grid-template-columns: minmax(0, 1fr) minmax(150px, 210px);
-}
-
-.view-max-btn.active {
-  border-color: #aebbc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
 }
 
 /* Welcome */
@@ -2751,10 +2733,7 @@ summary:focus-visible {
 
 .view-head .focus-editor[open] > summary,
 .view-head .three-opacity-control[open] > summary,
-.view-head .three-border-toggle:has(input:checked),
-#sectionControlsBtn.active,
-#sectionScaleModeBtn.active,
-.view-max-btn.active {
+.view-head .three-border-toggle:has(input:checked) {
   border-color: transparent;
   background: var(--accent-soft);
   color: var(--accent-dark);
@@ -3071,12 +3050,11 @@ summary:focus-visible {
   color: #334352;
 }
 
+.view-head .mini-btn.active,
+.view-head .mini-btn[aria-pressed='true'],
 .view-head .focus-editor[open] > summary,
 .view-head .three-opacity-control[open] > summary,
-.view-head .three-border-toggle:has(input:checked),
-#sectionControlsBtn.active,
-#sectionScaleModeBtn.active,
-.view-max-btn.active {
+.view-head .three-border-toggle:has(input:checked) {
   border-color: #aebcc9;
   background: var(--accent-soft);
   color: var(--accent-dark);
@@ -3171,44 +3149,8 @@ summary:focus-visible {
   line-height: 1;
 }
 
-/* Explicit ON/OFF state is essential when dark material boundaries appear
-   inside a transparent wafer. The tiny hidden checkbox remains fully keyboard
-   accessible and owns the real toggle state. */
-.view-head #threeBorderControl {
-  gap: 4px;
-  padding-inline: 5px;
-  border: 1px solid #b9c4d0;
-}
-.view-head #threeBorderControl .three-border-status::before {
-  content: 'OFF';
-  display: inline-block;
-  min-width: 22px;
-  padding: 1px 3px;
-  border-radius: 2px;
-  background: #e5eaf0;
-  color: #526273;
-  font-size: 8px;
-  font-weight: 750;
-  text-align: center;
-  line-height: 12px;
-  letter-spacing: 0.02em;
-}
-.view-head #threeBorderControl:has(input:checked) {
-  background: #315f95;
-  border-color: #315f95;
-  color: #fff;
-  box-shadow: inset 0 0 0 1px #517dab;
-}
-.view-head #threeBorderControl:has(input:checked) .three-border-status::before {
-  content: 'ON';
-  background: #eff6ff;
-  color: #204f88;
-}
-.view-head #threeBorderControl:has(input:checked):hover {
-  background: #264d7a;
-  border-color: #264d7a;
-  color: #fff;
-}
+/* The visible Border label uses the same selected state as other view controls.
+   Its visually hidden checkbox remains the keyboard-accessible state owner. */
 .view-head #threeBorderControl:has(input:focus-visible) {
   outline: 2px solid #95b8e5;
   outline-offset: 2px;
@@ -3221,12 +3163,6 @@ summary:focus-visible {
 
 #maskSourceToggleBtn {
   min-width: 34px;
-}
-
-#maskSourceToggleBtn.active {
-  border-color: #aebcc9;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
 }
 
 .draw-mask-toolbar {
@@ -3566,8 +3502,7 @@ summary:focus-visible {
   padding: 7px;
 }
 
-.view-head details[open] > summary,
-#sectionControlsBtn.active {
+.view-head details[open] > summary {
   border-color: #aebcc9;
   background: var(--accent-soft);
   color: var(--accent-dark);
@@ -5049,12 +4984,6 @@ summary:focus-visible {
 }
 
 /* Section detail ROI: one lightweight inspection window over the Section canvas. */
-#sectionDetailRoiBtn.active {
-  border-color: transparent;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
 #sectionCanvas.section-detail-drawing {
   cursor: crosshair;
 }

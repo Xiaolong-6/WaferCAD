@@ -1,5 +1,7 @@
 # Example Kernel / Mask / Recipe audit — 2026-10-08
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 Base branch: `feat/process-recipe-v1`. Isolated repair branch:
 `fix/example-kernel-recipe-replay-audit`. **Do not merge until replay gates pass.**
 

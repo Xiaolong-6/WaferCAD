@@ -1,5 +1,7 @@
 # Desktop pre-main audit — 2026-10-08
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 ## Revision and scope
 
 Repository: `Xiaolong-6/WaferCAD`. Product revision: `de263cb83f73607fae8c41bd1ac16e8957d9c8b8` on `codex/pre-main-recipe-audit-fixes-20261008`. This includes integration `449c3ca64fcef2301e980b1df4dc0c2b506bc2f5` and repair `e303712`. Base main was `58b45ee9efae3c7948a97f29ffc517ade7910ba8`.

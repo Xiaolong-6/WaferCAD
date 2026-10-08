@@ -41,6 +41,7 @@ Mask no longer owns ROI interaction. Main and Mask both support double-click Fit
 The editor uses a compact engineering/CAD workstation visual system. Information density and panel geometry stay unchanged; hierarchy comes from surface treatment rather than added whitespace.
 
 - scientific view headers share one compact toolbar language across Main, Mask, 3D and Section;
+- persistent toolbar toggles use one selected palette in light/dark themes without extra ON/OFF badges; mode buttons (File/Draw, Fast/Quality) show their selected mode with the same palette, while popover controls are emphasized only when open;
 - panel borders are subdued and canvas surfaces remain visually dominant;
 - tool tabs use a quiet background plus a single active underline instead of boxed emphasis;
 - inputs, selects, segmented controls, primary actions and quiet actions use one border/radius/focus system;

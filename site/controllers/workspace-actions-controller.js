@@ -6,7 +6,9 @@ export function syncThreeRenderModeButton(button, fast) {
   button.title = fast
     ? 'Current mode: Fast. Click to switch to Quality.'
     : 'Current mode: Quality. Click to switch to Fast.';
-  button.classList.toggle('active', fast);
+  // The button displays the selected mode in both cases, so both receive
+  // the same visual emphasis. aria-pressed still identifies the Fast preference.
+  button.classList.add('active');
   button.setAttribute('aria-pressed', String(fast));
 }
 

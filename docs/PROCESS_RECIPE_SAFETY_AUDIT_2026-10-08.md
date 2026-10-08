@@ -1,5 +1,7 @@
 # Process Recipe safety review — 2026-10-08
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 Base: `fix/photodetector-reconstruction-v2`. Work branch: `fix/process-recipe-safety-r1-r7`.
 
 ## Scope and verification

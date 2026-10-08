@@ -1,5 +1,7 @@
 # Welcome and native Fig3 loading - 2026-10-07
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 Branch: `codex/project-io-geometry-sharing`; baseline product commit `41ff251`. Performance implementation: `51485e5`. Feature pushes use `[skip ci]`; no CI, main merge or deployment is requested.
 
 ## Preserved complete examples and smaller previews

@@ -1,5 +1,6 @@
 import { readFile, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
+import { checkDocumentation } from './check-documentation.mjs';
 import { PROCESS_GUIDE } from '../site/process-guide.js';
 
 // Generate Wiki operations from exactly the data rendered in the Process panel.
@@ -88,8 +89,9 @@ async function main() {
         PROCESS_GUIDE.length +
         ' operation descriptions and ' +
         pages.length +
-        ' product chapters',
+        ' authored/navigation pages plus the generated operation reference',
     );
+    await checkDocumentation();
   } else throw Error('Usage: node scripts/build-process-guide.mjs --check|--write');
 }
 

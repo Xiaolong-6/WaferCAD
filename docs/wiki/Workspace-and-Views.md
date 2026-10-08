@@ -11,6 +11,10 @@
 - **Split** gives side-by-side primary views.
 - **Section A–B** below the main workspace shows the material stack sampled along the chosen A–B path.
 
+## Toolbar states
+
+Border, Pan and Detail use the shared selected color when enabled. The 3D Border label stays **Border**; its checkbox remains accessible to keyboard and screen-reader users. File/Draw, Fast/Quality and Auto/1:1 highlight the mode currently named on the button. Opacity and ROI controls highlight while their popover is open.
+
 ## Section geometry and Z exaggeration
 
 **Auto** fits the XY length and Z height independently and reports Z scaling; **1:1** uses a common physical pixel scale. A film that appears wide in Auto may be thin in actual units. Section boundaries use the canonical geometry, while rough/pyramid surface relief is generated as a display field.

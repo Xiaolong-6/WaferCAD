@@ -60,7 +60,7 @@ A buried rough interface does not receive the external rough-cap closure skirt u
 - `numerical-crack` — sub-grid slivers at or below the configured tolerance;
 - `true-void` — intentional trenches, through-holes, or other uncovered process domain.
 
-The current crack threshold is 0.1 nm, matching the project persistence precision.
+The current numerical crack threshold is 0.1 nm, matching the compact storage grid. This tolerance does not require quantizing all stored material lengths; sub-grid Z/depth/profile values use lossless persistence when needed.
 
 Cracks may be healed before Conformal. True voids remain geometry and may receive sidewall coating.
 
@@ -132,10 +132,10 @@ Implant and Electrical Region volumes are canonical annotations rather than mate
 
 ## Non-goals
 
-Kernel v2 intentionally does not add:
+Released cavities, suspended films and mask-under-cut overhangs represented by XY regions with separated Z intervals are supported; see [Process benchmarks](PROCESS_BENCHMARKS.md). Kernel v2 intentionally does not add:
 
 - arbitrary 3D solids or a general B-rep;
-- overhang/re-entrant geometry;
+- arbitrary free-form 3D re-entrant solids;
 - process-physics calibration;
 - calibrated material-selectivity ratios or etch chemistry (the current target-material stop rule is geometric/process intent only);
 - diffusion, implantation physics, stress, thermal flow, electrostatics, carrier transport, or predictive electrical simulation;

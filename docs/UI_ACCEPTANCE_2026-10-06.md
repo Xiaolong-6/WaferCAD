@@ -1,5 +1,7 @@
 # UI acceptance - 2026-10-06
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 The Z-collapse editor uses a 560 px horizontal layout with two control columns and a compact ruler. It fits the short desktop Section dock without vertical scrolling; narrow containers retain a stacked, scrollable layout. The toolbar button has a slider SVG, an accessible name, and visible focus/active states. Existing control IDs and interactions are preserved.
 
 Both tandem project copies now open with centered Main/Mask framing, a 32 x 32 um ROI, a 32 um Section cut, a selected oblique camera, and a narrow Detail ROI around the front pyramid coatings. Only current view metadata changes: canonical geometry, materials and every History/Variant state remain identical. Native import retains saved camera position/target/FOV; Welcome previews retain its orientation and fit the card dimensions.

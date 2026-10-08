@@ -1,5 +1,7 @@
 # Z-collapse front/back scale handoff — 2026-10-06
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 ## Revision
 
 - Repository: `Xiaolong-6/WaferCAD`

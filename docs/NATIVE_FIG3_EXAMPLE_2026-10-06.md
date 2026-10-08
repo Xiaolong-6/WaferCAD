@@ -1,5 +1,7 @@
 # Native three-tier Fig3 Welcome example - 2026-10-06
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 `site/examples/three-tier-silicon-jlfets.wafercad` is the completed single-site reconstruction of three silicon junctionless transistor tiers. It uses the same interactive Main, Mask, 3D and Section card style as the existing literature examples.
 
 Source: B. Lam et al., "Monolithic three-dimensional integration of silicon transistors," Nature 654, 652-659 (2026), [DOI 10.1038/s41586-026-10496-6](https://doi.org/10.1038/s41586-026-10496-6). The masks are educational reconstructions, not original fabrication mask data. This example covers one 1.6 mm device site, rather than the complete wafer array. The existing full-wafer reconstruction is a separate artifact.

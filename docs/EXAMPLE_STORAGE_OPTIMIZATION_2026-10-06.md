@@ -1,5 +1,7 @@
 # Example storage optimization — 2026-10-06
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 All four Welcome projects and both reference projects use lossless shared-assets-v2 geometry dictionaries. Model geometry, layer/annotation ownership, every History state, bookmarks, Variants and metadata pass full normalized JSON equality after readProjectFile. JSON signed zero is normalized without coordinate rounding. An exact comparison found that explicit null bookmark parentId was previously dropped; both file and Recovery packers now preserve complete bookmark metadata.
 
 | Project                                           | Before bytes | After bytes | Reduction | Chrome ready median, before → after | Worker median, before → after |

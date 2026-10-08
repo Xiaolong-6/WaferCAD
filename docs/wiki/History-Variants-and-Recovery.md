@@ -12,6 +12,8 @@ A Variant is a branch of the process lineage. A new path can preserve earlier Hi
 
 When replacing a Base that already has history, the UI offers a choice to preserve the previous Main as a restorable Variant, clear history, or cancel. Clearing cannot be interpreted as archiving.
 
+Clean History browsing preserves the Variant HEAD and does not create Recovery records. Genuine edits made while inspecting a historical Step remain protected before navigation or replacement. Recipe `snapshot()` is a structural bookmark change and participates in autosave even without a geometry operation.
+
 ## Save, Recovery and Export
 
 - **Save** creates a local browser Recovery checkpoint.

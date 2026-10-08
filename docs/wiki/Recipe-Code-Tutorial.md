@@ -2,7 +2,7 @@
 
 [Home](Home) · [Process and Recipes](Process-and-Recipes) · [Examples](Examples-and-Modeling-Limits) · [中文教程](Recipe-Code-Tutorial-zh-CN)
 
-WaferCAD Recipe v1 is a **restricted, declarative process language**. Each command describes a step executed through the same Process Geometry Kernel used by the Manual panel. It is not general JavaScript and it is not calibrated TCAD. This tutorial documents the implementation on `feat/process-recipe-v1`.
+WaferCAD Recipe v1 is a **restricted, declarative process language**. Each command describes a step executed through the same Process Geometry Kernel used by the Manual panel. It is not general JavaScript and it is not calibrated TCAD. This tutorial documents the shipped v1 parser and execution contract in main; older saved replays can retain explicit legacy semantics.
 
 ## 1. Five-minute quick start
 
@@ -48,7 +48,7 @@ The example assumes a Si Base already exists. The `record()` command stores proc
 
 Each statement is `command({ key: value, ... });`; `snapshot("Name");` is shorthand for a snapshot. Statements may contain line comments (`//`) and block comments (`/* ... */`), strings, numbers, arrays, objects, `true`, `false`, and `null`.
 
-Valid lengths include `"30 nm"`, `"0.5 µm"`, `"2 um"`, and `"0.001 mm"`. Bare numbers use **µm**; including units explicitly is safer. Thickness/depth must be positive for ordinary steps. Planarize instead accepts an **absolute Z coordinate**.
+Valid lengths include `"30 nm"`, `"0.5 µm"`, `"2 um"`, and `"0.001 mm"`. Bare numbers use **µm**; including units explicitly is safer. Thickness/depth must be positive for ordinary steps. Planarize instead accepts an **absolute Z coordinate**. Values must remain finite after unit conversion. Typed Recipe lengths preserve physical precision independently of the display unit: `"0.35 nm"` executes as 0.35 nm. Compact export automatically falls back to lossless storage when needed to preserve those lengths or valid geometry. `snapshot()` saves a bookmark and participates in autosave even in a snapshot-only run.
 
 The parser deliberately rejects variables, expressions, loops, arbitrary function calls, and undeclared commands. It enforces source/step/structure budgets. The code editor is for **literal process descriptions**, not a JavaScript interpreter.
 

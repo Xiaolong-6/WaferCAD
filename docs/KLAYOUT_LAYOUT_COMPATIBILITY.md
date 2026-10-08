@@ -34,7 +34,9 @@ Compatibility is checked in two stages:
 
 A parser-only PASS is therefore insufficient.
 
-## Current regression result
+## Recorded regression result
+
+These counts record the corpus run against the pinned KLayout revision. They are not a claim that this entire sweep was repeated on every later main revision; use the exact CI run/product SHA for fresh certification.
 
 At the pinned KLayout revision:
 

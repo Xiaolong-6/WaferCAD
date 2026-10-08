@@ -1,5 +1,7 @@
 # 3D Fast Mode
 
+> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](README.md) and [archive index](archive/README.md) for current contracts and later evidence.
+
 Branch: `codex/project-io-geometry-sharing`, following complete-import acceleration `d37e51a`. No new branch, CI, merge or deployment.
 
 ## Contract
