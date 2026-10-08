@@ -113,6 +113,14 @@ export function createThreeView({
   let preferredPixelRatio = 1;
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
+  let presentationObjects = new Set();
+  let surfaceMaterialPool = new Map();
+  let presentationUpdateCount = 0;
+  let physicalSceneModel = null;
+  let physicalSceneSignature = null;
+  let physicalSurfacePlan = null;
+  let activeSceneVariant = null;
+  let sceneVariantCache = new Map();
 
   function renderPolicy(interactive = interacting) {
     return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
@@ -123,6 +131,8 @@ export function createThreeView({
     host.dataset.renderQuality = policy.mode;
     if (renderer?.domElement) renderer.domElement.dataset.renderQuality = policy.mode;
     const ratio = Math.min(preferredPixelRatio, policy.maxPixelRatio);
+    host.dataset.presentationPixelRatio = String(ratio);
+    host.dataset.fullWaferTransparencyLod = 'false';
     if (renderer && Math.abs(renderer.getPixelRatio() - ratio) > 1e-9) {
       renderer.setPixelRatio(ratio);
       resize();
@@ -817,6 +827,123 @@ export function createThreeView({
     roughOwnedObjects = new Set();
     roughRenderContext = null;
     transparentMeshes = [];
+    presentationObjects = new Set();
+    surfaceMaterialPool = new Map();
+    clearSceneVariantCache();
+    activeSceneVariant = null;
+    physicalSceneModel = null;
+    physicalSceneSignature = null;
+    physicalSurfacePlan = null;
+  }
+
+  function presentationMode(inspection = getInspection?.() || {}) {
+    return Number(inspection.opacity) < 0.999 ? 'transparent' : 'opaque';
+  }
+
+  function snapshotSceneVariant(mode = activeSceneVariant) {
+    if (!mode || !group) return null;
+    return {
+      mode,
+      group,
+      zDisplayObjects,
+      currentZDisplay,
+      roughMeshes,
+      roughTasks,
+      roughOwnedObjects,
+      roughRenderContext,
+      roughInteractionCache,
+      transparentMeshes,
+      presentationObjects,
+      surfaceMaterialPool,
+      currentRoughMode,
+      lastLodSignature,
+      model: physicalSceneModel,
+      signature: physicalSceneSignature,
+    };
+  }
+
+  function disposeSceneGroup(targetGroup) {
+    if (!targetGroup) return;
+    const geometries = new Set(),
+      materials = new Set(),
+      textures = new Set();
+    for (const object of targetGroup.children || []) {
+      if (object.geometry) geometries.add(object.geometry);
+      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of objectMaterials) {
+        if (!material) continue;
+        materials.add(material);
+        if (material.bumpMap) textures.add(material.bumpMap);
+      }
+    }
+    targetGroup.clear();
+    for (const geometry of geometries) geometry.dispose?.();
+    for (const texture of textures) texture.dispose?.();
+    for (const material of materials) material.dispose?.();
+  }
+
+  function cacheActiveSceneVariant() {
+    if (!activeSceneVariant || !group) return;
+    sceneVariantCache.set(activeSceneVariant, snapshotSceneVariant(activeSceneVariant));
+  }
+
+  function restoreSceneVariant(entry) {
+    if (!entry?.group || !scene) return false;
+    if (group && group !== entry.group) scene.remove(group);
+    group = entry.group;
+    group.visible = true;
+    if (group.parent !== scene) scene.add(group);
+    zDisplayObjects = entry.zDisplayObjects;
+    currentZDisplay = entry.currentZDisplay;
+    roughMeshes = entry.roughMeshes;
+    roughTasks = entry.roughTasks;
+    roughOwnedObjects = entry.roughOwnedObjects;
+    roughRenderContext = entry.roughRenderContext;
+    roughInteractionCache = entry.roughInteractionCache;
+    transparentMeshes = entry.transparentMeshes;
+    presentationObjects = entry.presentationObjects;
+    surfaceMaterialPool = entry.surfaceMaterialPool;
+    currentRoughMode = entry.currentRoughMode;
+    lastLodSignature = entry.lastLodSignature;
+    physicalSceneModel = entry.model;
+    physicalSceneSignature = entry.signature;
+    activeSceneVariant = entry.mode;
+    host.dataset.sceneVariant = entry.mode;
+    return true;
+  }
+
+  function startSceneVariantBuild(mode) {
+    cacheActiveSceneVariant();
+    if (group) scene.remove(group);
+    group = new THREE.Group();
+    group.visible = false;
+    scene.add(group);
+    zDisplayObjects = new Set();
+    currentZDisplay = null;
+    roughMeshes = [];
+    roughTasks = [];
+    roughOwnedObjects = new Set();
+    roughRenderContext = null;
+    roughInteractionCache = null;
+    transparentMeshes = [];
+    presentationObjects = new Set();
+    surfaceMaterialPool = new Map();
+    currentRoughMode = 'none';
+    lastLodSignature = null;
+    activeSceneVariant = mode;
+    host.dataset.sceneVariant = mode;
+  }
+
+  function clearSceneVariantCache({ includeActive = false } = {}) {
+    const activeGroup = group;
+    for (const entry of sceneVariantCache.values()) {
+      if (!entry?.group) continue;
+      if (!includeActive && entry.group === activeGroup) continue;
+      if (entry.group.parent) entry.group.parent.remove(entry.group);
+      disposeSceneGroup(entry.group);
+    }
+    sceneVariantCache = new Map();
+    if (includeActive) activeSceneVariant = null;
   }
 
   function inspectionMaterialState(value) {
@@ -829,6 +956,248 @@ export function createThreeView({
       depthTest: true,
       depthWrite: !translucent,
     };
+  }
+
+  function sceneSignature(model, clip, inspection = getInspection() || {}) {
+    const layers = (model?.layers || []).map((layer) => [
+      layer?.id ?? null,
+      layer?.color ?? null,
+      layer?.visible ?? null,
+      layer?.hidden ?? null,
+    ]);
+    return JSON.stringify({
+      revision: model?.revision ?? 0,
+      processRevision: model?.processRevision ?? 0,
+      fast: inspection?.fast !== false,
+      clip: clip || null,
+      zCollapse: getZCollapse?.() || null,
+      layers,
+    });
+  }
+
+  function interfaceMaterialState(opacity) {
+    return {
+      opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
+      transparent: true,
+      depthTest: true,
+      depthWrite: false,
+    };
+  }
+
+  function presentationState(descriptor, inspection = getInspection() || {}) {
+    const materialState = inspectionMaterialState(inspection.opacity),
+      opacity = materialState.opacity,
+      transparent = materialState.transparent,
+      alwaysTransparent = (value) => ({
+        opacity: Math.max(0, Math.min(1, value)),
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+      });
+    switch (descriptor?.kind) {
+      case 'material-interface':
+        return {
+          visible: transparent,
+          materialState: interfaceMaterialState(opacity),
+          transparentSort: true,
+        };
+      case 'border':
+        return {
+          visible: Boolean(inspection.borders),
+          materialState: {
+            opacity: transparent ? 0.62 : 1,
+            transparent,
+            depthTest: true,
+            depthWrite: false,
+          },
+          transparentSort: false,
+        };
+      case 'implant-cut':
+        return {
+          visible: true,
+          materialState: alwaysTransparent(
+            opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
+          ),
+          transparentSort: true,
+        };
+      case 'implant-internal':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.18),
+          transparentSort: true,
+        };
+      case 'implant-depth':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.24),
+          transparentSort: true,
+        };
+      case 'implant-surface':
+        return {
+          visible: transparent || Boolean(descriptor?.exposed),
+          materialState: alwaysTransparent(opacity * 0.3),
+          transparentSort: true,
+        };
+      case 'electrical-internal':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.14),
+          transparentSort: true,
+        };
+      case 'electrical-depth':
+        return {
+          visible: transparent,
+          materialState: alwaysTransparent(opacity * 0.2),
+          transparentSort: true,
+        };
+      case 'electrical-surface':
+        return {
+          visible: transparent || Boolean(descriptor?.exposed),
+          materialState: alwaysTransparent(opacity * 0.24),
+          transparentSort: true,
+        };
+      case 'material-exterior':
+      default:
+        return {
+          visible: true,
+          materialState,
+          transparentSort: materialState.transparent,
+        };
+    }
+  }
+
+  function applyMaterialPresentation(material, state) {
+    if (!material || !state) return;
+    const transparentChanged = material.transparent !== Boolean(state.transparent),
+      depthWriteChanged = material.depthWrite !== Boolean(state.depthWrite),
+      depthTestChanged = material.depthTest !== Boolean(state.depthTest);
+    material.opacity = Number(state.opacity);
+    material.transparent = Boolean(state.transparent);
+    material.depthTest = Boolean(state.depthTest);
+    material.depthWrite = Boolean(state.depthWrite);
+    if (transparentChanged || depthWriteChanged || depthTestChanged) material.needsUpdate = true;
+  }
+
+  function registerPresentationObject(object, descriptor = null) {
+    if (!object || !descriptor) return object;
+    object.userData ||= {};
+    object.userData.waferCadPresentation = { ...descriptor };
+    presentationObjects.add(object);
+    const state = presentationState(descriptor),
+      materials = Array.isArray(object.material) ? object.material : [object.material];
+    object.visible = Boolean(state.visible);
+    for (const material of materials) applyMaterialPresentation(material, state.materialState);
+    if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
+    return object;
+  }
+
+  function refreshTransparentRegistry() {
+    transparentMeshes = [];
+    let sequence = 0;
+    for (const object of presentationObjects) {
+      if (!object?.visible || object.isLineSegments) continue;
+      const descriptor = object.userData?.waferCadPresentation || {},
+        materials = Array.isArray(object.material) ? object.material : [object.material],
+        isTransparent = materials.some((material) => Boolean(material?.transparent));
+      if (!isTransparent) {
+        object.renderOrder = 0;
+        continue;
+      }
+      transparentMeshes.push({
+        mesh: object,
+        center: object.boundingSphere?.center?.clone?.() || geometryCenter(object.geometry),
+        sortBias: Number(descriptor.sortBias) || 0,
+        depth: 0,
+        sequence: sequence++,
+      });
+    }
+    transparencyOrderDirty = true;
+  }
+
+  function updateSceneResourceDiagnostics() {
+    if (!host?.dataset || !group) return;
+    const geometries = new Set(),
+      materials = new Set();
+    let visibleObjects = 0;
+    group.traverse?.((object) => {
+      if (object === group) return;
+      if (object.visible !== false) visibleObjects++;
+      if (object.geometry) geometries.add(object.geometry);
+      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of objectMaterials) if (material) materials.add(material);
+    });
+    host.dataset.sceneObjectCount = String(Math.max(0, group.children.length));
+    host.dataset.sceneVisibleObjectCount = String(visibleObjects);
+    host.dataset.sceneGeometryCount = String(geometries.size);
+    host.dataset.sceneMaterialCount = String(materials.size);
+    host.dataset.presentationObjectCount = String(presentationObjects.size);
+    if (renderer?.info?.memory) {
+      host.dataset.webglGeometryCount = String(renderer.info.memory.geometries ?? 0);
+      host.dataset.webglTextureCount = String(renderer.info.memory.textures ?? 0);
+      host.dataset.webglProgramCount = String(renderer.info.programs?.length ?? 0);
+    }
+  }
+
+  function updateVisibleAnnotationDiagnostics() {
+    if (!host?.dataset) return;
+    const visibleCount = (kind) =>
+      [...presentationObjects].filter(
+        (object) =>
+          object?.visible !== false && object.userData?.waferCadPresentation?.kind === kind,
+      ).length;
+    host.dataset.implantInternalCount = String(visibleCount('implant-internal'));
+    host.dataset.implantSurfaceCount = String(visibleCount('implant-surface'));
+    host.dataset.implantCutCount = String(visibleCount('implant-cut'));
+    host.dataset.electricalRegionInternalCount = String(visibleCount('electrical-internal'));
+    host.dataset.electricalRegionSurfaceCount = String(visibleCount('electrical-surface'));
+  }
+
+  function applyPresentationState({
+    profile = true,
+    settle = true,
+    updateKind = 'presentation',
+  } = {}) {
+    if (!group || !presentationObjects.size) return false;
+    const started = performance.now(),
+      inspection = getInspection() || {};
+    for (const object of presentationObjects) {
+      const descriptor = object.userData?.waferCadPresentation;
+      if (!descriptor) continue;
+      const state = presentationState(descriptor, inspection),
+        materials = Array.isArray(object.material) ? object.material : [object.material];
+      object.visible = Boolean(state.visible);
+      for (const material of materials) applyMaterialPresentation(material, state.materialState);
+      if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
+    }
+    if (roughRenderContext) {
+      const materialState = inspectionMaterialState(inspection.opacity);
+      roughRenderContext.opacity = materialState.opacity;
+      roughRenderContext.borders = Boolean(inspection.borders);
+    }
+    refreshTransparentRegistry();
+    updateTransparentOrder();
+    updateVisibleAnnotationDiagnostics();
+    updateSceneResourceDiagnostics();
+    if (profile) {
+      presentationUpdateCount++;
+      host.dataset.presentationUpdateCount = String(presentationUpdateCount);
+      host.dataset.rendererUpdateKind = updateKind;
+      host.dataset.rendererPresentationMs = String(performance.now() - started);
+      host.dataset.rendererTopologyMs = '0';
+      host.dataset.rendererSmoothCapsMs = '0';
+      host.dataset.rendererSidewallsMs = '0';
+      host.dataset.rendererAnnotationsMs = '0';
+      host.dataset.rendererAssemblyMs = '0';
+    }
+    if (settle) {
+      host.dataset.renderPhase = 'complete';
+      host.dataset.renderState = 'ready';
+      const model = getModel(),
+        clip = getClipGeometry();
+      stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
+    }
+    scheduleFrame();
+    return true;
   }
 
   function xyBounds(geometry) {
@@ -1101,14 +1470,43 @@ export function createThreeView({
     });
   }
 
-  function createSurfaceMaterial(layer, materialState, appearance = null) {
-    return new THREE.MeshStandardMaterial({
-      color: layer?.color || '#999',
-      roughness: appearance ? 0.84 : 0.78,
-      metalness: 0.015,
-      side: THREE.DoubleSide,
-      ...materialState,
-    });
+  function createSurfaceMaterial(
+    layer,
+    materialState,
+    appearance = null,
+    presentation = null,
+  ) {
+    const create = () => {
+      const material = new THREE.MeshStandardMaterial({
+        color: layer?.color || '#999',
+        roughness: appearance ? 0.84 : 0.78,
+        metalness: 0.015,
+        side: THREE.DoubleSide,
+        ...materialState,
+      });
+      return material;
+    };
+
+    // Adaptive rough meshes and the transparent scene use private materials:
+    // transparent sorting and WebGL program lifecycle must remain independent
+    // per object (matching the last verified GPU-v3 transparency path).
+    // Opaque smooth objects can share materials without that ordering pressure.
+    if (appearance || !presentation?.kind || presentationMode() === 'transparent')
+      return create();
+
+    const key = JSON.stringify([
+      presentation.kind,
+      layer?.id || '',
+      layer?.color || '#999',
+      Number(appearance ? 0.84 : 0.78),
+    ]);
+    let material = surfaceMaterialPool.get(key);
+    if (!material) {
+      material = create();
+      material.userData.waferCadPooledPresentationMaterial = true;
+      surfaceMaterialPool.set(key, material);
+    }
+    return material;
   }
 
   function createAnnotationGradientMaterial(
@@ -1165,10 +1563,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
     sortBias = 0,
     trackAdaptiveRough = false,
     instanceTranslations = null,
+    presentation = null,
   ) {
     if (!geometry.getAttribute('position')?.count) {
       geometry.dispose();
-      material?.dispose?.();
+      if (!material?.userData?.waferCadPooledPresentationMaterial) material?.dispose?.();
       return null;
     }
     if (instanceTranslations)
@@ -1177,6 +1576,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           name: 'Array annotation',
           adaptiveRough: trackAdaptiveRough,
           appearance,
+          presentation: presentation ? { ...presentation, sortBias } : null,
         })[0] || null
       );
     const mesh = new THREE.Mesh(geometry, material),
@@ -1185,16 +1585,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     mesh.renderOrder = materialState.transparent ? 100 : 0;
     group.add(mesh);
     trackZDisplayObject(mesh);
-    if (materialState.transparent) {
-      transparencyOrderDirty = true;
-      transparentMeshes.push({
-        mesh,
-        center,
-        depth: 0,
-        sortBias,
-        sequence: transparentMeshes.length,
-      });
-    }
+    registerPresentationObject(mesh, presentation ? { ...presentation, sortBias } : null);
     if (appearance) mesh.userData.surfaceAppearance = { ...appearance };
     if (appearance && trackAdaptiveRough) {
       roughMeshes.push({
@@ -1211,15 +1602,26 @@ diffuseColor.a *= waferCadAlphaScale;`,
     geometry,
     material,
     translations,
-    { name = '', maxInstancesPerMesh = 64, adaptiveRough = false, appearance = null } = {},
+    {
+      name = '',
+      maxInstancesPerMesh = 4096,
+      adaptiveRough = false,
+      appearance = null,
+      presentation = null,
+    } = {},
   ) {
     if (!geometry.getAttribute('position')?.count || !translations?.length) {
       geometry.dispose();
-      material?.dispose?.();
+      if (!material?.userData?.waferCadPooledPresentationMaterial) material?.dispose?.();
       return [];
     }
 
-    const chunks = spatialInstanceChunks(translations, { maxInstances: maxInstancesPerMesh }),
+    // A huge transparent instance batch cannot be depth-sorted or culled
+    // locally. Preserve the spatial chunks used by the verified v3 renderer
+    // for transparent rendering; opaque geometry keeps the larger GPU batch.
+    const transparentBatch = presentationMode() === 'transparent',
+      batchSize = transparentBatch ? Math.min(maxInstancesPerMesh, 256) : maxInstancesPerMesh,
+      chunks = spatialInstanceChunks(translations, { maxInstances: batchSize }),
       meshes = [];
     chunks.forEach((chunk, chunkIndex) => {
       // Z-collapse can remap vertex Z coordinates in place. Give each spatial
@@ -1240,6 +1642,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (chunkGeometry.userData.roughGpuDisplacement) mesh.frustumCulled = false;
       group.add(mesh);
       trackZDisplayObject(mesh);
+      registerPresentationObject(mesh, presentation);
       if (adaptiveRough) {
         roughOwnedObjects.add(mesh);
         roughMeshes.push({
@@ -1247,16 +1650,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
           material,
           appearance: { ...appearance },
           center: mesh.boundingSphere?.center?.clone() || new THREE.Vector3(),
-        });
-      }
-      if (material.transparent) {
-        transparencyOrderDirty = true;
-        transparentMeshes.push({
-          mesh,
-          center: mesh.boundingSphere?.center?.clone() || new THREE.Vector3(),
-          sortBias: 0,
-          depth: 0,
-          sequence: transparentMeshes.length,
         });
       }
       meshes.push(mesh);
@@ -1283,6 +1676,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     transparentMeshes = transparentMeshes.filter((entry) => !owned.has(entry.mesh));
     for (const object of owned) {
       zDisplayObjects.delete(object);
+      presentationObjects.delete(object);
       group?.remove(object);
       disposeObjectResources(object);
     }
@@ -1298,7 +1692,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
   function addBorderPositions(
     positions,
-    { order = 100000, opacity = 1, adaptiveRough = false } = {},
+    {
+      order = 100000,
+      opacity = 1,
+      adaptiveRough = false,
+      presentation = { kind: 'border' },
+    } = {},
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
@@ -1315,6 +1714,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     edges.renderOrder = order;
     group.add(edges);
     trackZDisplayObject(edges);
+    registerPresentationObject(edges, presentation);
     if (adaptiveRough) roughOwnedObjects.add(edges);
     return edges;
   }
@@ -1490,6 +1890,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         task.sortBias ?? (cap.buried ? 12 : 0),
         true,
         cap.instanceTranslations || task.implant?.instanceTranslations,
+        task.presentation,
       );
       if (mesh) {
         roughOwnedObjects.add(mesh);
@@ -1498,7 +1899,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       if (
         task.includeBorders !== false &&
-        context.borders &&
         !cap.buried &&
         geometry.userData.roughBorderPositions?.length
       ) {
@@ -1508,6 +1908,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             order: 100010 + (cap.solidIndex || 0),
             opacity: context.opacity,
             adaptiveRough: true,
+            presentation: { kind: 'border' },
           },
         );
       }
@@ -1529,8 +1930,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       data.roughGpuTaskCount = String(diagnostics?.gpuTaskCount || 0);
       data.roughMeshWorker = 'true';
     }
+    applyPresentationState({ profile: false, settle: false });
     updateRoughMaterialLod();
-    updateTransparentOrder();
     updateRoughDiagnostics();
     if (mode === 'detailed') lastLodSignature = signature || adaptiveLodSignature();
     host.dataset.renderPhase = mode === 'interactive' ? 'preview' : 'complete';
@@ -1766,6 +2167,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           task.sortBias ?? (cap.buried ? 12 : 0),
           true,
           cap.instanceTranslations || task.implant?.instanceTranslations,
+          task.presentation,
         );
         if (mesh) {
           roughOwnedObjects.add(mesh);
@@ -1774,7 +2176,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
         if (
           task.includeBorders !== false &&
-          context.borders &&
           !cap.buried &&
           geometry.userData.roughBorderPositions?.length
         ) {
@@ -1787,6 +2188,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               order: 100010 + (cap.solidIndex || 0),
               opacity: context.opacity,
               adaptiveRough: true,
+              presentation: { kind: 'border' },
             },
           );
         }
@@ -1812,8 +2214,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
         data.roughMeshWorker = 'false';
       }
+      applyPresentationState({ profile: false, settle: false });
       updateRoughMaterialLod();
-      updateTransparentOrder();
       updateRoughDiagnostics();
       if (!interactive) lastLodSignature = adaptiveLodSignature();
       return true;
@@ -1967,36 +2369,87 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
+    const clip = getClipGeometry(),
+      inspection = getInspection() || {},
+      signature = sceneSignature(model, clip, inspection),
+      targetVariant = presentationMode(inspection);
+    let variantBuild = false;
+    let buildStageStartedAt = 0;
+    const recordVariantStage = (name) => {
+      if (!variantBuild) return;
+      const now = performance.now();
+      host.dataset.rendererBuildPhase = name;
+      host.dataset.rendererBuildPhaseElapsedMs = String(now - buildStageStartedAt);
+      console.info('WAFERCAD_VARIANT_STAGE', name, Math.round(now - buildStageStartedAt));
+      buildStageStartedAt = now;
+    };
 
-    const renderGeneration = ++sceneGeneration;
+    if (
+      physicalSceneModel === model &&
+      physicalSceneSignature === signature &&
+      presentationObjects.size
+    ) {
+      if (activeSceneVariant === targetVariant) {
+        pendingRender = false;
+        host.dataset.renderState = 'updating';
+        host.dataset.rendererUpdateKind = 'presentation';
+        stats.textContent = 'updating 3D…';
+        syncRenderPolicy();
+        applyPresentationState();
+        return;
+      }
+
+      const cachedVariant = sceneVariantCache.get(targetVariant);
+      if (cachedVariant && restoreSceneVariant(cachedVariant)) {
+        pendingRender = false;
+        host.dataset.renderState = 'updating';
+        stats.textContent = 'updating 3D…';
+        syncRenderPolicy();
+        applyPresentationState({ updateKind: 'variant-swap' });
+        return;
+      }
+
+      if (Number(host.dataset.arrayInstances || 0) >= 64 && !roughTasks.length) {
+        variantBuild = true;
+        startSceneVariantBuild(targetVariant);
+      } else {
+        pendingRender = false;
+        host.dataset.renderState = 'updating';
+        host.dataset.rendererUpdateKind = 'presentation';
+        stats.textContent = 'updating 3D…';
+        syncRenderPolicy();
+        applyPresentationState();
+        return;
+      }
+    }
+
+    const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
     pendingRender = false;
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
     host.dataset.modelRevision = String(model.revision ?? 0);
     host.dataset.processRevision = String(model.processRevision ?? 0);
-    stats.textContent = 'rebuilding 3D…';
+    host.dataset.rendererUpdateKind = variantBuild ? 'variant-build' : 'rebuild';
+    stats.textContent = variantBuild ? 'preparing 3D transparency…' : 'rebuilding 3D…';
     const rendererProfileStart = performance.now();
 
     rendering = true;
+    buildStageStartedAt = performance.now();
+    recordVariantStage('begin');
     try {
-      disposeGroup();
+      if (!variantBuild) disposeGroup();
       syncRenderPolicy();
       applyZDisplayState(model);
 
-      const clip = getClipGeometry(),
-        inspection = getInspection() || {},
-        materialState = inspectionMaterialState(inspection.opacity),
+      const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
         borders = Boolean(inspection.borders),
-        plan = buildRenderSurfacePlan(model, clip),
-        interfaceState = materialState.transparent
-          ? {
-              opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
-              transparent: true,
-              depthTest: true,
-              depthWrite: false,
-            }
-          : null,
+        plan =
+          variantBuild && physicalSurfacePlan
+            ? physicalSurfacePlan
+            : buildRenderSurfacePlan(model, clip);
+      if (!variantBuild) physicalSurfacePlan = plan;
+      const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
@@ -2007,7 +2460,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const maybeYieldAssembly = async () => {
         if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
         sceneAssemblyYields++;
-        await yieldSceneAssembly();
+        if (variantBuild) {
+          await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+        } else {
+          await yieldSceneAssembly();
+        }
         nextAssemblyYieldAt = performance.now() + 32;
       };
 
@@ -2018,7 +2475,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         caps: plan.caps.length,
         sidewalls: plan.sidewalls.length,
       });
-      surfacePlanBuildCount++;
+      if (!variantBuild) surfacePlanBuildCount++;
+      host.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
       if (renderer?.domElement?.dataset) {
         renderer.domElement.dataset.surfacePlanBuildCount = String(surfacePlanBuildCount);
       }
@@ -2034,6 +2492,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       };
 
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
+        presentationFor = (part, sortBias = 0) => ({
+          kind: part.buried ? 'material-interface' : 'material-exterior',
+          sortBias,
+        }),
         bucketKey = (part, state) => {
           const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
           if (!state?.transparent) return base;
@@ -2058,9 +2520,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
         if (!cap.appearance && cap.instanceTranslations) {
           const geometry = geometryFromCachedArrayCap(cap),
-            material = createSurfaceMaterial(layer, state);
+            presentation = presentationFor(cap),
+            material = createSurfaceMaterial(layer, state, null, presentation);
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
             name: `${cap.layerId} array cap`,
+            presentation,
           });
           smoothCapInstanceGroupCount += meshes.length;
           smoothCapInstanceCount += cap.instanceTranslations.length;
@@ -2078,11 +2542,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
           layer,
           state,
           sortBias: cap.buried ? 12 : 0,
+          presentation: presentationFor(cap, cap.buried ? 12 : 0),
           closeToIdeal: !cap.buried,
           includeBorders: true,
         });
       }
 
+      recordVariantStage('caps-buckets-ready');
       for (const bucket of smoothCaps.values()) {
         await maybeYieldAssembly();
         const state = stateFor(bucket.part),
@@ -2092,59 +2558,81 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state.transparent) {
           const planes = new Map();
           for (const part of visibleCaps) {
-            const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
-            if (!planes.has(key)) {
-              planes.set(key, { z: part.z, normal: part.normal, polys: [] });
-            }
-            planes.get(key).polys.push(...(part.polys || []));
+          const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
+          if (!planes.has(key)) {
+            planes.set(key, { z: part.z, normal: part.normal, polys: [] });
           }
-          const preparedPlanes = [...planes.values()].map((plane) => ({
-              ...plane,
-              instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
-            })),
-            totalInstances = preparedPlanes.reduce(
-              (sum, plane) => sum + plane.instances.instanceCount,
-              0,
-            );
+          planes.get(key).polys.push(...(part.polys || []));
+        }
+        const preparedPlanes = [...planes.values()].map((plane) => ({
+            ...plane,
+            instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
+          })),
+          totalInstances = preparedPlanes.reduce(
+            (sum, plane) => sum + plane.instances.instanceCount,
+            0,
+          );
 
-          if (totalInstances > 0) {
-            for (const plane of preparedPlanes) {
-              for (const instances of plane.instances.groups) {
-                const geometry = geometryFromSolid({
-                    slabs: [],
-                    caps: [
-                      {
-                        z: plane.z,
-                        normal: plane.normal,
-                        polys: [instances.localPoly],
-                      },
-                    ],
-                  }),
-                  material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
-                  meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
-                    name: `${bucket.part.layerId || 'material'} repeated cap`,
-                  });
-                if (!meshes.length) continue;
-                smoothCapInstanceGroupCount += meshes.length;
-                smoothCapInstanceCount += instances.translations.length;
-                smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
-              }
-
-              if (plane.instances.leftovers.length) {
-                const geometry = geometryFromSolid({
-                    slabs: [],
-                    caps: [
-                      {
-                        z: plane.z,
-                        normal: plane.normal,
-                        polys: plane.instances.leftovers,
-                      },
-                    ],
-                  }),
-                  material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
-                addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 10 : 0);
-              }
+        if (totalInstances > 0) {
+          for (const plane of preparedPlanes) {
+            for (const instances of plane.instances.groups) {
+              const geometry = geometryFromSolid({
+                  slabs: [],
+                  caps: [
+                    {
+                      z: plane.z,
+                      normal: plane.normal,
+                      polys: [instances.localPoly],
+                    },
+                  ],
+                }),
+                presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
+                  state,
+                  null,
+                  presentation,
+                ),
+                meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
+                  name: `${bucket.part.layerId || 'material'} repeated cap`,
+                  presentation,
+                });
+              if (!meshes.length) continue;
+              smoothCapInstanceGroupCount += meshes.length;
+              smoothCapInstanceCount += instances.translations.length;
+              smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
             }
+
+            if (plane.instances.leftovers.length) {
+              const geometry = geometryFromSolid({
+                  slabs: [],
+                  caps: [
+                    {
+                      z: plane.z,
+                      normal: plane.normal,
+                      polys: plane.instances.leftovers,
+                    },
+                  ],
+                }),
+                presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                material = createSurfaceMaterial(
+                  layerById(model, bucket.part.layerId),
+                  state,
+                  null,
+                  presentation,
+                );
+              addSurfaceMesh(
+                geometry,
+                material,
+                state,
+                null,
+                bucket.part.buried ? 10 : 0,
+                false,
+                null,
+                presentation,
+              );
+            }
+          }
             continue;
           }
         }
@@ -2157,9 +2645,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
               polys: part.polys,
             })),
           }),
-          material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
-        addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 10 : 0);
+          presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+          material = createSurfaceMaterial(
+            layerById(model, bucket.part.layerId),
+            state,
+            null,
+            presentation,
+          );
+        addSurfaceMesh(
+          geometry,
+          material,
+          state,
+          null,
+          bucket.part.buried ? 10 : 0,
+          false,
+          null,
+          presentation,
+        );
       }
+      recordVariantStage('caps-complete');
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
@@ -2179,12 +2683,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (sidewall.instanceTranslations) {
           const parts = displaySidewallParts(sidewall.parts || [sidewall]);
           const geometry = geometryFromSidewallParts(parts),
-            material = createSurfaceMaterial(layerById(model, sidewall.layerId), state);
+            presentation = presentationFor(sidewall),
+            material = createSurfaceMaterial(
+              layerById(model, sidewall.layerId),
+              state,
+              null,
+              presentation,
+            );
           const meshes = addInstancedSurfaceMeshes(
             geometry,
             material,
             sidewall.instanceTranslations,
-            { name: `${sidewall.layerId} array wall` },
+            {
+              name: `${sidewall.layerId} array wall`,
+              presentation,
+            },
           );
           smoothSidewallInstanceGroupCount += meshes.length;
           smoothSidewallInstanceCount += sidewall.instanceTranslations.length;
@@ -2193,6 +2706,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
         pushBucket(sidewalls, sidewall, state);
       }
+      recordVariantStage('sidewalls-buckets-ready');
       for (const bucket of sidewalls.values()) {
         await maybeYieldAssembly();
         const state = stateFor(bucket.part),
@@ -2202,37 +2716,75 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state.transparent) {
           const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
           if (instances.instanceCount > 0) {
-            for (const groupInstances of instances.groups) {
-              const geometry = geometryFromSidewallParts([groupInstances.template]),
-                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state),
-                meshes = addInstancedSurfaceMeshes(
-                  geometry,
-                  material,
-                  groupInstances.translations,
-                  {
-                    name: `${bucket.part.layerId || 'material'} repeated sidewall`,
-                  },
-                );
-              if (!meshes.length) continue;
-              smoothSidewallInstanceGroupCount += meshes.length;
-              smoothSidewallInstanceCount += groupInstances.translations.length;
-              smoothSidewallTemplateTriangleCount +=
-                geometry.getAttribute('position')?.count / 3 || 0;
-            }
+          for (const groupInstances of instances.groups) {
+            const geometry = geometryFromSidewallParts([groupInstances.template]),
+              presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+              material = createSurfaceMaterial(
+                layerById(model, bucket.part.layerId),
+                state,
+                null,
+                presentation,
+              ),
+              meshes = addInstancedSurfaceMeshes(
+                geometry,
+                material,
+                groupInstances.translations,
+                {
+                  name: `${bucket.part.layerId || 'material'} repeated sidewall`,
+                  presentation,
+                },
+              );
+            if (!meshes.length) continue;
+            smoothSidewallInstanceGroupCount += meshes.length;
+            smoothSidewallInstanceCount += groupInstances.translations.length;
+            smoothSidewallTemplateTriangleCount +=
+              geometry.getAttribute('position')?.count / 3 || 0;
+          }
 
-            if (instances.leftovers.length) {
-              const geometry = geometryFromSidewallParts(instances.leftovers),
-                material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
-              addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
-            }
+          if (instances.leftovers.length) {
+            const geometry = geometryFromSidewallParts(instances.leftovers),
+              presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+              material = createSurfaceMaterial(
+                layerById(model, bucket.part.layerId),
+                state,
+                null,
+                presentation,
+              );
+            addSurfaceMesh(
+              geometry,
+              material,
+              state,
+              null,
+              bucket.part.buried ? 11 : 0,
+              false,
+              null,
+              presentation,
+            );
+          }
             continue;
           }
         }
 
         const geometry = geometryFromSidewallParts(visibleParts),
-          material = createSurfaceMaterial(layerById(model, bucket.part.layerId), state);
-        addSurfaceMesh(geometry, material, state, null, bucket.part.buried ? 11 : 0);
+          presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+          material = createSurfaceMaterial(
+            layerById(model, bucket.part.layerId),
+            state,
+            null,
+            presentation,
+          );
+        addSurfaceMesh(
+          geometry,
+          material,
+          state,
+          null,
+          bucket.part.buried ? 11 : 0,
+          false,
+          null,
+          presentation,
+        );
       }
+      recordVariantStage('sidewalls-complete');
       host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
@@ -2246,50 +2798,47 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       const rendererSidewallsAt = performance.now();
 
+      host.dataset.instanceChunkLimit =
+        presentationMode() === 'transparent' ? '256' : '4096';
       host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
 
-      if (borders) {
-        addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
-          order: 100000,
-          opacity,
-        });
-      }
+      addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
+        order: 100000,
+        opacity,
+        presentation: { kind: 'border' },
+      });
 
-      // Implant is a non-material annotation volume. Opaque inspection still
-      // hides buried volume, but an ROI clip creates a real inspection cut face:
-      // the clipped sidewall is rendered on top of the material cut with the same
-      // surface-to-depth gradient used by Section A–B. Transparent inspection
-      // additionally shows the full clipped internal volume.
-      const showInternalImplants = materialState.transparent;
+      // Implant and Electrical Region annotations are built as a persistent
+      // superset. Presentation state decides which internal volumes are visible,
+      // so opacity changes never need to recreate annotation geometry.
       let implantInternalCount = 0,
         implantSurfaceCount = 0,
         implantCutCount = 0,
         implantGradientMeshCount = 0;
       const annotationModel =
-        isArrayModel(model) && clip ? resolveArrayModel(model, geometryBounds(clip)) : model;
-      const annotationSources =
-        isArrayModel(model) && !clip
-          ? [...new Set(arrayParts(model).map((p) => p.model))].map((leaf) => ({
-              leaf,
-              translations: arrayParts(model)
-                .filter((p) => p.model === leaf)
-                .map((p) => [p.x, p.y]),
-            }))
-          : [{ leaf: annotationModel, translations: null }];
-      const arrayAnnotations = (derive) =>
-        annotationSources.flatMap(({ leaf, translations }) =>
-          derive(leaf, clip).map((a) => ({ ...a, instanceTranslations: translations })),
-        );
+          isArrayModel(model) && clip ? resolveArrayModel(model, geometryBounds(clip)) : model,
+        annotationSources =
+          isArrayModel(model) && !clip
+            ? [...new Set(arrayParts(model).map((p) => p.model))].map((leaf) => ({
+                leaf,
+                translations: arrayParts(model)
+                  .filter((p) => p.model === leaf)
+                  .map((p) => [p.x, p.y]),
+              }))
+            : [{ leaf: annotationModel, translations: null }],
+        arrayAnnotations = (derive) =>
+          annotationSources.flatMap(({ leaf, translations }) =>
+            derive(leaf, clip).map((a) => ({ ...a, instanceTranslations: translations })),
+          );
+
       host.dataset.arrayInstances = String(plan.arrayInstances || 0);
       host.dataset.arrayNeighborhoods = String(plan.arrayNeighborhoods || 0);
-      for (const implant of arrayAnnotations(implantSolids)) {
-        const inspectionSegments = annotationInspectionCutSegments(implant, clip);
-        if (!showInternalImplants && !implant.surfaceExposed && !inspectionSegments.length)
-          continue;
 
-        const outerNormal = implant.face === 'front' ? 1 : -1,
+      for (const implant of arrayAnnotations(implantSolids)) {
+        const inspectionSegments = annotationInspectionCutSegments(implant, clip),
+          outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
             implant.surfaceAppearance?.kind === 'rough' ? implant.surfaceAppearance : null,
           followDepthProfile = Boolean(appearance && implant.depthProfile !== 'smooth'),
@@ -2302,13 +2851,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
             );
 
         if (inspectionSegments.length) {
-          const cutState = {
-              opacity:
-                opacity * (materialState.transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
-              transparent: true,
-              depthTest: true,
-              depthWrite: false,
-            },
+          const presentation = { kind: 'implant-cut', sortBias: 46 },
+            cutState = presentationState(presentation, inspection).materialState,
             cutGeometry = sidewallGeometry(clip),
             cutMaterial = createAnnotationGradientMaterial(implant, cutState, {
               roughness: appearance ? 0.8 : 0.72,
@@ -2317,7 +2861,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
           cutMaterial.polygonOffsetFactor = -2;
           cutMaterial.polygonOffsetUnits = -2;
           cutMaterial.depthFunc = THREE.LessEqualDepth;
-          const cut = addSurfaceMesh(cutGeometry, cutMaterial, cutState, null, 46);
+          const cut = addSurfaceMesh(
+            cutGeometry,
+            cutMaterial,
+            cutState,
+            null,
+            46,
+            false,
+            null,
+            presentation,
+          );
           if (cut) {
             cut.name = `${implant.name || implant.implantId || 'Implant'} ROI cut`;
             implantCutCount++;
@@ -2325,13 +2878,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
-        if (showInternalImplants) {
-          const implantState = {
-            opacity: opacity * 0.18,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-          };
+        {
+          const presentation = { kind: 'implant-internal', sortBias: 30 },
+            implantState = presentationState(presentation, inspection).materialState;
           let bodyGeometry = followDepthProfile
             ? sidewallGeometry()
             : geometryFromSolid(displaySolidForZCollapse(implant));
@@ -2350,6 +2899,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               30,
               false,
               implant.instanceTranslations,
+              presentation,
             );
           if (body) {
             body.name = implant.name || implant.implantId || 'Implant';
@@ -2358,6 +2908,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
 
           if (followDepthProfile && zIsVisible(implant.innerZ)) {
+            const depthPresentation = { kind: 'implant-depth', sortBias: 31 },
+              depthState = presentationState(depthPresentation, inspection).materialState;
             roughTasks.push({
               kind: 'implant-depth',
               cap: {
@@ -2373,12 +2925,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 solidIndex: 0,
               },
               layer: { color: implant.color || '#D65A6F' },
-              state: {
-                opacity: opacity * 0.24,
-                transparent: true,
-                depthTest: true,
-                depthWrite: false,
-              },
+              state: depthState,
+              presentation: depthPresentation,
               sortBias: 31,
               closeToIdeal: false,
               includeBorders: false,
@@ -2388,21 +2936,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
-        // A clipped sidewall is not a physical top/bottom surface. In opaque
-        // mode it is enough to show the ROI cut; only a genuinely exposed
-        // surviving outer face receives the horizontal surface overlay.
-        if (!showInternalImplants && !implant.surfaceExposed) continue;
-
+        if (!zIsVisible(implant.outerZ)) continue;
         implantSurfaceCount++;
-        const capState = {
-            opacity: opacity * 0.3,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
+        const surfacePresentation = {
+            kind: 'implant-surface',
+            exposed: Boolean(implant.surfaceExposed),
+            sortBias: 40,
           },
+          capState = presentationState(surfacePresentation, inspection).materialState,
           capName = `${implant.name || implant.implantId || 'Implant'} surface`;
 
-        if (appearance && zIsVisible(implant.outerZ)) {
+        if (appearance) {
           roughTasks.push({
             kind: 'implant',
             cap: {
@@ -2419,6 +2963,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             },
             layer: { color: implant.color || '#D65A6F' },
             state: capState,
+            presentation: surfacePresentation,
             sortBias: 40,
             closeToIdeal: false,
             includeBorders: false,
@@ -2427,7 +2972,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
             name: capName,
           });
         } else {
-          if (!zIsVisible(implant.outerZ)) continue;
           let capGeometry = geometryFromSolid({
             slabs: [],
             caps: [{ z: implant.outerZ, normal: outerNormal, polys: implant.polys }],
@@ -2452,6 +2996,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             40,
             false,
             implant.instanceTranslations,
+            surfacePresentation,
           );
           if (cap) {
             cap.name = capName;
@@ -2460,33 +3005,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
       }
 
-      host.dataset.implantInternalCount = String(implantInternalCount);
-      host.dataset.implantSurfaceCount = String(implantSurfaceCount);
-      host.dataset.implantCutCount = String(implantCutCount);
+      host.dataset.implantInternalBuiltCount = String(implantInternalCount);
+      host.dataset.implantSurfaceBuiltCount = String(implantSurfaceCount);
+      host.dataset.implantCutBuiltCount = String(implantCutCount);
       host.dataset.implantGradientMeshCount = String(implantGradientMeshCount);
       host.dataset.implantGradient = 'section-depth';
 
-      // Electrical regions are first-class non-material annotations. Their
-      // volume is visible through transparent host material; an exposed/cut
-      // region may also contribute a restrained surface cap in opaque mode.
-      const showInternalElectrical = materialState.transparent;
       let electricalRegionInternalCount = 0,
         electricalRegionSurfaceCount = 0;
       for (const electrical of arrayAnnotations(electricalRegionSolids)) {
-        if (!showInternalElectrical && !electrical.surfaceExposed) continue;
-
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
             electrical.surfaceAppearance?.kind === 'rough' ? electrical.surfaceAppearance : null,
           followDepthProfile = Boolean(appearance && electrical.depthProfile !== 'smooth');
 
-        if (showInternalElectrical) {
-          const electricalState = {
-              opacity: opacity * 0.14,
-              transparent: true,
-              depthTest: true,
-              depthWrite: false,
-            },
+        {
+          const presentation = { kind: 'electrical-internal', sortBias: 34 },
+            electricalState = presentationState(presentation, inspection).materialState,
             bodyGeometry = geometryFromSolid(
               displaySolidForZCollapse(
                 followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
@@ -2497,10 +3032,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               roughness: 0.82,
               metalness: 0,
               side: THREE.DoubleSide,
-              transparent: true,
-              opacity: electricalState.opacity,
-              depthTest: true,
-              depthWrite: false,
+              ...electricalState,
             }),
             body = addSurfaceMesh(
               bodyGeometry,
@@ -2510,6 +3042,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               34,
               false,
               electrical.instanceTranslations,
+              presentation,
             );
           if (body) {
             body.name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
@@ -2517,6 +3050,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
 
           if (followDepthProfile && zIsVisible(electrical.innerZ)) {
+            const depthPresentation = { kind: 'electrical-depth', sortBias: 35 },
+              depthState = presentationState(depthPresentation, inspection).materialState;
             roughTasks.push({
               kind: 'electrical-depth',
               cap: {
@@ -2532,12 +3067,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 solidIndex: 0,
               },
               layer: { color: electrical.color || '#7A6FD0' },
-              state: {
-                opacity: opacity * 0.2,
-                transparent: true,
-                depthTest: true,
-                depthWrite: false,
-              },
+              state: depthState,
+              presentation: depthPresentation,
               sortBias: 35,
               closeToIdeal: false,
               includeBorders: false,
@@ -2546,16 +3077,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
+        if (!zIsVisible(electrical.outerZ)) continue;
         electricalRegionSurfaceCount++;
-        const capState = {
-            opacity: opacity * 0.24,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
+        const surfacePresentation = {
+            kind: 'electrical-surface',
+            exposed: Boolean(electrical.surfaceExposed),
+            sortBias: 44,
           },
+          capState = presentationState(surfacePresentation, inspection).materialState,
           capName = `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
 
-        if (appearance && zIsVisible(electrical.outerZ)) {
+        if (appearance) {
           roughTasks.push({
             kind: 'electrical',
             cap: {
@@ -2572,6 +3104,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             },
             layer: { color: electrical.color || '#7A6FD0' },
             state: capState,
+            presentation: surfacePresentation,
             sortBias: 44,
             closeToIdeal: false,
             includeBorders: false,
@@ -2579,12 +3112,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
             name: capName,
           });
         } else {
-          if (!zIsVisible(electrical.outerZ)) continue;
           const capGeometry = geometryFromSolid({
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
             }),
-            capMaterial = createSurfaceMaterial({ color: electrical.color || '#7A6FD0' }, capState);
+            capMaterial = createSurfaceMaterial(
+              { id: electrical.layerId || electrical.electricalRegionId || 'electrical-region', color: electrical.color || '#7A6FD0' },
+              capState,
+              null,
+              surfacePresentation,
+            );
           capMaterial.polygonOffset = true;
           capMaterial.polygonOffsetFactor = -1;
           capMaterial.polygonOffsetUnits = -1;
@@ -2596,20 +3133,33 @@ diffuseColor.a *= waferCadAlphaScale;`,
             44,
             false,
             electrical.instanceTranslations,
+            surfacePresentation,
           );
           if (cap) cap.name = capName;
         }
       }
 
-      host.dataset.electricalRegionInternalCount = String(electricalRegionInternalCount);
-      host.dataset.electricalRegionSurfaceCount = String(electricalRegionSurfaceCount);
+      host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
+      host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
+      recordVariantStage('annotations-complete');
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
       host.dataset.rendererSidewallsMs = String(rendererSidewallsAt - rendererCapsAt);
       host.dataset.rendererAnnotationsMs = String(rendererAssemblyAt - rendererSidewallsAt);
       host.dataset.rendererAssemblyMs = String(rendererAssemblyAt - rendererProfileStart);
-      updateTransparentOrder();
+      host.dataset.rendererPresentationMs = '0';
+      host.dataset.presentationUpdateCount = String(presentationUpdateCount);
+      physicalSceneModel = model;
+      physicalSceneSignature = signature;
+      physicalSurfacePlan = plan;
+      activeSceneVariant = targetVariant;
+      host.dataset.sceneVariant = targetVariant;
+      group.visible = true;
+      recordVariantStage('presentation-begin');
+      applyPresentationState({ profile: false, settle: false });
+      recordVariantStage('presentation-complete');
+      cacheActiveSceneVariant();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';

@@ -216,14 +216,17 @@ test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
 });
 
 test('3D borders are derived from owned surfaces and stay depth-tested', () => {
-  assert.match(threeView, /plan = buildRenderSurfacePlan\(model, clip\)/);
+  assert.match(threeView, /buildRenderSurfacePlan\(model, clip\)/);
+  assert.match(threeView, /variantBuild && physicalSurfacePlan/);
+  assert.match(threeView, /physicalSurfacePlan = plan/);
   assert.match(threeView, /function addBorderPositions\([\s\S]*?order = 100000/);
   assert.match(threeView, /edges\.renderOrder = order/);
   assert.match(
     threeView,
     /opacity: opacity < 0\.999 \? 0\.62 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/,
   );
-  assert.match(threeView, /if \(borders\) \{/);
+  assert.match(threeView, /presentation: \{ kind: 'border' \}/);
+  assert.match(threeView, /visible: Boolean\(inspection\.borders\)/);
   assert.match(
     threeView,
     /addBorderPositions\(displayBorderPositions\(plan\.borderLines\.flat\(2\)\), \{/,

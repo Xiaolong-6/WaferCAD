@@ -23,6 +23,11 @@ const morphologyMeshPolicy = await readFile(
   'utf8',
 );
 
+const sceneSignatureSource = threeView.slice(
+  threeView.indexOf('function sceneSignature'),
+  threeView.indexOf('function interfaceMaterialState'),
+);
+
 test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(html, /id="threeOpacityRange"[^>]*value="1"/s);
   assert.match(html, /id="threeBorders" type="checkbox"/);
@@ -79,17 +84,32 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
-  assert.match(threeView, /const showInternalImplants = materialState\.transparent/);
-  assert.match(
-    threeView,
-    /if \(!showInternalImplants && !implant\.surfaceExposed && !inspectionSegments\.length\)\s*continue/,
-  );
+  assert.match(threeView, /let presentationObjects = new Set\(\)/);
+  assert.match(threeView, /let physicalSceneSignature = null/);
+  assert.match(threeView, /function applyPresentationState\(/);
+  assert.match(threeView, /rendererUpdateKind = 'presentation'/);
+  assert.match(threeView, /rendererAssemblyMs = '0'/);
+  assert.match(threeView, /physicalSceneSignature === signature/);
+  assert.match(threeView, /let sceneVariantCache = new Map\(\)/);
+  assert.match(threeView, /function presentationMode\(/);
+  assert.match(threeView, /function restoreSceneVariant\(/);
+  assert.match(threeView, /applyPresentationState\(\{ updateKind: 'variant-swap' \}\)/);
+  assert.match(threeView, /rendererUpdateKind = variantBuild \? 'variant-build' : 'rebuild'/);
+  assert.match(threeView, /variantBuild && physicalSurfacePlan/);
+  assert.match(threeView, /if \(!variantBuild\) surfacePlanBuildCount\+\+/);
+  assert.match(sceneSignatureSource, /processRevision/);
+  assert.match(sceneSignatureSource, /fast:/);
+  assert.match(sceneSignatureSource, /clip:/);
+  assert.match(sceneSignatureSource, /zCollapse:/);
+  assert.doesNotMatch(sceneSignatureSource, /opacity|borders/);
+  assert.match(threeView, /kind: 'implant-internal'/);
+  assert.match(threeView, /part\.buried \? 'material-interface' : 'material-exterior'/);
   assert.match(threeView, /annotationInspectionCutSegments\(implant, clip\)/);
   assert.match(threeView, /if \(inspectionSegments\.length\)/);
-  assert.match(threeView, /if \(showInternalImplants\)/);
-  assert.match(threeView, /opacity: opacity \* 0\.18/);
+  assert.doesNotMatch(threeView, /const showInternalImplants = materialState\.transparent/);
+  assert.match(threeView, /alwaysTransparent\(opacity \* 0\.18\)/);
   assert.match(threeView, /IMPLANT_DEPTH_GRADIENT\.outerAlpha/);
-  assert.match(threeView, /opacity: opacity \* 0\.3/);
+  assert.match(threeView, /alwaysTransparent\(opacity \* 0\.3\)/);
   assert.match(threeView, /constantDepth != null && Number\.isFinite\(Number\(constantDepth\)\)/);
   assert.match(threeView, /function createAnnotationGradientMaterial\(/);
   assert.match(threeView, /attribute float annotationDepth/);
@@ -107,10 +127,10 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   );
   assert.match(threeView, /cutMaterial\.polygonOffset = true/);
   assert.match(threeView, /cutMaterial\.depthFunc = THREE\.LessEqualDepth/);
-  assert.match(threeView, /capState = \{[\s\S]*?depthTest: true/);
+  assert.match(threeView, /presentationState\(surfacePresentation, inspection\)\.materialState/);
   assert.match(threeView, /capMaterial\.polygonOffset = true/);
   assert.match(threeView, /capMaterial\.polygonOffsetFactor = -1/);
-  assert.match(threeView, /if \(!state\?\.transparent\) return base/);
+  assert.match(threeView, /const base = .*part\.layerId/);
   assert.match(threeView, /part\.type === 'cap'/);
   assert.match(threeView, /part\.z0/);
   assert.match(threeView, /part\.z1/);

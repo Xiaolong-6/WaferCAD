@@ -31,7 +31,7 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
-For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, rough preview/final readiness). The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.
+For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, presentation updates, and rough preview/final readiness). It also asserts the persistent-scene contract: opacity changes must retain the same scene generation and surface-plan build count, report a presentation update, perform zero physical assembly work, and keep scene object/geometry/material counts stable. The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.
 
 ### Deterministic browser dependencies
 
@@ -125,7 +125,7 @@ The browser-level `example-regression.mjs` then verifies runtime loading, Histor
 - `resilience-regression.mjs`: missing Three.js and unavailable WebGL degraded-mode behavior.
 - `example-regression.mjs`: bundled literature/example structural contracts.
 - `product-layout-regression.mjs`: responsive product/layout review across wide, medium, phone, and breakpoint-edge viewports.
-- `renderer-product-regression.mjs`: wide-screen renderer acceptance for isotropic release, rough/LOD ownership, conformal interfaces, and implant visibility. Its package entry point also runs `array-renderer-regression.mjs` for full-wafer Fast/Quality topology consistency, transparent annotations and pointer rotation.
+- `renderer-product-regression.mjs`: wide-screen renderer acceptance for isotropic release, GPU-hybrid rough/LOD ownership, conformal interfaces, and implant visibility. Its package entry point also runs `array-renderer-regression.mjs` for full-wafer Fast/Quality topology consistency, persistent opacity/border updates, transparent annotations, repeated-toggle resource stability, and pointer rotation.
 - `product-regression.mjs`: thin shared orchestrator used by the two product entry points.
 
 ## Visual regression policy
