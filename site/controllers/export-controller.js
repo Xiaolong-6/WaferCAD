@@ -13,7 +13,7 @@ import {
   resolveSectionCollapse,
   sectionVisibleZSpan,
 } from '../section-z-collapse.js';
-import { collectMaskExportElements, serializeGDS, serializeOASIS } from '../layout-export.js';
+import { clipPolyline, collectMaskExportElements, serializeGDS, serializeOASIS } from '../layout-export.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -403,29 +403,43 @@ export function createExportController({
           0.58,
         )}" stroke="${layerColor(key, 0.98)}" stroke-width="1" fill-rule="evenodd"/>`;
       }
-      if (!roiGeom) {
-        for (const element of layout.linework || []) {
-          const key = layerKey(element.layer, element.datatype);
-          if (
-            !Array.isArray(element.points) ||
-            element.points.length < 2 ||
-            !cells.has(element.sourceCell || layout.root || 'ROOT') ||
-            !layers.has(key)
-          )
-            continue;
-          const points = element.points.map(maskPoint).map(map),
-            d = points
-              .map(
-                (point, index) =>
-                  `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
-              )
-              .join('');
+      // Linework is a separate collection (typically zero-width GDS PATHs).
+      // Preserve it with ROI active, using the same clipping rules as GDS/OAS export.
+      for (const element of layout.linework || []) {
+        const key = layerKey(element.layer, element.datatype);
+        if (
+          !Array.isArray(element.points) ||
+          element.points.length < 2 ||
+          !cells.has(element.sourceCell || layout.root || 'ROOT') ||
+          !layers.has(key)
+        )
+          continue;
+
+        const points = element.points.map(maskPoint),
+          width = Math.abs(Number(element.width) || 0) * Math.abs(Number(maskTransform?.scale) || 1);
+        if (roiGeom && width > 0) {
+          const geometry = intersection(bufferPolyline(points, width / 2, 28, false), roiGeom);
+          if (!isEmpty(geometry)) {
+            body += `<path d="${svgPathFromMulti(geometry, map)}" fill="${layerColor(
+              key,
+              0.58,
+            )}" stroke="${layerColor(key, 0.98)}" stroke-width="1" fill-rule="evenodd"/>`;
+          }
+          continue;
+        }
+
+        for (const clipped of roiGeom ? clipPolyline(points, roiGeom) : [points]) {
+          const d = clipped
+            .map(map)
+            .map(
+              (point, index) =>
+                `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
+            )
+            .join('');
           body += `<path d="${d}" fill="none" stroke="${layerColor(
             key,
             0.95,
-          )}" stroke-width="${svgNumber(
-            Math.max(0.8, element.width * maskTransform.scale * view.s),
-          )}"/>`;
+          )}" stroke-width="${svgNumber(Math.max(0.8, width * view.s))}"/>`;
         }
       }
     }
