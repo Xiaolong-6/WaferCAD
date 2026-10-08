@@ -743,9 +743,13 @@ export function createProcessRecipeController({
       button.classList.toggle('active', step.id === activeStepId);
       const num = make(root, 'span', 'recipe-step-num', String(index + 1).padStart(2, '0'));
       const copy = make(root, 'span', 'recipe-step-copy');
+      const fullTitle = recipeStepLabel(step),
+        fullSummary = recipeStepSummary(step);
+      copy.title = [fullTitle, fullSummary].filter(Boolean).join(' — ');
+      button.title = copy.title;
       copy.append(
-        make(root, 'strong', '', recipeStepLabel(step)),
-        make(root, 'small', '', recipeStepSummary(step)),
+        make(root, 'strong', '', fullTitle),
+        make(root, 'small', '', fullSummary),
       );
       const state = make(root, 'span', 'recipe-step-state', '○');
       button.append(num, copy, state);
