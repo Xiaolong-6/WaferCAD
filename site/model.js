@@ -633,10 +633,11 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
         geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
       }))
       .filter((region) => !isEmpty(region.geom));
-  // Verify the final grid partition without retaining fractional vertices from
-  // another difference pass. Genuine residual overlaps still reject safely.
-  partitionProcessRegions(stored, overlapTolerance, operation);
-  return stored;
+  // A final ownership pass removes any persistence-grid sliver that noding +
+  // rounding can reintroduce. Do not snap again here: another snap can recreate
+  // the same overlap. The serializer will quantize stable coordinates on export.
+  // Genuine overlaps above overlapTolerance still reject before assignment.
+  return partitionProcessRegions(stored, overlapTolerance, operation);
 }
 
 function stackKey(stack) {
