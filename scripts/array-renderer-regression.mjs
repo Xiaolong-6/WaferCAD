@@ -204,8 +204,17 @@ try {
     browserVersion: browser.version(),
     fast,
     quality,
-    transparent,
+    transparentCold,
+    opaqueSwap,
+    transparentWarm,
+    opaqueAgain,
     restored,
+    variantTimings: {
+      coldTransparentMs,
+      opaqueSwapMs,
+      warmTransparentMs,
+      finalOpaqueSwapMs,
+    },
     rotationPassed: true,
     errors,
   };
