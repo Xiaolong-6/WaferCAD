@@ -62,6 +62,30 @@ function maskFor(node, project) {
   };
 }
 
+function surfaceFor(project, node, targetId) {
+  const requested = node.operation?.surface || node.operation?.replay?.params?.surface;
+  if (!requested || requested === 'smooth') return 'smooth';
+  const model = modelFor(project, node.state);
+  const face = node.operation?.face || 'front';
+  const surfaceKey = face === 'back' ? 'backSurface' : 'frontSurface';
+  for (const region of model.regions || []) {
+    for (const segment of region.stack || []) {
+      const actual = segment[surfaceKey];
+      if (actual?.kind === 'rough' &&
+          (!targetId || segment.layerId === targetId) &&
+          actual.morphology === requested.morphology) {
+        return {
+          ...clone(requested),
+          featureCv: actual.featureCv,
+          heightCv: actual.heightCv,
+          seed: actual.seed,
+        };
+      }
+    }
+  }
+  return requested;
+}
+
 function stepFor(project, node) {
   const op = node.operation || {};
   if (op.kind === 'base') return null;
@@ -116,7 +140,7 @@ function stepFor(project, node) {
       target: targetId ? layerName(targetId) : '',
       thicknessUm: profile === 'planarize' ? Number(raw.targetZ ?? thickness) : thickness,
       profile,
-      surface: raw.surface || op.surface || 'smooth',
+      surface: surfaceFor(project, node, targetId),
     };
   } else if (op.kind === 'implant') {
     command = 'implant';
