@@ -10,15 +10,17 @@ _Real preview of a bundled device. Your first structure will be simpler._
 
 ## Choose your path
 
-| I want to…                                   | Start here                                                                                                                                                        |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **See what WaferCAD can do without editing** | [Explore a ready-made example](Examples-and-Modeling-Limits#how-to-explore-or-reproduce-an-example); click the **title or description** of an example on Welcome. |
-| **Build something for the first time**       | [First 10 Minutes](First-10-Minutes): make a substrate, deposit an oxide, draw a rectangle and etch one window. No mask file needed.                              |
-| **Understand the controls**                  | [Getting Started](Getting-Started) and [Workspace and Views](Workspace-and-Views).                                                                                |
-| **Import a GDS/OAS mask**                    | [Masks and ROI](Masks-and-ROI) and [Import and Export](Import-and-Export).                                                                                        |
-| **Run a multi-step process**                 | [Process and Recipes](Process-and-Recipes); for writing Recipe code, use the [English tutorial](Recipe-Code-Tutorial) or [中文教程](Recipe-Code-Tutorial-zh-CN).      |
-| **Find a process's before/after drawing**    | [Illustrated Process Operations](Process-Operations) — all 18 operation variants.                                                                                 |
-| **Fix something unexpected**                 | [Troubleshooting](Troubleshooting).                                                                                                                               |
+**I want to try the app without coding.** [Open an existing example](Examples-and-Modeling-Limits) and click a project's title or description on the Welcome screen.
+
+**I'm completely new.** Follow [First 10 Minutes](First-10-Minutes) to draw a rectangle and selectively etch a 200 nm oxide. The beginner tutorial uses **Start empty**, explains the Project/Base controls and shows how to check each result.
+
+**I want to understand the interface.** Read [Getting Started](Getting-Started), then [Workspace and Views](Workspace-and-Views).
+
+**I have a GDSII/OASIS mask.** Read [Masks and ROI](Masks-and-ROI), then [Import and Export](Import-and-Export).
+
+**I want to build a process sequence.** Read [Process and Recipes](Process-and-Recipes); then the [Recipe Code Tutorial](Recipe-Code-Tutorial) or [中文教程](Recipe-Code-Tutorial-zh-CN).
+
+**An operation gave me the wrong geometry.** Start with [Troubleshooting](Troubleshooting). For all 18 before/after operation diagrams, use [Illustrated Process Operations](Process-Operations).
 
 ## Three things to understand
 
