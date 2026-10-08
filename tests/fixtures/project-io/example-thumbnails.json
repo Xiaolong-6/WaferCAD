@@ -47,9 +47,9 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 14096,
-      "sourceSha256": "ea64c9166862a2f3f2e3ab9ea5ed7c934301594a28821a2f2b66da2e31b55aa9",
-      "sha256": "b716ebc7ea8bba8ea66750c9fe14ac282eb2ff6deced7341694fe6409d1d3622"
+      "bytes": 14112,
+      "sourceSha256": "dc654fa200a7b04679a1e3fe99a23ee4eb3ee80ad399f28f8d5e600ac66bcd48",
+      "sha256": "46cb1c9a4984f57334ddaac5e23a4ed5a4b02ec9d164c8890196d89d6d320605"
     },
     {
       "id": "three-tier-silicon-jlfets",

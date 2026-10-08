@@ -1,0 +1,102 @@
+name: M3D conformal baseline audit
+
+on:
+  push:
+    branches:
+      - fix/m3d-conformal-microcracks-20261008
+    paths:
+      - "docs/M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md"
+  workflow_dispatch:
+
+concurrency:
+  group: m3d-conformal-baseline-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scientific-baseline:
+    name: Scientific ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: original-main
+            source: 82c35a845946835451fd7da9fcbe92be47593e7f
+          - variant: repaired-branch
+            source: fix/m3d-conformal-microcracks-20261008
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.source }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Geometry, M3D and persistence baseline
+        run: |
+          node --test \
+            site/tests/conformal-process.test.mjs \
+            site/tests/process-topology.test.mjs \
+            site/tests/process-benchmarks.test.mjs \
+            site/tests/material-boundaries.test.mjs \
+            site/tests/m3d-reconstruction-regression.test.mjs \
+            site/tests/m3d-bundled-example.test.mjs \
+            site/tests/m3d-persistence-roundtrip.test.mjs
+
+  quality:
+    name: Candidate quality and docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run docs:check
+
+  approved-windows-visual-baseline:
+    name: Approved Windows visual baseline
+    needs: scientific-baseline
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      WAFERCAD_VISUAL_BASELINE_DIR: tests/visual-baselines/windows-chromium
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}\node_modules\three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install chromium
+      - name: Start preview server
+        shell: pwsh
+        run: |
+          Start-Process -FilePath python -ArgumentList @('-m', 'http.server', '4173', '--bind', '127.0.0.1', '--directory', 'site') -PassThru | Out-Null
+          $ready = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            try {
+              $response = Invoke-WebRequest 'http://127.0.0.1:4173/app.html' -UseBasicParsing -TimeoutSec 3
+              if ($response.StatusCode -eq 200) { $ready = $true; break }
+            } catch {}
+            Start-Sleep -Seconds 1
+          }
+          if (-not $ready) { throw 'WaferCAD localhost preview did not start.' }
+      - name: Compare approved visual baselines without overwriting
+        run: node scripts/visual-baseline-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-visual-baseline-diffs
+          path: test-results/visual-diff
+          if-no-files-found: warn

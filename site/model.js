@@ -901,6 +901,61 @@ function applyConformalMaterialWalls(
 
 const COVERAGE_CRACK_TOLERANCE_UM = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM;
 
+// Conformal Deposit/Extend may only add material, never remove existing XY
+// coverage. Persistence-grid noding can lose skinny angled slivers even when
+// their bounding boxes exceed the ordinary `numerical-crack` width threshold.
+// Compare coverage before and after the process: repair *newly* lost slivers,
+// not intentional prior trenches/voids. Keep the repair strictly bounded so a
+// substantive geometric failure still aborts and rolls back transactionally.
+function healConformalCoverageCracks(model, originalVoids) {
+  const overlapTolerance = Math.max(
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
+      model.width * model.height * 1e-15,
+    ),
+    maxRepairArea = Math.max(
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 4,
+      geometryArea(model.boundary) * 1e-8,
+    );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const missing = difference(uncoveredGeometryRaw(model), originalVoids);
+    if (isEmpty(missing)) return;
+    const missingArea = geometryArea(missing);
+    if (missingArea > maxRepairArea) {
+      throw new Error(
+        `Conformal lost ${missingArea} µm² of existing XY material coverage.`,
+      );
+    }
+
+    for (const polygon of missing) {
+      const crack = [polygon],
+        halo = bufferMulti(crack, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
+      let owner = null;
+      let largestContact = 0;
+      for (const region of model.regions) {
+        const contact = geometryArea(intersection(region.geom, halo));
+        if (contact > largestContact) {
+          largestContact = contact;
+          owner = region;
+        }
+      }
+      if (!owner || largestContact <= 0) {
+        throw new Error('Conformal could not assign a lost XY material sliver.');
+      }
+      owner.geom = unionGeometries([owner.geom, crack]);
+    }
+    // Do not snap after this assignment: snapping reopened the missing slit.
+    model.regions = partitionProcessRegions(
+      model.regions,
+      overlapTolerance,
+      'Conformal coverage repair',
+    );
+  }
+  const remaining = difference(uncoveredGeometryRaw(model), originalVoids);
+  if (!isEmpty(remaining)) {
+    throw new Error('Conformal left lost XY material coverage after repair.');
+  }
+}
+
 function uncoveredGeometryRaw(model) {
   return uncoveredDomain(model, model.boundary);
 }
@@ -1007,7 +1062,10 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // Keep the pre-coating void domain. A conformal film is allowed to occupy
   // empty trench / through-hole space next to an exposed wall; ordinary
   // splitByArea() only visits existing material regions.
-  let uncovered = baseCoverageState(model) === 'full' ? [] : uncoveredGeometry(model);
+  // Record the actual pre-operation uncovered domain, even when base area is
+  // within the coarse "full" tolerance. Existing physical voids are protected.
+  const originalVoids = uncoveredGeometryRaw(model);
+  let uncovered = cloneGeom(originalVoids);
 
   // Stage 1: coat every exposed horizontal surface in the selected area.
   splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face), false);
@@ -1046,6 +1104,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       }
     }
   }
+  return originalVoids;
 }
 
 const ISOTROPIC_ETCH_SLICES = 8;
@@ -1317,6 +1376,8 @@ function applyOperationImpl(
   }
 
   let layer = null;
+  let conformalOriginalVoids = null;
+  let protectedEtchVoids = null;
   if (type === 'grow' && !layerById(model, targetLayerId))
     return { changed: false, error: 'Target layer is unavailable.' };
 
@@ -1369,6 +1430,16 @@ function applyOperationImpl(
         };
       }
     }
+    // Selective etching of upper layers cannot remove the continuous, unetched
+    // BOX. Record its existing XY voids before mask splitting; Boolean/noding
+    // seams must never turn into through-substrate gaps.
+    if (
+      selectiveTargets.length &&
+      !selectiveTargets.includes('base') &&
+      baseCoverageState(model) === 'full'
+    ) {
+      protectedEtchVoids = uncoveredGeometryRaw(model);
+    }
     if (etchProfile === 'isotropic') {
       const release = applyIsotropicEtch(model, active, selectiveTargets, amount, face);
       if (!release.changed) return release;
@@ -1384,7 +1455,13 @@ function applyOperationImpl(
       );
     }
   } else if (growth === 'conformal') {
-    applyConformalCoating(model, active, layer?.id || targetLayerId, amount, face);
+    conformalOriginalVoids = applyConformalCoating(
+      model,
+      active,
+      layer?.id || targetLayerId,
+      amount,
+      face,
+    );
   } else {
     splitByArea(model, active, (stack) => {
       const exposed = surfaceSegment(stack, face);
@@ -1407,11 +1484,15 @@ function applyOperationImpl(
     if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
       model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
     }
+    healConformalCoverageCracks(model, conformalOriginalVoids);
   } else if (healNumericalCoverageCracks(model)) {
     model.regions = mergeRegions(model, model.regions);
   }
   if (type === 'etch' && etchProfile === 'isotropic') {
     model.regions = canonicalizeProcessPartition(model, model.regions);
+  }
+  if (protectedEtchVoids !== null) {
+    healConformalCoverageCracks(model, protectedEtchVoids);
   }
 
   // Every successful Process result must survive the 0.1 nm project-storage
@@ -1425,6 +1506,16 @@ function applyOperationImpl(
       geom: dropPersistenceDegeneratePolygons(region.geom),
     }))
     .filter((region) => !isEmpty(region.geom));
+
+  // The final persistence-degenerate filter can itself discard a tiny XY
+  // owner. Enforce unchanged material coverage on the *returned* model too:
+  // successful Conformal and base-preserving selective Etch may not leave
+  // sub-grid full-depth voids behind after cleanup.
+  const protectedVoids =
+    conformalOriginalVoids !== null ? conformalOriginalVoids : protectedEtchVoids;
+  if (protectedVoids !== null) {
+    healConformalCoverageCracks(model, protectedVoids);
+  }
 
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;

@@ -3,7 +3,7 @@ name: M3D full replay
 on:
   push:
     branches:
-      - test/m3d-full-replay-20261008
+      - fix/m3d-conformal-microcracks-20261008
     paths:
       - "scripts/m3d-kernel-full-replay.mjs"
       - "site/tests/m3d-reconstruction-regression.test.mjs"
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: m3d-kernel-full-replay-20261008
+  group: m3d-conformal-microcracks-20261008
   cancel-in-progress: true
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Corrected M3D mask and focused Kernel regression
-        run: node --test site/tests/m3d-reconstruction-regression.test.mjs
+        run: node --test site/tests/m3d-reconstruction-regression.test.mjs site/tests/conformal-process.test.mjs
       - name: Kernel full replay S00-S26
         run: node scripts/m3d-kernel-full-replay.mjs --write-repo
       - name: Sync production project and single-step welcome preview
@@ -50,9 +50,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add examples/projects/m3d-selfpowered-2026-replay site/examples/m3d-selfpowered-full-replay.wafercad site/examples/previews/m3d-selfpowered-heterogeneous-ic.wafercad
           git diff --cached --quiet || git commit -m "Add validated M3D Kernel full replay outputs"
-          git fetch origin test/m3d-full-replay-20261008
-          git rebase origin/test/m3d-full-replay-20261008
-          git push origin HEAD:test/m3d-full-replay-20261008
+          git fetch origin fix/m3d-conformal-microcracks-20261008
+          git rebase origin/fix/m3d-conformal-microcracks-20261008
+          git push origin HEAD:fix/m3d-conformal-microcracks-20261008
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: test/m3d-full-replay-20261008
+          ref: fix/m3d-conformal-microcracks-20261008
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -100,9 +100,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp tests/fixtures/project-io/example-thumbnails.json
           git diff --cached --quiet || git commit -m "Add M3D final-state 3D thumbnail"
-          git fetch origin test/m3d-full-replay-20261008
-          git rebase origin/test/m3d-full-replay-20261008
-          git push origin HEAD:test/m3d-full-replay-20261008
+          git fetch origin fix/m3d-conformal-microcracks-20261008
+          git rebase origin/fix/m3d-conformal-microcracks-20261008
+          git push origin HEAD:fix/m3d-conformal-microcracks-20261008
       - name: Import and inspect Main, Section, 3D, History and Export
         run: node scripts/m3d-visual-acceptance.mjs
       - uses: actions/upload-artifact@v6
