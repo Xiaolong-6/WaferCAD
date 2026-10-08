@@ -37,3 +37,46 @@ test('New Project does not clear workspace when Recovery checkpoint is unavailab
   assert.match(statusMessages.at(-1)?.message || '', /checkpoint was not created/i);
   assert.equal(statusMessages.at(-1)?.kind, 'error');
 });
+
+test('Read-only tab may reset volatile New Project without touching owner storage', async () => {
+  const controls = new Map();
+  const root = {
+    getElementById(id) {
+      if (!controls.has(id)) controls.set(id, {});
+      return controls.get(id);
+    },
+  };
+  let checkpointCount = 0;
+  let resetCount = 0;
+  let clearCount = 0;
+  const controller = createProjectController({
+    root,
+    confirmAction: async () => true,
+    allowVolatileNewProject: () => true,
+    checkpointBeforeReplace: async () => {
+      checkpointCount += 1;
+      return false;
+    },
+    resetProjectState: () => {
+      resetCount += 1;
+    },
+    snapshotManager: {
+      clear: () => {
+        clearCount += 1;
+      },
+    },
+    resetRoughDraftControls: () => {},
+    clearRoiDrawingMode: () => {},
+    clearMaskRoiDrawingMode: () => {},
+    syncBaseControls: () => {},
+    renderAll: () => {},
+    renderSnapshots: () => {},
+    fit3d: () => {},
+    status: () => {},
+  });
+  controller.bind();
+  await root.getElementById('newProjectBtn').onclick();
+  assert.equal(checkpointCount, 0);
+  assert.equal(resetCount, 1);
+  assert.equal(clearCount, 1);
+});
