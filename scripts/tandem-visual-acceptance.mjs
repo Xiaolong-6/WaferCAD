@@ -70,7 +70,7 @@ export async function runTandemVisualAcceptance(
   }
   await page
     .locator(
-      '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"] .welcome-example-open',
+      '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"] .welcome-example-title-link',
     )
     .click();
   await waitForAppReady(page);
