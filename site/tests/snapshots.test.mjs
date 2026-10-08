@@ -2078,6 +2078,38 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
   assert.equal(live.tag, 'new deposit');
 });
 
+test('Apply Base from a historical cursor archives actual Main HEAD', () => {
+  let live = { model: { processRevision: 0 }, tag: 'base' },
+    sequence = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => { live = state; },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    nodeIdFactory: () => `process-${++sequence}`,
+    branchIdFactory: () => `archived-${++sequence}`,
+  });
+  live = { model: { processRevision: 1 }, tag: 'deposit' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Deposit' });
+  live = { model: { processRevision: 2 }, tag: 'etch' };
+  const head = manager.recordOperation({ kind: 'etch', label: 'Etch' });
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(live.tag, 'deposit');
+  const earlierState = structuredClone(live);
+  live = { model: { processRevision: 0 }, tag: 'new base' };
+  const { archivedBranchId } = manager.rebuildMainBase({
+    preservePrevious: true,
+    previousState: earlierState,
+  });
+  const archived = manager.listBranches().find((item) => item.id === archivedBranchId);
+  assert.equal(archived.headNodeId, head.id);
+  assert.equal(manager.switchBranch(archivedBranchId), true);
+  assert.equal(live.tag, 'etch', 'archived Main HEAD must restore the last process Step');
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(live.tag, 'deposit');
+  assert.equal(manager.switchBranch('main'), true);
+  assert.equal(live.tag, 'new base');
+});
+
 test('Apply Base clear mode resets both Steps and Variants', () => {
   let live = { model: { processRevision: 1 }, tag: 'old process' };
   const manager = createSnapshotManager({
