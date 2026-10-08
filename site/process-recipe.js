@@ -13,7 +13,7 @@ const COMMANDS = new Set([
 const UNIT_SCALE_UM = Object.freeze({
   nm: 1e-3,
   um: 1,
-  'µm': 1,
+  µm: 1,
   mm: 1e3,
 });
 
@@ -36,7 +36,9 @@ export function recipeLengthUm(value, label = 'Length') {
 }
 
 function normalizeArea(value) {
-  const area = cleanText(value, 'full').toLowerCase().replace(/[\s-]+/g, '_');
+  const area = cleanText(value, 'full')
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
   if (['full', 'whole_face', 'whole'].includes(area)) return 'full';
   if (['mask', 'selected_mask', 'selected'].includes(area)) return 'mask';
   if (['invert', 'invert_mask', 'inverse'].includes(area)) return 'invert';
@@ -141,7 +143,9 @@ function normalizeStep(command, input, index = 0) {
   if (!COMMANDS.has(command)) throw new Error(`Unsupported recipe command "${command}".`);
   if (command === 'snapshot') {
     const name =
-      typeof input === 'string' ? cleanText(input, `Step ${index + 1}`) : cleanText(input?.name, `Step ${index + 1}`);
+      typeof input === 'string'
+        ? cleanText(input, `Step ${index + 1}`)
+        : cleanText(input?.name, `Step ${index + 1}`);
     return { id: `recipe-step-${index + 1}`, command, params: { name } };
   }
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -241,7 +245,8 @@ function normalizeStep(command, input, index = 0) {
     params.label = cleanText(params.label, params.process);
     if (params.temperatureC != null && params.temperatureC !== '') {
       params.temperatureC = Number(params.temperatureC);
-      if (!Number.isFinite(params.temperatureC)) throw new Error('record.temperatureC must be finite.');
+      if (!Number.isFinite(params.temperatureC))
+        throw new Error('record.temperatureC must be finite.');
     } else params.temperatureC = null;
     if (params.durationMin != null && params.durationMin !== '') {
       params.durationMin = Number(params.durationMin);
@@ -257,6 +262,56 @@ function normalizeStep(command, input, index = 0) {
   return { id: `recipe-step-${index + 1}`, command, params };
 }
 
+export function normalizeRecipeBase(value) {
+  if (value == null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Recipe base must be an object.');
+  }
+  const shape = value.shape === 'rect' ? 'rect' : value.shape === 'circle' ? 'circle' : null;
+  const width = Number(value.width);
+  const height = Number(value.height);
+  const thickness = Number(value.thickness);
+  if (!shape || ![width, height, thickness].every((n) => Number.isFinite(n) && n > 0)) {
+    throw new Error('Recipe base needs a valid shape and positive width, height and thickness.');
+  }
+  const material = cleanText(value.material, 'Base');
+  const color = value.color == null ? null : String(value.color);
+  if (material.length > 160 || (color && !/^#[0-9a-f]{6}$/i.test(color))) {
+    throw new Error('Recipe base material or color is invalid.');
+  }
+  let array = null;
+  if (value.array != null) {
+    const input = value.array;
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new Error('Recipe Base array must be a tiling specification.');
+    }
+    const { rows, columns, pitchX, pitchY, diameter } = input;
+    if (
+      ![rows, columns].every((n) => Number.isInteger(n) && n > 0 && n % 2 === 1) ||
+      ![pitchX, pitchY, diameter].every((n) => Number.isFinite(n) && n > 0)
+    ) {
+      throw new Error('Recipe Base array has invalid dimensions.');
+    }
+    if (
+      shape !== 'circle' ||
+      Math.abs(width - diameter) > 1e-6 ||
+      Math.abs(height - diameter) > 1e-6
+    ) {
+      throw new Error('Recipe Base array diameter does not match the circular wafer.');
+    }
+    array = { rows, columns, pitchX, pitchY, diameter };
+  }
+  return {
+    shape,
+    width,
+    height,
+    thickness,
+    material,
+    ...(color ? { color } : {}),
+    ...(array ? { array } : {}),
+  };
+}
+
 export function normalizeProcessRecipe(value = {}) {
   const inputSteps = Array.isArray(value.steps) ? value.steps : [];
   const steps = inputSteps.map((step, index) => {
@@ -269,6 +324,7 @@ export function normalizeProcessRecipe(value = {}) {
   return {
     version: 1,
     name: cleanText(value.name, 'Process Recipe'),
+    ...(value.base ? { base: normalizeRecipeBase(value.base) } : {}),
     steps,
     activeStepId: steps.some((step) => step.id === value.activeStepId)
       ? value.activeStepId
@@ -336,7 +392,17 @@ class LiteralParser {
       }
       if (this.index >= this.source.length) this.error('Unterminated string escape');
       const esc = this.source[this.index++];
-      const map = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', '\\': '\\', '"': '"', "'": "'" };
+      const map = {
+        n: '\n',
+        r: '\r',
+        t: '\t',
+        b: '\b',
+        f: '\f',
+        v: '\v',
+        '\\': '\\',
+        '"': '"',
+        "'": "'",
+      };
       if (esc === 'u') {
         const hex = this.source.slice(this.index, this.index + 4);
         if (!/^[0-9a-f]{4}$/i.test(hex)) this.error('Invalid unicode escape');
@@ -348,7 +414,9 @@ class LiteralParser {
   }
   number() {
     this.skip();
-    const match = this.source.slice(this.index).match(/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?/i);
+    const match = this.source
+      .slice(this.index)
+      .match(/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?/i);
     if (!match) this.error('Expected number');
     this.index += match[0].length;
     const value = Number(match[0]);
@@ -438,7 +506,9 @@ export function parseProcessRecipeSource(source, { name = 'Process Recipe' } = {
     if (parser.index >= parser.source.length) break;
     const command = parser.identifier().toLowerCase();
     if (!COMMANDS.has(command)) {
-      throw new Error(`Unsupported recipe command "${command}". Allowed: ${[...COMMANDS].join(', ')}.`);
+      throw new Error(
+        `Unsupported recipe command "${command}". Allowed: ${[...COMMANDS].join(', ')}.`,
+      );
     }
     parser.take('(');
     let argument = {};
@@ -470,7 +540,8 @@ function serializeMask(mask, indent = '  ') {
 
 function displayLength(um) {
   const value = Number(um);
-  if (Math.abs(value) < 1 && Math.abs(value) >= 1e-3) return `${Number((value * 1000).toPrecision(8))} nm`;
+  if (Math.abs(value) < 1 && Math.abs(value) >= 1e-3)
+    return `${Number((value * 1000).toPrecision(8))} nm`;
   if (Math.abs(value) >= 1000) return `${Number((value / 1000).toPrecision(8))} mm`;
   return `${Number(value.toPrecision(8))} µm`;
 }
@@ -531,7 +602,8 @@ export function recipeStepLabel(step) {
   const p = step?.params || {};
   if (step?.command === 'deposit') return `Deposit ${p.material || 'layer'}`;
   if (step?.command === 'extend') return `Extend ${p.material || 'layer'}`;
-  if (step?.command === 'etch') return `${p.profile === 'planarize' ? 'Planarize' : 'Etch'}${p.target ? ` ${p.target}` : ''}`;
+  if (step?.command === 'etch')
+    return `${p.profile === 'planarize' ? 'Planarize' : 'Etch'}${p.target ? ` ${p.target}` : ''}`;
   if (step?.command === 'implant') return `Implant ${p.name || ''}`.trim();
   if (step?.command === 'electrical') return `Electrical ${p.name || ''}`.trim();
   if (step?.command === 'record') return p.label || 'Record process';
@@ -552,8 +624,12 @@ export function recipeStepSummary(step) {
     return `${displayLength(p.thicknessUm)} · ${coverage}${area}`;
   }
   if (step?.command === 'etch') return `${displayLength(p.thicknessUm)} · ${p.profile}${area}`;
-  if (step?.command === 'implant' || step?.command === 'electrical') return `${displayLength(p.depthUm)}${area}`;
-  if (step?.command === 'record') return [p.process, p.durationMin == null ? '' : `${p.durationMin} min`].filter(Boolean).join(' · ');
+  if (step?.command === 'implant' || step?.command === 'electrical')
+    return `${displayLength(p.depthUm)}${area}`;
+  if (step?.command === 'record')
+    return [p.process, p.durationMin == null ? '' : `${p.durationMin} min`]
+      .filter(Boolean)
+      .join(' · ');
   if (step?.command === 'snapshot') return 'Named milestone';
   return '';
 }
@@ -564,20 +640,32 @@ export function recipeTemplate(id = 'blank') {
     'deposit-etch': {
       name: 'Deposit + Etch',
       steps: [
-        { command: 'deposit', params: { material: 'SiO2', thickness: '100 nm', coverage: 'directional', area: 'full' } },
-        { command: 'etch', params: { target: 'SiO2', depth: '100 nm', profile: 'directional', area: 'mask' } },
+        {
+          command: 'deposit',
+          params: { material: 'SiO2', thickness: '100 nm', coverage: 'directional', area: 'full' },
+        },
+        {
+          command: 'etch',
+          params: { target: 'SiO2', depth: '100 nm', profile: 'directional', area: 'mask' },
+        },
       ],
     },
     conformal: {
       name: 'Conformal coating',
       steps: [
-        { command: 'deposit', params: { material: 'Al2O3', thickness: '30 nm', coverage: 'conformal', area: 'full' } },
+        {
+          command: 'deposit',
+          params: { material: 'Al2O3', thickness: '30 nm', coverage: 'conformal', area: 'full' },
+        },
       ],
     },
     implant: {
       name: 'Implant',
       steps: [
-        { command: 'implant', params: { name: 'Implant 1', depth: '500 nm', tilt: 0, area: 'mask' } },
+        {
+          command: 'implant',
+          params: { name: 'Implant 1', depth: '500 nm', tilt: 0, area: 'mask' },
+        },
       ],
     },
   };

@@ -19,7 +19,7 @@ permissions:
 jobs:
   recipe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,3 +39,21 @@ jobs:
           curl --fail http://127.0.0.1:4173/app.html >/dev/null
       - name: Recipe interaction regression
         run: node scripts/process-recipe-safety-regression.mjs
+      - name: Real Kernel Run All - all five production example projects
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/example-recipe-runall-acceptance.mjs
+      - name: Ge Fig 15 A rebuild and Keep History behavior
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: |
+          node scripts/example-recipe-runall-acceptance.mjs --id=photodetector-literature --variant=ge-fig15-a
+          node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk --history=keep
+      - name: Upload browser replay diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: example-recipe-runall-diagnostics
+          path: test-results/example-recipe-runall/
+          if-no-files-found: ignore
+          retention-days: 14

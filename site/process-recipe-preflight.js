@@ -7,7 +7,13 @@ export function normalizeRecipeLayerKey(value) {
 
 export function validateRecipeExecution(
   steps,
-  { model = null, maskState = null, limit = steps.length, startMode = 'continue' } = {},
+  {
+    model = null,
+    maskState = null,
+    base = null,
+    limit = steps.length,
+    startMode = 'continue',
+  } = {},
 ) {
   const errors = [];
   const warnings = [];
@@ -20,7 +26,13 @@ export function validateRecipeExecution(
   if (startMode === 'new-base' && startingLayers.length === 0 && layers.length) {
     startingLayers.push(layers[0]);
   }
-  const materials = new Set(startingLayers.map((layer) => layer.name));
+  const materials = new Set(
+    startMode === 'new-base' && base
+      ? [base.material]
+      : startMode === 'new-base'
+        ? ['Base']
+        : startingLayers.map((layer) => layer.name),
+  );
   const layout = maskState?.layout;
   const existingKeys = layout?.elements
     ? new Set(layout.elements.map((element) => `${element.layer}|${element.datatype ?? 0}`))
@@ -30,13 +42,18 @@ export function validateRecipeExecution(
     const prefix = `Step ${index + 1}`;
     const params = step.params || {};
     if (step.command === 'extend' && !materials.has(params.material)) {
-      errors.push(`${prefix}: material "${params.material}" does not exist in the starting model or preceding Steps.`);
+      errors.push(
+        `${prefix}: material "${params.material}" does not exist in the starting model or preceding Steps.`,
+      );
     }
     if (step.command === 'etch' && params.target && !materials.has(params.target)) {
-      errors.push(`${prefix}: etch target "${params.target}" does not exist in the starting model or preceding Steps.`);
+      errors.push(
+        `${prefix}: etch target "${params.target}" does not exist in the starting model or preceding Steps.`,
+      );
     }
     if (step.command === 'deposit') materials.add(params.material);
-    if (['snapshot', 'record'].includes(step.command) || !['mask', 'invert'].includes(params.area)) continue;
+    if (['snapshot', 'record'].includes(step.command) || !['mask', 'invert'].includes(params.area))
+      continue;
 
     const mask = params.mask;
     if (!mask) {
@@ -54,8 +71,12 @@ export function validateRecipeExecution(
       errors.push(`${prefix}: captured file Mask has no selected layers.`);
       continue;
     }
-    if (layout?.root && mask.cell && mask.cell !== layout.root &&
-      !Object.hasOwn(layout.hierarchy || {}, mask.cell)) {
+    if (
+      layout?.root &&
+      mask.cell &&
+      mask.cell !== layout.root &&
+      !Object.hasOwn(layout.hierarchy || {}, mask.cell)
+    ) {
       errors.push(`${prefix}: Mask cell "${mask.cell}" is missing from the current layout.`);
     }
     if (existingKeys) {

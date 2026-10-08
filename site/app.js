@@ -1,4 +1,5 @@
 import { prewarmModelBoundaryIndexes } from './process-boundary-index.js';
+import { isArrayModel } from './model-array.js';
 import { prepareMaskInstanceIndex } from './mask-instance-index.js';
 import { parseLayoutFile } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
@@ -1028,7 +1029,12 @@ function recordProcessOperation(operation) {
   processRecipeController?.recordManualOperation?.(operation);
   const recorded = snapshotManager.recordOperation(operation);
   markProjectDirty();
-  renderSnapshots();
+  // Recording each Step must remain lossless. Repainting the full 625-site
+  // History tree on each commit is redundant during a Recipe batch; refresh
+  // it once when the batch finishes or is stopped.
+  if (!(processRecipeController?.isRunning?.() && isArrayModel(model))) {
+    renderSnapshots();
+  }
   return recorded;
 }
 
@@ -1124,7 +1130,13 @@ processPanelController = createProcessPanelController({
   colorNewLayer,
   colorNewImplant,
   colorNewElectricalRegion,
-  renderAll,
+  // Array Steps are still fully committed through the native Kernel/History.
+  // Only skip heavy 625-site geometry/3D repaint between batch Steps.
+  // The Recipe controller does a complete render on success, Stop or failure.
+  renderAll: () => {
+    if (processRecipeController?.isRunning?.() && isArrayModel(model)) return;
+    renderAll();
+  },
   status,
 });
 
@@ -1146,7 +1158,10 @@ processRecipeController = createProcessRecipeController({
   }),
   setMaskState: (next = {}) => {
     maskSourceMode = next.maskSourceMode === 'draw' ? 'draw' : 'file';
-    if (next.activeCell && (next.activeCell === layout.root || layout.hierarchy?.[next.activeCell])) {
+    if (
+      next.activeCell &&
+      (next.activeCell === layout.root || layout.hierarchy?.[next.activeCell])
+    ) {
       activeCell = next.activeCell;
     }
     if (Array.isArray(next.selectedLayerKeys)) {
@@ -1173,7 +1188,7 @@ processRecipeController = createProcessRecipeController({
   updateOperationUI,
   renderAll,
   renderSnapshots,
-  resetToBase: () => baseControls.applyBase(),
+  resetToBase: (recipeBase) => baseControls.applyBase({ recipeBase }),
   confirmContinue: () =>
     confirmationDialog.confirm({
       title: 'Continue Recipe on current model?',
@@ -1258,9 +1273,7 @@ const baseControls = createBaseControlsController({
     const graph = snapshotManager.exportBranchState();
     return {
       hasHistory:
-        graph.nodes.length > 0 ||
-        graph.branches.length > 1 ||
-        snapshotManager.list().length > 0,
+        graph.nodes.length > 0 || graph.branches.length > 1 || snapshotManager.list().length > 0,
     };
   },
   captureBaseSnapshot: () => stateSnapshot({ includeHistoryGraph: true }),

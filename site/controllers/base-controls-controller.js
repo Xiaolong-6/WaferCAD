@@ -1,4 +1,5 @@
 import { createModel, hasMaterial } from '../model.js';
+import { createWaferArrayModel, createWaferArrayTiling } from '../model-array-construction.js';
 
 export function createBaseControlsController({
   root = document,
@@ -61,11 +62,18 @@ export function createBaseControlsController({
     }
   }
 
-  async function applyBase() {
-    const shape = root.querySelector('#substrateShape button.active').dataset.shape,
-      width = manualMicron($('baseWidth').value),
-      height = shape === 'circle' ? width : manualMicron($('baseHeight').value),
-      thickness = manualMicron($('baseThickness').value);
+  async function applyBase({ recipeBase = null } = {}) {
+    const shape =
+        recipeBase?.shape || root.querySelector('#substrateShape button.active').dataset.shape,
+      width = recipeBase ? Number(recipeBase.width) : manualMicron($('baseWidth').value),
+      height = recipeBase
+        ? Number(recipeBase.height)
+        : shape === 'circle'
+          ? width
+          : manualMicron($('baseHeight').value),
+      thickness = recipeBase
+        ? Number(recipeBase.thickness)
+        : manualMicron($('baseThickness').value);
 
     if (
       !Number.isFinite(width) ||
@@ -95,7 +103,21 @@ export function createBaseControlsController({
     // cannot restore the previous process lineage.
     const before = captureBaseSnapshot();
     try {
-      const newModel = createModel({ shape, width, height, thickness });
+      const seed = recipeBase?.array
+        ? createModel({
+            shape: 'rect',
+            width: recipeBase.array.pitchX,
+            height: recipeBase.array.pitchY,
+            thickness,
+          })
+        : createModel({ shape, width, height, thickness });
+      if (recipeBase) {
+        seed.layers[0].name = recipeBase.material;
+        if (recipeBase.color) seed.layers[0].color = recipeBase.color;
+      }
+      const newModel = recipeBase?.array
+        ? createWaferArrayModel(seed, createWaferArrayTiling(recipeBase.array))
+        : seed;
       setBaseRevertSnapshot(before);
       saveHistory(before);
       setModel(newModel);

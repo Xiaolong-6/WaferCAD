@@ -19,7 +19,10 @@ export async function loadProject(page, project, name) {
 }
 
 export async function exportCurrentProject(page, timeout = 30000) {
-  await openFunctionPanel(page, 'project');
+  // Opening the Project flyout can be delayed by final scene assembly
+  // immediately after a large array Recipe replay. Honor the caller's
+  // requested export deadline instead of silently using the 5 s UI default.
+  await openFunctionPanel(page, 'project', { timeout: Math.min(timeout, 120000) });
   const downloadPromise = page.waitForEvent('download', { timeout });
   await page.locator('#exportProjectBtn').click();
   const download = await downloadPromise,

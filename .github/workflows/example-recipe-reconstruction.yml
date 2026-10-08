@@ -1,0 +1,63 @@
+name: Example Recipe Reconstruction
+on:
+  push:
+    branches:
+      - fix/example-kernel-recipe-replay-audit
+    paths:
+      - .github/workflows/example-recipe-reconstruction.yml
+      - scripts/maintenance/backfill-example-recipes.mjs
+      - scripts/maintenance/sync-example-recipe-previews.mjs
+      - site/layout-export.js
+      - scripts/example-recipe-runall-acceptance.mjs
+      - site/tests/example-mask-export.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Reconstruct old project recipes and refresh detector generator
+        run: |
+          node scripts/maintenance/backfill-example-recipes.mjs --write
+          node scripts/maintenance/rebuild-photodetectors.mjs --write
+          node scripts/maintenance/sync-example-recipe-previews.mjs --write
+      - name: Format source and generated assets
+        run: |
+          npx prettier --write scripts/maintenance/backfill-example-recipes.mjs scripts/maintenance/sync-example-recipe-previews.mjs site/layout-export.js site/tests/example-recipe-audit.test.mjs site/tests/example-mask-export.test.mjs scripts/example-recipe-runall-acceptance.mjs site/process-recipe.js site/process-recipe-preflight.js site/controllers/base-controls-controller.js site/controllers/process-recipe-controller.js site/app.js scripts/maintenance/rebuild-photodetectors.mjs
+      - name: Validate recipe drift and standard tests
+        run: |
+          node scripts/maintenance/backfill-example-recipes.mjs
+          node scripts/maintenance/rebuild-photodetectors.mjs
+          node scripts/maintenance/sync-example-recipe-previews.mjs
+          npm run check:ci
+          git diff --check
+      - name: Commit reconstructed examples back to isolated branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site/examples/*.wafercad site/examples/previews/*.wafercad site/layout-export.js scripts/maintenance/sync-example-recipe-previews.mjs site/tests/example-recipe-audit.test.mjs site/tests/example-mask-export.test.mjs scripts/maintenance/backfill-example-recipes.mjs scripts/example-recipe-runall-acceptance.mjs scripts/maintenance/rebuild-photodetectors.mjs site/process-recipe.js site/process-recipe-preflight.js site/controllers/base-controls-controller.js site/controllers/process-recipe-controller.js site/app.js
+          if ! git diff --cached --quiet; then
+            git commit -m 'Generate reproducible recipes for all bundled example families'
+            git push
+          fi
+      - name: Browser acceptance - every Welcome example Run All from Clear History
+        run: |
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-recipe-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs
+          WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs --id=photodetector-literature --variant=ge-fig15-a
+          WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk --history=keep
