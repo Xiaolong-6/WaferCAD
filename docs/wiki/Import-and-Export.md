@@ -6,11 +6,11 @@
 
 ~~~mermaid
 flowchart LR
-  Mask[File GDS/OAS or Draw] --> Workspace[WaferCAD workspace]
-  Workspace --> Project[Export .wafercad]
+  Mask["File GDS/OAS or Draw"] --> Workspace[WaferCAD workspace]
+  Workspace --> Project["Export .wafercad"]
   Project --> Restore[Open/import project]
-  Workspace --> MaskExport[Mask export SVG/GDS/OAS]
-  Workspace --> ViewExport[Section/Main SVG, 3D PNG or GLB]
+  Workspace --> MaskExport["Mask export SVG/GDS/OAS"]
+  Workspace --> ViewExport["Section/Main SVG, 3D PNG or GLB"]
 ~~~
 
 *The portable project includes more than the exported mask or a single rendered view.*

@@ -21,12 +21,12 @@ flowchart LR
   Catalog --> UI[Process inline guide]
   Diagrams[site/process-guide-svg.js] --> UI
   Diagrams --> AssetGenerator[scripts/build-wiki-diagrams.mjs]
-  AssetGenerator --> Images[docs/wiki/assets/process/*.svg]
+  AssetGenerator --> Images["docs/wiki/assets/process/*.svg"]
   Generator --> Operations[docs/wiki/Process-Operations.md]
   Images --> Operations
   Authored[Authored docs/wiki pages] --> Wiki[GitHub Wiki sync on main]
   Operations --> Wiki
-  Operations --> RawAssets[Versioned main-branch image URLs]
+  Operations --> RawAssets["Versioned main-branch image URLs"]
   Contracts[Engineering contracts] --> Map[docs/README.md]
   Evidence[Revision-specific records] --> Archive[docs/archive/README.md]
   Archive --> Map

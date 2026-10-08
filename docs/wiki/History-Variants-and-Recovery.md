@@ -10,8 +10,8 @@ flowchart LR
   Step1 --> Step2[Process step 2]
   Step2 --> Main[Current Main HEAD]
   Step1 --> Variant[Alternative Variant]
-  Main --> Save[Save: browser Recovery]
-  Main --> Export[Export: portable .wafercad]
+  Main --> Save["Save: browser Recovery"]
+  Main --> Export["Export: portable .wafercad"]
 ~~~
 
 *History and Variants retain process lineage. Local Recovery checkpoints and portable exports are separate persistence mechanisms.*
