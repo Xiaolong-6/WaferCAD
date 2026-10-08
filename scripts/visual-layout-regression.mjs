@@ -23,12 +23,7 @@ try {
     { width: 1440, height: 900, mobile: false },
   ]) {
     const errors = [];
-    const { page, context } = await openProductPage(
-      browser,
-      { width, height },
-      mobile,
-      errors,
-    );
+    const { page, context } = await openProductPage(browser, { width, height }, mobile, errors);
     await openFunctionPanel(page, 'process');
 
     // Check the rendered panel and the actual user-interactable controls.
@@ -71,9 +66,15 @@ try {
       );
     }
     await page.locator('#operationType').selectOption('add');
-    assert.equal(await page.locator('[data-process-input-mode="manual"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(
+      await page.locator('[data-process-input-mode="manual"]').getAttribute('aria-pressed'),
+      'true',
+    );
     await page.locator('[data-process-input-mode="recipe"]').click();
-    assert.equal(await page.locator('[data-process-input-mode="recipe"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(
+      await page.locator('[data-process-input-mode="recipe"]').getAttribute('aria-pressed'),
+      'true',
+    );
     await page.locator('[data-process-input-mode="manual"]').click();
     await closeFunctionPanel(page);
     await ensurePrimaryViewVisible(page, 'main');

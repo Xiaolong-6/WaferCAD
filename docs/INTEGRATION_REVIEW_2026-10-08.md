@@ -35,7 +35,6 @@ This document is a staging audit and should be updated with final check links an
 
 Do not treat queued, `action_required`, canceled or pending checks as successful.
 
-
 ## Final CI failure remediation
 
 - The October 5 approved Windows pixel references are stale even for the unchanged main revision: `wide-project-panel` differs by 3.8266% from its original pixels. The combined branch differs by 4.7071%; the redesigned phone Process control contributes an intentional 25.0381% change. The references are **not overwritten**. Both historical comparisons remain visible as failed diagnostic steps, with all actual/expected/diff artifacts, while an explicit current layout contract is required to pass.
