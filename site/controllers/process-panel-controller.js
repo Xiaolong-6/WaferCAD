@@ -161,11 +161,8 @@ export function createProcessPanelController({
 
   function updateOperationUI() {
     const t = $('operationType').value;
-    root.querySelectorAll('[data-process-mode]').forEach((button) => {
-      const active = button.dataset.processMode === t;
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-pressed', String(active));
-    });
+    // The native select is the single operation state owner for manual and Recipe replay.
+    $('operationTools').dataset.operationMode = t;
 
     const recordOnly = t === 'record',
       electrical = t === 'electrical',
