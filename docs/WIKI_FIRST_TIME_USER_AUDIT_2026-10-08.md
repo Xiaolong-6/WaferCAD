@@ -38,6 +38,14 @@ The changes below produce a **plausible, testable guided route**. This is a docu
 4. **Real novice workflow (still required):** in a fresh browser/profile, make a 100 × 100 × 10 µm Si Base, add a full-face 0.2 µm SiO₂ layer, draw a central rectangular mask, selective-etch the oxide 0.2 µm, align A–B through the window, export/reimport `.wafercad` and verify the step count and geometry.
 5. **Publication check (after main merge only):** confirm the Wiki sync workflow succeeded, the sidebar leads to `First-10-Minutes`, SVG schematics load from `main`, and a mobile user can reach the whole walkthrough without special application knowledge.
 
+## Verification performed in this audit
+
+- Compared the branch with the pinned main base: **8 changed paths**, no changes to geometry/kernel/runtime code except a documentation regression test.
+- Fetched **14 Wiki pages** and inspected **106 relative Wiki link references** against their target pages: **no missing target among the checked references**.
+- Confirmed that all **11 UI control IDs** used by the beginner regression contract exist in the main-derived `site/app.html`.
+- Confirmed that both new tutorial SVG images and its existing Photodetector thumbnail are present in the repository.
+- **Not run here:** `npm run docs:check`, unit tests, Prettier or browser automation. The repository was available through GitHub source access, but no runnable local checkout was available; treat CI and real-browser validation as pending acceptance gates.
+
 ## Follow-up suggestions
 
 - Observe at least three new users completing the steps without spoken hints; record the first point of confusion and task completion, rather than declaring the guide beginner-friendly from the author's perspective alone.
