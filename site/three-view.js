@@ -1324,6 +1324,41 @@ export function createThreeView({
     return geometry;
   }
 
+  function sortTransparentInstances(mesh) {
+    const translations = mesh?.userData?.waferCadInstanceTranslations,
+      templateCenter = mesh?.userData?.waferCadTemplateCenter;
+    if (
+      !mesh?.isInstancedMesh ||
+      !Array.isArray(translations) ||
+      translations.length < 2 ||
+      !Array.isArray(templateCenter)
+    )
+      return 0;
+
+    const parent = mesh.parent,
+      point = new THREE.Vector3(),
+      matrix = new THREE.Matrix4();
+    parent?.updateMatrixWorld?.(true);
+    const ordered = translations
+      .map(([x, y], sequence) => {
+        point.set(
+          Number(templateCenter[0]) + Number(x || 0),
+          Number(templateCenter[1]) + Number(y || 0),
+          Number(templateCenter[2]) || 0,
+        );
+        if (parent) point.applyMatrix4(parent.matrixWorld);
+        point.applyMatrix4(camera.matrixWorldInverse);
+        return { x: Number(x) || 0, y: Number(y) || 0, depth: point.z, sequence };
+      })
+      .sort((a, b) => a.depth - b.depth || a.sequence - b.sequence);
+    ordered.forEach(({ x, y }, index) => {
+      matrix.makeTranslation(x, y, 0);
+      mesh.setMatrixAt(index, matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    return ordered.length;
+  }
+
   function updateTransparentOrder() {
     if (!camera || !group || !transparentMeshes.length) return;
     const now = performance.now();
@@ -1335,7 +1370,9 @@ export function createThreeView({
     lastTransparencySort = now;
     transparencyOrderDirty = false;
     camera.updateMatrixWorld();
+    let sortedInstances = 0;
     for (const entry of transparentMeshes) {
+      sortedInstances += sortTransparentInstances(entry.mesh);
       const point = displayedObjectCenter(entry.mesh);
       point.applyMatrix4(camera.matrixWorldInverse);
       entry.depth = point.z;
@@ -1346,6 +1383,7 @@ export function createThreeView({
     transparentMeshes.forEach((entry, index) => {
       entry.mesh.renderOrder = 100 + index;
     });
+    host.dataset.transparentSortedInstances = String(sortedInstances);
   }
 
   function createSurfaceMaterial(
@@ -1508,6 +1546,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       mesh.computeBoundingBox?.();
       mesh.computeBoundingSphere?.();
       if (name) mesh.name = chunks.length > 1 ? `${name} ${chunkIndex + 1}/${chunks.length}` : name;
+      const templateCenter = geometryCenter(chunkGeometry);
+      mesh.userData.waferCadInstanceTranslations = chunk.map(([x, y]) => [Number(x) || 0, Number(y) || 0]);
+      mesh.userData.waferCadTemplateCenter = [templateCenter.x, templateCenter.y, templateCenter.z];
       if (chunkGeometry.userData.roughGpuDisplacement) mesh.frustumCulled = false;
       group.add(mesh);
       trackZDisplayObject(mesh);
