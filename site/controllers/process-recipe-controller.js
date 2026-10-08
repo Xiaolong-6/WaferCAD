@@ -1187,6 +1187,9 @@ export function createProcessRecipeController({
         };
       }
       setRunningUi(false);
+      // Deferred History rows for large wafer arrays must catch up on every
+      // exit path: Completed, Stopped or Failed.
+      if (started) renderSnapshots();
       renderAll();
       renderSteps();
       showRunSummary();
