@@ -22,8 +22,7 @@ export function processWikiDiagramSvg(id) {
   ].join('\n');
 }
 
-async function main() {
-  const mode = process.argv[2] || '--check';
+export async function buildWikiDiagrams(mode = '--check') {
   if (!['--check', '--write'].includes(mode))
     throw Error('Usage: node scripts/build-wiki-diagrams.mjs --check|--write');
   if (mode === '--write') await mkdir(PROCESS_WIKI_ASSET_DIR, { recursive: true });
@@ -41,4 +40,5 @@ async function main() {
   console.log('Wiki diagrams ' + mode.slice(2) + ': ' + PROCESS_GUIDE.length + ' variants');
 }
 
-if (process.argv[1]?.endsWith('build-wiki-diagrams.mjs')) await main();
+if (process.argv[1]?.endsWith('build-wiki-diagrams.mjs'))
+  await buildWikiDiagrams(process.argv[2] || '--check');

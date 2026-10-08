@@ -1,6 +1,7 @@
 import { readFile, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { checkDocumentation } from './check-documentation.mjs';
+import { buildWikiDiagrams } from './build-wiki-diagrams.mjs';
 import { PROCESS_GUIDE } from '../site/process-guide.js';
 
 // Generate Wiki operations from exactly the data rendered in the Process panel.
@@ -61,6 +62,7 @@ async function main() {
   const mode = process.argv[2] || '--check';
   if (mode === '--write') {
     await writeFile(path, expected, 'utf8');
+    await buildWikiDiagrams('--write');
     console.log('Wrote ' + path + ' (' + PROCESS_GUIDE.length + ' operations)');
   } else if (mode === '--check') {
     let actual;
@@ -95,6 +97,7 @@ async function main() {
         pages.length +
         ' authored/navigation pages plus the generated operation reference',
     );
+    await buildWikiDiagrams('--check');
     await checkDocumentation();
   } else throw Error('Usage: node scripts/build-process-guide.mjs --check|--write');
 }

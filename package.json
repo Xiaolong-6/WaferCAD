@@ -31,8 +31,8 @@
     "test:ui:io": "node scripts/project-io-runtime-regression.mjs",
     "test:ui:array": "node scripts/array-runtime-regression.mjs",
     "benchmark:renderer": "node scripts/renderer-pipeline-benchmark.mjs",
-    "docs:build": "node scripts/build-process-guide.mjs --write && node scripts/build-wiki-diagrams.mjs --write",
-    "docs:check": "node scripts/build-process-guide.mjs --check && node scripts/build-wiki-diagrams.mjs --check"
+    "docs:build": "node scripts/build-process-guide.mjs --write",
+    "docs:check": "node scripts/build-process-guide.mjs --check"
   },
   "devDependencies": {
     "eslint": "10.11.0",

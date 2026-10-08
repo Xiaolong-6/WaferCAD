@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>WaferCAD · Process Manual</title>
-    <meta http-equiv="refresh" content="0;url=https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations" />
+    <meta http-equiv="refresh" content="2;url=https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations" />
   </head>
   <body>
     <p>Process diagrams are now part of the
@@ -12,7 +12,8 @@
     </p>
     <script>
       // Preserve old /guide/#operation-id bookmarks without retaining a separate atlas.
-      const operation = decodeURIComponent(location.hash.slice(1));
+      let operation = '';
+      try { operation = decodeURIComponent(location.hash.slice(1)); } catch { /* fall back to index */ }
       const anchor = /^[a-z0-9-]+$/.test(operation) ? '#' + encodeURIComponent(operation) : '';
       const target = 'https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations' + anchor;
       document.getElementById('manual').href = target;

@@ -31,7 +31,7 @@ jobs:
 
       - name: Verify generated manual and diagrams
         run: |
-          npm run docs:check
+          node scripts/build-process-guide.mjs --check
           node --test site/tests/process-guide.test.mjs site/tests/wiki-manual.test.mjs site/tests/documentation.test.mjs
 
       - name: Detect possible product manual drift
