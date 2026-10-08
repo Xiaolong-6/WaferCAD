@@ -48,7 +48,14 @@ export function electricalDisplaySolidForLod(originalSolid, visibleSolid, lod) {
     !Array.isArray(visibleSolid.caps) ||
     visibleSolid.caps.length !== originalSolid.caps.length ||
     !Array.isArray(visibleSolid.slabs) ||
-    !visibleSolid.slabs.length
+    !visibleSolid.slabs.length ||
+    !Array.isArray(originalSolid.slabs) ||
+    visibleSolid.slabs.length !== originalSolid.slabs.length ||
+    visibleSolid.slabs.some(
+      (slab, index) =>
+        slab.z0 !== originalSolid.slabs[index]?.z0 ||
+        slab.z1 !== originalSolid.slabs[index]?.z1,
+    )
   ) {
     return visibleSolid;
   }
