@@ -1191,14 +1191,7 @@ canvas {
   gap: 3px;
 }
 
-.process-mode {
-  margin: 1px 0 3px;
-}
 
-.process-mode button {
-  height: 25px;
-  font-size: 10.5px;
-}
 
 .param-grid-2 {
   display: grid;
@@ -1311,13 +1304,6 @@ canvas {
 }
 
 @media (max-width: 600px) {
-  .process-mode button {
-    min-width: 0;
-    padding-left: 2px;
-    padding-right: 2px;
-    font-size: 9.5px;
-    white-space: nowrap;
-  }
 
   .param-grid-2 {
     grid-template-columns: minmax(0, 1fr);
@@ -2549,14 +2535,6 @@ body.welcome-open {
   user-select: none;
 }
 
-.process-mode {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 4px 0 6px;
-}
-.process-mode button {
-  height: 27px;
-  font-size: 11px;
-}
 
 #applyOperationBtn:disabled {
   opacity: 0.45;
@@ -5642,17 +5620,22 @@ summary:focus-visible {
   background: #f1f7fc;
   font-size: 10px;
 }
-.recipe-template-preview[hidden] { display: none !important; }
-.recipe-template-preview > strong { color: #2c4b65; }
-.recipe-template-preview > span { color: #64798a; }
-.recipe-template-preview .hint { margin: 0; }
+.recipe-template-preview[hidden] {
+  display: none !important;
+}
+.recipe-template-preview > strong {
+  color: #2c4b65;
+}
+.recipe-template-preview > span {
+  color: #64798a;
+}
+.recipe-template-preview .hint {
+  margin: 0;
+}
 .recipe-template-actions {
   display: flex;
   justify-content: flex-end;
   gap: 5px;
-}
-.recipe-template-preview:has(#recipeTemplateLoadBtn:not(:first-child)) button {
-  min-width: 0;
 }
 .recipe-workflow-label {
   color: #657785;
