@@ -1849,3 +1849,59 @@ html.welcome-project-preview #maskCanvas.preview-panning {
 html.welcome-project-preview #sectionCanvas {
   cursor: default;
 }
+
+/* Compact header view navigation
+   The primary view selector lives beside the project name; the former
+   second-row viewbar no longer consumes workspace canvas height. */
+html.workstation-ui-v2 .app-shell {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+html.workstation-ui-v2 .workstation-rail,
+html.workstation-ui-v2 .workspace {
+  grid-row: 1;
+}
+
+html.workstation-ui-v2 .topbar .workstation-viewbar {
+  grid-column: auto;
+  grid-row: auto;
+  height: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+  margin-left: clamp(10px, 3.5vw, 44px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  background: transparent;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+html.workstation-ui-v2 .topbar .workstation-viewbar::-webkit-scrollbar {
+  display: none;
+}
+
+html.workstation-ui-v2 .topbar .workstation-view-tabs {
+  flex: 0 0 auto;
+  height: 100%;
+  white-space: nowrap;
+}
+
+html.workstation-ui-v2 .topbar .workstation-view-tab {
+  height: 100%;
+}
+
+/* Keep the project name and all five view modes usable on narrower screens.
+   The view selector can scroll rather than wrapping or pushing the header. */
+@media (max-width: 820px) {
+  html.workstation-ui-v2 .topbar .workstation-viewbar {
+    flex: 1 1 auto;
+    margin-left: auto;
+  }
+}
+
+html.workstation-ui-v2.workstation-compact-ui .topbar .workstation-viewbar {
+  flex: 1 1 auto;
+  margin-left: auto;
+}
