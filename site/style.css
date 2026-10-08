@@ -5620,3 +5620,76 @@ summary:focus-visible {
 .process-guide-top span#processGuideTitle {
   font-weight: 650;
 }
+
+/* Process Recipe workflow: preview before replacement, compact editor, sticky execution. */
+.recipe-process-pane {
+  align-content: start;
+  min-width: 0;
+}
+.recipe-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+}
+.recipe-toolbar select {
+  min-width: 0;
+  width: 100%;
+}
+.recipe-template-preview {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid #c6d7e5;
+  border-radius: 6px;
+  background: #f1f7fc;
+  font-size: 10px;
+}
+.recipe-template-preview[hidden] { display: none !important; }
+.recipe-template-preview > strong { color: #2c4b65; }
+.recipe-template-preview > span { color: #64798a; }
+.recipe-template-preview .hint { margin: 0; }
+.recipe-template-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.recipe-template-preview:has(#recipeTemplateLoadBtn:not(:first-child)) button {
+  min-width: 0;
+}
+.recipe-workflow-label {
+  color: #657785;
+  font-size: 9.5px;
+  font-weight: 650;
+}
+.recipe-validation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 24px;
+}
+.recipe-validation-header .compact-btn {
+  padding: 2px 8px;
+  font-size: 9.5px;
+}
+.recipe-steps-list {
+  max-height: min(34vh, 270px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.recipe-execution {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 5px;
+  margin: 5px -3px -3px;
+  padding: 8px 3px 3px;
+  border-top: 1px solid #dce5ec;
+  background: #fdfcff;
+}
+.recipe-run-actions {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+}
+.recipe-run-actions:has(#recipeStopBtn:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) auto;
+}
+.recipe-run-actions #recipeStopBtn[hidden] { display: none !important; }
