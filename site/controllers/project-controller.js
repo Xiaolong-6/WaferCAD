@@ -16,6 +16,7 @@ export function createProjectController({
   status,
   onProjectChanged = () => {},
   checkpointBeforeReplace = async () => false,
+  allowVolatileNewProject = () => false,
   readProjectFileTask = readProjectFile,
   exportProjectFileTask = null,
   normalizedProjectName,
@@ -1047,7 +1048,11 @@ export function createProjectController({
         return;
       }
       try {
-        await requireRecoveryCheckpoint('pre-new-project');
+        // Non-owner tabs can intentionally reset their volatile workspace;
+        // autosave remains paused and the owner tab is never overwritten.
+        if (!allowVolatileNewProject()) {
+          await requireRecoveryCheckpoint('pre-new-project');
+        }
         cancelHistoricalStepEdit();
         resetProjectState();
         resetRoughDraftControls();
