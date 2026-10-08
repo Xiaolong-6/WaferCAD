@@ -2009,3 +2009,88 @@ test('reopening an unbookmarked HEAD preserves its null bookmark cursor after an
   assert.equal(reopened.currentPosition().bookmarkId, null);
   assert.equal(reopened.continuationContext(), null);
 });
+
+
+test('Apply Base archives Main Steps and Variants while starting clean Main', () => {
+  let live = { model: { processRevision: 0 }, tag: 'old base' };
+  let nodeId = 0;
+  let branchId = 0;
+  let bookmarkId = 0;
+  const options = {
+    capture: () => live,
+    restore: (state) => { live = state; },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    nodeIdFactory: () => `node-${++nodeId}`,
+    branchIdFactory: () => `variant-${++branchId}`,
+    idFactory: () => `bookmark-${++bookmarkId}`,
+  };
+  const manager = createSnapshotManager(options);
+  live = { model: { processRevision: 1 }, tag: 'oxide' };
+  const first = manager.recordOperation({ kind: 'add', label: 'Deposit oxide' });
+  const milestone = manager.create('After oxide');
+  const child = manager.createBranchFromNode(first.id, 'Black silicon');
+  live = { model: { processRevision: 2 }, tag: 'black silicon' };
+  const childStep = manager.recordOperation({ kind: 'etch', label: 'Rough etch' });
+  assert.equal(manager.switchBranch('main'), true);
+  assert.equal(live.tag, 'oxide');
+  const previousState = structuredClone(live);
+  live = { model: { processRevision: 0 }, tag: 'new base' };
+
+  const { archivedBranchId } = manager.rebuildMainBase({
+    preservePrevious: true,
+    previousState,
+  });
+  assert.ok(archivedBranchId);
+  assert.equal(manager.activeBranch().id, 'main');
+  assert.equal(manager.activeBranch().processStepCount, 0);
+  assert.equal(manager.listBranches().find((item) => item.id === child.id).parentBranchId, archivedBranchId);
+  assert.equal(manager.listHistory().find((node) => node.id === first.id).branchId, archivedBranchId);
+  assert.equal(manager.list().find((record) => record.id === milestone.id).branchId, archivedBranchId);
+
+  live = { model: { processRevision: 1 }, tag: 'new deposit' };
+  const freshStep = manager.recordOperation({ kind: 'add', label: 'New deposition' });
+  assert.equal(freshStep.parentId, null);
+  assert.equal(freshStep.branchId, 'main');
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(live.tag, 'oxide');
+  assert.equal(manager.switchBranch(child.id), true);
+  assert.equal(live.tag, 'black silicon');
+  assert.equal(manager.restoreProcessNode(childStep.id), true);
+  assert.equal(live.tag, 'black silicon');
+  assert.equal(manager.switchBranch('main'), true);
+  assert.equal(live.tag, 'new deposit');
+
+  const records = manager.exportRecords(),
+    branchState = manager.exportBranchState();
+  const reopened = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => { live = state; },
+    validateState: options.validateState,
+  });
+  reopened.importRecords(records, branchState);
+  assert.equal(reopened.switchBranch(archivedBranchId), true);
+  assert.equal(live.tag, 'oxide');
+  assert.equal(reopened.switchBranch(child.id), true);
+  assert.equal(live.tag, 'black silicon');
+  assert.equal(reopened.switchBranch('main'), true);
+  assert.equal(live.tag, 'new deposit');
+});
+
+test('Apply Base clear mode resets both Steps and Variants', () => {
+  let live = { model: { processRevision: 1 }, tag: 'old process' };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => { live = state; },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    nodeIdFactory: () => 'old-step',
+  });
+  manager.recordOperation({ kind: 'add', label: 'Film' });
+  manager.create('Old bookmark');
+  live = { model: { processRevision: 0 }, tag: 'new base' };
+  manager.rebuildMainBase({ preservePrevious: false });
+  assert.equal(manager.listHistory().length, 0);
+  assert.equal(manager.list().length, 0);
+  assert.deepEqual(manager.listBranches().map((item) => item.id), ['main']);
+  assert.equal(manager.switchBranch('main'), true);
+  assert.equal(live.tag, 'new base');
+});
