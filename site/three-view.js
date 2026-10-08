@@ -1,6 +1,10 @@
 import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
+import {
+  electricalDisplaySolidForLod,
+  transparentArrayPresentationLod,
+} from './transparent-array-lod.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -184,6 +188,7 @@ export function createThreeView({
     camera.fov = normalized.fov;
     updateCameraClipping(getModel());
     controls.update();
+    refreshCameraArrayLod();
     scheduleFrame();
     return true;
   }
@@ -803,7 +808,10 @@ export function createThreeView({
     renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
     camera.aspect = Math.max(2, rect.width) / Math.max(2, rect.height);
     camera.updateProjectionMatrix();
-    if (!interacting) scheduleDetailedRoughBuild();
+    if (!interacting) {
+      scheduleDetailedRoughBuild();
+      refreshCameraArrayLod();
+    }
     scheduleFrame();
   }
 
@@ -854,6 +862,24 @@ export function createThreeView({
 
   function presentationMode(inspection = getInspection?.() || {}) {
     return Number(inspection.opacity) < 0.999 ? 'transparent' : 'opaque';
+  }
+
+  function arrayViewLod(model, clip, inspection = {}) {
+    const viewport = currentViewport(),
+      distance = camera && controls ? camera.position.distanceTo(controls.target) : 0,
+      unitsPerPixel =
+        camera && distance > 0
+          ? (2 * distance * Math.tan((camera.fov * Math.PI) / 360)) / viewport.height
+          : 0;
+    return transparentArrayPresentationLod({
+      // The scene signature must not depend on Opacity: opaque/transparent
+      // presentation variants share their canonical surface-plan cache.
+      transparent: true,
+      fast: inspection.fast !== false,
+      clipped: Boolean(clip),
+      instanceCount: isArrayModel(model) ? model.array?.instances?.length || 0 : 0,
+      unitsPerPixel,
+    });
   }
 
   function snapshotSceneVariant(mode = activeSceneVariant) {
@@ -988,7 +1014,18 @@ export function createThreeView({
       clip: clip || null,
       zCollapse: getZCollapse?.() || null,
       layers,
+      arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
     });
+  }
+
+  function refreshCameraArrayLod() {
+    const model = getModel();
+    if (!ready || !model || !physicalSceneSignature || !isArrayModel(model)) return;
+    if (sceneSignature(model, getClipGeometry(), getInspection() || {}) !== physicalSceneSignature) {
+      // Only tier transitions rebuild the scene; ordinary orbit movement
+      // continues to reuse both opaque and transparent presentation variants.
+      void render();
+    }
   }
 
   function interfaceMaterialState(opacity) {
@@ -2397,6 +2434,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             updateTransparentOrder();
             host.dataset.interactionPixelRatio = String(renderer.getPixelRatio());
             scheduleDetailedRoughBuild();
+            refreshCameraArrayLod();
             pendingViewState = getViewState();
             onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
             scheduleFrame();
@@ -2535,24 +2573,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
             ? physicalSurfacePlan
             : buildRenderSurfacePlan(model, clip);
       if (!variantBuild) physicalSurfacePlan = plan;
-      // Bounded screen-space display LOD: only distant, un-clipped full-array
-      // transparent inspection meshes are reduced. ROI and near-field retain
-      // exact canonical-derived boundaries.
-      const viewport = currentViewport(),
-        projectedUnitPerPixel =
-          (2 *
-            camera.position.distanceTo(controls.target) *
-            Math.tan((camera.fov * Math.PI) / 360)) /
-          viewport.height,
-        transparentArrayDisplayTolerance =
-          targetVariant === 'transparent' &&
-          !clip &&
-          Number(plan.arrayInstances || 0) >= 64 &&
-          projectedUnitPerPixel > 0.01
-            ? projectedUnitPerPixel * 0.85
-            : 0;
-      host.dataset.fullWaferTransparencyLod = String(transparentArrayDisplayTolerance > 0);
+      // Far-array presentation LOD is quantized by projected pixel footprint
+      // and restored at zoom/ROI/Quality transitions. Physical geometry and
+      // GLB export remain independent of these presentation-only meshes.
+      const arrayLod =
+          targetVariant === 'transparent'
+            ? arrayViewLod(model, clip, inspection)
+            : transparentArrayPresentationLod(),
+        transparentArrayDisplayTolerance = arrayLod.displayTolerance;
+      host.dataset.fullWaferTransparencyLod = String(arrayLod.tier !== 'exact');
       host.dataset.transparentArrayDisplayTolerance = String(transparentArrayDisplayTolerance);
+      host.dataset.transparentArrayLodTier = arrayLod.tier;
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
@@ -3124,7 +3155,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.implantGradient = 'section-depth';
 
       let electricalRegionInternalCount = 0,
-        electricalRegionSurfaceCount = 0;
+        electricalRegionSurfaceCount = 0,
+        electricalFarLodBodyCount = 0;
       for (const electrical of arrayAnnotations(electricalRegionSolids)) {
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
@@ -3134,12 +3166,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         {
           const presentation = { kind: 'electrical-internal', sortBias: 34 },
             electricalState = presentationState(presentation, inspection).materialState,
-            bodyGeometry = geometryFromSolid(
-              displaySolidForZCollapse(
-                followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
-              ),
-              transparentArrayDisplayTolerance,
+            visibleSolid = displaySolidForZCollapse(
+              followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
             ),
+            displaySolid = electricalDisplaySolidForLod(electrical, visibleSolid, arrayLod),
+            bodyGeometry = geometryFromSolid(displaySolid, transparentArrayDisplayTolerance),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
               roughness: 0.82,
@@ -3160,6 +3191,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           if (body) {
             body.name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
             electricalRegionInternalCount++;
+            if (displaySolid !== visibleSolid) electricalFarLodBodyCount++;
           }
 
           if (followDepthProfile && zIsVisible(electrical.innerZ)) {
@@ -3260,6 +3292,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
+      host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
@@ -3335,6 +3368,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     axesHelper.scale.setScalar(Math.max(0.6, size / 100));
     pendingViewState = getViewState();
     if (notify) onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
+    refreshCameraArrayLod();
     scheduleFrame();
   }
 
