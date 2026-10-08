@@ -1029,7 +1029,12 @@ function recordProcessOperation(operation) {
   processRecipeController?.recordManualOperation?.(operation);
   const recorded = snapshotManager.recordOperation(operation);
   markProjectDirty();
-  renderSnapshots();
+  // Recording each Step must remain lossless. Repainting the full 625-site
+  // History tree on each commit is redundant during a Recipe batch; refresh
+  // it once when the batch finishes or is stopped.
+  if (!(processRecipeController?.isRunning?.() && isArrayModel(model))) {
+    renderSnapshots();
+  }
   return recorded;
 }
 
