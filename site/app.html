@@ -1078,6 +1078,20 @@
                     Redo
                   </button>
                 </div>
+                <section id="processVisualGuide" class="process-visual-guide" aria-label="Current process schematic">
+                  <div class="process-guide-top">
+                    <strong id="processGuideTitle">Directional deposition</strong>
+                    <span id="processGuideEffect" class="process-guide-effect">Geometry</span>
+                    <a id="processGuideLink" href="./guide/#deposit-directional" target="_blank" rel="noopener noreferrer" title="Open full product manual">Guide ↗</a>
+                  </div>
+                  <div class="process-guide-illustrations" aria-label="Schematic process before and after">
+                    <div class="process-guide-half"><span>BEFORE</span><div id="processGuideBefore"></div></div>
+                    <span class="process-guide-arrow" aria-hidden="true">→</span>
+                    <div class="process-guide-half"><span>AFTER</span><div id="processGuideAfter"></div></div>
+                  </div>
+                  <p id="processGuideSummary" class="process-guide-summary"></p>
+                  <small id="processGuideArea" class="process-guide-area">Selected mask · Mask ROI applies</small>
+                </section>
                 <p id="operationNote" class="hint compact-hint">
                   Directional coverage follows the selected footprint.
                 </p>
