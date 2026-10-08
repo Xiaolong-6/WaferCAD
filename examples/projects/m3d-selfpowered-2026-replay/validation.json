@@ -188,7 +188,7 @@
       "graphene": true
     },
     "finalConformalAl2O3": true,
-    "finalConformalMs": 63598.028041000005,
+    "finalConformalMs": 54341.153349,
     "sensingWindowsChecked": 2,
     "sensingWindowEtchSelectiveToFinalAl2O3": true,
     "graphenePreservedAtSensingWindows": true,
@@ -205,87 +205,87 @@
     {
       "stage": "00_SOI",
       "label": "Add 70 nm B-doped SOI device Si",
-      "ms": 2.9734870000000058
+      "ms": 2.1058420000000027
     },
     {
       "stage": "01_PVM_Si",
       "label": "Etch PVM Si frame; retain 20 x 20 um active island",
-      "ms": 3.6786239999999992
+      "ms": 2.784741000000004
     },
     {
       "stage": "02_PVM_Cr",
       "label": "Deposit PVM Cr 20 nm",
-      "ms": 4.7977049999999934
+      "ms": 3.5924750000000003
     },
     {
       "stage": "02_PVM_Cr",
       "label": "Deposit PVM Au 50 nm",
-      "ms": 2.9517660000000063
+      "ms": 3.2961189999999974
     },
     {
       "stage": "03_PVM_Pt",
       "label": "Deposit PVM Pt contact/interconnect 80 nm",
-      "ms": 3.670608999999999
+      "ms": 2.8264939999999967
     },
     {
       "stage": "04_Power_Rails",
       "label": "Deposit tier-1 Pt power rails 70 nm",
-      "ms": 3.2293650000000014
+      "ms": 2.3942949999999996
     },
     {
       "stage": "05_ILD1",
       "label": "Deposit conformal ILD1 Al2O3 100 nm",
-      "ms": 108.24432200000001
+      "ms": 75.726506
     },
     {
       "stage": "06_Power_Via_Open",
       "label": "Open 5 x 5 um tier-1 power vias in ILD1",
-      "ms": 10.441881999999993
+      "ms": 8.119061000000016
     },
     {
       "stage": "07_Power_Via_Fill",
       "label": "Fill tier-1 power vias with Ti 120 nm",
-      "ms": 10.94912100000002
+      "ms": 9.450521000000009
     },
     {
       "stage": "08_Back_Gates",
       "label": "Deposit local back-gate Ti 2 nm",
-      "ms": 10.969116999999983
+      "ms": 8.669006999999993
     },
     {
       "stage": "08_Back_Gates",
       "label": "Deposit local back-gate Pt 18 nm",
-      "ms": 11.030491999999981
+      "ms": 9.173063999999982
     },
     {
       "stage": "09_HfO2",
       "label": "Deposit conformal HfO2 gate dielectric 10 nm",
-      "ms": 786.6970819999999
+      "ms": 640.012592
     },
     {
       "stage": "10_HfO2_Open",
       "label": "Open HfO2 gate/contact windows",
-      "ms": 56.65488899999991
+      "ms": 44.98849199999995
     },
     {
       "stage": "11_WSe2_Transfer",
       "label": "Transfer bilayer WSe2 using Follow surface",
-      "ms": 16.358400000000074
+      "ms": 20.792230000000018
     },
     {
       "stage": "12_WSe2_Pattern",
       "label": "Pattern WSe2 to 0.2 x 0.5 um channels",
-      "ms": 77.19309799999996
+      "ms": 45.28035
     },
     {
       "stage": "13_WSe2_SD",
       "label": "Deposit WSe2 source/drain Pd 10 nm",
-      "ms": 50.230096
+      "ms": 40.186852000000044
     },
     {
       "stage": "13_WSe2_SD",
       "label": "Deposit WSe2 source/drain Pt 30 nm",
-      "ms": 54.335583999999926
+      "ms": 44.431105000000116
     },
     {
       "stage": "14_WSe2_Anneal",
@@ -295,87 +295,87 @@
     {
       "stage": "15_WSe2_Cap",
       "label": "Deposit local WSe2 Al2O3 cap 20 nm",
-      "ms": 1396.698027
+      "ms": 1156.2317279999997
     },
     {
       "stage": "16_MoS2_Transfer",
       "label": "Transfer monolayer MoS2 using Follow surface",
-      "ms": 33.67022799999995
+      "ms": 26.998563000000104
     },
     {
       "stage": "17_MoS2_Pattern",
       "label": "Pattern MoS2 to 0.2 x 0.5 um channels",
-      "ms": 178.49029800000017
+      "ms": 148.30498499999976
     },
     {
       "stage": "18_MoS2_SD_Bridge",
       "label": "Deposit MoS2 source/drain and comparator bridge Ni 30 nm",
-      "ms": 96.84701800000039
+      "ms": 86.52499200000011
     },
     {
       "stage": "18_MoS2_SD_Bridge",
       "label": "Deposit MoS2 source/drain and comparator bridge Au 10 nm",
-      "ms": 102.53685999999925
+      "ms": 87.45518799999991
     },
     {
       "stage": "19_ILD2",
       "label": "Deposit conformal ILD2 Al2O3 50 nm",
-      "ms": 12824.818760000002
+      "ms": 10685.184867
     },
     {
       "stage": "20_Data_Power_Via_Open",
       "label": "Open tier-3 data/power vias in ILD2",
-      "ms": 529.8781789999994
+      "ms": 449.1199290000004
     },
     {
       "stage": "21_Via2_Fill",
       "label": "Deposit via2 Ti 2 nm",
-      "ms": 380.2623649999987
+      "ms": 319.06526900000244
     },
     {
       "stage": "21_Via2_Fill",
       "label": "Deposit via2 Ni 28 nm",
-      "ms": 385.0674739999995
+      "ms": 329.89993200000026
     },
     {
       "stage": "21_Via2_Fill",
       "label": "Deposit via2 Au 30 nm",
-      "ms": 394.01806600000054
+      "ms": 372.25564099999974
     },
     {
       "stage": "22_Graphene_Transfer",
       "label": "Transfer graphene using Follow surface",
-      "ms": 159.24941899999976
+      "ms": 128.0912040000003
     },
     {
       "stage": "23_Graphene_Pattern",
       "label": "Pattern graphene sensing channels",
-      "ms": 477.8100270000032
+      "ms": 402.92746500000067
     },
     {
       "stage": "24_Graphene_SD",
       "label": "Deposit graphene contact Ti 2 nm",
-      "ms": 411.29326199999923
+      "ms": 375.32092700000067
     },
     {
       "stage": "24_Graphene_SD",
       "label": "Deposit graphene contact Ni 28 nm",
-      "ms": 419.1357349999962
+      "ms": 367.2812210000011
     },
     {
       "stage": "24_Graphene_SD",
       "label": "Deposit graphene contact Au 30 nm",
-      "ms": 422.21747999999934
+      "ms": 407.8832719999991
     },
     {
       "stage": "25_Final_Al2O3",
       "label": "Deposit final conformal Al2O3 70 nm",
-      "ms": 55551.222516
+      "ms": 47617.180189000006
     },
     {
       "stage": "26_Final_Sensing_Windows",
       "label": "Open graphene sensing windows in final Al2O3 only",
-      "ms": 2979.6333840000007
+      "ms": 2478.9881849999947
     }
   ]
 }
