@@ -107,11 +107,10 @@ try {
   const head = page.locator('.history-step-wrap[data-step-id="m3d-step-36"] .process-history-row');
   assert.equal(await head.count(), 1);
   await head.click();
-  await page.waitForFunction(() => {
-    const row = [...document.querySelectorAll('.process-history-row')]
-      .find((element) => (element.textContent || '').includes('Open graphene sensing windows'));
-    return row?.dataset.cursor === 'true';
-  }, null, { timeout: 30000 });
+  await page.waitForFunction(() =>
+    document.querySelector('.history-step-wrap[data-step-id="m3d-step-36"] .process-history-row')
+      ?.dataset.cursor === 'true',
+    null, { timeout: 30000 });
   report.historyCanRestore = true;
   await closeFunctionPanel(page);
 
