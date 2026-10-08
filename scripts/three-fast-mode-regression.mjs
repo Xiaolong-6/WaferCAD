@@ -121,7 +121,10 @@ try {
     const label = mode === 'fast' ? 'Fast' : 'Quality';
     assert.equal((await page.locator('#threeFastBtn').textContent()).trim(), label);
     // Fast and Quality both display the current mode as a selected control.
-    assert.equal(await page.locator('#threeFastBtn').evaluate((button) => button.classList.contains('active')), true);
+    assert.equal(
+      await page.locator('#threeFastBtn').evaluate((button) => button.classList.contains('active')),
+      true,
+    );
     assert.match(
       await page.locator('#threeFastBtn').getAttribute('title'),
       new RegExp(`Current mode: ${label}\\.`),
