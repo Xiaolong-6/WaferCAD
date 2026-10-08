@@ -108,8 +108,11 @@ try {
   await early.click();
   // History renders a continuation banner for a restored historical cursor.
   // A data-cursor attribute is not part of the product UI contract.
+  // Wait for the selected stage, not just any old continuation banner.
+  // An imported project may initially display a stale historical banner until
+  // its asynchronously restored WSe2 state finishes rendering.
   await page.waitForFunction(
-    () => /Historical Step/.test(
+    () => /Historical Step[\\s\\S]*WSe2/i.test(
       document.querySelector('.snapshot-continuation-banner')?.textContent || '',
     ),
     null,
