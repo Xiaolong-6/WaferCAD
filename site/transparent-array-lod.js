@@ -9,18 +9,22 @@ export function transparentArrayPresentationLod({
   clipped = false,
   instanceCount = 0,
   unitsPerPixel = 0,
+  viewZFraction = 1,
 } = {}) {
   if (
     !transparent ||
     !fast ||
     clipped ||
     Number(instanceCount) < 64 ||
+    !Number.isFinite(viewZFraction) ||
+    viewZFraction < 0.35 ||
     !Number.isFinite(unitsPerPixel) ||
     unitsPerPixel <= FAR_MIN_UM_PER_PIXEL
   ) {
     return { tier: 'exact', displayTolerance: 0, flattenElectrical: false };
   }
 
+  // In near-edge-on views, the vertical Electrical walls remain exact.
   // Quantized tiers bound XY simplification to <=0.85 screen pixels in each
   // tier. The tier is part of the scene signature, so zooming back in restores
   // the original geometry instead of leaving a stale distant-only mesh.
