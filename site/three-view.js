@@ -9,7 +9,12 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
-import { mergeCollinearSidewallParts, reduceCollinearClosedRing } from './renderer-line-reduction.js';
+import {
+  mergeCollinearSidewallParts,
+  reduceCollinearClosedRing,
+  simplifyDisplayPolygons,
+  simplifyDisplaySidewallParts,
+} from './renderer-line-reduction.js';
 import { canUseGpuRoughTask, decorateGpuRoughMaterial } from './gpu-rough-surface.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
@@ -1278,7 +1283,7 @@ export function createThreeView({
     return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
   }
 
-  function geometryFromSolid({ slabs, caps }) {
+  function geometryFromSolid({ slabs, caps }, displayTolerance = 0) {
     const positions = [],
       normals = [];
     const triangle = (a, b, c, normal) => {
@@ -1286,7 +1291,7 @@ export function createThreeView({
       normals.push(...normal, ...normal, ...normal);
     };
     for (const { z, normal, polys } of caps)
-      for (const poly of polys)
+      for (const poly of simplifyDisplayPolygons(polys, displayTolerance))
         for (const triangle2d of triangulatePolygon(
           THREE,
           poly.map((ring) => reduceCollinearClosedRing(ring)),
@@ -1297,7 +1302,7 @@ export function createThreeView({
           triangle(a, b, c, [0, 0, normal]);
         }
     for (const { z0, z1, polys } of slabs)
-      for (const poly of polys)
+      for (const poly of simplifyDisplayPolygons(polys, displayTolerance))
         for (let r = 0; r < poly.length; r++) {
           const ring = reduceCollinearClosedRing(poly[r]).slice(0, -1);
           const signedArea = ring.reduce((sum, p, i) => {
@@ -1327,10 +1332,10 @@ export function createThreeView({
     return geometry;
   }
 
-  function geometryFromCachedArrayCap(cap) {
-    const variant = `${Number(cap.z).toPrecision(15)}|${Number(cap.normal) || 1}`,
+  function geometryFromCachedArrayCap(cap, displayTolerance = 0) {
+    const variant = `${Number(cap.z).toPrecision(15)}|${Number(cap.normal) || 1}|lod:${displayTolerance.toPrecision(6)}`,
       data = smoothCapDerivedDataCache.get(cap.polys, variant, () => {
-        const source = geometryFromSolid({ slabs: [], caps: [cap] }),
+        const source = geometryFromSolid({ slabs: [], caps: [cap] }, displayTolerance),
           positions = source.getAttribute('position')?.array?.slice?.() || new Float32Array(),
           normals = source.getAttribute('normal')?.array?.slice?.() || new Float32Array();
         source.dispose();
@@ -1427,7 +1432,7 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts) {
+  function geometryFromSidewallParts(parts, displayTolerance = 0) {
     const positions = [],
       normals = [],
       annotationDepths = [];
@@ -1453,7 +1458,11 @@ export function createThreeView({
               roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
           : z;
 
-    for (const part of mergeCollinearSidewallParts(parts)) {
+    for (const part of (
+      displayTolerance > 0
+        ? simplifyDisplaySidewallParts(parts, displayTolerance)
+        : mergeCollinearSidewallParts(parts)
+    )) {
       const p = part.p,
         q = part.q,
         dx = q[0] - p[0],
