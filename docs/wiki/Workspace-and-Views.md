@@ -4,6 +4,10 @@
 
 ## Primary views
 
+![Actual fully textured tandem 3D preview from the Welcome catalog](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp)
+
+*Real saved example preview. Rough/Pyramid display morphology is visual metadata, so use Section and the scientific modeling limits when interpreting physical layer boundaries.*
+
 - **Overview** shows Main, Mask, and 3D together for quick inspection.
 - **Main** is a planar view of the Front/Back surface and provides A–B and 3D ROI editing.
 - **Mask** shows either the imported layout (**File**) or local editable primitives (**Draw**). Mask opacity changes visualization, not physical coverage.

@@ -4,6 +4,10 @@
 
 ## Manual Process
 
+![Conformal deposition before and after](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg)
+
+*The same schematic geometry source is used here and in the compact Process panel. These drawings do not depict the currently opened project.*
+
 The Process panel has **Front/Back**, Action, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. Under **Apply** is an inline Before → After schematic that changes with Action and submode. The text below it describes important edge cases. The card is a conceptual Section diagram, not a prediction from the current project.
 
 The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.

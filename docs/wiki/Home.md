@@ -2,7 +2,11 @@
 
 **WaferCAD** is a browser-based Visual Process CAD for mask-driven semiconductor and micro-/nanofabrication. It builds and inspects a geometric layered device from a wafer, masks and an ordered process flow. It is **not a calibrated process TCAD**.
 
-[Open WaferCAD](https://xiaolong-6.github.io/WaferCAD/) · [Illustrated Process Atlas](https://xiaolong-6.github.io/WaferCAD/guide/) · [Source repository](https://github.com/Xiaolong-6/WaferCAD)
+[Open WaferCAD](https://xiaolong-6.github.io/WaferCAD/) · [Illustrated Process Operations](Process-Operations) · [Source repository](https://github.com/Xiaolong-6/WaferCAD)
+
+![Real 3D view from the shipped Photodetector example](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
+
+*An actual WaferCAD example preview. Dimensions and process assumptions are explained in the linked example documentation.*
 
 ## Read the manual
 
@@ -21,6 +25,6 @@
 
 This wiki mirrors the reviewed Markdown in the main repository under `docs/wiki/`. Each **main** push checks the generated Process reference and compares the managed pages with the published wiki. Only changed pages are committed. A failed sync is reported by GitHub Actions.
 
-The interactive schematic guide shares its Process names and descriptions with the generated [Process Operations](Process-Operations) page. Detailed model contracts remain in the [source documentation](https://github.com/Xiaolong-6/WaferCAD/tree/main/docs).
+The illustrated [Process Operations](Process-Operations) chapter embeds the same 18 schematic variants used by the Process panel. Detailed model contracts remain in the [source documentation](https://github.com/Xiaolong-6/WaferCAD/tree/main/docs).
 
 > Schematic figures explain geometry operations. They are not wafer-fabrication predictions or results calculated from real experimental parameters.

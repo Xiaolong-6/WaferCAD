@@ -19,6 +19,10 @@ These six entries are **the shipped Welcome catalog in main**. Other research re
 
 ## 1. Photodetectors with nanopatterns
 
+![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
+
+*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+
 **Black-Si photodiode — Setälä 2023, Fig. 1a**
 
 - Silicon Base, SiO₂ patterning, schematic ICP-RIE Black-Si morphology, front B/rear P Implant markers, thermal/clean process records, conformal Al₂O₃ passivation and Al contacts.
@@ -35,9 +39,17 @@ For detailed assumptions, source differences, and the reconstruction acceptance 
 
 ## 2. PERC solar cells with point contacts
 
+![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/perc-point-contact-solar-cell-three.webp)
+
+*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+
 The PERC family demonstrates front/back processing and locally patterned rear contacts. Inspect the source-order fabrication Variant and the alternative GDS-patterned-contact Variant to understand which geometry comes from a mask and which parts are structural simplifications. Doping/diffusion regions are represented schematically: **photovoltaic conversion efficiency is not calculated**.
 
 ## 3. Fully textured perovskite–silicon tandems
+
+![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp)
+
+*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
 
 This project illustrates two-sided silicon pyramid texture and a multilayer tandem stack. The saved Variants compare an nc-Si:H recombination-junction construction with an ITO control. The 3D and Section views are useful for inspecting conformal materials across the ideal texture and the surrogate front Ag fingers.
 
@@ -45,15 +57,27 @@ This project illustrates two-sided silicon pyramid texture and a multilayer tand
 
 ## 4. Suspended silica microdisks
 
+![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/suspended-silica-microdisk-three.webp)
+
+*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
+
 Use Main, Section and 3D to inspect the actual canonical void and supported disk. This example is most useful for explaining isotropic/undercut release and the difference between an open cavity and a hidden or painted surface. It does not simulate release chemistry, device motion, optical modes or acoustic sensitivity.
 
 ## 5. Self-powered heterogeneous M3D circuits
+
+![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp)
+
+*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
 
 The kernel-reconstructed literature example includes the silicon photovoltaic power tier, WSe₂/MoS₂ logic, graphene sensor, vias, conformal Al₂O₃ encapsulation and selective sensing windows. The full editable project contains **36 History nodes** and **27 stage bookmarks (S00–S26)**.
 
 **Modeling and persistence boundary:** The source paper does not supply original layout polygons for every route; reconstructed masks are inferred, and 2D-material film thicknesses are visualization surrogates. Exact material interfaces require **lossless** `.wafercad` persistence; quantizing to the compact 0.1 nm grid is unsafe and should automatically fall back to lossless storage. A fresh `Rebuild Base first → Run All` completed all 35 operations on the desktop-audited product revision, with actual Kernel length requests and final export checked. The [desktop audit](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) also records 36-node History, 27 bookmarks, Border/Opacity and lossless import/export checks. This is geometric replay evidence for that revision and environment, not fabrication validation.
 
 ## 6. Three-tier silicon junctionless transistors
+
+![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/three-tier-silicon-jlfets-three.webp)
+
+*Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence.*
 
 The Welcome preview uses a **single-site source** for responsive inspection. Opening the project loads the **625-site full-wafer array**, containing three stacked silicon transistor tiers and **40 stored History Steps**. Deposition, conformal gate dielectrics, inter-tier transfer and CMP are represented with documented geometric assumptions.
 
