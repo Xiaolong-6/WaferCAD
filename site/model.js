@@ -1377,6 +1377,7 @@ function applyOperationImpl(
 
   let layer = null;
   let conformalOriginalVoids = null;
+  let protectedEtchVoids = null;
   if (type === 'grow' && !layerById(model, targetLayerId))
     return { changed: false, error: 'Target layer is unavailable.' };
 
@@ -1429,6 +1430,16 @@ function applyOperationImpl(
         };
       }
     }
+    // Selective etching of upper layers cannot remove the continuous, unetched
+    // BOX. Record its existing XY voids before mask splitting; Boolean/noding
+    // seams must never turn into through-substrate gaps.
+    if (
+      selectiveTargets.length &&
+      !selectiveTargets.includes('base') &&
+      baseCoverageState(model) === 'full'
+    ) {
+      protectedEtchVoids = uncoveredGeometryRaw(model);
+    }
     if (etchProfile === 'isotropic') {
       const release = applyIsotropicEtch(model, active, selectiveTargets, amount, face);
       if (!release.changed) return release;
@@ -1479,6 +1490,9 @@ function applyOperationImpl(
   }
   if (type === 'etch' && etchProfile === 'isotropic') {
     model.regions = canonicalizeProcessPartition(model, model.regions);
+  }
+  if (protectedEtchVoids !== null) {
+    healConformalCoverageCracks(model, protectedEtchVoids);
   }
 
   // Every successful Process result must survive the 0.1 nm project-storage
