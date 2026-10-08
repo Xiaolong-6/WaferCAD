@@ -4,6 +4,17 @@
 
 ## Project format
 
+~~~mermaid
+flowchart LR
+  Mask["File GDS/OAS or Draw"] --> Workspace[WaferCAD workspace]
+  Workspace --> Project["Export .wafercad"]
+  Project --> Restore[Open/import project]
+  Workspace --> MaskExport["Mask export SVG/GDS/OAS"]
+  Workspace --> ViewExport["Section/Main SVG, 3D PNG or GLB"]
+~~~
+
+*The portable project includes more than the exported mask or a single rendered view.*
+
 WaferCAD exports portable `.wafercad` JSON projects, including vector material stacks, layers, masks, process history, variants, annotations, view settings, and Recipe. The current project schema is v14, with optional typed Recipe metadata. Compact files use a 0.1 nm grid; Export automatically falls back to lossless encoding when compact storage would alter physical Z/depth/profile lengths in current or restorable History states, or invalidate geometry. Autosave and Recovery remain lossless. Project schema is versioned and old formats are migrated only when supported; invalid files are rejected rather than silently loaded.
 
 ## Mask import

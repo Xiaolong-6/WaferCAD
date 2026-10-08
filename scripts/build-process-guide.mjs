@@ -1,6 +1,7 @@
 import { readFile, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { checkDocumentation } from './check-documentation.mjs';
+import { buildWikiDiagrams } from './build-wiki-diagrams.mjs';
 import { PROCESS_GUIDE } from '../site/process-guide.js';
 
 // Generate Wiki operations from exactly the data rendered in the Process panel.
@@ -9,7 +10,7 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
   const lines = [
     '# Process Operations',
     '',
-    '[Home](Home) · [Process and Recipes](Process-and-Recipes) · [Interactive Before → After diagrams](https://xiaolong-6.github.io/WaferCAD/guide/)',
+    '[Home](Home) · [Process and Recipes](Process-and-Recipes)',
     '',
     '> All diagrams are schematic. WaferCAD is a geometric process editor, not a calibrated process/electrical TCAD simulator.',
     '',
@@ -23,6 +24,14 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
       lines.push('## ' + family, '');
     }
     lines.push('<a id="' + entry.id + '"></a>', '### ' + entry.title, '');
+    lines.push(
+      '![Before and after schematic for ' +
+        entry.title +
+        '](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/' +
+        entry.id +
+        '.svg?sanitize=true)',
+      '',
+    );
     lines.push('**Behavior:** ' + entry.summary, '', entry.detail, '');
     lines.push('**Inputs:** ' + entry.parameters, '');
     lines.push(
@@ -37,10 +46,6 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
     );
     lines.push('**Modeling boundary:** ' + entry.limits, '');
     lines.push('**Example:** ' + entry.example, '');
-    lines.push(
-      '[View diagram ↗](https://xiaolong-6.github.io/WaferCAD/guide/#' + entry.id + ')',
-      '',
-    );
   }
   lines.push(
     '## More documentation',
@@ -57,6 +62,7 @@ async function main() {
   const mode = process.argv[2] || '--check';
   if (mode === '--write') {
     await writeFile(path, expected, 'utf8');
+    await buildWikiDiagrams('--write');
     console.log('Wrote ' + path + ' (' + PROCESS_GUIDE.length + ' operations)');
   } else if (mode === '--check') {
     let actual;
@@ -91,6 +97,7 @@ async function main() {
         pages.length +
         ' authored/navigation pages plus the generated operation reference',
     );
+    await buildWikiDiagrams('--check');
     await checkDocumentation();
   } else throw Error('Usage: node scripts/build-process-guide.mjs --check|--write');
 }

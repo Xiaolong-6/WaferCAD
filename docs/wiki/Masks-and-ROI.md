@@ -1,5 +1,9 @@
 # Masks and ROI
 
+![Mask visualization preview from WaferCAD](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/example-previews/visualization-mask.jpg)
+
+*Existing WaferCAD visualization reference. Actual Process selection follows the selected File/Draw Mask, its hierarchy/geometry, and Mask ROI.*
+
 [Home](Home) · [Process and Recipes](Process-and-Recipes)
 
 ## File masks

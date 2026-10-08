@@ -3,271 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="color-scheme" content="light" />
-    <title>WaferCAD · Illustrated Process Guide</title>
-    <style>
-      :root {
-        font:
-          14px/1.55 system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          'Segoe UI',
-          sans-serif;
-        color: #263545;
-        background: #edf1f5;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-      }
-      header {
-        background: #19222c;
-        color: #edf2f7;
-        padding: 14px max(18px, calc((100vw - 1120px) / 2));
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-      header a {
-        color: #d7eaff;
-        text-decoration: none;
-      }
-      header strong {
-        font-size: 17px;
-      }
-      nav {
-        display: flex;
-        gap: 16px;
-        font-size: 12px;
-      }
-      main {
-        max-width: 1120px;
-        margin: auto;
-        padding: 24px 18px;
-        display: grid;
-        grid-template-columns: 250px minmax(0, 1fr);
-        gap: 18px;
-      }
-      aside,
-      .manual {
-        background: white;
-        border: 1px solid #d7dee5;
-        border-radius: 12px;
-      }
-      aside {
-        padding: 12px;
-        align-self: start;
-        position: sticky;
-        top: 16px;
-        max-height: calc(100vh - 32px);
-        overflow: auto;
-      }
-      aside h2 {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.09em;
-        color: #718294;
-        margin: 16px 6px 5px;
-      }
-      aside a {
-        display: block;
-        border-radius: 6px;
-        padding: 6px 9px;
-        text-decoration: none;
-        color: #34475a;
-        font-size: 12px;
-      }
-      aside a:hover,
-      aside a.active {
-        background: #e7f1fa;
-        color: #2867a0;
-      }
-      .manual {
-        padding: clamp(16px, 4vw, 36px);
-      }
-      h1 {
-        font-size: 26px;
-        margin: 0 0 8px;
-      }
-      h2 {
-        font-size: 16px;
-        margin: 0;
-      }
-      small,
-      .muted {
-        color: #718294;
-      }
-      p {
-        margin: 9px 0 15px;
-      }
-      .classification {
-        font-size: 11px;
-        color: #4d7293;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-      }
-      .diagrams {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 25px minmax(0, 1fr);
-        align-items: center;
-        gap: 6px;
-        margin: 16px 0 20px;
-      }
-      .figure {
-        background: #f3f6f8;
-        border: 1px solid #dde5ec;
-        border-radius: 8px;
-        padding: 8px;
-      }
-      .figure span {
-        display: block;
-        text-align: center;
-        color: #697d8f;
-        font-size: 10px;
-        letter-spacing: 0.08em;
-      }
-      .figure svg {
-        display: block;
-        width: 100%;
-        height: auto;
-        max-height: 220px;
-      }
-      .arrow {
-        text-align: center;
-        color: #91a2b2;
-        font-size: 25px;
-      }
-      .detail {
-        border-top: 1px solid #e6ebf1;
-        padding: 15px 0 0;
-        margin: 12px 0 0;
-      }
-      dt {
-        font-size: 11px;
-        font-weight: 700;
-        color: #678097;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-      dd {
-        margin: 4px 0 14px;
-      }
-      footer {
-        font-size: 11px;
-        color: #76899a;
-        margin-top: 24px;
-        border-top: 1px solid #e3e8ee;
-        padding-top: 14px;
-      }
-      @media (max-width: 690px) {
-        main {
-          display: block;
-          padding: 12px;
-        }
-        aside {
-          position: static;
-          max-height: 180px;
-          margin-bottom: 12px;
-        }
-        aside nav {
-          display: block;
-        }
-        .manual {
-          padding: 18px;
-        }
-      }
-    </style>
+    <title>WaferCAD · Process Manual</title>
+    <meta
+      http-equiv="refresh"
+      content="2;url=https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations"
+    />
   </head>
   <body>
-    <header>
-      <strong>WaferCAD · Process Visual Guide</strong>
-      <nav>
-        <a href="../">Open workspace</a
-        ><a href="https://github.com/Xiaolong-6/WaferCAD/wiki">Full product wiki ↗</a>
-      </nav>
-    </header>
-    <main>
-      <aside id="directory" aria-label="Process operations"></aside>
-      <article class="manual">
-        <div class="classification" id="family"></div>
-        <h1 id="title"></h1>
-        <p id="summary"></p>
-        <div class="diagrams" aria-label="Before and after process schematic">
-          <div class="figure">
-            <span>BEFORE</span>
-            <div id="before"></div>
-          </div>
-          <div class="arrow" aria-hidden="true">→</div>
-          <div class="figure">
-            <span>AFTER</span>
-            <div id="after"></div>
-          </div>
-        </div>
-        <div class="detail">
-          <h2>Geometric behavior</h2>
-          <p id="detail"></p>
-        </div>
-        <dl>
-          <dt>Inputs</dt>
-          <dd id="parameters"></dd>
-          <dt>Modeling limits</dt>
-          <dd id="limits"></dd>
-          <dt>Application example</dt>
-          <dd id="example"></dd>
-        </dl>
-        <footer>
-          Figures are explanatory only. All operation definitions come from the same versioned
-          catalog as the in-app Process panel.
-          <a href="https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations"
-            >Read full Process reference ↗</a
-          >
-        </footer>
-      </article>
-    </main>
-    <script type="module">
-      import { PROCESS_GUIDE, processGuideEntry } from '../process-guide.js';
-      import { processGuideSvg } from '../process-guide-svg.js';
-      const $ = (id) => document.getElementById(id),
-        anchors = new Map();
-      let family = '';
-      for (const entry of PROCESS_GUIDE) {
-        if (entry.family !== family) {
-          family = entry.family;
-          const h = document.createElement('h2');
-          h.textContent = family;
-          $('directory').append(h);
-        }
-        const a = document.createElement('a');
-        a.href = '#' + entry.id;
-        a.textContent = entry.title;
-        a.dataset.key = entry.id;
-        $('directory').append(a);
-        anchors.set(entry.id, a);
+    <p>
+      Process diagrams are now part of the
+      <a id="manual" href="https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations"
+        >illustrated WaferCAD Wiki manual</a
+      >.
+    </p>
+    <script>
+      // Preserve old /guide/#operation-id bookmarks without retaining a separate atlas.
+      let operation = '';
+      try {
+        operation = decodeURIComponent(location.hash.slice(1));
+      } catch {
+        // Fall back to the index.
       }
-      function render() {
-        const requested = decodeURIComponent(location.hash.slice(1));
-        const current = processGuideEntry(requested) || PROCESS_GUIDE[0];
-        for (const [key, a] of anchors) a.classList.toggle('active', key === current.id);
-        for (const name of [
-          'family',
-          'title',
-          'summary',
-          'detail',
-          'parameters',
-          'limits',
-          'example',
-        ])
-          $(name).textContent = current[name];
-        $('before').innerHTML = processGuideSvg(current.id, false);
-        $('after').innerHTML = processGuideSvg(current.id, true);
-        document.title = current.title + ' · WaferCAD Process Guide';
-      }
-      addEventListener('hashchange', render);
-      render();
+      const anchor = /^[a-z0-9-]+$/.test(operation) ? '#' + encodeURIComponent(operation) : '';
+      const target = 'https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations' + anchor;
+      document.getElementById('manual').href = target;
+      location.replace(target);
     </script>
   </body>
 </html>

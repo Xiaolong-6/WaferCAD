@@ -91,7 +91,7 @@ The 3D header exposes **Fast** and **Quality** modes. Fast is the default and lo
 
 ## 6. Apply an operation
 
-A compact **Before → After Process schematic** appears beneath **Apply** and above the existing operation note. It follows the selected Action, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Guide ↗** to open the same operation in the [illustrated atlas](https://xiaolong-6.github.io/WaferCAD/guide/). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
+A compact **Before → After Process schematic** appears beneath **Apply** and above the existing operation note. It follows the selected Action, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Wiki ↗** to open the same operation in the [illustrated Process Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
 
 Choose Front or Back.
 
