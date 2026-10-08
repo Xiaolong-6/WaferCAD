@@ -7,7 +7,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Product manual](wiki/Home.md) — complete task-oriented user manual and English/Chinese Recipe tutorials.
 - [Usage](USAGE.md) — compact repository reference for daily operations.
 - [Wiki navigation](wiki/_Sidebar.md) — the navigation published with the manual.
-- [Interactive Process atlas](https://xiaolong-6.github.io/WaferCAD/guide/) — schematic Before → After operation diagrams.
+- [Illustrated Process Operations](wiki/Process-Operations.md) — the same Before → After schematics as the in-app Process panel.
 
 ## Developers and reviewers
 

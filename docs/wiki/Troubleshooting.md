@@ -2,6 +2,10 @@
 
 [Home](Home) · [Getting Started](Getting-Started)
 
+![Schematic of conformal coverage](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg)
+
+*For coating problems, first compare the displayed Section against this idealized before/after illustration.*
+
 **Why does Apply change the wrong part?** Check File/Draw mask source, selected Cells and Layers, Selected versus Invert mask, active Front/Back face and Mask ROI. Main ROI affects 3D inspection, not Process.
 
 **Why is the conformal shell wider in Section?** Section Auto may exaggerate Z; switch to 1:1 to inspect physical dimensions. Conformal sidewall bands have physical XY offsets equal to thickness, not the display Z scale.
