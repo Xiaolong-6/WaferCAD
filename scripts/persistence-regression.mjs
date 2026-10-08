@@ -537,6 +537,28 @@ assert.ok(['nm', 'um', 'mm'].includes(await examplePage.locator('#xyUnitSelect')
 assert.ok(Number(await examplePage.locator('#baseWidth').inputValue()) > 0);
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
 assert.ok(Number(await examplePage.locator('#baseThickness').inputValue()) > 0);
+// The example-open status can precede the next scheduled Mask canvas paint.
+// Check the actual pixels without requiring a Mask tab click; a persistent
+// blank canvas still fails this regression.
+await examplePage.waitForFunction(
+  () => {
+    const canvas = document.getElementById('maskCanvas');
+    if (!canvas?.width || !canvas?.height) return false;
+    const data = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+    if (!data?.length) return false;
+    let ink = 0, samples = 0;
+    for (let index = 0; index < data.length; index += 16) {
+      samples += 1;
+      if (
+        data[index + 3] > 12 &&
+        (data[index] < 245 || data[index + 1] < 245 || data[index + 2] < 245)
+      ) ink += 1;
+    }
+    return samples > 0 && ink / samples > 0.005;
+  },
+  null,
+  { timeout: 15000, polling: 250 },
+);
 const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
   exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
 assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
