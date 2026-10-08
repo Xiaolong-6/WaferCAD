@@ -112,7 +112,7 @@ try {
   // An imported project may initially display a stale historical banner until
   // its asynchronously restored WSe2 state finishes rendering.
   await page.waitForFunction(
-    () => /Historical Step[\\s\\S]*WSe2/i.test(
+    () => /Historical Step.*WSe2/i.test(
       document.querySelector('.snapshot-continuation-banner')?.textContent || '',
     ),
     null,
