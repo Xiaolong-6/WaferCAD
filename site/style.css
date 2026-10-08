@@ -2233,21 +2233,27 @@ a.welcome-action {
   color: #6e7882;
 }
 
-.welcome-example-open {
-  align-self: flex-start;
-  min-height: 32px;
-  margin-top: 1px;
-  padding: 6px 10px;
-  border-color: #b8c5d0;
-  background: #fff;
-  color: #385873;
-  font-size: 11.25px;
-  font-weight: 800;
+.welcome-example-title-link,
+.welcome-example-summary-link {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
-.welcome-example-open:hover {
-  border-color: #92a7b8;
-  background: #f5f9fc;
+.welcome-example-title-link:hover,
+.welcome-example-title-link:focus-visible,
+.welcome-example-summary-link:hover,
+.welcome-example-summary-link:focus-visible {
+  color: #365f82;
+  text-decoration: underline;
+}
+
+.welcome-example-title-link:focus-visible,
+.welcome-example-summary-link:focus-visible {
+  outline: 2px solid #6b92b4;
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 .welcome-workflow-grid {

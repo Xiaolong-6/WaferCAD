@@ -1,0 +1,41 @@
+name: Process Recipe safety
+on:
+  push:
+    branches:
+      - fix/process-recipe-safety-r1-r7
+      - feat/process-recipe-v1
+  pull_request:
+    paths:
+      - "site/process-recipe.js"
+      - "site/process-recipe-preflight.js"
+      - "site/controllers/process-recipe-controller.js"
+      - "site/tests/process-recipe-preflight.test.mjs"
+      - "scripts/process-recipe-safety-regression.mjs"
+      - ".github/workflows/process-recipe-safety.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  recipe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Unit regression and lint
+        run: npm run check:ci
+      - name: Start local app
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site >/tmp/wafercad-server.log 2>&1 &
+          sleep 2
+          curl --fail http://127.0.0.1:4173/app.html >/dev/null
+      - name: Recipe interaction regression
+        run: node scripts/process-recipe-safety-regression.mjs

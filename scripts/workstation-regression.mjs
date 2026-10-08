@@ -320,7 +320,7 @@ const familyExampleErrors = observePageErrors(familyExamplePage);
 await gotoWelcome(familyExamplePage);
 await familyExamplePage
   .locator(
-    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-title-link',
   )
   .click();
 await familyExamplePage.waitForURL(/start=example.*example=photodetector-literature/, {

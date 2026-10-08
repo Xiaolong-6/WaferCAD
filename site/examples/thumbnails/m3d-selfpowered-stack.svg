@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="Illustrative schematic of M3D integrated circuit tiers">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#132238"/><stop offset="1" stop-color="#243e57"/></linearGradient>
+    <linearGradient id="pv" x2="0" y2="1"><stop stop-color="#56b6bc"/><stop offset="1" stop-color="#2c8595"/></linearGradient>
+    <linearGradient id="logic" x2="0" y2="1"><stop stop-color="#a78bdc"/><stop offset="1" stop-color="#7d64b4"/></linearGradient>
+    <linearGradient id="sensor" x2="0" y2="1"><stop stop-color="#eec678"/><stop offset="1" stop-color="#b98e46"/></linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#bg)"/>
+  <g font-family="Arial, sans-serif" fill="#f0f6ff">
+    <text x="28" y="42" font-size="18" font-weight="700">Self-powered heterogeneous M3D</text>
+    <text x="29" y="63" font-size="11" opacity=".74">Illustrative tier schematic · paper-derived geometry</text>
+  </g>
+  <g stroke="#dceeff" stroke-opacity=".50" stroke-width="1.2">
+    <path d="M80 254 L340 254 L425 216 L167 216 Z" fill="#265b6d"/>
+    <path d="M80 254 L340 254 L340 296 L80 296 Z" fill="url(#pv)"/>
+    <path d="M340 254 L425 216 L425 258 L340 296 Z" fill="#276577"/>
+    <path d="M86 196 L340 196 L421 157 L167 157 Z" fill="#c6b5eb"/>
+    <path d="M86 196 L340 196 L340 218 L86 218 Z" fill="url(#logic)"/>
+    <path d="M340 196 L421 157 L421 179 L340 218 Z" fill="#715c9e"/>
+    <path d="M89 132 L341 132 L423 92 L170 92 Z" fill="#f6dc9f"/>
+    <path d="M89 132 L341 132 L341 152 L89 152 Z" fill="url(#sensor)"/>
+    <path d="M341 132 L423 92 L423 112 L341 152 Z" fill="#ab843f"/>
+  </g>
+  <g stroke="#e3f0ff" stroke-width="3" stroke-linecap="round" opacity=".74">
+    <path d="M178 152 V196 M231 152 V196 M294 152 V196"/>
+    <path d="M178 218 V254 M231 218 V254 M294 218 V254"/>
+  </g>
+  <g fill="none" stroke="#e8f3fd" stroke-opacity=".55" stroke-width="1.4">
+    <path d="M420 112 L454 112"/>
+    <path d="M421 183 L454 183"/>
+    <path d="M425 269 L454 269"/>
+  </g>
+  <g font-family="Arial, sans-serif" fill="#f3f7fd">
+    <text x="461" y="111" font-size="15" font-weight="700">Graphene</text>
+    <text x="461" y="127" font-size="11" opacity=".85">Sensing</text>
+    <text x="461" y="181" font-size="15" font-weight="700">WSe₂ / MoS₂</text>
+    <text x="461" y="198" font-size="11" opacity=".85">Logic + vias</text>
+    <text x="461" y="269" font-size="15" font-weight="700">Silicon PVM</text>
+    <text x="461" y="286" font-size="11" opacity=".85">Power harvesting</text>
+  </g>
+  <text x="29" y="338" fill="#b5c7d9" font-size="10" font-family="Arial, sans-serif">Schematic only · not a WaferCAD render · open example for actual process model</text>
+</svg>

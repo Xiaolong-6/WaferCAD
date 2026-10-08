@@ -10,6 +10,12 @@ This page is the navigation layer for the current `main` product contract. Dated
 - [Development](DEVELOPMENT.md) — implementation contracts and developer workflow.
 - [Mask Draw](MASK_DRAW.md) — current File/Draw mask and Mask ROI behavior.
 
+## Product user manual
+
+- [Product manual publishing](WIKI_SYNC.md) — reviewed Wiki source, full product manual, generation checks and every-main-push synchronization.
+- [Canonical Wiki pages](wiki/Home.md) — beginner guide, workspace, masks, Process, Recipe, History, persistence, I/O, examples and troubleshooting.
+- [Interactive Process diagrams](https://xiaolong-6.github.io/WaferCAD/guide/) — public Before → After operation atlas with deep links from the application.
+
 ## Scientific and geometry contracts
 
 - [Process geometry benchmarks](PROCESS_BENCHMARKS.md)

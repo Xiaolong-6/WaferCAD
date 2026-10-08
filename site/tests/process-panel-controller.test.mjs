@@ -24,6 +24,7 @@ function fakeElement(id, value = '') {
     id,
     value,
     disabled: false,
+    dataset: {},
     textContent: '',
     options: [],
     add(option) {
@@ -75,8 +76,17 @@ function fakeRoot() {
   };
 }
 
-function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } = {}) {
+function controllerForTask(taskResult, events, { mode = 'add', recorded = [], areaGeometry = () => [] } = {}) {
   let model = createModel();
+  const maskState = {
+    maskSourceMode: 'file',
+    maskRoi: null,
+    drawMask: { shapes: [] },
+    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    layout: { root: 'TOP', elements: [] },
+    activeCell: 'TOP',
+    selectedLayerKeys: ['7|0', '8|2'],
+  };
   const root = fakeRoot();
   root.getElementById('operationType').value = mode;
   const controller = createProcessPanelController({
@@ -87,16 +97,8 @@ function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } =
       model = value;
     },
     getActiveFace: () => 'front',
-    getMaskState: () => ({
-      maskSourceMode: 'file',
-      maskRoi: null,
-      drawMask: { shapes: [] },
-      maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-      layout: { root: 'TOP', elements: [] },
-      activeCell: 'TOP',
-      selectedLayerKeys: ['7|0', '8|2'],
-    }),
-    operationAreaGeometry: () => [],
+    getMaskState: () => maskState,
+    operationAreaGeometry: areaGeometry,
     selectedElement: () => true,
     manualMicron: (value) => Number(value),
     formatLengthField: (value) => String(value),
@@ -126,6 +128,7 @@ function controllerForTask(taskResult, events, { mode = 'add', recorded = [] } =
   });
   controller.__root = root;
   controller.__getModel = () => model;
+  controller.__getMaskState = () => maskState;
   return controller;
 }
 
@@ -512,4 +515,34 @@ test('replay selected mask traverses the saved Cell hierarchy and pinned Layer c
   assert.equal(capturedAreas[0].mode, 'mask');
   assert.equal(capturedAreas[0].elements.length, 1);
   assert.deepEqual(capturedAreas[0].maskTransform, maskContext.transform);
+});
+
+
+test('material menu refresh reuses exposure for unchanged model and Mask selection', () => {
+  let calls = 0;
+  const controller = controllerForTask(() => ({}), [], {
+    mode: 'etch',
+    areaGeometry: () => {
+      calls++;
+      return [];
+    },
+  });
+  controller.updateUi();
+  controller.updateUi();
+  assert.equal(calls, 1);
+  controller.__root.getElementById('operationArea').value = 'invert';
+  controller.updateUi();
+  assert.equal(calls, 2);
+  controller.__getModel().revision++;
+  controller.updateUi();
+  assert.equal(calls, 3);
+  controller.__getMaskState().selectedLayerKeys = ['9|0'];
+  controller.updateUi();
+  assert.equal(calls, 4);
+  controller.__getMaskState().maskTransform.x = 1;
+  controller.updateUi();
+  assert.equal(calls, 5);
+  controller.__getMaskState().maskRoi = { type: 'circle', r: 1, c: [0, 0] };
+  controller.updateUi();
+  assert.equal(calls, 6);
 });

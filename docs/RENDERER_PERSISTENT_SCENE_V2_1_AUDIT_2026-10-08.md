@@ -1,6 +1,6 @@
 # Renderer A v2.1 — Persistent Scene audit (2026-10-08)
 
-**Status: integrated into `feat/process-recipe-v1`; product/performance acceptance pending; do not merge the integration PR into main until all gates pass.** Renderer source branch: `perf/renderer-persistent-scene-v2-1`. Baseline: GPU rough v3 merged at `58b45ee9`. Integration merge: `f51bef35` via [#134](https://github.com/Xiaolong-6/WaferCAD/pull/134); review gate: [#135](https://github.com/Xiaolong-6/WaferCAD/pull/135).
+**Status: integrated into `feat/process-recipe-v1`; 625-site transparency performance debt recorded and temporarily NON-BLOCKING for current PR #135. Functional and scientific correctness gates remain required.** Renderer source branch: `perf/renderer-persistent-scene-v2-1`. Baseline: GPU rough v3 merged at `58b45ee9`. Integration merge: `f51bef35` via [#134](https://github.com/Xiaolong-6/WaferCAD/pull/134); review gate: [#135](https://github.com/Xiaolong-6/WaferCAD/pull/135).
 
 ## Scope and verified behavior
 
@@ -33,7 +33,7 @@ The stage logger separates cap bucket construction, sidewall construction, annot
 2. Prototype **transparent mesh consolidation by layer, Z interval, material ownership and spatial tile**. Reduce draw calls without merging incompatible near/far depth-ordering groups; preserve buried-interface and implant/electrical annotation visibility.
 3. Instrument first `renderer.render` time, draw calls and triangles. Compare with GPU-v3 baseline under the same Chromium/software WebGL runner.
 4. Validate exact screenshots/visibility in opaque and transparent states, including interior annotations and nested caps/sidewalls, then repeat 20 opacity/border toggles and confirm resource stability.
-5. Required acceptance: Quality + Browser green, cold transparency <15 s as a first gate, then evaluate warm swap against the sub-second v2.1 goal. No merge until these are achieved.
+5. **Revised 2026-10-08:** Quality, Browser structural/visual/resource checks and Native Fig3 remain required. The cold transparency <15 s target and warm swap latency are recorded as non-blocking metrics for this integration; their future re-promotion to a performance gate requires a separate decision and validated baseline.
 
 The authoritative long-lived contracts remain `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/testing.md`; this note is dated diagnostic evidence only.
 
@@ -45,4 +45,8 @@ The follow-up integration branch adds vertex-lit Lambert shading for smooth tran
 
 A separate application audit also found and addressed the archived-Main HEAD bug when Apply Base is invoked from an earlier History Step. Process Recipe now has a user-visible Start selector: Continue current model (confirmation required if process revisions exist) or Rebuild Base first into a new Main (with existing Keep/Clear history protection). Base HEAD and Recipe execution-state browser/unit tests were added. Product documentation in README, USAGE, ARCHITECTURE, DEVELOPMENT and testing was synchronized.
 
-Acceptance stays blocked until Quality, Browser renderer/product review, Native Fig3 replay and 625-site cold/warm transparency pass on the same final SHA, with no unreviewed shader-side rendering contract changes.
+Acceptance remains blocked by any Quality, Browser functional/scientific/visual/resource, or Native Fig3 failure on the final HEAD; **cold/warm transparency speed thresholds alone are not a blocker for this integration**. Preserve the two-pass transparent inspection and physical geometry contracts. See [the canonical transparency performance roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) for root cause, attempts, phased LOD plan and promotion criteria.
+
+## Temporary non-blocking performance decision (2026-10-08)
+
+User decision: the full-wafer transparency bottleneck is acknowledged and tracked as performance debt. The browser workload still runs to completion and checks scene correctness, annotations, history-independent material topology, scene-cache reuse, resource stability and interaction. **Only the cold-first-frame 15 s goal and timing ratios have become advisory, not the whole Browser suite.** Out-of-budget values print `ARRAY_RENDERER_PERF_WARNING` and are kept in `report.json`; a true timeout, hang, crash, geometry error or leaked resources still fails CI. The staged plan and current empirical evidence live in [RENDERER_TRANSPARENCY_ROADMAP.md](RENDERER_TRANSPARENCY_ROADMAP.md).

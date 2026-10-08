@@ -180,7 +180,9 @@ jobs:
 
       - name: Run renderer product regression
         if: ${{ needs.plan.outputs.renderer == 'true' }}
-        run: npm run test:ui:product:renderer
+        # The 625-site software-WebGL stress run is isolated below so the
+        # ordinary UI/browser checks retain their own 15-minute watchdog.
+        run: node scripts/renderer-product-regression.mjs
 
       - name: Package tested preview
         if: always()
@@ -196,6 +198,63 @@ jobs:
           name: wafercad-product-review-${{ github.sha }}
           path: test-results/product-review
           retention-days: 14
+
+  renderer-array:
+    name: 625-site array renderer regression
+    needs: plan
+    if: ${{ needs.plan.outputs.renderer == 'true' }}
+    runs-on: ubuntu-latest
+    # Large transparent software-WebGL frames take ~34 s per completed frame.
+    # The full 20-toggle resource-stability contract needs a dedicated watchdog;
+    # cold/warm speed targets remain advisory, correctness and hangs remain hard.
+    timeout-minutes: 30
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+
+      - name: Install project dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-array-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-array-http.log
+          exit 1
+
+      - name: Check 625-site array scene and retained resources
+        run: node scripts/array-renderer-regression.mjs
+
+      - name: Upload array renderer diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-array-renderer-${{ github.sha }}
+          path: test-results/array-renderer
+          retention-days: 14
+          if-no-files-found: warn
 
   process-geometry:
     name: Process geometry regression

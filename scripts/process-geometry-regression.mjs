@@ -127,7 +127,7 @@ await recipePage.locator('#recipeValidateBtn').click();
 assert.match(await recipePage.locator('#statusText').textContent(), /Recipe valid: 1 step/);
 await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.waitForFunction(
-  () => /Process Recipe completed 1 step/.test(document.getElementById('statusText')?.textContent || ''),
+  () => /Recipe completed: 1\/1 steps committed\./.test(document.getElementById('statusText')?.textContent || ''),
   null,
   { timeout: 30000 },
 );
@@ -146,7 +146,7 @@ await recipePage.locator('#recipeRunAllBtn').click();
 await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
 await recipePage.locator('#confirmationDialogActions [data-dialog-action="keep"]').click();
 await recipePage.waitForFunction(
-  () => /Process Recipe completed 1 step/.test(document.getElementById('statusText')?.textContent || ''),
+  () => /Recipe completed: 1\/1 steps committed\./.test(document.getElementById('statusText')?.textContent || ''),
   null,
   { timeout: 30000 },
 );

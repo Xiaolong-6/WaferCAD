@@ -18,6 +18,8 @@ Open `http://localhost:8000`.
 
 `site/controllers/process-recipe-controller.js` owns the guided Recipe editor and runs existing Process operations; `site/process-recipe.js` is the restricted parser/normalizer and must never execute arbitrary JavaScript. **Continue current model** is additive and requires confirmation when a process revision exists. **Rebuild Base first (new Main)** reuses the Base controller's Keep/Clear/Cancel transaction and begins a fresh Main lineage. The Base History contract lives in `workspace-snapshots.js`: when archiving from a detached historical cursor, preserve the source Variant's **original HEAD**, not the currently inspected Step. New features must cover this with unit and browser tests, including Save/Open and Undo/Redo branch graphs.
 
+Recipe validation drafts are keyed by stable Step ID. Deleting a Step or changing its operation invalidates stale field errors, and Undo/Redo restores the persisted valid Recipe without unapplied field drafts. Run to Step validates only the requested prefix, and displayed error numbers follow current Step order. The Process material menu caches derived exposure only across identical model/revision, active face and Mask selection (Cell, Layers, transform, ROI, Draw source, layout elements); Geometry Kernel and Process worker validation remain authoritative. See [the Recipe field/cache integration note](RECIPE_LOCAL_REPAIR_2026-10-08.md) for the original patch provenance and acceptance boundaries.
+
 ## Development checks
 
 Install the development-only tooling:

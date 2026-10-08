@@ -3,6 +3,8 @@ import { isArrayModel } from '../model-array.js';
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
 import { validateProcessModel } from '../project-schema.js';
 import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
+import { processGuideKey, processGuideEntry } from '../process-guide.js';
+import { processGuideSvg } from '../process-guide-svg.js';
 
 export function createProcessPanelController({
   root = document,
@@ -90,6 +92,39 @@ export function createProcessPanelController({
     };
   }
 
+  // Derived UI-only cache. With an unchanged model/revisions and Mask
+  // selection, revisiting Grow/Etch material menus need not recompute heavy
+  // mask booleans. The Process worker still validates canonical geometry.
+  let targetExposureCache = null;
+  function targetExposure() {
+    const model = getModel(),
+      activeFace = getActiveFace(),
+      mode = $('operationArea').value,
+      state = getMaskState();
+    const signature = JSON.stringify({
+      mode,
+      face: activeFace,
+      revision: model.revision,
+      processRevision: model.processRevision,
+      source: state.maskSourceMode,
+      cell: state.activeCell,
+      keys: Array.from(state.selectedLayerKeys || []),
+      transform: state.maskTransform,
+      roi: state.maskRoi,
+      draw: state.maskSourceMode === 'draw' ? state.drawMask : null,
+    });
+    if (
+      targetExposureCache?.model === model &&
+      targetExposureCache.elements === state.layout?.elements &&
+      targetExposureCache.signature === signature
+    )
+      return targetExposureCache.exposed;
+    const area = operationAreaGeometry(mode);
+    const exposed = new Set(exposedLayerIds(model, area, activeFace));
+    targetExposureCache = { model, elements: state.layout?.elements, signature, exposed };
+    return exposed;
+  }
+
   function updateGrowTargets() {
     const select = $('targetLayer');
     if (!select) return;
@@ -97,9 +132,7 @@ export function createProcessPanelController({
     select.innerHTML = '';
 
     const model = getModel(),
-      activeFace = getActiveFace(),
-      area = operationAreaGeometry($('operationArea').value),
-      exposed = new Set(exposedLayerIds(model, area, activeFace));
+      exposed = targetExposure();
     for (const layer of model.layers) {
       if (!exposed.has(layer.id)) continue;
       select.add(new Option(layer.name, layer.id));
@@ -118,9 +151,7 @@ export function createProcessPanelController({
     select.add(new Option(requiresMaterial ? 'Select material…' : 'All exposed materials', ''));
 
     const model = getModel(),
-      activeFace = getActiveFace(),
-      area = operationAreaGeometry($('operationArea').value),
-      exposed = new Set(exposedLayerIds(model, area, activeFace));
+      exposed = targetExposure();
     for (const layer of model.layers) {
       if (!exposed.has(layer.id)) continue;
       select.add(new Option(layer.name, layer.id));
@@ -230,6 +261,53 @@ export function createProcessPanelController({
                       : 'Etch'
         }`;
 
+    // The inline guide reflects the same UI state as Apply without touching geometry.
+    const guideId = processGuideKey({
+      type: t,
+      growth:
+        t === 'grow'
+          ? $('growthMode').value === 'transfer'
+            ? 'direct'
+            : $('growthMode').value
+          : growthMode,
+      placement: $('transferMode')?.value || 'follow',
+      profile: etchProfile,
+      surface: surfaceMode,
+      polarity: $('roughPolarity')?.value || 'inverted',
+      targetMaterial: Boolean($('etchTargetLayer')?.value),
+    });
+    const guide = processGuideEntry(guideId);
+    const guideNode = $('processVisualGuide');
+    if (guideNode && guide && guideNode.dataset.guideId !== guideId) {
+      guideNode.dataset.guideId = guideId;
+      $('processGuideTitle').textContent = guide.title;
+      $('processGuideEffect').textContent =
+        guide.effect === 'geometry'
+          ? 'Geometry'
+          : guide.effect === 'display'
+            ? 'Display only'
+            : guide.effect === 'annotation'
+              ? 'Annotation'
+              : 'History only';
+      $('processGuideBefore').innerHTML = processGuideSvg(guideId, false);
+      $('processGuideAfter').innerHTML = processGuideSvg(guideId, true);
+      $('processGuideSummary').textContent = guide.summary;
+      const fullLink = $('processGuideLink');
+      fullLink.href = './guide/#' + encodeURIComponent(guideId);
+    }
+    if (guideNode) {
+      guideNode.hidden = !materialExists && !recordOnly;
+      const areaHint = $('processGuideArea');
+      if (areaHint) {
+        areaHint.textContent = recordOnly
+          ? 'History only'
+          : $('operationArea').value === 'full'
+            ? 'Whole face'
+            : $('operationArea').value === 'invert'
+              ? 'Invert mask · Mask ROI applies'
+              : 'Selected mask · Mask ROI applies';
+      }
+    }
     $('operationNote').hidden = !materialExists && !recordOnly;
     if (!materialExists && !recordOnly) return;
 

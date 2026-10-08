@@ -401,7 +401,7 @@ await welcomeCheckpointPage.waitForFunction(
 await gotoWelcome(welcomeCheckpointPage);
 await welcomeCheckpointPage
   .locator(
-    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-summary-link',
   )
   .click();
 await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
@@ -521,7 +521,7 @@ examplePage.on('dialog', (dialog) => {
 await gotoWelcome(examplePage);
 await examplePage
   .locator(
-    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-summary-link',
   )
   .click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
@@ -537,10 +537,35 @@ assert.ok(['nm', 'um', 'mm'].includes(await examplePage.locator('#xyUnitSelect')
 assert.ok(Number(await examplePage.locator('#baseWidth').inputValue()) > 0);
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
 assert.ok(Number(await examplePage.locator('#baseThickness').inputValue()) > 0);
-const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
-  exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
+// At 1100px the Workstation intentionally opens in single Main view.
+// Verify Main immediately, then select Mask through the actual view header.
+// Hidden canvas elements have zero layout dimensions and must not be sampled.
+const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas');
 assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
-assert.ok(exampleMaskInk > 0.005, `Open Example Mask canvas is blank: ${exampleMaskInk}`);
+assert.equal(await examplePage.locator('#maskPanel').isHidden(), true);
+await examplePage.locator('.workstation-view-tab[data-view="mask"]').click();
+await examplePage.locator('#maskPanel').waitFor({ state: 'visible' });
+await examplePage.waitForFunction(
+  () => {
+    const canvas = document.getElementById('maskCanvas');
+    if (!canvas?.width || !canvas?.height) return false;
+    const data = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+    if (!data?.length) return false;
+    let ink = 0, samples = 0;
+    for (let index = 0; index < data.length; index += 16) {
+      samples += 1;
+      if (
+        data[index + 3] > 12 &&
+        (data[index] < 245 || data[index + 1] < 245 || data[index + 2] < 245)
+      ) ink += 1;
+    }
+    return samples > 0 && ink / samples > 0.005;
+  },
+  null,
+  { timeout: 15000, polling: 250 },
+);
+const exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
+assert.ok(exampleMaskInk > 0.005, `Open Example Mask canvas is blank after selecting Mask: ${exampleMaskInk}`);
 await examplePage.locator('#gdsInput').setInputFiles({
   name: 'example-reimport.oas',
   mimeType: 'application/octet-stream',

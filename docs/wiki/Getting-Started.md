@@ -1,0 +1,27 @@
+# Getting Started
+
+[Home](Home) · [Next: Workspace and Views](Workspace-and-Views)
+
+## Build a first masked contact
+
+1. Open the [WaferCAD workspace](https://xiaolong-6.github.io/WaferCAD/) and start a new project or an example. The **Project** tab contains base setup and project commands.
+2. Choose a circular or rectangular substrate, set its planar size and physical Z thickness, then use **Apply base**.
+3. Open **Mask** and choose **File** to import a GDSII/OASIS layout or switch to **Draw** to create a Rectangle, Circle, Polygon, Ring, or Ring Sector.
+4. Select a cell and layer in File mode, or draw a local shape in Draw mode.
+5. Open **Process**, select **Front** (or **Back**), choose **Deposit**, **Etch**, **Extend**, **Implant**, **Electrical**, or **Record**.
+6. Pick an **Area**: Selected mask, Invert mask or Whole face. If a Mask ROI is set, masked operations are confined to that area.
+7. Set the material, coverage/profile and physical thickness/depth. Inspect the **Before → After** schematic immediately below Apply.
+8. Click **Apply** and inspect **Main**, **Section A–B**, and **3D**. Use Undo/Redo or History to inspect earlier steps.
+9. **Save** creates a local Recovery checkpoint. **Export** downloads a portable `.wafercad` project file. Export before moving machines or clearing browser data.
+
+## Units and scale
+
+Coordinates are stored in **µm**. The UI can display nm, µm or mm. Section Auto scaling and 3D Z exaggeration help visualization; they do not alter the physical stack.
+
+## What to expect
+
+A simple directional deposition adds a layer on selected exposed horizontal surfaces. Conformal coating also follows genuine sidewalls. Directional etch removes material vertically. Always inspect Section to check where physical interfaces and voids ended up.
+
+## Next steps
+
+Learn [Mask and ROI semantics](Masks-and-ROI) and the full [Process Operations](Process-Operations) guide before reproducing a literature device.

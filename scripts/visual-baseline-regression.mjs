@@ -74,7 +74,7 @@ try {
     await gotoWelcome(page);
     await page
       .locator(
-        '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+        '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-title-link',
       )
       .click();
     await page.waitForURL(/start=example.*example=photodetector-literature/, {

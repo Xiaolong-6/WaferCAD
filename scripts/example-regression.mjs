@@ -202,7 +202,7 @@ async function restoreStep(node) {
 await gotoWelcome(page);
 await page
   .locator(
-    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-title-link',
   )
   .click();
 await page.waitForURL(/start=example.*example=photodetector-literature/, { timeout: 30000 });
@@ -305,7 +305,7 @@ for (const example of [
     }
   }
   await page
-    .locator(`.welcome-example-card[data-example-id="${example.id}"] .welcome-example-open`)
+    .locator(`.welcome-example-card[data-example-id="${example.id}"] .welcome-example-title-link`)
     .click();
   await page.waitForFunction(
     (id) => new URL(location.href).searchParams.get('example') === id,

@@ -116,6 +116,37 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     tags: ['Literature', 'Release', 'Undercut', 'Suspended structure'],
   },
   {
+    id: 'm3d-selfpowered-heterogeneous-ic',
+    title: 'Self-powered heterogeneous M3D circuits',
+    figure: 'Ghosh et al. · Si PVM / WSe₂ / MoS₂ / graphene',
+    kind: 'project',
+    level: 'Heterogeneous 3D integrated circuit',
+    variants: [],
+    path: './examples/m3d-selfpowered-full-replay.wafercad',
+    filename: 'm3d-selfpowered-full-replay.wafercad',
+    previewProject: {
+      path: './examples/m3d-selfpowered-full-replay.wafercad',
+      filename: 'm3d-selfpowered-full-replay-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/m3d-selfpowered-stack.svg',
+      view: 'three',
+      alt: 'Illustrative three-tier M3D stack: silicon photovoltaic base, WSe₂ and MoS₂ middle-tier logic, graphene sensing top tier.',
+      label: 'Illustrative tier schematic · interactive WaferCAD preview on click',
+    },
+    summary:
+      'Paper-derived, kernel-reconstructed self-powered IC: silicon photovoltaic tier, WSe₂ and MoS₂ logic, graphene sensor, conformal oxides and selective sensing windows. Includes 36 History nodes and 27 stage bookmarks (S00–S26); routing masks are inferred.',
+    sources: [
+      {
+        citation:
+          'S. Ghosh et al., “Monolithic three-dimensional integration of heterogeneous electronics for self-powered sensing and processing,” Nature Electronics 9, 775–787 (2026).',
+        doi: '10.1038/s41928-026-01624-1',
+        href: 'https://doi.org/10.1038/s41928-026-01624-1',
+      },
+    ],
+    tags: ['Literature', 'M3D', 'Graphene', 'WSe₂ / MoS₂', 'Conformal', 'History'],
+  },
+  {
     id: 'three-tier-silicon-jlfets',
     title: 'Three-tier silicon junctionless transistors',
     figure: 'Lam et al. - Fig. 3 · 625-site wafer array',

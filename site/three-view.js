@@ -9,6 +9,12 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
+import {
+  mergeCollinearSidewallParts,
+  reduceCollinearClosedRing,
+  simplifyDisplayPolygons,
+  simplifyDisplaySidewallParts,
+} from './renderer-line-reduction.js';
 import { canUseGpuRoughTask, decorateGpuRoughMaterial } from './gpu-rough-surface.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
@@ -1163,6 +1169,33 @@ export function createThreeView({
     host.dataset.sceneRetainedObjectCount = String(retainedObjects);
     host.dataset.sceneRetainedGeometryCount = String(retainedGeometries.size);
     host.dataset.sceneRetainedMaterialCount = String(retainedMaterials.size);
+    // In full-wafer transparency, a small number of instanced buried surfaces
+    // can dominate vertex throughput even when draw calls look manageable.
+    // Attribute the *submitted* triangles by presentation ownership.
+    const trianglesByKind = new Map(),
+      largestTriangleObjects = [];
+    group.traverse?.((object) => {
+      if (!object.isMesh || object.visible === false) return;
+      const geometry = object.geometry;
+      const primitiveCount = geometry?.index?.count || geometry?.getAttribute('position')?.count || 0,
+        instances = object.isInstancedMesh ? object.count : 1,
+        triangles = Math.round((primitiveCount / 3) * instances);
+      if (!triangles) return;
+      const kind = object.userData?.waferCadPresentation?.kind || 'untracked';
+      trianglesByKind.set(kind, (trianglesByKind.get(kind) || 0) + triangles);
+      largestTriangleObjects.push({
+        name: object.name || '',
+        kind,
+        triangles,
+        instances,
+      });
+    });
+    host.dataset.sceneTriangleKinds = JSON.stringify(
+      [...trianglesByKind].sort((a, b) => b[1] - a[1]),
+    );
+    host.dataset.sceneTopTriangleObjects = JSON.stringify(
+      largestTriangleObjects.sort((a, b) => b.triangles - a.triangles).slice(0, 8),
+    );
     if (renderer?.info?.memory) {
       host.dataset.webglGeometryCount = String(renderer.info.memory.geometries ?? 0);
       host.dataset.webglTextureCount = String(renderer.info.memory.textures ?? 0);
@@ -1250,7 +1283,7 @@ export function createThreeView({
     return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
   }
 
-  function geometryFromSolid({ slabs, caps }) {
+  function geometryFromSolid({ slabs, caps }, displayTolerance = 0) {
     const positions = [],
       normals = [];
     const triangle = (a, b, c, normal) => {
@@ -1258,17 +1291,20 @@ export function createThreeView({
       normals.push(...normal, ...normal, ...normal);
     };
     for (const { z, normal, polys } of caps)
-      for (const poly of polys)
-        for (const triangle2d of triangulatePolygon(THREE, poly)) {
+      for (const poly of simplifyDisplayPolygons(polys, displayTolerance))
+        for (const triangle2d of triangulatePolygon(
+          THREE,
+          poly.map((ring) => reduceCollinearClosedRing(ring)),
+        )) {
           let [a, b, c] = triangle2d.map(([x, y]) => [x, y, z]);
           const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
           if (cross * normal < 0) [b, c] = [c, b];
           triangle(a, b, c, [0, 0, normal]);
         }
     for (const { z0, z1, polys } of slabs)
-      for (const poly of polys)
+      for (const poly of simplifyDisplayPolygons(polys, displayTolerance))
         for (let r = 0; r < poly.length; r++) {
-          const ring = poly[r].slice(0, -1);
+          const ring = reduceCollinearClosedRing(poly[r]).slice(0, -1);
           const signedArea = ring.reduce((sum, p, i) => {
             const q = ring[(i + 1) % ring.length];
             return sum + p[0] * q[1] - p[1] * q[0];
@@ -1296,10 +1332,10 @@ export function createThreeView({
     return geometry;
   }
 
-  function geometryFromCachedArrayCap(cap) {
-    const variant = `${Number(cap.z).toPrecision(15)}|${Number(cap.normal) || 1}`,
+  function geometryFromCachedArrayCap(cap, displayTolerance = 0) {
+    const variant = `${Number(cap.z).toPrecision(15)}|${Number(cap.normal) || 1}|lod:${displayTolerance.toPrecision(6)}`,
       data = smoothCapDerivedDataCache.get(cap.polys, variant, () => {
-        const source = geometryFromSolid({ slabs: [], caps: [cap] }),
+        const source = geometryFromSolid({ slabs: [], caps: [cap] }, displayTolerance),
           positions = source.getAttribute('position')?.array?.slice?.() || new Float32Array(),
           normals = source.getAttribute('normal')?.array?.slice?.() || new Float32Array();
         source.dispose();
@@ -1396,7 +1432,7 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts) {
+  function geometryFromSidewallParts(parts, displayTolerance = 0) {
     const positions = [],
       normals = [],
       annotationDepths = [];
@@ -1422,7 +1458,11 @@ export function createThreeView({
               roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
           : z;
 
-    for (const part of parts || []) {
+    for (const part of (
+      displayTolerance > 0
+        ? simplifyDisplaySidewallParts(parts, displayTolerance)
+        : mergeCollinearSidewallParts(parts)
+    )) {
       const p = part.p,
         q = part.q,
         dx = q[0] - p[0],
@@ -2495,6 +2535,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
             ? physicalSurfacePlan
             : buildRenderSurfacePlan(model, clip);
       if (!variantBuild) physicalSurfacePlan = plan;
+      // Bounded screen-space display LOD: only distant, un-clipped full-array
+      // transparent inspection meshes are reduced. ROI and near-field retain
+      // exact canonical-derived boundaries.
+      const viewport = currentViewport(),
+        projectedUnitPerPixel =
+          (2 * camera.position.distanceTo(controls.target) *
+            Math.tan((camera.fov * Math.PI) / 360)) /
+          viewport.height,
+        transparentArrayDisplayTolerance =
+          targetVariant === 'transparent' &&
+          !clip &&
+          Number(plan.arrayInstances || 0) >= 64 &&
+          projectedUnitPerPixel > 0.01
+            ? projectedUnitPerPixel * 0.85
+            : 0;
+      host.dataset.fullWaferTransparencyLod = String(transparentArrayDisplayTolerance > 0);
+      host.dataset.transparentArrayDisplayTolerance = String(transparentArrayDisplayTolerance);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
@@ -2565,7 +2622,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const layer = layerById(model, cap.layerId);
 
         if (!cap.appearance && cap.instanceTranslations) {
-          const geometry = geometryFromCachedArrayCap(cap),
+          const geometry = geometryFromCachedArrayCap(
+              cap,
+              cap.buried ? transparentArrayDisplayTolerance : 0,
+            ),
             presentation = presentationFor(cap),
             material = createSurfaceMaterial(layer, state, null, presentation);
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
@@ -2728,7 +2788,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state) continue;
         if (sidewall.instanceTranslations) {
           const parts = displaySidewallParts(sidewall.parts || [sidewall]);
-          const geometry = geometryFromSidewallParts(parts),
+          const geometry = geometryFromSidewallParts(
+              parts,
+              sidewall.buried ? transparentArrayDisplayTolerance : 0,
+            ),
             presentation = presentationFor(sidewall),
             material = createSurfaceMaterial(
               layerById(model, sidewall.layerId),
@@ -2811,7 +2874,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
-        const geometry = geometryFromSidewallParts(visibleParts),
+        const geometry = geometryFromSidewallParts(
+            visibleParts,
+            bucket.part.buried ? transparentArrayDisplayTolerance : 0,
+          ),
           presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
           material = createSurfaceMaterial(
             layerById(model, bucket.part.layerId),
@@ -3072,6 +3138,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               displaySolidForZCollapse(
                 followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
               ),
+              transparentArrayDisplayTolerance,
             ),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
@@ -3161,7 +3228,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const capGeometry = geometryFromSolid({
               slabs: [],
               caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
-            }),
+            }, transparentArrayDisplayTolerance),
             capMaterial = createSurfaceMaterial(
               { id: electrical.layerId || electrical.electricalRegionId || 'electrical-region', color: electrical.color || '#7A6FD0' },
               capState,
