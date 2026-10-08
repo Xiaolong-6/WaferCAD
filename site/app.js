@@ -1,4 +1,5 @@
 import { prewarmModelBoundaryIndexes } from './process-boundary-index.js';
+import { isArrayModel } from './model-array.js';
 import { prepareMaskInstanceIndex } from './mask-instance-index.js';
 import { parseLayoutFile } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
