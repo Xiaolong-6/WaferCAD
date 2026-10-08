@@ -19,10 +19,10 @@ try {
   const page = await context.newPage();
   const THREE_READY_TIMEOUT_MS = 45000;
   page.setDefaultTimeout(THREE_READY_TIMEOUT_MS);
-  const waitStage = async (label) => {
+  const waitStage = async (label, timeout = THREE_READY_TIMEOUT_MS) => {
     const started = performance.now();
     console.log('ARRAY_RENDERER_STAGE_BEGIN', label);
-    await waitForThreeReady(page, THREE_READY_TIMEOUT_MS);
+    await waitForThreeReady(page, timeout);
     const elapsed = performance.now() - started;
     console.log(
       'ARRAY_RENDERER_STAGE_OK',
@@ -34,6 +34,15 @@ try {
         sceneGeneration: el.dataset.sceneGeneration,
         surfacePlanBuildCount: el.dataset.surfacePlanBuildCount,
         presentationMs: el.dataset.rendererPresentationMs,
+        topologyMs: el.dataset.rendererTopologyMs,
+        smoothCapsMs: el.dataset.rendererSmoothCapsMs,
+        sidewallsMs: el.dataset.rendererSidewallsMs,
+        annotationsMs: el.dataset.rendererAnnotationsMs,
+        assemblyMs: el.dataset.rendererAssemblyMs,
+        sceneVariant: el.dataset.sceneVariant,
+        sceneObjects: el.dataset.sceneObjectCount,
+        sceneGeometries: el.dataset.sceneGeometryCount,
+        sceneMaterials: el.dataset.sceneMaterialCount,
       }))),
     );
     return elapsed;
@@ -93,8 +102,12 @@ try {
   // First transparent transition builds and caches a transparency-optimized
   // scene variant while reusing the physical ownership plan.
   await page.locator('#threeOpacityRange').fill('0.5');
-  const coldTransparentMs = await waitStage('opacity-cold-transparent');
+  const coldTransparentMs = await waitStage('opacity-cold-transparent', 120000);
   const transparentCold = await snapshot();
+  assert.ok(
+    coldTransparentMs < 15000,
+    `cold transparent variant build must stay below 15 s, got ${coldTransparentMs.toFixed(1)} ms`,
+  );
   assert.equal(transparentCold.arrayInstances, '1885');
   assert.ok(
     Number(transparentCold.electricalRegionInternalCount) > 0,
