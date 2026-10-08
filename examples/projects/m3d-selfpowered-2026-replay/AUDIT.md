@@ -2,7 +2,7 @@
 
 Base: fix/photodetector-reconstruction-v2
 
-Replay branch: test/m3d-full-replay-20261008
+Replay branch: fix/m3d-conformal-microcracks-20261008
 
 The project was rebuilt directly through the current Process Geometry Kernel from S00 through S26 using the committed corrected v2 masks. The browser Process UI is not part of this reconstruction path.
 

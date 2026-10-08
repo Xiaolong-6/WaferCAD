@@ -21,7 +21,7 @@ jobs:
   recipe:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,16 +41,11 @@ jobs:
           curl --fail http://127.0.0.1:4173/app.html >/dev/null
       - name: Recipe interaction regression
         run: node scripts/process-recipe-safety-regression.mjs
-      - name: Real Kernel Run All - all five production example projects
-        env:
-          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: node scripts/example-recipe-runall-acceptance.mjs
-      - name: Ge Fig 15 A rebuild and Keep History behavior
-        env:
-          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: |
-          node scripts/example-recipe-runall-acceptance.mjs --id=photodetector-literature --variant=ge-fig15-a
-          node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk --history=keep
+      # Full production Run All, Ge Fig15 A/B and Keep-History are already
+      # certified in parallel by example-recipe-reconstruction.yml. Running
+      # them again sequentially here consumed the CI time budget and could
+      # stall independent Recipe interaction acceptance. Keep this job focused
+      # on Recipe security, preflight, undo/restore and Stop behavior.
       - name: Upload browser replay diagnostics
         if: always()
         uses: actions/upload-artifact@v6

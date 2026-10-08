@@ -64,7 +64,7 @@ export async function runTransactionAcceptance(
   await loadProject(page, project, 'transaction-acceptance');
   async function prepare(name) {
     await openFunctionPanel(page, 'process');
-    await page.locator('[data-process-mode="add"]').click();
+    await page.locator('#operationType').selectOption('add');
     await page.locator('#operationArea').selectOption('full');
     await page.locator('#growthMode').selectOption('direct');
     await page.locator('#operationThickness').fill('1');

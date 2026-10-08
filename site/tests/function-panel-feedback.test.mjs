@@ -49,21 +49,20 @@ const viewPopoverController = await readFile(
   'utf8',
 );
 
-test('function panel uses Process and Project labels with segmented process modes', () => {
+test('function panel uses Process and Project labels with one operation selector', () => {
   assert.match(html, /id="operationTab"[\s\S]*?>\s*Process\s*<\/button>/);
   assert.match(html, /id="settingsTab"[\s\S]*?>\s*Project\s*<\/button>/);
   for (const mode of ['add', 'grow', 'etch', 'implant', 'electrical', 'record']) {
-    assert.match(html, new RegExp(`data-process-mode="${mode}"`));
+    assert.match(html, new RegExp(`<option value="${mode}">[\\s\\S]*?<\\/option>`));
   }
-  assert.match(html, />\s*Deposit\s*<\/button>/);
-  assert.match(html, />\s*Extend\s*<\/button>/);
-  assert.match(html, /data-process-mode="implant"[\s\S]*?>\s*Implant\s*<\/button>/);
+  assert.match(html, /id="operationType" aria-label="Process action"/);
+  assert.doesNotMatch(html, /id="processMode"/);
   assert.doesNotMatch(html, /experimental-tag|>\s*EXP\s*</);
-  assert.match(html, /data-process-mode="electrical"[\s\S]*?>\s*Electrical\s*<\/button>/);
-  assert.match(html, /data-process-mode="record"[\s\S]*?>\s*Record\s*<\/button>/);
   assert.match(html, /<span>Coverage<\/span\s*>/);
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
+  assert.match(html, /id="processVisualGuide"[\s\S]*?class="process-visual-guide"/);
+  assert.match(html, /id="recipeRecordManual"/);
 });
 
 test('function panel groups related engineering parameters compactly', () => {

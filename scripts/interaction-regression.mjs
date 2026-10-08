@@ -441,7 +441,7 @@ assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
 
 // The active Draw source feeds Process Selected mask.
 await openFunctionPanel(page, 'process');
-await page.locator('[data-process-mode="add"]').click();
+await page.locator('#operationType').selectOption('add');
 await page.locator('#growthMode').selectOption('direct');
 await page.locator('#operationArea').selectOption('mask');
 await page.locator('#operationThickness').fill('0.2');

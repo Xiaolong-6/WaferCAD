@@ -442,9 +442,7 @@ async function setSection(coords) {
 }
 async function applyOp(op) {
   await openFunctionPanel(page, 'process', { timeout: 30000 });
-  await page
-    .locator('[data-process-mode="' + (op.kind === 'record' ? 'record' : op.kind) + '"]')
-    .click();
+  await page.locator('#operationType').selectOption(op.kind);
   const beforeCount = await page.locator('.history-step-wrap').count();
   const beforeStatus = await page.locator('#statusText').textContent();
   if (op.kind === 'record') {

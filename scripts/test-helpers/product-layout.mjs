@@ -207,7 +207,7 @@ export function createProductLayoutChecks({ capture }) {
 
   async function checkCompactProcessLayout(page, name) {
     await openFunctionPanel(page, 'process');
-    await page.locator('[data-process-mode="etch"]').click();
+    await page.locator('#operationType').selectOption('etch');
     await page.locator('#etchSurfaceMode').selectOption('rough');
 
     const metrics = await page.evaluate(() => {
@@ -259,7 +259,7 @@ export function createProductLayoutChecks({ capture }) {
 
     await capture(page, `${name}-tab-operation-rough`);
 
-    await page.locator('[data-process-mode="implant"]').click();
+    await page.locator('#operationType').selectOption('implant');
     const implantOverflow = await page
       .locator('#operationTools')
       .evaluate((panel) => panel.scrollWidth - panel.clientWidth);

@@ -72,7 +72,7 @@ try {
 
   // Contract 4: One representative process operation completes through the real UI.
   await openFunctionPanel(page, 'process');
-  await page.locator('[data-process-mode="add"]').click();
+  await page.locator('#operationType').selectOption('add');
   await page.locator('#operationArea').selectOption('full');
   await page.locator('#growthMode').selectOption('direct');
   await page.locator('#operationThickness').fill('0.05');

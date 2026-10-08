@@ -14,9 +14,7 @@ export async function nativeApply(page, p) {
     }
   }
   await openFunctionPanel(page, 'process', { timeout: 30000 });
-  await page
-    .locator(`[data-process-mode="${p.type}"]`)
-    .click({ noWaitAfter: true, timeout: 300000 });
+  await page.locator('#operationType').selectOption(p.type, { timeout: 300000 });
   if (p.type === 'record') {
     await page.locator('#recordProcessType').selectOption(p.processType || 'custom');
     await page.locator('#recordProcessLabel').fill(p.name);

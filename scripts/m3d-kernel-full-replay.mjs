@@ -8,6 +8,7 @@ await loadGeometryKernel();
 
 const modelApi = await import('../site/model.js');
 const { applyOperation, createModel } = modelApi;
+const { classifyCoverageVoids } = await import('../site/process-topology.js');
 const { applyAdvancedProcessOperation } = await import('../site/advanced-process-operations.js');
 const { drawMaskGeometry } = await import('../site/draw-mask-geometry.js');
 const vectorApi = await import('../site/vector-geometry.js');
@@ -293,6 +294,21 @@ function applyStep(stage, spec) {
   );
   validateProcessModel(model);
 
+  // The unetched 2 um BOX is physically continuous throughout this M3D
+  // reconstruction. A lost XY sliver becomes a spurious full-depth 3D wall.
+  // Check EVERY process operation (not only selected conformal deposits).
+  const coverage = classifyCoverageVoids(model);
+  assert.equal(
+    coverage.all.length,
+    0,
+    stage +
+      ' · ' +
+      spec.label +
+      ' introduced ' +
+      coverage.all.length +
+      ' uncovered XY polygons in the BOX',
+  );
+
   const replay = {
     version: 1,
     params: copy(params),
@@ -334,6 +350,11 @@ function recordStep(stage, label, detail) {
   model.revision += 1;
   model.processRevision += 1;
   validateProcessModel(model);
+  assert.equal(
+    classifyCoverageVoids(model).all.length,
+    0,
+    stage + ' record-only operation changed the unetched BOX coverage',
+  );
   appendNode({
     kind: 'record',
     label,
@@ -834,7 +855,7 @@ assert.equal(reopened.snapshotBranches.nodes.length, nodes.length, 'History node
 
 const validation = {
   pass: true,
-  branch: 'test/m3d-full-replay-20261008',
+  branch: 'fix/m3d-conformal-microcracks-20261008',
   source: 'Nature Electronics 9 (2026) 775-787 paper reconstruction; not author GDS',
   modelFieldUm: [60, 30],
   pvmFieldUm: [30, 30],
@@ -869,7 +890,7 @@ const validation = {
 const audit =
   '# M3D corrected kernel full replay - 2026-10-08\n\n' +
   'Base: fix/photodetector-reconstruction-v2\n\n' +
-  'Replay branch: test/m3d-full-replay-20261008\n\n' +
+  'Replay branch: fix/m3d-conformal-microcracks-20261008\n\n' +
   'The project was rebuilt directly through the current Process Geometry Kernel from S00 through S26 using the committed corrected v2 masks. The browser Process UI is not part of this reconstruction path.\n\n' +
   'Acceptance results:\n\n' +
   '- 27 named stage bookmarks from 00_SOI through 26_Final_Sensing_Windows.\n' +

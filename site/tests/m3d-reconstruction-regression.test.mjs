@@ -5,8 +5,9 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { applyOperation, createModel } = await import('../model.js');
-const { rectMulti, unionGeometries } = await import('../vector-geometry.js');
+const { difference, isEmpty, rectMulti, unionGeometries } = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
+const { classifyCoverageVoids } = await import('../process-topology.js');
 
 const packageRoot = new URL(
   '../../examples/projects/m3d-selfpowered-2026-candidate/',
@@ -236,8 +237,13 @@ test('representative M3D stack reaches the final 70 nm conformal Al2O3 step', as
     thickness: 0.02,
     face: 'front',
     area: wseCap,
-    growth: 'direct',
+    growth: 'conformal',
   });
+  assert.equal(
+    classifyCoverageVoids(model).all.length,
+    0,
+    'Masked WSe2 conformal cap must not cut microcracks through the base',
+  );
   applyOperation(model, {
     type: 'add',
     name: 'MoS2',
@@ -298,6 +304,7 @@ test('representative M3D stack reaches the final 70 nm conformal Al2O3 step', as
   });
 
   validateProcessModel(model);
+  const beforeFinalVoids = classifyCoverageVoids(model).all.flatMap(({ geom }) => geom);
   const finalCap = applyOperation(model, {
     type: 'add',
     name: 'Final Al2O3',
@@ -308,4 +315,9 @@ test('representative M3D stack reaches the final 70 nm conformal Al2O3 step', as
   });
   assert.equal(finalCap.changed, true, finalCap.error);
   validateProcessModel(model);
+  const afterFinalVoids = classifyCoverageVoids(model).all.flatMap(({ geom }) => geom);
+  assert.ok(
+    isEmpty(difference(afterFinalVoids, beforeFinalVoids)),
+    'Final conformal Al2O3 must not introduce new uncovered XY columns',
+  );
 });

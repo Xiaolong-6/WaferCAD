@@ -6,10 +6,11 @@
 - `site/bundled-examples.js`: canonical Welcome project catalog. Keep `docs/wiki/Examples-and-Modeling-Limits.md` aligned with every promoted example ID/title; do not count unpromoted development fixtures as Welcome examples.
 - `site/process-guide.js`: canonical metadata for the 18 Process operation variants.
 - `site/process-guide-svg.js`: the paired Before → After diagrams.
-- `site/guide/index.html`: public interactive atlas served by GitHub Pages.
+- `docs/wiki/assets/process/*.svg`: generated, version-controlled Before → After diagrams embedded directly in the Process wiki chapter.
+- `site/guide/index.html`: compatibility redirect only; old fragment bookmarks resolve into Wiki headings.
 - `docs/wiki/Process-Operations.md`: **generated** by `npm run docs:build`. Do not edit it manually; edits will be overwritten.
 
-To change an operation description, update the catalog and diagram, then run `npm run docs:build` and `npm run check`. Commit the catalog and regenerated reference together. The tests check every defined operation ID and the exact operation-document snapshot. The [documentation architecture](DOCUMENTATION.md) owns navigation, authority and authored-versus-generated boundaries.
+To change an operation description, update the catalog and diagram, then run `npm run docs:build` and `npm run docs:check`. Commit the catalog, regenerated Markdown and any changed SVG assets together. `docs:check` checks images byte-for-byte against the in-app renderer. The tests check every defined operation ID and the exact operation-document snapshot. The [documentation architecture](DOCUMENTATION.md) owns navigation, authority and authored-versus-generated boundaries.
 
 ## Deploy workflow
 
@@ -17,7 +18,7 @@ To change an operation description, update the catalog and diagram, then run `np
 
 1. Checks that generated Process docs match runtime data, validates repository internal links/documentation reachability, and runs the guide, Wiki catalog/tutorial and documentation regression tests.
 2. Compares user-facing code changes with changes to the manual and emits a visible Action warning if docs review may be missing. This heuristic cannot determine scientific correctness.
-3. Clones the **GitHub Wiki** Git repository, compares every managed Markdown page to the tracked source, and pushes a commit only if there is an actual change.
+3. Checks Markdown image links against repository files, then clones the **GitHub Wiki** Git repository, compares every managed Markdown page to the tracked source, and pushes a commit only if there is an actual change. Images resolve from this repository's `main` via `raw.githubusercontent.com` and are not redundantly copied to `.wiki.git`.
 4. Removes obsolete pages only when recorded as previously managed by the automation, leaving unmanaged Wiki pages intact.
 5. Fails visibly if the Wiki is unavailable or authentication/push fails. No silent skip means a green sync job really inspected the remote Wiki.
 
@@ -36,6 +37,6 @@ The workflow reports actionable error details when this setup is missing. GitHub
 - `npm run docs:check`
 - `node --test site/tests/process-guide.test.mjs site/tests/wiki-manual.test.mjs site/tests/documentation.test.mjs`
 - Push/merge to `main`, inspect **Product manual and Wiki sync** in Actions. The log should say either **already up to date** or **Published updated product manual**.
-- Recheck `https://github.com/Xiaolong-6/WaferCAD/wiki` and the public `/WaferCAD/guide/` atlas.
+- Recheck `https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations` and that at least one image from `docs/wiki/assets/process/` renders. The old `/WaferCAD/guide/#operation-id` route should redirect to the matching Wiki operation.
 
 The Wiki pages are versioned product documentation; older dated audits/handoffs are historical evidence. Do not silently promote illustrative photodetector reconstruction dimensions to sourced experimental facts.

@@ -1,6 +1,6 @@
 {
   "pass": true,
-  "branch": "test/m3d-full-replay-20261008",
+  "branch": "fix/m3d-conformal-microcracks-20261008",
   "source": "Nature Electronics 9 (2026) 775-787 paper reconstruction; not author GDS",
   "modelFieldUm": [
     60,
@@ -188,7 +188,7 @@
       "graphene": true
     },
     "finalConformalAl2O3": true,
-    "finalConformalMs": 64758.891444,
+    "finalConformalMs": 76428.841357,
     "sensingWindowsChecked": 2,
     "sensingWindowEtchSelectiveToFinalAl2O3": true,
     "graphenePreservedAtSensingWindows": true,
@@ -205,87 +205,87 @@
     {
       "stage": "00_SOI",
       "label": "Add 70 nm B-doped SOI device Si",
-      "ms": 3.025287000000006
+      "ms": 2.9790009999999967
     },
     {
       "stage": "01_PVM_Si",
       "label": "Etch PVM Si frame; retain 20 x 20 um active island",
-      "ms": 3.9085639999999984
+      "ms": 7.231889999999993
     },
     {
       "stage": "02_PVM_Cr",
       "label": "Deposit PVM Cr 20 nm",
-      "ms": 6.091009999999997
+      "ms": 4.577736000000002
     },
     {
       "stage": "02_PVM_Cr",
       "label": "Deposit PVM Au 50 nm",
-      "ms": 4.333893000000003
+      "ms": 2.9042519999999996
     },
     {
       "stage": "03_PVM_Pt",
       "label": "Deposit PVM Pt contact/interconnect 80 nm",
-      "ms": 4.214148000000009
+      "ms": 2.5947539999999947
     },
     {
       "stage": "04_Power_Rails",
       "label": "Deposit tier-1 Pt power rails 70 nm",
-      "ms": 3.380914000000004
+      "ms": 3.4730940000000032
     },
     {
       "stage": "05_ILD1",
       "label": "Deposit conformal ILD1 Al2O3 100 nm",
-      "ms": 100.31705199999999
+      "ms": 128.570553
     },
     {
       "stage": "06_Power_Via_Open",
       "label": "Open 5 x 5 um tier-1 power vias in ILD1",
-      "ms": 10.681714999999997
+      "ms": 27.036574
     },
     {
       "stage": "07_Power_Via_Fill",
       "label": "Fill tier-1 power vias with Ti 120 nm",
-      "ms": 11.080833999999982
+      "ms": 10.677442999999982
     },
     {
       "stage": "08_Back_Gates",
       "label": "Deposit local back-gate Ti 2 nm",
-      "ms": 11.967287999999996
+      "ms": 11.863166000000035
     },
     {
       "stage": "08_Back_Gates",
       "label": "Deposit local back-gate Pt 18 nm",
-      "ms": 12.799387999999965
+      "ms": 11.602169000000004
     },
     {
       "stage": "09_HfO2",
       "label": "Deposit conformal HfO2 gate dielectric 10 nm",
-      "ms": 808.0496969999999
+      "ms": 839.671741
     },
     {
       "stage": "10_HfO2_Open",
       "label": "Open HfO2 gate/contact windows",
-      "ms": 51.832005999999865
+      "ms": 104.68498499999987
     },
     {
       "stage": "11_WSe2_Transfer",
       "label": "Transfer bilayer WSe2 using Follow surface",
-      "ms": 16.186034000000063
+      "ms": 14.891840000000002
     },
     {
       "stage": "12_WSe2_Pattern",
       "label": "Pattern WSe2 to 0.2 x 0.5 um channels",
-      "ms": 56.0931529999998
+      "ms": 111.71193400000016
     },
     {
       "stage": "13_WSe2_SD",
       "label": "Deposit WSe2 source/drain Pd 10 nm",
-      "ms": 48.68018199999983
+      "ms": 47.12487299999998
     },
     {
       "stage": "13_WSe2_SD",
       "label": "Deposit WSe2 source/drain Pt 30 nm",
-      "ms": 52.98535099999981
+      "ms": 48.80881599999975
     },
     {
       "stage": "14_WSe2_Anneal",
@@ -295,87 +295,87 @@
     {
       "stage": "15_WSe2_Cap",
       "label": "Deposit local WSe2 Al2O3 cap 20 nm",
-      "ms": 1383.9151720000004
+      "ms": 1812.6756229999996
     },
     {
       "stage": "16_MoS2_Transfer",
       "label": "Transfer monolayer MoS2 using Follow surface",
-      "ms": 32.59327400000029
+      "ms": 33.390182000000095
     },
     {
       "stage": "17_MoS2_Pattern",
       "label": "Pattern MoS2 to 0.2 x 0.5 um channels",
-      "ms": 175.30776600000036
+      "ms": 215.90148299999964
     },
     {
       "stage": "18_MoS2_SD_Bridge",
       "label": "Deposit MoS2 source/drain and comparator bridge Ni 30 nm",
-      "ms": 99.98802500000056
+      "ms": 98.673272
     },
     {
       "stage": "18_MoS2_SD_Bridge",
       "label": "Deposit MoS2 source/drain and comparator bridge Au 10 nm",
-      "ms": 105.00517200000013
+      "ms": 104.09866599999987
     },
     {
       "stage": "19_ILD2",
       "label": "Deposit conformal ILD2 Al2O3 50 nm",
-      "ms": 12804.993262
+      "ms": 16199.077575
     },
     {
       "stage": "20_Data_Power_Via_Open",
       "label": "Open tier-3 data/power vias in ILD2",
-      "ms": 517.0953039999986
+      "ms": 1106.950499999999
     },
     {
       "stage": "21_Via2_Fill",
       "label": "Deposit via2 Ti 2 nm",
-      "ms": 380.9892949999994
+      "ms": 421.77573699999994
     },
     {
       "stage": "21_Via2_Fill",
       "label": "Deposit via2 Ni 28 nm",
-      "ms": 392.09270299999844
+      "ms": 370.9446859999989
     },
     {
       "stage": "21_Via2_Fill",
       "label": "Deposit via2 Au 30 nm",
-      "ms": 422.5590800000027
+      "ms": 376.4154389999967
     },
     {
       "stage": "22_Graphene_Transfer",
       "label": "Transfer graphene using Follow surface",
-      "ms": 158.82312900000034
+      "ms": 159.09915300000284
     },
     {
       "stage": "23_Graphene_Pattern",
       "label": "Pattern graphene sensing channels",
-      "ms": 475.6654290000006
+      "ms": 1038.4530809999997
     },
     {
       "stage": "24_Graphene_SD",
       "label": "Deposit graphene contact Ti 2 nm",
-      "ms": 413.79119999999966
+      "ms": 431.1902659999978
     },
     {
       "stage": "24_Graphene_SD",
       "label": "Deposit graphene contact Ni 28 nm",
-      "ms": 423.34933699999965
+      "ms": 423.7352749999991
     },
     {
       "stage": "24_Graphene_SD",
       "label": "Deposit graphene contact Au 30 nm",
-      "ms": 469.77604399999836
+      "ms": 422.07573299999785
     },
     {
       "stage": "25_Final_Al2O3",
       "label": "Deposit final conformal Al2O3 70 nm",
-      "ms": 56612.406884
+      "ms": 67856.47456599999
     },
     {
       "stage": "26_Final_Sensing_Windows",
       "label": "Open graphene sensing windows in final Al2O3 only",
-      "ms": 2957.859142000001
+      "ms": 12288.840866999992
     }
   ]
 }

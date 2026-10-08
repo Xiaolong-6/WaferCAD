@@ -86,6 +86,18 @@ assert.equal(await recipePage.locator('#recipeStepsPane').isVisible(), true);
 assert.equal(await recipePage.locator('#recipeCodePane').isHidden(), true);
 
 await recipePage.locator('#recipeTemplateSelect').selectOption('conformal');
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 0);
+assert.equal(await recipePage.locator('#recipeTemplatePreview').isVisible(), true);
+await recipePage.locator('#recipeTemplateLoadBtn').click();
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+// Selecting Blank is only a preview; an existing recipe requires an explicit
+// second replacement click and can be cancelled without losing its steps.
+await recipePage.locator('#recipeTemplateSelect').selectOption('blank');
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+await recipePage.locator('#recipeTemplateLoadBtn').click();
+assert.match(await recipePage.locator('#recipeTemplateLoadBtn').textContent(), /Replace Recipe/);
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+await recipePage.locator('#recipeTemplateCancelBtn').click();
 assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
 assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Deposit Al2O3/);
 assert.equal(await recipePage.locator('#recipeStepOperation').inputValue(), 'deposit');
@@ -164,7 +176,7 @@ await recipePage.locator('#recipeRunStart').selectOption('continue');
 // Step mode remains the source of truth and can teach Recipe by recording
 // a successful operation back into the same persisted recipe.
 await recipePage.locator('[data-process-input-mode="manual"]').click();
-await recipePage.locator('[data-process-mode="add"]').click();
+await recipePage.locator('#operationType').selectOption('add');
 await recipePage.locator('#operationArea').selectOption('full');
 await recipePage.locator('#growthMode').selectOption('direct');
 await recipePage.locator('#layerName').fill('Manual recipe check');
@@ -374,7 +386,7 @@ await openFunctionPanel(page, 'process');
 
 // Etch defaults to the legacy directional path. Isotropic release is an explicit
 // opt-in profile with material selection and no Rough/Pyramid appearance mode.
-await page.locator('[data-process-mode="etch"]').click();
+await page.locator('#operationType').selectOption('etch');
 assert.equal(await page.locator('#etchProfileRow').isVisible(), true);
 assert.equal(await page.locator('#etchProfile').inputValue(), 'directional');
 assert.equal(await page.locator('#etchSurfaceRow').isVisible(), true);
@@ -535,7 +547,7 @@ assert.match(await page.locator('#statusText').textContent(), /morphology embedd
 await openFunctionPanel(page, 'process');
 
 // Implant uses the same process area but records a structural annotation only.
-await page.locator('[data-process-mode="implant"]').click();
+await page.locator('#operationType').selectOption('implant');
 assert.equal(await page.locator('#implantNameRow').isVisible(), true);
 assert.equal(await page.locator('#implantTiltRow').isVisible(), true);
 assert.equal(await page.locator('#implantColor').count(), 0);
@@ -574,7 +586,7 @@ await openFunctionPanel(page, 'process');
 
 // Electrical Region is a separate annotation semantic: no Implant tilt/gradient
 // controls, typed metadata, independent legend row, and persisted v14 state.
-await page.locator('[data-process-mode="electrical"]').click();
+await page.locator('#operationType').selectOption('electrical');
 assert.equal(await page.locator('#electricalNameRow').isVisible(), true);
 assert.equal(await page.locator('#electricalRegionParams').isVisible(), true);
 assert.equal(await page.locator('#implantTiltRow').isHidden(), true);
@@ -617,10 +629,10 @@ assert.equal(electricalSaved.model.implants.length, 1);
 await openFunctionPanel(page, 'process');
 
 // Extend targets follow the exposed surface and include Base when it is exposed.
-await page.locator('[data-process-mode="grow"]').click();
+await page.locator('#operationType').selectOption('grow');
 await page.locator('#operationArea').selectOption('full');
 assert.ok(await page.locator('#targetLayer option[value="base"]').count());
-await page.locator('[data-process-mode="add"]').click();
+await page.locator('#operationType').selectOption('add');
 
 // Exercise Conformal through the real UI path, then save and inspect the canonical model.
 const conformalFixture = createModel({
@@ -661,7 +673,7 @@ await page.waitForFunction(() =>
   (document.getElementById('statusText')?.textContent || '').startsWith('Opened'),
 );
 await openFunctionPanel(page, 'process');
-await page.locator('[data-process-mode="add"]').click();
+await page.locator('#operationType').selectOption('add');
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#growthMode').selectOption('conformal');
 await page.locator('#operationThickness').fill('1');
@@ -909,7 +921,7 @@ if (extendedProcess) {
 
 // Conformal Extend reuses the Deposit coating kernel with the existing layer id.
 await openFunctionPanel(page, 'process');
-await page.locator('[data-process-mode="grow"]').click();
+await page.locator('#operationType').selectOption('grow');
 await page.locator('#operationArea').selectOption('full');
 await page.locator('#growthMode').selectOption('conformal');
 await page.locator('#targetLayer').selectOption(coatId);
@@ -971,7 +983,7 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
     await loadProject(page, project, `sidewall-only-${type}-${face}`);
     const before = await exportCurrentProject(page);
     await openFunctionPanel(page, 'process');
-    await page.locator(`[data-process-mode="${type}"]`).click();
+    await page.locator('#operationType').selectOption(type);
     await page.locator('#operationArea').selectOption('mask');
     await page.locator('#growthMode').selectOption('direct');
     if (type === 'grow')

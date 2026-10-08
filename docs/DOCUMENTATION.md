@@ -20,21 +20,22 @@ flowchart LR
   Catalog[site/process-guide.js] --> Generator[scripts/build-process-guide.mjs]
   Catalog --> UI[Process inline guide]
   Diagrams[site/process-guide-svg.js] --> UI
-  Catalog --> Atlas[site/guide/]
-  Diagrams --> Atlas
+  Diagrams --> AssetGenerator[scripts/build-wiki-diagrams.mjs]
+  AssetGenerator --> Images["docs/wiki/assets/process/*.svg"]
   Generator --> Operations[docs/wiki/Process-Operations.md]
+  Images --> Operations
   Authored[Authored docs/wiki pages] --> Wiki[GitHub Wiki sync on main]
   Operations --> Wiki
-  Atlas --> Pages[GitHub Pages site deployment]
+  Operations --> RawAssets["Versioned main-branch image URLs"]
   Contracts[Engineering contracts] --> Map[docs/README.md]
   Evidence[Revision-specific records] --> Archive[docs/archive/README.md]
   Archive --> Map
 ```
 
-- Edit operation names/descriptions in `site/process-guide.js` and illustrations in `site/process-guide-svg.js`; run `npm run docs:build` and commit the generated operation reference with its sources.
+- Edit operation names/descriptions in `site/process-guide.js` and illustrations in `site/process-guide-svg.js`; run `npm run docs:build` and commit the generated operation reference **and all affected SVG assets** with their sources. The old `site/guide/` route is a compatibility redirect to the Wiki.
 - Edit other Wiki pages directly. `site/bundled-examples.js` owns the six-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
-- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Wiki checks run on every main push; Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
+- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Wiki checks run on every main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
 
 ## Change workflow
 
