@@ -20,6 +20,11 @@ export function createBaseControlsController({
   fit3d,
   status,
   confirmAction = async () => false,
+  chooseHistoryAction = async () => 'cancel',
+  getHistoryDetails = () => ({ hasHistory: false }),
+  rebuildMainHistory = () => {},
+  captureBaseSnapshot = stateSnapshot,
+  refreshHistory = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -62,38 +67,62 @@ export function createBaseControlsController({
       height = shape === 'circle' ? width : manualMicron($('baseHeight').value),
       thickness = manualMicron($('baseThickness').value);
 
-    if (width <= 0 || height <= 0 || thickness <= 0) {
-      status('Base dimensions must be positive.');
-      return;
-    }
-
     if (
-      hasMaterial(getModel()) &&
-      hasProcessEdits() &&
-      !(await confirmAction({
-        title: 'Rebuild base?',
-        message: 'Rebuilding the base removes the current structure and all applied operations.',
-        detail: 'The change remains available through Undo and Revert.',
-        confirmLabel: 'Rebuild base',
-        danger: true,
-      }))
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      !Number.isFinite(thickness) ||
+      width <= 0 ||
+      height <= 0 ||
+      thickness <= 0
     ) {
-      syncBaseControls();
+      status('Base dimensions must be positive and finite.', 'error');
       return;
     }
 
-    setBaseRevertSnapshot(stateSnapshot());
-    saveHistory();
-    setModel(createModel({ shape, width, height, thickness }));
-    setSection({ a: [-width * 0.42, 0], b: [width * 0.42, 0] });
-    syncBaseControls();
-    renderAll();
-    fit3d();
-    status(
-      hasMaterial(getBaseRevertSnapshot()?.model)
-        ? 'Base applied. Use Revert or Undo to restore the previous structure.'
-        : 'Base recreated. Use Undo to restore the previous empty state.',
-    );
+    const details = getHistoryDetails();
+    const currentHasProcess = hasMaterial(getModel()) && hasProcessEdits();
+    const needsDecision = currentHasProcess || details.hasHistory;
+    let action = 'clear';
+    if (needsDecision) {
+      action = await chooseHistoryAction();
+      if (action === 'cancel' || !['keep', 'clear'].includes(action)) {
+        syncBaseControls();
+        return;
+      }
+    }
+
+    // Preserve the graph alongside Base Undo/Revert. A model-only snapshot
+    // cannot restore the previous process lineage.
+    const before = captureBaseSnapshot();
+    try {
+      const newModel = createModel({ shape, width, height, thickness });
+      setBaseRevertSnapshot(before);
+      saveHistory(before);
+      setModel(newModel);
+      setSection({ a: [-width * 0.42, 0], b: [width * 0.42, 0] });
+      const result = rebuildMainHistory({
+        preservePrevious: action === 'keep',
+        previousState: before.workspaceState,
+      });
+      syncBaseControls();
+      refreshHistory();
+      renderAll();
+      fit3d();
+      status(
+        result?.archivedBranchId
+          ? 'Base rebuilt. Previous history archived as a restorable Variant; new Main is ready.'
+          : 'Base rebuilt with a clean Main history. Use Undo or Revert to restore the previous state.',
+        'success',
+      );
+    } catch (error) {
+      restoreSnapshot(before);
+      if (getHistory().length) getHistory().pop();
+      setBaseRevertSnapshot(null);
+      syncBaseControls();
+      refreshHistory();
+      renderAll();
+      status(`Base rebuild failed: ${error.message}`, 'error');
+    }
   }
 
   function revertBase() {
@@ -101,9 +130,10 @@ export function createBaseControlsController({
     if (!snapshot) return;
 
     setBaseRevertSnapshot(null);
-    getFuture().push(stateSnapshot());
+    getFuture().push(captureBaseSnapshot());
     if (getHistory().length) getHistory().pop();
     restoreSnapshot(snapshot);
+    refreshHistory();
     syncBaseControls();
     renderAll();
     fit3d();
