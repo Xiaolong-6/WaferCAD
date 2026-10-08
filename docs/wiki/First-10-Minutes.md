@@ -67,13 +67,13 @@ In **Project**, use **Save** if you want a checkpoint in this browser's **Recove
 
 ## Five terms you need right now
 
-| Term | Plain meaning |
-| --- | --- |
-| **Base** | The starting silicon (or other) body. |
-| **Mask** | A 2D shape saying **where** an operation acts; a Draw mask needs no imported file. |
-| **Process / Step** | One change to the geometry, such as Deposit or Etch. |
-| **Section A–B** | A cut through the structure **along the A–B line**, showing which material is above or below another. |
-| **History** | Previous saved states of the structure. **Recipe** is an ordered list of operations you can run again. |
+| Term               | Plain meaning                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------ |
+| **Base**           | The starting silicon (or other) body.                                                                  |
+| **Mask**           | A 2D shape saying **where** an operation acts; a Draw mask needs no imported file.                     |
+| **Process / Step** | One change to the geometry, such as Deposit or Etch.                                                   |
+| **Section A–B**    | A cut through the structure **along the A–B line**, showing which material is above or below another.  |
+| **History**        | Previous saved states of the structure. **Recipe** is an ordered list of operations you can run again. |
 
 ## Where next?
 
