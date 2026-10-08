@@ -48,6 +48,14 @@ export function createProjectController({
     // make a freshly restored History Step look edited.
   }
 
+  async function requireRecoveryCheckpoint(reason) {
+    // A false result means the Recovery writer was unavailable or failed.
+    // Never discard History data on that path.
+    if ((await checkpointBeforeReplace(reason)) === false) {
+      throw new Error('Recovery checkpoint was not created. History was left unchanged.');
+    }
+  }
+
   function renderSnapshots() {
     const host = $('snapshotList'),
       bookmarks = snapshotManager.list(),
@@ -91,7 +99,7 @@ export function createProjectController({
 
       if (!snapshotManager.hasHistoricalWorkingEdits()) return true;
       try {
-        await checkpointBeforeReplace(reason);
+        await requireRecoveryCheckpoint(reason);
         return true;
       } catch (error) {
         console.error(error);
@@ -437,7 +445,7 @@ export function createProjectController({
       if (!confirmed) return;
 
       try {
-        await checkpointBeforeReplace('pre-history-truncate');
+        await requireRecoveryCheckpoint('pre-history-truncate');
         const result = snapshotManager.truncateBranchAfter(node.id);
         refreshAfterSnapshotLoad();
         onProjectChanged();
@@ -479,7 +487,7 @@ export function createProjectController({
       if (!confirmed) return;
 
       try {
-        await checkpointBeforeReplace('pre-history-head-delete');
+        await requireRecoveryCheckpoint('pre-history-head-delete');
         snapshotManager.removeHeadStep(node.id);
         refreshAfterSnapshotLoad();
         onProjectChanged();
@@ -789,7 +797,7 @@ export function createProjectController({
             });
             if (!confirmed) return;
             try {
-              await checkpointBeforeReplace('pre-history-variant-delete');
+              await requireRecoveryCheckpoint('pre-history-variant-delete');
               const removed = snapshotManager.removeBranch(variant.id);
               if (!removed) throw new Error('Variant was not found.');
               refreshAfterSnapshotLoad();
