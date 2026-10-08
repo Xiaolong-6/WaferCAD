@@ -113,13 +113,6 @@ const TOOL_META = {
   snapshots: { id: 'snapshotsTools', label: 'History', icon: '◷', hint: 'steps · variants' },
 };
 
-const VIEW_META = {
-  main: 'Front surface',
-  mask: 'Mask layout',
-  three: '3D structure',
-  overview: 'Main + Mask + 3D',
-};
-
 function makeButton(root, className, text, attrs = {}) {
   const button = root.createElement('button');
   button.type = 'button';
@@ -163,14 +156,6 @@ export function createWorkstationUiController({ root = document, win = window } 
     const value =
       String(explicitName || '').trim() || root.getElementById('projectNameInput')?.value?.trim();
     refs.topMeta.textContent = value || 'Untitled';
-  }
-
-  function updateViewMeta(mode = state.viewMode) {
-    if (!refs.viewMeta) return;
-    refs.viewMeta.textContent =
-      mode === 'split'
-        ? state.splitViews.map((name) => VIEW_LABELS[name]).join(' + ')
-        : VIEW_META[mode] || VIEW_META[state.currentSingleView] || '';
   }
 
   function closeSplitViewSelectors(except = null) {
@@ -360,7 +345,6 @@ export function createWorkstationUiController({ root = document, win = window } 
     refs.splitButton?.classList.toggle('active', state.viewMode === 'split');
     refs.splitButton?.setAttribute('aria-pressed', String(state.viewMode === 'split'));
     syncSplitViewSelectors();
-    updateViewMeta(state.viewMode === 'single' ? state.currentSingleView : state.viewMode);
 
     if (refresh) scheduleViewportRefresh();
   }
@@ -434,20 +418,14 @@ export function createWorkstationUiController({ root = document, win = window } 
     split.setAttribute('aria-pressed', 'false');
     tabs.append(split);
 
-    const divider = root.createElement('span');
-    divider.className = 'workstation-view-divider';
-
-    const meta = root.createElement('span');
-    meta.className = 'workstation-view-meta';
-
-    viewbar.append(tabs, divider, meta);
-    refs.appShell.insertBefore(viewbar, refs.workspace);
+    viewbar.append(tabs);
+    const topbar = root.querySelector('.topbar');
+    topbar?.insertBefore(viewbar, refs.topSpacer || null);
 
     refs.viewbar = viewbar;
     refs.viewTabs = viewTabs;
     refs.overviewButton = overview;
     refs.splitButton = split;
-    refs.viewMeta = meta;
   }
 
   function createTopbarControls() {
@@ -462,6 +440,7 @@ export function createWorkstationUiController({ root = document, win = window } 
 
     topbar.append(meta, spacer);
     refs.topMeta = meta;
+    refs.topSpacer = spacer;
     updateProjectMeta();
   }
 
@@ -643,8 +622,8 @@ export function createWorkstationUiController({ root = document, win = window } 
     root.documentElement.classList.add('workstation-ui-v2');
     syncCompactUi();
     createRail();
-    createViewbar();
     createTopbarControls();
+    createViewbar();
     createViewStage();
     setupSplitViewSelectors();
     setupToolFlyout();
