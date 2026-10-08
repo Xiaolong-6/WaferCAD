@@ -3,6 +3,7 @@ name: Example Recipe Reconstruction
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'site/**'
       - 'scripts/maintenance/**'
@@ -15,6 +16,8 @@ permissions:
 
 jobs:
   fixture-check:
+    # Full fixture/replay certification is deferred while the integration PR is Draft.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Verify committed Recipe and mask fixtures
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -33,6 +36,7 @@ jobs:
           node --test site/tests/example-recipe-audit.test.mjs site/tests/example-mask-export.test.mjs
           git diff --exit-code
   replay:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Kernel Run All / ${{ matrix.example }}
     runs-on: ubuntu-latest
     timeout-minutes: 60

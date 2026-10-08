@@ -2,6 +2,7 @@ name: Native Fig3 full replay acceptance
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "scripts/fig3-full-replay-acceptance.mjs"
       - "scripts/test-helpers/**"
@@ -16,6 +17,7 @@ permissions:
 
 jobs:
   native-fig3-full-replay:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
