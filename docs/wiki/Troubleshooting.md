@@ -6,7 +6,7 @@
 
 ## Apply changes nothing or the wrong location
 
-Check the **Process Area** (Whole face / Selected mask / Invert mask), **Front/Back** side and the currently active **File/Draw** Mask. A hidden Mask ROI may reduce the process area. Correct the input or displayed error **before** repeating Apply.
+Check the **Process Area** (Whole face / Selected mask / Invert mask), **Front/Back** side and the currently active **File/Draw** Mask. A hidden Mask ROI may reduce the process area **even if Area says Whole face**. Clear it to process the entire face. Correct the input or displayed error **before** repeating Apply.
 
 ## A mask exists, but Etch removed the entire film (or even the Base)
 
