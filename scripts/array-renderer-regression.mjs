@@ -17,6 +17,10 @@ await mkdir(output, { recursive: true });
 try {
   const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
   const page = await context.newPage();
+  page.on('console', (msg) => {
+    if (msg.text().startsWith('WAFERCAD_VARIANT_STAGE'))
+      console.log('ARRAY_RENDERER_BROWSER_PROFILE', msg.text());
+  });
   const THREE_READY_TIMEOUT_MS = 45000;
   page.setDefaultTimeout(THREE_READY_TIMEOUT_MS);
   const waitStage = async (label, timeout = THREE_READY_TIMEOUT_MS) => {
