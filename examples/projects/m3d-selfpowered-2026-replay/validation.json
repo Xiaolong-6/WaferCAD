@@ -1,0 +1,381 @@
+{
+  "pass": true,
+  "branch": "test/m3d-full-replay-20261008",
+  "source": "Nature Electronics 9 (2026) 775-787 paper reconstruction; not author GDS",
+  "modelFieldUm": [
+    60,
+    30
+  ],
+  "pvmFieldUm": [
+    30,
+    30
+  ],
+  "m3dRepresentativeFieldUm": [
+    28,
+    18
+  ],
+  "processNodes": 36,
+  "bookmarks": 27,
+  "stages": [
+    {
+      "name": "00_SOI",
+      "processRevision": 2,
+      "regions": 1,
+      "layers": 2
+    },
+    {
+      "name": "01_PVM_Si",
+      "processRevision": 3,
+      "regions": 2,
+      "layers": 2
+    },
+    {
+      "name": "02_PVM_Cr",
+      "processRevision": 5,
+      "regions": 4,
+      "layers": 4
+    },
+    {
+      "name": "03_PVM_Pt",
+      "processRevision": 6,
+      "regions": 6,
+      "layers": 5
+    },
+    {
+      "name": "04_Power_Rails",
+      "processRevision": 7,
+      "regions": 7,
+      "layers": 6
+    },
+    {
+      "name": "05_ILD1",
+      "processRevision": 8,
+      "regions": 16,
+      "layers": 7
+    },
+    {
+      "name": "06_Power_Via_Open",
+      "processRevision": 9,
+      "regions": 17,
+      "layers": 7
+    },
+    {
+      "name": "07_Power_Via_Fill",
+      "processRevision": 10,
+      "regions": 17,
+      "layers": 8
+    },
+    {
+      "name": "08_Back_Gates",
+      "processRevision": 12,
+      "regions": 18,
+      "layers": 10
+    },
+    {
+      "name": "09_HfO2",
+      "processRevision": 13,
+      "regions": 32,
+      "layers": 11
+    },
+    {
+      "name": "10_HfO2_Open",
+      "processRevision": 14,
+      "regions": 34,
+      "layers": 11
+    },
+    {
+      "name": "11_WSe2_Transfer",
+      "processRevision": 15,
+      "regions": 36,
+      "layers": 12
+    },
+    {
+      "name": "12_WSe2_Pattern",
+      "processRevision": 16,
+      "regions": 35,
+      "layers": 12
+    },
+    {
+      "name": "13_WSe2_SD",
+      "processRevision": 18,
+      "regions": 42,
+      "layers": 14
+    },
+    {
+      "name": "14_WSe2_Anneal",
+      "processRevision": 19,
+      "regions": 42,
+      "layers": 14
+    },
+    {
+      "name": "15_WSe2_Cap",
+      "processRevision": 20,
+      "regions": 62,
+      "layers": 15
+    },
+    {
+      "name": "16_MoS2_Transfer",
+      "processRevision": 21,
+      "regions": 64,
+      "layers": 16
+    },
+    {
+      "name": "17_MoS2_Pattern",
+      "processRevision": 22,
+      "regions": 63,
+      "layers": 16
+    },
+    {
+      "name": "18_MoS2_SD_Bridge",
+      "processRevision": 24,
+      "regions": 78,
+      "layers": 18
+    },
+    {
+      "name": "19_ILD2",
+      "processRevision": 25,
+      "regions": 184,
+      "layers": 19
+    },
+    {
+      "name": "20_Data_Power_Via_Open",
+      "processRevision": 26,
+      "regions": 191,
+      "layers": 19
+    },
+    {
+      "name": "21_Via2_Fill",
+      "processRevision": 29,
+      "regions": 191,
+      "layers": 22
+    },
+    {
+      "name": "22_Graphene_Transfer",
+      "processRevision": 30,
+      "regions": 194,
+      "layers": 23
+    },
+    {
+      "name": "23_Graphene_Pattern",
+      "processRevision": 31,
+      "regions": 194,
+      "layers": 23
+    },
+    {
+      "name": "24_Graphene_SD",
+      "processRevision": 34,
+      "regions": 221,
+      "layers": 26
+    },
+    {
+      "name": "25_Final_Al2O3",
+      "processRevision": 35,
+      "regions": 541,
+      "layers": 27
+    },
+    {
+      "name": "26_Final_Sensing_Windows",
+      "processRevision": 36,
+      "regions": 551,
+      "layers": 27
+    }
+  ],
+  "checks": {
+    "correctedMasks": true,
+    "transferFollowSurfaceZeroGap": {
+      "WSe2": true,
+      "MoS2": true,
+      "graphene": true
+    },
+    "finalConformalAl2O3": true,
+    "finalConformalMs": 68088.128183,
+    "sensingWindowsChecked": 2,
+    "sensingWindowEtchSelectiveToFinalAl2O3": true,
+    "graphenePreservedAtSensingWindows": true,
+    "losslessProjectRoundTripExactModel": true,
+    "compactExportPass": false,
+    "compactExportError": "Project cannot be stored safely at 0.0001 µm precision: Invalid project: model.regions[60].geom overlaps model.regions[58].geom."
+  },
+  "notes": [
+    "SOI handle thickness is not specified by the paper and is omitted; the 2 um BOX is used as the receiver base.",
+    "2D-material geometric thicknesses are WaferCAD visualization surrogates because the paper specifies layer count rather than a modeled thickness.",
+    "The corrected v2 routing masks are paper-inferred reconstruction geometry, not the authors original GDS."
+  ],
+  "timings": [
+    {
+      "stage": "00_SOI",
+      "label": "Add 70 nm B-doped SOI device Si",
+      "ms": 2.8518339999999966
+    },
+    {
+      "stage": "01_PVM_Si",
+      "label": "Etch PVM Si frame; retain 20 x 20 um active island",
+      "ms": 3.4745810000000006
+    },
+    {
+      "stage": "02_PVM_Cr",
+      "label": "Deposit PVM Cr 20 nm",
+      "ms": 4.260650999999996
+    },
+    {
+      "stage": "02_PVM_Cr",
+      "label": "Deposit PVM Au 50 nm",
+      "ms": 3.8021889999999985
+    },
+    {
+      "stage": "03_PVM_Pt",
+      "label": "Deposit PVM Pt contact/interconnect 80 nm",
+      "ms": 3.414591999999999
+    },
+    {
+      "stage": "04_Power_Rails",
+      "label": "Deposit tier-1 Pt power rails 70 nm",
+      "ms": 3.26250499999999
+    },
+    {
+      "stage": "05_ILD1",
+      "label": "Deposit conformal ILD1 Al2O3 100 nm",
+      "ms": 103.50920900000001
+    },
+    {
+      "stage": "06_Power_Via_Open",
+      "label": "Open 5 x 5 um tier-1 power vias in ILD1",
+      "ms": 10.776598000000007
+    },
+    {
+      "stage": "07_Power_Via_Fill",
+      "label": "Fill tier-1 power vias with Ti 120 nm",
+      "ms": 12.095350999999994
+    },
+    {
+      "stage": "08_Back_Gates",
+      "label": "Deposit local back-gate Ti 2 nm",
+      "ms": 11.356651999999997
+    },
+    {
+      "stage": "08_Back_Gates",
+      "label": "Deposit local back-gate Pt 18 nm",
+      "ms": 14.10270399999996
+    },
+    {
+      "stage": "09_HfO2",
+      "label": "Deposit conformal HfO2 gate dielectric 10 nm",
+      "ms": 828.370478
+    },
+    {
+      "stage": "10_HfO2_Open",
+      "label": "Open HfO2 gate/contact windows",
+      "ms": 51.900521000000026
+    },
+    {
+      "stage": "11_WSe2_Transfer",
+      "label": "Transfer bilayer WSe2 using Follow surface",
+      "ms": 48.735390999999936
+    },
+    {
+      "stage": "12_WSe2_Pattern",
+      "label": "Pattern WSe2 to 0.2 x 0.5 um channels",
+      "ms": 57.750356999999894
+    },
+    {
+      "stage": "13_WSe2_SD",
+      "label": "Deposit WSe2 source/drain Pd 10 nm",
+      "ms": 49.19956100000013
+    },
+    {
+      "stage": "13_WSe2_SD",
+      "label": "Deposit WSe2 source/drain Pt 30 nm",
+      "ms": 52.97787399999993
+    },
+    {
+      "stage": "14_WSe2_Anneal",
+      "label": "WSe2 NO anneal 100 C x 30 min",
+      "ms": 0
+    },
+    {
+      "stage": "15_WSe2_Cap",
+      "label": "Deposit local WSe2 Al2O3 cap 20 nm",
+      "ms": 1436.5117989999999
+    },
+    {
+      "stage": "16_MoS2_Transfer",
+      "label": "Transfer monolayer MoS2 using Follow surface",
+      "ms": 155.72315200000003
+    },
+    {
+      "stage": "17_MoS2_Pattern",
+      "label": "Pattern MoS2 to 0.2 x 0.5 um channels",
+      "ms": 109.36936400000013
+    },
+    {
+      "stage": "18_MoS2_SD_Bridge",
+      "label": "Deposit MoS2 source/drain and comparator bridge Ni 30 nm",
+      "ms": 103.77536200000031
+    },
+    {
+      "stage": "18_MoS2_SD_Bridge",
+      "label": "Deposit MoS2 source/drain and comparator bridge Au 10 nm",
+      "ms": 105.40124800000012
+    },
+    {
+      "stage": "19_ILD2",
+      "label": "Deposit conformal ILD2 Al2O3 50 nm",
+      "ms": 13261.001307999999
+    },
+    {
+      "stage": "20_Data_Power_Via_Open",
+      "label": "Open tier-3 data/power vias in ILD2",
+      "ms": 545.1216199999981
+    },
+    {
+      "stage": "21_Via2_Fill",
+      "label": "Deposit via2 Ti 2 nm",
+      "ms": 404.3666009999979
+    },
+    {
+      "stage": "21_Via2_Fill",
+      "label": "Deposit via2 Ni 28 nm",
+      "ms": 425.2102190000005
+    },
+    {
+      "stage": "21_Via2_Fill",
+      "label": "Deposit via2 Au 30 nm",
+      "ms": 411.29596799999854
+    },
+    {
+      "stage": "22_Graphene_Transfer",
+      "label": "Transfer graphene using Follow surface",
+      "ms": 404.9413679999998
+    },
+    {
+      "stage": "23_Graphene_Pattern",
+      "label": "Pattern graphene sensing channels",
+      "ms": 493.98366299999907
+    },
+    {
+      "stage": "24_Graphene_SD",
+      "label": "Deposit graphene contact Ti 2 nm",
+      "ms": 445.48929799999314
+    },
+    {
+      "stage": "24_Graphene_SD",
+      "label": "Deposit graphene contact Ni 28 nm",
+      "ms": 449.37743399999454
+    },
+    {
+      "stage": "24_Graphene_SD",
+      "label": "Deposit graphene contact Au 30 nm",
+      "ms": 436.5917150000023
+    },
+    {
+      "stage": "25_Final_Al2O3",
+      "label": "Deposit final conformal Al2O3 70 nm",
+      "ms": 59413.783533
+    },
+    {
+      "stage": "26_Final_Sensing_Windows",
+      "label": "Open graphene sensing windows in final Al2O3 only",
+      "ms": 3197.1846890000015
+    }
+  ]
+}
