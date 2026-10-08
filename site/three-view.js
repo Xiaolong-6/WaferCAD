@@ -899,6 +899,9 @@ export function createThreeView({
       surfaceMaterialPool,
       currentRoughMode,
       lastLodSignature,
+      arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
+      arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
+      electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
       model: physicalSceneModel,
       signature: physicalSceneSignature,
     };
@@ -951,6 +954,10 @@ export function createThreeView({
     physicalSceneSignature = entry.signature;
     activeSceneVariant = entry.mode;
     host.dataset.sceneVariant = entry.mode;
+    host.dataset.transparentArrayLodTier = entry.arrayLodTier || 'exact';
+    host.dataset.transparentArrayDisplayTolerance = entry.arrayLodTolerance || '0';
+    host.dataset.fullWaferTransparencyLod = String(entry.arrayLodTier !== 'exact');
+    host.dataset.electricalFarLodBodyCount = entry.electricalFarLodBodyCount || '0';
     return true;
   }
 
