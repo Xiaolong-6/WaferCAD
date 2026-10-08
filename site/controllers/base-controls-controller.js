@@ -63,10 +63,17 @@ export function createBaseControlsController({
   }
 
   async function applyBase({ recipeBase = null } = {}) {
-    const shape = recipeBase?.shape || root.querySelector('#substrateShape button.active').dataset.shape,
+    const shape =
+        recipeBase?.shape || root.querySelector('#substrateShape button.active').dataset.shape,
       width = recipeBase ? Number(recipeBase.width) : manualMicron($('baseWidth').value),
-      height = recipeBase ? Number(recipeBase.height) : shape === 'circle' ? width : manualMicron($('baseHeight').value),
-      thickness = recipeBase ? Number(recipeBase.thickness) : manualMicron($('baseThickness').value);
+      height = recipeBase
+        ? Number(recipeBase.height)
+        : shape === 'circle'
+          ? width
+          : manualMicron($('baseHeight').value),
+      thickness = recipeBase
+        ? Number(recipeBase.thickness)
+        : manualMicron($('baseThickness').value);
 
     if (
       !Number.isFinite(width) ||

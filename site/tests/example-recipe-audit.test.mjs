@@ -46,24 +46,26 @@ for (const entry of BUNDLED_EXAMPLES) {
 
     for (const branch of branches) {
       const path = historyPath(branch.headNodeId, nodes);
-      const expected = path.filter((node) =>
-        node.operation?.kind !== 'base' &&
-        (node.operation?.processType !== 'example-root' || branch.id === 'main'),
+      const expected = path.filter(
+        (node) =>
+          node.operation?.kind !== 'base' &&
+          (node.operation?.processType !== 'example-root' || branch.id === 'main'),
       );
       const recipe = branch.headState?.processRecipe;
       assert.ok(recipe?.base, `${branch.id}: missing reproducible Base`);
       assert.equal(recipe.steps.length, expected.length, `${branch.id}: Recipe lost History steps`);
       assert.deepEqual(
         recipe.steps.map((step) => step.command),
-        expected.map((node) =>
-          ({
-            add: 'deposit',
-            grow: 'extend',
-            etch: 'etch',
-            implant: 'implant',
-            electrical: 'electrical',
-            record: 'record',
-          })[node.operation.kind],
+        expected.map(
+          (node) =>
+            ({
+              add: 'deposit',
+              grow: 'extend',
+              etch: 'etch',
+              implant: 'implant',
+              electrical: 'electrical',
+              record: 'record',
+            })[node.operation.kind],
         ),
         `${branch.id}: Recipe operations differ from actual History`,
       );

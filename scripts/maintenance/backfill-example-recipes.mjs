@@ -74,9 +74,11 @@ function surfaceFor(project, node, targetId) {
   for (const region of model.regions || []) {
     for (const segment of region.stack || []) {
       const actual = segment[surfaceKey];
-      if (actual?.kind === 'rough' &&
-          (!targetId || segment.layerId === targetId) &&
-          actual.morphology === requested.morphology) {
+      if (
+        actual?.kind === 'rough' &&
+        (!targetId || segment.layerId === targetId) &&
+        actual.morphology === requested.morphology
+      ) {
         return {
           ...clone(requested),
           featureCv: actual.featureCv,
@@ -123,8 +125,9 @@ function stepFor(project, node, terminalModel, precedingModel) {
     params = {
       ...shared,
       material: (() => {
-        const introduced = model.layers.filter((layer) =>
-          !precedingModel?.layers?.some((prior) => prior.id === layer.id));
+        const introduced = model.layers.filter(
+          (layer) => !precedingModel?.layers?.some((prior) => prior.id === layer.id),
+        );
         return introduced.length === 1 ? layerName(introduced[0].id) : name;
       })(),
       thicknessUm: thickness,
@@ -141,8 +144,11 @@ function stepFor(project, node, terminalModel, precedingModel) {
     };
   } else if (op.kind === 'etch') {
     command = 'etch';
-    const targetId = raw.etchTargetLayerIds?.[0] || op.etchTargetLayerIds?.[0] ||
-      raw.targetLayerId || op.targetLayerId;
+    const targetId =
+      raw.etchTargetLayerIds?.[0] ||
+      op.etchTargetLayerIds?.[0] ||
+      raw.targetLayerId ||
+      op.targetLayerId;
     const profileName = raw.etchProfile || op.etchProfile || op.profile || 'directional';
     const profile = profileName === 'isotropic-release' ? 'isotropic' : profileName;
     params = {
@@ -204,13 +210,16 @@ async function main(filename) {
       const recipe = normalizeProcessRecipe({
         name: `${project.name || filename} · Process reconstruction`,
         base: baseFor(project, state || chain[0].state, filename),
-        steps: chain.map((node, index) =>
-          stepFor(
-            project,
-            node,
-            modelFor(project, state || chain.at(-1).state),
-            index ? modelFor(project, chain[index - 1].state) : null,
-          )).filter(Boolean),
+        steps: chain
+          .map((node, index) =>
+            stepFor(
+              project,
+              node,
+              modelFor(project, state || chain.at(-1).state),
+              index ? modelFor(project, chain[index - 1].state) : null,
+            ),
+          )
+          .filter(Boolean),
       });
       recipesByNodeId.set(id, recipe);
     }
@@ -247,13 +256,18 @@ async function main(filename) {
   assert.equal(opened.processRecipe.steps.length, project.processRecipe.steps.length);
   if (write) await writeFile(target, serialized);
   else assert.equal(serialized, source, filename + ': generated Recipe is not committed');
-  console.log(JSON.stringify({
-    filename,
-    steps: project.processRecipe.steps.length,
-    branches: graph.branches.length,
-    mask: project.maskSourceMode === 'draw' ? project.drawMask?.shapes?.length : project.layout?.elements?.length,
-    write,
-  }));
+  console.log(
+    JSON.stringify({
+      filename,
+      steps: project.processRecipe.steps.length,
+      branches: graph.branches.length,
+      mask:
+        project.maskSourceMode === 'draw'
+          ? project.drawMask?.shapes?.length
+          : project.layout?.elements?.length,
+      write,
+    }),
+  );
 }
 
 for (const filename of files.filter((f) => !only || f.includes(only))) {

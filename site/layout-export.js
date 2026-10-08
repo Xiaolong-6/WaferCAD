@@ -123,9 +123,7 @@ function hasRepresentableDbuArea(ring, dbuMicron = DBU_TARGET_MICRON) {
       points.push(point);
     }
   }
-  if (points.length > 1 &&
-      points[0][0] === points.at(-1)[0] &&
-      points[0][1] === points.at(-1)[1]) {
+  if (points.length > 1 && points[0][0] === points.at(-1)[0] && points[0][1] === points.at(-1)[1]) {
     points.pop();
   }
   return points.length >= 3 && quantizedPolygonArea2(points) > 0n;
@@ -139,9 +137,8 @@ function polygonElementsFromGeometry(geometry, layer, datatype) {
     // vertices. Those have no representation at the 0.1 nm export grid.
     // Retain strict rejection of standalone tiny polygons and of any ring
     // whose *entire* fracture would collapse.
-    const representable = poly.length > 1
-      ? pieces.filter((ring) => hasRepresentableDbuArea(ring))
-      : pieces;
+    const representable =
+      poly.length > 1 ? pieces.filter((ring) => hasRepresentableDbuArea(ring)) : pieces;
     if (poly.length > 1 && pieces.length && !representable.length) {
       throw new Error('Mask export polygon-with-holes collapses at GDS/OAS database precision.');
     }

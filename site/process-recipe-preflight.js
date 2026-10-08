@@ -7,7 +7,13 @@ export function normalizeRecipeLayerKey(value) {
 
 export function validateRecipeExecution(
   steps,
-  { model = null, maskState = null, base = null, limit = steps.length, startMode = 'continue' } = {},
+  {
+    model = null,
+    maskState = null,
+    base = null,
+    limit = steps.length,
+    startMode = 'continue',
+  } = {},
 ) {
   const errors = [];
   const warnings = [];
@@ -36,13 +42,18 @@ export function validateRecipeExecution(
     const prefix = `Step ${index + 1}`;
     const params = step.params || {};
     if (step.command === 'extend' && !materials.has(params.material)) {
-      errors.push(`${prefix}: material "${params.material}" does not exist in the starting model or preceding Steps.`);
+      errors.push(
+        `${prefix}: material "${params.material}" does not exist in the starting model or preceding Steps.`,
+      );
     }
     if (step.command === 'etch' && params.target && !materials.has(params.target)) {
-      errors.push(`${prefix}: etch target "${params.target}" does not exist in the starting model or preceding Steps.`);
+      errors.push(
+        `${prefix}: etch target "${params.target}" does not exist in the starting model or preceding Steps.`,
+      );
     }
     if (step.command === 'deposit') materials.add(params.material);
-    if (['snapshot', 'record'].includes(step.command) || !['mask', 'invert'].includes(params.area)) continue;
+    if (['snapshot', 'record'].includes(step.command) || !['mask', 'invert'].includes(params.area))
+      continue;
 
     const mask = params.mask;
     if (!mask) {
@@ -60,8 +71,12 @@ export function validateRecipeExecution(
       errors.push(`${prefix}: captured file Mask has no selected layers.`);
       continue;
     }
-    if (layout?.root && mask.cell && mask.cell !== layout.root &&
-      !Object.hasOwn(layout.hierarchy || {}, mask.cell)) {
+    if (
+      layout?.root &&
+      mask.cell &&
+      mask.cell !== layout.root &&
+      !Object.hasOwn(layout.hierarchy || {}, mask.cell)
+    ) {
       errors.push(`${prefix}: Mask cell "${mask.cell}" is missing from the current layout.`);
     }
     if (existingKeys) {

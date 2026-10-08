@@ -19,7 +19,8 @@ import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
-const requestedVariant = process.argv.find((arg) => arg.startsWith('--variant='))?.slice(10) || null;
+const requestedVariant =
+  process.argv.find((arg) => arg.startsWith('--variant='))?.slice(10) || null;
 const only = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
 const examples = BUNDLED_EXAMPLES.filter((example) => !only || example.id === only);
 assert.ok(examples.length, 'No matching bundled example was found.');
@@ -77,9 +78,9 @@ try {
         }
         await variant.locator(':scope > .history-variant-head .history-variant-name').click();
         await page.waitForFunction(
-          (id) => document.querySelector(
-            `.history-variant[data-variant-id="${id}"]`,
-          )?.dataset.active === 'true',
+          (id) =>
+            document.querySelector(`.history-variant[data-variant-id="${id}"]`)?.dataset.active ===
+            'true',
           requestedVariant,
           { timeout: 30000 },
         );
@@ -129,33 +130,54 @@ try {
       );
       const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
       const status = (await page.locator('#statusText').innerText()).trim();
-      assert.match(summary, new RegExp(`^Completed: ${count}/${count} steps committed`),
-        `${example.id}: Run All failed or stopped: ${summary}; status: ${status}`);
+      assert.match(
+        summary,
+        new RegExp(`^Completed: ${count}/${count} steps committed`),
+        `${example.id}: Run All failed or stopped: ${summary}; status: ${status}`,
+      );
 
       console.log(`${example.id}: browser reports ${summary}; checking final UI and export`);
       const exported = await exportCurrentProject(page, 120000);
-      assert.equal(exported.processRecipe?.steps?.length, count,
-        `${example.id}: rebuilt export must retain the complete Recipe`);
-      assert.equal(exported.snapshotBranches?.activeBranchId, 'main',
-        `${example.id}: rebuilding should create a fresh Main`);
+      assert.equal(
+        exported.processRecipe?.steps?.length,
+        count,
+        `${example.id}: rebuilt export must retain the complete Recipe`,
+      );
+      assert.equal(
+        exported.snapshotBranches?.activeBranchId,
+        'main',
+        `${example.id}: rebuilding should create a fresh Main`,
+      );
       if (historyChoice === 'keep') {
-        assert.ok(exported.snapshotBranches?.branches?.length > 1,
-          `${example.id}: Keep should archive the previous History as a Variant`);
+        assert.ok(
+          exported.snapshotBranches?.branches?.length > 1,
+          `${example.id}: Keep should archive the previous History as a Variant`,
+        );
       } else {
-        assert.equal(exported.snapshotBranches?.branches?.length, 1,
-          `${example.id}: Clear should remove all previous Variants`);
+        assert.equal(
+          exported.snapshotBranches?.branches?.length,
+          1,
+          `${example.id}: Clear should remove all previous Variants`,
+        );
       }
-      assert.ok(exported.snapshotBranches?.nodes?.length >= count,
-        `${example.id}: rebuilt History omits Process Steps`);
-      assert.ok(exported.model.layers.length > 1,
-        `${example.id}: Kernel replay left only the Base substrate`);
+      assert.ok(
+        exported.snapshotBranches?.nodes?.length >= count,
+        `${example.id}: rebuilt History omits Process Steps`,
+      );
+      assert.ok(
+        exported.model.layers.length > 1,
+        `${example.id}: Kernel replay left only the Base substrate`,
+      );
       assert.deepEqual(
         exported.model.layers.map((layer) => layer.name).sort(),
         sourceProject.model.layers.map((layer) => layer.name).sort(),
         `${example.id}: recreated material list differs from the saved example`,
       );
-      assert.equal(exported.model.implants.length, sourceProject.model.implants.length,
-        `${example.id}: rebuilt implant count differs`);
+      assert.equal(
+        exported.model.implants.length,
+        sourceProject.model.implants.length,
+        `${example.id}: rebuilt implant count differs`,
+      );
       assert.equal(
         exported.model.electricalRegions.length,
         sourceProject.model.electricalRegions.length,
@@ -174,20 +196,30 @@ try {
       // Preserve actionable evidence when a large-array replay exhausts
       // Chromium memory, navigates unexpectedly or blocks the main thread.
       const state = await Promise.race([
-        page.evaluate(() => ({
-          url: location.href,
-          ready: document.documentElement.dataset.appReady,
-          status: document.getElementById('statusText')?.textContent,
-          progress: document.getElementById('recipeProgressCount')?.textContent,
-          summary: document.getElementById('recipeRunSummary')?.textContent,
-          projectButton: {
-            exists: Boolean(document.querySelector('.workstation-rail-button[data-tool="project"]')),
-            visible: Boolean(document.querySelector('.workstation-rail-button[data-tool="project"]')?.checkVisibility()),
-          },
-          threeState: document.getElementById('threeHost')?.dataset?.renderState,
-          threeError: document.getElementById('threeHost')?.dataset?.renderError,
-        })).catch((reason) => ({ error: String(reason) })),
-        new Promise((resolve) => setTimeout(() => resolve({ error: 'UI unresponsive after 4 s' }), 4000)),
+        page
+          .evaluate(() => ({
+            url: location.href,
+            ready: document.documentElement.dataset.appReady,
+            status: document.getElementById('statusText')?.textContent,
+            progress: document.getElementById('recipeProgressCount')?.textContent,
+            summary: document.getElementById('recipeRunSummary')?.textContent,
+            projectButton: {
+              exists: Boolean(
+                document.querySelector('.workstation-rail-button[data-tool="project"]'),
+              ),
+              visible: Boolean(
+                document
+                  .querySelector('.workstation-rail-button[data-tool="project"]')
+                  ?.checkVisibility(),
+              ),
+            },
+            threeState: document.getElementById('threeHost')?.dataset?.renderState,
+            threeError: document.getElementById('threeHost')?.dataset?.renderError,
+          }))
+          .catch((reason) => ({ error: String(reason) })),
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ error: 'UI unresponsive after 4 s' }), 4000),
+        ),
       ]);
       const details = {
         example: example.id,

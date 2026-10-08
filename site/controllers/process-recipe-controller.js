@@ -106,19 +106,15 @@ export function createProcessRecipeController({
 
   function persist(next = recipe, { recordHistory = true } = {}) {
     const normalized = normalizeProcessRecipe(next);
-    if (
-      recordHistory &&
-      JSON.stringify(normalized) !== JSON.stringify(recipe)
-    ) {
+    if (recordHistory && JSON.stringify(normalized) !== JSON.stringify(recipe)) {
       undoStack.push(clone(recipe));
       if (undoStack.length > recipeHistoryLimit) undoStack.shift();
       redoStack = [];
     }
     recipe = normalized;
-    activeStepId =
-      recipe.steps.some((step) => step.id === activeStepId)
-        ? activeStepId
-        : recipe.activeStepId || recipe.steps[0]?.id || null;
+    activeStepId = recipe.steps.some((step) => step.id === activeStepId)
+      ? activeStepId
+      : recipe.activeStepId || recipe.steps[0]?.id || null;
     recipe.activeStepId = activeStepId;
     setRecipe(clone(recipe));
     onChanged();
@@ -274,12 +270,11 @@ export function createProcessRecipeController({
       previousParams = previous.params || {},
       nextStep = defaultStep(command),
       nextParams = nextStep.params || {},
-      previousLength =
-        Number.isFinite(Number(previousParams.thicknessUm))
-          ? Number(previousParams.thicknessUm)
-          : Number.isFinite(Number(previousParams.depthUm))
-            ? Number(previousParams.depthUm)
-            : null;
+      previousLength = Number.isFinite(Number(previousParams.thicknessUm))
+        ? Number(previousParams.thicknessUm)
+        : Number.isFinite(Number(previousParams.depthUm))
+          ? Number(previousParams.depthUm)
+          : null;
 
     nextStep.id = previous.id;
 
@@ -434,7 +429,8 @@ export function createProcessRecipeController({
       render();
       return true;
     } catch (error) {
-      if (fieldInfo) markInvalidField(stepId, fieldInfo.key, fieldInfo.input, fieldInfo.label, error);
+      if (fieldInfo)
+        markInvalidField(stepId, fieldInfo.key, fieldInfo.input, fieldInfo.label, error);
       else status(error.message, 'error');
       return false;
     }
@@ -476,7 +472,9 @@ export function createProcessRecipeController({
     host.replaceChildren();
     const step = recipe.steps.find((item) => item.id === activeStepId);
     if (!step) {
-      host.append(make(root, 'p', 'hint compact-hint', 'Add a step, choose a template, or switch to Code.'));
+      host.append(
+        make(root, 'p', 'hint compact-hint', 'Add a step, choose a template, or switch to Code.'),
+      );
       return;
     }
 
@@ -498,7 +496,9 @@ export function createProcessRecipeController({
     operationSelect.title =
       'Change this step type. Compatible face, area, mask, and length values are kept.';
     operationSelect.setAttribute('aria-label', 'Operation type');
-    operationSelect.addEventListener('change', () => changeStepCommand(step.id, operationSelect.value));
+    operationSelect.addEventListener('change', () =>
+      changeStepCommand(step.id, operationSelect.value),
+    );
     const actions = make(root, 'div', 'recipe-step-editor-actions');
     for (const [text, delta] of [
       ['↑', -1],
@@ -554,13 +554,24 @@ export function createProcessRecipeController({
     const bindText = (label, key, value = p[key], opts = {}) => {
       const input = textInput(value ?? '', opts);
       restoreField(step.id, key, input);
-      attachCommit(input, () => updateStep(step.id, (target) => (target.params[key] = input.value), { key, input, label }), 'change');
+      attachCommit(
+        input,
+        () =>
+          updateStep(step.id, (target) => (target.params[key] = input.value), {
+            key,
+            input,
+            label,
+          }),
+        'change',
+      );
       grid.append(field(label, input));
       return input;
     };
     const bindSelect = (label, key, values, selected = p[key]) => {
       const select = selectInput(values, selected);
-      attachCommit(select, () => updateStep(step.id, (target) => (target.params[key] = select.value)));
+      attachCommit(select, () =>
+        updateStep(step.id, (target) => (target.params[key] = select.value)),
+      );
       grid.append(field(label, select));
       return select;
     };
@@ -568,14 +579,18 @@ export function createProcessRecipeController({
       const input = textInput(recipeLengthText(valueUm));
       input.placeholder = 'e.g. 30 nm, 0.5 µm';
       restoreField(step.id, key, input);
-      attachCommit(input, () => {
-        try {
-          const microns = recipeLengthUm(input.value, label);
-          updateStep(step.id, (target) => (target.params[key] = microns), { key, input, label });
-        } catch (error) {
-          markInvalidField(step.id, key, input, label, error);
-        }
-      }, 'change');
+      attachCommit(
+        input,
+        () => {
+          try {
+            const microns = recipeLengthUm(input.value, label);
+            updateStep(step.id, (target) => (target.params[key] = microns), { key, input, label });
+          } catch (error) {
+            markInvalidField(step.id, key, input, label, error);
+          }
+        },
+        'change',
+      );
       grid.append(field(label, input));
     };
 
@@ -592,7 +607,11 @@ export function createProcessRecipeController({
       ]);
       bindText('Label', 'label');
       bindText('Temp. °C', 'temperatureC', p.temperatureC ?? '', { type: 'number', step: 'any' });
-      bindText('Time min', 'durationMin', p.durationMin ?? '', { type: 'number', min: '0', step: 'any' });
+      bindText('Time min', 'durationMin', p.durationMin ?? '', {
+        type: 'number',
+        min: '0',
+        step: 'any',
+      });
       bindText('Ambient', 'ambient', p.ambient || '');
       bindText('Note', 'note', p.note || '');
     } else {
@@ -694,9 +713,13 @@ export function createProcessRecipeController({
                 input.addEventListener('change', () => {
                   try {
                     const value = recipeLengthUm(input.value, `etch.surface.${key}`);
-                    updateStep(step.id, (target) => {
-                      target.params.surface = { ...target.params.surface, [key]: value };
-                    }, { key: fieldKey, input, label });
+                    updateStep(
+                      step.id,
+                      (target) => {
+                        target.params.surface = { ...target.params.surface, [key]: value };
+                      },
+                      { key: fieldKey, input, label },
+                    );
                   } catch (error) {
                     markInvalidField(step.id, fieldKey, input, label, error);
                   }
@@ -763,7 +786,12 @@ export function createProcessRecipeController({
       } else if (step.command === 'implant') {
         bindText('Name', 'name');
         bindLength('Depth', 'depthUm', p.depthUm);
-        bindText('Tilt X °', 'tilt', p.tilt ?? 0, { type: 'number', min: '-80', max: '80', step: '1' });
+        bindText('Tilt X °', 'tilt', p.tilt ?? 0, {
+          type: 'number',
+          min: '-80',
+          max: '80',
+          step: '1',
+        });
       } else if (step.command === 'electrical') {
         bindText('Name', 'name');
         bindLength('Depth', 'depthUm', p.depthUm);
@@ -803,16 +831,15 @@ export function createProcessRecipeController({
         fullSummary = recipeStepSummary(step);
       copy.title = [fullTitle, fullSummary].filter(Boolean).join(' — ');
       button.title = copy.title;
-      copy.append(
-        make(root, 'strong', '', fullTitle),
-        make(root, 'small', '', fullSummary),
-      );
-      const run = lastRunResult && lastRunResult.signature === recipeSignature() &&
+      copy.append(make(root, 'strong', '', fullTitle), make(root, 'small', '', fullSummary));
+      const run =
+        lastRunResult &&
+        lastRunResult.signature === recipeSignature() &&
         lastRunResult.modelRevision === Number(getModel()?.processRevision || 0) &&
         lastRunResult.modelRef.deref() === getModel()
-        ? lastRunResult : null;
-      const stateText = run?.failedIndex === index ? '✕' :
-        (run && index < run.completed ? '✓' : '○');
+          ? lastRunResult
+          : null;
+      const stateText = run?.failedIndex === index ? '✕' : run && index < run.completed ? '✓' : '○';
       button.classList.toggle('complete', stateText === '✓');
       button.classList.toggle('failed', stateText === '✕');
       const state = make(root, 'span', 'recipe-step-state', stateText);
@@ -834,7 +861,10 @@ export function createProcessRecipeController({
     editor.value = serializeProcessRecipe(recipe);
   }
 
-  function validateContext(limit = recipe.steps.length, startMode = $('recipeRunStart')?.value || 'continue') {
+  function validateContext(
+    limit = recipe.steps.length,
+    startMode = $('recipeRunStart')?.value || 'continue',
+  ) {
     let sourceSteps = recipe.steps;
     const fieldErrors = [...invalidFields.values()].map((entry) => entry.message);
     if (codeDraftDirty) {
@@ -854,8 +884,11 @@ export function createProcessRecipeController({
       base: recipe.base || null,
     });
     return {
-      errors: [...report.errors, ...fieldErrors,
-        ...(codeDraftDirty ? ['Code draft is unapplied. Apply code before running.'] : [])],
+      errors: [
+        ...report.errors,
+        ...fieldErrors,
+        ...(codeDraftDirty ? ['Code draft is unapplied. Apply code before running.'] : []),
+      ],
       warnings: report.warnings,
     };
   }
@@ -868,7 +901,8 @@ export function createProcessRecipeController({
       ? report.errors.map((message) => ['error', `✕ ${message}`])
       : [['success', `✓ ${recipe.steps.length} step(s) structurally valid`]];
     for (const message of report.warnings) lines.push(['warning', `⚠ ${message}`]);
-    for (const [kind, text] of lines) host.append(make(root, 'div', `recipe-validation-${kind}`, text));
+    for (const [kind, text] of lines)
+      host.append(make(root, 'div', `recipe-validation-${kind}`, text));
     return report;
   }
 
@@ -891,7 +925,8 @@ export function createProcessRecipeController({
       target.textContent = '';
       return;
     }
-    const stale = result.signature !== recipeSignature() ||
+    const stale =
+      result.signature !== recipeSignature() ||
       result.modelRevision !== Number(getModel()?.processRevision || 0) ||
       result.modelRef.deref() !== getModel();
     target.textContent = stale
@@ -1058,7 +1093,7 @@ export function createProcessRecipeController({
       // Stop remains the only active Recipe control until the run settles.
       for (const control of root.querySelectorAll(
         '#recipeProcessPane input, #recipeProcessPane select, ' +
-        '#recipeProcessPane textarea, #recipeProcessPane button',
+          '#recipeProcessPane textarea, #recipeProcessPane button',
       )) {
         if (control.id === 'recipeStopBtn') continue;
         runDisabledState.set(control, control.disabled);
@@ -1131,9 +1166,11 @@ export function createProcessRecipeController({
         return;
       }
       // Confirmations yield control; an edit made in the meantime invalidates preflight.
-      if (recipeSignature() !== signature ||
-          validateContext(total, startMode).errors.length) {
-        status('Recipe changed or became invalid while preparing. No Process Steps applied.', 'error');
+      if (recipeSignature() !== signature || validateContext(total, startMode).errors.length) {
+        status(
+          'Recipe changed or became invalid while preparing. No Process Steps applied.',
+          'error',
+        );
         return;
       }
 
@@ -1165,13 +1202,18 @@ export function createProcessRecipeController({
         $('recipeProgressBar').value = completed;
       }
       outcome = stopRequested ? 'Stopped' : 'Completed';
-      status(`Recipe ${outcome.toLowerCase()}: ${completed}/${total} steps committed.`,
-        stopRequested ? 'warning' : 'success');
+      status(
+        `Recipe ${outcome.toLowerCase()}: ${completed}/${total} steps committed.`,
+        stopRequested ? 'warning' : 'success',
+      );
     } catch (error) {
       outcome = stopRequested ? 'Stopped' : 'Failed';
-      status(stopRequested
-        ? `Recipe stopped after ${completed} committed step(s).`
-        : `Recipe failed at Step ${(failedIndex ?? completed) + 1}: ${error.message}`, 'error');
+      status(
+        stopRequested
+          ? `Recipe stopped after ${completed} committed step(s).`
+          : `Recipe failed at Step ${(failedIndex ?? completed) + 1}: ${error.message}`,
+        'error',
+      );
     } finally {
       if (started) {
         lastRunResult = {
@@ -1257,9 +1299,7 @@ export function createProcessRecipeController({
         command: 'etch',
         params: {
           target: targetName,
-          [p.etchProfile === 'planarize' ? 'targetZ' : 'depth']: Number(
-            p.targetZ ?? p.thickness,
-          ),
+          [p.etchProfile === 'planarize' ? 'targetZ' : 'depth']: Number(p.targetZ ?? p.thickness),
           profile: p.etchProfile || 'directional',
           surface: p.surface || 'smooth',
           ...common,
@@ -1379,7 +1419,8 @@ export function createProcessRecipeController({
     });
     $('recipeRunAllBtn').addEventListener('click', () => void run(recipe.steps.length));
     $('recipeRunToBtn').textContent = 'Replay 1 → Step';
-    $('recipeRunToBtn').title = 'Always replays Steps 1 through the selected Step from the chosen starting model.';
+    $('recipeRunToBtn').title =
+      'Always replays Steps 1 through the selected Step from the chosen starting model.';
     $('recipeRunStart').addEventListener('change', () => showValidation());
     $('recipeRunToBtn').addEventListener('click', () => {
       const index = recipe.steps.findIndex((step) => step.id === activeStepId);

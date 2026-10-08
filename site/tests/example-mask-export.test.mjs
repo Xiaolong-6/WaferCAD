@@ -21,10 +21,14 @@ for (const example of BUNDLED_EXAMPLES) {
       text: async () => bytes.toString('utf8'),
     });
     const draw = project.maskSourceMode === 'draw';
-    const cells = new Set((project.layout.elements || [])
-      .map((element) => element.sourceCell || project.layout.root || 'ROOT'));
-    const layers = new Set((project.layout.elements || [])
-      .map((element) => `${element.layer}|${element.datatype ?? 0}`));
+    const cells = new Set(
+      (project.layout.elements || []).map(
+        (element) => element.sourceCell || project.layout.root || 'ROOT',
+      ),
+    );
+    const layers = new Set(
+      (project.layout.elements || []).map((element) => `${element.layer}|${element.datatype ?? 0}`),
+    );
     const exported = collectMaskExportElements({
       layout: project.layout,
       maskSourceMode: project.maskSourceMode,
@@ -36,8 +40,10 @@ for (const example of BUNDLED_EXAMPLES) {
       selectedCells: cells,
       selectedLayerKeys: layers,
     });
-    assert.ok(exported.elements.length > 0,
-      `${example.id}: ${draw ? 'Draw' : 'File'} Mask produced no exportable geometry`);
+    assert.ok(
+      exported.elements.length > 0,
+      `${example.id}: ${draw ? 'Draw' : 'File'} Mask produced no exportable geometry`,
+    );
     const gdsBytes = serializeGDS(exported.elements);
     const oasBytes = serializeOASIS(exported.elements);
     assert.ok(gdsBytes.byteLength > 0);
