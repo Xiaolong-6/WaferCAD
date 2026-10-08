@@ -355,8 +355,9 @@ export function createWorkspaceActionsController({
     $('undoBtn').onclick = () => {
       const history = getHistory();
       if (!history.length) return;
-      getFuture().push(stateSnapshot());
-      restoreSnapshot(history.pop());
+      const target = history.pop();
+      getFuture().push(stateSnapshot({ includeHistoryGraph: Boolean(target.snapshotGraph) }));
+      restoreSnapshot(target);
       setBaseRevertSnapshot(null);
       snapshotManager.syncCursorToProcessRevision(getModel()?.processRevision || 0);
       syncBaseControls();
@@ -368,8 +369,9 @@ export function createWorkspaceActionsController({
     $('redoBtn').onclick = () => {
       const future = getFuture();
       if (!future.length) return;
-      getHistory().push(stateSnapshot());
-      restoreSnapshot(future.pop());
+      const target = future.pop();
+      getHistory().push(stateSnapshot({ includeHistoryGraph: Boolean(target.snapshotGraph) }));
+      restoreSnapshot(target);
       setBaseRevertSnapshot(null);
       snapshotManager.syncCursorToProcessRevision(getModel()?.processRevision || 0);
       syncBaseControls();
