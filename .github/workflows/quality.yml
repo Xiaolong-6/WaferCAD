@@ -35,12 +35,11 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Lint and tests
-        run: npm run check:ci
-
-      # Temporary PR-only formatter diagnostic; remove after reviewing log.
+      # Temporary formatter diagnostic runs first so it cannot be delayed by scientific tests.
       - name: Show precise formatter diff
-        if: always()
         run: |
           npx prettier --write site/controllers/process-recipe-controller.js docs/MAIN_P0_P1_STABILITY_2026-10-08.md
           git diff -- site/controllers/process-recipe-controller.js docs/MAIN_P0_P1_STABILITY_2026-10-08.md
+
+      - name: Lint and tests
+        run: npm run check:ci
