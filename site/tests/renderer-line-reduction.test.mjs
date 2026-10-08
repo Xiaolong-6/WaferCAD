@@ -97,3 +97,24 @@ test('far-field sidewall LOD removes subpixel waviness but keeps Z and depth met
   assert.deepEqual(simplified[0].p, parts[0].p);
   assert.deepEqual(simplified.at(-1).q, parts.at(-1).q);
 });
+
+test('display LOD reconnects shuffled directed wall edges without connecting other Z owners', () => {
+  const parts = Array.from({ length: 50 }, (_, index) => ({
+    p: [index * 0.1, index % 2 ? 0.003 : 0],
+    q: [(index + 1) * 0.1, (index + 1) % 2 ? 0.003 : 0],
+    z0: 1,
+    z1: 2,
+    buried: true,
+    layerId: 'buried-interface',
+  }));
+  const reordered = parts.filter((_, index) => index % 2).concat(
+    parts.filter((_, index) => index % 2 === 0),
+  );
+  const reduced = simplifyDisplaySidewallParts(reordered, 0.02);
+  assert.ok(reduced.length < 10, `expected stitched chain, got ${reduced.length} edges`);
+  assert.deepEqual(reduced[0].p, parts[0].p);
+  assert.deepEqual(reduced.at(-1).q, parts.at(-1).q);
+  const secondDepth = { ...parts[5], z0: 3, z1: 4 };
+  const separated = simplifyDisplaySidewallParts([...parts, secondDepth], 0.02);
+  assert.ok(separated.some((edge) => edge.z0 === 3));
+});
