@@ -4,6 +4,8 @@ This is an evidence index, not an alternative product contract. Files keep their
 
 ## Latest verification
 
+- [Unified toolbar integration — 2026-10-08](../UNIFIED_TOOLBAR_INTEGRATION_2026-10-08.md): reviewed branch merge, Pan palette repair and real browser acceptance.
+
 - [Desktop integration release audit — 2026-10-08](../PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md): physical precision, Recipe persistence, six production Run All families and desktop runtime evidence.
 - [Documentation architecture audit — 2026-10-08](../DOCUMENTATION_AUDIT_2026-10-08.md): content reconciliation, navigation and permanent documentation checks.
 
