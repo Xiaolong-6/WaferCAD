@@ -64,6 +64,37 @@ export function createProductLayoutChecks({ capture }) {
       document.documentElement.classList.contains('workstation-compact-ui'),
     );
 
+    const chrome = await page.evaluate(() => {
+      const header = document.querySelector('.topbar'),
+        nav = document.querySelector('.workstation-viewbar'),
+        shell = document.querySelector('.app-shell'),
+        h = header?.getBoundingClientRect(),
+        n = nav?.getBoundingClientRect();
+      return {
+        navigationInHeader: Boolean(header?.contains(nav)),
+        redundantViewHint: Boolean(document.querySelector('.workstation-view-meta')),
+        rows: getComputedStyle(shell).gridTemplateRows.trim().split(/\s+/).length,
+        headerBottom: h?.bottom ?? -1,
+        navigationBottom: n?.bottom ?? -1,
+        navigationHeight: n?.height ?? 0,
+        navigationClientWidth: nav?.clientWidth ?? 0,
+        navigationScrollWidth: nav?.scrollWidth ?? 0,
+      };
+    });
+    assert.equal(chrome.navigationInHeader, true, `${name}: view navigation must be in topbar`);
+    assert.equal(chrome.redundantViewHint, false, `${name}: redundant view hint must be removed`);
+    assert.equal(chrome.rows, 1, `${name}: workspace shell must use one row`);
+    assert.ok(chrome.navigationHeight > 20, `${name}: header navigation must remain usable`);
+    assert.ok(
+      chrome.navigationBottom <= chrome.headerBottom + 1,
+      `${name}: navigation must fit within the header`,
+    );
+    assert.ok(
+      chrome.navigationClientWidth > 40 &&
+        chrome.navigationScrollWidth >= chrome.navigationClientWidth,
+      `${name}: navigation must remain reachable on narrow viewports`,
+    );
+
     if (name === 'phone') {
       assert.equal(compact, true, 'phone: compact workstation class is missing');
       assert.equal(await page.locator('#mainPanel').isVisible(), true);
