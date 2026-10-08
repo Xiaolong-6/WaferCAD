@@ -78,7 +78,7 @@ test('the novice path is discoverable and names the current UI controls', async 
   assert.match(guide, /click \*\*Start empty\*\*/);
   assert.match(guide, /\*\*Project\*\* tab[\s\S]*\*\*XYZ unit/);
   assert.match(guide, /separate \*\*Base\*\* tab/);
-  assert.match(guide, /default layer name[\s\S]*\*\*Base\*\*/);
+  assert.match(guide, /\*\*Base\*\* is the default layer name/);
   assert.match(guide, /uncheck Also add to Recipe/);
 
   const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
@@ -104,6 +104,15 @@ test('the novice path is discoverable and names the current UI controls', async 
   ]) {
     assert.ok(html.includes(`id="${id}"`), `documented beginner control missing in UI: ${id}`);
   }
+});
+
+test('Mask ROI documentation agrees with Whole face worker clipping', async () => {
+  const masks = await manual('Masks-and-ROI');
+  const gettingStarted = await manual('Getting-Started');
+  const worker = await readFile(new URL('../process-worker.js', import.meta.url), 'utf8');
+  assert.match(masks, /even \*\*Whole face\*\*/);
+  assert.match(gettingStarted, /including Whole face/);
+  assert.match(worker, /const result = limiter \? vectorApi\.intersection\(area, limiter\) : area/);
 });
 
 test('all code blocks labeled JavaScript in the Recipe tutorials parse as v1 recipes', async () => {
