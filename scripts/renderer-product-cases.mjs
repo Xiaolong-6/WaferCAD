@@ -25,7 +25,7 @@ export async function runRendererProductCases({ page, capture }) {
     releaseProject = projectForBenchmark(releaseBenchmark);
   await loadProject(page, releaseProject, 'wide-isotropic-release-pre');
   await openFunctionPanel(page, 'process');
-  await page.locator('[data-process-mode="etch"]').click();
+  await page.locator('#operationType').selectOption('etch');
   await page.locator('#operationArea').selectOption('full');
   await page.locator('#etchProfile').selectOption('isotropic');
   await page.locator('#etchTargetLayer').selectOption('base');
