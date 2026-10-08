@@ -1487,10 +1487,12 @@ export function createThreeView({
       return material;
     };
 
-    // Adaptive rough meshes are replaced independently and may carry
-    // per-profile shader decoration, so they retain private materials.
-    // Smooth persistent scene objects share one material per visual role/layer.
-    if (appearance || !presentation?.kind) return create();
+    // Adaptive rough meshes and the transparent scene use private materials:
+    // transparent sorting and WebGL program lifecycle must remain independent
+    // per object (matching the last verified GPU-v3 transparency path).
+    // Opaque smooth objects can share materials without that ordering pressure.
+    if (appearance || !presentation?.kind || presentationMode() === 'transparent')
+      return create();
 
     const key = JSON.stringify([
       presentation.kind,
