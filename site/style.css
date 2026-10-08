@@ -4339,7 +4339,7 @@ summary:focus-visible {
   grid-template-columns: 10px minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
-  min-height: 27px;
+min-height: 32px;
 }
 
 .process-history-row {
@@ -4417,7 +4417,7 @@ summary:focus-visible {
 .process-history-body strong,
 .snapshot-milestone-body strong {
   color: #46535f;
-  font-size: 8.8px;
+  font-size: 10px;
   font-weight: 620;
 }
 
@@ -4425,7 +4425,7 @@ summary:focus-visible {
 .snapshot-milestone-body span {
   margin-top: 1px;
   color: #87929b;
-  font-size: 7.25px;
+  font-size: 8.5px;
 }
 
 .snapshot-milestone-row {
@@ -4613,13 +4613,13 @@ summary:focus-visible {
 }
 
 .snapshot-other-copy strong {
-  font-size: 8.8px;
+  font-size: 10px;
 }
 
 .snapshot-other-copy span,
 .snapshot-other-stats {
   color: #87939c;
-  font-size: 7.25px;
+  font-size: 8.5px;
 }
 
 .snapshot-other-stats {
@@ -4715,7 +4715,7 @@ summary:focus-visible {
   overflow: hidden;
   color: #3f4d58;
   cursor: pointer;
-  font-size: 9.2px;
+  font-size: 10px;
   font-weight: 700;
   text-align: left;
   text-overflow: ellipsis;
@@ -4734,7 +4734,7 @@ summary:focus-visible {
 
 .history-variant-stats {
   color: #8a969f;
-  font-size: 7.2px;
+  font-size: 8.5px;
   white-space: nowrap;
 }
 
@@ -4808,7 +4808,7 @@ summary:focus-visible {
   overflow: hidden;
   color: #8b7350;
   cursor: pointer;
-  font-size: 7.4px;
+  font-size: 8.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
   list-style-position: inside;
@@ -4847,12 +4847,12 @@ summary:focus-visible {
 
 .history-bookmark-row .snapshot-milestone-body strong {
   color: #67737d;
-  font-size: 7.8px;
+  font-size: 9.5px;
   font-weight: 600;
 }
 
 .history-bookmark-row .snapshot-milestone-body span {
-  font-size: 6.9px;
+  font-size: 8px;
 }
 
 .history-bookmark-row .snapshot-more-trigger {
