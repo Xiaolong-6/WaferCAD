@@ -15,6 +15,7 @@ const {
   unionGeometries,
 } = await import('../site/vector-geometry.js');
 const {
+  prepareProjectForWorkspaceStorage,
   readProjectFile,
   serializeProject,
 } = await import('../site/project-io.js');
@@ -818,13 +819,21 @@ root.snapshotBranches = {
 root.snapshots = snapshots;
 validateProjectFile(root);
 
-const finalText = serializeProject(root);
+let compactExportError = null;
+try {
+  serializeProject(root);
+} catch (error) {
+  compactExportError = error?.message || String(error);
+}
+
+const losslessStored = prepareProjectForWorkspaceStorage(root);
+const finalText = JSON.stringify(losslessStored);
 const reopened = await readProjectFile({
   size: Buffer.byteLength(finalText),
   text: async () => finalText,
 });
 validateProjectFile(reopened);
-assert.deepEqual(reopened.model, root.model, 'Round-trip model changed');
+assert.deepEqual(reopened.model, root.model, 'Lossless round-trip model changed');
 assert.equal(reopened.snapshots.length, 27, 'Expected 27 named stage bookmarks');
 assert.equal(reopened.snapshotBranches.nodes.length, nodes.length, 'History node count changed');
 
@@ -850,7 +859,9 @@ const validation = {
     sensingWindowsChecked: sensingChecks,
     sensingWindowEtchSelectiveToFinalAl2O3: true,
     graphenePreservedAtSensingWindows: true,
-    projectRoundTripExactModel: true,
+    losslessProjectRoundTripExactModel: true,
+    compactExportPass: compactExportError == null,
+    compactExportError,
   },
   notes: [
     'SOI handle thickness is not specified by the paper and is omitted; the 2 um BOX is used as the receiver base.',
@@ -871,7 +882,10 @@ const audit =
   '- S25 70 nm conformal Al2O3 completed successfully.\n' +
   '- S26 removes only the final Al2O3 layer; all non-target layer volumes are unchanged within numeric tolerance.\n' +
   '- Graphene remains present at every sampled sensing-window overlap.\n' +
-  '- Final WaferCAD export reopens with exact canonical-model equality.\n\n' +
+  '- Lossless WaferCAD project storage reopens with exact canonical-model equality.\n' +
+  (compactExportError
+    ? '- Compact 0.1 nm export is still blocked by a persistence-grid geometry issue: ' + compactExportError + '\n\n'
+    : '- Compact 0.1 nm export also passes.\n\n') +
   'Scientific boundary: the mask package is a paper-derived reconstruction. Exact unpublished routing polygons are not claimed to be the authors original layout.\n';
 
 await writeFile(join(artifactDir, 'M3D_selfpowered_full_replay.wafercad'), finalText);
