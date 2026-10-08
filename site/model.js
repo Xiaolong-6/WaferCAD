@@ -607,8 +607,23 @@ function nodeProcessPartitionEdges(regions) {
   }));
 }
 
+function dropPersistenceDegeneratePolygons(geom) {
+  return sanitizeProcessGeometry(geom).filter((polygon) => {
+    if (!polygon?.[0]) return false;
+    const snappedOuter = sanitizeProcessGeometry(snapProcessGeometry([[polygon[0]]]));
+    return !isEmpty(snappedOuter);
+  });
+}
+
 function canonicalizeProcessPartition(model, regions, operation = 'Isotropic release') {
-  const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15),
+  // Boolean fallback may quantize coordinates to the 0.1 nm persistence grid.
+  // A residual overlap no larger than roughly two grid cells is numerical
+  // ownership ambiguity, not a physical double-owned region. Partition it
+  // deterministically while still rejecting overlaps above persistence scale.
+  const overlapTolerance = Math.max(
+      PROCESS_GEOMETRY_GRID_UM * PROCESS_GEOMETRY_GRID_UM * 2,
+      model.width * model.height * 1e-15,
+    ),
     canonical = partitionProcessRegions(regions, overlapTolerance, operation),
     snapped = canonical.map((region) => ({
       ...region,
@@ -626,10 +641,16 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
         geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
       }))
       .filter((region) => !isEmpty(region.geom));
-  // Verify the final grid partition without retaining fractional vertices from
-  // another difference pass. Genuine residual overlaps still reject safely.
-  partitionProcessRegions(stored, overlapTolerance, operation);
-  return stored;
+  // A final ownership pass removes any persistence-grid sliver that noding +
+  // rounding can reintroduce. Do not snap again here: another snap can recreate
+  // the same overlap. The serializer will quantize stable coordinates on export.
+  // Genuine overlaps above overlapTolerance still reject before assignment.
+  return partitionProcessRegions(stored, overlapTolerance, operation)
+    .map((region) => ({
+      ...region,
+      geom: dropPersistenceDegeneratePolygons(region.geom),
+    }))
+    .filter((region) => !isEmpty(region.geom));
 }
 
 function stackKey(stack) {
@@ -1392,6 +1413,19 @@ function applyOperationImpl(
   if (type === 'etch' && etchProfile === 'isotropic') {
     model.regions = canonicalizeProcessPartition(model, model.regions);
   }
+
+  // Every successful Process result must survive the 0.1 nm project-storage
+  // quantum. Directional mask splits can inherit tiny fractional islands from
+  // an earlier Boolean partition even when the physical operation is valid.
+  // Remove only polygon components whose outer ring collapses to zero area at
+  // persistence precision; larger geometry and holes are left untouched.
+  model.regions = model.regions
+    .map((region) => ({
+      ...region,
+      geom: dropPersistenceDegeneratePolygons(region.geom),
+    }))
+    .filter((region) => !isEmpty(region.geom));
+
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };

@@ -684,15 +684,32 @@ export function expandProjectStorage(project) {
   return project;
 }
 
-function serializedProject(project, maxBytes) {
-  const text = JSON.stringify(prepareProjectForStorage(project));
+// Compact storage remains strict: it must reject geometries whose physical
+// meaning changes on the 0.1 nm persistence grid. Export can instead preserve
+// the exact, already-validated canonical model in the supported lossless codec.
+export function prepareProjectForExport(project) {
+  try {
+    return { stored: prepareProjectForStorage(project), mode: 'compact' };
+  } catch (error) {
+    if (!/^Project cannot be stored safely at .* precision:/.test(String(error?.message || ''))) {
+      throw error;
+    }
+    return { stored: prepareProjectForWorkspaceStorage(project), mode: 'lossless' };
+  }
+}
+
+function serializedProject(project, maxBytes, { allowLosslessFallback = false } = {}) {
+  const result = allowLosslessFallback
+    ? prepareProjectForExport(project)
+    : { stored: prepareProjectForStorage(project), mode: 'compact' };
+  const text = JSON.stringify(result.stored);
   const blob = new Blob([text], { type: 'application/json' });
   if (blob.size > maxBytes) {
     throw new Error(
       `Project file would be larger than the ${Math.round(maxBytes / (1024 * 1024))} MB safety limit.`,
     );
   }
-  return { text, blob };
+  return { text, blob, mode: result.mode };
 }
 
 export function serializeProject(project, maxBytes = MAX_PROJECT_FILE_BYTES) {
@@ -700,7 +717,9 @@ export function serializeProject(project, maxBytes = MAX_PROJECT_FILE_BYTES) {
 }
 
 export function downloadProject(project, filename = 'wafercad-project.wafercad') {
-  const { blob } = serializedProject(project, MAX_PROJECT_FILE_BYTES);
+  const { blob, mode } = serializedProject(project, MAX_PROJECT_FILE_BYTES, {
+    allowLosslessFallback: true,
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -715,7 +734,7 @@ export function downloadProject(project, filename = 'wafercad-project.wafercad')
   // handoff, then release it to avoid leaking object URLs.
   setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_DELAY_MS);
 
-  return { requested: true, filename, bytes: blob.size };
+  return { requested: true, filename, bytes: blob.size, mode };
 }
 
 export async function readProjectFile(file) {

@@ -97,3 +97,31 @@ test('History label falls back to the recorded text when the referenced entity i
     'Deposit Legacy layer · Directional · 0.2 µm',
   );
 });
+
+test('History differentiates Follow-surface transfer from legacy Flat transfer', () => {
+  const model = { layers: [{ id: 'layer-1', name: 'WSe2 bilayer' }] };
+  const node = {
+    operation: {
+      kind: 'add',
+      label: 'Transfer WSe2',
+      name: 'WSe2 bilayer',
+      growth: 'transfer',
+      thickness: 0.0014,
+      transferMode: 'follow',
+    },
+    entityRefs: { resultLayerId: 'layer-1' },
+  };
+
+  assert.equal(
+    historyOperationLabel(node, model),
+    'Transfer WSe2 bilayer · Follow surface · 0.0014 µm',
+  );
+
+  delete node.operation.transferMode;
+  assert.equal(historyOperationLabel(node, model), 'Transfer WSe2 bilayer · Flat · 0.0014 µm');
+  node.operation.replay = { params: { transferMode: 'follow' } };
+  assert.equal(
+    historyOperationLabel(node, model),
+    'Transfer WSe2 bilayer · Follow surface · 0.0014 µm',
+  );
+});
