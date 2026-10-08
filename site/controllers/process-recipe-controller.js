@@ -428,6 +428,10 @@ export function createProcessRecipeController({
     const host = $('recipeTemplatePreview');
     if (!host) return;
     host.hidden = !pendingTemplateId;
+    // Reset controls even after a successful load hides this preview.
+    $('recipeTemplateLoadBtn').disabled = templateLoadPending;
+    $('recipeTemplateCancelBtn').disabled = templateLoadPending;
+    $('recipeTemplateSelect').disabled = templateLoadPending;
     if (!pendingTemplateId) return;
     const next = recipeTemplate(pendingTemplateId);
     $('recipeTemplatePreviewTitle').textContent = next.name || 'New Recipe';
@@ -452,9 +456,6 @@ export function createProcessRecipeController({
       : templateReplaceArmed
         ? 'Replace Recipe'
         : 'Load template';
-    $('recipeTemplateLoadBtn').disabled = templateLoadPending;
-    $('recipeTemplateCancelBtn').disabled = templateLoadPending;
-    $('recipeTemplateSelect').disabled = templateLoadPending;
   }
 
   async function requestTemplateLoad() {
