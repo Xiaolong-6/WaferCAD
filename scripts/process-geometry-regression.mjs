@@ -97,6 +97,26 @@ assert.match(await recipePage.locator('.recipe-step-row').first().textContent(),
 await recipePage.locator('#recipeStepOperation').selectOption('deposit');
 assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Deposit Al2O3/);
 
+// Recipe edit history covers type changes.
+assert.equal(await recipePage.locator('#recipeUndoBtn').isEnabled(), true);
+await recipePage.locator('#recipeUndoBtn').click();
+assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Extend Al2O3/);
+assert.equal(await recipePage.locator('#recipeRedoBtn').isEnabled(), true);
+await recipePage.locator('#recipeRedoBtn').click();
+assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Deposit Al2O3/);
+
+// Add inserts immediately after the selected step rather than at the recipe tail.
+await recipePage.locator('#recipeAddKind').selectOption('snapshot');
+await recipePage.locator('#recipeAddStepBtn').click();
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 2);
+assert.match(await recipePage.locator('.recipe-step-row').nth(1).textContent(), /Snapshot/);
+await recipePage.locator('#recipeUndoBtn').click();
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+await recipePage.locator('#recipeRedoBtn').click();
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 2);
+await recipePage.locator('#recipeUndoBtn').click();
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+
 await recipePage.locator('#recipeCodeTab').click();
 assert.equal(await recipePage.locator('#recipeCodePane').isVisible(), true);
 assert.match(await recipePage.locator('#recipeCodeEditor').inputValue(), /deposit\(\{/);
