@@ -1,5 +1,6 @@
 // Workstation integration regression: Welcome, boot gating, navigation, examples, and core tool shell.
 import assert from 'node:assert/strict';
+import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import {
   baseUrl,
   canvasInkFraction,
@@ -131,8 +132,8 @@ assert.ok(
   'preview view switcher should stay inside the project preview',
 );
 const previewFrames = page.locator('.welcome-example-project-frame');
-assert.equal(await previewFrames.count(), 5);
-for (let index = 0; index < 5; index++) {
+assert.equal(await previewFrames.count(), BUNDLED_EXAMPLES.length);
+for (let index = 0; index < BUNDLED_EXAMPLES.length; index++) {
   const frame = previewFrames.nth(index);
   await frame.scrollIntoViewIfNeeded();
   assert.equal(await frame.getAttribute('src'), null, 'scrolling must not start an editor');
