@@ -10,6 +10,8 @@ on:
       - "site/model.js"
       - "site/project-io.js"
       - "site/tests/m3d-bundled-example.test.mjs"
+      - "scripts/m3d-visual-acceptance.mjs"
+      - "scripts/m3d-welcome-regression.mjs"
       - "docs/wiki/Examples-and-Modeling-Limits.md"
       - ".github/workflows/m3d-example-integration.yml"
   pull_request:
