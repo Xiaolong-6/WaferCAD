@@ -385,8 +385,11 @@ test('Ge Fig. 15 A/B preserve Electrical semantics and host-material ownership',
     geLayerId = modelA.layers.find((layer) => layer.name === geName)?.id;
 
   assert.ok(geLayerId, 'Ge host layer must exist');
-  assertClose(aVolumes.get(geName), commonVolumes.get(geName), 1e-3, 'Fig. 15a Ge volume');
-  assertClose(bVolumes.get(geName), commonVolumes.get(geName), 1e-3, 'Fig. 15b Ge volume');
+  // Conformal ownership canonicalizes the 0.1 nm shared XY grid. Allow at most
+  // one part per billion of the unchanged bulk Ge volume for rounding effects.
+  const geVolumeTolerance = Math.max(1e-3, commonVolumes.get(geName) * 1e-9);
+  assertClose(aVolumes.get(geName), commonVolumes.get(geName), geVolumeTolerance, 'Fig. 15a Ge volume');
+  assertClose(bVolumes.get(geName), commonVolumes.get(geName), geVolumeTolerance, 'Fig. 15b Ge volume');
 
   assert.equal(
     modelA.layers.some((layer) => /SiO2 inactive/i.test(layer.name)),
