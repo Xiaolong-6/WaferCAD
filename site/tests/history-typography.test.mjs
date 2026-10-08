@@ -5,7 +5,7 @@ import test from 'node:test';
 test('History steps use Recipe-sized labels and summaries', async () => {
   const css = await readFile(new URL('../style.css', import.meta.url), 'utf8');
   const rule = (selector) => {
-    const start = css.indexOf(selector + ' {');
+    const start = css.lastIndexOf(selector + ' {');
     assert.ok(start >= 0, 'CSS selector missing: ' + selector);
     const body = css.slice(start, css.indexOf('}', start));
     const match = body.match(/font-size:\s*([\d.]+)px/);
