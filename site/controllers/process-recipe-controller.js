@@ -379,6 +379,7 @@ export function createProcessRecipeController({
         <div><span id="recipeProgressLabel">Preparing…</span><span id="recipeProgressCount"></span></div>
         <progress id="recipeProgressBar" max="1" value="0"></progress>
       </div>
+      <p id="recipeRunSummary" class="hint compact-hint" role="status"></p>
       <label class="recipe-start-mode">
         <span>Start</span>
         <select id="recipeRunStart" class="compact-select" aria-label="Recipe run starting state">
@@ -877,6 +878,22 @@ export function createProcessRecipeController({
     renderEditor();
     syncCode();
     showValidation();
+    showRunSummary();
+  }
+
+  function showRunSummary() {
+    const target = $('recipeRunSummary');
+    if (!target) return;
+    const result = lastRunResult;
+    if (!result) {
+      target.textContent = '';
+      return;
+    }
+    const stale = result.signature !== recipeSignature() ||
+      result.modelRevision !== Number(getModel()?.processRevision || 0);
+    target.textContent = stale
+      ? 'Previous Recipe run belongs to a different Recipe or model revision; completion marks are hidden.'
+      : `${result.outcome}: ${result.completed}/${result.total} steps committed from ${result.startMode === 'new-base' ? 'rebuilt Base' : 'the existing model'} (starting revision ${result.startRevision}). Run to Step always replays from Step 1; it does not resume.`;
   }
 
   function setMode(mode) {
@@ -1047,37 +1064,60 @@ export function createProcessRecipeController({
       status('Another background task is already running.', 'warning');
       return;
     }
-    // A Recipe is a sequence of mutations, so replaying it on an already
-    // processed model would silently double-deposit or double-etch. Expose
-    // the starting-state policy before any Process worker requests.
+    const total = Math.min(Math.max(0, limit), recipe.steps.length);
+    if (!total) return status('Recipe has no steps to run.', 'warning');
+
     const startMode = $('recipeRunStart')?.value || 'continue';
-    if (startMode === 'new-base') {
-      const rebuilt = await resetToBase();
-      if (!rebuilt) {
-        status('Process Recipe run cancelled: Base was not rebuilt.', 'warning');
-        return;
-      }
-    } else if (Number(getModel()?.processRevision || 0) > 0) {
-      const allowed = await confirmContinue();
-      if (!allowed) {
-        status('Process Recipe run cancelled; existing process was not changed.', 'warning');
-        return;
-      }
-    }
-    const report = showValidation();
+    // Preflight must complete BEFORE any confirmation or Base/history mutation.
+    const report = showValidation(validateContext(total, startMode));
     if (report.errors.length) {
-      status('Recipe validation failed. Fix the highlighted issues before running.', 'error');
+      status('Recipe preflight failed. Model and History were not changed.', 'error');
       return;
     }
 
-    const total = Math.min(Math.max(0, limit), recipe.steps.length);
-    if (!total) return status('Recipe has no steps to run.', 'warning');
+    const signature = recipeSignature();
+    const previousRevision = Number(getModel()?.processRevision || 0);
     setRunningUi(true);
     stopRequested = false;
-    const rows = () => [...root.querySelectorAll('.recipe-step-row')];
+    let completed = 0;
+    let failedIndex = null;
+    let outcome = 'Stopped';
+    let started = false;
+    let startRevision = previousRevision;
+    lastRunResult = null;
+    showRunSummary();
 
     try {
+      if (startMode === 'new-base') {
+        const rebuilt = await resetToBase();
+        if (!rebuilt) {
+          status('Recipe run cancelled. Base was not rebuilt.', 'warning');
+          return;
+        }
+      } else if (previousRevision > 0) {
+        const allowed = await confirmContinue();
+        if (!allowed) {
+          status('Recipe run cancelled. The existing model was not changed.', 'warning');
+          return;
+        }
+      }
+      if (stopRequested) {
+        status('Recipe run stopped before its first Step.', 'warning');
+        return;
+      }
+      // Confirmations yield control; an edit made in the meantime invalidates preflight.
+      if (recipeSignature() !== signature ||
+          validateContext(total, startMode).errors.length) {
+        status('Recipe changed or became invalid while preparing. No Process Steps applied.', 'error');
+        return;
+      }
+
+      started = true;
+      startRevision = Number(getModel()?.processRevision || 0);
+      const rows = () => [...root.querySelectorAll('.recipe-step-row')];
       for (let index = 0; index < total; index += 1) {
+        // Yield between committed Steps so Stop and browser input remain responsive.
+        await new Promise((resolve) => setTimeout(resolve, 0));
         if (stopRequested) break;
         const step = recipe.steps[index],
           row = rows()[index];
@@ -1087,21 +1127,43 @@ export function createProcessRecipeController({
         $('recipeProgressCount').textContent = `${index + 1} / ${total}`;
         $('recipeProgressBar').max = total;
         $('recipeProgressBar').value = index;
-        await applyProcessStep(step);
+        try {
+          await applyProcessStep(step);
+        } catch (error) {
+          if (!stopRequested) failedIndex = index;
+          throw error;
+        }
+        completed += 1;
         row?.classList.remove('running');
         row?.classList.add('complete');
         row?.querySelector('.recipe-step-state')?.replaceChildren('✓');
-        $('recipeProgressBar').value = index + 1;
+        $('recipeProgressBar').value = completed;
       }
-      if (stopRequested) status('Process Recipe stopped.', 'warning');
-      else status(`Process Recipe completed ${total} step(s).`, 'success');
+      outcome = stopRequested ? 'Stopped' : 'Completed';
+      status(`Recipe ${outcome.toLowerCase()}: ${completed}/${total} steps committed.`,
+        stopRequested ? 'warning' : 'success');
     } catch (error) {
-      if (stopRequested) status('Process Recipe stopped.', 'warning');
-      else status(`Process Recipe stopped: ${error.message}`, 'error');
+      outcome = stopRequested ? 'Stopped' : 'Failed';
+      status(stopRequested
+        ? `Recipe stopped after ${completed} committed step(s).`
+        : `Recipe failed at Step ${(failedIndex ?? completed) + 1}: ${error.message}`, 'error');
     } finally {
+      if (started) {
+        lastRunResult = {
+          signature,
+          startMode,
+          startRevision,
+          completed,
+          total,
+          failedIndex,
+          outcome,
+          modelRevision: Number(getModel()?.processRevision || 0),
+        };
+      }
       setRunningUi(false);
       renderAll();
       renderSteps();
+      showRunSummary();
     }
   }
 
