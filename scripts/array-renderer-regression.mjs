@@ -160,6 +160,8 @@ try {
   );
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
+  assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
+  assert.equal(Number(transparentCold.electricalFarLodBodyCount), 0);
 
   const transparentResources = Object.fromEntries(
     ['sceneObjectCount', 'sceneGeometryCount', 'sceneMaterialCount', 'presentationObjectCount'].map(
@@ -294,6 +296,36 @@ try {
   await page.mouse.up();
   await waitStage('rotation');
   assert.deepEqual(errors, []);
+  let fastTransparencyLodProbe = null;
+  // Optional, intentionally heavier real-browser profile. Keep the existing
+  // standard CI workload unchanged while the far-array visual tier is reviewed.
+  if (process.argv.includes('--fast-transparent-lod')) {
+    await page.locator('#threePanel .three-opacity-control > summary').click();
+    const beforeLodFrame = await frameSerial();
+    await page.locator('#threeOpacityRange').fill('0.5');
+    const elapsedMs = await waitStage('fast-transparent-array-lod', 120000, beforeLodFrame);
+    const distant = await snapshot();
+    assert.match(distant.transparentArrayLodTier, /^far-/);
+    assert.ok(
+      Number(distant.electricalFarLodBodyCount) > 0,
+      'Fast far-array mode must use the cap-only electrical presentation',
+    );
+    assert.ok(
+      Number(distant.rendererDrawTriangles) < Number(transparentCold.rendererDrawTriangles),
+      'Far-array mode must submit fewer triangles than exact Quality transparency',
+    );
+    assert.equal(distant.arrayInstances, transparentCold.arrayInstances);
+    assert.equal(distant.materialLayerIds, transparentCold.materialLayerIds);
+    assert.equal(distant.processRevision, transparentCold.processRevision);
+    await page.screenshot({ path: fileURLToPath(new URL('fast-transparent-lod.png', output)) });
+    fastTransparencyLodProbe = {
+      elapsedMs,
+      qualityDrawTriangles: Number(transparentCold.rendererDrawTriangles),
+      farDrawTriangles: Number(distant.rendererDrawTriangles),
+      distant,
+    };
+  }
+  assert.deepEqual(errors, []);
   const report = {
     browserVersion: browser.version(),
     fast,
@@ -320,6 +352,7 @@ try {
     presentationStressToggles: { border: 10, opacity: 10 },
     retainedBaseline,
     rotationPassed: true,
+    fastTransparencyLodProbe,
     errors,
   };
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2));
