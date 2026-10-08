@@ -73,8 +73,8 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Check lint and Node regression
-        run: npm run check:ci
+      - name: Check corrected masks and Kernel fixtures
+        run: node --test site/tests/m3d-reconstruction-regression.test.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Start WaferCAD preview
@@ -88,10 +88,12 @@ jobs:
           done
           cat /tmp/wafercad-http.log
           exit 1
-      - name: Import and inspect Main, Section, 3D, History and Export
-        run: node scripts/m3d-visual-acceptance.mjs
       - name: Build matching M3D WebP preview and thumbnail manifest
         run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
+      - name: Check lint, docs, Node regression and preview SHA
+        run: npm run check:ci
+      - name: Import and inspect Main, Section, 3D, History and Export
+        run: node scripts/m3d-visual-acceptance.mjs
       - name: Commit final 3D thumbnail
         run: |
           git config user.name "github-actions[bot]"
