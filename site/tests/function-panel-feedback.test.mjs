@@ -198,6 +198,8 @@ test('Mask topography reference is dashed and all scientific header controls sha
   assert.doesNotMatch(html, /three-border-status/);
   assert.doesNotMatch(style, /content: ['"](?:ON|OFF)['"]/);
   assert.match(workspaceActions, /button\.classList\.add\('active'\)/);
+  assert.match(html, /id="maskSourceToggleBtn"\s+class="mini-btn active"/);
+  assert.match(html, /id="sectionScaleModeBtn"\s+class="mini-btn active"/);
 });
 
 test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
