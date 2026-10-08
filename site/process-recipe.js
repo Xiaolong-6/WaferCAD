@@ -257,6 +257,26 @@ function normalizeStep(command, input, index = 0) {
   return { id: `recipe-step-${index + 1}`, command, params };
 }
 
+export function normalizeRecipeBase(value) {
+  if (value == null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Recipe base must be an object.');
+  }
+  const shape = value.shape === 'rect' ? 'rect' : value.shape === 'circle' ? 'circle' : null;
+  const width = Number(value.width);
+  const height = Number(value.height);
+  const thickness = Number(value.thickness);
+  if (!shape || ![width, height, thickness].every((n) => Number.isFinite(n) && n > 0)) {
+    throw new Error('Recipe base needs a valid shape and positive width, height and thickness.');
+  }
+  const material = cleanText(value.material, 'Base');
+  const color = value.color == null ? null : String(value.color);
+  if (material.length > 160 || (color && !/^#[0-9a-f]{6}$/i.test(color))) {
+    throw new Error('Recipe base material or color is invalid.');
+  }
+  return { shape, width, height, thickness, material, ...(color ? { color } : {}) };
+}
+
 export function normalizeProcessRecipe(value = {}) {
   const inputSteps = Array.isArray(value.steps) ? value.steps : [];
   const steps = inputSteps.map((step, index) => {
@@ -269,6 +289,7 @@ export function normalizeProcessRecipe(value = {}) {
   return {
     version: 1,
     name: cleanText(value.name, 'Process Recipe'),
+    ...(value.base ? { base: normalizeRecipeBase(value.base) } : {}),
     steps,
     activeStepId: steps.some((step) => step.id === value.activeStepId)
       ? value.activeStepId
