@@ -230,6 +230,26 @@ assert.ok(
   await recipePage.locator('.history-variant[data-active="true"] > .history-variant-body > .history-step-wrap').count() >= 2,
   'the old process steps must remain directly restorable',
 );
+await openFunctionPanel(recipePage, 'project');
+const archiveExportPromise = recipePage.waitForEvent('download');
+await recipePage.locator('#exportProjectBtn').click();
+const archiveDownload = await archiveExportPromise;
+const archiveExportPath = await archiveDownload.path();
+assert.ok(archiveExportPath);
+const archivedProject = expandProjectStorage(JSON.parse(await readFile(archiveExportPath, 'utf8')));
+const archiveBranch = archivedProject.snapshotBranches?.branches?.find(
+  (branch) => branch.archivedMainRoot === true,
+);
+assert.ok(archiveBranch, 'archived Main must persist in the exported project');
+assert.ok(
+  archivedProject.snapshotBranches?.nodes?.some((node) => node.branchId === archiveBranch.id),
+  'the exported archive must retain its original Steps',
+);
+assert.equal(
+  archivedProject.snapshotBranches?.branches?.find((branch) => branch.id === 'main')?.headNodeId,
+  null,
+  'new Main must retain an independent empty process root',
+);
 assert.deepEqual(recipeErrors, []);
 await recipeContext.close();
 
