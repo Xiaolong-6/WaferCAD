@@ -22,7 +22,7 @@
 
 After Apply, inspect **Section A–B** before trusting a 3D appearance. In particular, check whether the mask opened the intended region and whether the new layer covers horizontal faces or also real sidewalls.
 
-![Directional deposition — schematic Before and After](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-directional.svg)
+![Directional deposition — schematic Before and After](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-directional.svg?sanitize=true)
 
 For coating on real sidewalls, compare the [Conformal deposition example](Process-Operations#deposit-conformal).
 

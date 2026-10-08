@@ -2,7 +2,7 @@
 
 [Home](Home) · [Getting Started](Getting-Started)
 
-![Schematic of conformal coverage](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg)
+![Schematic of conformal coverage](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
 *For coating problems, first compare the displayed Section against this idealized before/after illustration.*
 

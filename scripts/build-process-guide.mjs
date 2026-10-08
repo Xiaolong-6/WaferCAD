@@ -29,7 +29,7 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
         entry.title +
         '](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/' +
         entry.id +
-        '.svg)',
+        '.svg?sanitize=true)',
       '',
     );
     lines.push('**Behavior:** ' + entry.summary, '', entry.detail, '');

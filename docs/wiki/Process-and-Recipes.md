@@ -4,7 +4,7 @@
 
 ## Manual Process
 
-![Conformal deposition before and after](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg)
+![Conformal deposition before and after](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
 *The same schematic geometry source is used here and in the compact Process panel. These drawings do not depict the currently opened project.*
 

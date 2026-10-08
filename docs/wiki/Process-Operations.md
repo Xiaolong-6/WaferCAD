@@ -11,7 +11,7 @@ The contextual schematic under **Apply** and this page use the same Process cata
 <a id="deposit-directional"></a>
 ### Directional deposition
 
-![Before and after schematic for Directional deposition](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-directional.svg)
+![Before and after schematic for Directional deposition](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-directional.svg?sanitize=true)
 
 **Behavior:** Adds a new layer to exposed horizontal surfaces along Z.
 
@@ -28,7 +28,7 @@ Applies the requested thickness on local exposed horizontal faces inside the cho
 <a id="deposit-conformal"></a>
 ### Conformal deposition
 
-![Before and after schematic for Conformal deposition](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg)
+![Before and after schematic for Conformal deposition](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
 **Behavior:** Coats exposed horizontal surfaces and genuine sidewalls.
 
@@ -45,7 +45,7 @@ A shared kernel coats exposed horizontal faces and makes physical sidewall bands
 <a id="deposit-transfer-follow"></a>
 ### Transfer · Follow surface
 
-![Before and after schematic for Transfer · Follow surface](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-transfer-follow.svg)
+![Before and after schematic for Transfer · Follow surface](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-transfer-follow.svg?sanitize=true)
 
 **Behavior:** Transfers a new film onto each local exposed horizontal plane.
 
@@ -62,7 +62,7 @@ Every supported XY column uses its own exposed height. True voids stay empty; ve
 <a id="deposit-transfer-flat"></a>
 ### Transfer · Flat bridge
 
-![Before and after schematic for Transfer · Flat bridge](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-transfer-flat.svg)
+![Before and after schematic for Transfer · Flat bridge](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-transfer-flat.svg?sanitize=true)
 
 **Behavior:** Transfers a flat membrane at one global exposed plane.
 
@@ -81,7 +81,7 @@ The front-side highest exposed Z (back-side lowest) defines the film plane; it m
 <a id="extend-directional"></a>
 ### Directional extension
 
-![Before and after schematic for Directional extension](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/extend-directional.svg)
+![Before and after schematic for Directional extension](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/extend-directional.svg?sanitize=true)
 
 **Behavior:** Thickens the exposed horizontal part of an existing layer.
 
@@ -98,7 +98,7 @@ Uses the target layer identity and extends only currently exposed horizontal tar
 <a id="extend-conformal"></a>
 ### Conformal extension
 
-![Before and after schematic for Conformal extension](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/extend-conformal.svg)
+![Before and after schematic for Conformal extension](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/extend-conformal.svg?sanitize=true)
 
 **Behavior:** Continues an existing layer over exposed faces and real sidewalls.
 
@@ -117,7 +117,7 @@ Uses the same conformal kernel as Deposit, retaining the selected layer ID. The 
 <a id="etch-directional"></a>
 ### Directional etch
 
-![Before and after schematic for Directional etch](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-directional.svg)
+![Before and after schematic for Directional etch](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-directional.svg?sanitize=true)
 
 **Behavior:** Vertically subtracts exposed materials through the selected footprint.
 
@@ -134,7 +134,7 @@ Without a target material, subtraction progresses through adjacent contiguous ma
 <a id="etch-selective"></a>
 ### Material-selective etch
 
-![Before and after schematic for Material-selective etch](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-selective.svg)
+![Before and after schematic for Material-selective etch](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-selective.svg?sanitize=true)
 
 **Behavior:** Etches only a selected exposed material and stops at another layer.
 
@@ -151,7 +151,7 @@ Directional subtraction stops once the chosen material is no longer exposed, or 
 <a id="etch-isotropic"></a>
 ### Isotropic release
 
-![Before and after schematic for Isotropic release](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-isotropic.svg)
+![Before and after schematic for Isotropic release](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-isotropic.svg?sanitize=true)
 
 **Behavior:** Expands a curved etch front into and laterally under exposed target material.
 
@@ -168,7 +168,7 @@ A distance-based geometric removal front forms real cavities and supported overh
 <a id="etch-undercut"></a>
 ### Undercut release
 
-![Before and after schematic for Undercut release](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-undercut.svg)
+![Before and after schematic for Undercut release](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-undercut.svg?sanitize=true)
 
 **Behavior:** Laterally removes an exposed sacrificial layer from access openings.
 
@@ -185,7 +185,7 @@ Expands the access area in XY and subtracts only the selected sacrificial materi
 <a id="etch-planarize"></a>
 ### Planarize / CMP
 
-![Before and after schematic for Planarize / CMP](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-planarize.svg)
+![Before and after schematic for Planarize / CMP](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-planarize.svg?sanitize=true)
 
 **Behavior:** Clips the existing stack to a physical target Z plane.
 
@@ -204,7 +204,7 @@ Only material beyond Target Z on the chosen face is removed. Depressions remain 
 <a id="etch-rough-normal"></a>
 ### Rough · Normal peaks
 
-![Before and after schematic for Rough · Normal peaks](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-rough-normal.svg)
+![Before and after schematic for Rough · Normal peaks](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-rough-normal.svg?sanitize=true)
 
 **Behavior:** Renders stochastic correlated outward surface relief after directional etch.
 
@@ -221,7 +221,7 @@ Feature size, mean height, coefficients of variation, and seed define a determin
 <a id="etch-rough-inverted"></a>
 ### Rough · Inverted pits
 
-![Before and after schematic for Rough · Inverted pits](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-rough-inverted.svg)
+![Before and after schematic for Rough · Inverted pits](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-rough-inverted.svg?sanitize=true)
 
 **Behavior:** Renders inward valleys from the same stochastic surface profile.
 
@@ -238,7 +238,7 @@ Inverted mirrors the Normal vertical field without moving its lateral feature po
 <a id="etch-pyramid-normal"></a>
 ### Pyramid · Normal
 
-![Before and after schematic for Pyramid · Normal](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-pyramid-normal.svg)
+![Before and after schematic for Pyramid · Normal](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-pyramid-normal.svg?sanitize=true)
 
 **Behavior:** Renders outward square-pyramid texture after directional etch.
 
@@ -255,7 +255,7 @@ The shared deterministic XY heightfield creates outward pyramidal relief on the 
 <a id="etch-pyramid-inverted"></a>
 ### Pyramid · Inverted
 
-![Before and after schematic for Pyramid · Inverted](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-pyramid-inverted.svg)
+![Before and after schematic for Pyramid · Inverted](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-pyramid-inverted.svg?sanitize=true)
 
 **Behavior:** Renders recessed square pyramidal pits.
 
@@ -274,7 +274,7 @@ A vertical mirror of Normal pyramid relief creates regular inward pits.
 <a id="implant"></a>
 ### Implant
 
-![Before and after schematic for Implant](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/implant.svg)
+![Before and after schematic for Implant](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/implant.svg?sanitize=true)
 
 **Behavior:** Adds a depth-graded structural marker beneath exposed surfaces.
 
@@ -291,7 +291,7 @@ Stores a separately named annotation with empirical depth and signed X tilt. Lat
 <a id="electrical"></a>
 ### Electrical Region
 
-![Before and after schematic for Electrical Region](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/electrical.svg)
+![Before and after schematic for Electrical Region](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/electrical.svg?sanitize=true)
 
 **Behavior:** Annotates induced, doped, p/n, depletion or interface zones.
 
@@ -310,7 +310,7 @@ Anchors a non-material schematic zone to the exposed face. It follows later geom
 <a id="record"></a>
 ### Record process step
 
-![Before and after schematic for Record process step](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/record.svg)
+![Before and after schematic for Record process step](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/record.svg?sanitize=true)
 
 **Behavior:** Stores fabrication metadata without changing geometry.
 

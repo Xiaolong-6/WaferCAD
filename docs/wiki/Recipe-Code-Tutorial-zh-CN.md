@@ -1,6 +1,6 @@
 # WaferCAD Process Recipe 编程教程（中文）
 
-![Conformal 工艺的前后示意](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg)
+![Conformal 工艺的前后示意](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
 *这是和软件 Process 面板共用定义的示意图，实际结构由 Base、Mask 和前序步骤决定。*
 

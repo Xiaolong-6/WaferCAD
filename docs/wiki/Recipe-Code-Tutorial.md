@@ -1,6 +1,6 @@
 # Process Recipe Code Tutorial
 
-![Conformal deposition in a Recipe](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg)
+![Conformal deposition in a Recipe](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
 
 *Illustrative geometry only; actual results depend on the selected Base, Mask, Face and preceding steps.*
 
