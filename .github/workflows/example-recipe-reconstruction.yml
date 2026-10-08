@@ -1,0 +1,48 @@
+name: Example Recipe Reconstruction
+on:
+  push:
+    branches:
+      - fix/example-kernel-recipe-replay-audit
+    paths:
+      - .github/workflows/example-recipe-reconstruction.yml
+      - scripts/maintenance/backfill-example-recipes.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Reconstruct old project recipes and refresh detector generator
+        run: |
+          node scripts/maintenance/backfill-example-recipes.mjs --write
+          node scripts/maintenance/rebuild-photodetectors.mjs --write
+      - name: Format source and generated assets
+        run: |
+          npx prettier --write scripts/maintenance/backfill-example-recipes.mjs site/tests/example-recipe-audit.test.mjs site/process-recipe.js site/process-recipe-preflight.js site/controllers/base-controls-controller.js site/controllers/process-recipe-controller.js site/app.js scripts/maintenance/rebuild-photodetectors.mjs
+      - name: Validate recipe drift and standard tests
+        run: |
+          node scripts/maintenance/backfill-example-recipes.mjs
+          node scripts/maintenance/rebuild-photodetectors.mjs
+          npm run check:ci
+          git diff --check
+      - name: Commit reconstructed examples back to isolated branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site/examples/*.wafercad site/tests/example-recipe-audit.test.mjs scripts/maintenance/backfill-example-recipes.mjs scripts/maintenance/rebuild-photodetectors.mjs site/process-recipe.js site/process-recipe-preflight.js site/controllers/base-controls-controller.js site/controllers/process-recipe-controller.js site/app.js
+          if ! git diff --cached --quiet; then
+            git commit -m 'Generate reproducible recipes for all bundled example families'
+            git push
+          fi
