@@ -1173,6 +1173,18 @@ processRecipeController = createProcessRecipeController({
   updateOperationUI,
   renderAll,
   renderSnapshots,
+  resetToBase: () => baseControls.applyBase(),
+  confirmContinue: () =>
+    confirmationDialog.confirm({
+      title: 'Continue Recipe on current model?',
+      message: 'This workspace already contains Process Steps.',
+      detail:
+        'Continuing applies the Recipe again to the existing geometry and may repeat ' +
+        'depositions or etches. To reconstruct from a fresh Base, choose ' +
+        '"Rebuild Base first (new Main)" in the Recipe Start selector instead.',
+      confirmLabel: 'Continue and apply',
+      cancelLabel: 'Cancel',
+    }),
   status,
   onChanged: markProjectDirty,
 });
