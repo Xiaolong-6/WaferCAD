@@ -608,7 +608,14 @@ function nodeProcessPartitionEdges(regions) {
 }
 
 function canonicalizeProcessPartition(model, regions, operation = 'Isotropic release') {
-  const overlapTolerance = Math.max(1e-18, model.width * model.height * 1e-15),
+  // Boolean fallback may quantize coordinates to the 0.1 nm persistence grid.
+  // A residual overlap no larger than roughly two grid cells is numerical
+  // ownership ambiguity, not a physical double-owned region. Partition it
+  // deterministically while still rejecting overlaps above persistence scale.
+  const overlapTolerance = Math.max(
+      PROCESS_GEOMETRY_GRID_UM * PROCESS_GEOMETRY_GRID_UM * 2,
+      model.width * model.height * 1e-15,
+    ),
     canonical = partitionProcessRegions(regions, overlapTolerance, operation),
     snapped = canonical.map((region) => ({
       ...region,
