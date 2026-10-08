@@ -118,6 +118,7 @@ export function createThreeView({
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
   let physicalSceneSignature = null;
+  let transparentDepthWriteOptimized = false;
 
   function renderPolicy(interactive = interacting) {
     return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
@@ -826,6 +827,7 @@ export function createThreeView({
     surfaceMaterialPool = new Map();
     physicalSceneModel = null;
     physicalSceneSignature = null;
+    transparentDepthWriteOptimized = false;
   }
 
   function inspectionMaterialState(value) {
@@ -862,7 +864,7 @@ export function createThreeView({
       opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
       transparent: true,
       depthTest: true,
-      depthWrite: false,
+      depthWrite: transparentDepthWriteOptimized,
     };
   }
 
@@ -942,7 +944,10 @@ export function createThreeView({
       default:
         return {
           visible: true,
-          materialState,
+          materialState:
+            materialState.transparent && transparentDepthWriteOptimized
+              ? { ...materialState, depthWrite: true }
+              : materialState,
           transparentSort: materialState.transparent,
         };
     }
@@ -1362,13 +1367,6 @@ export function createThreeView({
         side: THREE.DoubleSide,
         ...materialState,
       });
-      if (
-        presentation?.kind === 'material-exterior' ||
-        presentation?.kind === 'material-interface'
-      ) {
-        material.forceSinglePass = true;
-        material.userData.waferCadTransparentSinglePass = true;
-      }
       return material;
     };
 
@@ -2283,8 +2281,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
         borders = Boolean(inspection.borders),
-        plan = buildRenderSurfacePlan(model, clip),
-        interfaceState = interfaceMaterialState(opacity),
+        plan = buildRenderSurfacePlan(model, clip);
+      transparentDepthWriteOptimized = Number(plan.arrayInstances || 0) >= 64;
+      host.dataset.transparentDepthWriteOptimized = String(transparentDepthWriteOptimized);
+      const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
