@@ -1,0 +1,53 @@
+name: M3D full replay
+
+on:
+  push:
+    branches:
+      - test/m3d-full-replay-20261008
+    paths:
+      - "scripts/m3d-full-replay-acceptance.mjs"
+      - "examples/projects/m3d-selfpowered-2026-candidate/**"
+      - ".github/workflows/m3d-full-replay.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: m3d-full-replay-20261008
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Start local site
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site >/tmp/wafercad-server.log 2>&1 &
+          sleep 2
+          curl --fail http://127.0.0.1:4173/app.html >/dev/null
+      - name: Run corrected M3D mask and kernel regression
+        run: node --test site/tests/m3d-reconstruction-regression.test.mjs
+      - name: Native browser full replay S00-S26
+        run: node scripts/m3d-full-replay-acceptance.mjs --write-repo
+      - name: Commit validated replay outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add examples/projects/m3d-selfpowered-2026-replay
+          git diff --cached --quiet || git commit -m "Add validated M3D full replay outputs"
+          git push origin HEAD:test/m3d-full-replay-20261008
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m3d-full-replay
+          path: test-results/m3d/full-replay
+          if-no-files-found: warn
