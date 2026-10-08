@@ -549,16 +549,31 @@ const selectionGeometry = createSelectionGeometry({
 });
 const { operationAreaGeometry, roiGeometry } = selectionGeometry;
 
-function stateSnapshot() {
-  return { model: cloneModel(model), section: structuredClone(section) };
+function stateSnapshot({ includeHistoryGraph = false } = {}) {
+  const state = { model: cloneModel(model), section: structuredClone(section) };
+  if (includeHistoryGraph && snapshotManager) {
+    snapshotManager.syncActiveHeadState();
+    state.snapshotGraph = {
+      records: snapshotManager.exportRecords(),
+      branchState: snapshotManager.exportBranchState(),
+    };
+    state.workspaceState = structuredClone(buildProjectSnapshot(false));
+  }
+  return state;
 }
 function restoreSnapshot(snapshot) {
   model = cloneModel(snapshot.model);
   section = structuredClone(snapshot.section || section);
+  if (snapshot.snapshotGraph && snapshotManager) {
+    snapshotManager.importRecords(
+      snapshot.snapshotGraph.records,
+      snapshot.snapshotGraph.branchState,
+    );
+  }
   markProjectDirty();
 }
-function saveHistory() {
-  history.push(stateSnapshot());
+function saveHistory(snapshot = stateSnapshot()) {
+  history.push(snapshot);
   if (history.length > 40) history.shift();
   future = [];
   syncUndo();
@@ -1214,6 +1229,34 @@ const baseControls = createBaseControlsController({
   fit3d,
   status,
   confirmAction: (options) => confirmationDialog.confirm(options),
+  chooseHistoryAction: () =>
+    confirmationDialog.ask({
+      title: 'Rebuild Base',
+      message: 'Changing Base starts a new independent process lineage.',
+      detail:
+        'Keep archives the previous Main and its Steps as a restorable Variant. ' +
+        'Clear discards all existing history and Variants. Cancel leaves everything unchanged.',
+      actions: [
+        { value: 'cancel', label: 'Cancel' },
+        { value: 'clear', label: 'Clear history', kind: 'danger' },
+        { value: 'keep', label: 'Keep previous history', kind: 'primary', default: true },
+      ],
+    }),
+  getHistoryDetails: () => {
+    const graph = snapshotManager.exportBranchState();
+    return {
+      hasHistory:
+        graph.nodes.length > 0 ||
+        graph.branches.length > 1 ||
+        snapshotManager.list().length > 0,
+    };
+  },
+  captureBaseSnapshot: () => stateSnapshot({ includeHistoryGraph: true }),
+  rebuildMainHistory: (options) => snapshotManager.rebuildMainBase(options),
+  refreshHistory: () => {
+    projectController?.renderSnapshots?.();
+    markProjectDirty();
+  },
 });
 
 const workspaceActions = createWorkspaceActionsController({
