@@ -1001,6 +1001,7 @@ projectController = createProjectController({
   status,
   onProjectChanged: markProjectDirty,
   checkpointBeforeReplace: checkpointWorkspace,
+  allowVolatileNewProject: () => !workspaceSession?.hasWriteLease?.(),
   readProjectFileTask: readProjectSnapshot,
   exportProjectFileTask,
   normalizedProjectName,
