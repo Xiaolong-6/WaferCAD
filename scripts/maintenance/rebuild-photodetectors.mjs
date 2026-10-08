@@ -259,7 +259,7 @@ step(ge, { type: 'etch', name: 'ICP-RIE Ge · 200 nm XY / 700 nm height surrogat
   surface: { kind: 'rough', morphology: 'stochastic', polarity: 'normal',
     featureSize: 0.2, meanHeight: 0.7, featureCv: 0.25, heightCv: 0.25,
     seed: 3668339987, profileId: 'rough-ge-lsa-2025', geometryMode: 'ideal' } });
-record(ge, 'wet-etch', 'H2O2 etch-back · 3% v/v, 15 s (journal; thesis says 30 s)', {
+record(ge, 'surface-treatment', 'H2O2 etch-back · 3% v/v, 15 s (journal; thesis says 30 s)', {
   durationMin: 0.25, ambient: '3% H2O2',
   note: 'Literature conflict: 2025 journal Methods 15 s; 2026 thesis section 4.1 30 s. No removal rate; topography is a surrogate.' });
 step(ge, { type: 'etch', name: 'Strip temporary Al2O3 mask in BHF',
