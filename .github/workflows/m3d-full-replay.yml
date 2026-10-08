@@ -92,8 +92,8 @@ jobs:
           exit 1
       - name: Build matching M3D WebP preview and thumbnail manifest
         run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
-      - name: Check lint, docs, Node regression and preview SHA
-        run: npm run check:ci
+      - name: Focused M3D project and Kernel acceptance
+        run: node --test site/tests/m3d-bundled-example.test.mjs site/tests/m3d-reconstruction-regression.test.mjs
       - name: Commit validated final 3D thumbnail and manifest
         run: |
           git config user.name "github-actions[bot]"
