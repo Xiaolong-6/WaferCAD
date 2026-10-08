@@ -118,6 +118,9 @@ export function createThreeView({
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
   let physicalSceneSignature = null;
+  let physicalSurfacePlan = null;
+  let activeSceneVariant = null;
+  let sceneVariantCache = new Map();
 
   function renderPolicy(interactive = interacting) {
     return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
@@ -831,8 +834,119 @@ export function createThreeView({
     transparentMeshes = [];
     presentationObjects = new Set();
     surfaceMaterialPool = new Map();
+    clearSceneVariantCache();
+    activeSceneVariant = null;
     physicalSceneModel = null;
     physicalSceneSignature = null;
+    physicalSurfacePlan = null;
+  }
+
+  function presentationMode(inspection = getInspection?.() || {}) {
+    return Number(inspection.opacity) < 0.999 ? 'transparent' : 'opaque';
+  }
+
+  function snapshotSceneVariant(mode = activeSceneVariant) {
+    if (!mode || !group) return null;
+    return {
+      mode,
+      group,
+      zDisplayObjects,
+      currentZDisplay,
+      roughMeshes,
+      roughTasks,
+      roughOwnedObjects,
+      roughRenderContext,
+      roughInteractionCache,
+      transparentMeshes,
+      presentationObjects,
+      surfaceMaterialPool,
+      currentRoughMode,
+      lastLodSignature,
+      model: physicalSceneModel,
+      signature: physicalSceneSignature,
+    };
+  }
+
+  function disposeSceneGroup(targetGroup) {
+    if (!targetGroup) return;
+    const geometries = new Set(),
+      materials = new Set(),
+      textures = new Set();
+    for (const object of targetGroup.children || []) {
+      if (object.geometry) geometries.add(object.geometry);
+      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of objectMaterials) {
+        if (!material) continue;
+        materials.add(material);
+        if (material.bumpMap) textures.add(material.bumpMap);
+      }
+    }
+    targetGroup.clear();
+    for (const geometry of geometries) geometry.dispose?.();
+    for (const texture of textures) texture.dispose?.();
+    for (const material of materials) material.dispose?.();
+  }
+
+  function cacheActiveSceneVariant() {
+    if (!activeSceneVariant || !group) return;
+    sceneVariantCache.set(activeSceneVariant, snapshotSceneVariant(activeSceneVariant));
+  }
+
+  function restoreSceneVariant(entry) {
+    if (!entry?.group || !scene) return false;
+    if (group && group !== entry.group) scene.remove(group);
+    group = entry.group;
+    if (group.parent !== scene) scene.add(group);
+    zDisplayObjects = entry.zDisplayObjects;
+    currentZDisplay = entry.currentZDisplay;
+    roughMeshes = entry.roughMeshes;
+    roughTasks = entry.roughTasks;
+    roughOwnedObjects = entry.roughOwnedObjects;
+    roughRenderContext = entry.roughRenderContext;
+    roughInteractionCache = entry.roughInteractionCache;
+    transparentMeshes = entry.transparentMeshes;
+    presentationObjects = entry.presentationObjects;
+    surfaceMaterialPool = entry.surfaceMaterialPool;
+    currentRoughMode = entry.currentRoughMode;
+    lastLodSignature = entry.lastLodSignature;
+    physicalSceneModel = entry.model;
+    physicalSceneSignature = entry.signature;
+    activeSceneVariant = entry.mode;
+    host.dataset.sceneVariant = entry.mode;
+    return true;
+  }
+
+  function startSceneVariantBuild(mode) {
+    cacheActiveSceneVariant();
+    if (group) scene.remove(group);
+    group = new THREE.Group();
+    scene.add(group);
+    zDisplayObjects = new Set();
+    currentZDisplay = null;
+    roughMeshes = [];
+    roughTasks = [];
+    roughOwnedObjects = new Set();
+    roughRenderContext = null;
+    roughInteractionCache = null;
+    transparentMeshes = [];
+    presentationObjects = new Set();
+    surfaceMaterialPool = new Map();
+    currentRoughMode = 'none';
+    lastLodSignature = null;
+    activeSceneVariant = mode;
+    host.dataset.sceneVariant = mode;
+  }
+
+  function clearSceneVariantCache({ includeActive = false } = {}) {
+    const activeGroup = group;
+    for (const entry of sceneVariantCache.values()) {
+      if (!entry?.group) continue;
+      if (!includeActive && entry.group === activeGroup) continue;
+      if (entry.group.parent) entry.group.parent.remove(entry.group);
+      disposeSceneGroup(entry.group);
+    }
+    sceneVariantCache = new Map();
+    if (includeActive) activeSceneVariant = null;
   }
 
   function inspectionMaterialState(value) {
