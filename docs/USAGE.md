@@ -16,7 +16,7 @@ Set:
 
 Use **Apply base** to create or rebuild it.
 
-If the structure already contains operations, WaferCAD asks for confirmation. Use **Revert** or **Undo** to restore the previous state.
+If the structure has Process Steps or saved Variants, **Apply base** offers **Keep previous history**, **Clear history**, or **Cancel**. Keep archives the previous Main as a restorable Variant (including its original HEAD and child Variants), then creates a clean Main with the new Base. Clear permanently replaces the process lineage; Cancel makes no changes. **Revert** and **Undo** restore both geometry and the History branch graph. With no existing process history, Apply base proceeds directly.
 
 ## 2. Import a mask
 
