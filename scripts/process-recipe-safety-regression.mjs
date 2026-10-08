@@ -23,6 +23,10 @@ try {
   await openFunctionPanel(page, 'process');
   await page.locator('[data-process-input-mode="recipe"]').click();
   await page.locator('#recipeTemplateSelect').selectOption('deposit-etch');
+  // Merely selecting a template cannot discard an existing Recipe.
+  assert.equal(await page.locator('.recipe-step-row').count(), 0);
+  await page.locator('#recipeTemplateLoadBtn').click();
+  assert.ok(await page.locator('.recipe-step-row').count() > 0);
   await page.locator('#recipeCodeTab').click();
 
   // R1: Invalid Format and Steps/Code switching do not erase an unapplied draft.
