@@ -147,7 +147,9 @@ The former 1600+ line product regression has now been decomposed into:
 - `renderer-product-cases.mjs`: renderer-heavy isotropic, rough/LOD, conformal-interface, and Implant acceptance.
 - `product-regression.mjs`: thin orchestrator that selects `layout`, `renderer`, or `all`.
 
-The browser workflow keeps these product scopes as separate steps inside the normal targeted Chromium job. They are selected only when the changed paths can affect their ownership area, while still sharing the same browser installation when both are required.
+The browser workflow keeps the ordinary layout and renderer product scopes as separate steps inside the normal targeted Chromium job. They are selected only when the changed paths can affect their ownership area, while sharing the same browser installation when both are required.
+
+The full **625-site array renderer regression** runs in a **separate parallel CI job** (`renderer-array`, 30-minute watchdog) when renderer ownership changes. This preserves all 20 opacity/border toggle checks and enforces retained-scene stability, buried layer visibility, variant reuse, rotation and completion. Previously this large software-WebGL test ran at the end of an already busy 15-minute Chromium job and GitHub Actions cancelled it during the final toggles, even though preceding UI/product checks passed. The ordinary Chromium job retains its 15-minute watchdog and runs `renderer-product-regression.mjs`; `npm run test:ui:product:renderer` still runs both renderer scripts for local comprehensive verification. The 15-second transparent-first-frame **performance budget stays advisory**; a true timeout, wrong geometry or resource regression still blocks.
 
 By default, layout review writes to `test-results/product-review/`, and renderer review writes to `test-results/product-review/renderer/`. Each directory contains its own `index.html` gallery and `report.json`; the renderer scope preserves the layout artifacts.
 
