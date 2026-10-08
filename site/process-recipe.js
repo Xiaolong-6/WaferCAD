@@ -1,3 +1,5 @@
+import { normalizeRecipeLayerKey } from './process-recipe-preflight.js';
+
 const COMMANDS = new Set([
   'deposit',
   'extend',
@@ -117,9 +119,9 @@ function normalizeMask(mask) {
   }
   const sourceMode = mask.source === 'draw' || mask.sourceMode === 'draw' ? 'draw' : 'file';
   const layerKeys = Array.isArray(mask.layers)
-    ? mask.layers.map((value) => String(value))
+    ? mask.layers.map(normalizeRecipeLayerKey)
     : Array.isArray(mask.layerKeys)
-      ? mask.layerKeys.map((value) => String(value))
+      ? mask.layerKeys.map(normalizeRecipeLayerKey)
       : [];
   return {
     sourceMode,
