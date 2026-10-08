@@ -22,7 +22,8 @@ export function processGuideSvg(id, after=false) {
       const pyramid=id.includes('pyramid'), inverted=id.endsWith('inverted');
       const heights=pyramid?[57,34,57,34,57,34,57,34,57,34,57]:[57,44,53,37,52,43,57,35,54,42,57];
       const points=heights.map((h,i)=>[6+i*20.8,inverted?57+(57-h):h].join(',')).join(' ');
-      shape+='<polygon points="'+points+' 214,57 6,57" fill="'+blue+'"/>';
+      shape='<polygon points="'+points+' 214,118 6,118" fill="'+blue+'"/>';
+      shape+='<path d="M6 57H214" fill="none" stroke="#527694" stroke-width="1" stroke-dasharray="4 4"/>';
     } else shape+=arrow();
   } else if(id.startsWith('etch-')) {
     shape=base();
