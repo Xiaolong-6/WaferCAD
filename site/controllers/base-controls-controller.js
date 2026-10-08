@@ -76,7 +76,7 @@ export function createBaseControlsController({
       thickness <= 0
     ) {
       status('Base dimensions must be positive and finite.', 'error');
-      return;
+      return false;
     }
 
     const details = getHistoryDetails();
@@ -87,7 +87,7 @@ export function createBaseControlsController({
       action = await chooseHistoryAction();
       if (action === 'cancel' || !['keep', 'clear'].includes(action)) {
         syncBaseControls();
-        return;
+        return false;
       }
     }
 
@@ -114,6 +114,7 @@ export function createBaseControlsController({
           : 'Base rebuilt with a clean Main history. Use Undo or Revert to restore the previous state.',
         'success',
       );
+      return true;
     } catch (error) {
       restoreSnapshot(before);
       if (getHistory().length) getHistory().pop();
@@ -122,6 +123,7 @@ export function createBaseControlsController({
       refreshHistory();
       renderAll();
       status(`Base rebuild failed: ${error.message}`, 'error');
+      return false;
     }
   }
 
