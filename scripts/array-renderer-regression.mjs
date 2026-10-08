@@ -23,32 +23,56 @@ try {
   });
   const THREE_READY_TIMEOUT_MS = 45000;
   page.setDefaultTimeout(THREE_READY_TIMEOUT_MS);
-  const waitStage = async (label, timeout = THREE_READY_TIMEOUT_MS) => {
+  const frameSerial = () =>
+    page.locator('#threeHost').evaluate((el) => Number(el.dataset.rendererFrameSerial || 0));
+  const waitStage = async (
+    label,
+    timeout = THREE_READY_TIMEOUT_MS,
+    previousFrameSerial = null,
+  ) => {
     const started = performance.now();
     console.log('ARRAY_RENDERER_STAGE_BEGIN', label);
     await waitForThreeReady(page, timeout);
+    if (previousFrameSerial != null) {
+      await page.waitForFunction(
+        (previous) => {
+          const host = document.getElementById('threeHost');
+          return (
+            host?.dataset.renderState === 'ready' &&
+            Number(host.dataset.rendererFrameSerial || 0) > previous
+          );
+        },
+        previousFrameSerial,
+        { timeout },
+      );
+    }
+    const diagnostics = await page.locator('#threeHost').evaluate((el) => ({
+      renderState: el.dataset.renderState,
+      updateKind: el.dataset.rendererUpdateKind,
+      sceneGeneration: el.dataset.sceneGeneration,
+      surfacePlanBuildCount: el.dataset.surfacePlanBuildCount,
+      presentationMs: el.dataset.rendererPresentationMs,
+      topologyMs: el.dataset.rendererTopologyMs,
+      smoothCapsMs: el.dataset.rendererSmoothCapsMs,
+      sidewallsMs: el.dataset.rendererSidewallsMs,
+      annotationsMs: el.dataset.rendererAnnotationsMs,
+      assemblyMs: el.dataset.rendererAssemblyMs,
+      frameSerial: el.dataset.rendererFrameSerial,
+      frameMs: el.dataset.rendererFrameMs,
+      drawCalls: el.dataset.rendererDrawCalls,
+      drawTriangles: el.dataset.rendererDrawTriangles,
+      sceneVariant: el.dataset.sceneVariant,
+      sceneObjects: el.dataset.sceneObjectCount,
+      sceneGeometries: el.dataset.sceneGeometryCount,
+      sceneMaterials: el.dataset.sceneMaterialCount,
+      retainedObjects: el.dataset.sceneRetainedObjectCount,
+      retainedGeometries: el.dataset.sceneRetainedGeometryCount,
+      retainedMaterials: el.dataset.sceneRetainedMaterialCount,
+    }));
+    // Include the host evaluation/compositor blocking time: the old timer
+    // reported a 0.67 s cold variant despite ~37 s to the actual first frame.
     const elapsed = performance.now() - started;
-    console.log(
-      'ARRAY_RENDERER_STAGE_OK',
-      label,
-      Math.round(elapsed),
-      JSON.stringify(await page.locator('#threeHost').evaluate((el) => ({
-        renderState: el.dataset.renderState,
-        updateKind: el.dataset.rendererUpdateKind,
-        sceneGeneration: el.dataset.sceneGeneration,
-        surfacePlanBuildCount: el.dataset.surfacePlanBuildCount,
-        presentationMs: el.dataset.rendererPresentationMs,
-        topologyMs: el.dataset.rendererTopologyMs,
-        smoothCapsMs: el.dataset.rendererSmoothCapsMs,
-        sidewallsMs: el.dataset.rendererSidewallsMs,
-        annotationsMs: el.dataset.rendererAnnotationsMs,
-        assemblyMs: el.dataset.rendererAssemblyMs,
-        sceneVariant: el.dataset.sceneVariant,
-        sceneObjects: el.dataset.sceneObjectCount,
-        sceneGeometries: el.dataset.sceneGeometryCount,
-        sceneMaterials: el.dataset.sceneMaterialCount,
-      }))),
-    );
+    console.log('ARRAY_RENDERER_STAGE_OK', label, Math.round(elapsed), JSON.stringify(diagnostics));
     return elapsed;
   };
   const errors = observePageErrors(page);
@@ -105,8 +129,9 @@ try {
 
   // First transparent transition builds and caches a transparency-optimized
   // scene variant while reusing the physical ownership plan.
+  const beforeColdFrame = await frameSerial();
   await page.locator('#threeOpacityRange').fill('0.5');
-  const coldTransparentMs = await waitStage('opacity-cold-transparent', 120000);
+  const coldTransparentMs = await waitStage('opacity-cold-transparent', 120000, beforeColdFrame);
   const transparentCold = await snapshot();
   assert.ok(
     coldTransparentMs < 15000,
@@ -138,8 +163,9 @@ try {
   );
 
   // Opaque variant was built first and must now be restored without geometry work.
+  const beforeOpaqueFrame = await frameSerial();
   await page.locator('#threeOpacityRange').fill('1');
-  const opaqueSwapMs = await waitStage('opacity-swap-opaque');
+  const opaqueSwapMs = await waitStage('opacity-swap-opaque', 120000, beforeOpaqueFrame);
   const opaqueSwap = await snapshot();
   assert.equal(opaqueSwap.rendererUpdateKind, 'variant-swap');
   assert.equal(opaqueSwap.sceneVariant, 'opaque');
@@ -147,8 +173,9 @@ try {
   assert.equal(opaqueSwap.surfacePlanBuildCount, quality.surfacePlanBuildCount);
 
   // Returning to transparency must reuse the cached transparent variant.
+  const beforeWarmFrame = await frameSerial();
   await page.locator('#threeOpacityRange').fill('0.5');
-  const warmTransparentMs = await waitStage('opacity-swap-transparent');
+  const warmTransparentMs = await waitStage('opacity-swap-transparent', 120000, beforeWarmFrame);
   const transparentWarm = await snapshot();
   assert.equal(transparentWarm.rendererUpdateKind, 'variant-swap');
   assert.equal(transparentWarm.sceneVariant, 'transparent');
@@ -187,8 +214,9 @@ try {
 
   await page.screenshot({ path: fileURLToPath(new URL('transparent.png', output)) });
 
+  const beforeFinalFrame = await frameSerial();
   await page.locator('#threeOpacityRange').fill('1');
-  const finalOpaqueSwapMs = await waitStage('opacity-final-opaque');
+  const finalOpaqueSwapMs = await waitStage('opacity-final-opaque', 120000, beforeFinalFrame);
   const opaqueAgain = await snapshot();
   assert.equal(opaqueAgain.rendererUpdateKind, 'variant-swap');
   assert.equal(opaqueAgain.sceneVariant, 'opaque');
