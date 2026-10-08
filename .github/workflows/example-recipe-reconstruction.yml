@@ -1,63 +1,87 @@
 name: Example Recipe Reconstruction
+
 on:
-  push:
-    branches:
-      - fix/example-kernel-recipe-replay-audit
+  pull_request:
+    branches: [main]
     paths:
-      - .github/workflows/example-recipe-reconstruction.yml
-      - scripts/maintenance/backfill-example-recipes.mjs
-      - scripts/maintenance/sync-example-recipe-previews.mjs
-      - site/layout-export.js
-      - scripts/example-recipe-runall-acceptance.mjs
-      - site/tests/example-mask-export.test.mjs
+      - 'site/**'
+      - 'scripts/maintenance/**'
+      - 'scripts/example-recipe-runall-acceptance.mjs'
+      - '.github/workflows/example-recipe-reconstruction.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  migrate-verify:
+  fixture-check:
+    name: Verify committed Recipe and mask fixtures
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          persist-credentials: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
-      - run: npm ci
-      - name: Reconstruct old project recipes and refresh detector generator
-        run: |
-          node scripts/maintenance/backfill-example-recipes.mjs --write
-          node scripts/maintenance/rebuild-photodetectors.mjs --write
-          node scripts/maintenance/sync-example-recipe-previews.mjs --write
-      - name: Format source and generated assets
-        run: |
-          npx prettier --write scripts/maintenance/backfill-example-recipes.mjs scripts/maintenance/sync-example-recipe-previews.mjs site/layout-export.js site/tests/example-recipe-audit.test.mjs site/tests/example-mask-export.test.mjs scripts/example-recipe-runall-acceptance.mjs site/process-recipe.js site/process-recipe-preflight.js site/controllers/base-controls-controller.js site/controllers/process-recipe-controller.js site/app.js scripts/maintenance/rebuild-photodetectors.mjs
-      - name: Validate recipe drift and standard tests
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify regenerated project recipes without mutating repository
         run: |
           node scripts/maintenance/backfill-example-recipes.mjs
           node scripts/maintenance/rebuild-photodetectors.mjs
           node scripts/maintenance/sync-example-recipe-previews.mjs
-          npm run check:ci
-          git diff --check
-      - name: Commit reconstructed examples back to isolated branch
+          node --test site/tests/example-recipe-audit.test.mjs site/tests/example-mask-export.test.mjs
+          git diff --exit-code
+  replay:
+    name: Kernel Run All / ${{ matrix.example }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - example: photodetector-literature
+            options: '--id=photodetector-literature'
+          - example: photodetector-ge-a
+            options: '--id=photodetector-literature --variant=ge-fig15-a'
+          - example: photodetector-ge-b
+            options: '--id=photodetector-literature --variant=ge-fig15-b'
+          - example: perc-point-contact-solar-cell
+            options: '--id=perc-point-contact-solar-cell'
+          - example: fully-textured-perovskite-silicon-tandem
+            options: '--id=fully-textured-perovskite-silicon-tandem'
+          - example: suspended-silica-microdisk
+            options: '--id=suspended-silica-microdisk'
+          - example: suspended-silica-keep-history
+            options: '--id=suspended-silica-microdisk --history=keep'
+          - example: m3d-selfpowered-heterogeneous-ic
+            options: '--id=m3d-selfpowered-heterogeneous-ic'
+          - example: three-tier-silicon-jlfets
+            options: '--id=three-tier-silicon-jlfets'
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Rebuild from Base, inspect and export
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add site/examples/*.wafercad site/examples/previews/*.wafercad site/layout-export.js scripts/maintenance/sync-example-recipe-previews.mjs site/tests/example-recipe-audit.test.mjs site/tests/example-mask-export.test.mjs scripts/maintenance/backfill-example-recipes.mjs scripts/example-recipe-runall-acceptance.mjs scripts/maintenance/rebuild-photodetectors.mjs site/process-recipe.js site/process-recipe-preflight.js site/controllers/base-controls-controller.js site/controllers/process-recipe-controller.js site/app.js
-          if ! git diff --cached --quiet; then
-            git commit -m 'Generate reproducible recipes for all bundled example families'
-            git push
-          fi
-      - name: Browser acceptance - every Welcome example Run All from Clear History
-        run: |
-          npx playwright install --with-deps chromium
-          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-recipe-http.log 2>&1 &
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-example-replay.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" || true' EXIT
-          WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs
-          WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs --id=photodetector-literature --variant=ge-fig15-a
-          WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk --history=keep
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/example-recipe-runall-acceptance.mjs ${{ matrix.options }}
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: example-replay-${{ matrix.example }}
+          path: test-results/example-recipe-runall/
+          retention-days: 14
+          if-no-files-found: ignore
