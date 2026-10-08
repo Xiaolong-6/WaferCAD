@@ -5264,8 +5264,12 @@ summary:focus-visible {
 }
 .recipe-steps-list {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr);
   gap: 3px;
   margin: 5px 0;
+  overflow: hidden;
 }
 .recipe-step-row {
   width: 100%;
@@ -5303,10 +5307,16 @@ summary:focus-visible {
 }
 .recipe-step-copy {
   min-width: 0;
+  max-width: 100%;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1px;
+  overflow: hidden;
 }
 .recipe-step-copy strong {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: #34424d;
   font-size: 10px;
@@ -5315,6 +5325,9 @@ summary:focus-visible {
   white-space: nowrap;
 }
 .recipe-step-copy small {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: #85919a;
   font-size: 8.5px;
