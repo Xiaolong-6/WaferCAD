@@ -1340,6 +1340,72 @@ export function createSnapshotManager({
     return false;
   }
 
+  // Base rebuild establishes a new independent Main root. Preserve the previous
+  // Main lineage as a restorable Variant instead of leaving orphaned Steps.
+  function rebuildMainBase({ preservePrevious = false } = {}) {
+    const state = cloneState(capture());
+    if (!validateState(state)) {
+      throw new Error('Cannot rebuild Main with an invalid workspace state.');
+    }
+    if (!preservePrevious) {
+      clear();
+      const main = branchById(MAIN_SNAPSHOT_BRANCH_ID);
+      main.headState = cloneState(state);
+      cursorBaselineState = cloneState(state);
+      return { archivedBranchId: null };
+    }
+
+    if (!canCreateVariant()) {
+      throw new Error(`Cannot preserve previous Main: Variant limit of ${maxBranches} reached.`);
+    }
+    const previousMain = branchById(MAIN_SNAPSHOT_BRANCH_ID);
+    if (!previousMain) throw new Error('Main history branch was not found.');
+    const stamp = now();
+    const date = stamp instanceof Date ? stamp : new Date(stamp);
+    let archiveId = branchIdFactory();
+    while (!archiveId || branchById(archiveId)) archiveId = branchIdFactory();
+    const oldMainState =
+      activeBranchId === MAIN_SNAPSHOT_BRANCH_ID && isCursorAtBranchHead()
+        ? cloneState(cursorBaselineState || previousMain.headState || state)
+        : cloneState(previousMain.headState || cursorBaselineState || state);
+    const archive = {
+      ...previousMain,
+      id: archiveId,
+      name: uniqueBranchName(`Previous base · ${date.toISOString().slice(0, 16).replace('T', ' ')}`),
+      parentBranchId: MAIN_SNAPSHOT_BRANCH_ID,
+      rootNodeId: null,
+      headState: oldMainState,
+      createdAt: date.toISOString(),
+    };
+
+    for (const node of historyNodes) {
+      if (node.branchId === MAIN_SNAPSHOT_BRANCH_ID) node.branchId = archiveId;
+    }
+    for (const record of records) {
+      if (record.branchId === MAIN_SNAPSHOT_BRANCH_ID) record.branchId = archiveId;
+    }
+    for (const branch of branches) {
+      if (
+        branch.id !== MAIN_SNAPSHOT_BRANCH_ID &&
+        branch.parentBranchId === MAIN_SNAPSHOT_BRANCH_ID
+      ) {
+        branch.parentBranchId = archiveId;
+      }
+    }
+
+    branches.push(archive);
+    branches[branches.findIndex((item) => item.id === MAIN_SNAPSHOT_BRANCH_ID)] = {
+      ...defaultMainBranch(),
+      headState: cloneState(state),
+    };
+    activeBranchId = MAIN_SNAPSHOT_BRANCH_ID;
+    cursorNodeId = null;
+    cursorSnapshotId = null;
+    cursorBaselineState = cloneState(state);
+    cursorDetachedFromHead = false;
+    return { archivedBranchId: archiveId };
+  }
+
   function clear() {
     records = [];
     branches = [defaultMainBranch()];
@@ -1678,6 +1744,7 @@ export function createSnapshotManager({
     restoreProcessNode,
     hasHistoricalWorkingEdits,
     syncActiveHeadState,
+    rebuildMainBase,
     clear,
     exportRecords,
     exportBranchState,
