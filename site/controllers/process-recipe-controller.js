@@ -808,7 +808,8 @@ export function createProcessRecipeController({
         make(root, 'small', '', fullSummary),
       );
       const run = lastRunResult && lastRunResult.signature === recipeSignature() &&
-        lastRunResult.modelRevision === Number(getModel()?.processRevision || 0)
+        lastRunResult.modelRevision === Number(getModel()?.processRevision || 0) &&
+        lastRunResult.modelRef.deref() === getModel()
         ? lastRunResult : null;
       const stateText = run?.failedIndex === index ? '✕' :
         (run && index < run.completed ? '✓' : '○');
@@ -890,7 +891,8 @@ export function createProcessRecipeController({
       return;
     }
     const stale = result.signature !== recipeSignature() ||
-      result.modelRevision !== Number(getModel()?.processRevision || 0);
+      result.modelRevision !== Number(getModel()?.processRevision || 0) ||
+      result.modelRef.deref() !== getModel();
     target.textContent = stale
       ? 'Previous Recipe run belongs to a different Recipe or model revision; completion marks are hidden.'
       : `${result.outcome}: ${result.completed}/${result.total} steps committed from ${result.startMode === 'new-base' ? 'rebuilt Base' : 'the existing model'} (starting revision ${result.startRevision}). Run to Step always replays from Step 1; it does not resume.`;
@@ -1180,6 +1182,7 @@ export function createProcessRecipeController({
           failedIndex,
           outcome,
           modelRevision: Number(getModel()?.processRevision || 0),
+          modelRef: new WeakRef(getModel()),
         };
       }
       setRunningUi(false);
