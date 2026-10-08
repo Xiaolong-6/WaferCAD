@@ -78,6 +78,34 @@ try {
 
   assertNoPageErrors(errors);
   await context.close();
+
+  // R7 synthetic guard: a many-Step run yields to the browser and Stop stays clickable.
+  // The original privately supplied OAS is not in the repository, so this is NOT a
+  // reproduction of the reported imported-layout stall.
+  const stressContext = await newUiContext(browser, { viewport: { width: 1365, height: 950 } });
+  const stressPage = await stressContext.newPage();
+  const stressErrors = observePageErrors(stressPage);
+  await gotoWelcome(stressPage);
+  await stressPage.locator('#welcomeEmptyBtn').click();
+  await stressPage.waitForURL(/\\/app\\.html(?:\\?.*)?$/, { timeout: 30000 });
+  await waitForAppReady(stressPage);
+  await openFunctionPanel(stressPage, 'process');
+  await stressPage.locator('[data-process-input-mode="recipe"]').click();
+  await stressPage.locator('#recipeCodeTab').click();
+  const stressRecipe = Array.from({ length: 40 }, (_, index) =>
+    `deposit({ material: "Stop film ${index + 1}", thickness: "20 nm", area: "full" });`,
+  ).join('\\n');
+  await stressPage.locator('#recipeCodeEditor').fill(stressRecipe);
+  await stressPage.locator('#recipeApplyCodeBtn').click();
+  await stressPage.locator('#recipeRunAllBtn').click();
+  await stressPage.locator('#recipeStopBtn').click({ timeout: 5000 });
+  await stressPage.waitForFunction(
+    () => document.getElementById('recipeStopBtn')?.disabled,
+    null, { timeout: 45000 },
+  );
+  assert.match(await stressPage.locator('#recipeRunSummary').innerText(), /Stopped: [0-9]+\\/40/);
+  assertNoPageErrors(stressErrors);
+  await stressContext.close();
 } finally {
   await browser.close();
 }
