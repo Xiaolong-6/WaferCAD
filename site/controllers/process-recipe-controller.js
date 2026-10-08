@@ -71,7 +71,9 @@ export function createProcessRecipeController({
     redoStack = [],
     codeDraftDirty = false,
     invalidFields = new Map(),
-    lastRunResult = null;
+    lastRunResult = null,
+    pendingTemplateId = '',
+    templateReplaceArmed = false;
   const recipeHistoryLimit = 100;
   const recipeSignature = () => JSON.stringify(recipe.steps);
   const fieldId = (stepId, key) => `${stepId}:${key}`;
@@ -335,17 +337,23 @@ export function createProcessRecipeController({
         <input id="recipeNameInput" class="recipe-name-input" maxlength="160" aria-label="Recipe name" />
         <select id="recipeTemplateSelect" class="compact-select" aria-label="Recipe template">
           <option value="">Template…</option>
-          <option value="blank">Blank</option>
+          <option value="blank">New blank Recipe</option>
           <option value="deposit-etch">Deposit + Etch</option>
           <option value="conformal">Conformal coating</option>
           <option value="implant">Implant</option>
         </select>
       </div>
+      <div id="recipeTemplatePreview" class="recipe-template-preview" hidden aria-live="polite">
+        <strong id="recipeTemplatePreviewTitle"></strong>
+        <span id="recipeTemplatePreviewDetail"></span>
+        <p id="recipeTemplatePreviewWarning" class="hint compact-hint"></p>
+        <div class="recipe-template-actions">
+          <button id="recipeTemplateCancelBtn" type="button" class="compact-btn">Cancel</button>
+          <button id="recipeTemplateLoadBtn" type="button" class="compact-btn primary">Load template</button>
+        </div>
+      </div>
       <div class="recipe-options-row">
-        <label class="recipe-record-toggle" title="Append successful Step-mode operations to this recipe">
-          <input id="recipeRecordManual" type="checkbox" checked />
-          <span>Record Step-mode operations</span>
-        </label>
+        <span class="recipe-workflow-label">Build · edit steps</span>
         <div class="recipe-history-actions" aria-label="Recipe edit history">
           <button id="recipeUndoBtn" class="compact-btn" type="button" title="Undo Recipe edit" disabled>Undo</button>
           <button id="recipeRedoBtn" class="compact-btn" type="button" title="Redo Recipe edit" disabled>Redo</button>
@@ -379,24 +387,29 @@ export function createProcessRecipeController({
         </div>
         <p class="hint compact-hint">Safe Process Recipe syntax only. Arbitrary JavaScript is not executed.</p>
       </div>
-      <div id="recipeValidation" class="recipe-validation" aria-live="polite"></div>
-      <div id="recipeProgress" class="recipe-progress" hidden>
-        <div><span id="recipeProgressLabel">Preparing…</span><span id="recipeProgressCount"></span></div>
-        <progress id="recipeProgressBar" max="1" value="0"></progress>
-      </div>
-      <p id="recipeRunSummary" class="hint compact-hint" role="status"></p>
-      <label class="recipe-start-mode">
-        <span>Start</span>
-        <select id="recipeRunStart" class="compact-select" aria-label="Recipe run starting state">
-          <option value="continue">Continue current model</option>
-          <option value="new-base">Rebuild Base first (new Main)</option>
-        </select>
-      </label>
-      <div class="recipe-run-actions">
-        <button id="recipeValidateBtn" class="compact-btn" type="button">Validate</button>
-        <button id="recipeRunToBtn" class="compact-btn" type="button">Run to Step</button>
-        <button id="recipeRunAllBtn" class="primary compact-btn" type="button">Run All</button>
-        <button id="recipeStopBtn" class="compact-btn" type="button" disabled>Stop</button>
+      <div class="recipe-execution">
+        <div class="recipe-validation-header">
+          <span class="recipe-workflow-label">Check · readiness</span>
+          <button id="recipeValidateBtn" class="compact-btn" type="button">Validate</button>
+        </div>
+        <div id="recipeValidation" class="recipe-validation" aria-live="polite"></div>
+        <div id="recipeProgress" class="recipe-progress" hidden>
+          <div><span id="recipeProgressLabel">Preparing…</span><span id="recipeProgressCount"></span></div>
+          <progress id="recipeProgressBar" max="1" value="0"></progress>
+        </div>
+        <p id="recipeRunSummary" class="hint compact-hint" role="status"></p>
+        <label class="recipe-start-mode">
+          <span>Start</span>
+          <select id="recipeRunStart" class="compact-select" aria-label="Recipe run starting state">
+            <option value="continue">Continue current model</option>
+            <option value="new-base">Rebuild Base first (new Main)</option>
+          </select>
+        </label>
+        <div class="recipe-run-actions">
+          <button id="recipeRunToBtn" class="compact-btn" type="button">Run to Step</button>
+          <button id="recipeRunAllBtn" class="primary compact-btn" type="button">Run All</button>
+          <button id="recipeStopBtn" class="compact-btn" type="button" disabled hidden>Stop</button>
+        </div>
       </div>`;
   }
 
