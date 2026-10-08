@@ -229,11 +229,17 @@ async function importMask(stage) {
   await closeFunctionPanel(page);
 }
 async function setSection(coords) {
+  const panel = page.locator('#sectionCoordsPanel');
+  if (!(await panel.isVisible())) {
+    await page.locator('#sectionControlsBtn').click();
+    await panel.waitFor({ state: 'visible', timeout: 30000 });
+  }
   for (const [i, id] of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].entries()) {
     const input = page.locator('#' + id);
     await input.fill(String(coords[i]));
     await input.press('Tab');
   }
+  await page.locator('#sectionControlsBtn').click();
 }
 async function applyOp(op) {
   await openFunctionPanel(page, 'process', { timeout: 30000 });
