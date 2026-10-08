@@ -19,7 +19,10 @@ export function historyOperationLabel(node, model) {
   if (operation.kind === 'add') {
     const name = namedEntity(model.layers, refs.resultLayerId, operation.name || '');
     if (!name || !thickness) return fallback;
-    if (operation.growth === 'transfer') return `Transfer ${name} · Flat · ${thickness}`;
+    if (operation.growth === 'transfer') {
+      const mode = operation.transferMode || operation.replay?.params?.transferMode;
+      return `Transfer ${name} · ${mode === 'follow' ? 'Follow surface' : 'Flat'} · ${thickness}`;
+    }
     return `Deposit ${name} · ${operation.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thickness}`;
   }
 
