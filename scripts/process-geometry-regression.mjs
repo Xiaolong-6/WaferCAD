@@ -86,6 +86,18 @@ assert.equal(await recipePage.locator('#recipeStepsPane').isVisible(), true);
 assert.equal(await recipePage.locator('#recipeCodePane').isHidden(), true);
 
 await recipePage.locator('#recipeTemplateSelect').selectOption('conformal');
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 0);
+assert.equal(await recipePage.locator('#recipeTemplatePreview').isVisible(), true);
+await recipePage.locator('#recipeTemplateLoadBtn').click();
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+// Selecting Blank is only a preview; an existing recipe requires an explicit
+// second replacement click and can be cancelled without losing its steps.
+await recipePage.locator('#recipeTemplateSelect').selectOption('blank');
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+await recipePage.locator('#recipeTemplateLoadBtn').click();
+assert.match(await recipePage.locator('#recipeTemplateLoadBtn').textContent(), /Replace Recipe/);
+assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
+await recipePage.locator('#recipeTemplateCancelBtn').click();
 assert.equal(await recipePage.locator('.recipe-step-row').count(), 1);
 assert.match(await recipePage.locator('.recipe-step-row').first().textContent(), /Deposit Al2O3/);
 assert.equal(await recipePage.locator('#recipeStepOperation').inputValue(), 'deposit');
