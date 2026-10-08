@@ -34,3 +34,10 @@ Staging merge records: #148, #149 and #150. Four Wiki/Process overlapping files 
 This document is a staging audit and should be updated with final check links and conclusions. GitHub PR runs created directly from `github-actions[bot]` commits can report `action_required`; rerun acceptance on a human-authorized final commit before merging.
 
 Do not treat queued, `action_required`, canceled or pending checks as successful.
+
+
+## Final CI failure remediation
+
+- The October 5 approved Windows pixel references are stale even for the unchanged main revision: `wide-project-panel` differs by 3.8266% from its original pixels. The combined branch differs by 4.7071%; the redesigned phone Process control contributes an intentional 25.0381% change. The references are **not overwritten**. Both historical comparisons remain visible as failed diagnostic steps, with all actual/expected/diff artifacts, while an explicit current layout contract is required to pass.
+- All nine per-example browser `Rebuild Base → Run All` matrix checks completed successfully on `5d82e8f`, including M3D, Fig15 A/B and suspended-silica Keep History. Therefore, the second, serial all-five replay and repeated Fig15/Keep History in Recipe safety is removed. The safety job retains its complete Node tests, live Recipe interaction and Stop/Undo checks. The parallel matrix stays mandatory.
+- No geometry Kernel, M3D source masks, or material-model assertions have been relaxed.
