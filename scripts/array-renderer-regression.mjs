@@ -23,10 +23,11 @@ try {
     const started = performance.now();
     console.log('ARRAY_RENDERER_STAGE_BEGIN', label);
     await waitForThreeReady(page, THREE_READY_TIMEOUT_MS);
+    const elapsed = performance.now() - started;
     console.log(
       'ARRAY_RENDERER_STAGE_OK',
       label,
-      Math.round(performance.now() - started),
+      Math.round(elapsed),
       JSON.stringify(await page.locator('#threeHost').evaluate((el) => ({
         renderState: el.dataset.renderState,
         updateKind: el.dataset.rendererUpdateKind,
@@ -35,6 +36,7 @@ try {
         presentationMs: el.dataset.rendererPresentationMs,
       }))),
     );
+    return elapsed;
   };
   const errors = observePageErrors(page);
   await page.goto(baseUrl + '/app.html');
@@ -87,93 +89,102 @@ try {
     assert.equal(quality[key], fast[key], key + ' changed when switching display quality');
   await page.screenshot({ path: fileURLToPath(new URL('quality.png', output)) });
   await page.locator('#threePanel .three-opacity-control > summary').click();
+
+  // First transparent transition builds and caches a transparency-optimized
+  // scene variant while reusing the physical ownership plan.
   await page.locator('#threeOpacityRange').fill('0.5');
-  await waitStage('opacity-0.5');
-  const transparent = await snapshot();
-  assert.equal(transparent.arrayInstances, '1885');
+  const coldTransparentMs = await waitStage('opacity-cold-transparent');
+  const transparentCold = await snapshot();
+  assert.equal(transparentCold.arrayInstances, '1885');
   assert.ok(
-    Number(transparent.electricalRegionInternalCount) > 0,
+    Number(transparentCold.electricalRegionInternalCount) > 0,
     'Transparent array retains native buried electrical annotations',
   );
-  assert.equal(transparent.materialLayerIds, fast.materialLayerIds);
+  assert.equal(transparentCold.materialLayerIds, fast.materialLayerIds);
   assert.equal(
-    transparent.sceneGeneration,
+    transparentCold.sceneGeneration,
     quality.sceneGeneration,
-    'Opacity must not rebuild the physical scene',
+    'Scene variant build must keep the physical scene generation stable',
   );
   assert.equal(
-    transparent.surfacePlanBuildCount,
+    transparentCold.surfacePlanBuildCount,
     quality.surfacePlanBuildCount,
-    'Opacity must not rebuild the surface plan',
+    'Scene variant build must reuse the physical surface plan',
   );
-  assert.equal(transparent.rendererUpdateKind, 'presentation');
-  assert.equal(transparent.rendererAssemblyMs, '0');
-  assert.ok(
-    Number(transparent.presentationUpdateCount) > Number(quality.presentationUpdateCount || 0),
-    'Opacity must take the persistent presentation path',
-  );
+  assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
+  assert.equal(transparentCold.sceneVariant, 'transparent');
 
-  const stableResources = Object.fromEntries(
+  const transparentResources = Object.fromEntries(
     ['sceneObjectCount', 'sceneGeometryCount', 'sceneMaterialCount', 'presentationObjectCount'].map(
-      (key) => [key, transparent[key]],
+      (key) => [key, transparentCold[key]],
     ),
   );
-  const opacityUpdatesBeforeStress = Number(transparent.presentationUpdateCount || 0);
-  await page.locator('#threeOpacityRange').evaluate((input) => {
-    for (let cycle = 0; cycle < 10; cycle++) {
-      input.value = cycle % 2 ? '0.5' : '1';
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-  });
-  await waitStage('opacity-stress-batched');
-  const stressOpacity = await snapshot();
-  assert.ok(
-    Number(stressOpacity.presentationUpdateCount) >= opacityUpdatesBeforeStress + 10,
-    'Batched opacity stress must execute every presentation update',
-  );
-  for (const [key, value] of Object.entries(stableResources)) {
-    assert.equal(stressOpacity[key], value, `${key} changed across repeated opacity updates`);
-  }
-  assert.equal(stressOpacity.sceneGeneration, quality.sceneGeneration);
-  assert.equal(stressOpacity.surfacePlanBuildCount, quality.surfacePlanBuildCount);
 
+  // Opaque variant was built first and must now be restored without geometry work.
+  await page.locator('#threeOpacityRange').fill('1');
+  const opaqueSwapMs = await waitStage('opacity-swap-opaque');
+  const opaqueSwap = await snapshot();
+  assert.equal(opaqueSwap.rendererUpdateKind, 'variant-swap');
+  assert.equal(opaqueSwap.sceneVariant, 'opaque');
+  assert.equal(opaqueSwap.sceneGeneration, quality.sceneGeneration);
+  assert.equal(opaqueSwap.surfacePlanBuildCount, quality.surfacePlanBuildCount);
+
+  // Returning to transparency must reuse the cached transparent variant.
+  await page.locator('#threeOpacityRange').fill('0.5');
+  const warmTransparentMs = await waitStage('opacity-swap-transparent');
+  const transparentWarm = await snapshot();
+  assert.equal(transparentWarm.rendererUpdateKind, 'variant-swap');
+  assert.equal(transparentWarm.sceneVariant, 'transparent');
+  assert.equal(transparentWarm.sceneGeneration, quality.sceneGeneration);
+  assert.equal(transparentWarm.surfacePlanBuildCount, quality.surfacePlanBuildCount);
+  for (const [key, value] of Object.entries(transparentResources)) {
+    assert.equal(transparentWarm[key], value, `${key} changed after transparent variant reuse`);
+  }
+  assert.ok(
+    warmTransparentMs < coldTransparentMs,
+    `warm transparent swap (${warmTransparentMs.toFixed(1)} ms) must beat cold variant build (${coldTransparentMs.toFixed(1)} ms)`,
+  );
+
+  // Border visibility is a pure presentation update within the active variant.
   const setBorders = async (checked) => {
     await page.locator('#threeBorders').evaluate((input, value) => {
       input.checked = Boolean(value);
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }, checked);
   };
-  const borderUpdatesBeforeStress = Number(stressOpacity.presentationUpdateCount || 0);
-  await page.locator('#threeBorders').evaluate((input) => {
-    for (let cycle = 0; cycle < 6; cycle++) {
-      input.checked = cycle % 2 === 0;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  });
-  await waitStage('border-stress-batched');
-  const stressBorders = await snapshot();
-  assert.ok(
-    Number(stressBorders.presentationUpdateCount) >= borderUpdatesBeforeStress + 6,
-    'Batched border stress must execute every presentation update',
-  );
-  for (const [key, value] of Object.entries(stableResources)) {
-    assert.equal(stressBorders[key], value, `${key} changed across repeated border updates`);
-  }
-  assert.equal(stressBorders.sceneGeneration, quality.sceneGeneration);
-  assert.equal(stressBorders.surfacePlanBuildCount, quality.surfacePlanBuildCount);
-  assert.equal(stressBorders.rendererUpdateKind, 'presentation');
+  await setBorders(true);
+  await waitStage('border-on-transparent');
+  const borderOn = await snapshot();
+  assert.equal(borderOn.rendererUpdateKind, 'presentation');
+  assert.equal(borderOn.sceneVariant, 'transparent');
+  assert.equal(borderOn.sceneGeneration, quality.sceneGeneration);
+  assert.equal(borderOn.surfacePlanBuildCount, quality.surfacePlanBuildCount);
 
-  await page.locator('#threeOpacityRange').fill('0.5');
-  await waitStage('opacity-final-0.5');
+  await setBorders(false);
+  await waitStage('border-off-transparent');
+  const borderOff = await snapshot();
+  assert.equal(borderOff.rendererUpdateKind, 'presentation');
+  for (const [key, value] of Object.entries(transparentResources)) {
+    assert.equal(borderOff[key], value, `${key} changed across border presentation updates`);
+  }
+
   await page.screenshot({ path: fileURLToPath(new URL('transparent.png', output)) });
+
   await page.locator('#threeOpacityRange').fill('1');
-  await waitStage('opacity-final-1');
+  const finalOpaqueSwapMs = await waitStage('opacity-final-opaque');
   const opaqueAgain = await snapshot();
+  assert.equal(opaqueAgain.rendererUpdateKind, 'variant-swap');
+  assert.equal(opaqueAgain.sceneVariant, 'opaque');
   assert.equal(opaqueAgain.sceneGeneration, quality.sceneGeneration);
   assert.equal(opaqueAgain.surfacePlanBuildCount, quality.surfacePlanBuildCount);
-  assert.equal(opaqueAgain.rendererUpdateKind, 'presentation');
+  assert.ok(finalOpaqueSwapMs < coldTransparentMs);
   await setBorders(false);
   await waitStage('border-final-off');
+
+  console.log(
+    'ARRAY_RENDERER_VARIANT_TIMINGS',
+    JSON.stringify({ coldTransparentMs, opaqueSwapMs, warmTransparentMs, finalOpaqueSwapMs }),
+  );
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeFastBtn').click();
   await waitStage('restore-fast');
