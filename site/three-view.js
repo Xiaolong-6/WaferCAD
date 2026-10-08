@@ -9,6 +9,7 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
+import { mergeCollinearSidewallParts, reduceCollinearClosedRing } from './renderer-line-reduction.js';
 import { canUseGpuRoughTask, decorateGpuRoughMaterial } from './gpu-rough-surface.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
@@ -1286,7 +1287,10 @@ export function createThreeView({
     };
     for (const { z, normal, polys } of caps)
       for (const poly of polys)
-        for (const triangle2d of triangulatePolygon(THREE, poly)) {
+        for (const triangle2d of triangulatePolygon(
+          THREE,
+          poly.map((ring) => reduceCollinearClosedRing(ring)),
+        )) {
           let [a, b, c] = triangle2d.map(([x, y]) => [x, y, z]);
           const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
           if (cross * normal < 0) [b, c] = [c, b];
@@ -1295,7 +1299,7 @@ export function createThreeView({
     for (const { z0, z1, polys } of slabs)
       for (const poly of polys)
         for (let r = 0; r < poly.length; r++) {
-          const ring = poly[r].slice(0, -1);
+          const ring = reduceCollinearClosedRing(poly[r]).slice(0, -1);
           const signedArea = ring.reduce((sum, p, i) => {
             const q = ring[(i + 1) % ring.length];
             return sum + p[0] * q[1] - p[1] * q[0];
@@ -1449,7 +1453,7 @@ export function createThreeView({
               roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
           : z;
 
-    for (const part of parts || []) {
+    for (const part of mergeCollinearSidewallParts(parts)) {
       const p = part.p,
         q = part.q,
         dx = q[0] - p[0],
