@@ -61,11 +61,11 @@ export function createBaseControlsController({
     }
   }
 
-  async function applyBase() {
-    const shape = root.querySelector('#substrateShape button.active').dataset.shape,
-      width = manualMicron($('baseWidth').value),
-      height = shape === 'circle' ? width : manualMicron($('baseHeight').value),
-      thickness = manualMicron($('baseThickness').value);
+  async function applyBase({ recipeBase = null } = {}) {
+    const shape = recipeBase?.shape || root.querySelector('#substrateShape button.active').dataset.shape,
+      width = recipeBase ? Number(recipeBase.width) : manualMicron($('baseWidth').value),
+      height = recipeBase ? Number(recipeBase.height) : shape === 'circle' ? width : manualMicron($('baseHeight').value),
+      thickness = recipeBase ? Number(recipeBase.thickness) : manualMicron($('baseThickness').value);
 
     if (
       !Number.isFinite(width) ||
@@ -96,6 +96,10 @@ export function createBaseControlsController({
     const before = captureBaseSnapshot();
     try {
       const newModel = createModel({ shape, width, height, thickness });
+      if (recipeBase) {
+        newModel.layers[0].name = recipeBase.material;
+        if (recipeBase.color) newModel.layers[0].color = recipeBase.color;
+      }
       setBaseRevertSnapshot(before);
       saveHistory(before);
       setModel(newModel);
