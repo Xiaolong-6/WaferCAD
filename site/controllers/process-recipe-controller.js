@@ -78,7 +78,10 @@ export function createProcessRecipeController({
 
   function markInvalidField(stepId, key, input, label, error) {
     invalidFields.set(fieldId(stepId, key), {
-      message: `Step ${recipe.steps.findIndex((step) => step.id === stepId) + 1}: ${label}: ${error.message}`,
+      stepId,
+      key,
+      label,
+      error: error.message,
       value: input.value,
     });
     input.setAttribute('aria-invalid', 'true');
@@ -92,7 +95,7 @@ export function createProcessRecipeController({
     if (invalid) {
       input.value = invalid.value;
       input.setAttribute('aria-invalid', 'true');
-      input.title = invalid.message;
+      input.title = invalid.error;
     }
     return input;
   }
@@ -114,6 +117,12 @@ export function createProcessRecipeController({
       if (undoStack.length > recipeHistoryLimit) undoStack.shift();
       redoStack = [];
     }
+    // Obsolete drafts must not keep an edited/deleted Step invalid.
+    for (const [id, entry] of invalidFields) {
+      const previous = recipe.steps.find((step) => step.id === entry.stepId);
+      const current = normalized.steps.find((step) => step.id === entry.stepId);
+      if (!current || current.command !== previous?.command) invalidFields.delete(id);
+    }
     recipe = normalized;
     activeStepId =
       recipe.steps.some((step) => step.id === activeStepId)
@@ -130,6 +139,7 @@ export function createProcessRecipeController({
     targetStack.push(clone(recipe));
     if (targetStack.length > recipeHistoryLimit) targetStack.shift();
     const restored = sourceStack.pop();
+    invalidFields.clear();
     recipe = normalizeProcessRecipe(restored);
     activeStepId = recipe.activeStepId || recipe.steps[0]?.id || null;
     setRecipe(clone(recipe));
@@ -836,7 +846,15 @@ export function createProcessRecipeController({
 
   function validateContext(limit = recipe.steps.length, startMode = $('recipeRunStart')?.value || 'continue') {
     let sourceSteps = recipe.steps;
-    const fieldErrors = [...invalidFields.values()].map((entry) => entry.message);
+    // A run to an earlier Step must ignore unapplied edits in later Steps.
+    // Resolve displayed step numbers from the current order, not the time
+    // an invalid input was first entered.
+    const fieldErrors = [...invalidFields.values()].flatMap((entry) => {
+      const index = recipe.steps.findIndex((step) => step.id === entry.stepId);
+      return index >= 0 && index < limit
+        ? [`Step ${index + 1}: ${entry.label}: ${entry.error}`]
+        : [];
+    });
     if (codeDraftDirty) {
       try {
         sourceSteps = parseProcessRecipeSource($('recipeCodeEditor').value, {
