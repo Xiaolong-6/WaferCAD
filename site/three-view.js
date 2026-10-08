@@ -1484,10 +1484,6 @@ export function createThreeView({
         side: THREE.DoubleSide,
         ...materialState,
       });
-      // The full-wafer transparent scene already has explicit per-object depth
-      // ordering. One two-sided pass reduces the expensive double submission of
-      // every instanced cap/wall on software WebGL without changing geometry.
-      if (presentationMode() === 'transparent') material.forceSinglePass = true;
       return material;
     };
 
