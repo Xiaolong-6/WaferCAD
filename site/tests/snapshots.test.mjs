@@ -2041,6 +2041,7 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
     previousState,
   });
   assert.ok(archivedBranchId);
+  assert.equal(manager.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot, true);
   assert.equal(manager.activeBranch().id, 'main');
   assert.equal(manager.activeBranch().processStepCount, 0);
   assert.equal(manager.listBranches().find((item) => item.id === child.id).parentBranchId, archivedBranchId);
@@ -2068,6 +2069,7 @@ test('Apply Base archives Main Steps and Variants while starting clean Main', ()
     validateState: options.validateState,
   });
   reopened.importRecords(records, branchState);
+  assert.equal(reopened.listBranches().find((item) => item.id === archivedBranchId).archivedMainRoot, true);
   assert.equal(reopened.switchBranch(archivedBranchId), true);
   assert.equal(live.tag, 'oxide');
   assert.equal(reopened.switchBranch(child.id), true);
