@@ -891,6 +891,7 @@ export function createThreeView({
     if (!entry?.group || !scene) return false;
     if (group && group !== entry.group) scene.remove(group);
     group = entry.group;
+    group.visible = true;
     if (group.parent !== scene) scene.add(group);
     zDisplayObjects = entry.zDisplayObjects;
     currentZDisplay = entry.currentZDisplay;
@@ -915,6 +916,7 @@ export function createThreeView({
     cacheActiveSceneVariant();
     if (group) scene.remove(group);
     group = new THREE.Group();
+    group.visible = false;
     scene.add(group);
     zDisplayObjects = new Set();
     currentZDisplay = null;
@@ -3129,6 +3131,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       physicalSurfacePlan = plan;
       activeSceneVariant = targetVariant;
       host.dataset.sceneVariant = targetVariant;
+      group.visible = true;
       applyPresentationState({ profile: false, settle: false });
       cacheActiveSceneVariant();
       if (!roughTasks.length) {
