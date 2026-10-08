@@ -132,6 +132,26 @@ await recipePage.waitForFunction(
   { timeout: 30000 },
 );
 
+// Re-running on an already processed model requires explicit permission.
+await recipePage.locator('#recipeRunAllBtn').click();
+await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+assert.match(await recipePage.locator('#confirmationDialogMessage').textContent(), /already contains Process Steps/);
+await recipePage.locator('#confirmationDialogActions [data-dialog-action="cancel"]').click();
+assert.match(await recipePage.locator('#statusText').textContent(), /run cancelled/);
+
+// Starting at Base creates a new Main (with a restorable archived lineage)
+// before replaying, rather than depositing a second copy on the same model.
+await recipePage.locator('#recipeRunStart').selectOption('new-base');
+await recipePage.locator('#recipeRunAllBtn').click();
+await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+await recipePage.locator('#confirmationDialogActions [data-dialog-action="keep"]').click();
+await recipePage.waitForFunction(
+  () => /Process Recipe completed 1 step/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+await recipePage.locator('#recipeRunStart').selectOption('continue');
+
 // Step mode remains the source of truth and can teach Recipe by recording
 // a successful operation back into the same persisted recipe.
 await recipePage.locator('[data-process-input-mode="manual"]').click();
