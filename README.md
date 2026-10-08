@@ -33,6 +33,12 @@ WaferCAD accepts `.gds`, `.gdsii`, `.oas`, and `.oasis` mask files. OASIS import
 - Layers that do not exist in the active cell/subtree remain visible but are visually de-emphasized.
 - Zero-width linework may be displayed but is not treated as an operable mask area.
 
+## Product manual
+
+The [GitHub Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki) is the full product user manual, including startup, workspace navigation, mask/ROI, Process, Recipe, History/Variants, project recovery, import/export, examples and modeling limits. The [interactive Process atlas](https://xiaolong-6.github.io/WaferCAD/guide/) provides Before → After schematic views of every operation variant; the compact version is shown under Apply in the Process panel.
+
+Source pages in `docs/wiki/` are checked on every `main` push and synchronized to the Wiki only if their content changed. The detailed Process chapter is generated from the same catalog used by the UI. First-time Wiki initialization and any required write token are documented in [Wiki sync](docs/WIKI_SYNC.md).
+
 ## Operations
 
 Operations can target the front or back face and use one of three areas:
