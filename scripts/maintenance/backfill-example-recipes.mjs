@@ -5,7 +5,10 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { normalizeProcessRecipe } from '../../site/process-recipe.js';
 import { validateRecipeExecution } from '../../site/process-recipe-preflight.js';
-import { readProjectFile } from '../../site/project-io.js';
+import { loadGeometryKernel } from '../process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { readProjectFile } = await import('../../site/project-io.js');
 
 const files = [
   'perc-solar-cells-point-contacts.wafercad',
