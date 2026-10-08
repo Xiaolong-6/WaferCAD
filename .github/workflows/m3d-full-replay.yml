@@ -51,3 +51,5 @@ jobs:
           name: m3d-full-replay
           path: test-results/m3d/full-replay
           if-no-files-found: warn
+
+# Trigger native replay after workflow registration.
