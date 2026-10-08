@@ -347,6 +347,7 @@ export function createProcessRecipeController({
       <div id="recipeTemplatePreview" class="recipe-template-preview" hidden aria-live="polite">
         <strong id="recipeTemplatePreviewTitle"></strong>
         <span id="recipeTemplatePreviewDetail"></span>
+        <ol id="recipeTemplatePreviewSteps" class="recipe-template-preview-steps" aria-label="Template steps"></ol>
         <p id="recipeTemplatePreviewWarning" class="hint compact-hint"></p>
         <div class="recipe-template-actions">
           <button id="recipeTemplateCancelBtn" type="button" class="compact-btn">Cancel</button>
@@ -430,6 +431,13 @@ export function createProcessRecipeController({
     $('recipeTemplatePreviewTitle').textContent = next.name || 'New Recipe';
     $('recipeTemplatePreviewDetail').textContent =
       `${next.steps.length} template step(s) · Current Recipe: ${recipe.steps.length} step(s)`;
+    const stepList = $('recipeTemplatePreviewSteps');
+    stepList.replaceChildren();
+    for (const step of next.steps) {
+      const row = make(root, 'li', '', recipeStepLabel(step));
+      row.title = recipeStepSummary(step);
+      stepList.append(row);
+    }
     const hasCurrentWork =
       recipe.steps.length > 0 ||
       codeDraftDirty ||
