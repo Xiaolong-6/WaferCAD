@@ -54,6 +54,8 @@ export function createProcessRecipeController({
   updateOperationUI,
   renderAll,
   renderSnapshots = () => {},
+  resetToBase = async () => false,
+  confirmContinue = async () => false,
   status,
   onChanged = () => {},
 }) {
@@ -347,6 +349,13 @@ export function createProcessRecipeController({
         <div><span id="recipeProgressLabel">Preparing…</span><span id="recipeProgressCount"></span></div>
         <progress id="recipeProgressBar" max="1" value="0"></progress>
       </div>
+      <label class="recipe-start-mode">
+        <span>Start</span>
+        <select id="recipeRunStart" class="compact-select" aria-label="Recipe run starting state">
+          <option value="continue">Continue current model</option>
+          <option value="new-base">Rebuild Base first (new Main)</option>
+        </select>
+      </label>
       <div class="recipe-run-actions">
         <button id="recipeValidateBtn" class="compact-btn" type="button">Validate</button>
         <button id="recipeRunToBtn" class="compact-btn" type="button">Run to Step</button>
@@ -996,6 +1005,23 @@ export function createProcessRecipeController({
     if (processTaskController?.isBusy?.()) {
       status('Another background task is already running.', 'warning');
       return;
+    }
+    // A Recipe is a sequence of mutations, so replaying it on an already
+    // processed model would silently double-deposit or double-etch. Expose
+    // the starting-state policy before any Process worker requests.
+    const startMode = $('recipeRunStart')?.value || 'continue';
+    if (startMode === 'new-base') {
+      const rebuilt = await resetToBase();
+      if (!rebuilt) {
+        status('Process Recipe run cancelled: Base was not rebuilt.', 'warning');
+        return;
+      }
+    } else if (Number(getModel()?.processRevision || 0) > 0) {
+      const allowed = await confirmContinue();
+      if (!allowed) {
+        status('Process Recipe run cancelled; existing process was not changed.', 'warning');
+        return;
+      }
     }
     const report = showValidation();
     if (report.errors.length) {
