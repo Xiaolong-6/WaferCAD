@@ -38,8 +38,6 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Full lint, docs and Node regression
-        run: npm run check:ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Start WaferCAD
@@ -53,6 +51,10 @@ jobs:
           done
           cat /tmp/wafercad-m3d-http.log
           exit 1
+      - name: Generate M3D final-state thumbnail and SHA manifest
+        run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
+      - name: Full lint, docs and Node regression
+        run: npm run check:ci
       - name: M3D history and export browser acceptance
         run: node scripts/m3d-visual-acceptance.mjs
       - name: Welcome-card open and preview regression
