@@ -33,8 +33,7 @@ try {
         { waitUntil: 'domcontentloaded', timeout: 120000 },
       );
       await waitForAppReady(page);
-      await waitForStatus(page, new RegExp(`Opened ${example.filename.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\      await waitForAppReady(page);
-      await page.waitForFunction(')}\\.`), 120000);
+      await waitForStatus(page, /Opened .*\.wafercad\./, 120000);
       await page.waitForFunction(
         () => !!document.querySelector('#layerLegend .legend-name'),
         null,
