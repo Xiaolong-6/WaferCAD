@@ -323,7 +323,8 @@ export function createDrawMaskController({
 
     if ($('maskSourceToggleBtn')) {
       $('maskSourceToggleBtn').textContent = draw ? 'Draw' : 'File';
-      $('maskSourceToggleBtn').classList.toggle('active', draw);
+      // File and Draw are two named modes; either selected mode is highlighted.
+      $('maskSourceToggleBtn').classList.add('active');
       $('maskSourceToggleBtn').setAttribute('aria-pressed', String(draw));
       $('maskSourceToggleBtn').title = draw
         ? 'Mask source: Draw. Click to switch to File.'
