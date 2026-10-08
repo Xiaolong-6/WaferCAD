@@ -166,6 +166,68 @@ assert.equal(recipeSaved.processRecipe?.steps?.[0]?.command, 'deposit');
 assert.equal(recipeSaved.processRecipe?.steps?.[0]?.params?.material, 'Al2O3');
 assert.equal(recipeSaved.processRecipe?.steps?.[1]?.params?.material, 'Manual recipe check');
 assert.ok(recipeSaved.model.processRevision >= 2, 'Recipe and Step-mode operations must commit through the Process kernel');
+
+// Narrow Process flyouts must not grow wider when a recipe step has a very
+// long operation label; the full label stays available as a title tooltip.
+await openFunctionPanel(recipePage, 'process');
+await recipePage.locator('[data-process-input-mode="recipe"]').click();
+await recipePage.locator('#recipeCodeTab').click();
+await recipePage.locator('#recipeCodeEditor').fill(
+  'record({ process: "custom", label: "S00 FZ-32 p-type 2LP1 representative die with a very very very long process title" });',
+);
+await recipePage.locator('#recipeApplyCodeBtn').click();
+await recipePage.locator('#recipeStepsTab').click();
+const listBox = await recipePage.locator('#recipeStepsList').boundingBox();
+const panelBox = await recipePage.locator('#toolPanel').boundingBox();
+assert.ok(listBox && panelBox);
+assert.ok(
+  listBox.x + listBox.width <= panelBox.x + panelBox.width + 2,
+  'a long Recipe title must not expand the Process flyout',
+);
+assert.match(
+  await recipePage.locator('.recipe-step-row').first().getAttribute('title'),
+  /S00 FZ-32/,
+);
+
+// Base rebuild must preserve a clickable old process lineage and reset Main.
+await openFunctionPanel(recipePage, 'base');
+await recipePage.locator('#baseThickness').fill('525');
+await recipePage.locator('#applyBaseBtn').click();
+await recipePage.locator('#confirmationDialogOverlay').waitFor({ state: 'visible' });
+assert.equal(
+  await recipePage.locator('#confirmationDialogActions [data-dialog-action="keep"]').count(),
+  1,
+);
+assert.equal(
+  await recipePage.locator('#confirmationDialogActions [data-dialog-action="clear"]').count(),
+  1,
+);
+await recipePage.locator('#confirmationDialogActions [data-dialog-action="keep"]').click();
+await recipePage.waitForFunction(
+  () => /Previous history archived/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 15000 },
+);
+await openFunctionPanel(recipePage, 'snapshots');
+const archivedVariant = recipePage.locator('.history-variant').filter({
+  has: recipePage.locator('.history-variant-name', { hasText: 'Previous base' }),
+}).first();
+assert.ok(await archivedVariant.count(), 'archived Main must be visible in History');
+assert.equal(
+  await recipePage.locator('.history-variant[data-variant-id="main"] .history-step-row').count(),
+  0,
+  'new Main must have a fresh history root',
+);
+await archivedVariant.locator('.history-variant-name').first().click();
+await recipePage.waitForFunction(
+  () => /Switched to Variant "Previous base/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 15000 },
+);
+assert.ok(
+  await recipePage.locator('.history-variant[data-active="true"] .history-step-row').count() >= 2,
+  'the old process steps must remain directly restorable',
+);
 assert.deepEqual(recipeErrors, []);
 await recipeContext.close();
 
