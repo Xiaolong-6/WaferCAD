@@ -1614,7 +1614,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return [];
     }
 
-    const chunks = spatialInstanceChunks(translations, { maxInstances: maxInstancesPerMesh }),
+    // A huge transparent instance batch cannot be depth-sorted or culled
+    // locally. Preserve the spatial chunks used by the verified v3 renderer
+    // for transparent rendering; opaque geometry keeps the larger GPU batch.
+    const transparentBatch = presentationMode() === 'transparent',
+      batchSize = transparentBatch ? Math.min(maxInstancesPerMesh, 64) : maxInstancesPerMesh,
+      chunks = spatialInstanceChunks(translations, { maxInstances: batchSize }),
       meshes = [];
     chunks.forEach((chunk, chunkIndex) => {
       // Z-collapse can remap vertex Z coordinates in place. Give each spatial
@@ -2791,7 +2796,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       const rendererSidewallsAt = performance.now();
 
-      host.dataset.instanceChunkLimit = '4096';
+      host.dataset.instanceChunkLimit =
+        presentationMode() === 'transparent' ? '64' : '4096';
       host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
