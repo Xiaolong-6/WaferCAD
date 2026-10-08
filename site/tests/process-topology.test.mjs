@@ -432,5 +432,5 @@ test('3D Border outlines omit internal computational seams and retain exposed ti
     Math.min(line[0][2], line[1][2]) >= 4 - 1e-9 &&
     Math.max(line[0][2], line[1][2]) <= 5 + 1e-9),
   'True exposed tier vertical edges should still be outlined');
-  assert.ok(stepped.sidewalls.some((wall) => wall.buried), 'Buried interfaces remain as geometry');
+  assert.ok(stepped.caps.some((cap) => cap.buried), 'Buried horizontal interfaces remain as geometry');
 });
