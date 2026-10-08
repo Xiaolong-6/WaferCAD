@@ -47,7 +47,7 @@ test('preflight rejects absent or empty captured masks for masked Steps', () => 
 });
 
 test('preflight resolves printed layer/datatype keys and validates current layout', () => {
-  assert.equal(normalizeRecipeLayerKey(' 07 / 2 '), '07|2');
+  assert.equal(normalizeRecipeLayerKey(' 07 / 2 '), '7|2');
   assert.equal(normalizeRecipeLayerKey('7/2'), '7|2');
   const makeMaskStep = (key, cell = 'TOP') => step('implant', {
     name: 'Junction', depth: '20 nm', area: 'mask',
