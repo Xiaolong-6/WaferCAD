@@ -1414,11 +1414,14 @@ function applyOperationImpl(
     model.regions = canonicalizeProcessPartition(model, model.regions);
   }
 
-  // Every successful Process result must survive the 0.1 nm project-storage
-  // quantum. Directional mask splits can inherit tiny fractional islands from
-  // an earlier Boolean partition even when the physical operation is valid.
-  // Remove only polygon components whose outer ring collapses to zero area at
-  // persistence precision; larger geometry and holes are left untouched.
+  // Every successful Process result must already be safe on the 0.1 nm
+  // persistence grid. Directional mask splits, transfer clipping and selective
+  // etches can leave fractional shared vertices even when runtime geometry is
+  // topologically valid. Canonicalize those partitions before they enter
+  // History/Export, then discard only components that collapse on that grid.
+  if (processPartitionHasFractionalBoundary(model.regions)) {
+    model.regions = canonicalizeProcessPartition(model, model.regions, 'Process');
+  }
   model.regions = model.regions
     .map((region) => ({
       ...region,
