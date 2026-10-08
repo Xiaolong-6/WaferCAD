@@ -407,3 +407,30 @@ test('deriveProcessTopology reports one coherent 2.5D fact set', () => {
   assert.equal(topology.appearanceFaces.length, 0);
   assert.equal(topology.voids.length, 0);
 });
+
+
+test('3D Border outlines omit internal computational seams and retain exposed tier walls', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 8 });
+  model.regions = [
+    { id: 'left', geom: rectMulti(10, 10, -5, 0), stack: [{ layerId: 'base', z0: -4, z1: 4 }] },
+    { id: 'right', geom: rectMulti(10, 10, 5, 0), stack: [{ layerId: 'base', z0: -4, z1: 4 }] },
+  ];
+  const flat = ownedMaterialSurfacesFromTopology(model);
+  assert.equal(
+    flat.borderLines.filter((line) => line.every(([x]) => Math.abs(x) < 1e-9)).length,
+    0,
+    'A computational split at x=0 must not have a black vertical Border line',
+  );
+
+  applyOperation(model, {
+    type: 'add', name: 'Tier film', thickness: 1,
+    face: 'front', area: rectMulti(6, 4, 0, 0), growth: 'direct',
+  });
+  const stepped = ownedMaterialSurfacesFromTopology(model);
+  assert.ok(stepped.borderLines.some((line) =>
+    line[0][2] !== line[1][2] &&
+    Math.min(line[0][2], line[1][2]) >= 4 - 1e-9 &&
+    Math.max(line[0][2], line[1][2]) <= 5 + 1e-9),
+  'True exposed tier vertical edges should still be outlined');
+  assert.ok(stepped.sidewalls.some((wall) => wall.buried), 'Buried interfaces remain as geometry');
+});

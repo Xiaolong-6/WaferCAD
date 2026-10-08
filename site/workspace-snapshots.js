@@ -121,7 +121,11 @@ function withCurrentInspectionView(baseState, currentState, cloneState) {
   return merged;
 }
 
+// Project title exists on persisted historical checkpoints but is deliberately
+// omitted from live process snapshots. It must not turn read-only History
+// navigation into a destructive edit requiring a full Recovery write.
 const INSPECTION_ONLY_KEYS = new Set([
+  'name',
   'selectedLayerKeys',
   'activeCell',
   'activeFace',
