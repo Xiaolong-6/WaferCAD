@@ -105,7 +105,8 @@ function commit(current, operation, { shapes = current.shapes, face = current.fa
       branchId: current.info.id, parentId: current.info.headSnapshotId,
       historyNodeId: id, state: copy(currentState),
     };
-    snapshots.push(snapshot);
+    // SnapshotManager displays newest bookmarks first; preserve that file contract.
+    snapshots.unshift(snapshot);
     if (!current.info.rootSnapshotId) current.info.rootSnapshotId = snapshot.id;
     current.info.headSnapshotId = snapshot.id;
   }
