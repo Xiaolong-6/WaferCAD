@@ -17,6 +17,7 @@ import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
+const requestedVariant = process.argv.find((arg) => arg.startsWith('--variant='))?.slice(10) || null;
 const only = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
 const examples = BUNDLED_EXAMPLES.filter((example) => !only || example.id === only);
 assert.ok(examples.length, 'No matching bundled example was found.');
@@ -36,6 +37,20 @@ try {
         null,
         { timeout: 120000 },
       );
+      if (requestedVariant) {
+        await openFunctionPanel(page, 'snapshots', { timeout: 20000 });
+        const variant = page.locator(`.history-variant[data-variant-id="${requestedVariant}"]`);
+        await variant.waitFor({ state: 'attached', timeout: 30000 });
+        await variant.locator(':scope > .history-variant-head .history-variant-name').click();
+        await page.waitForFunction(
+          (id) => document.querySelector(
+            `.history-variant[data-variant-id="${id}"]`,
+          )?.dataset.active === 'true',
+          requestedVariant,
+          { timeout: 30000 },
+        );
+      }
+      const sourceProject = await exportCurrentProject(page, 120000);
       await openFunctionPanel(page, 'process', { timeout: 20000 });
       await page.locator('[data-process-input-mode="recipe"]').click();
       const recipeRows = page.locator('.recipe-step-row');
@@ -88,6 +103,25 @@ try {
         `${example.id}: rebuilt History omits Process Steps`);
       assert.ok(exported.model.layers.length > 1,
         `${example.id}: Kernel replay left only the Base substrate`);
+      assert.deepEqual(
+        exported.model.layers.map((layer) => layer.name).sort(),
+        sourceProject.model.layers.map((layer) => layer.name).sort(),
+        `${example.id}: recreated material list differs from the saved example`,
+      );
+      assert.equal(exported.model.implants.length, sourceProject.model.implants.length,
+        `${example.id}: rebuilt implant count differs`);
+      assert.equal(
+        exported.model.electricalRegions.length,
+        sourceProject.model.electricalRegions.length,
+        `${example.id}: rebuilt electrical region count differs`,
+      );
+      if (sourceProject.model.array) {
+        assert.equal(
+          exported.model.array?.instances.length,
+          sourceProject.model.array.instances.length,
+          `${example.id}: rebuilt wafer array site count differs`,
+        );
+      }
       assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
       console.log(`${example.id}: Run All completed, exported ${count} History/Recipe steps`);
     } finally {
