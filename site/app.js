@@ -1191,6 +1191,7 @@ processRecipeController = createProcessRecipeController({
   renderAll,
   renderSnapshots,
   resetToBase: (recipeBase) => baseControls.applyBase({ recipeBase }),
+  checkpointWorkspace,
   confirmContinue: () =>
     confirmationDialog.confirm({
       title: 'Continue Recipe on current model?',
