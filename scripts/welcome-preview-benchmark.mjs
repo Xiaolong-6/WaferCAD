@@ -58,7 +58,8 @@ try {
     const errors = observePageErrors(page),
       requests = [];
     page.on('request', (request) => {
-      if (request.url().endsWith('.wafercad')) requests.push(new URL(request.url()).pathname);
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.endsWith('.wafercad')) requests.push(pathname);
     });
     const started = performance.now();
     await gotoWelcome(page);
