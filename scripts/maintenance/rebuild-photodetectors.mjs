@@ -186,7 +186,7 @@ record(main, 'example-root', 'Detector families (Si and Ge begin from different 
   note: 'This root contains no common fabrication. Ge begins with a genuine Base replacement.',
 });
 const mainId = main.info.headNodeId;
-const black = branch('black-si-fig1a', 'Black-Si Fig. 1a · source-order process', 'main', mainId, si,
+const black = branch('black-si-fig1a', 'Black-Si Fig. 1a · source-order process', 'main', mainId, main.model,
   'Setälä et al. 2023 · Black-Si photodiode');
 step(black, { type: 'add', name: 'Thermal SiO2 650 nm', thickness: 0.65, bookmark: true });
 step(black, { type: 'etch', name: 'Open active SiO2 mask', thickness: 0.65, area: 'mask',
@@ -194,8 +194,8 @@ step(black, { type: 'etch', name: 'Open active SiO2 mask', thickness: 0.65, area
 step(black, { type: 'etch', name: 'ICP-RIE black-Si', thickness: 0.7,
   area: 'mask', shapes: masks.blackSi, targets: ['n- Si (111) · 350 µm'], bookmark: true,
   surface: { kind: 'rough', morphology: 'stochastic', polarity: 'normal', featureSize: 0.3,
-    meanHeight: 0.5, featureCv: 0.25, heightCv: 0.25, seed: 3668339987, geometryMode: 'ideal' },
-  recipeName: 'ICP-RIE b-Si · 700 nm relief surrogate (morphology assumed)' });
+    meanHeight: 0.5, featureCv: 0.25, heightCv: 0.25, seed: 3668339987, profileId: 'rough-black-si-acs-2023', geometryMode: 'ideal' },
+  recipeName: 'Rough ICP-RIE b-Si · 700 nm relief surrogate (morphology assumed)' });
 step(black, { type: 'etch', name: 'Open guard-ring SiO2', thickness: 0.65,
   targets: ['Thermal SiO2 650 nm'], area: 'mask', shapes: masks.guard });
 step(black, { type: 'implant', name: 'B p+ · 10 keV, 3e15 cm^-2; ~1.5 µm illustrative junction depth',
@@ -258,7 +258,7 @@ step(ge, { type: 'etch', name: 'ICP-RIE Ge · 200 nm XY / 700 nm height surrogat
   area: 'mask', shapes: masks.blackSi, bookmark: true,
   surface: { kind: 'rough', morphology: 'stochastic', polarity: 'normal',
     featureSize: 0.2, meanHeight: 0.7, featureCv: 0.25, heightCv: 0.25,
-    seed: 3668339987, geometryMode: 'ideal' } });
+    seed: 3668339987, profileId: 'rough-ge-lsa-2025', geometryMode: 'ideal' } });
 record(ge, 'wet-etch', 'H2O2 etch-back · 3% v/v, 15 s (journal; thesis says 30 s)', {
   durationMin: 0.25, ambient: '3% H2O2',
   note: 'Literature conflict: 2025 journal Methods 15 s; 2026 thesis section 4.1 30 s. No removal rate; topography is a surrogate.' });
@@ -274,12 +274,12 @@ function geBranch(id, label, isB) {
   // Pre-film annotation is intentional: Electrical Regions attach to the Ge
   // semiconductor, whereas the current Kernel's Electrical command selects
   // the *exposed* material. ALD itself then activates this expected region.
-  step(v, { type: 'electrical', name: 'Expected Al2O3-induced p inversion (activated after ALD)',
+  step(v, { type: 'electrical', name: 'Induced p-type inversion (predicted; activated after ALD)',
     thickness: 0.05, area: isB ? 'mask' : 'full',
     shapes: isB ? masks.blackSi : [], electricalRegionType: 'p-inversion',
     electricalRegionSource: 'induced' });
   if (isB) {
-    step(v, { type: 'electrical', name: 'Expected inactive SiO2-induced n accumulation',
+    step(v, { type: 'electrical', name: 'Induced n-type accumulation (predicted; activated after dielectric)',
       thickness: 0.05, area: 'invert', shapes: masks.inactiveExcluded,
       electricalRegionType: 'n-accumulation', electricalRegionSource: 'induced' });
     step(v, { type: 'add', name: 'Inactive PEALD SiO2 · 45 nm (study assumption)',
