@@ -1365,10 +1365,18 @@ export function createSnapshotManager({
     const date = stamp instanceof Date ? stamp : new Date(stamp);
     let archiveId = branchIdFactory();
     while (!archiveId || branchById(archiveId)) archiveId = branchIdFactory();
-    const oldMainState =
-      activeBranchId === MAIN_SNAPSHOT_BRANCH_ID && previousState && validateState(previousState)
-        ? cloneState(previousState)
-        : cloneState(previousMain.headState || previousState || cursorBaselineState || state);
+    // A historical cursor is not the Variant HEAD. Rebuilding the Base from
+    // an earlier Step must archive the original Main HEAD rather than the
+    // currently inspected (detached) Step state.
+    const previousIsHead =
+      activeBranchId === MAIN_SNAPSHOT_BRANCH_ID && isCursorAtBranchHead();
+    const sourceMainState =
+      previousIsHead && previousState && validateState(previousState)
+        ? previousState
+        : previousMain.headState && validateState(previousMain.headState)
+          ? previousMain.headState
+          : previousState || cursorBaselineState || state;
+    const oldMainState = cloneState(sourceMainState);
     const archive = {
       ...previousMain,
       id: archiveId,
