@@ -1047,8 +1047,24 @@ export function createProcessRecipeController({
     return true;
   }
 
+  const runDisabledState = new Map();
   function setRunningUi(value) {
     running = value;
+    if (value) {
+      // Freeze the draft and selected prefix through any asynchronous confirmation.
+      // Stop remains the only active Recipe control until the run settles.
+      for (const control of root.querySelectorAll(
+        '#recipeProcessPane input, #recipeProcessPane select, ' +
+        '#recipeProcessPane textarea, #recipeProcessPane button',
+      )) {
+        if (control.id === 'recipeStopBtn') continue;
+        runDisabledState.set(control, control.disabled);
+        control.disabled = true;
+      }
+    } else {
+      for (const [control, disabled] of runDisabledState) control.disabled = disabled;
+      runDisabledState.clear();
+    }
     $('recipeRunAllBtn').disabled = value;
     $('recipeRunToBtn').disabled = value;
     $('recipeValidateBtn').disabled = value;
@@ -1089,6 +1105,12 @@ export function createProcessRecipeController({
 
     try {
       if (startMode === 'new-base') {
+        // Base rebuild may open an asynchronous History decision. Recheck first;
+        // a cancelled/invalid preflight must never touch either model or History.
+        if (recipeSignature() !== signature || validateContext(total, startMode).errors.length) {
+          status('Recipe changed or became invalid before Base rebuild. No changes made.', 'error');
+          return;
+        }
         const rebuilt = await resetToBase();
         if (!rebuilt) {
           status('Recipe run cancelled. Base was not rebuilt.', 'warning');
