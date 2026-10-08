@@ -57,6 +57,24 @@ try {
         await openFunctionPanel(page, 'snapshots', { timeout: 20000 });
         const variant = page.locator(`.history-variant[data-variant-id="${requestedVariant}"]`);
         await variant.waitFor({ state: 'attached', timeout: 30000 });
+        // A literature Variant can be nested under collapsed family/parent
+        // Variants. Open ancestors through their real UI controls first.
+        const parentIds = await variant.evaluate((element) => {
+          const ids = [];
+          let ancestor = element.parentElement?.closest('.history-variant');
+          while (ancestor) {
+            ids.unshift(ancestor.dataset.variantId);
+            ancestor = ancestor.parentElement?.closest('.history-variant');
+          }
+          return ids;
+        });
+        for (const parentId of parentIds) {
+          const parent = page.locator(`.history-variant[data-variant-id="${parentId}"]`);
+          const body = parent.locator(':scope > .history-variant-body');
+          if (await body.evaluate((element) => element.hidden)) {
+            await parent.locator(':scope > .history-variant-head .history-variant-toggle').click();
+          }
+        }
         await variant.locator(':scope > .history-variant-head .history-variant-name').click();
         await page.waitForFunction(
           (id) => document.querySelector(
