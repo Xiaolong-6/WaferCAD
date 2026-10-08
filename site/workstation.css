@@ -1985,3 +1985,20 @@ html.workstation-ui-v2 .process-guide-area {
   color: var(--wc-muted);
   font-size: 9px;
 }
+
+/* Process workflow v2: the schematic is available on demand without
+   competing with the manual operation form. */
+html.workstation-ui-v2 .process-operation-picker select {
+  border-color: var(--wc-panel-line-strong);
+  background: #fff;
+}
+html.workstation-ui-v2 .process-visual-guide:not([open]) {
+  padding: 7px 8px;
+}
+html.workstation-ui-v2 .process-visual-guide > summary {
+  cursor: pointer;
+}
+html.workstation-ui-v2 .process-visual-guide > #processGuideLink {
+  display: inline-block;
+  margin: 7px 0 3px;
+}
