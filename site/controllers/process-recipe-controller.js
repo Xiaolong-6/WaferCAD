@@ -63,10 +63,29 @@ export function createProcessRecipeController({
     running = false,
     stopRequested = false,
     bound = false,
-    recordManual = true;
+    recordManual = true,
+    undoStack = [],
+    redoStack = [];
+  const recipeHistoryLimit = 100;
 
-  function persist(next = recipe) {
-    recipe = normalizeProcessRecipe(next);
+  function updateUndoRedoUi() {
+    const undo = $('recipeUndoBtn'),
+      redo = $('recipeRedoBtn');
+    if (undo) undo.disabled = running || undoStack.length === 0;
+    if (redo) redo.disabled = running || redoStack.length === 0;
+  }
+
+  function persist(next = recipe, { recordHistory = true } = {}) {
+    const normalized = normalizeProcessRecipe(next);
+    if (
+      recordHistory &&
+      JSON.stringify(normalized) !== JSON.stringify(recipe)
+    ) {
+      undoStack.push(clone(recipe));
+      if (undoStack.length > recipeHistoryLimit) undoStack.shift();
+      redoStack = [];
+    }
+    recipe = normalized;
     activeStepId =
       recipe.steps.some((step) => step.id === activeStepId)
         ? activeStepId
@@ -74,6 +93,28 @@ export function createProcessRecipeController({
     recipe.activeStepId = activeStepId;
     setRecipe(clone(recipe));
     onChanged();
+    updateUndoRedoUi();
+  }
+
+  function restoreRecipe(next, targetStack, sourceStack, message) {
+    if (running || !sourceStack.length) return;
+    targetStack.push(clone(recipe));
+    const restored = sourceStack.pop();
+    recipe = normalizeProcessRecipe(restored);
+    activeStepId = recipe.activeStepId || recipe.steps[0]?.id || null;
+    setRecipe(clone(recipe));
+    onChanged();
+    render();
+    updateUndoRedoUi();
+    status(message, 'success');
+  }
+
+  function undoRecipe() {
+    restoreRecipe(undoStack.at(-1), redoStack, undoStack, 'Recipe change undone.');
+  }
+
+  function redoRecipe() {
+    restoreRecipe(redoStack.at(-1), undoStack, redoStack, 'Recipe change redone.');
   }
 
   function loadPersisted() {
@@ -84,6 +125,9 @@ export function createProcessRecipeController({
       status(`Stored Process Recipe was reset: ${error.message}`, 'warning');
     }
     activeStepId = recipe.activeStepId || recipe.steps[0]?.id || null;
+    undoStack = [];
+    redoStack = [];
+    updateUndoRedoUi();
   }
 
   function currentMaskContext() {
@@ -264,6 +308,10 @@ export function createProcessRecipeController({
           <input id="recipeRecordManual" type="checkbox" checked />
           <span>Record Step-mode operations</span>
         </label>
+        <div class="recipe-history-actions" aria-label="Recipe edit history">
+          <button id="recipeUndoBtn" class="compact-btn" type="button" title="Undo Recipe edit" disabled>Undo</button>
+          <button id="recipeRedoBtn" class="compact-btn" type="button" title="Redo Recipe edit" disabled>Redo</button>
+        </div>
       </div>
       <div class="segmented recipe-view-mode">
         <button id="recipeStepsTab" class="active" type="button">Steps</button>
@@ -497,7 +545,10 @@ export function createProcessRecipeController({
       bindText('Ambient', 'ambient', p.ambient || '');
       bindText('Note', 'note', p.note || '');
     } else {
-      bindSelect('Face', 'face', ['front', 'back']);
+      bindSelect('Face', 'face', [
+        { value: 'front', label: 'Front' },
+        { value: 'back', label: 'Back' },
+      ]);
       bindSelect('Area', 'area', [
         { value: 'full', label: 'Whole face' },
         { value: 'mask', label: 'Selected mask' },
@@ -528,7 +579,12 @@ export function createProcessRecipeController({
       } else if (step.command === 'etch') {
         bindText('Target', 'target');
         bindLength(p.profile === 'planarize' ? 'Target Z' : 'Depth', 'thicknessUm', p.thicknessUm);
-        bindSelect('Profile', 'profile', ['directional', 'isotropic', 'planarize', 'undercut']);
+        bindSelect('Profile', 'profile', [
+          { value: 'directional', label: 'Directional' },
+          { value: 'isotropic', label: 'Isotropic' },
+          { value: 'planarize', label: 'Planarize' },
+          { value: 'undercut', label: 'Undercut' },
+        ]);
         if (p.profile === 'directional') {
           const appearance = p.surface && p.surface !== 'smooth' ? p.surface : null,
             surfaceMode = appearance
@@ -605,7 +661,13 @@ export function createProcessRecipeController({
                 });
                 grid.append(field(label, input));
               };
-            const polarity = selectInput(['inverted', 'normal'], appearance.polarity || 'inverted');
+            const polarity = selectInput(
+              [
+                { value: 'inverted', label: 'Inverted' },
+                { value: 'normal', label: 'Normal' },
+              ],
+              appearance.polarity || 'inverted',
+            );
             polarity.addEventListener('change', () => {
               updateStep(step.id, (target) => {
                 target.params.surface = { ...target.params.surface, polarity: polarity.value };
@@ -649,16 +711,21 @@ export function createProcessRecipeController({
         bindText('Name', 'name');
         bindLength('Depth', 'depthUm', p.depthUm);
         bindSelect('Type', 'regionType', [
-          'p-type',
-          'n-type',
-          'p-inversion',
-          'n-inversion',
-          'p-accumulation',
-          'n-accumulation',
-          'depletion',
-          'custom',
+          { value: 'p-type', label: 'P-type' },
+          { value: 'n-type', label: 'N-type' },
+          { value: 'p-inversion', label: 'P inversion' },
+          { value: 'n-inversion', label: 'N inversion' },
+          { value: 'p-accumulation', label: 'P accumulation' },
+          { value: 'n-accumulation', label: 'N accumulation' },
+          { value: 'depletion', label: 'Depletion' },
+          { value: 'custom', label: 'Custom' },
         ]);
-        bindSelect('Source', 'source', ['induced', 'doped', 'interface', 'custom']);
+        bindSelect('Source', 'source', [
+          { value: 'induced', label: 'Induced' },
+          { value: 'doped', label: 'Doped' },
+          { value: 'interface', label: 'Interface' },
+          { value: 'custom', label: 'Custom' },
+        ]);
       }
     }
     host.append(grid);
@@ -916,6 +983,7 @@ export function createProcessRecipeController({
     $('recipeApplyCodeBtn').disabled = value;
     $('recipeStopBtn').disabled = !value;
     $('recipeProgress').hidden = !value;
+    updateUndoRedoUi();
   }
 
   async function run(limit = recipe.steps.length) {
@@ -1101,6 +1169,8 @@ export function createProcessRecipeController({
     $('recipeRecordManual').addEventListener('change', () => {
       recordManual = $('recipeRecordManual').checked;
     });
+    $('recipeUndoBtn').addEventListener('click', undoRecipe);
+    $('recipeRedoBtn').addEventListener('click', redoRecipe);
     $('recipeTemplateSelect').addEventListener('change', () => {
       const id = $('recipeTemplateSelect').value;
       if (!id) return;
@@ -1112,11 +1182,14 @@ export function createProcessRecipeController({
     });
     $('recipeAddStepBtn').addEventListener('click', () => {
       const next = clone(recipe),
-        step = defaultStep($('recipeAddKind').value);
-      next.steps.push(step);
+        step = defaultStep($('recipeAddKind').value),
+        activeIndex = next.steps.findIndex((item) => item.id === activeStepId),
+        insertIndex = activeIndex >= 0 ? activeIndex + 1 : next.steps.length;
+      next.steps.splice(insertIndex, 0, step);
       activeStepId = step.id;
       persist(next);
       render();
+      status(`Added ${recipeStepLabel(step)} after Step ${insertIndex}.`, 'success');
     });
     $('recipeApplyCodeBtn').addEventListener('click', applyCode);
     $('recipeFormatCodeBtn').addEventListener('click', () => {
