@@ -1,0 +1,30 @@
+# Import and Export
+
+[Home](Home) · [Examples and Modeling Limits](Examples-and-Modeling-Limits)
+
+## Project format
+
+WaferCAD exports portable `.wafercad` JSON projects, including vector material stacks, layers, masks, process history, variants, annotations, view settings, and Recipe. Project schema is versioned and old formats are migrated only when supported; invalid files are rejected rather than silently loaded.
+
+## Mask import
+
+Open GDSII or OASIS with hierarchical Cells and Layer/Datatype selections. File source and Draw source remain separate. Imported coordinates are physical; a mask does not automatically fit the substrate.
+
+## Mask export
+
+Export SVG, GDSII or OASIS from the active Mask view. Select export scope as appropriate; **Mask ROI** restricts the geometry exported. When editing Draw shapes, verify the chosen source before exporting.
+
+## View and geometry export
+
+- **Main/Section** provide schematic SVG exports.
+- **3D PNG** captures the inspected view.
+- **GLB** exports the visible physical inspection geometry and respects an active Main ROI.
+- GLB can embed deterministic rough/pyramid relief. Export mesh quality is constrained by a triangle budget and is not a TCAD mesh.
+
+## Persistence safety
+
+Save and Open validate project content, including size and geometry. The local Recovery cache is convenient for continuing browser work but cannot replace a downloaded project backup.
+
+## Version compatibility
+
+Some storage optimizations, especially canonical translation arrays, need newer readers. If an older build rejects a project, update the application; do not try to remove required array metadata manually.

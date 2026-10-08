@@ -242,7 +242,8 @@ assert.equal(await page.locator('#layerLegend .implant-row-wrap').count(), 2);
 assert.equal(await page.locator('#layerLegend .electrical-row-wrap').count(), 2);
 await restoreStep(geBInversionStep);
 assert.equal(await page.locator('#layerLegend .electrical-row-wrap').count(), 1);
-assert.equal(await page.locator('#layerLegend .implant-row-wrap').count(), 0);
+// The paper-correct Ge chronology now implants contacts before ICP-RIE and passivation.
+assert.equal(await page.locator('#layerLegend .implant-row-wrap').count(), 2);
 
 await switchVariant('black-si-fig1a');
 await restoreStep(roughStep);

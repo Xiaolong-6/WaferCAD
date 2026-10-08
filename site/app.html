@@ -775,8 +775,17 @@
               data-tab-panel="operation"
               hidden
             >
-              <div id="processInputMode" class="segmented process-input-mode" aria-label="Process input mode">
-                <button type="button" class="active" data-process-input-mode="manual" aria-pressed="true">
+              <div
+                id="processInputMode"
+                class="segmented process-input-mode"
+                aria-label="Process input mode"
+              >
+                <button
+                  type="button"
+                  class="active"
+                  data-process-input-mode="manual"
+                  aria-pressed="true"
+                >
                   Step
                 </button>
                 <button type="button" data-process-input-mode="recipe" aria-pressed="false">
@@ -785,303 +794,361 @@
               </div>
               <div id="manualProcessPane">
                 <div class="tool-context process-context">
-                <span id="processSummary">Front · Deposit layer</span>
-                <button
-                  id="faceToggleBtn"
-                  class="compact-btn context-action"
-                  type="button"
-                  title="Switch active process face"
-                >
-                  Front
-                </button>
-              </div>
-              <div class="control-body process-control-body">
-                <div id="processMode" class="segmented process-mode" aria-label="Process action">
-                  <button type="button" class="active" data-process-mode="add" aria-pressed="true">
-                    Deposit
-                  </button>
-                  <button type="button" data-process-mode="grow" aria-pressed="false">
-                    Extend
-                  </button>
-                  <button type="button" data-process-mode="etch" aria-pressed="false">Etch</button>
-                  <button type="button" data-process-mode="implant" aria-pressed="false">
-                    Implant
-                  </button>
-                  <button type="button" data-process-mode="electrical" aria-pressed="false">
-                    Electrical
-                  </button>
-                  <button type="button" data-process-mode="record" aria-pressed="false">
-                    Record
-                  </button>
-                </div>
-                <select id="operationType" class="visually-hidden" aria-label="Process action">
-                  <option value="add">Deposit new layer</option>
-                  <option value="grow">Extend existing layer</option>
-                  <option value="etch">Etch / subtract</option>
-                  <option value="implant">Implant</option>
-                  <option value="electrical">Electrical region</option>
-                  <option value="record">Record process step</option>
-                </select>
-
-                <div class="param-grid-2 process-area-grid">
-                  <label id="operationAreaRow" class="param-field">
-                    <span>Area</span>
-                    <select id="operationArea">
-                      <option value="mask">Selected mask</option>
-                      <option value="invert">Invert mask</option>
-                      <option value="full">Whole face</option>
-                    </select>
-                  </label>
-                  <label id="growthModeRow" class="param-field">
-                    <span>Coverage</span>
-                    <select id="growthMode">
-                      <option value="direct">Directional</option>
-                      <option value="conformal">Conformal</option>
-                    </select>
-                  </label>
-                  <label id="transferModeRow" class="param-field hidden">
-                    <span>Placement</span>
-                    <select id="transferMode">
-                      <option value="follow">Follow surface</option>
-                      <option value="flat">Flat bridge</option>
-                    </select>
-                  </label>
-                  <label
-                    id="etchProfileRow"
-                    class="param-field hidden"
-                    title="Directional removes material along Z; Isotropic release propagates into the selected material and laterally under masks"
-                  >
-                    <span>Profile</span>
-                    <select id="etchProfile">
-                      <option value="directional">Directional</option>
-                      <option value="isotropic">Isotropic release</option>
-                    </select>
-                  </label>
-                  <label id="etchSurfaceRow" class="param-field hidden">
-                    <span>Surface</span>
-                    <select id="etchSurfaceMode">
-                      <option value="smooth">Smooth</option>
-                      <option value="rough">Rough</option>
-                      <option value="pyramid">Pyramid</option>
-                    </select>
-                  </label>
-                  <label
-                    id="implantTiltRow"
-                    class="param-field hidden"
-                    title="Signed geometric tilt from the surface normal toward +X"
-                  >
-                    <span>Tilt X</span>
-                    <input id="implantTilt" type="number" value="0" min="-80" max="80" step="1" />
-                    <b class="field-unit">°</b>
-                  </label>
-                </div>
-
-                <div class="param-grid-2 process-main-grid">
-                  <label id="layerNameRow" class="param-field">
-                    <span>Name</span>
-                    <input id="layerName" value="Layer 1" />
-                  </label>
-                  <label id="targetLayerRow" class="param-field hidden">
-                    <span>Target</span>
-                    <select id="targetLayer"></select>
-                  </label>
-                  <label
-                    id="etchTargetLayerRow"
-                    class="param-field hidden"
-                    title="Etch only this exposed material and stop at the next different material"
-                  >
-                    <span>Material</span>
-                    <select id="etchTargetLayer">
-                      <option value="">All exposed materials</option>
-                    </select>
-                  </label>
-                  <label id="implantNameRow" class="param-field hidden">
-                    <span>Name</span>
-                    <input id="implantName" value="Implant 1" />
-                  </label>
-                  <label id="electricalNameRow" class="param-field hidden">
-                    <span>Name</span>
-                    <input id="electricalName" value="Electrical Region 1" />
-                  </label>
-                  <label id="operationThicknessRow" class="param-field">
-                    <span><b id="processThicknessLabel">Z</b></span>
-                    <input id="operationThickness" type="number" value="3" min="0" step="any" />
-                    <b id="operationThicknessUnit" class="field-unit">µm</b>
-                  </label>
-                </div>
-
-                <div id="electricalRegionParams" class="param-grid-2 electrical-region-grid hidden">
-                  <label class="param-field">
-                    <span>Type</span>
-                    <select id="electricalRegionType">
-                      <option value="p-type">p-type</option>
-                      <option value="n-type">n-type</option>
-                      <option value="p-inversion">p-type inversion</option>
-                      <option value="n-inversion">n-type inversion</option>
-                      <option value="p-accumulation">p-type accumulation</option>
-                      <option value="n-accumulation">n-type accumulation</option>
-                      <option value="depletion">Depletion</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </label>
-                  <label class="param-field">
-                    <span>Source</span>
-                    <select id="electricalRegionSource">
-                      <option value="induced">Induced</option>
-                      <option value="doped">Doped</option>
-                      <option value="interface">Interface</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div id="recordProcessParams" class="param-grid-2 record-process-grid hidden">
-                  <label class="param-field">
-                    <span>Process</span>
-                    <select id="recordProcessType">
-                      <option value="anneal">Anneal</option>
-                      <option value="clean">Clean</option>
-                      <option value="oxidation">Oxidation</option>
-                      <option value="surface-treatment">Surface treatment</option>
-                      <option value="activation">Activation</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </label>
-                  <label class="param-field">
-                    <span>Label</span>
-                    <input id="recordProcessLabel" value="Anneal" maxlength="160" />
-                  </label>
-                  <label class="param-field">
-                    <span>Temp.</span>
-                    <input id="recordTemperature" type="number" step="any" placeholder="optional" />
-                    <b class="field-unit">°C</b>
-                  </label>
-                  <label class="param-field">
-                    <span>Time</span>
-                    <input
-                      id="recordDuration"
-                      type="number"
-                      min="0"
-                      step="any"
-                      placeholder="optional"
-                    />
-                    <b class="field-unit">min</b>
-                  </label>
-                  <label class="param-field">
-                    <span>Ambient</span>
-                    <input
-                      id="recordAmbient"
-                      maxlength="120"
-                      placeholder="e.g. O₂, N₂, forming gas"
-                    />
-                  </label>
-                  <label class="param-field">
-                    <span>Note</span>
-                    <input id="recordNote" maxlength="240" placeholder="optional" />
-                  </label>
-                </div>
-
-                <div class="param-grid-2 rough-param-grid">
-                  <label
-                    id="roughFeatureRow"
-                    class="param-field hidden"
-                    title="Mean lateral XY size of rough features, or pyramid pitch/base width"
-                  >
-                    <span><b id="roughFeatureLabel">Feature XY</b></span>
-                    <input id="roughFeatureSize" type="number" value="0.5" min="0" step="any" />
-                    <b id="roughFeatureUnit" class="field-unit">µm</b>
-                  </label>
-                  <label
-                    id="roughFeatureCvRow"
-                    class="param-field hidden"
-                    title="Coefficient of variation of the lateral feature size"
-                  >
-                    <span>Feature CV</span>
-                    <input
-                      id="roughFeatureCv"
-                      type="number"
-                      value="25"
-                      min="0"
-                      max="100"
-                      step="1"
-                    />
-                    <b class="field-unit">%</b>
-                  </label>
-                </div>
-
-                <div class="param-grid-2 rough-param-grid">
-                  <label
-                    id="roughHeightRow"
-                    class="param-field hidden"
-                    title="Mean stochastic relief or pyramid apex-to-base height within the etch-depth envelope"
-                  >
-                    <span><b id="roughHeightLabel">Height mean</b></span>
-                    <input id="roughAmplitude" type="number" value="1" min="0" step="any" />
-                    <b id="roughHeightUnit" class="field-unit">µm</b>
-                  </label>
-                  <label
-                    id="roughHeightCvRow"
-                    class="param-field hidden"
-                    title="Coefficient of variation of the rough feature height"
-                  >
-                    <span>Height CV</span>
-                    <input id="roughHeightCv" type="number" value="25" min="0" max="100" step="1" />
-                    <b class="field-unit">%</b>
-                  </label>
-                </div>
-
-                <div class="param-grid-2 rough-param-grid">
-                  <label
-                    id="roughPolarityRow"
-                    class="param-field hidden"
-                    title="Normal points rough features outward; Inverted keeps the existing pit/valley orientation"
-                  >
-                    <span>Orientation</span>
-                    <select id="roughPolarity">
-                      <option value="inverted">Inverted · pits ↓</option>
-                      <option value="normal">Normal · peaks ↑</option>
-                    </select>
-                  </label>
-                  <label
-                    id="roughSeedRow"
-                    class="param-field hidden"
-                    title="Optional deterministic seed. Leave blank to generate a seed from the process revision."
-                  >
-                    <span>Seed</span>
-                    <input
-                      id="roughSeed"
-                      type="number"
-                      min="0"
-                      max="4294967295"
-                      step="1"
-                      placeholder="auto"
-                    />
-                  </label>
-                </div>
-
-                <div class="operation-actions">
-                  <button id="applyOperationBtn" class="primary apply-btn">Apply</button>
+                  <span id="processSummary">Front · Deposit layer</span>
                   <button
-                    id="undoBtn"
-                    class="compact-btn"
-                    title="Undo the last structure change"
-                    disabled
+                    id="faceToggleBtn"
+                    class="compact-btn context-action"
+                    type="button"
+                    title="Switch active process face"
                   >
-                    Undo
-                  </button>
-                  <button
-                    id="redoBtn"
-                    class="compact-btn"
-                    title="Redo the last undone change"
-                    disabled
-                  >
-                    Redo
+                    Front
                   </button>
                 </div>
-                <p id="operationNote" class="hint compact-hint">
-                  Directional coverage follows the selected footprint.
-                </p>
-              </div>
+                <div class="control-body process-control-body">
+                  <div id="processMode" class="segmented process-mode" aria-label="Process action">
+                    <button
+                      type="button"
+                      class="active"
+                      data-process-mode="add"
+                      aria-pressed="true"
+                    >
+                      Deposit
+                    </button>
+                    <button type="button" data-process-mode="grow" aria-pressed="false">
+                      Extend
+                    </button>
+                    <button type="button" data-process-mode="etch" aria-pressed="false">
+                      Etch
+                    </button>
+                    <button type="button" data-process-mode="implant" aria-pressed="false">
+                      Implant
+                    </button>
+                    <button type="button" data-process-mode="electrical" aria-pressed="false">
+                      Electrical
+                    </button>
+                    <button type="button" data-process-mode="record" aria-pressed="false">
+                      Record
+                    </button>
+                  </div>
+                  <select id="operationType" class="visually-hidden" aria-label="Process action">
+                    <option value="add">Deposit new layer</option>
+                    <option value="grow">Extend existing layer</option>
+                    <option value="etch">Etch / subtract</option>
+                    <option value="implant">Implant</option>
+                    <option value="electrical">Electrical region</option>
+                    <option value="record">Record process step</option>
+                  </select>
+
+                  <div class="param-grid-2 process-area-grid">
+                    <label id="operationAreaRow" class="param-field">
+                      <span>Area</span>
+                      <select id="operationArea">
+                        <option value="mask">Selected mask</option>
+                        <option value="invert">Invert mask</option>
+                        <option value="full">Whole face</option>
+                      </select>
+                    </label>
+                    <label id="growthModeRow" class="param-field">
+                      <span>Coverage</span>
+                      <select id="growthMode">
+                        <option value="direct">Directional</option>
+                        <option value="conformal">Conformal</option>
+                      </select>
+                    </label>
+                    <label id="transferModeRow" class="param-field hidden">
+                      <span>Placement</span>
+                      <select id="transferMode">
+                        <option value="follow">Follow surface</option>
+                        <option value="flat">Flat bridge</option>
+                      </select>
+                    </label>
+                    <label
+                      id="etchProfileRow"
+                      class="param-field hidden"
+                      title="Directional removes material along Z; Isotropic release propagates into the selected material and laterally under masks"
+                    >
+                      <span>Profile</span>
+                      <select id="etchProfile">
+                        <option value="directional">Directional</option>
+                        <option value="isotropic">Isotropic release</option>
+                      </select>
+                    </label>
+                    <label id="etchSurfaceRow" class="param-field hidden">
+                      <span>Surface</span>
+                      <select id="etchSurfaceMode">
+                        <option value="smooth">Smooth</option>
+                        <option value="rough">Rough</option>
+                        <option value="pyramid">Pyramid</option>
+                      </select>
+                    </label>
+                    <label
+                      id="implantTiltRow"
+                      class="param-field hidden"
+                      title="Signed geometric tilt from the surface normal toward +X"
+                    >
+                      <span>Tilt X</span>
+                      <input id="implantTilt" type="number" value="0" min="-80" max="80" step="1" />
+                      <b class="field-unit">°</b>
+                    </label>
+                  </div>
+
+                  <div class="param-grid-2 process-main-grid">
+                    <label id="layerNameRow" class="param-field">
+                      <span>Name</span>
+                      <input id="layerName" value="Layer 1" />
+                    </label>
+                    <label id="targetLayerRow" class="param-field hidden">
+                      <span>Target</span>
+                      <select id="targetLayer"></select>
+                    </label>
+                    <label
+                      id="etchTargetLayerRow"
+                      class="param-field hidden"
+                      title="Etch only this exposed material and stop at the next different material"
+                    >
+                      <span>Material</span>
+                      <select id="etchTargetLayer">
+                        <option value="">All exposed materials</option>
+                      </select>
+                    </label>
+                    <label id="implantNameRow" class="param-field hidden">
+                      <span>Name</span>
+                      <input id="implantName" value="Implant 1" />
+                    </label>
+                    <label id="electricalNameRow" class="param-field hidden">
+                      <span>Name</span>
+                      <input id="electricalName" value="Electrical Region 1" />
+                    </label>
+                    <label id="operationThicknessRow" class="param-field">
+                      <span><b id="processThicknessLabel">Z</b></span>
+                      <input id="operationThickness" type="number" value="3" min="0" step="any" />
+                      <b id="operationThicknessUnit" class="field-unit">µm</b>
+                    </label>
+                  </div>
+
+                  <div
+                    id="electricalRegionParams"
+                    class="param-grid-2 electrical-region-grid hidden"
+                  >
+                    <label class="param-field">
+                      <span>Type</span>
+                      <select id="electricalRegionType">
+                        <option value="p-type">p-type</option>
+                        <option value="n-type">n-type</option>
+                        <option value="p-inversion">p-type inversion</option>
+                        <option value="n-inversion">n-type inversion</option>
+                        <option value="p-accumulation">p-type accumulation</option>
+                        <option value="n-accumulation">n-type accumulation</option>
+                        <option value="depletion">Depletion</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </label>
+                    <label class="param-field">
+                      <span>Source</span>
+                      <select id="electricalRegionSource">
+                        <option value="induced">Induced</option>
+                        <option value="doped">Doped</option>
+                        <option value="interface">Interface</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div id="recordProcessParams" class="param-grid-2 record-process-grid hidden">
+                    <label class="param-field">
+                      <span>Process</span>
+                      <select id="recordProcessType">
+                        <option value="anneal">Anneal</option>
+                        <option value="clean">Clean</option>
+                        <option value="oxidation">Oxidation</option>
+                        <option value="surface-treatment">Surface treatment</option>
+                        <option value="activation">Activation</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </label>
+                    <label class="param-field">
+                      <span>Label</span>
+                      <input id="recordProcessLabel" value="Anneal" maxlength="160" />
+                    </label>
+                    <label class="param-field">
+                      <span>Temp.</span>
+                      <input
+                        id="recordTemperature"
+                        type="number"
+                        step="any"
+                        placeholder="optional"
+                      />
+                      <b class="field-unit">°C</b>
+                    </label>
+                    <label class="param-field">
+                      <span>Time</span>
+                      <input
+                        id="recordDuration"
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="optional"
+                      />
+                      <b class="field-unit">min</b>
+                    </label>
+                    <label class="param-field">
+                      <span>Ambient</span>
+                      <input
+                        id="recordAmbient"
+                        maxlength="120"
+                        placeholder="e.g. O₂, N₂, forming gas"
+                      />
+                    </label>
+                    <label class="param-field">
+                      <span>Note</span>
+                      <input id="recordNote" maxlength="240" placeholder="optional" />
+                    </label>
+                  </div>
+
+                  <div class="param-grid-2 rough-param-grid">
+                    <label
+                      id="roughFeatureRow"
+                      class="param-field hidden"
+                      title="Mean lateral XY size of rough features, or pyramid pitch/base width"
+                    >
+                      <span><b id="roughFeatureLabel">Feature XY</b></span>
+                      <input id="roughFeatureSize" type="number" value="0.5" min="0" step="any" />
+                      <b id="roughFeatureUnit" class="field-unit">µm</b>
+                    </label>
+                    <label
+                      id="roughFeatureCvRow"
+                      class="param-field hidden"
+                      title="Coefficient of variation of the lateral feature size"
+                    >
+                      <span>Feature CV</span>
+                      <input
+                        id="roughFeatureCv"
+                        type="number"
+                        value="25"
+                        min="0"
+                        max="100"
+                        step="1"
+                      />
+                      <b class="field-unit">%</b>
+                    </label>
+                  </div>
+
+                  <div class="param-grid-2 rough-param-grid">
+                    <label
+                      id="roughHeightRow"
+                      class="param-field hidden"
+                      title="Mean stochastic relief or pyramid apex-to-base height within the etch-depth envelope"
+                    >
+                      <span><b id="roughHeightLabel">Height mean</b></span>
+                      <input id="roughAmplitude" type="number" value="1" min="0" step="any" />
+                      <b id="roughHeightUnit" class="field-unit">µm</b>
+                    </label>
+                    <label
+                      id="roughHeightCvRow"
+                      class="param-field hidden"
+                      title="Coefficient of variation of the rough feature height"
+                    >
+                      <span>Height CV</span>
+                      <input
+                        id="roughHeightCv"
+                        type="number"
+                        value="25"
+                        min="0"
+                        max="100"
+                        step="1"
+                      />
+                      <b class="field-unit">%</b>
+                    </label>
+                  </div>
+
+                  <div class="param-grid-2 rough-param-grid">
+                    <label
+                      id="roughPolarityRow"
+                      class="param-field hidden"
+                      title="Normal points rough features outward; Inverted keeps the existing pit/valley orientation"
+                    >
+                      <span>Orientation</span>
+                      <select id="roughPolarity">
+                        <option value="inverted">Inverted · pits ↓</option>
+                        <option value="normal">Normal · peaks ↑</option>
+                      </select>
+                    </label>
+                    <label
+                      id="roughSeedRow"
+                      class="param-field hidden"
+                      title="Optional deterministic seed. Leave blank to generate a seed from the process revision."
+                    >
+                      <span>Seed</span>
+                      <input
+                        id="roughSeed"
+                        type="number"
+                        min="0"
+                        max="4294967295"
+                        step="1"
+                        placeholder="auto"
+                      />
+                    </label>
+                  </div>
+
+                  <div class="operation-actions">
+                    <button id="applyOperationBtn" class="primary apply-btn">Apply</button>
+                    <button
+                      id="undoBtn"
+                      class="compact-btn"
+                      title="Undo the last structure change"
+                      disabled
+                    >
+                      Undo
+                    </button>
+                    <button
+                      id="redoBtn"
+                      class="compact-btn"
+                      title="Redo the last undone change"
+                      disabled
+                    >
+                      Redo
+                    </button>
+                  </div>
+                  <section
+                    id="processVisualGuide"
+                    class="process-visual-guide"
+                    aria-label="Current process schematic"
+                  >
+                    <div class="process-guide-top">
+                      <strong id="processGuideTitle">Directional deposition</strong>
+                      <span id="processGuideEffect" class="process-guide-effect">Geometry</span>
+                      <a
+                        id="processGuideLink"
+                        href="./guide/#deposit-directional"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open full product manual"
+                        >Guide ↗</a
+                      >
+                    </div>
+                    <div
+                      class="process-guide-illustrations"
+                      aria-label="Schematic process before and after"
+                    >
+                      <div class="process-guide-half">
+                        <span>BEFORE</span>
+                        <div id="processGuideBefore"></div>
+                      </div>
+                      <span class="process-guide-arrow" aria-hidden="true">→</span>
+                      <div class="process-guide-half">
+                        <span>AFTER</span>
+                        <div id="processGuideAfter"></div>
+                      </div>
+                    </div>
+                    <p id="processGuideSummary" class="process-guide-summary"></p>
+                    <small id="processGuideArea" class="process-guide-area"
+                      >Selected mask · Mask ROI applies</small
+                    >
+                  </section>
+                  <p id="operationNote" class="hint compact-hint">
+                    Directional coverage follows the selected footprint.
+                  </p>
+                </div>
               </div>
               <div id="recipeProcessPane" class="control-body recipe-process-pane" hidden></div>
             </section>

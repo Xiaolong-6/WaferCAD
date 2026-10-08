@@ -229,9 +229,9 @@ test('bundled examples remain valid renderer-ready regression fixtures', async (
 
   const literature = await loadLiteratureProject();
   assert.equal(literature.version, 14);
-  assert.equal(literature.snapshotBranches.nodes.length, 32);
+  assert.equal(literature.snapshotBranches.nodes.length, 46);
   assert.equal(literature.snapshotBranches.branches.length, 7);
-  assert.equal(literature.snapshots.length, 47);
+  assert.equal(literature.snapshots.length, 20);
 });
 
 test('literature example keeps the intended Variant ancestry and HEADs', async () => {
@@ -249,12 +249,62 @@ test('literature example keeps the intended Variant ancestry and HEADs', async (
   const ownStepCount = (branchId) =>
     project.snapshotBranches.nodes.filter((node) => node.branchId === branchId).length;
   assert.equal(ownStepCount('main'), 1);
-  assert.equal(ownStepCount('black-si-fig1a'), 11);
+  assert.equal(ownStepCount('black-si-fig1a'), 14);
   assert.equal(ownStepCount('black-si-fig1a-final'), 1);
   assert.equal(ownStepCount('black-si-fig1a-qa'), 1);
-  assert.equal(ownStepCount('ge-fig15-common'), 1);
-  assert.equal(ownStepCount('ge-fig15-a'), 8);
+  assert.equal(ownStepCount('ge-fig15-common'), 13);
+  assert.equal(ownStepCount('ge-fig15-a'), 7);
   assert.equal(ownStepCount('ge-fig15-b'), 9);
+});
+
+test('Ge process uses real sacrificial masks and source-order implantation', async () => {
+  const project = await loadLiteratureProject();
+  const nodes = project.snapshotBranches.nodes.filter(
+    (node) => node.branchId === 'ge-fig15-common',
+  );
+  const labels = nodes.map((node) => node.operation.label);
+  const where = (needle) => labels.findIndex((label) => label.includes(needle));
+  assert.equal(nodes[0].operation.kind, 'base', 'Ge must start from its own Base');
+  assert.ok(where('PECVD SiNx') > 0);
+  assert.ok(where('Pattern SiNx') > where('PECVD SiNx'));
+  assert.ok(where('B p+ front') > where('Pattern SiNx'));
+  assert.ok(where('P n+ rear') > where('B p+ front'));
+  assert.ok(where('Activate B/P') > where('P n+ rear'));
+  assert.ok(where('Temporary ALD') > where('Activate B/P'));
+  assert.ok(where('ICP-RIE Ge') > where('Temporary ALD'));
+  assert.ok(where('H2O2 etch-back') > where('ICP-RIE Ge'));
+  assert.ok(where('Strip temporary') > where('H2O2 etch-back'));
+  assert.ok(where('HCl clean') > where('Strip temporary'));
+  const sourceState = branchMap(project).get('ge-fig15-common').headState;
+  assert.equal(sourceState.model.layers[0].name, 'n-Ge Sb · 302 µm · 29.1 Ωcm');
+  for (const id of ['ge-fig15-a', 'ge-fig15-b']) {
+    const next = branchMap(project).get(id);
+    assert.ok(next.headState.processRecipe.steps.length > 15, id + ': missing full recipe');
+    assert.ok(
+      next.headState.processRecipe.steps.some(
+        (step) => step.command === 'record' && /350°C/.test(step.params.label),
+      ),
+      id + ': final anneal should be a real History Step',
+    );
+  }
+});
+
+test('Black-Si processing records drive-in and forming-gas anneals as independent Steps', async () => {
+  const project = await loadLiteratureProject();
+  const nodes = project.snapshotBranches.nodes.filter((node) => node.branchId === 'black-si-fig1a');
+  const labels = nodes.map((node) => node.operation.label);
+  for (const phrase of ['Drive-in', 'Remove drive-in oxide', 'Forming gas']) {
+    assert.ok(
+      labels.some((label) => label.includes(phrase)),
+      phrase + ' missing',
+    );
+  }
+  const anneal = nodes.find((node) => node.operation.label.startsWith('Forming gas'));
+  assert.equal(anneal.operation.kind, 'record');
+  assert.equal(anneal.operation.temperatureC, 425);
+  assert.ok(
+    branchMap(project).get('black-si-fig1a-final').headState.processRecipe.steps.length >= 15,
+  );
 });
 
 test('Black-Si FINAL preserves ALD and front roughness while removing blanket Al', async () => {
@@ -265,13 +315,13 @@ test('Black-Si FINAL preserves ALD and front roughness while removing blanket Al
     commonVolumes = materialVolumes(common),
     finalVolumes = materialVolumes(finalModel),
     qaVolumes = materialVolumes(qa),
-    ald = 'ALD Al2O3 50nm',
-    frontAl = 'Front sputtered Al 300nm',
-    rearAl = 'Rear cathode Al 1000nm';
+    ald = 'ALD Al2O3 · 50 nm',
+    frontAl = 'Front sputtered Al · 300 nm',
+    rearAl = 'Rear cathode Al · 1000 nm';
 
-  assert.equal(common.processRevision, 11);
-  assert.equal(finalModel.processRevision, 12);
-  assert.equal(qa.processRevision, 12);
+  assert.equal(common.processRevision, 15);
+  assert.equal(finalModel.processRevision, 16);
+  assert.equal(qa.processRevision, 16);
 
   assertClose(finalVolumes.get(ald), commonVolumes.get(ald), 1e-3, 'FINAL ALD volume');
   assert.ok(
@@ -336,12 +386,25 @@ test('Ge Fig. 15 A/B preserve Electrical semantics and host-material ownership',
     commonVolumes = materialVolumes(common),
     aVolumes = materialVolumes(modelA),
     bVolumes = materialVolumes(modelB),
-    geName = 'n-Ge Sb doped 302um, 29.1ohm-cm',
+    geName = 'n-Ge Sb · 302 µm · 29.1 Ωcm',
     geLayerId = modelA.layers.find((layer) => layer.name === geName)?.id;
 
   assert.ok(geLayerId, 'Ge host layer must exist');
-  assertClose(aVolumes.get(geName), commonVolumes.get(geName), 1e-3, 'Fig. 15a Ge volume');
-  assertClose(bVolumes.get(geName), commonVolumes.get(geName), 1e-3, 'Fig. 15b Ge volume');
+  // Conformal ownership canonicalizes the 0.1 nm shared XY grid. Allow at most
+  // one part per billion of the unchanged bulk Ge volume for rounding effects.
+  const geVolumeTolerance = Math.max(1e-3, commonVolumes.get(geName) * 1e-9);
+  assertClose(
+    aVolumes.get(geName),
+    commonVolumes.get(geName),
+    geVolumeTolerance,
+    'Fig. 15a Ge volume',
+  );
+  assertClose(
+    bVolumes.get(geName),
+    commonVolumes.get(geName),
+    geVolumeTolerance,
+    'Fig. 15b Ge volume',
+  );
 
   assert.equal(
     modelA.layers.some((layer) => /SiO2 inactive/i.test(layer.name)),

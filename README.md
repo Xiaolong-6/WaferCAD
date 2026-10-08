@@ -33,6 +33,12 @@ WaferCAD accepts `.gds`, `.gdsii`, `.oas`, and `.oasis` mask files. OASIS import
 - Layers that do not exist in the active cell/subtree remain visible but are visually de-emphasized.
 - Zero-width linework may be displayed but is not treated as an operable mask area.
 
+## Product manual
+
+The [GitHub Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki) is the full product user manual, including startup, workspace navigation, mask/ROI, Process, Recipe, History/Variants, project recovery, import/export, examples and modeling limits. The [interactive Process atlas](https://xiaolong-6.github.io/WaferCAD/guide/) provides Before → After schematic views of every operation variant; the compact version is shown under Apply in the Process panel.
+
+Source pages in `docs/wiki/` are checked on every `main` push and synchronized to the Wiki only if their content changed. The detailed Process chapter is generated from the same catalog used by the UI. First-time Wiki initialization and any required write token are documented in [Wiki sync](docs/WIKI_SYNC.md).
+
 ## Operations
 
 Operations can target the front or back face and use one of three areas:
@@ -52,7 +58,7 @@ Available actions:
 
 Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Transfer / Laminate defaults to **Follow surface**, which places the transferred film on each local exposed horizontal surface without coating sidewalls or inventing film inside true voids. **Flat bridge** retains the membrane behavior at one global exposed plane and can bridge openings without filling the void beneath. Legacy saved Transfer steps without a placement mode replay with the historical Flat-bridge semantics. Directional Etch is vertical subtraction and can either remove exposed materials in stack order or target one currently exposed material and stop when the next different material is reached. Planarize / CMP trims material to an absolute target Z plane without adding fill, while Undercut release laterally removes one exposed sacrificial material. Directional Etch Surface can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
 
-**Process Recipe** is a guided programming mode in the Process panel. Switch from Manual to Recipe to add and reorder typed operations, edit parameters in an inspector, or use the restricted, non-evaluating Code editor. Templates, validation, per-step execution, stop controls, and Recipe-only Undo/Redo share the existing process worker/Kernel. The Recipe is saved inside the `.wafercad` project. **Start** defaults to *Continue current model*: existing Process revisions require confirmation, because applying the same Recipe again changes geometry again. Choose *Rebuild Base first (new Main)* for a fresh process lineage using the Base panel dimensions; this prompts to archive the previous Main History as a restorable Variant or clear it. Successful Manual operations can optionally be recorded into the Recipe.
+**Process Recipe** is a guided programming mode in the Process panel. Switch from Manual to Recipe to add and reorder typed operations, edit parameters in an inspector, or use the restricted, non-evaluating Code editor. Templates, validation, per-step execution, stop controls, and Recipe-only Undo/Redo share the existing process worker/Kernel. The Recipe is saved inside the `.wafercad` project. **Start** defaults to _Continue current model_: existing Process revisions require confirmation, because applying the same Recipe again changes geometry again. Choose _Rebuild Base first (new Main)_ for a fresh process lineage using the Base panel dimensions; this prompts to archive the previous Main History as a restorable Variant or clear it. Successful Manual operations can optionally be recorded into the Recipe.
 
 **Record** adds fabrication metadata such as Anneal, Clean, Oxidation, Surface treatment, Activation, or a custom process directly to History without changing material geometry. This keeps literature/process-flow reconstructions chronological without pretending that WaferCAD simulates thermal chemistry or diffusion.
 
