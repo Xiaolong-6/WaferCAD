@@ -192,8 +192,8 @@ test('Mask topography reference is dashed and all scientific header controls sha
   assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
   assert.match(style, /\.view-head \.mini-btn\.active/);
   assert.match(workstationStyle, /\.view-head \.three-border-toggle:has\(input:checked\)/);
-  assert.match(workstationStyle, /#maskSourceToggleBtn\.active/);
-  assert.match(workstationStyle, /#sectionDetailRoiBtn\.active/);
+  assert.match(workstationStyle, /\.view-head \.mini-btn\.active/);
+  assert.match(workstationStyle, /\.view-head details\[open\] > summary/);
   assert.match(html, /id="threeBorders"[^>]*aria-label="Show 3D borders"/);
   assert.doesNotMatch(html, /three-border-status/);
   assert.doesNotMatch(style, /content: ['"](?:ON|OFF)['"]/);
