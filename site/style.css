@@ -4956,15 +4956,15 @@ min-height: 32px;
   }
 
   .history-variant-name {
-    font-size: 8.7px;
+    font-size: 10px;
   }
 
   .process-history-body strong {
-    font-size: 8.4px;
+    font-size: 10px;
   }
 
   .process-history-body span {
-    font-size: 7px;
+    font-size: 8.5px;
   }
 
   .history-bookmarks-group {
@@ -4994,7 +4994,7 @@ min-height: 32px;
 
   .process-history-body strong,
   .snapshot-milestone-body strong {
-    font-size: 8.5px;
+    font-size: 10px;
   }
 
   .snapshot-milestone-row {
