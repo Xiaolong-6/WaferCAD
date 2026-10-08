@@ -54,6 +54,43 @@ test('Wiki navigation links to both Recipe tutorials', async () => {
   }
 });
 
+test('the novice path is discoverable and names the current UI controls', async () => {
+  const guide = await manual('First-10-Minutes');
+  for (const entry of ['Home', '_Sidebar', 'Getting-Started', 'Troubleshooting']) {
+    assert.ok((await manual(entry)).includes('(First-10-Minutes)'), `${entry}: beginner path missing`);
+  }
+  for (const step of [
+    'Apply base',
+    'Whole face',
+    'Selected mask',
+    'Draw',
+    'Directional',
+    'SiO2',
+    'Section A–B',
+    'Undo',
+    'Recovery',
+    '.wafercad',
+  ]) {
+    assert.ok(guide.includes(step), `novice workflow missing ${step}`);
+  }
+  const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+  for (const id of [
+    'baseWidth',
+    'baseHeight',
+    'baseThickness',
+    'maskSourceToggleBtn',
+    'operationType',
+    'operationArea',
+    'growthMode',
+    'etchTargetLayer',
+    'operationThickness',
+    'applyOperationBtn',
+    'xyUnitSelect',
+  ]) {
+    assert.ok(html.includes(`id="${id}"`), `documented beginner control missing in UI: ${id}`);
+  }
+});
+
 test('all code blocks labeled JavaScript in the Recipe tutorials parse as v1 recipes', async () => {
   for (const page of ['Recipe-Code-Tutorial', 'Recipe-Code-Tutorial-zh-CN']) {
     const source = await manual(page);
