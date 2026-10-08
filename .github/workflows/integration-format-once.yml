@@ -1,0 +1,58 @@
+name: Integration one-time formatting
+
+on:
+  push:
+    branches:
+      - integrate/reviewed-branches-20261008
+    paths:
+      - ".github/workflows/integration-format-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Apply pinned Prettier only to reviewed formatting drift
+        run: |
+          npx prettier --write \
+            site/app.html \
+            site/controllers/process-panel-controller.js \
+            site/controllers/process-recipe-controller.js \
+            site/model.js \
+            site/style.css \
+            scripts/build-wiki-diagrams.mjs \
+            scripts/m3d-kernel-full-replay.mjs \
+            docs/M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md \
+            docs/wiki/_Sidebar.md \
+            docs/wiki/Examples-and-Modeling-Limits.md \
+            docs/wiki/Getting-Started.md \
+            docs/wiki/History-Variants-and-Recovery.md \
+            docs/wiki/Home.md \
+            docs/wiki/Import-and-Export.md \
+            docs/wiki/Masks-and-ROI.md \
+            docs/wiki/Process-and-Recipes.md \
+            docs/wiki/Recipe-Code-Tutorial-zh-CN.md \
+            docs/wiki/Recipe-Code-Tutorial.md \
+            docs/wiki/Troubleshooting.md \
+            docs/wiki/Workspace-and-Views.md
+      - run: npm run format:check
+      - run: npm run lint
+      - run: git diff --check
+      - name: Commit style-only changes to staging branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- site/app.html site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js site/model.js site/style.css scripts/build-wiki-diagrams.mjs scripts/m3d-kernel-full-replay.mjs docs/M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md docs/wiki/_Sidebar.md docs/wiki/Examples-and-Modeling-Limits.md docs/wiki/Getting-Started.md docs/wiki/History-Variants-and-Recovery.md docs/wiki/Home.md docs/wiki/Import-and-Export.md docs/wiki/Masks-and-ROI.md docs/wiki/Process-and-Recipes.md docs/wiki/Recipe-Code-Tutorial-zh-CN.md docs/wiki/Recipe-Code-Tutorial.md docs/wiki/Troubleshooting.md docs/wiki/Workspace-and-Views.md
+          git diff --cached --quiet || git commit -m "Format integrated Process, Kernel and Wiki source with pinned Prettier"
+          git fetch origin "$GITHUB_REF_NAME"
+          git rebase "origin/$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"

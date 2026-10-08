@@ -1078,9 +1078,11 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // Keep the pre-coating void domain. A conformal film is allowed to occupy
   // empty trench / through-hole space next to an exposed wall; ordinary
   // splitByArea() only visits existing material regions.
-  // Record the actual pre-operation uncovered domain, even when base area is
-  // within the coarse "full" tolerance. Existing physical voids are protected.
-  const originalVoids = uncoveredGeometryRaw(model);
+  // A complete Base has no eligible physical void-walls. Avoid another
+  // preliminary Boolean uncovered query in this case: a retry can invent a
+  // false void between valid material owners before final repair can run.
+  // Post-process coverage is still checked for new physical gaps.
+  const originalVoids = baseCoverageState(model) === 'full' ? [] : uncoveredGeometryRaw(model);
   let uncovered = cloneGeom(originalVoids);
 
   // Stage 1: coat every exposed horizontal surface in the selected area.
