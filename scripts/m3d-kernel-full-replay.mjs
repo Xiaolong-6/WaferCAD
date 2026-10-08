@@ -6,14 +6,17 @@ import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mj
 
 await loadGeometryKernel();
 
-const { applyOperation, createModel } = await import('../site/model.js');
+const modelApi = await import('../site/model.js');
+const { applyOperation, createModel } = modelApi;
+const { applyAdvancedProcessOperation } = await import('../site/advanced-process-operations.js');
 const { drawMaskGeometry } = await import('../site/draw-mask-geometry.js');
+const vectorApi = await import('../site/vector-geometry.js');
 const {
   difference,
   pointInMulti,
   rectMulti,
   unionGeometries,
-} = await import('../site/vector-geometry.js');
+} = vectorApi;
 const {
   prepareProjectForWorkspaceStorage,
   readProjectFile,
@@ -290,10 +293,10 @@ function applyStep(stage, spec) {
 
   const mode = spec.area || 'full';
   const started = performance.now();
-  const result = applyOperation(model, {
-    ...params,
-    area: areaFor(mode, currentShapes),
-  });
+  const area = areaFor(mode, currentShapes);
+  const result = params.growth === 'transfer'
+    ? applyAdvancedProcessOperation(model, params, area, modelApi, vectorApi)
+    : applyOperation(model, { ...params, area });
   const ms = performance.now() - started;
   assert.equal(result.changed, true, stage + ' · ' + spec.label + ': ' + (result.error || 'no geometry change'));
   validateProcessModel(model);
@@ -321,6 +324,9 @@ function applyStep(stage, spec) {
           name: spec.name,
           thickness: spec.thickness,
           growth: spec.growth || 'direct',
+          ...(spec.growth === 'transfer'
+            ? { transferMode: 'follow', transferGap: 0 }
+            : {}),
           resultLayerId: result.layerId,
         }
       : {
@@ -538,22 +544,22 @@ closeStage('10_HfO2_Open');
 applyStep('11_WSe2_Transfer', {
   type: 'add',
   label: 'Transfer bilayer WSe2 using Follow surface',
-  name: 'M3D WSe2 transfer surrogate 0.7nm',
-  thickness: 0.0007,
+  name: 'M3D WSe2 bilayer 1.4nm',
+  thickness: 0.0014,
   growth: 'transfer',
   transferMode: 'follow',
   area: 'mask',
   shapes: m3dFieldShapes,
   section: { a: [2, 2.65], b: [30, 2.65] },
 });
-assertTransferZeroGap('M3D WSe2 transfer surrogate 0.7nm');
+assertTransferZeroGap('M3D WSe2 bilayer 1.4nm');
 closeStage('11_WSe2_Transfer');
 
 applyStep('12_WSe2_Pattern', {
   type: 'etch',
   label: 'Pattern WSe2 to 0.2 x 0.5 um channels',
-  target: 'M3D WSe2 transfer surrogate 0.7nm',
-  thickness: 0.0007,
+  target: 'M3D WSe2 bilayer 1.4nm',
+  thickness: 0.0014,
   area: 'invert',
   shapes: mask('M3D_M08_WSe2_channel.svg').shapes,
   section: { a: [2, 2.65], b: [30, 2.65] },
