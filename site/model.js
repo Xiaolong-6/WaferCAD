@@ -1413,6 +1413,19 @@ function applyOperationImpl(
   if (type === 'etch' && etchProfile === 'isotropic') {
     model.regions = canonicalizeProcessPartition(model, model.regions);
   }
+
+  // Every successful Process result must survive the 0.1 nm project-storage
+  // quantum. Directional mask splits can inherit tiny fractional islands from
+  // an earlier Boolean partition even when the physical operation is valid.
+  // Remove only polygon components whose outer ring collapses to zero area at
+  // persistence precision; larger geometry and holes are left untouched.
+  model.regions = model.regions
+    .map((region) => ({
+      ...region,
+      geom: dropPersistenceDegeneratePolygons(region.geom),
+    }))
+    .filter((region) => !isEmpty(region.geom));
+
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };
