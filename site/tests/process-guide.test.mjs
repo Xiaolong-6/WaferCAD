@@ -31,6 +31,11 @@ test('every Process variant has distinct catalog metadata and a valid diagram', 
   }
 });
 
+test('release modes are visually distinct and Implant fades with depth', () => {
+  assert.notEqual(processGuideSvg('etch-isotropic', true), processGuideSvg('etch-undercut', true));
+  assert.match(processGuideSvg('implant', true), /linearGradient/);
+});
+
 test('all current manual selector combinations resolve to intended operation diagrams', () => {
   const cases = [
     [{ type: 'add', growth: 'direct' }, 'deposit-directional'],
