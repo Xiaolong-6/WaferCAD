@@ -401,7 +401,7 @@ await welcomeCheckpointPage.waitForFunction(
 await gotoWelcome(welcomeCheckpointPage);
 await welcomeCheckpointPage
   .locator(
-    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-summary-link',
   )
   .click();
 await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
@@ -521,7 +521,7 @@ examplePage.on('dialog', (dialog) => {
 await gotoWelcome(examplePage);
 await examplePage
   .locator(
-    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-open',
+    '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-summary-link',
   )
   .click();
 await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
