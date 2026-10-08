@@ -7,6 +7,7 @@ import {
   PROJECT_LENGTH_QUANTUM_UM,
   expandProjectStorage,
   prepareProjectForWorkspaceStorage,
+  prepareProjectForExport,
   readProjectFile,
   serializeProject,
 } from '../project-io.js';
@@ -252,6 +253,34 @@ test('project storage rejects XY geometry that collapses at the 0.1 nm persisten
 
   assert.equal(validateProjectFile(source), source);
   assert.throws(() => serializeProject(source), /cannot be stored safely/i);
+});
+
+test('Export falls back losslessly when strict 0.1 nm quantization would change geometry', async () => {
+  const source = validProject();
+  const halfWidth = PROJECT_LENGTH_QUANTUM_UM * 0.2;
+  source.model.width = halfWidth * 2;
+  source.model.boundary = [[[
+    [-halfWidth, -50], [halfWidth, -50], [halfWidth, 50],
+    [-halfWidth, 50], [-halfWidth, -50],
+  ]]];
+  source.model.regions[0].geom = structuredClone(source.model.boundary);
+
+  assert.equal(validateProjectFile(source), source);
+  assert.throws(() => serializeProject(source), /cannot be stored safely/i);
+  const { stored, mode } = prepareProjectForExport(source);
+  assert.equal(mode, 'lossless');
+  assert.equal(stored.storage.lossless, true);
+  const text = JSON.stringify(stored);
+  const reopened = await readProjectFile({ size: Buffer.byteLength(text), text: async () => text });
+  assert.deepEqual(reopened.model, source.model);
+
+  const normal = prepareProjectForExport(validProject());
+  assert.equal(normal.mode, 'compact');
+  assert.ok(!normal.stored.storage.lossless);
+
+  const invalid = validProject();
+  invalid.model.regions[0].stack[0].layerId = 'nonexistent';
+  assert.throws(() => prepareProjectForExport(invalid), /unknown layer/i);
 });
 
 test('project storage rejects semantic geometry that collapses at file precision', () => {
