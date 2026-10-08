@@ -293,7 +293,7 @@ export function createProcessPanelController({
       $('processGuideAfter').innerHTML = processGuideSvg(guideId, true);
       $('processGuideSummary').textContent = guide.summary;
       const fullLink = $('processGuideLink');
-      fullLink.href = './guide/#' + encodeURIComponent(guideId);
+      fullLink.href = 'https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations#' + encodeURIComponent(guideId);
     }
     if (guideNode) {
       guideNode.hidden = !materialExists && !recordOnly;

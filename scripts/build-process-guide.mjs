@@ -9,7 +9,7 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
   const lines = [
     '# Process Operations',
     '',
-    '[Home](Home) · [Process and Recipes](Process-and-Recipes) · [Interactive Before → After diagrams](https://xiaolong-6.github.io/WaferCAD/guide/)',
+    '[Home](Home) · [Process and Recipes](Process-and-Recipes)',
     '',
     '> All diagrams are schematic. WaferCAD is a geometric process editor, not a calibrated process/electrical TCAD simulator.',
     '',
@@ -23,6 +23,14 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
       lines.push('## ' + family, '');
     }
     lines.push('<a id="' + entry.id + '"></a>', '### ' + entry.title, '');
+    lines.push(
+      '![Before and after schematic for ' +
+        entry.title +
+        '](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/' +
+        entry.id +
+        '.svg)',
+      '',
+    );
     lines.push('**Behavior:** ' + entry.summary, '', entry.detail, '');
     lines.push('**Inputs:** ' + entry.parameters, '');
     lines.push(
@@ -37,10 +45,6 @@ export function processOperationsMarkdown(operations = PROCESS_GUIDE) {
     );
     lines.push('**Modeling boundary:** ' + entry.limits, '');
     lines.push('**Example:** ' + entry.example, '');
-    lines.push(
-      '[View diagram ↗](https://xiaolong-6.github.io/WaferCAD/guide/#' + entry.id + ')',
-      '',
-    );
   }
   lines.push(
     '## More documentation',

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { PROCESS_GUIDE, processGuideEntry, processGuideKey } from '../process-guide.js';
 import { processGuideSvg } from '../process-guide-svg.js';
 import { processOperationsMarkdown } from '../../scripts/build-process-guide.mjs';
+import { processWikiDiagramSvg } from '../../scripts/build-wiki-diagrams.mjs';
 
 test('every Process variant has distinct catalog metadata and a valid diagram', () => {
   assert.equal(PROCESS_GUIDE.length, 18);
@@ -28,6 +29,17 @@ test('every Process variant has distinct catalog metadata and a valid diagram', 
       assert.match(svg, /<\/svg>$/);
       assert.ok(svg.includes('viewBox="0 0 220 124"'));
     }
+  }
+});
+
+test('Wiki image assets match every in-app Process illustration', async () => {
+  for (const entry of PROCESS_GUIDE) {
+    const image = await readFile(
+      new URL('../../docs/wiki/assets/process/' + entry.id + '.svg', import.meta.url), 'utf8'
+    );
+    assert.equal(image, processWikiDiagramSvg(entry.id), entry.id + ': stale Wiki illustration');
+    assert.match(image, /BEFORE/);
+    assert.match(image, /AFTER/);
   }
 });
 
@@ -90,6 +102,7 @@ test('both product manual entry points and the inline guide are wired', async ()
   assert.match(html, /id="processGuideLink"/);
   assert.match(panel, /processGuideKey\(/);
   assert.match(panel, /processGuideSvg\(/);
-  assert.match(guide, /process-guide\.js/);
-  assert.match(guide, /process-guide-svg\.js/);
+  assert.match(guide, /wiki\/Process-Operations/);
+  assert.match(guide, /location\.replace\(target\)/);
+  assert.match(panel, /wiki\/Process-Operations#/);
 });
