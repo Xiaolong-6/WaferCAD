@@ -537,9 +537,14 @@ assert.ok(['nm', 'um', 'mm'].includes(await examplePage.locator('#xyUnitSelect')
 assert.ok(Number(await examplePage.locator('#baseWidth').inputValue()) > 0);
 assert.ok(await examplePage.locator('#layerLegend .legend-row').count());
 assert.ok(Number(await examplePage.locator('#baseThickness').inputValue()) > 0);
-// The example-open status can precede the next scheduled Mask canvas paint.
-// Check the actual pixels without requiring a Mask tab click; a persistent
-// blank canvas still fails this regression.
+// At 1100px the Workstation intentionally opens in single Main view.
+// Verify Main immediately, then select Mask through the actual view header.
+// Hidden canvas elements have zero layout dimensions and must not be sampled.
+const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas');
+assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
+assert.equal(await examplePage.locator('#maskPanel').isHidden(), true);
+await examplePage.locator('.workstation-view-tab[data-view="mask"]').click();
+await examplePage.locator('#maskPanel').waitFor({ state: 'visible' });
 await examplePage.waitForFunction(
   () => {
     const canvas = document.getElementById('maskCanvas');
@@ -559,10 +564,8 @@ await examplePage.waitForFunction(
   null,
   { timeout: 15000, polling: 250 },
 );
-const exampleMainInk = await canvasInkFraction(examplePage, '#mainCanvas'),
-  exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
-assert.ok(exampleMainInk > 0.01, `Open Example Main canvas is blank: ${exampleMainInk}`);
-assert.ok(exampleMaskInk > 0.005, `Open Example Mask canvas is blank: ${exampleMaskInk}`);
+const exampleMaskInk = await canvasInkFraction(examplePage, '#maskCanvas');
+assert.ok(exampleMaskInk > 0.005, `Open Example Mask canvas is blank after selecting Mask: ${exampleMaskInk}`);
 await examplePage.locator('#gdsInput').setInputFiles({
   name: 'example-reimport.oas',
   mimeType: 'application/octet-stream',
