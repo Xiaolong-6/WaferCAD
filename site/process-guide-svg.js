@@ -53,11 +53,21 @@ export function processGuideSvg(id, after = false) {
         ? deposited(6, 46, 208, 11)
         : deposited(6, 20, 78, 37) + deposited(84, 36, 66, 21) + deposited(150, 46, 64, 11);
       shape += '<path d="M6 46H214" stroke="#ce913f" stroke-dasharray="5 4"/>';
-    } else if (id === 'etch-isotropic' || id === 'etch-undercut') {
+    } else if (id === 'etch-isotropic') {
       shape += deposited(6, 46, 82, 11, green) + deposited(132, 46, 82, 11, green);
       if (after)
         shape += '<path d="M88 57Q68 74 84 97Q110 114 136 97Q152 74 132 57Z" fill="' + pale + '"/>';
       else shape += arrow();
+    } else if (id === 'etch-undercut') {
+      // The accessible sacrificial film is removed laterally while the upper caps survive.
+      shape =
+        rect(6, 97, 208, 21, blue) +
+        (after
+          ? deposited(6, 78, 62, 19) + deposited(152, 78, 62, 19)
+          : deposited(6, 78, 208, 19)) +
+        deposited(6, 65, 86, 13, green) +
+        deposited(128, 65, 86, 13, green) +
+        (after ? '' : arrow());
     } else {
       shape += after
         ? deposited(6, 46, 82, 11) +
@@ -66,9 +76,13 @@ export function processGuideSvg(id, after = false) {
         : deposited(6, 46, 208, 11) + arrow();
     }
   } else if (id === 'implant') {
-    shape = base() + (after ? rect(74, 57, 74, 37, '#ab80ce') : arrow());
+    shape = base() + (after
+      ? '<defs><linearGradient id="process-implant-fade" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop stop-color="#ab80ce" stop-opacity=".85"/><stop offset="1" stop-color="#ab80ce" stop-opacity=".06"/>' +
+        '</linearGradient></defs><path d="M74 57H140L159 97H93Z" fill="url(#process-implant-fade)"/>'
+      : arrow());
   } else if (id === 'electrical') {
-    shape = base() + (after ? rect(74, 57, 74, 37, '#64bda8') : arrow());
+    shape = base() + (after ? '<rect x="74" y="57" width="74" height="37" fill="#64bda8" opacity=".55"/>' : arrow());
   } else if (id === 'record') {
     shape = base() + (after ? rect(91, 12, 38, 25, gold) : arrow());
   }
