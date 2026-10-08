@@ -1173,7 +1173,7 @@ processRecipeController = createProcessRecipeController({
   updateOperationUI,
   renderAll,
   renderSnapshots,
-  resetToBase: () => baseControls.applyBase(),
+  resetToBase: (recipeBase) => baseControls.applyBase({ recipeBase }),
   confirmContinue: () =>
     confirmationDialog.confirm({
       title: 'Continue Recipe on current model?',
