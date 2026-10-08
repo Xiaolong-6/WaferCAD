@@ -202,31 +202,97 @@ function compatibleWall(a, b) {
   );
 }
 
+// Array owner groups collect sidewall edges by material, but the edges are
+// not guaranteed to be in contour order. Reconstruct only unambiguous directed
+// chains with matching Z/depth/surface ownership; never stitch T-junctions.
+// The graph is display-only and leaves the original edge list unchanged.
 export function simplifyDisplaySidewallParts(parts, tolerance) {
   if (!(Number(tolerance) > 0)) return mergeCollinearSidewallParts(parts);
   const exact = mergeCollinearSidewallParts(parts);
-  const result = [];
-  for (let start = 0; start < exact.length;) {
-    let end = start + 1;
-    while (end < exact.length && compatibleWall(exact[end - 1], exact[end])) end++;
-    if (end - start < 2) {
-      result.push(exact[start]);
-      start = end;
+  if (exact.length < 2) return exact;
+  const objectRefs = new WeakMap();
+  let nextRef = 0;
+  const reference = (value) => {
+    if (!value || typeof value !== 'object') return null;
+    if (!objectRefs.has(value)) objectRefs.set(value, ++nextRef);
+    return objectRefs.get(value);
+  };
+  const pointKey = (point) =>
+    `${Math.round(point[0] * 1e8)}:${Math.round(point[1] * 1e8)}`;
+  const groups = new Map(), preserved = [];
+  for (const part of exact) {
+    if (part.lowerSurface?.appearance || part.upperSurface?.appearance) {
+      preserved.push(part);
       continue;
     }
-    const points = [exact[start].p, ...exact.slice(start, end).map((part) => part.q)],
-      closed = samePoint(points[0], points.at(-1)),
-      simplified = closed
-        ? simplifyDisplayRing(points, tolerance)
-        : simplifyDisplayPolyline(points, tolerance);
-    if (simplified.length >= 2 && simplified.length < points.length) {
-      for (let index = 1; index < simplified.length; index++) {
-        result.push({ ...exact[start], p: simplified[index - 1], q: simplified[index] });
-      }
-    } else {
-      result.push(...exact.slice(start, end));
-    }
-    start = end;
+    const key = JSON.stringify([
+      part.layerId ?? null,
+      part.buried ?? null,
+      part.z0,
+      part.z1,
+      part.lowerDepth ?? null,
+      part.upperDepth ?? null,
+      reference(part.lowerSurface),
+      reference(part.upperSurface),
+    ]);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(part);
   }
-  return result;
+  const out = [...preserved];
+  for (const edges of groups.values()) {
+    const starts = new Map(), ends = new Map();
+    const append = (map, point, index) => {
+      const key = pointKey(point);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(index);
+    };
+    edges.forEach((edge, index) => {
+      append(starts, edge.p, index);
+      append(ends, edge.q, index);
+    });
+    const visited = new Set();
+    const emitChain = (start) => {
+      const chain = [];
+      let cursor = start;
+      while (!visited.has(cursor)) {
+        visited.add(cursor);
+        chain.push(edges[cursor]);
+        const vertex = pointKey(edges[cursor].q),
+          outgoing = starts.get(vertex) || [],
+          incoming = ends.get(vertex) || [];
+        // Nonmanifold connections/branching stay as independent segments.
+        if (outgoing.length !== 1 || incoming.length !== 1) break;
+        cursor = outgoing[0];
+      }
+      const points = [chain[0].p, ...chain.map((edge) => edge.q)],
+        closed = samePoint(points[0], points.at(-1)),
+        simplified = chain.length > 1
+          ? closed
+            ? simplifyDisplayRing(points, tolerance)
+            : simplifyDisplayPolyline(points, tolerance)
+          : points;
+      if (simplified.length >= 2 && simplified.length < points.length) {
+        for (let index = 1; index < simplified.length; index++) {
+          out.push({
+            ...chain[0],
+            p: simplified[index - 1],
+            q: simplified[index],
+            line: null,
+          });
+        }
+      } else out.push(...chain);
+    };
+    // Start at every open/branched graph endpoint, then consume closed cycles.
+    for (let index = 0; index < edges.length; index++) {
+      const vertex = pointKey(edges[index].p);
+      if (
+        !visited.has(index) &&
+        ((starts.get(vertex) || []).length !== 1 || (ends.get(vertex) || []).length !== 1)
+      ) emitChain(index);
+    }
+    for (let index = 0; index < edges.length; index++) {
+      if (!visited.has(index)) emitChain(index);
+    }
+  }
+  return out;
 }
