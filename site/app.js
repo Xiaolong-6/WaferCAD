@@ -1002,6 +1002,7 @@ projectController = createProjectController({
   onProjectChanged: markProjectDirty,
   checkpointBeforeReplace: checkpointWorkspace,
   readProjectFileTask: readProjectSnapshot,
+  exampleBuildVersion: loadedBuildVersion,
   exportProjectFileTask,
   normalizedProjectName,
   getProjectName: () => projectName,
