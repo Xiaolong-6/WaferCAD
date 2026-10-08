@@ -5675,4 +5675,6 @@ summary:focus-visible {
 .recipe-run-actions:has(#recipeStopBtn:not([hidden])) {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) auto;
 }
-.recipe-run-actions #recipeStopBtn[hidden] { display: none !important; }
+.recipe-run-actions #recipeStopBtn[hidden] {
+  display: none !important;
+}
