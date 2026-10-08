@@ -19,7 +19,7 @@ permissions:
 jobs:
   recipe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,3 +39,7 @@ jobs:
           curl --fail http://127.0.0.1:4173/app.html >/dev/null
       - name: Recipe interaction regression
         run: node scripts/process-recipe-safety-regression.mjs
+      - name: Actual Kernel Recipe Run All from a clean Main
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk
