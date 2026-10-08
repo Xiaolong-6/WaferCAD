@@ -7,8 +7,8 @@
     "lint": "eslint \"site/**/*.{js,mjs}\" \"scripts/**/*.mjs\"",
     "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"*.md\" \"*.json\" \"eslint.config.js\"",
     "format:check": "prettier --check \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
-    "check": "npm run lint && npm run format:check && npm test",
-    "check:ci": "npm run lint && npm test",
+    "check": "npm run lint && npm run format:check && npm run docs:check && npm test",
+    "check:ci": "npm run lint && npm run docs:check && npm test",
     "precommit": "npm run format && npm run lint && npm test",
     "test:ui:smoke": "node scripts/ui-smoke.mjs",
     "test:ui:examples": "node scripts/example-regression.mjs",
@@ -30,7 +30,9 @@
     "test:ui:review": "npm run test:ui:examples && npm run test:ui:product",
     "test:ui:io": "node scripts/project-io-runtime-regression.mjs",
     "test:ui:array": "node scripts/array-runtime-regression.mjs",
-    "benchmark:renderer": "node scripts/renderer-pipeline-benchmark.mjs"
+    "benchmark:renderer": "node scripts/renderer-pipeline-benchmark.mjs",
+    "docs:build": "node scripts/build-process-guide.mjs --write",
+    "docs:check": "node scripts/build-process-guide.mjs --check"
   },
   "devDependencies": {
     "eslint": "10.11.0",
