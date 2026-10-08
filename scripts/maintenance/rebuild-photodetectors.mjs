@@ -98,6 +98,7 @@ function commit(current, operation, { shapes = current.shapes, face = current.fa
   nodes.push(node);
   current.parentNodeId = id;
   current.info.headNodeId = id;
+  if (!current.info.rootNodeId) current.info.rootNodeId = id;
   current.info.headState = copy(currentState);
   if (bookmark) {
     const snapshot = {
