@@ -1150,7 +1150,11 @@ export function createThreeView({
     host.dataset.electricalRegionSurfaceCount = String(visibleCount('electrical-surface'));
   }
 
-  function applyPresentationState({ profile = true, settle = true } = {}) {
+  function applyPresentationState({
+    profile = true,
+    settle = true,
+    updateKind = 'presentation',
+  } = {}) {
     if (!group || !presentationObjects.size) return false;
     const started = performance.now(),
       inspection = getInspection() || {};
@@ -1175,7 +1179,7 @@ export function createThreeView({
     if (profile) {
       presentationUpdateCount++;
       host.dataset.presentationUpdateCount = String(presentationUpdateCount);
-      host.dataset.rendererUpdateKind = 'presentation';
+      host.dataset.rendererUpdateKind = updateKind;
       host.dataset.rendererPresentationMs = String(performance.now() - started);
       host.dataset.rendererTopologyMs = '0';
       host.dataset.rendererSmoothCapsMs = '0';
@@ -2381,10 +2385,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (cachedVariant && restoreSceneVariant(cachedVariant)) {
         pendingRender = false;
         host.dataset.renderState = 'updating';
-        host.dataset.rendererUpdateKind = 'variant-swap';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
-        applyPresentationState();
+        applyPresentationState({ updateKind: 'variant-swap' });
         return;
       }
 
@@ -2437,7 +2440,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const maybeYieldAssembly = async () => {
         if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
         sceneAssemblyYields++;
-        await yieldSceneAssembly();
+        if (variantBuild) {
+          await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+        } else {
+          await yieldSceneAssembly();
+        }
         nextAssemblyYieldAt = performance.now() + 32;
       };
 
