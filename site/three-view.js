@@ -764,6 +764,7 @@ export function createThreeView({
     );
   }
 
+  let completedFrameSerial = 0;
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
@@ -771,7 +772,16 @@ export function createThreeView({
       const changed = controls?.update?.() || false;
       updateRoughMaterialLod();
       updateTransparentOrder();
+      const frameStartedAt = performance.now();
       renderer.render(scene, camera);
+      // Ready/assembly flags can be set before the first WebGL frame. This
+      // sequence is committed only after renderer.render actually returns.
+      // CI additionally waits for compositor presentation when profiling.
+      completedFrameSerial++;
+      host.dataset.rendererFrameSerial = String(completedFrameSerial);
+      host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
+      host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
+      host.dataset.rendererDrawTriangles = String(renderer.info?.render?.triangles || 0);
       if (interacting || changed) scheduleFrame();
     });
   }
@@ -1131,6 +1141,28 @@ export function createThreeView({
     host.dataset.sceneGeometryCount = String(geometries.size);
     host.dataset.sceneMaterialCount = String(materials.size);
     host.dataset.presentationObjectCount = String(presentationObjects.size);
+    // The active scene alone hides the GPU/CPU cost of retained transparent
+    // and opaque variants. Count each cached group exactly once.
+    const retainedGroups = new Set([group]);
+    for (const entry of sceneVariantCache.values()) {
+      if (entry?.group) retainedGroups.add(entry.group);
+    }
+    const retainedGeometries = new Set(),
+      retainedMaterials = new Set();
+    let retainedObjects = 0;
+    for (const retainedGroup of retainedGroups) {
+      retainedGroup.traverse?.((object) => {
+        if (object === retainedGroup) return;
+        retainedObjects++;
+        if (object.geometry) retainedGeometries.add(object.geometry);
+        const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of objectMaterials) if (material) retainedMaterials.add(material);
+      });
+    }
+    host.dataset.sceneRetainedGroupCount = String(retainedGroups.size);
+    host.dataset.sceneRetainedObjectCount = String(retainedObjects);
+    host.dataset.sceneRetainedGeometryCount = String(retainedGeometries.size);
+    host.dataset.sceneRetainedMaterialCount = String(retainedMaterials.size);
     if (renderer?.info?.memory) {
       host.dataset.webglGeometryCount = String(renderer.info.memory.geometries ?? 0);
       host.dataset.webglTextureCount = String(renderer.info.memory.textures ?? 0);
