@@ -94,7 +94,7 @@ try {
           const value = progress.textContent?.trim();
           if (value) console.info(`Recipe batch progress: ${value}`);
         };
-        new MutationObserver(log).observe(progress, { childList: true, subtree: true });
+        new globalThis.MutationObserver(log).observe(progress, { childList: true, subtree: true });
       });
       console.log(`${example.id}: beginning ${count}-Step Kernel rebuild`);
       await page.locator('#recipeRunAllBtn').click();
