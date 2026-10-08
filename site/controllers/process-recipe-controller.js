@@ -168,6 +168,7 @@ export function createProcessRecipeController({
     invalidFields.clear();
     codeDraftDirty = false;
     lastRunResult = null;
+    resetTemplatePreview();
     updateUndoRedoUi();
   }
 
@@ -411,6 +412,56 @@ export function createProcessRecipeController({
           <button id="recipeStopBtn" class="compact-btn" type="button" disabled hidden>Stop</button>
         </div>
       </div>`;
+  }
+
+  function resetTemplatePreview() {
+    pendingTemplateId = '';
+    templateReplaceArmed = false;
+    if ($('recipeTemplateSelect')) $('recipeTemplateSelect').value = '';
+    if ($('recipeTemplatePreview')) $('recipeTemplatePreview').hidden = true;
+  }
+
+  function renderTemplatePreview() {
+    const host = $('recipeTemplatePreview');
+    if (!host) return;
+    host.hidden = !pendingTemplateId;
+    if (!pendingTemplateId) return;
+    const next = recipeTemplate(pendingTemplateId);
+    $('recipeTemplatePreviewTitle').textContent = next.name || 'New Recipe';
+    $('recipeTemplatePreviewDetail').textContent =
+      `${next.steps.length} template step(s) · Current Recipe: ${recipe.steps.length} step(s)`;
+    const hasCurrentWork =
+      recipe.steps.length > 0 ||
+      codeDraftDirty ||
+      recipe.name !== recipeTemplate('blank').name;
+    $('recipeTemplatePreviewWarning').textContent = templateReplaceArmed
+      ? `Replace your current Recipe${codeDraftDirty ? ' and unapplied Code draft' : ''}? This cannot be undone after reload. Recipe Undo is available in this session.`
+      : hasCurrentWork
+        ? 'Preview only. Nothing changes until you explicitly load and confirm replacement.'
+        : 'Preview only. Loading will create this Recipe without running any Process operations.';
+    $('recipeTemplateLoadBtn').textContent = templateReplaceArmed
+      ? 'Replace Recipe'
+      : 'Load template';
+  }
+
+  function requestTemplateLoad() {
+    if (!pendingTemplateId || running) return;
+    const hasCurrentWork =
+      recipe.steps.length > 0 ||
+      codeDraftDirty ||
+      recipe.name !== recipeTemplate('blank').name;
+    if (hasCurrentWork && !templateReplaceArmed) {
+      templateReplaceArmed = true;
+      renderTemplatePreview();
+      return;
+    }
+    const next = recipeTemplate(pendingTemplateId);
+    activeStepId = next.steps[0]?.id || null;
+    persist(next);
+    codeDraftDirty = false;
+    resetTemplatePreview();
+    render();
+    status('Template loaded. Previous Recipe is available with Undo until reload.', 'success');
   }
 
   function field(label, control) {
@@ -941,6 +992,7 @@ export function createProcessRecipeController({
     if (!$('recipeProcessPane')) return;
     $('recipeNameInput').value = recipe.name;
     $('recipeRecordManual').checked = recordManual;
+    renderTemplatePreview();
     renderSteps();
     renderEditor();
     syncCode();
@@ -1143,6 +1195,8 @@ export function createProcessRecipeController({
     $('recipeValidateBtn').disabled = value;
     $('recipeApplyCodeBtn').disabled = value;
     $('recipeStopBtn').disabled = !value;
+    $('recipeStopBtn').hidden = !value;
+    $('recipeRecordManual').disabled = value;
     $('recipeProgress').hidden = !value;
     updateUndoRedoUi();
   }
@@ -1416,14 +1470,12 @@ export function createProcessRecipeController({
     $('recipeUndoBtn').addEventListener('click', undoRecipe);
     $('recipeRedoBtn').addEventListener('click', redoRecipe);
     $('recipeTemplateSelect').addEventListener('change', () => {
-      const id = $('recipeTemplateSelect').value;
-      if (!id) return;
-      const next = recipeTemplate(id);
-      persist(next);
-      activeStepId = next.steps[0]?.id || null;
-      $('recipeTemplateSelect').value = '';
-      render();
+      pendingTemplateId = $('recipeTemplateSelect').value;
+      templateReplaceArmed = false;
+      renderTemplatePreview();
     });
+    $('recipeTemplateCancelBtn').addEventListener('click', resetTemplatePreview);
+    $('recipeTemplateLoadBtn').addEventListener('click', requestTemplateLoad);
     $('recipeAddStepBtn').addEventListener('click', () => {
       const next = clone(recipe),
         step = defaultStep($('recipeAddKind').value),
