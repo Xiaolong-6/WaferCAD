@@ -1484,6 +1484,10 @@ export function createThreeView({
         side: THREE.DoubleSide,
         ...materialState,
       });
+      // The full-wafer transparent scene already has explicit per-object depth
+      // ordering. One two-sided pass reduces the expensive double submission of
+      // every instanced cap/wall on software WebGL without changing geometry.
+      if (presentationMode() === 'transparent') material.forceSinglePass = true;
       return material;
     };
 
@@ -1620,7 +1624,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // locally. Preserve the spatial chunks used by the verified v3 renderer
     // for transparent rendering; opaque geometry keeps the larger GPU batch.
     const transparentBatch = presentationMode() === 'transparent',
-      batchSize = transparentBatch ? Math.min(maxInstancesPerMesh, 64) : maxInstancesPerMesh,
+      batchSize = transparentBatch ? Math.min(maxInstancesPerMesh, 256) : maxInstancesPerMesh,
       chunks = spatialInstanceChunks(translations, { maxInstances: batchSize }),
       meshes = [];
     chunks.forEach((chunk, chunkIndex) => {
@@ -2799,7 +2803,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const rendererSidewallsAt = performance.now();
 
       host.dataset.instanceChunkLimit =
-        presentationMode() === 'transparent' ? '64' : '4096';
+        presentationMode() === 'transparent' ? '256' : '4096';
       host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
