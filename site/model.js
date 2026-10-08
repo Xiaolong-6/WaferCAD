@@ -612,34 +612,43 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
   // A residual overlap no larger than roughly two grid cells is numerical
   // ownership ambiguity, not a physical double-owned region. Partition it
   // deterministically while still rejecting overlaps above persistence scale.
-  const overlapTolerance = Math.max(
+  const strictTolerance = Math.max(1e-18, model.width * model.height * 1e-15),
+    overlapTolerance = Math.max(
       PROCESS_GEOMETRY_GRID_UM * PROCESS_GEOMETRY_GRID_UM * 2,
-      model.width * model.height * 1e-15,
+      strictTolerance,
     ),
-    canonical = partitionProcessRegions(regions, overlapTolerance, operation),
-    snapped = canonical.map((region) => ({
-      ...region,
-      geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
-    }));
+    canonical = partitionProcessRegions(regions, overlapTolerance, operation);
 
-  // Runtime geometry is checked before snapping. Any overlap in this second
-  // pass is therefore introduced only by the 0.1 nm persistence grid and can
-  // be deterministically assigned without masking a real kernel overlap.
-  const partitioned = partitionProcessRegions(snapped),
-    noded = nodeProcessPartitionEdges(partitioned),
-    stored = noded
-      .map((region) => ({
-        ...region,
-        geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
-      }))
-      .filter((region) => !isEmpty(region.geom));
-  // A final ownership pass removes any persistence-grid sliver that noding +
-  // rounding can reintroduce. Do not snap again here: another snap can recreate
-  // the same overlap. The serializer will quantize stable coordinates on export.
-  // Genuine overlaps above overlapTolerance still reject before assignment.
-  return partitionProcessRegions(stored, overlapTolerance, operation);
+  let candidate = canonical.map((region) => ({
+    ...region,
+    geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
+  }));
+
+  // Partition -> node shared edges -> snap can expose a different sub-grid
+  // ownership sliver on the next pass. Iterate on the persistence grid until
+  // the snapped result itself satisfies the same overlap tolerance used by
+  // strict project validation. Returning a snapped candidate also guarantees
+  // that export will not collapse newly introduced fractional slivers.
+  for (let pass = 0; pass < 6; pass++) {
+    const partitioned = partitionProcessRegions(candidate, overlapTolerance, operation),
+      noded = nodeProcessPartitionEdges(partitioned),
+      snapped = noded
+        .map((region) => ({
+          ...region,
+          geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
+        }))
+        .filter((region) => !isEmpty(region.geom));
+
+    try {
+      partitionProcessRegions(snapped, strictTolerance, operation);
+      return snapped;
+    } catch {
+      candidate = snapped;
+    }
+  }
+
+  throw new Error(operation + ' could not produce a persistence-safe non-overlapping partition.');
 }
-
 function stackKey(stack) {
   return (stack || [])
     .map((seg) =>
