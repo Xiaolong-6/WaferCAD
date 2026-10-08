@@ -14,13 +14,13 @@ _Example preview; the ten-minute tutorial creates a much simpler geometry._
 
 ## How the workspace fits together
 
-| Where | What you do | How to check |
-| --- | --- | --- |
-| **Project** | Define the substrate with **Base → Apply base**; Save/Export the project. | Main shows the substrate; Section shows its thickness. |
-| **Mask** | Import **File** layout or click **File** to change to **Draw**, then create a Rect/Circle/other shape. | The active mask is visible over the wafer reference. |
-| **Process → Step** | Choose **Front/Back**, **Operation**, **Area**, material/layer and a Z value; click **Apply** once. | History advances, and Main/Section/3D show the changed structure. |
-| **Main / Section A–B / 3D** | Inspect the top view, an A–B cross-section, and a rotatable 3D reconstruction. | Move the A–B line through the feature you want to inspect. |
-| **Process → Recipe** | Collect and execute several operations together. | Use **Validate** first and choose the intended start model deliberately. |
+| Where                       | What you do                                                                                            | How to check                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| **Project**                 | Define the substrate with **Base → Apply base**; Save/Export the project.                              | Main shows the substrate; Section shows its thickness.                   |
+| **Mask**                    | Import **File** layout or click **File** to change to **Draw**, then create a Rect/Circle/other shape. | The active mask is visible over the wafer reference.                     |
+| **Process → Step**          | Choose **Front/Back**, **Operation**, **Area**, material/layer and a Z value; click **Apply** once.    | History advances, and Main/Section/3D show the changed structure.        |
+| **Main / Section A–B / 3D** | Inspect the top view, an A–B cross-section, and a rotatable 3D reconstruction.                         | Move the A–B line through the feature you want to inspect.               |
+| **Process → Recipe**        | Collect and execute several operations together.                                                       | Use **Validate** first and choose the intended start model deliberately. |
 
 **Section first:** When assessing deposition, etch, a void or an internal layer, inspect **Section A–B**. **Auto** fits XY and Z separately and may visually exaggerate the film thickness; **1:1** shows the same physical scale on both axes. 3D transparency and borders are display controls, not etch operations.
 
