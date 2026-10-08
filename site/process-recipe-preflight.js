@@ -2,7 +2,7 @@
 export function normalizeRecipeLayerKey(value) {
   const key = String(value ?? '').trim();
   const match = /^(\d+)\s*[|/]\s*(\d+)$/.exec(key);
-  return match ? `${match[1]}|${match[2]}` : key;
+  return match ? `${Number(match[1])}|${Number(match[2])}` : key;
 }
 
 export function validateRecipeExecution(
