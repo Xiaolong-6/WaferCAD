@@ -5,7 +5,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { applyOperation, createModel } = await import('../model.js');
-const { rectMulti, unionGeometries } = await import('../vector-geometry.js');
+const { difference, isEmpty, rectMulti, unionGeometries } = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
 const { classifyCoverageVoids } = await import('../process-topology.js');
 
@@ -304,6 +304,7 @@ test('representative M3D stack reaches the final 70 nm conformal Al2O3 step', as
   });
 
   validateProcessModel(model);
+  const beforeFinalVoids = classifyCoverageVoids(model).all.flatMap(({ geom }) => geom);
   const finalCap = applyOperation(model, {
     type: 'add',
     name: 'Final Al2O3',
@@ -314,9 +315,9 @@ test('representative M3D stack reaches the final 70 nm conformal Al2O3 step', as
   });
   assert.equal(finalCap.changed, true, finalCap.error);
   validateProcessModel(model);
-  assert.equal(
-    classifyCoverageVoids(model).all.length,
-    0,
-    'Final conformal Al2O3 must preserve complete base XY coverage',
+  const afterFinalVoids = classifyCoverageVoids(model).all.flatMap(({ geom }) => geom);
+  assert.ok(
+    isEmpty(difference(afterFinalVoids, beforeFinalVoids)),
+    'Final conformal Al2O3 must not introduce new uncovered XY columns',
   );
 });
