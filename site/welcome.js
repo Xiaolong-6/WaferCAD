@@ -259,8 +259,20 @@ function renderExampleCards() {
     // Hover and keyboard focus express intent; scrolling the Welcome grid
     // alone must not fetch every complete project (previews stay on demand).
     for (const link of [titleLink, summaryLink]) {
-      link.addEventListener('pointerenter', () => prefetchExampleOnIntent(example));
-      link.addEventListener('focus', () => prefetchExampleOnIntent(example));
+      let hoverTimer = null;
+      link.addEventListener('pointerenter', () => {
+        // Avoid downloading multi-MB projects when the pointer merely crosses
+        // another card while browsing or changing preview tabs.
+        hoverTimer = setTimeout(() => prefetchExampleOnIntent(example), 180);
+      });
+      link.addEventListener('pointerleave', () => {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      });
+      link.addEventListener('focus', () => {
+        clearTimeout(hoverTimer);
+        prefetchExampleOnIntent(example);
+      });
     }
 
     const sources = createSourceList(example);
