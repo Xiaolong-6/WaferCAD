@@ -1477,13 +1477,27 @@ export function createThreeView({
     presentation = null,
   ) {
     const create = () => {
-      const material = new THREE.MeshStandardMaterial({
-        color: layer?.color || '#999',
-        roughness: appearance ? 0.84 : 0.78,
-        metalness: 0.015,
-        side: THREE.DoubleSide,
-        ...materialState,
-      });
+      // Large arrays can cover thousands of overlapping transparent faces.
+      // Fast vertex-lit shading is materially cheaper on software WebGL than
+      // per-fragment PBR, without weakening the two-pass DoubleSide depth and
+      // transparency contract or changing any physical surface ownership.
+      const arrayTransparency =
+        !appearance &&
+        presentationMode() === 'transparent' &&
+        Number(host.dataset.arrayInstances || 0) >= 64;
+      const material = arrayTransparency
+        ? new THREE.MeshLambertMaterial({
+            color: layer?.color || '#999',
+            side: THREE.DoubleSide,
+            ...materialState,
+          })
+        : new THREE.MeshStandardMaterial({
+            color: layer?.color || '#999',
+            roughness: appearance ? 0.84 : 0.78,
+            metalness: 0.015,
+            side: THREE.DoubleSide,
+            ...materialState,
+          });
       return material;
     };
 
