@@ -106,17 +106,37 @@ try {
   assert.equal(await early.count(), 1, 'WSe2 History node is missing: ' + labels.join(' | '));
   assert.match(await early.textContent(), /WSe2/i);
   await early.click();
-  await page.waitForFunction(() =>
-    document.querySelector('.history-step-wrap[data-step-id="m3d-step-15"] .process-history-row')
-      ?.dataset.cursor === 'true',
-    null, { timeout: 30000 });
+  // History renders a continuation banner for a restored historical cursor.
+  // A data-cursor attribute is not part of the product UI contract.
+  // Wait for the selected stage, not just any old continuation banner.
+  // An imported project may initially display a stale historical banner until
+  // its asynchronously restored WSe2 state finishes rendering.
+  await page.waitForFunction(
+    () => /Historical Step.*WSe2/i.test(
+      document.querySelector('.snapshot-continuation-banner')?.textContent || '',
+    ),
+    null,
+    { timeout: 120000 },
+  );
+  assert.match(
+    await page.locator('.snapshot-continuation-banner').textContent(),
+    /WSe2/i,
+    'History must identify the restored WSe2 stage',
+  );
+  const earlyLayers = await page.locator('#layerLegend .legend-name')
+    .evaluateAll((inputs) => inputs.map((input) => input.value));
+  assert.ok(earlyLayers.some((name) => /WSe2/i.test(name)), 'WSe2 missing at early cursor');
+  assert.ok(!earlyLayers.some((name) => /graphene/i.test(name)), 'Graphene visible before transfer');
   const head = page.locator('.history-step-wrap[data-step-id="m3d-step-36"] .process-history-row');
   assert.equal(await head.count(), 1);
   await head.click();
-  await page.waitForFunction(() =>
-    document.querySelector('.history-step-wrap[data-step-id="m3d-step-36"] .process-history-row')
-      ?.dataset.cursor === 'true',
-    null, { timeout: 30000 });
+  await page.waitForFunction(
+    () => !document.querySelector('.snapshot-continuation-banner') &&
+      [...document.querySelectorAll('#layerLegend .legend-name')]
+        .some((input) => /graphene/i.test(input.value)),
+    null,
+    { timeout: 120000 },
+  );
   report.historyCanRestore = true;
   await closeFunctionPanel(page);
 

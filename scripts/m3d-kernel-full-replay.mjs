@@ -168,7 +168,7 @@ function stateTemplate(model) {
     model,
     section: { a: [2, 0], b: [30, 0] },
   });
-  project.name = 'M3D self-powered heterogeneous IC · kernel full replay';
+  project.name = 'M3D self-powered heterogeneous IC · corrected kernel replay S00-S26';
   project.maskSourceMode = 'draw';
   project.drawMask = draw([]);
   return project;

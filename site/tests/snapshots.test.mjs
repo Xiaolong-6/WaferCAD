@@ -2128,3 +2128,53 @@ test('Apply Base clear mode resets both Steps and Variants', () => {
   assert.equal(manager.switchBranch('main'), true);
   assert.equal(live.tag, 'new base');
 });
+
+
+test('read-only History navigation does not treat persisted project title as a process edit', () => {
+  const early = { model: { revision: 2, processRevision: 2 }, name: 'M3D full replay', drawMask: { shapes: [] } };
+  const head = { model: { revision: 3, processRevision: 3 }, name: 'M3D full replay', drawMask: { shapes: [] } };
+  let live = structuredClone(head);
+  delete live.name; // buildProjectSnapshot(false) intentionally omits name
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = structuredClone(state);
+      delete live.name;
+    },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+  });
+  manager.importRecords([], {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'm3d-02',
+    cursorSnapshotId: null,
+    nodes: [
+      {
+        id: 'm3d-01', branchId: 'main', parentId: null,
+        createdAt: '2026-10-08T09:30:01Z', processRevision: 2,
+        operation: { type: 'add', label: 'WSe2 transfer' }, state: early,
+      },
+      {
+        id: 'm3d-02', branchId: 'main', parentId: 'm3d-01',
+        createdAt: '2026-10-08T09:30:02Z', processRevision: 3,
+        operation: { type: 'add', label: 'Graphene transfer' }, state: head,
+      },
+    ],
+    branches: [{
+      id: 'main', name: 'Main', createdAt: '2026-10-08T09:30:00Z',
+      rootNodeId: 'm3d-01', headNodeId: 'm3d-02',
+      parentBranchId: null, rootSnapshotId: null, headSnapshotId: null,
+      headState: head,
+    }],
+  });
+
+  assert.equal(manager.restoreProcessNode('m3d-01'), true);
+  assert.ok(manager.continuationContext(), 'Restoring an earlier Step should enter History mode');
+  assert.equal(manager.hasHistoricalWorkingEdits(), false, 'No Recovery checkpoint for title drift');
+  live.selectedLayerKeys = ['inspection-layer'];
+  live.section = { a: [0, 0], b: [2, 0] };
+  assert.equal(manager.hasHistoricalWorkingEdits(), false, 'Read-only inspection should not checkpoint');
+
+  live.drawMask.shapes.push({ id: 'new-rect', type: 'rect' });
+  assert.equal(manager.hasHistoricalWorkingEdits(), true, 'Genuine mask edits must remain protected');
+});

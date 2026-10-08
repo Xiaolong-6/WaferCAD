@@ -32,7 +32,7 @@ The current production literature families are:
   - reconstructed Si photovoltaic supply, WSe₂/MoS₂ logic and graphene sensing tiers;
   - 36 History nodes (35 operations plus initial Base), 35 recovered Recipe Steps and 27 stage bookmarks;
   - paper-inferred Draw Masks are captured per operation; the project requires lossless storage;
-  - the Welcome fallback is an explicitly labeled SVG schematic until a verified renderer WebP is committed;
+  - the Welcome thumbnail uses the real M3D WebP supplied by the resynced replay branch;
   - clean-`Run All` equivalence remains a release gate until the browser acceptance completes.
 - **Three-tier silicon junctionless transistors** — `site/examples/three-tier-silicon-jlfets-full-wafer.wafercad`
   - 625-site canonical wafer array and all 40 History/Recipe steps;

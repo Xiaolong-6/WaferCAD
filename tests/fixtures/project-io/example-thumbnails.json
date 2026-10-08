@@ -42,6 +42,16 @@
       "sha256": "242ff1bb4b90582e08578d7dcaf5067d051f1d7dbf90f50c64ba1182c0327cb5"
     },
     {
+      "id": "m3d-selfpowered-heterogeneous-ic",
+      "path": "./examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 14096,
+      "sourceSha256": "ea64c9166862a2f3f2e3ab9ea5ed7c934301594a28821a2f2b66da2e31b55aa9",
+      "sha256": "b716ebc7ea8bba8ea66750c9fe14ac282eb2ff6deced7341694fe6409d1d3622"
+    },
+    {
       "id": "three-tier-silicon-jlfets",
       "path": "./examples/thumbnails/three-tier-silicon-jlfets-three.webp",
       "view": "three",

@@ -520,7 +520,24 @@ function topologyVerticalPointKey(point) {
   return `${Number(point[0]).toPrecision(14)},${Number(point[1]).toPrecision(14)}`;
 }
 
-function ownedVerticalBorderLines(solids) {
+function ownedVerticalBorderLines(solids, sidewalls) {
+  // A solid's outline also contains material-to-material junctions. Limit
+  // strong dark edges to vertices belonging to actual exterior sidewalls.
+  // Buried interfaces stay available as translucent *surfaces*, without
+  // appearing as black internal wiring in transparent inspection mode.
+  const exposed = new Map();
+  for (const sidewall of sidewalls || []) {
+    if (sidewall.buried || !(sidewall.z1 > sidewall.z0 + TOPOLOGY_EPSILON_UM)) continue;
+    for (const point of [sidewall.p, sidewall.q]) {
+      const key = topologyVerticalPointKey(point);
+      if (!exposed.has(key)) exposed.set(key, []);
+      exposed.get(key).push({
+        layerId: sidewall.layerId,
+        z0: sidewall.z0,
+        z1: sidewall.z1,
+      });
+    }
+  }
   const groups = new Map();
   for (const item of solids) {
     for (const [a, b] of solidBordersFromTopology(item)) {
@@ -540,9 +557,14 @@ function ownedVerticalBorderLines(solids) {
 
   const lines = [];
   for (const entries of groups.values()) {
-    const levels = [...new Set(entries.flatMap((entry) => [entry.z0, entry.z1]).map(topologyZKey))]
-      .map(Number)
-      .sort((a, b) => a - b);
+    const pointKey = topologyVerticalPointKey(entries[0].point);
+    const external = exposed.get(pointKey) || [];
+    if (!external.length) continue;
+    const levels = [
+      ...new Set(
+        [...entries, ...external].flatMap((entry) => [entry.z0, entry.z1]).map(topologyZKey),
+      ),
+    ].map(Number).sort((a, b) => a - b);
     for (let index = 0; index < levels.length - 1; index++) {
       const z0 = levels[index],
         z1 = levels[index + 1];
@@ -552,6 +574,16 @@ function ownedVerticalBorderLines(solids) {
         ),
         uniqueLayers = new Set(covering.map((entry) => entry.layerId));
       if (uniqueLayers.size !== 1 || !covering.length) continue;
+      const layerId = covering[0].layerId;
+      const midpoint = (z0 + z1) / 2;
+      if (
+        !external.some(
+          (part) =>
+            part.layerId === layerId &&
+            part.z0 <= midpoint + TOPOLOGY_EPSILON_UM &&
+            part.z1 >= midpoint - TOPOLOGY_EPSILON_UM,
+        )
+      ) continue;
       const [x, y] = covering[0].point;
       lines.push([
         [x, y, z0],
@@ -562,8 +594,8 @@ function ownedVerticalBorderLines(solids) {
   return lines;
 }
 
-function ownedMaterialBorderLines(solids, caps) {
-  const lines = ownedVerticalBorderLines(solids);
+function ownedMaterialBorderLines(solids, caps, sidewalls) {
+  const lines = ownedVerticalBorderLines(solids, sidewalls);
   for (const cap of caps) {
     if (cap.appearance || cap.buried) continue;
     for (const poly of cap.polys || [])
@@ -597,7 +629,7 @@ export function ownedMaterialSurfacesFromTopology(model, clip = null) {
 
   const caps = ownHorizontalMaterialCaps(rawCaps, layerOrder),
     sidewalls = ownVerticalMaterialSidewalls(solids, layerOrder),
-    borderLines = ownedMaterialBorderLines(solids, caps);
+    borderLines = ownedMaterialBorderLines(solids, caps, sidewalls);
   return { caps, sidewalls, borderLines };
 }
 

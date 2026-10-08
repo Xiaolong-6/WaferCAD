@@ -1021,7 +1021,7 @@ export function createThreeView({
         return {
           visible: Boolean(inspection.borders),
           materialState: {
-            opacity: transparent ? 0.62 : 1,
+            opacity: transparent ? 0.46 : 1,
             transparent,
             depthTest: true,
             depthWrite: false,
@@ -1103,7 +1103,12 @@ export function createThreeView({
       materials = Array.isArray(object.material) ? object.material : [object.material];
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
-    if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
+    if (object.isLineSegments && descriptor.kind === 'border') {
+      object.renderOrder =
+        Number(getInspection()?.opacity ?? 1) < 0.999
+          ? 80
+          : object.userData?.waferCadBorderOrder ?? object.renderOrder;
+    } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     return object;
   }
 
@@ -1232,7 +1237,14 @@ export function createThreeView({
         materials = Array.isArray(object.material) ? object.material : [object.material];
       object.visible = Boolean(state.visible);
       for (const material of materials) applyMaterialPresentation(material, state.materialState);
-      if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
+      if (object.isLineSegments && descriptor.kind === 'border') {
+        // Draw before transparent layer meshes (100+), so intervening colored
+        // surfaces attenuate hidden edges rather than leaving a black forest.
+        object.renderOrder =
+          Number(inspection.opacity ?? 1) < 0.999
+            ? 80
+            : object.userData?.waferCadBorderOrder ?? object.renderOrder;
+      } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     }
     if (roughRenderContext) {
       const materialState = inspectionMaterialState(inspection.opacity);
@@ -1791,13 +1803,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const edgeMaterial = new THREE.LineBasicMaterial({
         color: 0x111820,
         transparent: opacity < 0.999,
-        opacity: opacity < 0.999 ? 0.62 : 1,
+        opacity: opacity < 0.999 ? 0.46 : 1,
         depthTest: true,
         depthFunc: THREE.LessEqualDepth,
         depthWrite: false,
       }),
       edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     edges.renderOrder = order;
+    edges.userData.waferCadBorderOrder = order;
     group.add(edges);
     trackZDisplayObject(edges);
     registerPresentationObject(edges, presentation);

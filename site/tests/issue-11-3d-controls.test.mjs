@@ -178,3 +178,17 @@ test('3D renderer is event-driven and lazy-loads remote dependencies after app s
   assert.match(threeView, /could not create a WebGL context/);
   assert.match(threeView, /host\.classList\.add\('three-unavailable'\)/);
 });
+
+
+test('3D Border uses an unmistakable visual ON/OFF control and attenuates buried edges', async () => {
+  const style = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+  assert.match(html, /id="threeBorderControl"/);
+  assert.match(html, /class="three-border-status" aria-hidden="true"/);
+  assert.match(style, /#threeBorderControl:has\(input:checked\)/);
+  assert.match(style, /content: 'ON'/);
+  assert.match(style, /content: 'OFF'/);
+  assert.match(style, /#threeBorderControl:has\(input:focus-visible\)/);
+  assert.match(threeView, /waferCadBorderOrder/);
+  assert.match(threeView, /\? 80\s*:\s*object\.userData\?\.waferCadBorderOrder/);
+  assert.match(threeView, /case 'material-interface':/);
+});

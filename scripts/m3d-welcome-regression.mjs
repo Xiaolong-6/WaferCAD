@@ -24,6 +24,23 @@ try {
   await openFunctionPanel(page, 'snapshots', { timeout: 120000 });
   await page.locator('.history-step-wrap').first().waitFor({ timeout: 180000 });
   assert.equal(await page.locator('.history-step-wrap').count(), 36);
+  // ON and OFF must remain legible in the actual 3D header, irrespective of
+  // the opacity selection or color palette.
+  const border = page.locator('#threeBorderControl');
+  const state = async () => border.evaluate((node) => ({
+    fill: getComputedStyle(node).backgroundColor,
+    caption: getComputedStyle(node.querySelector('.three-border-status'), '::before').content,
+  }));
+  const off = await state();
+  assert.match(off.caption, /OFF/);
+  await border.click();
+  assert.equal(await page.locator('#threeBorders').isChecked(), true);
+  const on = await state();
+  assert.match(on.caption, /ON/);
+  assert.notEqual(on.fill, off.fill, 'Border ON must have distinct high-contrast fill');
+  await border.click();
+  assert.equal(await page.locator('#threeBorders').isChecked(), false);
+  assert.match((await state()).caption, /OFF/);
   assert.deepEqual(errors, [], 'M3D welcome opening caused page errors');
   await page.screenshot({
     path: 'test-results/m3d/welcome/m3d-welcome-opened.png',
