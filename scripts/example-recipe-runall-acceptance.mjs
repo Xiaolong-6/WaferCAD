@@ -16,6 +16,7 @@ import {
 import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 
 const browser = await launchBrowser();
+const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
 const only = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
 const examples = BUNDLED_EXAMPLES.filter((example) => !only || example.id === only);
 assert.ok(examples.length, 'No matching bundled example was found.');
@@ -55,15 +56,15 @@ try {
       // The user can choose either clear or archive. This test exercises
       // "Clear history"; product UI's alternative is "Keep (new Main)".
       await page.locator('#recipeRunAllBtn').click();
-      await chooseConfirmation(page, 'clear');
+      await chooseConfirmation(page, historyChoice);
       await page.waitForFunction(
-        ({ count }) => {
+        () => {
           const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
           if (/^(Completed|Failed|Stopped):/.test(summary)) return true;
           const status = document.querySelector('#statusText')?.textContent || '';
           return /Recipe failed at Step|Recipe preflight failed/.test(status);
         },
-        { count },
+        null,
         { timeout: 900000 },
       );
       const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
@@ -75,7 +76,14 @@ try {
       assert.equal(exported.processRecipe?.steps?.length, count,
         `${example.id}: rebuilt export must retain the complete Recipe`);
       assert.equal(exported.snapshotBranches?.activeBranchId, 'main',
-        `${example.id}: rebuilding should create a clean Main`);
+        `${example.id}: rebuilding should create a fresh Main`);
+      if (historyChoice === 'keep') {
+        assert.ok(exported.snapshotBranches?.branches?.length > 1,
+          `${example.id}: Keep should archive the previous History as a Variant`);
+      } else {
+        assert.equal(exported.snapshotBranches?.branches?.length, 1,
+          `${example.id}: Clear should remove all previous Variants`);
+      }
       assert.ok(exported.snapshotBranches?.nodes?.length >= count,
         `${example.id}: rebuilt History omits Process Steps`);
       assert.ok(exported.model.layers.length > 1,
