@@ -2002,3 +2002,16 @@ html.workstation-ui-v2 .process-visual-guide > #processGuideLink {
   display: inline-block;
   margin: 7px 0 3px;
 }
+
+/* Recipe edit and execution remain separate in the compact Process flyout. */
+html.workstation-ui-v2 .recipe-execution {
+  border-top-color: var(--wc-panel-line);
+  background: var(--wc-panel);
+}
+html.workstation-ui-v2 .recipe-template-preview {
+  border-color: #b7ccdb;
+  background: #edf5fb;
+}
+html.workstation-ui-v2 .recipe-steps-list {
+  overscroll-behavior: contain;
+}
