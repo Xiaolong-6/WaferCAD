@@ -73,7 +73,18 @@ function state(model, shapes, face, recipe) {
   value.model = copy(model);
   value.drawMask = draw(shapes);
   value.activeFace = face;
-  value.processRecipe = normalizeProcessRecipe(recipe);
+  const substrate = model.layers.find((layer) => layer.id === 'base');
+  value.processRecipe = normalizeProcessRecipe({
+    ...recipe,
+    base: {
+      shape: model.shape,
+      width: model.width,
+      height: model.height,
+      thickness: model.thickness,
+      material: substrate.name,
+      color: substrate.color,
+    },
+  });
   return value;
 }
 const nodes = [];
