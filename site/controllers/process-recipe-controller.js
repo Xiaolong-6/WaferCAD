@@ -851,6 +851,7 @@ export function createProcessRecipeController({
       maskState: getMaskState?.(),
       limit,
       startMode,
+      base: recipe.base || null,
     });
     return {
       errors: [...report.errors, ...fieldErrors,
@@ -1113,7 +1114,7 @@ export function createProcessRecipeController({
           status('Recipe changed or became invalid before Base rebuild. No changes made.', 'error');
           return;
         }
-        const rebuilt = await resetToBase();
+        const rebuilt = await resetToBase(recipe.base || null);
         if (!rebuilt) {
           status('Recipe run cancelled. Base was not rebuilt.', 'warning');
           return;
@@ -1197,6 +1198,7 @@ export function createProcessRecipeController({
       const parsed = parseProcessRecipeSource($('recipeCodeEditor').value, {
         name: $('recipeNameInput').value || recipe.name,
       });
+      if (recipe.base) parsed.base = clone(recipe.base);
       persist(parsed);
       codeDraftDirty = false;
       invalidFields.clear();
