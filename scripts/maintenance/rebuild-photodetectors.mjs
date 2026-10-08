@@ -282,7 +282,7 @@ function geBranch(id, label, isB) {
     step(v, { type: 'electrical', name: 'Induced n-type accumulation (predicted; activated after dielectric)',
       thickness: 0.05, area: 'invert', shapes: masks.inactiveExcluded,
       electricalRegionType: 'n-accumulation', electricalRegionSource: 'induced' });
-    step(v, { type: 'add', name: 'Inactive PEALD SiO2 · 45 nm (study assumption)',
+    step(v, { type: 'add', name: 'SiO2 inactive · PEALD 45 nm (study assumption)',
       thickness: 0.045, growth: 'conformal', area: 'invert', shapes: masks.inactiveExcluded });
   }
   step(v, { type: 'add', name: 'Passivation ALD Al2O3 · 20 nm · Qf -2.3e12 cm^-2',
