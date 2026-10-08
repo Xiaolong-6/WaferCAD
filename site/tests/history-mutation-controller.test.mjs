@@ -8,10 +8,12 @@ function insertionHarness({
   replaySteps = 2,
   canReplaceCurrentVariant = true,
   capacity = () => true,
+  checkpointResult = true,
 } = {}) {
   const statuses = [],
     askedActions = [];
   let checkpointCount = 0;
+  let restoreInputCount = 0;
 
   const snapshotManager = {
     insertBeforeContext: () => ({
@@ -36,7 +38,10 @@ function insertionHarness({
         ? []
         : [{ id: 'child', name: 'Child', rootNodeId: 'step-b' }],
     }),
-    restoreStepInput: () => true,
+    restoreStepInput: () => {
+      restoreInputCount += 1;
+      return true;
+    },
     canCreateVariant: () => true,
     canRecordOperation: (count = 1) => capacity(count),
     continuationContext: () => ({
@@ -62,6 +67,7 @@ function insertionHarness({
     },
     checkpointWorkspace: async () => {
       checkpointCount += 1;
+      return checkpointResult;
     },
     status: (message, level) => statuses.push({ message, level }),
   });
@@ -74,8 +80,21 @@ function insertionHarness({
     get checkpointCount() {
       return checkpointCount;
     },
+    get restoreInputCount() {
+      return restoreInputCount;
+    },
   };
 }
+
+test('History insertion aborts before restore when the Recovery writer declines', async () => {
+  const harness = insertionHarness({ checkpointResult: false });
+  const node = { id: 'step-b', operation: { kind: 'record' }, displayLabel: 'B' };
+  assert.equal(await harness.controller.beginInsert(node), false);
+  assert.equal(harness.checkpointCount, 1);
+  assert.equal(harness.restoreInputCount, 0);
+  assert.equal(harness.controller.currentInsert(), null);
+  assert.match(harness.statuses.at(-1)?.message || '', /checkpoint was not created/i);
+});
 
 test('Insert before offers all safe strategies when the tail is replayable', async () => {
   const harness = insertionHarness({ chosenMode: 'branch-start', replaySteps: 2 });
