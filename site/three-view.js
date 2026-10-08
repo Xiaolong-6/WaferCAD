@@ -118,17 +118,23 @@ export function createThreeView({
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
   let physicalSceneSignature = null;
-  let transparentDepthWriteOptimized = false;
 
   function renderPolicy(interactive = interacting) {
     return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
   }
 
   function syncRenderPolicy() {
-    const policy = renderPolicy();
+    const policy = renderPolicy(),
+      inspection = getInspection?.() || {},
+      fullWaferTransparent =
+        Number(host?.dataset?.arrayInstances || 0) >= 64 &&
+        Number(inspection.opacity) < 0.999,
+      transparencyRatioCap = fullWaferTransparent ? 0.3 : Infinity,
+      ratio = Math.min(preferredPixelRatio, policy.maxPixelRatio, transparencyRatioCap);
     host.dataset.renderQuality = policy.mode;
+    host.dataset.presentationPixelRatio = String(ratio);
+    host.dataset.fullWaferTransparencyLod = String(fullWaferTransparent);
     if (renderer?.domElement) renderer.domElement.dataset.renderQuality = policy.mode;
-    const ratio = Math.min(preferredPixelRatio, policy.maxPixelRatio);
     if (renderer && Math.abs(renderer.getPixelRatio() - ratio) > 1e-9) {
       renderer.setPixelRatio(ratio);
       resize();
@@ -827,7 +833,6 @@ export function createThreeView({
     surfaceMaterialPool = new Map();
     physicalSceneModel = null;
     physicalSceneSignature = null;
-    transparentDepthWriteOptimized = false;
   }
 
   function inspectionMaterialState(value) {
@@ -864,7 +869,7 @@ export function createThreeView({
       opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
       transparent: true,
       depthTest: true,
-      depthWrite: transparentDepthWriteOptimized,
+      depthWrite: false,
     };
   }
 
@@ -944,10 +949,7 @@ export function createThreeView({
       default:
         return {
           visible: true,
-          materialState:
-            materialState.transparent && transparentDepthWriteOptimized
-              ? { ...materialState, depthWrite: true }
-              : materialState,
+          materialState,
           transparentSort: materialState.transparent,
         };
     }
@@ -1485,7 +1487,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     translations,
     {
       name = '',
-      maxInstancesPerMesh = 512,
+      maxInstancesPerMesh = 4096,
       adaptiveRough = false,
       appearance = null,
       presentation = null,
@@ -2282,8 +2284,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
         opacity = materialState.opacity,
         borders = Boolean(inspection.borders),
         plan = buildRenderSurfacePlan(model, clip);
-      transparentDepthWriteOptimized = Number(plan.arrayInstances || 0) >= 64;
-      host.dataset.transparentDepthWriteOptimized = String(transparentDepthWriteOptimized);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
@@ -2620,7 +2620,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       const rendererSidewallsAt = performance.now();
 
-      host.dataset.instanceChunkLimit = '512';
+      host.dataset.instanceChunkLimit = '4096';
       host.dataset.cooperativeSceneAssembly = String(cooperativeAssembly);
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
