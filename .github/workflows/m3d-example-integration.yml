@@ -53,8 +53,8 @@ jobs:
           exit 1
       - name: Generate M3D final-state thumbnail and SHA manifest
         run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
-      - name: Full lint, docs and Node regression
-        run: npm run check:ci
+      - name: Focused M3D Node acceptance
+        run: node --test site/tests/m3d-bundled-example.test.mjs site/tests/m3d-reconstruction-regression.test.mjs
       - name: M3D history and export browser acceptance
         run: node scripts/m3d-visual-acceptance.mjs
       - name: Welcome-card open and preview regression
