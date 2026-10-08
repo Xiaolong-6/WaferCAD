@@ -96,9 +96,10 @@ export function createProcessRecipeController({
     updateUndoRedoUi();
   }
 
-  function restoreRecipe(next, targetStack, sourceStack, message) {
+  function restoreRecipe(targetStack, sourceStack, message) {
     if (running || !sourceStack.length) return;
     targetStack.push(clone(recipe));
+    if (targetStack.length > recipeHistoryLimit) targetStack.shift();
     const restored = sourceStack.pop();
     recipe = normalizeProcessRecipe(restored);
     activeStepId = recipe.activeStepId || recipe.steps[0]?.id || null;
@@ -110,11 +111,11 @@ export function createProcessRecipeController({
   }
 
   function undoRecipe() {
-    restoreRecipe(undoStack.at(-1), redoStack, undoStack, 'Recipe change undone.');
+    restoreRecipe(redoStack, undoStack, 'Recipe change undone.');
   }
 
   function redoRecipe() {
-    restoreRecipe(redoStack.at(-1), undoStack, redoStack, 'Recipe change redone.');
+    restoreRecipe(undoStack, redoStack, 'Recipe change redone.');
   }
 
   function loadPersisted() {
