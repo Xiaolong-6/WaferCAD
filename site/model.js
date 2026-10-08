@@ -901,29 +901,34 @@ function applyConformalMaterialWalls(
 
 const COVERAGE_CRACK_TOLERANCE_UM = DEFAULT_COVERAGE_CRACK_TOLERANCE_UM;
 
-// A Conformal coating may re-partition the XY domain thousands of times near
-// rounded sidewall corners. Snapping and re-noding can lose sub-grid slivers
-// even when the input base covers the entire field. In the 2.5D model an XY
-// sliver removes its *entire* Z column and creates a false full-depth sidewall.
-// Restore only newly missing, sub-grid coverage; existing physical voids are
-// explicitly excluded. Do not re-snap the repaired polygon (which can re-open
-// the very same crack).
+// Conformal Deposit/Extend may only add material, never remove existing XY
+// coverage. Persistence-grid noding can lose skinny angled slivers even when
+// their bounding boxes exceed the ordinary `numerical-crack` width threshold.
+// Compare coverage before and after the process: repair *newly* lost slivers,
+// not intentional prior trenches/voids. Keep the repair strictly bounded so a
+// substantive geometric failure still aborts and rolls back transactionally.
 function healConformalCoverageCracks(model, originalVoids) {
   const overlapTolerance = Math.max(
-    PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
-    model.width * model.height * 1e-15,
-  );
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const { cracks } = classifyCoverageVoids(model, {
-      crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
-    });
-    let repaired = false;
-    for (const crack of cracks) {
-      const missing = isEmpty(originalVoids)
-        ? crack.geom
-        : difference(crack.geom, originalVoids);
-      if (isEmpty(missing)) continue;
-      const halo = bufferMulti(missing, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
+      model.width * model.height * 1e-15,
+    ),
+    maxRepairArea = Math.max(
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 4,
+      geometryArea(model.boundary) * 1e-8,
+    );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const missing = difference(uncoveredGeometryRaw(model), originalVoids);
+    if (isEmpty(missing)) return;
+    const missingArea = geometryArea(missing);
+    if (missingArea > maxRepairArea) {
+      throw new Error(
+        `Conformal lost ${missingArea} µm² of existing XY material coverage.`,
+      );
+    }
+
+    for (const polygon of missing) {
+      const crack = [polygon],
+        halo = bufferMulti(crack, COVERAGE_CRACK_TOLERANCE_UM * 4, 12);
       let owner = null;
       let largestContact = 0;
       for (const region of model.regions) {
@@ -934,24 +939,21 @@ function healConformalCoverageCracks(model, originalVoids) {
         }
       }
       if (!owner || largestContact <= 0) {
-        throw new Error('Conformal could not assign a numerical coverage crack.');
+        throw new Error('Conformal could not assign a lost XY material sliver.');
       }
-      owner.geom = unionGeometries([owner.geom, missing]);
-      repaired = true;
+      owner.geom = unionGeometries([owner.geom, crack]);
     }
-    if (!repaired) return;
+    // Do not snap after this assignment: snapping reopened the missing slit.
     model.regions = partitionProcessRegions(
       model.regions,
       overlapTolerance,
       'Conformal coverage repair',
     );
   }
-  const remaining = classifyCoverageVoids(model, {
-    crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
-  }).cracks.some(({ geom }) =>
-    !isEmpty(isEmpty(originalVoids) ? geom : difference(geom, originalVoids)),
-  );
-  if (remaining) throw new Error('Conformal left a numerical coverage crack after repair.');
+  const remaining = difference(uncoveredGeometryRaw(model), originalVoids);
+  if (!isEmpty(remaining)) {
+    throw new Error('Conformal left lost XY material coverage after repair.');
+  }
 }
 
 function uncoveredGeometryRaw(model) {
@@ -1060,7 +1062,9 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   // Keep the pre-coating void domain. A conformal film is allowed to occupy
   // empty trench / through-hole space next to an exposed wall; ordinary
   // splitByArea() only visits existing material regions.
-  const originalVoids = baseCoverageState(model) === 'full' ? [] : uncoveredGeometry(model);
+  // Record the actual pre-operation uncovered domain, even when base area is
+  // within the coarse "full" tolerance. Existing physical voids are protected.
+  const originalVoids = uncoveredGeometryRaw(model);
   let uncovered = cloneGeom(originalVoids);
 
   // Stage 1: coat every exposed horizontal surface in the selected area.
