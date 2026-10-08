@@ -49,3 +49,11 @@ jobs:
         run: |
           node scripts/example-recipe-runall-acceptance.mjs --id=photodetector-literature --variant=ge-fig15-a
           node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk --history=keep
+      - name: Upload browser replay diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: example-recipe-runall-diagnostics
+          path: test-results/example-recipe-runall/
+          if-no-files-found: ignore
+          retention-days: 14
