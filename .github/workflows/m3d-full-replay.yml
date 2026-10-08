@@ -92,15 +92,15 @@ jobs:
         run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
       - name: Check lint, docs, Node regression and preview SHA
         run: npm run check:ci
-      - name: Import and inspect Main, Section, 3D, History and Export
-        run: node scripts/m3d-visual-acceptance.mjs
-      - name: Commit final 3D thumbnail
+      - name: Commit validated final 3D thumbnail and manifest
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp tests/fixtures/project-io/example-thumbnails.json
           git diff --cached --quiet || git commit -m "Add M3D final-state 3D thumbnail"
           git push origin HEAD:test/m3d-full-replay-20261008
+      - name: Import and inspect Main, Section, 3D, History and Export
+        run: node scripts/m3d-visual-acceptance.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
