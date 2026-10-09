@@ -1279,123 +1279,79 @@
               <div
                 id="sectionCollapseEditor"
                 class="section-collapse-editor view-popover-surface"
-                aria-label="Z collapse editor"
+                data-view-popover-panel
+                aria-label="Z-axis break editor"
                 hidden
               >
                 <div class="section-collapse-editor-head">
-                  <strong>Z collapse</strong>
-                  <button
-                    id="sectionCollapseClose"
-                    class="section-collapse-close"
-                    type="button"
-                    aria-label="Close Z collapse editor"
-                  >
-                    ×
-                  </button>
+                  <div>
+                    <strong>Z-axis break</strong>
+                    <small>Display only · model geometry unchanged</small>
+                  </div>
+                  <button id="sectionCollapseClose" class="section-collapse-close"
+                    type="button" aria-label="Close Z-axis break editor">×</button>
                 </div>
+                <label class="section-collapse-check section-collapse-enable">
+                  <input id="sectionCollapseEnabled" type="checkbox" checked />
+                  <span>Enable Z-axis break</span>
+                </label>
+                <p class="section-collapse-description">
+                  Omit the middle substrate region from the displayed section.
+                  The upper and lower boundaries remain in physical Z units.
+                </p>
                 <div class="section-collapse-editor-grid">
-                  <div
-                    id="sectionCollapseRuler"
-                    class="section-collapse-ruler"
-                    aria-label="Full Z range collapse editor"
-                  >
+                  <div id="sectionCollapseRuler" class="section-collapse-ruler"
+                    aria-label="Full physical Z range">
                     <div id="sectionCollapseWindow" class="section-collapse-window"></div>
-                    <button
-                      id="sectionCollapseTopHandle"
-                      class="section-collapse-ruler-handle"
-                      type="button"
-                      aria-label="Drag top collapse boundary"
-                    ></button>
-                    <button
-                      id="sectionCollapseBottomHandle"
-                      class="section-collapse-ruler-handle"
-                      type="button"
-                      aria-label="Drag bottom collapse boundary"
-                    ></button>
+                    <button id="sectionCollapseTopHandle" class="section-collapse-ruler-handle"
+                      type="button" aria-label="Drag upper boundary"></button>
+                    <button id="sectionCollapseBottomHandle" class="section-collapse-ruler-handle"
+                      type="button" aria-label="Drag lower boundary"></button>
                   </div>
                   <div class="section-collapse-controls">
-                    <div class="section-collapse-values">
-                      <div class="section-collapse-kv">
-                        <span>Top</span><strong id="sectionCollapseTopValue">—</strong>
-                      </div>
-                      <div class="section-collapse-kv">
-                        <span>Bottom</span><strong id="sectionCollapseBottomValue">—</strong>
-                      </div>
-                    </div>
-                    <label class="section-collapse-row">
-                      <span>Fine target</span>
-                      <select id="sectionCollapseTarget">
-                        <option value="top">Top</option>
-                        <option value="bottom">Bottom</option>
-                        <option value="window">Whole range</option>
-                      </select>
+                    <label class="section-collapse-boundary">
+                      <span>Upper boundary</span>
+                      <input id="sectionCollapseTopInput" type="number" step="any" inputmode="decimal"/>
                     </label>
-                    <label class="section-collapse-row">
-                      <span>Step</span>
-                      <select id="sectionCollapseStep">
-                        <option value="0.01">0.01 µm</option>
-                        <option value="0.1" selected>0.1 µm</option>
-                        <option value="1">1 µm</option>
-                        <option value="10">10 µm</option>
-                      </select>
+                    <label class="section-collapse-boundary">
+                      <span>Lower boundary</span>
+                      <input id="sectionCollapseBottomInput" type="number" step="any" inputmode="decimal"/>
                     </label>
-                    <div class="section-collapse-fine-row">
-                      <span>Adjust</span>
-                      <button id="sectionCollapseMinus" class="mini-btn" type="button">−</button>
-                      <output id="sectionCollapseFineValue" class="section-collapse-fine-value"
-                        >—</output
-                      >
-                      <button id="sectionCollapsePlus" class="mini-btn" type="button">+</button>
+                    <div class="section-collapse-readout">
+                      <span id="sectionCollapseTopValue">—</span>
+                      <span id="sectionCollapseBottomValue">—</span>
                     </div>
                     <label class="section-collapse-check">
                       <input id="sectionCollapseSnap" type="checkbox" checked />
-                      <span>Snap while dragging</span>
+                      <span>Snap to material boundaries when dragging</span>
                     </label>
-                    <div
-                      class="section-collapse-scale-block"
-                      title="Display-only front/back Z ratio used by Auto Section and 3D"
-                    >
-                      <div class="section-collapse-scale-head">
-                        <span>Front / Back Z ratio</span>
-                        <label class="section-collapse-check">
-                          <input id="sectionCollapseScaleLinked" type="checkbox" checked />
-                          <span>Lock 1:1</span>
-                        </label>
-                      </div>
-                      <div class="section-collapse-scale-row">
-                        <label>
-                          <span>Front</span>
-                          <input
-                            id="sectionCollapseFrontScale"
-                            type="number"
-                            value="1"
-                            min="0.1"
-                            max="10"
-                            step="0.1"
-                            inputmode="decimal"
-                            disabled
-                          />
-                          <b>×</b>
-                        </label>
-                        <label>
-                          <span>Back</span>
-                          <input
-                            id="sectionCollapseBackScale"
-                            type="number"
-                            value="1"
-                            min="0.1"
-                            max="10"
-                            step="0.1"
-                            inputmode="decimal"
-                            disabled
-                          />
-                          <b>×</b>
-                        </label>
-                      </div>
-                      <small>Display only · 3D follows Section</small>
-                    </div>
                   </div>
                 </div>
+                <details class="section-collapse-advanced">
+                  <summary>Advanced display scaling</summary>
+                  <div class="section-collapse-scale-block">
+                    <label class="section-collapse-check">
+                      <input id="sectionCollapseScaleLinked" type="checkbox" checked />
+                      <span>Keep Front / Back Z scales equal (1:1)</span>
+                    </label>
+                    <div class="section-collapse-scale-row">
+                      <label>
+                        <span>Front</span>
+                        <input id="sectionCollapseFrontScale" type="number" value="1"
+                          min="0.1" max="10" step="0.1" inputmode="decimal" disabled />
+                        <b>×</b>
+                      </label>
+                      <label>
+                        <span>Back</span>
+                        <input id="sectionCollapseBackScale" type="number" value="1"
+                          min="0.1" max="10" step="0.1" inputmode="decimal" disabled />
+                        <b>×</b>
+                      </label>
+                    </div>
+                    <small>Relative display weighting in Auto mode, also used by 3D.
+                      Physical 1:1 X:Z uses true physical scale.</small>
+                  </div>
+                </details>
               </div>
             </div>
             <div
