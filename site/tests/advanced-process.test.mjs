@@ -347,7 +347,7 @@ test('Lift-off fails closed for ambiguous bridging films and unknown sacrificial
   });
   const film = modelApi.applyOperation(model, {
     type: 'add', name: 'Cr', thickness: 0.03, face: 'front',
-    area: model.boundary, growth: 'transfer', // normal Deposit is sufficient for this check
+    area: model.boundary, growth: 'direct',
   });
   assert.equal(film.changed, true);
   const unknown = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: 'bad', face: 'front' });

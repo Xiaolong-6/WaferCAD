@@ -333,7 +333,8 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
   let found = false;
   const removed = [];
   const kept = [];
-  const changes = splitRegions(model, vectorApi, area, (stack) => {
+  const draft = { ...model, nextRegionId: model.nextRegionId };
+  const changes = splitRegions(draft, vectorApi, area, (stack) => {
     const positions = stack.map((segment, index) => segment.layerId === sacrificialLayerId ? index : -1)
       .filter((index) => index >= 0);
     if (!positions.length) return stack;
@@ -375,6 +376,7 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
       };
     }
   }
+  model.nextRegionId = draft.nextRegionId;
   model.regions = mergeRegions(model, vectorApi, changes.regions);
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;

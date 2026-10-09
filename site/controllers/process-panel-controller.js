@@ -159,18 +159,34 @@ export function createProcessPanelController({
     if ([...select.options].some((option) => option.value === previous)) select.value = previous;
   }
 
+  function updateLiftOffTargets() {
+    const select = $('liftoffTargetLayer');
+    if (!select) return;
+    const previous = select.value;
+    select.replaceChildren(new Option('Select sacrificial layer…', ''));
+    const model = getModel();
+    const used = new Set((model.regions || []).flatMap((r) => (r.stack || []).map((s) => s.layerId)));
+    for (const layer of model.layers) {
+      if (layer.id !== 'base' && used.has(layer.id)) select.add(new Option(layer.name, layer.id));
+    }
+    if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+    select.disabled = select.options.length === 1;
+  }
+
   function updateOperationUI() {
     const t = $('operationType').value;
     // The native select is the single operation state owner for manual and Recipe replay.
     $('operationTools').dataset.operationMode = t;
 
     const recordOnly = t === 'record',
+      liftoff = t === 'liftoff',
       electrical = t === 'electrical',
       growthMode = $('growthMode')?.value || 'direct',
       transfer = t === 'add' && growthMode === 'transfer';
     if (t === 'grow' && growthMode === 'transfer') $('growthMode').value = 'direct';
 
     $('layerNameRow').classList.toggle('hidden', t !== 'add');
+    $('liftoffTargetRow').classList.toggle('hidden', !liftoff);
     $('implantNameRow').classList.toggle('hidden', t !== 'implant');
     $('electricalNameRow').classList.toggle('hidden', !electrical);
     $('electricalRegionParams').classList.toggle('hidden', !electrical);
@@ -178,11 +194,11 @@ export function createProcessPanelController({
     $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
     $('growthModeRow').classList.toggle(
       'hidden',
-      t === 'etch' || t === 'implant' || electrical || recordOnly,
+      t === 'etch' || liftoff || t === 'implant' || electrical || recordOnly,
     );
     $('transferModeRow')?.classList.toggle('hidden', !transfer);
     $('operationAreaRow').classList.toggle('hidden', recordOnly);
-    $('operationThicknessRow').classList.toggle('hidden', recordOnly);
+    $('operationThicknessRow').classList.toggle('hidden', recordOnly || liftoff);
     $('recordProcessParams').classList.toggle('hidden', !recordOnly);
     $('etchProfileRow').classList.toggle('hidden', t !== 'etch');
 
@@ -224,6 +240,7 @@ export function createProcessPanelController({
 
     if (t === 'grow') updateGrowTargets();
     if (t === 'etch' && !planarizeEtch) updateEtchTargets();
+    if (liftoff) updateLiftOffTargets();
 
     const model = getModel(),
       activeFace = getActiveFace(),
@@ -246,11 +263,15 @@ export function createProcessPanelController({
           : 'Deposit'
         : t === 'grow'
           ? 'Extend'
+        : liftoff
+          ? 'Lift-off'
           : t === 'etch'
             ? 'Etch'
             : t === 'implant'
-              ? 'Implant'
-              : electrical
+                ? 'Implant'
+                : liftoff
+                  ? 'Lift-off'
+                  : electrical
                 ? 'Electrical'
                 : 'Record';
     $('processParametersHeading').textContent =
@@ -260,8 +281,10 @@ export function createProcessPanelController({
           ? 'Deposit parameters'
           : t === 'grow'
             ? 'Extend parameters'
-            : t === 'etch'
-              ? 'Etch parameters'
+            : liftoff
+                ? 'Lift-off parameters'
+                : t === 'etch'
+                  ? 'Etch parameters'
               : t === 'implant'
                 ? 'Implant parameters'
                 : electrical
@@ -341,8 +364,10 @@ export function createProcessPanelController({
 
     $('operationNote').textContent = recordOnly
       ? 'Records fabrication metadata in History without changing material geometry.'
-      : t === 'implant'
-        ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
+      : liftoff
+        ? 'Ideal lift-off removes the selected resist and directly supported films. Deposits in openings survive; ambiguous bridging films are rejected. This does not model solvents, adhesion, or tearing.'
+        : t === 'implant'
+          ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
         : electrical
           ? 'Non-material electrical annotation: marks an induced, doped, or interface region from the selected exposed surface. It follows later Etch geometry but does not solve carrier transport or electrostatics.'
           : t === 'etch'
@@ -396,7 +421,7 @@ export function createProcessPanelController({
 
     const params = replay.params || {};
     const kind = operation.kind || params.type;
-    if (!['add', 'grow', 'etch', 'implant', 'electrical', 'record'].includes(kind)) {
+    if (!['add', 'grow', 'etch', 'liftoff', 'implant', 'electrical', 'record'].includes(kind)) {
       return false;
     }
 
@@ -469,6 +494,8 @@ export function createProcessPanelController({
       const target = params.etchTargetLayerIds?.[0] || operation.etchTargetLayerIds?.[0] || '';
       $('etchTargetLayer').value = target;
     }
+    if (kind === 'liftoff') $('liftoffTargetLayer').value =
+      params.sacrificialLayerId || operation.sacrificialLayerId || '';
     updateOperationUI();
     return true;
   }
@@ -786,13 +813,14 @@ export function createProcessPanelController({
     const etchProfile = type === 'etch' ? selectedEtchProfile() : 'directional',
       planarizeEtch = type === 'etch' && etchProfile === 'planarize',
       // Typed Recipe inputs bypass the manual form's 0.1 nm editing grid.
-      thickness =
-        canonicalLengthUm == null ? manualMicron($('operationThickness').value) : canonicalLengthUm;
-    $('operationThickness').value = formatLengthField(thickness);
+      thickness = type === 'liftoff'
+        ? 0
+        : canonicalLengthUm == null ? manualMicron($('operationThickness').value) : canonicalLengthUm;
+    if (type !== 'liftoff') $('operationThickness').value = formatLengthField(thickness);
     if (planarizeEtch) {
       if (!Number.isFinite(thickness))
         return status('Target Z must be a finite coordinate.', 'error');
-    } else if (!Number.isFinite(thickness) || !(thickness > 0)) {
+    } else if (type !== 'liftoff' && (!Number.isFinite(thickness) || !(thickness > 0))) {
       return status('Thickness must be greater than zero.', 'error');
     }
 
@@ -817,6 +845,8 @@ export function createProcessPanelController({
             : $('layerName').value.trim() || `Layer ${model.layers.length}`,
       targetLayerId = $('targetLayer').value,
       etchTargetLayerId = $('etchTargetLayer')?.value || '';
+    if (type === 'liftoff' && !$('liftoffTargetLayer').value)
+      return status('Choose a sacrificial layer for Lift-off.', 'warning');
     if (type === 'grow' && !targetLayerId) {
       return status('No exposed target layer is available to Extend.', 'warning');
     }
@@ -902,6 +932,8 @@ export function createProcessPanelController({
       params.etchProfile = etchProfile;
       params.etchTargetLayerIds = etchTargetLayerId ? [etchTargetLayerId] : [];
       if (planarizeEtch) params.targetZ = thickness;
+    } else if (type === 'liftoff') {
+      params.sacrificialLayerId = $('liftoffTargetLayer').value;
     } else if (type === 'implant') {
       const tilt = Number($('implantTilt').value);
       if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
@@ -918,8 +950,9 @@ export function createProcessPanelController({
       }
     }
 
-    const taskLabel =
-      type === 'etch'
+    const taskLabel = type === 'liftoff'
+      ? 'Lifting off sacrificial layer and supported deposits…'
+      : type === 'etch'
         ? etchProfile === 'planarize'
           ? 'Planarizing structure…'
           : etchProfile === 'undercut'
@@ -1022,8 +1055,9 @@ export function createProcessPanelController({
             : 'Rough'
           : '',
       thicknessLabel = `${Number(thickness.toPrecision(8))} µm`,
-      operationLabel =
-        type === 'etch'
+      operationLabel = type === 'liftoff'
+        ? `Lift-off ${layerById(model, params.sacrificialLayerId)?.name || 'sacrificial layer'}`
+        : type === 'etch'
           ? etchProfile === 'planarize'
             ? `Planarize · Z ${thicknessLabel}`
             : `${etchProfile === 'directional' ? 'Etch' : 'Release'}${etchTargetName ? ` ${etchTargetName}` : ''} · ${thicknessLabel}${etchProfile === 'isotropic' ? ' · Isotropic' : etchProfile === 'undercut' ? ' · Undercut' : surfaceLabel ? ` · ${surfaceLabel}` : ''}`
@@ -1048,7 +1082,8 @@ export function createProcessPanelController({
       targetLayerId: targetLayerId || null,
       etchTargetLayerIds: type === 'etch' ? params.etchTargetLayerIds : null,
       etchProfile: type === 'etch' ? params.etchProfile : null,
-      growth: type === 'etch' || type === 'implant' || type === 'electrical' ? null : params.growth,
+      sacrificialLayerId: type === 'liftoff' ? params.sacrificialLayerId : null,
+      growth: type === 'etch' || type === 'liftoff' || type === 'implant' || type === 'electrical' ? null : params.growth,
       transferMode: params.growth === 'transfer' ? params.transferMode : null,
       targetZ: planarizeEtch ? thickness : null,
       surface:
@@ -1100,7 +1135,7 @@ export function createProcessPanelController({
     }
 
     const growthLabel =
-      type === 'etch' || type === 'implant' || type === 'electrical'
+      type === 'etch' || type === 'liftoff' || type === 'implant' || type === 'electrical'
         ? ''
         : params.growth === 'transfer'
           ? ' · Transfer'
@@ -1108,8 +1143,9 @@ export function createProcessPanelController({
             ? ' · Conformal'
             : ' · Directional';
     status(
-      `${
-        type === 'etch'
+      `${type === 'liftoff'
+          ? `Lifted off ${layerById(model, params.sacrificialLayerId)?.name || 'sacrificial layer'}`
+          : type === 'etch'
           ? etchProfile === 'planarize'
             ? `Planarized to Z ${thicknessLabel}`
             : etchProfile === 'undercut'
