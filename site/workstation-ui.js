@@ -226,7 +226,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     }
   }
 
-  function openTool(name, { toggle = false, behavior = 'smooth' } = {}) {
+  function openTool(name, { toggle = false } = {}) {
     const same = state.activeTool === name;
     if (
       toggle &&
@@ -497,7 +497,7 @@ export function createWorkstationUiController({ root = document, win = window } 
     head.className = 'workstation-tool-head';
 
     const title = root.createElement('strong');
-    title.textContent = 'Functions';
+    title.textContent = 'Inspector';
 
     const position = root.createElement('span');
     position.className = 'workstation-tool-position';
