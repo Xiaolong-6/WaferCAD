@@ -22,6 +22,19 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Capture metalens visual-test formatting (temporary)
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import prettier from 'prettier';
+          const path = 'scripts/tio2-metalens-ui-regression.mjs';
+          const original = await readFile(path, 'utf8');
+          const config = (await prettier.resolveConfig(path)) || {};
+          const formatted = await prettier.format(original, { ...config, filepath: path });
+          const chunks = Buffer.from(formatted).toString('base64').match(/.{1,2400}/g) || [];
+          for (let i = 0; i < chunks.length; i++)
+            console.log('WAFERFMT|'+encodeURIComponent(path)+'|'+i+'|'+chunks.length+'|'+chunks[i]);
+          NODE
       - name: Rebuild source-derived four-unit process and 4725-site illustrative GDS
         run: node scripts/build-tio2-metalens-example.mjs
       - name: Install Chromium for real Recipe Run All
