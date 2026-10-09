@@ -406,6 +406,7 @@ for (const id of [
 // Operation controls remain usable after the toolbar reorganization.
 await openFunctionPanel(page, 'process');
 await page.locator('#operationTools:not([hidden])').waitFor();
+assert.equal(await page.locator('#recipeRecordManual').isChecked(), false);
 for (const id of ['applyOperationBtn', 'undoBtn', 'redoBtn', 'faceToggleBtn']) {
   assert.equal(await page.locator(`#operationTools #${id}`).count(), 1);
 }
