@@ -18,6 +18,10 @@ on:
       - '.github/workflows/magic1000-candidate.yml'
   workflow_dispatch:
 
+concurrency:
+  group: magic1000-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
