@@ -17,8 +17,18 @@
   for (const id of registry.panels.map((key) => `panel.${key}`).concat(
     registry.processModes.map((key) => `panel.process.${key}`))) {
     adapters.register(id, {
-      mount(host) { host.dataset.adapter = 'unconnected'; return host; },
-      onShow() {}, onHide() {}, destroy() {},
+      mount(host) {
+        host.dataset.adapter = 'unconnected';
+        return host;
+      },
+      onShow(host) {
+        const content = host.querySelector(':scope > [data-slot-content]');
+        if (content && !content.childNodes.length)
+          content.append(el('p', { class: 'p-aux' }, 'Reserved for a production controller in M3.'));
+        const title = host.closest('.p-inspector')?.querySelector('.p-panel-shell-header');
+        if (title) title.textContent = 'Connect in M3';
+      },
+      onHide() {}, destroy() {},
     });
   }
   const shell = window.createWaferCadV2Workstation({
@@ -32,10 +42,6 @@
       message: 'M2.5 shell · domain controllers intentionally unconnected',
       save: 'No production storage connected', version: 'M2.5',
     }),
-    renderEditor: () => el('aside', { class: 'p-inspector' },
-      el('header', { class: 'p-panel-head' }, el('strong', {}, 'Connect in M3')),
-      el('div', { class: 'p-panel-content' },
-        el('p', { class: 'p-aux' }, 'This named panel host is reserved for a production controller.'))),
     renderView: (key) => views.update(key, {
       class: 'p-view', id: `${key}Panel`, 'data-view': key,
     },
