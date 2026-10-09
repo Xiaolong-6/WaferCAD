@@ -105,7 +105,7 @@
     function renderNav(info) {
       navHost.replaceChildren(
         el('span', { class: 'p-nav-label' }, 'WORKSPACE'),
-        registry.primaryNav.map(({ key, label, icon }) => button(label,
+        ...registry.primaryNav.map(({ key, label, icon }) => button(label,
           `domain:${key}`, icon, {
             'aria-pressed': String(info.selectedNavigation === key),
           })),
