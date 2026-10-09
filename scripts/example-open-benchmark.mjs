@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
-import { gotoWelcome, installPinnedThreeRoute, waitForStatus } from './test-helpers/ui.mjs';
+import { gotoWelcome, waitForStatus } from './test-helpers/ui.mjs';
 
 const id = process.argv[2] || 'three-tier-silicon-jlfets';
 const repeat = Number(process.argv[3] || 3);
@@ -29,7 +29,8 @@ try {
   for (const warmed of [false, true]) {
     for (let i = 0; i < repeat; i++) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
-      await installPinnedThreeRoute(context);
+      // Playwright context.route() disables Chromium's HTTP cache. The pinned
+      // Three.js route must stay OFF in this cache-specific benchmark.
       await context.addInitScript(() => {
         const NativeWorker = globalThis.Worker;
         globalThis.__exampleWorker = { started: null, done: null, steps: null };
