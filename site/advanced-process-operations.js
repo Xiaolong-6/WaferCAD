@@ -337,7 +337,13 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
   const changes = splitRegions(draft, vectorApi, area, (stack) => {
     const positions = stack.map((segment, index) => segment.layerId === sacrificialLayerId ? index : -1)
       .filter((index) => index >= 0);
-    if (!positions.length) return stack;
+    if (!positions.length) {
+      // A neighboring opening or non-resist region can retain film at the same
+      // physical Z as a film removed with the resist. Keep those segments in
+      // the continuity guard so ambiguous bridges fail without committing.
+      kept.push(...stack);
+      return stack;
+    }
     if (positions.length !== 1) {
       throw new Error('Lift-off does not support repeated sacrificial layer intervals in one column.');
     }
