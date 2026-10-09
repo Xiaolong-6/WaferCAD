@@ -950,23 +950,6 @@ html.workstation-ui-v2 body.view-maximized .view-panel.is-maximized {
   }
 }
 
-/* Keep the Z-break editor usable inside the shorter Section dock. */
-html.workstation-ui-v2 #sectionPanel .section-collapse-editor {
-  max-height: calc(100% - 12px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-html.workstation-ui-v2 #sectionPanel .section-collapse-ruler {
-  height: 118px;
-}
-
-@media (max-width: 820px) {
-  html.workstation-ui-v2 #sectionPanel .section-collapse-ruler {
-    height: 112px;
-  }
-}
-
 /* Workstation layout hardening.
    The legacy stylesheet assigns grid-area by panel ID. Those ID selectors beat
    generic workstation class rules and can create implicit grid tracks in Split
