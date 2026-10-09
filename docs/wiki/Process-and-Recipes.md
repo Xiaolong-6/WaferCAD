@@ -33,6 +33,16 @@ Recipe uses the same Process worker/kernel as Manual. Typed physical lengths ret
 
 **Starting state:** **Continue current model** appends changes to the current geometry. **Rebuild Base first (new Main)** is the clean-replay option, subject to the confirmation and History handling. **Replay 1 → Step** replays the prefix from Step 1; **Stop** retains steps that already committed.
 
+## Geometry Diagnostics
+
+In the **Process** panel choose **Diagnostics** (beside Step and Recipe), then click **Analyze geometry** to inspect the **current** canonical model without creating a History node or editing the Recipe. The analysis worker reports per-material geometric volumes and min/max local Z-segment thicknesses; it also checks nonpositive Z intervals, missing layer references, overlaps within one region's Z stack, non-overlapping XY region ownership, and XY void/crack classification using the Conformal topology tolerance.
+
+An empty Z interval between two materials is reported as a **cavity observation**, not automatically a fabrication defect. A canonical uncovered XY opening is also an observation; an uncovered sub-grid slit is flagged as a possible numerical crack. Large/complex geometry may exceed the explicit coverage budget, in which case this check is shown as incomplete. Reports include representative XY bounds and Z intervals, when available. After changing the model, rerun Analyze: earlier results are marked stale.
+
+For a canonical wafer array, volumes and region counts are weighted across _all_ instances; the XY overlap test runs within each referenced template and **does not certify boundaries between adjacent array instances**. A complexity limit or a polygon error explicitly marks overlap coverage incomplete. “No findings” means only that the implemented geometry checks did not detect issues. This is not a process intent, transport physics, Rough/Pyramid microgeometry, Implant concentration or electrical validation.
+
+Current limitations and staged proposals are documented in the [geometry/process roadmap](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md).
+
 ## Replay and versions
 
 Successful Step-mode operations can be added into Recipe when **Also add to Recipe** is enabled. Older project files can use historical execution semantics, such as legacy Transfer defaulting to Flat bridge. Always distinguish historic saved behavior from current UI defaults.

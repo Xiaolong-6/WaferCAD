@@ -1069,11 +1069,12 @@ export function createProcessRecipeController({
   }
 
   function setMode(mode) {
-    const recipeMode = mode === 'recipe';
-    $('manualProcessPane').hidden = recipeMode;
-    $('recipeProcessPane').hidden = !recipeMode;
+    const modeName = ['manual', 'recipe', 'diagnostics'].includes(mode) ? mode : 'manual';
+    $('manualProcessPane').hidden = modeName !== 'manual';
+    $('recipeProcessPane').hidden = modeName !== 'recipe';
+    $('geometryDiagnosticsPanel').hidden = modeName !== 'diagnostics';
     for (const button of root.querySelectorAll('[data-process-input-mode]')) {
-      const active = button.dataset.processInputMode === mode;
+      const active = button.dataset.processInputMode === modeName;
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', String(active));
     }
