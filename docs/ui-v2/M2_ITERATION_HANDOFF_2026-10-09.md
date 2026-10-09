@@ -5,8 +5,9 @@
 - Repository: `Xiaolong-6/WaferCAD`.
 - Branch: `codex/ui-v2-m2-handoff-2026-10-09` (created from the approved M2 integration branch `refactor/ui-v2-m0`).
 - Product checkpoint: `0d5fb4e` (`fix(ui-v2): refine M2 mask legend and history controls`).
-- Publication: local commits are ready; push to the configured GitHub origin is pending because the external-egress approval gate requires confirmation that this is the intended trusted repository.
-- Integration base: local `origin/main` is `b81598b` (`perf(renderer): single-pass smooth transparent material caps (#164)`), already included in the integration branch. A fresh `git fetch origin` was attempted before publication but failed because `github.com` did not resolve in the current network environment; re-fetch before any later merge/rebase.
+- Publication: pushed to the user-confirmed origin `https://github.com/Xiaolong-6/WaferCAD.git` as `origin/codex/ui-v2-m2-handoff-2026-10-09`; the branch includes the product checkpoint and subsequent documentation updates.
+- Integration base: `b81598b` (`perf(renderer): single-pass smooth transparent material caps (#164)`) is included in this branch. Publication-time refresh successfully fetched main at `fbbc261c02836a2c15f9c13b2951ea0ff2a4c7aa`. Its two newer commits, `21b2318` (baseline formatting) and `fbbc261` (transactional Lift-off), have not been merged into this M2 handoff. Their changed paths do not include `site/ui-v2/` or `scripts/v2/`; the Process/Recipe contracts and documentation do change.
+- Fetch note: the local default fetch configuration includes the deleted `feat/mask-file-draw` branch, so ordinary `git fetch origin` fails. The main refresh used `git fetch origin refs/heads/main:refs/remotes/origin/main`. No local fetch configuration was changed.
 
 ## Scope delivered
 
@@ -51,7 +52,7 @@ Checks run on Windows, Node `v26.7.0`, native Chrome `155.0.8059.40`:
 - Re-run the Main/3D ROI alignment and pointer-path acceptance against real renderers before declaring PR #161 resolved.
 - Track the five unresolved dynamic expressions individually in M3; they are not covered by this M2 check.
 - Confirm the browser with the user before producing M4 visual baselines.
-- Re-fetch and inspect latest `origin/main` before further integration; current local ref may be stale because the publish-time fetch failed DNS resolution.
+- Re-fetch and inspect latest `origin/main` before further integration. Reconcile the newly shipped Lift-off operation with v2 Process/Recipe controls and the M0 control inventory when M3 is approved; the current mock operation list does not include Lift-off.
 - No default-entry switch, deployment, manual CI, or force-push is authorized by this handoff.
 
 ## Revision

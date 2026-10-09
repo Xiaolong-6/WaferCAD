@@ -26,6 +26,7 @@
 - Welcome 启动、默认入口切换与降级路径留 M3；M4 全量回归与视觉基线未执行。基线浏览器仍须用户确认。
 - Section Legend 真实重命名/显隐/调色/profile 编辑属于 M3；当前只读真实标签、颜色、ID 与 Implant 注释。
 - `origin/main` 的 `b81598b` 已合并；开始真实接线前仍需同步并检查当时最新主线。
+- 交接发布时已刷新 `origin/main` 至 `fbbc261`；新增的 `21b2318` 格式修正与 `fbbc261` Lift-off 尚未合入本分支。M3 需对照最新 Process/Recipe 契约补齐 Lift-off 并更新控件库存。详见 [交接文档](M2_ITERATION_HANDOFF_2026-10-09.md)。
 
 ## 迭代修正
 
