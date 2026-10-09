@@ -6,6 +6,7 @@ import {
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
+import { exactTriangleVertexIndex } from './renderer-exact-index.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -1247,7 +1248,9 @@ export function createThreeView({
     const trianglesByKind = new Map(),
       largestTriangleObjects = [];
     let singlePassCapObjects = 0,
-      savedCapTriangleSubmissions = 0;
+      savedCapTriangleSubmissions = 0,
+      exactIndexedArrayObjects = 0,
+      exactIndexedLogicalVerticesSaved = 0;
     group.traverse?.((object) => {
       if (!object.isMesh || object.visible === false) return;
       const geometry = object.geometry;
@@ -1258,6 +1261,12 @@ export function createThreeView({
       if (!triangles) return;
       const kind = object.userData?.waferCadPresentation?.kind || 'untracked';
       trianglesByKind.set(kind, (trianglesByKind.get(kind) || 0) + triangles);
+      const indexedVerticesSaved = Number(geometry?.userData?.waferCadExactIndexedSavedVertices) || 0;
+      if (indexedVerticesSaved && object.isInstancedMesh) {
+        exactIndexedArrayObjects++;
+        // Repeated vertex attributes avoided, not an elapsed GPU measurement.
+        exactIndexedLogicalVerticesSaved += indexedVerticesSaved * instances;
+      }
       if (
         object.material?.forceSinglePass === true &&
         object.material?.userData?.waferCadSinglePassPlanarCap &&
@@ -1283,6 +1292,10 @@ export function createThreeView({
     );
     host.dataset.sceneSinglePassCapObjects = String(singlePassCapObjects);
     host.dataset.sceneSavedCapTriangleSubmissions = String(savedCapTriangleSubmissions);
+    host.dataset.sceneExactIndexedArrayObjects = String(exactIndexedArrayObjects);
+    host.dataset.sceneExactIndexedLogicalVerticesSaved = String(
+      exactIndexedLogicalVerticesSaved,
+    );
     if (renderer?.info?.memory) {
       host.dataset.webglGeometryCount = String(renderer.info.memory.geometries ?? 0);
       host.dataset.webglTextureCount = String(renderer.info.memory.textures ?? 0);
@@ -1782,6 +1795,57 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return mesh;
   }
 
+  function indexTransparentArrayTemplateExactly(geometry, presentation) {
+    // Geometry remains physically exact: only bit-identical attribute tuples
+    // share a vertex, and every triangle keeps its original index order.
+    if (
+      presentationMode() !== 'transparent' ||
+      !['material-interface', 'electrical-internal', 'electrical-surface'].includes(
+        presentation?.kind,
+      ) ||
+      geometry.index ||
+      geometry.groups?.length ||
+      geometry.userData?.roughGpuDisplacement
+    ) {
+      return;
+    }
+    const names = Object.keys(geometry.attributes);
+    if (names.some((name) => !['position', 'normal', 'annotationDepth'].includes(name))) {
+      return;
+    }
+    const attrs = Object.fromEntries(
+      names.map((name) => [name, geometry.getAttribute(name)]),
+    );
+    if (
+      !attrs.position ||
+      !attrs.normal ||
+      names.some((name) => attrs[name].itemSize !== (name === 'annotationDepth' ? 1 : 3)) ||
+      names.some((name) => attrs[name].normalized || !attrs[name].isBufferAttribute)
+    ) {
+      return;
+    }
+    const mapping = exactTriangleVertexIndex({
+      position: attrs.position.array,
+      normal: attrs.normal.array,
+      annotationDepth: attrs.annotationDepth?.array || null,
+    });
+    if (!mapping) return;
+
+    for (const name of names) {
+      const attribute = attrs[name];
+      const itemSize = attribute.itemSize;
+      const uniqueArray = new Float32Array(mapping.uniqueSources.length * itemSize);
+      for (let i = 0; i < mapping.uniqueSources.length; i++) {
+        const source = mapping.uniqueSources[i] * itemSize;
+        uniqueArray.set(attribute.array.subarray(source, source + itemSize), i * itemSize);
+      }
+      geometry.setAttribute(name, new THREE.Float32BufferAttribute(uniqueArray, itemSize));
+    }
+    geometry.setIndex(new THREE.Uint16BufferAttribute(mapping.indices, 1));
+    geometry.userData.waferCadExactIndexedSavedVertices =
+      mapping.indices.length - mapping.uniqueSources.length;
+  }
+
   function addInstancedSurfaceMeshes(
     geometry,
     material,
@@ -1798,6 +1862,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       geometry.dispose();
       if (!material?.userData?.waferCadPooledPresentationMaterial) material?.dispose?.();
       return [];
+    }
+
+    if (translations.length >= 64 && !adaptiveRough && !appearance) {
+      indexTransparentArrayTemplateExactly(geometry, presentation);
     }
 
     // A huge transparent instance batch cannot be depth-sorted or culled
@@ -2723,7 +2791,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
           smoothCapInstanceGroupCount += meshes.length;
           smoothCapInstanceCount += cap.instanceTranslations.length;
-          smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+          smoothCapTemplateTriangleCount += (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
           continue;
         }
         if (!cap.appearance) {
@@ -2798,7 +2866,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 if (!meshes.length) continue;
                 smoothCapInstanceGroupCount += meshes.length;
                 smoothCapInstanceCount += instances.translations.length;
-                smoothCapTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+                smoothCapTemplateTriangleCount += (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
               }
 
               if (plane.instances.leftovers.length) {
@@ -2908,7 +2976,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           );
           smoothSidewallInstanceGroupCount += meshes.length;
           smoothSidewallInstanceCount += sidewall.instanceTranslations.length;
-          smoothSidewallTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+          smoothSidewallTemplateTriangleCount += (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
           continue;
         }
         pushBucket(sidewalls, sidewall, state);
@@ -2945,7 +3013,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               smoothSidewallInstanceGroupCount += meshes.length;
               smoothSidewallInstanceCount += groupInstances.translations.length;
               smoothSidewallTemplateTriangleCount +=
-                geometry.getAttribute('position')?.count / 3 || 0;
+                (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
             }
 
             if (instances.leftovers.length) {
@@ -2999,7 +3067,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
         group.children.reduce(
-          (sum, object) => sum + (object.geometry?.getAttribute?.('position')?.count || 0) / 3,
+          (sum, object) =>
+            sum +
+            (object.geometry?.index?.count ||
+              object.geometry?.getAttribute?.('position')?.count ||
+              0) /
+              3,
           0,
         ),
       );
