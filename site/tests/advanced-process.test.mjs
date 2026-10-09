@@ -313,3 +313,84 @@ test('repeated conformal coating survives persistence-grid coordinate quantizati
   assert.equal(final.changed, true, final.error);
   assert.equal(validateProcessModel(model), model);
 });
+
+test('Lift-off removes resist and the supported Cr film but preserves Cr in openings', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'PMMA', thickness: 0.2, face: 'front',
+    growth: 'direct', area: model.boundary,
+  });
+  const opening = vectorApi.rectMulti(4, 20);
+  modelApi.applyOperation(model, {
+    type: 'etch', thickness: 0.2, face: 'front',
+    etchProfile: 'directional', etchTargetLayerIds: [resist.layerId], area: opening,
+  });
+  const metal = modelApi.applyOperation(model, {
+    type: 'add', name: 'Cr', thickness: 0.03, face: 'front',
+    growth: 'direct', area: model.boundary,
+  });
+  const result = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'front' });
+  assert.equal(result.changed, true, result.error);
+  assert.deepEqual(regionAt(model, [0, 0]).stack.map((s) => s.layerId), ['base', metal.layerId]);
+  assert.deepEqual(regionAt(model, [7, 0]).stack.map((s) => s.layerId), ['base']);
+  assert.equal(validateProcessModel(model), model);
+  const repeat = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'front' });
+  assert.equal(repeat.changed, false);
+  assert.equal(validateProcessModel(model), model);
+});
+
+test('Lift-off fails closed for ambiguous bridging films and unknown sacrificial material', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'PMMA', thickness: 0.2, face: 'front',
+    area: vectorApi.rectMulti(8, 20), growth: 'direct',
+  });
+  const film = modelApi.applyOperation(model, {
+    type: 'add', name: 'Cr', thickness: 0.03, face: 'front',
+    area: model.boundary, growth: 'transfer', // normal Deposit is sufficient for this check
+  });
+  assert.equal(film.changed, true);
+  const unknown = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: 'bad', face: 'front' });
+  assert.equal(unknown.changed, false);
+  const before = JSON.stringify(model);
+  const supported = model.regions.find((r) => r.stack.some((s) => s.layerId === resist.layerId));
+  assert.ok(supported);
+  // Construct an intentionally ambiguous layer crossing the interface at the same Z.
+  const remote = model.regions.find((r) => !r.stack.some((s) => s.layerId === resist.layerId));
+  assert.ok(remote);
+  const over = supported.stack.find((s) => s.layerId === film.layerId);
+  const other = remote.stack.find((s) => s.layerId === film.layerId);
+  assert.ok(over && other);
+  other.z0 = over.z0;
+  other.z1 = over.z1;
+  const ambiguousBefore = JSON.stringify(model);
+  const result = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'front' });
+  assert.equal(result.changed, false);
+  assert.match(result.error, /bridging/);
+  assert.equal(JSON.stringify(model), ambiguousBefore);
+  assert.notEqual(before, ambiguousBefore);
+});
+
+test('Lift-off supports back-face release with isolated opening film', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'Back PMMA', thickness: 0.2, face: 'back',
+    area: model.boundary, growth: 'direct',
+  });
+  modelApi.applyOperation(model, {
+    type: 'etch', thickness: 0.2, face: 'back',
+    area: vectorApi.rectMulti(4, 20),
+    etchProfile: 'directional', etchTargetLayerIds: [resist.layerId],
+  });
+  const metal = modelApi.applyOperation(model, {
+    type: 'add', name: 'Back Cr', thickness: 0.03, face: 'back',
+    area: model.boundary, growth: 'direct',
+  });
+  const result = runAdvanced(model, {
+    type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'back',
+  });
+  assert.equal(result.changed, true, result.error);
+  assert.deepEqual(regionAt(model, [0, 0]).stack.map((s) => s.layerId), [metal.layerId, 'base']);
+  assert.deepEqual(regionAt(model, [7, 0]).stack.map((s) => s.layerId), ['base']);
+  assert.equal(validateProcessModel(model), model);
+});
