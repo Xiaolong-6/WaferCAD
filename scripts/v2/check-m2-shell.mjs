@@ -151,6 +151,39 @@ try {
   );
   await evaluate('document.fonts.ready');
   assert.equal(await evaluate('document.fonts.check(\'12px "Inter Review"\')'), true);
+  // M2.5 regression: DOM replaceChildren must receive spread registry entries,
+  // not an array coerced into "[object HTMLButtonElement]" text.
+  const mockEntry = url;
+  const productionEntry = new URL('ui-v2/app.html', url).href;
+  for (const [entry, readyExpression] of [
+    [mockEntry, 'Boolean(window.WaferCadV2Shell?.ready)'],
+    [productionEntry, 'Boolean(window.WaferCadV2ProductionShell)'],
+  ]) {
+    await call('Page.navigate', { url: entry });
+    await waitFor(async () => evaluate(readyExpression), `M2.5 navigation entry ${entry}`);
+    for (const width of [1440, 1024, 768, 390]) {
+      await viewport(width);
+      const nav = await evaluate(`(() => {
+        const registry = window.WaferCadV2ShellRegistry.defaults;
+        const host = document.querySelector('[data-slot="navigation.primary"]');
+        const keys = registry.primaryNav.map((item) => item.key);
+        return {
+          actual: keys.filter((key) =>
+            host?.querySelector('button[data-action="domain:' + key + '"]')?.getClientRects().length),
+          expected: keys,
+          rawText: host?.textContent || '',
+        };
+      })()`);
+      assert.deepEqual(nav.actual, nav.expected, `navigation buttons at ${width}px in ${entry}`);
+      assert.ok(!nav.rawText.includes('[object HTMLButtonElement]'));
+      record(`M2.5: ${entry.endsWith('/ui-v2/app.html') ? 'production' : 'mock'} navigation at ${width}px`);
+    }
+  }
+  await viewport(1440);
+  await call('Page.navigate', { url: mockEntry });
+  await waitFor(async () => evaluate(
+    "document.body?.dataset.ready==='true' && Boolean(window.WaferCadV2Shell?.ready)"),
+  'return to mock shell after M2.5 navigation audit');
   assert.equal((await snapshot()).sourceFrozen, true);
   record('v2 entry / Inter font / frozen real-source mocks');
   // M2.5: shell must be entirely presentation-only and production entry fixture-free.
