@@ -17,7 +17,8 @@ test('quick actions expose the core workspace and view destinations', () => {
 
 test('quick actions search label and context, matching every query word', () => {
   assert.deepEqual(filterIntelligentCommands('history').map((item) => item.id), ['history']);
-  assert.deepEqual(filterIntelligentCommands('3D').map((item) => item.id), ['overview', 'three']);
+  assert.deepEqual(filterIntelligentCommands('3D').map((item) => item.id), ['three', 'overview']);
+  assert.equal(filterIntelligentCommands('Mask view')[0].id, 'mask-view');
   assert.deepEqual(filterIntelligentCommands('WORKSPACE recovery').map((item) => item.id), ['project']);
   assert.deepEqual(filterIntelligentCommands('no-such-action'), []);
 });
