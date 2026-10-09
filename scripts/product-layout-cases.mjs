@@ -109,9 +109,18 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
     await checkStickerGrouping(page, name);
 
     await ensurePrimaryViewVisible(page, 'three');
-    await page.locator('#threePanel .three-opacity-control > summary').click();
-    await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
-    await page.locator('#threePanel .three-opacity-control > summary').click();
+    const threeDisplay = page.locator('#threePanel .three-opacity-control');
+    const threeMore = page.locator('#threePanel .view-more-control');
+    // The Display control is reparented under More for narrow view panels.
+    if (await threeDisplay.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))) {
+      await threeMore.locator(':scope > summary').click();
+    }
+    await threeDisplay.locator(':scope > summary').click();
+    await checkPopover(page, '#threePanel .view-display-popover', '#threePanel');
+    await threeDisplay.locator(':scope > summary').click();
+    if (await threeMore.evaluate((node) => node.open)) {
+      await threeMore.locator(':scope > summary').click();
+    }
 
     await ensurePrimaryViewVisible(page, 'main');
     for (const [tool, captureName] of [
