@@ -990,9 +990,12 @@ export function createProjectController({
     const projectFile = preview && example.previewProject ? example.previewProject : example;
     try {
       status(`Loading ${example.title}…`);
-      const response = await fetch(versionedExampleAssetPath(projectFile.path, exampleBuildVersion), {
-        cache: 'default',
-      });
+      const response = await fetch(
+        versionedExampleAssetPath(projectFile.path, exampleBuildVersion),
+        {
+          cache: 'default',
+        },
+      );
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
