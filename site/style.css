@@ -5495,13 +5495,8 @@ summary:focus-visible {
   text-align: left;
 }
 #manualProcessPane #operationAreaRow,
-#manualProcessPane :is(
-  #layerNameRow,
-  #targetLayerRow,
-  #etchTargetLayerRow,
-  #implantNameRow,
-  #electricalNameRow
-) {
+#manualProcessPane
+  :is(#layerNameRow, #targetLayerRow, #etchTargetLayerRow, #implantNameRow, #electricalNameRow) {
   grid-column: 1 / -1;
 }
 #manualProcessPane #growthModeRow {

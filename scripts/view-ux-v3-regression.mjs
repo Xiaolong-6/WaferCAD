@@ -44,7 +44,9 @@ for (const { name, viewport } of cases) {
   // controls must be made visible through their public navigation.
   const activateView = async (view) => {
     await page.locator(`.workstation-view-tabs > button[data-view="${view}"]`).click();
-    await page.locator(`#${{main:'mainPanel',mask:'maskPanel',three:'threePanel'}[view]}`).waitFor({ state: 'visible' });
+    await page
+      .locator(`#${{ main: 'mainPanel', mask: 'maskPanel', three: 'threePanel' }[view]}`)
+      .waitFor({ state: 'visible' });
   };
 
   // Source/mode controls choose an explicit value, rather than forcing a cycle.

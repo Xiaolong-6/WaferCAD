@@ -18,7 +18,7 @@ The earlier Process workflow v2 implementation replaced the six-button Operation
 - Area and active material/name/target take the full row; Coverage and Thickness occupy the same row for deposition/extension. Thickness spans the row in operations without Coverage; other Process-specific fields retain their existing conditional behavior.
 - The Process summary remains available to assistive technology while the visual heading is simplified.
 - The Process guide shows `How <Operation> works` and an explicit Show/Hide guide affordance; the existing diagram catalog and full guide link stay intact.
-- **Also add to Recipe** defaults to *unchecked*, requiring opt-in before successful Step operations append to Recipe. History recording is unchanged.
+- **Also add to Recipe** defaults to _unchecked_, requiring opt-in before successful Step operations append to Recipe. History recording is unchanged.
 - Workstation, narrow Product Layout and static markup tests now use the Surface select and check layout structure. The Workstation browser test checks element bounding boxes and operation-dependent fields.
 
 ## Verification performed
@@ -30,7 +30,6 @@ The earlier Process workflow v2 implementation replaced the six-button Operation
 **Outstanding:** Execute `npm run check`, `node scripts/workstation-regression.mjs`, `node scripts/process-geometry-regression.mjs`, `node scripts/process-recipe-safety-regression.mjs`, and `node scripts/product-layout-regression.mjs` in a runnable checkout with pinned dependencies, local app server and Chromium. Capture Step Deposit/Extend/Etch and Recipe at normal, compact and phone widths. Confirm no label clipping, no unexpected field reordering and correct History/Recipe behavior. The current environment could not fetch the repository over git to run the browser checks; no CI-green or visual-acceptance claim is made.
 
 Do not merge before checking the actual screenshots and green runtime tests. A full Renderer benchmark is unnecessary for this CSS/control-only change.
-
 
 ## Integration update
 

@@ -438,10 +438,16 @@ const stepLayout = await page.evaluate(() => {
     pane: rect('manualProcessPane'),
   };
 });
-assert.ok(Math.abs(stepLayout.operation.y - stepLayout.surface.y) < 3, 'Operation / Surface share a row');
+assert.ok(
+  Math.abs(stepLayout.operation.y - stepLayout.surface.y) < 3,
+  'Operation / Surface share a row',
+);
 assert.ok(stepLayout.area.width > stepLayout.coverage.width * 1.8, 'Area spans both columns');
 assert.ok(stepLayout.target.width > stepLayout.coverage.width * 1.8, 'Target spans both columns');
-assert.ok(Math.abs(stepLayout.coverage.y - stepLayout.thickness.y) < 3, 'Coverage / Thickness share a row');
+assert.ok(
+  Math.abs(stepLayout.coverage.y - stepLayout.thickness.y) < 3,
+  'Coverage / Thickness share a row',
+);
 assert.ok(stepLayout.thickness.x > stepLayout.coverage.x, 'Thickness is right of Coverage');
 assert.ok(stepLayout.area.x >= stepLayout.pane.x && stepLayout.target.x >= stepLayout.pane.x);
 assert.equal(await page.locator('#processVisualGuide').evaluate((node) => node.open), false);
