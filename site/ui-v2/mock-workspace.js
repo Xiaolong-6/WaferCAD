@@ -39,7 +39,7 @@
     example: query.get('example') === 'photodetector' ? 'photodetector' : 'm3d',
     placement: 'process',
     font: query.get('font') === 'system' ? 'system' : 'inter',
-    domain: ['project', 'mask', 'process', 'recipe', 'code', 'history'].includes(
+    domain: ['project', 'mask', 'process', 'recipe', 'code', 'diagnostics', 'history'].includes(
       query.get('domain'),
     )
       ? query.get('domain')
@@ -323,6 +323,7 @@
         regionType: 'p-type',
         source: 'induced',
       });
+    if (command === 'liftoff') Object.assign(params, { sacrificial: 'Resist' });
     if (command === 'record')
       Object.assign(params, { label: 'New record · draft', process: 'custom' });
     if (command === 'snapshot') Object.assign(params, { name: 'Review point · draft' });
