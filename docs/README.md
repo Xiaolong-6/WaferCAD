@@ -33,7 +33,7 @@ Use this page to find the document that owns a question. Current contracts descr
 
 ## Plans and verification evidence
 
-- [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — open performance work and acceptance conditions; planned LOD is not a shipped capability.
+- [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — Fast full-wafer far-array presentation LOD shipped in PR #155; exact near/ROI inspection, unshipped hierarchy phases and non-blocking performance debt remain documented.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
 - [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
 - [Documentation audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md) — navigation, content repairs and check results.

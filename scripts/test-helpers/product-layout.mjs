@@ -685,6 +685,18 @@ export function createProductLayoutChecks({ capture }) {
   }
 
   async function checkROI(page, name) {
+    // On compact Main, the original ROI editor moves into More.
+    // Open the visible parent before activating its nested summary.
+    async function toggleRoiEditor() {
+      const summary = page.locator('#focusEditor > summary');
+      if (!(await summary.isVisible())) {
+        const more = page.locator('#mainPanel .view-more-control');
+        if (!(await more.evaluate((node) => node.open))) {
+          await more.locator(':scope > summary').click();
+        }
+      }
+      await summary.click();
+    }
     const benchmark = await processBenchmark('island', 'conformal');
     const project = projectForBenchmark(benchmark);
     project.display.xyUnit = 'nm';
@@ -699,7 +711,7 @@ export function createProductLayoutChecks({ capture }) {
     project.roi = { type: 'rect', a: [-0.007123, -0.004567], b: [0.005222, 0.006789] };
     project.planViews.main.zoom = 4;
     await loadProject(page, project, `${name}-nm-roi`);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');
     const width = Number(await page.locator('#roiWidth').inputValue());
     const height = Number(await page.locator('#roiHeight').inputValue());
@@ -718,7 +730,7 @@ export function createProductLayoutChecks({ capture }) {
     }
     close(Number(await page.locator('#roiX').inputValue()), center[0]);
     close(Number(await page.locator('#roiY').inputValue()), center[1]);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     await page.locator('#mainCanvas').scrollIntoViewIfNeeded();
     const box = await page.locator('#mainCanvas').boundingBox();
     const scale = Math.min((box.width - 68) / 0.1, (box.height - 68) / 0.1) * 4;
@@ -728,7 +740,7 @@ export function createProductLayoutChecks({ capture }) {
     await page.mouse.down();
     await page.mouse.move(x - 9 + 2, y - 7 + 2, { steps: 5 });
     await page.mouse.up();
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     assert.equal(
       Number(await page.locator('#roiWidth').inputValue()),
       Math.round((12.345 + (9 / scale) * 1000) * 10) / 10,
@@ -742,7 +754,7 @@ export function createProductLayoutChecks({ capture }) {
     });
     await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');
     await capture(page, `${name}-nm-roi-editor`);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
 
     project.roi = { type: 'circle', c: [0, 0], r: 0.005 };
     await loadProject(page, project, `${name}-circle`);
@@ -755,21 +767,21 @@ export function createProductLayoutChecks({ capture }) {
     await page.mouse.down();
     await page.mouse.move(hx - 10, hy - 10, { steps: 5 });
     await page.mouse.up();
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     assert.equal(
       Number(await page.locator('#roiRadius').inputValue()),
       Math.round((5 + (5 / circleScale) * 1000) * 10) / 10,
     );
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
 
     project.roi = { type: 'sector', c: [0, 0], r: 0.01, startDeg: 300, endDeg: 60 };
     await loadProject(page, project, `${name}-sector`);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     assert.equal((await page.locator('#roiShapeLabel').textContent()).trim(), 'Sector');
     assert.equal(await page.locator('#roiRadius').inputValue(), '10');
     assert.equal(await page.locator('#roiStartAngle').inputValue(), '300');
     assert.equal(await page.locator('#roiEndAngle').inputValue(), '60');
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     await checkLayout(page);
   }
 
