@@ -1,6 +1,7 @@
 // Production-safe M2.5 shell preview. No fixtures, mock data, transactions or controllers.
 // M3 will mount real domain and renderer adapters into the already stable named slots.
 (() => {
+  window.WaferCadV2Icons.installSprite();
   const root = document.getElementById('app-root');
   const { el } = window.WaferCadV2Components;
   const viewState = window.WaferCadV2ViewState;
