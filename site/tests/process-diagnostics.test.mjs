@@ -63,7 +63,10 @@ test('Reversed but disjoint Z intervals flag ordering, not nonexistent overlap',
   ];
   const report = analyzeProcessGeometry(model);
   assert.ok(report.findings.some((finding) => finding.code === 'z-out-of-order'));
-  assert.equal(report.findings.some((finding) => finding.code === 'z-overlap'), false);
+  assert.equal(
+    report.findings.some((finding) => finding.code === 'z-overlap'),
+    false,
+  );
 });
 
 test('Two overlapping XY owners are detected independently of rendering', () => {
