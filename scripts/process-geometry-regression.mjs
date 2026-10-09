@@ -1095,13 +1095,21 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
  ].join('\n');
  await page.locator('#recipeCodeEditor').fill(liftSource);
  await page.locator('#recipeApplyCodeBtn').click();
+ assert.match(await page.locator('#statusText').textContent(), /Recipe code applied/);
  await page.locator('#recipeRunAllBtn').click();
- await page.waitForFunction(
-   () => /Recipe completed: 4\/4 steps committed/.test(
-     document.getElementById('statusText')?.textContent || '',
-   ),
-   null, { timeout: 30000 },
- );
+ try {
+   await page.waitForFunction(
+     () => /Recipe completed: 4\/4 steps committed|Recipe failed at Step|Recipe stopped after/.test(
+       document.getElementById('statusText')?.textContent || '',
+     ),
+     null, { timeout: 30000 },
+   );
+ } catch (error) {
+   const status = await page.locator('#statusText').textContent();
+   const confirm = await page.locator('#confirmationDialogMessage').textContent();
+   throw new Error(`Lift-off Recipe stalled: status=${status}; confirmation=${confirm}; ${error.message}`);
+ }
+ assert.match(await page.locator('#statusText').textContent(), /Recipe completed: 4\/4 steps committed/);
  const liftReplay = await exportCurrentProject(page);
  const recipeCrId = liftReplay.model.layers.find((layer) => layer.name === 'Cr')?.id;
  const recipePmmaId = liftReplay.model.layers.find((layer) => layer.name === 'PMMA')?.id;
