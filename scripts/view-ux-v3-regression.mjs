@@ -109,7 +109,7 @@ for (const { name, viewport } of cases) {
     const panel = document.getElementById('threePanel');
     const control = panel?.querySelector('.three-opacity-control');
     const width = panel?.getBoundingClientRect().width || 0;
-    return width > 0 && Boolean(control?.closest('.view-overflow-secondary')) === (width < 510);
+    return width > 0 && Boolean(control?.closest('.view-overflow-secondary')) === width < 510;
   });
   const more3d = page.locator('#threePanel .view-more-control');
   if (await threeDisplay.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))) {
