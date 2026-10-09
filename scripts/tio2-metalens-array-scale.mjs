@@ -72,7 +72,7 @@ export async function probeMetalensGrid(grid = 25) {
       (family !== 'ring'), family + ': center topology inconsistent');
     return leaf;
   };
-  const definitions = new Map(), instances = [];
+  const definitions = new Map(), instances = [], maskSites = [];
   let siteIndex = 0;
   for (const cell of gridCells) {
     const id = cell.row * grid + cell.col;
@@ -85,6 +85,7 @@ export async function probeMetalensGrid(grid = 25) {
     const scale = Number((0.76 + Math.floor(siteIndex / 4) % 12 * 0.01).toFixed(2));
     const templateId = family + '-' + scale.toFixed(2);
     if (!definitions.has(templateId)) definitions.set(templateId, makeLeaf(family, scale));
+    maskSites.push({ type: family, scale, x: cell.x, y: cell.y });
     instances.push({ id: 'site-' + id, templateId, x: cell.x, y: cell.y, role: 'device' });
     siteIndex++;
   }
@@ -115,6 +116,35 @@ export async function probeMetalensGrid(grid = 25) {
       b: [extent / 2 - pitch / 2, pitch / 2] } });
   project.name = 'TiO2 Metalens 4725-site GRID - ILLUSTRATIVE compiled Kernel templates';
   project.display.threeShowBorders = false;
+  let gridGds = null;
+  if (grid === 80) {
+    const elements = maskSites.flatMap(({ type, scale, x, y }) =>
+      metaAtomPolygons(type, x, y, scale).map((points) => ({
+        kind: 'polygon', sourceCell: 'TIO2_GRID', layer: 1, datatype: 0, points,
+      })),
+    );
+    project.layout = {
+      ...project.layout,
+      name: '80x80 GRID - ILLUSTRATIVE, not author GDS',
+      root: 'TIO2_GRID',
+      elements,
+      combos: [{
+        key: 'TIO2_GRID|1|0', cell: 'TIO2_GRID',
+        layer: 1, datatype: 0, count: elements.length,
+      }],
+    };
+    project.activeCell = 'TIO2_GRID';
+    project.selectedLayerKeys = ['1|0'];
+    project.maskSourceMode = 'file';
+    const { serializeGDS } = await import('../site/layout-export.js');
+    const { parseLayoutFile } = await import('../site/layout-io.js');
+    gridGds = serializeGDS(elements, { cellName: 'TIO2_GRID' });
+    const checked = await parseLayoutFile(
+      gridGds.buffer.slice(gridGds.byteOffset, gridGds.byteOffset + gridGds.byteLength),
+      'tio2-4725-compiled-grid-ILLUSTRATIVE.gds',
+    );
+    assert.equal(checked.layout.elements.length, elements.length, 'GRID mask GDS round-trip');
+  }
   validateProjectFile(project);
   const serializeStart = performance.now();
   const saved = serializeProject(project);
@@ -124,6 +154,10 @@ export async function probeMetalensGrid(grid = 25) {
   });
   assert.equal(reopened.model.array.instances.length, total);
   assert.equal(reopened.model.array.instances.filter((x) => x.role === 'device').length, count);
+  if (gridGds) {
+    assert.equal(reopened.layout.elements.length, project.layout.elements.length);
+    assert.deepEqual(reopened.selectedLayerKeys, ['1|0']);
+  }
   const report = {
     status: 'PASS',
     provenance: 'GRID surrogate; distinct from golden-angle illustrative GDS and author optics',
@@ -132,11 +166,14 @@ export async function probeMetalensGrid(grid = 25) {
     templateCount: definitions.size, localKernelProcesses: definitions.size - 1,
     templateMs, validateMs, saveMs: elapsed(serializeStart),
     savedBytes: Buffer.byteLength(saved),
+    ...(gridGds ? { maskGdsBytes: gridGds.byteLength,
+      maskPolygons: project.layout.elements.length } : {}),
   };
   if (grid === 80) {
     const out = new URL('../test-results/metalens/', import.meta.url);
     await mkdir(out, { recursive: true });
     await writeFile(new URL('tio2-4725-grid-kernel-compiled-ILLUSTRATIVE.wafercad', out), saved);
+    await writeFile(new URL('tio2-4725-grid-mask-ILLUSTRATIVE.gds', out), gridGds);
     await writeFile(new URL('grid-scale-report.json', out), JSON.stringify(report, null, 2) + '\n');
   }
   return report;
