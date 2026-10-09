@@ -1144,7 +1144,9 @@ await liftRecipePage.locator('#recipeApplyCodeBtn').click();
 assert.match(await liftRecipePage.locator('#statusText').textContent(), /Recipe code applied/);
 await liftRecipePage.screenshot({ path: 'test-results/process-geometry/liftoff-recipe-wide.png' });
 await liftRecipePage.setViewportSize({ width: 390, height: 844 });
-await liftRecipePage.screenshot({ path: 'test-results/process-geometry/liftoff-recipe-mobile.png' });
+await liftRecipePage.screenshot({
+  path: 'test-results/process-geometry/liftoff-recipe-mobile.png',
+});
 await liftRecipePage.setViewportSize({ width: 1280, height: 800 });
 await liftRecipePage.locator('#recipeRunAllBtn').click();
 try {
