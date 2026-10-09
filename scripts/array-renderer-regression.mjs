@@ -125,6 +125,23 @@ try {
     const distant = await snapshot();
     assert.match(distant.transparentArrayLodTier, /^far-/);
     assert.equal(distant.v3ScreenBudgetMode, 'observe-only');
+    assert.equal(distant.v3ProjectionStatus, 'sampled');
+    assert.ok(
+      Number(distant.v3ProjectionSampleQuads) > 0,
+      'Far transparent array must sample real camera-projected buried walls',
+    );
+    assert.ok(
+      Number(distant.v3ProjectionVisibleQuads) > 0,
+      'Some sampled buried wall geometry must be in the camera frustum',
+    );
+    assert.ok(
+      Number(distant.v3ProjectionRawTriangleUpperBound) > 0,
+      'Sample report must estimate raw buried wall workload',
+    );
+    assert.ok(
+      JSON.parse(distant.v3ProjectionTopOwners).length > 0,
+      'Projected top owner report must be present',
+    );
     assert.equal(
       distant.v3ScreenBudgetReason,
       distant.zCollapseEnabled === 'true' ? 'z-collapse' : 'qualified',
@@ -226,6 +243,8 @@ try {
   assert.equal(transparentCold.v3SkippedTriangles, '0');
   assert.equal(transparentCold.v3ScreenBudgetQualified, 'false');
   assert.equal(transparentCold.v3ScreenBudgetReason, 'not-far');
+  assert.equal(transparentCold.v3ProjectionStatus, 'not-far');
+  assert.equal(transparentCold.v3ProjectionSampleQuads, '0');
   assert.equal(
     transparentCold.cameraDampingEnabled,
     'false',
@@ -255,6 +274,7 @@ try {
   assert.equal(opaqueSwap.v3SkippedTriangles, '0');
   assert.equal(opaqueSwap.v3ScreenBudgetQualified, 'false');
   assert.equal(opaqueSwap.v3ScreenBudgetReason, 'not-far');
+  assert.equal(opaqueSwap.v3ProjectionSampleQuads, '0');
   assert.equal(
     Number(opaqueSwap.sceneSinglePassCapObjects),
     0,
@@ -271,6 +291,7 @@ try {
   const transparentWarm = await snapshot();
   assert.equal(transparentWarm.rendererUpdateKind, 'variant-swap');
   assert.equal(transparentWarm.v3ScreenBudgetQualified, 'false');
+  assert.equal(transparentWarm.v3ProjectionStatus, 'not-far');
   assert.equal(transparentWarm.v3SkippedTriangles, '0');
   assert.equal(
     transparentWarm.sceneSavedCapTriangleSubmissions,
