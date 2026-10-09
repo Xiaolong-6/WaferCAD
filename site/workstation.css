@@ -2077,5 +2077,5 @@ html.workstation-ui-v2 #sectionPanel .section-collapse-editor {
 }
 html.workstation-ui-v2.workstation-compact-ui #sectionPanel .view-menu-popover,
 html.workstation-ui-v2.workstation-compact-ui #sectionPanel .view-display-popover {
-  top: calc(100% + 2px);
+  top: 33px;
 }
