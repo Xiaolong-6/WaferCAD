@@ -202,12 +202,24 @@
       render: renderMockPanel,
     }));
   }
+  for (const { key } of registry.views) {
+    adapters.register(`view.${key}`, {
+      mount(host) {
+        const panel = window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(key);
+        host.append(panel);
+        return panel;
+      },
+      onShow() {
+        window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(key);
+      },
+      onHide() {},
+      destroy() {},
+    });
+  }
   let renderAction = null;
   const shell = window.createWaferCadV2Workstation({
     root, state, adapters, registry,
     getProjectName: () => state.projectName || data.name,
-    renderView: (name) =>
-      window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(name),
     presentation: () => {
       const processChild = ['recipe', 'code', 'diagnostics'].includes(state.domain);
       const panel = processChild ? 'process' : state.domain;
