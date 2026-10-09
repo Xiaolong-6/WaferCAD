@@ -504,6 +504,57 @@ change the application defaults. A single complete ABBA measurement is still
 exploratory; hardware GPU profiling or multiple paired replicates are required
 for production performance claims.
 
+## Phase B.1 final ON/OFF measurement — PASS, marginal and inconclusive
+
+Full final-review CI at `f2ca6ef878cdf725aed18a38cc826daa00d584ec`:
+- [625-site and strict same-run ABBA](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37958326595): **success**, including edge-on.
+- [Native Fig3](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37958326645): **success**.
+- [All Example Recipe Reconstruction / Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37958326641): **success**.
+- [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37958057419): **success**.
+
+The exact A/B artifact is `wafercad-quality-index-ab-79db8e955129c0da3569b7e8f81bd7bcc3f6ccc8`
+(artifact ID `11630912887`, Browser run `37958326595`). Each trial uses
+a fresh isolated browser context, the same 625-site JLFET fixture,
+1440×960 viewport, Quality transparency 0.5, and identical fitted camera.
+
+| Trial | Indexed | Completed image (ms) | rendererFrameMs | Assembly (ms) |
+| --- | --- | ---: | ---: | ---: |
+| 1 | ON | 33,945 | 207 | 746 |
+| 2 | OFF | 34,077 | 140 | 457 |
+| 3 | OFF | 35,268 | 222 | 485 |
+| 4 | ON | 33,604 | 181 | 566 |
+| **Mean per arm** | **ON / OFF** | **33,775 / 34,673** | **194 / 181** | **656 / 471** |
+
+ON/OFF completed-image ratio `0.9741064`: indexed mode appeared **2.59%
+faster (898 ms)** on this single four-trial run. However, the inner
+`rendererFrameMs` and scene assembly did **not** improve; their values are
+noisy and the full completed-image cost is dominated by expensive
+software-WebGL render/compositor behavior. This one ABBA round with
+two trials per arm cannot establish a statistically robust gain on hardware.
+
+- All four canvas screenshots are **byte-identical** (531×275 JPEG-free
+  RGB PNG, 20,819 bytes; SHA-256
+  `f483a2eb0bf8a0b4687b10daa2b7794343f710a1e61989db42dbd85b653aaa4a`).
+- Both arms submit **57,040,012** triangles and **1,408** draw calls,
+  retain each original smooth material-interface triangle, and skip zero.
+- ON represents **11,855,000** indexed source triangles, changing logical
+  vertex-instance count from 35,565,000 to 23,710,000; this is *not* a
+  measured GPU hardware vertex-invocation reduction.
+- The ABBA screenshot covers the current 3D canvas and pose; independent
+  625-site, edge-on, Native Fig3, and Recipe regressions checked the other
+  relevant states. No visual baseline was replaced.
+
+**Decision:** The opt-in Quality index prototype is correct for the tested
+pose and full automated acceptance but **cannot yet be promoted to the
+default or claimed as a reproducible performance optimization**. Keep the
+flag disabled for ordinary users. A hardware GPU profile and more paired
+replicates would be needed to verify a meaningful frame-rate benefit.
+Further changes should target the **57M submitted triangles / alpha
+overdraw** bottleneck with explicitly preserved layer, blend and depth
+contracts, rather than additional indexing experiments. PR #166 stays
+Draft; main has advanced independently and requires integration audit before
+any merge.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
