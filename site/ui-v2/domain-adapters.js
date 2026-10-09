@@ -12,16 +12,22 @@
       registered.set(id, { implementation, node: null, mounted: false });
       return implementation;
     }
-    function show(id, host) {
+    function prepare(id, host) {
       const entry = registered.get(id);
       if (!entry) return;
       if (!entry.mounted) {
         entry.node = entry.implementation.mount(host) || host;
         entry.mounted = true;
       }
-      if (!current.has(id)) entry.implementation.onShow(entry.node);
-      current.add(id);
       return entry.node;
+    }
+    function show(id, host) {
+      const entry = registered.get(id);
+      if (!entry) return;
+      const node = prepare(id, host);
+      if (!current.has(id)) entry.implementation.onShow(node);
+      current.add(id);
+      return node;
     }
     function refresh(id) {
       if (!current.has(id)) return;
@@ -38,7 +44,7 @@
       for (const entry of registered.values()) if (entry.mounted) entry.implementation.destroy();
       registered.clear();
     }
-    return Object.freeze({ register, show, refresh, hide, destroy,
+    return Object.freeze({ register, prepare, show, refresh, hide, destroy,
       node: (id) => registered.get(id)?.node,
       keys: () => [...registered.keys()],
     });
