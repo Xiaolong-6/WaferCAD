@@ -411,7 +411,7 @@
         );
       const canvas = el(
         'div',
-        { class: 'p-science', 'data-science': name },
+        { class: 'p-science', 'data-science': name, 'data-v2-stage-host': '' },
         el('div', { class: 'v2-mock-scene' },
         name === 'three'
           ? el('img', {
