@@ -8,6 +8,7 @@
 .wc-section > summary {
   font: inherit;
   font-size: var(--wc-font-control);
+  min-width: var(--wc-hit-min);
 }
 
 .wc-button,
@@ -50,7 +51,7 @@
 .wc-segment:active:not(:disabled),
 .wc-tab:active:not(:disabled),
 .wc-tree-row:active:not(:disabled) {
-  background: var(--wc-border);
+  background: var(--wc-accent-tint-active);
 }
 
 .wc-button[data-variant='primary'] {
@@ -106,6 +107,8 @@
   color: var(--wc-disabled);
   background: var(--wc-subtle);
   border-color: var(--wc-border);
+  /* Native disabled select opacity would otherwise reduce real text contrast. */
+  opacity: 1;
 }
 
 .wc-button:is(:focus-visible, [data-preview-state='focus']),
@@ -142,7 +145,7 @@
 .wc-input,
 .wc-select {
   width: 100%;
-  min-width: 0;
+  min-width: var(--wc-hit-min);
   min-height: var(--wc-control-md);
   padding: var(--wc-space-1) var(--wc-space-2);
   background: var(--wc-surface);
@@ -153,7 +156,7 @@
 
 .wc-field-control .wc-input {
   border: 0;
-  min-height: calc(var(--wc-control-md) - 2px);
+  min-height: calc(var(--wc-control-md) - var(--wc-control-inset));
 }
 
 .wc-unit {
@@ -268,6 +271,7 @@
   cursor: pointer;
   background: var(--wc-subtle);
   font-weight: 600;
+  min-height: var(--wc-control-md);
 }
 
 .wc-section > summary::-webkit-details-marker {
@@ -485,4 +489,12 @@
 
 .wc-link:hover {
   color: var(--wc-accent-hover);
+}
+
+/* Explicit gallery specimen of the same token sizing used by pointer:coarse. */
+[data-pointer-preview='coarse'] {
+  --wc-control-sm: var(--wc-control-coarse);
+  --wc-control-md: var(--wc-control-coarse);
+  --wc-hit-min: var(--wc-control-coarse);
+  --wc-control-inset: 0px;
 }

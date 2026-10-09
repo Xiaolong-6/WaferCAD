@@ -161,6 +161,43 @@
         padding-top: var(--wc-space-4);
         color: var(--wc-muted);
       }
+      .gallery-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--wc-font-body);
+        overflow-wrap: anywhere;
+      }
+      .gallery-table caption {
+        text-align: left;
+        color: var(--wc-muted);
+        margin-bottom: var(--wc-space-3);
+      }
+      .gallery-table th,
+      .gallery-table td {
+        padding: var(--wc-space-2);
+        border-bottom: 1px solid var(--wc-border);
+        text-align: left;
+        vertical-align: top;
+      }
+      .gallery-table th {
+        background: var(--wc-subtle);
+      }
+      .gallery-ratio {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .gallery-target-example {
+        display: grid;
+        gap: var(--wc-space-3);
+      }
+      @media (pointer: coarse) {
+        .gallery-nav a {
+          display: inline-flex;
+          align-items: center;
+          min-height: var(--wc-control-coarse);
+          min-width: var(--wc-control-coarse);
+        }
+      }
       @media (max-width: 1100px) {
         .gallery-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -205,6 +242,8 @@
           <a class="wc-link" href="#navigation">03 Navigation</a>
           <a class="wc-link" href="#surfaces">04 Surfaces</a>
           <a class="wc-link" href="#feedback">05 Feedback</a>
+          <a class="wc-link" href="#input-targets">06 Pointer targets</a>
+          <a class="wc-link" href="#contrast">07 Text contrast</a>
         </nav>
       </div>
     </header>
@@ -217,6 +256,9 @@
       // at 1440/1024/768/390; explicitly exercise empty History, canvas overlay and phone flyout.
       // M2 gate: measure Main/3D ROI vertical alignment before attaching core data (#161: 1.7857px).
       // M3: trace all five unresolved dynamic expressions. M4: confirm baseline browser with user.
+      // M1.5 additions remain reserved: inline SVG sprite, empty/busy/progress, panel headers,
+      // draggable dividers, toolbar groups/overflow, list rows and numeric steppers. Compare
+      // bundled WOFF2 vs system font stack for human selection; do not pick on the user's behalf.
 
       let serial = 0;
       const uid = (prefix) => `wc-${prefix}-${++serial}`;
@@ -513,7 +555,7 @@
         group(
           'foundations',
           '01 / Foundations',
-          'Light throughout · 4 px rhythm · 20 color roles',
+          'Light throughout · 4 px rhythm · 21 color roles',
           card('Semantic palette', palette),
           card(
             'Type scale',
@@ -776,6 +818,180 @@
           ),
         ),
       );
+      function targetExample(coarse = false) {
+        return el(
+          'div',
+          {
+            class: 'gallery-target-example',
+            'data-pointer-preview': coarse ? 'coarse' : 'auto',
+          },
+          row(
+            button('Apply', { variant: 'primary', size: 'sm' }),
+            button('Options', { size: 'sm' }),
+            button('Help', { variant: 'ghost', size: 'sm' }),
+            button('Target settings', { variant: 'icon', size: 'sm' }),
+          ),
+          field('Target thickness'),
+          select('Target material'),
+          segmented(['One', 'Two'], coarse ? 'Coarse target choice' : 'Automatic target choice'),
+          section(
+            'Target disclosure',
+            el('p', { text: 'The summary itself is the hit area.' }),
+            false,
+          ),
+          el('p', {
+            class: 'gallery-note',
+            text: coarse
+              ? 'Forced coarse specimen: every control ≥40 px high; icons ≥40 × 40 px.'
+              : 'Automatic: 28/32 px with a fine pointer; ≥40 px with pointer:coarse.',
+          }),
+        );
+      }
+      gallery.append(
+        group(
+          'input-targets',
+          '06 / Pointer targets',
+          'Hit area changes with pointer precision; text stays 11–13 px',
+          card('Automatic / actual pointer', targetExample()),
+          card('Coarse / explicit specimen', targetExample(true)),
+          card(
+            'Sizing contract',
+            readout([
+              ['Fine · sm / md', '28 / 32', 'px'],
+              ['Coarse · minimum', '40 × 40', 'px'],
+              ['Text · unchanged', '12 / 13', 'px'],
+            ]),
+            el('p', {
+              class: 'gallery-note',
+              text: 'Coarse sizing also applies to tabs, tree rows, disclosure summaries, popover/dialog controls and toast dismissal. Non-interactive badges stay compact.',
+            }),
+          ),
+        ),
+      );
+
+      // All permitted M1 text/background pairs, including transient and disabled states.
+      // Color values come only from tokens.css. Compare unrounded ratios against 4.5.
+      function luminance(hex) {
+        const channels = hex
+          .slice(1)
+          .match(/../g)
+          .map((part) => parseInt(part, 16) / 255);
+        const linear = channels.map((value) =>
+          value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4,
+        );
+        return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+      }
+      function contrastRatio(foreground, background) {
+        const a = luminance(foreground);
+        const b = luminance(background);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      }
+      const contrastPairs = [
+        ['text', 'page', 'Body, section titles'],
+        ['text', 'surface', 'Body, fields, readouts, surfaces, tooltip'],
+        ['text', 'subtle', 'Disclosure title'],
+        ['text', 'accent-tint', 'Secondary/tree hover'],
+        ['text', 'accent-tint-active', 'Secondary/tree active'],
+        ['text', 'danger-tint', 'Invalid input/select value'],
+        ['muted', 'page', '11 px notes/footer'],
+        ['muted', 'surface', '11 px hints/units/readout labels; 12–13 px copy'],
+        ['muted', 'subtle', '11 px neutral badge; segmented text'],
+        ['muted', 'accent-tint', 'Tab/segment hover'],
+        ['muted', 'accent-tint-active', 'Tab/segment active'],
+        ['muted', 'danger-tint', '11 px invalid-field unit'],
+        ['accent', 'page', 'Gallery links'],
+        ['accent', 'surface', 'Ghost/icon default; selected segment'],
+        ['accent', 'subtle', 'Ghost/icon on subtle surface'],
+        ['accent', 'accent-tint', 'Info status; selected tab/tree; ghost/icon hover'],
+        ['accent', 'accent-tint-active', 'Ghost/icon/selected tab active'],
+        ['accent', 'success-tint', 'Toast dismissal icon'],
+        ['accent', 'warning-tint', 'Quiet action on warning'],
+        ['accent', 'danger-tint', 'Quiet action on error'],
+        ['accent-hover', 'page', 'Link hover'],
+        ['accent-hover', 'surface', 'Link hover on surface'],
+        ['surface', 'accent', 'Primary default/focus'],
+        ['surface', 'accent-hover', 'Primary hover'],
+        ['surface', 'accent-active', 'Primary active'],
+        ['disabled', 'subtle', 'Disabled button/input/select/segment/tab/tree'],
+        ['success', 'success-tint', '11 px success badge; status/toast'],
+        ['warning', 'warning-tint', '11 px warning badge; warning status'],
+        ['danger', 'danger-tint', '11 px danger badge; error status'],
+        ['danger', 'surface', '11 px validation hint'],
+      ];
+      const rootTokens = getComputedStyle(document.documentElement);
+      const tokenColor = (name) => rootTokens.getPropertyValue(`--wc-${name}`).trim();
+      const contrastRows = contrastPairs.map(([foreground, background, usage]) => {
+        const textColor = tokenColor(foreground);
+        const backgroundColor = tokenColor(background);
+        const ratio = contrastRatio(textColor, backgroundColor);
+        return {
+          foreground,
+          background,
+          textColor,
+          backgroundColor,
+          usage,
+          ratio,
+          pass: ratio >= 4.5,
+        };
+      });
+      const contrastTable = el(
+        'table',
+        { class: 'gallery-table', id: 'contrast-table' },
+        el('caption', {
+          text: 'Every permitted M1 text/background pair · 11 px and disabled included · threshold 4.5:1',
+        }),
+        el(
+          'thead',
+          {},
+          el(
+            'tr',
+            {},
+            ...['Use / text', 'Background', 'Ratio'].map((text) =>
+              el('th', { scope: 'col', text }),
+            ),
+          ),
+        ),
+        el(
+          'tbody',
+          {},
+          ...contrastRows.map((item) =>
+            el(
+              'tr',
+              { 'data-contrast-pass': String(item.pass) },
+              el(
+                'td',
+                {},
+                item.usage,
+                el('div', {
+                  class: 'gallery-metric',
+                  text: `${item.foreground} · ${item.textColor}`,
+                }),
+              ),
+              el(
+                'td',
+                {},
+                item.background,
+                el('div', { class: 'gallery-metric', text: item.backgroundColor }),
+              ),
+              el('td', {
+                class: 'gallery-ratio',
+                text: `${item.ratio.toFixed(2)}:1 ${item.pass ? 'Pass' : 'Fail'}`,
+              }),
+            ),
+          ),
+        ),
+      );
+      const contrastCard = card('Text contrast / computed from token values', contrastTable);
+      contrastCard.style.gridColumn = '1 / -1';
+      gallery.append(
+        group(
+          'contrast',
+          '07 / Text contrast',
+          'sRGB luminance · no threshold rounding · disabled opacity explicitly 1',
+          contrastCard,
+        ),
+      );
+      window.WaferCadUiV2Contrast = Object.freeze({ rows: contrastRows, ratio: contrastRatio });
       gallery.append(
         el(
           'footer',

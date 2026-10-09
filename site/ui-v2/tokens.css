@@ -10,11 +10,12 @@
   --wc-border-strong: #aab9c7;
   --wc-text: #1f2e3b;
   --wc-muted: #526273;
-  --wc-disabled: #657484;
+  --wc-disabled: #5c6b7a;
   --wc-accent: #245f9c;
   --wc-accent-hover: #1c4d80;
   --wc-accent-active: #163d66;
   --wc-accent-tint: #eaf2fb;
+  --wc-accent-tint-active: #d3e5f8;
   --wc-success: #246b4b;
   --wc-success-tint: #eaf5ef;
   --wc-warning: #805816;
@@ -47,6 +48,9 @@
   --wc-radius-md: 8px;
   --wc-control-sm: 28px;
   --wc-control-md: 32px;
+  --wc-control-coarse: 40px;
+  --wc-hit-min: 0px;
+  --wc-control-inset: 2px;
   --wc-focus-width: 2px;
   --wc-focus-offset: 2px;
   --wc-shadow-1: 0 2px 8px var(--wc-scrim);
@@ -57,4 +61,15 @@
   --wc-z-popover: 30;
   --wc-z-dialog: 40;
   --wc-z-toast: 50;
+}
+
+/* Change sizing, never typography, when the primary pointer is imprecise. */
+@media (pointer: coarse) {
+  :root,
+  [data-theme='light'] {
+    --wc-control-sm: var(--wc-control-coarse);
+    --wc-control-md: var(--wc-control-coarse);
+    --wc-hit-min: var(--wc-control-coarse);
+    --wc-control-inset: 0px;
+  }
 }
