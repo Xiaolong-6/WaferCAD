@@ -40,11 +40,11 @@ _This diagram illustrates the operation, not your project's exact dimensions._
 
 1. Switch the primary view to **Mask**. The Mask header initially says **File**; click **File** so it changes to **Draw**.
 2. Select the **Rect** drawing tool, then drag a rectangle **inside the substrate outline**, preferably near the center and leaving plenty of margin. Drawing is a one-shot action; the tool returns to Select afterward.
-3. If needed, use **Fit** to bring the wafer into view. Leave the **Mask ROI** control empty/cleared for this tutorial. Do not create a Main ROI either; it is unrelated to processing.
+3. If needed, use **Fit** to bring the wafer into view. Leave the **Mask ROI** control empty/cleared for this tutorial. Do not create a 3D ROI (Main view) either; it is unrelated to processing.
 
 **Check:** You should see a rectangle in Draw mode, over the wafer reference. The current **Draw** mask can be used for Process even without a GDS/OAS file.
 
-**Important:** The rectangle represents the **area where the next mask-based operation takes effect**. **Selected mask** means inside that rectangle; **Invert mask** means outside it. A **Main ROI** only clips 3D inspection and will not limit etching.
+**Important:** The rectangle represents the **area where the next mask-based operation takes effect**. **Selected mask** means inside that rectangle; **Invert mask** means outside it. A **3D ROI (Main view)** only clips 3D inspection and will not limit etching.
 
 ## Step 4 — Open a window in the oxide
 
@@ -61,7 +61,7 @@ _This diagram illustrates the operation, not your project's exact dimensions._
 
 ## Step 5 — Keep a portable result
 
-Open **Project** and use **Save** if you want a checkpoint in this browser's **Recovery** list. Then use **Export** to download a **`.wafercad`** project; keep that file because browser storage is not a permanent backup. You can also open **Mask → Export** to download the selected mask geometry in SVG/GDS/OAS format.
+Open **Project** and use **Save** if you want a checkpoint in this browser's **Recovery** list. Then use **Export** to download a **`.wafercad`** project; keep that file because browser storage is not a permanent backup. You can also open **Mask → More → Export** to download the selected mask geometry in SVG/GDS/OAS format.
 
 **Done when:** You can identify the silicon base, the oxide film, the one patterned window, and the successive states in **History**, and you have downloaded a `.wafercad` file.
 
