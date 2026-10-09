@@ -9,14 +9,14 @@ This example reconstructs **a representative 40 × 24 µm local cross-section** 
 Paper-derived numerical process inputs (µm units inside WaferCAD):
 - Isolation: 300 nm SiO2.
 - M4→M1: Ti (10 nm)/TiN (20 nm)/Al (250 nm)/TiN (20 nm)/Ti (10 nm), bottom-up M4 then M3, M2, M1.
-- Vias: tungsten fill following TiN liners in the paper; W fill represented as one material here.
+- Vias: tungsten fill following TiN liners in the paper; W fill represented as one material here. The paper reports the ILD CMP endpoint at approximately 0.5 µm above the aluminium lines; the project adopts this value.
 - Gate: 400 nm W, planarized; HfO2 ALD 10 nm.
 - Channel length (contact spacing used in mask layout): 0.5 µm.
 - Contacts: Sb 20 nm / Au 40 nm.
 - PMMA removal / anneal: 350 °C, 30 min, 5% H2 forming gas (Record only).
 - The MoS2 D-mode is produced by patterned sub-stoichiometric AlOx, represented as a **geometric surrogate plus Electrical Region**. This does not predict a threshold shift.
 
-**Inferred/non-source geometry** (all labeled in generator validation): 2 µm Si handle preview thickness; 40 × 24 µm local window; routing rectangles and via positions; 0.4 µm ILD clearance, 0.9 µm ILD deposition before CMP; monolayer MoS2 display thickness 0.7 nm; patterned AlOx surrogate thickness 10 nm. No original layer placement or mask coordinates were available, so the rectangles are schematic. HfO2 gate-access contact etch is **Record only**, not an invented cut through the active transistor region. Transferred film is patterned directly through the captured transfer mask. Doping physics, atomic defects, roughness below 800 pm and E/D-mode circuit electrical behavior are outside this geometric reconstruction.
+**Inferred/non-source geometry** (all labeled in generator validation): 2 µm Si handle preview thickness; 40 × 24 µm local window; routing rectangles and via positions; 0.9 µm ILD deposition before CMP (inferred), while the ~0.5 µm CMP clearance is reported in Methods; monolayer MoS2 display thickness 0.7 nm; patterned AlOx surrogate thickness 10 nm. No original layer placement or mask coordinates were available, so the rectangles are schematic. HfO2 gate-access contact etch is **Record only**, not an invented cut through the active transistor region. Transferred film is patterned directly through the captured transfer mask. Doping physics, atomic defects, roughness below 800 pm and E/D-mode circuit electrical behavior are outside this geometric reconstruction.
 
 ## Generate and validate
 
