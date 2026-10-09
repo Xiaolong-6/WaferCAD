@@ -184,18 +184,28 @@
   });
   const registry = window.WaferCadV2ShellRegistry.defaults;
   const adapters = window.WaferCadV2DomainAdapters.create();
-  // Mock presenters and M3 production controllers implement the same four methods.
+  const renderMockPanel = (host) => {
+    const draft = window.createWaferCadV2MockDomainPanels(domainContext()).render();
+    const header = draft.querySelector('.p-panel-head');
+    const titleHost = host.closest('.p-inspector')?.querySelector('.p-panel-shell-header');
+    if (header && titleHost) titleHost.replaceChildren(...header.childNodes);
+    const contents = host.querySelector(':scope > [data-slot-content]');
+    const source = draft.querySelector('.p-panel-content');
+    // Only the adapter's own content leaf may be refreshed. The named panel
+    // host, its ancestors and the four scientific stages retain identity.
+    if (contents && source) contents.replaceChildren(...source.childNodes);
+  };
+  // Mock presenters implement exactly the M3 lifecycle contract.
   for (const id of registry.panels.map((name) => `panel.${name}`).concat(
     registry.processModes.map((name) => `panel.process.${name}`))) {
     adapters.register(id, window.WaferCadV2DomainAdapters.presentationAdapter({
-      render: () => {},
+      render: renderMockPanel,
     }));
   }
   let renderAction = null;
   const shell = window.createWaferCadV2Workstation({
     root, state, adapters, registry,
     getProjectName: () => state.projectName || data.name,
-    renderEditor: () => window.createWaferCadV2MockDomainPanels(domainContext()).render(),
     renderView: (name) =>
       window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(name),
     presentation: () => {
