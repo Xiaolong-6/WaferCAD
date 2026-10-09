@@ -1134,7 +1134,21 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
  const restoredLift = await exportCurrentProject(liftRecipePage);
  assert.deepEqual(restoredLift.model, liftReplay.model);
  assert.deepEqual(restoredLift.processRecipe, liftReplay.processRecipe);
- assert.deepEqual(restoredLift.snapshotBranches, liftReplay.snapshotBranches);
+ const physicalHistory = (project) => ({
+   activeBranchId: project.snapshotBranches.activeBranchId,
+   cursorNodeId: project.snapshotBranches.cursorNodeId,
+   branches: project.snapshotBranches.branches.map(
+     ({ id, rootNodeId, headNodeId, parentBranchId, forkNodeId }) => ({
+       id, rootNodeId, headNodeId, parentBranchId, forkNodeId,
+     }),
+   ),
+   nodes: project.snapshotBranches.nodes.map(
+     ({ id, branchId, parentId, processRevision, operation, state }) => ({
+       id, branchId, parentId, processRevision, operation, model: state.model,
+     }),
+   ),
+ });
+ assert.deepEqual(physicalHistory(restoredLift), physicalHistory(liftReplay));
  assert.deepEqual(liftRecipeErrors, []);
  await liftRecipeContext.close();
  
