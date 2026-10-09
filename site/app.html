@@ -1605,6 +1605,7 @@
         await Promise.all([
           loadStylesheet(`./style.css${suffix}`, 'base'),
           loadStylesheet(`./workstation.css${suffix}`, 'workstation'),
+          loadStylesheet(`./intelligent-ui.css${suffix}`, 'intelligent UI'),
         ]);
 
         await new Promise((resolve, reject) => {
