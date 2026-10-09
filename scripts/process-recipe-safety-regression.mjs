@@ -40,6 +40,12 @@ try {
   await page.locator('#recipeTemplateSelect').selectOption('blank');
   await page.locator('#recipeTemplateLoadBtn').click();
   await page.locator('#recipeTemplateLoadBtn').click();
+  await page.waitForFunction(() => document.querySelectorAll('.recipe-step-row').length === 0);
+  assert.match(
+    await page.locator('#workspaceRecoverySelect').innerText(),
+    /pre-recipe-template-replace/,
+    'Replacing a Recipe must first protect its previous version in Recovery.',
+  );
   assert.equal(await page.locator('.recipe-step-row').count(), 0);
   await page.locator('#recipeUndoBtn').click();
   assert.equal(await page.locator('.recipe-step-row').count(), originalStepCount);

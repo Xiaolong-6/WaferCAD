@@ -17,6 +17,19 @@ export function createHistoryMutationController({
   let pendingEdit = null,
     pendingInsert = null;
 
+  async function protectHistoryMutation(reason) {
+    try {
+      if ((await checkpointWorkspace(reason)) === false) {
+        status('History edit cancelled: Recovery checkpoint was not created.', 'error');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      status(`History edit cancelled: Recovery checkpoint failed: ${error.message}`, 'error');
+      return false;
+    }
+  }
+
   function cancelEdit() {
     pendingEdit = null;
   }
@@ -70,7 +83,7 @@ export function createHistoryMutationController({
       return false;
     }
 
-    await checkpointWorkspace('pre-history-step-edit');
+    if (!(await protectHistoryMutation('pre-history-step-edit'))) return false;
     const transaction = captureReplayTransaction(),
       restored = snapshotManager.restoreStepInput(node.id);
     if (!restored) {
@@ -194,7 +207,7 @@ export function createHistoryMutationController({
     });
     if (mode === 'cancel') return false;
 
-    await checkpointWorkspace('pre-history-step-insert');
+    if (!(await protectHistoryMutation('pre-history-step-insert'))) return false;
     const transaction = captureReplayTransaction(),
       restored = snapshotManager.restoreStepInput(node.id);
     if (!restored) {

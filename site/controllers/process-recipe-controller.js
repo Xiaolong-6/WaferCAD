@@ -57,6 +57,7 @@ export function createProcessRecipeController({
   renderSnapshots = () => {},
   resetToBase = async () => false,
   confirmContinue = async () => false,
+  checkpointWorkspace = async () => true,
   status,
   onChanged = () => {},
 }) {
@@ -73,7 +74,8 @@ export function createProcessRecipeController({
     invalidFields = new Map(),
     lastRunResult = null,
     pendingTemplateId = '',
-    templateReplaceArmed = false;
+    templateReplaceArmed = false,
+    templateLoadPending = false;
   const recipeHistoryLimit = 100;
   const recipeSignature = () => JSON.stringify(recipe.steps);
   const fieldId = (stepId, key) => `${stepId}:${key}`;
@@ -426,6 +428,10 @@ export function createProcessRecipeController({
     const host = $('recipeTemplatePreview');
     if (!host) return;
     host.hidden = !pendingTemplateId;
+    // Reset controls even after a successful load hides this preview.
+    $('recipeTemplateLoadBtn').disabled = templateLoadPending;
+    $('recipeTemplateCancelBtn').disabled = templateLoadPending;
+    $('recipeTemplateSelect').disabled = templateLoadPending;
     if (!pendingTemplateId) return;
     const next = recipeTemplate(pendingTemplateId);
     $('recipeTemplatePreviewTitle').textContent = next.name || 'New Recipe';
@@ -441,17 +447,19 @@ export function createProcessRecipeController({
     const hasCurrentWork =
       recipe.steps.length > 0 || codeDraftDirty || recipe.name !== recipeTemplate('blank').name;
     $('recipeTemplatePreviewWarning').textContent = templateReplaceArmed
-      ? `Replace your current Recipe${codeDraftDirty ? ' and unapplied Code draft' : ''}? This cannot be undone after reload. Recipe Undo is available in this session.`
+      ? `Replace your current Recipe${codeDraftDirty ? ' and unapplied Code draft' : ''}? A Recovery checkpoint will preserve the saved Recipe before replacement. Unapplied Code drafts are not included in Recovery.`
       : hasCurrentWork
         ? 'Preview only. Nothing changes until you explicitly load and confirm replacement.'
         : 'Preview only. Loading will create this Recipe without running any Process operations.';
-    $('recipeTemplateLoadBtn').textContent = templateReplaceArmed
-      ? 'Replace Recipe'
-      : 'Load template';
+    $('recipeTemplateLoadBtn').textContent = templateLoadPending
+      ? 'Protecting Recipe…'
+      : templateReplaceArmed
+        ? 'Replace Recipe'
+        : 'Load template';
   }
 
-  function requestTemplateLoad() {
-    if (!pendingTemplateId || running) return;
+  async function requestTemplateLoad() {
+    if (!pendingTemplateId || running || templateLoadPending) return;
     const hasCurrentWork =
       recipe.steps.length > 0 || codeDraftDirty || recipe.name !== recipeTemplate('blank').name;
     if (hasCurrentWork && !templateReplaceArmed) {
@@ -459,13 +467,52 @@ export function createProcessRecipeController({
       renderTemplatePreview();
       return;
     }
-    const next = recipeTemplate(pendingTemplateId);
-    activeStepId = next.steps[0]?.id || null;
-    persist(next);
-    codeDraftDirty = false;
-    resetTemplatePreview();
-    render();
-    status('Template loaded. Previous Recipe is available with Undo until reload.', 'success');
+
+    // Template replacement destroys the previously persisted Recipe on the next
+    // autosave. Protect it before touching controller state or the Code draft.
+    const targetId = pendingTemplateId;
+    const previousRecipe = JSON.stringify(recipe);
+    const previousDraftDirty = codeDraftDirty;
+    templateLoadPending = true;
+    renderTemplatePreview();
+    try {
+      if (hasCurrentWork) {
+        const saved = await checkpointWorkspace('pre-recipe-template-replace');
+        if (saved === false) {
+          status('Recipe replacement cancelled: Recovery checkpoint was not created.', 'error');
+          return;
+        }
+      }
+      if (
+        pendingTemplateId !== targetId ||
+        JSON.stringify(recipe) !== previousRecipe ||
+        codeDraftDirty !== previousDraftDirty
+      ) {
+        status(
+          'Recipe changed while preparing replacement. Please review and confirm again.',
+          'warning',
+        );
+        templateReplaceArmed = false;
+        return;
+      }
+      const next = recipeTemplate(targetId);
+      activeStepId = next.steps[0]?.id || null;
+      persist(next);
+      codeDraftDirty = false;
+      resetTemplatePreview();
+      render();
+      status(
+        hasCurrentWork
+          ? 'Template loaded. Previous Recipe is in Recovery and session Undo.'
+          : 'Template loaded.',
+        'success',
+      );
+    } catch (error) {
+      status(`Recipe replacement cancelled: ${error.message}`, 'error');
+    } finally {
+      templateLoadPending = false;
+      renderTemplatePreview();
+    }
   }
 
   function field(label, control) {

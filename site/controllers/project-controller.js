@@ -16,6 +16,7 @@ export function createProjectController({
   status,
   onProjectChanged = () => {},
   checkpointBeforeReplace = async () => false,
+  allowVolatileNewProject = () => false,
   readProjectFileTask = readProjectFile,
   exportProjectFileTask = null,
   normalizedProjectName,
@@ -46,6 +47,14 @@ export function createProjectController({
     // loadProjectSnapshot restores the saved 3D camera (or fits when no camera
     // exists). Fitting again here would overwrite inspection view state and
     // make a freshly restored History Step look edited.
+  }
+
+  async function requireRecoveryCheckpoint(reason) {
+    // A false result means the Recovery writer was unavailable or failed.
+    // Never discard History data on that path.
+    if ((await checkpointBeforeReplace(reason)) === false) {
+      throw new Error('Recovery checkpoint was not created. History was left unchanged.');
+    }
   }
 
   function renderSnapshots() {
@@ -91,7 +100,7 @@ export function createProjectController({
 
       if (!snapshotManager.hasHistoricalWorkingEdits()) return true;
       try {
-        await checkpointBeforeReplace(reason);
+        await requireRecoveryCheckpoint(reason);
         return true;
       } catch (error) {
         console.error(error);
@@ -437,7 +446,7 @@ export function createProjectController({
       if (!confirmed) return;
 
       try {
-        await checkpointBeforeReplace('pre-history-truncate');
+        await requireRecoveryCheckpoint('pre-history-truncate');
         const result = snapshotManager.truncateBranchAfter(node.id);
         refreshAfterSnapshotLoad();
         onProjectChanged();
@@ -479,7 +488,7 @@ export function createProjectController({
       if (!confirmed) return;
 
       try {
-        await checkpointBeforeReplace('pre-history-head-delete');
+        await requireRecoveryCheckpoint('pre-history-head-delete');
         snapshotManager.removeHeadStep(node.id);
         refreshAfterSnapshotLoad();
         onProjectChanged();
@@ -789,7 +798,7 @@ export function createProjectController({
             });
             if (!confirmed) return;
             try {
-              await checkpointBeforeReplace('pre-history-variant-delete');
+              await requireRecoveryCheckpoint('pre-history-variant-delete');
               const removed = snapshotManager.removeBranch(variant.id);
               if (!removed) throw new Error('Variant was not found.');
               refreshAfterSnapshotLoad();
@@ -1039,7 +1048,11 @@ export function createProjectController({
         return;
       }
       try {
-        await checkpointBeforeReplace('pre-new-project');
+        // Non-owner tabs can intentionally reset their volatile workspace;
+        // autosave remains paused and the owner tab is never overwritten.
+        if (!allowVolatileNewProject()) {
+          await requireRecoveryCheckpoint('pre-new-project');
+        }
         cancelHistoricalStepEdit();
         resetProjectState();
         resetRoughDraftControls();
