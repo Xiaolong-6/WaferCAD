@@ -1394,3 +1394,27 @@ test('project validator rejects malformed Process Recipe structure', () => {
   source.processRecipe.steps = [{ id: 'same', command: 'deposit', params: {} }];
   assert.throws(() => validateProjectFile(source), /deposit\.material is required/);
 });
+
+test('project snapshots accept Lift-off in an embedded Recipe and reject unknown commands', () => {
+  const project = validProject();
+  project.version = CURRENT_PROJECT_VERSION;
+  project.processRecipe = {
+    version: 1,
+    name: 'Metalens Cr lift-off',
+    activeStepId: 'recipe-step-1',
+    steps: [
+      {
+        id: 'recipe-step-1',
+        command: 'liftoff',
+        params: { sacrificial: 'PMMA', face: 'front', area: 'full' },
+      },
+    ],
+  };
+  assert.equal(validateProjectFile(project), project);
+  assert.equal(
+    validateProjectFile(JSON.parse(JSON.stringify(project))).processRecipe.steps[0].command,
+    'liftoff',
+  );
+  project.processRecipe.steps[0].command = 'unsupported-liftoff-variant';
+  assert.throws(() => validateProjectFile(project), /command.*not supported/);
+});

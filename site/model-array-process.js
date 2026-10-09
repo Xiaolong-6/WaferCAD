@@ -16,7 +16,7 @@ import { bufferMulti, intersection } from './vector-geometry.js';
 
 const COUNTERS = ['nextLayerId', 'nextRegionId', 'nextImplantId', 'nextElectricalRegionId'];
 const NO_CHANGE =
-  /not exposed|None of the selected|no eligible|contains no material|No material remains|does not remove material|No exposed|not remove the selected|did not remove|does not overlap/i;
+  /not exposed|None of the selected|no eligible|contains no material|contains no sacrificial layer to lift off|No material remains|does not remove material|No exposed|not remove the selected|did not remove|does not overlap/i;
 export function applyArrayOperation(model, params, apply) {
   const area = params.area,
     maskBoundsCache = new WeakMap();

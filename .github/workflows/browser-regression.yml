@@ -304,6 +304,15 @@ jobs:
       - name: Run process geometry regression
         run: npm run test:ui:process
 
+      - name: Upload Lift-off UX screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: liftoff-ux-${{ github.sha }}
+          path: test-results/process-geometry
+          retention-days: 14
+          if-no-files-found: ignore
+
   renderer-array-edge-on:
     name: 625-site edge-on exact-wall restoration
     needs: plan
