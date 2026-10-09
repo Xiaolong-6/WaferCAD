@@ -35,6 +35,7 @@ Use this page to find the document that owns a question. Current contracts descr
 
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — open performance work and acceptance conditions; planned LOD is not a shipped capability.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
+- [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
 - [Documentation audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md) — navigation, content repairs and check results.
 - [Illustrated Wiki consolidation — 2026-10-08](WIKI_ILLUSTRATED_MANUAL_2026-10-08.md) — canonical process illustrations, links and verification limits.
 - [M3D Conformal microcrack repair — 2026-10-08](M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md) — precise XY coverage failure, repair and S00–S26 acceptance evidence.

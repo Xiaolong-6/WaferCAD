@@ -1,0 +1,74 @@
+name: Example opening acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "site/welcome.js"
+      - "site/example-asset.js"
+      - "site/controllers/project-controller.js"
+      - "scripts/example-open-benchmark.mjs"
+      - ".github/workflows/example-opening-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: example-opening-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Serve WaferCAD
+        run: |
+          python3 -u -c '
+          import http.server
+          from functools import partial
+          class Cacheable(http.server.SimpleHTTPRequestHandler):
+              def end_headers(self):
+                  if self.path.partition("?")[0].endswith(".wafercad"):
+                      self.send_header("Cache-Control", "public, max-age=600")
+                  super().end_headers()
+          http.server.ThreadingHTTPServer(
+              ("127.0.0.1", 4173), partial(Cacheable, directory="site")
+          ).serve_forever()
+          ' > /tmp/wafercad-example-open.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-example-open.log
+          exit 1
+      - name: Measure cold versus prefetched complete example
+        run: node scripts/example-open-benchmark.mjs photodetector-literature 1 --headless
+      - name: Upload example timing and revision diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: example-opening-${{ github.sha }}
+          path: test-results/example-open
+          retention-days: 14
+          if-no-files-found: warn

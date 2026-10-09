@@ -1,8 +1,30 @@
 import { BUNDLED_EXAMPLES } from './bundled-examples.js';
 import { stageStartupFile } from './startup-file.js';
+import { versionedExampleAssetPath } from './example-asset.js';
 
 const $ = (id) => document.getElementById(id);
 const projectPreviewFrames = new Set();
+const prefetchedExampleIds = new Set();
+const exampleBuildVersion = new URL(import.meta.url).searchParams.get('v') || '';
+
+// Download only a project the visitor is about to open. The payload is kept in
+// the browser's HTTP cache, not in a JS project cache, so no stale mutable
+// History or additional resident model copy survives the navigation.
+function prefetchExampleOnIntent(example) {
+  if (!example?.path || globalThis.navigator?.connection?.saveData) return;
+  if (prefetchedExampleIds.has(example.id)) return;
+  prefetchedExampleIds.add(example.id);
+  void fetch(versionedExampleAssetPath(example.path, exampleBuildVersion), {
+    cache: 'default',
+    priority: 'low',
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.arrayBuffer();
+    })
+    .catch(() => prefetchedExampleIds.delete(example.id));
+}
+
 const projectPreviewObserver =
   'IntersectionObserver' in globalThis
     ? new IntersectionObserver(
@@ -234,6 +256,24 @@ function renderExampleCards() {
     summaryLink.href = href;
     summaryLink.textContent = example.summary;
     summary.append(summaryLink);
+    // Hover and keyboard focus express intent; scrolling the Welcome grid
+    // alone must not fetch every complete project (previews stay on demand).
+    for (const link of [titleLink, summaryLink]) {
+      let hoverTimer = null;
+      link.addEventListener('pointerenter', () => {
+        // Avoid downloading multi-MB projects when the pointer merely crosses
+        // another card while browsing or changing preview tabs.
+        hoverTimer = setTimeout(() => prefetchExampleOnIntent(example), 180);
+      });
+      link.addEventListener('pointerleave', () => {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      });
+      link.addEventListener('focus', () => {
+        clearTimeout(hoverTimer);
+        prefetchExampleOnIntent(example);
+      });
+    }
 
     const sources = createSourceList(example);
 
