@@ -127,6 +127,16 @@ try {
     assert.equal(distant.v3ScreenBudgetMode, 'observe-only');
     assert.equal(distant.v3ProjectionStatus, 'sampled');
     assert.equal(distant.v3TileBoundStatus, 'measured');
+    assert.equal(distant.v3EdgeSurveyStatus, 'bounded');
+    assert.ok(Number(distant.v3EdgeSurveyOwners) > 0, 'edge survey must inspect heavy smooth owners');
+    assert.ok(Number(distant.v3EdgeSurveyBounds) > 0, 'must project complete edge x tile bounds');
+    assert.equal(distant.v3EdgeSurveyOverflow, '0', 'heavy-owner edge-tile budget must be complete');
+    assert.ok(Number(distant.v3EdgeSurveyMs) >= 0, 'probe time must be measurable');
+    assert.equal(
+      distant.v3EdgeSurveyGate,
+      distant.zCollapseEnabled === 'true' ? 'z-collapse' : 'alpha-coverage-unverified',
+      'even subpixel contour bounds must not authorize alpha compositing changes',
+    );
     assert.ok(Number(distant.v3TileBoundOwners) > 0, 'must bound at least one whole buried owner');
     assert.ok(Number(distant.v3TileBoundTiles) > 0, 'must bound at least one complete tile');
     assert.equal(distant.v3TileOwnerOverflow, '0');
@@ -261,6 +271,8 @@ try {
   assert.equal(transparentCold.v3ProjectionSampleQuads, '0');
   assert.equal(transparentCold.v3TileBoundStatus, 'not-far');
   assert.equal(transparentCold.v3TileBoundTiles, '0');
+  assert.equal(transparentCold.v3EdgeSurveyStatus, 'not-far');
+  assert.equal(transparentCold.v3EdgeSurveyBounds, '0');
   assert.equal(
     transparentCold.cameraDampingEnabled,
     'false',
@@ -293,6 +305,8 @@ try {
   assert.equal(opaqueSwap.v3ProjectionSampleQuads, '0');
   assert.equal(opaqueSwap.v3TileBoundStatus, 'not-far');
   assert.equal(opaqueSwap.v3TileBoundTiles, '0');
+  assert.equal(opaqueSwap.v3EdgeSurveyStatus, 'not-far');
+  assert.equal(opaqueSwap.v3EdgeSurveyBounds, '0');
   assert.equal(
     Number(opaqueSwap.sceneSinglePassCapObjects),
     0,
@@ -311,6 +325,7 @@ try {
   assert.equal(transparentWarm.v3ScreenBudgetQualified, 'false');
   assert.equal(transparentWarm.v3ProjectionStatus, 'not-far');
   assert.equal(transparentWarm.v3TileBoundStatus, 'not-far');
+  assert.equal(transparentWarm.v3EdgeSurveyStatus, 'not-far');
   assert.equal(transparentWarm.v3SkippedTriangles, '0');
   assert.equal(
     transparentWarm.sceneSavedCapTriangleSubmissions,
