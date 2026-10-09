@@ -8,6 +8,8 @@
       { key: 'history', label: 'History', icon: 'history', panel: 'history' },
     ],
     panels: ['project', 'base', 'mask', 'process', 'history'],
+    nestedPanels: { base: 'project' },
+    subpanelOwner: 'process',
     processModes: ['step', 'recipe', 'code', 'diagnostics'],
     views: [
       { key: 'main', label: 'Main', icon: 'main' },
