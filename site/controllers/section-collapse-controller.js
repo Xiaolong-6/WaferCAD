@@ -190,6 +190,9 @@ export function createSectionCollapseController({
     if (area.width < 420 || area.height < requiredHeight) {
       const focused = editor.contains(root.activeElement) ? root.activeElement : null;
       editor.close();
+      // The Section body can be collapsed/display:none; a modal must not
+      // inherit the hidden dock's layout or clipping constraints.
+      root.body.append(editor);
       editor.showModal();
       focused?.focus({ preventScroll: true });
     }
@@ -212,6 +215,8 @@ export function createSectionCollapseController({
     drag = null;
     if (editor.open) editor.close();
     editor.hidden = true;
+    const dock = $('sectionCollapseOverlay');
+    if (editor.parentNode !== dock) dock.append(editor);
     $('sectionCollapseTopHandle').classList.remove('dragging');
     $('sectionCollapseBottomHandle').classList.remove('dragging');
     sync();
