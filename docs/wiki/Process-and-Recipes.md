@@ -35,9 +35,9 @@ Recipe uses the same Process worker/kernel as Manual. Typed physical lengths ret
 
 ## Geometry Diagnostics
 
-Expand **Geometry Diagnostics** in the Process tab and click **Analyze geometry** to inspect the **current** canonical model without creating a History node or editing the Recipe. The analysis worker reports per-material geometric volumes and min/max local Z-segment thicknesses; it also checks nonpositive Z intervals, missing layer references, overlaps within one region's Z stack, and non-overlapping XY region ownership.
+Expand **Geometry Diagnostics** in the Process tab and click **Analyze geometry** to inspect the **current** canonical model without creating a History node or editing the Recipe. The analysis worker reports per-material geometric volumes and min/max local Z-segment thicknesses; it also checks nonpositive Z intervals, missing layer references, overlaps within one region's Z stack, non-overlapping XY region ownership, and XY void/crack classification using the Conformal topology tolerance.
 
-An empty Z interval between two materials is reported as a **cavity observation**, not automatically a fabrication defect. Reports include representative XY bounds and Z intervals, when available. After changing the model, rerun Analyze: earlier results are marked stale.
+An empty Z interval between two materials is reported as a **cavity observation**, not automatically a fabrication defect. A canonical uncovered XY opening is also an observation; an uncovered sub-grid slit is flagged as a possible numerical crack. Large/complex geometry may exceed the explicit coverage budget, in which case this check is shown as incomplete. Reports include representative XY bounds and Z intervals, when available. After changing the model, rerun Analyze: earlier results are marked stale.
 
 For a canonical wafer array, volumes and region counts are weighted across *all* instances; the XY overlap test runs within each referenced template and **does not certify boundaries between adjacent array instances**. A complexity limit or a polygon error explicitly marks overlap coverage incomplete. “No findings” means only that the implemented geometry checks did not detect issues. This is not a process intent, transport physics, Rough/Pyramid microgeometry, Implant concentration or electrical validation.
 
