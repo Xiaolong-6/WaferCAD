@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-ui="v2-gallery">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="description" content="WaferCAD UI v2 M1 native component review gallery." />
+    <title>WaferCAD · UI v2 component gallery</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./components.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none;
+      }
+      body {
+        margin: 0;
+        background: var(--wc-page);
+        color: var(--wc-text);
+        font: var(--wc-font-body) / var(--wc-leading) var(--wc-font);
+      }
+      .gallery-header {
+        background: var(--wc-surface);
+        border-bottom: 1px solid var(--wc-border);
+      }
+      .gallery-wrap {
+        max-width: 1248px;
+        margin-inline: auto;
+        padding: var(--wc-space-6);
+      }
+      .gallery-heading,
+      .gallery-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--wc-space-2);
+      }
+      .gallery-heading {
+        justify-content: space-between;
+      }
+      .gallery-brand {
+        margin: 0;
+        font-size: var(--wc-font-title);
+        font-weight: 600;
+        letter-spacing: -0.2px;
+      }
+      .gallery-subtitle {
+        color: var(--wc-muted);
+        margin: var(--wc-space-2) 0 var(--wc-space-4);
+        max-width: 800px;
+        font-size: var(--wc-font-control);
+      }
+      .gallery-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--wc-space-4);
+      }
+      .gallery-nav a {
+        padding-block: var(--wc-space-1);
+        font-size: var(--wc-font-body);
+      }
+      .gallery-section {
+        margin-bottom: var(--wc-space-8);
+        scroll-margin-top: var(--wc-space-4);
+      }
+      .gallery-section-title {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: var(--wc-space-3);
+        margin-bottom: var(--wc-space-3);
+      }
+      .gallery-section-title h2 {
+        font-size: var(--wc-font-heading);
+        margin: 0;
+      }
+      .gallery-note {
+        color: var(--wc-muted);
+        font-size: var(--wc-font-aux);
+        margin: 0;
+      }
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--wc-space-4);
+      }
+      .gallery-card {
+        min-width: 0;
+        background: var(--wc-surface);
+        border: 1px solid var(--wc-border);
+        border-radius: var(--wc-radius-md);
+        padding: var(--wc-space-4);
+      }
+      .gallery-card h3 {
+        margin: 0 0 var(--wc-space-3);
+        font-size: var(--wc-font-control);
+        font-weight: 600;
+      }
+      .gallery-stack {
+        display: grid;
+        gap: var(--wc-space-3);
+      }
+      .gallery-state-row {
+        display: grid;
+        grid-template-columns: 64px repeat(2, minmax(0, 1fr));
+        align-items: center;
+        gap: var(--wc-space-2) var(--wc-space-3);
+      }
+      .gallery-state-label {
+        color: var(--wc-muted);
+        font-size: var(--wc-font-aux);
+      }
+      .gallery-swatch {
+        width: var(--wc-space-8);
+        height: var(--wc-space-8);
+        border: 1px solid var(--wc-border);
+        border-radius: var(--wc-radius-sm);
+      }
+      .gallery-palette {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--wc-space-3);
+      }
+      .gallery-type {
+        margin: 0;
+      }
+      .gallery-type[data-scale='title'] {
+        font-size: var(--wc-font-title);
+      }
+      .gallery-type[data-scale='heading'] {
+        font-size: var(--wc-font-heading);
+      }
+      .gallery-type[data-scale='control'] {
+        font-size: var(--wc-font-control);
+      }
+      .gallery-type[data-scale='aux'] {
+        font-size: var(--wc-font-aux);
+      }
+      .gallery-metric {
+        font-family: var(--wc-font-mono);
+        color: var(--wc-muted);
+        font-size: var(--wc-font-aux);
+      }
+      .gallery-span-2 {
+        grid-column: span 2;
+      }
+      .gallery-surface-preview {
+        position: static;
+        width: 100%;
+        max-height: none;
+        max-width: none;
+        box-shadow: none;
+      }
+      .gallery-footer {
+        border-top: 1px solid var(--wc-border);
+        padding-top: var(--wc-space-4);
+        color: var(--wc-muted);
+      }
+      @media (max-width: 1100px) {
+        .gallery-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 640px) {
+        .gallery-wrap {
+          padding: var(--wc-space-4);
+        }
+        .gallery-grid,
+        .gallery-palette {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .gallery-span-2 {
+          grid-column: auto;
+        }
+        .gallery-state-row {
+          grid-template-columns: 56px repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="gallery-header">
+      <div class="gallery-wrap">
+        <div class="gallery-heading">
+          <h1 class="gallery-brand">WaferCAD <span class="gallery-note">/ Interface kit</span></h1>
+          <span class="wc-badge">M1 · Review checkpoint</span>
+        </div>
+        <p class="gallery-subtitle">
+          A light, compact vocabulary for scientific work. Native controls, visible states and clear
+          focus — no workstation layout or business data bindings.
+        </p>
+        <nav class="gallery-nav" aria-label="Gallery sections">
+          <a class="wc-link" href="#foundations">01 Foundations</a>
+          <a class="wc-link" href="#controls">02 Controls</a>
+          <a class="wc-link" href="#navigation">03 Navigation</a>
+          <a class="wc-link" href="#surfaces">04 Surfaces</a>
+          <a class="wc-link" href="#feedback">05 Feedback</a>
+        </nav>
+      </div>
+    </header>
+    <main class="gallery-wrap" id="gallery"></main>
+    <div class="wc-toast-host" id="toast-host" aria-label="Notifications"></div>
+    <script type="module">
+      // M1 only. No storage, app shell, core modules, Shadow DOM or external dependencies.
+      // Approved I01 decision: future view-mode persistence uses sessionStorage, not localStorage.
+      // M1.5 layout/Recipe selection remains a human gate. Use real M3D + Photodetector content
+      // at 1440/1024/768/390; explicitly exercise empty History, canvas overlay and phone flyout.
+      // M2 gate: measure Main/3D ROI vertical alignment before attaching core data (#161: 1.7857px).
+      // M3: trace all five unresolved dynamic expressions. M4: confirm baseline browser with user.
+
+      let serial = 0;
+      const uid = (prefix) => `wc-${prefix}-${++serial}`;
+      function el(tag, attrs = {}, ...children) {
+        const node = document.createElement(tag);
+        for (const [key, value] of Object.entries(attrs)) {
+          if (value === false || value == null) continue;
+          if (key === 'class') node.className = value;
+          else if (key === 'text') node.textContent = value;
+          else node.setAttribute(key, value === true ? '' : String(value));
+        }
+        node.append(...children.filter((child) => child != null));
+        return node;
+      }
+      function icon(name = 'chevron') {
+        const paths = {
+          chevron: 'm6 4 4 4-4 4',
+          close: 'm4 4 8 8m0-8-8 8',
+          settings: 'M3 4h10M3 8h10M3 12h10M6 2v4M10 6v4M6 10v4',
+          check: 'm3 8 3 3 7-7',
+          info: 'M8 7v4M8 4h.01',
+          warning: 'M8 5v4M8 12h.01M8 2l6 12H2Z',
+          layer: 'm8 2 6 3-6 3-6-3Zm-6 7 6 3 6-3M2 12l6 3 6-3',
+        };
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'wc-icon');
+        svg.setAttribute('viewBox', '0 0 16 16');
+        svg.setAttribute('aria-hidden', 'true');
+        const path = document.createElementNS(svg.namespaceURI, 'path');
+        path.setAttribute('d', paths[name] || paths.info);
+        svg.append(path);
+        return svg;
+      }
+      function button(
+        label,
+        { variant = 'secondary', size = 'md', iconName = 'settings', state, ...attrs } = {},
+      ) {
+        return el(
+          'button',
+          {
+            class: 'wc-button',
+            type: 'button',
+            'data-variant': variant,
+            'data-size': size,
+            'data-preview-state': state === 'disabled' ? null : state,
+            disabled: state === 'disabled',
+            'aria-label': variant === 'icon' ? label : null,
+            ...attrs,
+          },
+          variant === 'icon' ? icon(iconName) : label,
+        );
+      }
+      function field(label, { value = '0.250', unit = 'µm', state, hint, ...attrs } = {}) {
+        const id = uid('field');
+        const hintId = `${id}-hint`;
+        const input = el('input', {
+          class: 'wc-input',
+          id,
+          type: 'text',
+          inputmode: 'decimal',
+          value,
+          disabled: state === 'disabled',
+          'aria-invalid': state === 'error' ? 'true' : null,
+          'aria-describedby': hint ? hintId : null,
+          ...attrs,
+        });
+        return el(
+          'div',
+          { class: 'wc-field', 'data-preview-state': state },
+          el('label', { class: 'wc-label', for: id, text: label }),
+          el(
+            'div',
+            { class: 'wc-field-control' },
+            input,
+            el('span', { class: 'wc-unit', text: unit }),
+          ),
+          hint
+            ? el('p', {
+                class: 'wc-hint',
+                id: hintId,
+                'data-tone': state === 'error' ? 'danger' : null,
+                text: hint,
+              })
+            : null,
+        );
+      }
+      function select(label, { state, hint, ...attrs } = {}) {
+        const id = uid('select');
+        return el(
+          'div',
+          { class: 'wc-field' },
+          el('label', { class: 'wc-label', for: id, text: label }),
+          el(
+            'select',
+            {
+              class: 'wc-select',
+              id,
+              disabled: state === 'disabled',
+              'aria-invalid': state === 'error' ? 'true' : null,
+              'data-preview-state': state,
+              'aria-describedby': hint ? `${id}-hint` : null,
+              ...attrs,
+            },
+            ...['Silicon', 'Silicon dioxide', 'Aluminium'].map((text) =>
+              el('option', { value: text, text }),
+            ),
+          ),
+          hint
+            ? el('p', {
+                class: 'wc-hint',
+                id: `${id}-hint`,
+                'data-tone': state === 'error' ? 'danger' : null,
+                text: hint,
+              })
+            : null,
+        );
+      }
+      function segmented(labels, label = 'Display mode') {
+        return el(
+          'div',
+          { class: 'wc-segmented', role: 'group', 'aria-label': label },
+          ...labels.map((text, index) =>
+            el('button', {
+              class: 'wc-segment',
+              type: 'button',
+              text,
+              'aria-pressed': String(index === 0),
+              tabindex: index === 0 ? '0' : '-1',
+            }),
+          ),
+        );
+      }
+      function tabs(entries, label = 'Material information') {
+        const list = el('div', { class: 'wc-tabs', role: 'tablist', 'aria-label': label });
+        const panels = entries.map(([title, text], index) => {
+          const id = uid('tab');
+          list.append(
+            el('button', {
+              class: 'wc-tab',
+              id,
+              type: 'button',
+              role: 'tab',
+              text: title,
+              tabindex: index === 0 ? '0' : '-1',
+              'aria-selected': String(index === 0),
+              'aria-controls': `${id}-panel`,
+            }),
+          );
+          return el('div', {
+            class: 'wc-tab-panel',
+            id: `${id}-panel`,
+            role: 'tabpanel',
+            tabindex: '0',
+            'aria-labelledby': id,
+            hidden: index !== 0,
+            text,
+          });
+        });
+        return el('div', {}, list, ...panels);
+      }
+      function section(title, content, open = true) {
+        return el(
+          'details',
+          { class: 'wc-section', open },
+          el('summary', {}, icon(), title),
+          el('div', { class: 'wc-section-body' }, content),
+        );
+      }
+      function popover(title, content) {
+        const id = uid('popover');
+        return el(
+          'div',
+          {
+            class: 'wc-popover',
+            id,
+            role: 'dialog',
+            'aria-labelledby': `${id}-title`,
+            hidden: true,
+          },
+          el('h3', { class: 'wc-surface-title', id: `${id}-title`, text: title }),
+          content,
+        );
+      }
+      function dialog(title, content) {
+        const id = uid('dialog');
+        return el(
+          'dialog',
+          { class: 'wc-dialog', id, 'aria-labelledby': `${id}-title` },
+          el('h3', { class: 'wc-surface-title', id: `${id}-title`, text: title }),
+          content,
+        );
+      }
+      function status(text, tone = 'info', toast = false) {
+        return el(
+          'div',
+          {
+            class: `wc-status${toast ? ' wc-toast' : ''}`,
+            'data-tone': tone,
+            role: tone === 'danger' ? 'alert' : 'status',
+          },
+          icon(tone === 'success' ? 'check' : tone === 'info' ? 'info' : 'warning'),
+          el('span', { text }),
+          toast
+            ? button('Dismiss notification', {
+                variant: 'icon',
+                size: 'sm',
+                iconName: 'close',
+                'data-dismiss-toast': true,
+              })
+            : null,
+        );
+      }
+      function tooltip(text) {
+        return el('div', {
+          class: 'wc-tooltip',
+          id: uid('tip'),
+          role: 'tooltip',
+          hidden: true,
+          text,
+        });
+      }
+      function badge(text, tone = 'neutral') {
+        return el('span', { class: 'wc-badge', 'data-tone': tone, text });
+      }
+      function treeItem(label, children = [], { selected = false, disabled = false } = {}) {
+        const id = uid('tree-label');
+        const caret = icon(children.length ? 'chevron' : 'layer');
+        if (children.length) caret.classList.add('wc-tree-caret');
+        return el(
+          'li',
+          {
+            class: 'wc-tree-item',
+            role: 'treeitem',
+            'aria-labelledby': id,
+            'aria-expanded': children.length ? 'true' : null,
+            'aria-selected': String(selected),
+            'aria-disabled': disabled ? 'true' : null,
+          },
+          el(
+            'button',
+            { class: 'wc-tree-row', type: 'button', tabindex: selected ? '0' : '-1', disabled },
+            caret,
+            el('span', { class: 'wc-tree-label', id, text: label }),
+          ),
+          children.length ? el('ul', { class: 'wc-tree-group', role: 'group' }, ...children) : null,
+        );
+      }
+      function readout(entries) {
+        return el(
+          'dl',
+          { class: 'wc-readout' },
+          ...entries.flatMap(([label, value, unit]) => [
+            el('dt', { text: label }),
+            el('dd', {}, value, unit ? el('span', { class: 'wc-unit', text: unit }) : null),
+          ]),
+        );
+      }
+      function card(title, ...children) {
+        return el('article', { class: 'gallery-card' }, el('h3', { text: title }), ...children);
+      }
+      const stack = (...children) => el('div', { class: 'gallery-stack' }, ...children);
+      const row = (...children) => el('div', { class: 'gallery-row' }, ...children);
+      function group(id, title, note, ...cards) {
+        return el(
+          'section',
+          { class: 'gallery-section', id, 'aria-labelledby': `${id}-title` },
+          el(
+            'div',
+            { class: 'gallery-section-title' },
+            el('h2', { id: `${id}-title`, text: title }),
+            el('p', { class: 'gallery-note', text: note }),
+          ),
+          el('div', { class: 'gallery-grid' }, ...cards),
+        );
+      }
+
+      // Create every template before binding the gallery-only interactions below.
+      const gallery = document.querySelector('#gallery');
+      const colors = [
+        ['Surface', 'surface'],
+        ['Text', 'text'],
+        ['Accent', 'accent'],
+        ['Success', 'success'],
+        ['Warning', 'warning'],
+        ['Error', 'danger'],
+      ];
+      const palette = el('div', { class: 'gallery-palette' });
+      for (const [name, token] of colors) {
+        const swatch = el('span', { class: 'gallery-swatch', 'aria-hidden': 'true' });
+        swatch.style.background = `var(--wc-${token})`;
+        palette.append(row(swatch, el('span', { text: name })));
+      }
+      gallery.append(
+        group(
+          'foundations',
+          '01 / Foundations',
+          'Light throughout · 4 px rhythm · 20 color roles',
+          card('Semantic palette', palette),
+          card(
+            'Type scale',
+            stack(
+              ...[
+                ['title', '18 px · Page title'],
+                ['heading', '15 px · Section heading'],
+                ['control', '13 px · Forms & actions'],
+                ['body', '12 px · Body & compact controls'],
+                ['aux', '11 px · Units & supporting text'],
+              ].map(([scale, text]) =>
+                el('p', { class: 'gallery-type', 'data-scale': scale, text }),
+              ),
+            ),
+          ),
+          card(
+            'Dimensions & layers',
+            readout([
+              ['Spacing', '4 / 8 / 12 / 16', 'px'],
+              ['Controls · sm / md', '28 / 32', 'px'],
+              ['Corners', '4 / 8', 'px'],
+              ['Focus ring', '2 + 2 offset', 'px'],
+              ['Elevations', '2', 'levels'],
+              ['Z order', '0 / 10 / 20 / 30 / 40 / 50', ''],
+            ]),
+          ),
+        ),
+      );
+      const states = ['default', 'hover', 'active', 'focus', 'disabled'];
+      const buttonCards = ['primary', 'secondary', 'ghost', 'icon'].map((variant) =>
+        card(
+          `Button / ${variant}`,
+          stack(
+            el(
+              'div',
+              { class: 'gallery-state-row' },
+              el('span', { class: 'gallery-state-label', text: 'State' }),
+              el('span', { class: 'gallery-state-label', text: 'sm · 12 px' }),
+              el('span', { class: 'gallery-state-label', text: 'md · 13 px' }),
+            ),
+            ...states.map((state) =>
+              el(
+                'div',
+                { class: 'gallery-state-row' },
+                el('span', { class: 'gallery-state-label', text: state }),
+                ...['sm', 'md'].map((size) =>
+                  button(variant === 'icon' ? `${state} settings ${size}` : 'Apply', {
+                    variant,
+                    size,
+                    state: state === 'default' ? null : state,
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      gallery.append(
+        group(
+          'controls',
+          '02 / Controls',
+          'Pinned state specimens + real pointer / keyboard interaction',
+          ...buttonCards,
+          card(
+            'Field / label + input + unit',
+            stack(
+              field('Thickness', { hint: 'Physical length in project units.' }),
+              field('Focused field', { state: 'focus', value: '0.050' }),
+              field('Read-only operation', { state: 'disabled', value: '0.120' }),
+              field('Invalid thickness', {
+                state: 'error',
+                value: '-0.250',
+                hint: 'Enter a thickness greater than zero.',
+              }),
+            ),
+          ),
+          card(
+            'Select / native options',
+            stack(
+              select('Material'),
+              select('Focused select', { state: 'focus' }),
+              select('Unavailable material', { state: 'disabled' }),
+              select('Invalid material', { state: 'error', hint: 'Select a supported material.' }),
+            ),
+          ),
+        ),
+      );
+      gallery.append(
+        group(
+          'navigation',
+          '03 / Navigation',
+          'Arrow keys · Home / End · visible focus',
+          card(
+            'Segmented / single selection',
+            stack(
+              segmented(['Solid', 'Outline', 'Both']),
+              el('p', { class: 'gallery-note', text: 'Arrows select; Tab exits the group.' }),
+              segmented(['Available', 'Locked'], 'Availability example'),
+            ),
+          ),
+          card(
+            'Tabs / associated panels',
+            tabs([
+              ['Properties', 'Silicon · crystalline substrate. Thickness: 0.250 µm.'],
+              ['Appearance', 'Display settings are independent of the physical model.'],
+              ['Notes', 'This is a component specimen, not a proposed workstation layout.'],
+            ]),
+          ),
+          card(
+            'Tree item / hierarchy',
+            el(
+              'ul',
+              { class: 'wc-tree', role: 'tree', 'aria-label': 'Component sample layers' },
+              treeItem('Material set', [
+                treeItem('Silicon substrate', [], { selected: true }),
+                treeItem('Silicon dioxide'),
+                treeItem('Aluminium · unavailable', [], { disabled: true }),
+              ]),
+              treeItem('Reference material'),
+            ),
+            el('p', {
+              class: 'gallery-note',
+              text: 'Left / Right collapse or expand; Enter selects.',
+            }),
+          ),
+        ),
+      );
+      const unavailable = document.querySelector(
+        '[aria-label="Availability example"] button:last-child',
+      );
+      unavailable.disabled = true;
+
+      const livePopover = popover(
+        'Display options',
+        stack(select('Preview material'), button('Close options', { 'data-close-popover': true })),
+      );
+      const popoverTrigger = button('Open popover', {
+        id: 'open-popover',
+        'aria-haspopup': 'dialog',
+        'aria-controls': livePopover.id,
+        'aria-expanded': 'false',
+      });
+      const liveDialog = dialog(
+        'Component settings',
+        el(
+          'div',
+          {},
+          el('p', {
+            class: 'wc-surface-copy',
+            text: 'A native modal with contained focus. This demo does not save project data.',
+          }),
+          field('Example value', { value: '0.250' }),
+          el(
+            'div',
+            { class: 'wc-actions' },
+            button('Cancel', { 'data-close-dialog': true }),
+            button('Confirm', { variant: 'primary', 'data-close-dialog': true }),
+          ),
+        ),
+      );
+      const dialogTrigger = button('Open dialog', {
+        id: 'open-dialog',
+        'aria-haspopup': 'dialog',
+        'aria-controls': liveDialog.id,
+      });
+      gallery.append(
+        group(
+          'surfaces',
+          '04 / Surfaces',
+          'Anchored popover · native modal · collapsible section',
+          card(
+            'Section / disclosure',
+            stack(
+              section('Expanded properties', readout([['Thickness', '0.250', 'µm']])),
+              section(
+                'Collapsed properties',
+                el('p', { text: 'Details are revealed on demand.' }),
+                false,
+              ),
+            ),
+          ),
+          card(
+            'Popover / non-modal',
+            stack(
+              el(
+                'div',
+                { class: 'wc-popover gallery-surface-preview' },
+                el('h4', { class: 'wc-surface-title', text: 'Display options' }),
+                el('p', {
+                  class: 'wc-surface-copy',
+                  text: 'A compact surface anchored to its trigger. Escape or outside click closes it.',
+                }),
+                popoverTrigger,
+              ),
+            ),
+          ),
+          card(
+            'Dialog / modal',
+            stack(
+              el('p', {
+                class: 'wc-surface-copy',
+                text: 'Focus stays inside while open. Escape closes and returns focus to the trigger.',
+              }),
+              row(dialogTrigger),
+              el('p', { class: 'gallery-note', text: '400 px maximum · viewport-safe height' }),
+            ),
+          ),
+        ),
+      );
+      const liveTooltip = tooltip('Settings affect this specimen only.');
+      const tooltipTrigger = button('Hover or focus for help', {
+        id: 'tooltip-trigger',
+        'aria-describedby': liveTooltip.id,
+      });
+      gallery.append(
+        group(
+          'feedback',
+          '05 / Feedback & inspection',
+          'Text + semantics, not color alone · tabular numeric readouts',
+          card(
+            'Status / four tones',
+            stack(
+              status('Ready for inspection.'),
+              status('Validation complete.', 'success'),
+              status('Check the selected units.', 'warning'),
+              status('Thickness must be positive.', 'danger'),
+            ),
+          ),
+          card(
+            'Badge & readout',
+            stack(
+              row(
+                badge('Draft'),
+                badge('Ready', 'success'),
+                badge('Review', 'warning'),
+                badge('Invalid', 'danger'),
+              ),
+              readout([
+                ['Thickness', '0.250', 'µm'],
+                ['Offset', '−1.200', 'µm'],
+                ['Film', '10.000', 'nm'],
+                ['Material regions', '24', ''],
+              ]),
+            ),
+          ),
+          card(
+            'Tooltip & toast',
+            stack(
+              row(tooltipTrigger),
+              el('div', {
+                class: 'wc-tooltip gallery-surface-preview',
+                text: '11 px helper text · available on focus as well as hover.',
+              }),
+              row(button('Show toast', { id: 'show-toast' })),
+              el('p', {
+                class: 'gallery-note',
+                text: 'Live status announcement; dismiss explicitly.',
+              }),
+            ),
+          ),
+        ),
+      );
+      gallery.append(
+        el(
+          'footer',
+          { class: 'gallery-footer' },
+          'M1 only · light interface · native templates · no dependencies. Layout and Recipe location await M1.5 approval.',
+        ),
+      );
+      document.body.append(livePopover, liveDialog, liveTooltip);
+      // Public template seam for review / future approved integration. No event binding in templates.
+      window.WaferCadUiV2Templates = Object.freeze({
+        button,
+        field,
+        select,
+        segmented,
+        tabs,
+        section,
+        popover,
+        dialog,
+        status,
+        tooltip,
+        badge,
+        treeItem,
+        readout,
+      });
+
+      // Gallery-only controllers: all DOM above exists before this phase starts.
+      function bindChoice(container, selector, attribute) {
+        const buttons = [...container.querySelectorAll(selector)];
+        const choose = (target) => {
+          for (const item of buttons) {
+            const selected = item === target;
+            item.setAttribute(attribute, String(selected));
+            item.tabIndex = selected ? 0 : -1;
+            const panelId = item.getAttribute('aria-controls');
+            if (panelId) document.getElementById(panelId).hidden = !selected;
+          }
+        };
+        container.addEventListener('click', (event) => {
+          const target = event.target.closest(selector);
+          if (target && !target.disabled) choose(target);
+        });
+        container.addEventListener('keydown', (event) => {
+          const enabled = buttons.filter((item) => !item.disabled);
+          const current = enabled.indexOf(document.activeElement);
+          if (current < 0) return;
+          let next;
+          if (event.key === 'ArrowRight') next = (current + 1) % enabled.length;
+          if (event.key === 'ArrowLeft') next = (current + enabled.length - 1) % enabled.length;
+          if (event.key === 'Home') next = 0;
+          if (event.key === 'End') next = enabled.length - 1;
+          if (next == null) return;
+          event.preventDefault();
+          choose(enabled[next]);
+          enabled[next].focus();
+        });
+      }
+      document
+        .querySelectorAll('.wc-segmented')
+        .forEach((node) => bindChoice(node, '.wc-segment', 'aria-pressed'));
+      document
+        .querySelectorAll('.wc-tabs')
+        .forEach((node) => bindChoice(node, '.wc-tab', 'aria-selected'));
+
+      function anchorSurface(surface, trigger, preferAbove = false) {
+        const bounds = trigger.getBoundingClientRect();
+        const margin = 8;
+        const { width, height } = surface.getBoundingClientRect();
+        const availableHeight = document.documentElement.clientHeight;
+        let top = preferAbove ? bounds.top - height - margin : bounds.bottom + margin;
+        if (top + height > availableHeight - margin) top = bounds.top - height - margin;
+        if (top < margin) top = Math.min(bounds.bottom + margin, availableHeight - height - margin);
+        surface.style.left = `${Math.max(margin, Math.min(bounds.left, document.documentElement.clientWidth - width - margin))}px`;
+        surface.style.top = `${Math.max(margin, top)}px`;
+      }
+      function closePopover(restore = true) {
+        if (livePopover.hidden) return;
+        const focusInside = livePopover.contains(document.activeElement);
+        livePopover.hidden = true;
+        popoverTrigger.setAttribute('aria-expanded', 'false');
+        if (restore && focusInside) popoverTrigger.focus();
+      }
+      popoverTrigger.addEventListener('click', () => {
+        if (!livePopover.hidden) return closePopover();
+        livePopover.hidden = false;
+        popoverTrigger.setAttribute('aria-expanded', 'true');
+        anchorSurface(livePopover, popoverTrigger);
+        livePopover.querySelector('select').focus();
+      });
+      livePopover
+        .querySelector('[data-close-popover]')
+        .addEventListener('click', () => closePopover());
+      document.addEventListener('pointerdown', (event) => {
+        if (!livePopover.contains(event.target) && !popoverTrigger.contains(event.target))
+          closePopover(false);
+      });
+      document.addEventListener('focusin', (event) => {
+        if (!livePopover.contains(event.target) && !popoverTrigger.contains(event.target))
+          closePopover(false);
+      });
+      dialogTrigger.addEventListener('click', () => {
+        closePopover(false);
+        liveDialog.showModal();
+      });
+      liveDialog.querySelectorAll('[data-close-dialog]').forEach((node) => {
+        node.addEventListener('click', () => liveDialog.close());
+      });
+      liveDialog.addEventListener('close', () => dialogTrigger.focus());
+      liveDialog.addEventListener('keydown', (event) => {
+        if (event.key !== 'Tab') return;
+        const focusable = [
+          ...liveDialog.querySelectorAll('button, input, select, [tabindex]'),
+        ].filter((node) => !node.disabled && node.tabIndex >= 0 && node.getClientRects().length);
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+
+      let tooltipDismissed = false;
+      let tooltipHideTimer;
+      function showTooltip() {
+        window.clearTimeout(tooltipHideTimer);
+        if (tooltipDismissed) return;
+        liveTooltip.hidden = false;
+        anchorSurface(liveTooltip, tooltipTrigger, true);
+      }
+      function hideTooltip() {
+        window.clearTimeout(tooltipHideTimer);
+        liveTooltip.hidden = true;
+      }
+      tooltipTrigger.addEventListener('pointerenter', () => {
+        tooltipDismissed = false;
+        showTooltip();
+      });
+      tooltipTrigger.addEventListener('focus', () => {
+        tooltipDismissed = false;
+        showTooltip();
+      });
+      tooltipTrigger.addEventListener('pointerleave', () => {
+        if (document.activeElement !== tooltipTrigger) {
+          tooltipHideTimer = window.setTimeout(hideTooltip, 150);
+        }
+      });
+      liveTooltip.addEventListener('pointerenter', () => window.clearTimeout(tooltipHideTimer));
+      liveTooltip.addEventListener('pointerleave', () => {
+        if (document.activeElement !== tooltipTrigger) hideTooltip();
+      });
+      tooltipTrigger.addEventListener('blur', hideTooltip);
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        closePopover();
+        tooltipDismissed = true;
+        hideTooltip();
+      });
+      const reposition = () => {
+        if (!livePopover.hidden) anchorSurface(livePopover, popoverTrigger);
+        if (!liveTooltip.hidden) anchorSurface(liveTooltip, tooltipTrigger, true);
+      };
+      window.addEventListener('resize', reposition);
+      window.addEventListener('scroll', reposition, { passive: true });
+
+      const tree = document.querySelector('.wc-tree');
+      const treeRows = [...tree.querySelectorAll('.wc-tree-row')];
+      function focusRow(target) {
+        treeRows.forEach((item) => {
+          item.tabIndex = item === target ? 0 : -1;
+        });
+        target.focus();
+      }
+      function selectRow(target) {
+        treeRows.forEach((item) =>
+          item.parentElement.setAttribute('aria-selected', String(item === target)),
+        );
+        focusRow(target);
+      }
+      function expandItem(item, expanded) {
+        item.setAttribute('aria-expanded', String(expanded));
+        if (!expanded && item.querySelector('.wc-tree-group .wc-tree-row[tabindex="0"]')) {
+          focusRow(item.querySelector(':scope > .wc-tree-row'));
+        }
+      }
+      tree.addEventListener('click', (event) => {
+        const target = event.target.closest('.wc-tree-row');
+        if (!target || target.disabled) return;
+        const item = target.parentElement;
+        if (event.target.closest('.wc-tree-caret'))
+          expandItem(item, item.getAttribute('aria-expanded') !== 'true');
+        selectRow(target);
+      });
+      tree.addEventListener('keydown', (event) => {
+        const target = event.target.closest('.wc-tree-row');
+        if (!target) return;
+        const visible = treeRows.filter((item) => !item.disabled && item.getClientRects().length);
+        const index = visible.indexOf(target);
+        const item = target.parentElement;
+        let next;
+        if (event.key === 'ArrowDown') next = visible[Math.min(index + 1, visible.length - 1)];
+        if (event.key === 'ArrowUp') next = visible[Math.max(index - 1, 0)];
+        if (event.key === 'Home') next = visible[0];
+        if (event.key === 'End') next = visible.at(-1);
+        if (event.key === 'ArrowRight' && item.hasAttribute('aria-expanded')) {
+          if (item.getAttribute('aria-expanded') === 'false') expandItem(item, true);
+          else next = item.querySelector('.wc-tree-group .wc-tree-row:not(:disabled)');
+        }
+        if (event.key === 'ArrowLeft') {
+          if (item.getAttribute('aria-expanded') === 'true') expandItem(item, false);
+          else
+            next = item.parentElement
+              .closest('.wc-tree-item')
+              ?.querySelector(':scope > .wc-tree-row');
+        }
+        if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+          event.preventDefault();
+        if (next) focusRow(next);
+      });
+      const toastHost = document.querySelector('#toast-host');
+      document.querySelector('#show-toast').addEventListener('click', () => {
+        const toast = status('Component preview validated.', 'success', true);
+        const dismiss = toast.querySelector('[data-dismiss-toast]');
+        dismiss.addEventListener('click', () => {
+          const hadFocus = toast.contains(document.activeElement);
+          toast.remove();
+          if (hadFocus) document.querySelector('#show-toast').focus();
+        });
+        toastHost.replaceChildren(toast);
+      });
+      document.documentElement.dataset.galleryReady = 'true';
+    </script>
+  </body>
+</html>

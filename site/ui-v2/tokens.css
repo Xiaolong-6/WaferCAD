@@ -1,0 +1,60 @@
+/* M1: light interface only. Scientific canvas themes remain independent. */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --wc-page: #f3f5f7;
+  --wc-surface: #ffffff;
+  --wc-subtle: #f8fafb;
+  --wc-border: #d6dde5;
+  --wc-border-strong: #aab9c7;
+  --wc-text: #1f2e3b;
+  --wc-muted: #526273;
+  --wc-disabled: #657484;
+  --wc-accent: #245f9c;
+  --wc-accent-hover: #1c4d80;
+  --wc-accent-active: #163d66;
+  --wc-accent-tint: #eaf2fb;
+  --wc-success: #246b4b;
+  --wc-success-tint: #eaf5ef;
+  --wc-warning: #805816;
+  --wc-warning-tint: #fff5df;
+  --wc-danger: #ad3038;
+  --wc-danger-tint: #fff0f1;
+  --wc-focus: #2b70b7;
+  --wc-scrim: #1f2e3b66;
+
+  --wc-font: 'Segoe UI', system-ui, sans-serif;
+  --wc-font-mono: Consolas, 'Courier New', monospace;
+  --wc-font-aux: 11px;
+  --wc-font-body: 12px;
+  --wc-font-control: 13px;
+  --wc-font-heading: 15px;
+  --wc-font-title: 18px;
+  --wc-leading: 1.5;
+
+  --wc-space-1: 4px;
+  --wc-space-2: 8px;
+  --wc-space-3: 12px;
+  --wc-space-4: 16px;
+  --wc-space-5: 20px;
+  --wc-space-6: 24px;
+  --wc-space-8: 32px;
+  --wc-space-10: 40px;
+  --wc-space-12: 48px;
+  --wc-space-16: 64px;
+  --wc-radius-sm: 4px;
+  --wc-radius-md: 8px;
+  --wc-control-sm: 28px;
+  --wc-control-md: 32px;
+  --wc-focus-width: 2px;
+  --wc-focus-offset: 2px;
+  --wc-shadow-1: 0 2px 8px var(--wc-scrim);
+  --wc-shadow-2: 0 8px 32px var(--wc-scrim);
+  --wc-z-canvas: 0;
+  --wc-z-toolbar: 10;
+  --wc-z-panel: 20;
+  --wc-z-popover: 30;
+  --wc-z-dialog: 40;
+  --wc-z-toast: 50;
+}
