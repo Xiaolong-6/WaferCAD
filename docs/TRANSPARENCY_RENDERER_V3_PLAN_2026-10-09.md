@@ -309,6 +309,41 @@ The A.4 and A.3 screenshots differ only in the 111 by 9 pixel status-bar text ar
 
 **Decision:** No complete subpixel 64-instance contour tile qualifies; previous 294 / 520 individually sampled subpixel quads do not authorize whole-tile or alpha-blended geometry culling. Phase B remains unimplemented. Future optimization should measure transparency/overdraw and preserve depth and alpha accumulation before proposing display-only LOD. Keep PR #166 experimental and unmerged.
 
+## Phase B.0 closed — measured and reverted (2026-10-09)
+
+The integrated runtime at `ba6654bbbc1c7dfe100219829773f835f290cfa8`
+passed [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933170117),
+[625-site Browser/edge-on](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933615621),
+[Native Fig3](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933615627)
+and [Recipe Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933615747).
+
+Direct artifact comparison against the A.4 625-site reference:
+- **2,200** template wall triangles indexed. **6,600 → 4,400** template
+  vertices, or 33.3% fewer *only within the indexed subset*.
+- **16,906,262** Fast and **57,040,012** Quality GPU draw triangles,
+  plus **1,408** draw calls in both tests — identical to the reference.
+  The indexed subset is too small relative to the complete scene to
+  support a meaningful full-wafer performance claim.
+- Fast completion was **8.33 s → 12.55 s**, Quality cold transparent
+  **24.37 s → 34.30 s**, and warm **23.65 s → 33.40 s**
+  (reference → experiment). CI host variation makes these observations
+  unsuitable for inferring causal slowdown or speedup.
+- All three saved 1440×960 screenshots differ only in a tiny bottom
+  status-bar text region (x1215–1234, y948–953); their **3D drawing
+  regions are pixel-identical**. No baseline changed.
+- The detailed projection probe measured 152 ms on the later CI runner
+  when explicitly enabled. It is now **benchmark-only** by default in
+  the normal UI.
+
+**Decision:** retire the indexed-wall runtime helper, its opt-in path,
+its tests and its indexed-specific assertions from the active branch.
+Keep the empirical record and the useful `?rendererV3Diagnostics=1`
+opt-in, which avoids running expensive Phase A surveys during normal
+interactive rendering. Do not merge this PR as a proven speedup.
+The next actual GPU bottleneck investigation should profile instance
+submission, overdraw and fragment blending before proposing a
+scientifically safe material-wall representation.
+
 ## Phase B.0 — exact smooth-wall index reuse experiment (2026-10-09)
 
 After Phase A.4 established zero complete subpixel 64-instance edge-tile bounds,
