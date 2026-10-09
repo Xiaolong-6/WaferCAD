@@ -2,6 +2,14 @@
 
 > 日期 2026-10-09；分支 `codex/ui-v2-m2-handoff-2026-10-09`。核对基准为 legacy `site/app.html` 及控制器、独立的 `site/index.html` + `welcome.js`、[CONTRACT.md](CONTRACT.md)、M1.5 `site/ui-v2/prototypes/a-full/`、当前 `site/app-v2.html`。**仅源码静态清点，不能用来证明浏览器可见性、交互性或 M3 真实覆盖。** 每个功能的落位/条件和与原型的差异在 [PLACEMENT_MAP.md](PLACEMENT_MAP.md)。
 
+## M2.5 / main 同步增量
+
+- `main` 的 `21b2318` 与 `fbbc261` 已合入工作分支（merge `1dde9b15`）。合并后的 legacy `app.html` 有 **267 个静态 ID**；较 M0 的 259 个新增 3 个 Lift-off、5 个 Diagnostics ID。详见 [CONTRACT.md](CONTRACT.md) 新增附录；205 动态类+计算模式仍是 M0 基线，尚未重新生成。
+- M2.5 配置式 Shell 的具名宿主、适配器生命周期、三个 overlay portal 和稳定 canvas host 均已编码；生产安全预览位于 `site/ui-v2/app.html`（不加载 mock）。旧 `site/app-v2.html` 仍是开发 mock 预览，出于本阶段路径限制未修改其 HTML。
+- **Lift-off**：Process Step 的 Sacrificial Layer 选择，及 Recipe 的 `liftoff` 编辑/执行语义，归 M3；当前 M2 mock 仅有类型/字段的演示，**不得宣称已实现执行、掩膜过滤、失败回滚**。
+- **Diagnostics**：属于 `panel.process.diagnostics` 具名子槽，M2 只保留区域，真实 Read-only Analyze / metrics / findings 归 M3。
+- 布局继续遵循 M1.5 的 A：Base = `panel.base` 且嵌在 Project；四个一级导航不变。所有新增外部业务信息通过 `presentation()` 与适配器而非由 Shell 直接推断。
+
 ## 阶段边界（用户 2026-10-09 确认）
 
 | 项目 | M2：只负责壳 | M3：真实功能和动态内容 |
