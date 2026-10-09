@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { canRenderPlanarCapInSinglePass } from '../transparent-pass-policy.js';
 
 const materialState = { transparent: true, opacity: 0.5 };
+const canUseSinglePass = (options) =>
+  canRenderPlanarCapInSinglePass({ transparentScene: true, ...options });
 
-test('only smooth, single-plane transparent material caps skip the redundant backface pass', () => {
+test('single-plane transparent material caps can skip the redundant backface pass', () => {
   for (const kind of ['material-exterior', 'material-interface']) {
     assert.equal(
-      canRenderPlanarCapInSinglePass({
+      canUseSinglePass({
         materialState,
         appearance: null,
         presentation: { kind, planarCap: true },
@@ -18,47 +20,52 @@ test('only smooth, single-plane transparent material caps skip the redundant bac
   }
 });
 
-test('opaque materials, sides, rough surfaces and annotations retain the original pass policy', () => {
+test('opaque scenes, sides, rough surfaces and annotations retain the two-pass policy', () => {
   const cap = { kind: 'material-interface', planarCap: true };
   assert.equal(
     canRenderPlanarCapInSinglePass({
+      transparentScene: false,
+      materialState,
+      presentation: cap,
+    }),
+    false,
+  );
+  assert.equal(
+    canUseSinglePass({
       materialState: { transparent: false },
       presentation: cap,
     }),
     false,
   );
   assert.equal(
-    canRenderPlanarCapInSinglePass({
+    canUseSinglePass({
       materialState,
       presentation: { ...cap, planarCap: false },
     }),
     false,
   );
   assert.equal(
-    canRenderPlanarCapInSinglePass({
+    canUseSinglePass({
       materialState,
       presentation: { kind: 'electrical-internal', planarCap: true },
     }),
     false,
   );
   assert.equal(
-    canRenderPlanarCapInSinglePass({
+    canUseSinglePass({
       materialState,
       presentation: { kind: 'implant-surface', planarCap: true },
     }),
     false,
   );
   assert.equal(
-    canRenderPlanarCapInSinglePass({
+    canUseSinglePass({
       materialState,
       appearance: { kind: 'rough' },
       presentation: cap,
     }),
     false,
   );
-  assert.equal(
-    canRenderPlanarCapInSinglePass({ materialState, presentation: undefined }),
-    false,
-  );
+  assert.equal(canUseSinglePass({ materialState }), false);
   assert.equal(canRenderPlanarCapInSinglePass(), false);
 });
