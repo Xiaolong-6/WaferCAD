@@ -1,7 +1,7 @@
 // Native template functions; no Shadow DOM or dependency.
 (() => {
   const { icon } = window.WaferCadV2Icons;
-  // Pure native templates first; all event binding lives in prototype.js.
+  // Plain DOM primitives shared by development and production adapters; overlay lifecycle is centralized.
   function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(attrs)) {
