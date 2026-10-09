@@ -49,7 +49,7 @@ function ringQuads(cx, cy, outer, inner, n = 24) {
     inside = circle(cx, cy, inner, n);
   return outside.map((point, i) => [point, outside[(i + 1) % n], inside[(i + 1) % n], inside[i]]);
 }
-function metaAtomPolygons(type, x, y, scale = 1) {
+export function metaAtomPolygons(type, x, y, scale = 1) {
   if (type === 'circle') return [circle(x, y, 0.125 * scale)];
   if (type === 'square') return [square(x, y, 0.115 * scale)];
   if (type === 'ring') return ringQuads(x, y, 0.157 * scale, 0.092 * scale);
