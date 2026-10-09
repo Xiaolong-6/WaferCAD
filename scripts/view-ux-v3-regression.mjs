@@ -60,14 +60,6 @@ for (const { name, viewport } of cases) {
   assert.equal(await page.locator('#sectionCanvas').getAttribute('data-scale-mode'), 'physical');
   await page.locator('#sectionScaleModeBtn').selectOption('auto');
 
-  const show = async (selector) => {
-    await page.locator(selector).evaluate((node) => {
-      if (node.tagName === 'DETAILS') node.open = true;
-      for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
-        if (ancestor.tagName === 'DETAILS') ancestor.open = true;
-      }
-    });
-  };
   const assertWithin = async (selector, panelId) => {
     const { pop, panel } = await page.locator(selector).evaluate((node, id) => {
       const r = node.getBoundingClientRect();
