@@ -231,7 +231,11 @@ export function createWorkspaceActionsController({
       details.addEventListener('toggle', () => {
         if (!details.open) return;
         for (const sibling of details.closest('.view-head')?.querySelectorAll('details') || []) {
-          if (sibling !== details) sibling.open = false;
+          // An Export submenu must keep its own More parent open. Dismissing
+          // that ancestor used to make GLB/PNG commands unreachable mid-click.
+          if (sibling !== details && !sibling.contains(details) && !details.contains(sibling)) {
+            sibling.open = false;
+          }
         }
         if (details.id === 'maskExportControl') syncMaskExportOptions();
       });
