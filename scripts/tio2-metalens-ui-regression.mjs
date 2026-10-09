@@ -12,6 +12,8 @@ import {
   observePageErrors,
   openFunctionPanel,
   waitForAppReady,
+  waitForThreeReady,
+  canvasInkFraction,
 } from './test-helpers/ui.mjs';
 
 const browser = await launchBrowser();
@@ -128,6 +130,41 @@ try {
     ]) {
       assert.deepEqual(sample(opened.model, xy), sample(project.model, xy));
     }
+    // Scientific views must actually render the reconstructed material stack.
+    // A valid data model with a blank or stale canvas is a product regression.
+    await waitForThreeReady(welcomePage, 90000);
+    await welcomePage.waitForFunction(() => {
+      const canvas = document.getElementById('sectionCanvas');
+      return Boolean(canvas && canvas.width > 100 && canvas.height > 100);
+    }, null, { timeout: 30000 });
+    const visual = await welcomePage.evaluate(() => {
+      const section = document.getElementById('sectionCanvas');
+      const three = document.querySelector('#threeHost canvas');
+      const host = document.getElementById('threeHost');
+      const panel = document.getElementById('sectionPanel');
+      return {
+        sectionWidth: section.width,
+        sectionHeight: section.height,
+        threeWidth: three?.width || 0,
+        threeHeight: three?.height || 0,
+        threeState: host?.dataset.renderState || '',
+        sectionDisplayed: panel?.getBoundingClientRect().width > 100,
+      };
+    });
+    assert.ok(visual.sectionDisplayed, 'Section panel must remain visible');
+    assert.ok(visual.sectionWidth > 100 && visual.sectionHeight > 100);
+    assert.ok(visual.threeWidth > 100 && visual.threeHeight > 100);
+    assert.equal(visual.threeState, 'ready');
+    const sectionInk = await canvasInkFraction(welcomePage, '#sectionCanvas');
+    assert.ok(sectionInk > 0.02, 'Section canvas must not be blank: ' + sectionInk);
+    await welcomePage.locator('#sectionPanel').screenshot({
+      path: 'test-results/metalens/metalens-final-section.png',
+    });
+    await welcomePage.locator('#threePanel').screenshot({
+      path: 'test-results/metalens/metalens-final-three.png',
+    });
+    await writeFile('test-results/metalens/visual-browser-report.json',
+      JSON.stringify({ pass: true, ...visual, sectionInk }, null, 2) + '\n');
     await welcomePage.screenshot({
       path: 'test-results/metalens/welcome-opened-project.png',
     });
