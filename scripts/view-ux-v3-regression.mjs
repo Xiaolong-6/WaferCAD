@@ -98,7 +98,13 @@ for (const { name, viewport } of cases) {
 
   // Border is a persistent setting and can be changed without an ON/OFF badge.
   await activateView('three');
-  await page.locator('#threePanel .three-opacity-control > summary').click();
+  // In compact workspaces Display is deliberately reparented under More.
+  // Exercise that actual navigation rather than clicking a hidden summary.
+  const threeDisplay = page.locator('#threePanel .three-opacity-control');
+  if (await threeDisplay.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))) {
+    await page.locator('#threePanel .view-more-control > summary').click();
+  }
+  await threeDisplay.locator(':scope > summary').click();
   const before = await page.locator('#threeBorders').isChecked();
   await page.locator('#threeBorderControl').click();
   assert.equal(await page.locator('#threeBorders').isChecked(), !before);
