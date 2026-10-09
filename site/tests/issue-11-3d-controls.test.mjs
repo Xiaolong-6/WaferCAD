@@ -134,7 +134,12 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /part\.type === 'cap'/);
   assert.match(threeView, /part\.z0/);
   assert.match(threeView, /part\.z1/);
-  assert.doesNotMatch(threeView, /forceSinglePass/);
+  // The original blanket ban protected mixed-depth transparent meshes from
+  // incorrect single-pass ordering. Smooth single-Z material caps now have a
+  // dedicated guarded exception; all other meshes remain two-pass.
+  assert.match(threeView, /canRenderPlanarCapInSinglePass/);
+  assert.match(threeView, /transparentScene: presentationMode\\(\\) === 'transparent'/);
+  assert.equal((threeView.match(/\\.forceSinglePass = true/g) || []).length, 1);
   assert.doesNotMatch(threeView, /opacity: 0\.18/);
   assert.doesNotMatch(threeView, /opacity: 0\.3/);
   assert.match(roughMeshGeometry, /roughProfileOffsetAtPoint\(/);
