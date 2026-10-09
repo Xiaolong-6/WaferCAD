@@ -5618,3 +5618,109 @@ summary:focus-visible {
 .recipe-run-actions #recipeStopBtn[hidden] {
   display: none !important;
 }
+
+/* Process Step form — aligns with the approved Operation/Surface and parameter hierarchy.
+   The form stays dense enough for the narrow desktop Workstation panel. */
+#manualProcessPane .process-step-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(98px, 1fr);
+  gap: 7px;
+  align-items: end;
+  min-width: 0;
+}
+#manualProcessPane .process-step-toolbar > label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  color: #5f6b77;
+  font-size: 10px;
+  font-weight: 650;
+}
+#manualProcessPane .process-step-toolbar select {
+  width: 100%;
+  min-width: 0;
+  height: 29px;
+  padding: 3px 7px;
+  border: 1px solid #bccad6;
+  border-radius: 5px;
+  background: #f8fbfd;
+  color: #293c4e;
+  font-size: 11px;
+  font-weight: 650;
+}
+#manualProcessPane .process-context {
+  margin: 0;
+}
+#manualProcessPane .process-parameter-heading {
+  margin: 8px 0 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line2);
+  color: #354858;
+  font-size: 11px;
+  line-height: 1.3;
+}
+#manualProcessPane .process-area-grid,
+#manualProcessPane .process-main-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 7px;
+  row-gap: 7px;
+  margin: 0;
+}
+#manualProcessPane :is(.process-area-grid, .process-main-grid) > .param-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  align-items: start;
+  min-width: 0;
+}
+#manualProcessPane :is(.process-area-grid, .process-main-grid) > .param-field > span:first-child {
+  grid-column: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 550;
+  line-height: 1.3;
+}
+#manualProcessPane :is(.process-area-grid, .process-main-grid) > .param-field > :is(input, select) {
+  grid-column: 1;
+  min-width: 0;
+  width: 100%;
+  height: 28px;
+  padding: 3px 6px;
+  text-align: left;
+}
+#manualProcessPane #operationAreaRow,
+#manualProcessPane :is(
+  #layerNameRow,
+  #targetLayerRow,
+  #etchTargetLayerRow,
+  #implantNameRow,
+  #electricalNameRow
+) {
+  grid-column: 1 / -1;
+}
+#manualProcessPane #growthModeRow {
+  grid-column: 1;
+}
+#manualProcessPane #operationThicknessRow {
+  grid-column: 2;
+}
+#manualProcessPane .process-main-grid:has(#growthModeRow.hidden) #operationThicknessRow {
+  grid-column: 1 / -1;
+}
+#manualProcessPane #operationThicknessRow input {
+  padding-right: 31px;
+}
+#manualProcessPane #operationThicknessRow > .field-unit {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  font-size: 9.5px;
+  pointer-events: none;
+}
+#manualProcessPane .step-recipe-record {
+  margin: 7px 0 1px;
+}
