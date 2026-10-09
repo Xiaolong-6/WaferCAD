@@ -195,11 +195,11 @@ test('view headers use shared explicit modes, Display and More controls', () => 
     const markup = html.slice(from, next === -1 ? undefined : next);
     assert.match(markup, /view-more-control/, `${id}: missing More`);
   }
-  assert.match(html, /<select id="maskSourceToggleBtn"/);
-  assert.match(html, /<select id="threeFastBtn"/);
-  assert.match(html, /<select id="sectionScaleModeBtn"/);
+  assert.match(html, /<select\b[^>]*id="maskSourceToggleBtn"/);
+  assert.match(html, /<select\b[^>]*id="threeFastBtn"/);
+  assert.match(html, /<select\b[^>]*id="sectionScaleModeBtn"/);
   assert.match(html, /id="threeBorders"[^>]*aria-label="Show 3D borders"/);
-  assert.match(html, /id="sectionCollapseAxisBtn"[^>]*>Z Break<\/button>/);
+  assert.match(html, /id="sectionCollapseAxisBtn"[^>]*>\s*Z Break\s*<\/button>/);
   assert.match(html, /id="sectionCollapseEnabled"/);
   assert.match(html, /id="sectionCollapseTopInput"/);
   assert.match(html, /id="sectionCollapseBottomInput"/);
@@ -257,7 +257,7 @@ test('3D borders are derived from owned surfaces and stay depth-tested', () => {
 
 test('Mask File Draw source is explicit and Draw feeds Process geometry', () => {
   assert.match(html, /id="maskSourceToggleBtn"/);
-  assert.match(html, />\s*File\s*<\/button>/);
+  assert.match(html, /<option value="file">File<\/option>/);
   assert.match(html, /id="drawMaskToolbar"[^>]*hidden/);
   assert.match(html, /data-draw-tool="rect"/);
   assert.match(html, /data-draw-tool="circle"/);
@@ -325,13 +325,19 @@ test('Apply runs as a single cancelable task with elapsed time and Abort', () =>
   assert.match(processTaskController, /Operation aborted/);
 });
 
-test('all view headers expose one Export menu and Mask export filters Cells Layers and ROI', () => {
-  for (const panel of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+test('all four view headers expose one More with reachable export actions and Mask filters', () => {
+  for (const [panel, exportId] of [
+    ['mainPanel', 'mainExportSvgBtn'],
+    ['maskPanel', 'maskExportSvgBtn'],
+    ['threePanel', 'threeExportModelBtn'],
+    ['sectionPanel', 'sectionExportSvgBtn'],
+  ]) {
     const start = html.indexOf(`id="${panel}"`);
     assert.ok(start >= 0);
-    const next = html.indexOf('<section', start + 20);
-    const slice = html.slice(start, next > start ? next : undefined);
-    assert.match(slice, />Export<\/summary>/);
+    const nextPanel = html.indexOf('<section class="view-panel"', start + 20);
+    const slice = html.slice(start, nextPanel > start ? nextPanel : undefined);
+    assert.match(slice, /view-more-control/);
+    assert.match(slice, new RegExp(`id="${exportId}"`));
   }
   assert.match(html, /id="maskExportCells"[^>]*multiple/);
   assert.match(html, /id="maskExportLayers"[^>]*multiple/);
