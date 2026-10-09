@@ -3,11 +3,13 @@
 // Keep DoubleSide shading, but skip Three.js's redundant second draw pass.
 // Do not apply to sidewalls, rough surfaces, annotation volumes or ROI cuts.
 export function canRenderPlanarCapInSinglePass({
+  transparentScene,
   materialState,
   appearance,
   presentation,
 } = {}) {
   return (
+    transparentScene === true &&
     materialState?.transparent === true &&
     appearance == null &&
     presentation?.planarCap === true &&
