@@ -509,25 +509,25 @@
           <div class="view-head">
             <div><strong>3D</strong><span id="threeStats"></span></div>
             <div class="view-tools three-view-tools">
-              <button
-                id="threeFastBtn"
-                class="mini-btn three-control active"
-                type="button"
-                aria-pressed="true"
-                aria-label="Fast 3D rendering"
-                title="Current mode: Fast. Click to switch to Quality."
+              <label class="view-mode-field">
+                <span class="visually-hidden">3D render quality</span>
+                <select id="threeFastBtn" class="view-mode-select three-control" aria-label="3D render quality">
+                  <option value="fast">Fast</option>
+                  <option value="quality">Quality</option>
+                </select>
+              </label>
+              <details class="three-opacity-control view-display-control">
+                <summary class="mini-btn three-control" title="3D appearance settings">Display</summary>
+                <div class="view-display-popover view-popover-surface">
+                  <strong>3D appearance</strong>
+                  <label
+                id="threeBorderControl"
+                class="mini-btn three-control three-border-toggle"
+                title="Toggle exterior 3D edge outlines"
               >
-                Fast
-              </button>
-              <details class="three-opacity-control">
-                <summary
-                  class="mini-btn three-control"
-                  aria-label="Adjust all layer transparency"
-                  title="Adjust all layer transparency"
-                >
-                  Opacity
-                </summary>
-                <div class="three-opacity-popover view-popover-surface">
+                <input id="threeBorders" type="checkbox" aria-label="Show 3D borders" />
+                <span>Border</span>
+              </label>
                   <label for="threeOpacityRange"
                     ><span>Opacity</span><output id="threeOpacityValue">100%</output></label
                   >
@@ -541,18 +541,13 @@
                   />
                 </div>
               </details>
-              <label
-                id="threeBorderControl"
-                class="mini-btn three-control three-border-toggle"
-                title="Toggle exterior 3D edge outlines"
-              >
-                <input id="threeBorders" type="checkbox" aria-label="Show 3D borders" />
-                <span>Border</span>
-              </label>
               <button id="fit3dBtn" class="mini-btn three-control" title="Fit the 3D model">
                 Fit
               </button>
-              <details class="export-control">
+              <details class="view-more-control">
+                <summary class="mini-btn three-control" title="More 3D actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <details class="export-control view-menu-export">
                 <summary class="mini-btn three-control" title="Export 3D">Export</summary>
                 <div class="export-popover three-export-popover view-popover-surface">
                   <button id="threeExportModelBtn" class="mini-btn three-control" type="button">
@@ -573,6 +568,8 @@
                     GLB uses physical metre units and exports the topology-owned 3D surfaces.
                     Rough/Pyramid relief is embedded with a bounded, camera-independent export mesh.
                   </div>
+                </div>
+              </details>
                 </div>
               </details>
               <button
@@ -1238,37 +1235,30 @@
           <div class="view-head">
             <div><strong>Section A–B</strong><span id="sectionMeta"></span></div>
             <div class="view-tools section-view-tools">
-              <button
-                id="sectionScaleModeBtn"
-                class="mini-btn active"
-                type="button"
-                aria-pressed="false"
-                title="Auto: fit X and Z independently. Click for physical 1:1 X:Z scale."
-              >
-                Auto
-              </button>
-              <button
-                id="sectionBordersBtn"
-                class="mini-btn"
-                type="button"
-                aria-pressed="false"
-                title="Show structural borders in Section A–B"
-              >
-                Border
-              </button>
-              <button
-                id="sectionDetailRoiBtn"
-                class="mini-btn"
-                type="button"
-                aria-pressed="false"
-                title="Magnify a local area of Section A–B"
-              >
-                Detail
-              </button>
-              <details class="export-control">
-                <summary class="mini-btn" title="Export Section A–B">Export</summary>
-                <div class="export-popover view-popover-surface">
-                  <button id="sectionExportSvgBtn" class="mini-btn" type="button">SVG</button>
+              <label class="view-mode-field">
+                <span class="visually-hidden">Section scale</span>
+                <select id="sectionScaleModeBtn" class="view-mode-select" aria-label="Section scale mode">
+                  <option value="auto">Auto</option>
+                  <option value="physical">1:1 X:Z</option>
+                </select>
+              </label>
+              <button id="sectionCollapseAxisBtn" class="mini-btn view-z-break" type="button"
+                aria-expanded="false" aria-controls="sectionCollapseEditor"
+                title="Edit Z-axis break settings">Z Break</button>
+              <details class="view-display-control">
+                <summary class="mini-btn" title="Section appearance settings">Display</summary>
+                <div class="view-display-popover view-popover-surface">
+                  <strong>Section appearance</strong>
+                  <button id="sectionBordersBtn" class="mini-btn view-menu-toggle" type="button"
+                    aria-pressed="false" title="Show or hide Section structural borders">Border</button>
+                </div>
+              </details>
+              <details class="view-more-control">
+                <summary class="mini-btn" title="More Section actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <button id="sectionDetailRoiBtn" class="mini-btn" type="button"
+                    aria-pressed="false" title="Draw a Section detail ROI">Detail ROI</button>
+                  <button id="sectionExportSvgBtn" class="mini-btn" type="button">Export SVG</button>
                 </div>
               </details>
               <button
@@ -1280,35 +1270,12 @@
               >
                 Max
               </button>
-              <span id="sectionRange" class="readout"></span>
             </div>
           </div>
           <div class="section-body" id="sectionBody">
             <canvas id="sectionCanvas"></canvas>
+            <span id="sectionRange" class="readout view-canvas-readout"></span>
             <div id="sectionCollapseOverlay" class="section-collapse-overlay">
-              <button
-                id="sectionCollapseAxisBtn"
-                class="section-collapse-axis-btn"
-                type="button"
-                aria-expanded="false"
-                aria-controls="sectionCollapseEditor"
-                aria-label="Adjust Z collapse"
-                title="Adjust Z collapse"
-              >
-                <svg
-                  class="section-collapse-axis-glyph"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3 7h4m4 0h10M3 17h10m4 0h4" />
-                  <circle cx="9" cy="7" r="2" />
-                  <circle cx="15" cy="17" r="2" />
-                </svg>
-              </button>
               <div
                 id="sectionCollapseEditor"
                 class="section-collapse-editor view-popover-surface"
