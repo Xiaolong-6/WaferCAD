@@ -920,6 +920,9 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
+      indexedWallVertices: host.dataset.indexedSmoothWallVertices || '0',
+      indexedWallOriginalVertices: host.dataset.indexedSmoothWallOriginalVertices || '0',
+      indexedWallTriangleCount: host.dataset.indexedSmoothWallTriangles || '0',
       v3EdgeSurvey: {
         status: host.dataset.v3EdgeSurveyStatus || 'not-measured',
         gate: host.dataset.v3EdgeSurveyGate || 'not-far',
@@ -1020,6 +1023,9 @@ export function createThreeView({
     host.dataset.transparentArrayDisplayTolerance = entry.arrayLodTolerance || '0';
     host.dataset.fullWaferTransparencyLod = String(entry.arrayLodTier !== 'exact');
     host.dataset.electricalFarLodBodyCount = entry.electricalFarLodBodyCount || '0';
+    host.dataset.indexedSmoothWallVertices = entry.indexedWallVertices || '0';
+    host.dataset.indexedSmoothWallOriginalVertices = entry.indexedWallOriginalVertices || '0';
+    host.dataset.indexedSmoothWallTriangles = entry.indexedWallTriangleCount || '0';
     host.dataset.v3ScreenBudgetMode = entry.v3SubpixelProbe?.mode || 'observe-only';
     host.dataset.v3ScreenBudgetQualified = entry.v3SubpixelProbe?.qualified || 'false';
     host.dataset.v3ScreenBudgetReason = entry.v3SubpixelProbe?.reason || 'unmeasured';
@@ -3121,6 +3127,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
+      let indexedSmoothWallVertices = 0,
+        indexedSmoothWallOriginalVertices = 0,
+        indexedSmoothWallTriangles = 0;
       for (const sidewall of plan.sidewalls) {
         await maybeYieldAssembly();
         const state = stateFor(sidewall);
@@ -3159,6 +3168,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
           smoothSidewallInstanceCount += sidewall.instanceTranslations.length;
           smoothSidewallTemplateTriangleCount +=
             (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
+          if (meshes.length && geometry.index?.count) {
+            indexedSmoothWallVertices += geometry.getAttribute('position').count;
+            indexedSmoothWallOriginalVertices += geometry.index.count;
+            indexedSmoothWallTriangles += geometry.index.count / 3;
+          }
           continue;
         }
         pushBucket(sidewalls, sidewall, state);
@@ -3261,6 +3275,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+      host.dataset.indexedSmoothWallVertices = String(indexedSmoothWallVertices);
+      host.dataset.indexedSmoothWallOriginalVertices = String(indexedSmoothWallOriginalVertices);
+      host.dataset.indexedSmoothWallTriangles = String(indexedSmoothWallTriangles);
       const rendererSidewallsAt = performance.now();
 
       host.dataset.instanceChunkLimit = presentationMode() === 'transparent' ? '256' : '4096';
