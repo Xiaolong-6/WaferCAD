@@ -251,8 +251,18 @@ export function createProcessPanelController({
     const model = getModel(),
       activeFace = getActiveFace(),
       materialExists = hasMaterial(model);
+    const missingSacrificial = liftoff && !$('liftoffTargetLayer').value;
     $('applyOperationBtn').disabled =
-      (!materialExists && !recordOnly) || Boolean(processTaskController?.isBusy());
+      (!materialExists && !recordOnly) ||
+      missingSacrificial ||
+      Boolean(processTaskController?.isBusy());
+    if (liftoff) {
+      $('liftoffTargetHint').textContent = $('liftoffTargetLayer').disabled
+        ? 'Deposit and pattern a sacrificial resist layer before Lift-off.'
+        : missingSacrificial
+          ? 'Choose the resist layer to remove. No changes are made until Apply.'
+          : 'The selected resist and its supported deposits will be removed.';
+    }
     $('applyOperationBtn').textContent = getHistoricalStepEdit()
       ? 'Save edited Step'
       : getHistoricalStepInsert()
