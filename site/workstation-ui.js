@@ -138,14 +138,12 @@ export function createWorkstationUiController({ root = document, win = window } 
   const state = {
     initialized: false,
     bound: false,
-    activeTool: 'process',
+    activeTool: 'project',
     currentSingleView: SINGLE_VIEW_MODES.has(rememberedViewMode) ? rememberedViewMode : 'main',
     desktopViewMode: preferredWorkstationViewMode(win.innerWidth, rememberedViewMode),
     viewMode: 'single',
     splitViews: rememberedSplitViews,
     wasMobile: isCompactWorkstationViewport(win),
-    programmaticToolScroll: false,
-    toolScrollRelease: 0,
     railWheelLocked: false,
   };
 
@@ -211,13 +209,16 @@ export function createWorkstationUiController({ root = document, win = window } 
       );
     }
     for (const [toolName, section] of refs.toolSections || []) {
-      section.classList.toggle('workstation-section-active', toolName === name);
+      const active = toolName === name;
+      section.classList.toggle('workstation-section-active', active);
+      section.hidden = !active;
     }
     if (refs.toolPosition) refs.toolPosition.textContent = TOOL_META[name]?.label || '';
     updateRailAnchor(name);
   }
 
   function closeTools() {
+    if (root.documentElement.classList.contains('intelligent-ui-docked')) return;
     refs.toolPanel?.classList.remove('open');
     for (const button of refs.railButtons?.values() || []) {
       button.classList.remove('active');
@@ -225,45 +226,21 @@ export function createWorkstationUiController({ root = document, win = window } 
     }
   }
 
-  function syncToolScrollTail() {
-    if (!refs.toolScrollTail || !refs.toolContent) return;
-    refs.toolScrollTail.style.height = `${Math.max(0, refs.toolContent.clientHeight - 72)}px`;
-  }
-
-  function scrollToTool(name, behavior = 'smooth') {
-    const section = refs.toolSections?.get(name);
-    const scroller = refs.toolContent;
-    if (!section || !scroller) return;
-
-    syncToolScrollTail();
-    const sectionTop =
-      scroller.scrollTop +
-      section.getBoundingClientRect().top -
-      scroller.getBoundingClientRect().top;
-    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-    const targetTop = Math.max(0, Math.min(maxTop, sectionTop - 6));
-    state.programmaticToolScroll = true;
-    win.clearTimeout(state.toolScrollRelease);
-    scroller.scrollTo({ top: targetTop, behavior });
-    state.toolScrollRelease = win.setTimeout(
-      () => {
-        state.programmaticToolScroll = false;
-        setActiveRail(name);
-      },
-      behavior === 'smooth' ? 340 : 40,
-    );
-  }
-
   function openTool(name, { toggle = false, behavior = 'smooth' } = {}) {
     const same = state.activeTool === name;
-    if (toggle && same && refs.toolPanel.classList.contains('open')) {
+    if (
+      toggle &&
+      same &&
+      refs.toolPanel.classList.contains('open') &&
+      !root.documentElement.classList.contains('intelligent-ui-docked')
+    ) {
       closeTools();
       return;
     }
     refs.toolPanel.classList.add('open');
     setActiveRail(name);
     win.requestAnimationFrame(() => updateRailAnchor(name));
-    scrollToTool(name, behavior);
+    refs.toolContent.scrollTop = 0;
   }
 
   function scheduleViewportRefresh() {
@@ -564,15 +541,8 @@ export function createWorkstationUiController({ root = document, win = window } 
       refs.toolSections.set(name, section);
     }
 
-    const scrollTail = root.createElement('div');
-    scrollTail.className = 'workstation-tool-scroll-tail';
-    scrollTail.setAttribute('aria-hidden', 'true');
-    refs.toolContent.append(scrollTail);
-    refs.toolScrollTail = scrollTail;
-    syncToolScrollTail();
-
     refs.toolPanel.classList.remove('open');
-    refs.toolPosition.textContent = TOOL_META[state.activeTool].label;
+    setActiveRail(state.activeTool);
   }
 
   function setupSectionDock() {
@@ -692,36 +662,6 @@ export function createWorkstationUiController({ root = document, win = window } 
       { passive: false },
     );
 
-    let scrollFrame = 0;
-    refs.toolContent.addEventListener('scroll', () => {
-      if (state.programmaticToolScroll || scrollFrame) return;
-      scrollFrame = win.requestAnimationFrame(() => {
-        const atBottom =
-          refs.toolContent.scrollTop + refs.toolContent.clientHeight >=
-          refs.toolContent.scrollHeight - 2;
-        if (atBottom) {
-          setActiveRail(WORKSTATION_TOOL_ORDER.at(-1));
-          scrollFrame = 0;
-          return;
-        }
-
-        const referenceTop = refs.toolContent.getBoundingClientRect().top + 14;
-        let bestName = state.activeTool;
-        let bestDistance = Number.POSITIVE_INFINITY;
-
-        for (const [name, section] of refs.toolSections) {
-          const distance = Math.abs(section.getBoundingClientRect().top - referenceTop);
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestName = name;
-          }
-        }
-
-        setActiveRail(bestName);
-        scrollFrame = 0;
-      });
-    });
-
     win.addEventListener('resize', () => {
       const mobile = syncCompactUi();
       if (mobile !== state.wasMobile) {
@@ -735,7 +675,6 @@ export function createWorkstationUiController({ root = document, win = window } 
         }
         scheduleViewportRefresh();
       }
-      syncToolScrollTail();
       updateRailAnchor(state.activeTool);
     });
 
