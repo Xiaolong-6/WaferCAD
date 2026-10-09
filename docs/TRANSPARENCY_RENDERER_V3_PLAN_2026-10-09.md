@@ -349,6 +349,44 @@ and Recipe replay on the integrated latest-main commit. If vertex reuse does
 not materially improve completed-frame cost, retain only the benchmark result
 or revert the experiment rather than presenting it as an achieved speedup.
 
+## Phase B.0 empirical gate — indexed wall trial did not demonstrate a speedup
+
+The integrated latest-main head `ba6654bbbc1c7dfe100219829773f835f290cfa8`
+passed Quality, Chromium, complete 625-site renderer (including 20
+presentation toggles), edge-on exact restoration, Native Fig3 and all Recipe
+Run All with the trial enabled. Browser CI:
+https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933615621.
+
+| Measurement | Phase A.4 unindexed baseline | Indexed Phase B.0 trial |
+| --- | ---: | ---: |
+| Fast submitted triangles | 16,906,262 | 16,906,262 |
+| Fast completed stage | 8.33 s | 12.55 s |
+| Fast completed frame | 172.1 ms | 255.5 ms |
+| Fast scene assembly | 486.9 ms | 828.6 ms |
+| Quality transparent cold | 24.37 s | 34.30 s |
+
+Both trials were on separate CI runs: their timing differences are affected
+by runner/WebGL and workstation variance, and cannot prove a causal
+indexing slowdown. **No meaningful speedup was established.** Indexed
+smooth template walls encoded 2,200 retained triangles with 4,400 unique
+vertices instead of 6,600; this is a 33.3% local vertex count reduction
+but a small fraction of the total 16.9M Fast submitted triangles. Quality
+remained unindexed by construction.
+
+The same-size screenshots (`fast-transparent-lod.png`, `quality.png`,
+`transparent.png`) were pixel-identical throughout the actual 3D render
+region. Their only differing pixels (102) were a 19 × 6 status text region
+at x1216..1234 and y948..953. No visual baselines were updated.
+
+**Decision:** Do not expose the trial to ordinary users. The opt-in is now
+`?rendererV3IndexedWalls=1`; full renderer benchmarks additionally use
+`rendererV3Diagnostics=1`. In normal interactive use both expensive probes
+and the unproven indexed geometry are off. Keep the original scientific
+Fast, Quality, rough, annotation, and GLB paths intact. The next actual
+optimization must come from measured GPU transparency/overdraw, not an
+unsupported claim that 33% local vertex count implies frame improvement.
+PR #166 remains Draft and is not authorized for merge.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
