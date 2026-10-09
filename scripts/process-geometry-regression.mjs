@@ -1068,14 +1068,21 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
  
  // Recipe Run All must rebuild the geometry with a captured Draw Mask, then
  // produce the same Cr-on-base opening pattern after a clean-Base rebuild.
+ const liftRecipeContext = await newUiContext(browser, { acceptDownloads: true });
+ const liftRecipePage = await liftRecipeContext.newPage();
+ const liftRecipeErrors = observePageErrors(liftRecipePage);
+ await liftRecipePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+   waitUntil: 'networkidle', timeout: 30000,
+ });
+ await waitForAppReady(liftRecipePage);
  const recipeBaseModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
- await loadProject(page,
+ await loadProject(liftRecipePage,
    projectForBenchmark({ model: recipeBaseModel, section: { a: [-9, 0], b: [9, 0] } }),
    'liftoff-PMMA-Cr-recipe',
  );
- await openFunctionPanel(page, 'process');
- await page.locator('[data-process-input-mode="recipe"]').click();
- await page.locator('#recipeCodeTab').click();
+ await openFunctionPanel(liftRecipePage, 'process');
+ await liftRecipePage.locator('[data-process-input-mode="recipe"]').click();
+ await liftRecipePage.locator('#recipeCodeTab').click();
  const mask = {
    source: 'draw',
    drawMask: {
@@ -1093,24 +1100,24 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
    'deposit({ material: "Cr", thickness: "30 nm", area: "full" });',
    'liftoff({ sacrificial: "PMMA", area: "full", face: "front" });',
  ].join('\n');
- await page.locator('#recipeCodeEditor').fill(liftSource);
- await page.locator('#recipeApplyCodeBtn').click();
- assert.match(await page.locator('#statusText').textContent(), /Recipe code applied/);
- await page.locator('#recipeRunAllBtn').click();
+ await liftRecipePage.locator('#recipeCodeEditor').fill(liftSource);
+ await liftRecipePage.locator('#recipeApplyCodeBtn').click();
+ assert.match(await liftRecipePage.locator('#statusText').textContent(), /Recipe code applied/);
+ await liftRecipePage.locator('#recipeRunAllBtn').click();
  try {
-   await page.waitForFunction(
+   await liftRecipePage.waitForFunction(
      () => /Recipe completed: 4\/4 steps committed|Recipe failed at Step|Recipe stopped after/.test(
        document.getElementById('statusText')?.textContent || '',
      ),
      null, { timeout: 30000 },
    );
  } catch (error) {
-   const status = await page.locator('#statusText').textContent();
-   const confirm = await page.locator('#confirmationDialogMessage').textContent();
+   const status = await liftRecipePage.locator('#statusText').textContent();
+   const confirm = await liftRecipePage.locator('#confirmationDialogMessage').textContent();
    throw new Error(`Lift-off Recipe stalled: status=${status}; confirmation=${confirm}; ${error.message}`);
  }
- assert.match(await page.locator('#statusText').textContent(), /Recipe completed: 4\/4 steps committed/);
- const liftReplay = await exportCurrentProject(page);
+ assert.match(await liftRecipePage.locator('#statusText').textContent(), /Recipe completed: 4\/4 steps committed/);
+ const liftReplay = await exportCurrentProject(liftRecipePage);
  const recipeCrId = liftReplay.model.layers.find((layer) => layer.name === 'Cr')?.id;
  const recipePmmaId = liftReplay.model.layers.find((layer) => layer.name === 'PMMA')?.id;
  assert.ok(recipeCrId);
@@ -1121,6 +1128,8 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
  assert.ok(liftReplay.model.regions.every((region) =>
    region.stack.every((segment) => segment.layerId !== recipePmmaId)));
  assert.equal(liftReplay.processRecipe.steps.at(-1).command, 'liftoff');
+ assert.deepEqual(liftRecipeErrors, []);
+ await liftRecipeContext.close();
  
 assert.deepEqual(errors, []);
 await context.close();
