@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { expandProjectStorage } from '../site/project-io.js';
+import { parseLayoutFile } from '../site/layout-io.js';
 import {
   loadGeometryKernel,
   processBenchmark,
@@ -1204,6 +1205,40 @@ const physicalHistory = (project) => ({
   ),
 });
 assert.deepEqual(physicalHistory(restoredLift), physicalHistory(liftReplay));
+
+// Export an independent Draw Mask containing a true annular hole. Verify that
+// the GDS file can be parsed and the hole has not been filled by fracturing.
+const annulusProject = {
+  ...restoredLift,
+  maskSourceMode: 'draw',
+  drawMask: {
+    nextShapeId: 2,
+    shapes: [{
+      id: 'shape-1', type: 'ring', c: [0, 0], innerR: 1, outerR: 2,
+    }],
+  },
+};
+await loadProject(liftRecipePage, annulusProject, 'liftoff-annular-mask-export');
+await liftRecipePage.locator('#maskPanel .view-more-control > summary').click();
+await liftRecipePage.locator('#maskExportControl > summary').click();
+const [maskGdsDownload] = await Promise.all([
+  liftRecipePage.waitForEvent('download', { timeout: 30000 }),
+  liftRecipePage.locator('#maskExportGdsBtn').click(),
+]);
+const gdsBuffer = await readFile(await maskGdsDownload.path());
+const gdsArrayBuffer = gdsBuffer.buffer.slice(
+  gdsBuffer.byteOffset, gdsBuffer.byteOffset + gdsBuffer.byteLength,
+);
+const exportedMask = await parseLayoutFile(gdsArrayBuffer, 'wafercad-mask.gds');
+const polygons = exportedMask.layout.elements.filter((element) => element.kind === 'polygon');
+assert.ok(polygons.length > 0, 'annular Mask must produce GDS polygons');
+const includesMaskPoint = (x, y) => polygons.some(({ points }) => {
+  if (!points || points.length < 3) return false;
+  return pointInMulti([x, y], [[ [...points, points[0]] ]]);
+});
+assert.equal(includesMaskPoint(0, 0), false, 'annular hole must survive GDS export');
+assert.equal(includesMaskPoint(1.5, 0), true, 'annular wall must survive GDS export');
+assert.equal(includesMaskPoint(2.5, 0), false, 'GDS must not add exterior material');
 assert.deepEqual(liftRecipeErrors, []);
 await liftRecipeContext.close();
 
