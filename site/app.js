@@ -641,7 +641,12 @@ function applyImportedLayout(imported, displayName) {
   );
 }
 
-async function importLayoutBuffer(arrayBuffer, filename, displayName = filename) {
+async function importLayoutBuffer(
+  arrayBuffer,
+  filename,
+  displayName = filename,
+  { startupProtected = false } = {},
+) {
   let imported;
   if (processTaskController) {
     const task = await processTaskController.runWorker(
@@ -661,7 +666,11 @@ async function importLayoutBuffer(arrayBuffer, filename, displayName = filename)
   } else {
     imported = await parseLayoutFile(arrayBuffer, filename);
   }
-  await checkpointWorkspace('pre-import-layout');
+  // Welcome startup already protects the previous autosave before importing.
+  // All other Mask imports must abort on a failed/unavailable checkpoint.
+  if (!startupProtected && !(await checkpointWorkspace('pre-import-layout'))) {
+    throw new Error('Recovery checkpoint was not created. The current mask was left unchanged.');
+  }
   applyImportedLayout(imported, displayName);
   return imported;
 }
@@ -1403,7 +1412,8 @@ const { initializeWorkspaceStart } = createStartupController({
   takeStartupFile,
   openLayoutFile,
   openProjectFile,
-  openBundledExample: (id) => openBundledExample(id, { preview: EMBEDDED_PREVIEW }),
+  openBundledExample: (id, options = {}) =>
+    openBundledExample(id, { ...options, preview: EMBEDDED_PREVIEW }),
   status,
 });
 
