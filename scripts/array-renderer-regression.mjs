@@ -132,24 +132,43 @@ try {
     await page.mouse.down();
     await page.mouse.move(cx, cy - 24, { steps: 4 });
     await page.mouse.up();
-    await page.waitForFunction(
-      () => document.getElementById('threeHost')?.dataset.transparentArrayLodTier === 'exact',
-      null,
-      { timeout: 120000 },
+    // The software-WebGL runner can spend minutes rasterizing a full 625-site
+    // exact transparent edge-on frame. Capture the completed frame and trigger
+    // Fit *atomically in the same browser task*; a second Playwright evaluate
+    // otherwise waits behind continuous transparent compositor work.
+    const edgeHandle = await page.waitForFunction(
+      (previous) => {
+        const host = document.getElementById('threeHost');
+        if (
+          host?.dataset.transparentArrayLodTier !== 'exact' ||
+          host.dataset.renderState !== 'ready' ||
+          Number(host.dataset.rendererFrameSerial || 0) <= previous
+        ) return false;
+        const edgeSnapshot = { ...host.dataset };
+        document.getElementById('fit3dBtn')?.click();
+        return JSON.stringify(edgeSnapshot);
+      },
+      beforeEdgeFrame,
+      { timeout: 240000 },
     );
-    await waitStage('fast-lod-edge-on-restores-walls', 120000, beforeEdgeFrame);
-    const edgeOn = await snapshot();
+    const edgeOn = JSON.parse(await edgeHandle.jsonValue());
     assert.equal(edgeOn.transparentArrayLodTier, 'exact');
     assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
     assert.equal(edgeOn.processRevision, distant.processRevision);
-    await page.screenshot({ path: fileURLToPath(new URL('fast-transparent-edge-on.png', output)) });
+    assert.ok(Number(edgeOn.rendererFrameSerial) > beforeEdgeFrame);
+    console.log('ARRAY_RENDERER_EDGE_EXACT', JSON.stringify({
+      tier: edgeOn.transparentArrayLodTier,
+      frameSerial: edgeOn.rendererFrameSerial,
+      sceneGeneration: edgeOn.sceneGeneration,
+      electricalFarLodBodyCount: edgeOn.electricalFarLodBodyCount,
+    }));
 
-    await page.locator('#fit3dBtn').click();
     await page.waitForFunction(
       () => /^far-/.test(document.getElementById('threeHost')?.dataset.transparentArrayLodTier || ''),
       null,
       { timeout: 120000 },
     );
+    await waitForThreeReady(page, 120000);
     const restoredFar = await snapshot();
     assert.equal(restoredFar.processRevision, distant.processRevision);
     assert.equal(restoredFar.arrayInstances, distant.arrayInstances);
