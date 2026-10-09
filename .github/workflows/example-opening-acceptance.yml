@@ -42,7 +42,18 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Serve WaferCAD
         run: |
-          python3 -m http.server 4173 --directory site > /tmp/wafercad-example-open.log 2>&1 &
+          python3 -u -c '
+          import http.server
+          from functools import partial
+          class Cacheable(http.server.SimpleHTTPRequestHandler):
+              def end_headers(self):
+                  if self.path.partition("?")[0].endswith(".wafercad"):
+                      self.send_header("Cache-Control", "public, max-age=600")
+                  super().end_headers()
+          http.server.ThreadingHTTPServer(
+              ("127.0.0.1", 4173), partial(Cacheable, directory="site")
+          ).serve_forever()
+          ' > /tmp/wafercad-example-open.log 2>&1 &
           for i in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
               exit 0
