@@ -198,7 +198,7 @@ test('view headers use shared explicit modes, Display and More controls', () => 
   assert.match(html, /id="sectionCollapseBottomInput"/);
   assert.doesNotMatch(html, /sectionCollapseMinus|sectionCollapsePlus|sectionCollapseStep/);
   assert.doesNotMatch(html, /three-border-status/);
-  assert.match(workspaceActions, /button\.value = fast \? 'fast' : 'quality'/);
+  assert.match(workspaceActions, /select\.value = fast \? 'fast' : 'quality'/);
   assert.match(planRenderers, /scaleButton\.value = sectionScaleMode/);
 });
 
