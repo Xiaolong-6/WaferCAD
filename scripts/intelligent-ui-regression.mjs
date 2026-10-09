@@ -58,6 +58,7 @@ try {
       await input.fill('Mask view');
       await input.press('Enter');
       assert.equal(await page.locator('#maskPanel').isVisible(), true, 'command switches live view');
+      assert.equal(await page.locator('#mainPanel').isVisible(), false, 'Mask view command must not select Overview');
 
       await page.keyboard.press('Control+k');
       await palette.waitFor({ state: 'visible' });
