@@ -245,6 +245,7 @@ html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel
 
 html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel) .view-head .mini-btn.active,
 html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel) .view-head .mini-btn[aria-pressed='true'],
+html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel) .view-head .three-border-toggle:has(input:checked),
 html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel) .view-head details[open] > summary {
   border-color: #69b1ce;
   background: #315c78;
