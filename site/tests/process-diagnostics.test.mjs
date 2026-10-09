@@ -87,6 +87,42 @@ test('Touching XY partitions do not raise false material overlap', () => {
   assert.equal(report.totalVolumeUm3, 4000);
 });
 
+test('Genuine through-void XY opening is recorded without calling it defective', () => {
+  const model = rectBase();
+  model.regions = [
+    { id: 'left', geom: rectMulti(8, 20, -6, 0), stack: [{ layerId: 'base', z0: -5, z1: 5 }] },
+    { id: 'right', geom: rectMulti(8, 20, 6, 0), stack: [{ layerId: 'base', z0: -5, z1: 5 }] },
+  ];
+  const report = analyzeProcessGeometry(model);
+  assert.equal(report.voidCount, 1);
+  assert.equal(report.crackCount, 0);
+  assert.equal(report.warnings, 0);
+  assert.ok(report.findings.some((f) => f.code === 'xy-through-void' && f.severity === 'info'));
+});
+
+test('Narrow uncovered XY slit is classified as a possible numerical crack', () => {
+  const model = rectBase();
+  const width = 0.00005;
+  const half = 10 - width / 2;
+  model.regions = [
+    {
+      id: 'left',
+      geom: rectMulti(half, 20, -5 - width / 4, 0),
+      stack: [{ layerId: 'base', z0: -5, z1: 5 }],
+    },
+    {
+      id: 'right',
+      geom: rectMulti(half, 20, 5 + width / 4, 0),
+      stack: [{ layerId: 'base', z0: -5, z1: 5 }],
+    },
+  ];
+  const report = analyzeProcessGeometry(model);
+  assert.equal(report.checks.xyVoidClassification, true);
+  assert.equal(report.crackCount, 1);
+  assert.ok(report.warnings > 0);
+  assert.ok(report.findings.some((f) => f.code === 'xy-numerical-crack'));
+});
+
 test('Array measurements count every instance but disclose seam scan limitation', () => {
   const template = rectBase();
   const model = {
