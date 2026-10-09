@@ -218,7 +218,9 @@ export function createWorkstationUiController({ root = document, win = window } 
   }
 
   function closeTools() {
-    if (root.documentElement.classList.contains('intelligent-ui-docked')) return;
+    if (root.documentElement.classList.contains('intelligent-ui-docked')) {
+      root.documentElement.classList.add('intelligent-inspector-collapsed');
+    }
     refs.toolPanel?.classList.remove('open');
     for (const button of refs.railButtons?.values() || []) {
       button.classList.remove('active');
@@ -228,15 +230,11 @@ export function createWorkstationUiController({ root = document, win = window } 
 
   function openTool(name, { toggle = false } = {}) {
     const same = state.activeTool === name;
-    if (
-      toggle &&
-      same &&
-      refs.toolPanel.classList.contains('open') &&
-      !root.documentElement.classList.contains('intelligent-ui-docked')
-    ) {
+    if (toggle && same && refs.toolPanel.classList.contains('open')) {
       closeTools();
       return;
     }
+    root.documentElement.classList.remove('intelligent-inspector-collapsed');
     refs.toolPanel.classList.add('open');
     setActiveRail(name);
     win.requestAnimationFrame(() => updateRailAnchor(name));
