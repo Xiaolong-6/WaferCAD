@@ -23,6 +23,8 @@ function sampleBox(geom, dx = 0, dy = 0) {
 }
 
 function addFinding(state, finding, copies = 1) {
+  if (finding.severity === 'error') state.errorOccurrences += copies;
+  if (finding.severity === 'warning') state.warningOccurrences += copies;
   const key = JSON.stringify([
     finding.code,
     finding.layerId || '',
@@ -190,6 +192,8 @@ export function analyzeProcessGeometry(model) {
     findings: [],
     findingsTotal: 0,
     omittedFindings: 0,
+    errorOccurrences: 0,
+    warningOccurrences: 0,
     regionCount: 0,
     gapCount: 0,
     gapVolumeUm3: 0,
@@ -224,10 +228,8 @@ export function analyzeProcessGeometry(model) {
   } else analyzePart(state, model);
 
   const layers = [...state.layerTotals.values()].sort((a, b) => b.volumeUm3 - a.volumeUm3);
-  const errors = state.findings.filter((item) => item.severity === 'error')
-    .reduce((sum, item) => sum + item.occurrences, 0);
-  const warnings = state.findings.filter((item) => item.severity === 'warning')
-    .reduce((sum, item) => sum + item.occurrences, 0);
+  const errors = state.errorOccurrences;
+  const warnings = state.warningOccurrences;
   return {
     modelRevision: model.revision,
     processRevision: model.processRevision,
