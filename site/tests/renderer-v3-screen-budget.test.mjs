@@ -26,6 +26,7 @@ test('observe-only far camera budget records only smooth buried subpixel wall in
   assert.deepEqual(owner, before, 'canonical owner and physical Z may never be mutated');
   assert.equal(result.mode, 'observe-only');
   assert.equal(result.qualified, true);
+  assert.equal(result.exclusionReason, null);
   assert.equal(result.candidates, 1);
   assert.equal(result.instanceWallSegments, 625);
   assert.equal(result.rawTwoPassTriangleEstimate, 2500);
@@ -43,6 +44,9 @@ test('ROI, collapse, edge-on, near, invalid camera or excessive error budgets fa
     { viewZFraction: 1.01 },
     { unitsPerPixel: 0 },
     { unitsPerPixel: Infinity },
+    { displayZScale: 0 },
+    { displayZScale: NaN },
+    { displayZScale: Infinity },
     { maxPixelSpan: 0.51 },
     { maxPixelSpan: -1 },
   ]) {
@@ -53,6 +57,7 @@ test('ROI, collapse, edge-on, near, invalid camera or excessive error budgets fa
     assert.equal(result.qualified, false, JSON.stringify(overrides));
     assert.equal(result.candidates, 0);
     assert.equal(result.skippedTriangles, 0);
+    assert.ok(result.exclusionReason, 'rejected probes identify the fail-closed gate');
   }
 });
 
@@ -92,4 +97,35 @@ test('thickness must be bounded in physical units; oblique camera cannot hide a 
   );
   assert.equal(r.candidates, 0);
   assert.equal(r.rawTwoPassTriangleEstimate, 0);
+});
+
+
+test('render Z exaggeration forbids treating a visibly large thin film as subpixel', () => {
+  const physicallyThin = [smoothInterior({ parts: [
+    { p: [0, 0], q: [1, 0], z0: 0, z1: 0.02 },
+  ] })];
+  const physicalOnly = buriedInterfaceSubpixelBudget(physicallyThin, {
+    ...farOptions,
+    unitsPerPixel: 2.56,
+    displayZScale: 1,
+  });
+  assert.equal(physicalOnly.candidates, 1);
+  const visuallyExaggerated = buriedInterfaceSubpixelBudget(physicallyThin, {
+    ...farOptions,
+    unitsPerPixel: 2.56,
+    displayZScale: 23196.347,
+  });
+  assert.equal(visuallyExaggerated.qualified, true);
+  assert.equal(visuallyExaggerated.candidates, 0);
+  assert.equal(visuallyExaggerated.skippedTriangles, 0);
+});
+
+test('active Z-collapse reason is explicit even if the camera has a far LOD tier', () => {
+  const r = buriedInterfaceSubpixelBudget([smoothInterior()], {
+    ...farOptions,
+    zCollapsed: true,
+  });
+  assert.equal(r.qualified, false);
+  assert.equal(r.exclusionReason, 'z-collapse');
+  assert.equal(r.candidates, 0);
 });
