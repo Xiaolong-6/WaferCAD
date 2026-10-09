@@ -508,9 +508,9 @@
           ),
           button('Apply · simulate', 'apply', 'play', {
             primary: true,
-            disabled: Boolean(state.task) || (state.thickness != null && state.thickness <= 0),
+            disabled: Boolean(state.task) || (state.operation !== 'liftoff' && state.thickness != null && state.thickness <= 0),
           }),
-          state.thickness != null && state.thickness <= 0
+          state.operation !== 'liftoff' && state.thickness != null && state.thickness <= 0
             ? notice('Enter a positive thickness / depth before Apply.', 'error')
             : null,
           el(
