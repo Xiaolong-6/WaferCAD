@@ -959,9 +959,10 @@ await guardPage.locator('#openProjectInput').setInputFiles({
 });
 await chooseConfirmation(guardPage);
 await guardPage.waitForFunction(
-  () => /Open failed: Recovery checkpoint was not created/.test(
-    document.getElementById('statusText')?.textContent || '',
-  ),
+  () =>
+    /Open failed: Recovery checkpoint was not created/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 60000 },
 );
@@ -971,9 +972,10 @@ await guardPage.locator('#gdsInput').setInputFiles({
   buffer: welcomeLayoutBuffer,
 });
 await guardPage.waitForFunction(
-  () => /Layout import failed: Recovery checkpoint was not created/.test(
-    document.getElementById('statusText')?.textContent || '',
-  ),
+  () =>
+    /Layout import failed: Recovery checkpoint was not created/.test(
+      document.getElementById('statusText')?.textContent || '',
+    ),
   null,
   { timeout: 60000 },
 );
@@ -993,7 +995,8 @@ await guardPage.waitForFunction(
 await guardPage.reload();
 await waitForAppReady(guardPage);
 await guardPage.waitForFunction(
-  () => document.getElementById('projectNameInput')?.value ===
+  () =>
+    document.getElementById('projectNameInput')?.value ===
     'Pending work survives failed checkpoint',
   null,
   { timeout: 30000 },
