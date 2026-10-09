@@ -67,7 +67,7 @@ export function createProcessRecipeController({
     running = false,
     stopRequested = false,
     bound = false,
-    recordManual = true,
+    recordManual = false,
     undoStack = [],
     redoStack = [],
     codeDraftDirty = false,
