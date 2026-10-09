@@ -72,7 +72,7 @@ try {
 
   // Contract 4: One representative process operation completes through the real UI.
   await openFunctionPanel(page, 'process');
-  await page.locator('#geometryDiagnosticsPanel > summary').click();
+  await page.locator('[data-process-input-mode="diagnostics"]').click();
   assert.equal(await page.locator('#diagnosticsAnalyzeBtn').isVisible(), true);
   await page.locator('#diagnosticsAnalyzeBtn').click();
   await page.waitForFunction(
@@ -82,6 +82,8 @@ try {
   );
   assert.match(await page.locator('#diagnosticsResults').textContent(), /Material volume/);
   assert.match(await page.locator('#diagnosticsResults').textContent(), /Base/);
+  await page.locator('[data-process-input-mode="manual"]').click();
+  assert.equal(await page.locator('#geometryDiagnosticsPanel').isHidden(), true);
   await page.locator('#operationType').selectOption('add');
   await page.locator('#operationArea').selectOption('full');
   await page.locator('#growthMode').selectOption('direct');
@@ -97,6 +99,7 @@ try {
       .locator('#layerLegend .legend-name')
       .evaluateAll((inputs) => inputs.some((input) => input.value === 'Smoke layer')),
   );
+  await page.locator('[data-process-input-mode="diagnostics"]').click();
   assert.match(await page.locator('#diagnosticsStatus').textContent(), /out of date/);
   await page.locator('#diagnosticsAnalyzeBtn').click();
   await page.waitForFunction(
@@ -110,10 +113,10 @@ try {
   // Contract 4b: expanded Diagnostics stays usable through Step/Recipe switching
   // and at compact workstation widths. Capture what the actual browser renders.
   await page.locator('[data-process-input-mode="recipe"]').click();
-  assert.equal(await page.locator('#geometryDiagnosticsPanel').isVisible(), true);
+  assert.equal(await page.locator('#geometryDiagnosticsPanel').isHidden(), true);
+  await page.locator('[data-process-input-mode="diagnostics"]').click();
   assert.equal(await page.locator('#diagnosticsAnalyzeBtn').isVisible(), true);
-  await page.locator('[data-process-input-mode="manual"]').click();
-  assert.equal(await page.locator('#geometryDiagnosticsPanel').isVisible(), true);
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Smoke layer/);
   const reviewDir = 'test-results/product-review';
   await mkdir(reviewDir, { recursive: true });
   const assertDiagnosticsFit = async () => {
@@ -136,15 +139,16 @@ try {
     assert.equal(fit.horizontalResultOverflow, false, 'Diagnostics findings must wrap without horizontal overflow');
   };
   await assertDiagnosticsFit();
-  await page.locator('#geometryDiagnosticsPanel > summary').scrollIntoViewIfNeeded();
+  await page.locator('#geometryDiagnosticsPanel .diagnostics-heading').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${reviewDir}/diagnostics-desktop.png` });
   await page.setViewportSize({ width: 1024, height: 768 });
   await openFunctionPanel(page, 'process');
   await assertDiagnosticsFit();
-  await page.locator('#geometryDiagnosticsPanel > summary').scrollIntoViewIfNeeded();
+  await page.locator('#geometryDiagnosticsPanel .diagnostics-heading').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${reviewDir}/diagnostics-compact.png` });
   await page.setViewportSize({ width: 1365, height: 900 });
   await openFunctionPanel(page, 'process');
+  await page.locator('[data-process-input-mode="manual"]').click();
 
   // Contract 5: Autosave/reload keeps the successful process result.
   await page.waitForFunction(
