@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import {
   assertNoPageErrors,
   gotoWelcome,
@@ -106,6 +106,45 @@ try {
   );
   assert.match(await page.locator('#diagnosticsResults').textContent(), /Smoke layer/);
   assert.equal(await page.locator('#diagnosticsResults').isVisible(), true);
+
+  // Contract 4b: expanded Diagnostics stays usable through Step/Recipe switching
+  // and at compact workstation widths. Capture what the actual browser renders.
+  await page.locator('[data-process-input-mode="recipe"]').click();
+  assert.equal(await page.locator('#geometryDiagnosticsPanel').isVisible(), true);
+  assert.equal(await page.locator('#diagnosticsAnalyzeBtn').isVisible(), true);
+  await page.locator('[data-process-input-mode="manual"]').click();
+  assert.equal(await page.locator('#geometryDiagnosticsPanel').isVisible(), true);
+  const reviewDir = 'test-results/product-review';
+  await mkdir(reviewDir, { recursive: true });
+  const assertDiagnosticsFit = async () => {
+    const fit = await page.locator('#geometryDiagnosticsPanel').evaluate((element) => {
+      const content = element.querySelector('.diagnostics-content');
+      const report = element.querySelector('#diagnosticsResults');
+      const panel = document.querySelector('#toolPanel');
+      const rect = element.getBoundingClientRect();
+      const flyout = panel.getBoundingClientRect();
+      return {
+        panelWidth: rect.width,
+        isWithinFlyout: rect.left >= flyout.left - 2 && rect.right <= flyout.right + 2,
+        horizontalContentOverflow: content.scrollWidth > content.clientWidth + 2,
+        horizontalResultOverflow: report.scrollWidth > report.clientWidth + 2,
+      };
+    });
+    assert.ok(fit.panelWidth > 180, 'Diagnostics panel must remain usable');
+    assert.equal(fit.isWithinFlyout, true, 'Diagnostics must stay inside Process flyout');
+    assert.equal(fit.horizontalContentOverflow, false, 'Diagnostics content must not overflow in X');
+    assert.equal(fit.horizontalResultOverflow, false, 'Diagnostics findings must wrap without horizontal overflow');
+  };
+  await assertDiagnosticsFit();
+  await page.locator('#geometryDiagnosticsPanel > summary').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${reviewDir}/diagnostics-desktop.png` });
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openFunctionPanel(page, 'process');
+  await assertDiagnosticsFit();
+  await page.locator('#geometryDiagnosticsPanel > summary').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${reviewDir}/diagnostics-compact.png` });
+  await page.setViewportSize({ width: 1365, height: 900 });
+  await openFunctionPanel(page, 'process');
 
   // Contract 5: Autosave/reload keeps the successful process result.
   await page.waitForFunction(
