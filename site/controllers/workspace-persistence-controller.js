@@ -816,6 +816,14 @@ export function createWorkspacePersistenceController({
       resumePendingAutosave();
       return false;
     }
+    // Packing the Recovery payload and committing it to IndexedDB are async.
+    // Another tab may take over during that interval. A completed checkpoint
+    // is not permission to replace this tab's live model after lease loss.
+    if (!hasWriteAccess()) {
+      syncSaveStatus();
+      status('Recovery checkpoint completed after this tab lost autosave ownership. Workspace replacement cancelled.', 'warning');
+      return false;
+    }
     return true;
   }
 
