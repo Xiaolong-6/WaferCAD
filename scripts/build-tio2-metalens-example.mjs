@@ -19,7 +19,7 @@ export const DIAMETER_UM = 30;
 export const PAPER_SITES = 4725;
 export const FIXED_DATE = '2026-10-09T10:00:00.000Z';
 export const LOCAL_FIELD_UM = 5;
-const BASE = { shape: 'rect', width: 5, height: 5, thickness: 2, material: 'ITO-coated glass substrate' };
+const BASE = { shape: 'rect', width: 5, height: 5, thickness: 2, material: 'Glass (2um illustration)' };
 const SCALE_NOTE = 'Local 5 x 5 um four-meta-atom demonstration; sizes and placement illustrative, NOT author mask';
 const names = ['circle', 'square', 'ring', 'bipolar-concentric-ring'];
 
@@ -215,7 +215,7 @@ export async function buildMetalensLocal() {
   append({kind:'base',label:'ITO-coated glass (2 um glass is a display surrogate)',geometryChanged:true,
     replay:{kind:'base'}});
   record('Clean 13nm ITO glass','Acetone / methanol / IPA, per Supplementary Note 4; cleaning is process metadata');
-  execute('deposit','ITO film 13 nm',''.constructor===String?{material:'ITO',thickness:0.013}:null);
+  execute('deposit','ITO film 13 nm',{material:'ITO',thickness:0.013});
   bookmark('S00 · Glass / 13 nm ITO');
   execute('deposit','E-beam evaporate TiO2 1500 nm',{material:'TiO2',thickness:1.5});
   bookmark('S01 · Blanket TiO2 1500 nm');
