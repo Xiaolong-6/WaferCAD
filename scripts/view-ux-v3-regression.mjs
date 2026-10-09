@@ -9,9 +9,10 @@ import {
   observePageErrors,
   waitForAppReady,
   waitForPaint,
+  waitForThreeReady,
 } from './test-helpers/ui.mjs';
 
-await mkdir('test-results/view-ux-v3', { recursive: true });
+await mkdir('test-results/product-review/view-ux-v3', { recursive: true });
 const browser = await launchBrowser();
 const cases = [
   { name: 'desktop', viewport: { width: 1440, height: 960 } },
@@ -25,7 +26,14 @@ for (const { name, viewport } of cases) {
   await gotoWelcome(page);
   await page.locator('#welcomeEmptyBtn').click();
   await waitForAppReady(page);
+  // A first-frame screenshot while 3D still says "loading" is not
+  // meaningful visual acceptance of the four-view Overview.
+  await waitForThreeReady(page);
   await waitForPaint(page);
+  await page.screenshot({
+    path: `test-results/product-review/view-ux-v3/${name}-initial-overview.png`,
+    animations: 'disabled',
+  });
 
   for (const id of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
     const panel = page.locator('#' + id);
@@ -42,15 +50,24 @@ for (const { name, viewport } of cases) {
 
   // Real workstation tabs are required in compact viewports: hidden
   // controls must be made visible through their public navigation.
+  const capturedSingleViews = new Set();
   const activateView = async (view) => {
     await page.locator(`.workstation-view-tabs > button[data-view="${view}"]`).click();
-    await page
-      .locator(`#${{ main: 'mainPanel', mask: 'maskPanel', three: 'threePanel' }[view]}`)
-      .waitFor({ state: 'visible' });
+    const panelId = { main: 'mainPanel', mask: 'maskPanel', three: 'threePanel' }[view];
+    const panel = page.locator('#' + panelId);
+    await panel.waitFor({ state: 'visible' });
     // The ResizeObserver can relocate lower-priority tools after view switches.
     // Wait for the layout to settle before probing their actual user entry path.
     await waitForPaint(page);
     await waitForPaint(page);
+    if (!capturedSingleViews.has(view)) {
+      if (view === 'three') await waitForThreeReady(page);
+      await panel.screenshot({
+        path: `test-results/product-review/view-ux-v3/${name}-single-${view}.png`,
+        animations: 'disabled',
+      });
+      capturedSingleViews.add(view);
+    }
   };
 
   // Source/mode controls choose an explicit value, rather than forcing a cycle.
@@ -136,7 +153,34 @@ for (const { name, viewport } of cases) {
   await zButton.click();
   const editor = page.locator('#sectionCollapseEditor');
   await editor.waitFor({ state: 'visible' });
-  await assertWithin('#sectionCollapseEditor', 'sectionPanel');
+  const assertZBreakLayout = async () => {
+    const layout = await editor.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      const area = document.getElementById('sectionBody').getBoundingClientRect();
+      return {
+        modal: node.matches(':modal'),
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        areaWidth: area.width,
+        areaHeight: area.height,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    assert.ok(layout.left >= -2 && layout.right <= layout.viewportWidth + 2);
+    assert.ok(layout.top >= -2 && layout.bottom <= layout.viewportHeight + 2);
+    if (layout.areaHeight < 380 || layout.areaWidth < 420) {
+      assert.equal(layout.modal, true, name + ': small Section must open top-layer dialog');
+    }
+    if (!layout.modal) await assertWithin('#sectionCollapseEditor', 'sectionPanel');
+  };
+  await assertZBreakLayout();
+  await page.screenshot({
+    path: `test-results/product-review/view-ux-v3/${name}-z-break.png`,
+    animations: 'disabled',
+  });
   const breakEnabled = page.locator('#sectionCollapseEnabled');
   await breakEnabled.uncheck();
   assert.equal(
@@ -151,21 +195,28 @@ for (const { name, viewport } of cases) {
   await page.locator('#sectionCollapseTopInput').waitFor({ state: 'visible' });
   await editor.locator('.section-collapse-advanced > summary').click();
   assert.equal(await page.locator('#sectionCollapseScaleLinked').isChecked(), true);
-  await page.locator('#sectionCollapseClose').click();
+  await assertZBreakLayout();
+  await page.screenshot({
+    path: `test-results/product-review/view-ux-v3/${name}-z-break-advanced.png`,
+    animations: 'disabled',
+  });
+  await page.keyboard.press('Escape');
+  await editor.waitFor({ state: 'hidden' });
+  assert.equal(await zButton.getAttribute('aria-expanded'), 'false');
 
   const visiblePanels = await page
     .locator('.view-panel')
     .evaluateAll((nodes) =>
       nodes.filter((node) => node.getBoundingClientRect().width > 0).map((node) => node.id),
     );
-  if (visiblePanels.length) {
-    await page.locator('#' + visiblePanels[0]).screenshot({
-      path: `test-results/view-ux-v3/${name}-view.png`,
+  for (const panelId of visiblePanels) {
+    await page.locator('#' + panelId).screenshot({
+      path: `test-results/product-review/view-ux-v3/${name}-${panelId}.png`,
       animations: 'disabled',
     });
   }
   await page.screenshot({
-    path: `test-results/view-ux-v3/${name}-whole.png`,
+    path: `test-results/product-review/view-ux-v3/${name}-whole.png`,
     animations: 'disabled',
   });
   assert.deepEqual(errors, [], name + ': runtime exceptions');
