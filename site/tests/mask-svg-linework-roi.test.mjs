@@ -18,7 +18,10 @@ test('Mask ROI SVG retains clipped zero-width and stroked file linework like GDS
         layer: 1,
         datatype: 0,
         width: 0,
-        points: [[-5, 0], [5, 0]],
+        points: [
+          [-5, 0],
+          [5, 0],
+        ],
       },
       {
         kind: 'path',
@@ -26,7 +29,10 @@ test('Mask ROI SVG retains clipped zero-width and stroked file linework like GDS
         layer: 1,
         datatype: 0,
         width: 0.4,
-        points: [[-5, 1.5], [5, 1.5]],
+        points: [
+          [-5, 1.5],
+          [5, 1.5],
+        ],
       },
       {
         kind: 'path',
@@ -34,7 +40,10 @@ test('Mask ROI SVG retains clipped zero-width and stroked file linework like GDS
         layer: 1,
         datatype: 0,
         width: 0,
-        points: [[20, 0], [30, 0]],
+        points: [
+          [20, 0],
+          [30, 0],
+        ],
       },
       {
         kind: 'path',
@@ -42,7 +51,10 @@ test('Mask ROI SVG retains clipped zero-width and stroked file linework like GDS
         layer: 1,
         datatype: 0,
         width: 0,
-        points: [[-5, -1], [5, -1]],
+        points: [
+          [-5, -1],
+          [5, -1],
+        ],
       },
     ],
   };
@@ -59,7 +71,10 @@ test('Mask ROI SVG retains clipped zero-width and stroked file linework like GDS
   assert.equal(exported.elements.length, 2);
   assert.equal(exported.elements[0].kind, 'path');
   assert.equal(exported.elements[1].kind, 'polygon');
-  assert.deepEqual(exported.elements[0].points, [[-2, 0], [2, 0]]);
+  assert.deepEqual(exported.elements[0].points, [
+    [-2, 0],
+    [2, 0],
+  ]);
 
   const root = {
     body: { append() {} },
