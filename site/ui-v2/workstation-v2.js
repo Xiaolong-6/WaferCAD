@@ -3,7 +3,7 @@
 (() => {
   const { el, button, divider } = window.WaferCadV2Components;
   window.createWaferCadV2Workstation = ({
-    root, state, getProjectName, renderView,
+    root, state, getProjectName,
     registry = window.WaferCadV2ShellRegistry.defaults,
     adapters = window.WaferCadV2DomainAdapters.create(),
     presentation = () => ({}),
@@ -149,10 +149,17 @@
             : button('Section dock', 'section', 'section',
               { 'aria-pressed': String(state.section) })));
       for (const { key } of registry.views) {
-        const panel = renderView(key);
+        const id = `view.${key}`;
+        const visible = names.includes(key);
+        let panel = adapters.node(id);
+        if (!panel) panel = adapters.show(id, canvases);
+        else if (visible) adapters.show(id, canvases);
+        if (!panel) throw Error(`Missing view adapter ${id}`);
         if (panel.parentNode !== canvases) canvases.append(panel);
-        panel.hidden = !names.includes(key);
-        panel.style.order = String(names.indexOf(key) >= 0 ? names.indexOf(key) : 99);
+        panel.hidden = !visible;
+        panel.style.order = String(visible ? names.indexOf(key) : 99);
+        if (visible) adapters.refresh(id);
+        else adapters.hide(id);
       }
     }
     function renderPanel(info) {
