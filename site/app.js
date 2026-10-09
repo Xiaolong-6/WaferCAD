@@ -240,6 +240,8 @@ const sectionCollapseController = createSectionCollapseController({
   onSettled: renderThree,
   formatXY,
   xyUnitLabel: () => xyUnit().label,
+  parseZInput: (value) => manualMicron(Number(value)),
+  claimPopover: (owner) => viewPopovers.claim(owner),
 });
 
 const sectionDetailRoiController = createSectionDetailRoiController({
