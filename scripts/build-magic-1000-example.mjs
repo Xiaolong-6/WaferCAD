@@ -336,7 +336,7 @@ export async function buildMagic1000() {
 
   deposit('ALD HfO2 gate dielectric 10nm', 'ALD HfO2 10nm', 0.01, null, 'conformal');
   record('BCl3 patterned HfO2 gate-access openings (off representative section)',
-    'etch',
+    'custom',
     'Paper reports HfO2 contact openings; not drawn through active W gate as their coordinates are unpublished.');
   deposit('Transfer monolayer CVD MoS2 by PMMA method',
     'Monolayer MoS2 (0.7nm illustrated)', 0.0007, 20, 'transfer');
@@ -348,7 +348,7 @@ export async function buildMagic1000() {
     assert.ok(Math.abs(film.z0 - below.z1) < 1e-7,
       'Transferred monolayer has artificial gap to gate dielectric');
   }
-  record('MoS2 channel isolation by EBL and RIE', 'etch',
+  record('MoS2 channel isolation by EBL and RIE', 'custom',
     'The channel transfer mask represents the surviving MoS2 islands; original isolation GDS not provided.');
   record('Remove PMMA and forming-gas anneal', 'anneal',
     'Paper: 350 C, 30 min in 5% hydrogen forming gas.', 350, 30, '5% H2 forming gas');
