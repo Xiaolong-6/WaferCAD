@@ -3739,15 +3739,37 @@ summary:focus-visible {
   position: absolute;
   top: 8px;
   right: 6px;
+  margin: 0;
   width: min(368px, calc(100% - 12px));
-  max-height: calc(100% - 16px);
-  overflow: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
   padding: 12px;
   pointer-events: auto;
   font-size: 10px;
 }
+/* A non-modal <dialog> acts as an anchored popover when the Section has room. */
+.section-collapse-editor:not([hidden]):not([open]) {
+  display: block;
+}
 .section-collapse-editor[hidden] {
   display: none !important;
+}
+/* A compact Section promotes the exact same editor to the top layer.
+   Only this dialog can scroll on exceptionally short viewports. */
+.section-collapse-editor:modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(440px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.section-collapse-editor:modal::backdrop {
+  background: rgba(17, 27, 37, 0.48);
 }
 .section-collapse-editor-head {
   display: flex;
@@ -3936,11 +3958,10 @@ summary:focus-visible {
   .section-collapse-overlay {
     inset: 0;
   }
-  .section-collapse-editor {
+  .section-collapse-editor:not(:modal) {
     top: 6px;
     right: 6px;
     width: min(390px, calc(100% - 12px));
-    max-height: calc(100% - 12px);
   }
   .section-collapse-ruler-handle {
     width: 27px;
@@ -5766,10 +5787,9 @@ summary:focus-visible {
   .section-collapse-overlay {
     right: 0;
   }
-  .section-collapse-editor {
+  .section-collapse-editor:not(:modal) {
     top: 6px;
     right: 6px;
     width: min(360px, calc(100% - 12px));
-    max-height: calc(100% - 12px);
   }
 }
