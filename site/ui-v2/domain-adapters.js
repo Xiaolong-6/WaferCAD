@@ -46,6 +46,7 @@
     }
     return Object.freeze({ register, prepare, show, refresh, hide, destroy,
       node: (id) => registered.get(id)?.node,
+      isActive: (id) => current.has(id),
       keys: () => [...registered.keys()],
     });
   }
