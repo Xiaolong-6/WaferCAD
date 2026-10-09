@@ -147,6 +147,35 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     tags: ['Literature', 'M3D', 'Graphene', 'WSe₂ / MoS₂', 'Conformal', 'History'],
   },
   {
+    id: 'magic-1000-mos2-beol',
+    title: 'MoS₂ computer with four-level BEOL interconnect',
+    figure: 'Fan et al. · MAGIC-1000 transistor pair / M1–M4',
+    kind: 'project',
+    level: '2D semiconductor IC literature',
+    variants: [],
+    path: './examples/magic-1000-mos2-beol.wafercad',
+    filename: 'magic-1000-mos2-beol.wafercad',
+    previewProject: {
+      path: './examples/previews/magic-1000-mos2-beol.wafercad',
+      filename: 'magic-1000-mos2-beol-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/magic-1000-mos2-beol-three.webp',
+      view: 'three',
+      alt: 'WaferCAD reconstruction of MoS2 transistor pair over four aluminium wiring levels',
+      label: 'WaferCAD reconstruction · inferred routing masks',
+    },
+    summary:
+      'Kernel-reconstructed representative local MoS₂ D/E-mode transistor pair over four aluminium routing levels with tungsten vias, repeated SiO₂/CMP, planarized tungsten gates, HfO₂ and Sb/Au contacts. Routing is illustrative, not the authors original GDS.',
+    sources: [{
+      citation:
+        'D. Fan et al., “A bit-parallel molybdenum disulfide computer built through multi-level co-optimization,” Nature Electronics 9, 887–896 (2026).',
+      doi: '10.1038/s41928-026-01641-0',
+      href: 'https://doi.org/10.1038/s41928-026-01641-0',
+    }],
+    tags: ['Literature', 'MoS₂', 'BEOL', 'CMP', 'Four metal layers', 'Reconstruction'],
+  },
+  {
     id: 'three-tier-silicon-jlfets',
     title: 'Three-tier silicon junctionless transistors',
     figure: 'Lam et al. - Fig. 3 · 625-site wafer array',
