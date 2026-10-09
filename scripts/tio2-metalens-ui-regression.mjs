@@ -133,10 +133,14 @@ try {
     // Scientific views must actually render the reconstructed material stack.
     // A valid data model with a blank or stale canvas is a product regression.
     await waitForThreeReady(welcomePage, 90000);
-    await welcomePage.waitForFunction(() => {
-      const canvas = document.getElementById('sectionCanvas');
-      return Boolean(canvas && canvas.width > 100 && canvas.height > 100);
-    }, null, { timeout: 30000 });
+    await welcomePage.waitForFunction(
+      () => {
+        const canvas = document.getElementById('sectionCanvas');
+        return Boolean(canvas && canvas.width > 100 && canvas.height > 100);
+      },
+      null,
+      { timeout: 30000 },
+    );
     const visual = await welcomePage.evaluate(() => {
       const section = document.getElementById('sectionCanvas');
       const three = document.querySelector('#threeHost canvas');
@@ -163,8 +167,10 @@ try {
     await welcomePage.locator('#threePanel').screenshot({
       path: 'test-results/metalens/metalens-final-three.png',
     });
-    await writeFile('test-results/metalens/visual-browser-report.json',
-      JSON.stringify({ pass: true, ...visual, sectionInk }, null, 2) + '\n');
+    await writeFile(
+      'test-results/metalens/visual-browser-report.json',
+      JSON.stringify({ pass: true, ...visual, sectionInk }, null, 2) + '\n',
+    );
     await welcomePage.screenshot({
       path: 'test-results/metalens/welcome-opened-project.png',
     });
