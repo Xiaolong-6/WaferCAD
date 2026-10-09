@@ -295,6 +295,10 @@ html.workstation-ui-v2.intelligent-ui #toolPanel .tool-tab-content {
   scrollbar-gutter: stable;
 }
 
+html.workstation-ui-v2.intelligent-ui #toolPanel .tool-tab-panel[hidden] {
+  display: none !important;
+}
+
 html.workstation-ui-v2.intelligent-ui #toolPanel .tool-tab-panel {
   padding: 13px;
   border: 1px solid #d8e2ea;
