@@ -327,6 +327,7 @@ for (const unit of ['um', 'nm', 'mm']) {
     }),
     `recipe-precision-${unit}`,
   );
+  await openFunctionPanel(precisionPage, 'project');
   await precisionPage.locator('#xyUnitSelect').selectOption(unit);
   await openFunctionPanel(precisionPage, 'process');
   await precisionPage.locator('[data-process-input-mode="recipe"]').click();
