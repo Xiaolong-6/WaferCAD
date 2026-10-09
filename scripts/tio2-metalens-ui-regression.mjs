@@ -60,6 +60,46 @@ try {
   await page.screenshot({path:'test-results/metalens/recipe-runall-actual.png'});
   assert.deepEqual(errors,[], 'Unexpected browser errors');
   console.log('TiO2 Metalens local Recipe Run All SUCCESS: '+summary);
+
+  // Open from the real Welcome card, not only by importing a test fixture.
+  // This exercises the registered example id, bundled asset, startup,
+  // persistent Recipe, and History in the same route used by end users.
+  const welcomeContext = await newUiContext(browser, {
+    viewport: { width: 1400, height: 900 },
+    acceptDownloads: true,
+  });
+  try {
+    const welcomePage = await welcomeContext.newPage();
+    const welcomeErrors = observePageErrors(welcomePage);
+    await welcomePage.goto(baseUrl + '/', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    const exampleCard = welcomePage.locator(
+      '.welcome-example-card[data-example-id="tio2-metalens-four-unit"]',
+    );
+    await exampleCard.waitFor({ state: 'visible', timeout: 30000 });
+    await exampleCard.locator('.welcome-example-title-link').click();
+    await waitForAppReady(welcomePage);
+    await welcomePage.waitForFunction(
+      () => /Opened .*\.wafercad\./.test(document.getElementById('statusText')?.textContent || ''),
+      null,
+      { timeout: 60000 },
+    );
+    const opened = await exportCurrentProject(welcomePage, 60000);
+    assert.equal(opened.processRecipe.steps.length, 9, 'Welcome lost Recipe');
+    assert.equal(opened.snapshotBranches.nodes.length, 10, 'Welcome lost full History');
+    for (const xy of [[-1.1, -1.1], [-1.1, 1.1], [1.1, 1.1], [0, 0]]) {
+      assert.deepEqual(sample(opened.model, xy), sample(project.model, xy));
+    }
+    await welcomePage.screenshot({
+      path: 'test-results/metalens/welcome-opened-project.png',
+    });
+    assert.deepEqual(welcomeErrors, []);
+    console.log('TiO2 Metalens Welcome card opens full process project with 9-Step Recipe and 10-node History.');
+  } finally {
+    await welcomeContext.close();
+  }
 } finally {
   await context.close();
   await browser.close();
