@@ -216,7 +216,7 @@ try {
         example.id === 'magic-1000-mos2-beol'
           ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
           : null;
-      assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
+      if (geometryComparison) {\n        console.log(`${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`);\n      }\n      assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
       await mkdir('test-results/example-recipe-runall', { recursive: true });
       await writeFile(
         `test-results/example-recipe-runall/${example.id}${requestedVariant ? '-' + requestedVariant : ''}-${historyChoice}.json`,
