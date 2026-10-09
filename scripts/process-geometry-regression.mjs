@@ -1213,9 +1213,15 @@ const annulusProject = {
   maskSourceMode: 'draw',
   drawMask: {
     nextShapeId: 2,
-    shapes: [{
-      id: 'shape-1', type: 'ring', c: [0, 0], innerR: 1, outerR: 2,
-    }],
+    shapes: [
+      {
+        id: 'shape-1',
+        type: 'ring',
+        c: [0, 0],
+        innerR: 1,
+        outerR: 2,
+      },
+    ],
   },
 };
 await loadProject(liftRecipePage, annulusProject, 'liftoff-annular-mask-export');
@@ -1227,15 +1233,17 @@ const [maskGdsDownload] = await Promise.all([
 ]);
 const gdsBuffer = await readFile(await maskGdsDownload.path());
 const gdsArrayBuffer = gdsBuffer.buffer.slice(
-  gdsBuffer.byteOffset, gdsBuffer.byteOffset + gdsBuffer.byteLength,
+  gdsBuffer.byteOffset,
+  gdsBuffer.byteOffset + gdsBuffer.byteLength,
 );
 const exportedMask = await parseLayoutFile(gdsArrayBuffer, 'wafercad-mask.gds');
 const polygons = exportedMask.layout.elements.filter((element) => element.kind === 'polygon');
 assert.ok(polygons.length > 0, 'annular Mask must produce GDS polygons');
-const includesMaskPoint = (x, y) => polygons.some(({ points }) => {
-  if (!points || points.length < 3) return false;
-  return pointInMulti([x, y], [[ [...points, points[0]] ]]);
-});
+const includesMaskPoint = (x, y) =>
+  polygons.some(({ points }) => {
+    if (!points || points.length < 3) return false;
+    return pointInMulti([x, y], [[[...points, points[0]]]]);
+  });
 assert.equal(includesMaskPoint(0, 0), false, 'annular hole must survive GDS export');
 assert.equal(includesMaskPoint(1.5, 0), true, 'annular wall must survive GDS export');
 assert.equal(includesMaskPoint(2.5, 0), false, 'GDS must not add exterior material');
