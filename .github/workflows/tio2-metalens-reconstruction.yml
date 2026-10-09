@@ -24,6 +24,21 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Rebuild source-derived four-unit process and 4725-site illustrative GDS
         run: node scripts/build-tio2-metalens-example.mjs
+      - name: Install Chromium for real Recipe Run All
+        run: npx playwright install --with-deps chromium
+      - name: Start WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-metalens-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/app.html > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/wafercad-metalens-http.log
+          exit 1
+      - name: Real browser Recipe Run All and geometry/export acceptance
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/tio2-metalens-ui-regression.mjs
       - name: Upload explicit-provenance reconstruction artifacts
         if: always()
         uses: actions/upload-artifact@v6
