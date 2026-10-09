@@ -143,7 +143,7 @@ html[data-ui='v2'] {
 }
 .v2-legend-palette {
   position: absolute;
-  z-index: 6;
+  z-index: var(--wc-z-popover);
   top: calc(100% + 4px);
   right: 0;
   display: grid;
@@ -538,7 +538,7 @@ p {
   overflow: hidden;
   background: var(--wc-subtle);
 }
-.p-science > svg {
+.v2-mock-scene > svg {
   position: absolute;
   width: 100%;
   height: 100%;
@@ -552,7 +552,7 @@ p {
 }
 .p-mask-tools {
   position: absolute;
-  z-index: 3;
+  z-index: var(--wc-z-toolbar);
   top: 8px;
   left: 8px;
   display: flex;
@@ -592,7 +592,7 @@ p {
 }
 .p-mask-settings {
   position: absolute;
-  z-index: 4;
+  z-index: var(--wc-z-popover);
   top: 58px;
   left: 8px;
   display: grid;
@@ -762,7 +762,7 @@ p {
 }
 .p-history-menu {
   position: absolute;
-  z-index: 5;
+  z-index: var(--wc-z-popover);
   top: calc(100% - 1px);
   right: 2px;
   display: grid;
@@ -804,7 +804,7 @@ p {
 }
 .p-history-row:focus-visible {
   position: relative;
-  z-index: 1;
+  z-index: var(--wc-z-canvas);
   outline: 2px solid var(--wc-focus);
   outline-offset: -2px;
 }
@@ -1277,3 +1277,27 @@ html[data-font='inter'] {
     scroll-behavior: auto;
   }
 }
+
+/* M2.5 persistent view hosts and overlay portal layers. */
+.p-view[hidden], .v2-panel-host[hidden], .v2-panel-subhost[hidden],
+.p-nav[hidden], .p-inspector[hidden], .p-divider[hidden], .p-empty-strip[hidden] {
+  display: none !important;
+}
+.v2-view-title { min-width: 0; flex-shrink: 0; }
+.v2-view-actions { min-width: 0; display: flex; flex: 1; }
+.p-view-head .v2-view-actions > .p-toolbar {
+  display: flex; flex: 1; flex-wrap: nowrap;
+  border: 0; padding: 0; background: transparent;
+}
+.v2-view-stage-container { flex: 1; min-height: 0; min-width: 0; display: flex; position: relative; }
+.v2-view-stage-container > .p-science { flex: 1; }
+.v2-view-overlays { position: absolute; inset: 0; z-index: var(--wc-z-toolbar); pointer-events: none; }
+.v2-mock-scene { position: absolute; inset: 0; display: grid; place-items: center; }
+.v2-mock-scene > svg { width: 100%; height: 100%; }
+.v2-popover-portal { position: relative; z-index: var(--wc-z-popover); }
+.v2-dialog-portal { position: relative; z-index: var(--wc-z-dialog); }
+.v2-toast-portal { position: relative; z-index: var(--wc-z-toast); }
+.v2-popover-portal > [popover], .v2-dialog-portal > dialog, .v2-toast-portal > [role="status"] {
+  z-index: inherit;
+}
+.p-status [data-slot] { display: inline-flex; margin-inline-end: var(--wc-space-2); }
