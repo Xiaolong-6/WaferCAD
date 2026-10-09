@@ -20,6 +20,7 @@ on:
       - "scripts/array-runtime-regression.mjs"
       - "scripts/array-renderer-regression.mjs"
       - "scripts/renderer-pipeline-benchmark.mjs"
+      - "scripts/renderer-quality-index-ab.mjs"
       - "scripts/interaction-regression.mjs"
       - "scripts/resilience-regression.mjs"
       - "scripts/test-helpers/**"
@@ -248,6 +249,21 @@ jobs:
 
       - name: Check 625-site array scene and retained resources
         run: node scripts/array-renderer-regression.mjs --fast-transparent-lod
+
+      # Run the same-run ABBA trial only on this experimental V3 branch.
+      # The existing 625-site suite remains the main hard correctness gate.
+      - name: Compare Quality indexed vs original geometry on the same runner
+        if: ${{ startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
+        run: node scripts/renderer-quality-index-ab.mjs
+
+      - name: Upload Quality indexing A/B diagnostics
+        if: ${{ always() && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-quality-index-ab-${{ github.sha }}
+          path: test-results/renderer-quality-index-ab
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Upload array renderer diagnostics
         if: always()
