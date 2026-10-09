@@ -1,86 +1,105 @@
-# Transparency Renderer v2 — planar-cap submission reduction (2026-10-09)
+# Transparency Renderer v2 — measured progress and exact-index trial (2026-10-09)
 
-**Status: in progress, branch only; not approved for merge.**
-Branch: `perf/transparent-renderer-v2-20261009`, based on `main` at `fbbb2f9f3a585574e20ed706c34653164f13440c`.
-This note is an implementation handoff and test checklist, **not** a performance or visual acceptance report.
+**Status: branch-only, not merge-ready.** PR #164:
+https://github.com/Xiaolong-6/WaferCAD/pull/164.
+Starting base: `main` `fbbb2f9f3a585574e20ed706c34653164f13440c`.
+The branch must be reviewed against the newer `main` before integration.
 
-## Problem and baseline
+## Baseline and completed first candidate
 
-The canonical transparency roadmap records 625-site Native Fig3 at 1,885 array render instances.
-The last accepted software-WebGL run on PR #155 recorded **35.50 s** cold Quality
-transparency, **34.67 s** warm Quality transparency and roughly **60 million
-submitted triangles**. Fast distant transparency had 18,346,852 submitted
-triangles and one 12.24 s first-frame observation. These are historical
-measurements at an earlier revision, not measurements of this branch.
+The canonical full-wafer array contains 625 sites and 1,885 render instances.
+Historical software-WebGL reference (PR #155): Quality cold **35.50 s**,
+Quality warm **34.67 s**, Fast far-field **12.24 s**, and Quality
+approximately **59.96 M submitted triangles**.
 
-The exact transparency scene uses `THREE.DoubleSide`. In Three.js, a transparent
-double-sided mesh normally requires separate back-face and front-face passes.
-A single *smooth planar cap* at a fixed physical Z plane cannot show both sides
-to a camera simultaneously; its second pass provides no additional visible
-faces. Material sidewalls, rough surfaces and annotation volumes can show
-multiple orientations or Z surfaces and must keep the original two-pass policy.
+The first candidate (`0fce42cf05d1b171cd5f1472b3fa1371adf09eae`)
+requested Three.js transparent `DoubleSide.forceSinglePass` **only on smooth
+single-Z material caps in a transparent scene**. Rough surfaces, sidewalls,
+Implant and Electrical Region volumes and ROI cuts keep the original two-pass
+policy. The physical material geometry, canonical topology and export remain
+unchanged.
 
-## Implemented candidate
+CI on that exact candidate reported:
 
-- `site/transparent-pass-policy.js` allows `forceSinglePass` only for a
-  **smooth, explicitly marked planar material cap**, in an active transparent
-  scene with a transparent material. This is a presentation-material policy.
-- `site/three-view.js` marks smooth planar array caps and smooth cap buckets,
-  preserving `THREE.DoubleSide` shader/back-face support. Rough surfaces,
-  sidewalls, Implant and Electrical Region volumes, and ROI cuts do not opt in.
-  Opaque scene variants do not opt in, including their hidden buried faces.
-- The scene diagnostics expose `sceneSinglePassCapObjects` and
-  `sceneSavedCapTriangleSubmissions`: an **estimated** number of geometry
-  submissions avoided versus default two-pass rendering. This is not elapsed
-  time or a GPU timer.
-- The existing pipeline benchmark collects both counters. The 625-site browser
-  regression asserts cold Quality transparency uses the policy, an opaque
-  variant does not, and a warm transparent variant preserves the counter.
-- `site/tests/transparent-pass-policy.test.mjs` covers allowed and excluded
-  presentation cases.
+| Scenario | Historical reference | Candidate | Context |
+| --- | ---: | ---: | --- |
+| Quality transparency, cold complete frame | 35.50 s | 31.13 s | Approx. 12% lower wall time |
+| Quality transparency, warm complete frame | 34.67 s | 30.21 s | Approx. 13% lower wall time |
+| Fast far-field transparent complete frame | 12.24 s | 11.91 s | Approx. 3% lower wall time |
+| Quality scene submitted triangles | ~59.96 M | 57.04 M | Fewer back/front cap submissions |
+| Fast far-field submitted triangles | 18.35 M | 16.91 M | Fewer cap submissions |
 
-Canonical XY/Z regions, rough morphology, Process Geometry, mask geometry,
-History, storage and physical GLB export are unchanged. The active 3D scene
-retains all the original polygons and ownership; only the number of
-transparent cap draw passes is requested to change.
+The reference and candidate come from separate CI runs, not controlled
+paired trials; they demonstrate improvement *suggestively*, not a hardware-
+independent speedup guarantee. The 15 s Quality / 6 s Fast goals are
+**not met**. Elapsed stage timers wait for a completed WebGL frame and browser
+compositor, not just `renderState=ready`.
 
-## Verification status / honest limitations
+Evidence:
+- Quality PASS: https://github.com/Xiaolong-6/WaferCAD/actions/runs/37902406319
+- Real Chromium targeted PASS and exact edge-on 625-site PASS:
+  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605619
+- Full 625-site array renderer and 20-toggle resource/state stress PASS:
+  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605619
+- Native Fig3 replay PASS:
+  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605618
+- All Example Recipe Run All jobs PASS:
+  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605651
 
-Source changes were committed via the GitHub repository connector. **No local
-Node/Chromium workspace was accessible in this session.** No `npm ci`,
-`npm run check`, Playwright run or side-by-side screenshot inspection has been
-completed as of this handoff. The committed tests are unexecuted until CI or
-a local workspace validates them. Therefore do **not** claim a measured speedup
-or merge readiness based on this branch alone.
+## Second candidate — lossless repeated-vertex indexing
 
-Required exact-HEAD acceptance:
+The follow-up in the same PR adds
+`site/renderer-exact-index.js` and `site/tests/renderer-exact-index.test.mjs`.
+On sufficiently repeated **transparent instanced** material-interface and
+Electrical Region templates, it indexes only vertices with **bit-identical
+Float32 position, normal and optional annotationDepth attributes**. Both
+triangle order and the original per-triangle attributes survive expansion.
+No tolerance, polygon merge, approximate coordinate snap, physical topology
+change, material sort change or GLB-export path is used. Ineligible templates
+(e.g. rough GPU displacement, unfamiliar attributes, groups, geometry over
+65535 vertices, insufficient reuse) remain non-indexed. Opaque scenes keep
+their previous geometry representation.
 
-1. `npm ci && npm run check` and `node --test site/tests/transparent-pass-policy.test.mjs`.
-2. Serve `site/` at port 4173 with pinned Three/Chromium configured, then run
-   `node scripts/renderer-pipeline-benchmark.mjs` against both `main` and
-   this candidate on the same machine, browser, camera, viewport and project.
-3. `node scripts/array-renderer-regression.mjs --fast-transparent-lod` and
-   `node scripts/array-renderer-edge-on-regression.mjs`; repeat without the
-   Fast flag for exact Quality state and cache/20-toggle coverage.
-4. Compare opaque, Quality transparent, Fast distant, edge-on, near, ROI,
-   buried Implant/Electrical and thin conformal interface screenshots at
-   matched camera poses. Check transparent sorting/color differences, buried
-   visibility, doubled borders and rough seams before considering acceptance.
-5. Record cold/warm complete-frame wall time, `rendererFrameMs`, submitted
-   triangles, draw calls, scene resource counts, input response and
-   `sceneSavedCapTriangleSubmissions`. First frame requires
-   `rendererFrameSerial` advancement, not merely `renderState=ready`.
-6. Do not overwrite visual baselines or relax scientific correctness gates.
-   If planar-pass sorting causes any scientific visibility error, revert the
-   optimization and pursue safe owned-surface reductions instead.
+The viewport now exposes `sceneExactIndexedArrayObjects` and
+`sceneExactIndexedLogicalVerticesSaved`; these are **estimated repeated
+vertex attributes avoided, not measured shader invocations or GPU frame
+milliseconds**. The 625-site acceptance asserts these are populated for
+transparent Quality, absent for opaque, and stable after a cached variant swap.
+The pipeline benchmark exposes both counters. Existing triangle counts must
+stay unchanged after indexing.
 
-## Next scope (not shipped by this patch)
+At second-candidate head `1d31da5a45ef9a433e2ecc5e449cfe00a83a9c75`:
+- Quality (lint, docs and Node tests) PASS:
+  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37908562444
+- Targeted Chromium Browser PASS:
+  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37908562442
+- Full 625-site and edge-on acceptance **not yet rerun on this new head**
+  while Draft; do not transfer the earlier candidate's performance timings
+  to the indexed candidate.
 
-- Profile cap / sidewall / annotation GPU time on actual hardware as well as
-  the software-WebGL reference.
-- Explore camera-aware medium/far hierarchical LOD for material buried faces
-  and safe batching by Z/material/opacity/tile, with exact near/ROI fallback.
-- Consider progressive first useful frame only after guaranteeing correct
-  final refinement, no input starvation and bounded cache growth.
+## Remaining release gates
 
-Merge to `main`: **not authorized / not performed**.
+1. Once code/doc review is complete, mark PR ready for review to run existing
+   dedicated 625-site array, edge-on and example/replay CI, without manually
+   dispatching costly workflows. Read the **new head's** log timings.
+2. Preserve exact near/edge-on/ROI surfaces, buried-material and Implant/
+   Electrical visibility, smooth/rough interfaces, conformal profiles,
+   transparency blending, borders, and source screenshot parity. Reviewer
+   visual acceptance still requires actual side-by-side captures; a green
+   structural CI alone is not proof of visual equivalence.
+3. Check cold/warm complete-frame elapsed time, actual submitted triangles,
+   draw calls, geometry and material counts, 20 opacity swaps, and camera
+   response. An indexed template may improve vertex throughput while leaving
+   triangle count unchanged; measure both separately.
+4. Reconcile the upstream `main` commits before merge. The 58 commits after
+   the base were checked at the previous comparison and had no overlap in
+   the renderer files; check again near integration because other agents are
+   active. Never force-push.
+5. Keep 15 s Quality and 6 s Fast as stretch performance targets; **never
+   weaken scientific geometry, visibility or input-responsiveness gates**.
+   Revert the indexed candidate if it degrades total completion time or
+   rendering correctness.
+
+No local Node/Chromium workspace was accessible. Validation above is from
+the exact cited GitHub-hosted CI runs. No visual baseline was replaced.
+**No merge or deployment has been performed.**
