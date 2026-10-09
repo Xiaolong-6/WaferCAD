@@ -138,3 +138,20 @@ for exact CI evidence and measured wall times.
 Next investment: profile major buried-interface and Electrical Region
 raster submissions and develop genuinely adaptive, ownership-safe medium/far
 display LOD with exact near/ROI fallback.
+
+## Experimental v3 branch — 2026-10-09
+
+The next renderer experiment is isolated on
+`perf/transparent-renderer-v3-20261009`, based on the v2 `main` merge
+`b81598b7`. See
+[Transparency Renderer v3 execution plan](TRANSPARENCY_RENDERER_V3_PLAN_2026-10-09.md)
+for scientific correctness, camera-aware LOD, visual acceptance and
+benchmark gates.
+
+The **first v3 change is observe-only**: a conservative screen-space probe
+identifies possible sub-0.5-pixel buried smooth sidewall segments in distant
+Fast array inspection while explicitly excluding ROI, Z-collapse, roughness,
+edge-on cameras and non-array walls. No geometry is removed, and the runtime
+asserts `v3SkippedTriangles=0`; Quality, near and exact scenes remain
+untouched. Actual LOD deployment is deferred until 625-site diagnostics and
+scientific screenshot review justify a safely owned interface reduction.
