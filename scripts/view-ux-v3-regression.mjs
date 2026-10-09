@@ -9,6 +9,7 @@ import {
   observePageErrors,
   waitForAppReady,
   waitForPaint,
+  waitForThreeReady,
 } from './test-helpers/ui.mjs';
 
 await mkdir('test-results/product-review/view-ux-v3', { recursive: true });
@@ -25,6 +26,9 @@ for (const { name, viewport } of cases) {
   await gotoWelcome(page);
   await page.locator('#welcomeEmptyBtn').click();
   await waitForAppReady(page);
+  // A first-frame screenshot while 3D still says "loading" is not
+  // meaningful visual acceptance of the four-view Overview.
+  await waitForThreeReady(page);
   await waitForPaint(page);
   await page.screenshot({
     path: `test-results/product-review/view-ux-v3/${name}-initial-overview.png`,
