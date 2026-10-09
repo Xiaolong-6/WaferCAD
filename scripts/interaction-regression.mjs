@@ -134,6 +134,17 @@ for (const selector of ['#maskRoiEditor', '#threePanel .three-opacity-control'])
   assert.notDeepEqual(await palette(summary, true), closed[1]);
   await page.locator(summary).click();
 }
+// Open a panel's actual overflow controls; never bypass its public menu in export tests.
+async function openExportMenu(panel) {
+  const more = page.locator(`${panel} .view-more-control`);
+  if (!(await more.evaluate((node) => node.open))) {
+    await more.locator(':scope > summary').click();
+  }
+  const nested = page.locator(`${panel} .export-control`);
+  if ((await nested.count()) && !(await nested.evaluate((node) => node.open))) {
+    await nested.locator(':scope > summary').click();
+  }
+}
 await toolbarMotion.evaluate((element) => element.remove());
 await page.screenshot({ path: 'test-results/toolbar-state/desktop.png', animations: 'disabled' });
 console.log(
@@ -292,13 +303,13 @@ assert.equal(
   await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
   true,
 );
-await page.locator('#maskExportControl > summary').click();
+await openExportMenu('#maskPanel');
 assert.equal(
   await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
   false,
 );
 assert.equal(await page.locator('#maskExportControl').evaluate((details) => details.open), true);
-await page.locator('#maskExportControl > summary').click();
+await page.locator('#maskPanel .view-more-control > summary').click();
 
 const sourceToggle = page.locator('#maskSourceToggleBtn');
 assert.equal(await sourceToggle.inputValue(), 'file');
@@ -528,7 +539,7 @@ for (const [panel, button, filename] of [
   ['#maskPanel', '#maskExportSvgBtn', 'wafercad-mask.svg'],
   ['#sectionPanel', '#sectionExportSvgBtn', 'wafercad-section-ab.svg'],
 ]) {
-  await page.locator(`${panel} .export-control > summary`).click();
+  await openExportMenu(panel);
   if (panel === '#maskPanel') {
     assert.ok((await page.locator('#maskExportCells option:checked').count()) > 0);
     assert.ok((await page.locator('#maskExportLayers option:checked').count()) > 0);
@@ -542,7 +553,7 @@ for (const [button, filename] of [
   ['#maskExportGdsBtn', 'wafercad-mask.gds'],
   ['#maskExportOasBtn', 'wafercad-mask.oas'],
 ]) {
-  await page.locator('#maskPanel .export-control > summary').click();
+  await openExportMenu('#maskPanel');
   const downloadPromise = page.waitForEvent('download');
   await page.locator(button).click();
   const download = await downloadPromise;
@@ -629,23 +640,24 @@ const threeOpacityControl = page.locator('#threePanel .three-opacity-control');
 const threeExportControl = page.locator('#threePanel .export-control');
 await threeOpacityControl.locator(':scope > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
-await threeExportControl.locator(':scope > summary').click();
+await openExportMenu('#threePanel');
 assert.equal(await threeOpacityControl.evaluate((details) => details.open), false);
 assert.equal(await threeExportControl.evaluate((details) => details.open), true);
-await threeExportControl.locator(':scope > summary').click();
+await page.locator('#threePanel .view-more-control > summary').click();
+await showControl('#threeBorderControl');
 const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
 await page.locator('#fit3dBtn').click();
 
-await page.locator('#threePanel .export-control > summary').click();
+await openExportMenu('#threePanel');
 assert.equal(await page.locator('#threeExportCancelBtn').isHidden(), true);
 const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
 const glbDownload = await glbDownloadPromise;
 assert.equal(glbDownload.suggestedFilename(), 'wafercad-model.glb');
 assert.ok(await glbDownload.path());
-await page.locator('#threePanel .export-control > summary').click();
+await openExportMenu('#threePanel');
 const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportPngBtn').click();
 assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png');
