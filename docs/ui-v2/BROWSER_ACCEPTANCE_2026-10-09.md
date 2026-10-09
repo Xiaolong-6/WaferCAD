@@ -1,6 +1,26 @@
 # UI v2 browser acceptance — 2026-10-09
 
-> Re-acceptance of `abde1d8` supersedes the navigation failure below: primary navigation is fixed. The unchanged official browser runner still fails on a malformed test expression. A diagnostic copy with the test corrections described below passes all 36 checks; this is conditional shell evidence, not an official suite pass.
+> Final official acceptance at `210a58d`: **PASS — M2.5 acceptance gate complete**. The official browser runner and all requested companion checks pass. Earlier failures and diagnostic results below are historical evidence.
+
+## Final official acceptance at 210a58d
+
+Tested product commit: `210a58d0022f844bef1793fbf26b763effb85e83`, on `codex/ui-v2-m2-handoff-2026-10-09`. Clean checkout fast-forwarded to `11bbac64eca842dee04ae4c2e809968e57727aee`, which applies the official runner repairs. Only the two requested files were then formatted and committed. No product behavior or visual baseline was changed in this final validation round.
+
+Environment: Windows NT `10.0.26300.0`, Node `v24.16.0`, native headless Chrome `155.0.8059.40` via CDP. Installed locked dependencies include Playwright `1.55.1` and Three `0.179.1`; this shell acceptance runner uses neither for scientific execution. Native preview runs at `http://127.0.0.1:4182` with `node scripts/v2/serve-v2.mjs`.
+
+| Command                                                                                                                           | Final result                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `npm ci`                                                                                                                          | Exit 0; 81 packages, 0 vulnerabilities.                          |
+| `npx prettier --write site/ui-v2/workstation-v2.js scripts/v2/check-m2-shell.mjs`                                                 | Exit 0; both files formatted.                                    |
+| `npx prettier --check site/ui-v2/workstation-v2.js scripts/v2/check-m2-shell.mjs`                                                 | Exit 0; both files pass.                                         |
+| `node --test scripts/v2/view-state.test.mjs scripts/v2/m25-shell-contract.test.mjs`                                               | Exit 0; 8 passed, 0 failed.                                      |
+| `npm run lint`                                                                                                                    | Exit 0.                                                          |
+| `git diff --check`                                                                                                                | Exit 0.                                                          |
+| `node scripts/v2/check-m2-shell.mjs` with `$env:WAFERCAD_REVIEW_CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'` | Exit 0; **36 checks passed**, zero captured page/console errors. |
+
+The official runner covers the same shell/navigation/lifecycle/interaction and responsive contracts listed in the re-acceptance section below, including both entries at four widths and direct `file://` startup. Mock Main/3D ROI top and bottom deltas are both **0 px** at 1440 and 1024. Local official output is retained at ignored `test-results/ui-v2-acceptance/official-final-output.txt`; the committed summary and checked-in runner provide shared reproducibility.
+
+The user's specified M2.5 formal gate is now complete. This result covers the isolated shell: M3 production domain/renderer wiring, real scientific rendering/geometry, full legacy application regression and M4 visual-baseline approval remain outside this acceptance. The final round did not create or replace screenshots/baselines, merge, deploy or dispatch manual CI. Formatting and this handoff are published to the same previously authorized branch; the preview remains on port 4182.
 
 ## Re-acceptance at abde1d8
 
