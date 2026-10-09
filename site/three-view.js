@@ -7,6 +7,7 @@ import {
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
+import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -916,6 +917,16 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
+      v3ProjectionProbe: {
+        status: host.dataset.v3ProjectionStatus || 'not-sampled',
+        owners: host.dataset.v3ProjectionOwners || '0',
+        quads: host.dataset.v3ProjectionSampleQuads || '0',
+        projected: host.dataset.v3ProjectionVisibleQuads || '0',
+        subpixel: host.dataset.v3ProjectionSubpixelQuads || '0',
+        offscreen: host.dataset.v3ProjectionOffscreenQuads || '0',
+        rawTriangles: host.dataset.v3ProjectionRawTriangleUpperBound || '0',
+        topOwners: host.dataset.v3ProjectionTopOwners || '[]',
+      },
       v3SubpixelProbe: {
         mode: host.dataset.v3ScreenBudgetMode || 'observe-only',
         qualified: host.dataset.v3ScreenBudgetQualified || 'false',
@@ -988,6 +999,15 @@ export function createThreeView({
     host.dataset.v3SubpixelWallInstances = entry.v3SubpixelProbe?.instances || '0';
     host.dataset.v3SubpixelRawTriangleEstimate = entry.v3SubpixelProbe?.rawTriangles || '0';
     host.dataset.v3SkippedTriangles = entry.v3SubpixelProbe?.skipped || '0';
+    host.dataset.v3ProjectionStatus = entry.v3ProjectionProbe?.status || 'not-sampled';
+    host.dataset.v3ProjectionOwners = entry.v3ProjectionProbe?.owners || '0';
+    host.dataset.v3ProjectionSampleQuads = entry.v3ProjectionProbe?.quads || '0';
+    host.dataset.v3ProjectionVisibleQuads = entry.v3ProjectionProbe?.projected || '0';
+    host.dataset.v3ProjectionSubpixelQuads = entry.v3ProjectionProbe?.subpixel || '0';
+    host.dataset.v3ProjectionOffscreenQuads = entry.v3ProjectionProbe?.offscreen || '0';
+    host.dataset.v3ProjectionRawTriangleUpperBound =
+      entry.v3ProjectionProbe?.rawTriangles || '0';
+    host.dataset.v3ProjectionTopOwners = entry.v3ProjectionProbe?.topOwners || '[]';
     return true;
   }
 
@@ -2690,6 +2710,45 @@ diffuseColor.a *= waferCadAlphaScale;`,
         v3Budget.rawTwoPassTriangleEstimate,
       );
       host.dataset.v3SkippedTriangles = String(v3Budget.skippedTriangles);
+      // Read-only sample of *actual perspective projection*, even when a
+      // collapsed Section disqualifies every candidate from future culling.
+      // Strictly bounded per owner/edge/instance to avoid adding GPU work.
+      let v3Projected = null;
+      if (targetVariant === 'transparent' && arrayLod.tier !== 'exact' && camera) {
+        camera.updateMatrixWorld();
+        const pointForProjection = new THREE.Vector3();
+        v3Projected = sampleBuriedInterfaceProjection(plan.sidewalls, {
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          project: ([x, y, z]) => {
+            pointForProjection.set(x, y, z).project(camera);
+            if (
+              ![pointForProjection.x, pointForProjection.y, pointForProjection.z].every(
+                Number.isFinite,
+              ) ||
+              pointForProjection.z < -1 ||
+              pointForProjection.z > 1
+            ) return null;
+            return [
+              ((pointForProjection.x + 1) * viewportForV3.width) / 2,
+              ((1 - pointForProjection.y) * viewportForV3.height) / 2,
+            ];
+          },
+        });
+      }
+      host.dataset.v3ProjectionStatus = v3Projected?.reason || 'not-far';
+      host.dataset.v3ProjectionOwners = String(v3Projected?.analyzedOwners || 0);
+      host.dataset.v3ProjectionSampleQuads = String(v3Projected?.sampledQuads || 0);
+      host.dataset.v3ProjectionVisibleQuads = String(v3Projected?.projectedQuads || 0);
+      host.dataset.v3ProjectionSubpixelQuads = String(v3Projected?.subpixelQuads || 0);
+      host.dataset.v3ProjectionOffscreenQuads = String(v3Projected?.offscreenQuads || 0);
+      host.dataset.v3ProjectionRawTriangleUpperBound = String(
+        v3Projected?.rawOwnerTriangleUpperBound || 0,
+      );
+      host.dataset.v3ProjectionTopOwners = JSON.stringify(v3Projected?.topOwners || []);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
