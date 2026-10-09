@@ -2840,9 +2840,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
             })),
           }),
           presentation = {
-                    ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
-                    planarCap: true,
-                  },
+            ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+            planarCap: true,
+          },
           material = createSurfaceMaterial(
             layerById(model, bucket.part.layerId),
             state,
