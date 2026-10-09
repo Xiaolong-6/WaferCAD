@@ -217,7 +217,9 @@ try {
           ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
           : null;
       if (geometryComparison) {
-        console.log(`${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`);
+        console.log(
+          `${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`,
+        );
       }
       assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
       await mkdir('test-results/example-recipe-runall', { recursive: true });
