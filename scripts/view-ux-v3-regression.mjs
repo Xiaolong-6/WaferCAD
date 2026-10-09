@@ -92,9 +92,9 @@ for (const { name, viewport } of cases) {
   // Border is a persistent setting and can be changed without an ON/OFF badge.
   await show('#threePanel .three-opacity-control');
   const before = await page.locator('#threeBorders').isChecked();
-  await page.locator('#threeBorders').setChecked(!before);
+  await page.locator('#threeBorderControl').click();
   assert.equal(await page.locator('#threeBorders').isChecked(), !before);
-  await page.locator('#threeBorders').setChecked(before);
+  await page.locator('#threeBorderControl').click();
   await page.locator('#threePanel .three-opacity-control > summary').click();
 
   // The Z-axis break header button is an editor entry. It always opens, even
