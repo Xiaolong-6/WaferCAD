@@ -7,7 +7,7 @@ const finite2 = (point) =>
   Number.isFinite(point[0]) &&
   Number.isFinite(point[1]);
 
-function projectedTile(bounds, matrix, width, height) {
+export function projectAxisAlignedTileBounds(bounds, matrix, width, height) {
   const e = matrix;
   const corners = [];
   for (const x of [bounds.minX, bounds.maxX]) {
@@ -194,7 +194,7 @@ export function buriedInterfaceTileBounds(
         dxMax = Math.max(...tile.map((p) => p[0])),
         dyMin = Math.min(...tile.map((p) => p[1])),
         dyMax = Math.max(...tile.map((p) => p[1]));
-      const rectangle = projectedTile(
+      const rectangle = projectAxisAlignedTileBounds(
         {
           minX: xy.minX + dxMin, maxX: xy.maxX + dxMax,
           minY: xy.minY + dyMin, maxY: xy.maxY + dyMax,
