@@ -1,10 +1,24 @@
 // A single responsive policy for Main, Mask, 3D and Section toolbars.
 // Physically move the original controls rather than clone their IDs or state.
 const rules = {
-  mainPanel: [['#mainPanBtn', 540], ['#focusEditor', 390], ['#mainMaxBtn', 420]],
-  maskPanel: [['.mask-opacity-control', 540], ['#maskRoiEditor', 390], ['#maskMaxBtn', 420]],
-  threePanel: [['.view-display-control', 510], ['#threeMaxBtn', 390]],
-  sectionPanel: [['.view-display-control', 530], ['#sectionMaxBtn', 390]],
+  mainPanel: [
+    ['#mainPanBtn', 540],
+    ['#focusEditor', 390],
+    ['#mainMaxBtn', 420],
+  ],
+  maskPanel: [
+    ['.mask-opacity-control', 540],
+    ['#maskRoiEditor', 390],
+    ['#maskMaxBtn', 420],
+  ],
+  threePanel: [
+    ['.view-display-control', 510],
+    ['#threeMaxBtn', 390],
+  ],
+  sectionPanel: [
+    ['.view-display-control', 530],
+    ['#sectionMaxBtn', 390],
+  ],
 };
 
 export function createViewToolbarController({ root = document } = {}) {

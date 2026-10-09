@@ -135,7 +135,10 @@ export function createSectionCollapseController({
     $('sectionCollapseBottomValue').textContent = `${formatXY(value.bottom)} ${xyUnitLabel()}`;
     const enabled = value.enabled !== false;
     $('sectionCollapseEnabled').checked = enabled;
-    for (const [id, z] of [['sectionCollapseTopInput', value.top], ['sectionCollapseBottomInput', value.bottom]]) {
+    for (const [id, z] of [
+      ['sectionCollapseTopInput', value.top],
+      ['sectionCollapseBottomInput', value.bottom],
+    ]) {
       const input = $(id);
       if (root.activeElement !== input) input.value = formatXY(z);
       input.disabled = !enabled;
@@ -241,9 +244,13 @@ export function createSectionCollapseController({
     $('sectionCollapseAxisBtn').addEventListener('click', toggle);
     $('sectionCollapseClose').addEventListener('click', close);
     $('sectionCollapseEnabled').addEventListener('change', toggleEnabled);
-    for (const [id, field] of [['sectionCollapseTopInput', 'top'], ['sectionCollapseBottomInput', 'bottom']]) {
+    for (const [id, field] of [
+      ['sectionCollapseTopInput', 'top'],
+      ['sectionCollapseBottomInput', 'bottom'],
+    ]) {
       $(id).addEventListener('change', (event) => {
-        const value = current(), next = parseZInput(event.target.value);
+        const value = current(),
+          next = parseZInput(event.target.value);
         if (!Number.isFinite(next)) return syncRuler();
         value[field] = next;
         setCurrent(value, { settled: true });

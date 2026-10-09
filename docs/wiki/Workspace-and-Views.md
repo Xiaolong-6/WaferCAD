@@ -19,7 +19,7 @@ _Real saved example preview. Rough/Pyramid display morphology is visual metadata
 
 ## Toolbar states
 
-All four view headers now use explicit **mode selectors** (Mask File/Draw, 3D Fast/Quality and Section Auto/1:1), high-frequency actions, **Display**, **More**, and a conditional maximize action. Main exposes Slice, **3D ROI**, Pan and Fit; Mask exposes **Mask ROI** and Fit. Zoom +/- and export actions are in **More**. Display contains visualization-only controls (Mask opacity; 3D opacity and Border; Section Border). At narrow panel widths, secondary tools move into the *same More menu* without creating duplicate buttons.
+All four view headers now use explicit **mode selectors** (Mask File/Draw, 3D Fast/Quality and Section Auto/1:1), high-frequency actions, **Display**, **More**, and a conditional maximize action. Main exposes Slice, **3D ROI**, Pan and Fit; Mask exposes **Mask ROI** and Fit. Zoom +/- and export actions are in **More**. Display contains visualization-only controls (Mask opacity; 3D opacity and Border; Section Border). At narrow panel widths, secondary tools move into the _same More menu_ without creating duplicate buttons.
 
 A selected control indicates a persistent state (for example, Pan or Border). An opened editor is an independent state: closing Display never disables Border. Mode labels describe the **current selection**, not a click-to-toggle target. Menus close on Escape, clicking the canvas or completing a one-shot menu action. Section's **Detail ROI** is found in More and is different from Main's 3D ROI or Mask's Process ROI.
 

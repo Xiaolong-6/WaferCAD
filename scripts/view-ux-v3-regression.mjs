@@ -32,7 +32,10 @@ for (const { name, viewport } of cases) {
     assert.equal(await panel.locator('.view-more-control').count(), 1, id + ': More control');
     const values = await panel.evaluate((node) => {
       const ids = [...node.querySelectorAll('[id]')].map((item) => item.id);
-      return { unique: ids.length === new Set(ids).size, width: node.getBoundingClientRect().width };
+      return {
+        unique: ids.length === new Set(ids).size,
+        width: node.getBoundingClientRect().width,
+      };
     });
     assert.equal(values.unique, true, id + ': duplicate element ID');
   }
@@ -63,8 +66,14 @@ for (const { name, viewport } of cases) {
         panel: { x: p.left, right: p.right, y: p.top, bottom: p.bottom },
       };
     }, panelId);
-    assert.ok(pop.x >= panel.x - 3 && pop.right <= panel.right + 3, panelId + ': horizontal popover clipping');
-    assert.ok(pop.y >= panel.y - 3 && pop.bottom <= panel.bottom + 3, panelId + ': vertical popover clipping');
+    assert.ok(
+      pop.x >= panel.x - 3 && pop.right <= panel.right + 3,
+      panelId + ': horizontal popover clipping',
+    );
+    assert.ok(
+      pop.y >= panel.y - 3 && pop.bottom <= panel.bottom + 3,
+      panelId + ': vertical popover clipping',
+    );
   };
 
   // Every More action is reachable; a one-shot action closes its menu.
@@ -97,7 +106,10 @@ for (const { name, viewport } of cases) {
   await assertWithin('#sectionCollapseEditor', 'sectionPanel');
   const breakEnabled = page.locator('#sectionCollapseEnabled');
   await breakEnabled.uncheck();
-  assert.equal(await page.locator('#sectionCanvas').getAttribute('data-section-collapse-enabled'), 'false');
+  assert.equal(
+    await page.locator('#sectionCanvas').getAttribute('data-section-collapse-enabled'),
+    'false',
+  );
   assert.equal(await editor.isVisible(), true);
   await page.locator('#sectionCollapseClose').click();
   await zButton.click();
@@ -108,16 +120,21 @@ for (const { name, viewport } of cases) {
   assert.equal(await page.locator('#sectionCollapseScaleLinked').isChecked(), true);
   await page.locator('#sectionCollapseClose').click();
 
-  const visiblePanels = await page.locator('.view-panel').evaluateAll((nodes) =>
-    nodes.filter((node) => node.getBoundingClientRect().width > 0).map((node) => node.id),
-  );
+  const visiblePanels = await page
+    .locator('.view-panel')
+    .evaluateAll((nodes) =>
+      nodes.filter((node) => node.getBoundingClientRect().width > 0).map((node) => node.id),
+    );
   if (visiblePanels.length) {
     await page.locator('#' + visiblePanels[0]).screenshot({
       path: `test-results/view-ux-v3/${name}-view.png`,
       animations: 'disabled',
     });
   }
-  await page.screenshot({ path: `test-results/view-ux-v3/${name}-whole.png`, animations: 'disabled' });
+  await page.screenshot({
+    path: `test-results/view-ux-v3/${name}-whole.png`,
+    animations: 'disabled',
+  });
   assert.deepEqual(errors, [], name + ': runtime exceptions');
   await context.close();
 }

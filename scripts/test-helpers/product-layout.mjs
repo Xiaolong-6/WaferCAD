@@ -106,7 +106,10 @@ export function createProductLayoutChecks({ capture }) {
       assert.equal(await page.locator('#mainZoomOut').isVisible(), true);
       assert.equal(await page.locator('#mainZoomIn').isVisible(), true);
       assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
-      assert.equal(await page.locator('#sectionPanel .view-more-control > summary').isVisible(), true);
+      assert.equal(
+        await page.locator('#sectionPanel .view-more-control > summary').isVisible(),
+        true,
+      );
       assert.equal(await page.locator('.workstation-section-collapse').isVisible(), true);
       return;
     }
@@ -300,7 +303,10 @@ export function createProductLayoutChecks({ capture }) {
     await canvas.scrollIntoViewIfNeeded();
     if (name === 'phone') {
       const dockToggle = page.locator('.workstation-section-collapse');
-      assert.equal(await page.locator('#sectionPanel .view-more-control > summary').isVisible(), true);
+      assert.equal(
+        await page.locator('#sectionPanel .view-more-control > summary').isVisible(),
+        true,
+      );
       assert.equal((await dockToggle.textContent()).trim(), 'Hide');
       await dockToggle.click();
       assert.equal((await dockToggle.textContent()).trim(), 'Show');
@@ -343,8 +349,10 @@ export function createProductLayoutChecks({ capture }) {
       overlayWidth: document.querySelector('#sectionCollapseOverlay').clientWidth,
     }));
     assert.ok(collapseLayout.width > 170, `${name}: compact editor needs sufficient width`);
-    assert.ok(collapseLayout.height <= collapseLayout.panelHeight + 2,
-      `${name}: editor must fit inside Section viewport`);
+    assert.ok(
+      collapseLayout.height <= collapseLayout.panelHeight + 2,
+      `${name}: editor must fit inside Section viewport`,
+    );
     await capture(page, `${name}-section-z-collapse-edit`);
     await page.waitForFunction(() => {
       const canvas = document.getElementById('sectionCanvas'),
@@ -359,7 +367,9 @@ export function createProductLayoutChecks({ capture }) {
       `${name}: collapse ruler handle is too small`,
     );
 
-    await page.locator('.section-collapse-advanced').evaluate((node) => { node.open = true; });
+    await page.locator('.section-collapse-advanced').evaluate((node) => {
+      node.open = true;
+    });
     const linkedScale = page.locator('#sectionCollapseScaleLinked'),
       frontScale = page.locator('#sectionCollapseFrontScale'),
       backScale = page.locator('#sectionCollapseBackScale');

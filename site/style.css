@@ -3749,7 +3749,9 @@ summary:focus-visible {
   pointer-events: auto;
   font-size: 10px;
 }
-.section-collapse-editor[hidden] { display: none !important; }
+.section-collapse-editor[hidden] {
+  display: none !important;
+}
 .section-collapse-editor-head {
   display: flex;
   justify-content: space-between;
@@ -3758,9 +3760,18 @@ summary:focus-visible {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line2);
 }
-.section-collapse-editor-head > div { display: grid; gap: 3px; }
-.section-collapse-editor-head strong { font-size: 12px; color: #2c3b48; }
-.section-collapse-editor-head small { font-size: 9px; color: #657683; }
+.section-collapse-editor-head > div {
+  display: grid;
+  gap: 3px;
+}
+.section-collapse-editor-head strong {
+  font-size: 12px;
+  color: #2c3b48;
+}
+.section-collapse-editor-head small {
+  font-size: 9px;
+  color: #657683;
+}
 .section-collapse-close {
   width: 24px;
   height: 24px;
@@ -3776,9 +3787,21 @@ summary:focus-visible {
   color: #4c5d6b;
   font-size: 10px;
 }
-.section-collapse-check input { width: 14px; height: 14px; margin: 0; }
-.section-collapse-enable { margin-top: 10px; font-weight: 650; }
-.section-collapse-description { margin: 7px 0; color: #70808c; font-size: 9.5px; line-height: 1.4; }
+.section-collapse-check input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+.section-collapse-enable {
+  margin-top: 10px;
+  font-weight: 650;
+}
+.section-collapse-description {
+  margin: 7px 0;
+  color: #70808c;
+  font-size: 9.5px;
+  line-height: 1.4;
+}
 .section-collapse-editor-grid {
   display: grid;
   grid-template-columns: 67px minmax(0, 1fr);
@@ -3828,9 +3851,18 @@ summary:focus-visible {
   cursor: ns-resize;
   touch-action: none;
 }
-.section-collapse-ruler-handle:disabled { cursor: not-allowed; opacity: 0.35; }
-.section-collapse-ruler-handle.dragging { background: #2e5878; }
-.section-collapse-controls { display: grid; align-content: start; gap: 9px; }
+.section-collapse-ruler-handle:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+.section-collapse-ruler-handle.dragging {
+  background: #2e5878;
+}
+.section-collapse-controls {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
 .section-collapse-boundary {
   display: grid;
   gap: 4px;
@@ -3848,7 +3880,13 @@ summary:focus-visible {
   color: #2c3b48;
   background: #fff;
 }
-.section-collapse-readout { display: flex; flex-wrap: wrap; gap: 6px; color: #7b8995; font-size: 9px; }
+.section-collapse-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: #7b8995;
+  font-size: 9px;
+}
 .section-collapse-advanced {
   border-top: 1px solid var(--line2);
   padding-top: 9px;
@@ -3859,23 +3897,59 @@ summary:focus-visible {
   font-size: 10.5px;
   font-weight: 650;
 }
-.section-collapse-scale-block { display: grid; gap: 9px; padding-top: 10px; }
-.section-collapse-scale-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.section-collapse-scale-row label { display: grid; grid-template-columns: 1fr auto; gap: 3px; color: #647380; }
-.section-collapse-scale-row label span { grid-column: 1 / -1; }
-.section-collapse-scale-row input { width: 100%; min-width: 0; padding: 4px; border: 1px solid #c7d2da; border-radius: 4px; }
-.section-collapse-scale-row b { align-self: center; font-weight: 500; color: #72808d; }
-.section-collapse-scale-row input:disabled { opacity: 0.55; }
-.section-collapse-scale-block small { color: #788692; line-height: 1.4; }
+.section-collapse-scale-block {
+  display: grid;
+  gap: 9px;
+  padding-top: 10px;
+}
+.section-collapse-scale-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.section-collapse-scale-row label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px;
+  color: #647380;
+}
+.section-collapse-scale-row label span {
+  grid-column: 1 / -1;
+}
+.section-collapse-scale-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid #c7d2da;
+  border-radius: 4px;
+}
+.section-collapse-scale-row b {
+  align-self: center;
+  font-weight: 500;
+  color: #72808d;
+}
+.section-collapse-scale-row input:disabled {
+  opacity: 0.55;
+}
+.section-collapse-scale-block small {
+  color: #788692;
+  line-height: 1.4;
+}
 @media (max-width: 600px) {
-  .section-collapse-overlay { inset: 0; }
+  .section-collapse-overlay {
+    inset: 0;
+  }
   .section-collapse-editor {
     top: 6px;
     right: 6px;
     width: min(390px, calc(100% - 12px));
     max-height: calc(100% - 12px);
   }
-  .section-collapse-ruler-handle { width: 27px; height: 27px; left: -13px; }
+  .section-collapse-ruler-handle {
+    width: 27px;
+    height: 27px;
+    left: -13px;
+  }
 }
 /* Snapshot process history */
 .snapshot-continuation-banner {
@@ -5348,12 +5422,28 @@ summary:focus-visible {
 }
 
 /* View UX v3: shared mode, popover and responsive header language. */
-.view-panel { container-type: inline-size; }
-.view-head .view-tools { flex: 0 1 auto; min-width: 0; gap: 4px; }
-.view-head > div:first-child { min-width: 0; }
+.view-panel {
+  container-type: inline-size;
+}
+.view-head .view-tools {
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 4px;
+}
+.view-head > div:first-child {
+  min-width: 0;
+}
 .view-head > div:first-child strong,
-.view-head > div:first-child span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.view-mode-field { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.view-head > div:first-child span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.view-mode-field {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
 .view-mode-select {
   height: 22px;
   max-width: 108px;
@@ -5368,11 +5458,18 @@ summary:focus-visible {
   cursor: pointer;
 }
 .view-head .view-more-control,
-.view-head .view-display-control { position: static; }
+.view-head .view-display-control {
+  position: static;
+}
 .view-head .view-more-control > summary,
-.view-head .view-display-control > summary { list-style: none; cursor: pointer; }
+.view-head .view-display-control > summary {
+  list-style: none;
+  cursor: pointer;
+}
 .view-head .view-more-control > summary::-webkit-details-marker,
-.view-head .view-display-control > summary::-webkit-details-marker { display: none; }
+.view-head .view-display-control > summary::-webkit-details-marker {
+  display: none;
+}
 .view-menu-popover,
 .view-display-popover {
   position: absolute;
@@ -5394,13 +5491,33 @@ summary:focus-visible {
   font-weight: 650;
   color: #566979;
 }
-.view-menu-row { display: flex; align-items: center; gap: 7px; }
-.view-menu-row .mini-btn { flex: 1; }
+.view-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.view-menu-row .mini-btn {
+  flex: 1;
+}
 .view-menu-popover > .mini-btn,
-.view-display-popover > .mini-btn { width: 100%; min-height: 27px; text-align: left; }
-.view-menu-popover .export-control { position: static; }
-.view-menu-export > summary { list-style: none; border: 1px solid #ccd5de; padding: 5px; border-radius: 4px; cursor: pointer; }
-.view-menu-export > summary::-webkit-details-marker { display: none; }
+.view-display-popover > .mini-btn {
+  width: 100%;
+  min-height: 27px;
+  text-align: left;
+}
+.view-menu-popover .export-control {
+  position: static;
+}
+.view-menu-export > summary {
+  list-style: none;
+  border: 1px solid #ccd5de;
+  padding: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.view-menu-export > summary::-webkit-details-marker {
+  display: none;
+}
 .view-menu-export .export-popover {
   position: static;
   display: grid;
@@ -5411,15 +5528,36 @@ summary:focus-visible {
   margin-top: 7px;
   padding: 6px 0 0;
 }
-.view-display-popover .three-border-toggle { display: flex; align-items: center; width: max-content; }
-.view-display-popover .three-border-toggle > span { pointer-events: none; }
-.view-display-popover input[type='range'] { width: 100%; }
+.view-display-popover .three-border-toggle {
+  display: flex;
+  align-items: center;
+  width: max-content;
+}
+.view-display-popover .three-border-toggle > span {
+  pointer-events: none;
+}
+.view-display-popover input[type='range'] {
+  width: 100%;
+}
 .view-display-popover label[for='threeOpacityRange'],
-.view-display-popover label[for='maskOpacityRange'] { display: flex; justify-content: space-between; }
-.view-display-popover .view-menu-toggle { text-align: left; }
-.view-more-control .view-overflow-secondary { display: grid; gap: 6px; }
-.view-overflow-secondary:empty { display: none; }
-.view-overflow-secondary > * { width: 100%; justify-content: flex-start; }
+.view-display-popover label[for='maskOpacityRange'] {
+  display: flex;
+  justify-content: space-between;
+}
+.view-display-popover .view-menu-toggle {
+  text-align: left;
+}
+.view-more-control .view-overflow-secondary {
+  display: grid;
+  gap: 6px;
+}
+.view-overflow-secondary:empty {
+  display: none;
+}
+.view-overflow-secondary > * {
+  width: 100%;
+  justify-content: flex-start;
+}
 .view-canvas-readout {
   position: absolute;
   z-index: 6;
@@ -5434,12 +5572,25 @@ summary:focus-visible {
   font-size: 9px;
   pointer-events: none;
 }
-.view-head .view-z-break[data-break-enabled='true'] { border-color: #99bfd9; background: #e6f1f9; color: #2b5a7e; }
-.view-head .view-z-break[aria-expanded='true'] { outline: 1px solid #74a3c5; outline-offset: -1px; }
+.view-head .view-z-break[data-break-enabled='true'] {
+  border-color: #99bfd9;
+  background: #e6f1f9;
+  color: #2b5a7e;
+}
+.view-head .view-z-break[aria-expanded='true'] {
+  outline: 1px solid #74a3c5;
+  outline-offset: -1px;
+}
 @container (max-width: 400px) {
-  .view-head .view-tools { gap: 2px; }
-  .view-head > div:first-child span { display: none; }
-  .view-mode-select { max-width: 93px; }
+  .view-head .view-tools {
+    gap: 2px;
+  }
+  .view-head > div:first-child span {
+    display: none;
+  }
+  .view-mode-select {
+    max-width: 93px;
+  }
 }
 
 /* Reparented controls expand inside More instead of making a second popover. */
@@ -5471,7 +5622,9 @@ summary:focus-visible {
   border-color: #a5c6df;
 }
 @container (max-width: 670px) {
-  .section-collapse-overlay { right: 0; }
+  .section-collapse-overlay {
+    right: 0;
+  }
   .section-collapse-editor {
     top: 6px;
     right: 6px;

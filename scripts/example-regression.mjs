@@ -422,7 +422,7 @@ await page.waitForFunction(
   { timeout: 30000 },
 );
 await page.locator('#threePanel .view-more-control > summary').click();
-    await page.locator('#threePanel .export-control > summary').click();
+await page.locator('#threePanel .export-control > summary').click();
 const sahliGlbDownloadPromise = page.waitForEvent('download', { timeout: 60000 });
 await page.locator('#threeExportModelBtn').click();
 const sahliGlbDownload = await sahliGlbDownloadPromise,

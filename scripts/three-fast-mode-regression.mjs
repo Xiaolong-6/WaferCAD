@@ -282,9 +282,7 @@ try {
   );
   assert.equal(exported.display.threeFastMode, true);
   await page.locator('#threeFastBtn').selectOption('quality');
-  await page.waitForFunction(
-    () => document.getElementById('threeFastBtn').value === 'quality',
-  );
+  await page.waitForFunction(() => document.getElementById('threeFastBtn').value === 'quality');
   await page.waitForFunction(() =>
     /Saved locally/.test(document.getElementById('workspaceSaveStatus').textContent),
   );

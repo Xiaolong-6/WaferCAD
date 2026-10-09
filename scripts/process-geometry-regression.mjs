@@ -694,7 +694,7 @@ if (extendedProcess) {
   // The conformal layer inherits the rough trench surface. Export it through the
   // real 3D path and verify the buried shared profile is not closed to the ideal plane.
   await page.locator('#threePanel .view-more-control > summary').click();
-await page.locator('#threePanel .export-control > summary').click();
+  await page.locator('#threePanel .export-control > summary').click();
   const conformalGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
   await page.locator('#threeExportModelBtn').click();
   const conformalGlbDownload = await conformalGlbDownloadPromise,

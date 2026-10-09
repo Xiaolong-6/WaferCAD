@@ -96,7 +96,12 @@ const showControl = async (selector) => {
     }
   });
 };
-for (const selector of ['#threeBorderControl', '#sectionBordersBtn', '#mainPanBtn', '#sectionDetailRoiBtn']) {
+for (const selector of [
+  '#threeBorderControl',
+  '#sectionBordersBtn',
+  '#mainPanBtn',
+  '#sectionDetailRoiBtn',
+]) {
   await showControl(selector);
   const control = page.locator(selector);
   const active = async () =>
@@ -109,7 +114,11 @@ for (const selector of ['#threeBorderControl', '#sectionBordersBtn', '#mainPanBt
   await control.click();
   assert.equal(await active(), true, `${selector}: selected semantics`);
   for (const light of [false, true]) {
-    assert.notDeepEqual(await palette(selector, light), off[Number(light)], `${selector}: visible selected state`);
+    assert.notDeepEqual(
+      await palette(selector, light),
+      off[Number(light)],
+      `${selector}: visible selected state`,
+    );
   }
   await control.click();
   assert.equal(await active(), false);
