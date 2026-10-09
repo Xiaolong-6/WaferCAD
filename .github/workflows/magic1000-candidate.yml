@@ -6,7 +6,9 @@ on:
       - feat/magic-1000-mos2-beol-reconstruction
     paths:
       - 'scripts/build-magic-1000-example.mjs'
+      - 'site/bundled-examples.js'
       - 'site/tests/magic1000-reconstruction.test.mjs'
+      - 'site/tests/welcome-example.test.mjs'
       - 'examples/projects/magic-1000-2026-candidate/**'
       - '.github/workflows/magic1000-candidate.yml'
   workflow_dispatch:
@@ -16,9 +18,11 @@ permissions:
 
 jobs:
   kernel-reconstruction:
-    name: Kernel, Recipe, mask roundtrip and generated project
+    name: Kernel, browser Run All, preview and mask roundtrip
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 70
+    env:
+      WAFERCAD_THREE_DIR: ./node_modules/three
     steps:
       - uses: actions/checkout@v6
         with:
@@ -30,25 +34,51 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Generate representative MAGIC-1000 project using current Process Kernel
         run: node scripts/build-magic-1000-example.mjs --write-repo
-      - name: Validate intermediate states, recipe and GDS/OAS masks
+      - name: Generate final-state single-Step preview
+        run: node scripts/build-example-previews.mjs --id=magic-1000-mos2-beol --write
+      - name: Validate every intermediate structure and mask GDS/OAS
         run: node --test site/tests/magic1000-reconstruction.test.mjs
-      - name: Preserve generated project on isolated branch (never main)
+      - name: Install headless Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Launch static WaferCAD preview server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-magic1000.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wafercad-magic1000.log
+          exit 1
+      - name: Render real 3D Welcome preview
+        run: node scripts/build-example-thumbnails.mjs --id=magic-1000-mos2-beol
+      - name: Rebuild from Base through the real browser Run All and export
+        run: node scripts/example-recipe-runall-acceptance.mjs --id=magic-1000-mos2-beol
+      - name: Run repository static, documentation and example tests
+        run: npm run check:ci
+      - name: Preserve all validated files only on isolated feature branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add site/examples/magic-1000-mos2-beol.wafercad
+          git add \
+            site/examples/magic-1000-mos2-beol.wafercad \
+            site/examples/previews/magic-1000-mos2-beol.wafercad \
+            site/examples/thumbnails/magic-1000-mos2-beol-three.webp \
+            tests/fixtures/project-io/example-thumbnails.json
           if git diff --cached --quiet; then
-            echo 'Generated asset unchanged'
+            echo 'Generated project and preview unchanged'
           else
-            git commit -m 'build(magic1000): generate verified kernel project [skip ci]'
+            git commit -m 'build(magic1000): validated project and real browser preview [skip ci]'
             git push origin HEAD:feat/magic-1000-mos2-beol-reconstruction
           fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: magic1000-kernel-reconstruction
+          name: magic1000-reconstruction-acceptance
           path: |
-            test-results/magic1000/validation.json
+            test-results/magic1000/
+            test-results/example-recipe-runall/
             site/examples/magic-1000-mos2-beol.wafercad
+            site/examples/previews/magic-1000-mos2-beol.wafercad
+            site/examples/thumbnails/magic-1000-mos2-beol-three.webp
           retention-days: 14
           if-no-files-found: warn
