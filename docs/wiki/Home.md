@@ -25,7 +25,7 @@ _Real preview of a bundled device. Your first structure will be simpler._
 ## Three things to understand
 
 1. **Mask** decides **where** a patterned operation acts. **Mask ROI** limits processing; **Main ROI** clips the 3D view only.
-2. **Section A–B** shows a slice *along the A–B line*. If the line misses an opening, the section will miss it too. The 3D view helps orientation.
+2. **Section A–B** shows a slice _along the A–B line_. If the line misses an opening, the section will miss it too. The 3D view helps orientation.
 3. **Save** makes a **browser Recovery checkpoint**; **Export** downloads a portable `.wafercad` file. Export is the safer way to keep a project outside this browser.
 
 WaferCAD calculates **idealized geometric material stacks**, not physically calibrated manufacturing outcomes. Surface roughness/pyramids can be display-only; implant and electrical regions are annotations. For research interpretation, read the [example provenance and modeling limits](Examples-and-Modeling-Limits).
