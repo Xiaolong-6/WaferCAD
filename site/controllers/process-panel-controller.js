@@ -1,5 +1,5 @@
 import { selectedMaskInstanceIndex } from '../mask-instance-index.js';
-import { isArrayModel } from '../model-array.js';
+import { isArrayModel, referencedModelParts } from '../model-array.js';
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
 import { validateProcessModel } from '../project-schema.js';
 import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
@@ -159,18 +159,40 @@ export function createProcessPanelController({
     if ([...select.options].some((option) => option.value === previous)) select.value = previous;
   }
 
+  function updateLiftOffTargets() {
+    const select = $('liftoffTargetLayer');
+    if (!select) return;
+    const previous = select.value;
+    select.replaceChildren(new Option('Select sacrificial layer…', ''));
+    const model = getModel();
+    const used = new Set(
+      referencedModelParts(model).flatMap((part) =>
+        (part.regions || []).flatMap((region) =>
+          (region.stack || []).map((segment) => segment.layerId),
+        ),
+      ),
+    );
+    for (const layer of model.layers) {
+      if (layer.id !== 'base' && used.has(layer.id)) select.add(new Option(layer.name, layer.id));
+    }
+    if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+    select.disabled = select.options.length === 1;
+  }
+
   function updateOperationUI() {
     const t = $('operationType').value;
     // The native select is the single operation state owner for manual and Recipe replay.
     $('operationTools').dataset.operationMode = t;
 
     const recordOnly = t === 'record',
+      liftoff = t === 'liftoff',
       electrical = t === 'electrical',
       growthMode = $('growthMode')?.value || 'direct',
       transfer = t === 'add' && growthMode === 'transfer';
     if (t === 'grow' && growthMode === 'transfer') $('growthMode').value = 'direct';
 
     $('layerNameRow').classList.toggle('hidden', t !== 'add');
+    $('liftoffTargetRow').classList.toggle('hidden', !liftoff);
     $('implantNameRow').classList.toggle('hidden', t !== 'implant');
     $('electricalNameRow').classList.toggle('hidden', !electrical);
     $('electricalRegionParams').classList.toggle('hidden', !electrical);
@@ -178,11 +200,11 @@ export function createProcessPanelController({
     $('targetLayerRow').classList.toggle('hidden', t !== 'grow');
     $('growthModeRow').classList.toggle(
       'hidden',
-      t === 'etch' || t === 'implant' || electrical || recordOnly,
+      t === 'etch' || liftoff || t === 'implant' || electrical || recordOnly,
     );
     $('transferModeRow')?.classList.toggle('hidden', !transfer);
     $('operationAreaRow').classList.toggle('hidden', recordOnly);
-    $('operationThicknessRow').classList.toggle('hidden', recordOnly);
+    $('operationThicknessRow').classList.toggle('hidden', recordOnly || liftoff);
     $('recordProcessParams').classList.toggle('hidden', !recordOnly);
     $('etchProfileRow').classList.toggle('hidden', t !== 'etch');
 
@@ -224,12 +246,23 @@ export function createProcessPanelController({
 
     if (t === 'grow') updateGrowTargets();
     if (t === 'etch' && !planarizeEtch) updateEtchTargets();
+    if (liftoff) updateLiftOffTargets();
 
     const model = getModel(),
       activeFace = getActiveFace(),
       materialExists = hasMaterial(model);
+    const missingSacrificial = liftoff && !$('liftoffTargetLayer').value;
     $('applyOperationBtn').disabled =
-      (!materialExists && !recordOnly) || Boolean(processTaskController?.isBusy());
+      (!materialExists && !recordOnly) ||
+      missingSacrificial ||
+      Boolean(processTaskController?.isBusy());
+    if (liftoff) {
+      $('liftoffTargetHint').textContent = $('liftoffTargetLayer').disabled
+        ? 'Deposit and pattern a sacrificial resist layer before Lift-off.'
+        : missingSacrificial
+          ? 'Choose the resist layer to remove. No changes are made until Apply.'
+          : 'The selected resist and its supported deposits will be removed.';
+    }
     $('applyOperationBtn').textContent = getHistoricalStepEdit()
       ? 'Save edited Step'
       : getHistoricalStepInsert()
@@ -246,13 +279,15 @@ export function createProcessPanelController({
           : 'Deposit'
         : t === 'grow'
           ? 'Extend'
-          : t === 'etch'
-            ? 'Etch'
-            : t === 'implant'
-              ? 'Implant'
-              : electrical
-                ? 'Electrical'
-                : 'Record';
+          : liftoff
+            ? 'Lift-off'
+            : t === 'etch'
+              ? 'Etch'
+              : t === 'implant'
+                ? 'Implant'
+                : electrical
+                  ? 'Electrical'
+                  : 'Record';
     $('processParametersHeading').textContent =
       t === 'add' && transfer
         ? 'Transfer parameters'
@@ -260,13 +295,15 @@ export function createProcessPanelController({
           ? 'Deposit parameters'
           : t === 'grow'
             ? 'Extend parameters'
-            : t === 'etch'
-              ? 'Etch parameters'
-              : t === 'implant'
-                ? 'Implant parameters'
-                : electrical
-                  ? 'Electrical parameters'
-                  : 'Record parameters';
+            : liftoff
+              ? 'Lift-off parameters'
+              : t === 'etch'
+                ? 'Etch parameters'
+                : t === 'implant'
+                  ? 'Implant parameters'
+                  : electrical
+                    ? 'Electrical parameters'
+                    : 'Record parameters';
     $('processSummary').textContent = recordOnly
       ? 'Process · Record step'
       : `${faceLabel} · ${
@@ -278,13 +315,15 @@ export function createProcessPanelController({
               ? 'Extend layer'
               : t === 'implant'
                 ? 'Implant'
-                : electrical
-                  ? 'Electrical region'
-                  : planarizeEtch
-                    ? 'Planarize / CMP'
-                    : undercutEtch
-                      ? 'Undercut release'
-                      : 'Etch'
+                : liftoff
+                  ? 'Lift-off'
+                  : electrical
+                    ? 'Electrical region'
+                    : planarizeEtch
+                      ? 'Planarize / CMP'
+                      : undercutEtch
+                        ? 'Undercut release'
+                        : 'Etch'
         }`;
 
     // The inline guide reflects the same UI state as Apply without touching geometry.
@@ -341,37 +380,39 @@ export function createProcessPanelController({
 
     $('operationNote').textContent = recordOnly
       ? 'Records fabrication metadata in History without changing material geometry.'
-      : t === 'implant'
-        ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
-        : electrical
-          ? 'Non-material electrical annotation: marks an induced, doped, or interface region from the selected exposed surface. It follows later Etch geometry but does not solve carrier transport or electrostatics.'
-          : t === 'etch'
-            ? planarizeEtch
-              ? 'Planarize / CMP removes material down to an absolute target Z plane in the selected area. Local surfaces already below the plane remain unchanged; this operation never invents fill material.'
-              : undercutEtch
-                ? $('etchTargetLayer').value
-                  ? 'Undercut release removes the selected exposed sacrificial material laterally from the access opening by the requested distance, including beneath surviving upper layers.'
-                  : 'Choose one exposed sacrificial material. Undercut is a 2.5D lateral-release model intended for BOX/SOG/sacrificial-layer release.'
-                : isotropicEtch
+      : liftoff
+        ? 'Ideal lift-off removes the selected resist and directly supported films. Deposits in openings survive; ambiguous bridging films are rejected. This does not model solvents, adhesion, or tearing.'
+        : t === 'implant'
+          ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
+          : electrical
+            ? 'Non-material electrical annotation: marks an induced, doped, or interface region from the selected exposed surface. It follows later Etch geometry but does not solve carrier transport or electrostatics.'
+            : t === 'etch'
+              ? planarizeEtch
+                ? 'Planarize / CMP removes material down to an absolute target Z plane in the selected area. Local surfaces already below the plane remain unchanged; this operation never invents fill material.'
+                : undercutEtch
                   ? $('etchTargetLayer').value
-                    ? 'Isotropic release propagates from the selected exposed material into the solid with the chosen radius, including lateral undercut beneath other materials. The selected etch material is removed; masks and stop materials remain.'
-                    : 'Choose one exposed material for Isotropic release. This mode creates physical undercut/cavity geometry and does not combine with Rough/Pyramid display morphology.'
-                  : stochasticEtch
-                    ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
-                    : pyramidEtch
-                      ? `Pyramid XY and Height are means; CV controls deterministic base-size/position and height variation, and Seed makes the random field reproducible. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
-                      : $('etchTargetLayer').value
-                        ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
-                        : 'Etch removes exposed material vertically in stack order and may create through-holes.'
-            : transfer
-              ? $('transferMode')?.value === 'flat'
-                ? 'Transfer / Laminate places a flat membrane at the highest exposed target plane (lowest plane on the back face) and can bridge openings without filling them.'
-                : 'Transfer / Laminate follows each local exposed horizontal surface in the selected area. It does not coat sidewalls or create material inside uncovered voids.'
-              : $('growthMode').value === 'conformal'
-                ? t === 'grow'
-                  ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
-                  : `Conformal coverage follows exposed surfaces, physical steps, and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
-                : 'Directional coverage follows the selected footprint.';
+                    ? 'Undercut release removes the selected exposed sacrificial material laterally from the access opening by the requested distance, including beneath surviving upper layers.'
+                    : 'Choose one exposed sacrificial material. Undercut is a 2.5D lateral-release model intended for BOX/SOG/sacrificial-layer release.'
+                  : isotropicEtch
+                    ? $('etchTargetLayer').value
+                      ? 'Isotropic release propagates from the selected exposed material into the solid with the chosen radius, including lateral undercut beneath other materials. The selected etch material is removed; masks and stop materials remain.'
+                      : 'Choose one exposed material for Isotropic release. This mode creates physical undercut/cavity geometry and does not combine with Rough/Pyramid display morphology.'
+                    : stochasticEtch
+                      ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
+                      : pyramidEtch
+                        ? `Pyramid XY and Height are means; CV controls deterministic base-size/position and height variation, and Seed makes the random field reproducible. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
+                        : $('etchTargetLayer').value
+                          ? 'Material-selective Etch removes only the selected material while it is exposed, then stops on the next material.'
+                          : 'Etch removes exposed material vertically in stack order and may create through-holes.'
+              : transfer
+                ? $('transferMode')?.value === 'flat'
+                  ? 'Transfer / Laminate places a flat membrane at the highest exposed target plane (lowest plane on the back face) and can bridge openings without filling them.'
+                  : 'Transfer / Laminate follows each local exposed horizontal surface in the selected area. It does not coat sidewalls or create material inside uncovered voids.'
+                : $('growthMode').value === 'conformal'
+                  ? t === 'grow'
+                    ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
+                    : `Conformal coverage follows exposed surfaces, physical steps, and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
+                  : 'Directional coverage follows the selected footprint.';
   }
 
   function optionalNumber(id, label) {
@@ -396,7 +437,7 @@ export function createProcessPanelController({
 
     const params = replay.params || {};
     const kind = operation.kind || params.type;
-    if (!['add', 'grow', 'etch', 'implant', 'electrical', 'record'].includes(kind)) {
+    if (!['add', 'grow', 'etch', 'liftoff', 'implant', 'electrical', 'record'].includes(kind)) {
       return false;
     }
 
@@ -469,6 +510,9 @@ export function createProcessPanelController({
       const target = params.etchTargetLayerIds?.[0] || operation.etchTargetLayerIds?.[0] || '';
       $('etchTargetLayer').value = target;
     }
+    if (kind === 'liftoff')
+      $('liftoffTargetLayer').value =
+        params.sacrificialLayerId || operation.sacrificialLayerId || '';
     updateOperationUI();
     return true;
   }
@@ -787,12 +831,16 @@ export function createProcessPanelController({
       planarizeEtch = type === 'etch' && etchProfile === 'planarize',
       // Typed Recipe inputs bypass the manual form's 0.1 nm editing grid.
       thickness =
-        canonicalLengthUm == null ? manualMicron($('operationThickness').value) : canonicalLengthUm;
-    $('operationThickness').value = formatLengthField(thickness);
+        type === 'liftoff'
+          ? 0
+          : canonicalLengthUm == null
+            ? manualMicron($('operationThickness').value)
+            : canonicalLengthUm;
+    if (type !== 'liftoff') $('operationThickness').value = formatLengthField(thickness);
     if (planarizeEtch) {
       if (!Number.isFinite(thickness))
         return status('Target Z must be a finite coordinate.', 'error');
-    } else if (!Number.isFinite(thickness) || !(thickness > 0)) {
+    } else if (type !== 'liftoff' && (!Number.isFinite(thickness) || !(thickness > 0))) {
       return status('Thickness must be greater than zero.', 'error');
     }
 
@@ -817,6 +865,8 @@ export function createProcessPanelController({
             : $('layerName').value.trim() || `Layer ${model.layers.length}`,
       targetLayerId = $('targetLayer').value,
       etchTargetLayerId = $('etchTargetLayer')?.value || '';
+    if (type === 'liftoff' && !$('liftoffTargetLayer').value)
+      return status('Choose a sacrificial layer for Lift-off.', 'warning');
     if (type === 'grow' && !targetLayerId) {
       return status('No exposed target layer is available to Extend.', 'warning');
     }
@@ -902,6 +952,8 @@ export function createProcessPanelController({
       params.etchProfile = etchProfile;
       params.etchTargetLayerIds = etchTargetLayerId ? [etchTargetLayerId] : [];
       if (planarizeEtch) params.targetZ = thickness;
+    } else if (type === 'liftoff') {
+      params.sacrificialLayerId = $('liftoffTargetLayer').value;
     } else if (type === 'implant') {
       const tilt = Number($('implantTilt').value);
       if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
@@ -919,23 +971,25 @@ export function createProcessPanelController({
     }
 
     const taskLabel =
-      type === 'etch'
-        ? etchProfile === 'planarize'
-          ? 'Planarizing structure…'
-          : etchProfile === 'undercut'
-            ? 'Computing undercut release…'
-            : etchProfile === 'isotropic'
-              ? 'Computing isotropic release…'
-              : 'Etching structure…'
-        : type === 'grow'
-          ? 'Extending layer…'
-          : type === 'implant'
-            ? `Marking ${name} implant…`
-            : type === 'electrical'
-              ? `Marking ${name} electrical region…`
-              : params.growth === 'transfer'
-                ? `Transferring ${name}…`
-                : `Depositing ${name}…`;
+      type === 'liftoff'
+        ? 'Lifting off sacrificial layer and supported deposits…'
+        : type === 'etch'
+          ? etchProfile === 'planarize'
+            ? 'Planarizing structure…'
+            : etchProfile === 'undercut'
+              ? 'Computing undercut release…'
+              : etchProfile === 'isotropic'
+                ? 'Computing isotropic release…'
+                : 'Etching structure…'
+          : type === 'grow'
+            ? 'Extending layer…'
+            : type === 'implant'
+              ? `Marking ${name} implant…`
+              : type === 'electrical'
+                ? `Marking ${name} electrical region…`
+                : params.growth === 'transfer'
+                  ? `Transferring ${name}…`
+                  : `Depositing ${name}…`;
 
     const applyGate = await beforeApply();
     if (!applyGate) return;
@@ -1023,19 +1077,21 @@ export function createProcessPanelController({
           : '',
       thicknessLabel = `${Number(thickness.toPrecision(8))} µm`,
       operationLabel =
-        type === 'etch'
-          ? etchProfile === 'planarize'
-            ? `Planarize · Z ${thicknessLabel}`
-            : `${etchProfile === 'directional' ? 'Etch' : 'Release'}${etchTargetName ? ` ${etchTargetName}` : ''} · ${thicknessLabel}${etchProfile === 'isotropic' ? ' · Isotropic' : etchProfile === 'undercut' ? ' · Undercut' : surfaceLabel ? ` · ${surfaceLabel}` : ''}`
-          : type === 'grow'
-            ? `Extend ${targetName} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`
-            : type === 'implant'
-              ? `Implant ${name} · ${thicknessLabel}`
-              : type === 'electrical'
-                ? `Electrical ${name} · ${params.electricalRegionType} · ${thicknessLabel}`
-                : params.growth === 'transfer'
-                  ? `Transfer ${name} · ${params.transferMode === 'flat' ? 'Flat bridge' : 'Follow surface'} · ${thicknessLabel}`
-                  : `Deposit ${name} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`;
+        type === 'liftoff'
+          ? `Lift-off ${layerById(model, params.sacrificialLayerId)?.name || 'sacrificial layer'}`
+          : type === 'etch'
+            ? etchProfile === 'planarize'
+              ? `Planarize · Z ${thicknessLabel}`
+              : `${etchProfile === 'directional' ? 'Etch' : 'Release'}${etchTargetName ? ` ${etchTargetName}` : ''} · ${thicknessLabel}${etchProfile === 'isotropic' ? ' · Isotropic' : etchProfile === 'undercut' ? ' · Undercut' : surfaceLabel ? ` · ${surfaceLabel}` : ''}`
+            : type === 'grow'
+              ? `Extend ${targetName} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`
+              : type === 'implant'
+                ? `Implant ${name} · ${thicknessLabel}`
+                : type === 'electrical'
+                  ? `Electrical ${name} · ${params.electricalRegionType} · ${thicknessLabel}`
+                  : params.growth === 'transfer'
+                    ? `Transfer ${name} · ${params.transferMode === 'flat' ? 'Flat bridge' : 'Follow surface'} · ${thicknessLabel}`
+                    : `Deposit ${name} · ${params.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thicknessLabel}`;
 
     const operation = {
       kind: type,
@@ -1048,7 +1104,11 @@ export function createProcessPanelController({
       targetLayerId: targetLayerId || null,
       etchTargetLayerIds: type === 'etch' ? params.etchTargetLayerIds : null,
       etchProfile: type === 'etch' ? params.etchProfile : null,
-      growth: type === 'etch' || type === 'implant' || type === 'electrical' ? null : params.growth,
+      sacrificialLayerId: type === 'liftoff' ? params.sacrificialLayerId : null,
+      growth:
+        type === 'etch' || type === 'liftoff' || type === 'implant' || type === 'electrical'
+          ? null
+          : params.growth,
       transferMode: params.growth === 'transfer' ? params.transferMode : null,
       targetZ: planarizeEtch ? thickness : null,
       surface:
@@ -1100,7 +1160,7 @@ export function createProcessPanelController({
     }
 
     const growthLabel =
-      type === 'etch' || type === 'implant' || type === 'electrical'
+      type === 'etch' || type === 'liftoff' || type === 'implant' || type === 'electrical'
         ? ''
         : params.growth === 'transfer'
           ? ' · Transfer'
@@ -1109,25 +1169,27 @@ export function createProcessPanelController({
             : ' · Directional';
     status(
       `${
-        type === 'etch'
-          ? etchProfile === 'planarize'
-            ? `Planarized to Z ${thicknessLabel}`
-            : etchProfile === 'undercut'
-              ? `Undercut ${etchTargetName || 'selected material'}`
-              : etchProfile === 'isotropic'
-                ? `Released ${etchTargetName || 'selected material'}`
-                : etchTargetName
-                  ? `Etched ${etchTargetName}`
-                  : 'Etched'
-          : type === 'grow'
-            ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
-            : type === 'implant'
-              ? `Marked implant ${name}`
-              : type === 'electrical'
-                ? `Marked electrical region ${name}`
-                : params.growth === 'transfer'
-                  ? `Transferred ${name}`
-                  : `Deposited ${name}`
+        type === 'liftoff'
+          ? `Lifted off ${layerById(model, params.sacrificialLayerId)?.name || 'sacrificial layer'}`
+          : type === 'etch'
+            ? etchProfile === 'planarize'
+              ? `Planarized to Z ${thicknessLabel}`
+              : etchProfile === 'undercut'
+                ? `Undercut ${etchTargetName || 'selected material'}`
+                : etchProfile === 'isotropic'
+                  ? `Released ${etchTargetName || 'selected material'}`
+                  : etchTargetName
+                    ? `Etched ${etchTargetName}`
+                    : 'Etched'
+            : type === 'grow'
+              ? `Extended ${layerById(model, targetLayerId)?.name || 'layer'}`
+              : type === 'implant'
+                ? `Marked implant ${name}`
+                : type === 'electrical'
+                  ? `Marked electrical region ${name}`
+                  : params.growth === 'transfer'
+                    ? `Transferred ${name}`
+                    : `Deposited ${name}`
       }${growthLabel} on the ${activeFace}${maskRoi ? ' within Mask ROI' : ''}.`,
       'success',
     );

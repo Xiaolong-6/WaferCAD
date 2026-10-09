@@ -162,3 +162,19 @@ test('unit-bearing Recipe lengths reject numeric and conversion overflow', () =>
     /must be finite/,
   );
 });
+
+test('Lift-off recipe round-trips without synthetic thickness and validates required material', () => {
+  const source =
+    'deposit({ material: "PMMA", thickness: "200 nm" });\n' +
+    'liftoff({ sacrificial: "PMMA", face: "front", area: "full" });';
+  const parsed = parseProcessRecipeSource(source);
+  assert.equal(parsed.steps[1].command, 'liftoff');
+  assert.equal(parsed.steps[1].params.sacrificial, 'PMMA');
+  assert.equal(Object.hasOwn(parsed.steps[1].params, 'thicknessUm'), false);
+  const replay = parseProcessRecipeSource(serializeProcessRecipe(parsed));
+  assert.deepEqual(replay.steps, parsed.steps);
+  assert.throws(
+    () => parseProcessRecipeSource('liftoff({ area: "full" });'),
+    /sacrificial is required/,
+  );
+});

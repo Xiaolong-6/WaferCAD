@@ -195,6 +195,7 @@ export function createWorkspaceActionsController({
     $('etchSurfaceMode').onchange = updateOperationUI;
     $('roughPolarity').onchange = updateOperationUI;
     $('etchTargetLayer').onchange = updateOperationUI;
+    $('liftoffTargetLayer').onchange = updateOperationUI;
     $('electricalRegionType').onchange = updateOperationUI;
     $('electricalRegionSource').onchange = updateOperationUI;
     $('recordProcessType').onchange = () => {

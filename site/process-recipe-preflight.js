@@ -51,6 +51,11 @@ export function validateRecipeExecution(
         `${prefix}: etch target "${params.target}" does not exist in the starting model or preceding Steps.`,
       );
     }
+    if (step.command === 'liftoff' && !materials.has(params.sacrificial)) {
+      errors.push(
+        `${prefix}: lift-off sacrificial layer "${params.sacrificial}" does not exist in the starting model or preceding Steps.`,
+      );
+    }
     if (step.command === 'deposit') materials.add(params.material);
     if (['snapshot', 'record'].includes(step.command) || !['mask', 'invert'].includes(params.area))
       continue;

@@ -318,10 +318,108 @@ function applyUndercut(model, params, area, modelApi, vectorApi) {
   return { changed: true, undercutDistance: radius, targetLayerId };
 }
 
+// Ideal vertical-column lift-off.  The resist is removed together with the
+// *touching, outward* material stack carried by it.  Material deposited inside
+// resist openings sits on the lower substrate Z plane and remains untouched.
+// This is a geometric release, not a solvent / adhesion / fracture simulation.
+function applyLiftOff(model, params, area, modelApi, vectorApi) {
+  const sacrificialLayerId = String(params.sacrificialLayerId || '');
+  const face = params.face === 'back' ? 'back' : 'front';
+  if (
+    !sacrificialLayerId ||
+    ['base', 'substrate'].includes(sacrificialLayerId) ||
+    !model.layers.some((layer) => layer.id === sacrificialLayerId)
+  ) {
+    return { changed: false, error: 'Lift-off requires a valid non-base sacrificial layer.' };
+  }
+
+  let found = false;
+  const removed = [];
+  const kept = [];
+
+  // A restricted Lift-off area can cut through an otherwise continuous film.
+  // The complement remains part of the same physical object, so include
+  // untouched columns in the bridging guard before changing the model.
+  const outside = vectorApi.difference(model.boundary, area);
+  if (!vectorApi.isEmpty(outside)) {
+    for (const region of model.regions || [])
+      if (!vectorApi.isEmpty(vectorApi.intersection(region.geom, outside)))
+        kept.push(...region.stack);
+  }
+  const draft = { ...model, nextRegionId: model.nextRegionId };
+  const changes = splitRegions(draft, vectorApi, area, (stack) => {
+    const positions = stack
+      .map((segment, index) => (segment.layerId === sacrificialLayerId ? index : -1))
+      .filter((index) => index >= 0);
+    if (!positions.length) {
+      // A neighboring opening or non-resist region can retain film at the same
+      // physical Z as a film removed with the resist. Keep those segments in
+      // the continuity guard so ambiguous bridges fail without committing.
+      kept.push(...stack);
+      return stack;
+    }
+    if (positions.length !== 1) {
+      throw new Error(
+        'Lift-off does not support repeated sacrificial layer intervals in one column.',
+      );
+    }
+    found = true;
+    const index = positions[0];
+    const discard = new Set([index]);
+    let boundary = face === 'front' ? stack[index].z1 : stack[index].z0;
+    for (
+      let i = index + (face === 'front' ? 1 : -1);
+      i >= 0 && i < stack.length;
+      i += face === 'front' ? 1 : -1
+    ) {
+      const segment = stack[i];
+      const lower = face === 'front' ? segment.z0 : segment.z1;
+      if (Math.abs(lower - boundary) > 1e-8) break;
+      discard.add(i);
+      boundary = face === 'front' ? segment.z1 : segment.z0;
+    }
+    for (let i = 0; i < stack.length; i++) {
+      (discard.has(i) ? removed : kept).push(stack[i]);
+    }
+    return modelApi.normalizeStack(stack.filter((_, i) => !discard.has(i)));
+  });
+  if (!found || !changes.changed)
+    return {
+      changed: false,
+      error: 'The selected area contains no sacrificial layer to lift off.',
+    };
+
+  // A film at the same Z and with the same layer identity on both sides of
+  // the removal boundary may form a continuous bridge.  Local Z-stack geometry
+  // cannot determine its mechanical fate, so do not silently break the bridge.
+  for (const gone of removed) {
+    if (gone.layerId === sacrificialLayerId) continue;
+    if (
+      kept.some(
+        (remain) =>
+          remain.layerId === gone.layerId &&
+          Math.min(remain.z1, gone.z1) > Math.max(remain.z0, gone.z0) + 1e-8,
+      )
+    ) {
+      return {
+        changed: false,
+        error:
+          'Lift-off found an ambiguous continuous/bridging deposit. Use directional separated films; no material was committed.',
+      };
+    }
+  }
+  model.nextRegionId = draft.nextRegionId;
+  model.regions = mergeRegions(model, vectorApi, changes.regions);
+  model.revision++;
+  model.processRevision = (model.processRevision || 0) + 1;
+  return { changed: true, sacrificialLayerId };
+}
+
 // Returns null when the regular Process Geometry Kernel should handle params.
 // Advanced operations live beside the existing kernel so old project/replay
 // semantics stay untouched while these newer manufacturing primitives mature.
 export function applyAdvancedProcessOperation(model, params, area, modelApi, vectorApi) {
+  if (params?.type === 'liftoff') return applyLiftOff(model, params, area, modelApi, vectorApi);
   if (params?.type === 'etch' && params?.etchProfile === 'planarize') {
     return applyPlanarize(model, params, area, modelApi, vectorApi);
   }

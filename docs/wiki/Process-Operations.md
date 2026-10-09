@@ -269,6 +269,25 @@ A vertical mirror of Normal pyramid relief creates regular inward pits.
 
 **Example:** Idealized inverted-pyramid antireflective texture.
 
+## Lift-off
+
+<a id="liftoff"></a>
+### Sacrificial layer lift-off
+
+![Before and after schematic for Sacrificial layer lift-off](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/liftoff.svg?sanitize=true)
+
+**Behavior:** Removes sacrificial resist and the deposits touching it on the outward face.
+
+Each column loses the chosen resist and consecutively supported overlying material; metal deposited in openings at lower Z remains.
+
+**Inputs:** Sacrificial layer · Face · Area
+
+**Changes:** canonical material geometry
+
+**Modeling boundary:** Ideal 2.5D process: no solvent, adhesion or fracture physics; bridging films are rejected.
+
+**Example:** PMMA / Cr lift-off before TiO₂ metalens etching.
+
 ## Annotation
 
 <a id="implant"></a>
