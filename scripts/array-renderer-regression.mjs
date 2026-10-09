@@ -120,64 +120,10 @@ try {
     assert.equal(distant.processRevision, fast.processRevision);
     await page.screenshot({ path: fileURLToPath(new URL('fast-transparent-lod.png', output)) });
 
-    // A distant camera that orbits near the wafer horizon must restore the
-    // original annotation walls. Exercise OrbitControls in a real browser
-    // rather than relying solely on the pure LOD eligibility unit tests.
-    const lodCanvas = await page.locator('#threeHost canvas').boundingBox();
-    assert.ok(lodCanvas, '3D canvas must be available for the orbit test');
-    const cx = lodCanvas.x + lodCanvas.width / 2;
-    const cy = lodCanvas.y + lodCanvas.height / 2;
-    const beforeEdgeFrame = await frameSerial();
-    await page.mouse.move(cx, cy);
-    await page.mouse.down();
-    await page.mouse.move(cx, cy - 24, { steps: 4 });
-    await page.mouse.up();
-    // The software-WebGL runner can spend minutes rasterizing a full 625-site
-    // exact transparent edge-on frame. Capture the completed frame and trigger
-    // Fit *atomically in the same browser task*; a second Playwright evaluate
-    // otherwise waits behind continuous transparent compositor work.
-    const edgeHandle = await page.waitForFunction(
-      (previous) => {
-        const host = document.getElementById('threeHost');
-        if (
-          host?.dataset.transparentArrayLodTier !== 'exact' ||
-          host.dataset.renderState !== 'ready' ||
-          Number(host.dataset.rendererFrameSerial || 0) <= previous
-        ) return false;
-        const edgeSnapshot = { ...host.dataset };
-        document.getElementById('fit3dBtn')?.click();
-        return JSON.stringify(edgeSnapshot);
-      },
-      beforeEdgeFrame,
-      { timeout: 240000 },
-    );
-    const edgeOn = JSON.parse(await edgeHandle.jsonValue());
-    assert.equal(edgeOn.transparentArrayLodTier, 'exact');
-    assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
-    assert.equal(edgeOn.processRevision, distant.processRevision);
-    assert.ok(Number(edgeOn.rendererFrameSerial) > beforeEdgeFrame);
-    console.log('ARRAY_RENDERER_EDGE_EXACT', JSON.stringify({
-      tier: edgeOn.transparentArrayLodTier,
-      frameSerial: edgeOn.rendererFrameSerial,
-      sceneGeneration: edgeOn.sceneGeneration,
-      electricalFarLodBodyCount: edgeOn.electricalFarLodBodyCount,
-    }));
-
-    await page.waitForFunction(
-      () => /^far-/.test(document.getElementById('threeHost')?.dataset.transparentArrayLodTier || ''),
-      null,
-      { timeout: 120000 },
-    );
-    await waitForThreeReady(page, 120000);
-    const restoredFar = await snapshot();
-    assert.equal(restoredFar.processRevision, distant.processRevision);
-    assert.equal(restoredFar.arrayInstances, distant.arrayInstances);
     fastTransparencyLodProbe = {
       elapsedMs,
       farDrawTriangles: Number(distant.rendererDrawTriangles),
       distant,
-      edgeOn,
-      restoredFar,
     };
     const beforeOpaque = await frameSerial();
     await page.locator('#threeOpacityRange').fill('1');
@@ -388,6 +334,77 @@ try {
     await page.mouse.move(rect.x + rect.width * 0.5 + i * 4, rect.y + rect.height * 0.5 + i);
   await page.mouse.up();
   await waitStage('rotation');
+  // Isolate the costly edge-on exact transparent restoration AFTER the normal
+  // Quality / cached-variant / border stress and interaction regression. On
+  // software WebGL the exact 625-site compositor can monopolize the thread
+  // even after the camera returns to Fast; it must not contaminate the baseline
+  // acceptance measured above.
+  if (fastTransparencyLodProbe) {
+    page.setDefaultTimeout(120000);
+    await page.locator('#fit3dBtn').click();
+    await page.locator('#threePanel .three-opacity-control > summary').click();
+    const beforeFarFrame = await frameSerial();
+    await page.locator('#threeOpacityRange').fill('0.5');
+    await waitStage('lod-edge-preflight-far', 120000, beforeFarFrame);
+    const far = await snapshot();
+    assert.match(far.transparentArrayLodTier, /^far-/);
+    assert.ok(Number(far.electricalFarLodBodyCount) > 0);
+    const edgeCanvas = await page.locator('#threeHost canvas').boundingBox();
+    assert.ok(edgeCanvas, '3D canvas must be available for edge-on test');
+    const cx = edgeCanvas.x + edgeCanvas.width / 2;
+    const cy = edgeCanvas.y + edgeCanvas.height / 2;
+    const beforeEdgeFrame = await frameSerial();
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 24, { steps: 4 });
+    await page.mouse.up();
+    // Capture the finished exact transparent frame and immediately request Fit
+    // in the same page task. The slow software compositor can starve a
+    // subsequent Playwright evaluation despite already-rendered frame data.
+    const edgeHandle = await page.waitForFunction(
+      (previous) => {
+        const host = document.getElementById('threeHost');
+        if (
+          host?.dataset.transparentArrayLodTier !== 'exact' ||
+          host.dataset.renderState !== 'ready' ||
+          Number(host.dataset.rendererFrameSerial || 0) <= previous
+        ) return false;
+        const edgeSnapshot = { ...host.dataset };
+        document.getElementById('fit3dBtn')?.click();
+        return JSON.stringify(edgeSnapshot);
+      },
+      beforeEdgeFrame,
+      { timeout: 240000 },
+    );
+    const edgeOn = JSON.parse(await edgeHandle.jsonValue());
+    assert.equal(edgeOn.transparentArrayLodTier, 'exact');
+    assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
+    assert.equal(edgeOn.processRevision, far.processRevision);
+    assert.equal(edgeOn.arrayInstances, far.arrayInstances);
+    assert.ok(Number(edgeOn.rendererFrameSerial) > beforeEdgeFrame);
+    console.log(
+      'ARRAY_RENDERER_EDGE_EXACT',
+      JSON.stringify({
+        tier: edgeOn.transparentArrayLodTier,
+        frameSerial: edgeOn.rendererFrameSerial,
+        sceneGeneration: edgeOn.sceneGeneration,
+        electricalFarLodBodyCount: edgeOn.electricalFarLodBodyCount,
+      }),
+    );
+    await page.waitForFunction(
+      () => /^far-/.test(document.getElementById('threeHost')?.dataset.transparentArrayLodTier || ''),
+      null,
+      { timeout: 120000 },
+    );
+    await waitForThreeReady(page, 120000);
+    const restoredFar = await snapshot();
+    assert.equal(restoredFar.arrayInstances, far.arrayInstances);
+    assert.equal(restoredFar.processRevision, far.processRevision);
+    fastTransparencyLodProbe.edgeOn = edgeOn;
+    fastTransparencyLodProbe.restoredFar = restoredFar;
+    await page.screenshot({ path: fileURLToPath(new URL('fast-transparent-edge-on-recovered.png', output)) });
+    page.setDefaultTimeout(THREE_READY_TIMEOUT_MS);
+  }
   assert.deepEqual(errors, []);
   const report = {
     browserVersion: browser.version(),
