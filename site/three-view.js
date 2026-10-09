@@ -87,6 +87,12 @@ export function createThreeView({
   if (typeof getModel !== 'function') throw new TypeError('getModel must be a function.');
 
   const smoothCapDerivedDataCache = createDerivedDataCache();
+  // The detailed V3 projection probes cost measurable scene-build CPU time.
+  // Keep them explicitly opt-in for benchmark runs, not interactive users.
+  const v3DiagnosticsEnabled =
+    new URLSearchParams(host.ownerDocument?.defaultView?.location?.search || '').get(
+      'rendererV3Diagnostics',
+    ) === '1';
 
   let renderer = null;
   let scene = null;
@@ -2757,7 +2763,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const viewportForV3 = currentViewport(),
         distanceForV3 =
           camera && controls ? camera.position.distanceTo(controls.target) : 0,
-        v3Budget = buriedInterfaceSubpixelBudget(plan.sidewalls, {
+        v3Budget = v3DiagnosticsEnabled ? buriedInterfaceSubpixelBudget(plan.sidewalls, {
           farTier: targetVariant === 'transparent' && arrayLod.tier !== 'exact',
           clipped: Boolean(clip),
           // Use the EFFECTIVE Section display transform, including the
@@ -2773,7 +2779,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
             camera && distanceForV3 > 0
               ? Math.abs(camera.position.z - controls.target.z) / distanceForV3
               : 0,
-        });
+        }) : {
+          mode: 'observe-only',
+          qualified: false,
+          exclusionReason: 'diagnostics-disabled',
+          candidates: 0,
+          instanceWallSegments: 0,
+          rawTwoPassTriangleEstimate: 0,
+          skippedTriangles: 0,
+        };
       host.dataset.v3ScreenBudgetMode = v3Budget.mode;
       host.dataset.v3ScreenBudgetQualified = String(v3Budget.qualified);
       host.dataset.v3ScreenBudgetReason = v3Budget.exclusionReason || 'qualified';
@@ -2787,7 +2801,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // collapsed Section disqualifies every candidate from future culling.
       // Strictly bounded per owner/edge/instance to avoid adding GPU work.
       let v3Projected = null;
-      if (targetVariant === 'transparent' && arrayLod.tier !== 'exact' && camera) {
+      if (
+        v3DiagnosticsEnabled &&
+        targetVariant === 'transparent' &&
+        arrayLod.tier !== 'exact' &&
+        camera
+      ) {
         camera.updateMatrixWorld();
         const pointForProjection = new THREE.Vector3();
         v3Projected = sampleBuriedInterfaceProjection(plan.sidewalls, {
@@ -2828,7 +2847,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       let v3Tiles = null,
         v3Edges = null,
         v3EdgesMs = 0;
-      if (targetVariant === 'transparent' && arrayLod.tier !== 'exact' && camera) {
+      if (
+        v3DiagnosticsEnabled &&
+        targetVariant === 'transparent' &&
+        arrayLod.tier !== 'exact' &&
+        camera
+      ) {
         const viewProjection = camera.projectionMatrix
           .clone()
           .multiply(camera.matrixWorldInverse);
