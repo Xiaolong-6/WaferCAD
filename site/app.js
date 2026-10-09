@@ -21,6 +21,7 @@ import { createFeedbackController } from './controllers/feedback-controller.js';
 import { createConfirmationDialogController } from './controllers/confirmation-dialog-controller.js';
 import { createStartupController } from './controllers/startup-controller.js';
 import { createWorkstationUiController } from './workstation-ui.js';
+import { createIntelligentUi } from './intelligent-ui.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
 import { createViewPopoverController } from './controllers/view-popover-controller.js';
 import { createViewToolbarController } from './controllers/view-toolbar-controller.js';
@@ -1442,6 +1443,7 @@ workspacePersistenceController = createWorkspacePersistenceController({
 });
 
 const workstationUiController = createWorkstationUiController({ root: document, win: window });
+const intelligentUi = createIntelligentUi({ root: document, win: window, workstation: workstationUiController });
 
 function resetEmbeddedPreviewPlanFraming() {
   if (!EMBEDDED_PREVIEW) return;
@@ -1572,6 +1574,7 @@ function bindEmbeddedPreviewInteractions() {
 
 function bindUi() {
   workstationUiController.bind();
+  intelligentUi.bind();
 
   if (EMBEDDED_PREVIEW) {
     bindEmbeddedPreviewInteractions();
