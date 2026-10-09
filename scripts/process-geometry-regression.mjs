@@ -1065,14 +1065,14 @@ assert.equal(await page.locator('#operationThicknessRow').isHidden(), true);
 await page.locator('#operationArea').selectOption('full');
 assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 await mkdir('test-results/process-geometry', { recursive: true });
-await page.locator('#operationTools').evaluate((section) =>
-  section.scrollIntoView({ block: 'start', behavior: 'instant' }),
-);
+await page.locator('#operationTools').evaluate((section) => {
+  section.scrollIntoView({ block: 'start', behavior: 'instant' });
+});
 await page.screenshot({ path: 'test-results/process-geometry/liftoff-step-wide.png' });
 await page.setViewportSize({ width: 390, height: 844 });
-await page.locator('#operationTools').evaluate((section) =>
-  section.scrollIntoView({ block: 'start', behavior: 'instant' }),
-);
+await page.locator('#operationTools').evaluate((section) => {
+  section.scrollIntoView({ block: 'start', behavior: 'instant' });
+});
 await page.screenshot({ path: 'test-results/process-geometry/liftoff-step-mobile.png' });
 await page.setViewportSize({ width: 1280, height: 800 });
 await page.locator('#liftoffTargetLayer').selectOption(resist.layerId);
