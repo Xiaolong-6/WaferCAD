@@ -658,8 +658,12 @@ test('Lift-off requires an explicit sacrificial selection before Apply is enable
   const model = controller.__getModel();
   const modelApi = await import('../model.js');
   const resist = modelApi.applyOperation(model, {
-    type: 'add', name: 'PMMA', thickness: 0.2,
-    growth: 'direct', face: 'front', area: model.boundary,
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    growth: 'direct',
+    face: 'front',
+    area: model.boundary,
   });
   controller.updateUi();
   assert.equal(root.getElementById('liftoffTargetLayer').disabled, false);
