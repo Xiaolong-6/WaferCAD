@@ -4,6 +4,14 @@
 >
 > 列名中的“设计”仅判断 M1.5 原型是否明确画出**该形态**：**有**=对应入口与相近组件，**部分**=概念/入口有而完整参数与状态未设计，**无**=没有明确设计。对“无”的功能，先补一张 M1.5 设计稿再迁移。M2列：**壳**=容器或布局本体，**mock**=M2的 UI draft 演示，**无**=尚未有可维护落点。**X**=当前摆放/形式与 M1.5 或旧功能语义有偏差；**G**=缺乏稳定落点/入口或只是零散临时 UI；**U**=M1.5 形式未设计；**-**=暂未识别布局差异。
 
+## M2.5 结构与 Lift-off 落位更新（2026-10-09）
+
+- 已批准：A 布局不变；Base 作为 `panel.base` 内嵌 Project；Diagnostics 作为 `panel.process.diagnostics`；Nav、View mode 由 `shell-registry.js` 注册表驱动。
+- M2.5 新增 `view.{main,mask,three,section}.{header,actions,stage,readout,overlays}` 以及通用 Popover/Dialog/Toast、Status 具名容器。四个真实 canvas host 的 identity 尚未完成浏览器实测；仅靠源码不能移除该验收项。
+- 主线新增的 **Lift-off Step**：Process 面板 `Operation=Lift-off` → `Sacrificial layer` 下拉，不要求 thickness，包含无可用 sacrificial 层时的 disabled/hint 状态；Recipe `Add kind=liftoff` → `params.sacrificial` 编辑与验证。这两项 M1.5 需补对应设计，但本阶段**不补原型**。当前 M2 mock 仅补入口与层选择，M3 才接 geometry/worker/replay。
+- 主线新增 **Geometry Diagnostics**：Process 子域 `Diagnostics`，包含 Analyze、只读 summary / metrics / Materials / Findings / partial/stale/error；M2.5 只提供稳定插槽，不预接核心。
+- 原 258 行的 G/X/U 是 M2 审计快照，现应以“代码在 M2.5 已放置具名宿主；尚待节点 identity 运行时验证”为附加状态，不覆盖 M3 真实内容未完成的标记。
+
 ## 使用与决策
 
 - 每个功能独立一行；跨位置的功能在“区域”列写出全部承载区域。一级区域词汇限定为**顶栏、导航栏、侧面板、视图工具栏、视图舞台、浮层、状态栏**。
