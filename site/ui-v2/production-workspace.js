@@ -31,6 +31,23 @@
       onHide() {}, destroy() {},
     });
   }
+  for (const { key } of registry.views) {
+    adapters.register(`view.${key}`, {
+      mount(host) {
+        const panel = views.update(key, {
+          class: 'p-view', id: `${key}Panel`, 'data-view': key,
+        },
+          el('header', { class: 'p-panel-head' }, el('strong', {}, key),
+            el('div', { class: 'p-toolbar' })),
+          el('div', { class: 'p-science', 'data-science': key, 'data-v2-stage-host': '' },
+            el('span', { class: 'p-aux' }, 'Scientific renderer mounts here in M3')),
+          el('div', { class: 'p-readout' }, ''));
+        host.append(panel);
+        return panel;
+      },
+      onShow() {}, onHide() {}, destroy() {},
+    });
+  }
   const shell = window.createWaferCadV2Workstation({
     root, state, registry, adapters,
     getProjectName: () => 'Untitled',
@@ -42,14 +59,6 @@
       message: 'M2.5 shell · domain controllers intentionally unconnected',
       save: 'No production storage connected', version: 'M2.5',
     }),
-    renderView: (key) => views.update(key, {
-      class: 'p-view', id: `${key}Panel`, 'data-view': key,
-    },
-      el('header', { class: 'p-panel-head' }, el('strong', {}, key),
-        el('div', { class: 'p-toolbar' })),
-      el('div', { class: 'p-science', 'data-science': key, 'data-v2-stage-host': '' },
-        el('span', { class: 'p-aux' }, 'Scientific renderer mounts here in M3')),
-      el('div', { class: 'p-readout' }, '')),
   });
   function render() { shell.render(); }
   root.addEventListener('click', (event) => {
