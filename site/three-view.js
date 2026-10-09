@@ -5,6 +5,7 @@ import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
+import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -1245,6 +1246,8 @@ export function createThreeView({
     // Attribute the *submitted* triangles by presentation ownership.
     const trianglesByKind = new Map(),
       largestTriangleObjects = [];
+    let singlePassCapObjects = 0,
+      savedCapTriangleSubmissions = 0;
     group.traverse?.((object) => {
       if (!object.isMesh || object.visible === false) return;
       const geometry = object.geometry;
@@ -1255,6 +1258,16 @@ export function createThreeView({
       if (!triangles) return;
       const kind = object.userData?.waferCadPresentation?.kind || 'untracked';
       trianglesByKind.set(kind, (trianglesByKind.get(kind) || 0) + triangles);
+      if (
+        object.material?.forceSinglePass === true &&
+        object.material?.userData?.waferCadSinglePassPlanarCap &&
+        object.material?.transparent === true
+      ) {
+        singlePassCapObjects++;
+        // Diagnostic estimate: the second DoubleSide draw was one more
+        // submission of this exact planar geometry, not another mesh.
+        savedCapTriangleSubmissions += triangles;
+      }
       largestTriangleObjects.push({
         name: object.name || '',
         kind,
@@ -1268,6 +1281,8 @@ export function createThreeView({
     host.dataset.sceneTopTriangleObjects = JSON.stringify(
       largestTriangleObjects.sort((a, b) => b.triangles - a.triangles).slice(0, 8),
     );
+    host.dataset.sceneSinglePassCapObjects = String(singlePassCapObjects);
+    host.dataset.sceneSavedCapTriangleSubmissions = String(savedCapTriangleSubmissions);
     if (renderer?.info?.memory) {
       host.dataset.webglGeometryCount = String(renderer.info.memory.geometries ?? 0);
       host.dataset.webglTextureCount = String(renderer.info.memory.textures ?? 0);
@@ -1639,6 +1654,21 @@ export function createThreeView({
             side: THREE.DoubleSide,
             ...materialState,
           });
+      // All triangles in one smooth cap lie on one physical Z plane. Its
+      // front/back faces cannot both contribute from the same camera pose,
+      // so Three.js's second transparent DoubleSide pass is redundant.
+      // Walls, rough faces and mixed-depth annotation volumes retain two passes.
+      if (
+        canRenderPlanarCapInSinglePass({
+          transparentScene: presentationMode() === 'transparent',
+          materialState,
+          appearance,
+          presentation,
+        })
+      ) {
+        material.forceSinglePass = true;
+        material.userData.waferCadSinglePassPlanarCap = true;
+      }
       return material;
     };
 
@@ -2685,7 +2715,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               cap,
               cap.buried ? transparentArrayDisplayTolerance : 0,
             ),
-            presentation = presentationFor(cap),
+            presentation = { ...presentationFor(cap), planarCap: true },
             material = createSurfaceMaterial(layer, state, null, presentation);
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
             name: `${cap.layerId} array cap`,
@@ -2751,7 +2781,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
                       },
                     ],
                   }),
-                  presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                  presentation = {
+                    ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                    planarCap: true,
+                  },
                   material = createSurfaceMaterial(
                     layerById(model, bucket.part.layerId),
                     state,
@@ -2779,7 +2812,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
                       },
                     ],
                   }),
-                  presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                  presentation = {
+                    ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+                    planarCap: true,
+                  },
                   material = createSurfaceMaterial(
                     layerById(model, bucket.part.layerId),
                     state,
@@ -2810,7 +2846,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
               polys: part.polys,
             })),
           }),
-          presentation = presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+          presentation = {
+            ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
+            planarCap: true,
+          },
           material = createSurfaceMaterial(
             layerById(model, bucket.part.layerId),
             state,
