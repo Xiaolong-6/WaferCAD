@@ -17,7 +17,7 @@ function sampleIndices(size, limit) {
   );
 }
 
-function projectionArea(quad, project) {
+function projectionArea(quad, project, widthPx, heightPx) {
   const pixels = quad.map((point) => project(point));
   if (!pixels.every(finite2)) return null;
   const xs = pixels.map((point) => point[0]);
@@ -30,9 +30,9 @@ function projectionArea(quad, project) {
     width: xMax - xMin,
     height: yMax - yMin,
     offscreen: pixels.every((point) => point[0] < 0) ||
-      pixels.every((point) => point[0] > 1) ||
+      pixels.every((point) => point[0] > widthPx) ||
       pixels.every((point) => point[1] < 0) ||
-      pixels.every((point) => point[1] > 1),
+      pixels.every((point) => point[1] > heightPx),
   };
 }
 
@@ -42,6 +42,8 @@ export function sampleBuriedInterfaceProjection(
     project,
     mapZ = (z) => z,
     displayZScale = 1,
+    viewportWidth = 0,
+    viewportHeight = 0,
     visibleIntervals = (z0, z1) => [[z0, z1]],
     maxOwners = 32,
     maxPartsPerOwner = 8,
@@ -72,6 +74,10 @@ export function sampleBuriedInterfaceProjection(
     typeof visibleIntervals !== 'function' ||
     !Number.isFinite(displayZScale) ||
     displayZScale <= 0 ||
+    !Number.isFinite(viewportWidth) ||
+    viewportWidth <= 0 ||
+    !Number.isFinite(viewportHeight) ||
+    viewportHeight <= 0 ||
     ![maxOwners, maxPartsPerOwner, maxInstancesPerOwner].every(
       (value) => Number.isInteger(value) && value >= 1 && value <= 64,
     )
@@ -149,7 +155,7 @@ export function sampleBuriedInterfaceProjection(
           [part.p[0] + dx, part.p[1] + dy, mappedZ1],
         ];
         result.sampledQuads++;
-        const bounds = projectionArea(quad, project);
+        const bounds = projectionArea(quad, project, viewportWidth, viewportHeight);
         if (!bounds) continue;
         result.projectedQuads++;
         if (bounds.offscreen) result.offscreenQuads++;
