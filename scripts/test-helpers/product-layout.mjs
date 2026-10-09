@@ -102,10 +102,15 @@ export function createProductLayoutChecks({ capture }) {
       assert.equal(await page.locator('#threePanel').isHidden(), true);
       assert.equal(await page.locator('#layerLegend').isHidden(), true);
       assert.equal(await page.locator('.workstation-section-layers').isVisible(), true);
-      assert.equal(await page.locator('#mainPanBtn').isVisible(), true);
-      assert.equal(await page.locator('#mainZoomOut').isVisible(), true);
-      assert.equal(await page.locator('#mainZoomIn').isVisible(), true);
+      // On a phone, overflow actions stay accessible through Main → More;
+      // Fit remains on the header, while Pan and +/- are intentionally secondary.
       assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
+      const more = page.locator('#mainPanel .view-more-control');
+      await more.locator(':scope > summary').click();
+      for (const id of ['mainPanBtn', 'mainZoomOut', 'mainZoomIn']) {
+        assert.equal(await page.locator(`#${id}`).isVisible(), true, `phone: ${id} in More`);
+      }
+      await more.locator(':scope > summary').click();
       assert.equal(
         await page.locator('#sectionPanel .view-more-control > summary').isVisible(),
         true,
@@ -589,6 +594,8 @@ export function createProductLayoutChecks({ capture }) {
       handleSize <= (name === 'phone' ? 32 : 24),
       `A/B handle is too large: ${handleSize}px`,
     );
+    const mainMore = page.locator('#mainPanel .view-more-control');
+    await mainMore.locator(':scope > summary').click();
     await page.locator('#mainZoomIn').click();
     assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
     await dragHandle(page, 'a', 4, 0);
@@ -601,6 +608,7 @@ export function createProductLayoutChecks({ capture }) {
       const handleBeforePan = await page.locator('[data-endpoint=a]').boundingBox();
       const panCanvas = await mainCanvas.boundingBox();
       assert.ok(handleBeforePan && panCanvas);
+      await mainMore.locator(':scope > summary').click();
       await panButton.click();
       assert.equal(await panButton.getAttribute('aria-pressed'), 'true');
       await page.mouse.move(
@@ -618,6 +626,7 @@ export function createProductLayoutChecks({ capture }) {
       assert.ok(handleAfterPan);
       close(handleAfterPan.x - handleBeforePan.x, 24, 2);
       close(handleAfterPan.y - handleBeforePan.y, 16, 2);
+      await mainMore.locator(':scope > summary').click();
       await panButton.click();
       assert.equal(await panButton.getAttribute('aria-pressed'), 'false');
       await page.locator('#mainZoomFit').click();
