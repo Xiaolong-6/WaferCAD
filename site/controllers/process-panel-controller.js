@@ -239,6 +239,20 @@ export function createProcessPanelController({
           : 'Apply';
     const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
     // Keep the selected operation visible above its parameters in Step mode.
+    $('processGuideOperation').textContent =
+      t === 'add'
+        ? transfer
+          ? 'Transfer'
+          : 'Deposit'
+        : t === 'grow'
+          ? 'Extend'
+          : t === 'etch'
+            ? 'Etch'
+            : t === 'implant'
+              ? 'Implant'
+              : electrical
+                ? 'Electrical'
+                : 'Record';
     $('processParametersHeading').textContent =
       t === 'add' && transfer
         ? 'Transfer parameters'
