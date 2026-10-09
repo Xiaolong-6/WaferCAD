@@ -34,7 +34,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Normalize MAGIC-1000 source and Wiki formatting
-        run: npx prettier --write scripts/build-magic-1000-example.mjs site/tests/magic1000-reconstruction.test.mjs docs/wiki/Examples-and-Modeling-Limits.md
+        run: npx prettier --write scripts/build-magic-1000-example.mjs site/tests/magic1000-reconstruction.test.mjs site/bundled-examples.js docs/wiki/Examples-and-Modeling-Limits.md
       - name: Generate representative MAGIC-1000 project using current Process Kernel
         run: node scripts/build-magic-1000-example.mjs --write-repo
       - name: Generate final-state single-Step preview
@@ -65,6 +65,7 @@ jobs:
           git add \
             scripts/build-magic-1000-example.mjs \
             site/tests/magic1000-reconstruction.test.mjs \
+            site/bundled-examples.js \
             docs/wiki/Examples-and-Modeling-Limits.md \
             site/examples/magic-1000-mos2-beol.wafercad \
             site/examples/previews/magic-1000-mos2-beol.wafercad \
