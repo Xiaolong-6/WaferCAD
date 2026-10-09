@@ -23,6 +23,7 @@ import { createStartupController } from './controllers/startup-controller.js';
 import { createWorkstationUiController } from './workstation-ui.js';
 import { createViewMaximizeController } from './controllers/view-maximize-controller.js';
 import { createViewPopoverController } from './controllers/view-popover-controller.js';
+import { createViewToolbarController } from './controllers/view-toolbar-controller.js';
 import { createMaskBrowserController } from './controllers/mask-browser-controller.js';
 import { createExportController } from './controllers/export-controller.js';
 import { createRoiController } from './controllers/roi-controller.js';
@@ -119,6 +120,7 @@ const planViews = { mask: { zoom: 1, panX: 0, panY: 0 }, main: { zoom: 1, panX: 
 const feedback = createFeedbackController();
 const confirmationDialog = createConfirmationDialogController({ root: document });
 const viewPopovers = createViewPopoverController({ root: document });
+const viewToolbars = createViewToolbarController({ root: document });
 
 function status(message, level = 'auto') {
   feedback.show(message, level);
@@ -1577,6 +1579,7 @@ function bindUi() {
   }
 
   viewPopovers.bind();
+  viewToolbars.bind();
   viewMaximizeController.bind();
   roiController.bind();
   processTaskController.bind();
