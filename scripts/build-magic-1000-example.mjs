@@ -13,7 +13,7 @@ const PAPER = '10.1038/s41928-026-01641-0';
 const FIXED_DATE = '2026-10-09T08:00:00.000Z';
 const MODEL_SIZE = [40, 24];
 const RECEIVER_THICKNESS_UM = 2; // surrogate; silicon handle thickness not specified
-const ILD_CLEARANCE_UM = 0.4; // cross-section surrogate, not a paper thickness
+const ILD_CLEARANCE_UM = 0.5; // Methods: CMP endpoint approximately 0.5 um above Al lines
 const ILD_DEPOSIT_UM = 0.9; // overfill followed by CMP
 const VIA_OVERFILL_UM = 0.05;
 const METAL_STACK = [
@@ -590,7 +590,7 @@ export async function buildMagic1000() {
     siliconHandleSurrogateUm: RECEIVER_THICKNESS_UM,
     nonSourceAssumptions: [
       'A 40 x 24 um local illustrative routing window, not a measured GDS window.',
-      'Repeated 0.4um SiO2 ILD clearance and 0.9um deposited overfill are geometry surrogates.',
+      'CMP clearance 0.5um is the approximate paper-reported endpoint; 0.9um SiO2 deposited overfill is an explicit reconstruction surrogate.',
       'Monolayer MoS2 illustrated at 0.7nm.',
       'Selective D-mode AlOx illustrated at 10nm; deposition thickness was not stated.',
       'HfO2 gate access etch is recorded but omitted from local gate stack geometry.',
