@@ -181,6 +181,9 @@ await recipePage.locator('#operationArea').selectOption('full');
 await recipePage.locator('#growthMode').selectOption('direct');
 await recipePage.locator('#layerName').fill('Manual recipe check');
 await recipePage.locator('#operationThickness').fill('0.02');
+// Recipe appending requires explicit opt-in while History remains automatic.
+assert.equal(await recipePage.locator('#recipeRecordManual').isChecked(), false);
+await recipePage.locator('#recipeRecordManual').check();
 await recipePage.locator('#applyOperationBtn').click();
 await recipePage.waitForFunction(
   () =>
