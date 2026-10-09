@@ -40,9 +40,9 @@ subpixel buried **smooth** array sidewall segments. Inputs include the active
 camera's micrometres per pixel, view angle, ROI/collapse state and ownership
 metadata. It accepts only a Fast far-tier camera, at least 64 translated
 instances, and an interior smooth physical Z interval whose
-`abs(z1-z0) / unitsPerPixel <= 0.5`. The projected-height calculation is a
-conservative upper-bound and does not assume that an edge-on physical wall
-is invisible. Invalid viewport, edge-on, ROI and collapse fail closed.
+`abs(z1-z0) * effectiveDisplayZScale / unitsPerPixel <= 0.5`. The projected-height estimate is diagnostic at the camera target, not an
+exact perspective-space visibility proof for every instance. Invalid
+viewport, edge-on, ROI, disabled camera and active Section collapse fail closed.
 
 - `v3ScreenBudgetMode='observe-only'` and `v3SkippedTriangles='0'` at all
   times; **no triangles, polygons or materials are removed** in Phase A.
@@ -72,6 +72,38 @@ is invisible. Invalid viewport, edge-on, ROI and collapse fail closed.
 4. Keep this commit separate from any LOD change so the diagnostic can be
    used as a control. If probe cost itself is measurable, remove or relocate
    it into the benchmark rather than penalize production frames.
+
+## Phase A full-wafer result and corrected measurement
+
+The first [PR #166 625-site Browser run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37916330681)
+**passed**. [Native Fig3](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37916331342),
+[Recipe Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37916330726),
+Quality and targeted Chromium also passed at `f4a5928`.
+
+The actual `report.json` artifact records Fast far transparency **6.39 s**,
+Quality cold/warm transparency **20.34/19.80 s**, and unchanged submitted
+triangles **16,906,262 Fast / 57,040,012 Quality**. The far scene has LOD
+tier `far-2.56`, yet its effective Section Z-collapse is **enabled** and
+its 3D Z display scale is **23,196.347**. Therefore the original v3 probe's
+`qualified=false, candidates=0, skippedTriangles=0` was an intended
+collapse safety exclusion, **not an indication that no interface workload
+exists**. Run-to-run timing variance is substantial and no v3 speedup
+has been demonstrated.
+
+The initial observation code also divided *physical* wall height directly
+by screen units per pixel while overlooking the renderer's huge Z-display
+scale. Such a probe could label visibly tall walls as subpixel; no real
+geometry was omitted in that version. The follow-up fix now uses the
+**effective** `currentZDisplay.enabled` instead of the stored Section
+setting's truthiness, propagates the exclusion as
+`v3ScreenBudgetReason`, checks positive finite `displayZScale`, and
+multiplies displayed Z extents by that scale. Dedicated unit and 625-site
+browser regression assertions lock down the behavior.
+
+**No automatic culling is authorized by the budget.** Perspective
+projection and nearer translated instances require per-owner/tile
+clip-space error bounds, verified transparent color/occlusion and
+near/ROI/edge-on restoration before Phase B can remove even one triangle.
 
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
