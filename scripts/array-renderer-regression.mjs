@@ -300,6 +300,13 @@ try {
   // Optional, intentionally heavier real-browser profile. Keep the existing
   // standard CI workload unchanged while the far-array visual tier is reviewed.
   if (process.argv.includes('--fast-transparent-lod')) {
+    // The preceding stress test ends after orbiting the camera. Restore the
+    // actual far-wafer inspection pose before testing its LOD policy.
+    // Software WebGL can take longer than the normal 45s locator watchdog
+    // before accepting page.evaluate after a full transparent frame.
+    page.setDefaultTimeout(120000);
+    await page.locator('#fit3dBtn').click();
+    await waitStage('fast-lod-camera-fit', 120000);
     await page.locator('#threePanel .three-opacity-control > summary').click();
     const beforeLodFrame = await frameSerial();
     await page.locator('#threeOpacityRange').fill('0.5');
