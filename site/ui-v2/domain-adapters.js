@@ -22,6 +22,11 @@
       if (!current.has(id)) entry.implementation.onShow(entry.node);
       current.add(id);
     }
+    function refresh(id) {
+      if (!current.has(id)) return;
+      const entry = registered.get(id);
+      entry?.implementation.onShow(entry.node);
+    }
     function hide(id) {
       if (!current.has(id)) return;
       registered.get(id)?.implementation.onHide();
@@ -32,12 +37,12 @@
       for (const entry of registered.values()) if (entry.mounted) entry.implementation.destroy();
       registered.clear();
     }
-    return Object.freeze({ register, show, hide, destroy, keys: () => [...registered.keys()] });
+    return Object.freeze({ register, show, refresh, hide, destroy, keys: () => [...registered.keys()] });
   }
   function presentationAdapter({ render }) {
     return {
-      mount(host) { render(host); return host; },
-      onShow() {},
+      mount(host) { return host; },
+      onShow(host) { render(host); },
       onHide() {},
       destroy() {},
     };
