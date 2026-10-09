@@ -82,8 +82,7 @@ try {
         (revision) => {
           const host = document.getElementById('threeHost');
           return (
-            host?.dataset.renderState === 'ready' &&
-            Number(host.dataset.modelRevision) === revision
+            host?.dataset.renderState === 'ready' && Number(host.dataset.modelRevision) === revision
           );
         },
         expectedRevision,
