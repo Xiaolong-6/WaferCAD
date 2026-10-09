@@ -12,7 +12,7 @@ _The same schematic geometry source is used here and in the expandable Process g
 
 _Real compact Process panel visual baseline (2026-10-05). The expandable schematic beneath Apply stays linked to the same operation catalog._
 
-The **Step** mode has Front/Back, one **Operation** selector, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. **Apply** performs the current operation. **Also add to Recipe** controls whether a successful Step-mode operation is appended to the Recipe. Below Apply, **How it works** expands a conceptual Before → After schematic and caveats; it is not a live prediction from the current project.
+The **Step** mode places the **Operation** and **Surface** selectors side by side, then a contextual parameter heading. **Area** and the material/target fields span the form width; **Coverage** and **Thickness** share a row when the operation supports both. Other operations retain their own relevant parameter fields. **Also add to Recipe** starts unchecked and only appends successful manual Steps when explicitly enabled. **Apply** performs the current operation. **Also add to Recipe** controls whether a successful Step-mode operation is appended to the Recipe. Below Apply, **How it works** expands a conceptual Before → After schematic and caveats; it is not a live prediction from the current project.
 
 The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
 
