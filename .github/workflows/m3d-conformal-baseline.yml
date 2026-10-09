@@ -64,14 +64,6 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run lint
-      # Temporary PR-only formatter extraction; remove after applying formatted content.
-      - name: Format source in the runner for review
-        run: |
-          npx prettier --write site/app.html site/controllers/process-diagnostics-controller.js site/process-diagnostics.js docs/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md docs/wiki/Process-and-Recipes.md
-          files=(site/app.html site/controllers/process-diagnostics-controller.js site/process-diagnostics.js docs/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md docs/wiki/Process-and-Recipes.md)
-          for i in "${!files[@]}"; do
-            base64 -w0 "${files[$i]}" | fold -w 8000 | awk -v key="$i" '{print "WAFERCAD_FMT_" key "_" NR ":" $0}'
-          done
       - run: npm run format:check
       - run: npm run docs:check
 
