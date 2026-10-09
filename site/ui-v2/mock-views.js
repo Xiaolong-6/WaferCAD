@@ -537,6 +537,8 @@
             legend.querySelector('.v2-legend-title').textContent =
               nextLegend.querySelector('.v2-legend-title').textContent;
             legend.hidden = nextLegend.hidden;
+            const selector = legend.querySelector('.v2-legend-palette-select');
+            if (selector) selector.value = state.legendPalette || 'balanced';
             if (scroller) scroller.scrollTop = position;
           }
           body.dataset.legendOpen = String(state.legendOpen);
