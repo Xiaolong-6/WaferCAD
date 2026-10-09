@@ -72,6 +72,16 @@ try {
 
   // Contract 4: One representative process operation completes through the real UI.
   await openFunctionPanel(page, 'process');
+  await page.locator('#geometryDiagnosticsPanel > summary').click();
+  assert.equal(await page.locator('#diagnosticsAnalyzeBtn').isVisible(), true);
+  await page.locator('#diagnosticsAnalyzeBtn').click();
+  await page.waitForFunction(
+    () => /Analysis complete/.test(document.getElementById('diagnosticsStatus')?.textContent || ''),
+    null,
+    { timeout: 30000 },
+  );
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Material volume/);
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Base/);
   await page.locator('#operationType').selectOption('add');
   await page.locator('#operationArea').selectOption('full');
   await page.locator('#growthMode').selectOption('direct');
@@ -87,6 +97,15 @@ try {
       .locator('#layerLegend .legend-name')
       .evaluateAll((inputs) => inputs.some((input) => input.value === 'Smoke layer')),
   );
+  assert.match(await page.locator('#diagnosticsStatus').textContent(), /out of date/);
+  await page.locator('#diagnosticsAnalyzeBtn').click();
+  await page.waitForFunction(
+    () => /Analysis complete/.test(document.getElementById('diagnosticsStatus')?.textContent || ''),
+    null,
+    { timeout: 30000 },
+  );
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Smoke layer/);
+  assert.equal(await page.locator('#diagnosticsResults').isVisible(), true);
 
   // Contract 5: Autosave/reload keeps the successful process result.
   await page.waitForFunction(
