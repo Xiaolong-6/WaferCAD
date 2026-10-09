@@ -89,10 +89,11 @@ export function createThreeView({
   const smoothCapDerivedDataCache = createDerivedDataCache();
   // The detailed V3 projection probes cost measurable scene-build CPU time.
   // Keep them explicitly opt-in for benchmark runs, not interactive users.
-  const v3DiagnosticsEnabled =
-    new URLSearchParams(host.ownerDocument?.defaultView?.location?.search || '').get(
-      'rendererV3Diagnostics',
-    ) === '1';
+  const rendererQuery = new URLSearchParams(host.ownerDocument?.defaultView?.location?.search || ''),
+    v3DiagnosticsEnabled = rendererQuery.get('rendererV3Diagnostics') === '1',
+    // Index reuse preserves faces but has no demonstrated whole-scene speedup.
+    // Keep the default scientific renderer unchanged until paired GPU proof.
+    v3IndexedSmoothWallEnabled = rendererQuery.get('rendererV3IndexedWalls') === '1';
 
   let renderer = null;
   let scene = null;
@@ -3167,6 +3168,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 // Presentation-only Fast array optimization. Quality, rough,
                 // implant, non-instanced walls and GLB remain unchanged.
                 indexedSmooth:
+                  v3IndexedSmoothWallEnabled &&
                   sidewall.buried &&
                   targetVariant === 'transparent' &&
                   inspection.fast !== false,
