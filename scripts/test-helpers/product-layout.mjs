@@ -316,6 +316,18 @@ export function createProductLayoutChecks({ capture }) {
       await dockToggle.click();
       assert.equal((await dockToggle.textContent()).trim(), 'Show');
       assert.equal(await page.locator('#sectionBody').isHidden(), true);
+      // Z Break stays available from the header even when the Section dock is
+      // collapsed. Its dialog must escape the hidden canvas subtree.
+      await entry.click();
+      await editor.waitFor({ state: 'visible' });
+      assert.equal(
+        await editor.evaluate((element) => element.matches(':modal')),
+        true,
+        'phone: a collapsed Section must open Z Break in the top layer',
+      );
+      await page.locator('#sectionCollapseClose').click();
+      assert.equal(await editor.isHidden(), true);
+      assert.equal(await page.locator('#sectionBody').isHidden(), true);
       await dockToggle.click();
       assert.equal((await dockToggle.textContent()).trim(), 'Hide');
       await canvas.waitFor({ state: 'visible' });
