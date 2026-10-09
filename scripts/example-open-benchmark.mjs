@@ -103,6 +103,19 @@ try {
       }));
       assert.equal(timing.worker.steps, expectedSteps);
       assert.deepEqual(errors, []);
+      const projectAsset = timing.resource.find((entry) =>
+        new URL(entry.name).pathname.endsWith('.wafercad'),
+      );
+      assert.ok(projectAsset, 'complete example must be fetched by the editor');
+      if (warmed) {
+        // A successful focus prefetch must actually supply the editor's bytes
+        // from the HTTP cache. Frame timings alone are too noisy to prove that.
+        assert.ok(
+          projectAsset.encodedBodySize > 0 &&
+            projectAsset.transferSize < projectAsset.encodedBodySize / 2,
+          'prefetched example must reuse cached payload instead of re-downloading it',
+        );
+      }
       rows.push({
         id,
         warmed,
