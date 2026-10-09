@@ -17,7 +17,7 @@
     const unit = state.displayUnit || 'um';
     const unitFactor = unit === 'nm' ? 1000 : unit === 'mm' ? 0.001 : 1;
     const unitName = unit === 'um' ? 'µm' : unit;
-    const displayLength = (value) => Number(value) / unitFactor;
+    const displayLength = (value) => Number(value) * unitFactor;
     function recipeParameter(key, value) {
       const choices = {
         face: [
@@ -92,6 +92,16 @@
           'div',
           { class: 'p-form' },
           field('Project name (prototype draft)', 'projectName', state.projectName || data.name),
+          select(
+            'XYZ display unit',
+            'displayUnit',
+            [
+              ['nm', 'nm'],
+              ['um', 'µm'],
+              ['mm', 'mm'],
+            ],
+            state.displayUnit,
+          ),
           notice(
             `${data.source} · ${data.bytes.toLocaleString()} bytes · real final model + complete History.`,
           ),
@@ -193,83 +203,6 @@
             : notice(
                 `${data.drawMask.shapes.length} stored Draw shapes · coordinates in µm. Canvas shows actual masks.`,
               ),
-          el(
-            'div',
-            { class: 'p-actions p-draw-tools', role: 'toolbar', 'aria-label': 'Draw mask tools' },
-            ...[
-              ['select', 'Select'],
-              ['rect', 'Rect'],
-              ['circle', 'Circle'],
-              ['polygon', 'Polygon'],
-              ['ring', 'Ring'],
-              ['ring-sector', 'Ring sector'],
-            ].map(([key, label]) =>
-              button(label, `draw-tool:${key}`, 'mask', {
-                'aria-pressed': String(state.drawTool === key),
-              }),
-            ),
-            button('Add preview shape', 'draw-add', 'plus'),
-            button('Delete last', 'draw-delete', 'close'),
-            button('Clear draft', 'draw-clear', 'close'),
-          ),
-          select(
-            'ROI shape',
-            'roiShape',
-            [
-              ['rect', 'Rectangle'],
-              ['circle', 'Circle'],
-              ['ring', 'Ring'],
-              ['ring-sector', 'Ring sector'],
-            ],
-            state.roiShape,
-          ),
-          field(`ROI X · ${unitName}`, 'roiX', displayLength(state.roiSettings.x), {
-            type: 'number',
-            step: 'any',
-          }),
-          field(`ROI Y · ${unitName}`, 'roiY', displayLength(state.roiSettings.y), {
-            type: 'number',
-            step: 'any',
-          }),
-          field(`ROI width · ${unitName}`, 'roiWidth', displayLength(state.roiSettings.width), {
-            type: 'number',
-            min: 0,
-            step: 'any',
-          }),
-          field(`ROI height · ${unitName}`, 'roiHeight', displayLength(state.roiSettings.height), {
-            type: 'number',
-            min: 0,
-            step: 'any',
-          }),
-          field(`Alignment X · ${unitName}`, 'alignX', displayLength(state.maskTransform.x), {
-            type: 'number',
-            step: 'any',
-          }),
-          field(`Alignment Y · ${unitName}`, 'alignY', displayLength(state.maskTransform.y), {
-            type: 'number',
-            step: 'any',
-          }),
-          field('Alignment scale', 'alignScale', state.maskTransform.scale, {
-            type: 'number',
-            min: 0.0001,
-            step: 'any',
-          }),
-          field('Alignment rotation · °', 'alignRotation', state.maskTransform.rotation, {
-            type: 'number',
-            step: 'any',
-          }),
-          field('Mask opacity', 'maskOpacity', state.maskOpacity, {
-            type: 'range',
-            min: 0,
-            max: 1,
-            step: 0.05,
-          }),
-          el(
-            'div',
-            { class: 'p-actions' },
-            button('Show ROI', 'roi', 'roi'),
-            button('ROI settings…', 'settings:mask', 'settings'),
-          ),
         ),
         el(
           'section',
@@ -574,6 +507,12 @@
           state.thickness != null && state.thickness <= 0
             ? notice('Enter a positive thickness / depth before Apply.', 'error')
             : null,
+          el(
+            'div',
+            { class: 'p-actions', role: 'toolbar', 'aria-label': 'Apply history' },
+            button('Undo', 'draft-undo', 'undo', { disabled: !state.draftUndo }),
+            button('Redo', 'draft-redo', 'redo', { disabled: !state.draftRedo }),
+          ),
           ...taskControls(),
           state.failure ? notice(state.failure, 'error') : null,
         ),
@@ -739,36 +678,102 @@
       const selected = data.history.find((n) => n.id === cursor);
       const allBranches = [...data.branches, ...variants];
       const historyTree = window.WaferCadV2HistoryTree.build(data.history, allBranches);
+      const historyLabel = (id) =>
+        data.history.find((node) => node.id === id)?.label || id || 'Draft';
+      const historyRow = (title, subtitle, action, pressed, tone, type) =>
+        el(
+          'button',
+          {
+            type: 'button',
+            class: `p-history-row p-history-row--${type}`,
+            'data-action': action,
+            'data-state': tone,
+            'aria-pressed': String(pressed),
+          },
+          el('span', { class: 'p-history-title' }, title),
+          el('span', { class: 'p-history-meta' }, subtitle),
+        );
       function renderBranch(tree, depth = 0) {
         const active = branch === tree.branch.id;
         return el(
           'li',
-          { class: 'p-history-branch', 'data-branch-id': tree.branch.id, 'data-depth': depth },
-          row(
+          {
+            class: 'p-history-branch',
+            role: 'treeitem',
+            'aria-level': depth * 2 + 1,
+            'data-branch-id': tree.branch.id,
+            'data-depth': depth,
+          },
+          historyRow(
             `${tree.branch.name}${tree.branch.id === 'main' ? ' · Main' : ''}`,
-            `${tree.branch.headNodeId === cursor ? 'HEAD · Cursor' : `HEAD · ${tree.branch.headNodeId || 'draft'}`} · origin ${tree.branch.rootNodeId || 'Base'}`,
+            `${tree.branch.headNodeId === cursor ? 'HEAD · selected cursor' : `HEAD · ${historyLabel(tree.branch.headNodeId)}`} · from ${tree.origin?.label || 'Base'}`,
             `branch:${tree.branch.id}`,
             active,
+            active ? 'active' : '',
+            'branch',
           ),
           tree.steps.length
             ? el(
-                'ol',
-                { class: 'p-history-steps', 'data-history-list': depth === 0 ? '' : false },
-                tree.steps.map((step) =>
+                'ul',
+                {
+                  class: 'p-history-steps',
+                  role: 'group',
+                  'data-history-list': depth === 0 ? '' : false,
+                },
+                tree.steps.map((step, index) =>
                   el(
                     'li',
-                    { class: 'p-history-step', 'data-step-id': step.node.id },
-                    row(
-                      step.node.label,
-                      `${step.node.id === cursor ? 'Cursor · ' : ''}${step.node.id === tree.branch.headNodeId ? 'Branch HEAD · ' : ''}${step.node.kind || step.node.operationKind || step.node.branchId}`,
-                      `history:${step.node.id}`,
-                      step.node.id === cursor,
-                      step.node.id === tree.branch.headNodeId ? 'head' : '',
+                    {
+                      class: 'p-history-step',
+                      role: 'treeitem',
+                      'aria-level': depth * 2 + 2,
+                      'data-step-id': step.node.id,
+                    },
+                    el(
+                      'div',
+                      { class: 'p-history-row-wrap' },
+                      historyRow(
+                        `${String(index + 1).padStart(2, '0')} · ${step.node.label}`,
+                        `${step.node.kind || step.node.operationKind || 'Step'}${step.node.id === cursor ? ' · Cursor' : ''}${step.node.id === tree.branch.headNodeId ? ' · Branch HEAD' : ''}`,
+                        `history:${step.node.id}`,
+                        step.node.id === cursor,
+                        step.node.id === tree.branch.headNodeId ? 'head' : '',
+                        'step',
+                      ),
+                      button('', `history-menu:${step.node.id}`, 'more', {
+                        class: 'p-history-more',
+                        'aria-label': `Actions for ${step.node.label}`,
+                        'aria-expanded': String(state.historyMenuNode === step.node.id),
+                        title: 'Step actions',
+                      }),
+                      state.historyMenuNode === step.node.id
+                        ? el(
+                            'div',
+                            { class: 'p-history-menu', role: 'menu' },
+                            button('Select as cursor', `history-select:${step.node.id}`, null, {
+                              role: 'menuitem',
+                            }),
+                            button('Restore from here', `history-restore:${step.node.id}`, null, {
+                              role: 'menuitem',
+                            }),
+                            button('Edit from here', `history-edit:${step.node.id}`, null, {
+                              role: 'menuitem',
+                            }),
+                            button(
+                              'Create Variant from here',
+                              `history-variant:${step.node.id}`,
+                              null,
+                              {
+                                role: 'menuitem',
+                              },
+                            ),
+                          )
+                        : null,
                     ),
                     step.variants.length
                       ? el(
                           'ul',
-                          { class: 'p-history-variants' },
+                          { class: 'p-history-variants', role: 'group' },
                           step.variants.map((child) => renderBranch(child, depth + 1)),
                         )
                       : null,
@@ -781,41 +786,51 @@
       return [
         el(
           'section',
-          { class: 'p-form p-history-tree' },
-          el('h3', {}, `Variants · Step-first tree · ${allBranches.length}`),
-          el(
-            'ul',
-            { class: 'p-history-roots', 'data-variant-list': '' },
-            historyTree.map((tree) => renderBranch(tree)),
-          ),
-          notice(
-            `Cursor ${cursor} · Branch ${branch} · source HEAD is shown separately. Main follows cursor; 3D remains the fixed final thumbnail.`,
-          ),
-          el('strong', {}, selected?.label || 'Prototype Variant'),
+          { class: 'p-history-workspace' },
           el(
             'div',
-            { class: 'p-actions' },
-            button('Restore cursor (demo)', 'restore', 'history'),
-            button('Edit old step', 'edit-old', 'process'),
-            button('Create Variant', 'create-variant', 'branch'),
-          ),
-        ),
-        el(
-          'section',
-          {},
-          el(
-            'details',
-            { class: 'p-bookmarks' },
-            el('summary', {}, `History bookmarks · ${data.bookmarks.length}`),
+            { class: 'p-history-fixed' },
+            el('strong', {}, selected?.label || 'Prototype Variant'),
+            el(
+              'span',
+              { class: 'p-history-context' },
+              `Cursor · ${branch} · ${selected?.kind || 'Base'}`,
+            ),
             el(
               'div',
-              { class: 'p-list' },
-              data.bookmarks.map((bookmark) =>
-                row(
-                  bookmark.name,
-                  bookmark.historyNodeId,
-                  `history:${bookmark.historyNodeId}`,
-                  cursor === bookmark.historyNodeId,
+              { class: 'p-actions' },
+              button('Restore cursor', 'restore', 'history'),
+              button('Edit step', 'edit-old', 'process'),
+              button('Create Variant', 'create-variant', 'branch'),
+            ),
+          ),
+          el(
+            'div',
+            { class: 'p-history-scroll', 'data-history-scroll': '' },
+            el('h3', {}, `History · ${allBranches.length} Variants`),
+            el(
+              'div',
+              { class: 'p-history-tree', role: 'tree', 'aria-label': 'History and Variants' },
+              el(
+                'ul',
+                { class: 'p-history-roots', 'data-variant-list': '' },
+                historyTree.map((tree) => renderBranch(tree)),
+              ),
+            ),
+            el(
+              'details',
+              { class: 'p-bookmarks' },
+              el('summary', {}, `History bookmarks · ${data.bookmarks.length}`),
+              el(
+                'div',
+                { class: 'p-list' },
+                data.bookmarks.map((bookmark) =>
+                  row(
+                    bookmark.name,
+                    bookmark.historyNodeId,
+                    `history:${bookmark.historyNodeId}`,
+                    cursor === bookmark.historyNodeId,
+                  ),
                 ),
               ),
             ),

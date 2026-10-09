@@ -153,6 +153,22 @@ try {
   assert.equal(await evaluate('document.fonts.check(\'12px "Inter Review"\')'), true);
   assert.equal((await snapshot()).sourceFrozen, true);
   record('v2 entry / Inter font / frozen real-source mocks');
+  await click('[data-action="domain:project"]');
+  await evaluate(
+    "(() => {const unit=document.querySelector('.p-panel-content [data-key=displayUnit]');unit.value='nm';unit.dispatchEvent(new Event('change',{bubbles:true}))})()",
+  );
+  assert.equal(await evaluate("!document.querySelector('.p-topbar [data-key=displayUnit]')"), true);
+  await click('[data-action="domain:process"]');
+  assert.equal(await evaluate("document.querySelector('[data-key=thickness]').value"), '70');
+  assert.equal(
+    await evaluate(
+      "(() => {const apply=document.querySelector('[data-action=apply]'),undo=document.querySelector('[data-action=draft-undo]'),redo=document.querySelector('[data-action=draft-redo]');return Boolean(apply.compareDocumentPosition(undo)&Node.DOCUMENT_POSITION_FOLLOWING)&&Boolean(redo)})()",
+    ),
+    true,
+  );
+  await click('[data-action="draft-undo"]');
+  assert.equal((await snapshot()).state.displayUnit, 'um');
+  record('Project owns XYZ display units; Manual Apply owns Undo/Redo and unit conversion');
   const checkLegend = () =>
     evaluate(`(() => {
     const snap=window.WaferCadV2Shell.snapshot();
@@ -163,7 +179,7 @@ try {
     const actual=legend.querySelectorAll('[data-layer-id],[data-annotation-id]');
     return {visible:!legend.hidden,count:actual.length,expected:rows.length,annotations:model.annotations.length,
       matches:rows.every(item=>{const row=[...actual].find(node=>(node.dataset.layerId||node.dataset.annotationId)===item.id);
-      const sample=document.createElement('span');sample.style.backgroundColor=item.color;
+      const key=(model.layers.includes(item)?'layer:':'annotation:')+item.id;const sample=document.createElement('span');sample.style.backgroundColor=snap.state.legendColors?.[key]||item.color;
       return row?.textContent.includes(item.name)&&row.querySelector('.v2-legend-swatch').style.backgroundColor===sample.style.backgroundColor;})};
   })()`);
   let legend = await checkLegend();
@@ -187,6 +203,34 @@ try {
     true,
   );
   record('Section legend: source names/colors/IDs, collapse/restore, stable plot and legend hosts');
+  await click('#layerLegend .v2-legend-palette-trigger');
+  assert.equal(
+    await evaluate(
+      "document.querySelectorAll('#layerLegend .v2-legend-swatch-choice').length===12&&document.querySelector('#layerLegend [data-action^=legend-random]')!==null",
+    ),
+    true,
+  );
+  const paletteColor = await evaluate(
+    "document.querySelector('#layerLegend .v2-legend-swatch-choice').dataset.color",
+  );
+  await evaluate(`document.querySelector('#layerLegend .v2-legend-swatch-choice').click()`);
+  assert.equal(
+    await evaluate(
+      `(() => {const sample=document.createElement('span');sample.style.backgroundColor=${JSON.stringify(paletteColor)};return document.querySelector('#layerLegend .v2-legend-swatch').style.backgroundColor===sample.style.backgroundColor})()`,
+    ),
+    true,
+  );
+  await click('#layerLegend .v2-legend-palette-trigger');
+  await click('#layerLegend [data-action^="legend-random:"]');
+  assert.equal(
+    await evaluate(
+      "window.WaferCadV2LegendPalette.includes(window.WaferCadV2Shell.snapshot().state.legendColors['layer:'+document.querySelector('#layerLegend [data-layer-id]').dataset.layerId])",
+    ),
+    true,
+  );
+  record(
+    'Legend preset palette and Random color controls update only the local presentation draft',
+  );
   await evaluate(
     "window.__m2MainHost=document.querySelector('[data-science=\"main\"]');window.__m2Workbench=document.querySelector('.p-workbench')",
   );
@@ -198,18 +242,66 @@ try {
     ),
     true,
   );
+  assert.equal(
+    await evaluate(
+      "Boolean(document.querySelector('[data-science=mask] .p-mask-tools')) && !document.querySelector('.p-panel-content [data-key=roiX]')",
+    ),
+    true,
+  );
+  assert.equal(
+    await evaluate(
+      "document.querySelector('.p-mask-tools [data-action=roi]')!==null&&document.querySelector('.p-mask-tools [data-action^=draw-tool]')!==null&&document.querySelector('.p-mask-tools [data-action=mask-roi-settings]')!==null",
+    ),
+    true,
+  );
+  await evaluate(
+    "(() => {const el=document.querySelector('[data-key=maskMode]');el.value='file';el.dispatchEvent(new Event('change',{bubbles:true}))})()",
+  );
+  assert.equal(
+    await evaluate(
+      "document.querySelector('.p-mask-tools [data-action^=draw-tool]')===null&&document.querySelector('.p-mask-tools [data-action=roi]')!==null&&document.querySelector('.p-mask-tools [data-action=mask-roi-settings]')!==null",
+    ),
+    true,
+  );
+  await evaluate(
+    "(() => {const el=document.querySelector('[data-key=maskMode]');el.value='draw';el.dispatchEvent(new Event('change',{bubbles:true}))})()",
+  );
+  assert.equal(
+    await evaluate(
+      "new Set([...document.querySelectorAll('.p-mask-tools [data-action^=draw-tool] use')].map(icon=>icon.getAttribute('href'))).size===6",
+    ),
+    true,
+  );
+  assert.equal(
+    await evaluate(
+      "(() => {const icon=document.querySelector('.p-mask-tools [data-action^=draw-tool] .wc-icon'),button=icon.closest('button');const r=button.getBoundingClientRect(),i=icon.getBoundingClientRect();return !document.querySelector('.p-panel-content [data-key=roiX]')&&i.width<=16.5&&i.height<=16.5&&r.width>=40&&r.height>=40})()",
+    ),
+    true,
+    'Mask tools should be floating, compact icons with touch-sized controls',
+  );
   const drawCount = (await snapshot()).state.drawDraft.length;
   await click('[data-action="draw-tool:ring-sector"]');
   await click('[data-action="draw-add"]');
-  assert.equal((await snapshot()).state.drawDraft.length, drawCount + 1);
-  await click('[data-action="draft-undo"]');
-  assert.equal((await snapshot()).state.drawDraft.length, drawCount);
-  await click('[data-view="mask"] [popovertarget]');
-  await click('[data-action="settings:mask"]');
-  await evaluate(
-    `(() => {const el=document.querySelector('dialog [data-key="alignX"]');el.value='42';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  assert.equal(
+    (await snapshot()).state.drawDraft.length,
+    drawCount + 1,
+    JSON.stringify(
+      await evaluate(
+        "({disabled:document.querySelector('[data-action=draw-add]')?.disabled,tool:document.querySelector('[data-action^=draw-tool][aria-pressed=true]')?.dataset.action})",
+      ),
+    ),
   );
-  await click('dialog[open] [data-action="apply-settings"]');
+  await click('[data-action="draw-delete"]');
+  assert.equal((await snapshot()).state.drawDraft.length, drawCount);
+  await click('[data-action="mask-roi-settings"]');
+  assert.equal(
+    await evaluate("Boolean(document.querySelector('.p-mask-settings[role=dialog]'))"),
+    true,
+  );
+  await evaluate(
+    `(() => {const el=document.querySelector('.p-mask-settings [data-key="alignX"]');el.value='42';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  );
+  await click('[data-action="mask-roi-close"]');
   assert.equal((await snapshot()).state.maskTransform.x, 42);
   assert.match(
     await evaluate(
@@ -320,14 +412,37 @@ try {
   record('Process Manual / Recipe / Code');
   await click('[data-action="domain:history"]');
   const before = await evaluate(
-    "(() => {const node=document.querySelector('[data-history-list] button:last-child');node.scrollIntoView({block:'nearest'});return document.querySelector('.p-panel-content').scrollTop})()",
+    "(() => {const list=document.querySelector('[data-history-scroll]'),row=document.querySelector('[data-history-list] li:nth-child(3) button');row.scrollIntoView({block:'center'});return {top:list.scrollTop,actions:document.querySelector('.p-history-fixed').getBoundingClientRect().top}})()",
   );
-  await click('[data-history-list] button:last-child');
+  await click('[data-history-list] li:nth-child(3) button');
   assert.ok(
-    Math.abs((await evaluate("document.querySelector('.p-panel-content').scrollTop")) - before) <=
-      1,
+    Math.abs(
+      (await evaluate("document.querySelector('[data-history-scroll]').scrollTop")) - before.top,
+    ) <= 1,
   );
-  record('History selection retains scroll');
+  assert.equal(
+    await evaluate(
+      `Math.abs(document.querySelector('.p-history-fixed').getBoundingClientRect().top-${before.actions})<=1&&document.querySelector('.p-history-fixed [data-action=restore]')!==null`,
+    ),
+    true,
+  );
+  await click('[data-history-list] li:nth-child(3) .p-history-more');
+  assert.equal(
+    await evaluate(
+      "(() => {const menu=document.querySelector('[data-history-list] li:nth-child(3) [role=menu]');return menu?.querySelectorAll('[role=menuitem]').length===4&&menu.closest('[data-step-id]')?.querySelector('.p-history-more')?.getAttribute('aria-expanded')==='true'})()",
+    ),
+    true,
+  );
+  await click('[data-history-list] li:nth-child(3) [data-action^="history-select:"]');
+  assert.equal(await evaluate("document.querySelector('.p-history-menu')===null"), true);
+  record('History fixed actions; inner tree selection retains scroll position');
+  assert.equal(
+    await evaluate(
+      "(() => {const list=document.querySelector('.p-history-roots'),row=document.querySelector('.p-history-row');return getComputedStyle(list).listStyleType==='none'&&getComputedStyle(row).borderLeftWidth==='0px'&&document.querySelector('.p-panel-content').scrollWidth<=document.querySelector('.p-panel-content').clientWidth})()",
+    ),
+    true,
+  );
+  record('History tree uses compact unbulleted rows without horizontal overflow');
   await click('[data-action="domain:process"]');
   for (const width of [1440, 1024]) {
     await viewport(width);

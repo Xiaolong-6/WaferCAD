@@ -5,6 +5,14 @@
     code: 'M5 3L1 8l4 5 M11 3l4 5-4 5 M9 2L7 14',
     project: 'M2 4h5l2 2h5v8H2Z M2 4V2h5l2 2',
     mask: 'M2 2h12v12H2Z M5 5h6v6H5Z',
+    select: 'M3 2v11l3-3 2 4 2-1-2-4h4Z',
+    rectangle: 'M2 3h12v10H2Z',
+    circle: 'M3 8a5 5 0 1 0 10 0a5 5 0 1 0-10 0',
+    polygon: 'M2 4l5-2 7 4-2 8-8-1Z',
+    ring: 'M3 8a5 5 0 1 0 10 0a5 5 0 1 0-10 0 M6 8a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+    ringSector: 'M10.5 3.67a5 5 0 0 1 0 8.66L9 9.73a2 2 0 0 0 0-3.46Z',
+    delete: 'M2 4h12 M6 2h4 M4 4l1 10h6l1-10 M7 6v6 M9 6v6',
+    clear: 'M3 3l10 10 M13 3L3 13 M2 8h2 M12 8h2',
     process: 'M2 4h12 M2 8h12 M2 12h12 M5 2v4 M11 6v4 M6 10v4',
     recipe: 'M4 2h9v12H3V3 M6 5h4 M6 8h4 M6 11h3',
     history: 'M3 4A6 6 0 1 1 2 9 M2 1v4h4 M8 4v4l3 2',
@@ -33,6 +41,10 @@
     eye: 'M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5Z M8 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4',
     zbreak: 'M2 2h12 M2 14h12 M3 6l3-2 4 4 3-2 M3 10l3-2 4 4 3-2',
     quality: 'M8 1l2 4 5 1-4 3 1 5-4-2-4 2 1-5-4-3 5-1Z',
+    settings:
+      'M6 1h4l.5 2 1.4.8 1.9-.7 2 3.4-1.5 1.3v1.6l1.5 1.3-2 3.4-1.9-.7-1.4.8-.5 2H6l-.5-2-1.4-.8-1.9.7-2-3.4 1.5-1.3V7.8L.2 6.5l2-3.4 1.9.7 1.4-.8Z M6 8a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+    palette:
+      'M8 1a7 7 0 1 0 0 14h1.2a1.8 1.8 0 0 0 1.2-3.1 1.1 1.1 0 0 1 .8-1.9H13A2 2 0 0 0 15 8a7 7 0 0 0-7-7Z M4.2 7.2h.1 M6.2 4.5h.1 M9.4 4.3h.1 M11.8 6.2h.1',
   };
   function installSprite() {
     const sprite = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

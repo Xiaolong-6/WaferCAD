@@ -8,7 +8,6 @@
     getProjectName,
     renderEditor,
     renderView,
-    renderGlobalControls = () => null,
   }) => {
     const narrow = () => window.WaferCadV2ViewState.compact(window);
     let mounted;
@@ -149,9 +148,17 @@
       });
     }
     function render(focusAction) {
-      const keepHistoryScroll = focusAction?.startsWith('history:');
+      const keepHistoryScroll =
+        focusAction?.startsWith('history:') ||
+        focusAction?.startsWith('branch:') ||
+        focusAction?.startsWith('history-');
       const scrollPositions = keepHistoryScroll
-        ? ['.p-panel-content', '[data-history-list]', '[data-variant-list]'].map((selector) => {
+        ? [
+            '.p-panel-content',
+            '[data-history-scroll]',
+            '[data-history-list]',
+            '[data-variant-list]',
+          ].map((selector) => {
             const node = root.querySelector(selector);
             return { selector, top: node?.scrollTop ?? 0, left: node?.scrollLeft ?? 0 };
           })
@@ -199,7 +206,6 @@
           { class: 'p-topbar' },
           el('span', { class: 'p-brand' }, 'WaferCAD'),
           el('span', { class: 'p-project-title', title: getProjectName() }, getProjectName()),
-          renderGlobalControls(),
           el(
             'div',
             { class: 'p-actions p-mobile-return' },

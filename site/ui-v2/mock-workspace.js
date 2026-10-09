@@ -44,6 +44,9 @@
     mobile: query.get('scene') === 'empty-history' ? 'view' : 'edit',
     section: true,
     legendOpen: true,
+    legendColors: {},
+    legendPaletteOpen: null,
+    historyMenuNode: null,
     maximize: null,
     maskMode: 'draw',
     roi: false,
@@ -64,6 +67,7 @@
     roiAnchor: 'center',
     roiSettings: { x: 0, y: 0, width: 0, height: 0, radius: 0, rotation: 0 },
     maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    maskRoiOpen: false,
     maskOpacity: 0.65,
     threeOpacity: 1,
     borders: false,
@@ -119,6 +123,10 @@
     state.draftUndo = false;
     state.draftRedo = false;
     state.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
+    state.maskRoiOpen = false;
+    state.legendColors = {};
+    state.legendPaletteOpen = null;
+    state.historyMenuNode = null;
     state.roiSettings = {
       x: 0,
       y: 0,
@@ -165,23 +173,6 @@
     root,
     state,
     getProjectName: () => state.projectName || data.name,
-    renderGlobalControls: () =>
-      el(
-        'div',
-        { class: 'p-global-controls', role: 'toolbar', 'aria-label': 'Project controls' },
-        select(
-          'XYZ display unit',
-          'displayUnit',
-          [
-            ['nm', 'nm'],
-            ['um', 'µm'],
-            ['mm', 'mm'],
-          ],
-          state.displayUnit,
-        ),
-        button('Undo', 'draft-undo', 'undo', { disabled: !state.draftUndo }),
-        button('Redo', 'draft-redo', 'redo', { disabled: !state.draftRedo }),
-      ),
     renderEditor: () => window.createWaferCadV2MockDomainPanels(domainContext()).render(),
     renderView: (name) =>
       window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(name),
@@ -314,7 +305,7 @@
     state.draftRedo = false;
   }
   function assignMockField(key, raw) {
-    const scale = state.displayUnit === 'nm' ? 1000 : state.displayUnit === 'mm' ? 0.001 : 1;
+    const scale = state.displayUnit === 'nm' ? 0.001 : state.displayUnit === 'mm' ? 1000 : 1;
     const length = Number(raw) * scale;
     if (
       key === 'roiX' ||
@@ -375,7 +366,7 @@
   function openViewSettings(view) {
     const unitFactor = state.displayUnit === 'nm' ? 1000 : state.displayUnit === 'mm' ? 0.001 : 1;
     const unitName = state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm';
-    const displayLength = (value) => Number(value) / unitFactor;
+    const displayLength = (value) => Number(value) * unitFactor;
     if (view === 'section') {
       const line = state.sectionLine || { a: data.section.a, b: data.section.b };
       dialog(
@@ -634,6 +625,10 @@
       state.detail = false;
       closeDialog();
       state.message = 'Detail ROI draft cleared; source geometry is unchanged.';
+    } else if (kind === 'mask-roi-settings') {
+      state.maskRoiOpen = !state.maskRoiOpen;
+    } else if (kind === 'mask-roi-close') {
+      state.maskRoiOpen = false;
     } else if (kind === 'draft-undo' || kind === 'draft-redo') {
       const from = kind === 'draft-undo' ? draftUndoStack : draftRedoStack;
       const to = kind === 'draft-undo' ? draftRedoStack : draftUndoStack;
@@ -894,6 +889,59 @@
       state.dirty = true;
       state.failure = null;
       state.message = `Step ${activeStep + 1} draft saved in memory; reload discards it.`;
+    } else if (kind === 'legend-palette') {
+      const key = action.slice('legend-palette:'.length);
+      state.legendPaletteOpen = state.legendPaletteOpen === key ? null : key;
+    } else if (kind === 'legend-set' || kind === 'legend-random') {
+      const prefix = `${kind}:`;
+      const key = action.slice(prefix.length);
+      let color = target?.dataset.color;
+      if (kind === 'legend-random') {
+        const options = window.WaferCadV2LegendPalette.filter(
+          (option) => option !== state.legendColors[key],
+        );
+        color = options[Math.floor(Math.random() * options.length)];
+      }
+      if (color) state.legendColors = { ...state.legendColors, [key]: color };
+      state.legendPaletteOpen = null;
+      state.dirty = true;
+    } else if (kind === 'history-menu') {
+      state.historyMenuNode = state.historyMenuNode === value ? null : value;
+    } else if (kind === 'history-select' || kind === 'history-restore') {
+      cursor = value;
+      const node = data.history.find((entry) => entry.id === value);
+      if (node?.branchId) branch = node.branchId;
+      state.historyMenuNode = null;
+      state.message =
+        kind === 'history-select'
+          ? `Inspecting ${value}; source History remains unchanged.`
+          : `Restore walkthrough from ${value}; no actual History transaction.`;
+    } else if (kind === 'history-edit') {
+      cursor = value;
+      const node = data.history.find((entry) => entry.id === value);
+      if (node?.branchId) branch = node.branchId;
+      state.historyMenuNode = null;
+      state.domain = 'process';
+      state.mobile = 'edit';
+      state.editOld = true;
+      state.message = `Editing from ${value}; Apply creates a prototype Variant and preserves the source branch.`;
+    } else if (kind === 'history-variant') {
+      cursor = value;
+      const node = data.history.find((entry) => entry.id === value);
+      if (node?.branchId) branch = node.branchId;
+      const id = `prototype-variant-${variants.length + 1}`;
+      variants.push({
+        id,
+        name: `Prototype Variant ${variants.length + 1} · from ${value}`,
+        parentBranchId: branch,
+        rootNodeId: value,
+        headNodeId: value,
+        recipe: structuredClone(recipe),
+      });
+      branch = id;
+      state.historyMenuNode = null;
+      state.dirty = true;
+      state.message = `Prototype Variant created from ${value}; source History is unchanged.`;
     } else if (kind === 'history') {
       cursor = value;
       state.message = `Inspecting stored ${value}; source History not mutated.`;
@@ -1122,6 +1170,12 @@
       const value = event.target.value;
       if (event.target.closest('dialog')) {
         assignMockField(key, value);
+        return;
+      }
+      if (key.startsWith('legendColor:')) {
+        state.legendColors = { ...state.legendColors, [key.slice(12)]: value };
+        state.dirty = true;
+        render();
         return;
       }
       if (key === 'stepLabel') {
