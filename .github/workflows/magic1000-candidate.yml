@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/build-magic-1000-example.mjs'
       - 'scripts/magic1000-geometry-comparison.mjs'
+      - 'scripts/magic1000-visual-acceptance.mjs'
       - 'scripts/example-recipe-runall-acceptance.mjs'
       - 'site/tests/magic1000-geometry-comparison.test.mjs'
       - 'site/bundled-examples.js'
@@ -37,7 +38,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Normalize MAGIC-1000 source and Wiki formatting
-        run: npx prettier --write scripts/build-magic-1000-example.mjs scripts/magic1000-geometry-comparison.mjs scripts/example-recipe-runall-acceptance.mjs site/tests/magic1000-reconstruction.test.mjs site/tests/magic1000-geometry-comparison.test.mjs site/bundled-examples.js docs/wiki/Examples-and-Modeling-Limits.md
+        run: npx prettier --write scripts/build-magic-1000-example.mjs scripts/magic1000-geometry-comparison.mjs scripts/magic1000-visual-acceptance.mjs scripts/example-recipe-runall-acceptance.mjs site/tests/magic1000-reconstruction.test.mjs site/tests/magic1000-geometry-comparison.test.mjs site/bundled-examples.js docs/wiki/Examples-and-Modeling-Limits.md
       - name: Generate representative MAGIC-1000 project using current Process Kernel
         run: node scripts/build-magic-1000-example.mjs --write-repo
       - name: Generate final-state single-Step preview
@@ -57,6 +58,8 @@ jobs:
           exit 1
       - name: Render real 3D Welcome preview
         run: node scripts/build-example-thumbnails.mjs --id=magic-1000-mos2-beol
+      - name: Capture and inspect real Section and 3D browser views
+        run: node scripts/magic1000-visual-acceptance.mjs
       - name: Rebuild from Base through the real browser Run All and export
         run: node scripts/example-recipe-runall-acceptance.mjs --id=magic-1000-mos2-beol
       - name: Run repository static, documentation and example tests
@@ -68,6 +71,7 @@ jobs:
           git add \
             scripts/build-magic-1000-example.mjs \
             scripts/magic1000-geometry-comparison.mjs \
+            scripts/magic1000-visual-acceptance.mjs \
             scripts/example-recipe-runall-acceptance.mjs \
             site/tests/magic1000-geometry-comparison.test.mjs \
             site/tests/magic1000-reconstruction.test.mjs \
@@ -76,6 +80,7 @@ jobs:
             site/examples/magic-1000-mos2-beol.wafercad \
             site/examples/previews/magic-1000-mos2-beol.wafercad \
             site/examples/thumbnails/magic-1000-mos2-beol-three.webp \
+            site/examples/thumbnails/magic-1000-mos2-beol-section.webp \
             tests/fixtures/project-io/example-thumbnails.json
           if git diff --cached --quiet; then
             echo 'Generated project and preview unchanged'
@@ -93,5 +98,6 @@ jobs:
             site/examples/magic-1000-mos2-beol.wafercad
             site/examples/previews/magic-1000-mos2-beol.wafercad
             site/examples/thumbnails/magic-1000-mos2-beol-three.webp
+            site/examples/thumbnails/magic-1000-mos2-beol-section.webp
           retention-days: 14
           if-no-files-found: warn
