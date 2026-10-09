@@ -21,7 +21,6 @@ This follow-up targets avoidable **fetch and buffer overhead**, without changing
 - Verify one complete-asset request per intentional hover/focus, no complete-asset requests on ordinary Welcome scroll, and new asset URL after a build commit change. Inspect transferred bytes and HTTP cache headers: a static server sending `no-store` may negate warm-cache benefit despite code changes.
 - The first dedicated CI sample exposed inconsistent local version keys (`Date.now()` across Welcome and App), so a successful prefetch fetched the full payload again; the fallback and a cache-byte assertion were added before acceptance. Compare under the same browser/hardware and fresh contexts. **No reproducible wall-clock improvement is claimed based on one unpaired CI run.** Cold, never-visited direct links still pay full strict validation and geometry render time.
 
-
 ## Verified browser cache acceptance — 2026-10-09
 
 The [change-scoped CI browser run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37874576606) verified complete Project opening, History step-count and 3D model-revision readiness with no page errors. Under its cacheable local server, Chromium reported:
