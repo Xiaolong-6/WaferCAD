@@ -21,6 +21,18 @@ This follow-up targets avoidable **fetch and buffer overhead**, without changing
 - Verify one complete-asset request per intentional hover/focus, no complete-asset requests on ordinary Welcome scroll, and new asset URL after a build commit change. Inspect transferred bytes and HTTP cache headers: a static server sending `no-store` may negate warm-cache benefit despite code changes.
 - The first dedicated CI sample exposed inconsistent local version keys (`Date.now()` across Welcome and App), so a successful prefetch fetched the full payload again; the fallback and a cache-byte assertion were added before acceptance. Compare under the same browser/hardware and fresh contexts. **No reproducible wall-clock improvement is claimed based on one unpaired CI run.** Cold, never-visited direct links still pay full strict validation and geometry render time.
 
+
+## Verified browser cache acceptance — 2026-10-09
+
+The [change-scoped CI browser run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37874576606) verified complete Project opening, History step-count and 3D model-revision readiness with no page errors. Under its cacheable local server, Chromium reported:
+
+| Single sample | Opened (ms) | 3D ready (ms) | Project transfer bytes |
+| ------------- | ----------- | ------------- | ---------------------- |
+| Cold          | 1365        | 1542          | 691075                 |
+| Intent-prefetched | 1319    | 1498          | 0                      |
+
+The transferred-byte reduction validates the design; a one-run timing difference is **not** a statistically defensible speedup claim. The benchmark uses no Playwright request interception because it disables HTTP caching. Its test server explicitly sends `Cache-Control: public, max-age=600` for `.wafercad`, comparable to a cacheable production response; actual deployment cache headers still govern the production benefit.
+
 ## Follow-up outside this patch
 
 Meaningful additional **cold-start CPU** reductions require measured worker-schema and renderer profiling, with strict before/after model equality and full History/Recovery/3D acceptance. Do not weaken validation or replace full examples with final-only previews to manufacture a faster metric.
