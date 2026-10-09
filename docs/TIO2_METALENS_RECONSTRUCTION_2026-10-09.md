@@ -39,3 +39,19 @@ No project database schema bump, no special case in the Kernel, and no optical p
 An alternate **GRID surrogate** tests full-domain canonical model coverage with 80 × 80 equal physical cells (6,400 instances), of which exactly 4,725 are intended TiO₂ nanopillar sites and 1,675 are plain ITO/glass background cells. Each of the four cross-section families has a bounded set of parameterized dimension templates. The actual ideal Step operations are applied by the Kernel to **each distinct template** before instantiation. The resulting array project, if its 80 × 80 validation passes, will be a compiled final structure, **not** an end-user 4,725-site Recipe Run all from Base.
 
 This grid surrogate is a distinct layout from the existing **golden-angle illustrative GDS**. It is neither the paper's author GDS nor an optical design. Full-array project publication and renderer acceptance are contingent on runtime and schema checks, not assumed because 8 × 8 and 25 × 25 cells work.
+
+### 2026-10-09 bounded full GRID result
+
+The 80 × 80 surrogate completed in GitHub Actions with **4,725 active
+sites**, **1,675 ITO/glass background cells** and **49 shared templates**
+(48 physically replayed local variants plus background). Its complete GDS
+Mask contains **60,232 polygons** and round-trips through the WaferCAD
+GDS parser. The matching `.wafercad` file (approximately 10.3 MB) passed
+project serialization, import and full-model validation. In the actual
+Chromium UI, import took approximately 5.6 s and both 3D and Section
+became ready at approximately 10.2 s (one CI run; not an SLA).
+
+These GRID artifacts are uploaded by the reconstruction CI and intentionally
+**not promoted** as a Welcome production example. No 4,725-site Recipe
+Run all from Base and no optical performance are claimed. The four-unit
+Welcome project is independently reproducible via its nine-step Recipe.

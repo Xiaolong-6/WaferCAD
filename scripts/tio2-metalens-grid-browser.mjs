@@ -11,6 +11,7 @@ import {
   newUiContext,
   observePageErrors,
   openFunctionPanel,
+  closeFunctionPanel,
   waitForAppReady,
   waitForThreeReady,
   canvasInkFraction,
@@ -42,6 +43,8 @@ try {
     document.getElementById('statusText')?.textContent || '',
   ), null, { timeout: 180000 });
   const loadedMs = Math.round(performance.now() - begin);
+  // Exportable viewport evidence must not be hidden beneath Project flyout.
+  await closeFunctionPanel(page);
   await waitForThreeReady(page, 180000);
   await page.waitForFunction(() => {
     const canvas = document.getElementById('sectionCanvas');
