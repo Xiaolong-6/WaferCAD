@@ -2698,40 +2698,8 @@ summary:focus-visible {
   border-right: 0;
 }
 
-/* One toolbar language across Main / Mask / 3D / Section. */
-.view-head .mini-btn,
-.view-head .three-control,
-.view-head .focus-editor > summary {
-  height: 21px;
-  min-width: 0;
-  padding: 1px 5px;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  background: transparent;
-  color: #55626e;
-  font-size: 9.5px;
-  font-weight: 520;
-  line-height: 1.2;
-  box-shadow: none;
-}
-
-.view-head button.mini-btn:hover,
-.view-head button.three-control:hover,
-.view-head .three-control:hover,
-.view-head .focus-editor > summary:hover {
-  border-color: transparent;
-  background: #eaf0f4;
-  color: #334352;
-}
-
-.view-head .focus-editor[open] > summary,
-.view-head .three-opacity-control[open] > summary,
-.view-head .three-border-toggle:has(input:checked) {
-  border-color: transparent;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-  box-shadow: inset 0 0 0 1px #bdc9d5;
-}
+/* Main/Mask/3D/Section header states are defined by the unified scientific
+   toolbar rules below; do not add a competing legacy palette here. */
 
 .view-head .readout {
   color: #788591;
@@ -3739,15 +3707,34 @@ summary:focus-visible {
   position: absolute;
   top: 8px;
   right: 6px;
+  left: auto;
+  margin: 0;
   width: min(368px, calc(100% - 12px));
-  max-height: calc(100% - 16px);
-  overflow: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
   padding: 12px;
   pointer-events: auto;
-  font-size: 10px;
+  font-size: 11px;
 }
 .section-collapse-editor[hidden] {
   display: none !important;
+}
+/* A compact Section promotes the exact same editor to the top layer.
+   Only this dialog can scroll on exceptionally short viewports. */
+.section-collapse-editor:modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(440px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.section-collapse-editor:modal::backdrop {
+  background: rgba(17, 27, 37, 0.48);
 }
 .section-collapse-editor-head {
   display: flex;
@@ -3762,16 +3749,16 @@ summary:focus-visible {
   gap: 3px;
 }
 .section-collapse-editor-head strong {
-  font-size: 12px;
+  font-size: 13px;
   color: #2c3b48;
 }
 .section-collapse-editor-head small {
-  font-size: 9px;
+  font-size: 10px;
   color: #657683;
 }
 .section-collapse-close {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border: 0;
   background: transparent;
   color: #657683;
@@ -3782,7 +3769,7 @@ summary:focus-visible {
   align-items: center;
   gap: 7px;
   color: #4c5d6b;
-  font-size: 10px;
+  font-size: 11px;
 }
 .section-collapse-check input {
   width: 14px;
@@ -3796,7 +3783,7 @@ summary:focus-visible {
 .section-collapse-description {
   margin: 7px 0;
   color: #70808c;
-  font-size: 9.5px;
+  font-size: 10.5px;
   line-height: 1.4;
 }
 .section-collapse-editor-grid {
@@ -3824,7 +3811,7 @@ summary:focus-visible {
   right: 8px;
   top: -6px;
   color: #677987;
-  font-size: 8px;
+  font-size: 9px;
   white-space: nowrap;
 }
 .section-collapse-window {
@@ -3864,12 +3851,13 @@ summary:focus-visible {
   display: grid;
   gap: 4px;
   color: #596978;
-  font-size: 10px;
+  font-size: 11px;
 }
 .section-collapse-boundary input {
   width: 100%;
   min-width: 0;
-  height: 29px;
+  height: 32px;
+  font-size: 12px;
   border: 1px solid #c7d2da;
   border-radius: 4px;
   padding: 3px 7px;
@@ -3882,7 +3870,7 @@ summary:focus-visible {
   flex-wrap: wrap;
   gap: 6px;
   color: #7b8995;
-  font-size: 9px;
+  font-size: 10px;
 }
 .section-collapse-advanced {
   border-top: 1px solid var(--line2);
@@ -3891,7 +3879,7 @@ summary:focus-visible {
 .section-collapse-advanced > summary {
   cursor: pointer;
   color: #496d89;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 650;
 }
 .section-collapse-scale-block {
@@ -3929,6 +3917,7 @@ summary:focus-visible {
   opacity: 0.55;
 }
 .section-collapse-scale-block small {
+  font-size: 10px;
   color: #788692;
   line-height: 1.4;
 }
@@ -3936,11 +3925,10 @@ summary:focus-visible {
   .section-collapse-overlay {
     inset: 0;
   }
-  .section-collapse-editor {
+  .section-collapse-editor:not(:modal) {
     top: 6px;
     right: 6px;
     width: min(390px, calc(100% - 12px));
-    max-height: calc(100% - 12px);
   }
   .section-collapse-ruler-handle {
     width: 27px;
@@ -5713,11 +5701,7 @@ summary:focus-visible {
   font-size: 9px;
   pointer-events: none;
 }
-.view-head .view-z-break[data-break-enabled='true'] {
-  border-color: #99bfd9;
-  background: #e6f1f9;
-  color: #2b5a7e;
-}
+
 .view-head .view-z-break[aria-expanded='true'] {
   outline: 1px solid #74a3c5;
   outline-offset: -1px;
@@ -5766,10 +5750,9 @@ summary:focus-visible {
   .section-collapse-overlay {
     right: 0;
   }
-  .section-collapse-editor {
+  .section-collapse-editor:not(:modal) {
     top: 6px;
     right: 6px;
     width: min(360px, calc(100% - 12px));
-    max-height: calc(100% - 12px);
   }
 }

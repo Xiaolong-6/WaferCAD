@@ -178,17 +178,45 @@ export function createSectionCollapseController({
     syncRuler();
   }
 
+  // A short Section dock cannot host the whole ruler/inputs panel. Promote the
+  // *same* editor to the browser top layer instead of squeezing it into a
+  // second scroll container or letting it overlap the Layers control.
+  function updatePresentation() {
+    if (!editorOpen) return;
+    const editor = $('sectionCollapseEditor');
+    if (editor.matches(':modal')) return;
+    const area = $('sectionBody').getBoundingClientRect();
+    const requiredHeight = Math.max(380, editor.scrollHeight + 16);
+    if (area.width < 420 || area.height < requiredHeight) {
+      const focused = editor.contains(root.activeElement) ? root.activeElement : null;
+      editor.close();
+      // The Section body can be collapsed/display:none; a modal must not
+      // inherit the hidden dock's layout or clipping constraints.
+      root.body.append(editor);
+      editor.showModal();
+      focused?.focus({ preventScroll: true });
+    }
+  }
+
   function open() {
-    claimPopover($('sectionCollapseEditor'));
+    const editor = $('sectionCollapseEditor');
+    claimPopover(editor);
     editorOpen = true;
-    $('sectionCollapseEditor').hidden = false;
+    editor.hidden = false;
+    editor.show();
+    updatePresentation();
     sync();
+    if (!editor.matches(':modal')) $('sectionCollapseClose').focus({ preventScroll: true });
   }
 
   function close() {
+    const editor = $('sectionCollapseEditor');
     editorOpen = false;
     drag = null;
-    $('sectionCollapseEditor').hidden = true;
+    if (editor.open) editor.close();
+    editor.hidden = true;
+    const dock = $('sectionCollapseOverlay');
+    if (editor.parentNode !== dock) dock.append(editor);
     $('sectionCollapseTopHandle').classList.remove('dragging');
     $('sectionCollapseBottomHandle').classList.remove('dragging');
     sync();
@@ -278,12 +306,34 @@ export function createSectionCollapseController({
       startDrag('bottom', event),
     );
 
-    $('sectionCollapseEditor').addEventListener('wafercad:popover-close', (event) => {
+    const editor = $('sectionCollapseEditor');
+    editor.addEventListener('wafercad:popover-close', (event) => {
       event.preventDefault();
       close();
     });
-    $('sectionCollapseEditor').addEventListener('pointerdown', (event) => event.stopPropagation());
-    $('sectionCollapseEditor').addEventListener('click', (event) => event.stopPropagation());
+    editor.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      close();
+    });
+    editor.addEventListener('pointerdown', (event) => {
+      // In modal mode the backdrop dispatches on <dialog> itself.
+      if (event.target === editor && editor.matches(':modal')) {
+        const rect = editor.getBoundingClientRect();
+        if (
+          event.clientX < rect.left ||
+          event.clientX > rect.right ||
+          event.clientY < rect.top ||
+          event.clientY > rect.bottom
+        ) {
+          close();
+        }
+      }
+      event.stopPropagation();
+    });
+    editor.addEventListener('click', (event) => event.stopPropagation());
+    editor.querySelector('.section-collapse-advanced').addEventListener('toggle', () => {
+      updatePresentation();
+    });
     root.addEventListener('pointerdown', (event) => {
       if (!editorOpen || drag) return;
       if ($('sectionCollapseEditor').contains(event.target)) return;
@@ -303,6 +353,7 @@ export function createSectionCollapseController({
     });
 
     new ResizeObserver(sync).observe($('sectionCanvas'));
+    new ResizeObserver(updatePresentation).observe($('sectionBody'));
     sync();
   }
 
