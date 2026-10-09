@@ -87,57 +87,74 @@ function analyzePart(state, model, copies = 1, dx = 0, dy = 0) {
     for (const segment of stack) {
       const { z0, z1, layerId } = segment;
       if (!Number.isFinite(z0) || !Number.isFinite(z1) || z1 <= z0) {
-        addFinding(state, {
-          code: 'invalid-z-interval',
-          severity: 'error',
-          title: 'Invalid material Z interval',
-          detail: `Region ${region.id} has a nonpositive or nonfinite material interval.`,
-          layerId,
-          z0,
-          z1,
-          box,
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'invalid-z-interval',
+            severity: 'error',
+            title: 'Invalid material Z interval',
+            detail: `Region ${region.id} has a nonpositive or nonfinite material interval.`,
+            layerId,
+            z0,
+            z1,
+            box,
+          },
+          copies,
+        );
         previous = null;
         continue;
       }
       if (!state.layerNames.has(layerId)) {
-        addFinding(state, {
-          code: 'unknown-layer',
-          severity: 'error',
-          title: 'Material references a missing layer',
-          detail: `Region ${region.id} references layer ${layerId}.`,
-          layerId,
-          z0,
-          z1,
-          box,
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'unknown-layer',
+            severity: 'error',
+            title: 'Material references a missing layer',
+            detail: `Region ${region.id} references layer ${layerId}.`,
+            layerId,
+            z0,
+            z1,
+            box,
+          },
+          copies,
+        );
       }
       if (previous && z0 < previous.z1 - Z_EPSILON) {
-        addFinding(state, {
-          code: 'z-overlap',
-          severity: 'error',
-          title: 'Material intervals overlap in Z',
-          detail: `Region ${region.id}: ${previous.layerId} and ${layerId} claim the same Z interval.`,
-          layerId,
-          relatedLayerId: previous.layerId,
-          z0,
-          z1: Math.min(z1, previous.z1),
-          box,
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'z-overlap',
+            severity: 'error',
+            title: 'Material intervals overlap in Z',
+            detail: `Region ${region.id}: ${previous.layerId} and ${layerId} claim the same Z interval.`,
+            layerId,
+            relatedLayerId: previous.layerId,
+            z0,
+            z1: Math.min(z1, previous.z1),
+            box,
+          },
+          copies,
+        );
       } else if (previous && z0 > previous.z1 + Z_EPSILON) {
         state.gapCount += copies;
         state.gapVolumeUm3 += area * (z0 - previous.z1) * copies;
-        addFinding(state, {
-          code: 'z-gap',
-          severity: 'info',
-          title: 'Separated material intervals (possible cavity)',
-          detail: 'An empty Z interval exists between two solids. Released cavities and air gaps are intentional in many devices.',
-          layerId,
-          relatedLayerId: previous.layerId,
-          z0: previous.z1,
-          z1: z0,
-          box,
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'z-gap',
+            severity: 'info',
+            title: 'Separated material intervals (possible cavity)',
+            detail:
+              'An empty Z interval exists between two solids. Released cavities and air gaps are intentional in many devices.',
+            layerId,
+            relatedLayerId: previous.layerId,
+            z0: previous.z1,
+            z1: z0,
+            box,
+          },
+          copies,
+        );
       }
       addLayerMeasurement(state, layerId, z1 - z0, area * (z1 - z0) * copies, copies);
       if (segment.frontSurface || segment.backSurface) state.appearanceSegments += copies;
@@ -149,9 +166,10 @@ function analyzePart(state, model, copies = 1, dx = 0, dy = 0) {
   // numerical slits from true exposed XY voids. Both are observations about
   // coverage; only the likely numerical crack receives a warning.
   const pointCount = regions.reduce(
-    (sum, region) => sum + region.geom.reduce(
-      (n, polygon) => n + polygon.reduce((m, ring) => m + ring.length, 0), 0,
-    ), 0,
+    (sum, region) =>
+      sum +
+      region.geom.reduce((n, polygon) => n + polygon.reduce((m, ring) => m + ring.length, 0), 0),
+    0,
   );
   if (regions.length > MAX_COVERAGE_REGIONS || pointCount > MAX_COVERAGE_POINTS) {
     state.coverageComplete = false;
@@ -161,33 +179,47 @@ function analyzePart(state, model, copies = 1, dx = 0, dy = 0) {
       state.crackCount += coverage.cracks.length * copies;
       state.voidCount += coverage.voids.length * copies;
       for (const item of coverage.cracks) {
-        addFinding(state, {
-          code: 'xy-numerical-crack',
-          severity: 'warning',
-          title: 'Sub-grid XY coverage slit',
-          detail: 'Uncovered domain is at or below the Kernel numerical crack tolerance. Check polygon ownership before Conformal growth.',
-          box: sampleBox(item.geom, dx, dy),
-          areaUm2: item.area,
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'xy-numerical-crack',
+            severity: 'warning',
+            title: 'Sub-grid XY coverage slit',
+            detail:
+              'Uncovered domain is at or below the Kernel numerical crack tolerance. Check polygon ownership before Conformal growth.',
+            box: sampleBox(item.geom, dx, dy),
+            areaUm2: item.area,
+          },
+          copies,
+        );
       }
       for (const item of coverage.voids) {
-        addFinding(state, {
-          code: 'xy-through-void',
-          severity: 'info',
-          title: 'Uncovered XY domain (possible through-opening)',
-          detail: 'No canonical material owns this XY area through the full Z stack. Through-holes and intentional openings are valid.',
-          box: sampleBox(item.geom, dx, dy),
-          areaUm2: item.area,
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'xy-through-void',
+            severity: 'info',
+            title: 'Uncovered XY domain (possible through-opening)',
+            detail:
+              'No canonical material owns this XY area through the full Z stack. Through-holes and intentional openings are valid.',
+            box: sampleBox(item.geom, dx, dy),
+            areaUm2: item.area,
+          },
+          copies,
+        );
       }
     } catch (error) {
       state.coverageComplete = false;
-      addFinding(state, {
-        code: 'coverage-check-failed',
-        severity: 'warning',
-        title: 'Coverage topology analysis incomplete',
-        detail: error?.message || 'Could not classify the uncovered XY domain.',
-      }, copies);
+      addFinding(
+        state,
+        {
+          code: 'coverage-check-failed',
+          severity: 'warning',
+          title: 'Coverage topology analysis incomplete',
+          detail: error?.message || 'Could not classify the uncovered XY domain.',
+        },
+        copies,
+      );
     }
   }
 
@@ -204,23 +236,32 @@ function analyzePart(state, model, copies = 1, dx = 0, dy = 0) {
       try {
         const overlap = intersection(regions[i].geom, regions[j].geom);
         if (isEmpty(overlap) || geometryArea(overlap) <= XY_AREA_EPSILON) continue;
-        addFinding(state, {
-          code: 'xy-overlap',
-          severity: 'error',
-          title: 'Overlapping XY material owners',
-          detail: `Regions ${regions[i].id} and ${regions[j].id} claim overlapping XY area. Canonical regions must be non-overlapping.`,
-          box: sampleBox(overlap, dx, dy),
-          overlapAreaUm2: geometryArea(overlap),
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'xy-overlap',
+            severity: 'error',
+            title: 'Overlapping XY material owners',
+            detail: `Regions ${regions[i].id} and ${regions[j].id} claim overlapping XY area. Canonical regions must be non-overlapping.`,
+            box: sampleBox(overlap, dx, dy),
+            overlapAreaUm2: geometryArea(overlap),
+          },
+          copies,
+        );
       } catch (error) {
         state.overlapComplete = false;
-        addFinding(state, {
-          code: 'overlap-check-failed',
-          severity: 'warning',
-          title: 'XY overlap inspection was incomplete',
-          detail: error?.message || 'Polygon intersection failed; no clean overlap claim can be made.',
-          box: sampleBox(regions[i].geom, dx, dy),
-        }, copies);
+        addFinding(
+          state,
+          {
+            code: 'overlap-check-failed',
+            severity: 'warning',
+            title: 'XY overlap inspection was incomplete',
+            detail:
+              error?.message || 'Polygon intersection failed; no clean overlap claim can be made.',
+            box: sampleBox(regions[i].geom, dx, dy),
+          },
+          copies,
+        );
       }
     }
   }
@@ -267,12 +308,16 @@ export function analyzeProcessGeometry(model) {
     for (const [id, group] of groups) {
       const template = templates.get(id);
       if (!template) {
-        addFinding(state, {
-          code: 'missing-template',
-          severity: 'error',
-          title: 'Array instance references a missing template',
-          detail: `No geometry template for ${id}.`,
-        }, group.count);
+        addFinding(
+          state,
+          {
+            code: 'missing-template',
+            severity: 'error',
+            title: 'Array instance references a missing template',
+            detail: `No geometry template for ${id}.`,
+          },
+          group.count,
+        );
         continue;
       }
       analyzePart(state, template, group.count, group.x, group.y);
