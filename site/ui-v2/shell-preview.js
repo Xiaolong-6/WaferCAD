@@ -1,10 +1,8 @@
 // Debug controls are deliberately outside product navigation.
 (() => {
-  const shell = window.WaferCadV2Shell;
-  if (!shell?.ready) {
-    document.querySelector('.v2-boot-message').textContent = 'v2 壳层未启动，请检查本地资源。';
-    return;
-  }
+  const boot = () => {
+    const shell = window.WaferCadV2Shell;
+    if (!shell?.ready) return;
   const example = document.getElementById('v2-example');
   const empty = document.getElementById('v2-empty');
   example.value = shell.snapshot().state.example;
@@ -17,5 +15,8 @@
     empty.checked = false;
     update('recipe', true);
   });
-  document.body.dataset.ready = 'true';
+    document.body.dataset.ready = 'true';
+  };
+  if (window.WaferCadV2Shell?.ready) boot();
+  else window.addEventListener('wafercad-v2-ready', boot, { once: true });
 })();
