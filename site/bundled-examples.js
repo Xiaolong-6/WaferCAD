@@ -167,12 +167,14 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     },
     summary:
       'Kernel-reconstructed representative local MoS₂ D/E-mode transistor pair over four aluminium routing levels with tungsten vias, repeated SiO₂/CMP, planarized tungsten gates, HfO₂ and Sb/Au contacts. Routing is illustrative, not the authors original GDS.',
-    sources: [{
-      citation:
-        'D. Fan et al., “A bit-parallel molybdenum disulfide computer built through multi-level co-optimization,” Nature Electronics 9, 887–896 (2026).',
-      doi: '10.1038/s41928-026-01641-0',
-      href: 'https://doi.org/10.1038/s41928-026-01641-0',
-    }],
+    sources: [
+      {
+        citation:
+          'D. Fan et al., “A bit-parallel molybdenum disulfide computer built through multi-level co-optimization,” Nature Electronics 9, 887–896 (2026).',
+        doi: '10.1038/s41928-026-01641-0',
+        href: 'https://doi.org/10.1038/s41928-026-01641-0',
+      },
+    ],
     tags: ['Literature', 'MoS₂', 'BEOL', 'CMP', 'Four metal layers', 'Reconstruction'],
   },
   {

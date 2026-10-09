@@ -28,19 +28,26 @@ test('MAGIC-1000 reconstructs every layer through live kernel, with validated hi
   validateProjectFile(saved);
   assert.deepEqual(saved.model, project.model);
   assert.equal(saved.snapshots.length, project.snapshots.length);
-  assert.deepEqual(validateRecipeExecution(saved.processRecipe.steps, {
-    model: saved.model,
-    maskState: { layout: saved.layout },
-    base: saved.processRecipe.base,
-    startMode: 'new-base',
-  }).errors, []);
+  assert.deepEqual(
+    validateRecipeExecution(saved.processRecipe.steps, {
+      model: saved.model,
+      maskState: { layout: saved.layout },
+      base: saved.processRecipe.base,
+      startMode: 'new-base',
+    }).errors,
+    [],
+  );
 
   const cells = new Set(['MAGIC1000_LOCAL']);
   const layers = new Set(saved.layout.elements.map((e) => e.layer + '|' + e.datatype));
   const result = collectMaskExportElements({
-    layout: saved.layout, maskSourceMode: 'file', drawMask: saved.drawMask,
-    maskTransform: saved.maskTransform, maskRoi: null,
-    selectedCells: cells, selectedLayerKeys: layers,
+    layout: saved.layout,
+    maskSourceMode: 'file',
+    drawMask: saved.drawMask,
+    maskTransform: saved.maskTransform,
+    maskRoi: null,
+    selectedCells: cells,
+    selectedLayerKeys: layers,
   });
   assert.ok(result.elements.length >= 13);
   const gds = parseGDS(serializeGDS(result.elements).buffer);
@@ -59,7 +66,8 @@ test('MAGIC-1000 reconstructs every layer through live kernel, with validated hi
   });
   if (bytes) {
     const packed = await readProjectFile({
-      size: bytes.byteLength, text: async () => bytes.toString('utf8'),
+      size: bytes.byteLength,
+      text: async () => bytes.toString('utf8'),
     });
     validateProjectFile(packed);
     assert.deepEqual(packed.model, project.model);
