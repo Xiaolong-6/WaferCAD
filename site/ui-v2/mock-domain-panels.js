@@ -436,22 +436,21 @@
         field('Ambient', 'processAmbient', state.processAmbient || sample?.ambient || ''),
       ];
     }
+    function processModes(active) {
+      const registry = window.WaferCadV2ShellRegistry.defaults;
+      const labels = { step: 'Manual', recipe: 'Recipe', code: 'Code', diagnostics: 'Diagnostics' };
+      return el('div', { class: 'p-actions', 'aria-label': 'Process modes' },
+        registry.processModes.map((key) => button(labels[key] || key,
+          `domain:${key === 'step' ? 'process' : key}`,
+          key === 'step' ? 'process' : key,
+          { 'aria-pressed': String(active === key) })));
+    }
     function processPanel() {
       return [
         el(
           'div',
           { class: 'p-form' },
-          ...(state.placement === 'process'
-            ? [
-                el(
-                  'div',
-                  { class: 'p-actions' },
-                  button('Manual', 'domain:process', 'process', { 'aria-pressed': 'true' }),
-                  button('Recipe', 'domain:recipe', 'recipe'),
-                  button('Code', 'domain:code', 'code'),
-                ),
-              ]
-            : []),
+          processModes('step'),
           select(
             'Operation',
             'operation',
@@ -542,17 +541,7 @@
         el(
           'section',
           { class: 'p-form' },
-          ...(state.placement === 'process'
-            ? [
-                el(
-                  'div',
-                  { class: 'p-actions' },
-                  button('Manual', 'domain:process', 'process'),
-                  button('Recipe', 'domain:recipe', 'recipe', { 'aria-pressed': 'true' }),
-                  button('Code', 'domain:code', 'code'),
-                ),
-              ]
-            : []),
+          processModes('recipe'),
           field('Recipe name', 'recipeName', recipe.name),
           el(
             'div',
@@ -880,13 +869,7 @@
         state.codeDraft ?? sourceText,
       );
       return [
-        el(
-          'div',
-          { class: 'p-actions' },
-          button('Manual', 'domain:process', 'process'),
-          button('Recipe', 'domain:recipe', 'recipe'),
-          button('Code', 'domain:code', 'code', { 'aria-pressed': 'true' }),
-        ),
+        processModes('code'),
         el('h3', {}, `${recipe.name} · ${recipe.steps.length} source steps`),
         notice(
           'Editable presentation of the real Recipe commands. Apply / Format are UI demonstrations only: no parser, execution, or saved Recipe changes.',
@@ -901,8 +884,14 @@
         ),
       ];
     }
+    function diagnosticsPanel() {
+      return [
+        processModes('diagnostics'),
+        notice('Geometry Diagnostics has a named Process slot. Real Analyze, Materials, metrics and Findings enter during M3.'),
+      ];
+    }
     function inspector() {
-      const domain = ['project', 'mask', 'process', 'recipe', 'code', 'history'].includes(
+      const domain = ['project', 'mask', 'process', 'recipe', 'code', 'diagnostics', 'history'].includes(
         state.domain,
       )
         ? state.domain
@@ -913,6 +902,7 @@
         process: processPanel,
         recipe: recipePanel,
         code: codePanel,
+        diagnostics: diagnosticsPanel,
         history: historyPanel,
       }[domain]();
       return el(
@@ -920,8 +910,8 @@
         { class: 'p-inspector', 'aria-label': `${domain} editor` },
         panelHeader(
           domain[0].toUpperCase() + domain.slice(1),
-          state.placement === 'process' && ['recipe', 'code'].includes(domain)
-            ? `Process / ${domain === 'code' ? 'Code' : 'Recipe'} mode`
+          state.placement === 'process' && ['recipe', 'code', 'diagnostics'].includes(domain)
+            ? `Process / ${domain[0].toUpperCase() + domain.slice(1)} mode`
             : 'Docked workflow · never an automatic overlay',
           [],
         ),
