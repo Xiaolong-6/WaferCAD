@@ -17,10 +17,12 @@ import {
   canvasInkFraction,
 } from './test-helpers/ui.mjs';
 
-const file = await readFile(new URL(
-  '../test-results/metalens/tio2-4725-grid-kernel-compiled-ILLUSTRATIVE.wafercad',
-  import.meta.url,
-));
+const file = await readFile(
+  new URL(
+    '../test-results/metalens/tio2-4725-grid-kernel-compiled-ILLUSTRATIVE.wafercad',
+    import.meta.url,
+  ),
+);
 const browser = await launchBrowser();
 const context = await newUiContext(browser, {
   viewport: { width: 1440, height: 950 },
@@ -39,17 +41,23 @@ try {
     buffer: file,
   });
   await chooseConfirmation(page);
-  await page.waitForFunction(() => /Opened .*\.wafercad\./.test(
-    document.getElementById('statusText')?.textContent || '',
-  ), null, { timeout: 180000 });
+  await page.waitForFunction(
+    () => /Opened .*\.wafercad\./.test(document.getElementById('statusText')?.textContent || ''),
+    null,
+    { timeout: 180000 },
+  );
   const loadedMs = Math.round(performance.now() - begin);
   // Exportable viewport evidence must not be hidden beneath Project flyout.
   await closeFunctionPanel(page);
   await waitForThreeReady(page, 180000);
-  await page.waitForFunction(() => {
-    const canvas = document.getElementById('sectionCanvas');
-    return canvas && canvas.width > 100 && canvas.height > 100;
-  }, null, { timeout: 120000 });
+  await page.waitForFunction(
+    () => {
+      const canvas = document.getElementById('sectionCanvas');
+      return canvas && canvas.width > 100 && canvas.height > 100;
+    },
+    null,
+    { timeout: 120000 },
+  );
   const view = await page.evaluate(() => {
     const three = document.querySelector('#threeHost canvas');
     const section = document.getElementById('sectionCanvas');
@@ -81,10 +89,13 @@ try {
     recipe: 'distinct-template Kernel compilation, not full-array Run All',
     loadedMs,
     visibleMs: Math.round(performance.now() - begin),
-    sectionInk, ...view,
+    sectionInk,
+    ...view,
   };
-  await writeFile('test-results/metalens/grid-visual-browser-report.json',
-    JSON.stringify(report, null, 2) + '\n');
+  await writeFile(
+    'test-results/metalens/grid-visual-browser-report.json',
+    JSON.stringify(report, null, 2) + '\n',
+  );
   assert.deepEqual(errors, []);
   console.log('METALENS_GRID_BROWSER|' + JSON.stringify(report));
 } finally {

@@ -28,24 +28,6 @@ jobs:
         run: |
           node scripts/tio2-metalens-array-scale.mjs --grid=8
           node scripts/tio2-metalens-array-scale.mjs --grid=25
-      - name: Capture scale-probe canonical formatting (temporary)
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFile } from 'node:fs/promises';
-          import prettier from 'prettier';
-          const paths = [
-            'scripts/tio2-metalens-array-scale.mjs',
-            'scripts/tio2-metalens-grid-browser.mjs',
-          ];
-          for (const path of paths) {
-            const orig = await readFile(path, 'utf8');
-            const config = (await prettier.resolveConfig(path)) || {};
-            const fmt = await prettier.format(orig, { ...config, filepath: path });
-            const chunks = Buffer.from(fmt).toString('base64').match(/.{1,2400}/g) || [];
-            for (let i = 0; i < chunks.length; i++)
-              console.log('WAFERFMT|'+encodeURIComponent(path)+'|'+i+'|'+chunks.length+'|'+chunks[i]);
-          }
-          NODE
       - name: Probe 4725 processed sites in bounded complete 80x80 array
         timeout-minutes: 10
         run: node scripts/tio2-metalens-array-scale.mjs --grid=80
