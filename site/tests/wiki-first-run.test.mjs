@@ -4,8 +4,9 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 
-const { applyOperation, createModel, fullFaceGeometry, layerById, surfaceSegment } =
-  await import('../model.js');
+const { applyOperation, createModel, fullFaceGeometry, layerById, surfaceSegment } = await import(
+  '../model.js'
+);
 const { pointInMulti, rectMulti } = await import('../vector-geometry.js');
 
 function stackAt(model, x, y = 0) {
