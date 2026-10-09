@@ -43,7 +43,9 @@ Added/adjusted Node tests in `site/tests/project-controller-recovery.test.mjs` a
 - startup controller explicitly passes protected context for staged project, staged layout and example;
 - layout open passes the context to the same import pipeline (ordinary default remains false).
 
-Required CI on final branch head: Quality (lint, format, docs, Node), Chromium browser persistence + History + Welcome/startup + real mask/project import, and visual spot-check of failed-open status. **Tests written are not passing evidence until a run completes.** The failure scenario is isolated by unit tests; a real-browser failure-injection test is still desirable.
+The Chromium `scripts/persistence-regression.mjs` suite now also injects a real IndexedDB-open failure after an owned workspace is initialized, attempts confirmed Project Open and an actual OAS Mask import, and compares the exported current model, Mask layout and snapshots before/after. It asserts both visible failure statuses and no uncaught page errors. This tests the real import worker/controller/UI/Recovery pipeline, rather than relying only on source assertions.
+
+Required CI on final branch head: Quality (lint, format, docs, Node), Chromium browser persistence + History + Welcome/startup + real mask/project import, and visual spot-check of failed-open status. **Tests written are not passing evidence until a run completes.**
 
 ## Out-of-scope issues observed (not claimed fixed)
 
