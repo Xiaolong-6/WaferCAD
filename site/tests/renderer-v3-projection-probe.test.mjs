@@ -102,3 +102,16 @@ test('offscreen samples are reported, never removed and do not count as subpixel
   assert.equal(result.subpixelQuads, 0);
   assert.equal(result.skippedTriangles, 0);
 });
+
+
+test('Z-collapse with two surviving intervals samples both exposed wall fragments', () => {
+  const result = sampleBuriedInterfaceProjection([owner()], {
+    ...camera,
+    visibleIntervals: () => [[0, 0.04], [0.06, 0.1]],
+  });
+  assert.equal(result.valid, true);
+  assert.equal(result.sampledQuads, 12);
+  assert.equal(result.projectedQuads, 12);
+  assert.equal(result.eligibleForReduction, false);
+  assert.equal(result.skippedTriangles, 0);
+});
