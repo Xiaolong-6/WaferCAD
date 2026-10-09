@@ -21,6 +21,7 @@
       }
       if (!current.has(id)) entry.implementation.onShow(entry.node);
       current.add(id);
+      return entry.node;
     }
     function refresh(id) {
       if (!current.has(id)) return;
@@ -37,7 +38,10 @@
       for (const entry of registered.values()) if (entry.mounted) entry.implementation.destroy();
       registered.clear();
     }
-    return Object.freeze({ register, show, refresh, hide, destroy, keys: () => [...registered.keys()] });
+    return Object.freeze({ register, show, refresh, hide, destroy,
+      node: (id) => registered.get(id)?.node,
+      keys: () => [...registered.keys()],
+    });
   }
   function presentationAdapter({ render }) {
     return {
