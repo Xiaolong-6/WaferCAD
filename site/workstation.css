@@ -2056,8 +2056,7 @@ html.workstation-ui-v2
   :is(.workstation-view-stage, #sectionPanel)
   .view-head
   .view-more-control[open]
-  > summary,
-html.workstation-ui-v2 #sectionPanel .view-head .view-z-break[data-break-enabled='true'] {
+  > summary {
   border-color: #5885a5;
   background: #335773;
   color: #f2f8fb;
