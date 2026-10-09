@@ -1,0 +1,27 @@
+name: Example branch Prettier diagnostic
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: [".github/workflows/example-format-diagnostic.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  print-diffs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Print canonical Prettier diffs
+        run: |
+          for file in site/controllers/project-controller.js site/tests/example-asset.test.mjs scripts/example-open-benchmark.mjs docs/EXAMPLE_OPEN_LATENCY_2026-10-08.md; do
+            npx prettier "$file" > /tmp/expected-example-formatted
+            diff -u "$file" /tmp/expected-example-formatted || true
+          done
