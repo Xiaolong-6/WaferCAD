@@ -47,6 +47,10 @@ for (const { name, viewport } of cases) {
     await page
       .locator(`#${{ main: 'mainPanel', mask: 'maskPanel', three: 'threePanel' }[view]}`)
       .waitFor({ state: 'visible' });
+    // The ResizeObserver can relocate lower-priority tools after view switches.
+    // Wait for the layout to settle before probing their actual user entry path.
+    await waitForPaint(page);
+    await waitForPaint(page);
   };
 
   // Source/mode controls choose an explicit value, rather than forcing a cycle.
@@ -101,10 +105,25 @@ for (const { name, viewport } of cases) {
   // In compact workspaces Display is deliberately reparented under More.
   // Exercise that actual navigation rather than clicking a hidden summary.
   const threeDisplay = page.locator('#threePanel .three-opacity-control');
+  await page.waitForFunction(() => {
+    const panel = document.getElementById('threePanel');
+    const control = panel?.querySelector('.three-opacity-control');
+    const width = panel?.getBoundingClientRect().width || 0;
+    return width > 0 && Boolean(control?.closest('.view-overflow-secondary')) === (width < 510);
+  });
+  const more3d = page.locator('#threePanel .view-more-control');
   if (await threeDisplay.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))) {
-    await page.locator('#threePanel .view-more-control > summary').click();
+    if (!(await more3d.evaluate((node) => node.open))) {
+      await more3d.locator(':scope > summary').click();
+    }
   }
-  await threeDisplay.locator(':scope > summary').click();
+  const summary3d = threeDisplay.locator(':scope > summary');
+  assert.equal(
+    await summary3d.isVisible(),
+    true,
+    '3D Display must be reachable from its header or open More',
+  );
+  await summary3d.click();
   const before = await page.locator('#threeBorders').isChecked();
   await page.locator('#threeBorderControl').click();
   assert.equal(await page.locator('#threeBorders').isChecked(), !before);
