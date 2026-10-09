@@ -16,15 +16,15 @@
         const actions = el('div', { class: 'v2-view-actions', 'data-slot': `view.${key}.actions` });
         header.append(title, actions);
         const holder = incomingStage;
-        const stage = holder.classList.contains('p-science')
-          ? holder : holder.querySelector('.p-science');
+        const stage = holder.hasAttribute('data-v2-stage-host')
+          ? holder : holder.querySelector('[data-v2-stage-host]');
         if (!stage) throw Error(`View ${key} must supply its scientific host`);
         stage.setAttribute('data-slot', `view.${key}.stage`);
         const overlay = el('div', { class: 'v2-view-overlays', 'data-slot': `view.${key}.overlays` });
         // Overlays are a sibling and cannot capture renderer pointer events unless opted in.
         overlay.hidden = true;
         const readout = el('div', { class: 'p-readout', 'data-slot': `view.${key}.readout` });
-        const stageContainer = holder.classList.contains('p-science')
+        const stageContainer = holder.hasAttribute('data-v2-stage-host')
           ? el('div', { class: 'v2-view-stage-container' }, holder, overlay)
           : holder;
         if (stageContainer === holder) stageContainer.append(overlay);
