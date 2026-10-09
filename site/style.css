@@ -4948,7 +4948,7 @@ summary:focus-visible {
 
 /* Process Recipe */
 .process-input-mode {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 6px;
 }
 .recipe-process-pane {
@@ -5766,22 +5766,21 @@ summary:focus-visible {
   color: #314456;
   font-size: 11px;
 }
-.geometry-diagnostics > summary {
+.geometry-diagnostics > .diagnostics-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   min-height: 34px;
   padding: 7px 10px;
-  cursor: pointer;
   font-weight: 700;
 }
-.geometry-diagnostics > summary span {
+.geometry-diagnostics > .diagnostics-heading span {
   color: #708394;
   font-size: 10px;
   font-weight: 500;
 }
-.geometry-diagnostics[open] > summary {
+.geometry-diagnostics > .diagnostics-heading {
   border-bottom: 1px solid #d2dee7;
 }
 .diagnostics-content {
