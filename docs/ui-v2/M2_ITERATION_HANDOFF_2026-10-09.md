@@ -1,5 +1,16 @@
 # UI v2 M2 iteration handoff — 2026-10-09
 
+## M2/M3 scope and placement audit addendum (2026-10-09)
+
+User-approved correction: **M2 owns only the shell, shared view-panel chrome, layout/visual rules, stable named mounts, generic overlay behavior and responsive/ROI checks.** Production controllers, their dynamically created lists and every business state belong to M3. The extensive Process/Recipe/History/Legend/Mask mock work documented below is valuable **preparatory M3 material**, not proof of M2 scope completion.
+
+- [FEATURE_INVENTORY.md](FEATURE_INVENTORY.md): functional domains; M2/M3 boundary; A/B/C/D acceptance; **205 concrete dynamic classes plus one computed pattern** individually allocated from the M0 Contract (five unresolved operations remain).
+- [PLACEMENT_MAP.md](PLACEMENT_MAP.md): **258 functionality rows**, each with domain, surface/area, proposed component, visibility condition, M1.5 design presence, current M2 existence and discrepancy marker. Includes architectural findings with source/line references and a proposal for the user to approve.
+- **Architecture decision pending**: preserve M1.5 approved A layout, add explicit named slots and stable DOM lifetimes before M3; Base recommended as named Project sub-panel to reconcile five functional containers with four approved primary navigation items.
+- **Known M2 gaps**: generic `renderEditor` / `renderView` are not per-domain named mounts; `view-panel.js` specially replaces `.p-science` contents and `#layerLegend`; new shell contains history/task/dirty business conditions; generic Popover/Dialog/Toast manager and portals are incomplete.
+- New UI `data-ui="v2"` and old legacy `workstation-ui-v2` are separate guards and must stay separate. Keep the existing sessionStorage keys. Contract baseline predates Lift-off, so latest-main Process/Recipe diff must be reviewed before M3.
+- **Stop gate**: these are documentation-only findings. No source edits, visual-baseline changes, merges, deployment or M3 wiring is authorized until the user audits the placement map.
+
 ## Handoff state
 
 - Repository: `Xiaolong-6/WaferCAD`.
