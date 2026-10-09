@@ -67,33 +67,37 @@ const palette = async (selector, light = false) => {
     }
   }, light);
 };
-const selectedPalettes = [
-  await palette('#maskSourceToggleBtn'),
-  await palette('#maskSourceToggleBtn', true),
-];
-for (const selector of ['#maskSourceToggleBtn', '#threeFastBtn', '#sectionScaleModeBtn']) {
-  const button = page.locator(selector);
-  const original = (await button.textContent()).trim();
-  const pressed = await button.getAttribute('aria-pressed');
-  for (let index = 0; index < 2; index++) {
-    for (const light of [false, true])
-      assert.deepEqual(
-        await palette(selector, light),
-        selectedPalettes[Number(light)],
-        `${selector}: current mode palette`,
-      );
-    await button.click();
+// View modes are explicit choices, not cycling toggle buttons.
+for (const [selector, modes] of [
+  ['#maskSourceToggleBtn', ['file', 'draw']],
+  ['#threeFastBtn', ['fast', 'quality']],
+  ['#sectionScaleModeBtn', ['auto', 'physical']],
+]) {
+  const select = page.locator(selector);
+  const initial = await select.inputValue();
+  assert.ok(modes.includes(initial));
+  const colors = [await palette(selector), await palette(selector, true)];
+  for (const value of modes) {
+    await select.selectOption(value);
+    assert.equal(await select.inputValue(), value);
+    assert.deepEqual(await palette(selector), colors[0]);
+    assert.deepEqual(await palette(selector, true), colors[1]);
   }
-  assert.equal((await button.textContent()).trim(), original);
-  assert.equal(await button.getAttribute('aria-pressed'), pressed);
+  await select.selectOption(initial);
 }
-const toggles = [
-  '#threeBorderControl',
-  '#sectionBordersBtn',
-  '#mainPanBtn',
-  '#sectionDetailRoiBtn',
-];
-for (const selector of toggles) {
+
+// Controls moved into Display/More keep their original, accessible state owner.
+const showControl = async (selector) => {
+  await page.locator(selector).evaluate((node) => {
+    let parent = node.parentElement;
+    while (parent) {
+      if (parent.tagName === 'DETAILS') parent.open = true;
+      parent = parent.parentElement;
+    }
+  });
+};
+for (const selector of ['#threeBorderControl', '#sectionBordersBtn', '#mainPanBtn', '#sectionDetailRoiBtn']) {
+  await showControl(selector);
   const control = page.locator(selector);
   const active = async () =>
     selector === '#threeBorderControl'
@@ -105,28 +109,13 @@ for (const selector of toggles) {
   await control.click();
   assert.equal(await active(), true, `${selector}: selected semantics`);
   for (const light of [false, true]) {
-    const on = await palette(selector, light);
-    assert.notDeepEqual(on, off[Number(light)], `${selector}: distinguish selected state`);
-    assert.deepEqual(on, selectedPalettes[Number(light)], `${selector}: shared selected palette`);
+    assert.notDeepEqual(await palette(selector, light), off[Number(light)], `${selector}: visible selected state`);
   }
-  await page.locator('#maskSourceToggleBtn').hover();
-  const hovered = await page.locator('#maskSourceToggleBtn').evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { fill: style.backgroundColor, color: style.color, border: style.borderColor };
-  });
-  await control.hover();
-  assert.deepEqual(
-    await control.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { fill: style.backgroundColor, color: style.color, border: style.borderColor };
-    }),
-    hovered,
-    `${selector}: shared selected hover palette`,
-  );
   await control.click();
   assert.equal(await active(), false);
   if (initial) await control.click();
 }
+await showControl('#threeBorders');
 const bordersBeforeKeyboard = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorders').focus();
 await page.keyboard.press('Space');
@@ -134,20 +123,15 @@ assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeKeyb
 await page.keyboard.press('Space');
 assert.equal(await page.locator('#threeBorders').isChecked(), bordersBeforeKeyboard);
 for (const selector of ['#maskRoiEditor', '#threePanel .three-opacity-control']) {
+  await showControl(selector);
   const details = page.locator(selector);
   const summary = `${selector} > summary`;
   if (await details.evaluate((element) => element.open)) await page.locator(summary).click();
   const closed = [await palette(summary), await palette(summary, true)];
   await page.locator(summary).click();
   assert.equal(await details.evaluate((element) => element.open), true);
-  for (const light of [false, true]) {
-    assert.notDeepEqual(await palette(summary, light), closed[Number(light)]);
-    assert.deepEqual(
-      await palette(summary, light),
-      selectedPalettes[Number(light)],
-      `${selector}: expanded palette`,
-    );
-  }
+  assert.notDeepEqual(await palette(summary), closed[0]);
+  assert.notDeepEqual(await palette(summary, true), closed[1]);
   await page.locator(summary).click();
 }
 await toolbarMotion.evaluate((element) => element.remove());
@@ -208,7 +192,7 @@ await page.locator('#sectionControlsBtn').click();
 assert.equal(await abPanel.isVisible(), true);
 await page.locator('#focusEditor > summary').click();
 assert.equal(await abPanel.isHidden(), true);
-assert.equal((await page.locator('#focusEditor > summary').textContent()).trim(), 'ROI');
+assert.equal((await page.locator('#focusEditor > summary').textContent()).trim(), '3D ROI');
 await page.locator('.roi-tool[data-tool="rect"]').click();
 await page.mouse.move(mainBox.x + mainBox.width * 0.4, mainBox.y + mainBox.height * 0.4);
 await page.mouse.down();
@@ -228,8 +212,8 @@ await page.locator('#roiEditor:not([hidden])').waitFor();
 assert.ok(Number(await page.locator('#roiWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
 
-// Main permits only one floating control: Export replaces ROI.
-const mainExportControl = page.locator('#mainPanel .export-control');
+// Main uses a More popover rather than a second top-level Export button.
+const mainExportControl = page.locator('#mainPanel .view-more-control');
 await mainExportControl.locator(':scope > summary').click();
 assert.equal(await page.locator('#focusEditor').evaluate((details) => details.open), false);
 assert.equal(await mainExportControl.evaluate((details) => details.open), true);
@@ -317,9 +301,9 @@ assert.equal(await page.locator('#maskExportControl').evaluate((details) => deta
 await page.locator('#maskExportControl > summary').click();
 
 const sourceToggle = page.locator('#maskSourceToggleBtn');
-assert.equal((await sourceToggle.textContent()).trim(), 'File');
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
+assert.equal(await sourceToggle.inputValue(), 'file');
+await sourceToggle.selectOption('draw');
+assert.equal(await sourceToggle.inputValue(), 'draw');
 assert.equal(await page.locator('#drawMaskToolbar').isVisible(), true);
 assert.equal(await page.locator('#maskFileControls').isHidden(), true);
 assert.equal(await page.locator('#maskDrawInfo').evaluate((element) => element.hidden), false);
@@ -480,14 +464,14 @@ assert.equal(await page.locator('#processTaskDialog').evaluate((element) => elem
 assert.match(await page.locator('#statusText').textContent(), /Deposited Draw probe|Saved locally/);
 
 // Switching sources never destroys either source.
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'File');
+await sourceToggle.selectOption('file');
+assert.equal(await sourceToggle.inputValue(), 'file');
 assert.equal(await page.locator('#maskFileControls').evaluate((element) => element.hidden), false);
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
+await sourceToggle.selectOption('draw');
+assert.equal(await sourceToggle.inputValue(), 'draw');
 assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'File');
+await sourceToggle.selectOption('file');
+assert.equal(await sourceToggle.inputValue(), 'file');
 
 // Mask owns a separate Square/Circle ROI used by Process and Mask export.
 await page.locator('#maskRoiEditor > summary').click();
