@@ -125,6 +125,11 @@ try {
     const distant = await snapshot();
     assert.match(distant.transparentArrayLodTier, /^far-/);
     assert.equal(distant.v3ScreenBudgetMode, 'observe-only');
+    assert.equal(
+      distant.v3ScreenBudgetReason,
+      distant.zCollapseEnabled === 'true' ? 'z-collapse' : 'qualified',
+      'The v3 probe must use the effective Section Z-collapse display state',
+    );
     assert.equal(distant.v3SkippedTriangles, '0', 'v3 probe must not remove geometry');
     assert.ok(
       Number.isFinite(Number(distant.v3SubpixelWallInstances)),
@@ -220,6 +225,7 @@ try {
   assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
   assert.equal(transparentCold.v3SkippedTriangles, '0');
   assert.equal(transparentCold.v3ScreenBudgetQualified, 'false');
+  assert.equal(transparentCold.v3ScreenBudgetReason, 'not-far');
   assert.equal(
     transparentCold.cameraDampingEnabled,
     'false',
@@ -248,6 +254,7 @@ try {
   assert.equal(opaqueSwap.rendererUpdateKind, 'variant-swap');
   assert.equal(opaqueSwap.v3SkippedTriangles, '0');
   assert.equal(opaqueSwap.v3ScreenBudgetQualified, 'false');
+  assert.equal(opaqueSwap.v3ScreenBudgetReason, 'not-far');
   assert.equal(
     Number(opaqueSwap.sceneSinglePassCapObjects),
     0,
