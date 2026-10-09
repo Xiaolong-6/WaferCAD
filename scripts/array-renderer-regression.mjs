@@ -124,6 +124,12 @@ try {
     const elapsedMs = await waitStage('fast-transparent-array-lod', 120000, beforeLodFrame);
     const distant = await snapshot();
     assert.match(distant.transparentArrayLodTier, /^far-/);
+    assert.equal(distant.v3ScreenBudgetMode, 'observe-only');
+    assert.equal(distant.v3SkippedTriangles, '0', 'v3 probe must not remove geometry');
+    assert.ok(
+      Number.isFinite(Number(distant.v3SubpixelWallInstances)),
+      'far-array presentation must report the v3 screen-space budget',
+    );
     assert.equal(distant.cameraDampingEnabled, 'true', 'Far Fast mode keeps normal camera inertia');
     assert.ok(
       Number(distant.electricalFarLodBodyCount) > 0,
@@ -212,6 +218,8 @@ try {
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
   assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
+  assert.equal(transparentCold.v3SkippedTriangles, '0');
+  assert.equal(transparentCold.v3ScreenBudgetQualified, 'false');
   assert.equal(
     transparentCold.cameraDampingEnabled,
     'false',
@@ -238,6 +246,8 @@ try {
   const opaqueSwapMs = await waitStage('opacity-swap-opaque', 120000, beforeOpaqueFrame);
   const opaqueSwap = await snapshot();
   assert.equal(opaqueSwap.rendererUpdateKind, 'variant-swap');
+  assert.equal(opaqueSwap.v3SkippedTriangles, '0');
+  assert.equal(opaqueSwap.v3ScreenBudgetQualified, 'false');
   assert.equal(
     Number(opaqueSwap.sceneSinglePassCapObjects),
     0,
@@ -253,6 +263,8 @@ try {
   const warmTransparentMs = await waitStage('opacity-swap-transparent', 120000, beforeWarmFrame);
   const transparentWarm = await snapshot();
   assert.equal(transparentWarm.rendererUpdateKind, 'variant-swap');
+  assert.equal(transparentWarm.v3ScreenBudgetQualified, 'false');
+  assert.equal(transparentWarm.v3SkippedTriangles, '0');
   assert.equal(
     transparentWarm.sceneSavedCapTriangleSubmissions,
     transparentCold.sceneSavedCapTriangleSubmissions,
