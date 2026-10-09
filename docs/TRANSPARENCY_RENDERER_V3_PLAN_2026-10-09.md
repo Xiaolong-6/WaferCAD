@@ -285,6 +285,30 @@ and projected candidate pattern with the prior `907c2c3` reference,
 then decide whether the architecture warrants a separate display-only
 transparency LOD experiment. No experimental culling is enabled in A.4.
 
+## Phase A.4 result — full 625-site acceptance (2026-10-09)
+
+Runtime head `4976bda7c4be7d786a4b2dc042cdcae4cf4e7e5e` passed Quality, Browser 625-site, edge-on, Native Fig3 and all Recipe Run All.
+Browser run: https://github.com/Xiaolong-6/WaferCAD/actions/runs/37928527195
+
+| Diagnostic | 625-site Fast distant |
+| --- | ---: |
+| Major buried material owners | 2: `layer-6`, `layer-12` |
+| Complete contour edge x 64-instance tile bounds | 81,360 |
+| Complete subpixel bounds, threshold 0.5 px | **0** |
+| Near/far uncertain bounds and overflow | 0 / 0 |
+| Raw unmerged two-pass estimate | 20,340,000 triangles |
+| Actual GPU triangle reduction | **0** |
+| Edge/tile diagnostic CPU time | **85.8 ms** |
+| Fast/Quality submitted triangles | 16,906,262 / 57,040,012 |
+| Fast distant elapsed | 8.33 s |
+| Quality transparent cold/warm | 24.37 / 23.65 s |
+
+The prior Phase A.3 CI run gave Fast 11.84 s and Quality 33.01 / 32.30 s, with identical GPU triangle counts; CI variance precludes any speedup claim.
+The 85.8 ms survey imposes real additional scene-build CPU work. It should be run benchmark-only once the scientific measurement is accepted.
+The A.4 and A.3 screenshots differ only in the 111 by 9 pixel status-bar text area at bottom right (x1138-1248, y947-955); 3D rendering pixels are unchanged. No screenshot baselines were replaced.
+
+**Decision:** No complete subpixel 64-instance contour tile qualifies; previous 294 / 520 individually sampled subpixel quads do not authorize whole-tile or alpha-blended geometry culling. Phase B remains unimplemented. Future optimization should measure transparency/overdraw and preserve depth and alpha accumulation before proposing display-only LOD. Keep PR #166 experimental and unmerged.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
