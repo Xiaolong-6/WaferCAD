@@ -134,8 +134,12 @@ for (const selector of [
       ? page.locator('#threeBorders').isChecked()
       : (await control.getAttribute('aria-pressed')) === 'true';
   const initial = await active();
-  if (initial) await control.click();
+  if (initial) {
+    await showControl(selector);
+    await control.click();
+  }
   const off = [await palette(selector), await palette(selector, true)];
+  await showControl(selector);
   await control.click();
   assert.equal(await active(), true, `${selector}: selected semantics`);
   for (const light of [false, true]) {
@@ -145,9 +149,13 @@ for (const selector of [
       `${selector}: visible selected state`,
     );
   }
+  await showControl(selector);
   await control.click();
   assert.equal(await active(), false);
-  if (initial) await control.click();
+  if (initial) {
+    await showControl(selector);
+    await control.click();
+  }
 }
 await showControl('#threeBorders');
 const bordersBeforeKeyboard = await page.locator('#threeBorders').isChecked();
