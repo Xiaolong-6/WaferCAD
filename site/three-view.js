@@ -919,6 +919,7 @@ export function createThreeView({
       v3SubpixelProbe: {
         mode: host.dataset.v3ScreenBudgetMode || 'observe-only',
         qualified: host.dataset.v3ScreenBudgetQualified || 'false',
+        reason: host.dataset.v3ScreenBudgetReason || 'unmeasured',
         candidates: host.dataset.v3SubpixelWallCandidates || '0',
         instances: host.dataset.v3SubpixelWallInstances || '0',
         rawTriangles: host.dataset.v3SubpixelRawTriangleEstimate || '0',
@@ -982,6 +983,7 @@ export function createThreeView({
     host.dataset.electricalFarLodBodyCount = entry.electricalFarLodBodyCount || '0';
     host.dataset.v3ScreenBudgetMode = entry.v3SubpixelProbe?.mode || 'observe-only';
     host.dataset.v3ScreenBudgetQualified = entry.v3SubpixelProbe?.qualified || 'false';
+    host.dataset.v3ScreenBudgetReason = entry.v3SubpixelProbe?.reason || 'unmeasured';
     host.dataset.v3SubpixelWallCandidates = entry.v3SubpixelProbe?.candidates || '0';
     host.dataset.v3SubpixelWallInstances = entry.v3SubpixelProbe?.instances || '0';
     host.dataset.v3SubpixelRawTriangleEstimate = entry.v3SubpixelProbe?.rawTriangles || '0';
@@ -2665,7 +2667,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         v3Budget = buriedInterfaceSubpixelBudget(plan.sidewalls, {
           farTier: targetVariant === 'transparent' && arrayLod.tier !== 'exact',
           clipped: Boolean(clip),
-          zCollapsed: Boolean(getZCollapse?.()),
+          // Use the EFFECTIVE Section display transform, including the
+          // enabled default when the stored Section setting is null.
+          zCollapsed: currentZDisplay?.enabled !== false,
+          displayZScale: currentZDisplay?.scale,
           unitsPerPixel:
             camera && distanceForV3 > 0
               ? (2 * distanceForV3 * Math.tan((camera.fov * Math.PI) / 360)) /
@@ -2678,6 +2683,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         });
       host.dataset.v3ScreenBudgetMode = v3Budget.mode;
       host.dataset.v3ScreenBudgetQualified = String(v3Budget.qualified);
+      host.dataset.v3ScreenBudgetReason = v3Budget.exclusionReason || 'qualified';
       host.dataset.v3SubpixelWallCandidates = String(v3Budget.candidates);
       host.dataset.v3SubpixelWallInstances = String(v3Budget.instanceWallSegments);
       host.dataset.v3SubpixelRawTriangleEstimate = String(
