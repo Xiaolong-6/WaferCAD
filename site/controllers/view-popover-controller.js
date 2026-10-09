@@ -48,8 +48,16 @@ export function createViewPopoverController({ root = document } = {}) {
         if (!details.open) claim(details);
       });
       details.addEventListener('toggle', () => {
-        if (details.open) claim(details);
-        else for (const child of details.querySelectorAll('details[open]')) child.open = false;
+        if (details.open) {
+          claim(details);
+        } else {
+          for (const child of details.querySelectorAll('details[open]')) child.open = false;
+          // A secondary editor moved into More should hand control back to
+          // the canvas when it closes. Otherwise the still-open More surface
+          // can intercept ROI handle drags even though the editor is hidden.
+          const more = details.closest('.view-overflow-secondary')?.closest('.view-more-control');
+          if (more?.open) more.open = false;
+        }
       });
     }
 
