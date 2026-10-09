@@ -916,6 +916,14 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
+      v3SubpixelProbe: {
+        mode: host.dataset.v3ScreenBudgetMode || 'observe-only',
+        qualified: host.dataset.v3ScreenBudgetQualified || 'false',
+        candidates: host.dataset.v3SubpixelWallCandidates || '0',
+        instances: host.dataset.v3SubpixelWallInstances || '0',
+        rawTriangles: host.dataset.v3SubpixelRawTriangleEstimate || '0',
+        skipped: host.dataset.v3SkippedTriangles || '0',
+      },
       model: physicalSceneModel,
       signature: physicalSceneSignature,
     };
@@ -972,6 +980,12 @@ export function createThreeView({
     host.dataset.transparentArrayDisplayTolerance = entry.arrayLodTolerance || '0';
     host.dataset.fullWaferTransparencyLod = String(entry.arrayLodTier !== 'exact');
     host.dataset.electricalFarLodBodyCount = entry.electricalFarLodBodyCount || '0';
+    host.dataset.v3ScreenBudgetMode = entry.v3SubpixelProbe?.mode || 'observe-only';
+    host.dataset.v3ScreenBudgetQualified = entry.v3SubpixelProbe?.qualified || 'false';
+    host.dataset.v3SubpixelWallCandidates = entry.v3SubpixelProbe?.candidates || '0';
+    host.dataset.v3SubpixelWallInstances = entry.v3SubpixelProbe?.instances || '0';
+    host.dataset.v3SubpixelRawTriangleEstimate = entry.v3SubpixelProbe?.rawTriangles || '0';
+    host.dataset.v3SkippedTriangles = entry.v3SubpixelProbe?.skipped || '0';
     return true;
   }
 
