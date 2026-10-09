@@ -78,9 +78,12 @@ const vector = await import('../vector-geometry.js');
 const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
 
 function applyLiftOffViaWorker(model, params) {
-  return applyArrayOperation(model, params, (candidate, localParams) =>
-    applyAdvancedProcessOperation(candidate, localParams, localParams.area, modelApi, vector) ??
-    applyOperation(candidate, localParams),
+  return applyArrayOperation(
+    model,
+    params,
+    (candidate, localParams) =>
+      applyAdvancedProcessOperation(candidate, localParams, localParams.area, modelApi, vector) ??
+      applyOperation(candidate, localParams),
   );
 }
 function physicalAt(m, point) {
