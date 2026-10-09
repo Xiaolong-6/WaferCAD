@@ -59,6 +59,9 @@ function numericProfile(dataset) {
     'v3EdgeSurveyRawUpperBound',
     'v3EdgeSurveySubpixelRawUpperBound',
     'v3EdgeSurveyMs',
+    'v3QualityIndexedVertices',
+    'v3QualityOriginalVertices',
+    'v3QualityIndexedTriangles',
     'sceneRetainedGroupCount',
     'sceneRetainedObjectCount',
     'sceneRetainedGeometryCount',
@@ -77,7 +80,7 @@ try {
   page.setDefaultTimeout(180000);
   const errors = observePageErrors(page);
 
-  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3IndexedWalls=1');
+  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3QualityIndex=1');
   await waitForAppReady(page);
   const openStarted = performance.now();
   await page
