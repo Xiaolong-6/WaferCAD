@@ -108,7 +108,7 @@ export async function buildMetalensLocal() {
   const {normalizeProcessRecipe}=await import('../site/process-recipe.js');
   const {validateRecipeExecution}=await import('../site/process-recipe-preflight.js');
   const {validateProjectFile,validateProcessModel}=await import('../site/project-schema.js');
-  const {prepareProjectForWorkspaceStorage,readProjectFile}=await import('../site/project-io.js');
+  const {readProjectFile}=await import('../site/project-io.js');
 
   const model=modelApi.createModel({shape:'rect',width:5,height:5,thickness:2});
   model.layers[0].name=BASE.material;
@@ -160,7 +160,7 @@ export async function buildMetalensLocal() {
     branch.headSnapshotId=value.id;
   }
   const polys=localSites.flatMap(({type,x,y,scale})=>metaAtomPolygons(type,x,y,scale));
-  const keep=v.unionGeometries(polys.map(points=>[[...points,points[0]]]));
+  const keep=v.unionGeometries(polys.map(points=>[[[...points,points[0]]]]));
   const inverse=v.difference(model.boundary,keep);
   const areaOf=(mode)=>mode==='mask'?keep:mode==='invert'?inverse:model.boundary;
 
