@@ -5377,7 +5377,7 @@ summary:focus-visible {
 .view-display-popover {
   position: absolute;
   z-index: 24;
-  top: calc(100% + 2px);
+  top: 31px;
   right: 7px;
   display: grid;
   gap: 8px;
