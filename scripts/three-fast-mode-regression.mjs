@@ -281,7 +281,7 @@ try {
     'Mode changes must preserve exact physical geometry and annotations.',
   );
   assert.equal(exported.display.threeFastMode, true);
-  await page.locator('#threeFastBtn').selectOption(mode);
+  await page.locator('#threeFastBtn').selectOption('quality');
   await page.waitForFunction(
     () => document.getElementById('threeFastBtn').value === 'quality',
   );
