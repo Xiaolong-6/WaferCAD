@@ -42,6 +42,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Illustrated Wiki consolidation — 2026-10-08](WIKI_ILLUSTRATED_MANUAL_2026-10-08.md) — canonical process illustrations, links and verification limits.
 - [First-time user Wiki usability audit — 2026-10-08](WIKI_FIRST_TIME_USER_AUDIT_2026-10-08.md) — checked onboarding controls, source-specific fixes, tests and remaining acceptance boundaries.
 - [M3D Conformal microcrack repair — 2026-10-08](M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md) — precise XY coverage failure, repair and S00–S26 acceptance evidence.
+- [Conformal corner connectivity review — 2026-10-09](CONFORMAL_CORNER_REVIEW_2026-10-09.md) — corrected Process diagrams, Kernel topology assessment, cross-view regression contracts and pending GLB review.
 - [Process workflow v2 branch handoff — 2026-10-08](PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md) — operation selector, safe Recipe templates, latest-main baseline recheck and pending browser acceptance.
 - [Process Step layout parity — 2026-10-09](PROCESS_STEP_LAYOUT_PARITY_2026-10-09.md) — integrated Operation/Surface and Step form layout changes.
 - [View UX v3 architecture and acceptance — 2026-10-09](VIEW_UX_V3_2026-10-09.md) — four-view chrome, explicit modes, responsive overflow, Z Break and review scope.

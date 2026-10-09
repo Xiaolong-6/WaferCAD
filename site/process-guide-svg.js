@@ -9,28 +9,29 @@ const base = () => rect(6, 57, 208, 60, blue);
 const step = () => base() + rect(6, 35, 84, 22, blue);
 const arrow = () =>
   '<path d="M110 9V36 M105 30L110 36L115 30" fill="none" stroke="#ce913f" stroke-width="2"/>';
+// One continuous cross-section avoids suggesting point-only contact at corners.
+// topY: high-film top, wallRight: lateral outer edge, bottomY: low-film top.
+const conformalProfile = (topY, wallRight, bottomY, color = gold) =>
+  `<path d="M6 ${topY}H${wallRight}V${bottomY}H214V57H90V35H6Z" fill="${color}"/>`;
 export function processGuideSvg(id, after = false) {
   let shape = step();
   const deposited = (x, y, w, h, c = gold) => rect(x, y, w, h, c);
   if (id.startsWith('deposit-')) {
     if (id === 'deposit-directional')
       shape += after ? deposited(6, 27, 84, 8) + deposited(90, 49, 124, 8) : arrow();
-    if (id === 'deposit-conformal')
-      shape += after
-        ? deposited(6, 27, 84, 8) + deposited(90, 35, 8, 22) + deposited(98, 49, 116, 8)
-        : arrow();
+    if (id === 'deposit-conformal') shape += after ? conformalProfile(27, 98, 49) : arrow();
     if (id === 'deposit-transfer-follow')
       shape += after ? deposited(6, 26, 84, 6) + deposited(90, 48, 124, 6) : arrow();
     if (id === 'deposit-transfer-flat') shape += after ? deposited(6, 27, 208, 6) : arrow();
   } else if (id.startsWith('extend-')) {
-    shape += deposited(6, 27, 84, 8, green);
-    if (after)
-      shape +=
-        deposited(6, 18, 84, 9, green) +
-        (id === 'extend-conformal'
-          ? deposited(90, 35, 9, 22, green) + deposited(99, 48, 115, 9, green)
-          : '');
-    else shape += arrow();
+    if (after && id === 'extend-conformal') {
+      // The original seed film, top increment and wall share one material outline.
+      shape += conformalProfile(18, 99, 48, green);
+    } else {
+      shape += deposited(6, 27, 84, 8, green);
+      if (after) shape += deposited(6, 18, 84, 9, green);
+      else shape += arrow();
+    }
   } else if (id.startsWith('etch-rough-') || id.startsWith('etch-pyramid-')) {
     shape = base();
     if (after) {
