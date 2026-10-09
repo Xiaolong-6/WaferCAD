@@ -38,6 +38,7 @@ export function createIntelligentUi({ root = document, win = window, workstation
   function syncDock() {
     const docked = isDocked();
     root.documentElement.classList.toggle('intelligent-ui-docked', docked);
+    if (!docked) root.documentElement.classList.remove('intelligent-inspector-collapsed');
     if (refs.dock) {
       refs.dock.setAttribute('aria-pressed', String(dockPreference));
       refs.dock.textContent = dockPreference ? 'Undock' : 'Dock';
