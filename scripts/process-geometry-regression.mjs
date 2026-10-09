@@ -1011,8 +1011,27 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
       before.model,
       `${type}/${face}: no-op must preserve the stored model`,
     );
+    // Resizing the inspector can perturb Three.js camera position by a few
+    // floating-point ULPs without changing geometry or History. Compare
+    // this display-only position within tolerance, but keep the remainder of
+    // the History tree byte-for-byte strict (nodes, branches, cursors, HEADs).
+    const stableHistoryAfter = structuredClone(after.snapshotBranches);
+    stableHistoryAfter.branches.forEach((branch, index) => {
+      const beforePosition =
+        before.snapshotBranches.branches[index]?.headState?.display?.threeCamera?.position;
+      const afterPosition = branch.headState?.display?.threeCamera?.position;
+      if (!Array.isArray(beforePosition) || !Array.isArray(afterPosition)) return;
+      assert.equal(afterPosition.length, beforePosition.length);
+      for (let axis = 0; axis < afterPosition.length; axis++) {
+        assert.ok(
+          Math.abs(afterPosition[axis] - beforePosition[axis]) < 1e-10,
+          `${type}/${face}: no-op changed the saved camera position`,
+        );
+        afterPosition[axis] = beforePosition[axis];
+      }
+    });
     assert.deepEqual(
-      after.snapshotBranches,
+      stableHistoryAfter,
       before.snapshotBranches,
       `${type}/${face}: no-op must preserve all History branches/cursors/HEADs`,
     );
