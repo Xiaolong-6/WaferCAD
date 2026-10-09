@@ -422,6 +422,50 @@ optimization must come from measured GPU transparency/overdraw, not an
 unsupported claim that 33% local vertex count implies frame improvement.
 PR #166 remains Draft and is not authorized for merge.
 
+## Phase B.1 — Quality-only, exact indexed-wall A/B experiment (2026-10-09)
+
+**Status:** opt-in pilot, **disabled in production**, no documented speedup yet.
+Updated from current main `0125967` (conformal review branch integration).
+
+The prior Fast-only experiment was reverted because it indexed just 2,200
+template triangles. This controlled follow-up tests a different workload:
+the **Quality exact transparent 625-site scene**. The original Quality
+scene rebuild path is unchanged unless the page uses
+`?rendererV3QualityIndex=1`. The 625-site benchmark and pipeline benchmark
+also explicitly include `?rendererV3Diagnostics=1` to record diagnostics.
+
+- Only **buried, smooth, instanced material walls in transparent Quality**
+  call `pushIndexedSmoothWall`. Each quad keeps the exact two physical
+  triangles in the same order, original winding, normal and Z coordinates
+  using four vertices plus six indices.
+- Rough/non-planar appearance, annotation gradients, Fast LOD, opaque
+  variants, clipped non-instanced walls, Process/Kernel geometry, GDS/OAS
+  and GLB export continue to use their old implementations.
+- The strict `canIndexSmoothWalls` predicate rejects a whole candidate
+  template whenever it contains roughness, invalid coordinates or
+  depth-annotation interpolation. Empty sets cannot be indexed.
+- Unit tests re-expand the indices and check triangle positions, normals,
+  winding, shared sharp corners and original-input immutability.
+- Instrument logical GPU source vertex instances:
+  `v3QualityIndexedVertices`, `v3QualityOriginalVertices`,
+  `v3QualityIndexedTriangles`. Their vertex ratio must equal 4:6
+  while triangle count stays unchanged; renderer triangle counters
+  now honor `geometry.index.count` where applicable.
+- Variant cache restores the metrics along with the transparent scene.
+  The experiment flag is read only on page load; normal UI stays on
+  the unindexed exact Quality path.
+
+**Acceptance:** Quality, targeted Chromium, full 625-site/20-toggle,
+edge-on, Native Fig3 and every Recipe Run All on the same integration
+head. Compare full-scene 3D pixels against the previous indexed-free
+625-site reference at a matching camera, and compare *actual*
+`rendererDrawTriangles`, `rendererDrawCalls`, first completed-frame
+time and tested indexed vertex coverage. A claimed performance benefit
+requires paired repeated measurements beyond CI-host variation. If
+the covered vertex fraction is negligible or screen output differs,
+revert the runtime opt-in branch and keep only this record.
+
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
