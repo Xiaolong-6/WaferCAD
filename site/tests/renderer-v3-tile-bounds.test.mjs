@@ -36,9 +36,15 @@ test('owner/tile bounds encompass full instances and whole template, with no sou
 });
 
 test('actual Section-display Z amplification removes spurious subpixel candidates', () => {
-  const original = buriedInterfaceTileBounds([tiny()], camera);
+  // A top-down identity projection sends physical Z to *depth*, so it
+  // cannot establish the visible-size effect of display-Z exaggeration.
+  // Include a tilted view component: projected screen Y depends on Z.
+  const tilted = [...identity];
+  tilted[9] = 1;
+  const view = { ...camera, viewProjectionMatrix: tilted };
+  const original = buriedInterfaceTileBounds([tiny()], view);
   const amplified = buriedInterfaceTileBounds([tiny()], {
-    ...camera,
+    ...view,
     displayZScale: 100,
     zCollapsed: true,
   });
