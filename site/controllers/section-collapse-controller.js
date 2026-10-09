@@ -188,7 +188,10 @@ export function createSectionCollapseController({
     const area = $('sectionBody').getBoundingClientRect();
     const requiredHeight = Math.max(380, editor.scrollHeight + 16);
     if (area.width < 420 || area.height < requiredHeight) {
+      const focused = editor.contains(root.activeElement) ? root.activeElement : null;
+      editor.close();
       editor.showModal();
+      focused?.focus({ preventScroll: true });
     }
   }
 
@@ -197,6 +200,7 @@ export function createSectionCollapseController({
     claimPopover(editor);
     editorOpen = true;
     editor.hidden = false;
+    editor.show();
     updatePresentation();
     sync();
     if (!editor.matches(':modal')) $('sectionCollapseClose').focus({ preventScroll: true });
@@ -305,9 +309,6 @@ export function createSectionCollapseController({
     editor.addEventListener('cancel', (event) => {
       event.preventDefault();
       close();
-    });
-    editor.addEventListener('close', () => {
-      if (editorOpen) close();
     });
     editor.addEventListener('pointerdown', (event) => {
       // In modal mode the backdrop dispatches on <dialog> itself.
