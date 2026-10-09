@@ -76,5 +76,15 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Check independent CDN preview URL
+        if: always()
+        continue-on-error: true
+        env:
+          PREVIEW_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          preview_url="https://raw.githack.com/${GITHUB_REPOSITORY}/${PREVIEW_SHA}/site/app.html"
+          echo "Attempting public source-CDN review URL: ${preview_url}"
+          curl --fail --location --retry 3 --retry-delay 2 --head "${preview_url}"
+
       # GitHub Pages is production-only in this repository. Never call
       # deploy-pages from a PR because it could replace the live main site.
