@@ -135,8 +135,16 @@ try {
     });
     assert.ok(fit.panelWidth > 180, 'Diagnostics panel must remain usable');
     assert.equal(fit.isWithinFlyout, true, 'Diagnostics must stay inside Process flyout');
-    assert.equal(fit.horizontalContentOverflow, false, 'Diagnostics content must not overflow in X');
-    assert.equal(fit.horizontalResultOverflow, false, 'Diagnostics findings must wrap without horizontal overflow');
+    assert.equal(
+      fit.horizontalContentOverflow,
+      false,
+      'Diagnostics content must not overflow in X',
+    );
+    assert.equal(
+      fit.horizontalResultOverflow,
+      false,
+      'Diagnostics findings must wrap without horizontal overflow',
+    );
   };
   await assertDiagnosticsFit();
   await page.locator('#geometryDiagnosticsPanel .diagnostics-heading').scrollIntoViewIfNeeded();
