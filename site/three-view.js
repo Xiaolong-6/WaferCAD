@@ -3249,7 +3249,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
         group.children.reduce(
-          (sum, object) => sum + (object.geometry?.getAttribute?.('position')?.count || 0) / 3,
+          (sum, object) =>
+            sum +
+            (object.geometry?.index?.count ||
+              object.geometry?.getAttribute?.('position')?.count ||
+              0) /
+              3,
           0,
         ),
       );
