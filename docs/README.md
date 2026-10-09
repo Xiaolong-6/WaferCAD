@@ -39,6 +39,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Illustrated Wiki consolidation — 2026-10-08](WIKI_ILLUSTRATED_MANUAL_2026-10-08.md) — canonical process illustrations, links and verification limits.
 - [M3D Conformal microcrack repair — 2026-10-08](M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md) — precise XY coverage failure, repair and S00–S26 acceptance evidence.
 - [Process workflow v2 branch handoff — 2026-10-08](PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md) — operation selector, safe Recipe templates, latest-main baseline recheck and pending browser acceptance.
+- [Process Step layout parity — 2026-10-09](PROCESS_STEP_LAYOUT_PARITY_2026-10-09.md) — follow-up implementation and pending visual acceptance.
 - [Three-branch integration review — 2026-10-08](INTEGRATION_REVIEW_2026-10-08.md) — merged source-branch audit and final CI acceptance.
 - [Main P0/P1 data-safety hardening — 2026-10-08](MAIN_P0_P1_STABILITY_2026-10-08.md) — Recipe/History destructive-action checkpoint guards, regression and validation limits.
 - [Revision-specific archive](archive/README.md) — every earlier audit, reconstruction, optimization and design/research snapshot; original paths are preserved.
