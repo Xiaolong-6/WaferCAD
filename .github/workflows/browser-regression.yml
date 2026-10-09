@@ -247,7 +247,7 @@ jobs:
           exit 1
 
       - name: Check 625-site array scene and retained resources
-        run: node scripts/array-renderer-regression.mjs
+        run: node scripts/array-renderer-regression.mjs --fast-transparent-lod
 
       - name: Upload array renderer diagnostics
         if: always()
