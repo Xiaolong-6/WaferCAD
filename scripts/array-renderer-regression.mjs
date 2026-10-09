@@ -74,7 +74,7 @@ try {
     return elapsed;
   };
   const errors = observePageErrors(page);
-  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3IndexedWalls=1');
+  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3QualityIndex=1');
   await waitForAppReady(page);
   await page
     .locator('#openProjectInput')
@@ -264,6 +264,21 @@ try {
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
   assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
+  assert.ok(
+    Number(transparentCold.v3QualityIndexedVertices) > 0,
+    'opt-in Quality must actually index smooth buried instanced material walls',
+  );
+  assert.equal(
+    Number(transparentCold.v3QualityOriginalVertices),
+    Number(transparentCold.v3QualityIndexedTriangles) * 3,
+    'Quality indexing preserves all original GPU triangles',
+  );
+  assert.equal(
+    Number(transparentCold.v3QualityOriginalVertices) /
+      Number(transparentCold.v3QualityIndexedVertices),
+    1.5,
+    'each smooth quad uses four rather than six independent vertices',
+  );
   assert.equal(transparentCold.v3SkippedTriangles, '0');
   assert.equal(transparentCold.v3ScreenBudgetQualified, 'false');
   assert.equal(transparentCold.v3ScreenBudgetReason, 'not-far');
