@@ -1301,3 +1301,11 @@ html[data-font='inter'] {
   z-index: inherit;
 }
 .p-status [data-slot] { display: inline-flex; margin-inline-end: var(--wc-space-2); }
+
+.v2-legend-header { display: flex; align-items: center; min-width: 0; gap: var(--wc-space-1); }
+.v2-legend-header .v2-legend-title { flex: 1; min-width: 0; }
+.v2-legend-palette-select {
+  font: inherit; font-size: var(--wc-font-aux); min-width: 80px; max-width: 115px;
+  color: var(--wc-text); background: var(--wc-surface); border: 1px solid var(--wc-border);
+  border-radius: var(--wc-radius-sm); margin-right: var(--wc-space-1);
+}
