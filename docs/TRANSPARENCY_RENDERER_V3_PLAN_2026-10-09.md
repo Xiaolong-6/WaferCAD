@@ -240,6 +240,51 @@ tile/feature partitions, a verified visible-color/alpha error model, and
 paired image/first-frame performance results. No tiles or triangles are
 currently culled.
 
+## Phase A.3 625-site verified outcome and Phase A.4 edge-tile survey
+
+[Complete Browser regression on 907c2c3](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37926039136)
+and [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37926039175),
+[Native Fig3](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37926039230),
+[Recipe Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37926039161)
+all passed (including M3D/JLFET). Extracted from the committed 625-site
+renderer artifact: **13 complete buried interface owners** were represented
+by **130 owner × 64-instance tiles**, with **0 complete tile projected under
+0.5 px** and **0 near/far clipping uncertainties**. Neither owner nor tile
+coverage overflowed. The 520 projected individual-quad samples previously
+showed 294 (56.5%) small patches; that cannot be extrapolated to whole-owner
+GPU savings. The fixture continues to use Section Z-collapse, which forbids
+geometry omission. Actual submitted Fast/Quality triangles remain
+**16,906,262 / 57,040,012**.
+
+**Finding:** whole-owner bounds are intentionally broad. In layer-6 and
+layer-12 the template contains ~4,068 contour segments across 625 translated
+instances; enclosing the full contour inevitably hides fine-scale
+subpixel patches. The next diagnostic, `site/renderer-v3-edge-tile-survey.js`,
+therefore projects a conservative per-*contour-part* ×
+per-*spatial instance tile* bounding volume. It:
+
+- Automatically selects the two heaviest buried smooth array owners,
+  rather than hard-coding the example layer IDs.
+- Checks all template edges and every translated instance via per-tile
+  XY extrema, preserving surviving Z-collapse fragments separately.
+- Interprets width/height in pixels under the real homogeneous projection,
+  marking near/far clipping uncertainty instead of calling it invisible.
+- Caps projected bounds at **100,000**, reports incomplete work explicitly,
+  and measures wall-clock overhead as `v3EdgeSurveyMs`.
+- Reports **bounds**, subpixel bounds and an unmerged raw two-pass triangle
+  *upper bound* for the studied workload. These are **not** actual GPU
+  reductions, nor is the subpixel ratio guaranteed to approximate them.
+- Preserves all geometry, material opacity, transparency sorting, and exact
+  scientific data; `v3SkippedTriangles` remains zero and the reduction
+  gate stays `z-collapse` / `alpha-coverage-unverified`.
+
+**Next gate:** CI must prove the added diagnostic completes within its
+bounded workload, has zero overflow in the 625-site example and does not
+harm image parity or 20 opacity/border toggles. Compare its measured overhead
+and projected candidate pattern with the prior `907c2c3` reference,
+then decide whether the architecture warrants a separate display-only
+transparency LOD experiment. No experimental culling is enabled in A.4.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
