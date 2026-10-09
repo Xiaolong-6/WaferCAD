@@ -154,10 +154,10 @@ try {
   // M2.5 regression: DOM replaceChildren must receive spread registry entries,
   // not an array coerced into "[object HTMLButtonElement]" text.
   const mockEntry = url;
-  const productionEntry = new URL('ui-v2/app.html', url).href;
+  const productionEntryUrl = new URL('ui-v2/app.html', url).href;
   for (const [entry, readyExpression] of [
     [mockEntry, 'Boolean(window.WaferCadV2Shell?.ready)'],
-    [productionEntry, 'Boolean(window.WaferCadV2ProductionShell)'],
+    [productionEntryUrl, 'Boolean(window.WaferCadV2ProductionShell)'],
   ]) {
     await call('Page.navigate', { url: entry });
     await waitFor(async () => evaluate(readyExpression), `M2.5 navigation entry ${entry}`);
