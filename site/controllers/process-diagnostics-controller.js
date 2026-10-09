@@ -24,6 +24,8 @@ function locationText(finding) {
     values.push(`Z [${formatNumber(finding.z0)}, ${formatNumber(finding.z1)}] µm`);
   if (Number.isFinite(finding.overlapAreaUm2))
     values.push(`overlap ${formatNumber(finding.overlapAreaUm2)} µm²`);
+  if (Number.isFinite(finding.areaUm2))
+    values.push(`uncovered ${formatNumber(finding.areaUm2)} µm²`);
   return values.join(' · ');
 }
 
@@ -67,6 +69,8 @@ export function createProcessDiagnosticsController({
       ['Material regions', formatNumber(report.regions)],
       ['Array instances', formatNumber(report.instanceCount)],
       ['Gap volume', `${formatNumber(report.gapVolumeUm3)} µm³`],
+      ['XY through-voids', formatNumber(report.voidCount)],
+      ['Numerical XY slits', formatNumber(report.crackCount)],
       ['Appearances', `${formatNumber(report.appearanceSegments)} render-only segments`],
     ]) {
       const item = textNode(doc, 'div', 'diagnostics-metric', '');
@@ -78,6 +82,12 @@ export function createProcessDiagnosticsController({
       ? 'Array report: material volumes and region counts are weighted across all instances. XY ownership is checked inside each referenced template; seams between adjacent instances were not checked. Coordinates for array findings identify a representative instance.'
       : 'Full canonical model: XY ownership and Z intervals inspected.';
     results.append(textNode(doc, 'p', 'diagnostics-note', coverage));
+    if (!report.checks.xyVoidClassification) {
+      results.append(
+        textNode(doc, 'p', 'diagnostics-caution',
+          'XY void/crack scan incomplete or skipped due to geometry complexity. No claim is made about missing coverage.'),
+      );
+    }
     if (!report.checks.xyOverlapWithinTemplate) {
       results.append(
         textNode(doc, 'p', 'diagnostics-caution',
@@ -173,9 +183,10 @@ export function createProcessDiagnosticsController({
           reportRevision = signature(model);
           render(data.report);
           results.classList.remove('diagnostics-stale');
-          status.textContent = data.report.checks.xyOverlapWithinTemplate
+          status.textContent = data.report.checks.xyOverlapWithinTemplate &&
+            data.report.checks.xyVoidClassification
             ? 'Analysis complete · read-only'
-            : 'Analysis partial · overlap scan incomplete';
+            : 'Analysis partial · some geometry checks incomplete';
         } else {
           status.textContent = `Analysis failed: ${data.message || 'Unknown error'}`;
         }
