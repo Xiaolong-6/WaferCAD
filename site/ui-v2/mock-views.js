@@ -412,6 +412,7 @@
       const canvas = el(
         'div',
         { class: 'p-science', 'data-science': name },
+        el('div', { class: 'v2-mock-scene' },
         name === 'three'
           ? el('img', {
               src: data.thumbnail,
@@ -430,6 +431,7 @@
               : `${model.width} × ${model.height} µm`,
         ),
         name === 'mask' ? maskCanvasTools() : null,
+        ),
       );
       if (name === 'three' && (state.roi || state.detail)) {
         const roiPlane = svgNode('svg', {
@@ -451,7 +453,7 @@
             'data-roi-mark': '',
           }),
         );
-        canvas.append(roiPlane);
+        canvas.querySelector('.v2-mock-scene').append(roiPlane);
       }
       if (name === 'section') canvas.dataset.borders = String(state.sectionBorders);
       if (name === 'three') {
@@ -465,7 +467,15 @@
           'aria-label': `${label} ${state.maximize === name ? 'restore' : 'maximize'}`,
         }),
       );
-      return viewPanels.update(
+      const preparedStage = name === 'section'
+        ? el('div', { class: 'v2-section-body', 'data-legend-open': String(state.legendOpen) },
+            canvas,
+            window.createWaferCadV2SectionLegend({
+              layers: model.layers, annotations: model.annotations, colors: state.legendColors,
+              paletteOpen: state.legendPaletteOpen, open: state.legendOpen,
+            }))
+        : canvas;
+      const panel = viewPanels.update(
         name,
         {
           class: 'p-view',
@@ -495,20 +505,7 @@
             : el('strong', {}, label),
           viewTools,
         ),
-        name === 'section'
-          ? el(
-              'div',
-              { class: 'v2-section-body', 'data-legend-open': String(state.legendOpen) },
-              canvas,
-              window.createWaferCadV2SectionLegend({
-                layers: model.layers,
-                annotations: model.annotations,
-                colors: state.legendColors,
-                paletteOpen: state.legendPaletteOpen,
-                open: state.legendOpen,
-              }),
-            )
-          : canvas,
+        preparedStage,
         el(
           'div',
           { class: 'p-readout' },
@@ -519,6 +516,33 @@
               : `${model.layers.length} layers · ${model.regionCount} regions · cursor ${cursor} · ${state.displayUnit || 'um'}`,
         ),
       );
+      // A mock adapter may refresh its own illustration and list children; the
+      // named scientific canvas host and its renderer-facing ancestors never change.
+      const live = viewPanels.getCanvas(name);
+      if (live !== canvas) {
+        live.querySelector('.v2-mock-scene').replaceChildren(
+          ...canvas.querySelector('.v2-mock-scene').childNodes,
+        );
+        live.dataset.borders = canvas.dataset.borders;
+        if (name === 'section') {
+          const body = panel.querySelector('.v2-section-body');
+          const legend = body?.querySelector('#layerLegend');
+          const nextLegend = preparedStage.querySelector('#layerLegend');
+          if (legend && nextLegend) {
+            const scroller = legend.querySelector('.v2-legend-list');
+            const position = scroller?.scrollTop || 0;
+            legend.querySelector('.v2-legend-list').replaceChildren(
+              ...nextLegend.querySelector('.v2-legend-list').childNodes,
+            );
+            legend.querySelector('.v2-legend-title').textContent =
+              nextLegend.querySelector('.v2-legend-title').textContent;
+            legend.hidden = nextLegend.hidden;
+            if (scroller) scroller.scrollTop = position;
+          }
+          body.dataset.legendOpen = String(state.legendOpen);
+        }
+      }
+      return panel;
     }
 
     return { render: viewPanel };
