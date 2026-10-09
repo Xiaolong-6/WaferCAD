@@ -10,6 +10,7 @@ Review covers in-workspace Project Open, Mask GDS/OAS import, Welcome staged pro
 - `project-controller.js::openProjectFile` awaited `checkpointBeforeReplace('pre-open-project')` without checking its `false` result. `checkpointCurrent` explicitly returns `false` if persistence is not ready, a different tab owns autosave, a visible task is busy, or checkpoint creation fails. The current project, History and Recipe could be replaced in memory despite the UI promising a recovery point.
 - `app.js::importLayoutBuffer` likewise awaited `checkpointWorkspace('pre-import-layout')` without checking the return value before replacing Mask layout/cell/selection. Failed GDS/OAS parsing was already non-mutating; the bug was at the *post-parse pre-replace* guard.
 - A thrown checkpoint error generally stopped Project Open, but the ordinary `false` path silently continued. The post-confirmation in-workspace open did not enforce a successful checkpoint.
+- A failed checkpoint also cleared a queued autosave timer before returning false, potentially leaving existing unsaved edits without a follow-up save attempt. The persistence controller now rearms a pending dirty/view autosave on refusal while write ownership is retained.
 
 ## Startup boundary: why a naive guard would break Welcome
 
@@ -43,7 +44,7 @@ Added/adjusted Node tests in `site/tests/project-controller-recovery.test.mjs` a
 - startup controller explicitly passes protected context for staged project, staged layout and example;
 - layout open passes the context to the same import pipeline (ordinary default remains false).
 
-The Chromium `scripts/persistence-regression.mjs` suite now also injects a real IndexedDB-open failure after an owned workspace is initialized, attempts confirmed Project Open and an actual OAS Mask import, and compares the exported current model, Mask layout and snapshots before/after. It asserts both visible failure statuses and no uncaught page errors. This tests the real import worker/controller/UI/Recovery pipeline, rather than relying only on source assertions.
+The Chromium `scripts/persistence-regression.mjs` suite now also injects a real IndexedDB-open failure after an owned workspace is initialized, attempts confirmed Project Open and an actual OAS Mask import, and compares the exported current model, Mask layout and snapshots before/after. It also starts with a dirty project name, restores IndexedDB availability, verifies the pending autosave completes, and reloads to prove the edit survived. It asserts both visible failure statuses and no uncaught page errors. This tests the real import worker/controller/UI/Recovery pipeline, rather than relying only on source assertions.
 
 Required CI on final branch head: Quality (lint, format, docs, Node), Chromium browser persistence + History + Welcome/startup + real mask/project import, and visual spot-check of failed-open status. **Tests written are not passing evidence until a run completes.**
 
