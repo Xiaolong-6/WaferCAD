@@ -82,7 +82,7 @@ export function makeFullApertureIllustration(count=PAPER_SITES) {
     // Deterministic radial variation illustrates 4 cross-section families;
     // NOT measured/design-optimized dimensions or physical optical phase.
     const type=names[(i*7+Math.floor(r*3))%4];
-    const scale=0.86+0.11*(0.5+0.5*Math.cos(i*0.37+r));
+    const scale=0.76+0.11*(0.5+0.5*Math.cos(i*0.37+r));
     sites.push({
       id:'A'+String(i+1).padStart(4,'0'),
       x:Number((r*Math.cos(angle)).toFixed(6)),
@@ -90,8 +90,31 @@ export function makeFullApertureIllustration(count=PAPER_SITES) {
       type,scale:Number(scale.toFixed(6)),
     });
   }
+  // Site-to-site clearance is checked using conservative bounding circles:
+  // square uses its corner radius; circular/ring families use outer radius.
+  // 40 nm is the paper's reported minimum feature, not a provided site table.
+  const bins=new Map(), cell=0.5;
+  let minClearance=Infinity;
+  for(const site of sites) {
+    const ix=Math.floor(site.x/cell),iy=Math.floor(site.y/cell);
+    const radius=(site.type==='square'?Math.SQRT2*0.115:
+      site.type==='circle'?0.125:0.157)*site.scale;
+    for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+      for(const old of bins.get((ix+dx)+','+(iy+dy))||[]){
+        const gap=Math.hypot(site.x-old.x,site.y-old.y)-radius-old.radius;
+        minClearance=Math.min(minClearance,gap);
+      }
+    }
+    const key=ix+','+iy;
+    if(!bins.has(key))bins.set(key,[]);
+    bins.get(key).push({...site,radius});
+  }
+  assert.ok(minClearance>=0.04,'illustrative pillars do not meet 40 nm separation');
+  assert.ok(sites.every(site=>Math.hypot(site.x,site.y)+0.15<15),
+    'Metalens site extends outside 30 um aperture');
   return {
     sites,
+    minClearanceUm:minClearance,
     elements:sitesToElements(sites),
     note:'Deterministic golden-angle placeholder; no optical phase/group-delay matching; NOT original GDS',
   };
@@ -303,6 +326,7 @@ export async function generateMetalensArtifacts({outputDir,full=true}={}) {
       head+fullMask.sites.map(s=>[s.id,s.x,s.y,s.type,s.scale].join(',')).join('\n')+'\n');
     report.fullAperture={diameterUm:DIAMETER_UM,count:fullMask.sites.length,
       polygons:fullMask.elements.length,bytes:gds.byteLength,
+      minConservativeClearanceUm:fullMask.minClearanceUm,
       opticalValidity:'NOT VALIDATED; design optimization data unavailable'};
   }
   await writeFile(join(outputDir,'reconstruction-report.json'),JSON.stringify(report,null,2)+'\n');
