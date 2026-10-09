@@ -16,10 +16,10 @@ The Draw source keeps independently editable Rectangle, Circle, Polygon, Ring, a
 
 ## Process Area
 
-| Choice            | Affected area                                                |
-| ----------------- | ------------------------------------------------------------ |
-| **Selected mask** | Selected File geometry or union of current Draw geometry.    |
-| **Invert mask**   | Complement of the current mask within the Process domain.    |
+| Choice            | Affected area                                                          |
+| ----------------- | ---------------------------------------------------------------------- |
+| **Selected mask** | Selected File geometry or union of current Draw geometry.              |
+| **Invert mask**   | Complement of the current mask within the Process domain.              |
 | **Whole face**    | Active face without a mask pattern; an active Mask ROI still clips it. |
 
 **Mask ROI** clips the final Process domain for **Selected mask**, **Invert mask**, and even **Whole face** when active, as well as SVG/GDSII/OASIS mask exports. Clear Mask ROI before using Whole face if you truly intend the entire substrate. It never rewrites the source layout. It is independent of the Main ROI and A–B line.
