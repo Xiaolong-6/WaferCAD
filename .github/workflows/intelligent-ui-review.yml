@@ -1,0 +1,80 @@
+name: Intelligent UI PR review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'site/**'
+      - 'scripts/intelligent-ui-regression.mjs'
+      - 'package.json'
+      - '.github/workflows/intelligent-ui-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intelligent-ui-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Build and browser-check UI review
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout review commit
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Node, lint and documentation contract
+        run: npm run check:ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Serve preview workspace
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-preview-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/app.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-preview-http.log
+          exit 1
+
+      - name: Intelligent UI browser acceptance and screenshots
+        run: npm run test:ui:intelligent
+
+      - name: Upload viewport screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intelligent-ui-review-screenshots
+          path: test-results/intelligent-ui/
+          if-no-files-found: ignore
+
+      - name: Package independent preview build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wafercad-intelligent-ui-static-preview
+          path: site/
+          if-no-files-found: error
+          retention-days: 14
+
+      # GitHub Pages is production-only in this repository. Never call
+      # deploy-pages from a PR because it could replace the live main site.
