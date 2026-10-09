@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/build-tio2-metalens-example.mjs'
       - 'site/tests/tio2-metalens-reconstruction.test.mjs'
+      - 'scripts/tio2-metalens-array-scale.mjs'
       - '.github/workflows/tio2-metalens-reconstruction.yml'
   workflow_dispatch:
 
@@ -22,6 +23,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Probe scale-safe array templates at 8x8 and 25x25
+        run: |
+          node scripts/tio2-metalens-array-scale.mjs --grid=8
+          node scripts/tio2-metalens-array-scale.mjs --grid=25
       - name: Rebuild source-derived four-unit process and 4725-site illustrative GDS
         run: node scripts/build-tio2-metalens-example.mjs
       - name: Install Chromium for real Recipe Run All

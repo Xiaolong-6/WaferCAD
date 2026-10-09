@@ -39,7 +39,6 @@ export async function probeMetalensGrid(grid = 25) {
   const active = new Set([...gridCells]
     .sort((a, b) => a.d - b.d || a.row - b.row || a.col - b.col)
     .slice(0, count).map((x) => x.row * grid + x.col));
-  const stamp = [];
   const apply = (leaf, op, area) => {
     const result = applyAdvancedProcessOperation(leaf, op, area, m, v) ??
       m.applyOperation(leaf, { ...op, area });
