@@ -54,7 +54,7 @@ export function createProjectController({
   async function requireRecoveryCheckpoint(reason) {
     // A false result means the Recovery writer was unavailable or failed.
     // Never discard History data on that path.
-    if ((await checkpointBeforeReplace(reason)) === false) {
+    if ((await checkpointBeforeReplace(reason)) !== true) {
       throw new Error('Recovery checkpoint was not created. The current workspace was left unchanged.');
     }
   }
