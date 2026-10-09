@@ -123,6 +123,23 @@ test('Narrow uncovered XY slit is classified as a possible numerical crack', () 
   assert.ok(report.findings.some((f) => f.code === 'xy-numerical-crack'));
 });
 
+test('Report cap preserves late geometry errors ahead of benign gap observations', () => {
+  const model = rectBase();
+  model.regions[0].stack = Array.from({ length: 46 }, (_, i) => ({
+    layerId: 'base',
+    z0: i * 2,
+    z1: i * 2 + 1,
+  }));
+  // The error is appended after more than 40 distinct legitimate Z gaps.
+  model.regions[0].stack.push({ layerId: 'base', z0: 92, z1: 91 });
+  const report = analyzeProcessGeometry(model);
+  assert.ok(report.findingsTotal > 40);
+  assert.ok(report.omittedFindings > 0);
+  assert.ok(report.errors > 0);
+  assert.ok(report.findings.some((finding) => finding.severity === 'error'));
+  assert.equal(report.findings.length, 40);
+});
+
 test('Array measurements count every instance but disclose seam scan limitation', () => {
   const template = rectBase();
   const model = {
