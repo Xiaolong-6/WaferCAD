@@ -180,7 +180,7 @@
 
     <script>
       (async () => {
-        let version = String(Date.now());
+        let version = 'local';
         try {
           const response = await fetch('./build-info.json', { cache: 'no-store' });
           if (response.ok) {
