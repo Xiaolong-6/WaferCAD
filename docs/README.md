@@ -25,6 +25,7 @@ Use this page to find the document that owns a question. Current contracts descr
 ## Scientific and interchange contracts
 
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
+- [Geometry/process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
 - [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — derived topology and material ownership.
 - [Morphology](ROUGHNESS_MORPHOLOGY.md) — deterministic visual relief and physical/export boundaries.
 - [Implant](IMPLANT.md) — structural annotation, clipping and shared gradient semantics.

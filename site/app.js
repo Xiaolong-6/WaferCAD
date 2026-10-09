@@ -30,6 +30,7 @@ import { createRoiController } from './controllers/roi-controller.js';
 import { createMaskRoiController } from './controllers/mask-roi-controller.js';
 import { createProcessTaskController } from './controllers/process-task-controller.js';
 import { createProcessPanelController } from './controllers/process-panel-controller.js';
+import { createProcessDiagnosticsController } from './controllers/process-diagnostics-controller.js';
 import { createProcessRecipeController } from './controllers/process-recipe-controller.js';
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
@@ -760,6 +761,7 @@ let workspaceViewController = null;
 
 function renderAll() {
   workspaceViewController?.renderAll();
+  processDiagnosticsController?.onModelRendered();
 }
 
 function resetRoughDraftControls() {
@@ -775,6 +777,7 @@ function syncMaskSourceSummary() {
 }
 
 let processPanelController = null,
+  processDiagnosticsController = null,
   processRecipeController = null,
   projectController = null;
 
@@ -1213,6 +1216,11 @@ processRecipeController = createProcessRecipeController({
   onChanged: markProjectDirty,
 });
 
+processDiagnosticsController = createProcessDiagnosticsController({
+  root: document,
+  getModel: () => model,
+});
+
 workspaceViewController = createWorkspaceViewController({
   root: document,
   getModel: () => model,
@@ -1584,6 +1592,7 @@ function bindUi() {
   roiController.bind();
   processTaskController.bind();
   processRecipeController.bind();
+  processDiagnosticsController.bind();
   sectionControls.bind();
   sectionCollapseController.bind();
   sectionDetailRoiController.bind();

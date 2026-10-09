@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import {
   assertNoPageErrors,
   gotoWelcome,
@@ -72,6 +72,18 @@ try {
 
   // Contract 4: One representative process operation completes through the real UI.
   await openFunctionPanel(page, 'process');
+  await page.locator('[data-process-input-mode="diagnostics"]').click();
+  assert.equal(await page.locator('#diagnosticsAnalyzeBtn').isVisible(), true);
+  await page.locator('#diagnosticsAnalyzeBtn').click();
+  await page.waitForFunction(
+    () => /Analysis complete/.test(document.getElementById('diagnosticsStatus')?.textContent || ''),
+    null,
+    { timeout: 30000 },
+  );
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Material volume/);
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Base/);
+  await page.locator('[data-process-input-mode="manual"]').click();
+  assert.equal(await page.locator('#geometryDiagnosticsPanel').isHidden(), true);
   await page.locator('#operationType').selectOption('add');
   await page.locator('#operationArea').selectOption('full');
   await page.locator('#growthMode').selectOption('direct');
@@ -87,6 +99,64 @@ try {
       .locator('#layerLegend .legend-name')
       .evaluateAll((inputs) => inputs.some((input) => input.value === 'Smoke layer')),
   );
+  await page.locator('[data-process-input-mode="diagnostics"]').click();
+  assert.match(await page.locator('#diagnosticsStatus').textContent(), /out of date/);
+  await page.locator('#diagnosticsAnalyzeBtn').click();
+  await page.waitForFunction(
+    () => /Analysis complete/.test(document.getElementById('diagnosticsStatus')?.textContent || ''),
+    null,
+    { timeout: 30000 },
+  );
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Smoke layer/);
+  assert.equal(await page.locator('#diagnosticsResults').isVisible(), true);
+
+  // Contract 4b: expanded Diagnostics stays usable through Step/Recipe switching
+  // and at compact workstation widths. Capture what the actual browser renders.
+  await page.locator('[data-process-input-mode="recipe"]').click();
+  assert.equal(await page.locator('#geometryDiagnosticsPanel').isHidden(), true);
+  await page.locator('[data-process-input-mode="diagnostics"]').click();
+  assert.equal(await page.locator('#diagnosticsAnalyzeBtn').isVisible(), true);
+  assert.match(await page.locator('#diagnosticsResults').textContent(), /Smoke layer/);
+  const reviewDir = 'test-results/product-review';
+  await mkdir(reviewDir, { recursive: true });
+  const assertDiagnosticsFit = async () => {
+    const fit = await page.locator('#geometryDiagnosticsPanel').evaluate((element) => {
+      const content = element.querySelector('.diagnostics-content');
+      const report = element.querySelector('#diagnosticsResults');
+      const panel = document.querySelector('#toolPanel');
+      const rect = element.getBoundingClientRect();
+      const flyout = panel.getBoundingClientRect();
+      return {
+        panelWidth: rect.width,
+        isWithinFlyout: rect.left >= flyout.left - 2 && rect.right <= flyout.right + 2,
+        horizontalContentOverflow: content.scrollWidth > content.clientWidth + 2,
+        horizontalResultOverflow: report.scrollWidth > report.clientWidth + 2,
+      };
+    });
+    assert.ok(fit.panelWidth > 180, 'Diagnostics panel must remain usable');
+    assert.equal(fit.isWithinFlyout, true, 'Diagnostics must stay inside Process flyout');
+    assert.equal(
+      fit.horizontalContentOverflow,
+      false,
+      'Diagnostics content must not overflow in X',
+    );
+    assert.equal(
+      fit.horizontalResultOverflow,
+      false,
+      'Diagnostics findings must wrap without horizontal overflow',
+    );
+  };
+  await assertDiagnosticsFit();
+  await page.locator('#geometryDiagnosticsPanel .diagnostics-heading').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${reviewDir}/diagnostics-desktop.png` });
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openFunctionPanel(page, 'process');
+  await assertDiagnosticsFit();
+  await page.locator('#geometryDiagnosticsPanel .diagnostics-heading').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${reviewDir}/diagnostics-compact.png` });
+  await page.setViewportSize({ width: 1365, height: 900 });
+  await openFunctionPanel(page, 'process');
+  await page.locator('[data-process-input-mode="manual"]').click();
 
   // Contract 5: Autosave/reload keeps the successful process result.
   await page.waitForFunction(
