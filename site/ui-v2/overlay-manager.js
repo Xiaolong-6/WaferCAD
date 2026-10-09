@@ -7,11 +7,11 @@
       const entry = active.get(type);
       if (!entry) return;
       active.delete(type);
-      const { node, trigger, onClose, cleanup } = entry;
+      const { node, trigger, onClose, cleanup, external } = entry;
       cleanup?.();
       if (type === 'dialog' && node.open) node.close();
       if (type === 'popover' && node.matches(':popover-open')) node.hidePopover();
-      node.remove();
+      if (!external) node.remove();
       if (trigger?.isConnected) trigger.focus({ preventScroll: true });
       onClose?.(reason);
     }
@@ -61,7 +61,23 @@
       }
       return node;
     }
-    return Object.freeze({ mount, close, destroy: () => [...active.keys()].forEach(close) });
+    function adoptPopover(node, trigger) {
+      // Native toolbar menus remain in their owning toolbar for legacy-friendly
+      // accessibility selectors, but share the same close/focus semantics.
+      node.addEventListener('toggle', (event) => {
+        if (event.newState === 'open') {
+          if (active.has('popover') && active.get('popover').node !== node)
+            close('popover', 'replaced');
+          active.set('popover', { node, trigger, external: true });
+          trigger.setAttribute('aria-expanded', 'true');
+          trigger.setAttribute('aria-controls', node.id);
+        } else if (active.get('popover')?.node === node) close('popover', 'dismissed');
+      });
+      return node;
+    }
+    return Object.freeze({
+      mount, close, adoptPopover, destroy: () => [...active.keys()].forEach(close),
+    });
   }
   window.WaferCadV2Overlays = Object.freeze({ create });
 })();
