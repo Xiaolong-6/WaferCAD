@@ -25,7 +25,7 @@
     const navHost = slot('navigation.primary', 'p-nav', 'nav');
     navHost.setAttribute('aria-label', 'Workspaces');
     const inspector = el('aside', { class: 'p-inspector', 'aria-label': 'Workflow editor' });
-    const inspectorTitle = el('div', { class: 'p-panel-shell-header' });
+    const inspectorTitle = el('div', { class: 'p-panel-shell-header p-panel-head' });
     const editorContent = el('div', { class: 'p-panel-content' });
     inspector.append(inspectorTitle, editorContent);
     for (const id of registry.panels) {
@@ -46,7 +46,7 @@
     if (base && project) project.append(base);
     const emptyStrip = el('div', { class: 'p-empty-strip', hidden: true },
       el('span', { class: 'p-aux' }, 'No items to inspect'),
-      button('Inspect', 'expand-empty', 'history'));
+      button('Inspect', 'expand-empty', 'process'));
     const separator = divider(false);
     const canvases = el('div', { class: 'p-canvases' });
     const viewbar = el('div', { class: 'p-viewbar' });
@@ -130,7 +130,7 @@
       canvases.dataset.maximized = String(Boolean(state.maximize));
       viewbar.replaceChildren(
         el('div', { class: 'p-actions' },
-          state.editorHidden ? button('Restore panel', 'expand-empty', 'history') : null,
+          state.editorHidden ? button('Restore panel', 'expand-empty', 'process') : null,
           registry.viewModes.map(({ key, label }) => button(label, `mode:${key}`, null, {
             disabled: narrow() && key !== 'single',
             'aria-pressed': String(mode === key),
@@ -191,7 +191,7 @@
     function render(focusAction) {
       const info = presentation();
       const preserve = Boolean(info.preserveScroll);
-      const selectors = ['.p-panel-content', '[data-history-scroll]', '[data-history-list]', '[data-variant-list]'];
+      const selectors = info.scrollSelectors || ['.p-panel-content'];
       const scroll = preserve ? selectors.map((selector) => {
         const node = root.querySelector(selector);
         return [selector, node?.scrollTop || 0, node?.scrollLeft || 0];
