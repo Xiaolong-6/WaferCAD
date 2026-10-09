@@ -55,6 +55,17 @@ test('Overlapping material Z intervals carry an error with Z location', () => {
   assert.ok(report.findings.some((f) => f.code === 'z-overlap' && f.z0 === 1 && f.z1 === 2));
 });
 
+test('Reversed but disjoint Z intervals flag ordering, not nonexistent overlap', () => {
+  const model = rectBase();
+  model.regions[0].stack = [
+    { layerId: 'base', z0: 5, z1: 6 },
+    { layerId: 'base', z0: 0, z1: 1 },
+  ];
+  const report = analyzeProcessGeometry(model);
+  assert.ok(report.findings.some((finding) => finding.code === 'z-out-of-order'));
+  assert.equal(report.findings.some((finding) => finding.code === 'z-overlap'), false);
+});
+
 test('Two overlapping XY owners are detected independently of rendering', () => {
   const model = rectBase();
   model.regions.push({
