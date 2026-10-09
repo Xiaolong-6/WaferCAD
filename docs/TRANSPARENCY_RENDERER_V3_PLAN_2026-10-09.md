@@ -309,6 +309,46 @@ The A.4 and A.3 screenshots differ only in the 111 by 9 pixel status-bar text ar
 
 **Decision:** No complete subpixel 64-instance contour tile qualifies; previous 294 / 520 individually sampled subpixel quads do not authorize whole-tile or alpha-blended geometry culling. Phase B remains unimplemented. Future optimization should measure transparency/overdraw and preserve depth and alpha accumulation before proposing display-only LOD. Keep PR #166 experimental and unmerged.
 
+## Phase B.0 — exact smooth-wall index reuse experiment (2026-10-09)
+
+After Phase A.4 established zero complete subpixel 64-instance edge-tile bounds,
+V3 changed strategy: avoid unsafe face omission and instead reduce redundant
+vertex traffic while retaining **every** smooth material-interface triangle.
+
+- New pure `site/renderer-smooth-wall-index.js` encodes each perfectly planar
+  smooth-wall quad using four vertices and the original six indices
+  `[0,1,2,0,2,3]`, instead of six independent vertices.
+- Enabled only for **Fast transparent buried instanced smooth sidewalls**.
+  Quality, rough/coating walls, non-instanced walls, implant/depth-gradient
+  annotations, canonical process geometry and GLB export retain their old paths.
+- The old triangle ordering, winding, alpha, material blending and each
+  quad's normal are preserved. No triangles have been culled.
+- Metrics `indexedSmoothWallVertices`, `indexedSmoothWallOriginalVertices`
+  and `indexedSmoothWallTriangles` survive opaque/transparent variant caching.
+  The expected ratio is six original vertices / four indexed vertices = 1.5;
+  **33.3% fewer vertex attributes is not the same as a 33.3% GPU speedup**.
+- Important topology accounting fix: `sidewallTriangleCount` and
+  `smoothSidewallTemplateTriangleCount` read `geometry.index.count` when present.
+- Expensive Phase A screen budget, perspective quad sampling, owner/tile bounds
+  and contour-tile survey now run only with
+  `?rendererV3Diagnostics=1` in the browser URL; `array-renderer-regression.mjs`
+  and `renderer-pipeline-benchmark.mjs` explicitly opt in. Normal UI builds
+  do not pay the previously measured 85.8 ms edge-tile survey cost.
+
+The three additional exact-geometry unit tests in
+`site/tests/renderer-smooth-wall-index.test.mjs` check triangle expansion,
+normals, winding and rejected rough/annotation input. CI adds actual Fast
+array usage + 1.5 ratio assertions and requires Quality's indexed count zero.
+
+**Gate:** targeted Chromium and Quality passed on runtime commit
+`a8c20c76d54c8fe28e00b8bbe9f75ce4467b21f3`.
+Do not claim a performance win before a full **625-site visual comparison**
+(identical 3D pixels), frame-completion benchmark, exact GPU triangle count,
+20 opacity/border transitions, edge-on/ROI/Section restoration, Native Fig3
+and Recipe replay on the integrated latest-main commit. If vertex reuse does
+not materially improve completed-frame cost, retain only the benchmark result
+or revert the experiment rather than presenting it as an achieved speedup.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
