@@ -115,9 +115,13 @@ A branch-only, **unverified** first pass is recorded in
 [Transparency Renderer v2 handoff](TRANSPARENCY_RENDERER_V2_HANDOFF_2026-10-09.md).
 It constrains Three.js transparent `DoubleSide` single-pass rendering to
 smooth planar **material** caps and instruments theoretical skipped
-triangle submissions. It does **not** modify the exact scene topology,
+triangle submissions. The follow-up also uses **bit-exact vertex indexing**
+for eligible repeated transparent material/electrical meshes without changing
+triangle topology, render order, or physical geometry. It does **not** modify the exact scene topology,
 history, storage, or exports; rough, sidewall and annotation volumes retain
-their original pass behavior. No candidate runtime timings or screenshot
-acceptance have been obtained yet. Do not promote the 15 s budget or merge
+their original pass behavior. The first candidate's 625-site CI measured 31.13 s cold / 30.21 s warm
+Quality and 11.91 s Fast far-field transparency; see the handoff for
+run links and caveats. The indexing follow-up still requires a new
+625-site measured run and matched scientific screenshot review. Do not promote the 15 s budget or merge
 on the basis of estimated draw reductions. Phase A measurements and
 near/edge-on scientific visual checks remain outstanding.
