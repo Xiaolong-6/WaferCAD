@@ -334,7 +334,6 @@ try {
   await page.mouse.up();
   await waitStage('rotation');
   assert.deepEqual(errors, []);
-  assert.deepEqual(errors, []);
   const report = {
     browserVersion: browser.version(),
     fast,
