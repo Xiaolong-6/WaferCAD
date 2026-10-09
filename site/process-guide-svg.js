@@ -12,23 +12,14 @@ const arrow = () =>
 // One continuous cross-section avoids suggesting point-only contact at corners.
 // topY: high-film top, wallRight: lateral outer edge, bottomY: low-film top.
 const conformalProfile = (topY, wallRight, bottomY, color = gold) =>
-  '<path d="M6 ' +
-  topY +
-  'H' +
-  wallRight +
-  'V' +
-  bottomY +
-  'H214V57H90V35H6Z" fill="' +
-  color +
-  '"/>';
+  `<path d="M6 ${topY}H${wallRight}V${bottomY}H214V57H90V35H6Z" fill="${color}"/>`;
 export function processGuideSvg(id, after = false) {
   let shape = step();
   const deposited = (x, y, w, h, c = gold) => rect(x, y, w, h, c);
   if (id.startsWith('deposit-')) {
     if (id === 'deposit-directional')
       shape += after ? deposited(6, 27, 84, 8) + deposited(90, 49, 124, 8) : arrow();
-    if (id === 'deposit-conformal')
-      shape += after ? conformalProfile(27, 98, 49) : arrow();
+    if (id === 'deposit-conformal') shape += after ? conformalProfile(27, 98, 49) : arrow();
     if (id === 'deposit-transfer-follow')
       shape += after ? deposited(6, 26, 84, 6) + deposited(90, 48, 124, 6) : arrow();
     if (id === 'deposit-transfer-flat') shape += after ? deposited(6, 27, 208, 6) : arrow();
