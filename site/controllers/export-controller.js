@@ -13,7 +13,12 @@ import {
   resolveSectionCollapse,
   sectionVisibleZSpan,
 } from '../section-z-collapse.js';
-import { clipPolyline, collectMaskExportElements, serializeGDS, serializeOASIS } from '../layout-export.js';
+import {
+  clipPolyline,
+  collectMaskExportElements,
+  serializeGDS,
+  serializeOASIS,
+} from '../layout-export.js';
 
 function shadeColor(hex, delta) {
   const n = parseInt(hex.slice(1), 16),
@@ -416,7 +421,8 @@ export function createExportController({
           continue;
 
         const points = element.points.map(maskPoint),
-          width = Math.abs(Number(element.width) || 0) * Math.abs(Number(maskTransform?.scale) || 1);
+          width =
+            Math.abs(Number(element.width) || 0) * Math.abs(Number(maskTransform?.scale) || 1);
         if (roiGeom && width > 0) {
           const geometry = intersection(bufferPolyline(points, width / 2, 28, false), roiGeom);
           if (!isEmpty(geometry)) {
@@ -432,8 +438,7 @@ export function createExportController({
           const d = clipped
             .map(map)
             .map(
-              (point, index) =>
-                `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
+              (point, index) => `${index ? 'L' : 'M'}${svgNumber(point[0])} ${svgNumber(point[1])}`,
             )
             .join('');
           body += `<path d="${d}" fill="none" stroke="${layerColor(
