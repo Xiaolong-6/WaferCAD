@@ -5382,7 +5382,7 @@ summary:focus-visible {
   display: grid;
   gap: 8px;
   width: min(265px, calc(100% - 14px));
-  max-height: min(410px, 70vh);
+  max-height: min(410px, 70vh, calc(100% - 38px));
   overflow: auto;
   padding: 10px;
   font-size: 10px;
