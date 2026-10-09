@@ -64,10 +64,6 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run lint
-      - name: Temporary formatter reference
-        run: |
-          npx prettier --write site/tests/process-diagnostics.test.mjs
-          base64 -w0 site/tests/process-diagnostics.test.mjs | fold -w 8000 | awk '{print "DIAG_TEST_FMT_" NR ":" $0}'
       - run: npm run format:check
       - run: npm run docs:check
 
