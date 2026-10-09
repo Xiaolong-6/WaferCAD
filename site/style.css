@@ -5724,3 +5724,45 @@ summary:focus-visible {
 #manualProcessPane .step-recipe-record {
   margin: 7px 0 1px;
 }
+
+#manualProcessPane .process-visual-guide > summary.process-guide-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  list-style: none;
+}
+#manualProcessPane .process-visual-guide > summary.process-guide-top::-webkit-details-marker {
+  display: none;
+}
+#manualProcessPane .process-guide-toggle-label {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 550;
+  color: #557fa6;
+  white-space: nowrap;
+}
+#manualProcessPane .process-guide-toggle-label::after {
+  content: '⌄';
+  margin-left: 5px;
+}
+#manualProcessPane .process-guide-expanded-label {
+  display: none;
+}
+#manualProcessPane .process-visual-guide[open] .process-guide-collapsed-label {
+  display: none;
+}
+#manualProcessPane .process-visual-guide[open] .process-guide-expanded-label {
+  display: inline;
+}
+#manualProcessPane .process-visual-guide[open] .process-guide-toggle-label::after {
+  content: '⌃';
+}
+#manualProcessPane .process-guide-detail-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+  font-size: 10px;
+}
