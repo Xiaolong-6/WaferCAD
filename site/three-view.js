@@ -1658,7 +1658,14 @@ export function createThreeView({
       // front/back faces cannot both contribute from the same camera pose,
       // so Three.js's second transparent DoubleSide pass is redundant.
       // Walls, rough faces and mixed-depth annotation volumes retain two passes.
-      if (canRenderPlanarCapInSinglePass({ materialState, appearance, presentation })) {
+      if (
+        canRenderPlanarCapInSinglePass({
+          transparentScene: presentationMode() === 'transparent',
+          materialState,
+          appearance,
+          presentation,
+        })
+      ) {
         material.forceSinglePass = true;
         material.userData.waferCadSinglePassPlanarCap = true;
       }
