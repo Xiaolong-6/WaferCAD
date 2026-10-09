@@ -87,24 +87,47 @@ Evidence:
 No canonical data, baseline screenshots, API contract or physical export
 format were modified. No visual baselines were replaced.
 
-## Remaining integration and acceptance
+## Mainline integration checkpoint
 
-1. Confirm the **rollback HEAD** again passes Quality and applicable Chromium
-   regressions. Previous candidate evidence is not a substitute for a new
-   commit's checks; identical runtime sources can be verified by diff.
-2. Current `main` advanced substantially while the branch was active.
-   Review and integrate without force-push, checking for concurrent changes
-   and re-running affected tests. No previous branch commit is auto-merged.
-3. Review matching-camera screenshots for opaque, Quality transparency,
-   Fast far, edge-on, near/ROI, buried Electrical/Implant volumes, rough and
-   conformal seams, and borders. Passing edge-on structural checks alone
-   is not a declaration of pixel-identical scientific visual parity.
-4. Future larger gains require material/geometry ownership-aware **medium/far
-   screen-space LOD or GPU raster improvements**, retaining exact near/ROI,
-   annotation visibility, section Z-collapse and canonical data. Re-profile
-   before adding another expensive optimization or silently relaxing gates.
-5. Record commit SHA, exact commands and latest CI result before a merge
-   decision. Do not manually dispatch expensive workflows, force-push,
-   weaken assertions or overwrite screenshots merely to satisfy CI.
+- On 2026-10-09, a normal **non-force two-parent merge** brought `main`
+  `01b98a8dba9388a052c54df939696f1665afbf8a` into branch
+  `perf/transparent-renderer-v2-20261009` at `b17dd96ec8ba12ec0feab94334b5dde61f49e9e1`.
+  The latest `main` tree was preserved and exactly eight PR-owned renderer,
+  test and documentation paths were overlaid; compare against `main` shows
+  **behind = 0**, with no unrelated file changes.
+- Prior rollback HEAD `ee0874850bd8f692e39ceb4f4e6848b795d92cce`
+  passed Quality and targeted Chromium browser checks. That rollback's three
+  runtime/test-harness file blobs matched the first accepted cap-only
+  candidate `0fce42c` byte-for-byte.
+- Visual evidence downloaded from the two **historical** 625-site browser
+  runs (PR #155 `37886966574` and cap candidate `37906605619`):
+  `quality.png`, `transparent.png`, `fast-transparent-lod.png`, and
+  the edge-on `far.png`/`recovered.png`. The screenshot sizes and camera
+  scenario are equal; an isolated crop of the Quality **3D rendered model**
+  (x 1000–1310, y 500–650) was pixel-identical. The transparent/Fast
+  scene's silhouette and visible stacked layers remained consistent in the
+  same crop, but nonzero pixel differences remained (~1–2% over a central
+  model crop), and the screenshots used **different workstation toolbar and
+  opacity-popover layouts**. Do not mislabel the full screenshot as
+  pixel-identical or overwrite a baseline. The edge-on browser assertions
+  confirmed restored electrical walls, matching model/process revisions and
+  1,885 instances; its exact edge-on pixels were not captured.
+- Historical 625-site diagnostics confirm opacity variant cache, resource
+  counts and 20 repeated toggles are stable; these are not a substitute for
+  integration-head runs on newer workstation code.
+- CI commands represented by the workflow are
+  `npm ci --ignore-scripts --no-audit --no-fund`,
+  `node scripts/array-renderer-regression.mjs --fast-transparent-lod`,
+  `node scripts/array-renderer-edge-on-regression.mjs`, Quality checks,
+  targeted Chromium regression, Native Fig3 full replay, and
+  `example-recipe-runall-acceptance.mjs` for the examples. They run on
+  hosted Ubuntu with pinned Playwright/Three; no local checkout was available
+  in this session. Record the final **post-integration HEAD** run links and
+  results in the PR before merging.
+- Near/ROI, buried materials, rough or conformal interfaces still require
+  specific close-up manual visual scrutiny for stronger pixel-level assurance.
+  The cap policy deliberately excludes roughness/sidewalls/annotations/ROI,
+  and those scientific geometry paths were unchanged; no claim is made of
+  exhaustive pixel-equivalence proof.
 
-**Merge status: not merged.**
+**Merge status: awaiting integration acceptance at this checkpoint.**
