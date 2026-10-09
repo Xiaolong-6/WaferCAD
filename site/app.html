@@ -114,7 +114,7 @@
                 Slice
               </button>
               <details id="focusEditor" class="focus-editor">
-                <summary class="mini-btn" title="Edit the 3D region of interest">ROI</summary>
+                <summary class="mini-btn" title="Edit the 3D display region of interest">3D ROI</summary>
                 <div class="focus-popover view-popover-surface">
                   <div class="focus-popover-actions">
                     <button
@@ -203,29 +203,28 @@
               >
                 Pan
               </button>
-              <div class="zoom-tools" title="Main view zoom">
-                <button
+              <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
+              <details class="view-more-control">
+                <summary class="mini-btn" title="More Main view actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <strong>Zoom</strong>
+                  <div class="view-menu-row"><button
                   id="mainZoomOut"
                   class="mini-btn"
                   title="Zoom out Main"
                   aria-label="Zoom out Main"
                 >
                   −
-                </button>
-                <button
+                </button><button
                   id="mainZoomIn"
                   class="mini-btn"
                   title="Zoom in Main"
                   aria-label="Zoom in Main"
                 >
                   +
-                </button>
-                <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
-              </div>
-              <details class="export-control">
-                <summary class="mini-btn" title="Export Main">Export</summary>
-                <div class="export-popover view-popover-surface">
-                  <button id="mainExportSvgBtn" class="mini-btn" type="button">SVG</button>
+                </button></div>
+                  <strong>Export</strong>
+                  <button id="mainExportSvgBtn" class="mini-btn" type="button">Export SVG</button>
                 </div>
               </details>
               <button
@@ -237,10 +236,10 @@
               >
                 Max
               </button>
-              <div id="mainCoords" class="readout"></div>
             </div>
           </div>
           <canvas id="mainCanvas"></canvas>
+          <div id="mainCoords" class="readout view-canvas-readout"></div>
           <div id="sectionEndpointHandles" class="section-endpoint-handles" hidden>
             <button
               type="button"
@@ -288,21 +287,19 @@
           <div class="view-head mask-view-head">
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
-              <button
-                id="maskSourceToggleBtn"
-                class="mini-btn active"
-                type="button"
-                aria-pressed="false"
-                title="Mask source: File. Click to switch to Draw."
-              >
-                File
-              </button>
+              <label class="view-mode-field">
+                <span class="visually-hidden">Mask source</span>
+                <select id="maskSourceToggleBtn" class="view-mode-select" aria-label="Mask source mode">
+                  <option value="file">File</option>
+                  <option value="draw">Draw</option>
+                </select>
+              </label>
               <details id="maskRoiEditor" class="focus-editor mask-roi-control">
                 <summary
                   class="mini-btn"
-                  title="Limit Mask processing/export to a Rect or Circle ROI"
+                  title="Restrict mask processing and export to this mask ROI"
                 >
-                  ROI
+                  Mask ROI
                 </summary>
                 <div class="focus-popover mask-roi-popover view-popover-surface">
                   <div class="focus-popover-actions">
@@ -357,7 +354,7 @@
                   aria-label="Adjust mask transparency"
                   title="Adjust mask transparency for visual alignment"
                 >
-                  Opacity
+                  Display
                 </summary>
                 <div class="three-opacity-popover mask-opacity-popover view-popover-surface">
                   <label for="maskOpacityRange"
@@ -373,26 +370,27 @@
                   />
                 </div>
               </details>
-              <div class="zoom-tools" title="Mask view zoom">
-                <button
+              <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
+              <details class="view-more-control">
+                <summary class="mini-btn" title="More Mask view actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <strong>Zoom</strong>
+                  <div class="view-menu-row"><button
                   id="maskZoomOut"
                   class="mini-btn"
                   title="Zoom out Mask"
                   aria-label="Zoom out Mask"
                 >
                   −
-                </button>
-                <button
+                </button><button
                   id="maskZoomIn"
                   class="mini-btn"
                   title="Zoom in Mask"
                   aria-label="Zoom in Mask"
                 >
                   +
-                </button>
-                <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
-              </div>
-              <details id="maskExportControl" class="export-control">
+                </button></div>
+                  <details id="maskExportControl" class="export-control view-menu-export">
                 <summary class="mini-btn" title="Export current Mask">Export</summary>
                 <div class="export-popover mask-export-popover view-popover-surface">
                   <div id="maskExportFilterGroup">
@@ -426,6 +424,8 @@
                   <p class="export-note">Mask ROI crops all exported formats when active.</p>
                 </div>
               </details>
+                </div>
+              </details>
               <button
                 id="maskMaxBtn"
                 class="mini-btn view-max-btn"
@@ -435,10 +435,10 @@
               >
                 Max
               </button>
-              <div id="maskCoords" class="readout"></div>
             </div>
           </div>
           <canvas id="maskCanvas"></canvas>
+          <div id="maskCoords" class="readout view-canvas-readout"></div>
           <div id="drawMaskToolbar" class="draw-mask-toolbar" hidden>
             <button class="mini-btn draw-mask-tool active" data-draw-tool="" type="button">
               Select
