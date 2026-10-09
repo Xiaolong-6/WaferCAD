@@ -1,5 +1,16 @@
 // M2 mock controller and simulated domain actions. Replaced through adapters in M3; never imports core.
-(() => {
+(async () => {
+  // Optional M2 developer adapter modules: loaded on demand by the mock entry.
+  // Production bootstrap does not import fixtures, mock data or simulated actions.
+  for (const name of ['shell-registry', 'domain-adapters', 'overlay-manager']) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `./ui-v2/${name}.js`;
+      script.onload = resolve;
+      script.onerror = () => reject(Error(`Unable to load ${name}`));
+      document.head.append(script);
+    });
+  }
   const { installSprite, icon } = window.WaferCadV2Icons;
   const {
     el,
@@ -169,25 +180,58 @@
     currentModel,
     stepTitle,
   });
+  const registry = window.WaferCadV2ShellRegistry.defaults;
+  const adapters = window.WaferCadV2DomainAdapters.create();
+  // Mock presenters and M3 production controllers implement the same four methods.
+  for (const id of registry.panels.map((name) => `panel.${name}`).concat(
+    registry.processModes.map((name) => `panel.process.${name}`))) {
+    adapters.register(id, window.WaferCadV2DomainAdapters.presentationAdapter({
+      render: () => {},
+    }));
+  }
+  let renderAction = null;
   const shell = window.createWaferCadV2Workstation({
-    root,
-    state,
+    root, state, adapters, registry,
     getProjectName: () => state.projectName || data.name,
     renderEditor: () => window.createWaferCadV2MockDomainPanels(domainContext()).render(),
     renderView: (name) =>
       window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(name),
+    presentation: () => {
+      const processChild = ['recipe', 'code', 'diagnostics'].includes(state.domain);
+      const panel = processChild ? 'process' : state.domain;
+      return {
+        selectedNavigation: panel,
+        selectedPanel: panel,
+        selectedSubpanel: processChild ? state.domain : 'step',
+        emptyInspector: state.domain === 'history' && state.empty && !state.emptyExpanded,
+        editorHidden: Boolean(state.editorHidden),
+        preserveScroll: Boolean(renderAction && /^(history:|branch:|history-)/.test(renderAction)),
+        badge: state.dirty ? 'DRAFT · source unchanged' : 'READ-ONLY SOURCE',
+        message: state.message,
+        save: 'Mock only · no autosave',
+        version: '',
+      };
+    },
   });
-  const render = (action) => shell.render(action);
+  const render = (action) => {
+    renderAction = action;
+    shell.render(action);
+    renderAction = null;
+    if (state.task) {
+      root.querySelectorAll(
+        '.p-panel-content input, .p-panel-content select, .p-panel-content textarea, [data-action^="step:"]',
+      ).forEach((control) => { control.disabled = true; });
+    }
+  };
   function presetRecipeFailure() {
     activeStep = Math.min(2, recipe.steps.length - 1);
     state.failedStep = activeStep;
     state.failure = `Simulated failure · Step ${activeStep + 1} · ${recipe.steps[activeStep].id}. Edit here; then Continue or Rebuild. Source remains unchanged.`;
   }
   function dialog(title, text, accept, action, choices = []) {
-    originFocus = document.activeElement;
-    const modal = el(
-      'dialog',
-      { class: 'p-dialog', 'aria-labelledby': 'p-dialog-title' },
+    const content = el(
+      'div',
+      { 'aria-labelledby': 'p-dialog-title' },
       el('h2', { id: 'p-dialog-title' }, title),
       el('div', {}, text),
       el(
@@ -198,29 +242,13 @@
         button(accept, action, 'check', { primary: true }),
       ),
     );
-    modal.addEventListener('close', () => {
-      modal.remove();
-      originFocus?.focus({ preventScroll: true });
+    return shell.overlays.mount('dialog', {
+      content, id: 'p-dialog', className: 'p-dialog',
+      label: title, trigger: document.activeElement,
     });
-    modal.addEventListener('keydown', (event) => {
-      if (event.key !== 'Tab') return;
-      const controls = [...modal.querySelectorAll('button,input,select,textarea,a[href]')];
-      const first = controls[0],
-        last = controls.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    });
-    root.append(modal);
-    modal.showModal();
-    modal.querySelector('input,button').focus();
   }
   function closeDialog() {
-    root.querySelector('dialog[open]')?.close();
+    shell.overlays.close('dialog');
   }
   function updateRecipeControls() {
     state.recipeUndo = recipeUndoStack.length > 0;
@@ -1325,7 +1353,9 @@
           modelRegions: currentModel().regionCount,
         }),
       ready: true,
+      getSlot: shell.getSlot,
     };
+    window.dispatchEvent(new Event('wafercad-v2-ready'));
   } catch (error) {
     root.replaceChildren(notice(`Prototype failed to load: ${error.message}`, 'error'));
     window.dispatchEvent(new ErrorEvent('error', { message: error.message }));
