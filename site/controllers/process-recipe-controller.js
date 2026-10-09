@@ -222,6 +222,11 @@ export function createProcessRecipeController({
                 face: 'front',
               },
             }
+          : command === 'liftoff'
+            ? {
+                command,
+                params: { sacrificial: topMaterial, area: 'full', face: 'front' },
+              }
           : command === 'etch'
             ? {
                 command,
@@ -609,6 +614,7 @@ export function createProcessRecipeController({
         { value: 'deposit', label: 'Deposit' },
         { value: 'extend', label: 'Extend' },
         { value: 'etch', label: 'Etch' },
+        { value: 'liftoff', label: 'Lift-off' },
         { value: 'implant', label: 'Implant' },
         { value: 'electrical', label: 'Electrical' },
         { value: 'record', label: 'Record' },
@@ -771,6 +777,8 @@ export function createProcessRecipeController({
           { value: 'direct', label: 'Directional' },
           { value: 'conformal', label: 'Conformal' },
         ]);
+      } else if (step.command === 'liftoff') {
+        bindText('Sacrificial layer', 'sacrificial');
       } else if (step.command === 'etch') {
         bindText('Target', 'target');
         bindLength(p.profile === 'planarize' ? 'Target Z' : 'Depth', 'thicknessUm', p.thicknessUm);
@@ -1160,6 +1168,10 @@ export function createProcessRecipeController({
         setThickness(p.thicknessUm);
         updateOperationUI();
         selectMaterialByName('targetLayer', p.material);
+      } else if (step.command === 'liftoff') {
+        $('operationType').value = 'liftoff';
+        updateOperationUI();
+        selectMaterialByName('liftoffTargetLayer', p.sacrificial);
       } else if (step.command === 'etch') {
         $('operationType').value = 'etch';
         $('etchProfile').value = p.profile || 'directional';
@@ -1445,6 +1457,14 @@ export function createProcessRecipeController({
           surface: p.surface || 'smooth',
           ...common,
         },
+      };
+    } else if (operation.kind === 'liftoff') {
+      const layerId = p.sacrificialLayerId || operation.sacrificialLayerId;
+      const layerName = getModel()?.layers?.find((layer) => layer.id === layerId)?.name || '';
+      if (!layerName) return null;
+      source = {
+        command: 'liftoff',
+        params: { sacrificial: layerName, ...common },
       };
     } else if (operation.kind === 'implant') {
       source = {
