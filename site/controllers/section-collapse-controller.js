@@ -292,7 +292,6 @@ export function createSectionCollapseController({
         event.preventDefault();
         close();
       }
-    }
     });
 
     new ResizeObserver(sync).observe($('sectionCanvas'));
