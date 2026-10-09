@@ -9,6 +9,7 @@ import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
+import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -918,6 +919,19 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
+      v3EdgeSurvey: {
+        status: host.dataset.v3EdgeSurveyStatus || 'not-measured',
+        gate: host.dataset.v3EdgeSurveyGate || 'not-far',
+        owners: host.dataset.v3EdgeSurveyOwners || '0',
+        bounds: host.dataset.v3EdgeSurveyBounds || '0',
+        subpixel: host.dataset.v3EdgeSurveySubpixel || '0',
+        uncertain: host.dataset.v3EdgeSurveyUncertain || '0',
+        overflow: host.dataset.v3EdgeSurveyOverflow || '0',
+        raw: host.dataset.v3EdgeSurveyRawUpperBound || '0',
+        candidateRaw: host.dataset.v3EdgeSurveySubpixelRawUpperBound || '0',
+        elapsedMs: host.dataset.v3EdgeSurveyMs || '0',
+        topOwners: host.dataset.v3EdgeSurveyTopOwners || '[]',
+      },
       v3TileProbe: {
         status: host.dataset.v3TileBoundStatus || 'not-sampled',
         gate: host.dataset.v3TileReductionGate || 'not-far',
@@ -1031,6 +1045,17 @@ export function createThreeView({
     host.dataset.v3TileOwnerOverflow = entry.v3TileProbe?.ownerOverflow || '0';
     host.dataset.v3TileBoundOverflow = entry.v3TileProbe?.tileOverflow || '0';
     host.dataset.v3TileBoundTopOwners = entry.v3TileProbe?.topOwners || '[]';
+    host.dataset.v3EdgeSurveyStatus = entry.v3EdgeSurvey?.status || 'not-measured';
+    host.dataset.v3EdgeSurveyGate = entry.v3EdgeSurvey?.gate || 'not-far';
+    host.dataset.v3EdgeSurveyOwners = entry.v3EdgeSurvey?.owners || '0';
+    host.dataset.v3EdgeSurveyBounds = entry.v3EdgeSurvey?.bounds || '0';
+    host.dataset.v3EdgeSurveySubpixel = entry.v3EdgeSurvey?.subpixel || '0';
+    host.dataset.v3EdgeSurveyUncertain = entry.v3EdgeSurvey?.uncertain || '0';
+    host.dataset.v3EdgeSurveyOverflow = entry.v3EdgeSurvey?.overflow || '0';
+    host.dataset.v3EdgeSurveyRawUpperBound = entry.v3EdgeSurvey?.raw || '0';
+    host.dataset.v3EdgeSurveySubpixelRawUpperBound = entry.v3EdgeSurvey?.candidateRaw || '0';
+    host.dataset.v3EdgeSurveyMs = entry.v3EdgeSurvey?.elapsedMs || '0';
+    host.dataset.v3EdgeSurveyTopOwners = entry.v3EdgeSurvey?.topOwners || '[]';
     return true;
   }
 
@@ -2775,7 +2800,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // V3 owner/tile screen-space bounds are conservative and independent
       // of the random/representative quad samples above. Observe-only:
       // geometry and draw submissions must be bitwise unchanged.
-      let v3Tiles = null;
+      let v3Tiles = null,
+        v3Edges = null,
+        v3EdgesMs = 0;
       if (targetVariant === 'transparent' && arrayLod.tier !== 'exact' && camera) {
         const viewProjection = camera.projectionMatrix
           .clone()
@@ -2794,6 +2821,22 @@ diffuseColor.a *= waferCadAlphaScale;`,
             distanceForV3 <= 0 ||
             Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
         });
+        const edgeStartedAt = performance.now();
+        v3Edges = buriedInterfaceEdgeTileSurvey(plan.sidewalls, {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: true,
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          edgeOn:
+            distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+        });
+        v3EdgesMs = performance.now() - edgeStartedAt;
       }
       host.dataset.v3TileBoundStatus = v3Tiles?.reason || 'not-far';
       host.dataset.v3TileReductionGate = v3Tiles?.reductionGate || 'not-far';
@@ -2805,6 +2848,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.v3TileOwnerOverflow = String(v3Tiles?.ownerOverflow || 0);
       host.dataset.v3TileBoundOverflow = String(v3Tiles?.tileOverflow || 0);
       host.dataset.v3TileBoundTopOwners = JSON.stringify(v3Tiles?.topOwners || []);
+      host.dataset.v3EdgeSurveyStatus = v3Edges?.reason || 'not-far';
+      host.dataset.v3EdgeSurveyGate = v3Edges?.reductionGate || 'not-far';
+      host.dataset.v3EdgeSurveyOwners = String(v3Edges?.studiedOwners || 0);
+      host.dataset.v3EdgeSurveyBounds = String(v3Edges?.projectedBounds || 0);
+      host.dataset.v3EdgeSurveySubpixel = String(v3Edges?.subpixelBounds || 0);
+      host.dataset.v3EdgeSurveyUncertain = String(v3Edges?.uncertainBounds || 0);
+      host.dataset.v3EdgeSurveyOverflow = String(v3Edges?.workOverflow || 0);
+      host.dataset.v3EdgeSurveyRawUpperBound = String(
+        v3Edges?.representedRawTwoPassTriangles || 0,
+      );
+      host.dataset.v3EdgeSurveySubpixelRawUpperBound = String(
+        v3Edges?.subpixelRawTwoPassUpperBound || 0,
+      );
+      host.dataset.v3EdgeSurveyMs = String(v3EdgesMs);
+      host.dataset.v3EdgeSurveyTopOwners = JSON.stringify(v3Edges?.topOwners || []);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
