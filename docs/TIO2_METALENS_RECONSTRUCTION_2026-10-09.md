@@ -1,6 +1,6 @@
 # TiO₂ metalens paper-derived reconstruction — experimental
 
-Primary source: Wang et al., *Nature Communications* **12**, 5560 (2021), DOI [10.1038/s41467-021-25797-9](https://doi.org/10.1038/s41467-021-25797-9). Source of process details: Supplementary Note 4 in the published supporting information.
+Primary source: Wang et al., _Nature Communications_ **12**, 5560 (2021), DOI [10.1038/s41467-021-25797-9](https://doi.org/10.1038/s41467-021-25797-9). Source of process details: Supplementary Note 4 in the published supporting information.
 
 ## What is source-supported
 
@@ -14,7 +14,7 @@ Primary source: Wang et al., *Nature Communications* **12**, 5560 (2021), DOI [1
 
 **The main article and supplied supplement do not disclose the full 4,725-site numerical XY/GDS mask and parameter assignment.** Accordingly the script outputs two distinct artifacts:
 
-1. **Four-unit local 5 × 5 µm process project** with executable Recipe, Mask layer, material History and checkpoints from cleaning to final pillars. Its four XY sizes and positions are explicitly *illustrative*. The glass thickness shown (2 µm) is a visualization surrogate.
+1. **Four-unit local 5 × 5 µm process project** with executable Recipe, Mask layer, material History and checkpoints from cleaning to final pillars. Its four XY sizes and positions are explicitly _illustrative_. The glass thickness shown (2 µm) is a visualization surrogate.
 2. **30 µm / 4,725-site deterministic full-aperture GDS** and CSV: illustrates geometry, source-compatible families, hierarchical topology/annular voids and Mask IO performance. The positions use a golden-angle distribution and **are not the authors' optimized phase/group-delay assignment**. Optical achromatism and focusing efficiency cannot be inferred from this artwork.
 
 The full-aperture GDS is intentionally a separate Mask artifact. The small, complete Process project can be **Run all** from Base; do not call this a full 4,725-site physical-process replay until the full layout has been coupled to the canonical-array process pipeline and tested.

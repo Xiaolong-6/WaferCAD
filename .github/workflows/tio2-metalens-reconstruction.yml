@@ -22,22 +22,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Capture canonical formatting for review (temporary)
-        run: |
-          node --input-type=module <<'NODE'
-          import {readFile} from 'node:fs/promises';
-          import prettier from 'prettier';
-          const paths=["site/tests/tio2-metalens-reconstruction.test.mjs","site/tests/wiki-manual.test.mjs","scripts/build-tio2-metalens-example.mjs","scripts/tio2-metalens-ui-regression.mjs","docs/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md"];
-          for(const path of paths){
-          const content=await readFile(path,'utf8');
-          const config=(await prettier.resolveConfig(path))||{};
-          const fmt=await prettier.format(content,{...config,filepath:path});
-          if(content===fmt) continue;
-          const base=Buffer.from(fmt,'utf8').toString('base64');
-          const chunks=base.match(/.{1,2400}/g)||[];
-          for(let i=0;i<chunks.length;i++)console.log('WAFERFMT|'+encodeURIComponent(path)+'|'+i+'|'+chunks.length+'|'+chunks[i]);
-          }
-          NODE
       - name: Rebuild source-derived four-unit process and 4725-site illustrative GDS
         run: node scripts/build-tio2-metalens-example.mjs
       - name: Install Chromium for real Recipe Run All
