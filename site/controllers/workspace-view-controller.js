@@ -67,8 +67,9 @@ export function createWorkspaceViewController({
     const activeFace = getActiveFace(),
       faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
     $('mainFaceLabel').textContent = `${activeFace} surface`;
-    $('faceToggleBtn').textContent = faceLabel;
-    $('faceToggleBtn').setAttribute('aria-label', `Switch active face; currently ${faceLabel}`);
+    // Both faces are explicit values in the Process Surface select.
+    $('faceToggleBtn').value = activeFace;
+    $('faceToggleBtn').setAttribute('aria-label', `Process surface; currently ${faceLabel}`);
 
     syncMaskSourceSummary();
     syncProjectNameInput();

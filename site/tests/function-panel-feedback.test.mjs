@@ -62,14 +62,21 @@ test('function panel uses Process and Project labels with one operation selector
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
   assert.match(html, /id="processVisualGuide"[\s\S]*?class="process-visual-guide"/);
-  assert.match(html, /id="recipeRecordManual"/);
+  assert.match(html, /id="recipeRecordManual" type="checkbox" \/>/);
 });
 
 test('function panel groups related engineering parameters compactly', () => {
   assert.match(
     html,
-    /class="tool-context process-context"[\s\S]*?id="processSummary"[\s\S]*?id="faceToggleBtn"/,
+    /class="process-step-toolbar"[\s\S]*?id="operationType"[\s\S]*?id="faceToggleBtn"/,
   );
+  assert.match(html, /id="faceToggleBtn" aria-label="Process surface"/);
+  assert.match(html, /id="processParametersHeading"/);
+  assert.match(style, /#manualProcessPane \.process-step-toolbar/);
+  assert.match(style, /#manualProcessPane #operationAreaRow/);
+  assert.match(style, /#manualProcessPane #operationThicknessRow/);
+  assert.match(html, /class="param-grid-2 process-area-grid"[\s\S]*?id="operationAreaRow"/);
+  assert.match(html, /class="param-grid-2 process-main-grid"[\s\S]*?id="growthModeRow"[\s\S]*?id="operationThicknessRow"/);
   assert.match(
     html,
     /class="param-grid-2 rough-param-grid"[\s\S]*?id="roughFeatureRow"[\s\S]*?id="roughFeatureCvRow"/,

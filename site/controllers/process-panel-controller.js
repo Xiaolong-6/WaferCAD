@@ -217,8 +217,8 @@ export function createProcessPanelController({
         : t === 'implant' || electrical
           ? 'Depth'
           : transfer
-            ? 'Film Z'
-            : 'Z';
+            ? 'Film thickness'
+            : 'Thickness';
     if (planarizeEtch) $('operationThickness').removeAttribute('min');
     else $('operationThickness').min = '0';
 
@@ -238,6 +238,35 @@ export function createProcessPanelController({
           ? 'Record'
           : 'Apply';
     const faceLabel = activeFace[0].toUpperCase() + activeFace.slice(1);
+    // Keep the selected operation visible above its parameters in Step mode.
+    $('processGuideOperation').textContent =
+      t === 'add'
+        ? transfer
+          ? 'Transfer'
+          : 'Deposit'
+        : t === 'grow'
+          ? 'Extend'
+          : t === 'etch'
+            ? 'Etch'
+            : t === 'implant'
+              ? 'Implant'
+              : electrical
+                ? 'Electrical'
+                : 'Record';
+    $('processParametersHeading').textContent =
+      t === 'add' && transfer
+        ? 'Transfer parameters'
+        : t === 'add'
+          ? 'Deposit parameters'
+          : t === 'grow'
+            ? 'Extend parameters'
+            : t === 'etch'
+              ? 'Etch parameters'
+              : t === 'implant'
+                ? 'Implant parameters'
+                : electrical
+                  ? 'Electrical parameters'
+                  : 'Record parameters';
     $('processSummary').textContent = recordOnly
       ? 'Process · Record step'
       : `${faceLabel} · ${

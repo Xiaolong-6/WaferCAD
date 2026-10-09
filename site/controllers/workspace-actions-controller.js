@@ -124,8 +124,8 @@ export function createWorkspaceActionsController({
   }
 
   function bindViewControls() {
-    $('faceToggleBtn').onclick = () => {
-      setActiveFace(getActiveFace() === 'front' ? 'back' : 'front');
+    $('faceToggleBtn').onchange = () => {
+      setActiveFace($('faceToggleBtn').value);
       renderAll();
     };
 

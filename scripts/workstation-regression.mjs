@@ -406,14 +406,52 @@ for (const id of [
 // Operation controls remain usable after the toolbar reorganization.
 await openFunctionPanel(page, 'process');
 await page.locator('#operationTools:not([hidden])').waitFor();
+assert.equal(await page.locator('#recipeRecordManual').isChecked(), false);
 for (const id of ['applyOperationBtn', 'undoBtn', 'redoBtn', 'faceToggleBtn']) {
   assert.equal(await page.locator(`#operationTools #${id}`).count(), 1);
 }
 const face = page.locator('#faceToggleBtn');
-assert.equal((await face.textContent()).trim(), 'Front');
-await face.click();
-assert.equal((await face.textContent()).trim(), 'Back');
-await face.click();
+assert.equal(await face.inputValue(), 'front');
+await face.selectOption('back');
+assert.equal(await face.inputValue(), 'back');
+await face.selectOption('front');
+assert.equal(await face.inputValue(), 'front');
+
+// Step mode must follow the Operation + Surface / Area / Target / Coverage + Thickness
+// hierarchy, not merely replace the old six-button grid with a dropdown.
+await page.locator('#operationType').selectOption('grow');
+assert.equal(await page.locator('#processParametersHeading').textContent(), 'Extend parameters');
+assert.match(await page.locator('#processVisualGuide > summary').textContent(), /How Extend works/);
+const stepLayout = await page.evaluate(() => {
+  const rect = (id) => {
+    const node = document.getElementById(id);
+    const box = node.getBoundingClientRect();
+    return { x: box.x, y: box.y, width: box.width, height: box.height };
+  };
+  return {
+    operation: rect('operationType'),
+    surface: rect('faceToggleBtn'),
+    area: rect('operationAreaRow'),
+    target: rect('targetLayerRow'),
+    coverage: rect('growthModeRow'),
+    thickness: rect('operationThicknessRow'),
+    pane: rect('manualProcessPane'),
+  };
+});
+assert.ok(Math.abs(stepLayout.operation.y - stepLayout.surface.y) < 3, 'Operation / Surface share a row');
+assert.ok(stepLayout.area.width > stepLayout.coverage.width * 1.8, 'Area spans both columns');
+assert.ok(stepLayout.target.width > stepLayout.coverage.width * 1.8, 'Target spans both columns');
+assert.ok(Math.abs(stepLayout.coverage.y - stepLayout.thickness.y) < 3, 'Coverage / Thickness share a row');
+assert.ok(stepLayout.thickness.x > stepLayout.coverage.x, 'Thickness is right of Coverage');
+assert.ok(stepLayout.area.x >= stepLayout.pane.x && stepLayout.target.x >= stepLayout.pane.x);
+assert.equal(await page.locator('#processVisualGuide').evaluate((node) => node.open), false);
+await page.locator('#operationType').selectOption('etch');
+assert.equal(await page.locator('#processParametersHeading').textContent(), 'Etch parameters');
+assert.equal(await page.locator('#growthModeRow').isHidden(), true);
+assert.equal(await page.locator('#operationThicknessRow').isVisible(), true);
+await page.locator('#operationType').selectOption('implant');
+assert.equal(await page.locator('#implantNameRow').isVisible(), true);
+await page.locator('#operationType').selectOption('add');
 
 assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);
 assert.deepEqual(errors, []);
