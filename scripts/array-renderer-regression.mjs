@@ -190,6 +190,11 @@ try {
   }
   assert.equal(transparentCold.arrayInstances, '1885');
   assert.ok(
+    Number(transparentCold.sceneSinglePassCapObjects) > 0 &&
+      Number(transparentCold.sceneSavedCapTriangleSubmissions) > 0,
+    'Smooth transparent material caps must skip only the redundant DoubleSide draw pass',
+  );
+  assert.ok(
     Number(transparentCold.electricalRegionInternalCount) > 0,
     'Transparent array retains native buried electrical annotations',
   );
@@ -233,6 +238,11 @@ try {
   const opaqueSwapMs = await waitStage('opacity-swap-opaque', 120000, beforeOpaqueFrame);
   const opaqueSwap = await snapshot();
   assert.equal(opaqueSwap.rendererUpdateKind, 'variant-swap');
+  assert.equal(
+    Number(opaqueSwap.sceneSinglePassCapObjects),
+    0,
+    'Opaque material caps must not acquire the transparent single-pass policy',
+  );
   assert.equal(opaqueSwap.sceneVariant, 'opaque');
   assert.equal(opaqueSwap.sceneGeneration, quality.sceneGeneration);
   assert.equal(opaqueSwap.surfacePlanBuildCount, quality.surfacePlanBuildCount);
@@ -243,6 +253,11 @@ try {
   const warmTransparentMs = await waitStage('opacity-swap-transparent', 120000, beforeWarmFrame);
   const transparentWarm = await snapshot();
   assert.equal(transparentWarm.rendererUpdateKind, 'variant-swap');
+  assert.equal(
+    transparentWarm.sceneSavedCapTriangleSubmissions,
+    transparentCold.sceneSavedCapTriangleSubmissions,
+    'Variant reuse must retain the transparent planar-cap draw policy',
+  );
   assert.equal(transparentWarm.sceneVariant, 'transparent');
   assert.equal(transparentWarm.sceneGeneration, quality.sceneGeneration);
   assert.equal(transparentWarm.surfacePlanBuildCount, quality.surfacePlanBuildCount);

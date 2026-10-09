@@ -781,6 +781,13 @@ export function createWorkspacePersistenceController({
   async function checkpointCurrent(reason = 'pre-destructive-action') {
     if (!ready || !hasWriteAccess()) return false;
     clearTimer();
+    // A refused checkpoint must not strand edits by cancelling the queued
+    // autosave; keep the dirty workspace scheduled after a transient failure.
+    const resumePendingAutosave = () => {
+      if (!hasWriteAccess()) return;
+      if (pendingDomainCheck) classifyCurrentDirty();
+      if (dirty || viewDirty) schedule({ markDirty: false });
+    };
 
     const result = await runVisibleTask(
       async ({ updateStage }) => {
@@ -801,10 +808,22 @@ export function createWorkspacePersistenceController({
     );
 
     if (result?.busy) {
+      resumePendingAutosave();
       status('Another background task is already running.', 'warning');
       return false;
     }
-    if (result?.error || !result?.ok) return false;
+    if (result?.error || !result?.ok) {
+      resumePendingAutosave();
+      return false;
+    }
+    // Packing the Recovery payload and committing it to IndexedDB are async.
+    // Another tab may take over during that interval. A completed checkpoint
+    // is not permission to replace this tab's live model after lease loss.
+    if (!hasWriteAccess()) {
+      syncSaveStatus();
+      status('Recovery checkpoint completed after this tab lost autosave ownership. Workspace replacement cancelled.', 'warning');
+      return false;
+    }
     return true;
   }
 

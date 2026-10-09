@@ -805,6 +805,9 @@
                 <button type="button" data-process-input-mode="recipe" aria-pressed="false">
                   Recipe
                 </button>
+                <button type="button" data-process-input-mode="diagnostics" aria-pressed="false">
+                  Diagnostics
+                </button>
               </div>
               <div id="manualProcessPane">
                 <div class="control-body process-control-body">
@@ -1161,6 +1164,36 @@
                 </div>
               </div>
               <div id="recipeProcessPane" class="control-body recipe-process-pane" hidden></div>
+              <section
+                id="geometryDiagnosticsPanel"
+                class="geometry-diagnostics"
+                role="region"
+                aria-labelledby="geometryDiagnosticsTitle"
+                hidden
+              >
+                <div class="diagnostics-heading">
+                  <strong id="geometryDiagnosticsTitle">Geometry Diagnostics</strong>
+                  <span>Read-only inspection</span>
+                </div>
+                <div class="diagnostics-content">
+                  <p class="diagnostics-note">
+                    Read-only canonical material checks. Intentional cavities are observations;
+                    display-only roughness and process physics are not assessed.
+                  </p>
+                  <button type="button" id="diagnosticsAnalyzeBtn" class="compact-btn">
+                    Analyze geometry
+                  </button>
+                  <p
+                    id="diagnosticsStatus"
+                    class="diagnostics-status"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    Analysis has not run.
+                  </p>
+                  <div id="diagnosticsResults" class="diagnostics-results"></div>
+                </div>
+              </section>
             </section>
 
             <section

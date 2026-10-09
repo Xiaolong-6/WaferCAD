@@ -280,8 +280,8 @@ test('startup controller consumes a staged layout and clears the startup query',
   const file = { name: 'layout.oas' };
   const controller = createStartupController({
     takeStartupFile: async () => ({ kind: 'layout', file }),
-    openLayoutFile: async (value) => calls.push(['layout', value]),
-    openProjectFile: async (value) => calls.push(['project', value]),
+    openLayoutFile: async (value, options) => calls.push(['layout', value, options]),
+    openProjectFile: async (value, options) => calls.push(['project', value, options]),
     status: (message) => calls.push(['status', message]),
     locationRef: { search: '?start=staged' },
     historyRef: { replaceState: (...args) => calls.push(['history', ...args]) },
@@ -292,7 +292,7 @@ test('startup controller consumes a staged layout and clears the startup query',
   assert.equal(started, true);
   assert.deepEqual(calls, [
     ['history', null, '', './app.html'],
-    ['layout', file],
+    ['layout', file, { startupProtected: true }],
   ]);
 });
 
@@ -310,6 +310,25 @@ test('startup controller reports a staged open failure so persistence can restor
   assert.equal(await controller.initializeWorkspaceStart(), false);
 });
 
+test('startup controller forwards protected context for a staged project', async () => {
+  const file = { name: 'restored.wafercad' };
+  const calls = [];
+  const controller = createStartupController({
+    takeStartupFile: async () => ({ kind: 'project', file }),
+    openLayoutFile: async () => false,
+    openProjectFile: async (input, options) => {
+      calls.push([input, options]);
+      return true;
+    },
+    status: () => {},
+    locationRef: { search: '?start=staged' },
+    historyRef: { replaceState: () => {} },
+  });
+
+  assert.equal(await controller.initializeWorkspaceStart(), true);
+  assert.deepEqual(calls, [[file, { startupProtected: true }]]);
+});
+
 test('startup controller defaults example intent to the promoted literature project', async () => {
   const calls = [];
   const controller = createStartupController({
@@ -319,7 +338,7 @@ test('startup controller defaults example intent to the promoted literature proj
     },
     openLayoutFile: async () => calls.push(['layout']),
     openProjectFile: async () => calls.push(['project']),
-    openBundledExample: async (id) => calls.push(['bundled', id]),
+    openBundledExample: async (id, options) => calls.push(['bundled', id, options]),
     status: (message) => calls.push(['status', message]),
     locationRef: { search: '?start=example' },
     historyRef: { replaceState: (...args) => calls.push(['history', ...args]) },
@@ -329,7 +348,7 @@ test('startup controller defaults example intent to the promoted literature proj
 
   assert.deepEqual(calls, [
     ['history', null, '', './app.html'],
-    ['bundled', 'photodetector-literature'],
+    ['bundled', 'photodetector-literature', { startupProtected: true }],
   ]);
 });
 

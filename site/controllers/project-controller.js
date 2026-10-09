@@ -54,8 +54,8 @@ export function createProjectController({
   async function requireRecoveryCheckpoint(reason) {
     // A false result means the Recovery writer was unavailable or failed.
     // Never discard History data on that path.
-    if ((await checkpointBeforeReplace(reason)) === false) {
-      throw new Error('Recovery checkpoint was not created. History was left unchanged.');
+    if ((await checkpointBeforeReplace(reason)) !== true) {
+      throw new Error('Recovery checkpoint was not created. The current workspace was left unchanged.');
     }
   }
 
@@ -945,11 +945,13 @@ export function createProjectController({
     }
   }
 
-  async function openLayoutFile(file) {
+  async function openLayoutFile(file, { startupProtected = false } = {}) {
     try {
       assertLayoutByteLength(file.size);
       status(`Reading ${file.name}…`);
-      const imported = await importLayoutBuffer(await file.arrayBuffer(), file.name, file.name);
+      const imported = await importLayoutBuffer(await file.arrayBuffer(), file.name, file.name, {
+        startupProtected,
+      });
       if (!imported) return false;
       status(`Opened ${file.name}.`);
       return true;
@@ -960,12 +962,17 @@ export function createProjectController({
     }
   }
 
-  async function openProjectFile(file, { prepareProject = null } = {}) {
+  async function openProjectFile(
+    file,
+    { prepareProject = null, startupProtected = false } = {},
+  ) {
     try {
       const project = await readProjectFileTask(file);
       if (!project) return false;
       if (typeof prepareProject === 'function') prepareProject(project);
-      await checkpointBeforeReplace('pre-open-project');
+      // The startup coordinator already checkpointed the persisted workspace
+      // before invoking its own import. In-workspace Open must fail closed.
+      if (!startupProtected) await requireRecoveryCheckpoint('pre-open-project');
       cancelHistoricalStepEdit();
       if (!project.name) {
         project.name =
@@ -989,7 +996,10 @@ export function createProjectController({
     }
   }
 
-  async function openBundledExample(exampleId, { preview = false } = {}) {
+  async function openBundledExample(
+    exampleId,
+    { preview = false, startupProtected = false } = {},
+  ) {
     const example = bundledExampleById(exampleId);
     if (!example || example.kind !== 'project' || !example.path) {
       status('Bundled example was not found.', 'error');
@@ -1010,7 +1020,10 @@ export function createProjectController({
       }
       const arrayBuffer = await response.arrayBuffer(),
         file = bufferBackedProjectFile(arrayBuffer, projectFile.filename);
-      return await openProjectFile(file, { prepareProject: upgradeBundledExampleHistory });
+      return await openProjectFile(file, {
+        prepareProject: upgradeBundledExampleHistory,
+        startupProtected,
+      });
     } catch (error) {
       console.error(error);
       status(`Example failed: ${error.message}`, 'error');

@@ -30,6 +30,7 @@ import { createRoiController } from './controllers/roi-controller.js';
 import { createMaskRoiController } from './controllers/mask-roi-controller.js';
 import { createProcessTaskController } from './controllers/process-task-controller.js';
 import { createProcessPanelController } from './controllers/process-panel-controller.js';
+import { createProcessDiagnosticsController } from './controllers/process-diagnostics-controller.js';
 import { createProcessRecipeController } from './controllers/process-recipe-controller.js';
 import { createLayerLegendController } from './controllers/layer-legend-controller.js';
 import { createProjectController } from './controllers/project-controller.js';
@@ -641,7 +642,12 @@ function applyImportedLayout(imported, displayName) {
   );
 }
 
-async function importLayoutBuffer(arrayBuffer, filename, displayName = filename) {
+async function importLayoutBuffer(
+  arrayBuffer,
+  filename,
+  displayName = filename,
+  { startupProtected = false } = {},
+) {
   let imported;
   if (processTaskController) {
     const task = await processTaskController.runWorker(
@@ -661,7 +667,11 @@ async function importLayoutBuffer(arrayBuffer, filename, displayName = filename)
   } else {
     imported = await parseLayoutFile(arrayBuffer, filename);
   }
-  await checkpointWorkspace('pre-import-layout');
+  // Welcome startup already protects the previous autosave before importing.
+  // All other Mask imports must abort on a failed/unavailable checkpoint.
+  if (!startupProtected && !(await checkpointWorkspace('pre-import-layout'))) {
+    throw new Error('Recovery checkpoint was not created. The current mask was left unchanged.');
+  }
   applyImportedLayout(imported, displayName);
   return imported;
 }
@@ -760,6 +770,7 @@ let workspaceViewController = null;
 
 function renderAll() {
   workspaceViewController?.renderAll();
+  processDiagnosticsController?.onModelRendered();
 }
 
 function resetRoughDraftControls() {
@@ -775,6 +786,7 @@ function syncMaskSourceSummary() {
 }
 
 let processPanelController = null,
+  processDiagnosticsController = null,
   processRecipeController = null,
   projectController = null;
 
@@ -1213,6 +1225,11 @@ processRecipeController = createProcessRecipeController({
   onChanged: markProjectDirty,
 });
 
+processDiagnosticsController = createProcessDiagnosticsController({
+  root: document,
+  getModel: () => model,
+});
+
 workspaceViewController = createWorkspaceViewController({
   root: document,
   getModel: () => model,
@@ -1403,7 +1420,8 @@ const { initializeWorkspaceStart } = createStartupController({
   takeStartupFile,
   openLayoutFile,
   openProjectFile,
-  openBundledExample: (id) => openBundledExample(id, { preview: EMBEDDED_PREVIEW }),
+  openBundledExample: (id, options = {}) =>
+    openBundledExample(id, { ...options, preview: EMBEDDED_PREVIEW }),
   status,
 });
 
@@ -1584,6 +1602,7 @@ function bindUi() {
   roiController.bind();
   processTaskController.bind();
   processRecipeController.bind();
+  processDiagnosticsController.bind();
   sectionControls.bind();
   sectionCollapseController.bind();
   sectionDetailRoiController.bind();
