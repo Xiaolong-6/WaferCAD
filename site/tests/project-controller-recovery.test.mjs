@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createProjectController } from '../controllers/project-controller.js';
+import { createWorkspacePersistenceController } from '../controllers/workspace-persistence-controller.js';
 
 test('New Project does not clear workspace when Recovery checkpoint is unavailable', async () => {
   const controls = new Map();
@@ -158,4 +159,40 @@ test('Layout Open passes explicit startup context into the checked importer', as
     { startupProtected: false },
     { startupProtected: true },
   ]);
+});
+
+test('Recovery checkpoint refuses live replacement after lease loss during async work', async () => {
+  let owner = true;
+  const statuses = [];
+  const controller = createWorkspacePersistenceController({
+    root: { getElementById: () => null },
+    workspaceSession: { hasWriteLease: () => owner, tabId: 'original-tab' },
+    snapshotManager: {},
+    status: (message, kind) => statuses.push({ message, kind }),
+    taskController: {
+      // The Recovery worker/IndexedDB task may complete after another tab
+      // has taken ownership. A successful task result is not enough.
+      runTask: async () => {
+        owner = false;
+        return { ok: true };
+      },
+    },
+  });
+  // Initialization makes the controller ready. This test runs in Node,
+  // where browser IndexedDB is unavailable; the startup restore fails safely.
+  await controller.initializePersistedWorkspace();
+  assert.equal(await controller.checkpointCurrent('pre-open-project'), false);
+  assert.match(statuses.at(-1)?.message || '', /lost autosave ownership/i);
+});
+
+test('Recovery checkpoint still allows replacement when lease remains held', async () => {
+  const controller = createWorkspacePersistenceController({
+    root: { getElementById: () => null },
+    workspaceSession: { hasWriteLease: () => true, tabId: 'original-tab' },
+    snapshotManager: {},
+    status: () => {},
+    taskController: { runTask: async () => ({ ok: true }) },
+  });
+  await controller.initializePersistedWorkspace();
+  assert.equal(await controller.checkpointCurrent('pre-open-project'), true);
 });
