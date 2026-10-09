@@ -4,6 +4,17 @@ Audited main: `fbbb2f9f3a585574e20ed706c34653164f13440c`. Generated with `node s
 
 This inventories the legacy entry before v2 exists. IDs/ARIA/data attributes come from app.html; references are textual candidates across site and scripts (vendor excluded). JavaScript operations use the locked ESLint Espree parser. Counts separate runtime site code from test-only evidence. Computed classes/IDs are patterns or unresolved operations, not fabricated concrete names. This does not establish v2 coverage or runtime reachability.
 
+## M2.5 upstream delta — merged main fbbc261 (2026-10-09)
+
+**Read-only delta audit against the generated M0 contract**: `origin/main` at `fbbc261c0` was merged into the M2.5 branch as commit `1dde9b15`. The legacy `app.html` static ID count increases **259 → 267**. Eight newly observed IDs are:
+
+- Lift-off: `liftoffTargetRow`, `liftoffTargetLayer`, `liftoffTargetHint` (with new `<option value="liftoff">Lift-off</option>`).
+- Geometry Diagnostics: `geometryDiagnosticsPanel`, `geometryDiagnosticsTitle`, `diagnosticsAnalyzeBtn`, `diagnosticsStatus`, `diagnosticsResults`.
+
+Production counterparts: `site/controllers/process-panel-controller.js` updates Lift-off target/availability; `site/controllers/process-recipe-controller.js` adds Lift-off step editing and replay mapping; `site/process-recipe.js` validates the sacrificial layer. Diagnostics is read-only and uses its own controller.
+
+**Scope of the table below:** the automatically generated M0 snapshot remains tied to `fbbb2f9` (259 static IDs, 205 classes + 1 pattern, 5 unresolved dynamic operations). This addendum records the verified post-merge static delta; it does **not** claim that the generator was rerun or that the full dynamic class list was regenerated. Regenerate `CONTRACT.md` and `contract.json` together with `node scripts/ui-contract-extract.mjs --write` when execution of the full repository tooling is available; do not forge new dynamic entries.
+
 ## Counts
 
 - staticIds: 259
