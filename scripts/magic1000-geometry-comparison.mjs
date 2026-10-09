@@ -3,7 +3,9 @@
 import assert from 'node:assert/strict';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 
-function close(a, b, tol = 1e-8) { return Math.abs(a - b) <= tol; }
+function close(a, b, tol = 1e-8) {
+  return Math.abs(a - b) <= tol;
+}
 function sortedCuts(cuts) {
   const result = [];
   for (const z of cuts.sort((a, b) => a - b)) {
@@ -15,7 +17,11 @@ function sortedCuts(cuts) {
 function occupancy(model) {
   const result = new Map();
   const byId = new Map((model.layers || []).map((l) => [l.id, l.name]));
-  assert.equal(new Set(byId.values()).size, byId.size, 'Duplicate layer names make geometry comparison ambiguous');
+  assert.equal(
+    new Set(byId.values()).size,
+    byId.size,
+    'Duplicate layer names make geometry comparison ambiguous',
+  );
   for (const region of model.regions || []) {
     for (const segment of region.stack || []) {
       const name = byId.get(segment.layerId);
@@ -46,42 +52,63 @@ export async function assertSameMaterialGeometry(expected, actual, options = {})
     [expected.shape, expected.width, expected.height, expected.thickness],
     'Base geometry changed during Run All',
   );
-  const e = occupancy(expected), a = occupancy(actual);
+  const e = occupancy(expected),
+    a = occupancy(actual);
   assert.deepEqual([...a.keys()].sort(), [...e.keys()].sort(), 'Material names differ');
-  let slabsChecked = 0, maxMismatchAreaUm2 = 0;
+  let slabsChecked = 0,
+    maxMismatchAreaUm2 = 0;
   const areaAbsTolerance = options.areaToleranceUm2 ?? 1e-7;
   for (const [name, eSegments] of e) {
     const aSegments = a.get(name);
-    const cuts = sortedCuts([...eSegments, ...aSegments].flatMap(s => [s.z0, s.z1]));
+    const cuts = sortedCuts([...eSegments, ...aSegments].flatMap((s) => [s.z0, s.z1]));
     for (let i = 0; i < cuts.length - 1; i++) {
-      const z0 = cuts[i], z1 = cuts[i + 1];
+      const z0 = cuts[i],
+        z1 = cuts[i + 1];
       if (z1 - z0 < 1e-8) continue;
       const mid = (z0 + z1) / 2;
       const eg = footprint(eSegments, mid, vectorApi);
       const ag = footprint(aSegments, mid, vectorApi);
       const missing = geometryArea(vectorApi.difference(eg, ag));
       const extra = geometryArea(vectorApi.difference(ag, eg));
-      const eArea = geometryArea(eg), aArea = geometryArea(ag);
+      const eArea = geometryArea(eg),
+        aArea = geometryArea(ag);
       const tolerance = Math.max(areaAbsTolerance, 1e-9 * Math.max(eArea, aArea));
       const mismatch = missing + extra;
       maxMismatchAreaUm2 = Math.max(maxMismatchAreaUm2, mismatch);
       assert.ok(
         mismatch <= tolerance,
-        name + ' Z [' + z0 + ', ' + z1 + '] µm: physical XY mismatch, missing='
-          + missing + ' µm², extra=' + extra + ' µm² (tolerance=' + tolerance + ')',
+        name +
+          ' Z [' +
+          z0 +
+          ', ' +
+          z1 +
+          '] µm: physical XY mismatch, missing=' +
+          missing +
+          ' µm², extra=' +
+          extra +
+          ' µm² (tolerance=' +
+          tolerance +
+          ')',
       );
       slabsChecked++;
     }
   }
   // Verify the saved annotated regions too; these describe D/E doping,
   // and cannot be silently lost when the file is reconstructed.
-  assert.equal((actual.electricalRegions || []).length, (expected.electricalRegions || []).length,
-    'Electrical annotations changed');
+  assert.equal(
+    (actual.electricalRegions || []).length,
+    (expected.electricalRegions || []).length,
+    'Electrical annotations changed',
+  );
   for (let i = 0; i < (expected.electricalRegions || []).length; i++) {
-    const x = expected.electricalRegions[i], y = actual.electricalRegions[i];
-    assert.deepEqual([y.name,y.thickness,y.regionType,y.source],
-      [x.name,x.thickness,x.regionType,x.source], 'Electrical annotation metadata changed');
-    assert.equal(y.patches.length,x.patches.length,'Electrical region patch count changed');
+    const x = expected.electricalRegions[i],
+      y = actual.electricalRegions[i];
+    assert.deepEqual(
+      [y.name, y.thickness, y.regionType, y.source],
+      [x.name, x.thickness, x.regionType, x.source],
+      'Electrical annotation metadata changed',
+    );
+    assert.equal(y.patches.length, x.patches.length, 'Electrical region patch count changed');
   }
   return { verified: true, slabsChecked, materialCount: e.size, maxMismatchAreaUm2 };
 }

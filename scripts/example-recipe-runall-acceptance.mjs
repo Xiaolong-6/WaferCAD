@@ -212,9 +212,10 @@ try {
       // MAGIC-1000 requires stricter scientific acceptance than matching
       // material labels/counts. Compare 2.5D physical material occupancy:
       // exact XY polygons, per material, for every distinct Z slab.
-      const geometryComparison = example.id === 'magic-1000-mos2-beol'
-        ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-        : null;
+      const geometryComparison =
+        example.id === 'magic-1000-mos2-beol'
+          ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
+          : null;
       assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
       await mkdir('test-results/example-recipe-runall', { recursive: true });
       await writeFile(
