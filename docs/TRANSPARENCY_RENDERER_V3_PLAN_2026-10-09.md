@@ -195,6 +195,51 @@ separate experimental commit, matching-camera visual acceptance, the same
 **Status:** Phase A.2 diagnostics accepted on this head; v3 actual
 hierarchical LOD remains **unimplemented**; PR stays Draft and unmerged.
 
+## Phase A.3 — whole-owner spatial tile projection bounds (experimental)
+
+This step adds `site/renderer-v3-tile-bounds.js` as an independent,
+pure, conservative and **observe-only** diagnostics module:
+
+- For each smooth buried instanced owner, inspect **every template sidewall
+  part** and **every translated instance** once; reject mixed rough/invalid
+  owner geometries entirely. Partition sorted translations into spatial
+  groups of up to 64 instances per tile.
+- Compute a physical XY enclosing rectangle across *all* part edges and a
+  displayed Z range across *all* surviving Section intervals. Translation
+  extrema give the complete XYZ box for each tile without expanding
+  thousands of edges by hundreds of repeated instances.
+- Project all eight corners through the actual homogeneous
+  `projectionMatrix * matrixWorldInverse`. If the camera's near/far clip
+  planes are crossed or homogeneous `w <= 0`, mark the tile **uncertain**
+  instead of falsely classifying it as visible/offscreen/subpixel.
+- Classify only entirely projected bounding boxes by viewport pixel
+  extent. A tile called subpixel has a *whole enclosing box* no more than
+  0.5 pixels wide and tall; sample-only classification is insufficient.
+- Record owner/tile coverage, skipped/rough owners, overflow, uncertain
+  cases, and top six raw workload owners. Hard safety budgets: 32 owners,
+  512 tiles, 64 instances per tile; overflow is exposed, not silently
+  considered measured.
+- Explicit scientific gates `not-far`, `roi`, `z-collapse`,
+  `edge-on`, and `alpha-coverage-unverified` prevent treating even a
+  fully bounded subpixel tile as automatic permission to remove an
+  overlapping transparent material surface.
+
+The additional unit tests cover full template/instance coverage, invalid
+and near-plane-crossing bounds, Section magnification, ROI/edge-on,
+rough/exterior/unique owner exclusions, offscreen bounds, capped
+coverage, and no canonical mutation. The 625-site browser regression
+requires actual tile bounds in distant Fast mode and exact fallback in
+Quality and opaque cached variants.
+
+**Important:** The whole-owner bounding box deliberately overestimates
+screen coverage for disjoint walls and large arrays; this can yield
+zero subpixel *complete tile* candidates even if the earlier 520-quad
+sample saw many small projected faces. That is a conservative finding,
+not a bug. Real Phase B savings would need smaller **topology-owned**
+tile/feature partitions, a verified visible-color/alpha error model, and
+paired image/first-frame performance results. No tiles or triangles are
+currently culled.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
