@@ -8,6 +8,7 @@ import {
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
+import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -917,6 +918,18 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
+      v3TileProbe: {
+        status: host.dataset.v3TileBoundStatus || 'not-sampled',
+        gate: host.dataset.v3TileReductionGate || 'not-far',
+        owners: host.dataset.v3TileBoundOwners || '0',
+        tiles: host.dataset.v3TileBoundTiles || '0',
+        subpixel: host.dataset.v3TileSubpixelBounds || '0',
+        offscreen: host.dataset.v3TileOffscreenBounds || '0',
+        uncertain: host.dataset.v3TileUncertainBounds || '0',
+        ownerOverflow: host.dataset.v3TileOwnerOverflow || '0',
+        tileOverflow: host.dataset.v3TileBoundOverflow || '0',
+        topOwners: host.dataset.v3TileBoundTopOwners || '[]',
+      },
       v3ProjectionProbe: {
         status: host.dataset.v3ProjectionStatus || 'not-sampled',
         owners: host.dataset.v3ProjectionOwners || '0',
@@ -1008,6 +1021,16 @@ export function createThreeView({
     host.dataset.v3ProjectionRawTriangleUpperBound =
       entry.v3ProjectionProbe?.rawTriangles || '0';
     host.dataset.v3ProjectionTopOwners = entry.v3ProjectionProbe?.topOwners || '[]';
+    host.dataset.v3TileBoundStatus = entry.v3TileProbe?.status || 'not-sampled';
+    host.dataset.v3TileReductionGate = entry.v3TileProbe?.gate || 'not-far';
+    host.dataset.v3TileBoundOwners = entry.v3TileProbe?.owners || '0';
+    host.dataset.v3TileBoundTiles = entry.v3TileProbe?.tiles || '0';
+    host.dataset.v3TileSubpixelBounds = entry.v3TileProbe?.subpixel || '0';
+    host.dataset.v3TileOffscreenBounds = entry.v3TileProbe?.offscreen || '0';
+    host.dataset.v3TileUncertainBounds = entry.v3TileProbe?.uncertain || '0';
+    host.dataset.v3TileOwnerOverflow = entry.v3TileProbe?.ownerOverflow || '0';
+    host.dataset.v3TileBoundOverflow = entry.v3TileProbe?.tileOverflow || '0';
+    host.dataset.v3TileBoundTopOwners = entry.v3TileProbe?.topOwners || '[]';
     return true;
   }
 
@@ -2749,6 +2772,39 @@ diffuseColor.a *= waferCadAlphaScale;`,
         v3Projected?.rawOwnerTriangleUpperBound || 0,
       );
       host.dataset.v3ProjectionTopOwners = JSON.stringify(v3Projected?.topOwners || []);
+      // V3 owner/tile screen-space bounds are conservative and independent
+      // of the random/representative quad samples above. Observe-only:
+      // geometry and draw submissions must be bitwise unchanged.
+      let v3Tiles = null;
+      if (targetVariant === 'transparent' && arrayLod.tier !== 'exact' && camera) {
+        const viewProjection = camera.projectionMatrix
+          .clone()
+          .multiply(camera.matrixWorldInverse);
+        v3Tiles = buriedInterfaceTileBounds(plan.sidewalls, {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: true,
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          nearEdgeOn:
+            distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+        });
+      }
+      host.dataset.v3TileBoundStatus = v3Tiles?.reason || 'not-far';
+      host.dataset.v3TileReductionGate = v3Tiles?.reductionGate || 'not-far';
+      host.dataset.v3TileBoundOwners = String(v3Tiles?.owners || 0);
+      host.dataset.v3TileBoundTiles = String(v3Tiles?.tiles || 0);
+      host.dataset.v3TileSubpixelBounds = String(v3Tiles?.subpixelBounds || 0);
+      host.dataset.v3TileOffscreenBounds = String(v3Tiles?.offscreenBounds || 0);
+      host.dataset.v3TileUncertainBounds = String(v3Tiles?.uncertainTiles || 0);
+      host.dataset.v3TileOwnerOverflow = String(v3Tiles?.ownerOverflow || 0);
+      host.dataset.v3TileBoundOverflow = String(v3Tiles?.tileOverflow || 0);
+      host.dataset.v3TileBoundTopOwners = JSON.stringify(v3Tiles?.topOwners || []);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
