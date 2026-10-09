@@ -16,6 +16,7 @@ import {
   waitForStatus,
 } from './test-helpers/ui.mjs';
 import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
+import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
@@ -208,6 +209,12 @@ try {
           `${example.id}: rebuilt wafer array site count differs`,
         );
       }
+      // MAGIC-1000 requires stricter scientific acceptance than matching
+      // material labels/counts. Compare 2.5D physical material occupancy:
+      // exact XY polygons, per material, for every distinct Z slab.
+      const geometryComparison = example.id === 'magic-1000-mos2-beol'
+        ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
+        : null;
       assertNoPageErrors(errors, `${example.id}: uncaught browser errors`);
       await mkdir('test-results/example-recipe-runall', { recursive: true });
       await writeFile(
@@ -219,6 +226,7 @@ try {
             historyChoice,
             outcome: 'Completed',
             committedSteps: count,
+            ...(geometryComparison ? { geometryComparison } : {}),
             sourceLayerNames: sourceProject.model.layers.map((layer) => layer.name),
             exportedLayerNames: exported.model.layers.map((layer) => layer.name),
             implants: exported.model.implants.length,
