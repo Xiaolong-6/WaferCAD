@@ -177,14 +177,18 @@ try {
       })()`);
       assert.deepEqual(nav.actual, nav.expected, `navigation buttons at ${width}px in ${entry}`);
       assert.ok(!nav.rawText.includes('[object HTMLButtonElement]'));
-      record(`M2.5: ${entry.endsWith('/ui-v2/app.html') ? 'production' : 'mock'} navigation at ${width}px`);
+      record(
+        `M2.5: ${entry.endsWith('/ui-v2/app.html') ? 'production' : 'mock'} navigation at ${width}px`,
+      );
     }
   }
   await viewport(1440);
   await call('Page.navigate', { url: mockEntry });
-  await waitFor(async () => evaluate(
-    "document.body?.dataset.ready==='true' && Boolean(window.WaferCadV2Shell?.ready)"),
-  'return to mock shell after M2.5 navigation audit');
+  await waitFor(
+    async () =>
+      evaluate("document.body?.dataset.ready==='true' && Boolean(window.WaferCadV2Shell?.ready)"),
+    'return to mock shell after M2.5 navigation audit',
+  );
   assert.equal((await snapshot()).sourceFrozen, true);
   record('v2 entry / Inter font / frozen real-source mocks');
   // M2.5: shell must be entirely presentation-only and production entry fixture-free.
@@ -209,10 +213,13 @@ try {
   assert.equal(identity, true);
   for (const target of ['project', 'mask', 'process', 'history', 'project']) {
     await click(`[data-action="domain:${target}"]`);
-    assert.equal(await evaluate(`(() => ['main','mask','three','section'].every((id)=>
+    assert.equal(
+      await evaluate(`(() => ['main','mask','three','section'].every((id)=>
       window.__m25Mounts[id]===document.querySelector('[data-slot="view.'+id+'.stage"]')) &&
       ['project','base','mask','process','history'].every((id)=>
-      window.__m25Panels[id]===window.WaferCadV2Shell.getSlot('panel.'+id)))()`), true);
+      window.__m25Panels[id]===window.WaferCadV2Shell.getSlot('panel.'+id)))()`),
+      true,
+    );
   }
   record('all four science hosts and five domain hosts preserve node identity through navigation');
   await click('[data-action="domain:project"]');
@@ -459,14 +466,22 @@ try {
   await click('[data-action="template-preview"]');
   assert.equal(await evaluate("Boolean(document.querySelector('dialog[open]'))"), true);
   await call('Input.dispatchKeyEvent', {
-    type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27,
+    type: 'keyDown',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
   });
   await call('Input.dispatchKeyEvent', {
-    type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27,
+    type: 'keyUp',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
   });
-  await waitFor(async () => evaluate("document.querySelector('dialog[open]')===null"), 'dialog Escape');
-  assert.equal(await evaluate(
-    "document.activeElement?.dataset.action==='template-preview'"), true);
+  await waitFor(
+    async () => evaluate("document.querySelector('dialog[open]')===null"),
+    'dialog Escape',
+  );
+  assert.equal(await evaluate("document.activeElement?.dataset.action==='template-preview'"), true);
   const toast = await evaluate(`(() => {
     const overlay=window.WaferCadV2ActiveOverlays;
     const node=document.createElement('span');
