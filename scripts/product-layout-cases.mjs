@@ -111,12 +111,30 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
     await ensurePrimaryViewVisible(page, 'three');
     const threeDisplay = page.locator('#threePanel .three-opacity-control');
     const threeMore = page.locator('#threePanel .view-more-control');
-    // The Display control is reparented under More for narrow view panels.
-    if (await threeDisplay.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))) {
-      await threeMore.locator(':scope > summary').click();
-    }
+    // When reparented under More, Display is inline content of a bounded
+    // scrollable menu. Test its actual reachability, not the unscrolled
+    // bounding box of an inline child.
+    const inMore = await threeDisplay.evaluate((node) =>
+      Boolean(node.closest('.view-overflow-secondary')),
+    );
+    if (inMore) await threeMore.locator(':scope > summary').click();
     await threeDisplay.locator(':scope > summary').click();
-    await checkPopover(page, '#threePanel .view-display-popover', '#threePanel');
+    if (inMore) {
+      const menu = page.locator('#threePanel .view-menu-popover');
+      await checkPopover(page, '#threePanel .view-menu-popover', '#threePanel');
+      const opacity = page.locator('#threeOpacityRange');
+      await opacity.scrollIntoViewIfNeeded();
+      const controlBox = await opacity.boundingBox();
+      const menuBox = await menu.boundingBox();
+      assert.ok(controlBox && menuBox, '3D opacity is reachable in More');
+      assert.ok(
+        controlBox.y >= menuBox.y - 1 &&
+          controlBox.y + controlBox.height <= menuBox.y + menuBox.height + 1,
+        '3D opacity scrolls into the visible More menu',
+      );
+    } else {
+      await checkPopover(page, '#threePanel .view-display-popover', '#threePanel');
+    }
     await threeDisplay.locator(':scope > summary').click();
     if (await threeMore.evaluate((node) => node.open)) {
       await threeMore.locator(':scope > summary').click();
