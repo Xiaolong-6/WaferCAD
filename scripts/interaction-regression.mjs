@@ -87,14 +87,39 @@ for (const [selector, modes] of [
 }
 
 // Controls moved into Display/More keep their original, accessible state owner.
+// Open nested controls from the outside in, through the same menu summaries
+// that a user actually clicks. Assigning details.open to every ancestor at once
+// races the popover controller's toggle listener and hides the inner control.
 const showControl = async (selector) => {
-  await page.locator(selector).evaluate((node) => {
-    let parent = node.parentElement;
-    while (parent) {
-      if (parent.tagName === 'DETAILS') parent.open = true;
-      parent = parent.parentElement;
+  const steps = await page.locator(selector).evaluate((node) => {
+    const details = [];
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      if (parent.tagName === 'DETAILS') details.unshift(parent);
     }
+    return details.map((detailsNode) => {
+      const panelId = detailsNode.closest('.view-panel')?.id;
+      const selectorPart = detailsNode.id
+        ? `#${detailsNode.id}`
+        : detailsNode.classList.contains('view-more-control')
+          ? '.view-more-control'
+          : detailsNode.classList.contains('three-opacity-control')
+            ? '.three-opacity-control'
+            : detailsNode.classList.contains('view-display-control')
+              ? '.view-display-control'
+              : detailsNode.classList.contains('focus-editor')
+                ? '.focus-editor'
+                : null;
+      if (!panelId || !selectorPart) throw new Error('Unrecognized view details ancestor');
+      return `#${panelId} ${selectorPart}`;
+    });
   });
+  for (const step of steps) {
+    const details = page.locator(step);
+    if (!(await details.evaluate((node) => node.open))) {
+      await details.locator(':scope > summary').click();
+    }
+  }
+  await page.locator(selector).waitFor({ state: 'visible' });
 };
 for (const selector of [
   '#threeBorderControl',
