@@ -42,8 +42,10 @@
       editorContent.append(host);
     }
     // A base editor is a second-level named host under Project, not a fifth primary nav item.
-    const base = slots.get('panel.base'), project = slots.get('panel.project');
-    if (base && project) project.append(base);
+    for (const [child, parent] of Object.entries(registry.nestedPanels || {})) {
+      const nested = slots.get(`panel.${child}`), owner = slots.get(`panel.${parent}`);
+      if (nested && owner) owner.append(nested);
+    }
     const emptyStrip = el('div', { class: 'p-empty-strip', hidden: true },
       el('span', { class: 'p-aux' }, 'No items to inspect'),
       button('Inspect', 'expand-empty', 'process'));
@@ -153,8 +155,8 @@
       }
     }
     function renderPanel(info) {
-      const name = info.selectedPanel || 'project';
-      const mode = info.selectedSubpanel || 'step';
+      const name = info.selectedPanel || registry.primaryNav[0]?.panel;
+      const mode = info.selectedSubpanel || registry.processModes[0];
       const editorHidden = Boolean(info.editorHidden);
       navHost.hidden = editorHidden;
       inspector.hidden = editorHidden || Boolean(info.emptyInspector);
@@ -163,6 +165,8 @@
       for (const panel of registry.panels) {
         const host = slots.get(`panel.${panel}`);
         if (host) host.hidden = panel !== name || editorHidden;
+        if (host && registry.nestedPanels?.[panel] === name)
+          host.hidden = !info.visibleNestedPanels?.includes(panel);
       }
       for (const sub of registry.processModes) {
         const host = slots.get(`panel.process.${sub}`);
@@ -173,7 +177,8 @@
         activeAdapter = null;
         return;
       }
-      const adapterKey = name === 'process' ? `panel.process.${mode}` : `panel.${name}`;
+      const adapterKey = name === registry.subpanelOwner
+        ? `panel.${registry.subpanelOwner}.${mode}` : `panel.${name}`;
       if (adapterKey !== activeAdapter) {
         if (activeAdapter) adapters.hide(activeAdapter);
         adapters.show(adapterKey, slots.get(adapterKey));
