@@ -571,13 +571,13 @@ export function createProductLayoutChecks({ capture }) {
       await session.detach();
     }
     await openFunctionPanel(page, 'process');
-    await page.locator('#faceToggleBtn').click();
+    await page.locator('#faceToggleBtn').selectOption('back');
     await closeFunctionPanel(page);
     await dragHandle(page, 'a', 8, 0);
     const back = await coords(page);
     close(back[0], nmRoundedMicron(moved[0] - 8 / scale));
     await openFunctionPanel(page, 'process');
-    await page.locator('#faceToggleBtn').click();
+    await page.locator('#faceToggleBtn').selectOption('front');
     await closeFunctionPanel(page);
     const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
     assert.ok(
