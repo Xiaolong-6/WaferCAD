@@ -6,7 +6,7 @@
 
 **Never used a mask-based process editor?** Follow [First 10 Minutes](First-10-Minutes). It gives **exact values and the expected result after every Apply**: a 100 × 100 µm Base rectangle (treated as Si in this exercise), a 200 nm layer named SiO2 and a single etched window. You can draw the mask in the browser without importing any files.
 
-**Prefer to explore first?** Open [WaferCAD](https://xiaolong-6.github.io/WaferCAD/), then select one of the six example projects by clicking its **title or description** on the Welcome page. The preview shows a curated state; opening the project exposes History, Variants, Mask and process data. Avoid rerunning a Recipe until you have exported a personal backup.
+**Prefer to explore first?** Open [WaferCAD](https://xiaolong-6.github.io/WaferCAD/), then select one of the six example projects by clicking its **title or description** on the Welcome page. The preview shows a curated state; opening the project exposes History, Variants, Mask and process data. **The preview can appear before the full project finishes opening**: wait for the project to load and for 3D to finish rendering before editing. Avoid rerunning a Recipe until you have exported a personal backup.
 
 ![Photodetector example — genuine WaferCAD 3D preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
 
