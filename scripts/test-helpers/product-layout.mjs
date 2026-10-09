@@ -344,20 +344,50 @@ export function createProductLayoutChecks({ capture }) {
     await entry.click();
     await editor.waitFor({ state: 'visible', timeout: 1000 });
     assert.equal(await editor.isVisible(), true, `${name}: collapse editor did not open`);
-    await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
-    const collapseLayout = await editor.evaluate((element) => ({
-      width: element.offsetWidth,
-      height: element.offsetHeight,
-      scrollHeight: element.scrollHeight,
-      clientHeight: element.clientHeight,
-      panelHeight: document.querySelector('#sectionBody').clientHeight,
-      overlayWidth: document.querySelector('#sectionCollapseOverlay').clientWidth,
-    }));
-    assert.ok(collapseLayout.width > 170, `${name}: compact editor needs sufficient width`);
+    const collapseLayout = await editor.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const area = document.querySelector('#sectionBody').getBoundingClientRect();
+      return {
+        modal: element.matches(':modal'),
+        width: rect.width,
+        height: rect.height,
+        scrollHeight: element.scrollHeight,
+        clientHeight: element.clientHeight,
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        panelHeight: area.height,
+        areaWidth: area.width,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+      };
+    });
+    assert.ok(collapseLayout.width > 170, `${name}: editor needs sufficient width`);
     assert.ok(
-      collapseLayout.height <= collapseLayout.panelHeight + 2,
-      `${name}: editor must fit inside Section viewport`,
+      collapseLayout.scrollWidth <= collapseLayout.clientWidth + 2,
+      `${name}: editor must not have horizontal internal scrolling`,
     );
+    if (collapseLayout.modal) {
+      // Compact Section editors are intentionally promoted to a top-layer
+      // dialog. They must fit the *viewport*, not the shallow Section dock.
+      const { rect } = collapseLayout;
+      assert.ok(
+        rect.left >= -2 &&
+          rect.top >= -2 &&
+          rect.right <= collapseLayout.viewportWidth + 2 &&
+          rect.bottom <= collapseLayout.viewportHeight + 2,
+        `${name}: modal Z Break must remain inside the viewport`,
+      );
+    } else {
+      await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');
+      assert.ok(
+        collapseLayout.height <= collapseLayout.panelHeight + 2,
+        `${name}: inline editor must fit inside Section viewport`,
+      );
+    }
+    if (collapseLayout.areaWidth < 420 || collapseLayout.panelHeight < 380) {
+      assert.equal(collapseLayout.modal, true, `${name}: short dock must use modal editor`);
+    }
     await capture(page, `${name}-section-z-collapse-edit`);
     await page.waitForFunction(() => {
       const canvas = document.getElementById('sectionCanvas'),
