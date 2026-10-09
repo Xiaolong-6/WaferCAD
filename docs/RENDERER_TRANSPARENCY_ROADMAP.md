@@ -108,3 +108,16 @@ For the historical **Persistent Scene v2.1 integration PR #135** and its current
 - opacity/border state transitions, interaction/rotation and all existing Kernel, Recipe, History and Native Fig3 regression checks.
 
 **Deferring speed is not deferring correctness.** A slow but correct first transparent frame can pass this phase; missing geometry, leaks, incorrect visibility, unresponsive/hung rendering or other regression failures cannot.
+
+## Experimental v2 follow-up — 2026-10-09
+
+A branch-only, **unverified** first pass is recorded in
+[Transparency Renderer v2 handoff](TRANSPARENCY_RENDERER_V2_HANDOFF_2026-10-09.md).
+It constrains Three.js transparent `DoubleSide` single-pass rendering to
+smooth planar **material** caps and instruments theoretical skipped
+triangle submissions. It does **not** modify the exact scene topology,
+history, storage, or exports; rough, sidewall and annotation volumes retain
+their original pass behavior. No candidate runtime timings or screenshot
+acceptance have been obtained yet. Do not promote the 15 s budget or merge
+on the basis of estimated draw reductions. Phase A measurements and
+near/edge-on scientific visual checks remain outstanding.
