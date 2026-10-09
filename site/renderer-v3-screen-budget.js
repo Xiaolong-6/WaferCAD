@@ -8,6 +8,7 @@ export function buriedInterfaceSubpixelBudget(
     clipped = false,
     zCollapsed = false,
     unitsPerPixel = 0,
+    displayZScale = 1,
     viewZFraction = 0,
     maxPixelSpan = 0.5,
   } = {},
@@ -15,6 +16,7 @@ export function buriedInterfaceSubpixelBudget(
   const empty = {
     mode: 'observe-only',
     qualified: false,
+    exclusionReason: null,
     candidates: 0,
     instanceWallSegments: 0,
     rawTwoPassTriangleEstimate: 0,
@@ -22,22 +24,28 @@ export function buriedInterfaceSubpixelBudget(
     largestSpanPixels: null,
     skippedTriangles: 0,
   };
-  if (
-    !farTier ||
-    clipped ||
-    zCollapsed ||
-    !Number.isFinite(unitsPerPixel) ||
-    unitsPerPixel <= 0 ||
-    !Number.isFinite(viewZFraction) ||
-    viewZFraction < 0.35 ||
-    viewZFraction > 1 ||
-    !Number.isFinite(maxPixelSpan) ||
-    maxPixelSpan <= 0 ||
-    maxPixelSpan > 0.5 ||
-    !Array.isArray(sidewalls)
-  ) {
-    return empty;
-  }
+  const exclusionReason = !farTier
+    ? 'not-far'
+    : clipped
+      ? 'roi'
+      : zCollapsed
+        ? 'z-collapse'
+        : !Array.isArray(sidewalls)
+          ? 'no-walls'
+          : !Number.isFinite(unitsPerPixel) || unitsPerPixel <= 0
+            ? 'invalid-camera-scale'
+            : !Number.isFinite(displayZScale) || displayZScale <= 0
+              ? 'invalid-display-scale'
+              : !Number.isFinite(viewZFraction) ||
+                  viewZFraction < 0.35 ||
+                  viewZFraction > 1
+                ? 'edge-on-or-invalid-angle'
+                : !Number.isFinite(maxPixelSpan) ||
+                    maxPixelSpan <= 0 ||
+                    maxPixelSpan > 0.5
+                  ? 'invalid-pixel-threshold'
+                  : null;
+  if (exclusionReason) return { ...empty, exclusionReason };
   let candidates = 0;
   let instanceWallSegments = 0;
   let smallestSpanPixels = Infinity;
@@ -60,10 +68,11 @@ export function buriedInterfaceSubpixelBudget(
       ) {
         continue;
       }
-      // Vertical extent / world units per pixel overestimates the
-      // screen-space vertical extent for oblique views. Never classify a
-      // larger-than-half-pixel height as subpixel merely due to a top view.
-      const spanPixels = Math.abs(part.z1 - part.z0) / unitsPerPixel;
+      // The 3D renderer magnifies physical Z through group.scale.z. Ignoring
+      // it would misclassify visually large walls as subpixel. This remains
+      // an observation at the camera target (perspective/nearer instances
+      // need individual projected-error proof before any future culling).
+      const spanPixels = (Math.abs(part.z1 - part.z0) * displayZScale) / unitsPerPixel;
       if (!(spanPixels <= maxPixelSpan)) continue;
       candidates++;
       instanceWallSegments += instances;
@@ -74,6 +83,7 @@ export function buriedInterfaceSubpixelBudget(
   return {
     mode: 'observe-only',
     qualified: true,
+    exclusionReason: null,
     candidates,
     instanceWallSegments,
     // 2 triangles per quad * 2 DoubleSide passes * instance count.
