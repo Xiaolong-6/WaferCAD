@@ -32,13 +32,13 @@ added without weakening earlier scientific regression gates.
 
 ### Reference comparison (Linux Chromium software WebGL)
 
-| Indicator | Previous integrated baseline | Single-pass cap candidate | Indexing experiment (rejected) |
-| --- | ---: | ---: | ---: |
-| Quality cold first **completed** frame | 35.50 s | **31.13 s** | 33.42 s |
-| Quality warm transparent swap | 34.67 s | **30.21 s** | 32.50 s |
-| Fast far transparent first frame | 12.24 s | **11.91 s** | 12.05 s |
-| Quality submitted triangles | ~59.96 M | **57.04 M** | 57.04 M |
-| Fast far submitted triangles | 18.35 M | **16.91 M** | 16.91 M |
+| Indicator                              | Previous integrated baseline | Single-pass cap candidate | Indexing experiment (rejected) |
+| -------------------------------------- | ---------------------------: | ------------------------: | -----------------------------: |
+| Quality cold first **completed** frame |                      35.50 s |               **31.13 s** |                        33.42 s |
+| Quality warm transparent swap          |                      34.67 s |               **30.21 s** |                        32.50 s |
+| Fast far transparent first frame       |                      12.24 s |               **11.91 s** |                        12.05 s |
+| Quality submitted triangles            |                     ~59.96 M |               **57.04 M** |                        57.04 M |
+| Fast far submitted triangles           |                      18.35 M |               **16.91 M** |                        16.91 M |
 
 Numbers come from **different** CI executions, not a strict paired
 on-machine A/B benchmark. They are useful evidence of relative behavior, not
@@ -79,6 +79,7 @@ results remain documented as a negative benchmark. Do not reintroduce
 indexing solely because unit tests pass or the vertex reuse counter is large.
 
 Evidence:
+
 - [Full 625-site browser run 37909092971](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37909092971)
 - [Native Fig3 replay 37909092859](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37909092859)
 - [Recipe reconstruction 37909093029](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37909093029)

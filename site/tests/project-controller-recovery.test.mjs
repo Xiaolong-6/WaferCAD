@@ -106,7 +106,10 @@ test('in-workspace Project Open fails closed if checkpoint returns false', async
   const opened = await controller.openProjectFile({ name: 'incoming.wafercad' });
 
   assert.equal(opened, false);
-  assert.deepEqual(operations.map((event) => event[0]), ['checkpoint', 'status']);
+  assert.deepEqual(
+    operations.map((event) => event[0]),
+    ['checkpoint', 'status'],
+  );
   assert.equal(operations[0][1], 'pre-open-project');
   assert.match(operations[1][1], /Recovery checkpoint was not created/);
 });
@@ -116,7 +119,10 @@ test('in-workspace Project Open fails closed if checkpoint throws', async () => 
     throw new Error('IndexedDB write failed');
   });
   assert.equal(await controller.openProjectFile({ name: 'incoming.wafercad' }), false);
-  assert.deepEqual(operations.map((event) => event[0]), ['checkpoint', 'status']);
+  assert.deepEqual(
+    operations.map((event) => event[0]),
+    ['checkpoint', 'status'],
+  );
   assert.match(operations[1][1], /IndexedDB write failed/);
 });
 
@@ -129,13 +135,13 @@ test('Project Open proceeds only after checkpoint success', async () => {
 test('already-protected Welcome Project Open avoids a second, not-ready checkpoint', async () => {
   const { controller, operations } = openSafetyHarness(() => false);
   assert.equal(
-    await controller.openProjectFile(
-      { name: 'incoming.wafercad' },
-      { startupProtected: true },
-    ),
+    await controller.openProjectFile({ name: 'incoming.wafercad' }, { startupProtected: true }),
     false,
   );
-  assert.deepEqual(operations.map((event) => event[0]), ['load', 'status']);
+  assert.deepEqual(
+    operations.map((event) => event[0]),
+    ['load', 'status'],
+  );
 });
 
 test('Layout Open passes explicit startup context into the checked importer', async () => {
@@ -155,10 +161,10 @@ test('Layout Open passes explicit startup context into the checked importer', as
   };
   assert.equal(await controller.openLayoutFile(file), true);
   assert.equal(await controller.openLayoutFile(file, { startupProtected: true }), true);
-  assert.deepEqual(calls.map((args) => args[3]), [
-    { startupProtected: false },
-    { startupProtected: true },
-  ]);
+  assert.deepEqual(
+    calls.map((args) => args[3]),
+    [{ startupProtected: false }, { startupProtected: true }],
+  );
 });
 
 test('Recovery checkpoint refuses live replacement after lease loss during async work', async () => {

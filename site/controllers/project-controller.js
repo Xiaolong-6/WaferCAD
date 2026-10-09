@@ -55,7 +55,9 @@ export function createProjectController({
     // A false result means the Recovery writer was unavailable or failed.
     // Never discard History data on that path.
     if ((await checkpointBeforeReplace(reason)) !== true) {
-      throw new Error('Recovery checkpoint was not created. The current workspace was left unchanged.');
+      throw new Error(
+        'Recovery checkpoint was not created. The current workspace was left unchanged.',
+      );
     }
   }
 
@@ -962,10 +964,7 @@ export function createProjectController({
     }
   }
 
-  async function openProjectFile(
-    file,
-    { prepareProject = null, startupProtected = false } = {},
-  ) {
+  async function openProjectFile(file, { prepareProject = null, startupProtected = false } = {}) {
     try {
       const project = await readProjectFileTask(file);
       if (!project) return false;
@@ -996,10 +995,7 @@ export function createProjectController({
     }
   }
 
-  async function openBundledExample(
-    exampleId,
-    { preview = false, startupProtected = false } = {},
-  ) {
+  async function openBundledExample(exampleId, { preview = false, startupProtected = false } = {}) {
     const example = bundledExampleById(exampleId);
     if (!example || example.kind !== 'project' || !example.path) {
       status('Bundled example was not found.', 'error');
