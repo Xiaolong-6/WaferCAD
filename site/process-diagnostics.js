@@ -25,29 +25,49 @@ function sampleBox(geom, dx = 0, dy = 0) {
   };
 }
 
-function addFinding(state, finding, copies = 1) {
-  if (finding.severity === 'error') state.errorOccurrences += copies;
-  if (finding.severity === 'warning') state.warningOccurrences += copies;
-  const key = JSON.stringify([
+function findingKey(finding) {
+  return JSON.stringify([
     finding.code,
     finding.layerId || '',
     finding.relatedLayerId || '',
     finding.z0,
     finding.z1,
   ]);
+}
+
+function findingPriority(finding) {
+  return { error: 3, warning: 2, info: 1 }[finding.severity] || 0;
+}
+
+function addFinding(state, finding, copies = 1) {
+  if (finding.severity === 'error') state.errorOccurrences += copies;
+  if (finding.severity === 'warning') state.warningOccurrences += copies;
+  const key = findingKey(finding);
   const existing = state.findingKeys.get(key);
   if (existing) {
     existing.occurrences += copies;
     return;
   }
   state.findingsTotal += 1;
-  if (state.findings.length >= MAX_FINDINGS) {
-    state.omittedFindings += 1;
-    return;
-  }
   const next = { ...finding, occurrences: copies };
+  if (state.findings.length >= MAX_FINDINGS) {
+    // A bounded report must never bury a high-severity geometric defect
+    // behind earlier benign void/gap observations. Keep the most severe
+    // findings and disclose all excluded groups.
+    let lowestIndex = 0;
+    for (let index = 1; index < state.findings.length; index += 1) {
+      if (findingPriority(state.findings[index]) < findingPriority(state.findings[lowestIndex])) {
+        lowestIndex = index;
+      }
+    }
+    state.omittedFindings += 1;
+    if (findingPriority(next) <= findingPriority(state.findings[lowestIndex])) return;
+    state.findingKeys.delete(findingKey(state.findings[lowestIndex]));
+    state.findings[lowestIndex] = next;
+  } else {
+    state.findings.push(next);
+  }
   state.findingKeys.set(key, next);
-  state.findings.push(next);
 }
 
 function addLayerMeasurement(state, id, thickness, volume, count) {
