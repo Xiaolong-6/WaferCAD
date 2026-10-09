@@ -146,7 +146,7 @@
             'aria-pressed': String(info.selectedNavigation === key),
           }),
         ),
-        button('Hide', 'hide-editor', 'close', {
+        button('', 'hide-editor', 'close', {
           'aria-label': 'Hide navigation and workflow editor',
         }),
       );

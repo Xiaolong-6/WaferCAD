@@ -91,7 +91,7 @@
         el(
           'div',
           { class: 'p-form' },
-          field('Project name (prototype draft)', 'projectName', state.projectName || data.name),
+          field('Project name', 'projectName', state.projectName || data.name),
           select(
             'XYZ display unit',
             'displayUnit',
@@ -339,12 +339,18 @@
             state.processSurface || sample?.surface?.kind || sample?.surface || 'smooth',
           ),
         ];
-      if (operation === 'liftoff') return [
-        select('Sacrificial layer (Lift-off)', 'liftoffSacrificial',
-          currentModel().layers.map((layer) => [layer.name, layer.name]),
-          state.liftoffSacrificial || currentModel().layers.at(-1)?.name || ''),
-        notice('Ideal sacrificial lift-off · UI draft only; no geometry or transaction executed.'),
-      ];
+      if (operation === 'liftoff')
+        return [
+          select(
+            'Sacrificial layer (Lift-off)',
+            'liftoffSacrificial',
+            currentModel().layers.map((layer) => [layer.name, layer.name]),
+            state.liftoffSacrificial || currentModel().layers.at(-1)?.name || '',
+          ),
+          notice(
+            'Ideal sacrificial lift-off · UI draft only; no geometry or transaction executed.',
+          ),
+        ];
       if (operation === 'implant')
         return [
           field(
@@ -439,11 +445,18 @@
     function processModes(active) {
       const registry = window.WaferCadV2ShellRegistry.defaults;
       const labels = { step: 'Manual', recipe: 'Recipe', code: 'Code', diagnostics: 'Diagnostics' };
-      return el('div', { class: 'p-actions', 'aria-label': 'Process modes' },
-        registry.processModes.map((key) => button(labels[key] || key,
-          `domain:${key === 'step' ? 'process' : key}`,
-          key === 'step' ? 'process' : key === 'diagnostics' ? 'settings' : key,
-          { 'aria-pressed': String(active === key) })));
+      return el(
+        'div',
+        { class: 'p-actions', 'aria-label': 'Process modes' },
+        registry.processModes.map((key) =>
+          button(
+            labels[key] || key,
+            `domain:${key === 'step' ? 'process' : key}`,
+            key === 'step' ? 'process' : key === 'diagnostics' ? 'settings' : key,
+            { 'aria-pressed': String(active === key) },
+          ),
+        ),
+      );
     }
     function processPanel() {
       return [
@@ -501,14 +514,12 @@
             ],
             state.area || 'mask',
           ),
-          el(
-            'span',
-            { id: 'p-units', class: 'p-aux' },
-            `Display unit: ${unitName} · canonical geometry remains stored in µm; typed precision retained in draft. Geometry is never executed.`,
-          ),
+          el('span', { id: 'p-units', class: 'p-aux' }, `Input unit: ${unitName}`),
           button('Apply · simulate', 'apply', 'play', {
             primary: true,
-            disabled: Boolean(state.task) || (state.operation !== 'liftoff' && state.thickness != null && state.thickness <= 0),
+            disabled:
+              Boolean(state.task) ||
+              (state.operation !== 'liftoff' && state.thickness != null && state.thickness <= 0),
           }),
           state.operation !== 'liftoff' && state.thickness != null && state.thickness <= 0
             ? notice('Enter a positive thickness / depth before Apply.', 'error')
@@ -529,7 +540,7 @@
           el(
             'p',
             { class: 'p-aux' },
-            `${currentModel().regionCount} source regions · ${currentModel().layers.length} layers. No source mutation on failure, cancellation or success.`,
+            `${currentModel().regionCount} regions · ${currentModel().layers.length} layers`,
           ),
           button('View results', 'return-results', 'eye'),
         ),
@@ -887,13 +898,21 @@
     function diagnosticsPanel() {
       return [
         processModes('diagnostics'),
-        notice('Geometry Diagnostics has a named Process slot. Real Analyze, Materials, metrics and Findings enter during M3.'),
+        notice(
+          'Geometry Diagnostics has a named Process slot. Real Analyze, Materials, metrics and Findings enter during M3.',
+        ),
       ];
     }
     function inspector() {
-      const domain = ['project', 'mask', 'process', 'recipe', 'code', 'diagnostics', 'history'].includes(
-        state.domain,
-      )
+      const domain = [
+        'project',
+        'mask',
+        'process',
+        'recipe',
+        'code',
+        'diagnostics',
+        'history',
+      ].includes(state.domain)
         ? state.domain
         : 'process';
       const content = {
@@ -912,7 +931,7 @@
           domain[0].toUpperCase() + domain.slice(1),
           state.placement === 'process' && ['recipe', 'code', 'diagnostics'].includes(domain)
             ? `Process / ${domain[0].toUpperCase() + domain.slice(1)} mode`
-            : 'Docked workflow · never an automatic overlay',
+            : '',
           [],
         ),
         el('div', { class: 'p-panel-content' }, content),

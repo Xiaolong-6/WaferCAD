@@ -173,10 +173,16 @@ try {
             host?.querySelector('button[data-action="domain:' + key + '"]')?.getClientRects().length),
           expected: keys,
           rawText: host?.textContent || '',
+          rows: [...host.querySelectorAll('button')].map((node) =>
+            node.getBoundingClientRect().top),
         };
       })()`);
       assert.deepEqual(nav.actual, nav.expected, `navigation buttons at ${width}px in ${entry}`);
       assert.ok(!nav.rawText.includes('[object HTMLButtonElement]'));
+      assert.ok(
+        Math.max(...nav.rows) - Math.min(...nav.rows) <= 1,
+        `primary navigation stays on one row at ${width}px in ${entry}`,
+      );
       record(
         `M2.5: ${entry.endsWith('/ui-v2/app.html') ? 'production' : 'mock'} navigation at ${width}px`,
       );
@@ -213,6 +219,14 @@ try {
   assert.equal(identity, true);
   for (const target of ['project', 'mask', 'process', 'history', 'project']) {
     await click(`[data-action="domain:${target}"]`);
+    if (target === 'project' || target === 'process') {
+      assert.ok(
+        await evaluate(
+          "parseFloat(getComputedStyle(document.querySelector('.p-panel-content')).paddingLeft)>=12",
+        ),
+        'hidden History must not remove active editor padding',
+      );
+    }
     assert.equal(
       await evaluate(`(() => ['main','mask','three','section'].every((id)=>
       window.__m25Mounts[id]===document.querySelector('[data-slot="view.'+id+'.stage"]')) &&
@@ -228,6 +242,14 @@ try {
   );
   assert.equal(await evaluate("!document.querySelector('.p-topbar [data-key=displayUnit]')"), true);
   await click('[data-action="domain:process"]');
+  assert.ok(
+    await evaluate(`(() => {
+    const tops=[...document.querySelectorAll('[aria-label="Process modes"] button')]
+      .filter(node=>node.getClientRects().length).map(node=>node.getBoundingClientRect().top);
+    return tops.length===4 && Math.max(...tops)-Math.min(...tops)<=1;
+  })()`),
+    'Process modes stay on one row',
+  );
   assert.equal(await evaluate("document.querySelector('[data-key=thickness]').value"), '70');
   assert.equal(
     await evaluate(
