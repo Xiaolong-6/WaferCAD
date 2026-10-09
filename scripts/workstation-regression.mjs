@@ -410,10 +410,11 @@ for (const id of ['applyOperationBtn', 'undoBtn', 'redoBtn', 'faceToggleBtn']) {
   assert.equal(await page.locator(`#operationTools #${id}`).count(), 1);
 }
 const face = page.locator('#faceToggleBtn');
-assert.equal((await face.textContent()).trim(), 'Front');
-await face.click();
-assert.equal((await face.textContent()).trim(), 'Back');
-await face.click();
+assert.equal(await face.inputValue(), 'front');
+await face.selectOption('back');
+assert.equal(await face.inputValue(), 'back');
+await face.selectOption('front');
+assert.equal(await face.inputValue(), 'front');
 
 assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);
 assert.deepEqual(errors, []);
