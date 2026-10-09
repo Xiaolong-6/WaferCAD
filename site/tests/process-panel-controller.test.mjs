@@ -576,9 +576,14 @@ test('Lift-off Step passes selected sacrificial layer into replay and History', 
   const controller = controllerForTask(
     (model, _current, candidate) => {
       params = candidate;
-      return { result: { changed: true }, model: {
-        ...model, revision: model.revision + 1, processRevision: model.processRevision + 1,
-      } };
+      return {
+        result: { changed: true },
+        model: {
+          ...model,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      };
     },
     events,
     { mode: 'liftoff', recorded },
@@ -586,8 +591,12 @@ test('Lift-off Step passes selected sacrificial layer into replay and History', 
   const modelApi = await import('../model.js');
   const model = controller.__getModel();
   const resist = modelApi.applyOperation(model, {
-    type: 'add', name: 'PMMA', thickness: 0.2, growth: 'direct',
-    face: 'front', area: model.boundary,
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    growth: 'direct',
+    face: 'front',
+    area: model.boundary,
   });
   controller.updateUi();
   controller.__root.getElementById('liftoffTargetLayer').value = resist.layerId;
@@ -620,8 +629,11 @@ test('Lift-off selector lists sacrificial materials stored in array templates', 
     },
   };
   const resist = modelApi.applyOperation(model, {
-    type: 'add', name: 'PMMA', thickness: 0.2,
-    area: rectMulti(10, 10, -5, 0), face: 'front',
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    area: rectMulti(10, 10, -5, 0),
+    face: 'front',
   });
   const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
     mode: 'liftoff',

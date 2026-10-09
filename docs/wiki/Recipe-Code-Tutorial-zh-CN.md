@@ -88,16 +88,16 @@ liftoff({ sacrificial: 'PMMA', face: 'front', area: 'full' });
 
 这一步去除 PMMA 及其直接支撑的上方薄膜，保留开口底部沉积物。它是理想化 2.5D 几何操作，不预测溶剂、黏附和薄膜断裂。
 
-| 命令           | 用途               | 主要参数                                  |
-| -------------- | ------------------ | ----------------------------------------- |
-| `deposit()`    | 新材料沉积         | material、thickness、coverage             |
-| `extend()`     | 增厚现有材料       | material、thickness、coverage             |
-| `etch()`       | 刻蚀、释放或平坦化 | target、depth / targetZ、profile          |
-| `liftoff()`   | 牺牲层及其支撑膜层剥离 | sacrificial、face、area |
-| `implant()`    | 深度渐变注入标记   | name、depth、tilt                         |
-| `electrical()` | 电学区域标记       | name、depth、regionType、source           |
-| `record()`     | 非几何工艺记录     | process、label、temperatureC、durationMin |
-| `snapshot()`   | 命名快照           | 快照名称                                  |
+| 命令           | 用途                   | 主要参数                                  |
+| -------------- | ---------------------- | ----------------------------------------- |
+| `deposit()`    | 新材料沉积             | material、thickness、coverage             |
+| `extend()`     | 增厚现有材料           | material、thickness、coverage             |
+| `etch()`       | 刻蚀、释放或平坦化     | target、depth / targetZ、profile          |
+| `liftoff()`    | 牺牲层及其支撑膜层剥离 | sacrificial、face、area                   |
+| `implant()`    | 深度渐变注入标记       | name、depth、tilt                         |
+| `electrical()` | 电学区域标记           | name、depth、regionType、source           |
+| `record()`     | 非几何工艺记录         | process、label、temperatureC、durationMin |
+| `snapshot()`   | 命名快照               | 快照名称                                  |
 
 ### 1. Deposit 和 Extend
 

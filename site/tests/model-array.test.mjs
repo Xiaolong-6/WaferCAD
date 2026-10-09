@@ -76,6 +76,13 @@ const { applyArrayOperation } = await import('../model-array-process.js');
 const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 const vector = await import('../vector-geometry.js');
 const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
+
+function applyLiftOffViaWorker(model, params) {
+  return applyArrayOperation(model, params, (candidate, localParams) =>
+    applyAdvancedProcessOperation(candidate, localParams, localParams.area, modelApi, vector) ??
+    applyOperation(candidate, localParams),
+  );
+}
 function physicalAt(m, point) {
   return m.regions
     .filter((r) => pointInMulti(point, r.geom))
@@ -396,23 +403,33 @@ test('a changed neighboring site rebuilds its own seam context while unchanged r
 test('array Lift-off safely skips PMMA-free instances and preserves the untouched metal', () => {
   const source = twoSites();
   const resist = applyOperation(source, {
-    type: 'add', name: 'PMMA', thickness: 0.2,
-    area: rectMulti(10, 10, -5, 0), face: 'front',
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    area: rectMulti(10, 10, -5, 0),
+    face: 'front',
   });
   assert.equal(resist.changed, true);
   const cr = applyOperation(source, {
-    type: 'add', name: 'Cr', thickness: 0.03, area: source.boundary, face: 'front',
+    type: 'add',
+    name: 'Cr',
+    thickness: 0.03,
+    area: source.boundary,
+    face: 'front',
   });
-  const result = applyOperation(source, {
-    type: 'liftoff', sacrificialLayerId: resist.layerId,
-    face: 'front', area: source.boundary,
+  const result = applyLiftOffViaWorker(source, {
+    type: 'liftoff',
+    sacrificialLayerId: resist.layerId,
+    face: 'front',
+    area: source.boundary,
   });
   assert.equal(result.changed, true, result.error);
   validateProcessModel(source);
   const final = resolveArrayModel(source);
   assert.deepEqual(physicalAt(final, [-5, 0]), [['base', -1, 1, null]]);
   assert.deepEqual(physicalAt(final, [5, 0]), [
-    ['base', -1, 1, null], [cr.layerId, 1, 1.03, null],
+    ['base', -1, 1, null],
+    [cr.layerId, 1, 1.03, null],
   ]);
   assert.equal(source.array.instances.length, 2);
   assert.equal(source.kernel, ARRAY_MODEL_KERNEL);
@@ -422,10 +439,13 @@ test('array Lift-off rejects invalid sacrificial IDs without changing any templa
   const source = twoSites();
   const saved = cloneModel(source);
   assert.throws(
-    () => applyOperation(source, {
-      type: 'liftoff', sacrificialLayerId: 'missing',
-      face: 'front', area: source.boundary,
-    }),
+    () =>
+      applyLiftOffViaWorker(source, {
+        type: 'liftoff',
+        sacrificialLayerId: 'missing',
+        face: 'front',
+        area: source.boundary,
+      }),
     /sacrificial layer/,
   );
   assert.deepEqual(source, saved);

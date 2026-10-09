@@ -317,24 +317,50 @@ test('repeated conformal coating survives persistence-grid coordinate quantizati
 test('Lift-off removes resist and the supported Cr film but preserves Cr in openings', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const resist = modelApi.applyOperation(model, {
-    type: 'add', name: 'PMMA', thickness: 0.2, face: 'front',
-    growth: 'direct', area: model.boundary,
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    face: 'front',
+    growth: 'direct',
+    area: model.boundary,
   });
   const opening = vectorApi.rectMulti(4, 20);
   modelApi.applyOperation(model, {
-    type: 'etch', thickness: 0.2, face: 'front',
-    etchProfile: 'directional', etchTargetLayerIds: [resist.layerId], area: opening,
+    type: 'etch',
+    thickness: 0.2,
+    face: 'front',
+    etchProfile: 'directional',
+    etchTargetLayerIds: [resist.layerId],
+    area: opening,
   });
   const metal = modelApi.applyOperation(model, {
-    type: 'add', name: 'Cr', thickness: 0.03, face: 'front',
-    growth: 'direct', area: model.boundary,
+    type: 'add',
+    name: 'Cr',
+    thickness: 0.03,
+    face: 'front',
+    growth: 'direct',
+    area: model.boundary,
   });
-  const result = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'front' });
+  const result = runAdvanced(model, {
+    type: 'liftoff',
+    sacrificialLayerId: resist.layerId,
+    face: 'front',
+  });
   assert.equal(result.changed, true, result.error);
-  assert.deepEqual(regionAt(model, [0, 0]).stack.map((s) => s.layerId), ['base', metal.layerId]);
-  assert.deepEqual(regionAt(model, [7, 0]).stack.map((s) => s.layerId), ['base']);
+  assert.deepEqual(
+    regionAt(model, [0, 0]).stack.map((s) => s.layerId),
+    ['base', metal.layerId],
+  );
+  assert.deepEqual(
+    regionAt(model, [7, 0]).stack.map((s) => s.layerId),
+    ['base'],
+  );
   assert.equal(validateProcessModel(model), model);
-  const repeat = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'front' });
+  const repeat = runAdvanced(model, {
+    type: 'liftoff',
+    sacrificialLayerId: resist.layerId,
+    face: 'front',
+  });
   assert.equal(repeat.changed, false);
   assert.equal(validateProcessModel(model), model);
 });
@@ -342,12 +368,20 @@ test('Lift-off removes resist and the supported Cr film but preserves Cr in open
 test('Lift-off fails closed for ambiguous bridging films and unknown sacrificial material', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const resist = modelApi.applyOperation(model, {
-    type: 'add', name: 'PMMA', thickness: 0.2, face: 'front',
-    area: vectorApi.rectMulti(8, 20), growth: 'direct',
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    face: 'front',
+    area: vectorApi.rectMulti(8, 20),
+    growth: 'direct',
   });
   const film = modelApi.applyOperation(model, {
-    type: 'add', name: 'Cr', thickness: 0.03, face: 'front',
-    area: model.boundary, growth: 'direct',
+    type: 'add',
+    name: 'Cr',
+    thickness: 0.03,
+    face: 'front',
+    area: model.boundary,
+    growth: 'direct',
   });
   assert.equal(film.changed, true);
   const unknown = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: 'bad', face: 'front' });
@@ -364,7 +398,11 @@ test('Lift-off fails closed for ambiguous bridging films and unknown sacrificial
   other.z0 = over.z0;
   other.z1 = over.z1;
   const ambiguousBefore = JSON.stringify(model);
-  const result = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'front' });
+  const result = runAdvanced(model, {
+    type: 'liftoff',
+    sacrificialLayerId: resist.layerId,
+    face: 'front',
+  });
   assert.equal(result.changed, false);
   assert.match(result.error, /bridging/);
   assert.equal(JSON.stringify(model), ambiguousBefore);
@@ -374,44 +412,75 @@ test('Lift-off fails closed for ambiguous bridging films and unknown sacrificial
 test('Lift-off supports back-face release with isolated opening film', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const resist = modelApi.applyOperation(model, {
-    type: 'add', name: 'Back PMMA', thickness: 0.2, face: 'back',
-    area: model.boundary, growth: 'direct',
+    type: 'add',
+    name: 'Back PMMA',
+    thickness: 0.2,
+    face: 'back',
+    area: model.boundary,
+    growth: 'direct',
   });
   modelApi.applyOperation(model, {
-    type: 'etch', thickness: 0.2, face: 'back',
+    type: 'etch',
+    thickness: 0.2,
+    face: 'back',
     area: vectorApi.rectMulti(4, 20),
-    etchProfile: 'directional', etchTargetLayerIds: [resist.layerId],
+    etchProfile: 'directional',
+    etchTargetLayerIds: [resist.layerId],
   });
   const metal = modelApi.applyOperation(model, {
-    type: 'add', name: 'Back Cr', thickness: 0.03, face: 'back',
-    area: model.boundary, growth: 'direct',
+    type: 'add',
+    name: 'Back Cr',
+    thickness: 0.03,
+    face: 'back',
+    area: model.boundary,
+    growth: 'direct',
   });
   const result = runAdvanced(model, {
-    type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'back',
+    type: 'liftoff',
+    sacrificialLayerId: resist.layerId,
+    face: 'back',
   });
   assert.equal(result.changed, true, result.error);
-  assert.deepEqual(regionAt(model, [0, 0]).stack.map((s) => s.layerId), [metal.layerId, 'base']);
-  assert.deepEqual(regionAt(model, [7, 0]).stack.map((s) => s.layerId), ['base']);
+  assert.deepEqual(
+    regionAt(model, [0, 0]).stack.map((s) => s.layerId),
+    [metal.layerId, 'base'],
+  );
+  assert.deepEqual(
+    regionAt(model, [7, 0]).stack.map((s) => s.layerId),
+    ['base'],
+  );
   assert.equal(validateProcessModel(model), model);
 });
 
 test('Lift-off preserves a ring-shaped Cr mask with a clean central hole', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const resist = modelApi.applyOperation(model, {
-    type: 'add', name: 'PMMA', thickness: 0.2,
-    area: model.boundary, growth: 'direct', face: 'front',
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    area: model.boundary,
+    growth: 'direct',
+    face: 'front',
   });
   const ring = vectorApi.difference(
     vectorApi.circleMulti(8, 8, 96),
     vectorApi.circleMulti(4, 4, 96),
   );
   modelApi.applyOperation(model, {
-    type: 'etch', etchProfile: 'directional', thickness: 0.2,
-    etchTargetLayerIds: [resist.layerId], area: ring, face: 'front',
+    type: 'etch',
+    etchProfile: 'directional',
+    thickness: 0.2,
+    etchTargetLayerIds: [resist.layerId],
+    area: ring,
+    face: 'front',
   });
   const cr = modelApi.applyOperation(model, {
-    type: 'add', name: 'Cr', thickness: 0.03,
-    area: model.boundary, growth: 'direct', face: 'front',
+    type: 'add',
+    name: 'Cr',
+    thickness: 0.03,
+    area: model.boundary,
+    growth: 'direct',
+    face: 'front',
   });
   const result = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId });
   assert.equal(result.changed, true, result.error);

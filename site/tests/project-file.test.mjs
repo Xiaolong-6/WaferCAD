@@ -1402,11 +1402,13 @@ test('project snapshots accept Lift-off in an embedded Recipe and reject unknown
     version: 1,
     name: 'Metalens Cr lift-off',
     activeStepId: 'recipe-step-1',
-    steps: [{
-      id: 'recipe-step-1',
-      command: 'liftoff',
-      params: { sacrificial: 'PMMA', face: 'front', area: 'full' },
-    }],
+    steps: [
+      {
+        id: 'recipe-step-1',
+        command: 'liftoff',
+        params: { sacrificial: 'PMMA', face: 'front', area: 'full' },
+      },
+    ],
   };
   assert.equal(validateProjectFile(project), project);
   assert.equal(

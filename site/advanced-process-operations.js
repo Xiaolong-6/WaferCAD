@@ -325,8 +325,11 @@ function applyUndercut(model, params, area, modelApi, vectorApi) {
 function applyLiftOff(model, params, area, modelApi, vectorApi) {
   const sacrificialLayerId = String(params.sacrificialLayerId || '');
   const face = params.face === 'back' ? 'back' : 'front';
-  if (!sacrificialLayerId || ['base', 'substrate'].includes(sacrificialLayerId) ||
-      !model.layers.some((layer) => layer.id === sacrificialLayerId)) {
+  if (
+    !sacrificialLayerId ||
+    ['base', 'substrate'].includes(sacrificialLayerId) ||
+    !model.layers.some((layer) => layer.id === sacrificialLayerId)
+  ) {
     return { changed: false, error: 'Lift-off requires a valid non-base sacrificial layer.' };
   }
 
@@ -335,7 +338,8 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
   const kept = [];
   const draft = { ...model, nextRegionId: model.nextRegionId };
   const changes = splitRegions(draft, vectorApi, area, (stack) => {
-    const positions = stack.map((segment, index) => segment.layerId === sacrificialLayerId ? index : -1)
+    const positions = stack
+      .map((segment, index) => (segment.layerId === sacrificialLayerId ? index : -1))
       .filter((index) => index >= 0);
     if (!positions.length) {
       // A neighboring opening or non-resist region can retain film at the same
@@ -345,15 +349,19 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
       return stack;
     }
     if (positions.length !== 1) {
-      throw new Error('Lift-off does not support repeated sacrificial layer intervals in one column.');
+      throw new Error(
+        'Lift-off does not support repeated sacrificial layer intervals in one column.',
+      );
     }
     found = true;
     const index = positions[0];
     const discard = new Set([index]);
     let boundary = face === 'front' ? stack[index].z1 : stack[index].z0;
-    for (let i = index + (face === 'front' ? 1 : -1);
+    for (
+      let i = index + (face === 'front' ? 1 : -1);
       i >= 0 && i < stack.length;
-      i += face === 'front' ? 1 : -1) {
+      i += face === 'front' ? 1 : -1
+    ) {
       const segment = stack[i];
       const lower = face === 'front' ? segment.z0 : segment.z1;
       if (Math.abs(lower - boundary) > 1e-8) break;
@@ -366,19 +374,27 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
     return modelApi.normalizeStack(stack.filter((_, i) => !discard.has(i)));
   });
   if (!found || !changes.changed)
-    return { changed: false, error: 'The selected area contains no sacrificial layer to lift off.' };
+    return {
+      changed: false,
+      error: 'The selected area contains no sacrificial layer to lift off.',
+    };
 
   // A film at the same Z and with the same layer identity on both sides of
   // the removal boundary may form a continuous bridge.  Local Z-stack geometry
   // cannot determine its mechanical fate, so do not silently break the bridge.
   for (const gone of removed) {
     if (gone.layerId === sacrificialLayerId) continue;
-    if (kept.some((remain) =>
-      remain.layerId === gone.layerId &&
-      Math.min(remain.z1, gone.z1) > Math.max(remain.z0, gone.z0) + 1e-8)) {
+    if (
+      kept.some(
+        (remain) =>
+          remain.layerId === gone.layerId &&
+          Math.min(remain.z1, gone.z1) > Math.max(remain.z0, gone.z0) + 1e-8,
+      )
+    ) {
       return {
         changed: false,
-        error: 'Lift-off found an ambiguous continuous/bridging deposit. Use directional separated films; no material was committed.',
+        error:
+          'Lift-off found an ambiguous continuous/bridging deposit. Use directional separated films; no material was committed.',
       };
     }
   }
