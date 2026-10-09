@@ -230,6 +230,26 @@ html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel
   font-weight: 550;
 }
 
+/* Replaces the retired 21px toolbar box model for every scientific view. */
+html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel) .view-head :is(
+  .mini-btn,
+  .three-control,
+  .three-border-toggle,
+  .focus-editor > summary,
+  .three-opacity-control > summary,
+  .export-control > summary,
+  .workstation-split-view-selector > summary
+) {
+  box-sizing: border-box;
+  height: 26px;
+  min-height: 26px;
+  max-height: 26px;
+  margin-block: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel) .view-head .mini-btn:hover,
 html.workstation-ui-v2.intelligent-ui :is(.workstation-view-stage, #sectionPanel) .view-head summary.mini-btn:hover {
   border-color: #4d6980;
