@@ -54,6 +54,35 @@ These are diagnostic samples, **not** reproducible benchmark guarantees. In part
 - Run identical benchmarks before/after on supported hardware and the CI software renderer. Long-term **targets**: cold first transparent frame <15 s on the CI reference workload, warm variant swap meaningfully faster than cold, and responsive zoom/ROI refinement with bounded resources.
 - Promote timing back to a blocking gate **only after** LOD and reference performance envelopes are validated and there is an explicit project decision. Do not relax or remove scientific/functional assertions to achieve a green badge.
 
+
+## 2026-10-08 isolated fast-array LOD candidate
+
+Branch: `perf/transparent-array-lod-20261008` (originating from `main` at `be2f6af`). **Candidate undergoing final merge review; do not mistake green CI for completed near/edge-on visual acceptance.** The 625-site real-browser benchmark on [run 37878844053](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37878844053) completed successfully.
+
+- `site/transparent-array-lod.js` quantizes the projected XY pixel footprint into bounded, camera-dependent far tiers (maximum 0.85 pixel simplification error per tier). Transparent full-array LOD is eligible only in **Fast**, with at least 64 translated instances, **no ROI**, and a view sufficiently elevated above the wafer plane; **Quality**, opaque inspection and local/near inspection retain the original exact presentation path.
+- In eligible distant transparent arrays, `electrical-internal` repeated bodies retain their two true top/bottom caps, material colors, owner/depth Z and instance transforms but skip the many side triangles. This is a **far-field display approximation**: edge-on views are expressly excluded so the vertical annotation walls return, but oblique distant views still require visual comparison. The exterior Electrical surface remains separately rendered. No physical/annotation source model, Process, History, project storage or GLB path is modified. Implant gradient bodies, rough-electrical profiles and cut/partially collapsed annotation volumes deliberately retain their full walls.
+- The camera LOD tier participates in scene-signature invalidation independently of Opacity, so an opaque/transparent scene variant swap can still reuse its physical plan. At tier changes on orbit-end, fit, restored view or resize, the renderer rebuilds the correct near/far meshes rather than retaining stale simplification. Retained variant diagnostics report the actual restored tier and count.
+- `site/tests/transparent-array-lod.test.mjs` covers eligibility, thresholds, cap preservation, source immutability and Z-collapse fallback. The Quality workflow at commit `3e73f436` passed.
+- Existing `scripts/array-renderer-regression.mjs` continues its established default quality/resource correctness gate. The PR's required `--fast-transparent-lod` browser run checks the far-field triangle count versus exact transparent Quality, materials/array ownership, full-frame success, and saves screenshots under `test-results/array-renderer/`. It does not weaken an existing performance or geometry assertion.
+
+### Recorded full-wafer CI acceptance — 2026-10-09
+
+At candidate revision `3e73f436`, all four PR workflows passed: Quality, Example Recipe Reconstruction (including M3D and three-tier JLFET), Native Fig3 full replay, and Browser regression. The explicit 625-site Fast transparent LOD probe completed its first submitted frame in **12.24 s** and submitted **18,346,852 triangles**, versus **59,961,852 triangles** for Quality exact transparency: a **69.4% reduction in submitted geometry**. The separate Quality exact cold frame still took **35.59 s** on this software-WebGL runner and missed the explicitly non-blocking **15 s** aspirational target. These single-run numbers do not establish a cross-hardware speedup guarantee.
+
+The browser diagnostic archive from that run includes `fast-transparent-lod.png`, `quality.png`, `transparent.png`, and `report.json`. At the captured full-wafer pose, the Fast and Quality screenshots show consistent outer silhouette, area coverage and stack/section appearance; the small 3D viewport in these screenshots does **not** substantiate fine-grained near, ROI or edge-on wall visibility. Keep those cases on the outstanding visual acceptance checklist instead of presenting the screenshot comparison as proof of them.
+
+### Exact-transparent orbit responsiveness correction — 2026-10-09
+
+The exploratory 625-site edge-on browser probe revealed a genuine input-starvation mode: with OrbitControls damping enabled, rotating a full-wafer exact transparent array schedules successive costly software-WebGL frames after the pointer is released. Subsequent user or automation clicks can exceed even a 120 s watchdog. The renderer now disables **inertial damping only when an array has at least 64 instances, its active scene is transparent, and its presentation LOD tier is exact**. It retains camera dragging and every physical and annotation sidewall; Fast far-field transparency and normal/opaque scenes continue to use damping. The browser regression now asserts the applied policy in both Fast far and exact transparent modes and still exercises the edge-on transition. This mitigation is subject to the current PR's fresh CI and actual browser validation; the 15 s full-frame timing target remains non-blocking, but stalled input remains a release blocker.
+
+### Acceptance before merging this candidate
+
+1. Run `npm run check` and the normal array renderer browser suite at the exact branch HEAD using the pinned Node/Playwright/Three toolchain.
+2. Run `node scripts/array-renderer-regression.mjs --fast-transparent-lod` with a local site server and `WAFERCAD_THREE_DIR` configured. Inspect `quality.png`, `transparent.png`, and `fast-transparent-lod.png` under matched camera/opacity where possible, and record actual vs previous-main frame times and submitted triangles. Fail/repair if no geometry reduction, first-frame hangs or electrical labels/coverage disappear.
+3. At near zoom, ROI, Quality and Section Z-collapse, inspect true electrical walls/depth surfaces. Edge-on/dense-via views are necessary; do not accept reduced triangle count by itself as visual/scientific approval.
+4. Confirm full camera zoom-out → zoom-in restoration, opacity variant reuse and 20 toggle resource stability. Do not overwrite approved visual baselines to hide an unintended difference.
+5. If the visual contract requires the vertical walls at wafer scale, revert this candidate's cap-only approximation and pursue screen-space contour/owned-wall consolidation instead. Do not merge a visually incorrect approximation.
+
 ## Current acceptance decision
 
 For **the current integration PR #135**, the **15 s cold-first-frame budget, warm-vs-cold timing ratios and final-opaque-vs-cold ratio are advisory**. The full-wafer browser test still runs and emits `ARRAY_RENDERER_PERF_WARNING` plus `performanceAcceptance` in its report. It must continue enforcing:

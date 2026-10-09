@@ -247,7 +247,7 @@ jobs:
           exit 1
 
       - name: Check 625-site array scene and retained resources
-        run: node scripts/array-renderer-regression.mjs
+        run: node scripts/array-renderer-regression.mjs --fast-transparent-lod
 
       - name: Upload array renderer diagnostics
         if: always()
@@ -303,3 +303,50 @@ jobs:
 
       - name: Run process geometry regression
         run: npm run test:ui:process
+
+  renderer-array-edge-on:
+    name: 625-site edge-on exact-wall restoration
+    needs: plan
+    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - name: Install project dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-edge-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wafercad-edge-http.log
+          exit 1
+      - name: Check exact sidewalls and fitted far-field recovery
+        run: node scripts/array-renderer-edge-on-regression.mjs
+      - name: Upload edge-on renderer diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-array-edge-on-${{ github.sha }}
+          path: test-results/array-renderer-edge-on
+          retention-days: 14
+          if-no-files-found: warn

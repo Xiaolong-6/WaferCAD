@@ -90,6 +90,19 @@ try {
   await closeFunctionPanel(page);
   await waitStage('initial');
   const snapshot = () => page.locator('#threeHost').evaluate((el) => ({ ...el.dataset }));
+  // Header Display is reparented under More when the 3D panel is narrow.
+  // Preserve the same controls and state across both layouts.
+  const toggleThreeDisplay = async () => {
+    const display = page.locator('#threePanel .three-opacity-control');
+    const more = page.locator('#threePanel .view-more-control');
+    const nested = await display.evaluate((node) =>
+      Boolean(node.closest('.view-overflow-secondary')),
+    );
+    if (nested && !(await more.evaluate((node) => node.open))) {
+      await more.locator(':scope > summary').click();
+    }
+    await display.locator(':scope > summary').click();
+  };
   const fast = await snapshot();
   assert.equal(fast.arrayInstances, '1885');
   assert.equal(fast.renderQuality, 'fast');
@@ -99,6 +112,39 @@ try {
     Number(fast.derivedCapCacheMisses) > 0,
     'initial full-wafer render must populate derived cap triangulation data',
   );
+  let fastTransparencyLodProbe = null;
+  // Probe the first Fast far-wafer camera before 20 opacity/Border toggles
+  // and before orbiting. The later camera can be near edge-on and must retain
+  // full annotation walls, making it unsuitable as a far-field LOD probe.
+  if (process.argv.includes('--fast-transparent-lod')) {
+    page.setDefaultTimeout(120000);
+    await toggleThreeDisplay();
+    const beforeLodFrame = await frameSerial();
+    await page.locator('#threeOpacityRange').fill('0.5');
+    const elapsedMs = await waitStage('fast-transparent-array-lod', 120000, beforeLodFrame);
+    const distant = await snapshot();
+    assert.match(distant.transparentArrayLodTier, /^far-/);
+    assert.equal(distant.cameraDampingEnabled, 'true', 'Far Fast mode keeps normal camera inertia');
+    assert.ok(
+      Number(distant.electricalFarLodBodyCount) > 0,
+      'Fast far-array mode must use cap-only distant electrical presentation',
+    );
+    assert.equal(distant.arrayInstances, fast.arrayInstances);
+    assert.equal(distant.materialLayerIds, fast.materialLayerIds);
+    assert.equal(distant.processRevision, fast.processRevision);
+    await page.screenshot({ path: fileURLToPath(new URL('fast-transparent-lod.png', output)) });
+
+    fastTransparencyLodProbe = {
+      elapsedMs,
+      farDrawTriangles: Number(distant.rendererDrawTriangles),
+      distant,
+    };
+    const beforeOpaque = await frameSerial();
+    await page.locator('#threeOpacityRange').fill('1');
+    await waitStage('fast-lod-restore-opaque', 120000, beforeOpaque);
+    await toggleThreeDisplay();
+    page.setDefaultTimeout(THREE_READY_TIMEOUT_MS);
+  }
   await page.locator('#threeFastBtn').selectOption('quality');
   console.log('ARRAY_RENDERER_STAGE_BEGIN', 'quality');
   await page.waitForFunction(
@@ -123,7 +169,7 @@ try {
   ])
     assert.equal(quality[key], fast[key], key + ' changed when switching display quality');
   await page.screenshot({ path: fileURLToPath(new URL('quality.png', output)) });
-  await page.locator('#threePanel .three-opacity-control > summary').click();
+  await toggleThreeDisplay();
 
   // First transparent transition builds and caches a transparency-optimized
   // scene variant while reusing the physical ownership plan.
@@ -160,6 +206,16 @@ try {
   );
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
+  assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
+  assert.equal(transparentCold.cameraDampingEnabled, 'false', 'Exact full-array transparency cannot redraw inertially');
+  assert.equal(Number(transparentCold.electricalFarLodBodyCount), 0);
+  if (fastTransparencyLodProbe) {
+    assert.ok(
+      fastTransparencyLodProbe.farDrawTriangles < Number(transparentCold.rendererDrawTriangles),
+      'Fast far-array mode must submit fewer triangles than exact Quality transparency',
+    );
+    fastTransparencyLodProbe.qualityDrawTriangles = Number(transparentCold.rendererDrawTriangles);
+  }
 
   const transparentResources = Object.fromEntries(
     ['sceneObjectCount', 'sceneGeometryCount', 'sceneMaterialCount', 'presentationObjectCount'].map(
@@ -279,7 +335,7 @@ try {
     'ARRAY_RENDERER_VARIANT_TIMINGS',
     JSON.stringify({ coldTransparentMs, opaqueSwapMs, warmTransparentMs, finalOpaqueSwapMs }),
   );
-  await page.locator('#threePanel .three-opacity-control > summary').click();
+  await toggleThreeDisplay();
   await page.locator('#threeFastBtn').selectOption('fast');
   await waitStage('restore-fast');
   const restored = await snapshot();
@@ -320,6 +376,7 @@ try {
     presentationStressToggles: { border: 10, opacity: 10 },
     retainedBaseline,
     rotationPassed: true,
+    fastTransparencyLodProbe,
     errors,
   };
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2));
