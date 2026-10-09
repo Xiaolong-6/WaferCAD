@@ -139,6 +139,62 @@ full perspective error bounds per tile/owner, color accumulation, overlapping
 layer ownership, and restored near/ROI/edge-on/Section behavior. Do not
 extrapolate a 160-sample candidate histogram to an exact triangle saving.
 
+## Phase A.2 empirical acceptance: 625-site projection (2026-10-09)
+
+**Verified commit:** `60f82a4d46bd13b38353d73ba27135c06d8a68d1`.
+The [full Browser regression](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37922563922)
+passed including Fast distant, Quality cold/warm, 20 border/opacity
+transitions, targeted Chromium and edge-on restoration. Independently:
+[Quality PASS](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37922385573),
+[Native Fig3 PASS](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37922563961),
+and [Recipe Run All PASS](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37922563926)
+including M3D and JLFET.
+
+The 625-site `wafercad-array-renderer` artifact `report.json` recorded:
+
+| Diagnostic (Fast distant unless qualified) | Measured |
+| --- | ---: |
+| Smooth buried material-interface owners sampled | 13 |
+| Projected sample quads / valid projected | 520 / 520 |
+| Subpixel *samples* (both projected dimensions <=0.5 px) | 294 / 520 (56.5%) |
+| Sample quads entirely offscreen | 0 |
+| Raw, unmerged two-pass owner upper-bound | 25,360,000 triangles |
+| Dominant owners | `layer-6`, `layer-12`, each raw upper-bound 10,170,000 |
+| Other owners by raw upper-bound | `layer-4`, `layer-10`, each 1,910,000 |
+| Actual Fast / Quality submitted triangles | 16,906,262 / 57,040,012 |
+| Fast completed / Quality cold / warm | 9.16 s / 26.21 s / 25.64 s |
+| Rendered triangles actually omitted by v3 | **0** |
+
+Interpretation: the **observed samples** indicate some distant material walls
+project to subpixel size, but the sample is capped per owner/edge/instance,
+is not a statistical random sample and is **not** the fraction of GPU work
+that may safely be removed. The raw owner upper bound may exceed actual
+submitted triangles because it precedes topology reduction, clipping and
+instancing. Crucially, `zCollapseEnabled=true` still **disqualifies geometry
+reduction** by the strict Phase A gate. Even a small projected quad can
+contribute nonzero transparency color/occlusion. Camera projection samples
+neither prove conservative bounds for the full tile nor correct alpha
+compositing after omission.
+
+Screenshot comparison against the **previous probe-only 625-site artifact**
+under matching camera and resolution showed `quality.png` and
+`fast-transparent-lod.png` pixel-identical, while `transparent.png`
+had 394 pixels (0.029% of a 1440x960 screenshot) with maximum channel
+difference >8. This comparison is diagnostic, not blanket scientific
+near/ROI proof; visual baselines were **not** replaced.
+
+**Next engineering decision:** start with `layer-6` / `layer-12` *buried
+smooth material walls* as the bounded owner-analysis targets, first adding a
+conservative whole-tile/whole-owner screen-space bound and transparency
+coverage validation. Do **not** use a sample fraction as a culling ratio.
+Keep rough, exposed, Electrical/Implant, ROI, edge-on, Z-collapse cuts and
+near inspection exact. Before enabling any geometry reduction, require a
+separate experimental commit, matching-camera visual acceptance, the same
+625-site resource/20-toggle suite and paired frame-accurate measurements.
+
+**Status:** Phase A.2 diagnostics accepted on this head; v3 actual
+hierarchical LOD remains **unimplemented**; PR stays Draft and unmerged.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
