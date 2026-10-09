@@ -542,9 +542,16 @@ assert.equal(
   await historyRecomputePage.locator('#confirmationDialogOverlay:not([hidden])').count(),
   0,
 );
-await historyRecomputePage
-  .locator('.snapshot-continuation-banner[data-editing-step="true"]')
-  .waitFor();
+// Edit Step now navigates from History into the exclusive Process inspector.
+// The History continuation banner remains in its own panel; validate its
+// state without requiring an unrelated panel to stay visibly stacked.
+await historyRecomputePage.locator('#operationTools:not([hidden])').waitFor();
+assert.equal(
+  await historyRecomputePage
+    .locator('.snapshot-continuation-banner[data-editing-step="true"]')
+    .count(),
+  1,
+);
 assert.equal(await historyRecomputePage.locator('#layerName').inputValue(), 'Replay B');
 assert.equal(Number(await historyRecomputePage.locator('#operationThickness').inputValue()), 0.05);
 assert.equal(
