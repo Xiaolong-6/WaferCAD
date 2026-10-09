@@ -30,6 +30,10 @@ function fakeElement(id, value = '') {
     add(option) {
       this.options.push(option);
     },
+    replaceChildren(...options) {
+      this.options = [...options];
+      this.value = options[0]?.value || '';
+    },
     classList: { toggle() {} },
   };
 }
@@ -79,9 +83,9 @@ function fakeRoot() {
 function controllerForTask(
   taskResult,
   events,
-  { mode = 'add', recorded = [], areaGeometry = () => [] } = {},
+  { mode = 'add', recorded = [], areaGeometry = () => [], initialModel = null } = {},
 ) {
-  let model = createModel();
+  let model = initialModel || createModel();
   const maskState = {
     maskSourceMode: 'file',
     maskRoi: null,
@@ -563,4 +567,109 @@ test('typed Recipe lengths reach the worker without manual grid rounding', async
   request = null;
   await controller.applyOperation({ canonicalLengthUm: Infinity });
   assert.equal(request, null, 'invalid typed lengths must never start a worker');
+});
+
+test('Lift-off Step passes selected sacrificial layer into replay and History', async () => {
+  const recorded = [];
+  const events = [];
+  let params;
+  const controller = controllerForTask(
+    (model, _current, candidate) => {
+      params = candidate;
+      return {
+        result: { changed: true },
+        model: {
+          ...model,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      };
+    },
+    events,
+    { mode: 'liftoff', recorded },
+  );
+  const modelApi = await import('../model.js');
+  const model = controller.__getModel();
+  const resist = modelApi.applyOperation(model, {
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    growth: 'direct',
+    face: 'front',
+    area: model.boundary,
+  });
+  controller.updateUi();
+  controller.__root.getElementById('liftoffTargetLayer').value = resist.layerId;
+  await controller.applyOperation();
+  assert.equal(params.type, 'liftoff');
+  assert.equal(params.sacrificialLayerId, resist.layerId);
+  assert.equal(params.thickness, 0);
+  assert.equal(recorded[0].kind, 'liftoff');
+  assert.equal(recorded[0].replay.params.sacrificialLayerId, resist.layerId);
+});
+
+test('Lift-off selector lists sacrificial materials stored in array templates', async () => {
+  const { ARRAY_MODEL_KERNEL } = await import('../model-array.js');
+  const { rectMulti } = await import('../vector-geometry.js');
+  const modelApi = await import('../model.js');
+  const leaf = createModel({ shape: 'rect', width: 10, height: 10, thickness: 2 });
+  const model = {
+    ...leaf,
+    kernel: ARRAY_MODEL_KERNEL,
+    width: 20,
+    boundary: rectMulti(20, 10),
+    regions: [],
+    array: {
+      version: 1,
+      templates: [{ id: 'cell', model: leaf }],
+      instances: [
+        { id: 'left', templateId: 'cell', x: -5, y: 0 },
+        { id: 'right', templateId: 'cell', x: 5, y: 0 },
+      ],
+    },
+  };
+  const resist = modelApi.applyOperation(model, {
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    area: rectMulti(10, 10, -5, 0),
+    face: 'front',
+  });
+  const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
+    mode: 'liftoff',
+    initialModel: model,
+  });
+  controller.updateUi();
+  const select = controller.__root.getElementById('liftoffTargetLayer');
+  assert.ok(select.options.some((option) => option.value === resist.layerId));
+  assert.equal(select.disabled, false);
+});
+
+test('Lift-off requires an explicit sacrificial selection before Apply is enabled', async () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
+    mode: 'liftoff',
+  });
+  const root = controller.__root;
+  controller.updateUi();
+  assert.equal(root.getElementById('applyOperationBtn').disabled, true);
+  assert.equal(root.getElementById('liftoffTargetLayer').disabled, true);
+  assert.match(root.getElementById('liftoffTargetHint').textContent, /Deposit and pattern/);
+
+  const model = controller.__getModel();
+  const modelApi = await import('../model.js');
+  const resist = modelApi.applyOperation(model, {
+    type: 'add',
+    name: 'PMMA',
+    thickness: 0.2,
+    growth: 'direct',
+    face: 'front',
+    area: model.boundary,
+  });
+  controller.updateUi();
+  assert.equal(root.getElementById('liftoffTargetLayer').disabled, false);
+  assert.equal(root.getElementById('applyOperationBtn').disabled, true);
+  root.getElementById('liftoffTargetLayer').value = resist.layerId;
+  controller.updateUi();
+  assert.equal(root.getElementById('applyOperationBtn').disabled, false);
+  assert.match(root.getElementById('liftoffTargetHint').textContent, /supported deposits/);
 });

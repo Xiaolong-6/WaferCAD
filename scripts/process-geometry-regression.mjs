@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { expandProjectStorage } from '../site/project-io.js';
+import { parseLayoutFile } from '../site/layout-io.js';
 import {
   loadGeometryKernel,
   processBenchmark,
@@ -1022,6 +1023,259 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
     );
   }
 }
+
+// Lift-off browser acceptance: PMMA 200 nm / Cr 30 nm, with an opening
+// deposited on the lower substrate plane. Exercise the actual Step worker
+// and serialized project, not just a unit-level geometry helper.
+const liftModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+const resist = applyOperation(liftModel, {
+  type: 'add',
+  name: 'PMMA',
+  thickness: 0.2,
+  growth: 'direct',
+  face: 'front',
+  area: liftModel.boundary,
+});
+const aperture = circleMulti(4, 4, 64);
+applyOperation(liftModel, {
+  type: 'etch',
+  etchProfile: 'directional',
+  thickness: 0.2,
+  etchTargetLayerIds: [resist.layerId],
+  area: aperture,
+  face: 'front',
+});
+const chromium = applyOperation(liftModel, {
+  type: 'add',
+  name: 'Cr',
+  thickness: 0.03,
+  growth: 'direct',
+  area: liftModel.boundary,
+  face: 'front',
+});
+await loadProject(
+  page,
+  projectForBenchmark({ model: liftModel, section: { a: [-9, 0], b: [9, 0] } }),
+  'liftoff-PMMA-Cr-step',
+);
+await openFunctionPanel(page, 'process');
+await page.locator('#operationType').selectOption('liftoff');
+assert.equal(await page.locator('#liftoffTargetRow').isVisible(), true);
+assert.equal(await page.locator('#operationThicknessRow').isHidden(), true);
+await page.locator('#operationArea').selectOption('full');
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
+await mkdir('test-results/process-geometry', { recursive: true });
+await page.locator('#operationTools').evaluate((section) => {
+  section.scrollIntoView({ block: 'start', behavior: 'instant' });
+});
+await page.screenshot({ path: 'test-results/process-geometry/liftoff-step-wide.png' });
+await page.setViewportSize({ width: 390, height: 844 });
+await page.locator('#operationTools').evaluate((section) => {
+  section.scrollIntoView({ block: 'start', behavior: 'instant' });
+});
+await page.screenshot({ path: 'test-results/process-geometry/liftoff-step-mobile.png' });
+await page.setViewportSize({ width: 1280, height: 800 });
+const liftWidthCheck = await page.locator('#operationTools').evaluate((panel) => ({
+  area: panel.querySelector('#operationArea').getBoundingClientRect().width,
+  sacrificial: panel.querySelector('#liftoffTargetLayer').getBoundingClientRect().width,
+}));
+assert.ok(
+  Math.abs(liftWidthCheck.area - liftWidthCheck.sacrificial) < 2,
+  `Lift-off target must align with full-width Area control: ${JSON.stringify(liftWidthCheck)}`,
+);
+await page.locator('#liftoffTargetLayer').selectOption(resist.layerId);
+assert.equal(await page.locator('#applyOperationBtn').isEnabled(), true);
+await page.locator('#applyOperationBtn').click();
+await page.waitForFunction(
+  () => /Lifted off PMMA/.test(document.getElementById('statusText')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+const liftOutput = await exportCurrentProject(page);
+const stackAt = (saved, x) =>
+  saved.model.regions.find((region) => pointInMulti([x, 0], region.geom))?.stack || [];
+assert.deepEqual(
+  stackAt(liftOutput, 0).map((segment) => segment.layerId),
+  ['base', chromium.layerId],
+);
+assert.deepEqual(
+  stackAt(liftOutput, 7).map((segment) => segment.layerId),
+  ['base'],
+);
+assert.ok(
+  liftOutput.model.regions.every((region) =>
+    region.stack.every((segment) => segment.layerId !== resist.layerId),
+  ),
+);
+
+// Recipe Run All must rebuild the geometry with a captured Draw Mask, then
+// produce the same Cr-on-base opening pattern after a clean-Base rebuild.
+const liftRecipeContext = await newUiContext(browser, { acceptDownloads: true });
+const liftRecipePage = await liftRecipeContext.newPage();
+const liftRecipeErrors = observePageErrors(liftRecipePage);
+await liftRecipePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  waitUntil: 'networkidle',
+  timeout: 30000,
+});
+await waitForAppReady(liftRecipePage);
+const recipeBaseModel = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+await loadProject(
+  liftRecipePage,
+  projectForBenchmark({ model: recipeBaseModel, section: { a: [-9, 0], b: [9, 0] } }),
+  'liftoff-PMMA-Cr-recipe',
+);
+await openFunctionPanel(liftRecipePage, 'process');
+await liftRecipePage.locator('[data-process-input-mode="recipe"]').click();
+await liftRecipePage.locator('#recipeCodeTab').click();
+const mask = {
+  source: 'draw',
+  drawMask: {
+    nextShapeId: 2,
+    shapes: [
+      {
+        id: 'shape-1',
+        type: 'polygon',
+        points: [
+          [-2, -2],
+          [2, -2],
+          [2, 2],
+          [-2, 2],
+        ],
+      },
+    ],
+  },
+};
+const liftSource = [
+  'deposit({ material: "PMMA", thickness: "200 nm", area: "full" });',
+  'etch({ target: "PMMA", depth: "200 nm", profile: "directional", area: "mask", mask: ' +
+    JSON.stringify(mask) +
+    ' });',
+  'deposit({ material: "Cr", thickness: "30 nm", area: "full" });',
+  'liftoff({ sacrificial: "PMMA", area: "full", face: "front" });',
+].join('\n');
+await liftRecipePage.locator('#recipeCodeEditor').fill(liftSource);
+await liftRecipePage.locator('#recipeApplyCodeBtn').click();
+assert.match(await liftRecipePage.locator('#statusText').textContent(), /Recipe code applied/);
+await liftRecipePage.screenshot({ path: 'test-results/process-geometry/liftoff-recipe-wide.png' });
+await liftRecipePage.setViewportSize({ width: 390, height: 844 });
+await liftRecipePage.screenshot({
+  path: 'test-results/process-geometry/liftoff-recipe-mobile.png',
+});
+await liftRecipePage.setViewportSize({ width: 1280, height: 800 });
+await liftRecipePage.locator('#recipeRunAllBtn').click();
+try {
+  await liftRecipePage.waitForFunction(
+    () =>
+      /Recipe completed: 4\/4 steps committed|Recipe failed at Step|Recipe stopped after/.test(
+        document.getElementById('statusText')?.textContent || '',
+      ),
+    null,
+    { timeout: 30000 },
+  );
+} catch (error) {
+  const status = await liftRecipePage.locator('#statusText').textContent();
+  const confirm = await liftRecipePage.locator('#confirmationDialogMessage').textContent();
+  throw new Error(
+    `Lift-off Recipe stalled: status=${status}; confirmation=${confirm}; ${error.message}`,
+  );
+}
+assert.match(
+  await liftRecipePage.locator('#statusText').textContent(),
+  /Recipe completed: 4\/4 steps committed/,
+);
+const liftReplay = await exportCurrentProject(liftRecipePage);
+const recipeCrId = liftReplay.model.layers.find((layer) => layer.name === 'Cr')?.id;
+const recipePmmaId = liftReplay.model.layers.find((layer) => layer.name === 'PMMA')?.id;
+assert.ok(recipeCrId);
+assert.ok(recipePmmaId);
+assert.deepEqual(
+  stackAt(liftReplay, 0).map((segment) => segment.layerId),
+  ['base', recipeCrId],
+);
+assert.deepEqual(
+  stackAt(liftReplay, 7).map((segment) => segment.layerId),
+  ['base'],
+);
+assert.ok(
+  liftReplay.model.regions.every((region) =>
+    region.stack.every((segment) => segment.layerId !== recipePmmaId),
+  ),
+);
+assert.equal(liftReplay.processRecipe.steps.at(-1).command, 'liftoff');
+// A newly opened .wafercad must retain the exact material geometry and
+// declarative Recipe, including its full replayable History.
+await loadProject(liftRecipePage, liftReplay, 'liftoff-export-reimport');
+const restoredLift = await exportCurrentProject(liftRecipePage);
+assert.deepEqual(restoredLift.model, liftReplay.model);
+assert.deepEqual(restoredLift.processRecipe, liftReplay.processRecipe);
+const physicalHistory = (project) => ({
+  activeBranchId: project.snapshotBranches.activeBranchId,
+  cursorNodeId: project.snapshotBranches.cursorNodeId,
+  branches: project.snapshotBranches.branches.map(
+    ({ id, rootNodeId, headNodeId, parentBranchId, forkNodeId }) => ({
+      id,
+      rootNodeId,
+      headNodeId,
+      parentBranchId,
+      forkNodeId,
+    }),
+  ),
+  nodes: project.snapshotBranches.nodes.map(
+    ({ id, branchId, parentId, processRevision, operation, state }) => ({
+      id,
+      branchId,
+      parentId,
+      processRevision,
+      operation,
+      model: state.model,
+    }),
+  ),
+});
+assert.deepEqual(physicalHistory(restoredLift), physicalHistory(liftReplay));
+
+// Export an independent Draw Mask containing a true annular hole. Verify that
+// the GDS file can be parsed and the hole has not been filled by fracturing.
+const annulusProject = {
+  ...restoredLift,
+  maskSourceMode: 'draw',
+  drawMask: {
+    nextShapeId: 2,
+    shapes: [
+      {
+        id: 'shape-1',
+        type: 'ring',
+        c: [0, 0],
+        innerR: 1,
+        outerR: 2,
+      },
+    ],
+  },
+};
+await loadProject(liftRecipePage, annulusProject, 'liftoff-annular-mask-export');
+await liftRecipePage.locator('#maskPanel .view-more-control > summary').click();
+await liftRecipePage.locator('#maskExportControl > summary').click();
+const [maskGdsDownload] = await Promise.all([
+  liftRecipePage.waitForEvent('download', { timeout: 30000 }),
+  liftRecipePage.locator('#maskExportGdsBtn').click(),
+]);
+const gdsBuffer = await readFile(await maskGdsDownload.path());
+const gdsArrayBuffer = gdsBuffer.buffer.slice(
+  gdsBuffer.byteOffset,
+  gdsBuffer.byteOffset + gdsBuffer.byteLength,
+);
+const exportedMask = await parseLayoutFile(gdsArrayBuffer, 'wafercad-mask.gds');
+const polygons = exportedMask.layout.elements.filter((element) => element.kind === 'polygon');
+assert.ok(polygons.length > 0, 'annular Mask must produce GDS polygons');
+const includesMaskPoint = (x, y) =>
+  polygons.some(({ points }) => {
+    if (!points || points.length < 3) return false;
+    return pointInMulti([x, y], [[[...points, points[0]]]]);
+  });
+assert.equal(includesMaskPoint(0, 0), false, 'annular hole must survive GDS export');
+assert.equal(includesMaskPoint(1.5, 0), true, 'annular wall must survive GDS export');
+assert.equal(includesMaskPoint(2.5, 0), false, 'GDS must not add exterior material');
+assert.deepEqual(liftRecipeErrors, []);
+await liftRecipeContext.close();
 
 assert.deepEqual(errors, []);
 await context.close();

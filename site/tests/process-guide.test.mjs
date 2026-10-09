@@ -7,7 +7,7 @@ import { processOperationsMarkdown } from '../../scripts/build-process-guide.mjs
 import { processWikiDiagramSvg } from '../../scripts/build-wiki-diagrams.mjs';
 
 test('every Process variant has distinct catalog metadata and a valid diagram', () => {
-  assert.equal(PROCESS_GUIDE.length, 18);
+  assert.equal(PROCESS_GUIDE.length, 19);
   assert.equal(new Set(PROCESS_GUIDE.map((entry) => entry.id)).size, PROCESS_GUIDE.length);
   for (const entry of PROCESS_GUIDE) {
     assert.strictEqual(processGuideEntry(entry.id), entry);
@@ -72,6 +72,7 @@ test('all current manual selector combinations resolve to intended operation dia
     [{ type: 'implant' }, 'implant'],
     [{ type: 'electrical' }, 'electrical'],
     [{ type: 'record' }, 'record'],
+    [{ type: 'liftoff' }, 'liftoff'],
   ];
   assert.deepEqual(
     new Set(cases.map(([input]) => processGuideKey(input))),

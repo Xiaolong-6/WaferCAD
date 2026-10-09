@@ -179,6 +179,17 @@ export const PROCESS_GUIDE = Object.freeze([
     'display',
   ),
   guide(
+    'liftoff',
+    'Lift-off',
+    'Sacrificial layer lift-off',
+    'Removes sacrificial resist and the deposits touching it on the outward face.',
+    'Each column loses the chosen resist and consecutively supported overlying material; metal deposited in openings at lower Z remains.',
+    'Sacrificial layer · Face · Area',
+    'Ideal 2.5D process: no solvent, adhesion or fracture physics; bridging films are rejected.',
+    'PMMA / Cr lift-off before TiO₂ metalens etching.',
+    'geometry',
+  ),
+  guide(
     'implant',
     'Annotation',
     'Implant',
