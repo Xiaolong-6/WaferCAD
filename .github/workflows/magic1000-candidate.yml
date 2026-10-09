@@ -33,6 +33,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Normalize MAGIC-1000 source and Wiki formatting
+        run: npx prettier --write scripts/build-magic-1000-example.mjs site/tests/magic1000-reconstruction.test.mjs docs/wiki/Examples-and-Modeling-Limits.md
       - name: Generate representative MAGIC-1000 project using current Process Kernel
         run: node scripts/build-magic-1000-example.mjs --write-repo
       - name: Generate final-state single-Step preview
@@ -55,12 +57,15 @@ jobs:
       - name: Rebuild from Base through the real browser Run All and export
         run: node scripts/example-recipe-runall-acceptance.mjs --id=magic-1000-mos2-beol
       - name: Run repository static, documentation and example tests
-        run: npm run check:ci
+        run: npm run check
       - name: Preserve all validated files only on isolated feature branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
+            scripts/build-magic-1000-example.mjs \
+            site/tests/magic1000-reconstruction.test.mjs \
+            docs/wiki/Examples-and-Modeling-Limits.md \
             site/examples/magic-1000-mos2-beol.wafercad \
             site/examples/previews/magic-1000-mos2-beol.wafercad \
             site/examples/thumbnails/magic-1000-mos2-beol-three.webp \
