@@ -394,3 +394,29 @@ test('Lift-off supports back-face release with isolated opening film', () => {
   assert.deepEqual(regionAt(model, [7, 0]).stack.map((s) => s.layerId), ['base']);
   assert.equal(validateProcessModel(model), model);
 });
+
+test('Lift-off preserves a ring-shaped Cr mask with a clean central hole', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'PMMA', thickness: 0.2,
+    area: model.boundary, growth: 'direct', face: 'front',
+  });
+  const ring = vectorApi.difference(
+    vectorApi.circleMulti(8, 8, 96),
+    vectorApi.circleMulti(4, 4, 96),
+  );
+  modelApi.applyOperation(model, {
+    type: 'etch', etchProfile: 'directional', thickness: 0.2,
+    etchTargetLayerIds: [resist.layerId], area: ring, face: 'front',
+  });
+  const cr = modelApi.applyOperation(model, {
+    type: 'add', name: 'Cr', thickness: 0.03,
+    area: model.boundary, growth: 'direct', face: 'front',
+  });
+  const result = runAdvanced(model, { type: 'liftoff', sacrificialLayerId: resist.layerId });
+  assert.equal(result.changed, true, result.error);
+  assert.equal(regionAt(model, [3, 0]).stack.at(-1).layerId, cr.layerId);
+  assert.equal(regionAt(model, [0, 0]).stack.at(-1).layerId, 'base');
+  assert.equal(regionAt(model, [7, 0]).stack.at(-1).layerId, 'base');
+  assert.equal(validateProcessModel(model), model);
+});

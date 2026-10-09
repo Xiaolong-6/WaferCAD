@@ -198,7 +198,7 @@ export function createProcessRecipeController({
   function defaultStep(command) {
     const mask = currentMaskContext(),
       layers = getModel()?.layers || [],
-      topMaterial = layers.at(-1)?.name || 'Base';
+      topMaterial = layers.find((layer) => /pmma|resist|sacrificial/i.test(layer.name))?.name || layers.at(-1)?.name || 'Base';
     const source =
       command === 'deposit'
         ? {

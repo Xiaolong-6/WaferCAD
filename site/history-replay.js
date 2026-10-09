@@ -8,12 +8,17 @@ export function remapHistoryReplayOperation(operation, params, layerIdMap) {
     remapLayerId = (id) => remappedId(id, layerIdMap);
 
   if (nextParams.targetLayerId) nextParams.targetLayerId = remapLayerId(nextParams.targetLayerId);
+  if (nextParams.sacrificialLayerId)
+    nextParams.sacrificialLayerId = remapLayerId(nextParams.sacrificialLayerId);
   if (Array.isArray(nextParams.etchTargetLayerIds)) {
     nextParams.etchTargetLayerIds = nextParams.etchTargetLayerIds.map(remapLayerId);
   }
 
   if (nextOperation.targetLayerId) {
     nextOperation.targetLayerId = remapLayerId(nextOperation.targetLayerId);
+  }
+  if (nextOperation.sacrificialLayerId) {
+    nextOperation.sacrificialLayerId = remapLayerId(nextOperation.sacrificialLayerId);
   }
   if (Array.isArray(nextOperation.etchTargetLayerIds)) {
     nextOperation.etchTargetLayerIds = nextOperation.etchTargetLayerIds.map(remapLayerId);

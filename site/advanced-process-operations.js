@@ -325,7 +325,7 @@ function applyUndercut(model, params, area, modelApi, vectorApi) {
 function applyLiftOff(model, params, area, modelApi, vectorApi) {
   const sacrificialLayerId = String(params.sacrificialLayerId || '');
   const face = params.face === 'back' ? 'back' : 'front';
-  if (!sacrificialLayerId || sacrificialLayerId === 'base' ||
+  if (!sacrificialLayerId || ['base', 'substrate'].includes(sacrificialLayerId) ||
       !model.layers.some((layer) => layer.id === sacrificialLayerId)) {
     return { changed: false, error: 'Lift-off requires a valid non-base sacrificial layer.' };
   }
