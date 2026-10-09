@@ -336,6 +336,16 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
   let found = false;
   const removed = [];
   const kept = [];
+
+  // A restricted Lift-off area can cut through an otherwise continuous film.
+  // The complement remains part of the same physical object, so include
+  // untouched columns in the bridging guard before changing the model.
+  const outside = vectorApi.difference(model.boundary, area);
+  if (!vectorApi.isEmpty(outside)) {
+    for (const region of model.regions || [])
+      if (!vectorApi.isEmpty(vectorApi.intersection(region.geom, outside)))
+        kept.push(...region.stack);
+  }
   const draft = { ...model, nextRegionId: model.nextRegionId };
   const changes = splitRegions(draft, vectorApi, area, (stack) => {
     const positions = stack

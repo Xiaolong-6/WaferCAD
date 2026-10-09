@@ -489,3 +489,22 @@ test('Lift-off preserves a ring-shaped Cr mask with a clean central hole', () =>
   assert.equal(regionAt(model, [7, 0]).stack.at(-1).layerId, 'base');
   assert.equal(validateProcessModel(model), model);
 });
+
+test('ROI Lift-off rejects a metal bridge extending outside the selected area without mutation', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'PMMA', thickness: 0.2, growth: 'direct',
+    face: 'front', area: model.boundary,
+  });
+  modelApi.applyOperation(model, {
+    type: 'add', name: 'Cr', thickness: 0.03, growth: 'direct',
+    face: 'front', area: model.boundary,
+  });
+  const before = structuredClone(model);
+  const result = runAdvanced(model, {
+    type: 'liftoff', sacrificialLayerId: resist.layerId, face: 'front',
+  }, vectorApi.rectMulti(10, 20, -5, 0));
+  assert.equal(result.changed, false);
+  assert.match(result.error, /bridging/);
+  assert.deepEqual(model, before, 'A rejected partial release must preserve geometry and counters');
+});
