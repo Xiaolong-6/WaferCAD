@@ -1,6 +1,6 @@
-# Complete example open latency — 2026-10-08 (branch follow-up)
+# Complete example open latency — 2026-10-08
 
-> Revision-specific work-in-progress on `perf/example-load-latency-20261008`, based on `main`. This note does not establish current-main performance, deployment or CI acceptance.
+> Implementation and dated acceptance evidence from `perf/example-load-latency-20261008`. Browser results below are from the PR's CI preview, not a guarantee of deployed or cross-device wall-clock performance. The production `build-info.json` commit remains the authoritative cache-version key.
 
 ## Scope and changes
 
