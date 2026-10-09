@@ -69,7 +69,7 @@ Open **Project** and use **Save** if you want a checkpoint in this browser's **R
 
 | Term               | Plain meaning                                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------------------ |
-| **Base**           | The starting geometric substrate. Its default label does not assert a chemical material.                                                                  |
+| **Base**           | The starting geometric substrate. Its default label does not assert a chemical material.               |
 | **Mask**           | A 2D shape saying **where** an operation acts; a Draw mask needs no imported file.                     |
 | **Process / Step** | One change to the geometry, such as Deposit or Etch.                                                   |
 | **Section A–B**    | A cut through the structure **along the A–B line**, showing which material is above or below another.  |
