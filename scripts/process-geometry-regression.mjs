@@ -1075,6 +1075,14 @@ await page.locator('#operationTools').evaluate((section) => {
 });
 await page.screenshot({ path: 'test-results/process-geometry/liftoff-step-mobile.png' });
 await page.setViewportSize({ width: 1280, height: 800 });
+const liftWidthCheck = await page.locator('#operationTools').evaluate((panel) => ({
+  area: panel.querySelector('#operationArea').getBoundingClientRect().width,
+  sacrificial: panel.querySelector('#liftoffTargetLayer').getBoundingClientRect().width,
+}));
+assert.ok(
+  Math.abs(liftWidthCheck.area - liftWidthCheck.sacrificial) < 2,
+  `Lift-off target must align with full-width Area control: ${JSON.stringify(liftWidthCheck)}`,
+);
 await page.locator('#liftoffTargetLayer').selectOption(resist.layerId);
 assert.equal(await page.locator('#applyOperationBtn').isEnabled(), true);
 await page.locator('#applyOperationBtn').click();
