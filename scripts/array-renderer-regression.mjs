@@ -74,7 +74,7 @@ try {
     return elapsed;
   };
   const errors = observePageErrors(page);
-  await page.goto(baseUrl + '/app.html');
+  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1');
   await waitForAppReady(page);
   await page
     .locator('#openProjectInput')
@@ -125,6 +125,21 @@ try {
     const distant = await snapshot();
     assert.match(distant.transparentArrayLodTier, /^far-/);
     assert.equal(distant.v3ScreenBudgetMode, 'observe-only');
+    assert.ok(
+      Number(distant.indexedSmoothWallVertices) > 0,
+      'Fast buried array must actually use compact indexed smooth wall geometry',
+    );
+    assert.equal(
+      Number(distant.indexedSmoothWallOriginalVertices),
+      Number(distant.indexedSmoothWallTriangles) * 3,
+      'index count preserves every original smooth-wall triangle',
+    );
+    assert.equal(
+      Number(distant.indexedSmoothWallOriginalVertices) /
+        Number(distant.indexedSmoothWallVertices),
+      1.5,
+      'four indexed vertices must replace six duplicated vertices per quad',
+    );
     assert.equal(distant.v3ProjectionStatus, 'sampled');
     assert.equal(distant.v3TileBoundStatus, 'measured');
     assert.equal(distant.v3EdgeSurveyStatus, 'bounded');
@@ -264,6 +279,7 @@ try {
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
   assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
+  assert.equal(transparentCold.indexedSmoothWallVertices, '0', 'Quality uses unindexed exact walls');
   assert.equal(transparentCold.v3SkippedTriangles, '0');
   assert.equal(transparentCold.v3ScreenBudgetQualified, 'false');
   assert.equal(transparentCold.v3ScreenBudgetReason, 'not-far');
