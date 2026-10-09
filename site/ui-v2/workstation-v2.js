@@ -151,14 +151,12 @@
       for (const { key } of registry.views) {
         const id = `view.${key}`;
         const visible = names.includes(key);
-        let panel = adapters.node(id);
-        if (!panel) panel = adapters.show(id, canvases);
-        else if (visible) adapters.show(id, canvases);
+        const panel = adapters.prepare(id, canvases);
         if (!panel) throw Error(`Missing view adapter ${id}`);
         if (panel.parentNode !== canvases) canvases.append(panel);
         panel.hidden = !visible;
         panel.style.order = String(visible ? names.indexOf(key) : 99);
-        if (visible) adapters.refresh(id);
+        if (visible) adapters.show(id, canvases);
         else adapters.hide(id);
       }
     }
