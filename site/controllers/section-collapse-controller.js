@@ -149,10 +149,11 @@ export function createSectionCollapseController({
       backScale = $('sectionCollapseBackScale'),
       linkScale = $('sectionCollapseScaleLinked');
     linkScale.checked = linked;
+    linkScale.disabled = !enabled;
     frontScale.value = String(Number(value.frontScale || 1));
     backScale.value = String(Number(value.backScale || 1));
-    frontScale.disabled = linked;
-    backScale.disabled = linked;
+    frontScale.disabled = !enabled || linked;
+    backScale.disabled = !enabled || linked;
   }
 
   function sync() {
