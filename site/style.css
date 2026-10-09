@@ -5615,6 +5615,7 @@ summary:focus-visible {
 }
 .view-menu-popover,
 .view-display-popover {
+  box-sizing: border-box;
   position: absolute;
   z-index: 24;
   top: 31px;
