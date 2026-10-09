@@ -7,10 +7,10 @@ import {
   DOI,
 } from '../../scripts/build-tio2-metalens-example.mjs';
 import { validateProcessModel, validateProjectFile } from '../project-schema.js';
-import { pointInMulti } from '../vector-geometry.js';
 
 test('paper-derived TiO2 local project is physically rebuilt, with four mask topologies', async () => {
   const { project, json, report } = await buildMetalensLocal();
+  const { pointInMulti } = await import('../vector-geometry.js');
   assert.equal(report.doi, DOI);
   assert.equal(report.bookmarks, 6);
   assert.equal(project.processRecipe.steps.at(-1).command, 'etch');

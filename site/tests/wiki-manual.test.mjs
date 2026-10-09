@@ -34,12 +34,18 @@ test('Wiki examples cover exactly the published Welcome project families and the
 test('every shipped example section embeds a real corresponding preview asset', async () => {
   const page = await manual('Examples-and-Modeling-Limits');
   for (const example of BUNDLED_EXAMPLES) {
-    const image = example.id + '-three.webp';
+    const image = example.preview?.path?.replace(/^\.\//, '');
+    assert.ok(image?.startsWith('examples/thumbnails/'), example.id + ': invalid preview path');
     assert.ok(
-      page.includes('/site/examples/thumbnails/' + image),
+      page.includes('/site/' + image),
       example.id + ': missing preview',
     );
-    await access(new URL('../examples/thumbnails/' + image, import.meta.url));
+    await access(new URL('../' + image, import.meta.url));
+    if (image.endsWith('.svg')) {
+      const asset = await readFile(new URL('../' + image, import.meta.url), 'utf8');
+      assert.match(asset, /<svg[\s>]/);
+      assert.match(asset, /SCHEMATIC ONLY|Illustrative/i);
+    }
   }
 });
 
