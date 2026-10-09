@@ -29,10 +29,7 @@ function locationText(finding) {
   return values.join(' · ');
 }
 
-export function createProcessDiagnosticsController({
-  root = document,
-  getModel,
-}) {
+export function createProcessDiagnosticsController({ root = document, getModel }) {
   const $ = (id) => root.getElementById(id);
   const button = $('diagnosticsAnalyzeBtn');
   const results = $('diagnosticsResults');
@@ -78,20 +75,29 @@ export function createProcessDiagnosticsController({
       metrics.append(item);
     }
     results.append(metrics);
-    const coverage = report.scope === 'array-templates'
-      ? 'Array report: material volumes and region counts are weighted across all instances. XY ownership is checked inside each referenced template; seams between adjacent instances were not checked. Coordinates for array findings identify a representative instance.'
-      : 'Full canonical model: XY ownership and Z intervals inspected.';
+    const coverage =
+      report.scope === 'array-templates'
+        ? 'Array report: material volumes and region counts are weighted across all instances. XY ownership is checked inside each referenced template; seams between adjacent instances were not checked. Coordinates for array findings identify a representative instance.'
+        : 'Full canonical model: XY ownership and Z intervals inspected.';
     results.append(textNode(doc, 'p', 'diagnostics-note', coverage));
     if (!report.checks.xyVoidClassification) {
       results.append(
-        textNode(doc, 'p', 'diagnostics-caution',
-          'XY void/crack scan incomplete or skipped due to geometry complexity. No claim is made about missing coverage.'),
+        textNode(
+          doc,
+          'p',
+          'diagnostics-caution',
+          'XY void/crack scan incomplete or skipped due to geometry complexity. No claim is made about missing coverage.',
+        ),
       );
     }
     if (!report.checks.xyOverlapWithinTemplate) {
       results.append(
-        textNode(doc, 'p', 'diagnostics-caution',
-          'Incomplete XY overlap scan: the complexity budget or a polygon error prevented complete verification. No clean geometry claim is made.'),
+        textNode(
+          doc,
+          'p',
+          'diagnostics-caution',
+          'Incomplete XY overlap scan: the complexity budget or a polygon error prevented complete verification. No clean geometry claim is made.',
+        ),
       );
     }
     results.append(textNode(doc, 'h4', 'diagnostics-subtitle', 'Materials'));
@@ -101,7 +107,12 @@ export function createProcessDiagnosticsController({
       item.append(
         textNode(doc, 'span', 'diagnostics-layer-name', layer.name),
         textNode(doc, 'span', '', `${formatNumber(layer.volumeUm3)} µm³`),
-        textNode(doc, 'small', '', `Z thickness ${formatNumber(layer.minThicknessUm)}–${formatNumber(layer.maxThicknessUm)} µm`),
+        textNode(
+          doc,
+          'small',
+          '',
+          `Z thickness ${formatNumber(layer.minThicknessUm)}–${formatNumber(layer.maxThicknessUm)} µm`,
+        ),
       );
       layerList.append(item);
     }
@@ -117,21 +128,46 @@ export function createProcessDiagnosticsController({
       const location = locationText(finding);
       if (location) item.append(textNode(doc, 'small', '', location));
       if (finding.occurrences > 1) {
-        item.append(textNode(doc, 'small', '', `${finding.occurrences} occurrences (representative bounds shown)`));
+        item.append(
+          textNode(
+            doc,
+            'small',
+            '',
+            `${finding.occurrences} occurrences (representative bounds shown)`,
+          ),
+        );
       }
       findings.append(item);
     }
     if (!report.findings.length) {
-      findings.append(textNode(doc, 'p', 'diagnostics-note',
-        'No issues detected by the implemented checks. This does not validate the intended recipe or fabrication physics.'));
+      findings.append(
+        textNode(
+          doc,
+          'p',
+          'diagnostics-note',
+          'No issues detected by the implemented checks. This does not validate the intended recipe or fabrication physics.',
+        ),
+      );
     }
     if (report.omittedFindings) {
-      findings.append(textNode(doc, 'p', 'diagnostics-caution',
-        `${report.omittedFindings} additional finding groups omitted from this bounded report.`));
+      findings.append(
+        textNode(
+          doc,
+          'p',
+          'diagnostics-caution',
+          `${report.omittedFindings} additional finding groups omitted from this bounded report.`,
+        ),
+      );
     }
     results.append(findings);
-    results.append(textNode(doc, 'p', 'diagnostics-note',
-      'Material volume is a sum over canonical intervals; invalid overlapping owners can double-count. A Z gap is an observation, not automatically a defect. Rough/Pyramid appearances and Implant/Electrical annotations are not solved physical microgeometry. No process chemistry, intentional connectivity or expected-thickness rule is inferred.'));
+    results.append(
+      textNode(
+        doc,
+        'p',
+        'diagnostics-note',
+        'Material volume is a sum over canonical intervals; invalid overlapping owners can double-count. A Z gap is an observation, not automatically a defect. Rough/Pyramid appearances and Implant/Electrical annotations are not solved physical microgeometry. No process chemistry, intentional connectivity or expected-thickness rule is inferred.',
+      ),
+    );
   }
 
   function releaseWorker() {
@@ -183,10 +219,10 @@ export function createProcessDiagnosticsController({
           reportRevision = signature(model);
           render(data.report);
           results.classList.remove('diagnostics-stale');
-          status.textContent = data.report.checks.xyOverlapWithinTemplate &&
-            data.report.checks.xyVoidClassification
-            ? 'Analysis complete · read-only'
-            : 'Analysis partial · some geometry checks incomplete';
+          status.textContent =
+            data.report.checks.xyOverlapWithinTemplate && data.report.checks.xyVoidClassification
+              ? 'Analysis complete · read-only'
+              : 'Analysis partial · some geometry checks incomplete';
         } else {
           status.textContent = `Analysis failed: ${data.message || 'Unknown error'}`;
         }
