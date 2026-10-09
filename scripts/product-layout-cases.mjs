@@ -111,6 +111,17 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
     await ensurePrimaryViewVisible(page, 'three');
     const threeDisplay = page.locator('#threePanel .three-opacity-control');
     const threeMore = page.locator('#threePanel .view-more-control');
+    // Switching Overview / Split / single view resizes the panel and triggers
+    // ResizeObserver reparenting; do not race that relocation.
+    await page.waitForFunction(() => {
+      const panel = document.getElementById('threePanel');
+      const display = panel?.querySelector('.three-opacity-control');
+      const width = panel?.getBoundingClientRect().width || 0;
+      return (
+        width > 0 &&
+        Boolean(display?.closest('.view-overflow-secondary')) === (width < 510)
+      );
+    });
     // When reparented under More, Display is inline content of a bounded
     // scrollable menu. Test its actual reachability, not the unscrolled
     // bounding box of an inline child.
