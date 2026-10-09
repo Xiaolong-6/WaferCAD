@@ -644,3 +644,28 @@ test('Lift-off selector lists sacrificial materials stored in array templates', 
   assert.ok(select.options.some((option) => option.value === resist.layerId));
   assert.equal(select.disabled, false);
 });
+
+test('Lift-off requires an explicit sacrificial selection before Apply is enabled', async () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
+    mode: 'liftoff',
+  });
+  const root = controller.__root;
+  controller.updateUi();
+  assert.equal(root.getElementById('applyOperationBtn').disabled, true);
+  assert.equal(root.getElementById('liftoffTargetLayer').disabled, true);
+  assert.match(root.getElementById('liftoffTargetHint').textContent, /Deposit and pattern/);
+
+  const model = controller.__getModel();
+  const modelApi = await import('../model.js');
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'PMMA', thickness: 0.2,
+    growth: 'direct', face: 'front', area: model.boundary,
+  });
+  controller.updateUi();
+  assert.equal(root.getElementById('liftoffTargetLayer').disabled, false);
+  assert.equal(root.getElementById('applyOperationBtn').disabled, true);
+  root.getElementById('liftoffTargetLayer').value = resist.layerId;
+  controller.updateUi();
+  assert.equal(root.getElementById('applyOperationBtn').disabled, false);
+  assert.match(root.getElementById('liftoffTargetHint').textContent, /supported deposits/);
+});
