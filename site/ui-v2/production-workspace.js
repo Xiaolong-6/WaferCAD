@@ -41,7 +41,7 @@
     },
       el('header', { class: 'p-panel-head' }, el('strong', {}, key),
         el('div', { class: 'p-toolbar' })),
-      el('div', { class: 'p-science', 'data-science': key },
+      el('div', { class: 'p-science', 'data-science': key, 'data-v2-stage-host': '' },
         el('span', { class: 'p-aux' }, 'Scientific renderer mounts here in M3')),
       el('div', { class: 'p-readout' }, '')),
   });
