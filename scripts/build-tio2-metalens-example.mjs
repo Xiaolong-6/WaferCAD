@@ -321,12 +321,21 @@ export async function generateMetalensArtifacts({outputDir,full=true}={}) {
     assert.equal(fullMask.sites.length,PAPER_SITES);
     const gds=serializeGDS(fullMask.elements,{cellName:'TIO2_30UM_PAPER_DERIVED'});
     await writeFile(join(outputDir,'tio2-30um-4725-sites-ILLUSTRATIVE.gds'),gds);
+    // The separate 4725-site Mask must really re-import through the
+    // product GDS decoder; a successfully written byte stream is not enough.
+    const roundTrip=await parseLayoutFile(
+      gds.buffer.slice(gds.byteOffset,gds.byteOffset+gds.byteLength),
+      'tio2-30um-4725-sites-ILLUSTRATIVE.gds',
+    );
+    assert.equal(roundTrip.layout.elements.length,fullMask.elements.length,
+      'Full-aperture GDS lost or duplicated polygons on import');
     const head='id,x_um,y_um,type,scale_NOTE_illustrative\n';
     await writeFile(join(outputDir,'tio2-30um-4725-sites-ILLUSTRATIVE.csv'),
       head+fullMask.sites.map(s=>[s.id,s.x,s.y,s.type,s.scale].join(',')).join('\n')+'\n');
     report.fullAperture={diameterUm:DIAMETER_UM,count:fullMask.sites.length,
       polygons:fullMask.elements.length,bytes:gds.byteLength,
       minConservativeClearanceUm:fullMask.minClearanceUm,
+      reimportedPolygons:roundTrip.layout.elements.length,
       opticalValidity:'NOT VALIDATED; design optimization data unavailable'};
   }
   await writeFile(join(outputDir,'reconstruction-report.json'),JSON.stringify(report,null,2)+'\n');
