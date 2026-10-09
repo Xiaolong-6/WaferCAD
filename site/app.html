@@ -1161,6 +1161,22 @@
                 </div>
               </div>
               <div id="recipeProcessPane" class="control-body recipe-process-pane" hidden></div>
+              <details id="geometryDiagnosticsPanel" class="geometry-diagnostics">
+                <summary>Geometry Diagnostics <span>Analyze structure</span></summary>
+                <div class="diagnostics-content">
+                  <p class="diagnostics-note">
+                    Read-only canonical material checks. Intentional cavities are observations;
+                    display-only roughness and process physics are not assessed.
+                  </p>
+                  <button type="button" id="diagnosticsAnalyzeBtn" class="compact-btn">
+                    Analyze geometry
+                  </button>
+                  <p id="diagnosticsStatus" class="diagnostics-status" role="status" aria-live="polite">
+                    Analysis has not run.
+                  </p>
+                  <div id="diagnosticsResults" class="diagnostics-results"></div>
+                </div>
+              </details>
             </section>
 
             <section
