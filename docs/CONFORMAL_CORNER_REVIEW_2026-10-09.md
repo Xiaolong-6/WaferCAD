@@ -30,11 +30,15 @@ This code supports **finite shared faces** at the ideal step corner. No Kernel m
 - `site/tests/process-guide.test.mjs`: both Conformal schematic profiles must be single connected filled paths, and the existing check keeps all Wiki assets synchronized with the panel.
 - `site/tests/conformal-process.test.mjs`: both wafer faces, explicit top/wall/bottom same-material intervals and positive shared Z height, a single finite-width upper-corner 3D material slab, Section sidewall continuity, and no internal same-layer 3D wall at the upper join (while retaining the true outer wall).
 
-## Validation and next gates
+## CI evidence and remaining limits
 
-Implementation and source inspection were performed through the GitHub connector. No local checkout, Node execution or Chromium environment was available to this session; **do not report the added assertions as passed until they run**.
+Original Conformal candidate `5473ec5f444ad71742aeea0e42ca90e2e6561957` passed all five GitHub Actions workflows on 2026-10-09: Quality (552/552 Node tests, docs, ESLint), targeted Browser regression, M3D Conformal baseline audit, Native Fig3 full replay and Example Recipe Reconstruction. The subsequent Lift-off integration needs a **new CI pass**.
 
-Required reproducible commands in a checkout:
+Current `main` adds transactional Lift-off v1 at `fbbc261c02836a2c15f9c13b2951ea0ff2a4c7aa`. This branch integrates Lift-off's guide and 19-entry Process catalog together with the corrected Conformal diagrams.
+
+The GLB exporter in `site/three-view.js` builds separate horizontal-cap and sidewall meshes from `buildRenderSurfacePlan()`. Global per-node watertightness is **not** a defined guarantee for its inspection/handoff surface mesh. This regression focuses on positive-area material contact and no false internal upper join in the 3D/GLB input surface plan. Independent exported-mesh edge incidence and visual Front/Back Section/3D corner acceptance remain unverified.
+
+Reproducible focused checks:
 
 ```sh
 npm ci
@@ -43,7 +47,7 @@ npm run docs:check
 npm run check
 ```
 
-For final scientific/visual acceptance also run `npm run test:ui:process` against a locally served app and visually inspect Section/3D Front and Back with Border on/off. Check exported GLB mesh edge incidence explicitly before claiming global watertightness. Do not replace accepted visual baselines without user approval.
+Do not modify accepted visual baselines without authorization.
 
 ## Merge decision
 

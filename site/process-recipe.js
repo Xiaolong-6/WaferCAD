@@ -4,6 +4,7 @@ const COMMANDS = new Set([
   'deposit',
   'extend',
   'etch',
+  'liftoff',
   'implant',
   'electrical',
   'record',
@@ -215,6 +216,12 @@ function normalizeStep(command, input, index = 0) {
     delete params.depth;
     delete params.targetZ;
     delete params.thickness;
+  } else if (command === 'liftoff') {
+    params.sacrificial = cleanText(params.sacrificial || params.material);
+    if (!params.sacrificial) throw new Error('liftoff.sacrificial is required.');
+    params.area = normalizeArea(params.area);
+    params.face = params.face === 'back' ? 'back' : 'front';
+    delete params.material;
   } else if (command === 'implant') {
     params.name = cleanText(params.name, 'Implant');
     params.depthUm = Number.isFinite(Number(params.depthUm))
@@ -573,6 +580,8 @@ export function serializeProcessRecipe(recipeValue) {
         add(p.profile === 'planarize' ? 'targetZ' : 'depth', displayLength(p.thicknessUm));
         add('profile', p.profile);
         if (p.surface && p.surface !== 'smooth') add('surface', JSON.stringify(p.surface), true);
+      } else if (step.command === 'liftoff') {
+        add('sacrificial', p.sacrificial);
       } else if (step.command === 'implant') {
         add('name', p.name);
         add('depth', displayLength(p.depthUm));
@@ -606,6 +615,7 @@ export function recipeStepLabel(step) {
   if (step?.command === 'extend') return `Extend ${p.material || 'layer'}`;
   if (step?.command === 'etch')
     return `${p.profile === 'planarize' ? 'Planarize' : 'Etch'}${p.target ? ` ${p.target}` : ''}`;
+  if (step?.command === 'liftoff') return `Lift-off ${p.sacrificial || 'sacrificial layer'}`;
   if (step?.command === 'implant') return `Implant ${p.name || ''}`.trim();
   if (step?.command === 'electrical') return `Electrical ${p.name || ''}`.trim();
   if (step?.command === 'record') return p.label || 'Record process';
@@ -626,6 +636,7 @@ export function recipeStepSummary(step) {
     return `${displayLength(p.thicknessUm)} · ${coverage}${area}`;
   }
   if (step?.command === 'etch') return `${displayLength(p.thicknessUm)} · ${p.profile}${area}`;
+  if (step?.command === 'liftoff') return `Sacrificial layer: ${p.sacrificial}${area}`;
   if (step?.command === 'implant' || step?.command === 'electrical')
     return `${displayLength(p.depthUm)}${area}`;
   if (step?.command === 'record')

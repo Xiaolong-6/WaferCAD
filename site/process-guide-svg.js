@@ -76,6 +76,16 @@ export function processGuideSvg(id, after = false) {
           (id === 'etch-directional' ? rect(88, 57, 44, 18, pale) : '')
         : deposited(6, 46, 208, 11) + arrow();
     }
+  } else if (id === 'liftoff') {
+    shape =
+      base() +
+      (after
+        ? rect(94, 48, 32, 9, green)
+        : rect(6, 35, 88, 22, gold) +
+          rect(126, 35, 88, 22, gold) +
+          rect(6, 29, 88, 6, green) +
+          rect(94, 48, 32, 9, green) +
+          rect(126, 29, 88, 6, green));
   } else if (id === 'implant') {
     shape =
       base() +

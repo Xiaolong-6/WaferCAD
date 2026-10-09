@@ -198,7 +198,10 @@ export function createProcessRecipeController({
   function defaultStep(command) {
     const mask = currentMaskContext(),
       layers = getModel()?.layers || [],
-      topMaterial = layers.at(-1)?.name || 'Base';
+      topMaterial = layers.at(-1)?.name || 'Base',
+      sacrificialMaterial =
+        layers.find((layer) => /pmma|resist|sacrificial/i.test(layer.name))?.name ||
+        (topMaterial === 'Base' ? 'PMMA' : topMaterial);
     const source =
       command === 'deposit'
         ? {
@@ -222,57 +225,62 @@ export function createProcessRecipeController({
                 face: 'front',
               },
             }
-          : command === 'etch'
+          : command === 'liftoff'
             ? {
                 command,
-                params: {
-                  target: '',
-                  depth: '1 µm',
-                  profile: 'directional',
-                  surface: 'smooth',
-                  area: 'mask',
-                  face: 'front',
-                  mask,
-                },
+                params: { sacrificial: sacrificialMaterial, area: 'full', face: 'front' },
               }
-            : command === 'implant'
+            : command === 'etch'
               ? {
                   command,
                   params: {
-                    name: `Implant ${(getModel()?.implants?.length || 0) + 1}`,
-                    depth: '0.5 µm',
-                    tilt: 0,
+                    target: '',
+                    depth: '1 µm',
+                    profile: 'directional',
+                    surface: 'smooth',
                     area: 'mask',
                     face: 'front',
                     mask,
                   },
                 }
-              : command === 'electrical'
+              : command === 'implant'
                 ? {
                     command,
                     params: {
-                      name: `Electrical Region ${(getModel()?.electricalRegions?.length || 0) + 1}`,
-                      depth: '0.2 µm',
-                      regionType: 'p-inversion',
-                      source: 'induced',
+                      name: `Implant ${(getModel()?.implants?.length || 0) + 1}`,
+                      depth: '0.5 µm',
+                      tilt: 0,
                       area: 'mask',
                       face: 'front',
                       mask,
                     },
                   }
-                : command === 'record'
+                : command === 'electrical'
                   ? {
                       command,
                       params: {
-                        process: 'anneal',
-                        label: 'Anneal',
-                        temperatureC: null,
-                        durationMin: null,
-                        ambient: null,
-                        note: null,
+                        name: `Electrical Region ${(getModel()?.electricalRegions?.length || 0) + 1}`,
+                        depth: '0.2 µm',
+                        regionType: 'p-inversion',
+                        source: 'induced',
+                        area: 'mask',
+                        face: 'front',
+                        mask,
                       },
                     }
-                  : { command: 'snapshot', params: { name: 'Milestone' } };
+                  : command === 'record'
+                    ? {
+                        command,
+                        params: {
+                          process: 'anneal',
+                          label: 'Anneal',
+                          temperatureC: null,
+                          durationMin: null,
+                          ambient: null,
+                          note: null,
+                        },
+                      }
+                    : { command: 'snapshot', params: { name: 'Milestone' } };
     const normalized = normalizeProcessRecipe({ name: recipe.name, steps: [source] }).steps[0];
     normalized.id = nextId();
     return normalized;
@@ -609,6 +617,7 @@ export function createProcessRecipeController({
         { value: 'deposit', label: 'Deposit' },
         { value: 'extend', label: 'Extend' },
         { value: 'etch', label: 'Etch' },
+        { value: 'liftoff', label: 'Lift-off' },
         { value: 'implant', label: 'Implant' },
         { value: 'electrical', label: 'Electrical' },
         { value: 'record', label: 'Record' },
@@ -771,6 +780,8 @@ export function createProcessRecipeController({
           { value: 'direct', label: 'Directional' },
           { value: 'conformal', label: 'Conformal' },
         ]);
+      } else if (step.command === 'liftoff') {
+        bindText('Sacrificial layer', 'sacrificial');
       } else if (step.command === 'etch') {
         bindText('Target', 'target');
         bindLength(p.profile === 'planarize' ? 'Target Z' : 'Depth', 'thicknessUm', p.thicknessUm);
@@ -1160,6 +1171,10 @@ export function createProcessRecipeController({
         setThickness(p.thicknessUm);
         updateOperationUI();
         selectMaterialByName('targetLayer', p.material);
+      } else if (step.command === 'liftoff') {
+        $('operationType').value = 'liftoff';
+        updateOperationUI();
+        selectMaterialByName('liftoffTargetLayer', p.sacrificial);
       } else if (step.command === 'etch') {
         $('operationType').value = 'etch';
         $('etchProfile').value = p.profile || 'directional';
@@ -1445,6 +1460,14 @@ export function createProcessRecipeController({
           surface: p.surface || 'smooth',
           ...common,
         },
+      };
+    } else if (operation.kind === 'liftoff') {
+      const layerId = p.sacrificialLayerId || operation.sacrificialLayerId;
+      const layerName = getModel()?.layers?.find((layer) => layer.id === layerId)?.name || '';
+      if (!layerName) return null;
+      source = {
+        command: 'liftoff',
+        params: { sacrificial: layerName, ...common },
       };
     } else if (operation.kind === 'implant') {
       source = {

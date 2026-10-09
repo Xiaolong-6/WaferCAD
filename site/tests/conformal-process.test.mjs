@@ -10,6 +10,7 @@ const { difference, intersection, isEmpty, pointInMulti, rectMulti } =
   await import('../vector-geometry.js');
 const { materialSolidsFromTopology, ownedMaterialSurfacesFromTopology, sectionSlicesFromTopology } =
   await import('../process-topology.js');
+const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
 
 function regionAt(model, point) {
   return model.regions.find((region) => pointInMulti(point, region.geom)) || null;
@@ -297,6 +298,8 @@ test('Conformal Extend joins top, sidewall and low film with finite contacts in 
     // The 3D owner must not draw an artificial wall through the same material
     // at the x=2 join; its external wall belongs at x=3 instead.
     const plan = ownedMaterialSurfacesFromTopology(model);
+    // GLB export consumes this same render-surface plan.
+    const exportPlan = buildRenderSurfacePlan(model);
     const onVertical = (item, x) =>
       item.layerId === seed.layerId &&
       Math.abs(item.p[0] - x) < 1e-7 &&
@@ -311,6 +314,15 @@ test('Conformal Extend joins top, sidewall and low film with finite contacts in 
     assert.ok(
       plan.sidewalls.some((item) => onVertical(item, 3)),
       face + ': missing outer 3D wall',
+    );
+    assert.equal(
+      exportPlan.sidewalls.filter((item) => onVertical(item, 2)).length,
+      0,
+      face + ': GLB/render plan has an internal upper join',
+    );
+    assert.ok(
+      exportPlan.sidewalls.some((item) => onVertical(item, 3)),
+      face + ': GLB/render plan missing outer corner wall',
     );
   }
 });

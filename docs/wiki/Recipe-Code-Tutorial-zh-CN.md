@@ -78,17 +78,26 @@ deposit({
 
 **Mask ROI 会限制 Mask 工艺作用范围，Main ROI 不限制 Apply**。参阅 [Masks and ROI](Masks-and-ROI)。
 
-## 三、七条支持的命令
+## 三、八条支持的命令
 
-| 命令           | 用途               | 主要参数                                  |
-| -------------- | ------------------ | ----------------------------------------- |
-| `deposit()`    | 新材料沉积         | material、thickness、coverage             |
-| `extend()`     | 增厚现有材料       | material、thickness、coverage             |
-| `etch()`       | 刻蚀、释放或平坦化 | target、depth / targetZ、profile          |
-| `implant()`    | 深度渐变注入标记   | name、depth、tilt                         |
-| `electrical()` | 电学区域标记       | name、depth、regionType、source           |
-| `record()`     | 非几何工艺记录     | process、label、temperatureC、durationMin |
-| `snapshot()`   | 命名快照           | 快照名称                                  |
+新增 Lift-off 示例：
+
+```javascript
+liftoff({ sacrificial: 'PMMA', face: 'front', area: 'full' });
+```
+
+这一步去除 PMMA 及其直接支撑的上方薄膜，保留开口底部沉积物。它是理想化 2.5D 几何操作，不预测溶剂、黏附和薄膜断裂。
+
+| 命令           | 用途                   | 主要参数                                  |
+| -------------- | ---------------------- | ----------------------------------------- |
+| `deposit()`    | 新材料沉积             | material、thickness、coverage             |
+| `extend()`     | 增厚现有材料           | material、thickness、coverage             |
+| `etch()`       | 刻蚀、释放或平坦化     | target、depth / targetZ、profile          |
+| `liftoff()`    | 牺牲层及其支撑膜层剥离 | sacrificial、face、area                   |
+| `implant()`    | 深度渐变注入标记       | name、depth、tilt                         |
+| `electrical()` | 电学区域标记           | name、depth、regionType、source           |
+| `record()`     | 非几何工艺记录         | process、label、temperatureC、durationMin |
+| `snapshot()`   | 命名快照               | 快照名称                                  |
 
 ### 1. Deposit 和 Extend
 
@@ -294,6 +303,6 @@ snapshot('02 - Passivated');
 
 ## 七、当前 v1 的限制
 
-现在只有七种命令。**不支持**在脚本中直接创建全新 Mask 图元、参数变量、循环阵列、条件分支、外部 JS。Mask 应从现有版图导入或在 UI 绘制后捕获。诸如 `parameter()`、`mask()`、`for(...)` 均属于未来可能的语法设计，不能在当前 Code 编辑器中运行。
+现在支持八种命令。**不支持**在脚本中直接创建全新 Mask 图元、参数变量、循环阵列、条件分支、外部 JS。Mask 应从现有版图导入或在 UI 绘制后捕获。诸如 `parameter()`、`mask()`、`for(...)` 均属于未来可能的语法设计，不能在当前 Code 编辑器中运行。
 
 完整英文命令说明、流程和源码链接见 [English Recipe Code Tutorial](Recipe-Code-Tutorial)，所有工艺模式的图示见 [Process Operations](Process-Operations)。

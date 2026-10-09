@@ -266,7 +266,15 @@ After **Apply code → Validate → Rebuild Base first → Run All**, inspect th
 
 ## 7. Current v1 boundary and future syntax
 
-The Recipe parser accepts **seven commands only**: deposit, extend, etch, implant, electrical, record and snapshot. It cannot declare new masks from geometric primitives, use named recipe variables, iterate wafer arrays, or branch conditionally. Prepare/capture Masks in the UI or supply an imported layout. Do not paste proposed `parameter()`, `mask()`, or `for` constructs into the v1 editor.
+Lift-off removes a chosen sacrificial layer and touching outward deposition. In a PMMA 200 nm / Cr 30 nm process, metal in the resist openings survives:
+
+```javascript
+liftoff({ sacrificial: 'PMMA', face: 'front', area: 'full' });
+```
+
+The 2.5D operator does not predict solvent dissolution, adhesion, fracture or continuous bridging-film release. It rejects ambiguous same-Z bridges.
+
+The Recipe parser accepts **eight commands**: deposit, extend, etch, liftoff, implant, electrical, record and snapshot. It cannot declare new masks from geometric primitives, use named recipe variables, iterate wafer arrays, or branch conditionally. Prepare/capture Masks in the UI or supply an imported layout. Do not paste proposed `parameter()`, `mask()`, or `for` constructs into the v1 editor.
 
 Source reference: [Recipe parser](https://github.com/Xiaolong-6/WaferCAD/blob/main/site/process-recipe.js), [Recipe execution controller](https://github.com/Xiaolong-6/WaferCAD/blob/main/site/controllers/process-recipe-controller.js), [Recipe tests](https://github.com/Xiaolong-6/WaferCAD/blob/main/site/tests/process-recipe.test.mjs).
 

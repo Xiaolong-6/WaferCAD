@@ -1438,9 +1438,16 @@ function validateProcessRecipe(recipe) {
     ids.add(id);
     const command = assertString(step.command, `${path}.command`, { max: 32 });
     if (
-      !['deposit', 'extend', 'etch', 'implant', 'electrical', 'record', 'snapshot'].includes(
-        command,
-      )
+      ![
+        'deposit',
+        'extend',
+        'etch',
+        'liftoff',
+        'implant',
+        'electrical',
+        'record',
+        'snapshot',
+      ].includes(command)
     ) {
       fail(`${path}.command`, 'is not supported.');
     }
