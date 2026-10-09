@@ -57,7 +57,10 @@ test('Wiki navigation links to both Recipe tutorials', async () => {
 test('the novice path is discoverable and names the current UI controls', async () => {
   const guide = await manual('First-10-Minutes');
   for (const entry of ['Home', '_Sidebar', 'Getting-Started', 'Troubleshooting']) {
-    assert.ok((await manual(entry)).includes('(First-10-Minutes)'), `${entry}: beginner path missing`);
+    assert.ok(
+      (await manual(entry)).includes('(First-10-Minutes)'),
+      `${entry}: beginner path missing`,
+    );
   }
   for (const step of [
     'Apply base',
@@ -83,7 +86,10 @@ test('the novice path is discoverable and names the current UI controls', async 
 
   const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
   const basePanel = html.slice(html.indexOf('id="baseTools"'), html.indexOf('id="maskTools"'));
-  const projectPanel = html.slice(html.indexOf('id="settingsTools"'), html.indexOf('id="sectionPanel"'));
+  const projectPanel = html.slice(
+    html.indexOf('id="settingsTools"'),
+    html.indexOf('id="sectionPanel"'),
+  );
   assert.ok(basePanel.includes('id="applyBaseBtn"'), 'Apply base must belong to Base, not Project');
   assert.ok(!projectPanel.includes('id="applyBaseBtn"'), 'Project should not claim Base controls');
   for (const id of ['newProjectBtn', 'saveProjectBtn', 'exportProjectBtn', 'xyUnitSelect']) {
