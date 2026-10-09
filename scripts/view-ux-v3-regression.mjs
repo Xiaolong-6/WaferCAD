@@ -50,15 +50,24 @@ for (const { name, viewport } of cases) {
 
   // Real workstation tabs are required in compact viewports: hidden
   // controls must be made visible through their public navigation.
+  const capturedSingleViews = new Set();
   const activateView = async (view) => {
     await page.locator(`.workstation-view-tabs > button[data-view="${view}"]`).click();
-    await page
-      .locator(`#${{ main: 'mainPanel', mask: 'maskPanel', three: 'threePanel' }[view]}`)
-      .waitFor({ state: 'visible' });
+    const panelId = { main: 'mainPanel', mask: 'maskPanel', three: 'threePanel' }[view];
+    const panel = page.locator('#' + panelId);
+    await panel.waitFor({ state: 'visible' });
     // The ResizeObserver can relocate lower-priority tools after view switches.
     // Wait for the layout to settle before probing their actual user entry path.
     await waitForPaint(page);
     await waitForPaint(page);
+    if (!capturedSingleViews.has(view)) {
+      if (view === 'three') await waitForThreeReady(page);
+      await panel.screenshot({
+        path: `test-results/product-review/view-ux-v3/${name}-single-${view}.png`,
+        animations: 'disabled',
+      });
+      capturedSingleViews.add(view);
+    }
   };
 
   // Source/mode controls choose an explicit value, rather than forcing a cycle.
