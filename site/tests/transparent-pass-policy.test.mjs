@@ -20,11 +20,45 @@ test('only smooth, single-plane transparent material caps skip the redundant bac
 
 test('opaque materials, sides, rough surfaces and annotations retain the original pass policy', () => {
   const cap = { kind: 'material-interface', planarCap: true };
-  assert.equal(canRenderPlanarCapInSinglePass({ materialState: { transparent: false }, presentation: cap }), false);
-  assert.equal(canRenderPlanarCapInSinglePass({ materialState, presentation: { ...cap, planarCap: false } }), false);
-  assert.equal(canRenderPlanarCapInSinglePass({ materialState, presentation: { kind: 'electrical-internal', planarCap: true } }), false);
-  assert.equal(canRenderPlanarCapInSinglePass({ materialState, presentation: { kind: 'implant-surface', planarCap: true } }), false);
-  assert.equal(canRenderPlanarCapInSinglePass({ materialState, appearance: { kind: 'rough' }, presentation: cap }), false);
-  assert.equal(canRenderPlanarCapInSinglePass({ materialState, presentation: undefined }), false);
+  assert.equal(
+    canRenderPlanarCapInSinglePass({
+      materialState: { transparent: false },
+      presentation: cap,
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderPlanarCapInSinglePass({
+      materialState,
+      presentation: { ...cap, planarCap: false },
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderPlanarCapInSinglePass({
+      materialState,
+      presentation: { kind: 'electrical-internal', planarCap: true },
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderPlanarCapInSinglePass({
+      materialState,
+      presentation: { kind: 'implant-surface', planarCap: true },
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderPlanarCapInSinglePass({
+      materialState,
+      appearance: { kind: 'rough' },
+      presentation: cap,
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderPlanarCapInSinglePass({ materialState, presentation: undefined }),
+    false,
+  );
   assert.equal(canRenderPlanarCapInSinglePass(), false);
 });
