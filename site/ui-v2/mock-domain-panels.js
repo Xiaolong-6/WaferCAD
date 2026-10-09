@@ -339,6 +339,12 @@
             state.processSurface || sample?.surface?.kind || sample?.surface || 'smooth',
           ),
         ];
+      if (operation === 'liftoff') return [
+        select('Sacrificial layer (Lift-off)', 'liftoffSacrificial',
+          currentModel().layers.map((layer) => [layer.name, layer.name]),
+          state.liftoffSacrificial || currentModel().layers.at(-1)?.name || ''),
+        notice('Ideal sacrificial lift-off · UI draft only; no geometry or transaction executed.'),
+      ];
       if (operation === 'implant')
         return [
           field(
@@ -453,6 +459,7 @@
               ['deposit', 'Deposit'],
               ['extend', 'Extend'],
               ['etch', 'Etch'],
+              ['liftoff', 'Lift-off'],
               ['implant', 'Implant'],
               ['electrical', 'Electrical'],
               ['record', 'Record'],
@@ -465,7 +472,7 @@
             currentModel().layers.map((l) => [l.id, l.name]),
             state.material || currentModel().layers.at(-1).id,
           ),
-          ...((state.operation || 'deposit') !== 'record'
+          ...(!['record', 'liftoff'].includes(state.operation || 'deposit')
             ? [
                 stepper(
                   `Thickness / depth · ${unitName}`,
@@ -557,6 +564,7 @@
                 ['deposit', 'Deposit'],
                 ['extend', 'Extend'],
                 ['etch', 'Etch'],
+                ['liftoff', 'Lift-off'],
                 ['implant', 'Implant'],
                 ['electrical', 'Electrical'],
                 ['record', 'Record'],
