@@ -1281,7 +1281,7 @@ html[data-font='inter'] {
 /* M2.5 persistent view hosts and overlay portal layers. */
 .p-view[hidden], .v2-panel-host[hidden], .v2-panel-subhost[hidden],
 .p-nav[hidden], .p-inspector[hidden], .p-divider[hidden], .p-empty-strip[hidden] {
-  display: none !important;
+  display: none;
 }
 .v2-view-title { min-width: 0; flex-shrink: 0; }
 .v2-view-actions { min-width: 0; display: flex; flex: 1; }
