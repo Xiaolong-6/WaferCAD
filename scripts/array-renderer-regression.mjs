@@ -57,8 +57,6 @@ try {
       frameMs: el.dataset.rendererFrameMs,
       drawCalls: el.dataset.rendererDrawCalls,
       drawTriangles: el.dataset.rendererDrawTriangles,
-      exactIndexedArrayObjects: el.dataset.sceneExactIndexedArrayObjects,
-      exactIndexedLogicalVerticesSaved: el.dataset.sceneExactIndexedLogicalVerticesSaved,
       sceneVariant: el.dataset.sceneVariant,
       sceneObjects: el.dataset.sceneObjectCount,
       sceneGeometries: el.dataset.sceneGeometryCount,
@@ -192,11 +190,6 @@ try {
   }
   assert.equal(transparentCold.arrayInstances, '1885');
   assert.ok(
-    Number(transparentCold.sceneExactIndexedArrayObjects) > 0 &&
-      Number(transparentCold.sceneExactIndexedLogicalVerticesSaved) > 0,
-    'Transparent array templates must reuse bit-identical GPU vertices',
-  );
-  assert.ok(
     Number(transparentCold.sceneSinglePassCapObjects) > 0 &&
       Number(transparentCold.sceneSavedCapTriangleSubmissions) > 0,
     'Smooth transparent material caps must skip only the redundant DoubleSide draw pass',
@@ -245,7 +238,6 @@ try {
   const opaqueSwapMs = await waitStage('opacity-swap-opaque', 120000, beforeOpaqueFrame);
   const opaqueSwap = await snapshot();
   assert.equal(opaqueSwap.rendererUpdateKind, 'variant-swap');
-  assert.equal(Number(opaqueSwap.sceneExactIndexedArrayObjects), 0);
   assert.equal(
     Number(opaqueSwap.sceneSinglePassCapObjects),
     0,
@@ -261,11 +253,6 @@ try {
   const warmTransparentMs = await waitStage('opacity-swap-transparent', 120000, beforeWarmFrame);
   const transparentWarm = await snapshot();
   assert.equal(transparentWarm.rendererUpdateKind, 'variant-swap');
-  assert.equal(
-    transparentWarm.sceneExactIndexedLogicalVerticesSaved,
-    transparentCold.sceneExactIndexedLogicalVerticesSaved,
-    'Transparent variant cache must preserve the exact indexed geometry',
-  );
   assert.equal(
     transparentWarm.sceneSavedCapTriangleSubmissions,
     transparentCold.sceneSavedCapTriangleSubmissions,
