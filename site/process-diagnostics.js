@@ -140,7 +140,23 @@ function analyzePart(state, model, copies = 1, dx = 0, dy = 0) {
           copies,
         );
       }
-      if (previous && z0 < previous.z1 - Z_EPSILON) {
+      if (previous && z0 < previous.z0 - Z_EPSILON) {
+        addFinding(
+          state,
+          {
+            code: 'z-out-of-order',
+            severity: 'error',
+            title: 'Material Z stack is out of order',
+            detail: `Region ${region.id}: ${layerId} starts below the preceding ${previous.layerId} interval. No overlap is inferred without shared Z coverage.`,
+            layerId,
+            relatedLayerId: previous.layerId,
+            z0,
+            z1,
+            box,
+          },
+          copies,
+        );
+      } else if (previous && z0 < previous.z1 - Z_EPSILON) {
         addFinding(
           state,
           {
