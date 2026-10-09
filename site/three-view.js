@@ -6,6 +6,7 @@ import {
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
+import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -2641,6 +2642,34 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.fullWaferTransparencyLod = String(arrayLod.tier !== 'exact');
       host.dataset.transparentArrayDisplayTolerance = String(transparentArrayDisplayTolerance);
       host.dataset.transparentArrayLodTier = arrayLod.tier;
+      // V3 phase A is diagnostic only: estimate the strictly subpixel,
+      // smooth, buried wall workload at a far Fast array camera. No mesh
+      // reduction, change to opacity sorting or mutation of source geometry.
+      const viewportForV3 = currentViewport(),
+        distanceForV3 =
+          camera && controls ? camera.position.distanceTo(controls.target) : 0,
+        v3Budget = buriedInterfaceSubpixelBudget(plan.sidewalls, {
+          farTier: targetVariant === 'transparent' && arrayLod.tier !== 'exact',
+          clipped: Boolean(clip),
+          zCollapsed: Boolean(getZCollapse?.()),
+          unitsPerPixel:
+            camera && distanceForV3 > 0
+              ? (2 * distanceForV3 * Math.tan((camera.fov * Math.PI) / 360)) /
+                viewportForV3.height
+              : 0,
+          viewZFraction:
+            camera && distanceForV3 > 0
+              ? Math.abs(camera.position.z - controls.target.z) / distanceForV3
+              : 0,
+        });
+      host.dataset.v3ScreenBudgetMode = v3Budget.mode;
+      host.dataset.v3ScreenBudgetQualified = String(v3Budget.qualified);
+      host.dataset.v3SubpixelWallCandidates = String(v3Budget.candidates);
+      host.dataset.v3SubpixelWallInstances = String(v3Budget.instanceWallSegments);
+      host.dataset.v3SubpixelRawTriangleEstimate = String(
+        v3Budget.rawTwoPassTriangleEstimate,
+      );
+      host.dataset.v3SkippedTriangles = String(v3Budget.skippedTriangles);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
