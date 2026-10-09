@@ -99,7 +99,7 @@ try {
     Number(fast.derivedCapCacheMisses) > 0,
     'initial full-wafer render must populate derived cap triangulation data',
   );
-  await page.locator('#threeFastBtn').click();
+  await page.locator('#threeFastBtn').selectOption('quality');
   console.log('ARRAY_RENDERER_STAGE_BEGIN', 'quality');
   await page.waitForFunction(
     () =>
@@ -280,7 +280,7 @@ try {
     JSON.stringify({ coldTransparentMs, opaqueSwapMs, warmTransparentMs, finalOpaqueSwapMs }),
   );
   await page.locator('#threePanel .three-opacity-control > summary').click();
-  await page.locator('#threeFastBtn').click();
+  await page.locator('#threeFastBtn').selectOption('fast');
   await waitStage('restore-fast');
   const restored = await snapshot();
   assert.equal(restored.renderQuality, 'fast');
