@@ -217,8 +217,8 @@ export function createProcessPanelController({
         : t === 'implant' || electrical
           ? 'Depth'
           : transfer
-            ? 'Film Z'
-            : 'Z';
+            ? 'Film thickness'
+            : 'Thickness';
     if (planarizeEtch) $('operationThickness').removeAttribute('min');
     else $('operationThickness').min = '0';
 
