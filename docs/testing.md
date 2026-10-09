@@ -140,6 +140,7 @@ The browser-level `example-regression.mjs` then verifies runtime loading, Histor
 - `example-regression.mjs`: bundled literature/example structural contracts.
 - `product-layout-regression.mjs`: responsive product/layout review across wide, medium, phone, and breakpoint-edge viewports.
 - `renderer-product-regression.mjs`: wide-screen renderer acceptance for isotropic release, GPU-hybrid rough/LOD ownership, conformal interfaces, and implant visibility. Its package entry point also runs `array-renderer-regression.mjs` for full-wafer Fast/Quality topology consistency, persistent opacity/border updates, transparent annotations, repeated-toggle resource stability, and pointer rotation.
+- In pull-request Browser Regression CI, the dedicated 625-site renderer job additionally runs `array-renderer-regression.mjs --fast-transparent-lod` (full 20-toggle stress and Fast/Quality far-field triangle comparison). A separate `array-renderer-edge-on-regression.mjs` job uses a fresh browser to verify completed exact transparent Electrical sidewalls after orbit and the subsequent fitted far-tier recovery. Keep these checks separate because the exact software-WebGL compositor can starve unrelated UI inputs after long repeated-toggle tests.
 - `product-regression.mjs`: thin shared orchestrator used by the two product entry points.
 
 ## Visual regression policy
