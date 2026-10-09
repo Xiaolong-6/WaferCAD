@@ -33,6 +33,8 @@ function numericProfile(dataset) {
     'rendererDrawTriangles',
     'sceneSinglePassCapObjects',
     'sceneSavedCapTriangleSubmissions',
+    'sceneExactIndexedArrayObjects',
+    'sceneExactIndexedLogicalVerticesSaved',
     'sceneRetainedGroupCount',
     'sceneRetainedObjectCount',
     'sceneRetainedGeometryCount',
