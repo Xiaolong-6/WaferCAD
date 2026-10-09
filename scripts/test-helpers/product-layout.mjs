@@ -657,9 +657,15 @@ export function createProductLayoutChecks({ capture }) {
     close((await coords(page))[0], nmRoundedMicron(back[0] + 1 / scale));
     await capture(page, `${name}-ab-edit`);
     await checkLayout(page);
-    // Closing Slice hides only the parameter panel; geometry remains directly editable.
+    // Other view actions may already have closed Slice. Verify an explicit
+    // open/close cycle, then confirm the canvas remains directly editable.
+    const slicePanel = page.locator('#sectionCoordsPanel');
+    if (await slicePanel.isHidden()) {
+      await page.locator('#sectionControlsBtn').click();
+    }
+    assert.equal(await slicePanel.isVisible(), true);
     await page.locator('#sectionControlsBtn').click();
-    assert.equal(await page.locator('#sectionCoordsPanel').isHidden(), true);
+    assert.equal(await slicePanel.isHidden(), true);
     await page.evaluate(
       () =>
         new Promise((resolveFrame) =>
