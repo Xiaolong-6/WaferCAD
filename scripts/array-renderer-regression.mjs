@@ -111,6 +111,7 @@ try {
     const elapsedMs = await waitStage('fast-transparent-array-lod', 120000, beforeLodFrame);
     const distant = await snapshot();
     assert.match(distant.transparentArrayLodTier, /^far-/);
+    assert.equal(distant.cameraDampingEnabled, 'true', 'Far Fast mode keeps normal camera inertia');
     assert.ok(
       Number(distant.electricalFarLodBodyCount) > 0,
       'Fast far-array mode must use cap-only distant electrical presentation',
@@ -193,6 +194,7 @@ try {
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
   assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
+  assert.equal(transparentCold.cameraDampingEnabled, 'false', 'Exact full-array transparency cannot redraw inertially');
   assert.equal(Number(transparentCold.electricalFarLodBodyCount), 0);
   if (fastTransparencyLodProbe) {
     assert.ok(
@@ -378,6 +380,7 @@ try {
     );
     const edgeOn = JSON.parse(await edgeHandle.jsonValue());
     assert.equal(edgeOn.transparentArrayLodTier, 'exact');
+    assert.equal(edgeOn.cameraDampingEnabled, 'false', 'Edge-on exact scene must stop inertial redraw');
     assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
     assert.equal(edgeOn.processRevision, far.processRevision);
     assert.equal(edgeOn.arrayInstances, far.arrayInstances);
