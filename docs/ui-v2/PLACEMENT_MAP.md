@@ -22,7 +22,7 @@
 
 ## 逐功能落位
 
-共 **258 行**；差异标记统计：X=68、-=110、G=70、U=10。同一域中多条“无”只说明当前 mock 尚缺入口或稳定宿主，**不得直接解释成计划删减功能**。
+共 **258 行（原 M2 基准；三条增量已在行内更新，汇总计数需以重新完整审计为准）**；原始差异标记统计：X=68、-=110、G=70、U=10。同一域中多条“无”只说明当前 mock 尚缺入口或稳定宿主，**不得直接解释成计划删减功能**。
 
 | ID | 功能 | 所属域 | 区域 | 目标组件/插槽 | 显示条件 | M1.5设计 | 当前 M2 | 标记 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -153,7 +153,7 @@
 | F125 | Implant | Process / Step | 侧面板 | `Operation option` | Step模式 | 有 | mock | - |
 | F126 | Electrical | Process / Step | 侧面板 | `Operation option` | Step模式 | 有 | mock | - |
 | F127 | Record | Process / Step | 侧面板 | `Operation option` | Step模式 | 有 | mock | - |
-| F128 | Lift-off (main新增) | Process / Step | 侧面板 | `Operation option` | Step模式/同步main后 | 无 | 无 | G |
+| F128 | Lift-off (main新增) | Process / Step | 侧面板 | `Operation option` | Step模式 | 无 | mock 选项 / sacrificial 选择 | U |
 | F129 | Front/Back face | Process / Step | 侧面板 | `Face select` | 材料操作 | 有 | mock Rear标签不一致 | X |
 | F130 | Selected/Invert/Whole face | Process / Step | 侧面板 | `Area select` | 适用操作 | 有 | mock area不等价 | X |
 | F131 | Material / Target layer | Process / Step | 侧面板 | `Material select` | Deposit/Extend/Etch | 有 | mock | - |
@@ -205,8 +205,8 @@
 | F177 | Stop | Recipe | 侧面板 | `Stop action` | 运行中 | 有 | mock取消 | X |
 | F178 | Progress/count/Bar | Recipe | 侧面板 | `Progress block` | 执行中 | 有 | mock | - |
 | F179 | Run Summary/失败定位 | Recipe | 侧面板 | `Run status` | 完成/失败 | 有 | mock | - |
-| F180 | Recipe Lift-off step | Recipe | 侧面板 | `Operation select` | main新增后 | 无 | 无 | G |
-| F181 | Diagnostics 入口 | Diagnostics | 侧面板 | `Process.Diagnostics tab` | Process模式 | 无 | 无 | G |
+| F180 | Recipe Lift-off step | Recipe | 侧面板 | `Operation select` | Recipe模式 | 无 | mock 选项 / sacrificial 字段 | U |
+| F181 | Diagnostics 入口 | Diagnostics | 侧面板 | `Process.Diagnostics tab` | Process模式 | 无 | 壳/命名子槽与mock占位 | - |
 | F182 | Analyze geometry | Diagnostics | 侧面板 | `Analyze action` | Diagnostics模式 | 无 | 无 | G |
 | F183 | 状态:未运行/正在运行/完成/过期 | Diagnostics | 侧面板 | `Status text` | 按状态 | 无 | 无 | G |
 | F184 | Errors/warnings/Z gaps | Diagnostics | 侧面板 | `Summary row` | 分析完成 | 无 | 无 | G |
@@ -312,14 +312,14 @@
 - **KLayout samples select**（Mask Browser）：`Sample select`；目前 **无对应select**。
 - **Layer hover/disabled**（Mask Browser）：`Layer hover state`；目前 **无**。
 - **Process Manual/Recipe/Diagnostics 模式**（Process / Step）：`Submode tabs`；目前 **Manual/Recipe/Code，无Diagnostics**。
-- **Lift-off (main新增)**（Process / Step）：`Operation option`；目前 **无**。
+- **Lift-off (main新增)**（Process / Step）：已补 Step mock 选项和 sacrificial 选择；M1.5 尚缺入口设计，真实行为留 M3。
 - **Rough Feature XY/CV**（Process / Step）：`Rough fields`；目前 **无完整字段**。
 - **Rough Height/CV**（Process / Step）：`Rough fields`；目前 **无完整字段**。
 - **Rough Orientation/Seed**（Process / Step）：`Rough fields`；目前 **无**。
 - **Captured Mask summary**（Recipe）：`Mask context`；目前 **无稳定host**。
 - **Use current Mask**（Recipe）：`Mask capture action`；目前 **无**。
-- **Recipe Lift-off step**（Recipe）：`Operation select`；目前 **无**。
-- **Diagnostics 入口**（Diagnostics）：`Process.Diagnostics tab`；目前 **无**。
+- **Recipe Lift-off step**（Recipe）：已补 Recipe mock 选项及 sacrificial 字段；M1.5 尚缺入口设计，真实 replay 留 M3。
+- **Diagnostics 入口**（Diagnostics）：M2.5 已放入 Process 注册式子导航和具名宿主；内容仍是 M3 占位。
 - **Analyze geometry**（Diagnostics）：`Analyze action`；目前 **无**。
 - **状态:未运行/正在运行/完成/过期**（Diagnostics）：`Status text`；目前 **无**。
 - **Errors/warnings/Z gaps**（Diagnostics）：`Summary row`；目前 **无**。
@@ -476,6 +476,6 @@
 
 ## 审核出口
 
-**待用户裁决**：(a) Base 采用 Project 内具名 slot（推荐），而非第五个一级按钮；(b) M1.5 未设计的 CMP/Undercut/Lift-off、完整 Z Break/History bookmark/Process Guide 等补充原型的入口形式；(c) 是否批准“保留 A 版式、调整内部具名 slot 与 DOM 生命周期模型”，之后才准动代码。
+**已批准**：(a) Base=Project 具名子槽，Diagnostics=Process 子域；(c) 保留 A 版式并调整内部具名插槽/DOM 生命周期。**仍待后续设计确认**：(b) CMP/Undercut/Lift-off、完整 Z Break/History bookmark/Process Guide 等未设计细节。本轮仅 M2.5，不进入 M3，也不补原型。
 
 本轮仅创建/更新文档，**不做任何 UI 代码更改、merge、部署、CI/视觉基线更新**。
