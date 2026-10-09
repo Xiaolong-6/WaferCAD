@@ -4,13 +4,8 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 
-const {
-  applyOperation,
-  createModel,
-  fullFaceGeometry,
-  layerById,
-  surfaceSegment,
-} = await import('../model.js');
+const { applyOperation, createModel, fullFaceGeometry, layerById, surfaceSegment } =
+  await import('../model.js');
 const { pointInMulti, rectMulti } = await import('../vector-geometry.js');
 
 function stackAt(model, x, y = 0) {
@@ -20,7 +15,10 @@ function stackAt(model, x, y = 0) {
 test('the First 10 Minutes process produces an oxide window without etching the Base', () => {
   const model = createModel({ shape: 'rect', width: 100, height: 100, thickness: 10 });
   assert.equal(model.layers[0].name, 'Base');
-  assert.deepEqual(stackAt(model, 0).map((segment) => segment.layerId), ['base']);
+  assert.deepEqual(
+    stackAt(model, 0).map((segment) => segment.layerId),
+    ['base'],
+  );
 
   const coat = applyOperation(model, {
     type: 'add',
