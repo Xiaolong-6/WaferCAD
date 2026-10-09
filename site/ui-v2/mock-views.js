@@ -472,7 +472,7 @@
             canvas,
             window.createWaferCadV2SectionLegend({
               layers: model.layers, annotations: model.annotations, colors: state.legendColors,
-              paletteOpen: state.legendPaletteOpen, open: state.legendOpen,
+              paletteOpen: state.legendPaletteOpen, paletteName: state.legendPalette, open: state.legendOpen,
             }))
         : canvas;
       const panel = viewPanels.update(
