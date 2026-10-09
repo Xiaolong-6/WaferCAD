@@ -1,0 +1,54 @@
+name: MAGIC-1000 MoS2 BEOL reconstruction
+
+on:
+  push:
+    branches:
+      - feat/magic-1000-mos2-beol-reconstruction
+    paths:
+      - 'scripts/build-magic-1000-example.mjs'
+      - 'site/tests/magic1000-reconstruction.test.mjs'
+      - 'examples/projects/magic-1000-2026-candidate/**'
+      - '.github/workflows/magic1000-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  kernel-reconstruction:
+    name: Kernel, Recipe, mask roundtrip and generated project
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Generate representative MAGIC-1000 project using current Process Kernel
+        run: node scripts/build-magic-1000-example.mjs --write-repo
+      - name: Validate intermediate states, recipe and GDS/OAS masks
+        run: node --test site/tests/magic1000-reconstruction.test.mjs
+      - name: Preserve generated project on isolated branch (never main)
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site/examples/magic-1000-mos2-beol.wafercad
+          if git diff --cached --quiet; then
+            echo 'Generated asset unchanged'
+          else
+            git commit -m 'build(magic1000): generate verified kernel project [skip ci]'
+            git push origin HEAD:feat/magic-1000-mos2-beol-reconstruction
+          fi
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: magic1000-kernel-reconstruction
+          path: |
+            test-results/magic1000/validation.json
+            site/examples/magic-1000-mos2-beol.wafercad
+          retention-days: 14
+          if-no-files-found: warn
