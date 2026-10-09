@@ -119,10 +119,46 @@ try {
     assert.equal(distant.materialLayerIds, fast.materialLayerIds);
     assert.equal(distant.processRevision, fast.processRevision);
     await page.screenshot({ path: fileURLToPath(new URL('fast-transparent-lod.png', output)) });
+
+    // A distant camera that orbits near the wafer horizon must restore the
+    // original annotation walls. Exercise OrbitControls in a real browser
+    // rather than relying solely on the pure LOD eligibility unit tests.
+    const lodCanvas = await page.locator('#threeHost canvas').boundingBox();
+    assert.ok(lodCanvas, '3D canvas must be available for the orbit test');
+    const cx = lodCanvas.x + lodCanvas.width / 2;
+    const cy = lodCanvas.y + lodCanvas.height / 2;
+    const beforeEdgeFrame = await frameSerial();
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 24, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      () => document.getElementById('threeHost')?.dataset.transparentArrayLodTier === 'exact',
+      null,
+      { timeout: 120000 },
+    );
+    await waitStage('fast-lod-edge-on-restores-walls', 120000, beforeEdgeFrame);
+    const edgeOn = await snapshot();
+    assert.equal(edgeOn.transparentArrayLodTier, 'exact');
+    assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
+    assert.equal(edgeOn.processRevision, distant.processRevision);
+    await page.screenshot({ path: fileURLToPath(new URL('fast-transparent-edge-on.png', output)) });
+
+    await page.locator('#fit3dBtn').click();
+    await page.waitForFunction(
+      () => /^far-/.test(document.getElementById('threeHost')?.dataset.transparentArrayLodTier || ''),
+      null,
+      { timeout: 120000 },
+    );
+    const restoredFar = await snapshot();
+    assert.equal(restoredFar.processRevision, distant.processRevision);
+    assert.equal(restoredFar.arrayInstances, distant.arrayInstances);
     fastTransparencyLodProbe = {
       elapsedMs,
       farDrawTriangles: Number(distant.rendererDrawTriangles),
       distant,
+      edgeOn,
+      restoredFar,
     };
     const beforeOpaque = await frameSerial();
     await page.locator('#threeOpacityRange').fill('1');
