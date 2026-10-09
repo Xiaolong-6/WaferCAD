@@ -227,8 +227,9 @@
     return Object.freeze({
       render, overlays, adapters,
       getRoot: () => mounted,
-      getSlot: (name) => slots.get(name),
-      slots: () => new Map(slots),
+      getSlot: (name) => slots.get(name) || root.querySelector(`[data-slot="${name}"]`),
+      slots: () => new Map([...slots, ...[...root.querySelectorAll('[data-slot]')]
+        .map((node) => [node.dataset.slot, node])]),
       destroy: () => { adapters.destroy(); overlays.destroy(); },
     });
   };
