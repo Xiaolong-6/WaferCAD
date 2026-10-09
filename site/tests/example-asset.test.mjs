@@ -10,10 +10,7 @@ test('bundled asset cache URL changes with deployment and handles existing query
     versionedExampleAssetPath(path + '?lang=en', 'new/commit'),
     './examples/example.wafercad?lang=en&v=new%2Fcommit',
   );
-  assert.notEqual(
-    versionedExampleAssetPath(path, 'old'),
-    versionedExampleAssetPath(path, 'new'),
-  );
+  assert.notEqual(versionedExampleAssetPath(path, 'old'), versionedExampleAssetPath(path, 'new'));
 });
 
 test('fetched example adapts to project IO without allocating another File buffer', async () => {
