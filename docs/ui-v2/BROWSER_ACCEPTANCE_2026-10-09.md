@@ -1,5 +1,30 @@
 # UI v2 browser acceptance — 2026-10-09
 
+> Re-acceptance of `abde1d8` supersedes the navigation failure below: primary navigation is fixed. The unchanged official browser runner still fails on a malformed test expression. A diagnostic copy with the test corrections described below passes all 36 checks; this is conditional shell evidence, not an official suite pass.
+
+## Re-acceptance at abde1d8
+
+Tested product commit: `abde1d84e578bba730a48c40efbfa07d918ec140`. Clean checkout fast-forwarded from `d0eec02`; upstream added the native DOM spread fix and the eight mock/production navigation checks. Environment remains Windows NT `10.0.26300.0`, Node `v24.16.0`, Chrome `155.0.8059.40`, locked Playwright `1.55.1` and Three `0.179.1` (unused by this CDP shell suite).
+
+- `npm ci`: exit 0, 81 packages, 0 vulnerabilities.
+- `node --test scripts/v2/view-state.test.mjs scripts/v2/m25-shell-contract.test.mjs`: exit 0, 8/8 passed.
+- `npm run lint`: exit 0.
+- `git diff --check`: exit 0.
+- `node scripts/v2/check-m2-shell.mjs` with the native Chrome override: exit 1 at line 211, `SyntaxError: Invalid or unexpected token`. Its evaluated stage selector is missing closing quote/bracket syntax. The eight new navigation checks pass before this failure.
+- `npx prettier --check site/ui-v2/workstation-v2.js scripts/v2/check-m2-shell.mjs`: exit 1, both files require formatting.
+- `node test-results/ui-v2-acceptance/reacceptance-diagnostic.mjs`: exit 0, **36/36 checks**, zero captured page/console errors. The diagnostic copy changes tests only; product code and the checked-in runner remain unchanged.
+- Supplemental two-entry/four-width capture: exit 0. Eight screenshots refreshed; wide mock screenshot visually reviewed and all four navigation buttons are now present. No approved baselines changed.
+
+The diagnostic copy fixes the malformed selector, selects pointer targets with nonempty client rectangles, checks Hide/empty Inspector using `.hidden` rather than expecting stable hosts to be removed, and scopes Restore to `.p-viewbar` rather than the retained hidden empty-strip button. It also prints each completed check. Exact test-only changes are preserved in [the diagnostic patch](REACCEPTANCE_DIAGNOSTIC_2026-10-09.patch). This patch is review material, not applied source code.
+
+Coverage that passed includes both-entry navigation at 1440/1024/768/390, stable view/domain mounts through navigation, unit drafts, Legend palette, Mask maximization, Manual fields, Hide/Restore, Dialog focus/Escape and Toast lifecycle, Recipe edits/failure/completion, Code, History scroll/tree/Variants, More menus, Split swapping, mode reload, responsive editor/Legend flow, frozen fixtures, and direct `file://` startup. Mock Main/3D ROI top/bottom deltas remain **0 px** at 1440 and 1024. This does not establish real-renderer ROI alignment or scientific execution.
+
+Acceptance disposition: the original product navigation blocker is resolved and the diagnostic shell run passes. **The repository's official acceptance command remains failing** until its malformed expression and stale DOM assumptions are corrected and the unchanged command is rerun. Formatting also remains outstanding. No M3 wiring, scientific tests, M4 baseline acceptance, merge, deployment or manual CI is implied.
+
+Local evidence: `test-results/ui-v2-acceptance/reacceptance-diagnostic-output.txt`, diagnostic runner, updated `report.json` and entry/width PNGs. To repeat the diagnostic against this exact revision, copy the checked-in runner to the ignored diagnostic path and reproduce the changes in the linked patch, then run it with the Chrome override in the reproduction section below. Retain the official failing result separately.
+
+## Initial acceptance at 084bc50 (historical)
+
 Result: **FAIL / blocked by primary navigation**. This review does not modify product code or approve M3 integration.
 
 ## Revision and environment
