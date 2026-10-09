@@ -27,11 +27,13 @@ try {
 
   await page.goto(baseUrl + '/app.html');
   await waitForAppReady(page);
-  await page.locator('#openProjectInput').setInputFiles(
-    fileURLToPath(
-      new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
-    ),
-  );
+  await page
+    .locator('#openProjectInput')
+    .setInputFiles(
+      fileURLToPath(
+        new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
+      ),
+    );
   await chooseConfirmation(page);
   await page.waitForFunction(
     () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
@@ -44,7 +46,14 @@ try {
   assert.equal(initial.arrayInstances, '1885');
   assert.equal(initial.renderQuality, 'fast');
 
-  await page.locator('#threePanel .three-opacity-control > summary').click();
+  const threeDisplay = page.locator('#threePanel .three-opacity-control');
+  const displayInMore = await threeDisplay.evaluate((node) =>
+    Boolean(node.closest('.view-overflow-secondary')),
+  );
+  if (displayInMore) {
+    await page.locator('#threePanel .view-more-control > summary').click();
+  }
+  await threeDisplay.locator(':scope > summary').click();
   const initialFrame = await frameSerial();
   await page.locator('#threeOpacityRange').fill('0.5');
   await page.waitForFunction(
@@ -64,11 +73,14 @@ try {
   assert.ok(Number(far.electricalFarLodBodyCount) > 0);
   const farTriangles = Number(far.rendererDrawTriangles);
   assert.ok(farTriangles > 0);
-  console.log('ARRAY_EDGE_FAR', JSON.stringify({
-    tier: far.transparentArrayLodTier,
-    triangles: farTriangles,
-    frameSerial: far.rendererFrameSerial,
-  }));
+  console.log(
+    'ARRAY_EDGE_FAR',
+    JSON.stringify({
+      tier: far.transparentArrayLodTier,
+      triangles: farTriangles,
+      frameSerial: far.rendererFrameSerial,
+    }),
+  );
   await page.screenshot({ path: fileURLToPath(new URL('far.png', output)) });
 
   const bounds = await page.locator('#threeHost canvas').boundingBox();
@@ -91,7 +103,8 @@ try {
         host?.dataset.transparentArrayLodTier !== 'exact' ||
         host.dataset.renderState !== 'ready' ||
         Number(host.dataset.rendererFrameSerial || 0) <= previous
-      ) return false;
+      )
+        return false;
       const edge = { ...host.dataset };
       document.getElementById('fit3dBtn')?.click();
       return JSON.stringify(edge);
@@ -106,11 +119,14 @@ try {
   assert.equal(edgeOn.arrayInstances, far.arrayInstances);
   assert.equal(edgeOn.processRevision, far.processRevision);
   assert.ok(Number(edgeOn.rendererDrawTriangles) > farTriangles);
-  console.log('ARRAY_EDGE_EXACT', JSON.stringify({
-    tier: edgeOn.transparentArrayLodTier,
-    triangles: edgeOn.rendererDrawTriangles,
-    frameSerial: edgeOn.rendererFrameSerial,
-  }));
+  console.log(
+    'ARRAY_EDGE_EXACT',
+    JSON.stringify({
+      tier: edgeOn.transparentArrayLodTier,
+      triangles: edgeOn.rendererDrawTriangles,
+      frameSerial: edgeOn.rendererFrameSerial,
+    }),
+  );
 
   await page.waitForFunction(
     (previous) => {
@@ -131,13 +147,20 @@ try {
   assert.ok(Number(recovered.electricalFarLodBodyCount) > 0);
   assert.deepEqual(errors, []);
   await page.screenshot({ path: fileURLToPath(new URL('recovered.png', output)) });
-  await writeFile(new URL('report.json', output), JSON.stringify({
-    browserVersion: browser.version(),
-    far,
-    edgeOn,
-    recovered,
-    errors,
-  }, null, 2));
+  await writeFile(
+    new URL('report.json', output),
+    JSON.stringify(
+      {
+        browserVersion: browser.version(),
+        far,
+        edgeOn,
+        recovered,
+        errors,
+      },
+      null,
+      2,
+    ),
+  );
   console.log('ARRAY_EDGE_ON_OK');
   await context.close();
 } finally {

@@ -16,7 +16,7 @@ _Example preview; the ten-minute tutorial creates a much simpler geometry._
 
 - **Project:** Select **New**, **Open**, **Save**, **Export** and **Recovery**. Under **Display**, choose the **XYZ unit** before typing dimensions.
 - **Base:** Choose **Rectangle** or **Circle**, enter **W**, **H** and **Z**, then click **Apply base**. Base is a generic starting geometry; its default layer is labeled **Base**.
-- **Mask:** Click the **File** button in the Mask view header to switch to **Draw**, then choose **Rect** on the Mask canvas toolbar and drag a rectangle. No GDS/OAS file is required for the first tutorial.
+- **Mask:** choose **Draw** from the **Mask source** selector in the Mask view header, then choose **Rect** on the Mask canvas toolbar and drag a rectangle. No GDS/OAS file is required for the first tutorial.
 - **Process → Step:** Choose **Front/Back**, **Operation**, **Area**, and an applicable layer/material and Z value; click **Apply** once. You can uncheck **Also add to Recipe** for a manual-only exercise.
 - **Main / Section A–B / 3D:** See a top view, a slice along A–B, and a rotatable 3D view. Move the A–B line through the feature you want to inspect.
 - **Process → Recipe:** Collect several Process operations into an ordered procedure. Use **Validate** before execution and choose the starting state carefully.
@@ -34,7 +34,7 @@ _Illustration of a directional film on a flat face; the geometry and scaling dep
 - **Coverage / Profile:** **Directional** grows/etches along Z; **Conformal** deposition follows true exposed sidewalls; isotropic/undercut release removes material laterally.
 - **Z and units:** Choose **XYZ unit** first. `0.2` with unit **µm** means **200 nm**; it is different from `0.2` with unit **nm**. The base Z is a physical thickness; Process Z typically means film thickness or etch depth.
 
-**Two distinct ROIs:** An active **Mask ROI** clips Process operations, **including Whole face**, as well as mask export. Clear it for a true full-face operation. A **Main ROI** limits 3D inspection/GLB export, **not** Process. See [Masks and ROI](Masks-and-ROI).
+**Two distinct ROIs:** An active **Mask ROI** clips Process operations, **including Whole face**, as well as mask export. Clear it for a true full-face operation. A **3D ROI** (Main view) limits 3D inspection/GLB export, **not** Process. See [Masks and ROI](Masks-and-ROI).
 
 ## Keep your work safe
 

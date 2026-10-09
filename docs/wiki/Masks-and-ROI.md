@@ -24,9 +24,9 @@ The Draw source keeps independently editable Rectangle, Circle, Polygon, Ring, a
 
 **Mask ROI** clips the final Process domain for **Selected mask**, **Invert mask**, and even **Whole face** when active, as well as SVG/GDSII/OASIS mask exports. Clear Mask ROI before using Whole face if you truly intend the entire substrate. It never rewrites the source layout. It is independent of the Main ROI and A–B line.
 
-## Main ROI
+## 3D ROI (Main view)
 
-**Main ROI** may be rectangular, circular or sector-shaped. It limits the 3D viewport and GLB export; it does **not** limit Apply. This is a frequent source of confusion: to restrict Process, use **Mask ROI**.
+**3D ROI** in Main may be rectangular, circular or sector-shaped. It limits the 3D viewport and GLB export; it does **not** limit Apply. This is a frequent source of confusion: to restrict Process, use **Mask ROI**.
 
 ## Troubleshooting selections
 

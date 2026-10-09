@@ -41,6 +41,8 @@ Use this page to find the document that owns a question. Current contracts descr
 - [First-time user Wiki usability audit — 2026-10-08](WIKI_FIRST_TIME_USER_AUDIT_2026-10-08.md) — checked onboarding controls, source-specific fixes, tests and remaining acceptance boundaries.
 - [M3D Conformal microcrack repair — 2026-10-08](M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md) — precise XY coverage failure, repair and S00–S26 acceptance evidence.
 - [Process workflow v2 branch handoff — 2026-10-08](PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md) — operation selector, safe Recipe templates, latest-main baseline recheck and pending browser acceptance.
+- [Process Step layout parity — 2026-10-09](PROCESS_STEP_LAYOUT_PARITY_2026-10-09.md) — integrated Operation/Surface and Step form layout changes.
+- [View UX v3 architecture and acceptance — 2026-10-09](VIEW_UX_V3_2026-10-09.md) — four-view chrome, explicit modes, responsive overflow, Z Break and review scope.
 - [Three-branch integration review — 2026-10-08](INTEGRATION_REVIEW_2026-10-08.md) — merged source-branch audit and final CI acceptance.
 - [Main P0/P1 data-safety hardening — 2026-10-08](MAIN_P0_P1_STABILITY_2026-10-08.md) — Recipe/History destructive-action checkpoint guards, regression and validation limits.
 - [Revision-specific archive](archive/README.md) — every earlier audit, reconstruction, optimization and design/research snapshot; original paths are preserved.

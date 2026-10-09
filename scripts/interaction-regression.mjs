@@ -67,66 +67,97 @@ const palette = async (selector, light = false) => {
     }
   }, light);
 };
-const selectedPalettes = [
-  await palette('#maskSourceToggleBtn'),
-  await palette('#maskSourceToggleBtn', true),
-];
-for (const selector of ['#maskSourceToggleBtn', '#threeFastBtn', '#sectionScaleModeBtn']) {
-  const button = page.locator(selector);
-  const original = (await button.textContent()).trim();
-  const pressed = await button.getAttribute('aria-pressed');
-  for (let index = 0; index < 2; index++) {
-    for (const light of [false, true])
-      assert.deepEqual(
-        await palette(selector, light),
-        selectedPalettes[Number(light)],
-        `${selector}: current mode palette`,
-      );
-    await button.click();
+// View modes are explicit choices, not cycling toggle buttons.
+for (const [selector, modes] of [
+  ['#maskSourceToggleBtn', ['file', 'draw']],
+  ['#threeFastBtn', ['fast', 'quality']],
+  ['#sectionScaleModeBtn', ['auto', 'physical']],
+]) {
+  const select = page.locator(selector);
+  const initial = await select.inputValue();
+  assert.ok(modes.includes(initial));
+  const colors = [await palette(selector), await palette(selector, true)];
+  for (const value of modes) {
+    await select.selectOption(value);
+    assert.equal(await select.inputValue(), value);
+    assert.deepEqual(await palette(selector), colors[0]);
+    assert.deepEqual(await palette(selector, true), colors[1]);
   }
-  assert.equal((await button.textContent()).trim(), original);
-  assert.equal(await button.getAttribute('aria-pressed'), pressed);
+  await select.selectOption(initial);
 }
-const toggles = [
+
+// Controls moved into Display/More keep their original, accessible state owner.
+// Open nested controls from the outside in, through the same menu summaries
+// that a user actually clicks. Assigning details.open to every ancestor at once
+// races the popover controller's toggle listener and hides the inner control.
+const showControl = async (selector) => {
+  const steps = await page.locator(selector).evaluate((node) => {
+    const details = [];
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      if (parent.tagName === 'DETAILS') details.unshift(parent);
+    }
+    return details.map((detailsNode) => {
+      const panelId = detailsNode.closest('.view-panel')?.id;
+      const selectorPart = detailsNode.id
+        ? `#${detailsNode.id}`
+        : detailsNode.classList.contains('view-more-control')
+          ? '.view-more-control'
+          : detailsNode.classList.contains('three-opacity-control')
+            ? '.three-opacity-control'
+            : detailsNode.classList.contains('view-display-control')
+              ? '.view-display-control'
+              : detailsNode.classList.contains('focus-editor')
+                ? '.focus-editor'
+                : null;
+      if (!panelId || !selectorPart) throw new Error('Unrecognized view details ancestor');
+      return `#${panelId} ${selectorPart}`;
+    });
+  });
+  for (const step of steps) {
+    const details = page.locator(step);
+    if (!(await details.evaluate((node) => node.open))) {
+      await details.locator(':scope > summary').click();
+    }
+  }
+  await page.locator(selector).waitFor({ state: 'visible' });
+};
+for (const selector of [
   '#threeBorderControl',
   '#sectionBordersBtn',
   '#mainPanBtn',
   '#sectionDetailRoiBtn',
-];
-for (const selector of toggles) {
+]) {
+  await showControl(selector);
   const control = page.locator(selector);
   const active = async () =>
     selector === '#threeBorderControl'
       ? page.locator('#threeBorders').isChecked()
       : (await control.getAttribute('aria-pressed')) === 'true';
   const initial = await active();
-  if (initial) await control.click();
+  if (initial) {
+    await showControl(selector);
+    await control.click();
+  }
   const off = [await palette(selector), await palette(selector, true)];
+  await showControl(selector);
   await control.click();
   assert.equal(await active(), true, `${selector}: selected semantics`);
   for (const light of [false, true]) {
-    const on = await palette(selector, light);
-    assert.notDeepEqual(on, off[Number(light)], `${selector}: distinguish selected state`);
-    assert.deepEqual(on, selectedPalettes[Number(light)], `${selector}: shared selected palette`);
+    assert.notDeepEqual(
+      await palette(selector, light),
+      off[Number(light)],
+      `${selector}: visible selected state`,
+    );
   }
-  await page.locator('#maskSourceToggleBtn').hover();
-  const hovered = await page.locator('#maskSourceToggleBtn').evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { fill: style.backgroundColor, color: style.color, border: style.borderColor };
-  });
-  await control.hover();
-  assert.deepEqual(
-    await control.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { fill: style.backgroundColor, color: style.color, border: style.borderColor };
-    }),
-    hovered,
-    `${selector}: shared selected hover palette`,
-  );
+  await showControl(selector);
   await control.click();
   assert.equal(await active(), false);
-  if (initial) await control.click();
+  if (initial) {
+    await showControl(selector);
+    await control.click();
+  }
 }
+await showControl('#threeBorders');
 const bordersBeforeKeyboard = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorders').focus();
 await page.keyboard.press('Space');
@@ -134,21 +165,34 @@ assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeKeyb
 await page.keyboard.press('Space');
 assert.equal(await page.locator('#threeBorders').isChecked(), bordersBeforeKeyboard);
 for (const selector of ['#maskRoiEditor', '#threePanel .three-opacity-control']) {
+  await showControl(selector);
   const details = page.locator(selector);
   const summary = `${selector} > summary`;
   if (await details.evaluate((element) => element.open)) await page.locator(summary).click();
   const closed = [await palette(summary), await palette(summary, true)];
   await page.locator(summary).click();
   assert.equal(await details.evaluate((element) => element.open), true);
-  for (const light of [false, true]) {
-    assert.notDeepEqual(await palette(summary, light), closed[Number(light)]);
-    assert.deepEqual(
-      await palette(summary, light),
-      selectedPalettes[Number(light)],
-      `${selector}: expanded palette`,
-    );
-  }
+  assert.notDeepEqual(await palette(summary), closed[0]);
+  assert.notDeepEqual(await palette(summary, true), closed[1]);
   await page.locator(summary).click();
+}
+// A view details control may move into More when its *panel*, rather than the
+// browser window, is narrow. Always reveal its real parent before activation.
+const clickViewSummary = async (detailsSelector) => {
+  await showControl(detailsSelector);
+  await page.locator(`${detailsSelector} > summary`).click();
+};
+
+// Open a panel's actual overflow controls; never bypass its public menu in export tests.
+async function openExportMenu(panel) {
+  const more = page.locator(`${panel} .view-more-control`);
+  if (!(await more.evaluate((node) => node.open))) {
+    await more.locator(':scope > summary').click();
+  }
+  const nested = page.locator(`${panel} .export-control`);
+  if ((await nested.count()) && !(await nested.evaluate((node) => node.open))) {
+    await nested.locator(':scope > summary').click();
+  }
 }
 await toolbarMotion.evaluate((element) => element.remove());
 await page.screenshot({ path: 'test-results/toolbar-state/desktop.png', animations: 'disabled' });
@@ -206,9 +250,9 @@ assert.equal(await page.locator('[data-endpoint=a]').isVisible(), true);
 // ROI lives in Main. Opening ROI closes the Slice popover, and creation is one-shot.
 await page.locator('#sectionControlsBtn').click();
 assert.equal(await abPanel.isVisible(), true);
-await page.locator('#focusEditor > summary').click();
+await clickViewSummary('#focusEditor');
 assert.equal(await abPanel.isHidden(), true);
-assert.equal((await page.locator('#focusEditor > summary').textContent()).trim(), 'ROI');
+assert.equal((await page.locator('#focusEditor > summary').textContent()).trim(), '3D ROI');
 await page.locator('.roi-tool[data-tool="rect"]').click();
 await page.mouse.move(mainBox.x + mainBox.width * 0.4, mainBox.y + mainBox.height * 0.4);
 await page.mouse.down();
@@ -228,15 +272,15 @@ await page.locator('#roiEditor:not([hidden])').waitFor();
 assert.ok(Number(await page.locator('#roiWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#roiHeight').inputValue()) > 0);
 
-// Main permits only one floating control: Export replaces ROI.
-const mainExportControl = page.locator('#mainPanel .export-control');
+// Main uses a More popover rather than a second top-level Export button.
+const mainExportControl = page.locator('#mainPanel .view-more-control');
 await mainExportControl.locator(':scope > summary').click();
 assert.equal(await page.locator('#focusEditor').evaluate((details) => details.open), false);
 assert.equal(await mainExportControl.evaluate((details) => details.open), true);
 await mainExportControl.locator(':scope > summary').click();
 
 // Sector ROI starts as a circle-derived 0°→90° wedge and supports wrapped ranges.
-await page.locator('#focusEditor > summary').click();
+await clickViewSummary('#focusEditor');
 await page.locator('#clearRoiBtn').click();
 await page.locator('.roi-tool[data-tool="sector"]').click();
 const sectorBox = await main.boundingBox();
@@ -261,7 +305,7 @@ assert.equal(await page.locator('#roiStartAngle').inputValue(), '0');
 assert.equal(await page.locator('#roiEndAngle').inputValue(), '90');
 
 // Drag the yellow Start-angle handle from 0° to 270° and verify the numeric editor follows.
-await page.locator('#focusEditor > summary').click();
+await clickViewSummary('#focusEditor');
 await page.mouse.move(sectorBox.x + sectorBox.width * 0.62, sectorBox.y + sectorBox.height * 0.5);
 await page.mouse.down();
 await page.mouse.move(sectorBox.x + sectorBox.width * 0.5, sectorBox.y + sectorBox.height * 0.62, {
@@ -279,7 +323,7 @@ await page.locator('#roiStartAngle').fill('300');
 await page.locator('#roiStartAngle').press('Tab');
 await page.locator('#roiEndAngle').fill('60');
 await page.locator('#roiEndAngle').press('Tab');
-await page.locator('#focusEditor > summary').click();
+await clickViewSummary('#focusEditor');
 
 // Mask now mirrors Main's double-click-to-Fit behavior.
 await page.locator('#maskCanvas').dblclick();
@@ -300,26 +344,26 @@ await page.waitForFunction(
 assert.ok(await page.locator('#maskLayerList .layer-row').count());
 
 // Mask ROI / Opacity / Export share one exclusive popover slot.
-await page.locator('#maskRoiEditor > summary').click();
+await clickViewSummary('#maskRoiEditor');
 assert.equal(await page.locator('#maskRoiEditor').evaluate((details) => details.open), true);
-await page.locator('#maskPanel .mask-opacity-control > summary').click();
+await clickViewSummary('#maskPanel .mask-opacity-control');
 assert.equal(await page.locator('#maskRoiEditor').evaluate((details) => details.open), false);
 assert.equal(
   await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
   true,
 );
-await page.locator('#maskExportControl > summary').click();
+await openExportMenu('#maskPanel');
 assert.equal(
   await page.locator('#maskPanel .mask-opacity-control').evaluate((details) => details.open),
   false,
 );
 assert.equal(await page.locator('#maskExportControl').evaluate((details) => details.open), true);
-await page.locator('#maskExportControl > summary').click();
+await page.locator('#maskPanel .view-more-control > summary').click();
 
 const sourceToggle = page.locator('#maskSourceToggleBtn');
-assert.equal((await sourceToggle.textContent()).trim(), 'File');
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
+assert.equal(await sourceToggle.inputValue(), 'file');
+await sourceToggle.selectOption('draw');
+assert.equal(await sourceToggle.inputValue(), 'draw');
 assert.equal(await page.locator('#drawMaskToolbar').isVisible(), true);
 assert.equal(await page.locator('#maskFileControls').isHidden(), true);
 assert.equal(await page.locator('#maskDrawInfo').evaluate((element) => element.hidden), false);
@@ -346,9 +390,9 @@ assert.ok(Number(await page.locator('#drawShapeWidth').inputValue()) > 0);
 assert.ok(Number(await page.locator('#drawShapeHeight').inputValue()) > 0);
 
 // A header popover replaces the canvas shape editor in the same Mask window.
-await page.locator('#maskPanel .mask-opacity-control > summary').click();
+await clickViewSummary('#maskPanel .mask-opacity-control');
 assert.equal(await page.locator('#drawShapeEditor').isHidden(), true);
-await page.locator('#maskPanel .mask-opacity-control > summary').click();
+await clickViewSummary('#maskPanel .mask-opacity-control');
 await page.waitForTimeout(350);
 await page.mouse.click(drawBox.x + drawBox.width * 0.5, drawBox.y + drawBox.height * 0.5);
 await page.locator('#drawShapeEditor:not([hidden])').waitFor();
@@ -480,17 +524,17 @@ assert.equal(await page.locator('#processTaskDialog').evaluate((element) => elem
 assert.match(await page.locator('#statusText').textContent(), /Deposited Draw probe|Saved locally/);
 
 // Switching sources never destroys either source.
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'File');
+await sourceToggle.selectOption('file');
+assert.equal(await sourceToggle.inputValue(), 'file');
 assert.equal(await page.locator('#maskFileControls').evaluate((element) => element.hidden), false);
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'Draw');
+await sourceToggle.selectOption('draw');
+assert.equal(await sourceToggle.inputValue(), 'draw');
 assert.match(await page.locator('#drawMaskHint').textContent(), /^4 shapes/);
-await sourceToggle.click();
-assert.equal((await sourceToggle.textContent()).trim(), 'File');
+await sourceToggle.selectOption('file');
+assert.equal(await sourceToggle.inputValue(), 'file');
 
 // Mask owns a separate Square/Circle ROI used by Process and Mask export.
-await page.locator('#maskRoiEditor > summary').click();
+await clickViewSummary('#maskRoiEditor');
 await page.locator('.mask-roi-tool[data-tool="rect"]').click();
 const maskRoiCanvas = await page.locator('#maskCanvas').boundingBox();
 assert.ok(maskRoiCanvas);
@@ -505,7 +549,7 @@ await page.mouse.move(
   { steps: 4 },
 );
 await page.mouse.up();
-await page.locator('#maskRoiEditor > summary').click();
+await clickViewSummary('#maskRoiEditor');
 assert.equal(await page.locator('#maskRoiFields').isVisible(), true);
 assert.equal((await page.locator('#maskRoiShapeLabel').textContent()).trim(), 'Square');
 assert.ok(Number(await page.locator('#maskRoiSize').inputValue()) > 0);
@@ -515,7 +559,7 @@ assert.equal(Number(await page.locator('#maskRoiRotation').inputValue()), 27.5);
 const maskRoiLocalX = await page.locator('#maskRoiX').inputValue(),
   maskRoiLocalY = await page.locator('#maskRoiY').inputValue(),
   maskRoiLocalSize = await page.locator('#maskRoiSize').inputValue();
-await page.locator('#maskRoiEditor > summary').click();
+await clickViewSummary('#maskRoiEditor');
 
 // File-mask alignment moves the Mask ROI visually, but its local parameters stay unchanged.
 await openFunctionPanel(page, 'mask');
@@ -527,12 +571,12 @@ await page.locator('#maskOffsetX').fill('1');
 await page.locator('#maskOffsetY').fill('-0.5');
 await page.locator('#maskScale').fill('1.1');
 await page.locator('#maskRotation').fill('12');
-await page.locator('#maskRoiEditor > summary').click();
+await clickViewSummary('#maskRoiEditor');
 assert.equal(await page.locator('#maskRoiX').inputValue(), maskRoiLocalX);
 assert.equal(await page.locator('#maskRoiY').inputValue(), maskRoiLocalY);
 assert.equal(await page.locator('#maskRoiSize').inputValue(), maskRoiLocalSize);
 assert.equal(Number(await page.locator('#maskRoiRotation').inputValue()), 27.5);
-await page.locator('#maskRoiEditor > summary').click();
+await clickViewSummary('#maskRoiEditor');
 await page.locator('#maskOffsetX').fill('0');
 await page.locator('#maskOffsetY').fill('0');
 await page.locator('#maskScale').fill('1');
@@ -544,7 +588,7 @@ for (const [panel, button, filename] of [
   ['#maskPanel', '#maskExportSvgBtn', 'wafercad-mask.svg'],
   ['#sectionPanel', '#sectionExportSvgBtn', 'wafercad-section-ab.svg'],
 ]) {
-  await page.locator(`${panel} .export-control > summary`).click();
+  await openExportMenu(panel);
   if (panel === '#maskPanel') {
     assert.ok((await page.locator('#maskExportCells option:checked').count()) > 0);
     assert.ok((await page.locator('#maskExportLayers option:checked').count()) > 0);
@@ -558,7 +602,7 @@ for (const [button, filename] of [
   ['#maskExportGdsBtn', 'wafercad-mask.gds'],
   ['#maskExportOasBtn', 'wafercad-mask.oas'],
 ]) {
-  await page.locator('#maskPanel .export-control > summary').click();
+  await openExportMenu('#maskPanel');
   const downloadPromise = page.waitForEvent('download');
   await page.locator(button).click();
   const download = await downloadPromise;
@@ -617,6 +661,7 @@ for (const [buttonId, panelId] of [
   ['threeMaxBtn', 'threePanel'],
   ['sectionMaxBtn', 'sectionPanel'],
 ]) {
+  await showControl(`#${buttonId}`);
   await page.locator(`#${buttonId}`).click();
   assert.equal(
     await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
@@ -627,12 +672,14 @@ for (const [buttonId, panelId] of [
     true,
   );
   assert.equal((await page.locator(`#${buttonId}`).textContent()).trim(), 'Restore');
+  await showControl(`#${buttonId}`);
   await page.locator(`#${buttonId}`).click();
   assert.equal(
     await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
     false,
   );
 }
+await showControl('#sectionMaxBtn');
 await page.locator('#sectionMaxBtn').click();
 await page.keyboard.press('Escape');
 assert.equal(
@@ -643,25 +690,27 @@ assert.equal(
 // 3D inspection controls should operate without runtime errors.
 const threeOpacityControl = page.locator('#threePanel .three-opacity-control');
 const threeExportControl = page.locator('#threePanel .export-control');
+await showControl('#threePanel .three-opacity-control');
 await threeOpacityControl.locator(':scope > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
-await threeExportControl.locator(':scope > summary').click();
+await openExportMenu('#threePanel');
 assert.equal(await threeOpacityControl.evaluate((details) => details.open), false);
 assert.equal(await threeExportControl.evaluate((details) => details.open), true);
-await threeExportControl.locator(':scope > summary').click();
+await page.locator('#threePanel .view-more-control > summary').click();
+await showControl('#threeBorderControl');
 const bordersBeforeToggle = await page.locator('#threeBorders').isChecked();
 await page.locator('#threeBorderControl').click();
 assert.equal(await page.locator('#threeBorders').isChecked(), !bordersBeforeToggle);
 await page.locator('#fit3dBtn').click();
 
-await page.locator('#threePanel .export-control > summary').click();
+await openExportMenu('#threePanel');
 assert.equal(await page.locator('#threeExportCancelBtn').isHidden(), true);
 const glbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
 const glbDownload = await glbDownloadPromise;
 assert.equal(glbDownload.suggestedFilename(), 'wafercad-model.glb');
 assert.ok(await glbDownload.path());
-await page.locator('#threePanel .export-control > summary').click();
+await openExportMenu('#threePanel');
 const pngDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportPngBtn').click();
 assert.equal((await pngDownloadPromise).suggestedFilename(), 'wafercad-3d-3x.png');

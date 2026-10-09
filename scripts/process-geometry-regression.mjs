@@ -181,6 +181,9 @@ await recipePage.locator('#operationArea').selectOption('full');
 await recipePage.locator('#growthMode').selectOption('direct');
 await recipePage.locator('#layerName').fill('Manual recipe check');
 await recipePage.locator('#operationThickness').fill('0.02');
+// Recipe appending requires explicit opt-in while History remains automatic.
+assert.equal(await recipePage.locator('#recipeRecordManual').isChecked(), false);
+await recipePage.locator('#recipeRecordManual').check();
 await recipePage.locator('#applyOperationBtn').click();
 await recipePage.waitForFunction(
   () =>
@@ -513,6 +516,7 @@ assert.ok(
 // Export the actual rough state and parse the GLB contract, rather than only
 // checking that a file downloaded. This locks physical units, deterministic
 // morphology metadata, and the real exporter path together.
+await page.locator('#threePanel .view-more-control > summary').click();
 await page.locator('#threePanel .export-control > summary').click();
 const roughGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
 await page.locator('#threeExportModelBtn').click();
@@ -692,6 +696,7 @@ assert.equal(await page.locator('#applyOperationBtn').isDisabled(), false);
 if (extendedProcess) {
   // The conformal layer inherits the rough trench surface. Export it through the
   // real 3D path and verify the buried shared profile is not closed to the ideal plane.
+  await page.locator('#threePanel .view-more-control > summary').click();
   await page.locator('#threePanel .export-control > summary').click();
   const conformalGlbDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
   await page.locator('#threeExportModelBtn').click();
@@ -855,15 +860,15 @@ assert.ok(
 if (extendedProcess) {
   // Section defaults to readable Auto fit but offers a true physical 1:1 check.
   const sectionScaleButton = page.locator('#sectionScaleModeBtn');
-  assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
+  assert.equal(await sectionScaleButton.inputValue(), 'auto');
   assert.match(await page.locator('#sectionMeta').textContent(), /Z ×/);
   const autoScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
     x: Number(canvas.dataset.xPxPerUm),
     z: Number(canvas.dataset.zPxPerUm),
   }));
   assert.ok(autoScales.x > 0 && autoScales.z > 0);
-  await sectionScaleButton.click();
-  assert.equal((await sectionScaleButton.textContent()).trim(), '1:1');
+  await sectionScaleButton.selectOption('physical');
+  assert.equal(await sectionScaleButton.inputValue(), 'physical');
   assert.match(await page.locator('#sectionMeta').textContent(), /1:1/);
   const physicalScales = await page.locator('#sectionCanvas').evaluate((canvas) => ({
     mode: canvas.dataset.scaleMode,
@@ -872,11 +877,12 @@ if (extendedProcess) {
   }));
   assert.equal(physicalScales.mode, 'physical');
   assert.ok(Math.abs(physicalScales.x - physicalScales.z) < 1e-9);
-  await sectionScaleButton.click();
-  assert.equal((await sectionScaleButton.textContent()).trim(), 'Auto');
+  await sectionScaleButton.selectOption('auto');
+  assert.equal(await sectionScaleButton.inputValue(), 'auto');
 
   // Section Detail ROI keeps the global section visible while re-rendering a local
   // region at higher effective resolution. The inset can be moved out of the way.
+  await page.locator('#sectionPanel .view-more-control > summary').click();
   await page.locator('#sectionDetailRoiBtn').click();
   const sectionBox = await page.locator('#sectionCanvas').boundingBox();
   assert.ok(sectionBox);

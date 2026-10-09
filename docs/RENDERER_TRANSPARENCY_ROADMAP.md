@@ -54,7 +54,6 @@ These are diagnostic samples, **not** reproducible benchmark guarantees. In part
 - Run identical benchmarks before/after on supported hardware and the CI software renderer. Long-term **targets**: cold first transparent frame <15 s on the CI reference workload, warm variant swap meaningfully faster than cold, and responsive zoom/ROI refinement with bounded resources.
 - Promote timing back to a blocking gate **only after** LOD and reference performance envelopes are validated and there is an explicit project decision. Do not relax or remove scientific/functional assertions to achieve a green badge.
 
-
 ## Fast-array LOD release — 2026-10-09
 
 Originally developed in `perf/transparent-array-lod-20261008` from `be2f6af`, the Fast far-array electrical presentation LOD **merged to `main` in [PR #155](https://github.com/Xiaolong-6/WaferCAD/pull/155) at `a5e839c5`**. The physical Kernel, saved project, History and GLB model remain unchanged. This is a selective far-view feature, **not** a claim that all planned hierarchical LOD phases or frame-time targets are complete.

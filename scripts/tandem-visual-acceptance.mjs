@@ -80,6 +80,9 @@ export async function runTandemVisualAcceptance(
   );
   await closeFunctionPanel(page);
   await page.locator('#sectionCollapseAxisBtn').click();
+  await page.locator('.section-collapse-advanced').evaluate((node) => {
+    node.open = true;
+  });
   await page.locator('#sectionCollapseScaleLinked').waitFor({ state: 'visible' });
   await page.locator('#sectionCollapseScaleLinked').setChecked(true);
   await page.locator('#sectionCollapseAxisBtn').click();
@@ -162,6 +165,9 @@ export async function runTandemVisualAcceptance(
   }
   await capture('locked-1to1', 1);
   await page.locator('#sectionCollapseAxisBtn').click();
+  await page.locator('.section-collapse-advanced').evaluate((node) => {
+    node.open = true;
+  });
   await page.locator('#sectionCollapseScaleLinked').waitFor({ state: 'visible' });
   await page.locator('#sectionCollapseScaleLinked').setChecked(false);
   await page.locator('#sectionCollapseFrontScale').fill('2');
@@ -170,6 +176,9 @@ export async function runTandemVisualAcceptance(
   await page.locator('#sectionCollapseScaleLinked').waitFor({ state: 'hidden' });
   await capture('unlocked-2to1', 2);
   await page.locator('#sectionCollapseAxisBtn').click();
+  await page.locator('.section-collapse-advanced').evaluate((node) => {
+    node.open = true;
+  });
   await page.locator('#sectionCollapseScaleLinked').waitFor({ state: 'visible' });
   await page.locator('#sectionCollapseFrontScale').fill('1');
   await page.locator('#sectionCollapseFrontScale').press('Tab');
@@ -179,6 +188,9 @@ export async function runTandemVisualAcceptance(
   await page.locator('#sectionCollapseScaleLinked').waitFor({ state: 'hidden' });
   await capture('unlocked-1to2', 0.5);
   await page.locator('#sectionCollapseAxisBtn').click();
+  await page.locator('.section-collapse-advanced').evaluate((node) => {
+    node.open = true;
+  });
   await page.locator('#sectionCollapseScaleLinked').waitFor({ state: 'visible' });
   await page.locator('#sectionCollapseScaleLinked').setChecked(true);
   assert.equal(await page.locator('#sectionCollapseFrontScale').inputValue(), '1');

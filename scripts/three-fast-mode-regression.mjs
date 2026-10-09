@@ -118,17 +118,8 @@ try {
         canvas.dataset.roughMeshWorker === 'true'
       );
     }, mode);
-    const label = mode === 'fast' ? 'Fast' : 'Quality';
-    assert.equal((await page.locator('#threeFastBtn').textContent()).trim(), label);
-    // Fast and Quality both display the current mode as a selected control.
-    assert.equal(
-      await page.locator('#threeFastBtn').evaluate((button) => button.classList.contains('active')),
-      true,
-    );
-    assert.match(
-      await page.locator('#threeFastBtn').getAttribute('title'),
-      new RegExp(`Current mode: ${label}\\.`),
-    );
+    assert.equal(await page.locator('#threeFastBtn').inputValue(), mode);
+    assert.match(await page.locator('#threeFastBtn').getAttribute('title'), /Render mode:/);
   };
   const probe = () =>
     page.evaluate(() => {
@@ -148,14 +139,14 @@ try {
         section: document.getElementById('sectionCanvas').toDataURL(),
       };
     });
-  assert.equal(await page.locator('#threeFastBtn').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('#threeFastBtn').inputValue(), 'fast');
   await waitStatic('fast');
   const first = await probe();
   const modes = [];
   for (let repeat = 0; repeat < (inspectionOnly ? 0 : 3); repeat++) {
     for (const mode of ['quality', 'fast']) {
       const started = performance.now();
-      await page.locator('#threeFastBtn').click();
+      await page.locator('#threeFastBtn').selectOption(mode);
       await waitStatic(mode);
       const result = await probe();
       const lastWorker = await page.evaluate(() =>
@@ -252,7 +243,7 @@ try {
       await waitStatic('fast');
       const fastView = await probe();
       if (opacity < 1) assert.ok(Number(fastView.implantInternalCount) > 0);
-      await page.locator('#threeFastBtn').click();
+      await page.locator('#threeFastBtn').selectOption('quality');
       await waitStatic('quality');
       const qualityView = await probe();
       for (const key of [
@@ -275,7 +266,7 @@ try {
       await page
         .locator('#threePanel')
         .screenshot({ path: `test-results/three-fast/roi-quality-${opacity}.png` });
-      await page.locator('#threeFastBtn').click();
+      await page.locator('#threeFastBtn').selectOption('fast');
       await waitStatic('fast');
       await page
         .locator('#threePanel')
@@ -290,10 +281,8 @@ try {
     'Mode changes must preserve exact physical geometry and annotations.',
   );
   assert.equal(exported.display.threeFastMode, true);
-  await page.locator('#threeFastBtn').click();
-  await page.waitForFunction(
-    () => document.getElementById('threeFastBtn').getAttribute('aria-pressed') === 'false',
-  );
+  await page.locator('#threeFastBtn').selectOption('quality');
+  await page.waitForFunction(() => document.getElementById('threeFastBtn').value === 'quality');
   await page.waitForFunction(() =>
     /Saved locally/.test(document.getElementById('workspaceSaveStatus').textContent),
   );
@@ -308,8 +297,8 @@ try {
   await page.waitForFunction(() =>
     document.getElementById('statusText').textContent.startsWith('Restored local workspace'),
   );
-  assert.equal(await page.locator('#threeFastBtn').getAttribute('aria-pressed'), 'false');
-  assert.equal((await page.locator('#threeFastBtn').textContent()).trim(), 'Quality');
+  assert.equal(await page.locator('#threeFastBtn').inputValue(), 'quality');
+  assert.equal(await page.locator('#threeFastBtn').inputValue(), 'quality');
   assert.deepEqual(errors, []);
   const report = {
     browser: browser.version(),

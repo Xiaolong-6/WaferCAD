@@ -10,7 +10,7 @@ _The same schematic geometry source is used here and in the expandable Process g
 
 **New to Process?** Follow the [First 10 Minutes](First-10-Minutes) walkthrough for exact controls, numbers and before/after checks. The live Process panel now uses a single **Operation** selector; archived screenshots from the older multi-button layout should not be used to identify current controls.
 
-The **Step** mode has Front/Back, one **Operation** selector, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. **Apply** performs the current operation. **Also add to Recipe** controls whether a successful Step-mode operation is appended to the Recipe. Below Apply, **How it works** expands a conceptual Before → After schematic and caveats; it is not a live prediction from the current project.
+The **Step** form places **Operation** and **Surface** selectors side by side. A contextual parameter heading follows: **Area** and material/target fields span the form, and **Coverage** and **Thickness** share a row for applicable operations. **Apply** performs the selected operation. **Also add to Recipe** is unchecked by default, requiring explicit opt-in to append a successful manual Step to Recipe; History is still recorded. **How it works** expands conceptual Before → After diagrams and caveats, not a live simulation of the opened project.
 
 The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. An active **Mask ROI** clips even **Whole face** Process operations; clear it before applying truly wafer-wide steps. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
 

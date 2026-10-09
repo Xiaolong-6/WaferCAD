@@ -48,9 +48,44 @@ export function createViewPopoverController({ root = document } = {}) {
         if (!details.open) claim(details);
       });
       details.addEventListener('toggle', () => {
-        if (details.open) claim(details);
+        if (details.open) {
+          claim(details);
+        } else {
+          for (const child of details.querySelectorAll('details[open]')) child.open = false;
+          // A secondary editor moved into More should hand control back to
+          // the canvas when it closes. Otherwise the still-open More surface
+          // can intercept ROI handle drags even though the editor is hidden.
+          const more = details.closest('.view-overflow-secondary')?.closest('.view-more-control');
+          if (more?.open) more.open = false;
+        }
       });
     }
+
+    // Clicking a canvas must not leave a menu obscuring the user's target.
+    root.addEventListener('pointerdown', (event) => {
+      for (const panel of root.querySelectorAll('.view-panel')) {
+        for (const details of panel.querySelectorAll('details[open]')) {
+          if (!details.contains(event.target)) details.open = false;
+        }
+      }
+    });
+
+    root.addEventListener('click', (event) => {
+      const button = event.target.closest?.(
+        '.view-menu-popover button, .focus-popover-actions .roi-tool, .mask-roi-popover .mask-roi-tool',
+      );
+      if (!button) return;
+      // Run the action first, then close the visual editor/overflow shell.
+      const details = button.closest('.view-more-control, .focus-editor');
+      if (details) {
+        details.open = false;
+      }
+    });
+
+    root.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      for (const panel of root.querySelectorAll('.view-panel')) closeAll(panel);
+    });
   }
 
   return { bind, claim, closeAll };

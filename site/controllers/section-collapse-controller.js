@@ -18,12 +18,12 @@ export function createSectionCollapseController({
   onSettled = () => {},
   formatXY,
   xyUnitLabel,
+  parseZInput = (raw) => Number(raw),
+  claimPopover = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
   let editorOpen = false,
-    activeTarget = 'top',
-    drag = null,
-    entryClickTimer = null;
+    drag = null;
 
   function bounds() {
     const canvas = $('sectionCanvas'),
@@ -71,7 +71,6 @@ export function createSectionCollapseController({
   function toggleEnabled() {
     const value = current();
     value.enabled = value.enabled === false;
-    if (value.enabled === false) close();
     setCurrent(value, { settled: true });
   }
 
@@ -106,14 +105,6 @@ export function createSectionCollapseController({
     return best;
   }
 
-  function updateStepLabels() {
-    const select = $('sectionCollapseStep');
-    for (const option of select.options) {
-      const micron = Number(option.value);
-      option.textContent = `${formatXY(micron)} ${xyUnitLabel()}`;
-    }
-  }
-
   function syncRuler() {
     if (!editorOpen) return;
     const ruler = $('sectionCollapseRuler'),
@@ -142,23 +133,30 @@ export function createSectionCollapseController({
 
     $('sectionCollapseTopValue').textContent = `${formatXY(value.top)} ${xyUnitLabel()}`;
     $('sectionCollapseBottomValue').textContent = `${formatXY(value.bottom)} ${xyUnitLabel()}`;
-    $('sectionCollapseFineValue').textContent =
-      activeTarget === 'top'
-        ? `${formatXY(value.top)} ${xyUnitLabel()}`
-        : activeTarget === 'bottom'
-          ? `${formatXY(value.bottom)} ${xyUnitLabel()}`
-          : `${formatXY(value.top - value.bottom)} ${xyUnitLabel()}`;
+    const enabled = value.enabled !== false;
+    $('sectionCollapseEnabled').checked = enabled;
+    for (const [id, z] of [
+      ['sectionCollapseTopInput', value.top],
+      ['sectionCollapseBottomInput', value.bottom],
+    ]) {
+      const input = $(id);
+      if (root.activeElement !== input) input.value = formatXY(z);
+      input.disabled = !enabled;
+    }
+    $('sectionCollapseTopHandle').disabled = !enabled;
+    $('sectionCollapseBottomHandle').disabled = !enabled;
+    $('sectionCollapseSnap').disabled = !enabled;
 
     const linked = value.scaleLinked !== false,
       frontScale = $('sectionCollapseFrontScale'),
       backScale = $('sectionCollapseBackScale'),
       linkScale = $('sectionCollapseScaleLinked');
     linkScale.checked = linked;
+    linkScale.disabled = !enabled;
     frontScale.value = String(Number(value.frontScale || 1));
     backScale.value = String(Number(value.backScale || 1));
-    frontScale.disabled = linked;
-    backScale.disabled = linked;
-    updateStepLabels();
+    frontScale.disabled = !enabled || linked;
+    backScale.disabled = !enabled || linked;
   }
 
   function sync() {
@@ -166,41 +164,23 @@ export function createSectionCollapseController({
       entry = $('sectionCollapseAxisBtn');
     if (!canvas || !entry) return;
 
-    const left = Number(canvas.dataset.sectionPlotLeft),
-      breakY = Number(canvas.dataset.sectionCollapseBreakY);
-    if (Number.isFinite(left)) entry.style.left = `${left}px`;
-    if (Number.isFinite(breakY)) entry.style.top = `${breakY}px`;
     const enabled = current().enabled !== false;
+    const enabledToggle = $('sectionCollapseEnabled');
+    if (enabledToggle && root.activeElement !== enabledToggle) enabledToggle.checked = enabled;
     entry.classList.toggle('active', editorOpen);
     entry.classList.toggle('collapse-disabled', !enabled);
     entry.setAttribute('aria-expanded', String(editorOpen));
-    entry.setAttribute('aria-pressed', String(enabled));
-    entry.dataset.collapseEnabled = String(enabled);
+    entry.dataset.breakEnabled = String(enabled);
     entry.title = enabled
-      ? editorOpen
-        ? 'Close Z collapse editor · double-click to disable collapse'
-        : 'Adjust Z collapse · double-click to show full Z'
-      : 'Z collapse off · double-click to restore';
-
-    const popover = $('sectionCollapseEditor');
-    if (editorOpen && globalThis.innerWidth > 600) {
-      const overlay = $('sectionCollapseOverlay'),
-        popoverWidth = Math.max(1, popover.offsetWidth),
-        popoverHeight = Math.max(1, popover.offsetHeight),
-        maxLeft = Math.max(6, overlay.clientWidth - popoverWidth - 6),
-        maxTop = Math.max(6, overlay.clientHeight - popoverHeight - 6);
-      popover.style.left = `${Math.min(maxLeft, Math.max(36, left + 18))}px`;
-      popover.style.top = `${Math.max(6, Math.min(maxTop, breakY - popoverHeight / 2))}px`;
-    }
+      ? 'Z-axis break enabled. Open display settings.'
+      : 'Z-axis break disabled. Open settings to enable.';
 
     syncRuler();
   }
 
   function open() {
-    if (current().enabled === false) return;
+    claimPopover($('sectionCollapseEditor'));
     editorOpen = true;
-    activeTarget = 'top';
-    $('sectionCollapseTarget').value = activeTarget;
     $('sectionCollapseEditor').hidden = false;
     sync();
   }
@@ -219,37 +199,15 @@ export function createSectionCollapseController({
     else open();
   }
 
-  function nudge(sign) {
-    const step = Number($('sectionCollapseStep').value) * sign,
-      value = current(),
-      [lo, hi] = bounds(),
-      span = hi - lo,
-      minGap = Math.max(span * 0.02, 1e-12);
-
-    if (activeTarget === 'top') {
-      value.top = Math.max(value.bottom + minGap, Math.min(hi, value.top + step));
-    } else if (activeTarget === 'bottom') {
-      value.bottom = Math.min(value.top - minGap, Math.max(lo, value.bottom + step));
-    } else {
-      setCurrent(
-        { ...value, ...translateSectionCollapse(value, step, [lo, hi]) },
-        { settled: true },
-      );
-      return;
-    }
-    setCurrent(value, { settled: true });
-  }
-
   function startDrag(which, event) {
     const value = current();
+    if (value.enabled === false) return;
     drag = {
       which,
       pointerId: event.pointerId,
       startTop: value.top,
       startBottom: value.bottom,
     };
-    activeTarget = which;
-    $('sectionCollapseTarget').value = which;
     event.currentTarget.classList.add('dragging');
     event.currentTarget.setPointerCapture?.(event.pointerId);
     event.preventDefault();
@@ -283,29 +241,21 @@ export function createSectionCollapseController({
   }
 
   function bind() {
-    $('sectionCollapseAxisBtn').addEventListener('click', (event) => {
-      event.stopPropagation();
-      if (current().enabled === false) return;
-      clearTimeout(entryClickTimer);
-      entryClickTimer = setTimeout(() => {
-        entryClickTimer = null;
-        toggle();
-      }, 180);
-    });
-    $('sectionCollapseAxisBtn').addEventListener('dblclick', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      clearTimeout(entryClickTimer);
-      entryClickTimer = null;
-      toggleEnabled();
-    });
+    $('sectionCollapseAxisBtn').addEventListener('click', toggle);
     $('sectionCollapseClose').addEventListener('click', close);
-    $('sectionCollapseTarget').addEventListener('change', (event) => {
-      activeTarget = event.target.value;
-      syncRuler();
-    });
-    $('sectionCollapseMinus').addEventListener('click', () => nudge(-1));
-    $('sectionCollapsePlus').addEventListener('click', () => nudge(1));
+    $('sectionCollapseEnabled').addEventListener('change', toggleEnabled);
+    for (const [id, field] of [
+      ['sectionCollapseTopInput', 'top'],
+      ['sectionCollapseBottomInput', 'bottom'],
+    ]) {
+      $(id).addEventListener('change', (event) => {
+        const value = current(),
+          next = parseZInput(event.target.value);
+        if (!Number.isFinite(next)) return syncRuler();
+        value[field] = next;
+        setCurrent(value, { settled: true });
+      });
+    }
     $('sectionCollapseScaleLinked').addEventListener('change', (event) => {
       const value = current();
       value.scaleLinked = event.target.checked;
@@ -328,6 +278,10 @@ export function createSectionCollapseController({
       startDrag('bottom', event),
     );
 
+    $('sectionCollapseEditor').addEventListener('wafercad:popover-close', (event) => {
+      event.preventDefault();
+      close();
+    });
     $('sectionCollapseEditor').addEventListener('pointerdown', (event) => event.stopPropagation());
     $('sectionCollapseEditor').addEventListener('click', (event) => event.stopPropagation());
     root.addEventListener('pointerdown', (event) => {
@@ -345,12 +299,6 @@ export function createSectionCollapseController({
       if (event.key === 'Escape') {
         event.preventDefault();
         close();
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        nudge(1);
-      } else if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        nudge(-1);
       }
     });
 

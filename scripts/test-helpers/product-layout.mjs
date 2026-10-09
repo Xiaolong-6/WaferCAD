@@ -102,11 +102,19 @@ export function createProductLayoutChecks({ capture }) {
       assert.equal(await page.locator('#threePanel').isHidden(), true);
       assert.equal(await page.locator('#layerLegend').isHidden(), true);
       assert.equal(await page.locator('.workstation-section-layers').isVisible(), true);
-      assert.equal(await page.locator('#mainPanBtn').isVisible(), true);
-      assert.equal(await page.locator('#mainZoomOut').isVisible(), true);
-      assert.equal(await page.locator('#mainZoomIn').isVisible(), true);
+      // On a phone, overflow actions stay accessible through Main → More;
+      // Fit remains on the header, while Pan and +/- are intentionally secondary.
       assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
-      assert.equal(await page.locator('#sectionPanel .export-control > summary').isVisible(), true);
+      const more = page.locator('#mainPanel .view-more-control');
+      await more.locator(':scope > summary').click();
+      for (const id of ['mainPanBtn', 'mainZoomOut', 'mainZoomIn']) {
+        assert.equal(await page.locator(`#${id}`).isVisible(), true, `phone: ${id} in More`);
+      }
+      await more.locator(':scope > summary').click();
+      assert.equal(
+        await page.locator('#sectionPanel .view-more-control > summary').isVisible(),
+        true,
+      );
       assert.equal(await page.locator('.workstation-section-collapse').isVisible(), true);
       return;
     }
@@ -280,7 +288,7 @@ export function createProductLayoutChecks({ capture }) {
     );
     assert.ok(
       popup.y >= panel.y && popup.y + popup.height <= panel.y + panel.height,
-      `${selector}: vertically clipped`,
+      `${selector}: vertically clipped (popover=${JSON.stringify(popup)}, panel=${JSON.stringify(panel)})`,
     );
   }
 
@@ -300,7 +308,10 @@ export function createProductLayoutChecks({ capture }) {
     await canvas.scrollIntoViewIfNeeded();
     if (name === 'phone') {
       const dockToggle = page.locator('.workstation-section-collapse');
-      assert.equal(await page.locator('#sectionPanel .export-control > summary').isVisible(), true);
+      assert.equal(
+        await page.locator('#sectionPanel .view-more-control > summary').isVisible(),
+        true,
+      );
       assert.equal((await dockToggle.textContent()).trim(), 'Hide');
       await dockToggle.click();
       assert.equal((await dockToggle.textContent()).trim(), 'Show');
@@ -312,7 +323,7 @@ export function createProductLayoutChecks({ capture }) {
     // Restoring the phone dock makes it visible before ResizeObserver redraws
     // its canvas. Compare break pixels only after that layout/render boundary.
     await waitForCanvasSizeSync(page, '#sectionCanvas');
-    assert.equal(await entry.isVisible(), true, `${name}: Z collapse axis entry is missing`);
+    assert.equal(await entry.isVisible(), true, `${name}: Z Break toolbar entry is missing`);
     assert.equal(
       await editor.isHidden(),
       true,
@@ -342,16 +353,11 @@ export function createProductLayoutChecks({ capture }) {
       panelHeight: document.querySelector('#sectionBody').clientHeight,
       overlayWidth: document.querySelector('#sectionCollapseOverlay').clientWidth,
     }));
-    if (collapseLayout.overlayWidth > 540 && collapseLayout.panelHeight >= 186) {
-      assert.ok(
-        collapseLayout.width > 2 * collapseLayout.height,
-        `${name}: collapse editor should use the wide Section dock horizontally`,
-      );
-      assert.ok(
-        collapseLayout.scrollHeight <= collapseLayout.clientHeight,
-        `${name}: wide collapse controls should fit without vertical scrolling`,
-      );
-    }
+    assert.ok(collapseLayout.width > 170, `${name}: compact editor needs sufficient width`);
+    assert.ok(
+      collapseLayout.height <= collapseLayout.panelHeight + 2,
+      `${name}: editor must fit inside Section viewport`,
+    );
     await capture(page, `${name}-section-z-collapse-edit`);
     await page.waitForFunction(() => {
       const canvas = document.getElementById('sectionCanvas'),
@@ -366,6 +372,9 @@ export function createProductLayoutChecks({ capture }) {
       `${name}: collapse ruler handle is too small`,
     );
 
+    await page.locator('.section-collapse-advanced').evaluate((node) => {
+      node.open = true;
+    });
     const linkedScale = page.locator('#sectionCollapseScaleLinked'),
       frontScale = page.locator('#sectionCollapseFrontScale'),
       backScale = page.locator('#sectionCollapseBackScale');
@@ -414,9 +423,10 @@ export function createProductLayoutChecks({ capture }) {
     );
     assert.equal(await backScale.isDisabled(), true);
 
-    await page.locator('#sectionCollapseTarget').selectOption('top');
-    await page.locator('#sectionCollapseStep').selectOption('0.1');
-    await page.locator('#sectionCollapsePlus').click();
+    const topInput = page.locator('#sectionCollapseTopInput');
+    const oldZ = Number(await topInput.inputValue());
+    await topInput.fill(String(oldZ + 0.1));
+    await topInput.press('Tab');
     const nudgedTop = Number(await canvas.getAttribute('data-section-collapse-top-um'));
     assert.ok(nudgedTop > before.top, `${name}: fine adjustment did not update the top boundary`);
 
@@ -454,22 +464,22 @@ export function createProductLayoutChecks({ capture }) {
       1e-9,
     );
 
-    await entry.dblclick();
+    // The Z break editor stays accessible even when its display effect is disabled.
+    await entry.click();
+    await editor.waitFor({ state: 'visible' });
+    const enabled = page.locator('#sectionCollapseEnabled');
+    await enabled.uncheck();
     assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'false');
-    assert.equal(await entry.getAttribute('aria-pressed'), 'false');
-    assert.equal(await editor.isHidden(), true);
+    assert.equal(await entry.getAttribute('data-break-enabled'), 'false');
+    assert.equal(await editor.isVisible(), true);
     assert.equal(await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'), 'false');
     await capture(page, `${name}-section-z-full`);
-
-    // Single click stays inert while collapse is off; double-click restores the
-    // saved break bounds without losing the user's previous adjustment.
-    await entry.click();
-    assert.equal(await editor.isHidden(), true);
-    await entry.dblclick();
+    await enabled.check();
     assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'true');
-    assert.equal(await entry.getAttribute('aria-pressed'), 'true');
+    assert.equal(await entry.getAttribute('data-break-enabled'), 'true');
     assert.equal(await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'), 'true');
     close(Number(await canvas.getAttribute('data-section-collapse-top-um')), nudgedTop, 1e-9);
+    await page.locator('#sectionCollapseClose').click();
 
     await capture(page, `${name}-section-z-collapse`);
   }
@@ -571,19 +581,21 @@ export function createProductLayoutChecks({ capture }) {
       await session.detach();
     }
     await openFunctionPanel(page, 'process');
-    await page.locator('#faceToggleBtn').click();
+    await page.locator('#faceToggleBtn').selectOption('back');
     await closeFunctionPanel(page);
     await dragHandle(page, 'a', 8, 0);
     const back = await coords(page);
     close(back[0], nmRoundedMicron(moved[0] - 8 / scale));
     await openFunctionPanel(page, 'process');
-    await page.locator('#faceToggleBtn').click();
+    await page.locator('#faceToggleBtn').selectOption('front');
     await closeFunctionPanel(page);
     const handleSize = (await page.locator('[data-endpoint=a]').boundingBox()).width;
     assert.ok(
       handleSize <= (name === 'phone' ? 32 : 24),
       `A/B handle is too large: ${handleSize}px`,
     );
+    const mainMore = page.locator('#mainPanel .view-more-control');
+    await mainMore.locator(':scope > summary').click();
     await page.locator('#mainZoomIn').click();
     assert.equal((await page.locator('[data-endpoint=a]').boundingBox()).width, handleSize);
     await dragHandle(page, 'a', 4, 0);
@@ -596,6 +608,7 @@ export function createProductLayoutChecks({ capture }) {
       const handleBeforePan = await page.locator('[data-endpoint=a]').boundingBox();
       const panCanvas = await mainCanvas.boundingBox();
       assert.ok(handleBeforePan && panCanvas);
+      await mainMore.locator(':scope > summary').click();
       await panButton.click();
       assert.equal(await panButton.getAttribute('aria-pressed'), 'true');
       await page.mouse.move(
@@ -613,6 +626,7 @@ export function createProductLayoutChecks({ capture }) {
       assert.ok(handleAfterPan);
       close(handleAfterPan.x - handleBeforePan.x, 24, 2);
       close(handleAfterPan.y - handleBeforePan.y, 16, 2);
+      await mainMore.locator(':scope > summary').click();
       await panButton.click();
       assert.equal(await panButton.getAttribute('aria-pressed'), 'false');
       await page.locator('#mainZoomFit').click();
@@ -643,9 +657,15 @@ export function createProductLayoutChecks({ capture }) {
     close((await coords(page))[0], nmRoundedMicron(back[0] + 1 / scale));
     await capture(page, `${name}-ab-edit`);
     await checkLayout(page);
-    // Closing Slice hides only the parameter panel; geometry remains directly editable.
+    // Other view actions may already have closed Slice. Verify an explicit
+    // open/close cycle, then confirm the canvas remains directly editable.
+    const slicePanel = page.locator('#sectionCoordsPanel');
+    if (await slicePanel.isHidden()) {
+      await page.locator('#sectionControlsBtn').click();
+    }
+    assert.equal(await slicePanel.isVisible(), true);
     await page.locator('#sectionControlsBtn').click();
-    assert.equal(await page.locator('#sectionCoordsPanel').isHidden(), true);
+    assert.equal(await slicePanel.isHidden(), true);
     await page.evaluate(
       () =>
         new Promise((resolveFrame) =>
@@ -665,6 +685,28 @@ export function createProductLayoutChecks({ capture }) {
   }
 
   async function checkROI(page, name) {
+    // On compact Main, the original ROI editor moves into More.
+    // Open the visible parent before activating its nested summary.
+    async function toggleRoiEditor() {
+      const summary = page.locator('#focusEditor > summary');
+      if (!(await summary.isVisible())) {
+        const more = page.locator('#mainPanel .view-more-control');
+        if (!(await more.evaluate((node) => node.open))) {
+          await more.locator(':scope > summary').click();
+        }
+      }
+      await summary.click();
+      // A compact nested editor must release the canvas when dismissed.
+      const editorClosed = await page.locator('#focusEditor').evaluate((node) => !node.open);
+      const inOverflow = await page
+        .locator('#focusEditor')
+        .evaluate((node) => Boolean(node.closest('.view-overflow-secondary')));
+      if (editorClosed && inOverflow) {
+        await page.waitForFunction(
+          () => !document.querySelector('#mainPanel .view-more-control')?.open,
+        );
+      }
+    }
     const benchmark = await processBenchmark('island', 'conformal');
     const project = projectForBenchmark(benchmark);
     project.display.xyUnit = 'nm';
@@ -679,7 +721,7 @@ export function createProductLayoutChecks({ capture }) {
     project.roi = { type: 'rect', a: [-0.007123, -0.004567], b: [0.005222, 0.006789] };
     project.planViews.main.zoom = 4;
     await loadProject(page, project, `${name}-nm-roi`);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');
     const width = Number(await page.locator('#roiWidth').inputValue());
     const height = Number(await page.locator('#roiHeight').inputValue());
@@ -698,7 +740,7 @@ export function createProductLayoutChecks({ capture }) {
     }
     close(Number(await page.locator('#roiX').inputValue()), center[0]);
     close(Number(await page.locator('#roiY').inputValue()), center[1]);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     await page.locator('#mainCanvas').scrollIntoViewIfNeeded();
     const box = await page.locator('#mainCanvas').boundingBox();
     const scale = Math.min((box.width - 68) / 0.1, (box.height - 68) / 0.1) * 4;
@@ -708,7 +750,7 @@ export function createProductLayoutChecks({ capture }) {
     await page.mouse.down();
     await page.mouse.move(x - 9 + 2, y - 7 + 2, { steps: 5 });
     await page.mouse.up();
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     assert.equal(
       Number(await page.locator('#roiWidth').inputValue()),
       Math.round((12.345 + (9 / scale) * 1000) * 10) / 10,
@@ -722,7 +764,7 @@ export function createProductLayoutChecks({ capture }) {
     });
     await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');
     await capture(page, `${name}-nm-roi-editor`);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
 
     project.roi = { type: 'circle', c: [0, 0], r: 0.005 };
     await loadProject(page, project, `${name}-circle`);
@@ -735,21 +777,21 @@ export function createProductLayoutChecks({ capture }) {
     await page.mouse.down();
     await page.mouse.move(hx - 10, hy - 10, { steps: 5 });
     await page.mouse.up();
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     assert.equal(
       Number(await page.locator('#roiRadius').inputValue()),
       Math.round((5 + (5 / circleScale) * 1000) * 10) / 10,
     );
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
 
     project.roi = { type: 'sector', c: [0, 0], r: 0.01, startDeg: 300, endDeg: 60 };
     await loadProject(page, project, `${name}-sector`);
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     assert.equal((await page.locator('#roiShapeLabel').textContent()).trim(), 'Sector');
     assert.equal(await page.locator('#roiRadius').inputValue(), '10');
     assert.equal(await page.locator('#roiStartAngle').inputValue(), '300');
     assert.equal(await page.locator('#roiEndAngle').inputValue(), '60');
-    await page.locator('#focusEditor > summary').click();
+    await toggleRoiEditor();
     await checkLayout(page);
   }
 

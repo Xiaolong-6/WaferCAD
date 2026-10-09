@@ -62,13 +62,23 @@ test('function panel uses Process and Project labels with one operation selector
   assert.match(html, />Directional<\/option>/);
   assert.match(html, /id="processSummary"/);
   assert.match(html, /id="processVisualGuide"[\s\S]*?class="process-visual-guide"/);
-  assert.match(html, /id="recipeRecordManual"/);
+  assert.match(html, /id="recipeRecordManual" type="checkbox" \/>/);
 });
 
 test('function panel groups related engineering parameters compactly', () => {
   assert.match(
     html,
-    /class="tool-context process-context"[\s\S]*?id="processSummary"[\s\S]*?id="faceToggleBtn"/,
+    /class="process-step-toolbar"[\s\S]*?id="operationType"[\s\S]*?id="faceToggleBtn"/,
+  );
+  assert.match(html, /id="faceToggleBtn" aria-label="Process surface"/);
+  assert.match(html, /id="processParametersHeading"/);
+  assert.match(style, /#manualProcessPane \.process-step-toolbar/);
+  assert.match(style, /#manualProcessPane #operationAreaRow/);
+  assert.match(style, /#manualProcessPane #operationThicknessRow/);
+  assert.match(html, /class="param-grid-2 process-area-grid"[\s\S]*?id="operationAreaRow"/);
+  assert.match(
+    html,
+    /class="param-grid-2 process-main-grid"[\s\S]*?id="growthModeRow"[\s\S]*?id="operationThicknessRow"/,
   );
   assert.match(
     html,
@@ -176,26 +186,30 @@ test('workstation visual system keeps scientific controls visually unified', () 
   assert.match(style, /\.statusbar\[data-level='warning'\]/);
 });
 
-test('Mask topography reference is dashed and all scientific header controls share one style', () => {
+test('view headers use shared explicit modes, Display and More controls', () => {
   assert.match(planRenderers, /ctx\.setLineDash\(\[4, 3\]\)/);
   assert.match(planRenderers, /ctx\.setLineDash\(\[7, 4\]\)/);
-  assert.match(style, /\/\* Unified scientific header controls \*\//);
-  assert.match(style, /\.view-head \.mini-btn,[\s\S]*?\.view-head \.three-control/);
-  assert.match(style, /\.view-head \.section-view-tools[\s\S]*?gap: 2px/);
-  assert.match(style, /View header controls share one physical box model/);
-  assert.match(style, /max-height: 21px/);
-  assert.match(style, /\.view-head \.three-border-toggle > span[\s\S]*?color: inherit/);
-  assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
-  assert.match(style, /\.view-head \.mini-btn\.active/);
-  assert.match(workstationStyle, /\.view-head \.three-border-toggle:has\(input:checked\)/);
-  assert.match(workstationStyle, /\.view-head \.mini-btn\.active/);
-  assert.match(workstationStyle, /\.view-head details\[open\] > summary/);
+  assert.match(style, /View UX v3: shared mode, popover and responsive header language/);
+  assert.match(style, /\.view-mode-select/);
+  assert.match(workstationStyle, /View UX v3/);
+  for (const id of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+    const from = html.indexOf(`id="${id}"`);
+    const next = html.indexOf('<section class="view-panel"', from + id.length);
+    const markup = html.slice(from, next === -1 ? undefined : next);
+    assert.match(markup, /view-more-control/, `${id}: missing More`);
+  }
+  assert.match(html, /<select\b[^>]*id="maskSourceToggleBtn"/);
+  assert.match(html, /<select\b[^>]*id="threeFastBtn"/);
+  assert.match(html, /<select\b[^>]*id="sectionScaleModeBtn"/);
   assert.match(html, /id="threeBorders"[^>]*aria-label="Show 3D borders"/);
+  assert.match(html, /id="sectionCollapseAxisBtn"[^>]*>\s*Z Break\s*<\/button>/);
+  assert.match(html, /id="sectionCollapseEnabled"/);
+  assert.match(html, /id="sectionCollapseTopInput"/);
+  assert.match(html, /id="sectionCollapseBottomInput"/);
+  assert.doesNotMatch(html, /sectionCollapseMinus|sectionCollapsePlus|sectionCollapseStep/);
   assert.doesNotMatch(html, /three-border-status/);
-  assert.doesNotMatch(style, /content: ['"](?:ON|OFF)['"]/);
-  assert.match(workspaceActions, /button\.classList\.add\('active'\)/);
-  assert.match(html, /id="maskSourceToggleBtn"\s+class="mini-btn active"/);
-  assert.match(html, /id="sectionScaleModeBtn"\s+class="mini-btn active"/);
+  assert.match(workspaceActions, /select\.value = fast \? 'fast' : 'quality'/);
+  assert.match(planRenderers, /scaleButton\.value = sectionScaleMode/);
 });
 
 test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
@@ -246,7 +260,7 @@ test('3D borders are derived from owned surfaces and stay depth-tested', () => {
 
 test('Mask File Draw source is explicit and Draw feeds Process geometry', () => {
   assert.match(html, /id="maskSourceToggleBtn"/);
-  assert.match(html, />\s*File\s*<\/button>/);
+  assert.match(html, /<option value="file">File<\/option>/);
   assert.match(html, /id="drawMaskToolbar"[^>]*hidden/);
   assert.match(html, /data-draw-tool="rect"/);
   assert.match(html, /data-draw-tool="circle"/);
@@ -314,13 +328,19 @@ test('Apply runs as a single cancelable task with elapsed time and Abort', () =>
   assert.match(processTaskController, /Operation aborted/);
 });
 
-test('all view headers expose one Export menu and Mask export filters Cells Layers and ROI', () => {
-  for (const panel of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+test('all four view headers expose one More with reachable export actions and Mask filters', () => {
+  for (const [panel, exportId] of [
+    ['mainPanel', 'mainExportSvgBtn'],
+    ['maskPanel', 'maskExportSvgBtn'],
+    ['threePanel', 'threeExportModelBtn'],
+    ['sectionPanel', 'sectionExportSvgBtn'],
+  ]) {
     const start = html.indexOf(`id="${panel}"`);
     assert.ok(start >= 0);
-    const next = html.indexOf('<section', start + 20);
-    const slice = html.slice(start, next > start ? next : undefined);
-    assert.match(slice, />Export<\/summary>/);
+    const nextPanel = html.indexOf('<section class="view-panel"', start + 20);
+    const slice = html.slice(start, nextPanel > start ? nextPanel : undefined);
+    assert.match(slice, /view-more-control/);
+    assert.match(slice, new RegExp(`id="${exportId}"`));
   }
   assert.match(html, /id="maskExportCells"[^>]*multiple/);
   assert.match(html, /id="maskExportLayers"[^>]*multiple/);

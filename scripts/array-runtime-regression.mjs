@@ -107,7 +107,7 @@ try {
   const openedMs = await open(fileURLToPath(input));
   await page.screenshot({ path: fileURLToPath(new URL('opened.png', dir)) });
   // Full-wafer SVG keeps every translated tile; the single-device preview is independent.
-  await page.locator('#mainPanel .export-control > summary').click();
+  await page.locator('#mainPanel .view-more-control > summary').click();
   let downloading = page.waitForEvent('download');
   await page.locator('#mainExportSvgBtn').click();
   let download = await downloading;
@@ -115,7 +115,8 @@ try {
   await download.saveAs(svgPath);
   const svg = await readFile(svgPath, 'utf8');
   assert.equal((svg.match(/<use /g) || []).length, 1885);
-  await page.locator('#mainPanel .export-control > summary').click();
+  await page.locator('#mainPanel .view-more-control > summary').click();
+  await page.locator('#threePanel .view-more-control > summary').click();
   await page.locator('#threePanel .export-control > summary').click();
   downloading = page.waitForEvent('download', { timeout: 300000 });
   await page.locator('#threeExportModelBtn').click();
@@ -154,7 +155,12 @@ try {
         'Physical gate mesh at every site',
       );
   assert.equal(gatePositions.size, 625);
-  await page.locator('#threePanel .export-control > summary').click();
+  // Export actions dismiss their enclosing menus. Do not click a hidden
+  // nested Export summary after the GLB download has completed.
+  assert.equal(
+    await page.locator('#threePanel .export-control').evaluate((node) => node.open),
+    false,
+  );
   const initial = await save('initial');
   const direct = await nativeApply(page, {
     type: 'add',

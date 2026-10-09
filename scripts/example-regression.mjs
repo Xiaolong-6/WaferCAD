@@ -348,6 +348,7 @@ for (const example of [
     assert.equal(opened.display.threeCamera.fov, tandemProject.display.threeCamera.fov);
     assert.deepEqual(opened.roi, tandemProject.roi);
     assert.deepEqual(opened.display.sectionDetailRoi, tandemProject.display.sectionDetailRoi);
+    await page.locator('#threePanel .view-more-control > summary').click();
     await page.locator('#threePanel .export-control > summary').click();
     const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
     await page.locator('#threeExportModelBtn').click();
@@ -420,6 +421,7 @@ await page.waitForFunction(
   null,
   { timeout: 30000 },
 );
+await page.locator('#threePanel .view-more-control > summary').click();
 await page.locator('#threePanel .export-control > summary').click();
 const sahliGlbDownloadPromise = page.waitForEvent('download', { timeout: 60000 });
 await page.locator('#threeExportModelBtn').click();

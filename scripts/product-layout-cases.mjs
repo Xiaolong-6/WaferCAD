@@ -109,9 +109,44 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
     await checkStickerGrouping(page, name);
 
     await ensurePrimaryViewVisible(page, 'three');
-    await page.locator('#threePanel .three-opacity-control > summary').click();
-    await checkPopover(page, '#threePanel .three-opacity-popover', '#threePanel');
-    await page.locator('#threePanel .three-opacity-control > summary').click();
+    const threeDisplay = page.locator('#threePanel .three-opacity-control');
+    const threeMore = page.locator('#threePanel .view-more-control');
+    // Switching Overview / Split / single view resizes the panel and triggers
+    // ResizeObserver reparenting; do not race that relocation.
+    await page.waitForFunction(() => {
+      const panel = document.getElementById('threePanel');
+      const display = panel?.querySelector('.three-opacity-control');
+      const width = panel?.getBoundingClientRect().width || 0;
+      return width > 0 && Boolean(display?.closest('.view-overflow-secondary')) === width < 510;
+    });
+    // When reparented under More, Display is inline content of a bounded
+    // scrollable menu. Test its actual reachability, not the unscrolled
+    // bounding box of an inline child.
+    const inMore = await threeDisplay.evaluate((node) =>
+      Boolean(node.closest('.view-overflow-secondary')),
+    );
+    if (inMore) await threeMore.locator(':scope > summary').click();
+    await threeDisplay.locator(':scope > summary').click();
+    if (inMore) {
+      const menu = page.locator('#threePanel .view-menu-popover');
+      await checkPopover(page, '#threePanel .view-menu-popover', '#threePanel');
+      const opacity = page.locator('#threeOpacityRange');
+      await opacity.scrollIntoViewIfNeeded();
+      const controlBox = await opacity.boundingBox();
+      const menuBox = await menu.boundingBox();
+      assert.ok(controlBox && menuBox, '3D opacity is reachable in More');
+      assert.ok(
+        controlBox.y >= menuBox.y - 1 &&
+          controlBox.y + controlBox.height <= menuBox.y + menuBox.height + 1,
+        '3D opacity scrolls into the visible More menu',
+      );
+    } else {
+      await checkPopover(page, '#threePanel .view-display-popover', '#threePanel');
+    }
+    await threeDisplay.locator(':scope > summary').click();
+    if (await threeMore.evaluate((node) => node.open)) {
+      await threeMore.locator(':scope > summary').click();
+    }
 
     await ensurePrimaryViewVisible(page, 'main');
     for (const [tool, captureName] of [

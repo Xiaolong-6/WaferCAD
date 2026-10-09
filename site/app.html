@@ -114,7 +114,9 @@
                 Slice
               </button>
               <details id="focusEditor" class="focus-editor">
-                <summary class="mini-btn" title="Edit the 3D region of interest">ROI</summary>
+                <summary class="mini-btn" title="Edit the 3D display region of interest">
+                  3D ROI
+                </summary>
                 <div class="focus-popover view-popover-surface">
                   <div class="focus-popover-actions">
                     <button
@@ -203,29 +205,30 @@
               >
                 Pan
               </button>
-              <div class="zoom-tools" title="Main view zoom">
-                <button
-                  id="mainZoomOut"
-                  class="mini-btn"
-                  title="Zoom out Main"
-                  aria-label="Zoom out Main"
-                >
-                  −
-                </button>
-                <button
-                  id="mainZoomIn"
-                  class="mini-btn"
-                  title="Zoom in Main"
-                  aria-label="Zoom in Main"
-                >
-                  +
-                </button>
-                <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
-              </div>
-              <details class="export-control">
-                <summary class="mini-btn" title="Export Main">Export</summary>
-                <div class="export-popover view-popover-surface">
-                  <button id="mainExportSvgBtn" class="mini-btn" type="button">SVG</button>
+              <button id="mainZoomFit" class="mini-btn" title="Fit Main view">Fit</button>
+              <details class="view-more-control">
+                <summary class="mini-btn" title="More Main view actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <strong>Zoom</strong>
+                  <div class="view-menu-row">
+                    <button
+                      id="mainZoomOut"
+                      class="mini-btn"
+                      title="Zoom out Main"
+                      aria-label="Zoom out Main"
+                    >
+                      −</button
+                    ><button
+                      id="mainZoomIn"
+                      class="mini-btn"
+                      title="Zoom in Main"
+                      aria-label="Zoom in Main"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <strong>Export</strong>
+                  <button id="mainExportSvgBtn" class="mini-btn" type="button">Export SVG</button>
                 </div>
               </details>
               <button
@@ -237,10 +240,10 @@
               >
                 Max
               </button>
-              <div id="mainCoords" class="readout"></div>
             </div>
           </div>
           <canvas id="mainCanvas"></canvas>
+          <div id="mainCoords" class="readout view-canvas-readout"></div>
           <div id="sectionEndpointHandles" class="section-endpoint-handles" hidden>
             <button
               type="button"
@@ -288,21 +291,23 @@
           <div class="view-head mask-view-head">
             <div><strong>Mask</strong><span id="maskCellLabel">—</span></div>
             <div class="view-tools">
-              <button
-                id="maskSourceToggleBtn"
-                class="mini-btn active"
-                type="button"
-                aria-pressed="false"
-                title="Mask source: File. Click to switch to Draw."
-              >
-                File
-              </button>
+              <label class="view-mode-field">
+                <span class="visually-hidden">Mask source</span>
+                <select
+                  id="maskSourceToggleBtn"
+                  class="view-mode-select"
+                  aria-label="Mask source mode"
+                >
+                  <option value="file">File</option>
+                  <option value="draw">Draw</option>
+                </select>
+              </label>
               <details id="maskRoiEditor" class="focus-editor mask-roi-control">
                 <summary
                   class="mini-btn"
-                  title="Limit Mask processing/export to a Rect or Circle ROI"
+                  title="Restrict mask processing and export to this mask ROI"
                 >
-                  ROI
+                  Mask ROI
                 </summary>
                 <div class="focus-popover mask-roi-popover view-popover-surface">
                   <div class="focus-popover-actions">
@@ -357,7 +362,7 @@
                   aria-label="Adjust mask transparency"
                   title="Adjust mask transparency for visual alignment"
                 >
-                  Opacity
+                  Display
                 </summary>
                 <div class="three-opacity-popover mask-opacity-popover view-popover-surface">
                   <label for="maskOpacityRange"
@@ -373,57 +378,62 @@
                   />
                 </div>
               </details>
-              <div class="zoom-tools" title="Mask view zoom">
-                <button
-                  id="maskZoomOut"
-                  class="mini-btn"
-                  title="Zoom out Mask"
-                  aria-label="Zoom out Mask"
-                >
-                  −
-                </button>
-                <button
-                  id="maskZoomIn"
-                  class="mini-btn"
-                  title="Zoom in Mask"
-                  aria-label="Zoom in Mask"
-                >
-                  +
-                </button>
-                <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
-              </div>
-              <details id="maskExportControl" class="export-control">
-                <summary class="mini-btn" title="Export current Mask">Export</summary>
-                <div class="export-popover mask-export-popover view-popover-surface">
-                  <div id="maskExportFilterGroup">
-                    <label class="export-field">
-                      <span>Cells</span>
-                      <select
-                        id="maskExportCells"
-                        multiple
-                        size="5"
-                        aria-label="Cells to export"
-                      ></select>
-                    </label>
-                    <label class="export-field">
-                      <span>Layers</span>
-                      <select
-                        id="maskExportLayers"
-                        multiple
-                        size="5"
-                        aria-label="Layers to export"
-                      ></select>
-                    </label>
+              <button id="maskZoomFit" class="mini-btn" title="Fit Mask view">Fit</button>
+              <details class="view-more-control">
+                <summary class="mini-btn" title="More Mask view actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <strong>Zoom</strong>
+                  <div class="view-menu-row">
+                    <button
+                      id="maskZoomOut"
+                      class="mini-btn"
+                      title="Zoom out Mask"
+                      aria-label="Zoom out Mask"
+                    >
+                      −</button
+                    ><button
+                      id="maskZoomIn"
+                      class="mini-btn"
+                      title="Zoom in Mask"
+                      aria-label="Zoom in Mask"
+                    >
+                      +
+                    </button>
                   </div>
-                  <p id="maskExportDrawNote" class="export-note" hidden>
-                    Draw source exports all drawn shapes.
-                  </p>
-                  <div class="export-action-row">
-                    <button id="maskExportSvgBtn" class="mini-btn" type="button">SVG</button>
-                    <button id="maskExportGdsBtn" class="mini-btn" type="button">GDS</button>
-                    <button id="maskExportOasBtn" class="mini-btn" type="button">OAS</button>
-                  </div>
-                  <p class="export-note">Mask ROI crops all exported formats when active.</p>
+                  <details id="maskExportControl" class="export-control view-menu-export">
+                    <summary class="mini-btn" title="Export current Mask">Export</summary>
+                    <div class="export-popover mask-export-popover view-popover-surface">
+                      <div id="maskExportFilterGroup">
+                        <label class="export-field">
+                          <span>Cells</span>
+                          <select
+                            id="maskExportCells"
+                            multiple
+                            size="5"
+                            aria-label="Cells to export"
+                          ></select>
+                        </label>
+                        <label class="export-field">
+                          <span>Layers</span>
+                          <select
+                            id="maskExportLayers"
+                            multiple
+                            size="5"
+                            aria-label="Layers to export"
+                          ></select>
+                        </label>
+                      </div>
+                      <p id="maskExportDrawNote" class="export-note" hidden>
+                        Draw source exports all drawn shapes.
+                      </p>
+                      <div class="export-action-row">
+                        <button id="maskExportSvgBtn" class="mini-btn" type="button">SVG</button>
+                        <button id="maskExportGdsBtn" class="mini-btn" type="button">GDS</button>
+                        <button id="maskExportOasBtn" class="mini-btn" type="button">OAS</button>
+                      </div>
+                      <p class="export-note">Mask ROI crops all exported formats when active.</p>
+                    </div>
+                  </details>
                 </div>
               </details>
               <button
@@ -435,10 +445,10 @@
               >
                 Max
               </button>
-              <div id="maskCoords" class="readout"></div>
             </div>
           </div>
           <canvas id="maskCanvas"></canvas>
+          <div id="maskCoords" class="readout view-canvas-readout"></div>
           <div id="drawMaskToolbar" class="draw-mask-toolbar" hidden>
             <button class="mini-btn draw-mask-tool active" data-draw-tool="" type="button">
               Select
@@ -509,25 +519,31 @@
           <div class="view-head">
             <div><strong>3D</strong><span id="threeStats"></span></div>
             <div class="view-tools three-view-tools">
-              <button
-                id="threeFastBtn"
-                class="mini-btn three-control active"
-                type="button"
-                aria-pressed="true"
-                aria-label="Fast 3D rendering"
-                title="Current mode: Fast. Click to switch to Quality."
-              >
-                Fast
-              </button>
-              <details class="three-opacity-control">
-                <summary
-                  class="mini-btn three-control"
-                  aria-label="Adjust all layer transparency"
-                  title="Adjust all layer transparency"
+              <label class="view-mode-field">
+                <span class="visually-hidden">3D render quality</span>
+                <select
+                  id="threeFastBtn"
+                  class="view-mode-select three-control"
+                  aria-label="3D render quality"
                 >
-                  Opacity
+                  <option value="fast">Fast</option>
+                  <option value="quality">Quality</option>
+                </select>
+              </label>
+              <details class="three-opacity-control view-display-control">
+                <summary class="mini-btn three-control" title="3D appearance settings">
+                  Display
                 </summary>
-                <div class="three-opacity-popover view-popover-surface">
+                <div class="view-display-popover view-popover-surface">
+                  <strong>3D appearance</strong>
+                  <label
+                    id="threeBorderControl"
+                    class="mini-btn three-control three-border-toggle"
+                    title="Toggle exterior 3D edge outlines"
+                  >
+                    <input id="threeBorders" type="checkbox" aria-label="Show 3D borders" />
+                    <span>Border</span>
+                  </label>
                   <label for="threeOpacityRange"
                     ><span>Opacity</span><output id="threeOpacityValue">100%</output></label
                   >
@@ -541,38 +557,36 @@
                   />
                 </div>
               </details>
-              <label
-                id="threeBorderControl"
-                class="mini-btn three-control three-border-toggle"
-                title="Toggle exterior 3D edge outlines"
-              >
-                <input id="threeBorders" type="checkbox" aria-label="Show 3D borders" />
-                <span>Border</span>
-              </label>
               <button id="fit3dBtn" class="mini-btn three-control" title="Fit the 3D model">
                 Fit
               </button>
-              <details class="export-control">
-                <summary class="mini-btn three-control" title="Export 3D">Export</summary>
-                <div class="export-popover three-export-popover view-popover-surface">
-                  <button id="threeExportModelBtn" class="mini-btn three-control" type="button">
-                    GLB · physical
-                  </button>
-                  <button
-                    id="threeExportCancelBtn"
-                    class="mini-btn three-control"
-                    type="button"
-                    hidden
-                  >
-                    Cancel GLB
-                  </button>
-                  <button id="threeExportPngBtn" class="mini-btn three-control" type="button">
-                    PNG 3× · rendered
-                  </button>
-                  <div class="export-note">
-                    GLB uses physical metre units and exports the topology-owned 3D surfaces.
-                    Rough/Pyramid relief is embedded with a bounded, camera-independent export mesh.
-                  </div>
+              <details class="view-more-control">
+                <summary class="mini-btn three-control" title="More 3D actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <details class="export-control view-menu-export">
+                    <summary class="mini-btn three-control" title="Export 3D">Export</summary>
+                    <div class="export-popover three-export-popover view-popover-surface">
+                      <button id="threeExportModelBtn" class="mini-btn three-control" type="button">
+                        GLB · physical
+                      </button>
+                      <button
+                        id="threeExportCancelBtn"
+                        class="mini-btn three-control"
+                        type="button"
+                        hidden
+                      >
+                        Cancel GLB
+                      </button>
+                      <button id="threeExportPngBtn" class="mini-btn three-control" type="button">
+                        PNG 3× · rendered
+                      </button>
+                      <div class="export-note">
+                        GLB uses physical metre units and exports the topology-owned 3D surfaces.
+                        Rough/Pyramid relief is embedded with a bounded, camera-independent export
+                        mesh.
+                      </div>
+                    </div>
+                  </details>
                 </div>
               </details>
               <button
@@ -793,29 +807,33 @@
                 </button>
               </div>
               <div id="manualProcessPane">
-                <div class="tool-context process-context">
-                  <span id="processSummary">Front · Deposit layer</span>
-                  <button
-                    id="faceToggleBtn"
-                    class="compact-btn context-action"
-                    type="button"
-                    title="Switch active process face"
-                  >
-                    Front
-                  </button>
-                </div>
                 <div class="control-body process-control-body">
-                  <label class="process-operation-picker" for="operationType">
-                    <span>Operation</span>
-                    <select id="operationType" aria-label="Process action">
-                      <option value="add">Deposit</option>
-                      <option value="grow">Extend</option>
-                      <option value="etch">Etch</option>
-                      <option value="implant">Implant</option>
-                      <option value="electrical">Electrical</option>
-                      <option value="record">Record</option>
-                    </select>
-                  </label>
+                  <div class="process-step-toolbar">
+                    <label class="process-operation-picker" for="operationType">
+                      <span>Operation</span>
+                      <select id="operationType" aria-label="Process action">
+                        <option value="add">Deposit</option>
+                        <option value="grow">Extend</option>
+                        <option value="etch">Etch</option>
+                        <option value="implant">Implant</option>
+                        <option value="electrical">Electrical</option>
+                        <option value="record">Record</option>
+                      </select>
+                    </label>
+                    <label class="process-surface-picker" for="faceToggleBtn">
+                      <span>Surface</span>
+                      <select id="faceToggleBtn" aria-label="Process surface">
+                        <option value="front">Front</option>
+                        <option value="back">Back</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="tool-context process-context visually-hidden" aria-live="polite">
+                    <span id="processSummary">Front · Deposit layer</span>
+                  </div>
+                  <div class="process-parameter-heading">
+                    <strong id="processParametersHeading">Deposit parameters</strong>
+                  </div>
 
                   <div class="param-grid-2 process-area-grid">
                     <label id="operationAreaRow" class="param-field">
@@ -824,13 +842,6 @@
                         <option value="mask">Selected mask</option>
                         <option value="invert">Invert mask</option>
                         <option value="full">Whole face</option>
-                      </select>
-                    </label>
-                    <label id="growthModeRow" class="param-field">
-                      <span>Coverage</span>
-                      <select id="growthMode">
-                        <option value="direct">Directional</option>
-                        <option value="conformal">Conformal</option>
                       </select>
                     </label>
                     <label id="transferModeRow" class="param-field hidden">
@@ -876,7 +887,7 @@
                       <input id="layerName" value="Layer 1" />
                     </label>
                     <label id="targetLayerRow" class="param-field hidden">
-                      <span>Target</span>
+                      <span>Target layer</span>
                       <select id="targetLayer"></select>
                     </label>
                     <label
@@ -896,6 +907,13 @@
                     <label id="electricalNameRow" class="param-field hidden">
                       <span>Name</span>
                       <input id="electricalName" value="Electrical Region 1" />
+                    </label>
+                    <label id="growthModeRow" class="param-field">
+                      <span>Coverage</span>
+                      <select id="growthMode">
+                        <option value="direct">Directional</option>
+                        <option value="conformal">Conformal</option>
+                      </select>
                     </label>
                     <label id="operationThicknessRow" class="param-field">
                       <span><b id="processThicknessLabel">Z</b></span>
@@ -1072,7 +1090,7 @@
                     class="step-recipe-record recipe-record-toggle"
                     title="Append successful Step-mode operations to Recipe"
                   >
-                    <input id="recipeRecordManual" type="checkbox" checked />
+                    <input id="recipeRecordManual" type="checkbox" />
                     <span>Also add to Recipe</span>
                   </label>
                   <div class="operation-actions">
@@ -1100,12 +1118,16 @@
                     aria-label="Current process schematic"
                   >
                     <summary class="process-guide-top">
-                      <strong
-                        >How it works ·
-                        <span id="processGuideTitle">Directional deposition</span></strong
-                      >
-                      <span id="processGuideEffect" class="process-guide-effect">Geometry</span>
+                      <strong>How <span id="processGuideOperation">Deposit</span> works</strong>
+                      <span class="process-guide-toggle-label" aria-hidden="true">
+                        <span class="process-guide-collapsed-label">Show guide</span>
+                        <span class="process-guide-expanded-label">Hide guide</span>
+                      </span>
                     </summary>
+                    <div class="process-guide-detail-heading">
+                      <strong id="processGuideTitle">Directional deposition</strong>
+                      <span id="processGuideEffect" class="process-guide-effect">Geometry</span>
+                    </div>
                     <a
                       id="processGuideLink"
                       href="https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations#deposit-directional"
@@ -1238,37 +1260,57 @@
           <div class="view-head">
             <div><strong>Section A–B</strong><span id="sectionMeta"></span></div>
             <div class="view-tools section-view-tools">
+              <label class="view-mode-field">
+                <span class="visually-hidden">Section scale</span>
+                <select
+                  id="sectionScaleModeBtn"
+                  class="view-mode-select"
+                  aria-label="Section scale mode"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="physical">1:1 X:Z</option>
+                </select>
+              </label>
               <button
-                id="sectionScaleModeBtn"
-                class="mini-btn active"
+                id="sectionCollapseAxisBtn"
+                class="mini-btn view-z-break"
                 type="button"
-                aria-pressed="false"
-                title="Auto: fit X and Z independently. Click for physical 1:1 X:Z scale."
+                aria-expanded="false"
+                aria-controls="sectionCollapseEditor"
+                title="Edit Z-axis break settings"
               >
-                Auto
+                Z Break
               </button>
-              <button
-                id="sectionBordersBtn"
-                class="mini-btn"
-                type="button"
-                aria-pressed="false"
-                title="Show structural borders in Section A–B"
-              >
-                Border
-              </button>
-              <button
-                id="sectionDetailRoiBtn"
-                class="mini-btn"
-                type="button"
-                aria-pressed="false"
-                title="Magnify a local area of Section A–B"
-              >
-                Detail
-              </button>
-              <details class="export-control">
-                <summary class="mini-btn" title="Export Section A–B">Export</summary>
-                <div class="export-popover view-popover-surface">
-                  <button id="sectionExportSvgBtn" class="mini-btn" type="button">SVG</button>
+              <details class="view-display-control">
+                <summary class="mini-btn" title="Section appearance settings">Display</summary>
+                <div class="view-display-popover view-popover-surface">
+                  <strong>Section appearance</strong>
+                  <button
+                    id="sectionBordersBtn"
+                    class="mini-btn view-menu-toggle"
+                    type="button"
+                    aria-pressed="false"
+                    title="Show or hide Section structural borders"
+                  >
+                    Border
+                  </button>
+                </div>
+              </details>
+              <details class="view-more-control">
+                <summary class="mini-btn" title="More Section actions">More</summary>
+                <div class="view-menu-popover view-popover-surface">
+                  <button
+                    id="sectionDetailRoiBtn"
+                    class="mini-btn"
+                    type="button"
+                    aria-pressed="false"
+                    title="Draw a Section detail ROI"
+                  >
+                    Detail ROI
+                  </button>
+                  <button id="sectionExportSvgBtn" class="mini-btn" type="button">
+                    Export SVG
+                  </button>
                 </div>
               </details>
               <button
@@ -1280,155 +1322,133 @@
               >
                 Max
               </button>
-              <span id="sectionRange" class="readout"></span>
             </div>
           </div>
           <div class="section-body" id="sectionBody">
             <canvas id="sectionCanvas"></canvas>
+            <span id="sectionRange" class="readout view-canvas-readout"></span>
             <div id="sectionCollapseOverlay" class="section-collapse-overlay">
-              <button
-                id="sectionCollapseAxisBtn"
-                class="section-collapse-axis-btn"
-                type="button"
-                aria-expanded="false"
-                aria-controls="sectionCollapseEditor"
-                aria-label="Adjust Z collapse"
-                title="Adjust Z collapse"
-              >
-                <svg
-                  class="section-collapse-axis-glyph"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3 7h4m4 0h10M3 17h10m4 0h4" />
-                  <circle cx="9" cy="7" r="2" />
-                  <circle cx="15" cy="17" r="2" />
-                </svg>
-              </button>
               <div
                 id="sectionCollapseEditor"
                 class="section-collapse-editor view-popover-surface"
-                aria-label="Z collapse editor"
+                data-view-popover-panel
+                aria-label="Z-axis break editor"
                 hidden
               >
                 <div class="section-collapse-editor-head">
-                  <strong>Z collapse</strong>
+                  <div>
+                    <strong>Z-axis break</strong>
+                    <small>Display only · model geometry unchanged</small>
+                  </div>
                   <button
                     id="sectionCollapseClose"
                     class="section-collapse-close"
                     type="button"
-                    aria-label="Close Z collapse editor"
+                    aria-label="Close Z-axis break editor"
                   >
                     ×
                   </button>
                 </div>
+                <label class="section-collapse-check section-collapse-enable">
+                  <input id="sectionCollapseEnabled" type="checkbox" checked />
+                  <span>Enable Z-axis break</span>
+                </label>
+                <p class="section-collapse-description">
+                  Omit the middle substrate region from the displayed section. The upper and lower
+                  boundaries remain in physical Z units.
+                </p>
                 <div class="section-collapse-editor-grid">
                   <div
                     id="sectionCollapseRuler"
                     class="section-collapse-ruler"
-                    aria-label="Full Z range collapse editor"
+                    aria-label="Full physical Z range"
                   >
                     <div id="sectionCollapseWindow" class="section-collapse-window"></div>
                     <button
                       id="sectionCollapseTopHandle"
                       class="section-collapse-ruler-handle"
                       type="button"
-                      aria-label="Drag top collapse boundary"
+                      aria-label="Drag upper boundary"
                     ></button>
                     <button
                       id="sectionCollapseBottomHandle"
                       class="section-collapse-ruler-handle"
                       type="button"
-                      aria-label="Drag bottom collapse boundary"
+                      aria-label="Drag lower boundary"
                     ></button>
                   </div>
                   <div class="section-collapse-controls">
-                    <div class="section-collapse-values">
-                      <div class="section-collapse-kv">
-                        <span>Top</span><strong id="sectionCollapseTopValue">—</strong>
-                      </div>
-                      <div class="section-collapse-kv">
-                        <span>Bottom</span><strong id="sectionCollapseBottomValue">—</strong>
-                      </div>
-                    </div>
-                    <label class="section-collapse-row">
-                      <span>Fine target</span>
-                      <select id="sectionCollapseTarget">
-                        <option value="top">Top</option>
-                        <option value="bottom">Bottom</option>
-                        <option value="window">Whole range</option>
-                      </select>
+                    <label class="section-collapse-boundary">
+                      <span>Upper boundary</span>
+                      <input
+                        id="sectionCollapseTopInput"
+                        type="number"
+                        step="any"
+                        inputmode="decimal"
+                      />
                     </label>
-                    <label class="section-collapse-row">
-                      <span>Step</span>
-                      <select id="sectionCollapseStep">
-                        <option value="0.01">0.01 µm</option>
-                        <option value="0.1" selected>0.1 µm</option>
-                        <option value="1">1 µm</option>
-                        <option value="10">10 µm</option>
-                      </select>
+                    <label class="section-collapse-boundary">
+                      <span>Lower boundary</span>
+                      <input
+                        id="sectionCollapseBottomInput"
+                        type="number"
+                        step="any"
+                        inputmode="decimal"
+                      />
                     </label>
-                    <div class="section-collapse-fine-row">
-                      <span>Adjust</span>
-                      <button id="sectionCollapseMinus" class="mini-btn" type="button">−</button>
-                      <output id="sectionCollapseFineValue" class="section-collapse-fine-value"
-                        >—</output
-                      >
-                      <button id="sectionCollapsePlus" class="mini-btn" type="button">+</button>
+                    <div class="section-collapse-readout">
+                      <span id="sectionCollapseTopValue">—</span>
+                      <span id="sectionCollapseBottomValue">—</span>
                     </div>
                     <label class="section-collapse-check">
                       <input id="sectionCollapseSnap" type="checkbox" checked />
-                      <span>Snap while dragging</span>
+                      <span>Snap to material boundaries when dragging</span>
                     </label>
-                    <div
-                      class="section-collapse-scale-block"
-                      title="Display-only front/back Z ratio used by Auto Section and 3D"
-                    >
-                      <div class="section-collapse-scale-head">
-                        <span>Front / Back Z ratio</span>
-                        <label class="section-collapse-check">
-                          <input id="sectionCollapseScaleLinked" type="checkbox" checked />
-                          <span>Lock 1:1</span>
-                        </label>
-                      </div>
-                      <div class="section-collapse-scale-row">
-                        <label>
-                          <span>Front</span>
-                          <input
-                            id="sectionCollapseFrontScale"
-                            type="number"
-                            value="1"
-                            min="0.1"
-                            max="10"
-                            step="0.1"
-                            inputmode="decimal"
-                            disabled
-                          />
-                          <b>×</b>
-                        </label>
-                        <label>
-                          <span>Back</span>
-                          <input
-                            id="sectionCollapseBackScale"
-                            type="number"
-                            value="1"
-                            min="0.1"
-                            max="10"
-                            step="0.1"
-                            inputmode="decimal"
-                            disabled
-                          />
-                          <b>×</b>
-                        </label>
-                      </div>
-                      <small>Display only · 3D follows Section</small>
-                    </div>
                   </div>
                 </div>
+                <details class="section-collapse-advanced">
+                  <summary>Advanced display scaling</summary>
+                  <div class="section-collapse-scale-block">
+                    <label class="section-collapse-check">
+                      <input id="sectionCollapseScaleLinked" type="checkbox" checked />
+                      <span>Keep Front / Back Z scales equal (1:1)</span>
+                    </label>
+                    <div class="section-collapse-scale-row">
+                      <label>
+                        <span>Front</span>
+                        <input
+                          id="sectionCollapseFrontScale"
+                          type="number"
+                          value="1"
+                          min="0.1"
+                          max="10"
+                          step="0.1"
+                          inputmode="decimal"
+                          disabled
+                        />
+                        <b>×</b>
+                      </label>
+                      <label>
+                        <span>Back</span>
+                        <input
+                          id="sectionCollapseBackScale"
+                          type="number"
+                          value="1"
+                          min="0.1"
+                          max="10"
+                          step="0.1"
+                          inputmode="decimal"
+                          disabled
+                        />
+                        <b>×</b>
+                      </label>
+                    </div>
+                    <small
+                      >Relative display weighting in Auto mode, also used by 3D. Physical 1:1 X:Z
+                      uses true physical scale.</small
+                    >
+                  </div>
+                </details>
               </div>
             </div>
             <div

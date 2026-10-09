@@ -1,15 +1,9 @@
 import { referencedModelParts } from '../model-array.js';
 import { XY_UNITS } from '../units.js';
 
-export function syncThreeRenderModeButton(button, fast) {
-  button.textContent = fast ? 'Fast' : 'Quality';
-  button.title = fast
-    ? 'Current mode: Fast. Click to switch to Quality.'
-    : 'Current mode: Quality. Click to switch to Fast.';
-  // The button displays the selected mode in both cases, so both receive
-  // the same visual emphasis. aria-pressed still identifies the Fast preference.
-  button.classList.add('active');
-  button.setAttribute('aria-pressed', String(fast));
+export function syncThreeRenderModeButton(select, fast) {
+  select.value = fast ? 'fast' : 'quality';
+  select.title = fast ? 'Render mode: Fast' : 'Render mode: Quality';
 }
 
 export function createWorkspaceActionsController({
@@ -130,13 +124,13 @@ export function createWorkspaceActionsController({
   }
 
   function bindViewControls() {
-    $('faceToggleBtn').onclick = () => {
-      setActiveFace(getActiveFace() === 'front' ? 'back' : 'front');
+    $('faceToggleBtn').onchange = () => {
+      setActiveFace($('faceToggleBtn').value);
       renderAll();
     };
 
-    $('sectionScaleModeBtn').onclick = () => {
-      setSectionScaleMode(getSectionScaleMode() === 'auto' ? 'physical' : 'auto');
+    $('sectionScaleModeBtn').onchange = (event) => {
+      setSectionScaleMode(event.target.value === 'physical' ? 'physical' : 'auto');
       renderSection();
       status(
         getSectionScaleMode() === 'auto'
@@ -163,8 +157,8 @@ export function createWorkspaceActionsController({
       renderThree();
     };
 
-    $('threeFastBtn').onclick = () => {
-      setThreeFastMode(!getThreeFastMode());
+    $('threeFastBtn').onchange = (event) => {
+      setThreeFastMode(event.target.value === 'fast');
       syncThreeRenderModeButton($('threeFastBtn'), getThreeFastMode());
       renderThree();
       status(getThreeFastMode() ? 'Fast 3D rendering.' : 'Full quality 3D rendering.');
@@ -237,7 +231,11 @@ export function createWorkspaceActionsController({
       details.addEventListener('toggle', () => {
         if (!details.open) return;
         for (const sibling of details.closest('.view-head')?.querySelectorAll('details') || []) {
-          if (sibling !== details) sibling.open = false;
+          // An Export submenu must keep its own More parent open. Dismissing
+          // that ancestor used to make GLB/PNG commands unreachable mid-click.
+          if (sibling !== details && !sibling.contains(details) && !details.contains(sibling)) {
+            sibling.open = false;
+          }
         }
         if (details.id === 'maskExportControl') syncMaskExportOptions();
       });

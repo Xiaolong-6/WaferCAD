@@ -67,7 +67,7 @@ File and Draw state are independent: switching source never unloads the imported
 
 Process **Selected mask** and **Invert mask** always use the currently active source. In Draw mode, all drawn shapes compose by union.
 
-Use **Mask ROI** to restrict mask-based work to a local area. Choose **Rect** or **Circle**, drag once to create it, then move/resize it with the same direct-manipulation pattern used elsewhere. When active, Mask ROI clips **Selected mask / Invert mask / Whole face Process Apply** geometry and Mask **SVG/GDSII/OASIS** export. Clear Mask ROI before a genuinely whole-face Process operation. It is independent from Main ROI and Section A–B and does not rewrite the imported or drawn mask geometry.
+Use **Mask ROI** to restrict mask-based work to a local area. Choose **Rect** or **Circle**, drag once to create it, then move/resize it with the same direct-manipulation pattern used elsewhere. When active, Mask ROI clips **Selected mask / Invert mask / Whole face Process Apply** geometry and Mask **SVG/GDSII/OASIS** export. Clear Mask ROI before a genuinely whole-face Process operation. It is independent from 3D ROI (Main view) and Section A–B and does not rewrite the imported or drawn mask geometry.
 
 Use **Opacity** to fade whichever source is active. The neutral dashed structure reference, axes, and cursor readout are unaffected.
 

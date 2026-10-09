@@ -1136,14 +1136,11 @@ export function createPlanRenderers({
     ctx.textAlign = 'left';
 
     const scaleButton = $('sectionScaleModeBtn');
-    scaleButton.textContent = sectionScaleMode === 'auto' ? 'Auto' : '1:1';
-    // Auto and 1:1 both display the selected scale mode.
-    scaleButton.classList.add('active');
-    scaleButton.setAttribute('aria-pressed', String(sectionScaleMode === 'physical'));
+    scaleButton.value = sectionScaleMode === 'auto' ? 'auto' : 'physical';
     scaleButton.title =
       sectionScaleMode === 'auto'
-        ? 'Auto: X and Z fit independently. Click for physical 1:1 X:Z scale.'
-        : 'Physical 1:1: X and Z use the same px/µm. Click for Auto fit.';
+        ? 'Auto fit: preserves relative front/back display weighting'
+        : 'Physical 1:1 X:Z: equal physical scale within the retained Z regions';
 
     const borderButton = $('sectionBordersBtn');
     borderButton.classList.toggle('active', sectionShowBorders);
