@@ -922,6 +922,85 @@ assert.equal(
 assert.deepEqual(safetyErrors, []);
 await safetyContext.close();
 
+// Inject a real IndexedDB failure after startup to ensure both import paths
+// leave the working project intact when Recovery cannot be written.
+const guardContext = await newUiContext(browser, { acceptDownloads: true });
+const guardPage = await guardContext.newPage();
+const guardErrors = [];
+guardPage.on('pageerror', (error) => guardErrors.push(error.message));
+await gotoWelcome(guardPage);
+await guardPage.locator('#welcomeEmptyBtn').click();
+await guardPage.waitForURL(/\/app\.html(?:\?.*)?$/);
+await waitForAppReady(guardPage);
+await guardPage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+const beforeFailedOpen = await exportCurrentProject(guardPage);
+await openFunctionPanel(guardPage, 'project');
+await guardPage.locator('#projectNameInput').fill('Pending work survives failed checkpoint');
+await guardPage.evaluate(() => {
+  const realOpen = indexedDB.open.bind(indexedDB);
+  globalThis.__restoreRecoveryOpenForTest = () => {
+    indexedDB.open = realOpen;
+  };
+  indexedDB.open = (name, ...args) => {
+    if (name === 'wafercad-workspace-v1') {
+      throw new Error('Injected Recovery IndexedDB failure');
+    }
+    return realOpen(name, ...args);
+  };
+});
+await guardPage.locator('#openProjectInput').setInputFiles({
+  name: 'injected-guard.wafercad',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(welcomeProject)),
+});
+await chooseConfirmation(guardPage);
+await guardPage.waitForFunction(
+  () => /Open failed: Recovery checkpoint was not created/.test(
+    document.getElementById('statusText')?.textContent || '',
+  ),
+  null,
+  { timeout: 60000 },
+);
+await guardPage.locator('#gdsInput').setInputFiles({
+  name: 'injected-guard.oas',
+  mimeType: 'application/octet-stream',
+  buffer: welcomeLayoutBuffer,
+});
+await guardPage.waitForFunction(
+  () => /Layout import failed: Recovery checkpoint was not created/.test(
+    document.getElementById('statusText')?.textContent || '',
+  ),
+  null,
+  { timeout: 60000 },
+);
+await guardPage.evaluate(() => globalThis.__restoreRecoveryOpenForTest());
+const afterFailedOpen = await exportCurrentProject(guardPage);
+assert.deepEqual(afterFailedOpen.model, beforeFailedOpen.model);
+assert.deepEqual(afterFailedOpen.layout, beforeFailedOpen.layout);
+assert.deepEqual(afterFailedOpen.snapshots, beforeFailedOpen.snapshots);
+// Injected storage exceptions are handled locally by the visible task, not
+// emitted as uncaught browser errors. This assertion protects that contract.
+// A failed checkpoint may not cancel the pending autosave permanently.
+await guardPage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+await guardPage.reload();
+await waitForAppReady(guardPage);
+await guardPage.waitForFunction(
+  () => document.getElementById('projectNameInput')?.value ===
+    'Pending work survives failed checkpoint',
+  null,
+  { timeout: 30000 },
+);
+assert.deepEqual(guardErrors, []);
+await guardContext.close();
+
 assert.deepEqual(errors, []);
 await mainContext.close();
 await browser.close();
