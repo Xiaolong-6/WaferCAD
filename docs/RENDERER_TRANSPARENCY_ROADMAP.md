@@ -81,11 +81,11 @@ At head `a0e71aad`, [run 37886966574](https://github.com/Xiaolong-6/WaferCAD/act
 
 The independent browser probe recorded the following unmodified-process scene transitions:
 
-| Camera/presentation | Tier | Submitted triangles | Electrical far-LOD bodies |
-| ------------------- | ---- | ------------------- | ------------------------- |
-| Fitted far view | `far-2.56` | 18,346,852 | 39 |
-| Edge-on rotation | `exact` | 30,471,548 | 0 |
-| Return to fitted far view | `far-2.56` | 18,346,852 | 39 |
+| Camera/presentation       | Tier       | Submitted triangles | Electrical far-LOD bodies |
+| ------------------------- | ---------- | ------------------- | ------------------------- |
+| Fitted far view           | `far-2.56` | 18,346,852          | 39                        |
+| Edge-on rotation          | `exact`    | 30,471,548          | 0                         |
+| Return to fitted far view | `far-2.56` | 18,346,852          | 39                        |
 
 The model revision remained **61**, Process revision **40**, and translated instance count **1,885** across those transitions; browser errors were empty. The far/recovered screenshots showed the same wafer silhouette, array coverage and stack at the recorded inspection scale. The edge-on exact frame was verified via a completed renderer frame and diagnostic counters; its fine-grained pixel equivalence to Quality/ROI inspection has **not** been established. Keep that limitation explicit in future renderer work.
 
