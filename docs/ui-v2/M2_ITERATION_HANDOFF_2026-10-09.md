@@ -5,7 +5,7 @@
 - Repository: `Xiaolong-6/WaferCAD`.
 - Branch: `codex/ui-v2-m2-handoff-2026-10-09` (created from the approved M2 integration branch `refactor/ui-v2-m0`).
 - Product checkpoint: `0d5fb4e` (`fix(ui-v2): refine M2 mask legend and history controls`).
-- Publication: push is authorized by the user and will be reported separately from local commit status.
+- Publication: local commits are ready; push to the configured GitHub origin is pending because the external-egress approval gate requires confirmation that this is the intended trusted repository.
 - Integration base: local `origin/main` is `b81598b` (`perf(renderer): single-pass smooth transparent material caps (#164)`), already included in the integration branch. A fresh `git fetch origin` was attempted before publication but failed because `github.com` did not resolve in the current network environment; re-fetch before any later merge/rebase.
 
 ## Scope delivered
