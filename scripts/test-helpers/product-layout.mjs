@@ -106,7 +106,7 @@ export function createProductLayoutChecks({ capture }) {
       assert.equal(await page.locator('#mainZoomOut').isVisible(), true);
       assert.equal(await page.locator('#mainZoomIn').isVisible(), true);
       assert.equal(await page.locator('#mainZoomFit').isVisible(), true);
-      assert.equal(await page.locator('#sectionPanel .export-control > summary').isVisible(), true);
+      assert.equal(await page.locator('#sectionPanel .view-more-control > summary').isVisible(), true);
       assert.equal(await page.locator('.workstation-section-collapse').isVisible(), true);
       return;
     }
@@ -300,7 +300,7 @@ export function createProductLayoutChecks({ capture }) {
     await canvas.scrollIntoViewIfNeeded();
     if (name === 'phone') {
       const dockToggle = page.locator('.workstation-section-collapse');
-      assert.equal(await page.locator('#sectionPanel .export-control > summary').isVisible(), true);
+      assert.equal(await page.locator('#sectionPanel .view-more-control > summary').isVisible(), true);
       assert.equal((await dockToggle.textContent()).trim(), 'Hide');
       await dockToggle.click();
       assert.equal((await dockToggle.textContent()).trim(), 'Show');
@@ -312,7 +312,7 @@ export function createProductLayoutChecks({ capture }) {
     // Restoring the phone dock makes it visible before ResizeObserver redraws
     // its canvas. Compare break pixels only after that layout/render boundary.
     await waitForCanvasSizeSync(page, '#sectionCanvas');
-    assert.equal(await entry.isVisible(), true, `${name}: Z collapse axis entry is missing`);
+    assert.equal(await entry.isVisible(), true, `${name}: Z Break toolbar entry is missing`);
     assert.equal(
       await editor.isHidden(),
       true,
@@ -342,16 +342,9 @@ export function createProductLayoutChecks({ capture }) {
       panelHeight: document.querySelector('#sectionBody').clientHeight,
       overlayWidth: document.querySelector('#sectionCollapseOverlay').clientWidth,
     }));
-    if (collapseLayout.overlayWidth > 540 && collapseLayout.panelHeight >= 186) {
-      assert.ok(
-        collapseLayout.width > 2 * collapseLayout.height,
-        `${name}: collapse editor should use the wide Section dock horizontally`,
-      );
-      assert.ok(
-        collapseLayout.scrollHeight <= collapseLayout.clientHeight,
-        `${name}: wide collapse controls should fit without vertical scrolling`,
-      );
-    }
+    assert.ok(collapseLayout.width > 170, `${name}: compact editor needs sufficient width`);
+    assert.ok(collapseLayout.height <= collapseLayout.panelHeight + 2,
+      `${name}: editor must fit inside Section viewport`);
     await capture(page, `${name}-section-z-collapse-edit`);
     await page.waitForFunction(() => {
       const canvas = document.getElementById('sectionCanvas'),
@@ -366,6 +359,7 @@ export function createProductLayoutChecks({ capture }) {
       `${name}: collapse ruler handle is too small`,
     );
 
+    await page.locator('.section-collapse-advanced').evaluate((node) => { node.open = true; });
     const linkedScale = page.locator('#sectionCollapseScaleLinked'),
       frontScale = page.locator('#sectionCollapseFrontScale'),
       backScale = page.locator('#sectionCollapseBackScale');
@@ -414,9 +408,10 @@ export function createProductLayoutChecks({ capture }) {
     );
     assert.equal(await backScale.isDisabled(), true);
 
-    await page.locator('#sectionCollapseTarget').selectOption('top');
-    await page.locator('#sectionCollapseStep').selectOption('0.1');
-    await page.locator('#sectionCollapsePlus').click();
+    const topInput = page.locator('#sectionCollapseTopInput');
+    const oldZ = Number(await topInput.inputValue());
+    await topInput.fill(String(oldZ + 0.1));
+    await topInput.press('Tab');
     const nudgedTop = Number(await canvas.getAttribute('data-section-collapse-top-um'));
     assert.ok(nudgedTop > before.top, `${name}: fine adjustment did not update the top boundary`);
 
@@ -454,22 +449,22 @@ export function createProductLayoutChecks({ capture }) {
       1e-9,
     );
 
-    await entry.dblclick();
+    // The Z break editor stays accessible even when its display effect is disabled.
+    await entry.click();
+    await editor.waitFor({ state: 'visible' });
+    const enabled = page.locator('#sectionCollapseEnabled');
+    await enabled.uncheck();
     assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'false');
-    assert.equal(await entry.getAttribute('aria-pressed'), 'false');
-    assert.equal(await editor.isHidden(), true);
+    assert.equal(await entry.getAttribute('data-break-enabled'), 'false');
+    assert.equal(await editor.isVisible(), true);
     assert.equal(await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'), 'false');
     await capture(page, `${name}-section-z-full`);
-
-    // Single click stays inert while collapse is off; double-click restores the
-    // saved break bounds without losing the user's previous adjustment.
-    await entry.click();
-    assert.equal(await editor.isHidden(), true);
-    await entry.dblclick();
+    await enabled.check();
     assert.equal(await canvas.getAttribute('data-section-collapse-enabled'), 'true');
-    assert.equal(await entry.getAttribute('aria-pressed'), 'true');
+    assert.equal(await entry.getAttribute('data-break-enabled'), 'true');
     assert.equal(await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'), 'true');
     close(Number(await canvas.getAttribute('data-section-collapse-top-um')), nudgedTop, 1e-9);
+    await page.locator('#sectionCollapseClose').click();
 
     await capture(page, `${name}-section-z-collapse`);
   }
