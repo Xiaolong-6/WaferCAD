@@ -109,19 +109,32 @@ For the historical **Persistent Scene v2.1 integration PR #135** and its current
 
 **Deferring speed is not deferring correctness.** A slow but correct first transparent frame can pass this phase; missing geometry, leaks, incorrect visibility, unresponsive/hung rendering or other regression failures cannot.
 
-## Experimental v2 follow-up — 2026-10-09
+## Transparency v2 branch outcome — 2026-10-09
 
-A branch-only, **unverified** first pass is recorded in
-[Transparency Renderer v2 handoff](TRANSPARENCY_RENDERER_V2_HANDOFF_2026-10-09.md).
-It constrains Three.js transparent `DoubleSide` single-pass rendering to
-smooth planar **material** caps and instruments theoretical skipped
-triangle submissions. The follow-up also uses **bit-exact vertex indexing**
-for eligible repeated transparent material/electrical meshes without changing
-triangle topology, render order, or physical geometry. It does **not** modify the exact scene topology,
-history, storage, or exports; rough, sidewall and annotation volumes retain
-their original pass behavior. The first candidate's 625-site CI measured 31.13 s cold / 30.21 s warm
-Quality and 11.91 s Fast far-field transparency; see the handoff for
-run links and caveats. The indexing follow-up still requires a new
-625-site measured run and matched scientific screenshot review. Do not promote the 15 s budget or merge
-on the basis of estimated draw reductions. Phase A measurements and
-near/edge-on scientific visual checks remain outstanding.
+[PR #164](https://github.com/Xiaolong-6/WaferCAD/pull/164) tested two
+presentation-only changes; see the dated
+[Transparency Renderer v2 handoff](TRANSPARENCY_RENDERER_V2_HANDOFF_2026-10-09.md)
+for exact CI evidence and measured wall times.
+
+- **Keep the restricted smooth planar-cap transparent single pass.** It leaves
+  the canonical physical model, rough/smooth sidewalls, Implant/Electrical
+  volumes and GLB export intact. The full 625-site browser test measured
+  Quality cold **31.13 s**, warm **30.21 s**, Fast far **11.91 s**, and
+  Quality **57.04 M** submitted triangles. All required functional and 625-site
+  stress/edge-on/replay CI passed on the first candidate.
+- **Reject and revert bit-exact vertex indexing.** A second full 625-site
+  browser run was green, but indexing increased Quality cold time to
+  **33.42 s**, warm time to **32.50 s** and Fast far time to **12.05 s**,
+  without reducing triangle submissions. The trial module, renderer hookup,
+  benchmark counters and trial-only tests were removed from the final branch.
+- Preserve the nonblocking **15 s Quality / 6 s Fast** goal as unmet
+  performance debt. No green functionality gate or speculative vertex-counter
+  reduction can substitute for real first-complete-frame speed measurements.
+- The new branch HEAD after rollback must pass its own Quality/targeted
+  browser gates and be integrated with latest `main` before a merge decision.
+  Matched-camera manual scientific visual comparison remains unverified;
+  do not replace image baselines without approval.
+
+Next investment: profile major buried-interface and Electrical Region
+raster submissions and develop genuinely adaptive, ownership-safe medium/far
+display LOD with exact near/ROI fallback.
