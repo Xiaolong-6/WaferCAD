@@ -54,7 +54,6 @@ These are diagnostic samples, **not** reproducible benchmark guarantees. In part
 - Run identical benchmarks before/after on supported hardware and the CI software renderer. Long-term **targets**: cold first transparent frame <15 s on the CI reference workload, warm variant swap meaningfully faster than cold, and responsive zoom/ROI refinement with bounded resources.
 - Promote timing back to a blocking gate **only after** LOD and reference performance envelopes are validated and there is an explicit project decision. Do not relax or remove scientific/functional assertions to achieve a green badge.
 
-
 ## 2026-10-08 isolated fast-array LOD candidate
 
 Branch: `perf/transparent-array-lod-20261008` (originating from `main` at `be2f6af`). **Candidate undergoing final merge review; do not mistake green CI for completed near/edge-on visual acceptance.** The 625-site real-browser benchmark on [run 37878844053](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37878844053) completed successfully.

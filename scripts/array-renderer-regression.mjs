@@ -207,7 +207,11 @@ try {
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
   assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
-  assert.equal(transparentCold.cameraDampingEnabled, 'false', 'Exact full-array transparency cannot redraw inertially');
+  assert.equal(
+    transparentCold.cameraDampingEnabled,
+    'false',
+    'Exact full-array transparency cannot redraw inertially',
+  );
   assert.equal(Number(transparentCold.electricalFarLodBodyCount), 0);
   if (fastTransparencyLodProbe) {
     assert.ok(

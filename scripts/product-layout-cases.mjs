@@ -117,10 +117,7 @@ export async function runProductLayoutCases({ open, capture, output, checks }) {
       const panel = document.getElementById('threePanel');
       const display = panel?.querySelector('.three-opacity-control');
       const width = panel?.getBoundingClientRect().width || 0;
-      return (
-        width > 0 &&
-        Boolean(display?.closest('.view-overflow-secondary')) === (width < 510)
-      );
+      return width > 0 && Boolean(display?.closest('.view-overflow-secondary')) === width < 510;
     });
     // When reparented under More, Display is inline content of a bounded
     // scrollable menu. Test its actual reachability, not the unscrolled

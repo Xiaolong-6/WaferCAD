@@ -52,7 +52,15 @@ test('quality, opaque, ROI, small arrays and near inspection remain exact', () =
 });
 
 test('far Electrical annotation retains both exact depth caps without mutating the source', () => {
-  const poly = [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]];
+  const poly = [
+    [
+      [0, 0],
+      [2, 0],
+      [2, 2],
+      [0, 2],
+      [0, 0],
+    ],
+  ];
   const source = {
     electricalRegionId: 'contact',
     slabs: [{ z0: 0.1, z1: 0.3, polys: poly }],
@@ -64,7 +72,10 @@ test('far Electrical annotation retains both exact depth caps without mutating t
   const result = electricalDisplaySolidForLod(source, source, distant());
   assert.deepEqual(result.slabs, []);
   assert.equal(result.caps, source.caps);
-  assert.deepEqual(result.caps.map(({ z }) => z), [0.1, 0.3]);
+  assert.deepEqual(
+    result.caps.map(({ z }) => z),
+    [0.1, 0.3],
+  );
   assert.equal(source.slabs.length, 1);
   assert.equal(result.electricalRegionId, 'contact');
   assert.equal(electricalDisplaySolidForLod(source, source, { flattenElectrical: false }), source);
