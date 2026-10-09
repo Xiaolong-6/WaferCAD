@@ -30,6 +30,10 @@ function fakeElement(id, value = '') {
     add(option) {
       this.options.push(option);
     },
+    replaceChildren(...options) {
+      this.options = [...options];
+      this.value = options[0]?.value || '';
+    },
     classList: { toggle() {} },
   };
 }
@@ -563,4 +567,34 @@ test('typed Recipe lengths reach the worker without manual grid rounding', async
   request = null;
   await controller.applyOperation({ canonicalLengthUm: Infinity });
   assert.equal(request, null, 'invalid typed lengths must never start a worker');
+});
+
+test('Lift-off Step passes selected sacrificial layer into replay and History', async () => {
+  const recorded = [];
+  const events = [];
+  let params;
+  const controller = controllerForTask(
+    (model, _current, candidate) => {
+      params = candidate;
+      return { result: { changed: true }, model: {
+        ...model, revision: model.revision + 1, processRevision: model.processRevision + 1,
+      } };
+    },
+    events,
+    { mode: 'liftoff', recorded },
+  );
+  const modelApi = await import('../model.js');
+  const model = controller.__getModel();
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'PMMA', thickness: 0.2, growth: 'direct',
+    face: 'front', area: model.boundary,
+  });
+  controller.updateUi();
+  controller.__root.getElementById('liftoffTargetLayer').value = resist.layerId;
+  await controller.applyOperation();
+  assert.equal(params.type, 'liftoff');
+  assert.equal(params.sacrificialLayerId, resist.layerId);
+  assert.equal(params.thickness, 0);
+  assert.equal(recorded[0].kind, 'liftoff');
+  assert.equal(recorded[0].replay.params.sacrificialLayerId, resist.layerId);
 });

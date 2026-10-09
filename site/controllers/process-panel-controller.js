@@ -263,17 +263,15 @@ export function createProcessPanelController({
           : 'Deposit'
         : t === 'grow'
           ? 'Extend'
-        : liftoff
-          ? 'Lift-off'
-          : t === 'etch'
-            ? 'Etch'
-            : t === 'implant'
+          : liftoff
+            ? 'Lift-off'
+            : t === 'etch'
+              ? 'Etch'
+              : t === 'implant'
                 ? 'Implant'
-                : liftoff
-                  ? 'Lift-off'
-                  : electrical
-                ? 'Electrical'
-                : 'Record';
+                : electrical
+                  ? 'Electrical'
+                  : 'Record';
     $('processParametersHeading').textContent =
       t === 'add' && transfer
         ? 'Transfer parameters'
@@ -301,8 +299,10 @@ export function createProcessPanelController({
               ? 'Extend layer'
               : t === 'implant'
                 ? 'Implant'
-                : electrical
-                  ? 'Electrical region'
+                : liftoff
+                  ? 'Lift-off'
+                  : electrical
+                    ? 'Electrical region'
                   : planarizeEtch
                     ? 'Planarize / CMP'
                     : undercutEtch
