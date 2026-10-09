@@ -48,6 +48,7 @@ for (const { name, viewport } of cases) {
 
   const show = async (selector) => {
     await page.locator(selector).evaluate((node) => {
+      if (node.tagName === 'DETAILS') node.open = true;
       for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
         if (ancestor.tagName === 'DETAILS') ancestor.open = true;
       }
