@@ -1063,7 +1063,9 @@ await page.locator('#operationType').selectOption('liftoff');
 assert.equal(await page.locator('#liftoffTargetRow').isVisible(), true);
 assert.equal(await page.locator('#operationThicknessRow').isHidden(), true);
 await page.locator('#operationArea').selectOption('full');
+assert.equal(await page.locator('#applyOperationBtn').isDisabled(), true);
 await page.locator('#liftoffTargetLayer').selectOption(resist.layerId);
+assert.equal(await page.locator('#applyOperationBtn').isEnabled(), true);
 await page.locator('#applyOperationBtn').click();
 await page.waitForFunction(
   () => /Lifted off PMMA/.test(document.getElementById('statusText')?.textContent || ''),
