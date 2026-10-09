@@ -59,6 +59,25 @@
     panelSize: null,
     bottomSize: null,
     tool: 'pan',
+    displayUnit: 'um',
+    roiShape: 'rect',
+    roiAnchor: 'center',
+    roiSettings: { x: 0, y: 0, width: 0, height: 0, radius: 0, rotation: 0 },
+    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    maskOpacity: 0.65,
+    threeOpacity: 1,
+    borders: false,
+    sectionScale: 'auto',
+    sectionBorders: false,
+    zBreakSettings: { start: 0.2, end: 0.8, frontScale: 1, backScale: 1, snap: true },
+    sectionLine: null,
+    drawTool: 'select',
+    drawDraft: [],
+    layerVisibility: {},
+    recipeUndo: false,
+    recipeRedo: false,
+    draftUndo: false,
+    draftRedo: false,
   };
   let fileMask,
     fixtures,
@@ -68,7 +87,12 @@
     branch,
     variants = [],
     activeStep = 0,
-    originFocus;
+    originFocus,
+    recipeUndoStack = [],
+    recipeRedoStack = [],
+    draftUndoStack = [],
+    draftRedoStack = [],
+    pendingRecipeTemplate = null;
   const narrow = () => viewState.compact(window);
   function rememberView() {
     const mode = state.mode === 'single' ? state.view : state.mode;
@@ -86,7 +110,35 @@
     branch = data.activeBranch;
     variants = [];
     activeStep = 0;
+    recipeUndoStack = [];
+    recipeRedoStack = [];
+    draftUndoStack = [];
+    draftRedoStack = [];
+    state.recipeUndo = false;
+    state.recipeRedo = false;
+    state.draftUndo = false;
+    state.draftRedo = false;
+    state.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
+    state.roiSettings = {
+      x: 0,
+      y: 0,
+      width: Number((currentModel().width * 0.4).toPrecision(8)),
+      height: Number((currentModel().height * 0.4).toPrecision(8)),
+      radius: Number((Math.min(currentModel().width, currentModel().height) * 0.2).toPrecision(8)),
+      rotation: 0,
+    };
+    state.sectionLine = {
+      ax: Number(data.section.a?.[0] || 0),
+      ay: Number(data.section.a?.[1] || 0),
+      bx: Number(data.section.b?.[0] || currentModel().width / 2),
+      by: Number(data.section.b?.[1] || currentModel().height / 2),
+    };
+    state.drawDraft = structuredClone(data.drawMask.shapes || []);
+    state.layerVisibility = Object.fromEntries(
+      currentModel().layers.map((layer) => [layer.id, true]),
+    );
     state.task = null;
+    state.exportTask = null;
     state.failure = null;
     state.dirty = false;
     delete state.projectName;
@@ -112,7 +164,24 @@
   const shell = window.createWaferCadV2Workstation({
     root,
     state,
-    getProjectName: () => data.name,
+    getProjectName: () => state.projectName || data.name,
+    renderGlobalControls: () =>
+      el(
+        'div',
+        { class: 'p-global-controls', role: 'toolbar', 'aria-label': 'Project controls' },
+        select(
+          'XYZ display unit',
+          'displayUnit',
+          [
+            ['nm', 'nm'],
+            ['um', 'µm'],
+            ['mm', 'mm'],
+          ],
+          state.displayUnit,
+        ),
+        button('Undo', 'draft-undo', 'undo', { disabled: !state.draftUndo }),
+        button('Redo', 'draft-redo', 'redo', { disabled: !state.draftRedo }),
+      ),
     renderEditor: () => window.createWaferCadV2MockDomainPanels(domainContext()).render(),
     renderView: (name) =>
       window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(name),
@@ -123,7 +192,7 @@
     state.failedStep = activeStep;
     state.failure = `Simulated failure · Step ${activeStep + 1} · ${recipe.steps[activeStep].id}. Edit here; then Continue or Rebuild. Source remains unchanged.`;
   }
-  function dialog(title, text, accept, action) {
+  function dialog(title, text, accept, action, choices = []) {
     originFocus = document.activeElement;
     const modal = el(
       'dialog',
@@ -134,6 +203,7 @@
         'div',
         { class: 'p-actions' },
         button('Cancel', 'dialog-cancel', 'close'),
+        ...choices.map(([label, choice]) => button(label, choice, 'warning')),
         button(accept, action, 'check', { primary: true }),
       ),
     );
@@ -161,6 +231,320 @@
   function closeDialog() {
     root.querySelector('dialog[open]')?.close();
   }
+  function updateRecipeControls() {
+    state.recipeUndo = recipeUndoStack.length > 0;
+    state.recipeRedo = recipeRedoStack.length > 0;
+  }
+  function saveRecipeUndoPoint() {
+    recipeUndoStack.push(structuredClone(recipe));
+    if (recipeUndoStack.length > 40) recipeUndoStack.shift();
+    recipeRedoStack = [];
+    updateRecipeControls();
+  }
+  function updateRecipeValidation() {
+    const errors = [];
+    if (!String(recipe.name || '').trim()) errors.push('Recipe name is required.');
+    if (!recipe.steps.length) errors.push('Add at least one step.');
+    recipe.steps.forEach((step, index) => {
+      if (
+        !['deposit', 'extend', 'etch', 'implant', 'electrical', 'record', 'snapshot'].includes(
+          step.command,
+        )
+      )
+        errors.push(`Step ${index + 1}: unsupported operation.`);
+      for (const key of ['thicknessUm', 'depthUm']) {
+        if (
+          step.params[key] != null &&
+          (!Number.isFinite(Number(step.params[key])) || Number(step.params[key]) <= 0)
+        )
+          errors.push(`Step ${index + 1}: ${key} must be positive.`);
+      }
+      if (
+        ['deposit', 'extend'].includes(step.command) &&
+        !String(step.params.material || '').trim()
+      )
+        errors.push(`Step ${index + 1}: material is required.`);
+      if (
+        ['implant', 'electrical'].includes(step.command) &&
+        !String(step.params.name || '').trim()
+      )
+        errors.push(`Step ${index + 1}: annotation name is required.`);
+    });
+    state.recipeErrors = errors;
+    state.message = errors.length
+      ? `Recipe draft check: ${errors.length} issue(s).`
+      : 'Recipe draft check passed. No operations were executed.';
+  }
+  function newRecipeStep(command) {
+    const id = `prototype-step-${Date.now().toString(36)}-${recipe.steps.length + 1}`;
+    const params = { face: 'front', area: 'full' };
+    if (['deposit', 'extend'].includes(command))
+      Object.assign(params, {
+        material: 'New material · draft',
+        thicknessUm: 0.1,
+        coverage: 'direct',
+      });
+    if (command === 'extend') params.placement = 'follow';
+    if (command === 'etch')
+      Object.assign(params, {
+        target: currentModel().layers.at(-1)?.name || '',
+        thicknessUm: 0.1,
+        profile: 'directional',
+        surface: 'smooth',
+      });
+    if (command === 'implant')
+      Object.assign(params, { name: 'New Implant · draft', depthUm: 0.05, tilt: 0 });
+    if (command === 'electrical')
+      Object.assign(params, {
+        name: 'New Electrical Region · draft',
+        depthUm: 0.05,
+        regionType: 'p-type',
+        source: 'induced',
+      });
+    if (command === 'record')
+      Object.assign(params, { label: 'New record · draft', process: 'custom' });
+    if (command === 'snapshot') Object.assign(params, { name: 'Review point · draft' });
+    return { id, command, params };
+  }
+  function rememberDraftChange(key, value) {
+    draftUndoStack.push(structuredClone(state));
+    if (draftUndoStack.length > 40) draftUndoStack.shift();
+    draftRedoStack = [];
+    state.draftUndo = draftUndoStack.length > 0;
+    state.draftRedo = false;
+  }
+  function assignMockField(key, raw) {
+    const scale = state.displayUnit === 'nm' ? 1000 : state.displayUnit === 'mm' ? 0.001 : 1;
+    const length = Number(raw) * scale;
+    if (
+      key === 'roiX' ||
+      key === 'roiY' ||
+      key === 'roiWidth' ||
+      key === 'roiHeight' ||
+      key === 'roiRadius' ||
+      key === 'roiRotation'
+    ) {
+      const path = {
+        roiX: 'x',
+        roiY: 'y',
+        roiWidth: 'width',
+        roiHeight: 'height',
+        roiRadius: 'radius',
+        roiRotation: 'rotation',
+      }[key];
+      state.roiSettings = {
+        ...state.roiSettings,
+        [path]: key === 'roiRotation' ? Number(raw) : length,
+      };
+    } else if (key.startsWith('section')) {
+      const path = { sectionAx: 'ax', sectionAy: 'ay', sectionBx: 'bx', sectionBy: 'by' }[key];
+      if (path) state.sectionLine = { ...state.sectionLine, [path]: length };
+      else state[key] = raw;
+    } else if (['alignX', 'alignY'].includes(key)) {
+      state.maskTransform = { ...state.maskTransform, [key === 'alignX' ? 'x' : 'y']: length };
+    } else if (key === 'alignScale' || key === 'alignRotation') {
+      state.maskTransform = {
+        ...state.maskTransform,
+        [key === 'alignScale' ? 'scale' : 'rotation']: Number(raw),
+      };
+    } else if (key.startsWith('file-layer-visible:')) {
+      const id = key.slice('file-layer-visible:'.length);
+      state.fileLayersVisible = { ...state.fileLayersVisible, [id]: raw === 'true' };
+    } else if (['thickness', 'processDepth'].includes(key)) {
+      state[key] = length;
+    } else if (['processTilt', 'processTemperature', 'processDuration'].includes(key)) {
+      state[key] = raw === '' ? '' : Number(raw);
+    } else if (['threeOpacity', 'maskOpacity'].includes(key)) {
+      state[key] = Number(raw);
+    } else if (key.startsWith('zBreak')) {
+      const path = {
+        zBreakStart: 'start',
+        zBreakEnd: 'end',
+        zBreakFrontScale: 'frontScale',
+        zBreakBackScale: 'backScale',
+      }[key];
+      if (path)
+        state.zBreakSettings = {
+          ...state.zBreakSettings,
+          [path]: Number(raw),
+        };
+    } else {
+      state[key] = ['roiWidth', 'recipeAddKind'].includes(key) ? Number(raw) : raw;
+    }
+  }
+  function openViewSettings(view) {
+    const unitFactor = state.displayUnit === 'nm' ? 1000 : state.displayUnit === 'mm' ? 0.001 : 1;
+    const unitName = state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm';
+    const displayLength = (value) => Number(value) / unitFactor;
+    if (view === 'section') {
+      const line = state.sectionLine || { a: data.section.a, b: data.section.b };
+      dialog(
+        'Section controls · display and A–B line',
+        el(
+          'div',
+          { class: 'p-form' },
+          select(
+            'Scale',
+            'sectionScale',
+            [
+              ['auto', 'Auto'],
+              ['physical', '1:1 X:Z'],
+            ],
+            state.sectionScale,
+          ),
+          field(`A · X ${unitName}`, 'sectionAx', displayLength(line.a?.[0] ?? 0), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(`A · Y ${unitName}`, 'sectionAy', displayLength(line.a?.[1] ?? 0), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(
+            `B · X ${unitName}`,
+            'sectionBx',
+            displayLength(line.b?.[0] ?? currentModel().width / 2),
+            {
+              type: 'number',
+              step: 'any',
+            },
+          ),
+          field(
+            `B · Y ${unitName}`,
+            'sectionBy',
+            displayLength(line.b?.[1] ?? currentModel().height / 2),
+            {
+              type: 'number',
+              step: 'any',
+            },
+          ),
+          button(
+            state.sectionBorders ? 'Hide boundaries' : 'Show boundaries',
+            'section-borders',
+            'cube',
+          ),
+        ),
+        'Apply display draft',
+        'apply-settings',
+      );
+    } else if (view === 'three') {
+      dialog(
+        '3D display controls',
+        el(
+          'div',
+          { class: 'p-form' },
+          field('Opacity', 'threeOpacity', state.threeOpacity, {
+            type: 'range',
+            min: 0,
+            max: 1,
+            step: 0.05,
+          }),
+          button(state.borders ? 'Hide borders' : 'Show borders', 'borders', 'cube'),
+          notice(
+            'Fast / Quality and opacity affect only this view draft. GLB / PNG actions remain separate.',
+          ),
+        ),
+        'Done',
+        'apply-settings',
+      );
+    } else {
+      const transform = state.maskTransform;
+      dialog(
+        `${view === 'detail' ? 'Detail' : view === 'mask' ? 'Mask' : 'Main'} ROI and alignment`,
+        el(
+          'div',
+          { class: 'p-form' },
+          select(
+            'ROI shape',
+            'roiShape',
+            [
+              ['rect', 'Rectangle'],
+              ['circle', 'Circle'],
+              ['ring', 'Ring'],
+              ['ring-sector', 'Ring sector'],
+            ],
+            state.roiShape,
+          ),
+          select(
+            'Reference',
+            'roiAnchor',
+            [
+              ['center', 'Center / origin'],
+              ['top-left', 'Top-left'],
+              ['bottom-left', 'Bottom-left'],
+              ['top-right', 'Top-right'],
+              ['bottom-right', 'Bottom-right'],
+            ],
+            state.roiAnchor,
+          ),
+          field(`X · ${unitName}`, 'roiX', displayLength(state.roiSettings.x), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(`Y · ${unitName}`, 'roiY', displayLength(state.roiSettings.y), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(`Width · ${unitName}`, 'roiWidth', displayLength(state.roiSettings.width), {
+            type: 'number',
+            min: 0,
+            step: 'any',
+          }),
+          field(`Height · ${unitName}`, 'roiHeight', displayLength(state.roiSettings.height), {
+            type: 'number',
+            min: 0,
+            step: 'any',
+          }),
+          field(`Radius · ${unitName}`, 'roiRadius', displayLength(state.roiSettings.radius), {
+            type: 'number',
+            min: 0,
+            step: 'any',
+          }),
+          field('Rotation · °', 'roiRotation', state.roiSettings.rotation, {
+            type: 'number',
+            step: 'any',
+          }),
+          ...(view === 'mask'
+            ? [
+                field(`Alignment X · ${unitName}`, 'alignX', displayLength(transform.x), {
+                  type: 'number',
+                  step: 'any',
+                }),
+                field(`Alignment Y · ${unitName}`, 'alignY', displayLength(transform.y), {
+                  type: 'number',
+                  step: 'any',
+                }),
+                field('Alignment scale', 'alignScale', transform.scale, {
+                  type: 'number',
+                  min: 0.0001,
+                  step: 'any',
+                }),
+                field('Alignment rotation · °', 'alignRotation', transform.rotation, {
+                  type: 'number',
+                  step: 'any',
+                }),
+                field('Mask opacity', 'maskOpacity', state.maskOpacity, {
+                  type: 'range',
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                }),
+              ]
+            : []),
+          button(
+            view === 'detail' ? 'Clear Detail ROI' : 'Clear ROI',
+            view === 'detail' ? 'clear-detail-roi' : 'clear-roi',
+            'close',
+          ),
+          notice(
+            'Display / selection draft in canonical µm. Stored example geometry is unchanged.',
+          ),
+        ),
+        'Apply settings',
+        'apply-settings',
+      );
+    }
+  }
   function download(name, type, content) {
     const url = URL.createObjectURL(new Blob([content], { type }));
     const link = el('a', { href: url, download: name });
@@ -171,6 +555,22 @@
     if (!action) return;
     const popupOwner = target?.closest('[popover]')?.id;
     const [kind, value] = action.split(':');
+    if (
+      [
+        'roi',
+        'detail',
+        'zbreak',
+        'draw-tool',
+        'draw-add',
+        'draw-delete',
+        'draw-clear',
+        'mask-layer',
+        'mask-opacity',
+        'section-borders',
+        'borders',
+      ].includes(kind)
+    )
+      rememberDraftChange(kind, null);
     if (kind === 'dialog-cancel') {
       closeDialog();
       return;
@@ -211,7 +611,220 @@
       state.maximize = null;
     } else if (kind === 'section') state.section = !state.section;
     else if (kind === 'legend') state.legendOpen = !state.legendOpen;
-    else if (kind === 'maximize') state.maximize = state.maximize === value ? null : value;
+    else if (kind === 'settings') {
+      openViewSettings(value);
+      return;
+    } else if (kind === 'apply-settings') {
+      closeDialog();
+      state.message = 'View controls updated in the local M2 presentation draft.';
+    } else if (kind === 'clear-roi') {
+      state.roi = false;
+      state.roiSettings = {
+        ...state.roiSettings,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        radius: 0,
+        rotation: 0,
+      };
+      closeDialog();
+      state.message = 'ROI draft cleared; source geometry is unchanged.';
+    } else if (kind === 'clear-detail-roi') {
+      state.detail = false;
+      closeDialog();
+      state.message = 'Detail ROI draft cleared; source geometry is unchanged.';
+    } else if (kind === 'draft-undo' || kind === 'draft-redo') {
+      const from = kind === 'draft-undo' ? draftUndoStack : draftRedoStack;
+      const to = kind === 'draft-undo' ? draftRedoStack : draftUndoStack;
+      const edit = from.pop();
+      if (edit) {
+        to.push(structuredClone(state));
+        Object.keys(state).forEach((key) => delete state[key]);
+        Object.assign(state, edit);
+      }
+      state.draftUndo = draftUndoStack.length > 0;
+      state.draftRedo = draftRedoStack.length > 0;
+      state.message = 'Workspace draft edit history updated; source project remains unchanged.';
+    } else if (kind === 'section-borders') state.sectionBorders = !state.sectionBorders;
+    else if (kind === 'draw-tool') {
+      state.drawTool = value;
+      state.message = `${value} Draw tool selected; pointer drawing is represented by the local preview controls.`;
+    } else if (kind === 'draw-add') {
+      const w = currentModel().width,
+        h = currentModel().height,
+        index = state.drawDraft.length;
+      const cx = ((index % 5) - 2) * w * 0.08,
+        cy = ((index % 3) - 1) * h * 0.08;
+      const next = structuredClone(state.drawDraft);
+      if (state.drawTool === 'circle')
+        next.push({
+          id: `draft-${index + 1}`,
+          type: 'circle',
+          c: [cx, cy],
+          r: Math.min(w, h) * 0.08,
+        });
+      else if (state.drawTool === 'ring' || state.drawTool === 'ring-sector')
+        next.push({
+          id: `draft-${index + 1}`,
+          type: state.drawTool,
+          c: [cx, cy],
+          innerR: Math.min(w, h) * 0.06,
+          outerR: Math.min(w, h) * 0.1,
+          startAngle: 0,
+          endAngle: 180,
+        });
+      else if (state.drawTool === 'polygon')
+        next.push({
+          id: `draft-${index + 1}`,
+          type: 'polygon',
+          points: [
+            [cx, cy],
+            [cx + w * 0.08, cy],
+            [cx + w * 0.04, cy + h * 0.08],
+          ],
+        });
+      else
+        next.push({
+          id: `draft-${index + 1}`,
+          type: 'rect',
+          a: [cx, cy],
+          b: [cx + w * 0.1, cy + h * 0.1],
+        });
+      state.drawDraft = next;
+      state.message = `Added preview ${state.drawTool} shape ${next.length}; source Draw geometry unchanged.`;
+    } else if (kind === 'draw-delete' || kind === 'draw-clear') {
+      state.drawDraft = kind === 'draw-clear' ? [] : state.drawDraft.slice(0, -1);
+      state.message = 'Draw preview updated; source Draw geometry unchanged.';
+    } else if (kind === 'mask-layer') {
+      state.layerVisibility[value] = !state.layerVisibility[value];
+      state.message = `Layer visibility draft: ${value}. Source material data unchanged.`;
+    } else if (kind === 'mask-opacity') {
+      state.maskOpacity = Number(value);
+    } else if (kind === 'mask-export') {
+      state.message = `${value.toUpperCase()} export settings opened from the Mask More menu; UI demonstration only.`;
+      dialog(
+        'Mask export · presentation only',
+        el(
+          'div',
+          { class: 'p-form' },
+          select(
+            'Cell scope',
+            'exportCells',
+            [
+              ['selected', 'Selected Cells'],
+              ['all', 'All Cells'],
+            ],
+            state.exportCells || 'selected',
+          ),
+          select(
+            'Layer scope',
+            'exportLayers',
+            [
+              ['visible', 'Visible Layers'],
+              ['all', 'All Layers'],
+            ],
+            state.exportLayers || 'visible',
+          ),
+          notice(
+            'SVG / GDS / OAS controls are represented here. No physical file is generated in M2.',
+          ),
+        ),
+        'Close',
+        'apply-settings',
+      );
+      return;
+    } else if (kind === 'base-rebuild') {
+      dialog(
+        'Rebuild Base · choose source handling',
+        'This mock shows the legacy branch choices. It does not archive or clear project History.',
+        'Keep source in a Variant',
+        'base-keep',
+        [['Clear source History', 'base-clear']],
+      );
+      return;
+    } else if (kind === 'base-clear') {
+      dialog(
+        'Clear source History?',
+        'This is a destructive choice in a real Base rebuild. Confirming here only closes the mock flow; no source History is actually cleared.',
+        'Confirm Clear',
+        'base-clear-confirm',
+      );
+      return;
+    } else if (kind === 'base-keep' || kind === 'base-clear-confirm') {
+      closeDialog();
+      state.message =
+        kind === 'base-keep'
+          ? 'Base rebuild draft: source branch would be kept.'
+          : 'Base rebuild draft: source History would be cleared after confirmation.';
+    } else if (kind === 'recipe-undo' || kind === 'recipe-redo') {
+      const from = kind === 'recipe-undo' ? recipeUndoStack : recipeRedoStack;
+      const to = kind === 'recipe-undo' ? recipeRedoStack : recipeUndoStack;
+      if (from.length) {
+        to.push(structuredClone(recipe));
+        recipe = from.pop();
+        activeStep = Math.min(activeStep, Math.max(0, recipe.steps.length - 1));
+        state.failedStep = null;
+        state.failure = null;
+        state.recipeErrors = [];
+      }
+      updateRecipeControls();
+    } else if (kind === 'add-step') {
+      saveRecipeUndoPoint();
+      recipe.steps.push(newRecipeStep(state.recipeAddKind || 'deposit'));
+      activeStep = recipe.steps.length - 1;
+      state.dirty = true;
+      state.recipeErrors = [];
+    } else if (kind === 'delete-step') {
+      saveRecipeUndoPoint();
+      recipe.steps.splice(Number(value), 1);
+      activeStep = Math.min(activeStep, Math.max(0, recipe.steps.length - 1));
+      state.failure = null;
+      state.failedStep = null;
+    } else if (kind === 'move-up' || kind === 'move-down') {
+      const index = Number(value),
+        nextIndex = index + (kind === 'move-up' ? -1 : 1);
+      if (nextIndex >= 0 && nextIndex < recipe.steps.length) {
+        saveRecipeUndoPoint();
+        [recipe.steps[index], recipe.steps[nextIndex]] = [
+          recipe.steps[nextIndex],
+          recipe.steps[index],
+        ];
+        activeStep = nextIndex;
+      }
+    } else if (kind === 'recipe-validate') {
+      updateRecipeValidation();
+    } else if (kind === 'template-preview') {
+      pendingRecipeTemplate = state.recipeTemplate || 'source';
+      const count =
+        pendingRecipeTemplate === 'blank'
+          ? 0
+          : pendingRecipeTemplate === 'deposit-etch'
+            ? 2
+            : data.recipe.steps.length;
+      dialog(
+        'Recipe template preview',
+        `Replace the current ${recipe.steps.length}-step draft with ${pendingRecipeTemplate} (${count} steps)? Undo will restore the previous draft.`,
+        'Replace Recipe draft',
+        'confirm-template',
+      );
+      return;
+    } else if (kind === 'confirm-template') {
+      closeDialog();
+      saveRecipeUndoPoint();
+      if (pendingRecipeTemplate === 'blank') recipe = { name: 'New Recipe', steps: [] };
+      else if (pendingRecipeTemplate === 'deposit-etch')
+        recipe = {
+          name: 'Deposit + Etch draft',
+          steps: [newRecipeStep('deposit'), newRecipeStep('etch')],
+        };
+      else recipe = structuredClone(data.recipe);
+      activeStep = 0;
+      pendingRecipeTemplate = null;
+      state.failure = null;
+      state.failedStep = null;
+      state.recipeErrors = [];
+    } else if (kind === 'maximize') state.maximize = state.maximize === value ? null : value;
     else if (kind === 'quality') {
       state.quality = state.quality === 'Fast' ? 'Quality' : 'Fast';
       state.message = 'Quality mode control simulated. Recorded 3D image is not recomputed.';
@@ -223,8 +836,36 @@
     else if (kind === 'zbreak-settings') {
       dialog(
         'Section Z-break',
-        'Display-only collapse. Physical Z is unchanged. M1.5 stack bands are a schematic, not the Section renderer.',
-        'Toggle display break',
+        el(
+          'div',
+          { class: 'p-form' },
+          field('Start · normalized Z', 'zBreakStart', state.zBreakSettings.start, {
+            type: 'number',
+            min: 0,
+            max: 1,
+            step: 0.01,
+          }),
+          field('End · normalized Z', 'zBreakEnd', state.zBreakSettings.end, {
+            type: 'number',
+            min: 0,
+            max: 1,
+            step: 0.01,
+          }),
+          field('Front scale', 'zBreakFrontScale', state.zBreakSettings.frontScale, {
+            type: 'number',
+            min: 0.1,
+            step: 0.1,
+          }),
+          field('Back scale', 'zBreakBackScale', state.zBreakSettings.backScale, {
+            type: 'number',
+            min: 0.1,
+            step: 0.1,
+          }),
+          notice(
+            'Display-only collapse; physical Z is unchanged. The stack remains schematic in M2.',
+          ),
+        ),
+        state.zbreak ? 'Disable Z-break' : 'Enable Z-break',
         'confirm-zbreak',
       );
       return;
@@ -278,6 +919,7 @@
         id,
         name: `Prototype Variant ${variants.length + 1} · from ${cursor}`,
         parentBranchId: branch,
+        rootNodeId: cursor,
         headNodeId: cursor,
         recipe: structuredClone(recipe),
       });
@@ -349,7 +991,10 @@
     } else if (kind === 'increment' || kind === 'decrement') {
       const input = root.querySelector(`[data-key="${value}"]`);
       const delta = Number(input.step) * (kind === 'increment' ? 1 : -1);
-      input.value = String(Math.max(0, Number((Number(input.value) + delta).toPrecision(12))));
+      const next = Number((Number(input.value) + delta).toPrecision(12));
+      const minimum = input.min === '' ? -Infinity : Number(input.min);
+      const maximum = input.max === '' ? Infinity : Number(input.max);
+      input.value = String(Math.min(maximum, Math.max(minimum, next)));
       input.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     } else if (
@@ -433,9 +1078,13 @@
         ),
       );
       state.message = 'Downloaded UI draft, not a scientific .wafercad project.';
+    } else if (kind === 'cancel-export') {
+      state.exportTask = null;
+      state.message = 'Local 3D export draft cancelled; no file was generated.';
     } else if (kind === 'export') {
-      const view = action.split(':')[1];
+      const [, view, format] = action.split(':');
       const svg = root.querySelector(`[data-science="${view}"] svg`);
+      if (view === 'three') state.exportTask = { view, format, status: 'running' };
       if (action.endsWith(':svg') && svg)
         download(
           `m15-${view}-presentation.svg`,
@@ -445,7 +1094,7 @@
       state.message =
         svg && action.endsWith(':svg')
           ? 'Presentation SVG downloaded (not a physical export).'
-          : `${view} export dialog/control simulated; no physical image / GLB / detail export produced.`;
+          : `${view} ${format?.toUpperCase() || ''} export control simulated; no physical image / GLB / detail export produced. Cancel remains available for the local draft.`;
     }
     render(action);
     if (popupOwner)
@@ -472,10 +1121,11 @@
       if (!key) return;
       const value = event.target.value;
       if (event.target.closest('dialog')) {
-        state[key] = value;
+        assignMockField(key, value);
         return;
       }
       if (key === 'stepLabel') {
+        saveRecipeUndoPoint();
         const params = recipe.steps[activeStep].params;
         params[
           params.material ? 'material' : params.target ? 'target' : params.name ? 'name' : 'label'
@@ -484,11 +1134,15 @@
         return;
       }
       if (key.startsWith('step-param:')) {
+        saveRecipeUndoPoint();
         const param = key.slice(11),
           params = recipe.steps[activeStep].params;
         params[param] =
           typeof params[param] === 'number'
-            ? Number(value)
+            ? ['thicknessUm', 'depthUm'].includes(param)
+              ? Number(value) *
+                (state.displayUnit === 'nm' ? 0.001 : state.displayUnit === 'mm' ? 1000 : 1)
+              : Number(value)
             : typeof params[param] === 'boolean'
               ? value === 'true'
               : value;
@@ -496,9 +1150,20 @@
         return;
       }
       if (key === 'stepThickness') {
+        saveRecipeUndoPoint();
         const params = recipe.steps[activeStep].params;
-        params[params.depthUm != null ? 'depthUm' : 'thicknessUm'] = Number(value);
+        params[params.depthUm != null ? 'depthUm' : 'thicknessUm'] =
+          Number(value) *
+          (state.displayUnit === 'nm' ? 0.001 : state.displayUnit === 'mm' ? 1000 : 1);
         state.dirty = true;
+        return;
+      }
+      if (key === 'recipeName') {
+        saveRecipeUndoPoint();
+        recipe.name = value;
+        state.dirty = true;
+        state.recipeErrors = [];
+        render();
         return;
       }
       if (key === 'scene') {
@@ -514,7 +1179,8 @@
         state.splitViews = viewState.replaceSlot(state.splitViews, key.slice(6), value);
         rememberView();
       } else {
-        state[key] = ['thickness', 'roiWidth'].includes(key) ? Number(value) : value;
+        rememberDraftChange(key, state[key]);
+        assignMockField(key, value);
       }
       if (key === 'example') useExample();
       if (key === 'layout') {

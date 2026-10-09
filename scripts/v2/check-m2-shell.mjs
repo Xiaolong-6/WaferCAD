@@ -198,8 +198,63 @@ try {
     ),
     true,
   );
+  const drawCount = (await snapshot()).state.drawDraft.length;
+  await click('[data-action="draw-tool:ring-sector"]');
+  await click('[data-action="draw-add"]');
+  assert.equal((await snapshot()).state.drawDraft.length, drawCount + 1);
+  await click('[data-action="draft-undo"]');
+  assert.equal((await snapshot()).state.drawDraft.length, drawCount);
+  await click('[data-view="mask"] [popovertarget]');
+  await click('[data-action="settings:mask"]');
+  await evaluate(
+    `(() => {const el=document.querySelector('dialog [data-key="alignX"]');el.value='42';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  );
+  await click('dialog[open] [data-action="apply-settings"]');
+  assert.equal((await snapshot()).state.maskTransform.x, 42);
+  assert.match(
+    await evaluate(
+      `document.querySelector('[data-science="mask"] svg g').getAttribute('transform')`,
+    ),
+    /translate\(42/,
+  );
+  await click('[data-action="file-import"]');
+  await click('dialog[open] [data-action="confirm-file-import"]');
+  assert.ok(
+    await evaluate(`document.querySelector('[data-cell-id="TOP"] .p-cell-children li') !== null`),
+  );
   record('Mask navigation -> max, Cells + Layers');
   await click('[data-action="domain:process"]');
+  await evaluate(
+    `(() => {const el=document.querySelector('[data-key="operation"]');el.value='etch';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  );
+  assert.equal(
+    await evaluate(
+      `[...document.querySelector('[data-key="processProfile"]').options].map(option=>option.value).join(',')`,
+    ),
+    'directional,isotropic',
+  );
+  assert.equal(
+    await evaluate(
+      `[...document.querySelector('[data-key="processSurface"]').options].map(option=>option.value).join(',')`,
+    ),
+    'smooth,rough,pyramid',
+  );
+  await evaluate(
+    `(() => {const el=document.querySelector('[data-key="operation"]');el.value='implant';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  );
+  await evaluate(
+    `(() => {const el=document.querySelector('[data-key="processTilt"]');el.value='-1';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  );
+  await click('[data-action="decrement:processTilt"]');
+  assert.equal((await snapshot()).state.processTilt, -2);
+  await evaluate(
+    `(() => {const el=document.querySelector('[data-key="operation"]');el.value='extend';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  );
+  assert.equal(
+    await evaluate(`Boolean(document.querySelector('[data-key="processPlacement"]'))`),
+    true,
+  );
+  record('Manual Extend, distinct Etch profile/surface, negative Implant tilt bounds');
   await click('[data-action="hide-editor"]');
   assert.equal(
     await evaluate(
@@ -233,6 +288,22 @@ try {
   await click('[data-action="complete"]');
   assert.match((await snapshot()).state.message, /Manual simulation complete/);
   await click('[data-action="domain:recipe"]');
+  const recipeBeforeEdit = (await snapshot()).recipeSteps;
+  await click('[data-action="add-step"]');
+  assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit + 1);
+  await click('[data-action="recipe-undo"]');
+  assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit);
+  await click('[data-action="recipe-redo"]');
+  assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit + 1);
+  await click(`[data-action="delete-step:${recipeBeforeEdit}"]`);
+  assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit);
+  await click('[data-action="template-preview"]');
+  assert.equal(await evaluate(`Boolean(document.querySelector('dialog[open]'))`), true);
+  await click('dialog[open] [data-action="dialog-cancel"]');
+  assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit);
+  record(
+    'Recipe add/delete and independent undo/redo; template replacement requires explicit confirmation',
+  );
   await click('[data-action="run-all"]');
   assert.equal((await snapshot()).state.task.total, 35);
   await click('[data-action="fail"]');
@@ -327,7 +398,8 @@ try {
   );
   await call('Page.reload');
   await waitFor(
-    async () => evaluate("document.body.dataset.ready==='true' && Boolean(window.WaferCadV2Shell)"),
+    async () =>
+      evaluate("document.body?.dataset.ready==='true' && Boolean(window.WaferCadV2Shell)"),
     'reload',
   );
   assert.equal((await snapshot()).state.mode, 'split');
@@ -357,6 +429,12 @@ try {
     "window.WaferCadV2Shell.debug({example:'photodetector',domain:'history',empty:true})",
   );
   assert.equal((await snapshot()).sourceBranches, 7);
+  await evaluate('window.WaferCadV2Shell.debug({empty:false})');
+  assert.ok(
+    await evaluate(`document.querySelectorAll('.p-history-tree [data-depth="1"]').length > 0`),
+  );
+  record('Photodetector History tree nests Variants under their actual origin Steps');
+  await evaluate('window.WaferCadV2Shell.debug({empty:true})');
   assert.equal(await evaluate("document.querySelector('.p-inspector')===null"), true);
   record('Photodetector real Variants / empty History reclaims inspector');
   await evaluate(
@@ -369,7 +447,8 @@ try {
   record('Photodetector legend includes two real Implant annotations; source remains frozen');
   await call('Page.navigate', { url: pathToFileURL(resolve('site/app-v2.html')).href });
   await waitFor(
-    async () => evaluate("document.body.dataset.ready==='true' && Boolean(window.WaferCadV2Shell)"),
+    async () =>
+      evaluate("document.body?.dataset.ready==='true' && Boolean(window.WaferCadV2Shell)"),
     'direct file boot',
   );
   record('double-click file:// boot, no server or fetch required');

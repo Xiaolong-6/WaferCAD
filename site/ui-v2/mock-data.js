@@ -8647,6 +8647,7 @@ window.WaferCadV2MockData = {
           id: 'main',
           name: 'M3D self-powered IC · S00-S26 kernel replay',
           parentBranchId: null,
+          rootNodeId: 'm3d-step-01',
           headNodeId: 'm3d-step-36',
           recipe: {
             version: 1,
@@ -12714,6 +12715,7 @@ window.WaferCadV2MockData = {
           id: 'main',
           name: 'Photodetector families · choose substrate',
           parentBranchId: null,
+          rootNodeId: 'main-step-01',
           headNodeId: 'main-step-01',
           recipe: {
             version: 1,
@@ -12748,6 +12750,7 @@ window.WaferCadV2MockData = {
           id: 'black-si-fig1a',
           name: 'Black-Si Fig. 1a · source-order process',
           parentBranchId: 'main',
+          rootNodeId: 'main-step-01',
           headNodeId: 'black-si-fig1a-step-14',
           recipe: {
             version: 1,
@@ -13017,6 +13020,7 @@ window.WaferCadV2MockData = {
           id: 'black-si-fig1a-final',
           name: 'FINAL · protected active ALD',
           parentBranchId: 'black-si-fig1a',
+          rootNodeId: 'black-si-fig1a-step-14',
           headNodeId: 'black-si-fig1a-final-step-01',
           recipe: {
             version: 1,
@@ -13314,6 +13318,7 @@ window.WaferCadV2MockData = {
           id: 'black-si-fig1a-qa',
           name: 'QA · intentional nonselective overetch',
           parentBranchId: 'black-si-fig1a',
+          rootNodeId: 'black-si-fig1a-step-14',
           headNodeId: 'black-si-fig1a-qa-step-01',
           recipe: {
             version: 1,
@@ -13611,6 +13616,7 @@ window.WaferCadV2MockData = {
           id: 'ge-fig15-common',
           name: 'Ge Fig. 15 · fabrication common process',
           parentBranchId: 'main',
+          rootNodeId: 'main-step-01',
           headNodeId: 'ge-fig15-common-step-13',
           recipe: {
             version: 1,
@@ -13831,6 +13837,7 @@ window.WaferCadV2MockData = {
           id: 'ge-fig15-a',
           name: 'A · full-area Al2O3 (Fig. 15a)',
           parentBranchId: 'ge-fig15-common',
+          rootNodeId: 'ge-fig15-common-step-13',
           headNodeId: 'ge-fig15-a-step-07',
           recipe: {
             version: 1,
@@ -14167,6 +14174,7 @@ window.WaferCadV2MockData = {
           id: 'ge-fig15-b',
           name: 'B · inactive SiO2/Al2O3 (Fig. 15b)',
           parentBranchId: 'ge-fig15-common',
+          rootNodeId: 'ge-fig15-common-step-13',
           headNodeId: 'ge-fig15-b-step-09',
           recipe: {
             version: 1,

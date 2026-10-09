@@ -25,7 +25,12 @@
         role: 'img',
         'aria-label': mask ? 'Actual source Draw shapes' : 'Actual source model top-layer polygons',
       });
-      const group = svgNode('g', { transform: 'scale(1,-1)' });
+      const maskTransform = state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 };
+      const group = svgNode('g', {
+        transform: mask
+          ? `translate(${maskTransform.x} ${maskTransform.y}) rotate(${-maskTransform.rotation}) scale(${maskTransform.scale} -${maskTransform.scale})`
+          : 'scale(1,-1)',
+      });
       if (mask) {
         group.append(
           svgNode('rect', {
@@ -38,8 +43,7 @@
             'vector-effect': 'non-scaling-stroke',
           }),
         );
-        const shapes =
-          data.branches.find((b) => b.id === branch)?.drawMask?.shapes || data.drawMask.shapes;
+        const shapes = state.drawDraft;
         for (const shape of shapes) {
           const attrs = {
             fill: 'var(--wc-accent-tint-active)',
@@ -68,6 +72,17 @@
                 'vector-effect': 'none',
               }),
             );
+          if (shape.type === 'circle')
+            group.append(
+              svgNode('circle', { ...attrs, cx: shape.c[0], cy: shape.c[1], r: shape.r }),
+            );
+          if (shape.type === 'polygon')
+            group.append(
+              svgNode('polygon', {
+                ...attrs,
+                points: shape.points.map((point) => point.join(',')).join(' '),
+              }),
+            );
         }
       } else {
         for (const ref of model.paths) {
@@ -75,28 +90,54 @@
           group.append(svgNode('path', { d: p.d, fill: p.color, 'fill-rule': 'evenodd' }));
         }
       }
-      if (state.roi || state.detail)
-        group.append(
-          svgNode('rect', {
-            x: -w / 5,
-            y: -h / 5,
-            width: w / 2.5,
-            height: h / 2.5,
-            fill: 'none',
-            stroke: 'var(--wc-accent)',
-            'stroke-dasharray': '5 4',
-            'vector-effect': 'non-scaling-stroke',
-            'data-roi-mark': '',
-          }),
-        );
-      const { a, b } = data.section;
-      if (a && b)
+      if (
+        (state.roi || state.detail) &&
+        state.roiSettings.width > 0 &&
+        state.roiSettings.height > 0
+      ) {
+        const { x, y, width, height, radius, rotation } = state.roiSettings;
+        if (state.roiShape === 'circle' || state.roiShape === 'ring')
+          group.append(
+            svgNode('circle', {
+              cx: x,
+              cy: y,
+              r: state.roiShape === 'ring' ? radius * 1.15 : Math.min(width, height) / 2,
+              fill: 'none',
+              stroke: 'var(--wc-accent)',
+              'stroke-width': state.roiShape === 'ring' ? radius * 0.15 : 0,
+              'vector-effect': state.roiShape === 'ring' ? 'none' : 'non-scaling-stroke',
+              'data-roi-mark': '',
+            }),
+          );
+        else
+          group.append(
+            svgNode('rect', {
+              x: x - width / 2,
+              y: y - height / 2,
+              width,
+              height,
+              transform: `rotate(${-rotation} ${x} ${y})`,
+              fill: 'none',
+              stroke: 'var(--wc-accent)',
+              'stroke-dasharray': '5 4',
+              'vector-effect': 'non-scaling-stroke',
+              'data-roi-mark': '',
+            }),
+          );
+      }
+      const section = state.sectionLine || {
+        ax: data.section.a?.[0],
+        ay: data.section.a?.[1],
+        bx: data.section.b?.[0],
+        by: data.section.b?.[1],
+      };
+      if (Number.isFinite(section.ax) && Number.isFinite(section.bx))
         group.append(
           svgNode('line', {
-            x1: a[0],
-            y1: a[1],
-            x2: b[0],
-            y2: b[1],
+            x1: section.ax,
+            y1: section.ay,
+            x2: section.bx,
+            y2: section.by,
             stroke: 'var(--wc-text)',
             'vector-effect': 'non-scaling-stroke',
           }),
@@ -170,27 +211,45 @@
                 }),
               ]
             : [button('ROI', 'roi', 'roi', { 'aria-pressed': String(state.roi) })];
-      const more = [
-        button('Zoom', `tool:zoom:${name}`, 'zoom'),
-        button('Section line', `tool:line:${name}`, 'line'),
-        button('ROI', 'roi', 'roi'),
-        button('Export SVG', `export:${name}:svg`, 'export'),
-        button(
-          name === 'three' ? 'Export image / GLB (simulation)' : 'Export image (simulation)',
-          `export:${name}:image`,
-          'export',
-        ),
-      ];
+      const more = name === 'main' ? [button('Section line', 'tool:line:main', 'line')] : [];
+      if (name === 'main' || name === 'mask')
+        more.push(button('ROI settings…', `settings:${name}`, 'settings'));
+      if (name === 'three') more.push(button('3D display settings…', 'settings:three', 'settings'));
       if (name === 'section')
-        more.unshift(
-          button('Z-break settings', 'zbreak-settings', 'zbreak'),
+        more.push(
+          button('Section controls…', 'settings:section', 'section'),
+          button('Z-break settings…', 'zbreak-settings', 'zbreak'),
           button('Detail ROI', 'detail', 'roi'),
-          button('Detail export', 'export:section:detail', 'export'),
+          button('Detail ROI settings…', 'settings:detail', 'settings'),
         );
+      const exports =
+        name === 'mask'
+          ? [
+              ['SVG', 'svg'],
+              ['GDS', 'gds'],
+              ['OAS', 'oas'],
+            ].map(([label, type]) => button(`Export ${label}`, `mask-export:${type}`, 'export'))
+          : name === 'three'
+            ? [
+                button('Export PNG', 'export:three:png', 'export'),
+                button('Export GLB · physical units', 'export:three:glb', 'export'),
+              ]
+            : [
+                button(
+                  `Export ${name === 'section' ? 'Section' : 'view'} SVG`,
+                  `export:${name}:svg`,
+                  'export',
+                ),
+                button(
+                  `Export ${name === 'section' ? 'Section' : 'view'} PNG`,
+                  `export:${name}:png`,
+                  'export',
+                ),
+              ];
+      more.push(...exports);
       if (name === 'three')
-        more.unshift(
-          button('Fast / Quality', 'quality', 'quality'),
-          button('Borders', 'borders', 'cube'),
+        more.push(
+          button('Cancel export', 'cancel-export', 'close', { disabled: !state.exportTask }),
         );
       const canvas = el(
         'div',
@@ -221,10 +280,11 @@
         });
         roiPlane.append(
           svgNode('rect', {
-            x: -model.width / 5,
-            y: -model.height / 5,
-            width: model.width / 2.5,
-            height: model.height / 2.5,
+            x: state.roiSettings.x - state.roiSettings.width / 2,
+            y: state.roiSettings.y - state.roiSettings.height / 2,
+            width: state.roiSettings.width,
+            height: state.roiSettings.height,
+            transform: `rotate(${-state.roiSettings.rotation} ${state.roiSettings.x} ${state.roiSettings.y})`,
             fill: 'none',
             stroke: 'var(--wc-accent)',
             'stroke-dasharray': '5 4',
@@ -233,6 +293,12 @@
           }),
         );
         canvas.append(roiPlane);
+      }
+      if (name === 'section') canvas.dataset.borders = String(state.sectionBorders);
+      if (name === 'three') {
+        const image = canvas.querySelector('img');
+        if (image) image.style.opacity = String(state.threeOpacity);
+        canvas.dataset.borders = String(state.borders);
       }
       const viewTools = toolbar(label, [common, extra], more);
       viewTools.append(
@@ -288,8 +354,8 @@
           name === 'three'
             ? `${state.quality} · fixed final snapshot / mock ROI plane`
             : name === 'section'
-              ? `Stored Z stays in µm · ${model.stack.length} segments · not Section geometry`
-              : `${model.layers.length} layers · ${model.regionCount} regions · cursor ${cursor}`,
+              ? `${state.sectionScale === 'physical' ? '1:1 X:Z' : 'Auto'} · ${model.stack.length} actual stack segments · schematic, not computed geometry`
+              : `${model.layers.length} layers · ${model.regionCount} regions · cursor ${cursor} · ${state.displayUnit || 'um'}`,
         ),
       );
     }

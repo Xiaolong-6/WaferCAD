@@ -8,6 +8,7 @@
     getProjectName,
     renderEditor,
     renderView,
+    renderGlobalControls = () => null,
   }) => {
     const narrow = () => window.WaferCadV2ViewState.compact(window);
     let mounted;
@@ -198,6 +199,7 @@
           { class: 'p-topbar' },
           el('span', { class: 'p-brand' }, 'WaferCAD'),
           el('span', { class: 'p-project-title', title: getProjectName() }, getProjectName()),
+          renderGlobalControls(),
           el(
             'div',
             { class: 'p-actions p-mobile-return' },

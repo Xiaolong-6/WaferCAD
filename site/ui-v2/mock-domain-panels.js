@@ -14,6 +14,78 @@
     currentModel,
     stepTitle,
   }) => {
+    const unit = state.displayUnit || 'um';
+    const unitFactor = unit === 'nm' ? 1000 : unit === 'mm' ? 0.001 : 1;
+    const unitName = unit === 'um' ? 'µm' : unit;
+    const displayLength = (value) => Number(value) / unitFactor;
+    function recipeParameter(key, value) {
+      const choices = {
+        face: [
+          ['front', 'Front'],
+          ['back', 'Back'],
+        ],
+        area: [
+          ['full', 'Full face'],
+          ['mask', 'Mask'],
+          ['invert', 'Invert mask'],
+        ],
+        coverage: [
+          ['direct', 'Directional'],
+          ['conformal', 'Conformal'],
+        ],
+        placement: [
+          ['follow', 'Follow surface'],
+          ['flat', 'Flat bridge'],
+        ],
+        profile: [
+          ['directional', 'Directional'],
+          ['isotropic', 'Isotropic release'],
+        ],
+        regionType: [
+          ['p-type', 'p-type'],
+          ['n-type', 'n-type'],
+          ['p-inversion', 'p inversion'],
+          ['n-inversion', 'n inversion'],
+          ['p-accumulation', 'p accumulation'],
+          ['n-accumulation', 'n accumulation'],
+          ['depletion', 'Depletion'],
+          ['custom', 'Custom'],
+        ],
+        source: [
+          ['induced', 'Induced'],
+          ['doped', 'Doped'],
+          ['interface', 'Interface'],
+          ['custom', 'Custom'],
+        ],
+        process: [
+          ['anneal', 'Anneal'],
+          ['clean', 'Clean'],
+          ['oxidation', 'Oxidation'],
+          ['surface-treatment', 'Surface treatment'],
+          ['activation', 'Activation'],
+          ['custom', 'Custom'],
+        ],
+      };
+      if (choices[key]) return select(key, `step-param:${key}`, choices[key], value);
+      if (key === 'surface' && typeof value === 'string')
+        return select(
+          'Surface',
+          `step-param:${key}`,
+          [
+            ['smooth', 'Smooth'],
+            ['rough', 'Rough'],
+            ['pyramid', 'Pyramid'],
+          ],
+          value,
+        );
+      const physical = ['thicknessUm', 'depthUm'].includes(key);
+      return field(
+        `${key}${physical ? ` · ${unitName}` : ''}`,
+        `step-param:${key}`,
+        physical ? displayLength(value) : value,
+        typeof value === 'number' || physical ? { type: 'number', step: 'any' } : {},
+      );
+    }
     function projectPanel() {
       return [
         el(
@@ -42,11 +114,32 @@
           ),
           button('Review recovery', 'recovery', 'history'),
           button('Export UI draft', 'save', 'export'),
+          button('Rebuild Base…', 'base-rebuild', 'history'),
         ),
       ];
     }
     function maskPanel() {
       const model = currentModel();
+      const renderCell = (cell, depth = 0) =>
+        el(
+          'li',
+          { class: 'p-cell-node', 'data-cell-id': cell.name, 'data-depth': depth },
+          row(
+            cell.name,
+            `${cell.shapeCount} shapes · ${cell.layers.join(', ') || 'references only'}`,
+            `cell:${cell.name}`,
+            state.fileCell === cell.name,
+          ),
+          cell.references.length
+            ? el(
+                'ul',
+                { class: 'p-cell-children' },
+                ...fileMask.cells
+                  .filter((child) => cell.references.includes(child.name))
+                  .map((child) => renderCell(child, depth + 1)),
+              )
+            : null,
+        );
       return [
         el(
           'div',
@@ -73,11 +166,21 @@
                     'div',
                     { class: 'p-list' },
                     fileMask.layers.map((layer) =>
-                      row(
-                        `Layer / datatype ${layer}`,
-                        'Metadata selection only',
-                        `file-layer:${layer}`,
-                        state.fileLayer === layer,
+                      el(
+                        'label',
+                        { class: 'p-mask-file-layer' },
+                        el('input', {
+                          type: 'checkbox',
+                          checked: state.fileLayersVisible?.[layer] !== false,
+                          'data-key': `file-layer-visible:${layer}`,
+                          'aria-label': `Show GDS layer ${layer}`,
+                        }),
+                        row(
+                          `Layer / datatype ${layer}`,
+                          'Metadata selection only',
+                          `file-layer:${layer}`,
+                          state.fileLayer === layer,
+                        ),
                       ),
                     ),
                   ),
@@ -92,13 +195,81 @@
               ),
           el(
             'div',
-            { class: 'p-actions' },
-            button('Rectangle', 'draw-rect', 'mask'),
-            button('Ring', 'draw-ring', 'mask'),
-            button('ROI', 'roi', 'roi'),
+            { class: 'p-actions p-draw-tools', role: 'toolbar', 'aria-label': 'Draw mask tools' },
+            ...[
+              ['select', 'Select'],
+              ['rect', 'Rect'],
+              ['circle', 'Circle'],
+              ['polygon', 'Polygon'],
+              ['ring', 'Ring'],
+              ['ring-sector', 'Ring sector'],
+            ].map(([key, label]) =>
+              button(label, `draw-tool:${key}`, 'mask', {
+                'aria-pressed': String(state.drawTool === key),
+              }),
+            ),
+            button('Add preview shape', 'draw-add', 'plus'),
+            button('Delete last', 'draw-delete', 'close'),
+            button('Clear draft', 'draw-clear', 'close'),
           ),
-          stepper('ROI width · µm', 'roiWidth', model.width / 2, model.width / 20),
-          button('Export Draw SVG', 'export:mask:svg', 'export'),
+          select(
+            'ROI shape',
+            'roiShape',
+            [
+              ['rect', 'Rectangle'],
+              ['circle', 'Circle'],
+              ['ring', 'Ring'],
+              ['ring-sector', 'Ring sector'],
+            ],
+            state.roiShape,
+          ),
+          field(`ROI X · ${unitName}`, 'roiX', displayLength(state.roiSettings.x), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(`ROI Y · ${unitName}`, 'roiY', displayLength(state.roiSettings.y), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(`ROI width · ${unitName}`, 'roiWidth', displayLength(state.roiSettings.width), {
+            type: 'number',
+            min: 0,
+            step: 'any',
+          }),
+          field(`ROI height · ${unitName}`, 'roiHeight', displayLength(state.roiSettings.height), {
+            type: 'number',
+            min: 0,
+            step: 'any',
+          }),
+          field(`Alignment X · ${unitName}`, 'alignX', displayLength(state.maskTransform.x), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(`Alignment Y · ${unitName}`, 'alignY', displayLength(state.maskTransform.y), {
+            type: 'number',
+            step: 'any',
+          }),
+          field('Alignment scale', 'alignScale', state.maskTransform.scale, {
+            type: 'number',
+            min: 0.0001,
+            step: 'any',
+          }),
+          field('Alignment rotation · °', 'alignRotation', state.maskTransform.rotation, {
+            type: 'number',
+            step: 'any',
+          }),
+          field('Mask opacity', 'maskOpacity', state.maskOpacity, {
+            type: 'range',
+            min: 0,
+            max: 1,
+            step: 0.05,
+          }),
+          el(
+            'div',
+            { class: 'p-actions' },
+            button('Show ROI', 'roi', 'roi'),
+            button('ROI settings…', 'settings:mask', 'settings'),
+          ),
         ),
         el(
           'section',
@@ -106,16 +277,15 @@
           el('h3', {}, `Cells · ${state.fileLoaded ? fileMask.cells.length : data.layout.cells}`),
           state.fileLoaded
             ? el(
-                'div',
+                'ul',
                 { class: 'p-list', 'data-file-cells': '' },
-                fileMask.cells.map((cell) =>
-                  row(
-                    cell.name,
-                    `${cell.shapeCount} shapes · refs: ${cell.references.join(', ') || 'none'}`,
-                    `cell:${cell.name}`,
-                    state.fileCell === cell.name,
-                  ),
-                ),
+                ...fileMask.cells
+                  .filter(
+                    (cell) =>
+                      cell.name !== '$$$CONTEXT_INFO$$$' &&
+                      !fileMask.cells.some((parent) => parent.references.includes(cell.name)),
+                  )
+                  .map((cell) => renderCell(cell)),
               )
             : emptyState(
                 'No imported Cells',
@@ -133,7 +303,21 @@
             model.layers.map((l) => {
               const swatch = el('span', { class: 'p-swatch', 'aria-hidden': 'true' });
               swatch.style.backgroundColor = l.color;
-              return el('div', { class: 'p-layer' }, swatch, row(l.name, l.id, `layer:${l.id}`));
+              return el(
+                'div',
+                {
+                  class: 'p-layer',
+                  'data-layer-visible': String(state.layerVisibility[l.id] !== false),
+                },
+                swatch,
+                row(l.name, l.id, `layer:${l.id}`),
+                el('input', {
+                  type: 'checkbox',
+                  checked: state.layerVisibility[l.id] !== false,
+                  'data-action': `mask-layer:${l.id}`,
+                  'aria-label': `Show ${l.name}`,
+                }),
+              );
             }),
           ),
         ),
@@ -179,17 +363,47 @@
             state.processCoverage || sample?.coverage || 'direct',
           ),
         ];
+      if (operation === 'extend')
+        return [
+          select(
+            'Coverage',
+            'processCoverage',
+            [
+              ['direct', 'Directional'],
+              ['conformal', 'Conformal'],
+            ],
+            state.processCoverage || sample?.coverage || 'direct',
+          ),
+          select(
+            'Placement',
+            'processPlacement',
+            [
+              ['follow', 'Follow surface'],
+              ['flat', 'Flat bridge'],
+            ],
+            state.processPlacement || sample?.placement || 'follow',
+          ),
+        ];
       if (operation === 'etch')
         return [
           select(
             'Profile',
             'processProfile',
             [
-              ['vertical', 'Vertical'],
-              ['isotropic', 'Isotropic'],
-              ['rough', 'Rough'],
+              ['directional', 'Directional'],
+              ['isotropic', 'Isotropic release'],
             ],
-            state.processProfile || 'vertical',
+            state.processProfile || 'directional',
+          ),
+          select(
+            'Surface',
+            'processSurface',
+            [
+              ['smooth', 'Smooth'],
+              ['rough', 'Rough'],
+              ['pyramid', 'Pyramid'],
+            ],
+            state.processSurface || sample?.surface?.kind || sample?.surface || 'smooth',
           ),
         ];
       if (operation === 'implant')
@@ -199,7 +413,20 @@
             'processName',
             state.processName || sample?.name || 'Prototype implant draft',
           ),
-          stepper('Tilt · degrees', 'processTilt', state.processTilt ?? sample?.tilt ?? 0, 1),
+          stepper(
+            'Tilt X · degrees',
+            'processTilt',
+            state.processTilt ?? sample?.tilt ?? 0,
+            1,
+            -80,
+            80,
+          ),
+          stepper(
+            'Illustrative depth · µm',
+            'processDepth',
+            state.processDepth ?? sample?.depthUm ?? 0.5,
+            0.01,
+          ),
           notice(
             sample?.name ||
               'This example has no Implant operation. Prototype parameters only; no inferred physical defaults.',
@@ -216,10 +443,33 @@
             'Region type',
             'processRegionType',
             [
+              ['p-type', 'p-type'],
+              ['n-type', 'n-type'],
               ['p-inversion', 'p inversion'],
+              ['n-inversion', 'n inversion'],
+              ['p-accumulation', 'p accumulation'],
               ['n-accumulation', 'n accumulation'],
+              ['depletion', 'Depletion'],
+              ['custom', 'Custom'],
             ],
             state.processRegionType || sample?.regionType || 'p-inversion',
+          ),
+          select(
+            'Source',
+            'processRegionSource',
+            [
+              ['induced', 'Induced'],
+              ['doped', 'Doped'],
+              ['interface', 'Interface'],
+              ['custom', 'Custom'],
+            ],
+            state.processRegionSource || sample?.source || 'induced',
+          ),
+          stepper(
+            'Illustrative depth · µm',
+            'processDepth',
+            state.processDepth ?? sample?.depthUm ?? 0.05,
+            0.01,
           ),
           notice(sample?.name || 'No Electrical step in this source Recipe. UI-only controls.'),
         ];
@@ -268,6 +518,7 @@
             'operation',
             [
               ['deposit', 'Deposit'],
+              ['extend', 'Extend'],
               ['etch', 'Etch'],
               ['implant', 'Implant'],
               ['electrical', 'Electrical'],
@@ -282,7 +533,14 @@
             state.material || currentModel().layers.at(-1).id,
           ),
           ...((state.operation || 'deposit') !== 'record'
-            ? [stepper('Thickness / depth · µm', 'thickness', state.thickness ?? 0.07, 0.001)]
+            ? [
+                stepper(
+                  `Thickness / depth · ${unitName}`,
+                  'thickness',
+                  displayLength(state.thickness ?? 0.07),
+                  unitFactor === 1000 ? 1 : 0.001,
+                ),
+              ]
             : []),
           ...processExtras(),
           select(
@@ -307,7 +565,7 @@
           el(
             'span',
             { id: 'p-units', class: 'p-aux' },
-            'Physical unit: µm · typed precision retained in draft. Geometry is never executed.',
+            `Display unit: ${unitName} · canonical geometry remains stored in µm; typed precision retained in draft. Geometry is never executed.`,
           ),
           button('Apply · simulate', 'apply', 'play', {
             primary: true,
@@ -349,11 +607,53 @@
                 ),
               ]
             : []),
-          el('h3', {}, recipe.name),
+          field('Recipe name', 'recipeName', recipe.name),
+          el(
+            'div',
+            { class: 'p-recipe-toolbar' },
+            select(
+              'Add step',
+              'recipeAddKind',
+              [
+                ['deposit', 'Deposit'],
+                ['extend', 'Extend'],
+                ['etch', 'Etch'],
+                ['implant', 'Implant'],
+                ['electrical', 'Electrical'],
+                ['record', 'Record'],
+                ['snapshot', 'Snapshot'],
+              ],
+              state.recipeAddKind || 'deposit',
+            ),
+            button('Add step', 'add-step', 'plus'),
+            button('Undo edit', 'recipe-undo', 'undo', { disabled: !state.recipeUndo }),
+            button('Redo edit', 'recipe-redo', 'redo', { disabled: !state.recipeRedo }),
+          ),
+          el(
+            'div',
+            { class: 'p-recipe-template' },
+            select(
+              'Template preview',
+              'recipeTemplate',
+              [
+                ['source', `Current example · ${data.recipe.steps.length} steps`],
+                ['deposit-etch', 'Deposit + Etch · 2 steps'],
+                ['blank', 'Blank Recipe'],
+              ],
+              state.recipeTemplate || 'source',
+            ),
+            notice('Loading a template replaces this Recipe draft after explicit confirmation.'),
+            button('Preview / replace template…', 'template-preview', 'recipe'),
+          ),
+          state.recipeErrors?.length ? notice(state.recipeErrors.join(' · '), 'error') : null,
           el(
             'div',
             { class: 'p-actions' },
-            button('Run All', 'run-all', 'play', { primary: true, disabled: Boolean(state.task) }),
+            button('Validate Recipe', 'recipe-validate', 'check'),
+            button('Run All', 'run-all', 'play', {
+              primary: true,
+              disabled: Boolean(state.task) || Boolean(state.recipeErrors?.length),
+            }),
             button('Continue', 'continue-confirm', 'play', { disabled: Boolean(state.task) }),
             button('Rebuild Base', 'rebuild-confirm', 'history', { disabled: Boolean(state.task) }),
           ),
@@ -368,10 +668,10 @@
                 ...(selected.params.thicknessUm != null || selected.params.depthUm != null
                   ? [
                       stepper(
-                        'Thickness / depth · µm',
+                        `Thickness / depth · ${unitName}`,
                         'stepThickness',
-                        selected.params.thicknessUm ?? selected.params.depthUm ?? 0,
-                        0.00001,
+                        displayLength(selected.params.thicknessUm ?? selected.params.depthUm ?? 0),
+                        unitFactor === 1000 ? 1 : 0.001,
                       ),
                     ]
                   : []),
@@ -382,14 +682,7 @@
                         key,
                       ) && ['string', 'number', 'boolean'].includes(typeof value),
                   )
-                  .map(([key, value]) =>
-                    field(
-                      key,
-                      `step-param:${key}`,
-                      value,
-                      typeof value === 'number' ? { type: 'number', step: 'any' } : {},
-                    ),
-                  ),
+                  .map(([key, value]) => recipeParameter(key, value)),
                 button('Save step draft', 'save-step', 'save'),
                 button('Run to step', 'run-prefix', 'play'),
               )
@@ -403,12 +696,31 @@
             'div',
             { class: 'p-list', 'data-recipe-list': '' },
             recipe.steps.map((s, i) =>
-              row(
-                `${String(i + 1).padStart(2, '0')} · ${s.command.toUpperCase()}`,
-                stepTitle(s),
-                `step:${i}`,
-                i === activeStep,
-                state.failedStep === i && state.failure ? 'error' : '',
+              el(
+                'div',
+                { class: 'p-recipe-step', 'data-recipe-step': s.id },
+                row(
+                  `${String(i + 1).padStart(2, '0')} · ${s.command.toUpperCase()}`,
+                  stepTitle(s),
+                  `step:${i}`,
+                  i === activeStep,
+                  state.failedStep === i && state.failure ? 'error' : '',
+                ),
+                el(
+                  'div',
+                  { class: 'p-actions' },
+                  button('↑', `move-up:${i}`, null, {
+                    'aria-label': `Move step ${i + 1} up`,
+                    disabled: i === 0,
+                  }),
+                  button('↓', `move-down:${i}`, null, {
+                    'aria-label': `Move step ${i + 1} down`,
+                    disabled: i === recipe.steps.length - 1,
+                  }),
+                  button('Delete', `delete-step:${i}`, 'close', {
+                    'aria-label': `Delete step ${i + 1}`,
+                  }),
+                ),
               ),
             ),
           ),
@@ -426,25 +738,58 @@
         ];
       const selected = data.history.find((n) => n.id === cursor);
       const allBranches = [...data.branches, ...variants];
+      const historyTree = window.WaferCadV2HistoryTree.build(data.history, allBranches);
+      function renderBranch(tree, depth = 0) {
+        const active = branch === tree.branch.id;
+        return el(
+          'li',
+          { class: 'p-history-branch', 'data-branch-id': tree.branch.id, 'data-depth': depth },
+          row(
+            `${tree.branch.name}${tree.branch.id === 'main' ? ' · Main' : ''}`,
+            `${tree.branch.headNodeId === cursor ? 'HEAD · Cursor' : `HEAD · ${tree.branch.headNodeId || 'draft'}`} · origin ${tree.branch.rootNodeId || 'Base'}`,
+            `branch:${tree.branch.id}`,
+            active,
+          ),
+          tree.steps.length
+            ? el(
+                'ol',
+                { class: 'p-history-steps', 'data-history-list': depth === 0 ? '' : false },
+                tree.steps.map((step) =>
+                  el(
+                    'li',
+                    { class: 'p-history-step', 'data-step-id': step.node.id },
+                    row(
+                      step.node.label,
+                      `${step.node.id === cursor ? 'Cursor · ' : ''}${step.node.id === tree.branch.headNodeId ? 'Branch HEAD · ' : ''}${step.node.kind || step.node.operationKind || step.node.branchId}`,
+                      `history:${step.node.id}`,
+                      step.node.id === cursor,
+                      step.node.id === tree.branch.headNodeId ? 'head' : '',
+                    ),
+                    step.variants.length
+                      ? el(
+                          'ul',
+                          { class: 'p-history-variants' },
+                          step.variants.map((child) => renderBranch(child, depth + 1)),
+                        )
+                      : null,
+                  ),
+                ),
+              )
+            : emptyState('No steps in this Variant', 'This draft branch has no saved Steps.', null),
+        );
+      }
       return [
         el(
           'section',
-          { class: 'p-form' },
-          el('h3', {}, 'Variants'),
+          { class: 'p-form p-history-tree' },
+          el('h3', {}, `Variants · Step-first tree · ${allBranches.length}`),
           el(
-            'div',
-            { class: 'p-list', 'data-variant-list': '' },
-            allBranches.map((b) =>
-              row(
-                `${b.parentBranchId ? '↳ ' : ''}${b.name}`,
-                b.id,
-                `branch:${b.id}`,
-                branch === b.id,
-              ),
-            ),
+            'ul',
+            { class: 'p-history-roots', 'data-variant-list': '' },
+            historyTree.map((tree) => renderBranch(tree)),
           ),
           notice(
-            `Inspecting ${cursor}. Main polygons / stack bands reflect the stored model; 3D remains the fixed final thumbnail.`,
+            `Cursor ${cursor} · Branch ${branch} · source HEAD is shown separately. Main follows cursor; 3D remains the fixed final thumbnail.`,
           ),
           el('strong', {}, selected?.label || 'Prototype Variant'),
           el(
@@ -459,20 +804,21 @@
           'section',
           {},
           el(
-            'h3',
-            {},
-            `History · ${data.history.length} nodes / ${data.bookmarks.length} bookmarks`,
-          ),
-          el(
-            'div',
-            { class: 'p-list', 'data-history-list': '' },
-            data.history
-              .filter(
-                (n) =>
-                  n.branchId === branch ||
-                  variants.some((v) => v.id === branch && n.id === v.headNodeId),
-              )
-              .map((n) => row(n.label, n.id, `history:${n.id}`, cursor === n.id)),
+            'details',
+            { class: 'p-bookmarks' },
+            el('summary', {}, `History bookmarks · ${data.bookmarks.length}`),
+            el(
+              'div',
+              { class: 'p-list' },
+              data.bookmarks.map((bookmark) =>
+                row(
+                  bookmark.name,
+                  bookmark.historyNodeId,
+                  `history:${bookmark.historyNodeId}`,
+                  cursor === bookmark.historyNodeId,
+                ),
+              ),
+            ),
           ),
         ),
       ];

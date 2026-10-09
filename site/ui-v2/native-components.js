@@ -49,11 +49,11 @@
       el('input', { class: 'wc-input', 'data-key': key, value, ...attrs }),
     );
   }
-  function stepper(label, key, value, step = 0.001) {
+  function stepper(label, key, value, step = 0.001, min = 0, max = null) {
     return el(
       'div',
       { class: 'p-stepper' },
-      field(label, key, value, { type: 'number', step, min: 0 }),
+      field(label, key, value, { type: 'number', step, min, max }),
       el(
         'div',
         { class: 'p-actions' },

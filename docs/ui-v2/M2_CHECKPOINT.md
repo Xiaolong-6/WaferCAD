@@ -1,5 +1,7 @@
 # M2：独立 mock 壳层与实时预览
 
+> 后续补齐更新（2026-10-09）：G01–G08 的 M2 mock 界面/本地 draft 交互已完成；原始自查与 19 项结果已被 [M2_GAP_AUDIT.md](M2_GAP_AUDIT.md) 中的 22 项复核取代。上游 `origin/main` 已合并。该更新不代表已接通 M3 核心。
+
 日期：2026-10-09。分支 `refactor/ui-v2-m0`，HEAD `c7856da2b81aaea4c088d0d5f7cd4489e8e4d1e2`。
 用户批准进入 M2；快速迭代阶段暂不 commit，之后已明确允许本地提交检查点。不进入 M3，不接科学核心，不 push。
 

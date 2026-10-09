@@ -94,10 +94,11 @@ for (const [id, file, thumbnail] of sources) {
       modelRef: n.state.modelRef,
     })),
     branches: project.snapshotBranches.branches.map(
-      ({ id: branchId, name, parentBranchId, headNodeId, headState }) => ({
+      ({ id: branchId, name, parentBranchId, rootNodeId, headNodeId, headState }) => ({
         id: branchId,
         name,
         parentBranchId,
+        rootNodeId,
         headNodeId,
         recipe: headState.processRecipe,
         drawMask: headState.drawMask,
