@@ -1,10 +1,13 @@
 import { isArrayModel } from './model-array.js';
 import { geometryArea } from './model.js';
+import { classifyCoverageVoids } from './process-topology.js';
 import { intersection, isEmpty, multiBounds } from './vector-geometry.js';
 
 const Z_EPSILON = 1e-9;
 const XY_AREA_EPSILON = 1e-8;
 const PAIR_LIMIT = 2500;
+const MAX_COVERAGE_REGIONS = 250;
+const MAX_COVERAGE_POINTS = 30000;
 const MAX_FINDINGS = 40;
 
 function boundsOverlap(a, b) {
@@ -142,6 +145,52 @@ function analyzePart(state, model, copies = 1, dx = 0, dy = 0) {
     }
   }
 
+  // The same topology classifier used by Conformal distinguishes sub-grid
+  // numerical slits from true exposed XY voids. Both are observations about
+  // coverage; only the likely numerical crack receives a warning.
+  const pointCount = regions.reduce(
+    (sum, region) => sum + region.geom.reduce(
+      (n, polygon) => n + polygon.reduce((m, ring) => m + ring.length, 0), 0,
+    ), 0,
+  );
+  if (regions.length > MAX_COVERAGE_REGIONS || pointCount > MAX_COVERAGE_POINTS) {
+    state.coverageComplete = false;
+  } else {
+    try {
+      const coverage = classifyCoverageVoids(model);
+      state.crackCount += coverage.cracks.length * copies;
+      state.voidCount += coverage.voids.length * copies;
+      for (const item of coverage.cracks) {
+        addFinding(state, {
+          code: 'xy-numerical-crack',
+          severity: 'warning',
+          title: 'Sub-grid XY coverage slit',
+          detail: 'Uncovered domain is at or below the Kernel numerical crack tolerance. Check polygon ownership before Conformal growth.',
+          box: sampleBox(item.geom, dx, dy),
+          areaUm2: item.area,
+        }, copies);
+      }
+      for (const item of coverage.voids) {
+        addFinding(state, {
+          code: 'xy-through-void',
+          severity: 'info',
+          title: 'Uncovered XY domain (possible through-opening)',
+          detail: 'No canonical material owns this XY area through the full Z stack. Through-holes and intentional openings are valid.',
+          box: sampleBox(item.geom, dx, dy),
+          areaUm2: item.area,
+        }, copies);
+      }
+    } catch (error) {
+      state.coverageComplete = false;
+      addFinding(state, {
+        code: 'coverage-check-failed',
+        severity: 'warning',
+        title: 'Coverage topology analysis incomplete',
+        detail: error?.message || 'Could not classify the uncovered XY domain.',
+      }, copies);
+    }
+  }
+
   // Bounding-box filtering avoids expensive polygon booleans for disjoint regions.
   // An explicit budget makes an incomplete overlap scan visible to the user.
   for (let i = 0; i < regions.length; i += 1) {
@@ -197,6 +246,9 @@ export function analyzeProcessGeometry(model) {
     regionCount: 0,
     gapCount: 0,
     gapVolumeUm3: 0,
+    crackCount: 0,
+    voidCount: 0,
+    coverageComplete: true,
     appearanceSegments: 0,
     pairsExamined: 0,
     overlapComplete: true,
@@ -240,10 +292,13 @@ export function analyzeProcessGeometry(model) {
     layers,
     gapCount: state.gapCount,
     gapVolumeUm3: state.gapVolumeUm3,
+    crackCount: state.crackCount,
+    voidCount: state.voidCount,
     appearanceSegments: state.appearanceSegments,
     checks: {
       zIntervals: true,
       xyOverlapWithinTemplate: state.overlapComplete,
+      xyVoidClassification: state.coverageComplete,
       crossInstanceBoundaries: !array,
       physicalRoughMorphology: false,
     },
