@@ -8,13 +8,11 @@
 
 _The same schematic geometry source is used here and in the expandable Process guide. These drawings do not depict the currently opened project._
 
-![WaferCAD Process panel on a narrow screen](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/tests/visual-baselines/windows-chromium/phone-process-panel.png)
-
-_Real compact Process panel visual baseline (2026-10-05). The expandable schematic beneath Apply stays linked to the same operation catalog._
+**New to Process?** Follow the [First 10 Minutes](First-10-Minutes) walkthrough for exact controls, numbers and before/after checks. The live Process panel now uses a single **Operation** selector; archived screenshots from the older multi-button layout should not be used to identify current controls.
 
 The **Step** mode has Front/Back, one **Operation** selector, Area, Coverage/Profile, material, thickness/depth and optional morphology fields. **Apply** performs the current operation. **Also add to Recipe** controls whether a successful Step-mode operation is appended to the Recipe. Below Apply, **How it works** expands a conceptual Before → After schematic and caveats; it is not a live prediction from the current project.
 
-The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
+The main Actions are **Deposit**, **Extend**, **Etch**, **Implant**, **Electrical**, and **Record**. An active **Mask ROI** clips even **Whole face** Process operations; clear it before applying truly wafer-wide steps. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
 
 ### Special cases
 

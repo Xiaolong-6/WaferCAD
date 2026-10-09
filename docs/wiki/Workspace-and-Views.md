@@ -8,9 +8,7 @@
 
 _Real saved example preview. Rough/Pyramid display morphology is visual metadata, so use Section and the scientific modeling limits when interpreting physical layer boundaries._
 
-![WaferCAD desktop Main view screenshot](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/tests/visual-baselines/windows-chromium/wide-main-panel.png)
-
-_Real desktop UI visual baseline captured on 2026-10-05; inspect the running app for current control placement._
+**Find the current controls:** The title bar offers **Overview / Main / Mask / 3D / Split**. The workstation tools include distinct **Project**, **Base**, **Mask**, **Process**, and **History** tabs. On a narrow screen, view choices may require horizontal scrolling. Use the [First 10 Minutes](First-10-Minutes) walkthrough for the exact sequence, rather than an older UI screenshot.
 
 - **Overview** shows Main, Mask, and 3D together for quick inspection.
 - **Main** is a planar view of the Front/Back surface and provides A–B and 3D ROI editing.
