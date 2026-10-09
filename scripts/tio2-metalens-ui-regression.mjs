@@ -13,13 +13,14 @@ import {
   openFunctionPanel,
   waitForAppReady,
 } from './test-helpers/ui.mjs';
-import { pointInMulti } from '../site/vector-geometry.js';
+
 
 const browser=await launchBrowser();
 const context=await newUiContext(browser, { viewport:{width:1400,height:900},acceptDownloads:true });
 const page=await context.newPage(), errors=observePageErrors(page);
 try {
   const {project}=await buildMetalensLocal();
+  const { pointInMulti } = await import('../site/vector-geometry.js');
   await page.goto(baseUrl+'/app.html',{waitUntil:'domcontentloaded',timeout:30000});
   await waitForAppReady(page);
   await loadProject(page,project,'TiO2-metalens-four-unit');
