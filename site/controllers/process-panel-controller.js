@@ -1,5 +1,5 @@
 import { selectedMaskInstanceIndex } from '../mask-instance-index.js';
-import { isArrayModel } from '../model-array.js';
+import { isArrayModel, referencedModelParts } from '../model-array.js';
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
 import { validateProcessModel } from '../project-schema.js';
 import { captureHistoryReplayResult, remapHistoryReplayOperation } from '../history-replay.js';
@@ -165,7 +165,13 @@ export function createProcessPanelController({
     const previous = select.value;
     select.replaceChildren(new Option('Select sacrificial layer…', ''));
     const model = getModel();
-    const used = new Set((model.regions || []).flatMap((r) => (r.stack || []).map((s) => s.layerId)));
+    const used = new Set(
+      referencedModelParts(model).flatMap((part) =>
+        (part.regions || []).flatMap((region) =>
+          (region.stack || []).map((segment) => segment.layerId),
+        ),
+      ),
+    );
     for (const layer of model.layers) {
       if (layer.id !== 'base' && used.has(layer.id)) select.add(new Option(layer.name, layer.id));
     }

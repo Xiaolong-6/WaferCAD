@@ -83,9 +83,9 @@ function fakeRoot() {
 function controllerForTask(
   taskResult,
   events,
-  { mode = 'add', recorded = [], areaGeometry = () => [] } = {},
+  { mode = 'add', recorded = [], areaGeometry = () => [], initialModel = null } = {},
 ) {
-  let model = createModel();
+  let model = initialModel || createModel();
   const maskState = {
     maskSourceMode: 'file',
     maskRoi: null,
@@ -597,4 +597,38 @@ test('Lift-off Step passes selected sacrificial layer into replay and History', 
   assert.equal(params.thickness, 0);
   assert.equal(recorded[0].kind, 'liftoff');
   assert.equal(recorded[0].replay.params.sacrificialLayerId, resist.layerId);
+});
+
+test('Lift-off selector lists sacrificial materials stored in array templates', async () => {
+  const { ARRAY_MODEL_KERNEL } = await import('../model-array.js');
+  const { rectMulti } = await import('../vector-geometry.js');
+  const modelApi = await import('../model.js');
+  const leaf = createModel({ shape: 'rect', width: 10, height: 10, thickness: 2 });
+  const model = {
+    ...leaf,
+    kernel: ARRAY_MODEL_KERNEL,
+    width: 20,
+    boundary: rectMulti(20, 10),
+    regions: [],
+    array: {
+      version: 1,
+      templates: [{ id: 'cell', model: leaf }],
+      instances: [
+        { id: 'left', templateId: 'cell', x: -5, y: 0 },
+        { id: 'right', templateId: 'cell', x: 5, y: 0 },
+      ],
+    },
+  };
+  const resist = modelApi.applyOperation(model, {
+    type: 'add', name: 'PMMA', thickness: 0.2,
+    area: rectMulti(10, 10, -5, 0), face: 'front',
+  });
+  const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
+    mode: 'liftoff',
+    initialModel: model,
+  });
+  controller.updateUi();
+  const select = controller.__root.getElementById('liftoffTargetLayer');
+  assert.ok(select.options.some((option) => option.value === resist.layerId));
+  assert.equal(select.disabled, false);
 });
