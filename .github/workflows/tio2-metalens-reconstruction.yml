@@ -6,6 +6,7 @@ on:
       - 'scripts/build-tio2-metalens-example.mjs'
       - 'site/tests/tio2-metalens-reconstruction.test.mjs'
       - 'scripts/tio2-metalens-array-scale.mjs'
+      - 'scripts/tio2-metalens-grid-browser.mjs'
       - '.github/workflows/tio2-metalens-reconstruction.yml'
   workflow_dispatch:
 
@@ -60,6 +61,11 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/tio2-metalens-ui-regression.mjs
+      - name: Open 4725-site compiled GRID project in real 3D/Section browser
+        timeout-minutes: 8
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/tio2-metalens-grid-browser.mjs
       - name: Build exact production Welcome preview
         run: |
           node scripts/build-example-previews.mjs --write --id=tio2-metalens-four-unit
