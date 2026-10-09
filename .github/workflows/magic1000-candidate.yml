@@ -10,6 +10,7 @@ on:
       - 'site/tests/magic1000-reconstruction.test.mjs'
       - 'site/tests/welcome-example.test.mjs'
       - 'examples/projects/magic-1000-2026-candidate/**'
+      - 'docs/wiki/Examples-and-Modeling-Limits.md'
       - '.github/workflows/magic1000-candidate.yml'
   workflow_dispatch:
 
