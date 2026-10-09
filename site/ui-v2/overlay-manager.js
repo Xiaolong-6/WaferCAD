@@ -22,13 +22,22 @@
       node.className = className || `v2-${type}`;
       if (id) node.id = id;
       if (label) node.setAttribute('aria-label', label);
-      if (type === 'popover') { node.popover = 'manual'; node.setAttribute('role', 'menu'); }
+      if (type === 'popover') { node.popover = 'manual'; node.tabIndex = -1; node.setAttribute('role', 'menu'); }
       if (type === 'toast') { node.setAttribute('role', 'status'); node.setAttribute('aria-live', 'polite'); }
       if (content != null) node.append(content);
       portals[type].append(node);
       const outside = (event) => {
-        if (node.contains(event.target) || trigger?.contains?.(event.target)) return;
-        if (type !== 'toast') close(type, 'outside');
+        if (type === 'toast' || trigger?.contains?.(event.target)) return;
+        // Native <dialog> dispatches backdrop hits on the dialog itself.
+        // Check the content rectangle before treating them as an inside click.
+        if (type === 'dialog' && event.target === node) {
+          const rect = node.getBoundingClientRect();
+          const outsideBox = event.clientX < rect.left || event.clientX > rect.right ||
+            event.clientY < rect.top || event.clientY > rect.bottom;
+          if (outsideBox) close(type, 'outside');
+          return;
+        }
+        if (!node.contains(event.target)) close(type, 'outside');
       };
       const onKey = (event) => {
         if (event.key === 'Escape') { event.preventDefault(); close(type, 'escape'); return; }
