@@ -392,8 +392,15 @@ html.workstation-ui-v2.intelligent-ui-docked #toolPanel.workstation-tool-flyout 
   transition: none;
 }
 
-html.workstation-ui-v2.intelligent-ui-docked #toolPanel.workstation-tool-flyout::before,
-html.workstation-ui-v2.intelligent-ui-docked #toolPanel .workstation-tool-close {
+html.workstation-ui-v2.intelligent-ui-docked #toolPanel.workstation-tool-flyout::before {
+  display: none;
+}
+
+html.workstation-ui-v2.intelligent-ui-docked.intelligent-inspector-collapsed .app-shell {
+  grid-template-columns: var(--wc-rail-width) 0 minmax(0, 1fr);
+}
+
+html.workstation-ui-v2.intelligent-ui-docked.intelligent-inspector-collapsed #toolPanel.workstation-tool-flyout {
   display: none;
 }
 
