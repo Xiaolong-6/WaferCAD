@@ -56,6 +56,7 @@
     section: true,
     legendOpen: true,
     legendColors: {},
+    legendPalette: 'balanced',
     legendPaletteOpen: null,
     historyMenuNode: null,
     maximize: null,
@@ -136,6 +137,7 @@
     state.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
     state.maskRoiOpen = false;
     state.legendColors = {};
+    state.legendPalette = 'balanced';
     state.legendPaletteOpen = null;
     state.historyMenuNode = null;
     state.roiSettings = {
@@ -206,6 +208,7 @@
         emptyInspector: state.domain === 'history' && state.empty && !state.emptyExpanded,
         editorHidden: Boolean(state.editorHidden),
         preserveScroll: Boolean(renderAction && /^(history:|branch:|history-)/.test(renderAction)),
+        scrollSelectors: ['.p-panel-content', '[data-history-scroll]', '[data-history-list]', '[data-variant-list]'],
         badge: state.dirty ? 'DRAFT · source unchanged' : 'READ-ONLY SOURCE',
         message: state.message,
         save: 'Mock only · no autosave',
@@ -1198,6 +1201,20 @@
       const value = event.target.value;
       if (event.target.closest('dialog')) {
         assignMockField(key, value);
+        return;
+      }
+      if (key === 'legendPalette') {
+        state.legendPalette = value;
+        if (value === 'random') {
+          const palette = window.WaferCadV2RandomLegendPalette();
+          const all = [...currentModel().layers.map((item) => ['layer', item]),
+            ...currentModel().annotations.map((item) => ['annotation', item])];
+          state.legendColors = Object.fromEntries(all.map(([kind, item], index) =>
+            [`${kind}:${item.id}`, palette[index % palette.length]]));
+        } else state.legendColors = {};
+        state.legendPaletteOpen = null;
+        state.dirty = true;
+        render();
         return;
       }
       if (key.startsWith('legendColor:')) {
