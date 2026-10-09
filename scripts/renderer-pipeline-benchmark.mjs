@@ -33,6 +33,11 @@ function numericProfile(dataset) {
     'rendererDrawTriangles',
     'sceneSinglePassCapObjects',
     'sceneSavedCapTriangleSubmissions',
+    // V3 Phase A: observe-only subpixel interface-budget measurements.
+    'v3SubpixelWallCandidates',
+    'v3SubpixelWallInstances',
+    'v3SubpixelRawTriangleEstimate',
+    'v3SkippedTriangles',
     'sceneRetainedGroupCount',
     'sceneRetainedObjectCount',
     'sceneRetainedGeometryCount',
