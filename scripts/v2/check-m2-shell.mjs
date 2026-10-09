@@ -153,6 +153,34 @@ try {
   assert.equal(await evaluate('document.fonts.check(\'12px "Inter Review"\')'), true);
   assert.equal((await snapshot()).sourceFrozen, true);
   record('v2 entry / Inter font / frozen real-source mocks');
+  // M2.5: shell must be entirely presentation-only and production entry fixture-free.
+  const shellSource = await readFile('site/ui-v2/workstation-v2.js', 'utf8');
+  assert.doesNotMatch(shellSource, /task|history|placement|dirty/i);
+  const productionEntry = await readFile('site/ui-v2/app.html', 'utf8');
+  assert.doesNotMatch(productionEntry, /mock-data\.js|mock-workspace\.js|mock-domain-panels\.js/);
+  assert.match(productionEntry, /<html[^>]+lang="zh-CN"/);
+  record('shell excludes domain knowledge; production-safe entry loads no mocks');
+  const identity = await evaluate(`(() => {
+    window.__m25Mounts = Object.fromEntries(['main','mask','three','section'].map((id) =>
+      [id,document.querySelector('[data-slot="view.'+id+'.stage"]')]));
+    window.__m25Panels = Object.fromEntries(['project','base','mask','process','history'].map((id) =>
+      [id,window.WaferCadV2Shell.getSlot('panel.'+id)]));
+    return Object.values(window.__m25Mounts).every(Boolean) &&
+      Object.values(window.__m25Panels).every(Boolean) &&
+      ['step','recipe','code','diagnostics'].every((id) =>
+        Boolean(window.WaferCadV2Shell.getSlot('panel.process.'+id))) &&
+      ['portal.popover','portal.dialog','portal.toast','status.message','status.save','status.version']
+        .every((id)=>Boolean(window.WaferCadV2Shell.getSlot(id)));
+  })()`);
+  assert.equal(identity, true);
+  for (const target of ['project', 'mask', 'process', 'history', 'project']) {
+    await click(`[data-action="domain:${target}"]`);
+    assert.equal(await evaluate(`(() => ['main','mask','three','section'].every((id)=>
+      window.__m25Mounts[id]===document.querySelector('[data-slot="view.'+id+'.stage"])) &&
+      ['project','base','mask','process','history'].every((id)=>
+      window.__m25Panels[id]===window.WaferCadV2Shell.getSlot('panel.'+id)))()`), true);
+  }
+  record('all four science hosts and five domain hosts preserve node identity through navigation');
   await click('[data-action="domain:project"]');
   await evaluate(
     "(() => {const unit=document.querySelector('.p-panel-content [data-key=displayUnit]');unit.value='nm';unit.dispatchEvent(new Event('change',{bubbles:true}))})()",
@@ -206,7 +234,7 @@ try {
   await click('#layerLegend .v2-legend-palette-trigger');
   assert.equal(
     await evaluate(
-      "document.querySelectorAll('#layerLegend .v2-legend-swatch-choice').length===12&&document.querySelector('#layerLegend [data-action^=legend-random]')!==null",
+      "document.querySelectorAll('#layerLegend .v2-legend-swatch-choice').length===20&&document.querySelector('#layerLegend [data-action^=legend-random]')!==null",
     ),
     true,
   );
