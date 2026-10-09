@@ -442,7 +442,7 @@
       return el('div', { class: 'p-actions', 'aria-label': 'Process modes' },
         registry.processModes.map((key) => button(labels[key] || key,
           `domain:${key === 'step' ? 'process' : key}`,
-          key === 'step' ? 'process' : key,
+          key === 'step' ? 'process' : key === 'diagnostics' ? 'settings' : key,
           { 'aria-pressed': String(active === key) })));
     }
     function processPanel() {
