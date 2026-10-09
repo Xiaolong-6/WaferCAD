@@ -39,6 +39,10 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/tio2-metalens-ui-regression.mjs
+      - name: Build exact production Welcome preview
+        run: |
+          node scripts/build-example-previews.mjs --write --id=tio2-metalens-four-unit
+          cp site/examples/previews/tio2-metalens-four-unit.wafercad test-results/metalens/
       - name: Upload explicit-provenance reconstruction artifacts
         if: always()
         uses: actions/upload-artifact@v6
