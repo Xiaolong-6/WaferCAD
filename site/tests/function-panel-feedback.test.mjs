@@ -72,8 +72,8 @@ test('function panel groups related engineering parameters compactly', () => {
   );
   assert.match(html, /id="faceToggleBtn" aria-label="Process surface"/);
   assert.match(html, /id="processParametersHeading"/);
-  assert.match(html, /class="process-area-grid"[\s\S]*?id="operationAreaRow"/);
-  assert.match(html, /class="process-main-grid"[\s\S]*?id="growthModeRow"[\s\S]*?id="operationThicknessRow"/);
+  assert.match(html, /class="param-grid-2 process-area-grid"[\s\S]*?id="operationAreaRow"/);
+  assert.match(html, /class="param-grid-2 process-main-grid"[\s\S]*?id="growthModeRow"[\s\S]*?id="operationThicknessRow"/);
   assert.match(
     html,
     /class="param-grid-2 rough-param-grid"[\s\S]*?id="roughFeatureRow"[\s\S]*?id="roughFeatureCvRow"/,
