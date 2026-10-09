@@ -134,36 +134,39 @@ export function sampleBuriedInterfaceProjection(
         result.collapsedOrInvalidSamples++;
         continue;
       }
-      const [z0, z1] = intervals[0] || [];
-      const mappedZ0 = mapZ(z0) * displayZScale;
-      const mappedZ1 = mapZ(z1) * displayZScale;
-      if (![mappedZ0, mappedZ1].every(Number.isFinite) || mappedZ0 === mappedZ1) {
-        result.collapsedOrInvalidSamples++;
-        continue;
-      }
-      for (const translateIndex of sampleIndices(translations.length, maxInstancesPerOwner)) {
-        const offset = translations[translateIndex];
-        if (!finite2(offset)) {
+      // A Section break can leave two separate, visible physical Z intervals.
+      // Observe both; ignoring the second can hide a costly exposed wall.
+      for (const [z0, z1] of intervals.slice(0, 2)) {
+        const mappedZ0 = mapZ(z0) * displayZScale;
+        const mappedZ1 = mapZ(z1) * displayZScale;
+        if (![mappedZ0, mappedZ1].every(Number.isFinite) || mappedZ0 === mappedZ1) {
           result.collapsedOrInvalidSamples++;
           continue;
         }
-        const [dx, dy] = offset;
-        const quad = [
-          [part.p[0] + dx, part.p[1] + dy, mappedZ0],
-          [part.q[0] + dx, part.q[1] + dy, mappedZ0],
-          [part.q[0] + dx, part.q[1] + dy, mappedZ1],
-          [part.p[0] + dx, part.p[1] + dy, mappedZ1],
-        ];
-        result.sampledQuads++;
-        const bounds = projectionArea(quad, project, viewportWidth, viewportHeight);
-        if (!bounds) continue;
-        result.projectedQuads++;
-        if (bounds.offscreen) result.offscreenQuads++;
-        if (!bounds.offscreen && Math.max(bounds.width, bounds.height) <= 0.5) {
-          result.subpixelQuads++;
+        for (const translateIndex of sampleIndices(translations.length, maxInstancesPerOwner)) {
+          const offset = translations[translateIndex];
+          if (!finite2(offset)) {
+            result.collapsedOrInvalidSamples++;
+            continue;
+          }
+          const [dx, dy] = offset;
+          const quad = [
+            [part.p[0] + dx, part.p[1] + dy, mappedZ0],
+            [part.q[0] + dx, part.q[1] + dy, mappedZ0],
+            [part.q[0] + dx, part.q[1] + dy, mappedZ1],
+            [part.p[0] + dx, part.p[1] + dy, mappedZ1],
+          ];
+          result.sampledQuads++;
+          const bounds = projectionArea(quad, project, viewportWidth, viewportHeight);
+          if (!bounds) continue;
+          result.projectedQuads++;
+          if (bounds.offscreen) result.offscreenQuads++;
+          if (!bounds.offscreen && Math.max(bounds.width, bounds.height) <= 0.5) {
+            result.subpixelQuads++;
+          }
+          result.projectedWidthMaxPx = Math.max(result.projectedWidthMaxPx, bounds.width);
+          result.projectedHeightMaxPx = Math.max(result.projectedHeightMaxPx, bounds.height);
         }
-        result.projectedWidthMaxPx = Math.max(result.projectedWidthMaxPx, bounds.width);
-        result.projectedHeightMaxPx = Math.max(result.projectedHeightMaxPx, bounds.height);
       }
     }
   }
