@@ -3739,6 +3739,7 @@ summary:focus-visible {
   position: absolute;
   top: 8px;
   right: 6px;
+  left: auto;
   margin: 0;
   width: min(368px, calc(100% - 12px));
   max-width: none;
@@ -3747,10 +3748,6 @@ summary:focus-visible {
   padding: 12px;
   pointer-events: auto;
   font-size: 10px;
-}
-/* A non-modal <dialog> acts as an anchored popover when the Section has room. */
-.section-collapse-editor:not([hidden]):not([open]) {
-  display: block;
 }
 .section-collapse-editor[hidden] {
   display: none !important;
@@ -5734,11 +5731,7 @@ summary:focus-visible {
   font-size: 9px;
   pointer-events: none;
 }
-.view-head .view-z-break[data-break-enabled='true'] {
-  border-color: #99bfd9;
-  background: #e6f1f9;
-  color: #2b5a7e;
-}
+
 .view-head .view-z-break[aria-expanded='true'] {
   outline: 1px solid #74a3c5;
   outline-offset: -1px;
