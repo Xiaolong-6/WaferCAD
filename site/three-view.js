@@ -10,6 +10,7 @@ import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
+import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -87,10 +88,11 @@ export function createThreeView({
 
   const smoothCapDerivedDataCache = createDerivedDataCache();
   // Expensive V3 profiling is explicitly opt-in for benchmark runs.
-  const v3DiagnosticsEnabled =
-    new URLSearchParams(host.ownerDocument?.defaultView?.location?.search || '').get(
-      'rendererV3Diagnostics',
-    ) === '1';
+  const rendererParams = new URLSearchParams(
+    host.ownerDocument?.defaultView?.location?.search || '',
+  );
+  const v3DiagnosticsEnabled = rendererParams.get('rendererV3Diagnostics') === '1';
+  const v3QualityIndexExperiment = rendererParams.get('rendererV3QualityIndex') === '1';
 
   let renderer = null;
   let scene = null;
@@ -924,6 +926,9 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
+      v3QualityIndexedVertices: host.dataset.v3QualityIndexedVertices || '0',
+      v3QualityOriginalVertices: host.dataset.v3QualityOriginalVertices || '0',
+      v3QualityIndexedTriangles: host.dataset.v3QualityIndexedTriangles || '0',
       v3EdgeSurvey: {
         status: host.dataset.v3EdgeSurveyStatus || 'not-measured',
         gate: host.dataset.v3EdgeSurveyGate || 'not-far',
@@ -1024,6 +1029,9 @@ export function createThreeView({
     host.dataset.transparentArrayDisplayTolerance = entry.arrayLodTolerance || '0';
     host.dataset.fullWaferTransparencyLod = String(entry.arrayLodTier !== 'exact');
     host.dataset.electricalFarLodBodyCount = entry.electricalFarLodBodyCount || '0';
+    host.dataset.v3QualityIndexedVertices = entry.v3QualityIndexedVertices || '0';
+    host.dataset.v3QualityOriginalVertices = entry.v3QualityOriginalVertices || '0';
+    host.dataset.v3QualityIndexedTriangles = entry.v3QualityIndexedTriangles || '0';
     host.dataset.v3ScreenBudgetMode = entry.v3SubpixelProbe?.mode || 'observe-only';
     host.dataset.v3ScreenBudgetQualified = entry.v3SubpixelProbe?.qualified || 'false';
     host.dataset.v3ScreenBudgetReason = entry.v3SubpixelProbe?.reason || 'unmeasured';
@@ -1613,10 +1621,15 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts, displayTolerance = 0) {
+  function geometryFromSidewallParts(parts, displayTolerance = 0, { indexedSmooth = false } = {}) {
     const positions = [],
       normals = [],
-      annotationDepths = [];
+      annotationDepths = [],
+      indices = [],
+      preparedParts = displayTolerance > 0
+        ? simplifyDisplaySidewallParts(parts, displayTolerance)
+        : mergeCollinearSidewallParts(parts),
+      useIndex = indexedSmooth && canIndexSmoothWalls(preparedParts);
 
     const triangle = (a, b, c, depths = null) => {
         const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
@@ -1639,9 +1652,7 @@ export function createThreeView({
               roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
           : z;
 
-    for (const part of displayTolerance > 0
-      ? simplifyDisplaySidewallParts(parts, displayTolerance)
-      : mergeCollinearSidewallParts(parts)) {
+    for (const part of preparedParts) {
       const p = part.p,
         q = part.q,
         dx = q[0] - p[0],
@@ -1680,14 +1691,19 @@ export function createThreeView({
           upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
-        triangle(lower0, lower1, upper1, firstDepths);
-        triangle(lower0, upper1, upper0, secondDepths);
+        if (useIndex) {
+          pushIndexedSmoothWall(positions, normals, indices, lower0, lower1, upper1, upper0);
+        } else {
+          triangle(lower0, lower1, upper1, firstDepths);
+          triangle(lower0, upper1, upper0, secondDepths);
+        }
       }
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    if (indices.length) geometry.setIndex(indices);
     if (annotationDepths.length === positions.length / 3 && annotationDepths.length) {
       geometry.setAttribute(
         'annotationDepth',
@@ -3125,6 +3141,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
+      let qualityIndexedSubmittedVertices = 0,
+        qualityOriginalSubmittedVertices = 0,
+        qualityIndexedTriangles = 0;
       for (const sidewall of plan.sidewalls) {
         await maybeYieldAssembly();
         const state = stateFor(sidewall);
@@ -3134,6 +3153,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const geometry = geometryFromSidewallParts(
               parts,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
+              {
+                indexedSmooth:
+                  v3QualityIndexExperiment &&
+                  targetVariant === 'transparent' &&
+                  inspection.fast === false &&
+                  sidewall.buried === true,
+              },
             ),
             presentation = presentationFor(sidewall),
             material = createSurfaceMaterial(
@@ -3153,7 +3179,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
           );
           smoothSidewallInstanceGroupCount += meshes.length;
           smoothSidewallInstanceCount += sidewall.instanceTranslations.length;
-          smoothSidewallTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+          smoothSidewallTemplateTriangleCount +=
+            (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
+          if (geometry.index?.count && meshes.length) {
+            const instances = sidewall.instanceTranslations.length;
+            qualityIndexedSubmittedVertices += geometry.getAttribute('position').count * instances;
+            qualityOriginalSubmittedVertices += geometry.index.count * instances;
+            qualityIndexedTriangles += (geometry.index.count / 3) * instances;
+          }
           continue;
         }
         pushBucket(sidewalls, sidewall, state);
@@ -3244,13 +3277,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
         group.children.reduce(
-          (sum, object) => sum + (object.geometry?.getAttribute?.('position')?.count || 0) / 3,
+          (sum, object) =>
+            sum +
+            (object.geometry?.index?.count ||
+              object.geometry?.getAttribute?.('position')?.count ||
+              0) / 3,
           0,
         ),
       );
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+      host.dataset.v3QualityIndexedVertices = String(qualityIndexedSubmittedVertices);
+      host.dataset.v3QualityOriginalVertices = String(qualityOriginalSubmittedVertices);
+      host.dataset.v3QualityIndexedTriangles = String(qualityIndexedTriangles);
       const rendererSidewallsAt = performance.now();
 
       host.dataset.instanceChunkLimit = presentationMode() === 'transparent' ? '256' : '4096';
