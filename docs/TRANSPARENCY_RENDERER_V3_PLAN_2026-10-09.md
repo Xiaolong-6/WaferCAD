@@ -466,6 +466,44 @@ the covered vertex fraction is negligible or screen output differs,
 revert the runtime opt-in branch and keep only this record.
 
 
+## Phase B.1 paired hardware gate — ABBA within one runner (2026-10-09)
+
+The first fully green Phase B.1 CI run at `04d93f1` was an ON-only
+smoke/regression test. Its 625-site Quality transparent scene reports:
+
+| Quantity | Instrumented count |
+| --- | ---: |
+| Indexed smooth interface triangles | **11,855,000** |
+| Equivalent unindexed source vertices (instances applied) | **35,565,000** |
+| Indexed vertices (instances applied) | **23,710,000** |
+| Source vertex-count reduction within affected owner set | **33.33%** |
+| Total GPU-submitted transparent Quality triangles | **57,040,012** |
+| Total Quality draw calls | **1,408** |
+| V3 skipped physical triangles | **0** |
+
+These are renderer diagnostic counts, not actual GPU hardware vertex-invocation
+counters or evidence of reduced pixel shading. The ON-only benchmark finished
+Quality cold / warm transparency in **18.70 / 18.87 s** on its particular CI
+runner. Cross-run numbers cannot establish speedup.
+
+New `scripts/renderer-quality-index-ab.mjs` performs a scientific, paired
+ON–OFF–OFF–ON sequence on **one browser binary and CI runner**, with four fresh
+isolated contexts, identical fixture, 1440×960 viewport, exact Quality, and
+0.5 transparency. It waits for completed frames and compositor screenshots,
+and hard-fails on any 3D canvas PNG pixel mismatch or differing submitted
+triangle/draw-call counts. It records per-trial completed-frame latency,
+inner WebGL frame time, scene assembly, and vertex coverage, plus median ON
+and OFF timing and ratio. **The script intentionally sets
+`inferSpeedup: false`** until repeated paired evidence is evaluated; it
+does not automatically assert any absolute software-WebGL speed target.
+
+The extra test is a conditional final-review step in the existing full
+625-site browser job, gated to branches named `perf/transparent-renderer-v3-*`.
+Its report and exact screenshots go in a separate CI artifact. It does not
+change the application defaults. A single complete ABBA measurement is still
+exploratory; hardware GPU profiling or multiple paired replicates are required
+for production performance claims.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
