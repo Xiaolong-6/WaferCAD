@@ -165,6 +165,7 @@
       event.stopPropagation();
       items[next]?.focus({ preventScroll: true });
     });
+    window.WaferCadV2ActiveOverlays?.adoptPopover(menu, trigger);
     return el(
       'div',
       { class: 'p-toolbar', role: 'toolbar', 'aria-label': `${label} tools` },
