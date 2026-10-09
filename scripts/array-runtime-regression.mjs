@@ -155,7 +155,12 @@ try {
         'Physical gate mesh at every site',
       );
   assert.equal(gatePositions.size, 625);
-  await page.locator('#threePanel .export-control > summary').click();
+  // Export actions dismiss their enclosing menus. Do not click a hidden
+  // nested Export summary after the GLB download has completed.
+  assert.equal(
+    await page.locator('#threePanel .export-control').evaluate((node) => node.open),
+    false,
+  );
   const initial = await save('initial');
   const direct = await nativeApply(page, {
     type: 'add',
