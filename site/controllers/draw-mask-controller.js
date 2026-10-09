@@ -322,13 +322,9 @@ export function createDrawMaskController({
     const selected = selectedShape();
 
     if ($('maskSourceToggleBtn')) {
-      $('maskSourceToggleBtn').textContent = draw ? 'Draw' : 'File';
-      // File and Draw are two named modes; either selected mode is highlighted.
-      $('maskSourceToggleBtn').classList.add('active');
-      $('maskSourceToggleBtn').setAttribute('aria-pressed', String(draw));
-      $('maskSourceToggleBtn').title = draw
-        ? 'Mask source: Draw. Click to switch to File.'
-        : 'Mask source: File. Click to switch to Draw.';
+      // The select states the current source explicitly rather than cycling ambiguously.
+      $('maskSourceToggleBtn').value = draw ? 'draw' : 'file';
+      $('maskSourceToggleBtn').title = draw ? 'Drawn shapes source' : 'Imported mask source';
     }
 
     if ($('drawMaskToolbar')) $('drawMaskToolbar').hidden = !draw;
@@ -557,7 +553,7 @@ export function createDrawMaskController({
   }
 
   function bind() {
-    $('maskSourceToggleBtn').onclick = () => setSourceMode(getMode() === 'draw' ? 'file' : 'draw');
+    $('maskSourceToggleBtn').onchange = (event) => setSourceMode(event.target.value);
 
     root.querySelectorAll('.draw-mask-tool').forEach((button) => {
       button.onclick = () => setTool(button.dataset.drawTool || null);
