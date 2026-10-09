@@ -71,6 +71,10 @@ At candidate revision `3e73f436`, all four PR workflows passed: Quality, Example
 
 The browser diagnostic archive from that run includes `fast-transparent-lod.png`, `quality.png`, `transparent.png`, and `report.json`. At the captured full-wafer pose, the Fast and Quality screenshots show consistent outer silhouette, area coverage and stack/section appearance; the small 3D viewport in these screenshots does **not** substantiate fine-grained near, ROI or edge-on wall visibility. Keep those cases on the outstanding visual acceptance checklist instead of presenting the screenshot comparison as proof of them.
 
+### Exact-transparent orbit responsiveness correction — 2026-10-09
+
+The exploratory 625-site edge-on browser probe revealed a genuine input-starvation mode: with OrbitControls damping enabled, rotating a full-wafer exact transparent array schedules successive costly software-WebGL frames after the pointer is released. Subsequent user or automation clicks can exceed even a 120 s watchdog. The renderer now disables **inertial damping only when an array has at least 64 instances, its active scene is transparent, and its presentation LOD tier is exact**. It retains camera dragging and every physical and annotation sidewall; Fast far-field transparency and normal/opaque scenes continue to use damping. The browser regression now asserts the applied policy in both Fast far and exact transparent modes and still exercises the edge-on transition. This mitigation is subject to the current PR's fresh CI and actual browser validation; the 15 s full-frame timing target remains non-blocking, but stalled input remains a release blocker.
+
 ### Acceptance before merging this candidate
 
 1. Run `npm run check` and the normal array renderer browser suite at the exact branch HEAD using the pinned Node/Playwright/Three toolchain.
