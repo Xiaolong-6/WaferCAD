@@ -38,6 +38,7 @@ export function createProcessDiagnosticsController({
   let reportModel = null;
   let reportRevision = null;
   let jobModel = null;
+  let jobRevision = null;
   let worker = null;
   let runId = 0;
 
@@ -120,7 +121,7 @@ export function createProcessDiagnosticsController({
     }
     results.append(findings);
     results.append(textNode(doc, 'p', 'diagnostics-note',
-      'A Z gap is an observation, not automatically a defect. Rough/Pyramid appearances and Implant/Electrical annotations are not solved physical microgeometry. No process chemistry, intentional connectivity or expected-thickness rule is inferred.'));
+      'Material volume is a sum over canonical intervals; invalid overlapping owners can double-count. A Z gap is an observation, not automatically a defect. Rough/Pyramid appearances and Implant/Electrical annotations are not solved physical microgeometry. No process chemistry, intentional connectivity or expected-thickness rule is inferred.'));
   }
 
   function releaseWorker() {
@@ -128,11 +129,12 @@ export function createProcessDiagnosticsController({
     worker.terminate();
     worker = null;
     jobModel = null;
+    jobRevision = null;
     button.disabled = false;
   }
 
   function onModelRendered() {
-    if (worker && (getModel() !== jobModel)) {
+    if (worker && (getModel() !== jobModel || signature(getModel()) !== jobRevision)) {
       runId += 1;
       releaseWorker();
       status.textContent = 'Model changed during analysis. Run Analyze again.';
@@ -148,7 +150,9 @@ export function createProcessDiagnosticsController({
     const id = runId;
     releaseWorker();
     const model = getModel();
+    const revision = signature(model);
     jobModel = model;
+    jobRevision = revision;
     button.disabled = true;
     status.textContent = 'Analyzing canonical geometry…';
     results.classList.add('diagnostics-stale');
@@ -160,7 +164,7 @@ export function createProcessDiagnosticsController({
         if (data?.id !== id) return;
         const current = getModel();
         releaseWorker();
-        if (current !== model || signature(current) !== signature(model)) {
+        if (current !== model || signature(current) !== revision) {
           status.textContent = 'Model changed during analysis. Run Analyze again.';
           return;
         }
