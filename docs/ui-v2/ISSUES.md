@@ -16,3 +16,19 @@
 | I10 | legacy Node 测试读取 HTML/CSS/旧 Workstation 源码，browser helper 要求旧 rail/flyout/祖先关系。                                                                            | 新脚本置于 scripts/v2 并硬校验入口；legacy 原入口和断言不改。科学/History/恢复断言共享必须通过 adapter，不降低标准。            | M4 设计约束。                           |
 
 需要用户选择的产品事项集中在 M1/M1.5：浅色设计系统、2–3 布局取舍、Recipe 位置；本轮不代选。唯一新增的源实现是审计脚本，不是产品 UI。
+
+## M1.5 / M2 决策更新（2026-10-09）
+
+上表保留 M0 审计原貌。当前结果见 [M2 检查点](M2_CHECKPOINT.md)：
+
+- **I01 已确认并实现**：按源码保留两个 sessionStorage 键，不使用 localStorage；模式默认值、Split 去重/交换、跨刷新与拒绝存储均有 v2 检查。
+- **I04 已选定 UI 位置**：A 布局，Recipe / Code 在 Process 内；真实事务适配与跨域导航仍待 M3。
+- **I06 检查提前至 M2**：1440/1024px mock 壳层 Main/3D ROI 上下边界偏移均 0px，阈值 0.25px。真实 3D renderer / 指针 ROI 验收仍待 M3，不宣告旧 CI 根因已解决。
+- **I09**：保留 Section dock；窄屏单独访问 Section 不扩展 legacy 的存储模式集合。
+- **I08**：5 个未解析动态表达式仍未覆盖，M3 逐项追踪。
+
+## M2 补漏自查
+
+Section Legend 已补只读材料/注释显示和响应式布局，真实编辑待 M3。
+其余原型缺口见 [M2 自查](M2_GAP_AUDIT.md) G01–G08：尤其 History 仍平铺、Manual 缺 Extend / Etch 分类不一致 / Tilt 不支持负值。
+这些未完成的界面项不计入已覆盖，不以 M2 浏览器检查通过代替全工作区验收。用户允许本地提交；停下审核，不进入 M3。

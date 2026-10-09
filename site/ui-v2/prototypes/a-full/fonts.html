@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>字体对比 · 已选 Inter Variable</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../../tokens.css" />
+    <link rel="stylesheet" href="../layout.css" />
+    <style>
+      @font-face {
+        font-family: 'Inter Review';
+        src: url('./fonts/InterVariable.woff2') format('woff2');
+        font-weight: 100 900;
+        font-display: swap;
+      }
+      .samples {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+        gap: 16px;
+      }
+      .sample {
+        padding: 16px;
+        background: var(--wc-surface);
+        border: 1px solid var(--wc-border);
+      }
+      .sample p {
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body class="index">
+    <a href="index.html">返回 A 完整原型</a>
+    <h1>已选 B · Inter Variable WOFF2 / system fallback</h1>
+    <p>
+      统一 11 / 12 / 13px；原型顶部可切换字体看实际折行。两种方案中文均使用系统回退。生产 tokens
+      未改。
+    </p>
+    <div class="samples">
+      <section class="sample" style="font-family: 'Segoe UI', system-ui, sans-serif">
+        <h2>系统字体栈</h2>
+        <p style="font-size: 11px">
+          11px · M3D HfO2 gate dielectric 10nm · −0.00035 µm · 0 O I l 1 · 1050°C · ρ Δ · 辅助文字 /
+          工艺步骤
+        </p>
+        <p style="font-size: 12px">
+          12px · M3D HfO2 gate dielectric 10nm · −0.00035 µm · 0 O I l 1 · 1050°C · ρ Δ · 辅助文字 /
+          工艺步骤
+        </p>
+        <p style="font-size: 13px">
+          13px · M3D HfO2 gate dielectric 10nm · −0.00035 µm · 0 O I l 1 · 1050°C · ρ Δ · 辅助文字 /
+          工艺步骤
+        </p>
+        <p>零额外字体字节，无字体加载 / swap；跨操作系统字形与宽度不同。</p>
+      </section>
+      <section
+        class="sample"
+        style="font-family: 'Inter Review', 'Segoe UI', system-ui, sans-serif"
+      >
+        <h2>本地 Inter Variable WOFF2</h2>
+        <p style="font-size: 11px">
+          11px · M3D HfO2 gate dielectric 10nm · −0.00035 µm · 0 O I l 1 · 1050°C · ρ Δ · 辅助文字 /
+          工艺步骤
+        </p>
+        <p style="font-size: 12px">
+          12px · M3D HfO2 gate dielectric 10nm · −0.00035 µm · 0 O I l 1 · 1050°C · ρ Δ · 辅助文字 /
+          工艺步骤
+        </p>
+        <p style="font-size: 13px">
+          13px · M3D HfO2 gate dielectric 10nm · −0.00035 µm · 0 O I l 1 · 1050°C · ρ Δ · 辅助文字 /
+          工艺步骤
+        </p>
+        <p>
+          拉丁字母和数字跨平台一致；额外 352,240 字节（约 344 KiB），有加载 / swap，无内置中文。SIL
+          OFL 1.1。
+        </p>
+      </section>
+    </div>
+    <p>此审阅页同时加载候选字体；“零字节”指产品选择纯系统栈时，不是此对比页的总传输量。</p>
+    <p>
+      已有 Windows 12px 单句测量：系统 237.40px / Inter 254.71px（宽约
+      7.3%）；仅这一句，不推断全界面。
+    </p>
+    <p><a href="fonts/LICENSE.txt">OFL 许可证</a> · <a href="fonts/README.md">本地来源说明</a></p>
+    <p class="aux">
+      固定上游 revision: 353b61b9f4430d5f420d56605a6e7993e0941470<br />WOFF2 SHA-256:
+      693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3
+    </p>
+  </body>
+</html>
