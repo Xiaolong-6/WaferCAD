@@ -228,6 +228,7 @@ export function createIntelligentUi({ root = document, win = window, workstation
         openPalette();
       } else if (event.key === 'Escape' && !refs.dialog.hidden) {
         event.preventDefault();
+        event.stopImmediatePropagation();
         closePalette();
       }
     }, true);
