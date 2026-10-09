@@ -16,10 +16,21 @@ const COMMANDS = Object.freeze([
 export function filterIntelligentCommands(query, commands = COMMANDS) {
   const words = String(query || '').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return [...commands];
-  return commands.filter((command) => {
-    const text = [command.label, command.hint, command.group].join(' ').toLocaleLowerCase();
-    return words.every((word) => text.includes(word));
-  });
+  const needle = words.join(' ');
+  const rank = (command) => {
+    const label = command.label.toLocaleLowerCase();
+    if (label === needle) return 0;
+    if (label.startsWith(needle)) return 1;
+    if (label.includes(needle)) return 2;
+    if (command.hint.toLocaleLowerCase().includes(needle)) return 3;
+    return 4;
+  };
+  return commands
+    .filter((command) => {
+      const text = [command.label, command.hint, command.group].join(' ').toLocaleLowerCase();
+      return words.every((word) => text.includes(word));
+    })
+    .sort((a, b) => rank(a) - rank(b));
 }
 
 export function createIntelligentUi({ root = document, win = window, workstation } = {}) {
