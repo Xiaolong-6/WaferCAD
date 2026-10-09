@@ -74,7 +74,7 @@ try {
     return elapsed;
   };
   const errors = observePageErrors(page);
-  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1');
+  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3IndexedWalls=1');
   await waitForAppReady(page);
   await page
     .locator('#openProjectInput')
