@@ -1,0 +1,28 @@
+name: Wiki format diff diagnostic
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/wiki-format-diagnostic.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  format-diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Show canonical formatting delta
+        run: |
+          for file in site/controllers/export-controller.js site/tests/mask-svg-linework-roi.test.mjs; do
+            npx prettier "$file" > /tmp/wc-format.mjs
+            diff -u "$file" /tmp/wc-format.mjs || true
+          done
