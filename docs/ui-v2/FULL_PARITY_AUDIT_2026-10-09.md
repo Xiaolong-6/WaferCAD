@@ -42,6 +42,14 @@ Windows NT 10.0.26300.0；Node v24.16.0；Chrome 155.0.8059.40；npm ci 锁定 P
 
 修复提交、各条回归和剩余项记录在本文件后的修复账本；本表保持审计前状态，不能用完成后的结果覆盖诊断证据。
 
+## 修复账本与最新范围
+
+- 审计先独立提交为 `0982433`；随后产品修复提交 `af64d67`。下面 258 行保留修复前状态，不能作为修复后的计数。
+- 第一批已补 UI draft：F190 滚动约束，F192/F193/F195/F196 分支折叠/数量/改名/删除保护，F203/F204 历史编辑入口 draft，F207/F208/F209 书签增删改与 Step 子组，F211/F212 返回 HEAD/取消；History 顶部重复操作按钮删除。真实 History 事务仍未接通。
+- 同批补齐 Base Rectangle/Circle/W/H/Z/Revert 与确认；Recipe operation change/Copy/captured Mask/Surface draft；Process front/back、mask/invert/full、Transfer placement、CMP/Undercut、Rough 参数、Record kind/note、Add-to-Recipe draft；直接 Legend 色块，3D Border draft toggle。所有 source fixture 保持 frozen。
+- 正式 Chrome 43 个命名检查、8 个契约、ESLint、变更文件 Prettier 全通过。详见 [当前 M2.5 审计](BROWSER_ACCEPTANCE_2026-10-09.md)。这些不是生产 parity 通过。
+- **最新用户范围：只审计 M2.5 过了没有。已停止继续扩展功能。M2.5 壳层门槛 PASS；未完成的表格项保持待办，未宣告全部修复，也未进入 M3。**
+
 ## 全部 258 项
 
 “壳层”仅布局/生命周期；“mock 草稿”有演示事件；“部分/占位”入口与行为不完整；“缺失”无对应完整功能。证据文件均在 `site/ui-v2/` 下。科学/存储类全部未生产接线。
