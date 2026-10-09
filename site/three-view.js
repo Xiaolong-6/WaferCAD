@@ -10,7 +10,6 @@ import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
-import { appendIndexedSmoothWallQuad, canIndexSmoothSidewallParts } from './renderer-smooth-wall-index.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -87,13 +86,11 @@ export function createThreeView({
   if (typeof getModel !== 'function') throw new TypeError('getModel must be a function.');
 
   const smoothCapDerivedDataCache = createDerivedDataCache();
-  // The detailed V3 projection probes cost measurable scene-build CPU time.
-  // Keep them explicitly opt-in for benchmark runs, not interactive users.
-  const rendererQuery = new URLSearchParams(host.ownerDocument?.defaultView?.location?.search || ''),
-    v3DiagnosticsEnabled = rendererQuery.get('rendererV3Diagnostics') === '1',
-    // Index reuse preserves faces but has no demonstrated whole-scene speedup.
-    // Keep the default scientific renderer unchanged until paired GPU proof.
-    v3IndexedSmoothWallEnabled = rendererQuery.get('rendererV3IndexedWalls') === '1';
+  // Expensive V3 profiling is explicitly opt-in for benchmark runs.
+  const v3DiagnosticsEnabled =
+    new URLSearchParams(host.ownerDocument?.defaultView?.location?.search || '').get(
+      'rendererV3Diagnostics',
+    ) === '1';
 
   let renderer = null;
   let scene = null;
@@ -927,9 +924,6 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
-      indexedWallVertices: host.dataset.indexedSmoothWallVertices || '0',
-      indexedWallOriginalVertices: host.dataset.indexedSmoothWallOriginalVertices || '0',
-      indexedWallTriangleCount: host.dataset.indexedSmoothWallTriangles || '0',
       v3EdgeSurvey: {
         status: host.dataset.v3EdgeSurveyStatus || 'not-measured',
         gate: host.dataset.v3EdgeSurveyGate || 'not-far',
@@ -1030,9 +1024,6 @@ export function createThreeView({
     host.dataset.transparentArrayDisplayTolerance = entry.arrayLodTolerance || '0';
     host.dataset.fullWaferTransparencyLod = String(entry.arrayLodTier !== 'exact');
     host.dataset.electricalFarLodBodyCount = entry.electricalFarLodBodyCount || '0';
-    host.dataset.indexedSmoothWallVertices = entry.indexedWallVertices || '0';
-    host.dataset.indexedSmoothWallOriginalVertices = entry.indexedWallOriginalVertices || '0';
-    host.dataset.indexedSmoothWallTriangles = entry.indexedWallTriangleCount || '0';
     host.dataset.v3ScreenBudgetMode = entry.v3SubpixelProbe?.mode || 'observe-only';
     host.dataset.v3ScreenBudgetQualified = entry.v3SubpixelProbe?.qualified || 'false';
     host.dataset.v3ScreenBudgetReason = entry.v3SubpixelProbe?.reason || 'unmeasured';
@@ -1622,15 +1613,10 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts, displayTolerance = 0, { indexedSmooth = false } = {}) {
+  function geometryFromSidewallParts(parts, displayTolerance = 0) {
     const positions = [],
       normals = [],
-      annotationDepths = [],
-      indices = [],
-      preparedParts = displayTolerance > 0
-        ? simplifyDisplaySidewallParts(parts, displayTolerance)
-        : mergeCollinearSidewallParts(parts),
-      useIndexedSmooth = indexedSmooth && canIndexSmoothSidewallParts(preparedParts);
+      annotationDepths = [];
 
     const triangle = (a, b, c, depths = null) => {
         const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
@@ -1653,7 +1639,9 @@ export function createThreeView({
               roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
           : z;
 
-    for (const part of preparedParts) {
+    for (const part of displayTolerance > 0
+      ? simplifyDisplaySidewallParts(parts, displayTolerance)
+      : mergeCollinearSidewallParts(parts)) {
       const p = part.p,
         q = part.q,
         dx = q[0] - p[0],
@@ -1692,29 +1680,14 @@ export function createThreeView({
           upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
-        if (useIndexedSmooth) {
-          // Same two triangles in identical order, with the four shared
-          // vertices represented only once for GPU vertex reuse.
-          appendIndexedSmoothWallQuad(
-            positions,
-            normals,
-            indices,
-            lower0,
-            lower1,
-            upper1,
-            upper0,
-          );
-        } else {
-          triangle(lower0, lower1, upper1, firstDepths);
-          triangle(lower0, upper1, upper0, secondDepths);
-        }
+        triangle(lower0, lower1, upper1, firstDepths);
+        triangle(lower0, upper1, upper0, secondDepths);
       }
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    if (indices.length) geometry.setIndex(indices);
     if (annotationDepths.length === positions.length / 3 && annotationDepths.length) {
       geometry.setAttribute(
         'annotationDepth',
@@ -3152,9 +3125,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
-      let indexedSmoothWallVertices = 0,
-        indexedSmoothWallOriginalVertices = 0,
-        indexedSmoothWallTriangles = 0;
       for (const sidewall of plan.sidewalls) {
         await maybeYieldAssembly();
         const state = stateFor(sidewall);
@@ -3164,15 +3134,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const geometry = geometryFromSidewallParts(
               parts,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
-              {
-                // Presentation-only Fast array optimization. Quality, rough,
-                // implant, non-instanced walls and GLB remain unchanged.
-                indexedSmooth:
-                  v3IndexedSmoothWallEnabled &&
-                  sidewall.buried &&
-                  targetVariant === 'transparent' &&
-                  inspection.fast !== false,
-              },
             ),
             presentation = presentationFor(sidewall),
             material = createSurfaceMaterial(
@@ -3192,13 +3153,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           );
           smoothSidewallInstanceGroupCount += meshes.length;
           smoothSidewallInstanceCount += sidewall.instanceTranslations.length;
-          smoothSidewallTemplateTriangleCount +=
-            (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
-          if (meshes.length && geometry.index?.count) {
-            indexedSmoothWallVertices += geometry.getAttribute('position').count;
-            indexedSmoothWallOriginalVertices += geometry.index.count;
-            indexedSmoothWallTriangles += geometry.index.count / 3;
-          }
+          smoothSidewallTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
           continue;
         }
         pushBucket(sidewalls, sidewall, state);
@@ -3289,21 +3244,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
         group.children.reduce(
-          (sum, object) =>
-            sum +
-            (object.geometry?.index?.count ||
-              object.geometry?.getAttribute?.('position')?.count ||
-              0) /
-              3,
+          (sum, object) => sum + (object.geometry?.getAttribute?.('position')?.count || 0) / 3,
           0,
         ),
       );
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
-      host.dataset.indexedSmoothWallVertices = String(indexedSmoothWallVertices);
-      host.dataset.indexedSmoothWallOriginalVertices = String(indexedSmoothWallOriginalVertices);
-      host.dataset.indexedSmoothWallTriangles = String(indexedSmoothWallTriangles);
       const rendererSidewallsAt = performance.now();
 
       host.dataset.instanceChunkLimit = presentationMode() === 'transparent' ? '256' : '4096';
