@@ -1128,6 +1128,13 @@ for (const face of extendedProcess ? ['front', 'back'] : ['front']) {
  assert.ok(liftReplay.model.regions.every((region) =>
    region.stack.every((segment) => segment.layerId !== recipePmmaId)));
  assert.equal(liftReplay.processRecipe.steps.at(-1).command, 'liftoff');
+ // A newly opened .wafercad must retain the exact material geometry and
+ // declarative Recipe, including its full replayable History.
+ await loadProject(liftRecipePage, liftReplay, 'liftoff-export-reimport');
+ const restoredLift = await exportCurrentProject(liftRecipePage);
+ assert.deepEqual(restoredLift.model, liftReplay.model);
+ assert.deepEqual(restoredLift.processRecipe, liftReplay.processRecipe);
+ assert.deepEqual(restoredLift.snapshotBranches, liftReplay.snapshotBranches);
  assert.deepEqual(liftRecipeErrors, []);
  await liftRecipeContext.close();
  
