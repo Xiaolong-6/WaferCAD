@@ -1,6 +1,6 @@
 # M2 自查：UI 缺口闭环与 M3 边界
 
-2026-10-09；分支 `refactor/ui-v2-m0`。本清单核对 r2、M0 CONTRACT / IMPLICIT_DEPS、旧 `app.html` 与相关控制器。
+2026-10-09；交接分支 `codex/ui-v2-m2-handoff-2026-10-09`，产品提交 `0d5fb4e`（从 `refactor/ui-v2-m0` 集成点派生）。本清单核对 r2、M0 CONTRACT / IMPLICIT_DEPS、旧 `app.html` 与相关控制器。
 
 “完成”只表示 M2 静态/半静态壳层有可操作的本地 draft 和可见状态；不代表接通真实领域事务、科学计算、renderer、存储或文件导入导出。
 

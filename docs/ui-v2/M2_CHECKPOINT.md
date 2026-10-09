@@ -1,6 +1,8 @@
 # M2：独立 mock 壳层与实时预览
 
-> 后续补齐更新（2026-10-09）：G01–G08 的 M2 mock 界面/本地 draft 交互已完成；原始自查与 19 项结果已被 [M2_GAP_AUDIT.md](M2_GAP_AUDIT.md) 中的 22 项复核取代。上游 `origin/main` 已合并。该更新不代表已接通 M3 核心。
+> 后续补齐更新（2026-10-09）：G01–G08 的 M2 mock 界面/本地 draft 交互已完成；原始自查与 19 项结果已被 [M2_GAP_AUDIT.md](M2_GAP_AUDIT.md) 中的 25 项复核取代。上游 `origin/main` 已合并。该更新不代表已接通 M3 核心。
+
+> 交接状态更新（2026-10-09）：M2 快速迭代补齐的 History 行操作菜单、固定操作栏/内部滚动、Mask Draw 与 ROI 分离、Section Legend 预制色板/随机色均已纳入 [M2 iteration handoff](M2_ITERATION_HANDOFF_2026-10-09.md)。该 handoff supersedes 下文的原始 M2 iteration/status 描述；仍是 mock UI，不代表真实 M3 域事务已经接通。
 
 日期：2026-10-09。分支 `refactor/ui-v2-m0`，HEAD `c7856da2b81aaea4c088d0d5f7cd4489e8e4d1e2`。
 用户批准进入 M2；快速迭代阶段暂不 commit，之后已明确允许本地提交检查点。不进入 M3，不接科学核心，不 push。
@@ -29,7 +31,7 @@
 
 1. `view-state.js`：与 legacy 一致的 mode / split 默认值、去重、交换与 sessionStorage 键。
 2. `view-icons.js` / `native-components.js`：普通 DOM 模板和内联 SVG；More 管理自己的锚定与焦点。
-3. `view-panel.js`：共享 Main / Mask / 3D / Section 模板注册表；panel / content host 身份稳定，不克隆 canvas。`section-legend.js` 提供只读层/注释模板，不拥有模型状态。
+3. `view-panel.js`：共享 Main / Mask / 3D / Section 模板注册表；panel / content host 身份稳定，不克隆 canvas。`section-legend.js` 提供层/注释模板及本地 UI 色值草稿，不拥有模型状态。
 4. `workstation-v2.js`：只装配导航、面板槽、视图、顶栏、分隔条和状态栏；通过显式回调获取领域 UI / 视图内容，不读 Recipe、History、fixtures 或核心。
 5. `mock-data.js`：离线从原示例派生的只读展示数据。
 6. `mock-domain-panels.js` / `mock-views.js`：mock 领域面板与源数据插图，不包含科学执行或真实渲染器。
@@ -45,9 +47,8 @@
 ## Section Legend 补齐
 
 宽屏 180px 侧排，768/390px 放在 Section 画布下方，不覆盖画布；Legend 按钮收起/恢复。
-使用真实层名、原颜色、稳定 ID 与历史游标模型；Photodetector 当前两个 Implant 注释另列，profile/visibility 只读显示。
-Legend 与 Section plot host 保持身份，列表可滚动；模型源被冻结，颜色不是 UI token，不修改材料信息。
-真实重命名/显隐/调色/profile 编辑属于 M3；本次没有调用或复制科学 mutation。
+使用真实层名、原颜色、稳定 ID 与历史游标模型；Photodetector 当前两个 Implant 注释另列，profile/visibility 只读显示。每行提供预制色板与 Random color 控件，只更新本地 UI draft。
+Legend 与 Section plot host 保持身份，列表可滚动；模型源被冻结，调色不修改材料信息，也没有调用或复制科学 mutation。真实重命名/显隐/调色/profile 接线仍属于 M3。
 
 ## 模式和运行反馈
 
@@ -77,7 +78,7 @@ Windows，Node `v26.7.0`，原生 Chrome `155.0.8059.40`；此次不是 M4 视�
 
 ## 尚待确认 / 后续
 
-- M2 检查点停下，等用户审核；细节可继续在同一入口迭代。用户已允许本地 commit；不 push / 触发 CI / 切换默认入口。
+- 本文件保留原始 M2 检查点记录；本轮授权将其快速迭代交接为独立分支，准确分支/提交与发布状态见 [iteration handoff](M2_ITERATION_HANDOFF_2026-10-09.md)。不触发 CI、不切换默认入口。
 - `origin/main` 已更新至 `b81598b7d8f4c5e7d246df250c82b9de4c2d4178`；Workstation 模式源码相对当前基点未变。此前不 commit 的迭代期没有创建 merge commit 或留下 merge 状态；真实接线前仍需同步上游。
 - 5 个静态未解析动态表达式仍留 M3 逐项追踪，不算完成覆盖。
 - M4 创建视觉基线前，仍须询问用户浏览器和基线批准。

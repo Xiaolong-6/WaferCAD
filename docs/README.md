@@ -35,6 +35,7 @@ Use this page to find the document that owns a question. Current contracts descr
 ## Plans and verification evidence
 
 - [UI v2 M0 checkpoint](ui-v2/M0_CHECKPOINT.md) — baseline, generated DOM contract, implicit dependencies, PR #161 postmortem, risks and the required stop before M1.
+- [UI v2 M2 iteration handoff — 2026-10-09](ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md) — latest M2 UI iteration, exact branch/revision, reproducible preview, checks and M3 boundaries.
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — Fast full-wafer far-array presentation LOD shipped in PR #155; exact near/ROI inspection, unshipped hierarchy phases and non-blocking performance debt remain documented.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
 - [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
