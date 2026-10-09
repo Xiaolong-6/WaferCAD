@@ -136,7 +136,34 @@ for (const { name, viewport } of cases) {
   await zButton.click();
   const editor = page.locator('#sectionCollapseEditor');
   await editor.waitFor({ state: 'visible' });
-  await assertWithin('#sectionCollapseEditor', 'sectionPanel');
+  const assertZBreakLayout = async () => {
+    const layout = await editor.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      const area = document.getElementById('sectionBody').getBoundingClientRect();
+      return {
+        modal: node.matches(':modal'),
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        areaWidth: area.width,
+        areaHeight: area.height,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    assert.ok(layout.left >= -2 && layout.right <= layout.viewportWidth + 2);
+    assert.ok(layout.top >= -2 && layout.bottom <= layout.viewportHeight + 2);
+    if (layout.areaHeight < 380 || layout.areaWidth < 420) {
+      assert.equal(layout.modal, true, name + ': small Section must open top-layer dialog');
+    }
+    if (!layout.modal) await assertWithin('#sectionCollapseEditor', 'sectionPanel');
+  };
+  await assertZBreakLayout();
+  await page.screenshot({
+    path: `test-results/view-ux-v3/${name}-z-break.png`,
+    animations: 'disabled',
+  });
   const breakEnabled = page.locator('#sectionCollapseEnabled');
   await breakEnabled.uncheck();
   assert.equal(
@@ -151,16 +178,19 @@ for (const { name, viewport } of cases) {
   await page.locator('#sectionCollapseTopInput').waitFor({ state: 'visible' });
   await editor.locator('.section-collapse-advanced > summary').click();
   assert.equal(await page.locator('#sectionCollapseScaleLinked').isChecked(), true);
-  await page.locator('#sectionCollapseClose').click();
+  await assertZBreakLayout();
+  await page.keyboard.press('Escape');
+  await editor.waitFor({ state: 'hidden' });
+  assert.equal(await zButton.getAttribute('aria-expanded'), 'false');
 
   const visiblePanels = await page
     .locator('.view-panel')
     .evaluateAll((nodes) =>
       nodes.filter((node) => node.getBoundingClientRect().width > 0).map((node) => node.id),
     );
-  if (visiblePanels.length) {
-    await page.locator('#' + visiblePanels[0]).screenshot({
-      path: `test-results/view-ux-v3/${name}-view.png`,
+  for (const panelId of visiblePanels) {
+    await page.locator('#' + panelId).screenshot({
+      path: `test-results/view-ux-v3/${name}-${panelId}.png`,
       animations: 'disabled',
     });
   }
