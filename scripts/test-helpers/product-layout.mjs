@@ -696,6 +696,16 @@ export function createProductLayoutChecks({ capture }) {
         }
       }
       await summary.click();
+      // A compact nested editor must release the canvas when dismissed.
+      const editorClosed = await page.locator('#focusEditor').evaluate((node) => !node.open);
+      const inOverflow = await page.locator('#focusEditor').evaluate((node) =>
+        Boolean(node.closest('.view-overflow-secondary')),
+      );
+      if (editorClosed && inOverflow) {
+        await page.waitForFunction(
+          () => !document.querySelector('#mainPanel .view-more-control')?.open,
+        );
+      }
     }
     const benchmark = await processBenchmark('island', 'conformal');
     const project = projectForBenchmark(benchmark);
