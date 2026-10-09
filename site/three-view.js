@@ -780,6 +780,16 @@ export function createThreeView({
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
       frame = null;
+      // OrbitControls damping keeps scheduling frames after pointer-up.
+      // A full-wafer exact transparent array can cost tens of seconds per
+      // software-WebGL frame; repeating these frames starves input handling.
+      // Retain drag interaction but stop inertial redraws at this costly tier.
+      const heavyExactTransparency =
+        host.dataset.sceneVariant === 'transparent' &&
+        host.dataset.transparentArrayLodTier === 'exact' &&
+        Number(host.dataset.arrayInstances || 0) >= 64;
+      if (controls) controls.enableDamping = !heavyExactTransparency;
+      host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       const changed = controls?.update?.() || false;
       updateRoughMaterialLod();
       updateTransparentOrder();
