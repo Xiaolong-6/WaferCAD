@@ -2698,40 +2698,8 @@ summary:focus-visible {
   border-right: 0;
 }
 
-/* One toolbar language across Main / Mask / 3D / Section. */
-.view-head .mini-btn,
-.view-head .three-control,
-.view-head .focus-editor > summary {
-  height: 21px;
-  min-width: 0;
-  padding: 1px 5px;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  background: transparent;
-  color: #55626e;
-  font-size: 9.5px;
-  font-weight: 520;
-  line-height: 1.2;
-  box-shadow: none;
-}
-
-.view-head button.mini-btn:hover,
-.view-head button.three-control:hover,
-.view-head .three-control:hover,
-.view-head .focus-editor > summary:hover {
-  border-color: transparent;
-  background: #eaf0f4;
-  color: #334352;
-}
-
-.view-head .focus-editor[open] > summary,
-.view-head .three-opacity-control[open] > summary,
-.view-head .three-border-toggle:has(input:checked) {
-  border-color: transparent;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-  box-shadow: inset 0 0 0 1px #bdc9d5;
-}
+/* Main/Mask/3D/Section header states are defined by the unified scientific
+   toolbar rules below; do not add a competing legacy palette here. */
 
 .view-head .readout {
   color: #788591;
