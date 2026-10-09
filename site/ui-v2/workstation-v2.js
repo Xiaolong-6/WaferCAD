@@ -63,6 +63,7 @@
       toast: slot('portal.toast', 'v2-toast-portal'),
     };
     const overlays = window.WaferCadV2Overlays.create({ root, portals });
+    window.WaferCadV2ActiveOverlays = overlays;
     const workbench = el('div', { class: 'p-workbench', 'data-layout': state.layout },
       topbar, body, status, ...Object.values(portals));
     root.replaceChildren(workbench);
