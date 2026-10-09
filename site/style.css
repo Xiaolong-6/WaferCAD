@@ -5440,3 +5440,41 @@ summary:focus-visible {
   .view-head > div:first-child span { display: none; }
   .view-mode-select { max-width: 93px; }
 }
+
+/* Reparented controls expand inside More instead of making a second popover. */
+.view-overflow-secondary > .view-display-control > .view-display-popover,
+.view-overflow-secondary > .mask-opacity-control > .three-opacity-popover,
+.view-overflow-secondary > .focus-editor > .focus-popover {
+  position: static;
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  max-height: none;
+  margin-top: 6px;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.view-overflow-secondary > details > summary {
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 1px solid #d0dbe3;
+  border-radius: 4px;
+  background: #f7fafc;
+  color: #3d5367;
+}
+.view-overflow-secondary > details[open] > summary {
+  background: #e4f0fa;
+  border-color: #a5c6df;
+}
+@container (max-width: 670px) {
+  .section-collapse-overlay { right: 0; }
+  .section-collapse-editor {
+    top: 6px;
+    right: 6px;
+    width: min(360px, calc(100% - 12px));
+    max-height: calc(100% - 12px);
+  }
+}
