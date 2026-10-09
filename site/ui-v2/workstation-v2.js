@@ -3,7 +3,7 @@
 (() => {
   const { el, button, divider } = window.WaferCadV2Components;
   window.createWaferCadV2Workstation = ({
-    root, state, getProjectName, renderEditor, renderView,
+    root, state, getProjectName, renderView,
     registry = window.WaferCadV2ShellRegistry.defaults,
     adapters = window.WaferCadV2DomainAdapters.create(),
     presentation = () => ({}),
@@ -180,19 +180,13 @@
       }
       const adapterKey = name === registry.subpanelOwner
         ? `panel.${registry.subpanelOwner}.${mode}` : `panel.${name}`;
-      if (adapterKey !== activeAdapter) {
+      const switched = adapterKey !== activeAdapter;
+      if (switched) {
         if (activeAdapter) adapters.hide(activeAdapter);
         adapters.show(adapterKey, slots.get(adapterKey));
         activeAdapter = adapterKey;
-      }
-      const draft = renderEditor?.();
-      if (!draft) return;
-      const header = draft.querySelector('.p-panel-head');
-      if (header) inspectorTitle.replaceChildren(...header.childNodes);
-      const source = draft.querySelector('.p-panel-content');
-      const host = slots.get(adapterKey) || slots.get(`panel.${name}`);
-      const contents = host?.querySelector(':scope > [data-slot-content]');
-      if (contents && source) contents.replaceChildren(...source.childNodes);
+      } else adapters.refresh(adapterKey);
+
     }
     function render(focusAction) {
       const info = presentation();
