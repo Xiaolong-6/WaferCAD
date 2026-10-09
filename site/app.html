@@ -793,29 +793,33 @@
                 </button>
               </div>
               <div id="manualProcessPane">
-                <div class="tool-context process-context">
-                  <span id="processSummary">Front · Deposit layer</span>
-                  <button
-                    id="faceToggleBtn"
-                    class="compact-btn context-action"
-                    type="button"
-                    title="Switch active process face"
-                  >
-                    Front
-                  </button>
-                </div>
                 <div class="control-body process-control-body">
-                  <label class="process-operation-picker" for="operationType">
-                    <span>Operation</span>
-                    <select id="operationType" aria-label="Process action">
-                      <option value="add">Deposit</option>
-                      <option value="grow">Extend</option>
-                      <option value="etch">Etch</option>
-                      <option value="implant">Implant</option>
-                      <option value="electrical">Electrical</option>
-                      <option value="record">Record</option>
-                    </select>
-                  </label>
+                  <div class="process-step-toolbar">
+                    <label class="process-operation-picker" for="operationType">
+                      <span>Operation</span>
+                      <select id="operationType" aria-label="Process action">
+                        <option value="add">Deposit</option>
+                        <option value="grow">Extend</option>
+                        <option value="etch">Etch</option>
+                        <option value="implant">Implant</option>
+                        <option value="electrical">Electrical</option>
+                        <option value="record">Record</option>
+                      </select>
+                    </label>
+                    <label class="process-surface-picker" for="faceToggleBtn">
+                      <span>Surface</span>
+                      <select id="faceToggleBtn" aria-label="Process surface">
+                        <option value="front">Front</option>
+                        <option value="back">Back</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="tool-context process-context visually-hidden" aria-live="polite">
+                    <span id="processSummary">Front · Deposit layer</span>
+                  </div>
+                  <div class="process-parameter-heading">
+                    <strong id="processParametersHeading">Deposit parameters</strong>
+                  </div>
 
                   <div class="param-grid-2 process-area-grid">
                     <label id="operationAreaRow" class="param-field">
@@ -824,13 +828,6 @@
                         <option value="mask">Selected mask</option>
                         <option value="invert">Invert mask</option>
                         <option value="full">Whole face</option>
-                      </select>
-                    </label>
-                    <label id="growthModeRow" class="param-field">
-                      <span>Coverage</span>
-                      <select id="growthMode">
-                        <option value="direct">Directional</option>
-                        <option value="conformal">Conformal</option>
                       </select>
                     </label>
                     <label id="transferModeRow" class="param-field hidden">
@@ -896,6 +893,13 @@
                     <label id="electricalNameRow" class="param-field hidden">
                       <span>Name</span>
                       <input id="electricalName" value="Electrical Region 1" />
+                    </label>
+                    <label id="growthModeRow" class="param-field">
+                      <span>Coverage</span>
+                      <select id="growthMode">
+                        <option value="direct">Directional</option>
+                        <option value="conformal">Conformal</option>
+                      </select>
                     </label>
                     <label id="operationThicknessRow" class="param-field">
                       <span><b id="processThicknessLabel">Z</b></span>
