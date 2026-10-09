@@ -5412,6 +5412,7 @@ summary:focus-visible {
   padding: 6px 0 0;
 }
 .view-display-popover .three-border-toggle { display: flex; align-items: center; width: max-content; }
+.view-display-popover .three-border-toggle > span { pointer-events: none; }
 .view-display-popover input[type='range'] { width: 100%; }
 .view-display-popover label[for='threeOpacityRange'],
 .view-display-popover label[for='maskOpacityRange'] { display: flex; justify-content: space-between; }
