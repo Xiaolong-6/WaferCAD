@@ -40,11 +40,22 @@ for (const { name, viewport } of cases) {
     assert.equal(values.unique, true, id + ': duplicate element ID');
   }
 
+  // Real workstation tabs are required in compact viewports: hidden
+  // controls must be made visible through their public navigation.
+  const activateView = async (view) => {
+    await page.locator(`.workstation-view-tabs > button[data-view="${view}"]`).click();
+    await page.locator(`#${{main:'mainPanel',mask:'maskPanel',three:'threePanel'}[view]}`).waitFor({ state: 'visible' });
+  };
+
   // Source/mode controls choose an explicit value, rather than forcing a cycle.
+  await activateView('mask');
   await page.locator('#maskSourceToggleBtn').selectOption('draw');
   assert.equal(await page.locator('#maskSourceToggleBtn').inputValue(), 'draw');
   await page.locator('#maskSourceToggleBtn').selectOption('file');
   assert.equal(await page.locator('#maskSourceToggleBtn').inputValue(), 'file');
+  if (await page.locator('#sectionBody').isHidden()) {
+    await page.locator('.workstation-section-collapse').click();
+  }
   await page.locator('#sectionScaleModeBtn').selectOption('physical');
   assert.equal(await page.locator('#sectionCanvas').getAttribute('data-scale-mode'), 'physical');
   await page.locator('#sectionScaleModeBtn').selectOption('auto');
@@ -77,20 +88,23 @@ for (const { name, viewport } of cases) {
   };
 
   // Every More action is reachable; a one-shot action closes its menu.
+  await activateView('main');
   const more = page.locator('#mainPanel .view-more-control');
   await more.locator(':scope > summary').click();
   await assertWithin('#mainPanel .view-menu-popover', 'mainPanel');
   await page.locator('#mainZoomIn').click();
   assert.equal(await more.evaluate((node) => node.open), false, 'Zoom action closes More');
 
-  await show('#maskPanel .view-more-control');
+  await activateView('mask');
+  await page.locator('#maskPanel .view-more-control > summary').click();
   await assertWithin('#maskPanel .view-menu-popover', 'maskPanel');
-  await show('#maskExportControl');
+  await page.locator('#maskExportControl > summary').click();
   assert.equal(await page.locator('#maskExportGdsBtn').count(), 1);
   await page.locator('#maskPanel .view-more-control > summary').click();
 
   // Border is a persistent setting and can be changed without an ON/OFF badge.
-  await show('#threePanel .three-opacity-control');
+  await activateView('three');
+  await page.locator('#threePanel .three-opacity-control > summary').click();
   const before = await page.locator('#threeBorders').isChecked();
   await page.locator('#threeBorderControl').click();
   assert.equal(await page.locator('#threeBorders').isChecked(), !before);
