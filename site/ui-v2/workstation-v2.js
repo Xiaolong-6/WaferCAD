@@ -156,8 +156,11 @@
         if (panel.parentNode !== canvases) canvases.append(panel);
         panel.hidden = !visible;
         panel.style.order = String(visible ? names.indexOf(key) : 99);
-        if (visible) adapters.show(id, canvases);
-        else adapters.hide(id);
+        if (visible) {
+          const active = adapters.isActive(id);
+          adapters.show(id, canvases);
+          if (active) adapters.refresh(id);
+        } else adapters.hide(id);
       }
     }
     function renderPanel(info) {
