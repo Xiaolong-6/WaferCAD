@@ -1,0 +1,35 @@
+name: Temporary View UX canonical formatter
+on:
+  push:
+    branches:
+      - feat/view-ux-v3-unified-20261009
+    paths:
+      - ".github/workflows/view-ux-v3-format.yml"
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/view-ux-v3-unified-20261009
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format affected UI tests
+        run: npx prettier --write scripts/interaction-regression.mjs scripts/view-ux-v3-regression.mjs scripts/test-helpers/product-layout.mjs
+      - name: Commit formatted files on this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/interaction-regression.mjs scripts/view-ux-v3-regression.mjs scripts/test-helpers/product-layout.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "style(view-ux): canonical Prettier for final browser suites"
+            git push origin HEAD:feat/view-ux-v3-unified-20261009
+          fi
