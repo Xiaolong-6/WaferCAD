@@ -421,6 +421,7 @@ assert.equal(await face.inputValue(), 'front');
 // hierarchy, not merely replace the old six-button grid with a dropdown.
 await page.locator('#operationType').selectOption('grow');
 assert.equal(await page.locator('#processParametersHeading').textContent(), 'Extend parameters');
+assert.match(await page.locator('#processVisualGuide > summary').textContent(), /How Extend works/);
 const stepLayout = await page.evaluate(() => {
   const rect = (id) => {
     const node = document.getElementById(id);
