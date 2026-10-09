@@ -11,7 +11,7 @@ import {
   waitForPaint,
 } from './test-helpers/ui.mjs';
 
-await mkdir('test-results/view-ux-v3', { recursive: true });
+await mkdir('test-results/product-review/view-ux-v3', { recursive: true });
 const browser = await launchBrowser();
 const cases = [
   { name: 'desktop', viewport: { width: 1440, height: 960 } },
@@ -26,6 +26,10 @@ for (const { name, viewport } of cases) {
   await page.locator('#welcomeEmptyBtn').click();
   await waitForAppReady(page);
   await waitForPaint(page);
+  await page.screenshot({
+    path: `test-results/product-review/view-ux-v3/${name}-initial-overview.png`,
+    animations: 'disabled',
+  });
 
   for (const id of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
     const panel = page.locator('#' + id);
@@ -161,7 +165,7 @@ for (const { name, viewport } of cases) {
   };
   await assertZBreakLayout();
   await page.screenshot({
-    path: `test-results/view-ux-v3/${name}-z-break.png`,
+    path: `test-results/product-review/view-ux-v3/${name}-z-break.png`,
     animations: 'disabled',
   });
   const breakEnabled = page.locator('#sectionCollapseEnabled');
@@ -179,6 +183,10 @@ for (const { name, viewport } of cases) {
   await editor.locator('.section-collapse-advanced > summary').click();
   assert.equal(await page.locator('#sectionCollapseScaleLinked').isChecked(), true);
   await assertZBreakLayout();
+  await page.screenshot({
+    path: `test-results/product-review/view-ux-v3/${name}-z-break-advanced.png`,
+    animations: 'disabled',
+  });
   await page.keyboard.press('Escape');
   await editor.waitFor({ state: 'hidden' });
   assert.equal(await zButton.getAttribute('aria-expanded'), 'false');
@@ -190,12 +198,12 @@ for (const { name, viewport } of cases) {
     );
   for (const panelId of visiblePanels) {
     await page.locator('#' + panelId).screenshot({
-      path: `test-results/view-ux-v3/${name}-${panelId}.png`,
+      path: `test-results/product-review/view-ux-v3/${name}-${panelId}.png`,
       animations: 'disabled',
     });
   }
   await page.screenshot({
-    path: `test-results/view-ux-v3/${name}-whole.png`,
+    path: `test-results/product-review/view-ux-v3/${name}-whole.png`,
     animations: 'disabled',
   });
   assert.deepEqual(errors, [], name + ': runtime exceptions');
