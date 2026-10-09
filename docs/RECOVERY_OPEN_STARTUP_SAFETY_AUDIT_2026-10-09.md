@@ -11,6 +11,7 @@ Review covers in-workspace Project Open, Mask GDS/OAS import, Welcome staged pro
 - `app.js::importLayoutBuffer` likewise awaited `checkpointWorkspace('pre-import-layout')` without checking the return value before replacing Mask layout/cell/selection. Failed GDS/OAS parsing was already non-mutating; the bug was at the *post-parse pre-replace* guard.
 - A thrown checkpoint error generally stopped Project Open, but the ordinary `false` path silently continued. The post-confirmation in-workspace open did not enforce a successful checkpoint.
 - A failed checkpoint also cleared a queued autosave timer before returning false, potentially leaving existing unsaved edits without a follow-up save attempt. The persistence controller now rearms a pending dirty/view autosave on refusal while write ownership is retained.
+- The original checkpoint path checked the tab's autosave lease only before async worker packing/IndexedDB commit. A second tab could take over during the await, after which the first tab incorrectly treated a completed checkpoint as permission to replace its live workspace. The final response now also verifies the live lease and refuses replacement after ownership loss.
 
 ## Startup boundary: why a naive guard would break Welcome
 
@@ -43,6 +44,7 @@ Added/adjusted Node tests in `site/tests/project-controller-recovery.test.mjs` a
 - protected Welcome open bypasses the not-ready second checkpoint;
 - startup controller explicitly passes protected context for staged project, staged layout and example;
 - layout open passes the context to the same import pipeline (ordinary default remains false).
+- a simulated lease takeover during an otherwise successful asynchronous Recovery task fails closed; unchanged lease still permits the normal path.
 
 The Chromium `scripts/persistence-regression.mjs` suite now also injects a real IndexedDB-open failure after an owned workspace is initialized, attempts confirmed Project Open and an actual OAS Mask import, and compares the exported current model, Mask layout and snapshots before/after. It also starts with a dirty project name, restores IndexedDB availability, verifies the pending autosave completes, and reloads to prove the edit survived. It asserts both visible failure statuses and no uncaught page errors. This tests the real import worker/controller/UI/Recovery pipeline, rather than relying only on source assertions.
 
