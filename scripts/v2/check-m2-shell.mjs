@@ -421,6 +421,29 @@ try {
   assert.equal(await evaluate(`Boolean(document.querySelector('dialog[open]'))`), true);
   await click('dialog[open] [data-action="dialog-cancel"]');
   assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit);
+  // Shared Dialog lifecycle: Escape closes and returns focus to its owning button.
+  await click('[data-action="template-preview"]');
+  assert.equal(await evaluate("Boolean(document.querySelector('dialog[open]'))"), true);
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27,
+  });
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27,
+  });
+  await waitFor(async () => evaluate("document.querySelector('dialog[open]')===null"), 'dialog Escape');
+  assert.equal(await evaluate(
+    "document.activeElement?.dataset.action==='template-preview'"), true);
+  const toast = await evaluate(`(() => {
+    const overlay=window.WaferCadV2ActiveOverlays;
+    const node=document.createElement('span');
+    node.textContent='M2.5 status';
+    overlay.mount('toast',{content:node,id:'m25-test-toast'});
+    const mounted=document.querySelector('[data-slot="portal.toast"] #m25-test-toast');
+    overlay.close('toast');
+    return Boolean(mounted && !mounted.isConnected);
+  })()`);
+  assert.equal(toast, true);
+  record('shared Dialog Escape/focus restoration and Toast mount/close');
   record(
     'Recipe add/delete and independent undo/redo; template replacement requires explicit confirmation',
   );
