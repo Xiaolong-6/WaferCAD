@@ -94,6 +94,9 @@ export async function buildMagic1000() {
     model, section: { a: [-10, 4], b: [10, 4] },
   });
   root.name = 'MAGIC-1000 MoS2 / four-level BEOL · local reconstruction';
+  // Transparent inspection is essential: an opaque blanket dielectric would hide
+  // every buried M1–M4 interconnect and W via in the Welcome 3D preview.
+  root.display.threeOpacity = 0.36;
   root.layout = makeLayout();
   root.maskSourceMode = 'file';
   root.activeCell = root.layout.root;
