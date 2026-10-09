@@ -1,105 +1,110 @@
-# Transparency Renderer v2 — measured progress and exact-index trial (2026-10-09)
+# Transparency Renderer v2 — measured acceptance and rejected trial (2026-10-09)
 
-**Status: branch-only, not merge-ready.** PR #164:
-https://github.com/Xiaolong-6/WaferCAD/pull/164.
-Starting base: `main` `fbbb2f9f3a585574e20ed706c34653164f13440c`.
-The branch must be reviewed against the newer `main` before integration.
+**Status: branch-only, pending visual review and latest-main integration.**
+PR: [#164](https://github.com/Xiaolong-6/WaferCAD/pull/164).
+Starting baseline: `main` at `fbbb2f9f3a585574e20ed706c34653164f13440c`.
 
-## Baseline and completed first candidate
+## Problem
 
-The canonical full-wafer array contains 625 sites and 1,885 render instances.
-Historical software-WebGL reference (PR #155): Quality cold **35.50 s**,
-Quality warm **34.67 s**, Fast far-field **12.24 s**, and Quality
-approximately **59.96 M submitted triangles**.
+Native Fig3 full-wafer: 625 sites, 1,885 renderer instances. The exact
+Quality transparent path submits approximately 60 million triangles in software
+WebGL. This is GPU/WebGL vertex and raster throughput work rather than mainly
+CPU scene assembly. The reference 15 s cold Quality and 6 s Fast targets remain
+**aspirational, non-blocking performance targets**; scientific correctness and
+input responsiveness remain blocking.
 
-The first candidate (`0fce42cf05d1b171cd5f1472b3fa1371adf09eae`)
-requested Three.js transparent `DoubleSide.forceSinglePass` **only on smooth
-single-Z material caps in a transparent scene**. Rough surfaces, sidewalls,
-Implant and Electrical Region volumes and ROI cuts keep the original two-pass
-policy. The physical material geometry, canonical topology and export remain
-unchanged.
+## Accepted candidate — smooth planar material-cap single pass
 
-CI on that exact candidate reported:
+Transparent Three.js `DoubleSide` normally renders distinct back and front
+passes. For strictly smooth, single-Z-plane **material caps** in an active
+transparent scene, the second pass contributes no additional visible faces.
+`site/transparent-pass-policy.js` explicitly scopes `forceSinglePass` to
+these material caps. It retains DoubleSide shading and does not enable the
+policy for opaque scene variants, sidewalls, rough surfaces, Electrical Region
+or Implant volumes, or ROI cuts.
 
-| Scenario | Historical reference | Candidate | Context |
-| --- | ---: | ---: | --- |
-| Quality transparency, cold complete frame | 35.50 s | 31.13 s | Approx. 12% lower wall time |
-| Quality transparency, warm complete frame | 34.67 s | 30.21 s | Approx. 13% lower wall time |
-| Fast far-field transparent complete frame | 12.24 s | 11.91 s | Approx. 3% lower wall time |
-| Quality scene submitted triangles | ~59.96 M | 57.04 M | Fewer back/front cap submissions |
-| Fast far-field submitted triangles | 18.35 M | 16.91 M | Fewer cap submissions |
+The physical Kernel geometry, stored model, Process/Recipe, History, migration,
+Recovery and GLB export are unchanged. The frontend exposes
+`sceneSinglePassCapObjects` and `sceneSavedCapTriangleSubmissions` (an
+**estimate** of removed duplicate cap submissions, not elapsed GPU time).
+Policy tests, 625-site variant-swap assertions and benchmark fields were
+added without weakening earlier scientific regression gates.
 
-The reference and candidate come from separate CI runs, not controlled
-paired trials; they demonstrate improvement *suggestively*, not a hardware-
-independent speedup guarantee. The 15 s Quality / 6 s Fast goals are
-**not met**. Elapsed stage timers wait for a completed WebGL frame and browser
-compositor, not just `renderState=ready`.
+### Reference comparison (Linux Chromium software WebGL)
+
+| Indicator | Previous integrated baseline | Single-pass cap candidate | Indexing experiment (rejected) |
+| --- | ---: | ---: | ---: |
+| Quality cold first **completed** frame | 35.50 s | **31.13 s** | 33.42 s |
+| Quality warm transparent swap | 34.67 s | **30.21 s** | 32.50 s |
+| Fast far transparent first frame | 12.24 s | **11.91 s** | 12.05 s |
+| Quality submitted triangles | ~59.96 M | **57.04 M** | 57.04 M |
+| Fast far submitted triangles | 18.35 M | **16.91 M** | 16.91 M |
+
+Numbers come from **different** CI executions, not a strict paired
+on-machine A/B benchmark. They are useful evidence of relative behavior, not
+device-independent guarantees. Timings include the browser's actual completed
+frame, using `rendererFrameSerial` instead of stopping at
+`renderState=ready`.
+
+- Integrated benchmark baseline: [PR #155](https://github.com/Xiaolong-6/WaferCAD/pull/155).
+- Single-pass candidate Browser 625-site/edge-on full **PASS**:
+  [run 37906605619](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605619)
+  (variant timing: 31,126.6 ms cold, 30,210.4 ms warm; Fast far 11,911 ms).
+- Same candidate Native Fig3 full replay **PASS**:
+  [run 37906605618](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605618).
+- Same candidate Example Recipe Run All **PASS**:
+  [run 37906605651](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605651).
+- Same candidate Quality **PASS**:
+  [run 37902406319](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37902406319).
+
+The 625-site resource and repeated-opacity-switch assertions passed.
+The first optimization's speed benefit remains **modest** and does not meet
+the 15 s Quality or 6 s Fast goals.
+
+## Rejected experiment — IEEE754-bit-exact indexed vertices
+
+A follow-up added `renderer-exact-index.js` to deduplicate repeated vertex
+attributes (position, normal and optional annotation depth) by exact Float32
+bits without changing topology, triangle order, or draw sort. New diagnostics
+indicated approximately 47.5 million **logical** repeated vertex attributes
+could be avoided in exact Quality. Actual submitted triangles stayed at
+57.04 million.
+
+The new candidate's full, frame-accurate 625-site/20-toggle regression **PASS**
+and all functional test workflows **PASS**, yet its performance was **worse**
+than the single-pass baseline: 33,418 ms cold, 32,501 ms warm, and 12,047 ms
+Fast far. Therefore the experiment **was reverted**, including runtime
+integration, diagnostic counters, isolated module and related tests. Its
+results remain documented as a negative benchmark. Do not reintroduce
+indexing solely because unit tests pass or the vertex reuse counter is large.
 
 Evidence:
-- Quality PASS: https://github.com/Xiaolong-6/WaferCAD/actions/runs/37902406319
-- Real Chromium targeted PASS and exact edge-on 625-site PASS:
-  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605619
-- Full 625-site array renderer and 20-toggle resource/state stress PASS:
-  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605619
-- Native Fig3 replay PASS:
-  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605618
-- All Example Recipe Run All jobs PASS:
-  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37906605651
+- [Full 625-site browser run 37909092971](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37909092971)
+- [Native Fig3 replay 37909092859](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37909092859)
+- [Recipe reconstruction 37909093029](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37909093029)
+- [Quality 37909076955](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37909076955)
 
-## Second candidate — lossless repeated-vertex indexing
+No canonical data, baseline screenshots, API contract or physical export
+format were modified. No visual baselines were replaced.
 
-The follow-up in the same PR adds
-`site/renderer-exact-index.js` and `site/tests/renderer-exact-index.test.mjs`.
-On sufficiently repeated **transparent instanced** material-interface and
-Electrical Region templates, it indexes only vertices with **bit-identical
-Float32 position, normal and optional annotationDepth attributes**. Both
-triangle order and the original per-triangle attributes survive expansion.
-No tolerance, polygon merge, approximate coordinate snap, physical topology
-change, material sort change or GLB-export path is used. Ineligible templates
-(e.g. rough GPU displacement, unfamiliar attributes, groups, geometry over
-65535 vertices, insufficient reuse) remain non-indexed. Opaque scenes keep
-their previous geometry representation.
+## Remaining integration and acceptance
 
-The viewport now exposes `sceneExactIndexedArrayObjects` and
-`sceneExactIndexedLogicalVerticesSaved`; these are **estimated repeated
-vertex attributes avoided, not measured shader invocations or GPU frame
-milliseconds**. The 625-site acceptance asserts these are populated for
-transparent Quality, absent for opaque, and stable after a cached variant swap.
-The pipeline benchmark exposes both counters. Existing triangle counts must
-stay unchanged after indexing.
+1. Confirm the **rollback HEAD** again passes Quality and applicable Chromium
+   regressions. Previous candidate evidence is not a substitute for a new
+   commit's checks; identical runtime sources can be verified by diff.
+2. Current `main` advanced substantially while the branch was active.
+   Review and integrate without force-push, checking for concurrent changes
+   and re-running affected tests. No previous branch commit is auto-merged.
+3. Review matching-camera screenshots for opaque, Quality transparency,
+   Fast far, edge-on, near/ROI, buried Electrical/Implant volumes, rough and
+   conformal seams, and borders. Passing edge-on structural checks alone
+   is not a declaration of pixel-identical scientific visual parity.
+4. Future larger gains require material/geometry ownership-aware **medium/far
+   screen-space LOD or GPU raster improvements**, retaining exact near/ROI,
+   annotation visibility, section Z-collapse and canonical data. Re-profile
+   before adding another expensive optimization or silently relaxing gates.
+5. Record commit SHA, exact commands and latest CI result before a merge
+   decision. Do not manually dispatch expensive workflows, force-push,
+   weaken assertions or overwrite screenshots merely to satisfy CI.
 
-At second-candidate head `1d31da5a45ef9a433e2ecc5e449cfe00a83a9c75`:
-- Quality (lint, docs and Node tests) PASS:
-  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37908562444
-- Targeted Chromium Browser PASS:
-  https://github.com/Xiaolong-6/WaferCAD/actions/runs/37908562442
-- Full 625-site and edge-on acceptance **not yet rerun on this new head**
-  while Draft; do not transfer the earlier candidate's performance timings
-  to the indexed candidate.
-
-## Remaining release gates
-
-1. Once code/doc review is complete, mark PR ready for review to run existing
-   dedicated 625-site array, edge-on and example/replay CI, without manually
-   dispatching costly workflows. Read the **new head's** log timings.
-2. Preserve exact near/edge-on/ROI surfaces, buried-material and Implant/
-   Electrical visibility, smooth/rough interfaces, conformal profiles,
-   transparency blending, borders, and source screenshot parity. Reviewer
-   visual acceptance still requires actual side-by-side captures; a green
-   structural CI alone is not proof of visual equivalence.
-3. Check cold/warm complete-frame elapsed time, actual submitted triangles,
-   draw calls, geometry and material counts, 20 opacity swaps, and camera
-   response. An indexed template may improve vertex throughput while leaving
-   triangle count unchanged; measure both separately.
-4. Reconcile the upstream `main` commits before merge. The 58 commits after
-   the base were checked at the previous comparison and had no overlap in
-   the renderer files; check again near integration because other agents are
-   active. Never force-push.
-5. Keep 15 s Quality and 6 s Fast as stretch performance targets; **never
-   weaken scientific geometry, visibility or input-responsiveness gates**.
-   Revert the indexed candidate if it degrades total completion time or
-   rendering correctness.
-
-No local Node/Chromium workspace was accessible. Validation above is from
-the exact cited GitHub-hosted CI runs. No visual baseline was replaced.
-**No merge or deployment has been performed.**
+**Merge status: not merged.**
