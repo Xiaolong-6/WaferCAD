@@ -145,6 +145,13 @@ export async function buildMagic1000() {
   // Transparent inspection is essential: an opaque blanket dielectric would hide
   // every buried M1–M4 interconnect and W via in the Welcome 3D preview.
   root.display.threeOpacity = 0.36;
+  // Low-oblique view exposes stacked BEOL sidewalls while retaining the top FET pair.
+  // Camera affects presentation only; XY and Z process geometry remain untouched.
+  root.display.threeCamera = {
+    position: [64, -72, 29],
+    target: [0, 0, 2.1],
+    fov: 34,
+  };
   root.layout = makeLayout();
   root.maskSourceMode = 'file';
   root.activeCell = root.layout.root;
