@@ -44,6 +44,24 @@ test('Wiki image assets match every in-app Process illustration', async () => {
   }
 });
 
+test('Conformal Deposit and Extend schematics have a single joined corner profile', () => {
+  for (const [id, outline, color] of [
+    ['deposit-conformal', 'M6 27H98V49H214V57H90V35H6Z', '#e0b36a'],
+    ['extend-conformal', 'M6 18H99V48H214V57H90V35H6Z', '#79b29b'],
+  ]) {
+    const after = processGuideSvg(id, true);
+    assert.ok(
+      after.includes('<path d="' + outline + '" fill="' + color + '"/>'),
+      id + ': coating must span both top and bottom corners as one contiguous polygon',
+    );
+    assert.equal(
+      after.split('fill="' + color + '"').length - 1,
+      1,
+      id + ': the coating must be one connected SVG shape',
+    );
+  }
+});
+
 test('release modes are visually distinct and Implant fades with depth', () => {
   assert.notEqual(processGuideSvg('etch-isotropic', true), processGuideSvg('etch-undercut', true));
   assert.match(processGuideSvg('implant', true), /linearGradient/);
