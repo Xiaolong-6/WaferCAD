@@ -169,7 +169,7 @@ function segmentIntersectionT(a, b, c, d) {
   return Math.max(0, Math.min(1, t));
 }
 
-function clipPolyline(points, clip) {
+export function clipPolyline(points, clip) {
   if (!clip || !Array.isArray(points) || points.length < 2) return points?.length ? [points] : [];
   const pieces = [];
   let current = null;
