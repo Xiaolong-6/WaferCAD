@@ -939,6 +939,7 @@ await guardPage.waitForFunction(
 );
 const beforeFailedOpen = await exportCurrentProject(guardPage);
 await openFunctionPanel(guardPage, 'project');
+await guardPage.locator('#projectNameInput').fill('Pending work survives failed checkpoint');
 await guardPage.evaluate(() => {
   const realOpen = indexedDB.open.bind(indexedDB);
   globalThis.__restoreRecoveryOpenForTest = () => {
@@ -983,6 +984,20 @@ assert.deepEqual(afterFailedOpen.layout, beforeFailedOpen.layout);
 assert.deepEqual(afterFailedOpen.snapshots, beforeFailedOpen.snapshots);
 // Injected storage exceptions are handled locally by the visible task, not
 // emitted as uncaught browser errors. This assertion protects that contract.
+// A failed checkpoint may not cancel the pending autosave permanently.
+await guardPage.waitForFunction(
+  () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  null,
+  { timeout: 30000 },
+);
+await guardPage.reload();
+await waitForAppReady(guardPage);
+await guardPage.waitForFunction(
+  () => document.getElementById('projectNameInput')?.value ===
+    'Pending work survives failed checkpoint',
+  null,
+  { timeout: 30000 },
+);
 assert.deepEqual(guardErrors, []);
 await guardContext.close();
 
