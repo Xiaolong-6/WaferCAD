@@ -334,7 +334,7 @@ export async function buildMagic1000() {
     'W gate not exposed for dielectric');
   bookmark('05 Planarized W bottom gates');
 
-  deposit('ALD HfO2 gate dielectric 10nm', 'ALD HfO2 10nm', 0.01);
+  deposit('ALD HfO2 gate dielectric 10nm', 'ALD HfO2 10nm', 0.01, null, 'conformal');
   record('BCl3 patterned HfO2 gate-access openings (off representative section)',
     'etch',
     'Paper reports HfO2 contact openings; not drawn through active W gate as their coordinates are unpublished.');
@@ -372,7 +372,7 @@ export async function buildMagic1000() {
   execute('D-mode n-doping electrical annotation (non-physical)',
     'electrical', {
       name: 'D-mode MoS2 n-doped / threshold-shift annotation',
-      depth: 0.0007, regionType: 'n-doped', source: 'doped',
+      depth: 0.0007, regionType: 'n-type', source: 'doped',
     }, 23);
   record('TMA soaking cycles to adjust MoS2 D-mode threshold', 'custom',
     'The paper tunes Vth by ALD TMA soak cycles; the exact cycles for each patterned transistor are not supplied.');
