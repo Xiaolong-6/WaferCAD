@@ -176,26 +176,30 @@ test('workstation visual system keeps scientific controls visually unified', () 
   assert.match(style, /\.statusbar\[data-level='warning'\]/);
 });
 
-test('Mask topography reference is dashed and all scientific header controls share one style', () => {
+test('view headers use shared explicit modes, Display and More controls', () => {
   assert.match(planRenderers, /ctx\.setLineDash\(\[4, 3\]\)/);
   assert.match(planRenderers, /ctx\.setLineDash\(\[7, 4\]\)/);
-  assert.match(style, /\/\* Unified scientific header controls \*\//);
-  assert.match(style, /\.view-head \.mini-btn,[\s\S]*?\.view-head \.three-control/);
-  assert.match(style, /\.view-head \.section-view-tools[\s\S]*?gap: 2px/);
-  assert.match(style, /View header controls share one physical box model/);
-  assert.match(style, /max-height: 21px/);
-  assert.match(style, /\.view-head \.three-border-toggle > span[\s\S]*?color: inherit/);
-  assert.match(html, /id="threePanel"[\s\S]*?class="mini-btn three-control"/);
-  assert.match(style, /\.view-head \.mini-btn\.active/);
-  assert.match(workstationStyle, /\.view-head \.three-border-toggle:has\(input:checked\)/);
-  assert.match(workstationStyle, /\.view-head \.mini-btn\.active/);
-  assert.match(workstationStyle, /\.view-head details\[open\] > summary/);
+  assert.match(style, /View UX v3: shared mode, popover and responsive header language/);
+  assert.match(style, /\.view-mode-select/);
+  assert.match(workstationStyle, /View UX v3/);
+  for (const id of ['mainPanel', 'maskPanel', 'threePanel', 'sectionPanel']) {
+    const from = html.indexOf(`id="${id}"`);
+    const next = html.indexOf('<section class="view-panel"', from + id.length);
+    const markup = html.slice(from, next === -1 ? undefined : next);
+    assert.match(markup, /view-more-control/, `${id}: missing More`);
+  }
+  assert.match(html, /<select id="maskSourceToggleBtn"/);
+  assert.match(html, /<select id="threeFastBtn"/);
+  assert.match(html, /<select id="sectionScaleModeBtn"/);
   assert.match(html, /id="threeBorders"[^>]*aria-label="Show 3D borders"/);
+  assert.match(html, /id="sectionCollapseAxisBtn"[^>]*>Z Break<\/button>/);
+  assert.match(html, /id="sectionCollapseEnabled"/);
+  assert.match(html, /id="sectionCollapseTopInput"/);
+  assert.match(html, /id="sectionCollapseBottomInput"/);
+  assert.doesNotMatch(html, /sectionCollapseMinus|sectionCollapsePlus|sectionCollapseStep/);
   assert.doesNotMatch(html, /three-border-status/);
-  assert.doesNotMatch(style, /content: ['"](?:ON|OFF)['"]/);
-  assert.match(workspaceActions, /button\.classList\.add\('active'\)/);
-  assert.match(html, /id="maskSourceToggleBtn"\s+class="mini-btn active"/);
-  assert.match(html, /id="sectionScaleModeBtn"\s+class="mini-btn active"/);
+  assert.match(workspaceActions, /button\.value = fast \? 'fast' : 'quality'/);
+  assert.match(planRenderers, /scaleButton\.value = sectionScaleMode/);
 });
 
 test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
