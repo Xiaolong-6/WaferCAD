@@ -288,7 +288,7 @@ export function createProductLayoutChecks({ capture }) {
     );
     assert.ok(
       popup.y >= panel.y && popup.y + popup.height <= panel.y + panel.height,
-      `${selector}: vertically clipped`,
+      `${selector}: vertically clipped (popover=${JSON.stringify(popup)}, panel=${JSON.stringify(panel)})`,
     );
   }
 
