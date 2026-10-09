@@ -105,6 +105,40 @@ projection and nearer translated instances require per-owner/tile
 clip-space error bounds, verified transparent color/occlusion and
 near/ROI/edge-on restoration before Phase B can remove even one triangle.
 
+## Phase A.2 — bounded real-camera projection sampling (current work)
+
+An independently testable pure diagnostic,
+`site/renderer-v3-projection-probe.js`, samples candidate *buried smooth*
+translated material sidewall quads using the actual Three.js perspective
+camera, viewport pixels, and the effective Section Z-display transform,
+including its scale and hidden Z intervals. It records actual projected
+pixel dimensions rather than inferring visibility from physical film
+thickness at the camera target.
+
+It samples no more than **32 owners × 8 representative parts × 5 translated
+instances**, reports the observed subpixel/offscreen portions, and ranks
+owners by their **raw, unmerged two-pass triangle upper bound**. Raw triangles
+are deliberately labelled an upper bound (not measured GPU triangles);
+samples are deliberately labelled samples (not a proof for every instance).
+Even with active Z-collapse, the diagnostic can record the truly *visible*
+remaining sidewalls while the older Phase A reduction-eligibility gate
+remains `z-collapse`. It never changes geometry, masks, Z cuts, material
+alpha, transparent sort order, GLB or canonical scientific data.
+`v3SkippedTriangles` must remain zero in every mode.
+
+The 625-site regression now insists on a meaningful projected workload
+measurement at the saved far camera, and on correct zero readings for
+opaque/Quality cached variants. Unit tests cover display-Z magnification,
+Section collapse, camera clipping, exterior/rough/unique wall exclusions,
+deterministic sampling and exact lack of source mutation.
+
+**Next decision gate:** compare `v3ProjectionTopOwners`, sampled projected
+width/height, sample counts and actual `rendererDrawTriangles` on a complete
+625-site software-WebGL run. Only implement any actual GPU LOD after measuring
+full perspective error bounds per tile/owner, color accumulation, overlapping
+layer ownership, and restored near/ROI/edge-on/Section behavior. Do not
+extrapolate a 160-sample candidate histogram to an exact triangle saving.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
