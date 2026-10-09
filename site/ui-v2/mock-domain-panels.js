@@ -32,6 +32,7 @@
         coverage: [
           ['direct', 'Directional'],
           ['conformal', 'Conformal'],
+          ['transfer', 'Transfer / Laminate'],
         ],
         placement: [
           ['follow', 'Follow surface'],
@@ -40,6 +41,8 @@
         profile: [
           ['directional', 'Directional'],
           ['isotropic', 'Isotropic release'],
+          ['planarize', 'Planarize / CMP'],
+          ['undercut', 'Undercut release'],
         ],
         regionType: [
           ['p-type', 'p-type'],
@@ -124,9 +127,59 @@
           ),
           button('Review recovery', 'recovery', 'history'),
           button('Export UI draft', 'save', 'export'),
-          button('Rebuild Base…', 'base-rebuild', 'history'),
         ),
       ];
+    }
+    function basePanel() {
+      const draft = state.baseDraft || currentModel();
+      return el(
+        'section',
+        { class: 'p-base-editor', 'aria-label': 'Base draft' },
+        el('h3', {}, 'Base'),
+        select(
+          'Shape',
+          'baseShape',
+          [
+            ['rect', 'Rectangle'],
+            ['circle', 'Circle'],
+          ],
+          state.baseShape || 'rect',
+        ),
+        el(
+          'div',
+          { class: 'p-base-fields' },
+          ...['width', 'height', 'thickness']
+            .filter((key) => state.baseShape !== 'circle' || key !== 'height')
+            .map((key) =>
+              field(
+                `${state.baseShape === 'circle' && key === 'width' ? 'Diameter' : key[0].toUpperCase() + key.slice(1)} · ${unitName}`,
+                `base:${key}`,
+                displayLength(draft[key]),
+                { type: 'number', step: 'any', min: '0' },
+              ),
+            ),
+        ),
+        state.baseError ? notice(state.baseError, 'error') : null,
+        el(
+          'p',
+          { class: 'p-aux' },
+          'Dimensions are a UI draft; the example model stays unchanged.',
+        ),
+        button('Rebuild Base · simulate', 'base-rebuild', 'history', {
+          primary: true,
+          disabled: Boolean(state.baseError),
+        }),
+        button('Revert draft', 'base-revert', 'undo'),
+        state.baseApplied
+          ? el(
+              'p',
+              { class: 'p-aux' },
+              `Last confirmed draft: ${['width', 'height', 'thickness']
+                .map((key) => displayLength(state.baseApplied[key]))
+                .join(' × ')} ${unitName}`,
+            )
+          : null,
+      );
     }
     function maskPanel() {
       const model = currentModel();
@@ -284,38 +337,34 @@
       const sample = [...data.recipe.steps, ...data.branches.flatMap((b) => b.recipe.steps)].find(
         (s) => s.command === operation,
       )?.params;
-      if (operation === 'deposit')
+      if (operation === 'deposit' || operation === 'extend')
         return [
+          ...(operation === 'deposit'
+            ? [field('Layer name', 'processName', state.processName || 'New layer · draft')]
+            : []),
           select(
             'Coverage',
             'processCoverage',
             [
               ['direct', 'Direct'],
               ['conformal', 'Conformal'],
+              ...(operation === 'deposit' ? [['transfer', 'Transfer / Laminate']] : []),
             ],
             state.processCoverage || sample?.coverage || 'direct',
           ),
-        ];
-      if (operation === 'extend')
-        return [
-          select(
-            'Coverage',
-            'processCoverage',
-            [
-              ['direct', 'Directional'],
-              ['conformal', 'Conformal'],
-            ],
-            state.processCoverage || sample?.coverage || 'direct',
-          ),
-          select(
-            'Placement',
-            'processPlacement',
-            [
-              ['follow', 'Follow surface'],
-              ['flat', 'Flat bridge'],
-            ],
-            state.processPlacement || sample?.placement || 'follow',
-          ),
+          ...(operation === 'deposit' && state.processCoverage === 'transfer'
+            ? [
+                select(
+                  'Placement',
+                  'processPlacement',
+                  [
+                    ['follow', 'Follow surface'],
+                    ['flat', 'Flat bridge'],
+                  ],
+                  state.processPlacement || sample?.placement || 'follow',
+                ),
+              ]
+            : []),
         ];
       if (operation === 'etch')
         return [
@@ -325,19 +374,67 @@
             [
               ['directional', 'Directional'],
               ['isotropic', 'Isotropic release'],
+              ['planarize', 'Planarize / CMP'],
+              ['undercut', 'Undercut release'],
             ],
             state.processProfile || 'directional',
           ),
-          select(
-            'Surface',
-            'processSurface',
-            [
-              ['smooth', 'Smooth'],
-              ['rough', 'Rough'],
-              ['pyramid', 'Pyramid'],
-            ],
-            state.processSurface || sample?.surface?.kind || sample?.surface || 'smooth',
-          ),
+          ...(state.processProfile && state.processProfile !== 'directional'
+            ? []
+            : [
+                select(
+                  'Surface',
+                  'processSurface',
+                  [
+                    ['smooth', 'Smooth'],
+                    ['rough', 'Rough'],
+                    ['pyramid', 'Pyramid'],
+                  ],
+                  state.processSurface || sample?.surface?.kind || sample?.surface || 'smooth',
+                ),
+              ]),
+          ...((!state.processProfile || state.processProfile === 'directional') &&
+          ['rough', 'pyramid'].includes(state.processSurface)
+            ? [
+                field(
+                  `Feature XY · ${unitName}`,
+                  'processFeatureSize',
+                  displayLength(state.processFeatureSize ?? 0.1),
+                  { type: 'number', min: 0, step: 'any' },
+                ),
+                field('Feature CV · %', 'processFeatureCv', state.processFeatureCv ?? 0, {
+                  type: 'number',
+                  min: 0,
+                  max: 100,
+                }),
+                field(
+                  `Height · ${unitName}`,
+                  'processMeanHeight',
+                  displayLength(state.processMeanHeight ?? 0.1),
+                  { type: 'number', min: 0, step: 'any' },
+                ),
+                field('Height CV · %', 'processHeightCv', state.processHeightCv ?? 0, {
+                  type: 'number',
+                  min: 0,
+                  max: 100,
+                }),
+                select(
+                  'Orientation',
+                  'processPolarity',
+                  [
+                    ['inverted', 'Inverted'],
+                    ['normal', 'Normal'],
+                  ],
+                  state.processPolarity || 'inverted',
+                ),
+                field('Seed', 'processSeed', state.processSeed ?? '', {
+                  type: 'number',
+                  min: 0,
+                  max: 4294967295,
+                  step: 1,
+                }),
+              ]
+            : []),
         ];
       if (operation === 'liftoff')
         return [
@@ -367,10 +464,10 @@
             80,
           ),
           stepper(
-            'Illustrative depth · µm',
+            `Illustrative depth · ${unitName}`,
             'processDepth',
-            state.processDepth ?? sample?.depthUm ?? 0.5,
-            0.01,
+            displayLength(state.processDepth ?? sample?.depthUm ?? 0.5),
+            0.01 * unitFactor,
           ),
           notice(
             sample?.name ||
@@ -411,14 +508,22 @@
             state.processRegionSource || sample?.source || 'induced',
           ),
           stepper(
-            'Illustrative depth · µm',
+            `Illustrative depth · ${unitName}`,
             'processDepth',
-            state.processDepth ?? sample?.depthUm ?? 0.05,
-            0.01,
+            displayLength(state.processDepth ?? sample?.depthUm ?? 0.05),
+            0.01 * unitFactor,
           ),
           notice(sample?.name || 'No Electrical step in this source Recipe. UI-only controls.'),
         ];
       return [
+        select(
+          'Record process',
+          'processRecordKind',
+          ['anneal', 'clean', 'oxidation', 'surface-treatment', 'activation', 'custom'].map(
+            (kind) => [kind, kind],
+          ),
+          state.processRecordKind || sample?.process || 'custom',
+        ),
         field(
           'Record label',
           'processRecordLabel',
@@ -440,6 +545,7 @@
           },
         ),
         field('Ambient', 'processAmbient', state.processAmbient || sample?.ambient || ''),
+        field('Note', 'processNote', state.processNote || sample?.note || ''),
       ];
     }
     function processModes(active) {
@@ -460,6 +566,14 @@
     }
     function processPanel() {
       return [
+        state.editOld
+          ? el(
+              'div',
+              { class: 'p-history-edit-context' },
+              notice(`${state.historyEditMode || 'edit'} from ${cursor} · UI draft`),
+              button('Cancel · return to HEAD', 'history-cancel-edit', 'back'),
+            )
+          : null,
         el(
           'div',
           { class: 'p-form' },
@@ -478,12 +592,16 @@
             ],
             state.operation || 'deposit',
           ),
-          select(
-            'Material / target',
-            'material',
-            currentModel().layers.map((l) => [l.id, l.name]),
-            state.material || currentModel().layers.at(-1).id,
-          ),
+          ...(!['record', 'liftoff'].includes(state.operation)
+            ? [
+                select(
+                  'Material / target',
+                  'material',
+                  currentModel().layers.map((l) => [l.id, l.name]),
+                  state.material || currentModel().layers.at(-1).id,
+                ),
+              ]
+            : []),
           ...(!['record', 'liftoff'].includes(state.operation || 'deposit')
             ? [
                 stepper(
@@ -495,33 +613,50 @@
               ]
             : []),
           ...processExtras(),
+          ...(state.operation === 'record'
+            ? []
+            : [
+                select(
+                  'Active face',
+                  'face',
+                  [
+                    ['front', 'Front'],
+                    ['back', 'Back'],
+                  ],
+                  state.face || 'front',
+                ),
+                select(
+                  'Area',
+                  'area',
+                  [
+                    ['mask', 'Selected Mask'],
+                    ['invert', 'Invert Mask'],
+                    ['full', 'Whole face'],
+                  ],
+                  state.area || 'mask',
+                ),
+              ]),
           select(
-            'Active face',
-            'face',
+            'Also add to Recipe',
+            'processAddToRecipe',
             [
-              ['front', 'Front'],
-              ['rear', 'Rear'],
+              ['false', 'No'],
+              ['true', 'Yes · draft'],
             ],
-            state.face || 'front',
-          ),
-          select(
-            'Area',
-            'area',
-            [
-              ['mask', 'Selected Draw mask'],
-              ['full', 'Full wafer'],
-              ['roi', 'ROI'],
-            ],
-            state.area || 'mask',
+            state.processAddToRecipe || 'false',
           ),
           el('span', { id: 'p-units', class: 'p-aux' }, `Input unit: ${unitName}`),
           button('Apply · simulate', 'apply', 'play', {
             primary: true,
             disabled:
               Boolean(state.task) ||
-              (state.operation !== 'liftoff' && state.thickness != null && state.thickness <= 0),
+              (!['record', 'liftoff'].includes(state.operation) &&
+                state.thickness != null &&
+                (!Number.isFinite(state.thickness) || state.thickness <= 0)),
           }),
-          state.operation !== 'liftoff' && state.thickness != null && state.thickness <= 0
+          !['record', 'liftoff'].includes(state.operation) &&
+            state.thickness != null &&
+            (!Number.isFinite(state.thickness) || state.thickness <= 0)
             ? notice('Enter a positive thickness / depth before Apply.', 'error')
             : null,
           el(
@@ -558,7 +693,7 @@
             'div',
             { class: 'p-recipe-toolbar' },
             select(
-              'Add step',
+              'Operation',
               'recipeAddKind',
               [
                 ['deposit', 'Deposit'],
@@ -573,8 +708,12 @@
               state.recipeAddKind || 'deposit',
             ),
             button('Add step', 'add-step', 'plus'),
-            button('Undo edit', 'recipe-undo', 'undo', { disabled: !state.recipeUndo }),
-            button('Redo edit', 'recipe-redo', 'redo', { disabled: !state.recipeRedo }),
+            el(
+              'div',
+              { class: 'p-actions p-recipe-edits', role: 'toolbar', 'aria-label': 'Recipe edits' },
+              button('Undo edit', 'recipe-undo', 'undo', { disabled: !state.recipeUndo }),
+              button('Redo edit', 'recipe-redo', 'redo', { disabled: !state.recipeRedo }),
+            ),
           ),
           el(
             'div',
@@ -611,6 +750,21 @@
                 'div',
                 { class: 'p-form', 'data-step-editor': selected.id },
                 el('strong', {}, `Edit step ${activeStep + 1} · ${selected.id}`),
+                select(
+                  'Operation',
+                  'stepCommand',
+                  [
+                    'deposit',
+                    'extend',
+                    'etch',
+                    'liftoff',
+                    'implant',
+                    'electrical',
+                    'record',
+                    'snapshot',
+                  ].map((kind) => [kind, kind]),
+                  selected.command,
+                ),
                 field('Material / label draft', 'stepLabel', stepTitle(selected)),
                 ...(selected.params.thicknessUm != null || selected.params.depthUm != null
                   ? [
@@ -630,6 +784,33 @@
                       ) && ['string', 'number', 'boolean'].includes(typeof value),
                   )
                   .map(([key, value]) => recipeParameter(key, value)),
+                typeof selected.params.surface === 'object' && selected.params.surface
+                  ? el(
+                      'fieldset',
+                      { class: 'p-form' },
+                      el('legend', {}, 'Surface draft'),
+                      ...Object.entries(selected.params.surface).map(([key, value]) => {
+                        const physical = ['featureSize', 'meanHeight'].includes(key);
+                        return field(
+                          `${key}${physical ? ` · ${unitName}` : ''}`,
+                          `step-surface:${key}`,
+                          physical ? displayLength(value) : value,
+                          typeof value === 'number' ? { type: 'number', step: 'any' } : {},
+                        );
+                      }),
+                    )
+                  : null,
+                selected.params.mask
+                  ? el(
+                      'p',
+                      { class: 'p-aux', 'data-mask-summary': '' },
+                      `Captured Mask · ${selected.params.mask.sourceMode || 'draw'} · ${selected.params.mask.drawMask?.shapes?.length || 0} shapes · ${selected.params.mask.layerKeys?.length || 0} layers`,
+                    )
+                  : null,
+                ['mask', 'invert'].includes(selected.params.area)
+                  ? button('Use current Mask · draft', 'recipe-capture-mask', 'mask')
+                  : null,
+                button('Copy step', 'copy-step'),
                 button('Save step draft', 'save-step', 'save'),
                 button('Run to step', 'run-prefix', 'play'),
               )
@@ -664,8 +845,9 @@
                     'aria-label': `Move step ${i + 1} down`,
                     disabled: i === recipe.steps.length - 1,
                   }),
-                  button('Delete', `delete-step:${i}`, 'close', {
+                  button('', `delete-step:${i}`, 'close', {
                     'aria-label': `Delete step ${i + 1}`,
+                    title: `Delete step ${i + 1}`,
                   }),
                 ),
               ),
@@ -703,6 +885,7 @@
         );
       function renderBranch(tree, depth = 0) {
         const active = branch === tree.branch.id;
+        const collapsed = Boolean(state.historyCollapsed[tree.branch.id]);
         return el(
           'li',
           {
@@ -712,83 +895,174 @@
             'data-branch-id': tree.branch.id,
             'data-depth': depth,
           },
-          historyRow(
-            `${tree.branch.name}${tree.branch.id === 'main' ? ' · Main' : ''}`,
-            `${tree.branch.headNodeId === cursor ? 'HEAD · selected cursor' : `HEAD · ${historyLabel(tree.branch.headNodeId)}`} · from ${tree.origin?.label || 'Base'}`,
-            `branch:${tree.branch.id}`,
-            active,
-            active ? 'active' : '',
-            'branch',
+          el(
+            'div',
+            { class: 'p-history-row-wrap' },
+            button(collapsed ? '›' : '⌄', `history-collapse:${tree.branch.id}`, null, {
+              class: 'p-history-toggle',
+              'aria-label': `${collapsed ? 'Expand' : 'Collapse'} ${tree.branch.name}`,
+              'aria-expanded': String(!collapsed),
+            }),
+            historyRow(
+              `${tree.branch.name}${tree.branch.id === 'main' ? ' · Main' : ''}`,
+              `${tree.steps.length} steps · ${tree.branch.headNodeId === cursor ? 'HEAD · selected cursor' : `HEAD · ${historyLabel(tree.branch.headNodeId)}`} · from ${tree.origin?.label || 'Base'}`,
+              `branch:${tree.branch.id}`,
+              active,
+              active ? 'active' : '',
+              'branch',
+            ),
+            button('', `history-branch-menu:${tree.branch.id}`, 'more', {
+              class: 'p-history-more',
+              'aria-label': `Variant actions for ${tree.branch.name}`,
+              'aria-expanded': String(state.historyBranchMenu === tree.branch.id),
+            }),
+            state.historyBranchMenu === tree.branch.id
+              ? el(
+                  'div',
+                  { class: 'p-history-menu', role: 'menu' },
+                  button('Rename Variant', `history-rename:${tree.branch.id}`, null, {
+                    role: 'menuitem',
+                  }),
+                  button('Return to HEAD', 'history-return-head', null, { role: 'menuitem' }),
+                  button('Delete Variant', `history-delete-branch:${tree.branch.id}`, null, {
+                    role: 'menuitem',
+                    disabled:
+                      tree.branch.id === 'main' ||
+                      allBranches.some((item) => item.parentBranchId === tree.branch.id),
+                    title:
+                      tree.branch.id === 'main'
+                        ? 'Main is protected'
+                        : allBranches.some((item) => item.parentBranchId === tree.branch.id)
+                          ? 'Delete child Variants first'
+                          : 'Delete from UI draft',
+                  }),
+                )
+              : null,
           ),
-          tree.steps.length
-            ? el(
-                'ul',
-                {
-                  class: 'p-history-steps',
-                  role: 'group',
-                  'data-history-list': depth === 0 ? '' : false,
-                },
-                tree.steps.map((step, index) =>
-                  el(
-                    'li',
-                    {
-                      class: 'p-history-step',
-                      role: 'treeitem',
-                      'aria-level': depth * 2 + 2,
-                      'data-step-id': step.node.id,
-                    },
+          collapsed
+            ? null
+            : tree.steps.length
+              ? el(
+                  'ul',
+                  {
+                    class: 'p-history-steps',
+                    role: 'group',
+                    'data-history-list': depth === 0 ? '' : false,
+                  },
+                  tree.steps.map((step, index) =>
                     el(
-                      'div',
-                      { class: 'p-history-row-wrap' },
-                      historyRow(
-                        `${String(index + 1).padStart(2, '0')} · ${step.node.label}`,
-                        `${step.node.kind || step.node.operationKind || 'Step'}${step.node.id === cursor ? ' · Cursor' : ''}${step.node.id === tree.branch.headNodeId ? ' · Branch HEAD' : ''}`,
-                        `history:${step.node.id}`,
-                        step.node.id === cursor,
-                        step.node.id === tree.branch.headNodeId ? 'head' : '',
-                        'step',
-                      ),
-                      button('', `history-menu:${step.node.id}`, 'more', {
-                        class: 'p-history-more',
-                        'aria-label': `Actions for ${step.node.label}`,
-                        'aria-expanded': String(state.historyMenuNode === step.node.id),
-                        title: 'Step actions',
-                      }),
-                      state.historyMenuNode === step.node.id
-                        ? el(
-                            'div',
-                            { class: 'p-history-menu', role: 'menu' },
-                            button('Select as cursor', `history-select:${step.node.id}`, null, {
-                              role: 'menuitem',
-                            }),
-                            button('Restore from here', `history-restore:${step.node.id}`, null, {
-                              role: 'menuitem',
-                            }),
-                            button('Edit from here', `history-edit:${step.node.id}`, null, {
-                              role: 'menuitem',
-                            }),
-                            button(
-                              'Create Variant from here',
-                              `history-variant:${step.node.id}`,
-                              null,
-                              {
+                      'li',
+                      {
+                        class: 'p-history-step',
+                        role: 'treeitem',
+                        'aria-level': depth * 2 + 2,
+                        'data-step-id': step.node.id,
+                      },
+                      el(
+                        'div',
+                        { class: 'p-history-row-wrap' },
+                        historyRow(
+                          `${String(index + 1).padStart(2, '0')} · ${step.node.label}`,
+                          `${step.node.kind || step.node.operationKind || 'Step'}${step.node.id === cursor ? ' · Cursor' : ''}${step.node.id === tree.branch.headNodeId ? ' · Branch HEAD' : ''}`,
+                          `history:${step.node.id}`,
+                          step.node.id === cursor,
+                          step.node.id === tree.branch.headNodeId ? 'head' : '',
+                          'step',
+                        ),
+                        button('', `history-menu:${step.node.id}`, 'more', {
+                          class: 'p-history-more',
+                          'aria-label': `Actions for ${step.node.label}`,
+                          'aria-expanded': String(state.historyMenuNode === step.node.id),
+                          title: 'Step actions',
+                        }),
+                        state.historyMenuNode === step.node.id
+                          ? el(
+                              'div',
+                              { class: 'p-history-menu', role: 'menu' },
+                              button('Select as cursor', `history-select:${step.node.id}`, null, {
                                 role: 'menuitem',
-                              },
+                              }),
+                              button('Restore from here', `history-restore:${step.node.id}`, null, {
+                                role: 'menuitem',
+                              }),
+                              button('Edit from here', `history-edit:${step.node.id}`, null, {
+                                role: 'menuitem',
+                              }),
+                              button(
+                                'Insert before · draft',
+                                `history-insert:${step.node.id}`,
+                                null,
+                                { role: 'menuitem', disabled: !step.node.parentId },
+                              ),
+                              button(
+                                'Continue from here · draft',
+                                `history-continue:${step.node.id}`,
+                                null,
+                                { role: 'menuitem' },
+                              ),
+                              button('Add bookmark', `history-bookmark-add:${step.node.id}`, null, {
+                                role: 'menuitem',
+                              }),
+                              button('Return to HEAD', 'history-return-head', null, {
+                                role: 'menuitem',
+                              }),
+                              button(
+                                'Create Variant from here',
+                                `history-variant:${step.node.id}`,
+                                null,
+                                {
+                                  role: 'menuitem',
+                                },
+                              ),
+                            )
+                          : null,
+                      ),
+                      data.bookmarks.some((item) => item.historyNodeId === step.node.id)
+                        ? el(
+                            'details',
+                            { class: 'p-bookmarks' },
+                            el(
+                              'summary',
+                              {},
+                              `Bookmarks · ${data.bookmarks.filter((item) => item.historyNodeId === step.node.id).length}`,
                             ),
+                            ...data.bookmarks
+                              .filter((item) => item.historyNodeId === step.node.id)
+                              .map((item) =>
+                                el(
+                                  'div',
+                                  { class: 'p-history-bookmark', 'data-bookmark-id': item.id },
+                                  row(
+                                    item.name,
+                                    'Bookmark',
+                                    `history:${step.node.id}`,
+                                    cursor === step.node.id,
+                                  ),
+                                  el(
+                                    'div',
+                                    { class: 'p-actions' },
+                                    button('Rename', `history-bookmark-rename:${item.id}`, null),
+                                    button('Delete', `history-bookmark-delete:${item.id}`, null),
+                                  ),
+                                ),
+                              ),
+                          )
+                        : null,
+                      step.variants.length
+                        ? el(
+                            'ul',
+                            { class: 'p-history-variants', role: 'group' },
+                            step.variants.map((child) => renderBranch(child, depth + 1)),
                           )
                         : null,
                     ),
-                    step.variants.length
-                      ? el(
-                          'ul',
-                          { class: 'p-history-variants', role: 'group' },
-                          step.variants.map((child) => renderBranch(child, depth + 1)),
-                        )
-                      : null,
                   ),
+                )
+              : emptyState(
+                  'No steps in this Variant',
+                  'This draft branch has no saved Steps.',
+                  null,
                 ),
-              )
-            : emptyState('No steps in this Variant', 'This draft branch has no saved Steps.', null),
         );
       }
       return [
@@ -804,13 +1078,6 @@
               { class: 'p-history-context' },
               `Cursor · ${branch} · ${selected?.kind || 'Base'}`,
             ),
-            el(
-              'div',
-              { class: 'p-actions' },
-              button('Restore cursor', 'restore', 'history'),
-              button('Edit step', 'edit-old', 'process'),
-              button('Create Variant', 'create-variant', 'branch'),
-            ),
           ),
           el(
             'div',
@@ -823,23 +1090,6 @@
                 'ul',
                 { class: 'p-history-roots', 'data-variant-list': '' },
                 historyTree.map((tree) => renderBranch(tree)),
-              ),
-            ),
-            el(
-              'details',
-              { class: 'p-bookmarks' },
-              el('summary', {}, `History bookmarks · ${data.bookmarks.length}`),
-              el(
-                'div',
-                { class: 'p-list' },
-                data.bookmarks.map((bookmark) =>
-                  row(
-                    bookmark.name,
-                    bookmark.historyNodeId,
-                    `history:${bookmark.historyNodeId}`,
-                    cursor === bookmark.historyNodeId,
-                  ),
-                ),
               ),
             ),
           ),
@@ -938,6 +1188,6 @@
       );
     }
 
-    return { render: inspector };
+    return { render: inspector, renderBase: basePanel };
   };
 })();

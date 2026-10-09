@@ -134,12 +134,23 @@
     state.recipeRedo = false;
     state.draftUndo = false;
     state.draftRedo = false;
+    state.baseDraft = Object.fromEntries(
+      ['width', 'height', 'thickness'].map((key) => [key, currentModel()[key]]),
+    );
+    state.baseError = null;
+    state.baseApplied = null;
+    state.baseShape = 'rect';
     state.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
     state.maskRoiOpen = false;
     state.legendColors = {};
     state.legendPalette = 'balanced';
     state.legendPaletteOpen = null;
     state.historyMenuNode = null;
+    state.historyBranchMenu = null;
+    state.historyNames = {};
+    state.historyDeletedBranches = [];
+    state.historyCollapsed = {};
+    state.historyBookmarks = structuredClone(data.bookmarks);
     state.roiSettings = {
       x: 0,
       y: 0,
@@ -170,13 +181,21 @@
     delete state.codeDraft;
   }
   const viewPanels = window.createWaferCadV2ViewPanels();
+  const historyBranches = () =>
+    [...data.branches, ...variants]
+      .filter((item) => !state.historyDeletedBranches.includes(item.id))
+      .map((item) => ({ ...item, name: state.historyNames[item.id] || item.name }));
   const domainContext = () => ({
     state,
-    data,
+    data: {
+      ...data,
+      branches: historyBranches(),
+      bookmarks: state.historyBookmarks,
+    },
     recipe,
     cursor,
     branch,
-    variants,
+    variants: [],
     activeStep,
     fileMask,
     currentModel,
@@ -185,7 +204,12 @@
   const registry = window.WaferCadV2ShellRegistry.defaults;
   const adapters = window.WaferCadV2DomainAdapters.create();
   const renderMockPanel = (host) => {
-    const draft = window.createWaferCadV2MockDomainPanels(domainContext()).render();
+    const panels = window.createWaferCadV2MockDomainPanels(domainContext());
+    if (host.dataset.slot === 'panel.base') {
+      host.querySelector(':scope > [data-slot-content]').replaceChildren(panels.renderBase());
+      return;
+    }
+    const draft = panels.render();
     const header = draft.querySelector('.p-panel-head');
     const titleHost = host.closest('.p-inspector')?.querySelector('.p-panel-shell-header');
     if (header && titleHost) titleHost.replaceChildren(...header.childNodes);
@@ -196,16 +220,22 @@
     if (contents && source) contents.replaceChildren(...source.childNodes);
   };
   // Mock presenters implement exactly the M3 lifecycle contract.
-  for (const id of registry.panels.map((name) => `panel.${name}`).concat(
-    registry.processModes.map((name) => `panel.process.${name}`))) {
-    adapters.register(id, window.WaferCadV2DomainAdapters.presentationAdapter({
-      render: renderMockPanel,
-    }));
+  for (const id of registry.panels
+    .map((name) => `panel.${name}`)
+    .concat(registry.processModes.map((name) => `panel.process.${name}`))) {
+    adapters.register(
+      id,
+      window.WaferCadV2DomainAdapters.presentationAdapter({
+        render: renderMockPanel,
+      }),
+    );
   }
   for (const { key } of registry.views) {
     adapters.register(`view.${key}`, {
       mount(host) {
-        const panel = window.createWaferCadV2MockViews({ ...domainContext(), viewPanels }).render(key);
+        const panel = window
+          .createWaferCadV2MockViews({ ...domainContext(), viewPanels })
+          .render(key);
         host.append(panel);
         return panel;
       },
@@ -218,7 +248,10 @@
   }
   let renderAction = null;
   const shell = window.createWaferCadV2Workstation({
-    root, state, adapters, registry,
+    root,
+    state,
+    adapters,
+    registry,
     getProjectName: () => state.projectName || data.name,
     presentation: () => {
       const processChild = ['recipe', 'code', 'diagnostics'].includes(state.domain);
@@ -226,11 +259,17 @@
       return {
         selectedNavigation: panel,
         selectedPanel: panel,
+        visibleNestedPanels: panel === 'project' ? ['base'] : [],
         selectedSubpanel: processChild ? state.domain : 'step',
         emptyInspector: state.domain === 'history' && state.empty && !state.emptyExpanded,
         editorHidden: Boolean(state.editorHidden),
         preserveScroll: Boolean(renderAction && /^(history:|branch:|history-)/.test(renderAction)),
-        scrollSelectors: ['.p-panel-content', '[data-history-scroll]', '[data-history-list]', '[data-variant-list]'],
+        scrollSelectors: [
+          '.p-panel-content',
+          '[data-history-scroll]',
+          '[data-history-list]',
+          '[data-variant-list]',
+        ],
         badge: state.dirty ? 'DRAFT · source unchanged' : 'READ-ONLY SOURCE',
         message: state.message,
         save: 'Mock only · no autosave',
@@ -243,9 +282,13 @@
     shell.render(action);
     renderAction = null;
     if (state.task) {
-      root.querySelectorAll(
-        '.p-panel-content input, .p-panel-content select, .p-panel-content textarea, [data-action^="step:"]',
-      ).forEach((control) => { control.disabled = true; });
+      root
+        .querySelectorAll(
+          '.p-panel-content input, .p-panel-content select, .p-panel-content textarea, [data-action^="step:"]',
+        )
+        .forEach((control) => {
+          control.disabled = true;
+        });
     }
   };
   function presetRecipeFailure() {
@@ -268,8 +311,11 @@
       ),
     );
     return shell.overlays.mount('dialog', {
-      content, id: 'p-dialog', className: 'p-dialog',
-      label: title, trigger: document.activeElement,
+      content,
+      id: 'p-dialog',
+      className: 'p-dialog',
+      label: title,
+      trigger: document.activeElement,
     });
   }
   function closeDialog() {
@@ -328,7 +374,6 @@
         thicknessUm: 0.1,
         coverage: 'direct',
       });
-    if (command === 'extend') params.placement = 'follow';
     if (command === 'etch')
       Object.assign(params, {
         target: currentModel().layers.at(-1)?.name || '',
@@ -347,7 +392,14 @@
       });
     if (command === 'liftoff') Object.assign(params, { sacrificial: 'Resist' });
     if (command === 'record')
-      Object.assign(params, { label: 'New record · draft', process: 'custom' });
+      Object.assign(params, {
+        label: 'New record · draft',
+        process: 'custom',
+        temperatureC: null,
+        durationMin: null,
+        ambient: '',
+        note: '',
+      });
     if (command === 'snapshot') Object.assign(params, { name: 'Review point · draft' });
     return { id, command, params };
   }
@@ -395,9 +447,20 @@
     } else if (key.startsWith('file-layer-visible:')) {
       const id = key.slice('file-layer-visible:'.length);
       state.fileLayersVisible = { ...state.fileLayersVisible, [id]: raw === 'true' };
-    } else if (['thickness', 'processDepth'].includes(key)) {
+    } else if (
+      ['thickness', 'processDepth', 'processFeatureSize', 'processMeanHeight'].includes(key)
+    ) {
       state[key] = length;
-    } else if (['processTilt', 'processTemperature', 'processDuration'].includes(key)) {
+    } else if (
+      [
+        'processTilt',
+        'processTemperature',
+        'processDuration',
+        'processFeatureCv',
+        'processHeightCv',
+        'processSeed',
+      ].includes(key)
+    ) {
       state[key] = raw === '' ? '' : Number(raw);
     } else if (['threeOpacity', 'maskOpacity'].includes(key)) {
       state[key] = Number(raw);
@@ -696,6 +759,7 @@
       state.draftRedo = draftRedoStack.length > 0;
       state.message = 'Workspace draft edit history updated; source project remains unchanged.';
     } else if (kind === 'section-borders') state.sectionBorders = !state.sectionBorders;
+    else if (kind === 'borders') state.borders = !state.borders;
     else if (kind === 'draw-tool') {
       state.drawTool = value;
       state.message = `${value} Draw tool selected; pointer drawing is represented by the local preview controls.`;
@@ -705,17 +769,18 @@
         index = state.drawDraft.length;
       const cx = ((index % 5) - 2) * w * 0.08,
         cy = ((index % 3) - 1) * h * 0.08;
+      const draftId = `draft-${crypto.randomUUID()}`;
       const next = structuredClone(state.drawDraft);
       if (state.drawTool === 'circle')
         next.push({
-          id: `draft-${index + 1}`,
+          id: draftId,
           type: 'circle',
           c: [cx, cy],
           r: Math.min(w, h) * 0.08,
         });
       else if (state.drawTool === 'ring' || state.drawTool === 'ring-sector')
         next.push({
-          id: `draft-${index + 1}`,
+          id: draftId,
           type: state.drawTool,
           c: [cx, cy],
           innerR: Math.min(w, h) * 0.06,
@@ -725,7 +790,7 @@
         });
       else if (state.drawTool === 'polygon')
         next.push({
-          id: `draft-${index + 1}`,
+          id: draftId,
           type: 'polygon',
           points: [
             [cx, cy],
@@ -735,7 +800,7 @@
         });
       else
         next.push({
-          id: `draft-${index + 1}`,
+          id: draftId,
           type: 'rect',
           a: [cx, cy],
           b: [cx + w * 0.1, cy + h * 0.1],
@@ -783,6 +848,13 @@
         'apply-settings',
       );
       return;
+    } else if (kind === 'base-revert') {
+      state.baseDraft = Object.fromEntries(
+        ['width', 'height', 'thickness'].map((key) => [key, currentModel()[key]]),
+      );
+      state.baseShape = 'rect';
+      state.baseError = null;
+      state.baseApplied = null;
     } else if (kind === 'base-rebuild') {
       dialog(
         'Rebuild Base · choose source handling',
@@ -802,6 +874,8 @@
       return;
     } else if (kind === 'base-keep' || kind === 'base-clear-confirm') {
       closeDialog();
+      state.baseApplied = { ...structuredClone(state.baseDraft), shape: state.baseShape };
+      state.dirty = true;
       state.message =
         kind === 'base-keep'
           ? 'Base rebuild draft: source branch would be kept.'
@@ -824,6 +898,26 @@
       activeStep = recipe.steps.length - 1;
       state.dirty = true;
       state.recipeErrors = [];
+    } else if (kind === 'copy-step') {
+      saveRecipeUndoPoint();
+      const step = structuredClone(recipe.steps[activeStep]);
+      step.id = `prototype-step-${crypto.randomUUID()}`;
+      recipe.steps.splice(activeStep + 1, 0, step);
+      activeStep += 1;
+      state.dirty = true;
+    } else if (kind === 'recipe-capture-mask') {
+      saveRecipeUndoPoint();
+      recipe.steps[activeStep].params.mask = {
+        sourceMode: state.maskMode,
+        layerKeys:
+          state.maskMode === 'file'
+            ? Object.keys(state.fileLayersVisible || {}).filter((id) => state.fileLayersVisible[id])
+            : [],
+        transform: structuredClone(state.maskTransform),
+        roi: state.roi ? structuredClone(state.roiSettings) : null,
+        drawMask: { shapes: structuredClone(state.drawDraft) },
+      };
+      state.dirty = true;
     } else if (kind === 'delete-step') {
       saveRecipeUndoPoint();
       recipe.steps.splice(Number(value), 1);
@@ -959,8 +1053,107 @@
       if (color) state.legendColors = { ...state.legendColors, [key]: color };
       state.legendPaletteOpen = null;
       state.dirty = true;
+    } else if (kind === 'history-collapse') {
+      state.historyCollapsed[value] = !state.historyCollapsed[value];
+    } else if (kind === 'history-branch-menu') {
+      state.historyBranchMenu = state.historyBranchMenu === value ? null : value;
+      state.historyMenuNode = null;
+    } else if (kind === 'history-rename' || kind === 'history-bookmark-rename') {
+      const bookmark = kind === 'history-bookmark-rename';
+      const item = (bookmark ? state.historyBookmarks : historyBranches()).find(
+        (entry) => entry.id === value,
+      );
+      if (!item) return;
+      state.historyRenameTarget = { id: value, bookmark };
+      state.historyRenameName = item.name;
+      dialog(
+        bookmark ? 'Rename bookmark · draft' : 'Rename Variant · draft',
+        field('Name', 'historyRenameName', item.name, { maxlength: 256 }),
+        'Save name',
+        'history-rename-confirm',
+      );
+      return;
+    } else if (kind === 'history-rename-confirm') {
+      const name = String(state.historyRenameName || '').trim();
+      if (!name) {
+        const input = root.querySelector('dialog [data-key="historyRenameName"]');
+        input.setCustomValidity('Enter a name.');
+        input.reportValidity();
+        input.focus();
+        return;
+      }
+      const target = state.historyRenameTarget;
+      if (target.bookmark) {
+        const item = state.historyBookmarks.find((entry) => entry.id === target.id);
+        if (item) item.name = name;
+      } else state.historyNames[target.id] = name;
+      closeDialog();
+      state.historyBranchMenu = null;
+      state.dirty = true;
+      state.message = 'Name updated in the UI draft; source IDs and History are unchanged.';
+    } else if (kind === 'history-delete-branch') {
+      const item = historyBranches().find((entry) => entry.id === value);
+      if (!item || value === 'main') return;
+      if (historyBranches().some((entry) => entry.parentBranchId === value)) {
+        state.message = 'Delete child Variants first. This Variant is still referenced.';
+      } else {
+        state.historyDeleteBranch = value;
+        dialog(
+          'Delete Variant from UI draft?',
+          `Remove "${item.name}" from this draft? Source History is preserved; reload restores it.`,
+          'Delete Variant',
+          'history-delete-branch-confirm',
+        );
+        return;
+      }
+    } else if (kind === 'history-delete-branch-confirm') {
+      const id = state.historyDeleteBranch;
+      const item = historyBranches().find((entry) => entry.id === id);
+      if (!item || id === 'main' || historyBranches().some((entry) => entry.parentBranchId === id))
+        return;
+      closeDialog();
+      state.historyDeletedBranches.push(id);
+      variants = variants.filter((entry) => entry.id !== id);
+      if (branch === id) {
+        branch = item.parentBranchId || 'main';
+        cursor = historyBranches().find((entry) => entry.id === branch)?.headNodeId || data.cursor;
+      }
+      state.historyBranchMenu = null;
+      state.dirty = true;
+    } else if (kind === 'history-bookmark-add') {
+      const node = data.history.find((entry) => entry.id === value);
+      if (!node) return;
+      state.historyBookmarks.push({
+        id: `draft-bookmark-${crypto.randomUUID()}`,
+        name: node.label,
+        historyNodeId: value,
+      });
+      state.historyMenuNode = null;
+      state.dirty = true;
+    } else if (kind === 'history-bookmark-delete') {
+      state.historyDeleteBookmark = value;
+      dialog(
+        'Delete bookmark from UI draft?',
+        'The Step remains available. Source bookmarks are unchanged.',
+        'Delete bookmark',
+        'history-bookmark-delete-confirm',
+      );
+      return;
+    } else if (kind === 'history-bookmark-delete-confirm') {
+      closeDialog();
+      state.historyBookmarks = state.historyBookmarks.filter(
+        (item) => item.id !== state.historyDeleteBookmark,
+      );
+      state.dirty = true;
+    } else if (kind === 'history-return-head' || kind === 'history-cancel-edit') {
+      cursor = historyBranches().find((entry) => entry.id === branch)?.headNodeId || data.cursor;
+      state.editOld = false;
+      state.domain = 'history';
+      state.historyMenuNode = null;
+      state.historyBranchMenu = null;
     } else if (kind === 'history-menu') {
       state.historyMenuNode = state.historyMenuNode === value ? null : value;
+      state.historyBranchMenu = null;
     } else if (kind === 'history-select' || kind === 'history-restore') {
       cursor = value;
       const node = data.history.find((entry) => entry.id === value);
@@ -970,7 +1163,11 @@
         kind === 'history-select'
           ? `Inspecting ${value}; source History remains unchanged.`
           : `Restore walkthrough from ${value}; no actual History transaction.`;
-    } else if (kind === 'history-edit') {
+    } else if (
+      kind === 'history-edit' ||
+      kind === 'history-insert' ||
+      kind === 'history-continue'
+    ) {
       cursor = value;
       const node = data.history.find((entry) => entry.id === value);
       if (node?.branchId) branch = node.branchId;
@@ -978,12 +1175,13 @@
       state.domain = 'process';
       state.mobile = 'edit';
       state.editOld = true;
+      state.historyEditMode = kind.slice(8);
       state.message = `Editing from ${value}; Apply creates a prototype Variant and preserves the source branch.`;
     } else if (kind === 'history-variant') {
       cursor = value;
       const node = data.history.find((entry) => entry.id === value);
       if (node?.branchId) branch = node.branchId;
-      const id = `prototype-variant-${variants.length + 1}`;
+      const id = `prototype-variant-${crypto.randomUUID()}`;
       variants.push({
         id,
         name: `Prototype Variant ${variants.length + 1} · from ${value}`,
@@ -1001,7 +1199,8 @@
       state.message = `Inspecting stored ${value}; source History not mutated.`;
     } else if (kind === 'branch') {
       branch = value;
-      const b = [...data.branches, ...variants].find((item) => item.id === value);
+      const b = historyBranches().find((item) => item.id === value);
+      if (!b) return;
       cursor = b.headNodeId;
       if (b.recipe) {
         recipe = structuredClone(b.recipe);
@@ -1016,7 +1215,7 @@
       state.message = `Editing from ${cursor}; Apply requires a new prototype Variant, preserving the source branch.`;
       state.editOld = true;
     } else if (kind === 'create-variant') {
-      const id = `prototype-variant-${variants.length + 1}`;
+      const id = `prototype-variant-${crypto.randomUUID()}`;
       variants.push({
         id,
         name: `Prototype Variant ${variants.length + 1} · from ${cursor}`,
@@ -1067,6 +1266,72 @@
       state.task = null;
       state.failure = null;
       state.dirty = true;
+      if (completed?.kind === 'process' && state.processAddToRecipe === 'true') {
+        saveRecipeUndoPoint();
+        const step = newRecipeStep(state.operation || 'deposit');
+        const params = step.params;
+        if (step.command !== 'record') {
+          params.face = state.face || 'front';
+          params.area = state.area || 'mask';
+        }
+        if (['deposit', 'extend'].includes(step.command)) {
+          params.material =
+            state.processName ||
+            currentModel().layers.find((item) => item.id === state.material)?.name ||
+            params.material;
+          params.thicknessUm = state.thickness ?? 0.07;
+          params.coverage = state.processCoverage || 'direct';
+          if (params.coverage === 'transfer') params.placement = state.processPlacement || 'follow';
+        } else if (step.command === 'etch') {
+          params.target =
+            currentModel().layers.find((item) => item.id === state.material)?.name || params.target;
+          params.thicknessUm = state.thickness ?? 0.07;
+          params.profile = state.processProfile || 'directional';
+          params.surface = state.processSurface || 'smooth';
+          if (['rough', 'pyramid'].includes(params.surface))
+            params.surface = {
+              kind: params.surface,
+              featureSize: state.processFeatureSize ?? 0.1,
+              meanHeight: state.processMeanHeight ?? 0.1,
+              featureCv: (state.processFeatureCv || 0) / 100,
+              heightCv: (state.processHeightCv || 0) / 100,
+              polarity: state.processPolarity || 'inverted',
+              ...(state.processSeed === '' || state.processSeed == null
+                ? {}
+                : { seed: state.processSeed }),
+            };
+        } else if (step.command === 'record')
+          Object.assign(params, {
+            process: state.processRecordKind || 'custom',
+            label: state.processRecordLabel || 'Record draft',
+            temperatureC: state.processTemperature || null,
+            durationMin: state.processDuration || null,
+            ambient: state.processAmbient || '',
+            note: state.processNote || '',
+          });
+        else if (step.command === 'liftoff')
+          params.sacrificial = state.liftoffSacrificial || currentModel().layers.at(-1)?.name || '';
+        else
+          Object.assign(params, {
+            name: state.processName || params.name,
+            depthUm: state.processDepth ?? params.depthUm,
+            ...(step.command === 'implant'
+              ? { tilt: state.processTilt || 0 }
+              : {
+                  regionType: state.processRegionType || params.regionType,
+                  source: state.processRegionSource || params.source,
+                }),
+          });
+        if (['mask', 'invert'].includes(params.area))
+          params.mask = {
+            sourceMode: state.maskMode,
+            transform: structuredClone(state.maskTransform),
+            drawMask: { shapes: structuredClone(state.drawDraft) },
+            layerKeys: [],
+          };
+        recipe.steps.push(step);
+        activeStep = recipe.steps.length - 1;
+      }
       state.message =
         completed?.kind === 'recipe'
           ? `Recipe simulation complete · ${completed.total} steps processed in order. Source model / History unchanged; no scientific execution.`
@@ -1199,6 +1464,24 @@
           : `${view} ${format?.toUpperCase() || ''} export control simulated; no physical image / GLB / detail export produced. Cancel remains available for the local draft.`;
     }
     render(action);
+    if (['history-menu', 'history-branch-menu', 'legend-palette'].includes(kind)) {
+      const menu = root.querySelector('.p-history-menu, .v2-legend-palette');
+      const trigger = root.querySelector(`[data-action="${action}"]`);
+      if (menu && trigger) {
+        menu.popover = 'manual';
+        menu.style.position = 'fixed';
+        menu.style.inset = 'auto';
+        menu.style.top = '0px';
+        menu.style.left = '0px';
+        shell.overlays.adoptPopover(menu, trigger);
+        menu.showPopover();
+        const rect = trigger.getBoundingClientRect(),
+          bounds = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - bounds.width - 8))}px`;
+        menu.style.top = `${Math.max(8, Math.min(rect.bottom + 4, innerHeight - bounds.height - 8))}px`;
+        menu.querySelector('[role="menuitem"]:not([disabled])')?.focus({ preventScroll: true });
+      }
+    }
     if (popupOwner)
       root.querySelector(`[popovertarget="${popupOwner}"]`)?.focus({ preventScroll: true });
     if (kind === 'return-results' && narrow())
@@ -1210,6 +1493,11 @@
   }
   function bindShellUi() {
     root.addEventListener('input', (event) => {
+      if (event.target.dataset.key === 'historyRenameName') {
+        state.historyRenameName = event.target.value;
+        event.target.setCustomValidity('');
+        return;
+      }
       if (event.target.dataset.key !== 'codeDraft') return;
       state.codeDraft = event.target.value;
       state.dirty = true;
@@ -1218,10 +1506,60 @@
       const target = event.target.closest('[data-action]');
       if (target && !target.disabled) handleAction(target.dataset.action, target);
     });
+    root.addEventListener('dblclick', (event) => {
+      const row = event.target.closest('.p-history-row--branch');
+      if (row) handleAction(`history-rename:${row.dataset.action.slice(7)}`, row);
+    });
+    document.addEventListener('pointerdown', (event) => {
+      if (
+        event.target.closest('.p-history-menu, .p-history-more, .v2-legend-palette-anchor, dialog')
+      )
+        return;
+      if (!state.historyMenuNode && !state.historyBranchMenu && !state.legendPaletteOpen) return;
+      state.historyMenuNode = null;
+      state.historyBranchMenu = null;
+      state.legendPaletteOpen = null;
+      root.querySelectorAll('.p-history-menu, .v2-legend-palette').forEach((node) => node.remove());
+      root
+        .querySelectorAll('.p-history-more, .v2-legend-palette-trigger')
+        .forEach((node) => node.setAttribute('aria-expanded', 'false'));
+    });
     root.addEventListener('change', (event) => {
       const key = event.target.dataset.key;
       if (!key) return;
       const value = event.target.value;
+      if (key.startsWith('base:')) {
+        const physical =
+          Number(value) *
+          (state.displayUnit === 'nm' ? 0.001 : state.displayUnit === 'mm' ? 1000 : 1);
+        state.baseDraft[key.slice(5)] = physical;
+        if (state.baseShape === 'circle' && key === 'base:width') state.baseDraft.height = physical;
+        state.baseError = Object.values(state.baseDraft).every(
+          (length) => Number.isFinite(length) && length > 0,
+        )
+          ? null
+          : 'Enter positive Base dimensions.';
+        state.dirty = true;
+        render();
+        return;
+      }
+      if (key === 'baseShape') {
+        state.baseShape = value;
+        if (value === 'circle') state.baseDraft.height = state.baseDraft.width;
+        state.dirty = true;
+        render();
+        return;
+      }
+      if (key === 'stepCommand') {
+        saveRecipeUndoPoint();
+        const step = newRecipeStep(value);
+        step.id = recipe.steps[activeStep].id;
+        recipe.steps[activeStep] = step;
+        state.recipeErrors = [];
+        state.dirty = true;
+        render();
+        return;
+      }
       if (event.target.closest('dialog')) {
         assignMockField(key, value);
         return;
@@ -1230,10 +1568,16 @@
         state.legendPalette = value;
         if (value === 'random') {
           const palette = window.WaferCadV2RandomLegendPalette();
-          const all = [...currentModel().layers.map((item) => ['layer', item]),
-            ...currentModel().annotations.map((item) => ['annotation', item])];
-          state.legendColors = Object.fromEntries(all.map(([kind, item], index) =>
-            [`${kind}:${item.id}`, palette[index % palette.length]]));
+          const all = [
+            ...currentModel().layers.map((item) => ['layer', item]),
+            ...currentModel().annotations.map((item) => ['annotation', item]),
+          ];
+          state.legendColors = Object.fromEntries(
+            all.map(([kind, item], index) => [
+              `${kind}:${item.id}`,
+              palette[index % palette.length],
+            ]),
+          );
         } else state.legendColors = {};
         state.legendPaletteOpen = null;
         state.dirty = true;
@@ -1268,6 +1612,34 @@
             : typeof params[param] === 'boolean'
               ? value === 'true'
               : value;
+        if (param === 'surface' && ['rough', 'pyramid'].includes(value))
+          params.surface = {
+            kind: value,
+            featureSize: 0.1,
+            meanHeight: 0.1,
+            featureCv: 0,
+            heightCv: 0,
+            polarity: 'inverted',
+            seed: 0,
+          };
+        state.dirty = true;
+        return;
+      }
+      if (key.startsWith('step-surface:')) {
+        saveRecipeUndoPoint();
+        const path = key.slice(13),
+          surface = recipe.steps[activeStep].params.surface;
+        surface[path] =
+          typeof surface[path] === 'number'
+            ? Number(value) *
+              (['featureSize', 'meanHeight'].includes(path)
+                ? state.displayUnit === 'nm'
+                  ? 0.001
+                  : state.displayUnit === 'mm'
+                    ? 1000
+                    : 1
+                : 1)
+            : value;
         state.dirty = true;
         return;
       }
@@ -1305,6 +1677,8 @@
         assignMockField(key, value);
       }
       if (key === 'example') useExample();
+      if (key === 'operation' && value === 'extend' && state.processCoverage === 'transfer')
+        state.processCoverage = 'direct';
       if (key === 'layout') {
         state.panelSize = null;
         state.bottomSize = null;
@@ -1313,6 +1687,48 @@
       root.querySelector(`[data-key="${key}"]`)?.focus({ preventScroll: true });
     });
     root.addEventListener('keydown', (event) => {
+      if (event.target.dataset.key === 'historyRenameName') {
+        event.target.setCustomValidity('');
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          handleAction('history-rename-confirm', event.target);
+          return;
+        }
+      }
+      if (
+        event.key === 'Escape' &&
+        !event.target.closest('dialog') &&
+        (state.historyMenuNode || state.historyBranchMenu || state.legendPaletteOpen)
+      ) {
+        const action = state.historyMenuNode
+          ? `history-menu:${state.historyMenuNode}`
+          : state.historyBranchMenu
+            ? `history-branch-menu:${state.historyBranchMenu}`
+            : `legend-palette:${state.legendPaletteOpen}`;
+        event.preventDefault();
+        state.historyMenuNode = null;
+        state.historyBranchMenu = null;
+        state.legendPaletteOpen = null;
+        render('history-close-menu');
+        root.querySelector(`[data-action="${action}"]`)?.focus({ preventScroll: true });
+        return;
+      }
+      const menu = event.target.closest('[role="menu"]');
+      if (menu && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        const items = [...menu.querySelectorAll('[role="menuitem"]')].filter(
+          (item) => !item.disabled,
+        );
+        const index = items.indexOf(document.activeElement);
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? items.length - 1
+              : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+        event.preventDefault();
+        items[next]?.focus();
+        return;
+      }
       const group = event.target.closest('[role="toolbar"]');
       if (!group || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       const buttons = [...group.querySelectorAll('button')].filter(

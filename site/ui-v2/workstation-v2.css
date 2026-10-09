@@ -121,7 +121,7 @@ html[data-ui='v2'] {
   position: relative;
   flex: 0 0 32px;
   width: 32px;
-  margin-left: auto;
+  order: -1;
 }
 .v2-legend-palette-trigger {
   display: grid;
@@ -151,7 +151,7 @@ html[data-ui='v2'] {
   position: absolute;
   z-index: var(--wc-z-popover);
   top: calc(100% + 4px);
-  right: 0;
+  left: 0;
   display: grid;
   grid-template-columns: repeat(4, 32px);
   gap: 4px;
@@ -409,6 +409,7 @@ p {
   display: none;
 }
 .p-panel-content {
+  flex: 1 1 auto;
   padding: var(--wc-space-3);
   overflow: auto;
   min-height: 0;
@@ -427,6 +428,73 @@ p {
   gap: var(--wc-space-3);
   min-width: 0;
   min-height: 0;
+}
+.v2-panel-host > [data-slot-content] > *,
+.v2-panel-subhost > [data-slot-content] > * {
+  flex-shrink: 0;
+}
+.p-base-editor {
+  display: grid;
+  gap: var(--wc-space-3);
+  padding-top: var(--wc-space-3);
+  margin-top: var(--wc-space-3);
+  border-top: 1px solid var(--wc-border);
+}
+.p-base-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--wc-space-2);
+}
+.p-recipe-step {
+  display: flex;
+  align-items: center;
+  gap: var(--wc-space-1);
+  border-bottom: 1px solid var(--wc-border);
+}
+.p-recipe-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--wc-space-2);
+}
+.p-recipe-toolbar > .wc-button {
+  min-height: var(--wc-control-md);
+}
+.p-recipe-edits {
+  grid-column: 1 / -1;
+}
+.p-recipe-edits .wc-button {
+  border-color: transparent;
+  background: transparent;
+}
+.p-recipe-template {
+  display: grid;
+  gap: var(--wc-space-2);
+}
+.p-recipe-step > .p-list-row {
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+}
+.p-recipe-step > .p-actions {
+  flex-wrap: nowrap;
+  gap: 0;
+}
+.p-recipe-step > .p-actions .wc-button {
+  border-color: transparent;
+  padding-inline: 4px;
+  background: transparent;
+}
+.p-recipe-step > .p-actions [data-action^='delete-step:'] .wc-icon {
+  width: 16px;
+  height: 16px;
+}
+.p-recipe-step .p-list-row strong,
+.p-recipe-step .p-list-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .p-actions[aria-label='Process modes'] {
   flex-wrap: nowrap;
@@ -739,6 +807,16 @@ p {
   padding: 0;
   overflow: hidden;
 }
+/* History owns an inner scroller; its persistent ancestor chain must be bounded. */
+.v2-panel-host[data-slot='panel.history'],
+.v2-panel-host[data-slot='panel.history'] > [data-slot-content],
+.v2-panel-host[data-slot='panel.history'] > [data-slot-content] > .p-history-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
 .p-history-workspace {
   display: flex;
   flex: 1 1 auto;
@@ -815,6 +893,19 @@ p {
   width: 16px;
   height: 16px;
 }
+.p-history-toggle {
+  flex: 0 0 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.p-history-bookmark {
+  padding: 4px 8px;
+  border-left: 2px solid var(--wc-border);
+}
+.p-history-edit-context .p-aux {
+  margin: 0;
+}
 .p-history-menu {
   position: absolute;
   z-index: var(--wc-z-popover);
@@ -833,6 +924,16 @@ p {
   min-height: 36px;
   border: 0;
   text-align: left;
+}
+.p-history-menu[popover],
+.v2-legend-palette[popover] {
+  margin: 0;
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+}
+.p-history-menu[popover]:not(:popover-open),
+.v2-legend-palette[popover]:not(:popover-open) {
+  display: none;
 }
 .p-history-row {
   display: grid;

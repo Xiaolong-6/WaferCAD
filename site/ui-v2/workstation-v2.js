@@ -237,6 +237,19 @@
         const host = slots.get(`panel.process.${sub}`);
         if (host) host.hidden = sub !== mode;
       }
+      for (const [child, owner] of Object.entries(registry.nestedPanels || {})) {
+        const id = `panel.${child}`;
+        const visible =
+          owner === name &&
+          info.visibleNestedPanels?.includes(child) &&
+          !editorHidden &&
+          !info.emptyInspector;
+        if (visible) {
+          const active = adapters.isActive(id);
+          adapters.show(id, slots.get(id));
+          if (active) adapters.refresh(id);
+        } else adapters.hide(id);
+      }
       if (info.emptyInspector || editorHidden) {
         if (activeAdapter) adapters.hide(activeAdapter);
         activeAdapter = null;

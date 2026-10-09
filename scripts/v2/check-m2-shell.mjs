@@ -237,10 +237,48 @@ try {
   }
   record('all four science hosts and five domain hosts preserve node identity through navigation');
   await click('[data-action="domain:project"]');
+  const baseWidth = await evaluate(
+    'Number(document.querySelector(\'[data-key="base:width"]\').value)',
+  );
+  await evaluate(`(() => {const input=document.querySelector('[data-key="base:width"]');
+    input.value=${baseWidth + 5};input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await click('[data-action="base-rebuild"]');
+  await click('[data-action="base-keep"]');
+  assert.equal((await snapshot()).state.baseApplied.width, baseWidth + 5);
+  assert.equal((await snapshot()).sourceFrozen, true);
+  await evaluate(`(() => {const input=document.querySelector('[data-key="base:thickness"]');
+    input.value=0;input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  assert.equal(
+    await evaluate("document.querySelector('[data-action=base-rebuild]').disabled"),
+    true,
+  );
+  await evaluate(`(() => {const input=document.querySelector('[data-key="base:thickness"]');
+    input.value=2;input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  record('Base named adapter edits and confirms only a positive physical-unit draft');
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="baseShape"]');input.value='circle';input.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  assert.equal((await snapshot()).state.baseDraft.height, (await snapshot()).state.baseDraft.width);
+  assert.equal(await evaluate('document.querySelector(\'[data-key="base:height"]\')===null'), true);
+  await click('[data-action="base-revert"]');
+  assert.equal((await snapshot()).state.baseDraft.width, baseWidth);
+  assert.equal((await snapshot()).state.baseShape, 'rect');
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="base:width"]');input.value=${baseWidth + 5};input.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  record(
+    'Base Circle uses a single diameter; Revert restores source dimensions without a model transaction',
+  );
   await evaluate(
     "(() => {const unit=document.querySelector('.p-panel-content [data-key=displayUnit]');unit.value='nm';unit.dispatchEvent(new Event('change',{bubbles:true}))})()",
   );
   assert.equal(await evaluate("!document.querySelector('.p-topbar [data-key=displayUnit]')"), true);
+  await click('[data-action="domain:process"]');
+  await click('[data-action="domain:project"]');
+  assert.equal(
+    await evaluate('Number(document.querySelector(\'[data-key="base:width"]\').value)'),
+    (baseWidth + 5) * 1000,
+  );
   await click('[data-action="domain:process"]');
   assert.ok(
     await evaluate(`(() => {
@@ -414,7 +452,7 @@ try {
     await evaluate(
       `[...document.querySelector('[data-key="processProfile"]').options].map(option=>option.value).join(',')`,
     ),
-    'directional,isotropic',
+    'directional,isotropic,planarize,undercut',
   );
   assert.equal(
     await evaluate(
@@ -435,9 +473,33 @@ try {
   );
   assert.equal(
     await evaluate(`Boolean(document.querySelector('[data-key="processPlacement"]'))`),
+    false,
+  );
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="operation"]');input.value='deposit';input.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="processCoverage"]');input.value='transfer';input.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  assert.equal(
+    await evaluate('Boolean(document.querySelector(\'[data-key="processPlacement"]\'))'),
     true,
   );
-  record('Manual Extend, distinct Etch profile/surface, negative Implant tilt bounds');
+  assert.equal(
+    await evaluate(
+      '[...document.querySelector(\'[data-key="area"]\').options].map(item=>item.value).join(",")',
+    ),
+    'mask,invert,full',
+  );
+  assert.equal(
+    await evaluate(
+      '[...document.querySelector(\'[data-key="face"]\').options].map(item=>item.value).join(",")',
+    ),
+    'front,back',
+  );
+  record(
+    'Manual profiles include CMP/Undercut; Transfer placement belongs to Deposit; canonical face/area values',
+  );
   await click('[data-action="hide-editor"]');
   assert.equal(
     await evaluate(
@@ -471,7 +533,37 @@ try {
   await click('[data-action="complete"]');
   assert.match((await snapshot()).state.message, /Manual simulation complete/);
   await click('[data-action="domain:recipe"]');
+  assert.ok(
+    await evaluate(`(() => {const select=document.querySelector('[data-key="recipeAddKind"]');
+    const add=document.querySelector('[data-action="add-step"]');
+    return Math.abs(select.getBoundingClientRect().bottom-add.getBoundingClientRect().bottom)<=1;
+  })()`),
+    'Recipe operation and Add button share one aligned row',
+  );
   const recipeBeforeEdit = (await snapshot()).recipeSteps;
+  const originalStepId = await evaluate(
+    "document.querySelector('[data-step-editor]').dataset.stepEditor",
+  );
+  await click('[data-action="copy-step"]');
+  assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit + 1);
+  const copiedStepId = await evaluate(
+    "document.querySelector('[data-step-editor]').dataset.stepEditor",
+  );
+  assert.notEqual(copiedStepId, originalStepId);
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="stepCommand"]');input.value='etch';input.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  assert.equal(
+    await evaluate("document.querySelector('[data-step-editor]').dataset.stepEditor"),
+    copiedStepId,
+  );
+  await click('[data-action="recipe-undo"]');
+  await click('[data-action="recipe-undo"]');
+  assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit);
+  assert.equal((await snapshot()).sourceFrozen, true);
+  record(
+    'Recipe Copy creates a new stable ID; operation change retains ID; both edits undo independently',
+  );
   await click('[data-action="add-step"]');
   assert.equal((await snapshot()).recipeSteps, recipeBeforeEdit + 1);
   await click('[data-action="recipe-undo"]');
@@ -544,20 +636,20 @@ try {
   );
   assert.equal(
     await evaluate(
-      `Math.abs(document.querySelector('.p-history-fixed').getBoundingClientRect().top-${before.actions})<=1&&document.querySelector('.p-history-fixed [data-action=restore]')!==null`,
+      `Math.abs(document.querySelector('.p-history-fixed').getBoundingClientRect().top-${before.actions})<=1&&document.querySelector('.p-history-fixed button')===null`,
     ),
     true,
   );
   await click('[data-history-list] li:nth-child(3) .p-history-more');
   assert.equal(
     await evaluate(
-      "(() => {const menu=document.querySelector('[data-history-list] li:nth-child(3) [role=menu]');return menu?.querySelectorAll('[role=menuitem]').length===4&&menu.closest('[data-step-id]')?.querySelector('.p-history-more')?.getAttribute('aria-expanded')==='true'})()",
+      "(() => {const menu=document.querySelector('[data-history-list] li:nth-child(3) [role=menu]');return menu?.querySelector('[data-action^=\"history-bookmark-add:\"]')&&menu.closest('[data-step-id]')?.querySelector('.p-history-more')?.getAttribute('aria-expanded')==='true'})()",
     ),
     true,
   );
   await click('[data-history-list] li:nth-child(3) [data-action^="history-select:"]');
   assert.equal(await evaluate("document.querySelector('.p-history-menu')===null"), true);
-  record('History fixed actions; inner tree selection retains scroll position');
+  record('History context has no duplicate actions; inner tree selection retains scroll position');
   assert.equal(
     await evaluate(
       "(() => {const list=document.querySelector('.p-history-roots'),row=document.querySelector('.p-history-row');return getComputedStyle(list).listStyleType==='none'&&getComputedStyle(row).borderLeftWidth==='0px'&&document.querySelector('.p-panel-content').scrollWidth<=document.querySelector('.p-panel-content').clientWidth})()",
@@ -565,6 +657,85 @@ try {
     true,
   );
   record('History tree uses compact unbulleted rows without horizontal overflow');
+  await click('[data-action="history-branch-menu:main"]');
+  assert.equal(
+    await evaluate(
+      'document.querySelector(\'[data-action="history-delete-branch:main"]\').disabled',
+    ),
+    true,
+  );
+  await click('[data-action="history-rename:main"]');
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="historyRenameName"]');input.value='  ';input.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+  );
+  await click('[data-action="history-rename-confirm"]');
+  assert.equal(await evaluate("Boolean(document.querySelector('dialog[open]'))"), true);
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="historyRenameName"]');input.value='Renamed Main';input.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+  );
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyDown',
+    key: 'Enter',
+    code: 'Enter',
+    windowsVirtualKeyCode: 13,
+  });
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: 'Enter',
+    code: 'Enter',
+    windowsVirtualKeyCode: 13,
+  });
+  assert.equal((await snapshot()).state.historyNames.main, 'Renamed Main');
+  assert.equal(await evaluate("document.querySelector('dialog[open]')===null"), true);
+  await click('[data-action="history-collapse:main"]');
+  assert.equal(await evaluate("document.querySelector('[data-history-list]')===null"), true);
+  await click('[data-action="history-collapse:main"]');
+  assert.equal(await evaluate("Boolean(document.querySelector('[data-history-list]'))"), true);
+  record(
+    'History Variant rename validates whitespace, saves with Enter, preserves ID; Main deletion protected; collapse/expand',
+  );
+  const historyNode = await evaluate(
+    "document.querySelector('[data-history-list] [data-step-id]').dataset.stepId",
+  );
+  await click(`[data-action="history-menu:${historyNode}"]`);
+  await click(`[data-action="history-bookmark-add:${historyNode}"]`);
+  const addedBookmark = (await snapshot()).state.historyBookmarks.at(-1);
+  assert.equal(addedBookmark.historyNodeId, historyNode);
+  await click(`[data-step-id="${historyNode}"] .p-bookmarks summary`);
+  await click(`[data-action="history-bookmark-rename:${addedBookmark.id}"]`);
+  await evaluate(
+    `(() => {const input=document.querySelector('[data-key="historyRenameName"]');input.value='Review checkpoint';input.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+  );
+  await click('[data-action="history-rename-confirm"]');
+  assert.equal(
+    (await snapshot()).state.historyBookmarks.find((item) => item.id === addedBookmark.id).name,
+    'Review checkpoint',
+  );
+  await click(`[data-step-id="${historyNode}"] .p-bookmarks summary`);
+  await click(`[data-action="history-bookmark-delete:${addedBookmark.id}"]`);
+  await click('[data-action="history-bookmark-delete-confirm"]');
+  assert.equal(
+    (await snapshot()).state.historyBookmarks.some((item) => item.id === addedBookmark.id),
+    false,
+  );
+  record('History bookmarks add/rename/delete are Step-local drafts and leave the source frozen');
+  await click(`[data-action="history-menu:${historyNode}"]`);
+  await click(`[data-action="history-variant:${historyNode}"]`);
+  const draftVariant = await evaluate(
+    "[...document.querySelectorAll('[data-branch-id]')].find(item=>item.dataset.branchId.startsWith('prototype-variant-')).dataset.branchId",
+  );
+  await click(`[data-action="history-branch-menu:${draftVariant}"]`);
+  await click(`[data-action="history-delete-branch:${draftVariant}"]`);
+  await click('dialog [data-action="dialog-cancel"]');
+  assert.equal((await snapshot()).prototypeVariants, 1);
+  await click(`[data-action="history-delete-branch:${draftVariant}"]`);
+  await click('[data-action="history-delete-branch-confirm"]');
+  assert.equal((await snapshot()).prototypeVariants, 0);
+  assert.equal((await snapshot()).branch, 'main');
+  assert.equal((await snapshot()).sourceFrozen, true);
+  record(
+    'History Variant deletion requires confirmation; cancellation retains draft, active deletion returns to parent',
+  );
   await click('[data-action="domain:process"]');
   for (const width of [1440, 1024]) {
     await viewport(width);
@@ -682,6 +853,34 @@ try {
   assert.equal(legend.matches && legend.visible, true);
   assert.equal((await snapshot()).sourceFrozen, true);
   record('Photodetector legend includes two real Implant annotations; source remains frozen');
+  await call('Emulation.setDeviceMetricsOverride', {
+    width: 1440,
+    height: 650,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  for (const mode of ['process', 'recipe', 'history']) {
+    await click(`[data-action="domain:${mode}"]`);
+    const scrollSelector = mode === 'history' ? '[data-history-scroll]' : '.p-panel-content';
+    const scroll = await evaluate(`(() => {const node=document.querySelector('${scrollSelector}');
+      const rect=node.getBoundingClientRect();return {height:node.clientHeight,total:node.scrollHeight,
+      x:rect.x+rect.width/2,y:rect.y+Math.min(rect.height/2,100)};})()`);
+    assert.ok(scroll.total > scroll.height, `${mode} content must create real scroll range`);
+    await call('Input.dispatchMouseEvent', {
+      type: 'mouseWheel',
+      x: scroll.x,
+      y: scroll.y,
+      deltaX: 0,
+      deltaY: 10000,
+    });
+    await waitFor(
+      async () =>
+        evaluate(`(() => {const node=document.querySelector('${scrollSelector}');
+      return node.scrollTop>0 && node.scrollTop+node.clientHeight>=node.scrollHeight-2;})()`),
+      `${mode} wheel reaches content bottom`,
+    );
+  }
+  record('Manual, Recipe and History wheel scroll reaches the bottom in a short desktop viewport');
   await call('Page.navigate', { url: pathToFileURL(resolve('site/app-v2.html')).href });
   await waitFor(
     async () =>
