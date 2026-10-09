@@ -94,18 +94,44 @@
 };
   window.WaferCadV2LegendPalettes = Object.freeze(palettes);
   window.WaferCadV2LegendPalette = palettes.balanced;
-  const randomPalette = (count = 20) => {
-    const offset = Math.random() * 360;
-    return Array.from({ length: count }, (_, index) => {
-      const hue = (offset + index * 137.508) % 360;
-      const h = hue / 360, saturation = 0.5, lightness = 0.63;
-      const k = (n) => (n + h * 12) % 12;
-      const a = saturation * Math.min(lightness, 1 - lightness);
-      const channel = (n) => lightness - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
-      return '#' + [channel(0), channel(8), channel(4)]
-        .map((value) => Math.round(value * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
-    });
-  };
+  function hslHex(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s,
+      x = c * (1 - Math.abs(((h / 60) % 2) - 1)),
+      m = l - c / 2;
+    let r = 0,
+      g = 0,
+      b = 0;
+    if (h < 60) [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    return (
+      '#' +
+      [r, g, b]
+        .map((value) =>
+          Math.round((value + m) * 255)
+            .toString(16)
+            .padStart(2, '0'),
+        )
+        .join('')
+        .toUpperCase()
+    );
+  }
+  
+  function randomHarmoniousPalette(count = 20) {
+    const seed = Math.random() * 360,
+      out = [];
+    for (let index = 0; index < count; index++) {
+      out.push(hslHex((seed + index * 137.508) % 360, 48 + (index % 3) * 4, 61 + (index % 2) * 5));
+    }
+    return out;
+  }
+  
+  const randomPalette = randomHarmoniousPalette;
   window.WaferCadV2RandomLegendPalette = randomPalette;
   const row = (item, annotation = false, colors = {}, paletteOpen = null, palette = palettes.balanced) => {
     const key = `${annotation ? 'annotation' : 'layer'}:${item.id}`;
