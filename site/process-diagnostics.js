@@ -147,7 +147,9 @@ function analyzePart(state, model, copies = 1, dx = 0, dy = 0) {
             code: 'z-out-of-order',
             severity: 'error',
             title: 'Material Z stack is out of order',
-            detail: `Region ${region.id}: ${layerId} starts below the preceding ${previous.layerId} interval. No overlap is inferred without shared Z coverage.`,
+            detail:
+              `Region ${region.id}: ${layerId} starts below ${previous.layerId}. ` +
+              'Stack order is invalid; no overlap was inferred.',
             layerId,
             relatedLayerId: previous.layerId,
             z0,
