@@ -52,6 +52,16 @@
       "sha256": "46cb1c9a4984f57334ddaac5e23a4ed5a4b02ec9d164c8890196d89d6d320605"
     },
     {
+      "id": "magic-1000-mos2-beol",
+      "path": "./examples/thumbnails/magic-1000-mos2-beol-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 5994,
+      "sourceSha256": "b288501b1eddc3425827d3543716e3c9e85d0f6a300c3cccf3d8ca7f42c29357",
+      "sha256": "c501b92fb96d4b5fd2067dcbae3f27785bbda93af1b548954ae280296fe3350e"
+    },
+    {
       "id": "three-tier-silicon-jlfets",
       "path": "./examples/thumbnails/three-tier-silicon-jlfets-three.webp",
       "view": "three",
