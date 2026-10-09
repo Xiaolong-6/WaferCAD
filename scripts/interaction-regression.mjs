@@ -654,6 +654,7 @@ for (const [buttonId, panelId] of [
   ['threeMaxBtn', 'threePanel'],
   ['sectionMaxBtn', 'sectionPanel'],
 ]) {
+  await showControl(`#${buttonId}`);
   await page.locator(`#${buttonId}`).click();
   assert.equal(
     await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
@@ -664,12 +665,14 @@ for (const [buttonId, panelId] of [
     true,
   );
   assert.equal((await page.locator(`#${buttonId}`).textContent()).trim(), 'Restore');
+  await showControl(`#${buttonId}`);
   await page.locator(`#${buttonId}`).click();
   assert.equal(
     await page.locator('body').evaluate((el) => el.classList.contains('view-maximized')),
     false,
   );
 }
+await showControl('#sectionMaxBtn');
 await page.locator('#sectionMaxBtn').click();
 await page.keyboard.press('Escape');
 assert.equal(
@@ -680,6 +683,7 @@ assert.equal(
 // 3D inspection controls should operate without runtime errors.
 const threeOpacityControl = page.locator('#threePanel .three-opacity-control');
 const threeExportControl = page.locator('#threePanel .export-control');
+await showControl('#threePanel .three-opacity-control');
 await threeOpacityControl.locator(':scope > summary').click();
 await page.locator('#threeOpacityRange').fill('0.5');
 await openExportMenu('#threePanel');
