@@ -10,10 +10,12 @@ on:
       - site/renderer-v4-feature-footprints.js
       - site/renderer-v4-resource-census.js
       - site/renderer-v4-interaction-policy.js
+      - site/renderer-v4-flat-geometry-sharing.js
       - site/tests/renderer-v4-adaptive-tiles.test.mjs
       - site/tests/renderer-v4-tile-plan.test.mjs
       - site/tests/renderer-v4-r3-evidence.test.mjs
       - site/tests/renderer-v4-interaction-policy.test.mjs
+      - site/tests/renderer-v4-flat-geometry-sharing.test.mjs
       - site/three-view.js
       - scripts/renderer-v4-r2-browser.mjs
       - scripts/renderer-v4-r3-browser.mjs
@@ -41,11 +43,11 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Focused V3/V4 tile regressions
-        run: node --test site/tests/renderer-v3-tile-bounds.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs
+        run: node --test site/tests/renderer-v3-tile-bounds.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/tests/renderer-v4-flat-geometry-sharing.test.mjs
       - name: Targeted lint
-        run: npx eslint site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/renderer-v4-interaction-policy.js site/renderer-v4-feature-footprints.js site/renderer-v4-resource-census.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/three-view.js scripts/renderer-v4-r2-browser.mjs scripts/renderer-v4-r3-browser.mjs
+        run: npx eslint site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/renderer-v4-interaction-policy.js site/renderer-v4-feature-footprints.js site/renderer-v4-resource-census.js site/renderer-v4-flat-geometry-sharing.js site/tests/renderer-v4-flat-geometry-sharing.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/three-view.js scripts/renderer-v4-r2-browser.mjs scripts/renderer-v4-r3-browser.mjs
       - name: Targeted formatting
-        run: npx prettier --check site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/renderer-v4-interaction-policy.js site/renderer-v4-feature-footprints.js site/renderer-v4-resource-census.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/three-view.js scripts/renderer-v4-r2-browser.mjs scripts/renderer-v4-r3-browser.mjs docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md docs/README.md
+        run: npx prettier --check site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/renderer-v4-interaction-policy.js site/renderer-v4-feature-footprints.js site/renderer-v4-resource-census.js site/renderer-v4-flat-geometry-sharing.js site/tests/renderer-v4-flat-geometry-sharing.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/three-view.js scripts/renderer-v4-r2-browser.mjs scripts/renderer-v4-r3-browser.mjs docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md docs/README.md
       - name: Documentation links and generated guide
         run: npm run docs:check
       - name: Full non-browser Node gate
