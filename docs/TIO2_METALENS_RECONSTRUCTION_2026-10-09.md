@@ -88,13 +88,20 @@ rectangular substrate, not the 6,400-cell canonical array. The existing
 `createWaferArrayTiling` is a circular odd-row/column wafer constructor and
 cannot reconstruct this 80 × 80 GRID simply by adding a descriptor.
 
-The pure Recipe preflight now rejects `new-base` for canonical array models
-without an array Base descriptor **before** History or geometry can be mutated.
-`continue` remains available for supported existing-model operations. This is
-only a safety guard, **not** completion of full-array Run All. The mandatory
-merge gate remains: support deterministic 80 × 80 Base reconstruction and real
-browser Run All with exact material/Mask/History parity. Do not certify or merge
-based only on compiled-template History or a successful four-unit Run All.
+A follow-up adds a typed `rect-grid` Recipe Base that constructs canonical
+rectangular array cells and restores deterministic device/background ownership.
+The committed 10.6 MB illustration remains byte-preserved: updating that
+resource via the connected GitHub file interface failed with an HTTP/2 body
+transfer error. For this previously published fixture, the current model's
+complete regular grid is strictly checked before a legacy Base can be inferred;
+ambiguous/changed grids continue to fail preflight **before** History mutation.
+The old circular wafer contract is unchanged.
+
+This establishes a reconstructible **array Base**, but does not yet prove that
+all nine Process operations can be replayed economically against the 60,232
+polygon full Mask. The mandatory merge gate remains actual browser full-array
+Run All, final material/Mask/History geometry parity, and green PR CI. Do not
+certify or merge based on compiled-template History or four-unit Run All alone.
 
 ## Full-array Welcome follow-up validation
 
