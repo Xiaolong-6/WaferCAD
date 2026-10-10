@@ -1,4 +1,4 @@
-import { selectedMaskInstanceIndex, attachArrayMaskQuery } from './mask-instance-index.js';
+import { selectedMaskInstanceIndex, deferredArrayMaskArea } from './mask-instance-index.js';
 import { isArrayModel } from './model-array.js';
 import { fullFaceGeometry } from './model.js';
 import { drawMaskGeometry } from './draw-mask-geometry.js';
@@ -54,6 +54,21 @@ export function createSelectionGeometry({ getState, selectedElement, maskPoint }
 
   function operationAreaGeometry(mode) {
     const { model, layout, maskTransform, maskSourceMode } = getState();
+    const limiter = maskRoiGeometry();
+    if (isArrayModel(model) && maskSourceMode === 'file') {
+      return deferredArrayMaskArea(
+        {
+          boundary: model.boundary,
+          index:
+            mode === 'full'
+              ? null
+              : selectedMaskInstanceIndex(layout, selectedElement, maskTransform),
+          mode,
+          limiter,
+        },
+        { intersection, isEmpty },
+      );
+    }
     let area;
     if (mode === 'full') {
       area = fullFaceGeometry(model);
@@ -62,20 +77,7 @@ export function createSelectionGeometry({ getState, selectedElement, maskPoint }
       if (isEmpty(selected)) return [];
       area = mode === 'invert' ? difference(model.boundary, selected) : selected;
     }
-
-    const limiter = maskRoiGeometry();
-    const result = limiter ? intersection(area, limiter) : area;
-    if (isArrayModel(model) && maskSourceMode === 'file')
-      attachArrayMaskQuery(result, {
-        index:
-          mode === 'full'
-            ? null
-            : selectedMaskInstanceIndex(layout, selectedElement, maskTransform),
-        mode,
-        limiter,
-        boundary: model.boundary,
-      });
-    return result;
+    return limiter ? intersection(area, limiter) : area;
   }
 
   function roiGeometry() {

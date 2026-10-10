@@ -1,34 +1,8 @@
 import { historyOperationAreaLabel, historyOperationLabel } from './history-operation-label.js';
+import { equalStatePairs, stateValuesEqual } from './state-equality.js';
 
 function clone(value) {
   return structuredClone(value);
-}
-
-function deepEqual(left, right) {
-  const pending = [[left, right]];
-  while (pending.length) {
-    const [a, b] = pending.pop();
-    if (Object.is(a, b)) continue;
-    if (typeof a !== typeof b || a === null || b === null) return false;
-    if (typeof a !== 'object') return false;
-
-    const aArray = Array.isArray(a);
-    if (aArray !== Array.isArray(b)) return false;
-    if (aArray) {
-      if (a.length !== b.length) return false;
-      for (let index = 0; index < a.length; index++) pending.push([a[index], b[index]]);
-      continue;
-    }
-
-    const aKeys = Object.keys(a);
-    const bKeys = Object.keys(b);
-    if (aKeys.length !== bKeys.length) return false;
-    for (const key of aKeys) {
-      if (!Object.hasOwn(b, key)) return false;
-      pending.push([a[key], b[key]]);
-    }
-  }
-  return true;
 }
 
 function createStateCloner() {
@@ -148,7 +122,7 @@ function withoutInspectionView(state) {
 
 function processStateEqual(left, right) {
   try {
-    return deepEqual(withoutInspectionView(left), withoutInspectionView(right));
+    return stateValuesEqual(withoutInspectionView(left), withoutInspectionView(right));
   } catch {
     return false;
   }
@@ -271,16 +245,23 @@ export function createSnapshotManager({
   }
 
   function list() {
-    return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId, state }) => {
-      const node = historyNodeId ? nodeById(historyNodeId) : null;
-      let legacyCheckpoint = false;
-      if (node?.state && state) {
+    const pairs = records.map((record) => {
+      const state = nodeById(record.historyNodeId)?.state;
+      return state && record.state ? [record.state, state] : [null, null];
+    });
+    let matches;
+    try {
+      matches = equalStatePairs(pairs);
+    } catch {
+      matches = pairs.map(([left, right]) => {
         try {
-          legacyCheckpoint = !deepEqual(state, node.state);
+          return stateValuesEqual(left, right);
         } catch {
-          legacyCheckpoint = true;
+          return false;
         }
-      }
+      });
+    }
+    return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId }, index) => {
       return {
         id,
         name,
@@ -288,7 +269,7 @@ export function createSnapshotManager({
         branchId,
         parentId,
         historyNodeId,
-        legacyCheckpoint,
+        legacyCheckpoint: !matches[index],
       };
     });
   }

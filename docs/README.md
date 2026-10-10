@@ -26,7 +26,7 @@ Use this page to find the document that owns a question. Current contracts descr
 
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
 - [Lift-off v1 handoff](LIFTOFF_V1_2026-10-09.md) — geometric support semantics, current CI status and acceptance.
-- [TiO2 metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived fabrication sequence, four-cell Recipe and 4725-site illustrative mask provenance.
+- [TiO2 metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.
 - [Geometry/process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
 - [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — derived topology and material ownership.
 - [Morphology](ROUGHNESS_MORPHOLOGY.md) — deterministic visual relief and physical/export boundaries.
@@ -35,6 +35,8 @@ Use this page to find the document that owns a question. Current contracts descr
 - [KLayout compatibility](KLAYOUT_LAYOUT_COMPATIBILITY.md) — pinned parser/import oracle; recorded corpus results are revision-specific evidence.
 
 ## Plans and verification evidence
+
+- [TiO2 full-array loading performance — 2026-10-10](TIO2_METALENS_PERFORMANCE_2026-10-10.md) — exact shared-state comparison, unchanged full-array assets and paired browser measurements.
 
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — Fast full-wafer far-array presentation LOD shipped in PR #155; exact near/ROI inspection, unshipped hierarchy phases and non-blocking performance debt remain documented.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.

@@ -31,6 +31,7 @@ const WORKSTATION_PATHS = [
 const RESILIENCE_PATHS = [/^site\/three-/, /^scripts\/resilience-regression\.mjs$/];
 
 const HISTORY_PATHS = [
+  /^site\/state-equality\.js$/,
   /^site\/workspace-snapshots\.js$/,
   /^site\/history-/,
   /^site\/controllers\/history-/,
@@ -41,6 +42,7 @@ const HISTORY_PATHS = [
 ];
 
 const PERSISTENCE_PATHS = [
+  /^site\/state-equality\.js$/,
   /^site\/(?:model-array|mask-instance-index)/,
   /^scripts\/(?:array-runtime-regression|build-wafer-array-example)\.mjs$/,
   /^site\/workspace-persistence/,

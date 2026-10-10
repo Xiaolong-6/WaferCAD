@@ -161,7 +161,9 @@ export function baseCoverageState(model) {
 export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
   if (isArrayModel(model)) {
     const ids = new Set(),
-      full = area === model.boundary || JSON.stringify(area) === JSON.stringify(model.boundary),
+      full =
+        !area?.arrayMaskQuery &&
+        (area === model.boundary || JSON.stringify(area) === JSON.stringify(model.boundary)),
       seen = new Set(),
       queries = new Map(),
       maskBoundsCache = new WeakMap();

@@ -295,20 +295,38 @@ export function normalizeRecipeBase(value) {
       throw new Error('Recipe Base array must be a tiling specification.');
     }
     const { rows, columns, pitchX, pitchY, diameter } = input;
-    if (
-      ![rows, columns].every((n) => Number.isInteger(n) && n > 0 && n % 2 === 1) ||
-      ![pitchX, pitchY, diameter].every((n) => Number.isFinite(n) && n > 0)
-    ) {
-      throw new Error('Recipe Base array has invalid dimensions.');
+    if (input.kind === 'rect-grid') {
+      const total = rows * columns;
+      const activeSites = input.activeSites;
+      if (
+        shape !== 'rect' ||
+        ![rows, columns].every((n) => Number.isInteger(n) && n > 0) ||
+        ![pitchX, pitchY].every((n) => Number.isFinite(n) && n > 0) ||
+        !Number.isSafeInteger(total) ||
+        total > 10000 ||
+        !Number.isInteger(activeSites) ||
+        activeSites < 0 ||
+        activeSites > total ||
+        Math.abs(width - columns * pitchX) > 1e-6 ||
+        Math.abs(height - rows * pitchY) > 1e-6
+      )
+        throw new Error('Recipe Base rectangular grid dimensions are invalid.');
+      array = { kind: 'rect-grid', rows, columns, pitchX, pitchY, activeSites };
+    } else {
+      if (input.kind != null) throw new Error('Unsupported Recipe Base array kind.');
+      if (
+        ![rows, columns].every((n) => Number.isInteger(n) && n > 0 && n % 2 === 1) ||
+        ![pitchX, pitchY, diameter].every((n) => Number.isFinite(n) && n > 0)
+      )
+        throw new Error('Recipe Base array has invalid dimensions.');
+      if (
+        shape !== 'circle' ||
+        Math.abs(width - diameter) > 1e-6 ||
+        Math.abs(height - diameter) > 1e-6
+      )
+        throw new Error('Recipe Base array diameter does not match the circular wafer.');
+      array = { rows, columns, pitchX, pitchY, diameter };
     }
-    if (
-      shape !== 'circle' ||
-      Math.abs(width - diameter) > 1e-6 ||
-      Math.abs(height - diameter) > 1e-6
-    ) {
-      throw new Error('Recipe Base array diameter does not match the circular wafer.');
-    }
-    array = { rows, columns, pitchX, pitchY, diameter };
   }
   return {
     shape,

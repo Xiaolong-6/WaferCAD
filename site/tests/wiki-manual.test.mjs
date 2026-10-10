@@ -121,7 +121,13 @@ test('Mask ROI documentation agrees with Whole face worker clipping', async () =
   const worker = await readFile(new URL('../process-worker.js', import.meta.url), 'utf8');
   assert.match(masks, /even \*\*Whole face\*\*/);
   assert.match(gettingStarted, /including Whole face/);
-  assert.match(worker, /const result = limiter \? vectorApi\.intersection\(area, limiter\) : area/);
+  assert.match(worker, /return limiter \? vectorApi\.intersection\(area, limiter\) : area/);
+  assert.match(worker, /deferredArrayMaskArea\([\s\S]*?limiter \},[\s\S]*?vectorApi/);
+  const selection = await readFile(new URL('../selection-geometry.js', import.meta.url), 'utf8');
+  assert.match(
+    selection,
+    /deferredArrayMaskArea\([\s\S]*?limiter,[\s\S]*?\{ intersection, isEmpty \}/,
+  );
 });
 
 test('all code blocks labeled JavaScript in the Recipe tutorials parse as v1 recipes', async () => {

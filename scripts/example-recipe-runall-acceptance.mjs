@@ -18,6 +18,83 @@ import {
 import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
+function materialFootprintPerimeter(model, name, vectorApi) {
+  const ids = new Set(
+    (model.layers || []).filter((layer) => layer.name === name).map((layer) => layer.id),
+  );
+  const geoms = (model.regions || [])
+    .filter((region) => region.stack.some((segment) => ids.has(segment.layerId)))
+    .map((region) => region.geom);
+  if (!geoms.length) return 0;
+  let perimeter = 0;
+  for (const polygon of vectorApi.unionGeometries(geoms)) {
+    for (const ring of polygon) {
+      for (let i = 0; i < ring.length; i++) {
+        const current = ring[i];
+        const next = ring[(i + 1) % ring.length];
+        perimeter += Math.hypot(current[0] - next[0], current[1] - next[1]);
+      }
+    }
+  }
+  return perimeter;
+}
+
+async function assertSameCanonicalArrayGeometry(expected, actual) {
+  assert.equal(actual.kernel, expected.kernel, 'Run All changed canonical array kernel');
+  const actualSites = new Map(actual.array?.instances?.map((site) => [site.id, site]));
+  const expectedSites = expected.array.instances;
+  assert.equal(actualSites.size, expectedSites.length, 'Run All lost/duplicated canonical sites');
+  const { loadGeometryKernel } = await import('./process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const vectorApi = await import('../site/vector-geometry.js');
+  const expectedTemplates = new Map(expected.array.templates.map((item) => [item.id, item.model]));
+  const actualTemplates = new Map(actual.array.templates.map((item) => [item.id, item.model]));
+  const checkedPairs = new Set();
+  let slabsChecked = 0;
+  let maxMismatchAreaUm2 = 0;
+  for (const expectedSite of expectedSites) {
+    const actualSite = actualSites.get(expectedSite.id);
+    assert.ok(actualSite, 'Run All lost array instance ' + expectedSite.id);
+    assert.deepEqual(
+      [actualSite.x, actualSite.y, actualSite.role],
+      [expectedSite.x, expectedSite.y, expectedSite.role],
+      'Run All changed canonical site placement/role ' + expectedSite.id,
+    );
+    const key = expectedSite.templateId + '|' + actualSite.templateId;
+    if (checkedPairs.has(key)) continue;
+    checkedPairs.add(key);
+    const expectedLeaf = expectedTemplates.get(expectedSite.templateId);
+    const actualLeaf = actualTemplates.get(actualSite.templateId);
+    assert.ok(expectedLeaf && actualLeaf, 'Run All references a missing physical template');
+    // Published geometry quantizes each XY coordinate to 0.1 nm. A boundary
+    // displaced by at most one quantum changes area by at most perimeter×quantum
+    // to first order. Allow a 10% numeric margin, capped at 150 nm² per slab.
+    // This remains sensitive to a missing meta-atom or a filled annular gap.
+    const perimeterUm = materialFootprintPerimeter(expectedLeaf, 'TiO2', vectorApi);
+    const areaToleranceUm2 = Math.max(1e-7, Math.min(1.5e-4, 1.1e-4 * perimeterUm));
+    let comparison;
+    try {
+      comparison = await assertSameMaterialGeometry(expectedLeaf, actualLeaf, {
+        areaToleranceUm2,
+      });
+    } catch (error) {
+      throw new Error(
+        `Array geometry differs at ${expectedSite.id} ${expectedSite.templateId} -> ${actualSite.templateId}: ${error.message}`,
+      );
+    }
+    slabsChecked += comparison.slabsChecked;
+    maxMismatchAreaUm2 = Math.max(maxMismatchAreaUm2, comparison.maxMismatchAreaUm2);
+  }
+  return {
+    verified: true,
+    materialCount: expected.layers.length,
+    sitesChecked: expectedSites.length,
+    templatePairsChecked: checkedPairs.size,
+    slabsChecked,
+    maxMismatchAreaUm2,
+  };
+}
+
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
 const requestedVariant =
@@ -144,6 +221,18 @@ try {
         count,
         `${example.id}: rebuilt export must retain the complete Recipe`,
       );
+      if (example.id === 'tio2-metalens-four-unit') {
+        assert.deepEqual(
+          exported.layout,
+          sourceProject.layout,
+          'Full-array Run All must retain the exact exportable 4725-site Mask',
+        );
+        assert.deepEqual(
+          exported.processRecipe.steps,
+          sourceProject.processRecipe.steps,
+          'Full-array Run All must preserve the editable nine-step Recipe',
+        );
+      }
       assert.equal(
         exported.snapshotBranches?.activeBranchId,
         'main',
@@ -176,6 +265,19 @@ try {
       assert.equal(replayNodes.length, processSteps.length);
       for (const [index, step] of processSteps.entries()) {
         if (step.command === 'record') continue;
+        if (step.command === 'liftoff') {
+          const replay = replayNodes[index].operation?.replay?.params;
+          assert.ok(
+            replay?.sacrificialLayerId,
+            `${example.id}: Step ${index + 1} lost its lift-off sacrificial material`,
+          );
+          assert.equal(
+            replay.thickness ?? 0,
+            0,
+            `${example.id}: Step ${index + 1} lift-off unexpectedly gained a physical depth`,
+          );
+          continue;
+        }
         const expected = step.params.thicknessUm ?? step.params.depthUm;
         const actual = replayNodes[index].operation?.replay?.params?.thickness;
         assert.ok(
@@ -215,7 +317,9 @@ try {
       const geometryComparison =
         example.id === 'magic-1000-mos2-beol'
           ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-          : null;
+          : example.id === 'tio2-metalens-four-unit'
+            ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
+            : null;
       if (geometryComparison) {
         console.log(
           `${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`,
