@@ -25,6 +25,9 @@ test('WebGL hardware gate rejects software and obscured adapters', () => {
     assert.equal(result.hardwareVerified, false, name);
     assert.equal(result.reason, 'software-renderer');
   }
+  const generic = classifyWebglBackend({ unmaskedRenderer: 'Generic OpenGL Renderer' });
+  assert.equal(generic.hardwareVerified, false);
+  assert.equal(generic.reason, 'unrecognized-gpu-adapter');
   for (const frame of [null, {}, { renderer: 'WebKit WebGL' }, { unmaskedRenderer: '  ' }]) {
     const result = classifyWebglBackend(frame);
     assert.equal(result.hardwareVerified, false);
