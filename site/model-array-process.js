@@ -108,6 +108,9 @@ export function applyArrayOperation(model, params, apply) {
         )
       : worldDomain;
     const localArea = localGeometry(area, part, localDomain, maskBoundsCache);
+    // Sparse file-Mask queries may select none of a background cell.
+    // Avoid constructing or caching any Kernel working set for that cell.
+    if (!localArea.length) continue;
     const neighborhoodId = neighborhoodKey(part, neighbors);
     let contextEntry = contexts.get(neighborhoodId);
     if (!contextEntry) {
