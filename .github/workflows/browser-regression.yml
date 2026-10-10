@@ -186,6 +186,12 @@ jobs:
         # ordinary UI/browser checks retain their own 15-minute watchdog.
         run: node scripts/renderer-product-regression.mjs
 
+      # Targeted P0 guard only on the existing V3 Draft PR, not an extra
+      # heavyweight array-stress job or a change to approved visual baselines.
+      - name: Verify default 625-site ROI budget failure and clear recovery
+        if: ${{ needs.plan.outputs.renderer == 'true' && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
+        run: node scripts/renderer-roi-recovery-regression.mjs
+
       - name: Package tested preview
         if: always()
         run: |
