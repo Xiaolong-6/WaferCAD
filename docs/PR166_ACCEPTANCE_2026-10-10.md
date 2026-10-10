@@ -325,3 +325,51 @@ was performed. Resolve the tooling revision with
 unchanged product renderer revision remains `3b7e6af9d608ea8814217f385cf251be0f4ffb06`.
 Final formatting, documentation and `git diff --check` passed. Local test servers
 were stopped after acceptance runs.
+
+## Post-push P0 diagnostics (2026-10-10; not yet Windows-runtime verified)
+
+After commit `7abcf51` was pushed, the same Draft branch received a
+**manual-only diagnostic** follow-up. The accepted single-pass optimization,
+default transparency policy, canonical geometry, History, workers and approved
+visual baselines remain unchanged.
+
+- `?rendererV3RoiTrace=1` records ROI renderer milestones to
+  `#threeHost.dataset.rendererRoiStage` and `WAFERCAD_ROI_STAGE` console
+  events, including entry/exit around the synchronous clipped surface-plan
+  build, caps, sidewalls, annotations and presentation. The flag is OFF by
+  default and does not alter any draw or mesh decision.
+- `scripts/renderer-roi-profile.mjs` isolates a *default-policy* 625-site
+  Quality ROI rebuild. It records renderer stage events and a Chrome DevTools
+  CPU profile (`roi.cpuprofile`) when available. A bounded wait and explicit
+  reporting distinguish ROI creation, a stuck renderer build, an unresponsive
+  browser and failed profile retrieval. No automatic expensive CI job is added.
+- `scripts/renderer-electrical-inspection.mjs` now saves duplicate,
+  no-interaction screenshots in the **same** browser context for far/restored,
+  fitted and full-Z poses. Reports separate same-frame serial, actual camera,
+  draw-order and pixel parity from fresh-context ON/OFF and OFF/OFF checks.
+  ROI coverage is true only when **all four arms** captured ROI and ROI-cleared
+  states. Pixel tolerance stays zero.
+
+Run on the Windows GPU, from the existing repository checkout, with a local
+server at `http://127.0.0.1:4174` and pinned Three:
+
+```powershell
+$env:WAFERCAD_URL = 'http://127.0.0.1:4174'
+$env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+node scripts/renderer-roi-profile.mjs
+node scripts/renderer-roi-profile.mjs --after-transitions
+node scripts/renderer-electrical-inspection.mjs --skip-roi
+```
+
+The isolated ROI results write to
+`test-results/renderer-roi-profile-fresh/` and
+`test-results/renderer-roi-profile-after-transitions/`. The inspection
+no-ROI subset remains **diagnostic-only** and cannot pass full acceptance.
+The CPU profile can be inspected using Chromium DevTools Performance or
+the CPU profiling view. A stage left at `surface-plan-start` is evidence
+of time spent in that phase, but the profile stack is needed to identify
+the precise hot function before changing the geometry algorithm.
+
+**No new Windows GPU runs or ROI speedup are claimed by this follow-up.**
+Keep PR #166 Draft, candidate default-off and unmerged until both P0 issues
+are experimentally resolved and the full scientific gates pass.
