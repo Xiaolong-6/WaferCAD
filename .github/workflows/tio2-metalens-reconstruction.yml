@@ -23,7 +23,7 @@ permissions:
 jobs:
   reconstruct:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -66,11 +66,6 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/tio2-metalens-grid-browser.mjs
-      - name: Real 4725-site Recipe Run All from inferred GRID Base
-        timeout-minutes: 18
-        env:
-          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: node scripts/example-recipe-runall-acceptance.mjs --id=tio2-metalens-four-unit
       - name: Build exact production Welcome preview
         run: |
           node scripts/build-example-previews.mjs --write --id=tio2-metalens-four-unit
@@ -82,4 +77,39 @@ jobs:
           name: tio2-metalens-source-derived-${{ github.sha }}
           path: test-results/metalens
           retention-days: 21
+          if-no-files-found: warn
+
+  full-grid-replay:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Start WaferCAD for exact GRID replay
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-full-grid.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/app.html > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/wafercad-full-grid.log
+          exit 1
+      - name: Actual 4725-site Recipe Run All from Base
+        timeout-minutes: 20
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/example-recipe-runall-acceptance.mjs --id=tio2-metalens-four-unit
+      - name: Retain GRID replay diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: metalens-full-grid-replay-${{ github.sha }}
+          path: test-results/example-recipe-runall
+          retention-days: 14
           if-no-files-found: warn
