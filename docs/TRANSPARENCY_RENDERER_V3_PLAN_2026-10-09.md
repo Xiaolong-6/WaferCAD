@@ -806,6 +806,53 @@ smooth-surface pilot and preserve all canonical geometry. PR #166 remains
 Draft and unmerged. Do not claim the proposed <20 s or <15 s Quality targets
 were achieved by P1.
 
+## Phase B.5 — manual real-GPU Electrical surface ABBA gate (2026-10-10)
+
+**Tooling completed; real hardware measurement is not yet claimed.** The
+existing Quality 625-site smooth Electrical *surface* experiment can now be
+checked on a real Windows GPU without introducing another expensive CI job.
+
+Start WaferCAD locally (two terminals, from repository root):
+
+```powershell
+npm ci
+npx playwright install chromium
+python -m http.server 4173 --directory site
+```
+
+In the second PowerShell terminal, run:
+
+```powershell
+node scripts/renderer-quality-index-ab.mjs --hardware-electrical-ab
+```
+
+Optionally set `WAFERCAD_CHROMIUM` to a real local Chrome executable path
+before running, if preferred. The manual mode always launches a **headed**
+Chromium window using the existing 1440×960 viewport and opens the canonical
+625-site JLFET project in fresh storage contexts. Both arms use the same
+WebGL interception, owner attribution, `gl.finish()` completion barrier,
+screenshot capture and (when supported) disjoint-safe timer queries.
+
+It compares **single-pass / double-pass / double-pass / single-pass**. Every
+trial asserts exact 625-site Quality settings, zero skipped geometric
+triangles, zero WebGL/page errors, expected true draw count reductions
+and strict **byte-for-byte canvas parity**. The mandatory unmasked WebGL
+renderer identity is checked to reject known software backends
+(SwiftShader/llvmpipe/WARP); hidden identity also **fails closed**. A
+non-software adapter name is supporting evidence, not infallible physical
+GPU identification. No automatic Chrome GPU flags are forced.
+
+Results and trial PNGs write to
+`test-results/renderer-hardware-electrical-ab/` (`report.json`,
+`failure.json`, and per-image `*-pixel-diff.json` on mismatch). Records
+include browser version, adapter identification, actual API submission,
+completion time, owner counts and per-trial `gpuMs` only for valid query
+results. If unavailable or disjoint, `gpuMs` remains **null**, never a
+fabricated zero. Do not cross-compare software-WebGL timings with hardware
+numbers. Repeat multiple entire ABBA runs before asserting a performance
+speedup; inspect multiscale camera/ROI and opacity matrix separately before
+default rollout. Product flag remains default OFF.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
