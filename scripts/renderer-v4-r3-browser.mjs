@@ -120,6 +120,8 @@ async function runArm(name, search) {
       v4GpuResourceMaterials: host.v4GpuResourceMaterials,
       v4GpuResourceEstimatedBufferBytes: host.v4GpuResourceEstimatedBufferBytes,
       v4GpuResourceComplete: host.v4GpuResourceComplete,
+      v4FastIndexedVertices: host.v4FastIndexedVertices,
+      v4FastOriginalVertices: host.v4FastOriginalVertices,
       rendererIdentity: await page.locator('#threeHost canvas').evaluate((canvas) => {
         const gl = canvas.getContext('webgl2');
         const extension = gl?.getExtension('WEBGL_debug_renderer_info');
@@ -143,7 +145,8 @@ try {
     'r3-feature-and-resource-survey',
     'rendererV4TileProbe=1&rendererV4FeatureSurvey=1&rendererV4GpuCensus=1',
   );
-  const [r1, r2] = observations.map((arm) => arm.result);
+  await runArm('r3-fast-index', 'rendererV4TileProbe=1&rendererV4FastSmoothIndex=1');
+  const [r1, r2, fastIndex] = observations.map((arm) => arm.result);
   for (const key of [
     'modelRevision',
     'arrayInstances',
@@ -165,7 +168,8 @@ try {
     'v4TileUncertain',
     'v4TileOverflow',
   ]) {
-    assert.equal(r2[key], r1[key], key + ' must be unchanged by CPU caching');
+    assert.equal(r2[key], r1[key], key + ' must be unchanged by R3 observability');
+    assert.equal(fastIndex[key], r1[key], key + ' must be unchanged by smooth index topology');
   }
   assert.equal(r1.v4TileCacheMode, 'off');
   assert.equal(r2.v4TileCacheMode, 'off');
@@ -178,15 +182,21 @@ try {
   assert.equal(r2.v4GpuResourceComplete, 'true');
   assert.ok(Number(r2.v4GpuResourceEstimatedBufferBytes) > 0);
   assert.ok(Number(r2.v4GpuResourceMeshes) > 0);
+  assert.ok(Number(fastIndex.v4FastIndexedVertices) > 0, 'fast index must reduce vertex submission');
+  assert.ok(Number(fastIndex.v4FastOriginalVertices) > Number(fastIndex.v4FastIndexedVertices));
   const pixels = compareScreenshotPngPixels(observations[0].png, observations[1].png);
+  const indexedPixels = compareScreenshotPngPixels(observations[0].png, observations[2].png);
   const report = {
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
-    observations: [r1, r2],
+    observations: [r1, r2, fastIndex],
     pixels,
+    indexedPixels,
   };
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2) + '\n');
   console.log('RENDERER_V4_R3_BROWSER_PARITY', JSON.stringify(pixels));
-  assert.equal(pixels.pixelIdentical, true, 'R1 and R3 renderer canvases must match exactly');
+  console.log('RENDERER_V4_R3_FAST_INDEX_PARITY', JSON.stringify(indexedPixels));
+  assert.equal(pixels.pixelIdentical, true, 'R1 and R3 survey canvases must match exactly');
+  assert.equal(indexedPixels.pixelIdentical, true, 'R1 and R3 indexed canvases must match exactly');
 } finally {
   await browser.close();
 }
