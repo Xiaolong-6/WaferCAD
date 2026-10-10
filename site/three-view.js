@@ -821,7 +821,8 @@ export function createThreeView({
       host.dataset.sceneVariant !== 'transparent' ||
       !camera ||
       !controls
-    ) return;
+    )
+      return;
     const now = performance.now();
     if (now - v4CameraProbeLastAt < 250) return;
     const model = getModel();
@@ -3039,9 +3040,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         v4ProbeMs = performance.now() - probeStartedAt;
         v4CameraProbeLastAt = performance.now();
       }
-      v4CameraProbe = v4TileCacheEnabled && targetVariant === 'transparent'
-        ? { sidewalls: plan.sidewalls, farTier: arrayLod.tier !== 'exact', clipped: Boolean(clip) }
-        : null;
+      v4CameraProbe =
+        v4TileCacheEnabled && targetVariant === 'transparent'
+          ? {
+              sidewalls: plan.sidewalls,
+              farTier: arrayLod.tier !== 'exact',
+              clipped: Boolean(clip),
+            }
+          : null;
       const v4CacheStats = v4TilePlanCache.stats();
       host.dataset.v4TileCacheMode = v4TileCacheEnabled ? 'cpu-plan' : 'off';
       host.dataset.v4TileCacheHit = String(v4CacheHit);
