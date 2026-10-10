@@ -520,7 +520,11 @@
             ? `${state.quality} · Example image`
             : name === 'section'
               ? `${state.sectionScale === 'physical' ? '1:1 X:Z' : 'Auto'} · Stack overview`
-              : `${model.layers.length} layers · ${model.regionCount} regions · ${state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm'}`,
+              : name === 'mask'
+                ? state.maskMode === 'file'
+                  ? `File · ${state.fileCell || 'Choose a Cell'} · layer/datatype ${state.fileLayer || 'All'}`
+                  : `${state.drawDraft.length} drawn shapes · ${state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm'}`
+                : `${model.layers.length} layers · ${model.regionCount} regions · ${state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm'}`,
         ),
       );
       // A mock adapter may refresh its own illustration and list children; the

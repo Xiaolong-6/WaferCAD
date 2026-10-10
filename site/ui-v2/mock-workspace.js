@@ -89,7 +89,6 @@
     sectionLine: null,
     drawTool: 'select',
     drawDraft: [],
-    layerVisibility: {},
     recipeUndo: false,
     recipeRedo: false,
     draftUndo: false,
@@ -166,9 +165,6 @@
       by: Number(data.section.b?.[1] || currentModel().height / 2),
     };
     state.drawDraft = structuredClone(data.drawMask.shapes || []);
-    state.layerVisibility = Object.fromEntries(
-      currentModel().layers.map((layer) => [layer.id, true]),
-    );
     state.task = null;
     state.exportTask = null;
     state.failure = null;
@@ -210,9 +206,6 @@
       return;
     }
     const draft = panels.render();
-    const header = draft.querySelector('.p-panel-head');
-    const titleHost = host.closest('.p-inspector')?.querySelector('.p-panel-shell-header');
-    if (header && titleHost) titleHost.replaceChildren(...header.childNodes);
     const contents = host.querySelector(':scope > [data-slot-content]');
     const source = draft.querySelector('.p-panel-content');
     // Only the adapter's own content leaf may be refreshed. The named panel
@@ -671,7 +664,6 @@
         'draw-add',
         'draw-delete',
         'draw-clear',
-        'mask-layer',
         'mask-opacity',
         'section-borders',
         'borders',
@@ -808,9 +800,6 @@
     } else if (kind === 'draw-delete' || kind === 'draw-clear') {
       state.drawDraft = kind === 'draw-clear' ? [] : state.drawDraft.slice(0, -1);
       state.message = 'Draw shapes updated.';
-    } else if (kind === 'mask-layer') {
-      state.layerVisibility[value] = !state.layerVisibility[value];
-      state.message = 'Layer visibility updated.';
     } else if (kind === 'mask-opacity') {
       state.maskOpacity = Number(value);
     } else if (kind === 'mask-export') {
@@ -1401,7 +1390,13 @@
       closeDialog();
       state.maskMode = 'file';
       state.fileLoaded = true;
-      state.fileCell = fileMask.cells[0].name;
+      state.fileCell =
+        fileMask.cells.find(
+          (cell) =>
+            cell.name !== '$$$CONTEXT_INFO$$$' &&
+            !fileMask.cells.some((parent) => parent.references.includes(cell.name)),
+        )?.name || '';
+      state.fileLayer = fileMask.layers[0] || '';
       state.message = 'Sample Cells and Layers loaded.';
     } else if (kind === 'cell' || kind === 'file-layer') {
       state[kind === 'cell' ? 'fileCell' : 'fileLayer'] = value;
@@ -1519,7 +1514,8 @@
     root.addEventListener('change', (event) => {
       const key = event.target.dataset.key;
       if (!key) return;
-      const value = event.target.value;
+      const value =
+        event.target.type === 'checkbox' ? String(event.target.checked) : event.target.value;
       if (key.startsWith('base:')) {
         const physical =
           Number(value) *

@@ -34,9 +34,8 @@
     const navHost = slot('navigation.primary', 'p-nav', 'nav');
     navHost.setAttribute('aria-label', 'Workspaces');
     const inspector = el('aside', { class: 'p-inspector', 'aria-label': 'Workflow editor' });
-    const inspectorTitle = el('div', { class: 'p-panel-shell-header p-panel-head' });
     const editorContent = el('div', { class: 'p-panel-content' });
-    inspector.append(inspectorTitle, editorContent);
+    inspector.append(editorContent);
     for (const id of registry.panels) {
       const host = slot(`panel.${id}`, 'v2-panel-host', 'section');
       const content = el('div', { 'data-slot-content': '' });

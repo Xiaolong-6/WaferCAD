@@ -232,6 +232,16 @@ try {
   assert.equal(identity, true);
   for (const target of ['project', 'mask', 'process', 'history', 'project']) {
     await click(`[data-action="domain:${target}"]`);
+    assert.equal(
+      await evaluate(`(() => {
+        const selected=document.querySelector('.p-nav [aria-pressed="true"]');
+        return selected?.dataset.action==='domain:${target}' &&
+          Number(getComputedStyle(selected).fontWeight)>=600 &&
+          document.querySelector('.p-inspector > .p-panel-head')===null;
+      })()`),
+      true,
+      'selected navigation emphasizes the active editor without a duplicate title',
+    );
     if (target === 'project' || target === 'process') {
       assert.ok(
         await evaluate(
@@ -249,6 +259,7 @@ try {
     );
   }
   record('all four science hosts and five domain hosts preserve node identity through navigation');
+  record('editor omits duplicate workspace title and emphasizes selected navigation');
   await click('[data-action="domain:project"]');
   const baseWidth = await evaluate(
     'Number(document.querySelector(\'[data-key="base:width"]\').value)',
@@ -396,7 +407,7 @@ try {
   assert.equal((await snapshot()).state.maximize, 'mask');
   assert.equal(
     await evaluate(
-      "Boolean(document.querySelector('[data-file-cells]') || document.querySelector('.p-empty-state')) || document.querySelector('.p-panel-content').textContent.includes('Cells')",
+      "!document.querySelector('[data-file-cells]') && !document.querySelector('[data-key^=\"file-layer-visible:\"]') && document.querySelector('.p-panel-content').textContent.includes('drawn shapes')",
     ),
     true,
   );
@@ -481,6 +492,60 @@ try {
   await click('dialog[open] [data-action="confirm-file-import"]');
   assert.ok(
     await evaluate(`document.querySelector('[data-cell-id="TOP"] .p-cell-children li') !== null`),
+  );
+  const materialLegend = await evaluate("document.querySelector('#layerLegend').innerHTML");
+  const layoutLayer = '[data-key="file-layer-visible:1/0"]';
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll('.p-inspector [data-key^="file-layer-visible:"]').length`,
+    ),
+    1,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('.p-inspector [data-action^="layer:"]')===null &&
+      document.querySelector('.p-inspector [data-action^="mask-layer:"]')===null`),
+    true,
+  );
+  await click(layoutLayer);
+  assert.equal((await snapshot()).state.fileLayersVisible['1/0'], false);
+  await click(layoutLayer);
+  assert.equal((await snapshot()).state.fileLayersVisible['1/0'], true);
+  assert.equal(await evaluate("document.querySelector('#layerLegend').innerHTML"), materialLegend);
+  const maskDrawCount = (await snapshot()).state.drawDraft.length;
+  await evaluate(`(() => {const el=document.querySelector('[data-key="maskMode"]');
+    el.value='draw';el.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  assert.equal(
+    await evaluate(`document.querySelector('[data-file-cells]')===null &&
+      document.querySelector('[data-key^="file-layer-visible:"]')===null`),
+    true,
+  );
+  assert.equal((await snapshot()).state.drawDraft.length, maskDrawCount);
+  assert.match(
+    await evaluate("document.querySelector('#maskPanel .p-readout').textContent"),
+    /^\d+ drawn shapes ·/,
+  );
+  await evaluate(`(() => {const el=document.querySelector('[data-key="maskMode"]');
+    el.value='file';el.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  assert.equal((await snapshot()).sourceFrozen, true);
+  assert.match(
+    await evaluate("document.querySelector('#maskPanel .p-readout').textContent"),
+    /^File · TOP · layer\/datatype /,
+  );
+  const maskInventoryLayout = await evaluate(`(() => {
+    const checkbox=document.querySelector('${layoutLayer}').getBoundingClientRect();
+    const layer=document.querySelector('.p-mask-file-layer > .p-list-row').getBoundingClientRect();
+    const cells=[...document.querySelectorAll('.p-cell-node > .p-list-row')];
+    return Math.abs((checkbox.top+checkbox.height/2)-(layer.top+layer.height/2))<1 &&
+      getComputedStyle(document.querySelector('[data-file-cells]')).listStyleType==='none' &&
+      cells.every(row=>row.getBoundingClientRect().height>=32 && row.getBoundingClientRect().height<=34);
+  })()`);
+  assert.equal(
+    maskInventoryLayout,
+    true,
+    'layout checkbox aligns with its row; Cells use compact unbulleted rows',
+  );
+  record(
+    'Mask layout layers stay separate from Section materials; Draw hides file inventory; compact aligned rows',
   );
   record('Mask navigation -> max, Cells + Layers');
   await click('[data-action="domain:process"]');

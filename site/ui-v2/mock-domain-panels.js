@@ -1,6 +1,6 @@
 // M2-only presentation adapter; replace with real domain callbacks during M3.
 (() => {
-  const { el, button, select, field, stepper, emptyState, busy, panelHeader, row, notice } =
+  const { el, button, select, field, stepper, emptyState, busy, row, notice } =
     window.WaferCadV2Components;
   window.createWaferCadV2MockDomainPanels = ({
     state,
@@ -170,14 +170,13 @@
       );
     }
     function maskPanel() {
-      const model = currentModel();
       const renderCell = (cell, depth = 0) =>
         el(
           'li',
           { class: 'p-cell-node', 'data-cell-id': cell.name, 'data-depth': depth },
           row(
             cell.name,
-            `${cell.shapeCount} shapes · ${cell.layers.join(', ') || 'references only'}`,
+            `${cell.shapeCount} ${cell.shapeCount === 1 ? 'shape' : 'shapes'} · ${cell.layers.join(', ') || 'references only'}`,
             `cell:${cell.name}`,
             state.fileCell === cell.name,
           ),
@@ -209,14 +208,14 @@
               ? el(
                   'section',
                   { class: 'p-form' },
-                  notice(`${fileMask.source.split('/').at(-1)} · File inventory`),
-                  el('h3', {}, `File Layers · ${fileMask.layers.length}`),
+                  notice(fileMask.source.split('/').at(-1)),
+                  el('h3', {}, `Layers · ${fileMask.layers.length}`),
                   el(
                     'div',
                     { class: 'p-list' },
                     fileMask.layers.map((layer) =>
                       el(
-                        'label',
+                        'div',
                         { class: 'p-mask-file-layer' },
                         el('input', {
                           type: 'checkbox',
@@ -226,7 +225,7 @@
                         }),
                         row(
                           `Layer / datatype ${layer}`,
-                          'Metadata selection only',
+                          '',
                           `file-layer:${layer}`,
                           state.fileLayer === layer,
                         ),
@@ -235,64 +234,45 @@
                   ),
                 )
               : emptyState(
-                  'No file Cells in this example',
-                  `${data.layout.elements} imported elements · ${data.layout.cells} Cells. The project uses Draw.`,
+                  'No imported layout',
+                  'Choose a layout to browse its Cells and Layers.',
                   button('Inspect bundled GDS sample', 'file-import', 'folder'),
                 )
-            : notice(
-                `${data.drawMask.shapes.length} stored Draw shapes · coordinates in µm. Canvas shows actual masks.`,
-              ),
-        ),
-        el(
-          'section',
-          {},
-          el('h3', {}, `Cells · ${state.fileLoaded ? fileMask.cells.length : data.layout.cells}`),
-          state.fileLoaded
-            ? el(
-                'ul',
-                { class: 'p-list', 'data-file-cells': '' },
-                ...fileMask.cells
-                  .filter(
-                    (cell) =>
-                      cell.name !== '$$$CONTEXT_INFO$$$' &&
-                      !fileMask.cells.some((parent) => parent.references.includes(cell.name)),
-                  )
-                  .map((cell) => renderCell(cell)),
-              )
-            : emptyState(
-                'No imported Cells',
-                'This real project uses Draw masks. Import metadata to inspect Cells.',
+            : el(
+                'div',
+                { class: 'p-form' },
+                notice(`${state.drawDraft.length} drawn shapes · ${unitName}`),
                 button('Inspect bundled GDS sample', 'file-import', 'folder'),
               ),
         ),
-        el(
-          'section',
-          {},
-          el('h3', {}, `Layers · ${model.layers.length}`),
-          el(
-            'div',
-            { class: 'p-list' },
-            model.layers.map((l) => {
-              const swatch = el('span', { class: 'p-swatch', 'aria-hidden': 'true' });
-              swatch.style.backgroundColor = l.color;
-              return el(
-                'div',
-                {
-                  class: 'p-layer',
-                  'data-layer-visible': String(state.layerVisibility[l.id] !== false),
-                },
-                swatch,
-                row(l.name, l.id, `layer:${l.id}`),
-                el('input', {
-                  type: 'checkbox',
-                  checked: state.layerVisibility[l.id] !== false,
-                  'data-action': `mask-layer:${l.id}`,
-                  'aria-label': `Show ${l.name}`,
-                }),
-              );
-            }),
-          ),
-        ),
+        state.maskMode === 'file'
+          ? el(
+              'section',
+              {},
+              el(
+                'h3',
+                {},
+                `Cells · ${state.fileLoaded ? fileMask.cells.length : data.layout.cells}`,
+              ),
+              state.fileLoaded
+                ? el(
+                    'ul',
+                    { class: 'p-list', 'data-file-cells': '' },
+                    ...fileMask.cells
+                      .filter(
+                        (cell) =>
+                          cell.name !== '$$$CONTEXT_INFO$$$' &&
+                          !fileMask.cells.some((parent) => parent.references.includes(cell.name)),
+                      )
+                      .map((cell) => renderCell(cell)),
+                  )
+                : emptyState(
+                    'No imported Cells',
+                    'Choose a layout to browse its Cells.',
+                    button('Inspect bundled GDS sample', 'file-import', 'folder'),
+                  ),
+            )
+          : null,
       ];
     }
     function taskControls() {
@@ -1243,13 +1223,6 @@
       return el(
         'aside',
         { class: 'p-inspector', 'aria-label': `${domain} editor` },
-        panelHeader(
-          domain[0].toUpperCase() + domain.slice(1),
-          state.placement === 'process' && ['recipe', 'code', 'diagnostics'].includes(domain)
-            ? `Process / ${domain[0].toUpperCase() + domain.slice(1)} mode`
-            : '',
-          [],
-        ),
         el('div', { class: 'p-panel-content' }, content),
       );
     }
