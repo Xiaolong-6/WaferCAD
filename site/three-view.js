@@ -11,6 +11,7 @@ import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
 import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
+import { createAdaptiveTilePlanCache, observePreparedAdaptiveTiles } from './renderer-v4-tile-plan.js';
 import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -97,10 +98,13 @@ export function createThreeView({
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
-  const v4TileProbeEnabled = rendererParams.get('rendererV4TileProbe') === '1';
+  const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
+  const v4TileProbeEnabled = rendererParams.get('rendererV4TileProbe') === '1' || v4TileCacheEnabled;
+  const v4TilePlanCache = createAdaptiveTilePlanCache();
   let v4PreviousTiers = new Map();
   let v4ObservedModel = null;
   let v4ObservedRevision = null;
+  let v4ObservedPlan = null;
   let suppressAssemblyFrames = false;
   let assemblySkippedFrames = 0;
 
@@ -2918,18 +2922,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // V4 R1 remains purely observational. Never omit transparent surfaces
       // based on a pixel footprint: alpha/occlusion parity is unproven.
       const v4Revision = String(model.revision ?? 0) + ':' + String(model.processRevision ?? 0);
-      if (v4ObservedModel !== model || v4ObservedRevision !== v4Revision) {
+      if (
+        v4ObservedModel !== model ||
+        v4ObservedRevision !== v4Revision ||
+        v4ObservedPlan !== plan.sidewalls
+      ) {
         v4PreviousTiers = new Map();
+        v4TilePlanCache.clear();
         v4ObservedModel = model;
         v4ObservedRevision = v4Revision;
+        v4ObservedPlan = plan.sidewalls;
       }
       let v4Tiles = null;
       let v4ProbeMs = 0;
+      let v4CacheHit = false;
       if (v4TileProbeEnabled && targetVariant === 'transparent' && camera) {
         const probeStartedAt = performance.now();
         camera.updateMatrixWorld();
         const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
-        v4Tiles = observeAdaptiveArrayTiles(plan.sidewalls, {
+        const v4Projection = {
           viewProjectionMatrix: viewProjection.elements,
           viewportWidth: viewportForV3.width,
           viewportHeight: viewportForV3.height,
@@ -2943,10 +2954,24 @@ diffuseColor.a *= waferCadAlphaScale;`,
             distanceForV3 <= 0 ||
             Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
           previousTiers: v4PreviousTiers,
-        });
+        };
+        if (v4TileCacheEnabled) {
+          const cached = v4TilePlanCache.get(plan.sidewalls, v4Revision);
+          v4CacheHit = cached.hit;
+          v4Tiles = observePreparedAdaptiveTiles(cached.plan, v4Projection);
+        } else {
+          v4Tiles = observeAdaptiveArrayTiles(plan.sidewalls, v4Projection);
+        }
         v4PreviousTiers = v4Tiles.valid ? v4Tiles.nextTiers : new Map();
         v4ProbeMs = performance.now() - probeStartedAt;
       }
+      const v4CacheStats = v4TilePlanCache.stats();
+      host.dataset.v4TileCacheMode = v4TileCacheEnabled ? 'cpu-plan' : 'off';
+      host.dataset.v4TileCacheHit = String(v4CacheHit);
+      host.dataset.v4TileCacheHits = String(v4CacheStats.hits);
+      host.dataset.v4TileCacheMisses = String(v4CacheStats.misses);
+      host.dataset.v4TileCacheEvictions = String(v4CacheStats.evictions);
+      host.dataset.v4TileCacheRetainedTiles = String(v4CacheStats.retainedTiles);
       host.dataset.v4TileProbeStatus = v4Tiles?.reason || 'disabled';
       host.dataset.v4TileReductionGate = v4Tiles?.reductionGate || 'probe-disabled';
       host.dataset.v4TileProbeMs = String(v4ProbeMs);
