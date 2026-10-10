@@ -196,6 +196,18 @@ try {
         count,
         `${example.id}: rebuilt export must retain the complete Recipe`,
       );
+      if (example.id === 'tio2-metalens-four-unit') {
+        assert.deepEqual(
+          exported.layout,
+          sourceProject.layout,
+          'Full-array Run All must retain the exact exportable 4725-site Mask',
+        );
+        assert.deepEqual(
+          exported.processRecipe.steps,
+          sourceProject.processRecipe.steps,
+          'Full-array Run All must preserve the editable nine-step Recipe',
+        );
+      }
       assert.equal(
         exported.snapshotBranches?.activeBranchId,
         'main',
