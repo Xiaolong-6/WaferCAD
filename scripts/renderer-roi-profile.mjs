@@ -61,7 +61,10 @@ async function bounded(action, timeoutMs) {
     return await Promise.race([
       Promise.resolve().then(action),
       new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`diagnostic deadline ${timeoutMs}ms`)), timeoutMs);
+        timer = setTimeout(
+          () => reject(new Error(`diagnostic deadline ${timeoutMs}ms`)),
+          timeoutMs,
+        );
       }),
     ]);
   } finally {
@@ -81,8 +84,10 @@ async function changed(action) {
   await page.waitForFunction(
     (serial) => {
       const host = document.getElementById('threeHost');
-      return host?.dataset.renderState === 'ready' &&
-        Number(host.dataset.rendererFrameSerial || 0) > serial;
+      return (
+        host?.dataset.renderState === 'ready' &&
+        Number(host.dataset.rendererFrameSerial || 0) > serial
+      );
     },
     before,
     { timeout: 180000 },
@@ -189,9 +194,11 @@ try {
     await page.waitForFunction(
       (serial) => {
         const host = document.getElementById('threeHost');
-        return /^ROI created\./.test(document.getElementById('statusText')?.textContent || '') &&
+        return (
+          /^ROI created\./.test(document.getElementById('statusText')?.textContent || '') &&
           host?.dataset.renderState === 'ready' &&
-          Number(host.dataset.rendererFrameSerial || 0) > serial;
+          Number(host.dataset.rendererFrameSerial || 0) > serial
+        );
       },
       before,
       { timeout: 180000 },
@@ -222,4 +229,7 @@ try {
   console.log('ROI_PROFILE_REPORT', JSON.stringify(result));
   await bounded(() => browser.close(), 10000).catch(() => {});
 }
-assert.ok(result.success, `Default Quality ROI did not complete: ${result.error}; inspect ${fileURLToPath(out)}`);
+assert.ok(
+  result.success,
+  `Default Quality ROI did not complete: ${result.error}; inspect ${fileURLToPath(out)}`,
+);
