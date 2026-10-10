@@ -78,7 +78,8 @@ export function surveyV4FeatureFootprints(
     !Number.isFinite(subpixelPx) ||
     subpixelPx <= 0 ||
     subpixelPx > 0.5
-  ) return report;
+  )
+    return report;
   report.valid = true;
   report.reason = 'measured';
   report.reductionGate = gateReason({ farTier, clipped, zCollapsed, edgeOn });
@@ -93,8 +94,7 @@ export function surveyV4FeatureFootprints(
     .sort(
       (a, b) =>
         (b.owner.parts?.length || 1) * b.owner.instanceTranslations.length -
-        (a.owner.parts?.length || 1) * a.owner.instanceTranslations.length ||
-        a.index - b.index,
+          (a.owner.parts?.length || 1) * a.owner.instanceTranslations.length || a.index - b.index,
     );
   report.selectedOwners = Math.min(selected.length, maxOwners);
   report.ownerOverflow = Math.max(0, selected.length - maxOwners);
@@ -129,7 +129,11 @@ export function surveyV4FeatureFootprints(
           break;
         }
         for (const interval of intervals) {
-          if (!Array.isArray(interval) || interval.length !== 2 || !interval.every(Number.isFinite)) {
+          if (
+            !Array.isArray(interval) ||
+            interval.length !== 2 ||
+            !interval.every(Number.isFinite)
+          ) {
             valid = false;
             break;
           }
