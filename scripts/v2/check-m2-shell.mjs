@@ -419,7 +419,7 @@ try {
   );
   assert.equal(
     await evaluate(
-      "document.querySelector('.p-mask-tools [data-action=roi]')!==null&&document.querySelector('.p-mask-tools [data-action^=draw-tool]')!==null&&document.querySelector('.p-mask-tools [data-action=mask-roi-settings]')!==null",
+      "document.querySelector('#maskPanel .p-view-head [data-action=roi]')!==null&&document.querySelector('.p-mask-tools [data-action^=draw-tool]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-roi-settings]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-alignment-settings]')!==null&&!document.querySelector('.p-mask-tools [data-action=roi]')&&!document.querySelector('.p-mask-settings')",
     ),
     true,
   );
@@ -428,7 +428,7 @@ try {
   );
   assert.equal(
     await evaluate(
-      "document.querySelector('.p-mask-tools [data-action^=draw-tool]')===null&&document.querySelector('.p-mask-tools [data-action=roi]')!==null&&document.querySelector('.p-mask-tools [data-action=mask-roi-settings]')!==null",
+      "!document.querySelector('.p-mask-tools')&&document.querySelector('#maskPanel .p-view-head [data-action=roi]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-roi-settings]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-alignment-settings]')!==null",
     ),
     true,
   );
@@ -472,21 +472,41 @@ try {
   );
   await click('[data-action="draw-delete"]');
   assert.equal((await snapshot()).state.drawDraft.length, drawCount);
-  await click('[data-action="mask-roi-settings"]');
+  const roiBeforeAlignment = (await snapshot()).state.roiSettings;
+  await click('[data-action="mask-alignment-settings"]');
   assert.equal(
-    await evaluate("Boolean(document.querySelector('.p-mask-settings[role=dialog]'))"),
+    await evaluate(
+      "document.querySelector('dialog[open]').getAttribute('aria-label')==='Mask alignment' && !document.querySelector('dialog[open] [data-key^=roi]')",
+    ),
     true,
   );
   await evaluate(
-    `(() => {const el=document.querySelector('.p-mask-settings [data-key="alignX"]');el.value='42';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+    `(() => {const el=document.querySelector('dialog[open] [data-key="alignX"]');el.value='42';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
   );
-  await click('[data-action="mask-roi-close"]');
+  await click('dialog[open] [data-action="apply-settings"]');
+  assert.deepEqual((await snapshot()).state.roiSettings, roiBeforeAlignment);
+  await click('[data-action="mask-roi-settings"]');
+  assert.equal(
+    await evaluate(
+      "document.querySelector('dialog[open]').getAttribute('aria-label')==='Mask ROI settings' && !document.querySelector('dialog[open] [data-key^=align]') && Boolean(document.querySelector('dialog[open] [data-key=roiWidth]'))",
+    ),
+    true,
+  );
+  const alignmentBeforeRoi = (await snapshot()).state.maskTransform;
+  await evaluate(
+    `(() => {const el=document.querySelector('dialog[open] [data-key="roiWidth"]');el.value='5';el.dispatchEvent(new Event('change',{bubbles:true}))})()`,
+  );
+  await click('dialog[open] [data-action="apply-settings"]');
+  assert.deepEqual((await snapshot()).state.maskTransform, alignmentBeforeRoi);
   assert.equal((await snapshot()).state.maskTransform.x, 42);
   assert.match(
     await evaluate(
       `document.querySelector('[data-science="mask"] svg g').getAttribute('transform')`,
     ),
     /translate\(42/,
+  );
+  record(
+    'Mask ROI and Alignment use separate title-bar entries and dialogs; canvas toolbar is Draw-only',
   );
   await click('[data-action="file-import"]');
   await click('dialog[open] [data-action="confirm-file-import"]');
@@ -1101,42 +1121,110 @@ try {
     true,
   );
   record('Code owns a bounded editor; actions remain visible without a second panel scrollbar');
+  async function assertViewHeaders() {
+    assert.equal(
+      await evaluate(`(() => [...document.querySelectorAll('.p-view-head')]
+      .filter(header=>header.getClientRects().length).every(header=>{
+        const bounds=header.getBoundingClientRect();
+        const title=header.querySelector('.v2-view-title').getBoundingClientRect();
+        const toolbar=header.querySelector('.p-toolbar');
+        const max=toolbar.querySelector('[data-action^="maximize:"]');
+        const last=max.getBoundingClientRect();
+        const more=toolbar.querySelector('.p-overflow-anchor button').getBoundingClientRect();
+        return toolbar.lastElementChild===max && header.scrollWidth<=header.clientWidth+1
+          && last.right<=bounds.right-3 && last.left>=title.right
+          && Math.abs((title.top+title.bottom)/2-(last.top+last.bottom)/2)<1
+          && Math.abs(more.top-last.top)<1
+          && [...toolbar.querySelectorAll('button')].filter(button=>!button.closest('[popover]'))
+            .every(button=>{const rect=button.getBoundingClientRect();return button.textContent.trim()===''
+              && button.title && button.getAttribute('aria-label') && button.querySelector('svg')
+              && rect.left>=bounds.left && rect.right<=bounds.right && Math.abs(rect.top-last.top)<1;});
+    }))()`),
+      true,
+    );
+  }
   await click('[data-action="mode:overview"]');
-  await viewport(1024);
+  for (const width of [1440, 1024]) {
+    await viewport(width);
+    await assertViewHeaders();
+  }
   assert.equal(
     await evaluate(`(() => {
-    const containers=[...document.querySelectorAll('.p-view-head,.p-mask-tools')]
-      .filter(node=>node.getClientRects().length);
-    return containers.every(node=>{
-      const parent=node.getBoundingClientRect();
-      return node.scrollWidth<=node.clientWidth+1 && [...node.querySelectorAll('button')]
-        .filter(button=>button.getClientRects().length).every(button=>{
-          const rect=button.getBoundingClientRect();
-          return rect.left>=parent.left-1 && rect.right<=parent.right+1;
-        });
-    }) && [...document.querySelectorAll('.p-mask-tools [data-action^="draw-tool"]')]
-      .every(button=>button.getBoundingClientRect().width===28 && button.getBoundingClientRect().height===28);
+    const node=document.querySelector('.p-mask-tools'),bounds=node.getBoundingClientRect();
+    return node.scrollWidth<=node.clientWidth+1 && [...node.querySelectorAll('button')].every(button=>{
+      const rect=button.getBoundingClientRect();return rect.left>=bounds.left && rect.right<=bounds.right;})
+      && [...node.querySelectorAll('[data-action^="draw-tool"]')].every(button=>
+        button.getBoundingClientRect().width===28 && button.getBoundingClientRect().height===28);
   })()`),
     true,
   );
+  record('1440/1024 Overview: single-row icon title bars keep Max last and surplus tools in More');
+  for (const width of [768, 390, 320]) {
+    await viewport(width);
+    await click('[data-action="mobile-section"]');
+    await assertViewHeaders();
+  }
+  await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+  await assertViewHeaders();
+  await waitFor(
+    async () =>
+      evaluate('Boolean(document.querySelector("#p-overflow-section [data-action=legend]"))'),
+    'Legend moves into More',
+  );
+  const legendBeforeOverflow = (await snapshot()).state.legendOpen;
+  await click('#sectionPanel [popovertarget="p-overflow-section"]');
+  assert.equal(
+    await evaluate(
+      'document.querySelector("#p-overflow-section [data-action=legend]").textContent.trim()',
+    ),
+    'Legend',
+  );
+  await click('#p-overflow-section [data-action="legend"]');
+  assert.equal((await snapshot()).state.legendOpen, !legendBeforeOverflow);
+  await click('#sectionPanel [popovertarget="p-overflow-section"]');
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyDown',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  assert.equal(
+    await evaluate('document.activeElement.getAttribute("popovertarget")'),
+    'p-overflow-section',
+  );
+  await click('[data-action="maximize:section"]');
+  assert.equal((await snapshot()).state.maximize, 'section');
+  await assertViewHeaders();
+  await click('[data-action="maximize:section"]');
+  assert.equal((await snapshot()).state.maximize, null);
+  await call('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await viewport(1440);
+  await click('[data-action="mode:overview"]');
+  await waitFor(
+    async () =>
+      evaluate(
+        'Boolean(document.querySelector("#sectionPanel .p-tool-group [data-action=legend]"))',
+      ),
+    'Legend returns to title bar',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector("#sectionPanel .p-tool-group [data-action=legend]").textContent.trim()',
+    ),
+    '',
+  );
+  assert.equal((await snapshot()).state.legendOpen, !legendBeforeOverflow);
+  assert.equal((await snapshot()).sourceFrozen, true);
   record(
-    '1024 Overview: all header and compact Draw actions fit their views without horizontal scrolling',
+    '768/390/320 and coarse input: title row stays fixed; overflow toggle, Escape, Max/Restore and widening work',
   );
-  await viewport(390);
-  await click('[data-action="mobile-section"]');
-  assert.equal(
-    await evaluate(`(() => {
-    const header=document.querySelector('#sectionPanel .p-view-head');
-    const parent=header.getBoundingClientRect();
-    return header.scrollWidth<=header.clientWidth+1 && [...header.querySelectorAll('button')]
-      .filter(button=>button.getClientRects().length).every(button=>{
-        const rect=button.getBoundingClientRect();
-        return rect.left>=parent.left-1 && rect.right<=parent.right+1;
-      });
-  })()`),
-    true,
-  );
-  record('390 Section: More and Max wrap within the header and remain directly visible');
   await viewport(1280);
   async function chooseField(key, value) {
     await evaluate(`(() => {const input=document.querySelector('[data-key=${JSON.stringify(key)}]');

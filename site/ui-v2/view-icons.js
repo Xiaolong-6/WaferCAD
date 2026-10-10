@@ -23,6 +23,7 @@
     zoom: 'M10 10l4 4 M5 2a4 4 0 1 0 0 8a4 4 0 1 0 0-8 M3 6h4 M5 4v4',
     pan: 'M8 1v14 M1 8h14 M5 4l3-3 3 3 M5 12l3 3 3-3 M4 5L1 8l3 3 M12 5l3 3-3 3',
     roi: 'M2 5V2h3 M11 2h3v3 M14 11v3h-3 M5 14H2v-3 M5 5h6v6H5Z',
+    alignment: 'M8 1v14 M1 8h14 M3 3h4v4H3Z M9 9h4v4H9Z',
     line: 'M2 13L14 3 M2 11v3h3 M11 2h3v3',
     export: 'M8 10V1 M5 4l3-3 3 3 M2 8v6h12V8',
     maximize: 'M2 6V2h4 M10 2h4v4 M14 10v4h-4 M6 14H2v-4 M5 5l-3-3 M11 5l3-3 M11 11l3 3 M5 11l-3 3',

@@ -108,7 +108,8 @@
   }
   function toolbar(label, groups, overflow) {
     const id = `p-overflow-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
-    const trigger = button('More', null, 'more', {
+    const trigger = button('', null, 'more', {
+      title: `${label} more tools`,
       popovertarget: id,
       'aria-label': `${label} more tools`,
       'aria-haspopup': 'menu',
@@ -166,18 +167,85 @@
       items[next]?.focus({ preventScroll: true });
     });
     window.WaferCadV2ActiveOverlays?.adoptPopover(menu, trigger);
-    return el(
+    const toolGroups = groups.map((group, i) =>
+      el(
+        'div',
+        { class: 'p-tool-group', role: 'group', 'aria-label': `${label} group ${i + 1}` },
+        group,
+      ),
+    );
+    const toolStrip = el('div', { class: 'p-tool-strip' }, toolGroups);
+    const bar = el(
       'div',
       { class: 'p-toolbar', role: 'toolbar', 'aria-label': `${label} tools` },
-      groups.map((group, i) =>
-        el(
-          'div',
-          { class: 'p-tool-group', role: 'group', 'aria-label': `${label} group ${i + 1}` },
-          group,
-        ),
-      ),
+      toolStrip,
       el('div', { class: 'p-overflow-anchor' }, trigger, menu),
     );
+    const permanentItems = [...overflow];
+    const tools = groups.flat();
+    const roles = new Map(tools.map((item) => [item, item.getAttribute('role')]));
+    // Move the original controls, preserving actions and toggle state. No domain state is owned here.
+    const arrange = () => {
+      if (!bar.isConnected || !bar.clientWidth) return;
+      const focused = document.activeElement;
+      groups.forEach((group, i) => {
+        toolGroups[i].append(...group);
+        group.forEach((item) => {
+          item.querySelector('[data-overflow-label]')?.remove();
+          item.removeAttribute('aria-checked');
+          const role = roles.get(item);
+          if (role) item.setAttribute('role', role);
+          else item.removeAttribute('role');
+        });
+      });
+      const hidden = [];
+      const bounds = toolStrip.getBoundingClientRect();
+      for (let i = tools.length - 1; i >= 0; i--) {
+        if (tools[i].getBoundingClientRect().right <= bounds.right + 0.5) break;
+        const item = tools[i];
+        item.setAttribute(
+          'role',
+          item.hasAttribute('aria-pressed') ? 'menuitemcheckbox' : 'menuitem',
+        );
+        if (item.hasAttribute('aria-pressed'))
+          item.setAttribute('aria-checked', item.getAttribute('aria-pressed'));
+        if (!item.textContent.trim())
+          item.append(
+            el(
+              'span',
+              { 'data-overflow-label': '' },
+              item.getAttribute('aria-label') || item.title,
+            ),
+          );
+        hidden.unshift(item);
+        menu.prepend(item);
+      }
+      overflow.splice(0, overflow.length, ...hidden, ...permanentItems);
+      if (focused !== document.activeElement && tools.includes(focused)) {
+        if (!hidden.includes(focused) || menu.matches(':popover-open'))
+          focused.focus({ preventScroll: true });
+        else trigger.focus({ preventScroll: true });
+      }
+    };
+    const observer = new ResizeObserver(() => {
+      if (!bar.isConnected) observer.disconnect();
+      else arrange();
+    });
+    let disposed = false;
+    bar.addEventListener(
+      'dispose-toolbar',
+      () => {
+        disposed = true;
+        observer.disconnect();
+      },
+      { once: true },
+    );
+    requestAnimationFrame(() => {
+      if (disposed || !bar.isConnected) return;
+      arrange();
+      observer.observe(bar);
+    });
+    return bar;
   }
   function row(title, subtitle, action, selected = false, state = '') {
     return el(

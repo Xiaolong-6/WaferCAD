@@ -139,6 +139,7 @@
       return svg;
     }
     function maskCanvasTools() {
+      if (state.maskMode !== 'draw') return null;
       const tools = [
         ['select', 'Select', 'select'],
         ['rect', 'Rectangle', 'rectangle'],
@@ -147,153 +148,34 @@
         ['ring', 'Ring', 'ring'],
         ['ring-sector', 'Ring sector', 'ringSector'],
       ];
-      const unitFactor = state.displayUnit === 'nm' ? 1000 : state.displayUnit === 'mm' ? 0.001 : 1;
-      const unitName = state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm';
-      const displayLength = (value) => Number(value) * unitFactor;
-      return el('div', { class: 'p-mask-controls' }, [
+      return el(
+        'div',
+        { class: 'p-mask-controls' },
         el(
           'div',
-          { class: 'p-mask-tools', role: 'toolbar', 'aria-label': 'Mask canvas tools' },
-          state.maskMode === 'draw'
-            ? [
-                el('span', { class: 'p-mask-tool-divider', 'aria-hidden': 'true' }),
-                ...tools.map(([key, label, glyph]) =>
-                  button('', `draw-tool:${key}`, glyph, {
-                    'aria-label': label,
-                    title: label,
-                    'aria-pressed': String(state.drawTool === key),
-                  }),
-                ),
-                button('Add', 'draw-add', 'plus', {
-                  title: 'Add preview shape',
-                  disabled: state.drawTool === 'select',
-                }),
-                button('', 'draw-delete', 'delete', {
-                  'aria-label': 'Delete last shape',
-                  title: 'Delete last shape',
-                }),
-                button('', 'draw-clear', 'clear', {
-                  'aria-label': 'Clear Draw shapes',
-                  title: 'Clear Draw shapes',
-                }),
-              ]
-            : null,
-          state.maskMode === 'draw'
-            ? el('span', { class: 'p-mask-tool-divider', 'aria-hidden': 'true' })
-            : null,
-          button('', 'roi', 'roi', {
-            'aria-label': state.roi ? 'Hide ROI' : 'Show ROI',
-            title: state.roi ? 'Hide ROI' : 'Show ROI',
-            'aria-pressed': String(state.roi),
+          { class: 'p-mask-tools', role: 'toolbar', 'aria-label': 'Mask drawing tools' },
+          tools.map(([key, label, glyph]) =>
+            button('', 'draw-tool:' + key, glyph, {
+              'aria-label': label,
+              title: label,
+              'aria-pressed': String(state.drawTool === key),
+            }),
+          ),
+          el('span', { class: 'p-mask-tool-divider', 'aria-hidden': 'true' }),
+          button('Add', 'draw-add', 'plus', {
+            title: 'Add preview shape',
+            disabled: state.drawTool === 'select',
           }),
-          button('', 'mask-roi-settings', 'settings', {
-            'aria-label': 'ROI parameters and mask alignment',
-            title: 'ROI parameters and mask alignment',
-            'aria-pressed': String(state.maskRoiOpen),
+          button('', 'draw-delete', 'delete', {
+            'aria-label': 'Delete last shape',
+            title: 'Delete last shape',
+          }),
+          button('', 'draw-clear', 'clear', {
+            'aria-label': 'Clear Draw shapes',
+            title: 'Clear Draw shapes',
           }),
         ),
-        state.maskRoiOpen
-          ? el(
-              'section',
-              { class: 'p-mask-settings', role: 'dialog', 'aria-label': 'ROI and mask alignment' },
-              el(
-                'header',
-                { class: 'p-mask-settings-head' },
-                el('strong', {}, 'ROI & alignment'),
-                button('', 'mask-roi-close', 'close', { 'aria-label': 'Close ROI settings' }),
-              ),
-              select(
-                'ROI shape',
-                'roiShape',
-                [
-                  ['rect', 'Rectangle'],
-                  ['circle', 'Circle'],
-                  ['ring', 'Ring'],
-                  ['ring-sector', 'Ring sector'],
-                ],
-                state.roiShape,
-              ),
-              select(
-                'Reference',
-                'roiAnchor',
-                [
-                  ['center', 'Center / origin'],
-                  ['top-left', 'Top-left'],
-                  ['bottom-left', 'Bottom-left'],
-                  ['top-right', 'Top-right'],
-                  ['bottom-right', 'Bottom-right'],
-                ],
-                state.roiAnchor,
-              ),
-              el(
-                'div',
-                { class: 'p-mask-field-grid' },
-                field(`X · ${unitName}`, 'roiX', displayLength(state.roiSettings.x), {
-                  type: 'number',
-                  step: 'any',
-                }),
-                field(`Y · ${unitName}`, 'roiY', displayLength(state.roiSettings.y), {
-                  type: 'number',
-                  step: 'any',
-                }),
-                field(`Width · ${unitName}`, 'roiWidth', displayLength(state.roiSettings.width), {
-                  type: 'number',
-                  min: 0,
-                  step: 'any',
-                }),
-                field(
-                  `Height · ${unitName}`,
-                  'roiHeight',
-                  displayLength(state.roiSettings.height),
-                  { type: 'number', min: 0, step: 'any' },
-                ),
-                field(
-                  `Radius · ${unitName}`,
-                  'roiRadius',
-                  displayLength(state.roiSettings.radius),
-                  { type: 'number', min: 0, step: 'any' },
-                ),
-                field('Rotation · °', 'roiRotation', state.roiSettings.rotation, {
-                  type: 'number',
-                  step: 'any',
-                }),
-              ),
-              el(
-                'div',
-                { class: 'p-mask-field-grid' },
-                field(`Alignment X · ${unitName}`, 'alignX', displayLength(state.maskTransform.x), {
-                  type: 'number',
-                  step: 'any',
-                }),
-                field(`Alignment Y · ${unitName}`, 'alignY', displayLength(state.maskTransform.y), {
-                  type: 'number',
-                  step: 'any',
-                }),
-                field('Alignment scale', 'alignScale', state.maskTransform.scale, {
-                  type: 'number',
-                  min: 0.0001,
-                  step: 'any',
-                }),
-                field('Alignment rotation · °', 'alignRotation', state.maskTransform.rotation, {
-                  type: 'number',
-                  step: 'any',
-                }),
-              ),
-              field('Mask opacity', 'maskOpacity', state.maskOpacity, {
-                type: 'range',
-                min: 0,
-                max: 1,
-                step: 0.05,
-              }),
-              el(
-                'div',
-                { class: 'p-actions' },
-                button('Clear ROI', 'clear-roi', 'close'),
-                button('Done', 'mask-roi-close', 'check', { primary: true }),
-              ),
-            )
-          : null,
-      ]);
+      );
     }
     function sectionSchematic(model) {
       const svg = svgNode('svg', {
@@ -353,19 +235,52 @@
       ];
       const extra =
         name === 'three'
-          ? [button(state.quality, 'quality', 'quality')]
+          ? [
+              button('', 'quality', 'quality', {
+                'aria-label': state.quality,
+                title: `Rendering quality: ${state.quality}`,
+              }),
+            ]
           : name === 'section'
             ? [
-                button('Z-break', 'zbreak', 'zbreak', { 'aria-pressed': String(state.zbreak) }),
-                button('Legend', 'legend', 'main', {
+                button('', 'zbreak', 'zbreak', {
+                  'aria-label': 'Z-break',
+                  title: 'Z-break',
+                  'aria-pressed': String(state.zbreak),
+                }),
+                button('', 'legend', 'main', {
+                  'aria-label': 'Legend',
+                  title: 'Legend',
                   'aria-pressed': String(state.legendOpen),
                   'aria-expanded': String(state.legendOpen),
                   'aria-controls': 'layerLegend',
                 }),
               ]
             : name === 'main'
-              ? [button('ROI', 'roi', 'roi', { 'aria-pressed': String(state.roi) })]
-              : [];
+              ? [
+                  button('', 'roi', 'roi', {
+                    'aria-label': 'ROI',
+                    title: 'ROI',
+                    'aria-pressed': String(state.roi),
+                  }),
+                ]
+              : name === 'mask'
+                ? [
+                    button('', 'roi', 'roi', {
+                      'aria-label': state.roi ? 'Hide ROI' : 'Show ROI',
+                      title: state.roi ? 'Hide ROI' : 'Show ROI',
+                      'aria-pressed': String(state.roi),
+                    }),
+                    button('', 'mask-roi-settings', 'settings', {
+                      'aria-label': 'ROI settings',
+                      title: 'ROI settings',
+                    }),
+                    button('', 'mask-alignment-settings', 'alignment', {
+                      'aria-label': 'Mask alignment',
+                      title: 'Mask alignment',
+                    }),
+                  ]
+                : [];
       const more = name === 'main' ? [button('Section line', 'tool:line:main', 'line')] : [];
       if (name === 'main') more.push(button('ROI settings…', 'settings:main', 'settings'));
       if (name === 'three') more.push(button('3D display settings…', 'settings:three', 'settings'));
@@ -461,8 +376,9 @@
       }
       const viewTools = toolbar(label, [common, extra], more);
       viewTools.append(
-        button(state.maximize === name ? 'Restore' : 'Max', `maximize:${name}`, 'maximize', {
+        button('', `maximize:${name}`, 'maximize', {
           'aria-label': `${label} ${state.maximize === name ? 'restore' : 'maximize'}`,
+          title: state.maximize === name ? 'Restore view' : 'Maximize view',
         }),
       );
       const preparedStage =

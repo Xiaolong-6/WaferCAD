@@ -79,7 +79,6 @@
     roiAnchor: 'center',
     roiSettings: { x: 0, y: 0, width: 0, height: 0, radius: 0, rotation: 0 },
     maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-    maskRoiOpen: false,
     maskOpacity: 0.65,
     threeOpacity: 1,
     borders: false,
@@ -201,7 +200,6 @@
     state.baseApplied = null;
     state.baseShape = 'rect';
     state.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
-    state.maskRoiOpen = false;
     state.legendColors = {};
     state.legendPalette = 'balanced';
     state.legendPaletteOpen = null;
@@ -611,10 +609,43 @@
         'Done',
         'apply-settings',
       );
-    } else {
+    } else if (view === 'mask-alignment') {
       const transform = state.maskTransform;
       dialog(
-        `${view === 'detail' ? 'Detail' : view === 'mask' ? 'Mask' : 'Main'} ROI and alignment`,
+        'Mask alignment',
+        el(
+          'div',
+          { class: 'p-form' },
+          field(`Alignment X · ${unitName}`, 'alignX', displayLength(transform.x), {
+            type: 'number',
+            step: 'any',
+          }),
+          field(`Alignment Y · ${unitName}`, 'alignY', displayLength(transform.y), {
+            type: 'number',
+            step: 'any',
+          }),
+          field('Alignment scale', 'alignScale', transform.scale, {
+            type: 'number',
+            min: 0.0001,
+            step: 'any',
+          }),
+          field('Alignment rotation · °', 'alignRotation', transform.rotation, {
+            type: 'number',
+            step: 'any',
+          }),
+          field('Mask opacity', 'maskOpacity', state.maskOpacity, {
+            type: 'range',
+            min: 0,
+            max: 1,
+            step: 0.05,
+          }),
+        ),
+        'Done',
+        'apply-settings',
+      );
+    } else {
+      dialog(
+        `${view === 'detail' ? 'Detail' : view === 'mask' ? 'Mask' : 'Main'} ROI settings`,
         el(
           'div',
           { class: 'p-form' },
@@ -668,33 +699,6 @@
             type: 'number',
             step: 'any',
           }),
-          ...(view === 'mask'
-            ? [
-                field(`Alignment X · ${unitName}`, 'alignX', displayLength(transform.x), {
-                  type: 'number',
-                  step: 'any',
-                }),
-                field(`Alignment Y · ${unitName}`, 'alignY', displayLength(transform.y), {
-                  type: 'number',
-                  step: 'any',
-                }),
-                field('Alignment scale', 'alignScale', transform.scale, {
-                  type: 'number',
-                  min: 0.0001,
-                  step: 'any',
-                }),
-                field('Alignment rotation · °', 'alignRotation', transform.rotation, {
-                  type: 'number',
-                  step: 'any',
-                }),
-                field('Mask opacity', 'maskOpacity', state.maskOpacity, {
-                  type: 'range',
-                  min: 0,
-                  max: 1,
-                  step: 0.05,
-                }),
-              ]
-            : []),
           button(
             view === 'detail' ? 'Clear Detail ROI' : 'Clear ROI',
             view === 'detail' ? 'clear-detail-roi' : 'clear-roi',
@@ -794,10 +798,9 @@
       state.detail = false;
       closeDialog();
       state.message = 'Detail ROI cleared.';
-    } else if (kind === 'mask-roi-settings') {
-      state.maskRoiOpen = !state.maskRoiOpen;
-    } else if (kind === 'mask-roi-close') {
-      state.maskRoiOpen = false;
+    } else if (kind === 'mask-roi-settings' || kind === 'mask-alignment-settings') {
+      openViewSettings(kind === 'mask-roi-settings' ? 'mask' : 'mask-alignment');
+      return;
     } else if (kind === 'draft-undo' || kind === 'draft-redo') {
       const from = kind === 'draft-undo' ? draftUndoStack : draftRedoStack;
       const to = kind === 'draft-undo' ? draftRedoStack : draftUndoStack;

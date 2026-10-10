@@ -3,7 +3,8 @@
 (() => {
   const { el } = window.WaferCadV2Components;
   window.createWaferCadV2ViewPanels = () => {
-    const panels = new Map(), slots = new Map();
+    const panels = new Map(),
+      slots = new Map();
     function update(key, attributes, ...parts) {
       let panel = panels.get(key);
       const incomingHeader = parts[0];
@@ -17,10 +18,14 @@
         header.append(title, actions);
         const holder = incomingStage;
         const stage = holder.hasAttribute('data-v2-stage-host')
-          ? holder : holder.querySelector('[data-v2-stage-host]');
+          ? holder
+          : holder.querySelector('[data-v2-stage-host]');
         if (!stage) throw Error(`View ${key} must supply its scientific host`);
         stage.setAttribute('data-slot', `view.${key}.stage`);
-        const overlay = el('div', { class: 'v2-view-overlays', 'data-slot': `view.${key}.overlays` });
+        const overlay = el('div', {
+          class: 'v2-view-overlays',
+          'data-slot': `view.${key}.overlays`,
+        });
         // Overlays are a sibling and cannot capture renderer pointer events unless opted in.
         overlay.hidden = true;
         const readout = el('div', { class: 'p-readout', 'data-slot': `view.${key}.readout` });
@@ -43,7 +48,10 @@
       const actionSlot = slots.get(`view.${key}.actions`);
       const readoutSlot = slots.get(`view.${key}.readout`);
       if (headerTitle) titleSlot.replaceChildren(headerTitle);
-      if (headerTools) actionSlot.replaceChildren(headerTools);
+      if (headerTools) {
+        actionSlot.querySelector('.p-toolbar')?.dispatchEvent(new Event('dispose-toolbar'));
+        actionSlot.replaceChildren(headerTools);
+      }
       readoutSlot.textContent = incomingReadout?.textContent || '';
       return panel;
     }

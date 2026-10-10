@@ -743,37 +743,6 @@ p {
   margin-inline: 2px;
   background: var(--wc-border-strong);
 }
-.p-mask-settings {
-  position: relative;
-  z-index: var(--wc-z-popover);
-  display: grid;
-  gap: var(--wc-space-2);
-  width: min(360px, 100%);
-  min-height: 0;
-  overflow: auto;
-  padding: var(--wc-space-3);
-  border: 1px solid var(--wc-border-strong);
-  border-radius: var(--wc-radius-md);
-  background: var(--wc-surface);
-  box-shadow: var(--wc-shadow-2);
-}
-.p-mask-settings-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--wc-space-2);
-  position: sticky;
-  top: calc(-1 * var(--wc-space-3));
-  margin: calc(-1 * var(--wc-space-3)) calc(-1 * var(--wc-space-3)) 0;
-  padding: var(--wc-space-2) var(--wc-space-3);
-  background: var(--wc-surface);
-  border-bottom: 1px solid var(--wc-border);
-}
-.p-mask-field-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--wc-space-2);
-}
 .p-scale {
   position: absolute;
   left: 8px;
@@ -1584,10 +1553,10 @@ html[data-font='inter'] {
     flex-basis: 40px;
   }
 }
-/* Tools wrap within each view, including Split and compact Overview plots. */
+/* Keep view chrome on one row; surplus tools move into More. */
 .p-view .p-view-head {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-start;
   gap: var(--wc-space-2);
   overflow: visible;
@@ -1597,8 +1566,9 @@ html[data-font='inter'] {
 }
 .p-view .p-view-head > .p-toolbar {
   display: flex;
-  flex: 1 1 280px;
-  flex-wrap: wrap;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: nowrap;
   border: 0;
   padding: 0;
   background: transparent;
@@ -1692,19 +1662,35 @@ html[data-font='inter'] {
 .v2-view-title {
   min-width: 0;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .v2-view-actions {
   min-width: 0;
   display: flex;
-  flex: 1 1 280px;
+  flex: 1 1 0;
 }
 .p-view-head .v2-view-actions > .p-toolbar {
   display: flex;
   flex: 1;
-  flex-wrap: wrap;
+  min-width: 0;
+  flex-wrap: nowrap;
   border: 0;
   padding: 0;
   background: transparent;
+}
+.p-view-head .p-tool-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--wc-space-1);
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.p-view-head .p-tool-group:empty {
+  display: none;
+}
+.p-view-head .p-overflow-anchor {
+  flex: 0 0 auto;
 }
 .v2-view-stage-container {
   flex: 1;
