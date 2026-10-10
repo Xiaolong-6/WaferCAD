@@ -1,7 +1,7 @@
-// Default-off V3 experiment: keep canonical Electrical Region geometry and
-// volume sidewalls exact while testing one transparent draw for planar caps.
-// Mesh groups keep both cap planes in their source buffer order. The complete
-// canvas parity gate decides whether this alternative presentation is safe.
+// Default-off V3 exact-pass experiment. For an above-wafer camera,
+// keep the original transparent BackSide -> FrontSide compositing order while
+// excluding the opposite-facing horizontal cap from each GPU submission.
+// Physical triangles, alpha, normals and canonical model are never mutated.
 export function canTryElectricalVolumeCapPass({
   enabled = false,
   transparent = false,
@@ -9,6 +9,7 @@ export function canTryElectricalVolumeCapPass({
   fullArray = false,
   clipped = false,
   rough = false,
+  cameraAbove = false,
   solid = null,
 } = {}) {
   return (
@@ -18,8 +19,11 @@ export function canTryElectricalVolumeCapPass({
     fullArray === true &&
     clipped === false &&
     rough === false &&
+    cameraAbove === true &&
     Array.isArray(solid?.caps) &&
     solid.caps.length === 2 &&
+    solid.caps.some((cap) => cap.normal === -1) &&
+    solid.caps.some((cap) => cap.normal === 1) &&
     solid.caps.every(
       (cap) =>
         Number.isFinite(cap?.z) &&
@@ -31,19 +35,39 @@ export function canTryElectricalVolumeCapPass({
   );
 }
 
-export function electricalVolumeGeometryGroups(capVertices, totalVertices) {
+// Exact vertex indices, without vertex deduplication or geometric tolerance.
+// The two per-pass draw lists preserve cap-before-wall buffer order, matching
+// the visible triangles from Three.js's original DoubleSide two-pass draw.
+export function electricalVolumePassIndices(capRanges, totalVertices) {
   if (
-    !Number.isSafeInteger(capVertices) ||
+    !Array.isArray(capRanges) ||
+    capRanges.length !== 2 ||
     !Number.isSafeInteger(totalVertices) ||
-    capVertices <= 0 ||
-    capVertices >= totalVertices ||
-    capVertices % 3 !== 0 ||
+    totalVertices <= 0 ||
     totalVertices % 3 !== 0
   )
     return null;
-
-  return [
-    { start: 0, count: capVertices, materialIndex: 0 },
-    { start: capVertices, count: totalVertices - capVertices, materialIndex: 1 },
+  let firstSidewall = 0;
+  let back = null;
+  let front = null;
+  for (const cap of capRanges) {
+    if (
+      !Number.isSafeInteger(cap.start) ||
+      !Number.isSafeInteger(cap.count) ||
+      cap.start !== firstSidewall ||
+      cap.count <= 0 ||
+      cap.count % 3 !== 0 ||
+      ![-1, 1].includes(cap.normal)
+    )
+      return null;
+    firstSidewall += cap.count;
+    if (cap.normal === -1) back = cap;
+    else front = cap;
+  }
+  if (!back || !front || firstSidewall >= totalVertices) return null;
+  const indicesFor = (cap) => [
+    ...Array.from({ length: cap.count }, (_, index) => cap.start + index),
+    ...Array.from({ length: totalVertices - firstSidewall }, (_, index) => firstSidewall + index),
   ];
+  return { back: indicesFor(back), front: indicesFor(front) };
 }
