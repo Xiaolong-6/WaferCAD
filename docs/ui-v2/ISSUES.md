@@ -33,6 +33,12 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 其余原型缺口见 [M2 自查](M2_GAP_AUDIT.md) G01–G08：尤其 History 仍平铺、Manual 缺 Extend / Etch 分类不一致 / Tilt 不支持负值。
 这些未完成的界面项不计入已覆盖，不以 M2 浏览器检查通过代替全工作区验收。用户允许本地提交；停下审核，不进入 M3。
 
+## D1 实施期间新增待验收项（2026-10-10）
+
+| ID | 发现与风险 | 处理要求 | 状态 |
+| --- | --- | --- | --- |
+| I16 | D1 已提交独立 `app-v2-real.html` 的真实视图装配实验：复用现有 DOM/canvas/控制器，`app.js` 在 v2 标记下使用单一 bootstrap。当前无可执行工作区，真实 Chrome/Playwright、WebGL、像素几何、M1.5 视觉及旧入口回归**尚未运行**；原生 view-head 暂未转为最终共享 chrome，`app-v2.html` 仍为 mock。 | 严格执行 `scripts/v2/check-d1-real-views.mjs` 及原有回归，复核生成库存、四宽度截图、真实 pointer/ROI ≤0.25px、浮层键盘与焦点、3D 完整帧；修复并复验后再决定是否替换 mock 入口，不得直接批准 D1。完整步骤见 [D1 execution](M3_D1_EXECUTION_2026-10-10.md)。 | **P1 / D1 未通过；D2 不得启动** |
+
 ## M3 前置 main 审计差异（2026-10-10）
 
 完整按域“静态控件 / 动态生成 / 状态 / 事件与导航 / 真实事务回调”表见 [M3 latest-main audit](M3_MAIN_AUDIT_2026-10-10.md)。初始轮次只写文档；后续已完成运行时前置审计、生成清单和脚本修复，无产品接线。以下编号在 I01–I10 的历史问题上递增，未表示已有核心修改授权。
