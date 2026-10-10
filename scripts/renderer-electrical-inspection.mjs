@@ -49,7 +49,7 @@ async function runTrial(enabled, ordinal) {
   page.setDefaultTimeout(180000);
   const label = `${ordinal}-${enabled ? 'single' : 'double'}`;
   const snapshot = () => page.locator('#threeHost').evaluate((el) => ({ ...el.dataset }));
-  const result = { label, enabled, states: [], errors };
+  const result = { label, enabled, states: [], repeats: [], errors };
   trials.push(result);
   try {
     await page.goto(
@@ -146,6 +146,28 @@ async function runTrial(enabled, ordinal) {
       assert.ok(trace?.cameraWorld?.length === 16 && trace?.cameraProjection?.length === 16);
       const orderHash = createHash('sha256').update(JSON.stringify(trace.order)).digest('hex');
       await writeFile(new URL(`${label}-${name}-trace.json`, output), JSON.stringify(trace));
+      // Same-context duplicate capture requires no model, camera or UI action.
+      // It separates screenshot/frame instability from fresh-context drift.
+      if (['far-collapse', 'far-restored', 'fitted', 'full-z'].includes(name)) {
+        const repeatImage = await page.locator('#threeHost canvas').screenshot({
+          path: fileURLToPath(new URL(`${label}-${name}-repeat.png`, output)),
+        });
+        const repeatState = await snapshot();
+        const repeatTrace = await page.evaluate(() => window.__electricalInspectionTrace);
+        const repeatDiff = compareScreenshotPngPixels(image, repeatImage);
+        result.repeats.push({
+          name,
+          byteIdentical: image.equals(repeatImage),
+          frameSerialIdentical: state.rendererFrameSerial === repeatState.rendererFrameSerial,
+          cameraIdentical:
+            JSON.stringify([trace.cameraWorld, trace.cameraProjection]) ===
+            JSON.stringify([repeatTrace?.cameraWorld, repeatTrace?.cameraProjection]),
+          orderIdentical:
+            orderHash ===
+            createHash('sha256').update(JSON.stringify(repeatTrace?.order)).digest('hex'),
+          ...repeatDiff,
+        });
+      }
       for (const key of physicalKeys)
         assert.equal(state[key], physical[key], `${stage}: ${key} changed`);
       assert.equal(state.v3SkippedTriangles, '0');
@@ -348,9 +370,20 @@ try {
         comparisons,
         strictParity: comparisons.every((entry) => entry.byteIdentical),
         matchingCamera: comparisons.every((entry) => entry.cameraIdentical),
+        sameContextRepeatable: trials.every((trial) =>
+          trial.repeats.every(
+            (entry) => entry.byteIdentical && entry.frameSerialIdentical && entry.cameraIdentical,
+          ),
+        ),
         roiCovered: !skipRoi,
         fullAcceptance:
-          !skipRoi && comparisons.every((entry) => entry.byteIdentical && entry.cameraIdentical),
+          !skipRoi &&
+          trials.every((trial) =>
+            trial.repeats.every(
+              (entry) => entry.byteIdentical && entry.frameSerialIdentical && entry.cameraIdentical,
+            ),
+          ) &&
+          comparisons.every((entry) => entry.byteIdentical && entry.cameraIdentical),
         timingAcceptance: false,
       },
       null,
@@ -358,8 +391,12 @@ try {
     ),
   );
   assert.ok(
-    comparisons.every((entry) => entry.byteIdentical && entry.cameraIdentical),
-    'strict matching-camera inspection parity failed; inspect report.json',
+    trials.every((trial) =>
+      trial.repeats.every(
+        (entry) => entry.byteIdentical && entry.frameSerialIdentical && entry.cameraIdentical,
+      ),
+    ) && comparisons.every((entry) => entry.byteIdentical && entry.cameraIdentical),
+    'strict repeatability / matching-camera inspection parity failed; inspect report.json',
   );
 } catch (error) {
   await writeFile(
