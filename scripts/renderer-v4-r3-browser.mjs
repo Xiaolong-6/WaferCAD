@@ -196,11 +196,7 @@ try {
   assert.equal(fastIndex.v4GpuResourceStatus, 'measured');
   assert.equal(r1.v4GpuResourceComplete, 'true');
   assert.equal(fastIndex.v4GpuResourceComplete, 'true');
-  for (const key of [
-    'v4GpuResourceMeshes',
-    'v4GpuResourceGeometries',
-    'v4GpuResourceMaterials',
-  ]) {
+  for (const key of ['v4GpuResourceMeshes', 'v4GpuResourceGeometries', 'v4GpuResourceMaterials']) {
     assert.equal(fastIndex[key], r1[key], key + ' must be unchanged by indexing');
   }
   const baselineBufferBytes = Number(r1.v4GpuResourceEstimatedBufferBytes);

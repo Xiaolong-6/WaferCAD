@@ -311,3 +311,32 @@ resource lifetime, representative physical hardware GPU profiling
 and repeatable presentation-time gains. GPU tile ownership and safe
 face elimination are not implemented. Keep PR #174 stacked as Draft
 on PR #166; neither merges into main. Visual baselines stay intact.
+
+## R3 buffer census after V3 integration (2026-10-10)
+
+The latest V3 head was merged into the R3 Draft branch as a true
+two-parent commit, [`80fa669`](https://github.com/Xiaolong-6/WaferCAD/commit/80fa669183a4f353a46af0f698833061b36d6526),
+without force pushing. The merged 625-site [R3 browser
+run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38069743093)
+passed zero-pixel same-pose parity across baseline, observation and
+Fast indexed display geometry. The corresponding R2 [browser
+run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38069743125)
+also passed.
+
+A subsequent [matched retained-buffer
+A/B](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38069937399)
+enabled the read-only resource census for both baseline and Fast indexed
+arms. The same software-WebGL scene, with opaque and transparent
+variants retained, reported **32,513,760 bytes** of unique buffer
+typed arrays at baseline and **32,394,960 bytes** after indexing:
+**118,800 bytes saved (0.3654%)**. Geometry, material, draw-call,
+triangle-count and same-pose pixel parity checks passed.
+
+The **33.3% reduction** (4,125,000 to 2,750,000) counts logical
+indexed-smooth-wall vertex records expanded over instances. It does
+**not** translate to 33.3% less GPU memory: repeated instances share
+template vertex buffers, index arrays add storage, and most retained
+geometry is outside this eligible subset. The census is a CPU
+typed-array estimate, not measured driver-resident VRAM. R3 performance
+benefit remains unproven until real-hardware GPU and repeatable
+presentation-time experiments. Do not make indexing default-on yet.
