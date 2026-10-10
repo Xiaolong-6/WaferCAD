@@ -74,7 +74,7 @@ test('rough, NaN, and throwing display transforms cannot yield validated candida
   rough.parts[0].upperSurface = { appearance: { kind: 'rough' } };
   const bad = owner();
   bad.instanceTranslations[0] = [NaN, 0];
-  const result = surveyV4FeatureFootprints([rough, bad, owner()], camera);
+  const result = surveyV4FeatureFootprints([rough, bad, owner()], { ...camera, maxOwners: 3 });
   assert.equal(result.excludedOwners, 2);
   assert.equal(result.owners, 1);
   const transform = surveyV4FeatureFootprints([owner()], {
