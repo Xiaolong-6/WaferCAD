@@ -178,3 +178,31 @@ html[data-v2-m3='d1-experimental']
   background: var(--wc-accent-tint-active);
   color: var(--wc-accent-active);
 }
+
+/* Section viewport gestures are rendered through the compositor, never CSS zoom. */
+html[data-v2-m3='d1-experimental'] #sectionCanvas[data-v2-gesture='pan'] {
+  cursor: grab;
+}
+html[data-v2-m3='d1-experimental'] #sectionCanvas[data-v2-gesture='pan']:active {
+  cursor: grabbing;
+}
+html[data-v2-m3='d1-experimental'] #sectionCanvas[data-v2-gesture='zoom'] {
+  cursor: ns-resize;
+}
+html[data-v2-m3='d1-experimental'] .v2-native-toolbar
+  [data-action^='v2-section-'][aria-pressed='true'] {
+  border-color: var(--wc-accent);
+  background: var(--wc-accent-tint-active);
+  color: var(--wc-accent-active);
+}
+@media (max-width: 820px) {
+  /* Preserve original action buttons/accessible names while saving narrow space. */
+  html[data-v2-m3='d1-experimental'] #threePanel .v2-native-toolbar
+    [data-action^='v2-three-'],
+  html[data-v2-m3='d1-experimental'] #sectionPanel .v2-native-toolbar
+    [data-action^='v2-section-'] {
+    font-size: 0;
+    min-width: var(--wc-control-sm);
+    padding-inline: 5px;
+  }
+}
