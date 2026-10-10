@@ -143,6 +143,7 @@
         getViewport: () => window.WaferCadV2RealBridge?.getSectionViewport?.(),
         setViewport: (view) => window.WaferCadV2RealBridge?.setSectionViewport?.(view),
         panViewport: (dx, dy) => window.WaferCadV2RealBridge?.panSectionViewport?.(dx, dy),
+        cancelDetailDrawing: () => window.WaferCadV2RealBridge?.cancelSectionDetailDrawing?.(),
         zoomViewportAt: (factor, x, y, w, h, origin) =>
           window.WaferCadV2RealBridge?.zoomSectionViewportAt?.(factor, x, y, w, h, origin),
       });
