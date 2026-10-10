@@ -26,10 +26,8 @@ export function selectAdaptiveTileTier(
     hysteresis >= 0.5
   )
     return 'exact-uncertain';
-  if (previousTier === 'near' && footprintPx >= nearThresholdPx * (1 - hysteresis))
-    return 'near';
-  if (previousTier === 'far' && footprintPx <= farThresholdPx * (1 + hysteresis))
-    return 'far';
+  if (previousTier === 'near' && footprintPx >= nearThresholdPx * (1 - hysteresis)) return 'near';
+  if (previousTier === 'far' && footprintPx <= farThresholdPx * (1 + hysteresis)) return 'far';
   if (footprintPx >= nearThresholdPx) return 'near';
   if (footprintPx <= farThresholdPx) return 'far';
   return 'mid';
@@ -92,9 +90,7 @@ export function observeAdaptiveArrayTiles(
     typeof mapZ !== 'function' ||
     typeof visibleIntervals !== 'function' ||
     !(previousTiers instanceof Map) ||
-    ![tileInstances, maxOwners, maxTiles].every(
-      (value) => Number.isInteger(value) && value >= 1,
-    ) ||
+    ![tileInstances, maxOwners, maxTiles].every((value) => Number.isInteger(value) && value >= 1) ||
     tileInstances > 256 ||
     maxOwners > 128 ||
     maxTiles > 4096 ||
@@ -156,11 +152,7 @@ export function observeAdaptiveArrayTiles(
         break;
       }
       for (const interval of intervals) {
-        if (
-          !Array.isArray(interval) ||
-          interval.length !== 2 ||
-          !interval.every(Number.isFinite)
-        ) {
+        if (!Array.isArray(interval) || interval.length !== 2 || !interval.every(Number.isFinite)) {
           validOwner = false;
           break;
         }
@@ -179,9 +171,7 @@ export function observeAdaptiveArrayTiles(
       result.excludedOwners++;
       continue;
     }
-    const ordered = [...owner.instanceTranslations].sort(
-      (a, b) => a[1] - b[1] || a[0] - b[0],
-    );
+    const ordered = [...owner.instanceTranslations].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
     const tileCount = Math.ceil(ordered.length / tileInstances);
     result.owners++;
     for (let tileIndex = 0; tileIndex < tileCount; tileIndex++) {
@@ -236,8 +226,7 @@ export function observeAdaptiveArrayTiles(
         result.candidateFarTiles++;
       } else result.uncertainTiles++;
       if (tier !== 'exact-uncertain') result.nextTiers.set(id, tier);
-      if (result.sample.length < 8)
-        result.sample.push({ id, tier, footprintPx });
+      if (result.sample.length < 8) result.sample.push({ id, tier, footprintPx });
     }
   }
   // No amount of footprint/LOD evidence proves transparent alpha coverage.
