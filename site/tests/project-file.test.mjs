@@ -96,7 +96,6 @@ function validProject() {
   };
 }
 
-
 test('Section viewport remains optional for legacy projects and validates persisted CSS view state', () => {
   const old = validProject();
   assert.equal(validateProjectFile(old), old);
