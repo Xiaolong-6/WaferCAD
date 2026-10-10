@@ -2,7 +2,10 @@
 // in every XY instance chunk. Shared template bytes are read-only; per-object
 // Section display Z mapping must use object translation, never write vertices.
 // Fail closed for roughness, depth gradients, malformed or varying-Z geometry.
-export function sharedFlatCapZ(geometry, { enabled = false, planarCap = false, adaptiveRough = false, appearance = null } = {}) {
+export function sharedFlatCapZ(
+  geometry,
+  { enabled = false, planarCap = false, adaptiveRough = false, appearance = null } = {},
+) {
   if (!enabled || !planarCap || adaptiveRough || appearance) return null;
   if (!geometry || typeof geometry.getAttribute !== 'function') return null;
   if (geometry.userData?.roughGpuDisplacement) return null;
@@ -14,7 +17,8 @@ export function sharedFlatCapZ(geometry, { enabled = false, planarCap = false, a
     positions.count < 3 ||
     positions.count > 1_000_000 ||
     typeof positions.getZ !== 'function'
-  ) return null;
+  )
+    return null;
   const z = positions.getZ(0);
   if (!Number.isFinite(z)) return null;
   for (let i = 1; i < positions.count; i++) {

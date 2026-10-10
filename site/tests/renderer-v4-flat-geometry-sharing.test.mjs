@@ -26,7 +26,10 @@ test('only opt-in smooth constant-Z planar caps can reuse chunk template bytes',
   assert.equal(sharedFlatCapZ(geometry([0, Infinity, 0]), options), null);
   assert.equal(sharedFlatCapZ(geometry([0, 0]), options), null);
   assert.equal(sharedFlatCapZ(geometry([0, 0, 0], { annotationDepth: {} }), options), null);
-  assert.equal(sharedFlatCapZ(geometry([0, 0, 0], { userData: { roughGpuDisplacement: true } }), options), null);
+  assert.equal(
+    sharedFlatCapZ(geometry([0, 0, 0], { userData: { roughGpuDisplacement: true } }), options),
+    null,
+  );
   assert.equal(sharedFlatCapZ({}, options), null);
 });
 
@@ -37,7 +40,7 @@ test('flat read-only cap Z mapping is exact for regular and scaled Section trans
     { mapZ: (z) => z },
     { mapZ: (z) => z + 17 },
     { mapZ: (z) => 0.2 * z - 2 },
-    { mapZ: (z) => z > 0.1 ? z / 3 : z * 2 },
+    { mapZ: (z) => (z > 0.1 ? z / 3 : z * 2) },
   ]) {
     const translation = mappedFlatCapTranslation(record, state);
     assert.ok(Number.isFinite(translation));
@@ -46,7 +49,10 @@ test('flat read-only cap Z mapping is exact for regular and scaled Section trans
     }
   }
   assert.deepEqual(physical, [0.25, 0.25, 0.25], 'canonical Z must stay untouched');
-  assert.equal(mappedFlatCapTranslation({ ...record, flatReadOnly: false }, { mapZ: (z) => z }), null);
+  assert.equal(
+    mappedFlatCapTranslation({ ...record, flatReadOnly: false }, { mapZ: (z) => z }),
+    null,
+  );
   assert.equal(mappedFlatCapTranslation({ ...record, maxZ: 0.5 }, { mapZ: (z) => z }), null);
   assert.equal(mappedFlatCapTranslation(record, { mapZ: () => NaN }), null);
   assert.equal(mappedFlatCapTranslation(record, {}), null);

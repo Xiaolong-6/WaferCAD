@@ -2081,7 +2081,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       meshes = [];
     const flatShared =
       shareFlatGeometry && chunks.length > 1
-        ? sharedFlatCapZ(geometry, { enabled: v4SharedFlatCapEnabled, planarCap: true, adaptiveRough, appearance })
+        ? sharedFlatCapZ(geometry, {
+            enabled: v4SharedFlatCapEnabled,
+            planarCap: true,
+            adaptiveRough,
+            appearance,
+          })
         : null;
     if (flatShared) {
       geometry.userData.waferCadV4ReadOnlyFlatZ = flatShared.z;

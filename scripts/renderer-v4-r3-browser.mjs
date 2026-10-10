@@ -231,7 +231,8 @@ try {
     'rendererDrawTriangles',
     'sceneObjectCount',
     'sceneMaterialCount',
-  ]) assert.equal(sharedFlat[key], r1[key], key + ' must survive flat geometry sharing');
+  ])
+    assert.equal(sharedFlat[key], r1[key], key + ' must survive flat geometry sharing');
   assert.ok(Number(sharedFlat.v4SharedFlatClonesAvoided) > 0, 'R4 must actually reuse a template');
   assert.ok(Number(sharedFlat.v4SharedFlatTemplates) > 0);
   assert.equal(sharedFlat.v4GpuResourceStatus, 'measured');
@@ -269,7 +270,11 @@ try {
   console.log('RENDERER_V4_R4_FLAT_SHARE_PARITY', JSON.stringify(sharedPixels));
   assert.equal(pixels.pixelIdentical, true, 'R1 and R3 survey canvases must match exactly');
   assert.equal(indexedPixels.pixelIdentical, true, 'R1 and R3 indexed canvases must match exactly');
-  assert.equal(sharedPixels.pixelIdentical, true, 'R1 and R4 shared cap canvases must match exactly');
+  assert.equal(
+    sharedPixels.pixelIdentical,
+    true,
+    'R1 and R4 shared cap canvases must match exactly',
+  );
 } finally {
   await browser.close();
 }
