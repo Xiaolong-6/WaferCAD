@@ -139,7 +139,10 @@ async function runArm(name, search) {
 
 try {
   await runArm('baseline', 'rendererV4TileProbe=1');
-  await runArm('r3-feature-and-resource-survey', 'rendererV4TileProbe=1&rendererV4FeatureSurvey=1&rendererV4GpuCensus=1');
+  await runArm(
+    'r3-feature-and-resource-survey',
+    'rendererV4TileProbe=1&rendererV4FeatureSurvey=1&rendererV4GpuCensus=1',
+  );
   const [r1, r2] = observations.map((arm) => arm.result);
   for (const key of [
     'modelRevision',
