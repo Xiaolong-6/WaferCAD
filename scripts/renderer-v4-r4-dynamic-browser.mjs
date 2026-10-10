@@ -199,8 +199,7 @@ async function run(name, flags) {
       { timeout: 180000 },
     );
     const roiResult = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
-    const roiOutcome =
-      roiResult.renderState === 'ready' ? 'rendered' : 'bounded-error';
+    const roiOutcome = roiResult.renderState === 'ready' ? 'rendered' : 'bounded-error';
     if (roiOutcome === 'rendered') {
       states.push(await capture(page, name, 'clipped-roi'));
     } else {
@@ -240,7 +239,11 @@ try {
   const common = 'rendererV4GpuCensus=1&rendererV4HeavyCameraNoDamping=1';
   await run('baseline', common);
   await run('shared-flat', common + '&rendererV4SharedFlatCaps=1');
-  assert.equal(all[0].roiOutcome, all[1].roiOutcome, 'ROI outcome must match across renderer policies');
+  assert.equal(
+    all[0].roiOutcome,
+    all[1].roiOutcome,
+    'ROI outcome must match across renderer policies',
+  );
   const baseline = all[0].states;
   const optimized = all[1].states;
   assert.deepEqual(

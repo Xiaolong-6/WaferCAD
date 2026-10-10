@@ -27,10 +27,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
-import {
-  clearRendererBuildFailure,
-  setRendererBuildFailure,
-} from './renderer-rebuild-status.js';
+import { clearRendererBuildFailure, setRendererBuildFailure } from './renderer-rebuild-status.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
