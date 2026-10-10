@@ -779,6 +779,7 @@ function fit3d() {
 if (V2_REAL_VIEWS) {
   const bridge = globalThis.WaferCadV2RealBridge;
   if (!bridge) throw new Error('Real v2 camera bridge was not registered before bootstrap.');
+  bridge.cancelSectionDetailDrawing = () => sectionDetailRoiController.cancelDrawing();
   bridge.getSectionViewport = () => structuredClone(sectionViewport);
   bridge.setSectionViewport = (value) => {
     sectionViewport = normalizeSectionViewport(value);
