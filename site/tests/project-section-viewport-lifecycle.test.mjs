@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createModel } from '../model.js';
-import {
-  createEmptyLayout,
-  createProjectStateController,
-} from '../controllers/project-state-controller.js';
+import { readFileSync } from 'node:fs';
+
+// Model imports the strict polygon kernel at module initialization. Install the
+// same vendored kernel bootstrap used by project-file.test.mjs BEFORE importing.
+const vendor = readFileSync(new URL('../vendor/polygon-clipping.umd.js', import.meta.url), 'utf8');
+const cjs = { exports: {} };
+new Function('module', 'exports', vendor)(cjs, cjs.exports);
+globalThis.polygonClipping = cjs.exports;
+const { createModel } = await import('../model.js');
+const { createEmptyLayout, createProjectStateController } =
+  await import('../controllers/project-state-controller.js');
 
 function setup() {
   let state = {
