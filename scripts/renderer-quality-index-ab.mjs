@@ -25,7 +25,7 @@ const finalFrameOnly = process.argv.includes('--final-frame-only');
 const assemblyAb = process.argv.includes('--assembly-ab');
 const electricalPlanarAb = process.argv.includes('--electrical-planar-ab');
 const hardwareElectricalAb = process.argv.includes('--hardware-electrical-ab');
-const webglCensus = gpuProfile || hardwareElectricalAb;
+const webglCensus = gpuProfile || hardwareElectricalAb || electricalPlanarAb;
 assert.ok(
   !assemblyAb || (!gpuProfile && !finalFrameOnly && !electricalPlanarAb && !hardwareElectricalAb),
   '--assembly-ab is standalone; do not combine it with other modes',
@@ -46,10 +46,10 @@ const out = new URL(
       : electricalPlanarAb
         ? '../test-results/renderer-electrical-planar-ab/'
         : gpuProfile
-    ? finalFrameOnly
-      ? '../test-results/renderer-gpu-profile-final-only/'
-      : '../test-results/renderer-gpu-profile/'
-    : '../test-results/renderer-quality-index-ab/',
+          ? finalFrameOnly
+            ? '../test-results/renderer-gpu-profile-final-only/'
+            : '../test-results/renderer-gpu-profile/'
+          : '../test-results/renderer-quality-index-ab/',
   import.meta.url,
 );
 await mkdir(out, { recursive: true });
@@ -89,8 +89,8 @@ async function trial(enabled, ordinal) {
         : electricalPlanarAb
           ? `${ordinal}-${enabled ? 'electrical-single' : 'electrical-double'}`
           : gpuProfile
-        ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
-        : `${ordinal}-${enabled ? 'on' : 'off'}`;
+            ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
+            : `${ordinal}-${enabled ? 'on' : 'off'}`;
     const params = new URLSearchParams();
     if (!gpuProfile && !assemblyAb && !electricalPlanarAb && !hardwareElectricalAb && enabled)
       params.set('rendererV3QualityIndex', '1');
@@ -208,7 +208,7 @@ async function trial(enabled, ordinal) {
       assert.ok(webgl.completedDrawMs > 0);
       if (webgl.timerStatus !== 'valid') assert.equal(webgl.gpuMs, null);
     }
-    const backend = hardwareElectricalAb ? classifyWebglBackend(webgl) : null;
+    const backend = webglCensus ? classifyWebglBackend(webgl) : null;
     if (hardwareElectricalAb) {
       assert.ok(
         backend.hardwareVerified,
@@ -219,15 +219,12 @@ async function trial(enabled, ordinal) {
     assert.equal(state.transparentArrayLodTier, 'exact');
     assert.equal(state.v3SkippedTriangles, '0');
     if ((electricalPlanarAb || hardwareElectricalAb) && enabled) {
-      assert.ok(
-        Number(state.rendererDrawTriangles) < 57040012 &&
-          Number(state.rendererDrawTriangles) > 50000000,
-        'electrical smooth-cap trial must save GPU triangle submissions without omitting volume',
+      assert.equal(
+        Number(state.rendererDrawTriangles),
+        54066262,
+        'electrical smooth-cap trial removes exactly the accepted redundant submissions',
       );
-      assert.ok(
-        Number(state.rendererDrawCalls) < 1408,
-        'electrical smooth-cap trial must remove only redundant draw passes',
-      );
+      assert.equal(Number(state.rendererDrawCalls), 1291, 'accepted electrical smooth-cap calls');
     } else {
       assert.equal(state.rendererDrawTriangles, '57040012', '625-site exact triangle parity');
       assert.equal(state.rendererDrawCalls, '1408', '625-site draw-call parity');
@@ -291,9 +288,7 @@ async function trial(enabled, ordinal) {
       finalFrameOnly: trialFinalFrameOnly,
       assemblyFramePolicy: state.rendererAssemblyFramePolicy,
       assemblySkippedFrames: Number(state.rendererAssemblySkippedFrames || 0),
-      ...(webglCensus
-        ? { webgl, ...(hardwareElectricalAb ? { backend } : { diagnosticImageOnly: enabled }) }
-        : {}),
+      ...(webglCensus ? { webgl, backend, diagnosticImageOnly: gpuProfile && enabled } : {}),
     };
     console.log(
       assemblyAb
@@ -303,8 +298,8 @@ async function trial(enabled, ordinal) {
           : electricalPlanarAb
             ? 'RENDERER_ELECTRICAL_PLANAR_AB_TRIAL'
             : gpuProfile
-          ? 'RENDERER_GPU_PROFILE_TRIAL'
-          : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
+              ? 'RENDERER_GPU_PROFILE_TRIAL'
+              : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
       JSON.stringify(result),
     );
     return result;
@@ -365,8 +360,8 @@ try {
         : electricalPlanarAb
           ? 'same-run-electrical-single-double-double-single'
           : gpuProfile
-        ? 'same-run-normal-discard-discard-normal'
-        : 'same-run-abba',
+            ? 'same-run-normal-discard-discard-normal'
+            : 'same-run-abba',
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
     viewport: '1440x960',
     browserVersion: browser.version(),
@@ -376,6 +371,13 @@ try {
     exactCanvasParity: gpuProfile
       ? 'normal arms only; discard images intentionally incomplete'
       : true,
+    ...(webglCensus
+      ? {
+          hardwareConfirmed: trials.every((x) => x.backend?.hardwareVerified),
+          adapters: [...new Set(trials.map((x) => x.backend?.adapter))],
+          explicitFinishBarrier: true,
+        }
+      : {}),
     ...(hardwareElectricalAb
       ? {
           hardwareConfirmed: trials.every((x) => x.backend?.hardwareVerified),
@@ -396,40 +398,40 @@ try {
       : electricalPlanarAb
         ? {
             electricalSinglePassMedianMs: onMedianMs,
-          electricalDoublePassMedianMs: offMedianMs,
-          elapsedRatioSingleToDouble: onMedianMs / offMedianMs,
-          submittedTrianglesSingle: on.map((x) => x.submittedTriangles),
-          submittedTrianglesDouble: off.map((x) => x.submittedTriangles),
-          drawCallsSingle: on.map((x) => x.drawCalls),
-          drawCallsDouble: off.map((x) => x.drawCalls),
-        }
-      : assemblyAb
-        ? {
-            finalOnlyCompletedMedianMs: onMedianMs,
-          previewCompletedMedianMs: offMedianMs,
-          completedRatioFinalToPreview: onMedianMs / offMedianMs,
-          completedDeltaMs: onMedianMs - offMedianMs,
-          finalOnlyInitialReadyMedianMs: median(on.map((x) => x.initialSceneReadyMs)),
-          previewInitialReadyMedianMs: median(off.map((x) => x.initialSceneReadyMs)),
-          initialReadyRatioFinalToPreview:
-            median(on.map((x) => x.initialSceneReadyMs)) /
-            median(off.map((x) => x.initialSceneReadyMs)),
-          finalOnlySkippedAssemblyFrames: on.map((x) => x.assemblySkippedFrames),
-          previewSkippedAssemblyFrames: off.map((x) => x.assemblySkippedFrames),
-        }
-      : gpuProfile
-        ? {
-            normalMedianMs: offMedianMs,
-          rasterDiscardMedianMs: onMedianMs,
-          rasterDiscardToNormalRatio: onMedianMs / offMedianMs,
-          rasterDiscardDeltaMs: onMedianMs - offMedianMs,
-        }
-      : {
-          onMedianMs,
-          offMedianMs,
-          elapsedRatioOnToOff: onMedianMs / offMedianMs,
-          elapsedDeltaMs: onMedianMs - offMedianMs,
-        }),
+            electricalDoublePassMedianMs: offMedianMs,
+            elapsedRatioSingleToDouble: onMedianMs / offMedianMs,
+            submittedTrianglesSingle: on.map((x) => x.submittedTriangles),
+            submittedTrianglesDouble: off.map((x) => x.submittedTriangles),
+            drawCallsSingle: on.map((x) => x.drawCalls),
+            drawCallsDouble: off.map((x) => x.drawCalls),
+          }
+        : assemblyAb
+          ? {
+              finalOnlyCompletedMedianMs: onMedianMs,
+              previewCompletedMedianMs: offMedianMs,
+              completedRatioFinalToPreview: onMedianMs / offMedianMs,
+              completedDeltaMs: onMedianMs - offMedianMs,
+              finalOnlyInitialReadyMedianMs: median(on.map((x) => x.initialSceneReadyMs)),
+              previewInitialReadyMedianMs: median(off.map((x) => x.initialSceneReadyMs)),
+              initialReadyRatioFinalToPreview:
+                median(on.map((x) => x.initialSceneReadyMs)) /
+                median(off.map((x) => x.initialSceneReadyMs)),
+              finalOnlySkippedAssemblyFrames: on.map((x) => x.assemblySkippedFrames),
+              previewSkippedAssemblyFrames: off.map((x) => x.assemblySkippedFrames),
+            }
+          : gpuProfile
+            ? {
+                normalMedianMs: offMedianMs,
+                rasterDiscardMedianMs: onMedianMs,
+                rasterDiscardToNormalRatio: onMedianMs / offMedianMs,
+                rasterDiscardDeltaMs: onMedianMs - offMedianMs,
+              }
+            : {
+                onMedianMs,
+                offMedianMs,
+                elapsedRatioOnToOff: onMedianMs / offMedianMs,
+                elapsedDeltaMs: onMedianMs - offMedianMs,
+              }),
     // Observational diagnostics, not automatically interpreted as a speedup.
     inferSpeedup: false,
     ...(hardwareElectricalAb
@@ -443,24 +445,24 @@ try {
         }
       : electricalPlanarAb
         ? {
-          interpretation:
-            'Default-off smooth electrical surface rendering experiment. Matching canvas pixels and reduced WebGL submissions are required; one ABBA round cannot establish hardware performance improvement or authorize rollout.',
-        }
-      : assemblyAb
-        ? {
             interpretation:
-              'Same-run final-image parity and equal submissions compare initial readiness and completed-image cost. Preview frames can affect responsiveness; a single ABBA round is inconclusive and cannot promote the policy.',
-        }
-      : gpuProfile
-        ? {
-            diagnosticOnly: true,
-          explicitFinishBarrier: true,
-          gpuTimerScope:
-            'first draw through end of animation callback; only non-disjoint results valid',
-          interpretation:
-            'API primitive submissions remain identical, but discard may change driver optimization; these counts are not hardware invocation counters. Remaining cost is not pure vertex time. No product speedup or annotation omission is authorized.',
-        }
-      : {}),
+              'Default-off smooth electrical surface rendering experiment. Matching canvas pixels and reduced WebGL submissions are required; one ABBA round cannot establish hardware performance improvement or authorize rollout.',
+          }
+        : assemblyAb
+          ? {
+              interpretation:
+                'Same-run final-image parity and equal submissions compare initial readiness and completed-image cost. Preview frames can affect responsiveness; a single ABBA round is inconclusive and cannot promote the policy.',
+            }
+          : gpuProfile
+            ? {
+                diagnosticOnly: true,
+                explicitFinishBarrier: true,
+                gpuTimerScope:
+                  'first draw through end of animation callback; only non-disjoint results valid',
+                interpretation:
+                  'API primitive submissions remain identical, but discard may change driver optimization; these counts are not hardware invocation counters. Remaining cost is not pure vertex time. No product speedup or annotation omission is authorized.',
+              }
+            : {}),
   };
   await writeFile(new URL('report.json', out), JSON.stringify(report, null, 2));
   console.log(
@@ -471,8 +473,8 @@ try {
         : electricalPlanarAb
           ? 'RENDERER_ELECTRICAL_PLANAR_AB_OK'
           : gpuProfile
-        ? 'RENDERER_GPU_PROFILE_OK'
-        : 'RENDERER_QUALITY_INDEX_AB_OK',
+            ? 'RENDERER_GPU_PROFILE_OK'
+            : 'RENDERER_QUALITY_INDEX_AB_OK',
     JSON.stringify(report),
   );
 } finally {
