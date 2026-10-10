@@ -158,3 +158,42 @@ This section supersedes the preceding **pending browser run** status. Input HEAD
 **Full D1 remains NOT ACCEPTED.** Continue on this branch with a genuine shared view-action adapter and remaining geometry/portal scenarios. Existing 3D camera API and Section controller capabilities must be evaluated before inventing common actions; widening scientific/read-only renderer scope requires a concrete proposal. Do not start D2 or replace the production route based on this narrower pass.
 
 The current core M3D run also passes after the toolbar changes and native Zoom assertion. This replaces reliance on the older `2c77457` measurements for the scenarios rerun here; the remaining full-D1 gates above stay open. Local reproduction uses the six core/extended commands with `WAFERCAD_THREE_DIR` and the two optional fixture names documented earlier. Screenshots/evidence are ignored, reproducible review artifacts under `test-results/ui-v2-d1-real[-fixture]` and `test-results/ui-v2-d1-extended[-fixture]`; shared source/report/runner changes are committed together.
+
+## D1 real 3D camera adapter and independent Section check — 2026-10-10 (after `096def1`)
+
+**Checkpoint status: implementation pushed; acceptance is still OPEN.** All existing six successful core/extended Base/Photodetector/M3D runs described above belong to **`096def1` and its predecessors**, not to this follow-up's modified product source. No runnable local checkout or actual Chromium/Node suite was available in this execution; do not forward-port the prior PASS markers.
+
+### Source changes
+
+1. `site/app.js` now exposes an experimental v2-only `getThreeCamera`/`setThreeCamera` presentation seam through `WaferCadV2RealBridge`. These call the **existing** `threeView.getViewState` and `threeView.setViewState`, then the **existing** view-only persistence scheduler. Legacy pages, product model, process/worker, geometry, renderer, IO and two storage keys retain their previous implementation.
+2. `site/ui-v2/real-three-controls.js` owns two genuine 3D toolbar modes. **Pan** converts a left-drag CSS-pixel displacement to a target-plane camera translation derived from current perspective FOV, target distance and view height; applies the identical translation to camera position and target. **Zoom** uses a bounded exponential distance change along the original camera-to-target vector. Both route the result to the same existing 3D camera owner; neither changes stored scientific geometry or creates a second renderer. Default OrbitControls still handles normal orbit/wheel input when these modes are not selected. Pan/Zoom only intercept an opted-in left pointer gesture on the actual WebGL canvas.
+3. `site/ui-v2/real-view-bridge.js`, `site/app-v2-real.html` and experimental-only `real-view-bridge.css` mount the real controls before the original production `app.js` bindings, preserve node identity, expose selected modes via `aria-pressed`/cursor, and clean up capture listeners on destruction/view hide.
+4. `site/controllers/view-toolbar-controller.js` uses an explicit **v2-only** 700px threshold to relocate the **original** 3D quality select into its existing More owner when the additional controls need room. The legacy policy is unchanged.
+5. `scripts/v2/real-three-controls.test.mjs` and `scripts/v2/check-d1-three-gestures.mjs` are new Node/pinned-Chromium gates covering camera invariants, real 3D pointer hit, camera target displacement, preserved relative orientation under Pan, changed actual distance under Zoom, restored Orbit mode, canvas identity, error reporting and 1440/1024/768/390 viewports. Existing M2 mock tests were not weakened.
+6. `scripts/v2/check-d1-extended.mjs` now checks Base physical Section X:Z with **native** `sectionScaleModeBtn` set to physical and native Z Break disabled. Expected screen scales and plot origin use real A/B endpoint inputs, DOMRect, compositor's documented margins and the rendered Z bounds; Base thickness is cross-checked against a separate input. It maintains the unchanged **0.25px** pixel tolerance. It is not an independent validation of every nonlinear, rough, or collapsed Z profile, and the canvas is not CSS-scaled.
+
+### Static evidence and remaining acceptance
+
+- Confirmed the new 3D Pan mapping keeps `position - target` unchanged to numeric precision; Zoom preserves target and FOV while changing distance (source-level execution of the standalone math functions). New classic bridge module has valid JavaScript syntax.
+- **NOT RUN on current HEAD:** Node 585, contract/AST refresh, lint/docs/Prettier, legacy browser, six earlier core/extended fixture gates, new camera Node tests, new camera real browser gate, M1.5 visual comparison, native/full portal lifecycle, physical Section full geometry/rotated Mask fixtures or actual GPU hardware. A new `site/ui-v2/` module may change AST-derived dynamic operation counts; regenerate/check the contracts rather than copying historical numbers.
+- No assertion/baseline loosened, no D2 work, no default-route change, no mock→real promotion, no main merge, no force push. Rollback baseline remains `0fa32a7`.
+
+To actually accept the new work, run on the new HEAD:
+
+```bash
+npm ci
+node scripts/ui-contract-extract.mjs --write
+node scripts/ui-contract-extract.mjs --check
+node --test scripts/v2/real-three-controls.test.mjs
+npm test
+npm run lint
+npm run docs:check
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-three-gestures.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=photodetector node scripts/v2/check-d1-three-gestures.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=m3d node scripts/v2/check-d1-three-gestures.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-extended.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:ui:workstation
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:ui:smoke
+```
+
+Remaining D1 blockers include **Section true Pan/Zoom** (the current Section compositor owns physical X/Z rasterization and needs a narrowly specified viewport API; a CSS transform would invalidate hit testing), the unified native overlay portal lifecycle (existing controller-owned nodes/dialog top-layer cannot be blindly moved without breaking `closest('.view-panel')`, focus and event contracts), full independent Section/Slice/rotated Mask/Main↔3D physical geometry, four-width M1.5 real-view visual parity, platform-specific approved screenshots, hardware GPU evidence, and explicit route handoff. Implement/validate those before declaring D1 passed.
