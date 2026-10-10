@@ -15210,12 +15210,12 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 326,
+          "line": 327,
           "source": "await clickControl('#sectionPanel', '#sectionMaxBtn');"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 327,
+          "line": 328,
           "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
         },
         {
@@ -15493,12 +15493,12 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 327,
+          "line": 328,
           "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 337,
+          "line": 338,
           "source": ".locator('#sectionCollapseAxisBtn')"
         },
         {
@@ -15689,7 +15689,7 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 326,
+          "line": 327,
           "source": "await clickControl('#sectionPanel', '#sectionMaxBtn');"
         }
       ]
@@ -16185,7 +16185,7 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 348,
+          "line": 349,
           "source": "node.parentElement.id === 'sectionCollapseOverlay',"
         },
         {
@@ -16302,22 +16302,22 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 329,
+          "line": 330,
           "source": "await page.locator('#sectionCollapseEditor').evaluate((node) => node.matches(':modal')),"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 334,
+          "line": 335,
           "source": "await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 344,
+          "line": 345,
           "source": ".locator('#sectionCollapseEditor')"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 347,
+          "line": 348,
           "source": "node === window.d1ExtendedOwners.get('sectionCollapseEditor') &&"
         },
         {
@@ -17177,7 +17177,7 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 318,
+          "line": 319,
           "source": "await page.locator('#sectionDetailCloseBtn').click();"
         }
       ]
